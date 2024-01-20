@@ -259,7 +259,7 @@ pane_frames false
 // The name of the default layout to load on startup
 // Default: "default"
 //
-// default_layout "conky"
+default_layout "stack_vert"
 
 // Choose the mode that zellij uses when starting up.
 // Default: normal
