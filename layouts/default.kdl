@@ -1,0 +1,45 @@
+layout {
+    pane size=1 borderless=true {
+        plugin location="file:~/user_installs/zjstatus.wasm" {
+            format_left  "{mode}  {tabs}"
+            format_right "{command_git_branch} #[fg=#00FFFF,bold]{swap_layout} #[fg=#89B4FA,bold]{session} {datetime}"
+            format_space ""
+
+            border_enabled  "false"
+            border_char     "─"
+            border_format   "#[fg=#6C7086]{char}"
+            border_position "top"
+
+            // hide_frame_for_single_pane "true"
+            hide_frame_for_single_pane "false"
+
+            mode_normal        "#[fg=#b8bb26,bold]{name}"
+            mode_locked        "#[fg=#fb4934,bold]{name}"
+            mode_resize        "#[fg=#fabd2f,bold]{name}"
+            mode_pane          "#[fg=#d3869b,bold]{name}"
+            mode_tab           "#[fg=#83a598,bold]{name}"
+            mode_scroll        "#[fg=#8ec07c,bold]{name}"
+            mode_session       "#[fg=#fe8019,bold]{name}"
+            mode_move          "#[fg=#a89984,bold]{name}"
+
+            tab_normal   "#[fg=#FFFFFF] {name} "
+            tab_active   "#[fg=#00FF00,bold,italic] {name} "
+
+            command_git_branch_command     "git rev-parse --abbrev-ref HEAD"
+            command_git_branch_format      "#[fg=blue] {stdout} "
+            command_git_branch_interval    "10"
+            command_git_branch_rendermode  "static"
+
+            datetime        "#[fg=#6C7086,bold] {format} "
+            datetime_format "%A, %d %b %Y %H:%M"
+            datetime_timezone "Brazil/East"
+        }
+    }
+    pane
+    // pane size=1 borderless=true {
+    //     plugin location="zellij:tab-bar"
+    // }
+    // pane size=1 borderless=true {
+    //     plugin location="zellij:status-bar"
+    // }
+}
