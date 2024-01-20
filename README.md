@@ -6,4 +6,4 @@ These are my awesome zellij config files for a setup that looks like this:
 
 - But you have to install [zjstatus](https://github.com/dj95/zjstatus) for it to work! (Or you could replace it with the regular tab-bar)
 - The swap config has both stacked and vertical layouts included, with stacked as the default (it starts stacking when you create the third pane)
-- The other layouts are there too, but commented 
+- The other layout examples from zellij docs are there too, but commented 
