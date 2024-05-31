@@ -3,16 +3,20 @@ tab_template name="ui" {
        plugin location="zellij:tab-bar"
    }
    children
-   // pane size=2 borderless=true {
-   //  plugin location="zellij:status-bar"
-   // }
 }
 
 swap_tiled_layout name="stacked" {
     ui min_panes=3 {
         pane split_direction="vertical" {
-            pane
-            pane stacked=true { children; }
+            pane {
+                command "yazi"
+                size "20%"
+            }
+
+            pane split_direction="vertical" {
+                pane
+                pane stacked=true { children; }
+            }
         }
     }
 }
@@ -37,7 +41,7 @@ swap_tiled_layout name="vertical" {
             pane { pane; pane; pane; pane; }
         }
     }
-}
+// }
 
 // swap_tiled_layout name="horizontal" {
 //     ui max_panes=5 {
@@ -98,4 +102,4 @@ swap_tiled_layout name="vertical" {
 //         pane { x "1%"; y "1%"; width "45%"; height "45%"; }
 //         pane { x "50%"; y "1%"; width "45%"; height "45%"; }
 //     }
-// }
+}

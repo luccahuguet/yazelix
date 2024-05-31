@@ -35,8 +35,12 @@ layout {
             datetime_timezone "Brazil/East"
         }
     }
-    pane
-    // pane size=1 borderless=true {
-    //     plugin location="zellij:status-bar"
-    // }
+    pane split_direction="vertical" {
+        pane {
+            size "20%" 
+            command "nu"
+            args "-e yazi"
+        }
+        pane focus=true
+    }
 }
