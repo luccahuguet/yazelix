@@ -1,0 +1,38 @@
+tab_template name="ui" {
+   pane size=1 borderless=true {
+       plugin location="zellij:tab-bar"
+   }
+   children
+}
+
+swap_tiled_layout name="stacked_open_side" {
+    ui {
+        pane split_direction="vertical" {
+            pane {
+                command "yazi"
+                size "20%"
+            }
+
+            pane split_direction="vertical" {
+                pane
+                pane stacked=true { children; }
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="stacked_closed_side" {
+    ui {
+        pane split_direction="vertical" {
+            pane {
+                command "yazi"
+                size 1
+            }
+
+            pane split_direction="vertical" {
+                pane
+                pane stacked=true { children; }
+            }
+        }
+    }
+}

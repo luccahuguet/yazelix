@@ -38,8 +38,7 @@ layout {
     pane split_direction="vertical" {
         pane {
             size "20%" 
-            command "nu"
-            args "-e yazi"
+            command "yazi"
         }
         pane focus=true
     }
