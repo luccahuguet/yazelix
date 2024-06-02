@@ -1,41 +1,46 @@
-# Yazi-Helix File Tree v2: the sidebar can now be closed
+# Yazi-Helix File Tree v2: Now with a Closeable Sidebar
 
-Example with two or more panes open and sidebar open
-![image](https://github.com/luccahuguet/yazi-files/assets/27565287/557eecbf-6eeb-48f9-8de4-252f78bda4fd)
+## Layout Details
+This layout is named `stack_sidebar`.  
+It is pre-configured in my setup. If you haven't copied my config, add `default_layout "stack_sidebar"` to your configuration.
 
-Example with two or more panes open and sidebar closed
-![image](https://github.com/luccahuguet/zellij-files/assets/27565287/4f63de6e-4df7-452f-9877-90461071b673)
+### Base Layout
+The initial layout includes four panes:
+![Base Layout](https://github.com/luccahuguet/zellij-files/assets/27565287/adc6162c-a1ec-4635-b217-aa7a9ba691c5)
 
+- **Tab-bar** at the top
+- **Status-bar** at the bottom
+- **Yazi pane** (20% width) acting as a sidebar on the left
+- **Empty pane** on the right
 
-This layout is called `stack_sidebar`!
-Obs: it is already set in my config, but if you did not copy my config, you can set it with `default_layout "stack_sidebar"` in yours.
+### Swap Layout
+When you create a fifth pane, you transition from the base layout:
+- Open and close the sidebar by switching layouts.
+- Add more swap layouts as needed.
+- The first two screenshots display these two layouts.
+- The fifth pane, on the left, is where new panes will appear, stacked.
 
-The base (starting) layout has 4 panes
-![image](https://github.com/luccahuguet/zellij-files/assets/27565287/adc6162c-a1ec-4635-b217-aa7a9ba691c5)
+**Two or more panes open with the sidebar open:**
+![Sidebar Open](https://github.com/luccahuguet/yazi-files/assets/27565287/557eecbf-6eeb-48f9-8de4-252f78bda4fd)
 
-- the tab-bar at the top
-- the status-bar at the bottom
-- a [yazi](https://yazi-rs.github.io/features) pane with 20% width acting as a side-bar, to the left
-- and an empty pane to the right
+**Two or more panes open with the sidebar closed:**
+![Sidebar Closed](https://github.com/luccahuguet/zellij-files/assets/27565287/4f63de6e-4df7-452f-9877-90461071b673)
 
-After you create a fifth pane, you leave the base layout:
-- You're now able to open and close the sidebar by switching swap layouts 
-- You can add more swap layouts if you want
-- The first two screenshots showcase the two layouts
-- The fith pane, to the left, is the one where new panes will appear, stacked
+## Improvements Over v1
+- **Sidebar Control:** Now you can open and close the sidebar.
+- **Simplified Dependencies:** No more nushell dependency.
+- **Simpler Layout Files:** The KDL files are more streamlined.
 
-### Improvements over v1: 
-- now you can open and close the sidebar
-- there is no nushell dependency anymore
-- the layout kdl files are simpler than before
+## Roadmap
+### Future Enhancements
+- **Simplify KDL Files:** Reduce code repetition.
+- **Flexible Sidebar Control:** Enable sidebar toggling with just four panes.
+- **Third Swap Layout:** Integrate a full Yazi pane (showing parents and preview). [Learn more](https://github.com/luccahuguet/yazi-files)
+  - This requires Yazi to accept config as an argument.
 
-### Roadmap: I would like to 
-- further simplify the kdl files, there is still some code repetion
-- be able to open and close the sidebar with just 4 panes, currently that only works with 5 or more
-- have a third swap layout that is a full yazi pane (showing parents and preview, [see more](https://github.com/luccahuguet/yazi-files))
-- (for the item above to work, yazi would have to be able to recieve config as an argument)
-  
-### Other layout files in the repo: stack_sidebar_zjstatus (not the default)
-- this is a cool layout that takes more configuration to work but enables a "more powerful tab-bar" that shows the time and the current layout for example, if you configure it to do it
-- to enable it you have to change the config `default_layout "stack_sidebar_zjstatus"` and  install [zjstatus](https://github.com/dj95/zjstatus) placing the path in your layout kdl file
-- basically, if you want to lose the status-bar, this more powerfull tab-bar can help out
+## Other Layouts
+### `stack_sidebar_zjstatus` (Optional)
+This layout offers an advanced tab-bar with more features (e.g., time display, current layout). 
+- **Setup:** Change the config to `default_layout "stack_sidebar_zjstatus"` and install [zjstatus](https://github.com/dj95/zjstatus), updating the path in your layout KDL file.
+- **Use Case:** If you prefer a more powerful tab-bar without a status-bar, this layout is for you.
+
