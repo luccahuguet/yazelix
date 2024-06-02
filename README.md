@@ -27,7 +27,7 @@ When you create a fifth pane, you transition from the base layout:
 - **Removes zjstatus Plugin:** The plugin had to be downloaded and configured, while adding nothing really important.
 - **Status-bar is Back, baby!:** Life without it isn't easy. The status-bar (help bar) makes the setup much more user-friendly.
 
-## Instructions
+## Instructions to set it up
 1. Install [Yazi](https://github.com/sxyazi/yazi).
 2. Install [Zellij](https://github.com/zellij-org/zellij).
 3. Install [Helix](https://helix-editor.com).
