@@ -24,7 +24,7 @@ When you create a fifth pane, you transition from the base layout:
 - **Sidebar Control:** Now you can open and close the sidebar.
 - **Simplified Dependencies:** No more nushell dependency. Nushell is a beautiful table-centric cross-platform shell written in Rust, but the way I used it was an ugly hack.
 - **Simpler Layout Files:** The KDL files are more streamlined.
-- **Removes zjstatus Plugin:** The plugin had to be downloaded and configured, while adding nothing important.
+- **Removes zjstatus Plugin:** The plugin had to be downloaded and configured, while adding nothing really important.
 - **Status-bar is Back:** Life without it isn't easy. The status-bar (help bar) makes this much more user-friendly.
 
 ## Instructions
@@ -45,9 +45,10 @@ When you create a fifth pane, you transition from the base layout:
 - **Full Yazi pane:** Integrate a full Yazi pane in another swap layout (showing parents and preview, not just the current dir). [Learn more](https://github.com/luccahuguet/yazi-files)
   - This requires Yazi to accept config as an argument.
 - **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
+- **Helix-friendly Remap:** I'll definitely add a few remaps to zellij, so that it does not conflit with helix [Learn more](https://zellij.dev/documentation/layouts-with-config)
 
 ## Other Layouts
-### `stack_sidebar_zjstatus` (Optional)
+### `stack_sidebar_zjstatus` (Optional) (does not feature v2 improvements)
 This layout offers an advanced tab-bar with more features (e.g., time display, current layout).
 - **Setup:** Change the config to `default_layout "stack_sidebar_zjstatus"` and install [zjstatus](https://github.com/dj95/zjstatus), updating the path in your layout KDL file.
 - **Use Case:** If you prefer a more powerful tab-bar without a status-bar, this layout is for you.
