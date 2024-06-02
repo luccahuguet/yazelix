@@ -22,7 +22,7 @@ After you create a fifth pane, you leave the base layout:
 - You're now able to open and close the sidebar by switching swap layouts 
 - You can add more swap layouts if you want
   
-# Other layout files here: stack_sidebar_zjstatus (not the default)
+### Other layout files here: stack_sidebar_zjstatus (not the default)
 - this is a cool layout that takes more configuration to work but enables a "more powerful tab-bar" that shows the time and the current layout for example, if you configure it to do it
 - to enable it you have to change the config `default_layout "stack_sidebar_zjstatus"` and  install [zjstatus](https://github.com/dj95/zjstatus) placing the path in your layout kdl file
 - basically, if you want to lose the status-bar, this more powerfull tab-bar can help out
