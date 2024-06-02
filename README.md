@@ -25,7 +25,7 @@ When you create a fifth pane, you transition from the base layout:
 - **Simplified Dependencies:** No more nushell dependency. Nushell is a beautiful table-centric cross-platform shell written in Rust, but the way I used it was an ugly hack.
 - **Simpler Layout Files:** The KDL files are more streamlined.
 - **Removes zjstatus Plugin:** The plugin had to be downloaded and configured, while adding nothing really important.
-- **Status-bar is Back:** Life without it isn't easy. The status-bar (help bar) makes this much more user-friendly.
+- **Status-bar is Back, baby!:** Life without it isn't easy. The status-bar (help bar) makes the setup much more user-friendly.
 
 ## Instructions
 1. Install [Yazi](https://github.com/sxyazi/yazi).
