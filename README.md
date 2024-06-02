@@ -9,7 +9,7 @@ The initial layout includes four panes:
 - **Empty pane** on the right
 
 ### Swap Layout
-When you create a fifth pane, you transition from the base layout:
+When you create a fifth pane, you transition to the swap layouts:
 - Open and close the sidebar by switching layouts.
 - The fifth pane, on the left, is where new panes will appear, stacked.
 - You can add more swap layouts as needed, using the KDL files in `layouts`.
