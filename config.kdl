@@ -260,6 +260,7 @@ plugins {
 // Default: "default"
 //
 default_layout "stack_sidebar"
+// default_layout "stack_sidebar_zjstatus"
 
 // Choose the mode that zellij uses when starting up.
 // Default: normal
@@ -290,7 +291,7 @@ default_layout "stack_sidebar"
 // Examples:
 //
 // copy_command "xclip -selection clipboard" // x11
-copy_command "wl-copy"                    // wayland
+// copy_command "wl-copy"                    // wayland
 // copy_command "pbcopy"                     // osx
 
 // Choose the destination for copied text
@@ -310,7 +311,9 @@ copy_command "wl-copy"                    // wayland
 // Path to the default editor to use to edit pane scrollbuffer
 // Default: $EDITOR or $VISUAL
 //
-scrollback_editor "nu -c hx"
+// scrollback_editor "nu -c hx"
+scrollback_editor "/home/lucca/user_installs/helix-24.03-x86_64-linux/hx"
+// scrollback_editor "hx"
 
 // When attaching to an existing session with other users,
 // should the session be mirrored (true)
