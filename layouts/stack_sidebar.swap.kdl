@@ -17,7 +17,7 @@ swap_tiled_layout name="yazi_open" {
             }
             pane split_direction="vertical" {
                 pane
-                pane stacked=true { children; }
+                pane focus=true stacked=true { children; }
             }
         }
     }
@@ -33,7 +33,7 @@ swap_tiled_layout name="yazi_closed" {
 
             pane split_direction="vertical" {
                 pane
-                pane stacked=true { children; }
+                pane focus=true stacked=true { children; }
             }
         }
     }
