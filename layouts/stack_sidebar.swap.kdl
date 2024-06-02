@@ -8,14 +8,13 @@ tab_template name="ui" {
     }
 }
 
-swap_tiled_layout name="stacked_open_side" {
-    ui {
+swap_tiled_layout name="yazi_open" {
+    ui min_panes=5 {
         pane split_direction="vertical" {
             pane {
                 command "yazi"
                 size "20%"
             }
-
             pane split_direction="vertical" {
                 pane
                 pane stacked=true { children; }
@@ -24,8 +23,8 @@ swap_tiled_layout name="stacked_open_side" {
     }
 }
 
-swap_tiled_layout name="stacked_closed_side" {
-    ui {
+swap_tiled_layout name="yazi_closed" {
+    ui min_panes=5 {
         pane split_direction="vertical" {
             pane {
                 command "yazi"

@@ -1,19 +1,17 @@
 layout {
-    pane size=1 borderless=true {
-       plugin location="zellij:tab-bar"
-    }
-    pane split_direction="vertical" {
-        pane {
-            command "yazi"
-            size "20%"
+    default_tab_template {
+        pane size=1 borderless=true {
+           plugin location="zellij:tab-bar"
         }
         pane split_direction="vertical" {
+            pane {
+                command "yazi"
+                size "20%"
+            }
             pane
-            pane stacked=true { children; }
+        }
+        pane size=1 borderless=true {
+           plugin location="zellij:status-bar"
         }
     }
-    pane size=1 borderless=true {
-       plugin location="zellij:status-bar"
-    }
 }
-
