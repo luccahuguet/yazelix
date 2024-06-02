@@ -3,7 +3,6 @@
 ### Base Layout
 The initial layout includes four panes:
 ![Base Layout](https://github.com/luccahuguet/zellij-files/assets/27565287/adc6162c-a1ec-4635-b217-aa7a9ba691c5)
-
 - **Tab-bar** at the top
 - **Status-bar** at the bottom
 - **Yazi pane** (20% width) acting as a sidebar on the left
@@ -12,9 +11,8 @@ The initial layout includes four panes:
 ### Swap Layout
 When you create a fifth pane, you transition from the base layout:
 - Open and close the sidebar by switching layouts.
-- Add more swap layouts as needed.
-- The first two screenshots display these two layouts.
 - The fifth pane, on the left, is where new panes will appear, stacked.
+- You can add more swap layouts as needed, in the kdl files in `layouts`.
 
 **Two or more panes open with the sidebar open:**
 ![Sidebar Open](https://github.com/luccahuguet/yazi-files/assets/27565287/557eecbf-6eeb-48f9-8de4-252f78bda4fd)
@@ -38,6 +36,7 @@ When you create a fifth pane, you transition from the base layout:
 - If you haven't copied my config, add `default_layout "stack_sidebar"` to your configuration.
 - remember to add your full path to `hx` in `scrollback_editor` in your `zellij/config.kdl`
 - It should also work with neovim, but I never tested
+- Feel free to open issues and PRs
 
 ## Roadmap
 ### Future Enhancements
@@ -45,6 +44,7 @@ When you create a fifth pane, you transition from the base layout:
 - **Flexible Sidebar Control:** Enable sidebar toggling with just four panes.
 - **Third Swap Layout:** Integrate a full Yazi pane (showing parents and preview). [Learn more](https://github.com/luccahuguet/yazi-files)
   - This requires Yazi to accept config as an argument.
+- **Higher Helix Integration:** Currently the selected files in yazi will open as a new pane in zellij, running helix (which is how I use helix, I never used the splits that helix has out-of-the-box), but it would be nice to open it as a split or a buffer inside helix (sounds scary to code this)
 
 ## Other Layouts
 ### `stack_sidebar_zjstatus` (Optional)
