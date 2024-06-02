@@ -1,4 +1,4 @@
-# Yazi-Helix File Tree v2: Now with a Closeable Sidebar
+# Yazi-Helix File Tree v2, now with a Closeable Sidebar!
 
 ### Base Layout
 The initial layout includes four panes:
