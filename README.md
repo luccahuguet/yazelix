@@ -31,12 +31,13 @@ When you create a fifth pane, you transition to the swap layouts:
 1. Install [Yazi](https://github.com/sxyazi/yazi).
 2. Install [Zellij](https://github.com/zellij-org/zellij).
 3. Install [Helix](https://helix-editor.com).
-4. Place the files from this repo in your `.config/zellij` folder.
-5. This layout is named `stack_sidebar` and is pre-configured in my setup.
+4. Place the files from this [yazi repo](https://github.com/luccahuguet/yazi-files) in your `.config/yazi` folder.
+5. Place the files from this repo in your `.config/zellij` folder.
+6. This layout is named `stack_sidebar` and is pre-configured in my setup.
    - If you haven't copied my config, add `default_layout "stack_sidebar"` to your configuration.
-6. Add your full path to `hx` in `scrollback_editor` in your `zellij/config.kdl`.
-7. It should also work with Neovim, but I haven't tested it.
-8. Feel free to open issues and PRs 😉
+7. Add your full path to `hx` in `scrollback_editor` in your `zellij/config.kdl`.
+8. It should also work with Neovim, but I haven't tested it.
+9. Feel free to open issues and PRs 😉
 
 ## Roadmap
 ### Future Enhancements
