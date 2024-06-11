@@ -55,7 +55,8 @@ When you create a second pane (actuall the fifth), you transition to the swap la
 
 ### Future Enhancements
 - **Simplify KDL Files:** Reduce code repetition.
-- **Full Yazi pane:** Integrate a full Yazi pane in another swap layout (showing parents and preview, not just the current dir). [Learn more](https://github.com/luccahuguet/yazi-files)
+- **Full Yazi pane:** Integrate a full Yazi pane in another swap layout (showing parents and preview, not just the current dir).
+  - [Learn more](https://github.com/luccahuguet/yazi-files)
   - This requires Yazi to accept config as an argument.
 - **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
 
