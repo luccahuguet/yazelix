@@ -60,6 +60,16 @@ When you create a second pane (actuall the fifth), you transition to the swap la
   - This requires Yazi to accept config as an argument.
 - **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
 
+## Why use this project?
+- I think one of the main things is just how dead simple to configure this project is. No shell scripting magic
+- Easy to configure and make it yours
+- I daily drive this, and will change it according to my needs, keeping it updated and improving it
+
+## Similar projects
+- [Shelix](https://github.com/webdev23/shelix): Shelix does intent to maximize the hidden power of Tmux as an IDE, enhance capabilities of the incredibly efficient Helix editor, around an interactive menu that performs IDE related actions
+- [Helix-Wezterm](https://github.com/quantonganh/helix-wezterm):Turning Helix into an IDE with the help of WezTerm and CLI tools
+- [File tree picker in Helix with Zellij](https://yazi-rs.github.io/docs/tips/#helix-with-zellij): Yazi can be used as a file picker to browse and open file(s) in your current Helix instance (running in a Zellij session)
+
 ## Other Layouts
 ### `stack_sidebar_zjstatus` (Optional) (does not feature v2 improvements)
 This layout offers an advanced tab-bar with more features (e.g., time display, current layout).
