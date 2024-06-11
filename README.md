@@ -1,4 +1,11 @@
-# Yazi-Helix File Tree v2, now with a Closeable Sidebar!
+# Yazellix v2: Zellij Files
+
+### Overview
+
+Yazellix v2 integrates yazi, zellij and helix in a smooth experience.
+- Zellij calls yazi as a sidebar
+- And helix is called when you select a file in the "sidebar", opening as a new pane in zellij
+- You can open and close the sidebar
 
 ### Base Layout
 The initial layout includes four panes:
