@@ -8,7 +8,7 @@ Yazellix v2 integrates yazi, zellij and helix in a smooth experience.
 - You can open and close the sidebar by switching zellij layouts (press `alt ]` and `alt [`)
 
 ### Base Layout
-The initial layout includes four panes:
+The initial layout includes one usable pane, but actually 4 in total:
 ![Base Layout](https://github.com/luccahuguet/zellij-files/assets/27565287/adc6162c-a1ec-4635-b217-aa7a9ba691c5)
 - **Tab-bar** at the top
 - **Status-bar** at the bottom
@@ -16,7 +16,7 @@ The initial layout includes four panes:
 - **Empty pane** on the right
 
 ### Swap Layout
-When you create a fifth pane, you transition to the swap layouts:
+When you create a second pane (actuall the fifth), you transition to the swap layouts:
 - Open and close the sidebar by switching layouts.
 - The fifth pane, on the left, is where new panes will appear, stacked.
 - You can add more swap layouts as needed, using the KDL files in `layouts`.
@@ -47,13 +47,17 @@ When you create a fifth pane, you transition to the swap layouts:
 9. Feel free to open issues and PRs 😉
 
 ## Roadmap
+### v3
+- [x] **Names the project:** The project is now called Yazellix! (get it?)
+- [x] **Better yazi statusbar:** An actual contribution by the creator of yazi!! [Learn More](https://github.com/luccahuguet/yazi-files)
+- [ ] **More sidebar action:** Sidebar should open and close with only one pane as well
+- [ ] **Helix-friendly Remap:** I'll definitely add a few remaps to zellij, so that it does not conflit with helix [Learn more](https://zellij.dev/documentation/layouts-with-config)
+
 ### Future Enhancements
 - **Simplify KDL Files:** Reduce code repetition.
-- **Flexible Sidebar Control:** Enable sidebar toggling with just four panes.
 - **Full Yazi pane:** Integrate a full Yazi pane in another swap layout (showing parents and preview, not just the current dir). [Learn more](https://github.com/luccahuguet/yazi-files)
   - This requires Yazi to accept config as an argument.
 - **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
-- **Helix-friendly Remap:** I'll definitely add a few remaps to zellij, so that it does not conflit with helix [Learn more](https://zellij.dev/documentation/layouts-with-config)
 
 ## Other Layouts
 ### `stack_sidebar_zjstatus` (Optional) (does not feature v2 improvements)
