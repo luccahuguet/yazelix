@@ -3,9 +3,9 @@
 ### Overview
 
 Yazellix v2 integrates yazi, zellij and helix in a smooth experience.
-- Zellij calls yazi as a sidebar
+- Zellij manages everything, with yazi as a sidebar and helix as the editor
 - And helix is called when you select a file in the "sidebar", opening as a new pane in zellij
-- You can open and close the sidebar
+- You can open and close the sidebar by switching zellij layouts (press `alt ]` and `alt [`)
 
 ### Base Layout
 The initial layout includes four panes:
