@@ -9,7 +9,7 @@ tab_template name="ui" {
 }
 
 swap_tiled_layout name="yazi_open" {
-    ui min_panes=5 {
+    ui min_panes=6 {
         pane split_direction="vertical" {
             pane {
                 command "env"
