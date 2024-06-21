@@ -57,7 +57,7 @@ swap_tiled_layout name="yazi_full" {
                 args "YAZI_CONFIG_HOME=~/.config/yazi_full" "yazi"
             	size "97%"
             }
-            pane name="sidebar"{
+            pane {
                 command "yazi"
                 size "1%"
             }
