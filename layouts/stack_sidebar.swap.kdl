@@ -13,7 +13,7 @@ swap_tiled_layout name="yazi_open" {
         pane split_direction="vertical" {
             pane {
                 command "env"
-                args "YAZI_CONFIG_HOME=/home/lucca/.config/yazi_full" "yazi"
+                args "YAZI_CONFIG_HOME=~/.config/yazi_full" "yazi"
                 size "1%"
             }
             pane {
@@ -33,7 +33,7 @@ swap_tiled_layout name="yazi_closed" {
         pane split_direction="vertical" {
             pane {
                 command "env"
-                args "YAZI_CONFIG_HOME=/home/lucca/.config/yazi_full" "yazi"
+                args "YAZI_CONFIG_HOME=~/.config/yazi_full" "yazi"
                 size "1%"
             }
             pane {
@@ -54,7 +54,7 @@ swap_tiled_layout name="yazi_full" {
         pane split_direction="vertical" {
             pane {
                 command "env"
-                args "YAZI_CONFIG_HOME=/home/lucca/.config/yazi_full" "yazi"
+                args "YAZI_CONFIG_HOME=~/.config/yazi_full" "yazi"
             	size "97%"
             }
             pane name="sidebar"{
