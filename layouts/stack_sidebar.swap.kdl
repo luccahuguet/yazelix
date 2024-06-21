@@ -12,12 +12,12 @@ swap_tiled_layout name="yazi_open" {
     ui min_panes=6 {
         pane split_direction="vertical" {
             pane {
-                command "env"
-                args "YAZI_CONFIG_HOME=~/.config/yazi_full" "yazi"
+                command "yazi"
                 size "1%"
             }
             pane {
-                command "yazi"
+                command "env"
+                args "YAZI_CONFIG_HOME=~/.config/yazi/sidebar" "yazi"
             	size "20%"
             }
             pane split_direction="vertical" size="79%" {
@@ -32,12 +32,12 @@ swap_tiled_layout name="yazi_closed" {
     ui min_panes=5 {
         pane split_direction="vertical" {
             pane {
-                command "env"
-                args "YAZI_CONFIG_HOME=~/.config/yazi_full" "yazi"
+                command "yazi"
                 size "1%"
             }
             pane {
-                command "yazi"
+                command "env"
+                args "YAZI_CONFIG_HOME=~/.config/yazi/sidebar" "yazi"
                 size "1%"
             }
 
@@ -53,12 +53,12 @@ swap_tiled_layout name="yazi_full" {
     ui min_panes=5 {
         pane split_direction="vertical" {
             pane {
-                command "env"
-                args "YAZI_CONFIG_HOME=~/.config/yazi_full" "yazi"
+                command "yazi"
             	size "97%"
             }
             pane {
-                command "yazi"
+                command "env"
+                args "YAZI_CONFIG_HOME=~/.config/yazi/sidebar" "yazi"
                 size "1%"
             }
             pane split_direction="vertical" size="2%" {
