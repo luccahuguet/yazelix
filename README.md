@@ -52,7 +52,7 @@ When you create a second pane (actuall the fifth), you transition to the swap la
 - [x] **Better yazi statusbar:** An actual contribution by the creator of yazi!! [Learn More](https://github.com/luccahuguet/yazi-files)
 - [x] **More sidebar action:** Sidebar should open and close with only one pane as well
 - [x] **Full Yazi pane:** Integrate a full Yazi pane in another swap layout (showing parents and preview, not just the current dir)
-- [ ] **Helix-friendly Remap:** I'll definitely add a few remaps to zellij, so that it does not conflit with helix [Learn more](https://zellij.dev/documentation/layouts-with-config)
+- [ ] **Helix-friendly Remap:** I'll definitely add a few remaps to zellij, so that it does not conflict with helix [Learn more](https://zellij.dev/documentation/layouts-with-config)
 
 ### Future Enhancements
 - **Simplify KDL Files:** Reduce code repetition.
