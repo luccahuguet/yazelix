@@ -22,7 +22,8 @@ swap_tiled_layout name="yazi_open" {
             }
             pane split_direction="vertical" size="79%" {
                 pane 
-                pane focus=true stacked=true { children; }
+                // pane focus=true stacked=true { children; }
+                pane  stacked=true { children; }
             }
         }
     }
@@ -42,8 +43,9 @@ swap_tiled_layout name="yazi_closed" {
             }
 
             pane split_direction="vertical" size="98%" {
-                pane
-                pane focus=true stacked=true { children; }
+                pane 
+                // pane focus=true stacked=true { children; }
+                pane stacked=true { children; }
             }
         }
     }
@@ -55,6 +57,7 @@ swap_tiled_layout name="yazi_full" {
             pane {
                 command "yazi"
             	size "97%"
+            	// focus true
             }
             pane {
                 command "env"
@@ -63,7 +66,7 @@ swap_tiled_layout name="yazi_full" {
             }
             pane split_direction="vertical" size="2%" {
                 pane
-                pane focus=true stacked=true { children; }
+                pane stacked=true { children; }
             }
         }
     }
