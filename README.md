@@ -1,8 +1,8 @@
-# Yazellix v2: Zellij Files
+# Yazelix v2: Zellij Files
 
 ### Overview
 
-Yazellix v2 integrates yazi, zellij and helix in a smooth experience.
+Yazelix v2 integrates yazi, zellij and helix in a smooth experience.
 - Zellij manages everything, with yazi as a sidebar and helix as the editor
 - And helix is called when you select a file in the "sidebar", opening as a new pane in zellij
 - You can open and close the sidebar by switching zellij layouts (press `alt ]` and `alt [`)
@@ -48,16 +48,14 @@ When you create a second pane (actuall the fifth), you transition to the swap la
 
 ## Roadmap
 ### v3
-- [x] **Names the project:** The project is now called Yazellix! (get it?)
+- [x] **Names the project:** The project is now called Yazelix! (get it?)
 - [x] **Better yazi statusbar:** An actual contribution by the creator of yazi!! [Learn More](https://github.com/luccahuguet/yazi-files)
-- [ ] **More sidebar action:** Sidebar should open and close with only one pane as well
-- [ ] **Helix-friendly Remap:** I'll definitely add a few remaps to zellij, so that it does not conflit with helix [Learn more](https://zellij.dev/documentation/layouts-with-config)
+- [x] **More sidebar action:** Sidebar should open and close with only one pane as well
+- [x] **Full Yazi pane:** Integrate a full Yazi pane in another swap layout (showing parents and preview, not just the current dir)
+- [ ] **Helix-friendly Remap:** I'll definitely add a few remaps to zellij, so that it does not conflict with helix [Learn more](https://zellij.dev/documentation/layouts-with-config)
 
 ### Future Enhancements
 - **Simplify KDL Files:** Reduce code repetition.
-- **Full Yazi pane:** Integrate a full Yazi pane in another swap layout (showing parents and preview, not just the current dir).
-  - [Learn more](https://github.com/luccahuguet/yazi-files)
-  - This requires Yazi to accept config as an argument.
 - **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
 
 ## Why use this project?
