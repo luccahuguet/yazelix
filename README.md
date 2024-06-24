@@ -1,11 +1,13 @@
-# Yazelix v2: Zellij Files
+# Yazelix v3: Helix with a File Tree!
 
 ### Overview
 
-Yazelix v2 integrates yazi, zellij and helix in a smooth experience.
-- Zellij manages everything, with yazi as a sidebar and helix as the editor
-- And helix is called when you select a file in the "sidebar", opening as a new pane in zellij
+Yazelix v3 integrates yazi, zellij and helix, hence the name, get it?
+- Zellij orchestrates everything, with yazi as a sidebar and helix as the editor
 - You can open and close the sidebar by switching zellij layouts (press `alt ]` and `alt [`)
+- Every keybinding from zellij that conflicts with helix is remapped (in the layout kdl file)
+- Helix is called when you hit enter on a file in the "sidebar", opening as a new pane in zellij
+- If helix is called like that, that pane will be closed as well when you quit helix
 
 ### Base Layout
 The initial layout includes one usable pane, but actually 4 in total:
@@ -16,7 +18,7 @@ The initial layout includes one usable pane, but actually 4 in total:
 - **Empty pane** on the right
 
 ### Swap Layout
-When you create a second pane (actuall the fifth), you transition to the swap layouts:
+When you create a second pane (actually the fifth), you transition to the swap layouts:
 - Open and close the sidebar by switching layouts.
 - The fifth pane, on the left, is where new panes will appear, stacked.
 - You can add more swap layouts as needed, using the KDL files in `layouts`.
@@ -27,51 +29,39 @@ When you create a second pane (actuall the fifth), you transition to the swap la
 **Two or more panes open with the sidebar closed:**
 ![Sidebar Closed](https://github.com/luccahuguet/zellij-files/assets/27565287/4f63de6e-4df7-452f-9877-90461071b673)
 
-## Improvements Over v1
-- **Sidebar Control:** Now you can open and close the sidebar.
-- **Simplified Dependencies:** No more nushell dependency. Nushell is a beautiful table-centric cross-platform shell written in Rust, but the way I used it was an ugly hack.
-- **Simpler Layout Files:** The KDL files are more streamlined.
-- **Removes zjstatus Plugin:** The plugin had to be downloaded and configured, while adding nothing really important.
-- **Status-bar is Back, baby!:** Life without it isn't easy. The status-bar (help bar) makes the setup much more user-friendly.
+## Improvements Over v2
+- Before, the yazi config files were in a separate repo, now its all integrated here! 
+ - Thanks to Zykino from Zellij's discord for that tip!
+- Yazi's maintainer (what an honor!) added a init.lua file that makes the status-bar in yazi look really good in the small width it has
+- The project's got a name! Yazelix. It simply had no name before and that was a mistake.
+- This one is great: I've remapped 6 keybindings from zellij to avoid conflicts with helix 
+ - use `alt m` for new panes and the rest is in zellij's status-bar 
+ - this is configured in the `layouts/yazelix.kdl` file, if you want to change something 
 
 ## Instructions to set it up
-1. Install [Yazi](https://github.com/sxyazi/yazi).
-2. Install [Zellij](https://github.com/zellij-org/zellij).
-3. Install [Helix](https://helix-editor.com).
-4. Place the files from this [yazi repo](https://github.com/luccahuguet/yazi-files) in your `.config/yazi` folder.
-5. Place the files from this repo in your `.config/zellij` folder.
-6. This layout is named `stack_sidebar` and is pre-configured in my setup.
-   - If you haven't copied my config, add `default_layout "stack_sidebar"` to your configuration.
-7. Add your full path to `hx` in `scrollback_editor` in your `zellij/config.kdl`.
-8. It should also work with Neovim, but I haven't tested it.
-9. Feel free to open issues and PRs 😉
+1. Make sure [yazi](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij) and [helix](https://helix-editor.com) are installed.
+2. Remove (or rename) your old `~/.config/zellij` folder, and just clone this repo in your `~/.config` dir.
+3. You can open this layout either from `zellij -l welcome` or directly `zellij -l ~/.config/zellij/layouts/yazelix`
+4. If you test this with nvim and it works, let me know (see the issue: )
+5. Feel free to open issues and PRs 😉
 
-## Roadmap
-### v3
-- [x] **Names the project:** The project is now called Yazelix! (get it?)
-- [x] **Better yazi statusbar:** An actual contribution by the creator of yazi!! [Learn More](https://github.com/luccahuguet/yazi-files)
-- [x] **More sidebar action:** Sidebar should open and close with only one pane as well
-- [x] **Full Yazi pane:** Integrate a full Yazi pane in another swap layout (showing parents and preview, not just the current dir)
-- [x] **Helix-friendly Remap:** I'll definitely add a few remaps to zellij, so that it does not conflict with helix [Learn more](https://zellij.dev/documentation/layouts-with-config)
-- [ ] **Fix bug**: Annoying pane swapping bug
-- [ ] **Integrate yazi config**: Much more user-friedly
-
-### Future Enhancements
-- **Simplify KDL Files:** Reduce code repetition.
+## Possible Improvements
+- **More sidebar action:** Sidebar should open and close with only one pane as well
+ - This was not working because whenever I close the second (actually fifth) pane, the sidebar and other pane swap
+- **Full Yazi pane:** Integrate a full Yazi pane in another swap layout showing parents and preview, not just the current dir
+  - this is already implemented, but has a few kinks to iron out.
+  - uncomment the yazi_full swap layout and panes, and increase the panes constraints to test it
+  - basically some panes swap with others when they shouldn't and you have to "walk" through the closed pane, which isn't great
 - **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
 
 ## Why use this project?
 - I think one of the main things is just how dead simple to configure this project is. No shell scripting magic
 - Easy to configure and make it yours
 - I daily drive this, and will change it according to my needs, keeping it updated and improving it
+- Even if you don't care about the sidebar, the keybindings may be helpful
 
 ## Similar projects
 - [Shelix](https://github.com/webdev23/shelix): Shelix does intent to maximize the hidden power of Tmux as an IDE, enhance capabilities of the incredibly efficient Helix editor, around an interactive menu that performs IDE related actions
 - [Helix-Wezterm](https://github.com/quantonganh/helix-wezterm):Turning Helix into an IDE with the help of WezTerm and CLI tools
 - [File tree picker in Helix with Zellij](https://yazi-rs.github.io/docs/tips/#helix-with-zellij): Yazi can be used as a file picker to browse and open file(s) in your current Helix instance (running in a Zellij session)
 
-## Other Layouts
-### `stack_sidebar_zjstatus` (Optional) (does not feature v2 improvements)
-This layout offers an advanced tab-bar with more features (e.g., time display, current layout).
-- **Setup:** Change the config to `default_layout "stack_sidebar_zjstatus"` and install [zjstatus](https://github.com/dj95/zjstatus), updating the path in your layout KDL file.
-- **Use Case:** If you prefer a more powerful tab-bar without a status-bar, this layout is for you.
