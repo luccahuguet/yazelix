@@ -11,16 +11,16 @@ tab_template name="ui" {
 swap_tiled_layout name="yazi_open" {
     ui min_panes=6 {
         pane split_direction="vertical" {
-            pane {
+            pane name="yazi_full" {
                 command "yazi"
                 size "1%"
             }
-            pane {
+            pane name="sidebar" {
                 command "env"
                 args "YAZI_CONFIG_HOME=~/.config/yazi/sidebar" "yazi"
             	size "20%"
             }
-            pane split_direction="vertical" size="79%" {
+            pane name="main" split_direction="vertical" size="79%" {
                 pane 
                 // pane focus=true stacked=true { children; }
                 pane  stacked=true { children; }
@@ -32,17 +32,17 @@ swap_tiled_layout name="yazi_open" {
 swap_tiled_layout name="yazi_closed" {
     ui min_panes=5 {
         pane split_direction="vertical" {
-            pane {
+            pane name="yazi_full" {
                 command "yazi"
                 size "1%"
             }
-            pane {
+            pane name="sidebar" {
                 command "env"
                 args "YAZI_CONFIG_HOME=~/.config/yazi/sidebar" "yazi"
                 size "1%"
             }
 
-            pane split_direction="vertical" size="98%" {
+            pane name="main" split_direction="vertical" size="98%" {
                 pane 
                 // pane focus=true stacked=true { children; }
                 pane stacked=true { children; }
@@ -51,20 +51,20 @@ swap_tiled_layout name="yazi_closed" {
     }
 }
 
-swap_tiled_layout name="yazi_full" {
-    ui min_panes=5 {
+swap_tiled_layout name="yazi_full_focus" {
+    ui max_panes=6 {
         pane split_direction="vertical" {
-            pane {
+            pane name="yazi_full" {
                 command "yazi"
             	size "97%"
             	// focus true
             }
-            pane {
+            pane name="sidebar" {
                 command "env"
                 args "YAZI_CONFIG_HOME=~/.config/yazi/sidebar" "yazi"
                 size "1%"
             }
-            pane split_direction="vertical" size="2%" {
+            pane name="main" split_direction="vertical" size="2%" {
                 pane
                 pane stacked=true { children; }
             }

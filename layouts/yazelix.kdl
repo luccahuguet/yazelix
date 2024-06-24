@@ -4,16 +4,18 @@ layout {
            plugin location="zellij:tab-bar"
         }
         pane split_direction="vertical" {
-            pane {
+            pane name="yazi_full"{
                 command "yazi"
                 size "1%"
             }
-            pane {
+            pane name="sidebar"{
                 command "env"
                 args "YAZI_CONFIG_HOME=/home/lucca/.config/yazi/sidebar" "yazi"
                 size "20%"
             }
-            pane focus=true
+            pane {
+                focus true
+            }
             // pane 
         }
         pane size=1 borderless=true {
