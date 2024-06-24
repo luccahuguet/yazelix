@@ -20,7 +20,7 @@ swap_tiled_layout name="sidebar_open" {
                 args "YAZI_CONFIG_HOME=~/.config/yazi/sidebar" "yazi"
             	size "20%"
             }
-            pane name="main" split_direction="vertical" size="80%" {
+            pane name="main" split_direction="vertical" {
                 // focus true
                 pane 
                 // pane focus=true stacked=true { children; }
@@ -43,7 +43,7 @@ swap_tiled_layout name="sidebar_closed" {
                 size "1%"
             }
 
-            pane name="main" split_direction="vertical" size="99%" {
+            pane name="main" split_direction="vertical" {
                 // focus true
                 pane 
                 // pane focus=true stacked=true { children; }
