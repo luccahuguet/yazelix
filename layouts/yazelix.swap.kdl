@@ -13,12 +13,12 @@ swap_tiled_layout name="sidebar_open" {
         pane split_direction="vertical" {
             // pane name="yazi_full" {
             //     command "env"
-            //     args "YAZI_CONFIG_HOME=~/.config/yazelix/yazi" "yazi"
+            //     args "YAZI_CONFIG_HOME=~/.config/zellij/yazi" "yazi"
             //     size "1%"
             // }
             pane name="sidebar" {
                 command "env"
-                args "YAZI_CONFIG_HOME=~/.config/yazelix/yazi/sidebar" "yazi"
+                args "YAZI_CONFIG_HOME=~/.config/zellij/yazi/sidebar" "yazi"
             	size "20%"
             }
             pane name="main" split_direction="vertical" {
@@ -36,12 +36,12 @@ swap_tiled_layout name="sidebar_closed" {
         pane split_direction="vertical" {
             // pane name="yazi_full" {
             //     command "env"
-            //     args "YAZI_CONFIG_HOME=~/.config/yazelix/yazi" "yazi"
+            //     args "YAZI_CONFIG_HOME=~/.config/zellij/yazi" "yazi"
             //     size "1%"
             // }
             pane name="sidebar" {
                 command "env"
-                args "YAZI_CONFIG_HOME=~/.config/yazelix/yazi/sidebar" "yazi"
+                args "YAZI_CONFIG_HOME=~/.config/zellij/yazi/sidebar" "yazi"
             	size "1%"
             }
 
@@ -60,7 +60,7 @@ swap_tiled_layout name="sidebar_closed" {
 //         pane split_direction="vertical" {
 //             pane name="yazi_full" {
 //              command "env"
-//              args "YAZI_CONFIG_HOME=~/.config/yazelix/yazi" "yazi"
+//              args "YAZI_CONFIG_HOME=~/.config/zellij/yazi" "yazi"
 //             	size "97%"
 //             	focus true
 //             }
