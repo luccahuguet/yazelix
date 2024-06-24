@@ -340,7 +340,8 @@ default_layout "yazelix"
 // Default: $EDITOR or $VISUAL
 //
 // scrollback_editor "~/user_installs/helix/target/release/hx"
-scrollback_editor "/home/lucca/user_installs/helix/runtime/hx"
+// scrollback_editor "/home/lucca/user_installs/helix/runtime/hx"
+scrollback_editor "hx"
 
 // When attaching to an existing session with other users,
 // should the session be mirrored (true)
