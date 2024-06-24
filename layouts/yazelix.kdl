@@ -5,12 +5,13 @@ layout {
         }
         pane split_direction="vertical" {
             // pane name="yazi_full"{
-            //     command "yazi"
+            //     command "env"
+            //     args "YAZI_CONFIG_HOME=/home/lucca/.config/yazelix/yazi_full/sidebar" "yazi"
             //     size "1%"
             // }
             pane name="sidebar"{
                 command "env"
-                args "YAZI_CONFIG_HOME=/home/lucca/.config/yazi/sidebar" "yazi"
+                args "YAZI_CONFIG_HOME=/home/lucca/.config/yazelix/yazi/sidebar" "yazi"
                 size "20%"
             }
             pane {
