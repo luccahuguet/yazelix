@@ -97,7 +97,7 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
   - very performant
   - but I do want to explore more modern options, so long as they have a "plain mode", like [this](https://raphamorim.io/rio/pt-br/docs/next/navigation#plain)
   - you can check out my alacritty files [here](https://github.com/luccahuguet/alacritty-files) (they include all alacritty themes)
-- use [nushell](https://www.nushell.sh/), it's a great shell, it's fast and beautiful and a proper programming language
+- Use [nushell](https://www.nushell.sh/), it's a great shell, it's fast and beautiful and a proper programming language. Why wouldn't you?
 - If you test this with nvim and it works, let me know (see the issue: )
 
 <br>
