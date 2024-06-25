@@ -10,8 +10,9 @@ Yazelix v3 integrates yazi, zellij and helix, hence the name, get it?
 - If helix is called like that, that pane will be closed as well when you quit helix
 
 ### Base Layout
-The initial layout includes one usable pane, but actually 4 in total:
-![Base Layout](https://github.com/luccahuguet/zellij-files/assets/27565287/adc6162c-a1ec-4635-b217-aa7a9ba691c5)
+The initial layout includes one usable pane (actually 4, counting the tab-bar, status-bar and sidebar):
+![image](https://github.com/luccahuguet/zellij/assets/27565287/c8333411-b6f4-4c0e-9ea8-1992859c8749)
+
 - **Tab-bar** at the top
 - **Status-bar** at the bottom
 - **Yazi pane** (20% width) acting as a sidebar on the left
@@ -24,19 +25,20 @@ When you create a second pane (actually the fifth), you transition to the swap l
 - You can add more swap layouts as needed, using the KDL files in `layouts`.
 
 **Two or more panes open with the sidebar open:**
-![Sidebar Open](https://github.com/luccahuguet/yazi-files/assets/27565287/557eecbf-6eeb-48f9-8de4-252f78bda4fd)
+![Sidebar Open](https://github.com/luccahuguet/zellij/assets/27565287/8faf2bc4-7861-467a-8629-b41dc57fbab8)
 
 **Two or more panes open with the sidebar closed:**
-![Sidebar Closed](https://github.com/luccahuguet/zellij-files/assets/27565287/4f63de6e-4df7-452f-9877-90461071b673)
+![Sidebar Closed](https://github.com/luccahuguet/zellij/assets/27565287/038ce337-dc79-415b-a137-1efcf21b0cf7)
+
 
 ## Improvements Over v2
 - Before, the yazi config files were in a separate repo, now its all integrated here! 
- - Thanks to Zykino from Zellij's discord for that tip!
+  - Thanks to Zykino from Zellij's discord for that tip!
 - Yazi's maintainer (what an honor!) added a init.lua file that makes the status-bar in yazi look really good in the small width it has
 - The project's got a name! Yazelix. It simply had no name before and that was a mistake.
 - This one is great: I've remapped 6 keybindings from zellij to avoid conflicts with helix 
- - use `alt m` for new panes and the rest is in zellij's status-bar 
- - this is configured in the `layouts/yazelix.kdl` file, if you want to change something 
+  - use `alt m` for new panes and the rest is in zellij's status-bar 
+  - this is configured in the `layouts/yazelix.kdl` file, if you want to change something 
 
 ## Instructions to set it up
 1. Make sure [yazi](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij) and [helix](https://helix-editor.com) are installed.
@@ -53,12 +55,25 @@ When you create a second pane (actually the fifth), you transition to the swap l
   - uncomment the yazi_full swap layout and panes, and increase the panes constraints to test it
   - basically some panes swap with others when they shouldn't and you have to "walk" through the closed pane, which isn't great
 - **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
+- **Rename the repo to yazelix:** I did try that but using a custom path to the layout folder just didn't work with `~` or `$HOME` (see some issues [here](https://github.com/zellij-org/zellij/issues/2764) and [here](https://github.com/zellij-org/zellij/issues/3115)
 
 ## Why use this project?
 - I think one of the main things is just how dead simple to configure this project is. No shell scripting magic
 - Easy to configure and make it yours
 - I daily drive this, and will change it according to my needs, keeping it updated and improving it
 - Even if you don't care about the sidebar, the keybindings may be helpful
+
+## Keybinding remaps
+| New Key Combination | Previous Key Combination | Helix Action                 | Zellij Action               |
+|---------------------|--------------------------|------------------------------|-----------------------------|
+| Ctrl + e            | Ctrl + o                 | jump_backward                | SwitchToMode "Session"      |
+| Alt 1               | Ctrl + s                 | save_selection               | SwitchToMode "Scroll"       |
+| Alt w               | Alt + i                  | shrink_selection             | MoveTab "Left"              |
+| Alt q               | Alt + o                  | expand_selection             | MoveTab "Right"             |
+| Alt m               | Alt + n                  | select_next_sibling          | NewPane                    |
+| Alt 2               | Ctrl + b                 | move_page_up                 | SwitchToMode "Tmux"         |
+
+If you find a conflict, please open an issue. Keep in mind, though, that compatibility with tmux mode is not a goal of this project.
 
 ## Similar projects
 - [Shelix](https://github.com/webdev23/shelix): Shelix does intent to maximize the hidden power of Tmux as an IDE, enhance capabilities of the incredibly efficient Helix editor, around an interactive menu that performs IDE related actions
