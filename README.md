@@ -1,7 +1,6 @@
 # Yazelix v3: Helix with a File Tree!
 
 ### Overview
-
 Yazelix v3 integrates yazi, zellij and helix, hence the name, get it?
 - Zellij orchestrates everything, with yazi as a sidebar and helix as the editor
 - You can open and close the sidebar by switching zellij layouts (press `alt ]` and `alt [`)
@@ -10,6 +9,7 @@ Yazelix v3 integrates yazi, zellij and helix, hence the name, get it?
   - If helix is called like that, that pane will be closed as well when you quit helix
   - Note: I recommend running zellij from your shell (`nu -c "zellij -l welcome"` for nushell). This way you can load your enviroment variables like EDITOR and HELIX_RUNTIME
 
+<br>
 ### Base Layout
 The initial layout includes one usable pane (actually 4, counting the tab-bar, status-bar and sidebar):
 ![image](https://github.com/luccahuguet/zellij/assets/27565287/c8333411-b6f4-4c0e-9ea8-1992859c8749)
@@ -19,6 +19,7 @@ The initial layout includes one usable pane (actually 4, counting the tab-bar, s
 - **Yazi pane** (20% width) acting as a sidebar on the left
 - **Empty pane** on the right
 
+<br>
 ### Swap Layout
 When you create a second pane (actually the fifth), you transition to the swap layouts:
 - Open and close the sidebar by switching layouts.
@@ -31,8 +32,8 @@ When you create a second pane (actually the fifth), you transition to the swap l
 **Two or more panes open with the sidebar closed:**
 ![Sidebar Closed](https://github.com/luccahuguet/zellij/assets/27565287/038ce337-dc79-415b-a137-1efcf21b0cf7)
 
-
-## Improvements Over v2
+<br>
+### Improvements Over v2
 - Before, the yazi config files were in a separate repo, now its all integrated here!  
   - Thanks to Zykino from Zellij's discord for that tip!
 - Yazi's maintainer (what an honor!) added a init.lua file that makes the status-bar in yazi look really good in the small width it has
@@ -41,20 +42,23 @@ When you create a second pane (actually the fifth), you transition to the swap l
   - use `alt m` for new panes and the rest is in zellij's status-bar 
   - this is configured in the `layouts/yazelix.kdl` file, if you want to change something 
 
-## Instructions to set it up
+<br>
+### Instructions to set it up
 1. Make sure [yazi](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij) and [helix](https://helix-editor.com) are installed.
 2. Remove (or rename) your old `~/.config/zellij` folder, and just clone this repo in your `~/.config` dir.
 3. You can open this layout either from `zellij -l welcome` or directly `zellij -l ~/.config/zellij/layouts/yazelix`
 4. If you test this with nvim and it works, let me know (see the issue: )
 5. Feel free to open issues and PRs 😉
 
-## Why use this project?
+<br>
+### Why use this project?
 - I think one of the main things is just how dead simple to configure this project is. No shell scripting magic
 - Easy to configure and make it yours
 - I daily drive this, and will change it according to my needs, keeping it updated and improving it
 - Even if you don't care about the sidebar, the keybindings may be helpful
 
-## Possible Improvements
+<br>
+### Possible Improvements
 - **More sidebar action:** Sidebar should open and close with only one pane as well
   - This was not working because whenever I close the second (actually fifth) pane, the sidebar and other pane swap
 - **Full Yazi pane:** Integrate a full Yazi pane in another swap layout showing parents and preview, not just the current dir
@@ -65,8 +69,8 @@ When you create a second pane (actually the fifth), you transition to the swap l
 - **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
 - **Rename the repo to yazelix:** I did try that but using a custom path to the layout folder just didn't work with `~` or `$HOME` (see some issues [here](https://github.com/zellij-org/zellij/issues/2764) and [here](https://github.com/zellij-org/zellij/issues/3115)
 
-
-## Keybinding remaps
+<br>
+### Keybinding remaps
 | New Key Combination | Previous Key Combination | Helix Action                 | Zellij Action               |
 |---------------------|--------------------------|------------------------------|-----------------------------|
 | Ctrl + e            | Ctrl + o                 | jump_backward                | SwitchToMode "Session"      |
@@ -78,13 +82,15 @@ When you create a second pane (actually the fifth), you transition to the swap l
 
 If you find a conflict, please open an issue. Keep in mind, though, that compatibility with tmux mode is not a goal of this project.
 
-## Notes
+<br>
+### Notes
 - I recommend using alacritty as your terminal
   - because it's a "dumb" terminal, it has no panes, no tabs. This means less keybindings conflicts to worry about, less feature overlap
   - very performant
   - but I do want to explore more modern options, so long as they have a "plain mode", like [this](https://raphamorim.io/rio/pt-br/docs/next/navigation#plain)
 
-## Similar projects
+<br>
+### Similar projects
 - [Shelix](https://github.com/webdev23/shelix): Shelix does intent to maximize the hidden power of Tmux as an IDE, enhance capabilities of the incredibly efficient Helix editor, around an interactive menu that performs IDE related actions
 - [Helix-Wezterm](https://github.com/quantonganh/helix-wezterm):Turning Helix into an IDE with the help of WezTerm and CLI tools
 - [File tree picker in Helix with Zellij](https://yazi-rs.github.io/docs/tips/#helix-with-zellij): Yazi can be used as a file picker to browse and open file(s) in your current Helix instance (running in a Zellij session)
