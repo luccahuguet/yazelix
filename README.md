@@ -32,7 +32,7 @@ When you create a second pane (actually the fifth), you transition to the swap l
 
 
 ## Improvements Over v2
-- Before, the yazi config files were in a separate repo, now its all integrated here! 
+- Before, the yazi config files were in a separate repo, now its all integrated here!  
   - Thanks to Zykino from Zellij's discord for that tip!
 - Yazi's maintainer (what an honor!) added a init.lua file that makes the status-bar in yazi look really good in the small width it has
 - The project's got a name! Yazelix. It simply had no name before and that was a mistake.
