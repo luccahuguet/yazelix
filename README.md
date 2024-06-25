@@ -96,6 +96,8 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
   - because it's a "dumb" terminal, it has no panes, no tabs. This means less keybindings conflicts to worry about, less feature overlap
   - very performant
   - but I do want to explore more modern options, so long as they have a "plain mode", like [this](https://raphamorim.io/rio/pt-br/docs/next/navigation#plain)
+  - you can check out my files [here](https://github.com/luccahuguet/alacritty-files)
+- use [nushell](https://www.nushell.sh/), it's a great shell, it's fast and beautiful and a proper programming language
 
 <br>
 
