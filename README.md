@@ -10,6 +10,7 @@ Yazelix v3 integrates yazi, zellij and helix, hence the name, get it?
   - Note: I recommend running zellij from your shell (`nu -c "zellij -l welcome"` for nushell). This way you can load your enviroment variables like EDITOR and HELIX_RUNTIME
 
 <br>
+
 ### Base Layout
 The initial layout includes one usable pane (actually 4, counting the tab-bar, status-bar and sidebar):
 ![image](https://github.com/luccahuguet/zellij/assets/27565287/c8333411-b6f4-4c0e-9ea8-1992859c8749)
@@ -20,6 +21,7 @@ The initial layout includes one usable pane (actually 4, counting the tab-bar, s
 - **Empty pane** on the right
 
 <br>
+
 ### Swap Layout
 When you create a second pane (actually the fifth), you transition to the swap layouts:
 - Open and close the sidebar by switching layouts.
@@ -33,6 +35,7 @@ When you create a second pane (actually the fifth), you transition to the swap l
 ![Sidebar Closed](https://github.com/luccahuguet/zellij/assets/27565287/038ce337-dc79-415b-a137-1efcf21b0cf7)
 
 <br>
+
 ### Improvements Over v2
 - Before, the yazi config files were in a separate repo, now its all integrated here!  
   - Thanks to Zykino from Zellij's discord for that tip!
@@ -43,6 +46,7 @@ When you create a second pane (actually the fifth), you transition to the swap l
   - this is configured in the `layouts/yazelix.kdl` file, if you want to change something 
 
 <br>
+
 ### Instructions to set it up
 1. Make sure [yazi](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij) and [helix](https://helix-editor.com) are installed.
 2. Remove (or rename) your old `~/.config/zellij` folder, and just clone this repo in your `~/.config` dir.
@@ -51,6 +55,7 @@ When you create a second pane (actually the fifth), you transition to the swap l
 5. Feel free to open issues and PRs 😉
 
 <br>
+
 ### Why use this project?
 - I think one of the main things is just how dead simple to configure this project is. No shell scripting magic
 - Easy to configure and make it yours
@@ -58,6 +63,7 @@ When you create a second pane (actually the fifth), you transition to the swap l
 - Even if you don't care about the sidebar, the keybindings may be helpful
 
 <br>
+
 ### Possible Improvements
 - **More sidebar action:** Sidebar should open and close with only one pane as well
   - This was not working because whenever I close the second (actually fifth) pane, the sidebar and other pane swap
@@ -70,6 +76,7 @@ When you create a second pane (actually the fifth), you transition to the swap l
 - **Rename the repo to yazelix:** I did try that but using a custom path to the layout folder just didn't work with `~` or `$HOME` (see some issues [here](https://github.com/zellij-org/zellij/issues/2764) and [here](https://github.com/zellij-org/zellij/issues/3115)
 
 <br>
+
 ### Keybinding remaps
 | New Key Combination | Previous Key Combination | Helix Action                 | Zellij Action               |
 |---------------------|--------------------------|------------------------------|-----------------------------|
@@ -83,6 +90,7 @@ When you create a second pane (actually the fifth), you transition to the swap l
 If you find a conflict, please open an issue. Keep in mind, though, that compatibility with tmux mode is not a goal of this project.
 
 <br>
+
 ### Notes
 - I recommend using alacritty as your terminal
   - because it's a "dumb" terminal, it has no panes, no tabs. This means less keybindings conflicts to worry about, less feature overlap
@@ -90,6 +98,7 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
   - but I do want to explore more modern options, so long as they have a "plain mode", like [this](https://raphamorim.io/rio/pt-br/docs/next/navigation#plain)
 
 <br>
+
 ### Similar projects
 - [Shelix](https://github.com/webdev23/shelix): Shelix does intent to maximize the hidden power of Tmux as an IDE, enhance capabilities of the incredibly efficient Helix editor, around an interactive menu that performs IDE related actions
 - [Helix-Wezterm](https://github.com/quantonganh/helix-wezterm):Turning Helix into an IDE with the help of WezTerm and CLI tools
