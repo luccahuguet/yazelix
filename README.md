@@ -72,7 +72,8 @@ That's it, and feel free to open issues and PRs 😉
 - **Full Yazi pane:** Integrate a full Yazi pane in another swap layout showing parents and preview, not just the current dir
   - this is already implemented, but has a few kinks to iron out.
   - To test, uncomment the yazi_full swap layout and panes, and increase the panes constraints by one
-  - basically some panes swap with others when they shouldn't and you have to "walk" through the closed pane, which isn't great
+  - Problem 1: some panes swap with others when they shouldn't, like the sidebar and a normal pane
+  - Problem 2: you have to "walk" through the closed pane, which isn't great
   - Big thanks to zellij's maintainer and other people for helping with this
 - **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
 - **Rename the repo to yazelix:** I did try that but using a custom path to the layout folder just didn't work with `~` or `$HOME` (see some issues [here](https://github.com/zellij-org/zellij/issues/2764) and [here](https://github.com/zellij-org/zellij/issues/3115)
