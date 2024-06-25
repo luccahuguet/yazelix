@@ -48,9 +48,10 @@ When you create a second pane (actually the fifth), you transition to the swap l
 <br>
 
 ### Instructions to set it up
-1. Make sure [yazi](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij) and [helix](https://helix-editor.com) are installed.
-2. Remove (or rename) your old `~/.config/zellij` folder, and just clone this repo in your `~/.config` dir.
+1. Make sure [yazi](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij) and [helix](https://helix-editor.com) are installed and in your path
+2. Remove (or rename) your old `~/.config/zellij` folder, and just clone this repo in your `~/.config` dir
 3. You can open this layout either from `zellij -l welcome` or directly `zellij -l ~/.config/zellij/layouts/yazelix`
+  - I just set my terminal config to open zellij on startup, so I never leave zellij (my alacritty files [here](https://github.com/luccahuguet/alacritty-files))
 
 That's it, and feel free to open issues and PRs 😉
 
