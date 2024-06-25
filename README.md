@@ -5,7 +5,7 @@
 Yazelix v3 integrates yazi, zellij and helix, hence the name, get it?
 - Zellij orchestrates everything, with yazi as a sidebar and helix as the editor
 - You can open and close the sidebar by switching zellij layouts (press `alt ]` and `alt [`)
-- Every keybinding from zellij that conflicts with helix is remapped (in the layout kdl file)
+- Every keybinding from zellij that conflicts with helix is remapped (see them at the bottom)
 - Helix is called when you hit enter on a file in the "sidebar", opening as a new pane in zellij
 - If helix is called like that, that pane will be closed as well when you quit helix
 
@@ -47,21 +47,23 @@ When you create a second pane (actually the fifth), you transition to the swap l
 4. If you test this with nvim and it works, let me know (see the issue: )
 5. Feel free to open issues and PRs 😉
 
-## Possible Improvements
-- **More sidebar action:** Sidebar should open and close with only one pane as well
- - This was not working because whenever I close the second (actually fifth) pane, the sidebar and other pane swap
-- **Full Yazi pane:** Integrate a full Yazi pane in another swap layout showing parents and preview, not just the current dir
-  - this is already implemented, but has a few kinks to iron out.
-  - uncomment the yazi_full swap layout and panes, and increase the panes constraints to test it
-  - basically some panes swap with others when they shouldn't and you have to "walk" through the closed pane, which isn't great
-- **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
-- **Rename the repo to yazelix:** I did try that but using a custom path to the layout folder just didn't work with `~` or `$HOME` (see some issues [here](https://github.com/zellij-org/zellij/issues/2764) and [here](https://github.com/zellij-org/zellij/issues/3115)
-
 ## Why use this project?
 - I think one of the main things is just how dead simple to configure this project is. No shell scripting magic
 - Easy to configure and make it yours
 - I daily drive this, and will change it according to my needs, keeping it updated and improving it
 - Even if you don't care about the sidebar, the keybindings may be helpful
+
+## Possible Improvements
+- **More sidebar action:** Sidebar should open and close with only one pane as well
+ - This was not working because whenever I close the second (actually fifth) pane, the sidebar and other pane swap
+- **Full Yazi pane:** Integrate a full Yazi pane in another swap layout showing parents and preview, not just the current dir
+  - this is already implemented, but has a few kinks to iron out.
+  - To test, uncomment the yazi_full swap layout and panes, and increase the panes constraints by one
+  - basically some panes swap with others when they shouldn't and you have to "walk" through the closed pane, which isn't great
+  - Big thanks to zellij's maintainer and other people for helping with this
+- **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
+- **Rename the repo to yazelix:** I did try that but using a custom path to the layout folder just didn't work with `~` or `$HOME` (see some issues [here](https://github.com/zellij-org/zellij/issues/2764) and [here](https://github.com/zellij-org/zellij/issues/3115)
+
 
 ## Keybinding remaps
 | New Key Combination | Previous Key Combination | Helix Action                 | Zellij Action               |
