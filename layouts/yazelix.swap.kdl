@@ -32,7 +32,7 @@ swap_tiled_layout name="sidebar_open" {
 }
 
 swap_tiled_layout name="sidebar_closed" {
-    ui min_panes=5 {
+    ui min_panes=4 {
         pane split_direction="vertical" {
             // pane name="yazi_full" {
             //     command "env"
