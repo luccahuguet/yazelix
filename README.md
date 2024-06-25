@@ -7,7 +7,8 @@ Yazelix v3 integrates yazi, zellij and helix, hence the name, get it?
 - You can open and close the sidebar by switching zellij layouts (press `alt ]` and `alt [`)
 - Every keybinding from zellij that conflicts with helix is remapped (see them at the bottom)
 - Helix is called when you hit enter on a file in the "sidebar", opening as a new pane in zellij
-- If helix is called like that, that pane will be closed as well when you quit helix
+  - If helix is called like that, that pane will be closed as well when you quit helix
+  - Note: I recommend running zellij from your shell (`nu -c "zellij -l welcome"` for nushell). This way you can load your enviroment variables like EDITOR and HELIX_RUNTIME
 
 ### Base Layout
 The initial layout includes one usable pane (actually 4, counting the tab-bar, status-bar and sidebar):
@@ -76,6 +77,12 @@ When you create a second pane (actually the fifth), you transition to the swap l
 | Alt 2               | Ctrl + b                 | move_page_up                 | SwitchToMode "Tmux"         |
 
 If you find a conflict, please open an issue. Keep in mind, though, that compatibility with tmux mode is not a goal of this project.
+
+## Notes
+- I recommend using alacritty as your terminal
+  - because it's a "dumb" terminal, it has no panes, no tabs. This means less keybindings conflicts to worry about, less feature overlap
+  - very performant
+  - but I do want to explore more modern options, so long as they have a "plain mode", like [this](https://raphamorim.io/rio/pt-br/docs/next/navigation#plain)
 
 ## Similar projects
 - [Shelix](https://github.com/webdev23/shelix): Shelix does intent to maximize the hidden power of Tmux as an IDE, enhance capabilities of the incredibly efficient Helix editor, around an interactive menu that performs IDE related actions
