@@ -51,8 +51,8 @@ When you create a second pane (actually the fifth), you transition to the swap l
 1. Make sure [yazi](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij) and [helix](https://helix-editor.com) are installed.
 2. Remove (or rename) your old `~/.config/zellij` folder, and just clone this repo in your `~/.config` dir.
 3. You can open this layout either from `zellij -l welcome` or directly `zellij -l ~/.config/zellij/layouts/yazelix`
-4. If you test this with nvim and it works, let me know (see the issue: )
-5. Feel free to open issues and PRs 😉
+
+That's it, and feel free to open issues and PRs 😉
 
 <br>
 
@@ -78,14 +78,14 @@ When you create a second pane (actually the fifth), you transition to the swap l
 <br>
 
 ### Keybinding remaps
-| New Key Combination | Previous Key Combination | Helix Action                 | Zellij Action               |
-|---------------------|--------------------------|------------------------------|-----------------------------|
-| Ctrl + e            | Ctrl + o                 | jump_backward                | SwitchToMode "Session"      |
-| Alt 1               | Ctrl + s                 | save_selection               | SwitchToMode "Scroll"       |
-| Alt w               | Alt + i                  | shrink_selection             | MoveTab "Left"              |
-| Alt q               | Alt + o                  | expand_selection             | MoveTab "Right"             |
-| Alt m               | Alt + n                  | select_next_sibling          | NewPane                    |
-| Alt 2               | Ctrl + b                 | move_page_up                 | SwitchToMode "Tmux"         |
+| New Key Combination | Previous Key Combination | Helix Action that uses that previous key | Zellij Action remaped       |
+|---------------------|--------------------------|------------------------------------------|-----------------------------|
+| Ctrl + e            | Ctrl + o                 | jump_backward                            | SwitchToMode "Session"      |
+| Alt 1               | Ctrl + s                 | save_selection                           | SwitchToMode "Scroll"       |
+| Alt w               | Alt + i                  | shrink_selection                         | MoveTab "Left"              |
+| Alt q               | Alt + o                  | expand_selection                         | MoveTab "Right"             |
+| Alt m               | Alt + n                  | select_next_sibling                      | NewPane                     |
+| Alt 2               | Ctrl + b                 | move_page_up                             | SwitchToMode "Tmux"         |
 
 If you find a conflict, please open an issue. Keep in mind, though, that compatibility with tmux mode is not a goal of this project.
 
@@ -96,8 +96,9 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
   - because it's a "dumb" terminal, it has no panes, no tabs. This means less keybindings conflicts to worry about, less feature overlap
   - very performant
   - but I do want to explore more modern options, so long as they have a "plain mode", like [this](https://raphamorim.io/rio/pt-br/docs/next/navigation#plain)
-  - you can check out my files [here](https://github.com/luccahuguet/alacritty-files)
+  - you can check out my alacritty files [here](https://github.com/luccahuguet/alacritty-files) (they include all alacritty themes)
 - use [nushell](https://www.nushell.sh/), it's a great shell, it's fast and beautiful and a proper programming language
+- If you test this with nvim and it works, let me know (see the issue: )
 
 <br>
 
