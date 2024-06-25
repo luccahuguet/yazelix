@@ -55,7 +55,7 @@ When you create a second pane (actually the fifth), you transition to the swap l
 
 ## Possible Improvements
 - **More sidebar action:** Sidebar should open and close with only one pane as well
- - This was not working because whenever I close the second (actually fifth) pane, the sidebar and other pane swap
+  - This was not working because whenever I close the second (actually fifth) pane, the sidebar and other pane swap
 - **Full Yazi pane:** Integrate a full Yazi pane in another swap layout showing parents and preview, not just the current dir
   - this is already implemented, but has a few kinks to iron out.
   - To test, uncomment the yazi_full swap layout and panes, and increase the panes constraints by one
