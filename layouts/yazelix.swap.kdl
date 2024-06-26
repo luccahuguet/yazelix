@@ -7,9 +7,7 @@ swap_tiled_layout name="sidebar_open" {
             	size "20%"
             }
             pane name="main" split_direction="vertical" {
-                // focus true
                 pane 
-                // pane focus=true stacked=true { children; }
                 pane  stacked=true { children; }
             }
         }
@@ -26,9 +24,7 @@ swap_tiled_layout name="sidebar_closed" {
             }
 
             pane name="main" split_direction="vertical" {
-                // focus true
                 pane 
-                // pane focus=true stacked=true { children; }
                 pane stacked=true { children; }
             }
         }
