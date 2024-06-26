@@ -23,10 +23,9 @@ The initial layout includes one usable pane (actually 4, counting the tab-bar, s
 
 <br>
 
-### Swap Layout
-When you create a second pane (actually the fifth), you transition to the swap layouts:
+### Swap Layouts Behavior
 - Open and close the sidebar by switching layouts.
-- The fifth pane, on the left, is where new panes will appear, stacked.
+- New panes will be appearing to the left, stacked, but this won't change the layout.
 - You can add more swap layouts as needed, using the KDL files in `layouts`.
 
 **Two or more panes open with the sidebar open:**
@@ -45,7 +44,8 @@ When you create a second pane (actually the fifth), you transition to the swap l
 - This one is great: I've remapped 6 keybindings from zellij to avoid conflicts with helix 
   - use `alt m` for new panes and the rest is in zellij's status-bar 
   - this is configured in the `layouts/yazelix.kdl` file, if you want to change something 
-
+- You can now close the sidebar regardless of the number of panes
+  
 <br>
 
 ### Instructions to set it up
@@ -67,8 +67,6 @@ That's it, and feel free to open issues and PRs 😉
 <br>
 
 ### Possible Improvements
-- **More sidebar action:** Sidebar should open and close with only one pane as well
-  - This was not working because whenever I close the second (actually fifth) pane, the sidebar and other pane swap
 - **Full Yazi pane:** Integrate a full Yazi pane in another swap layout showing parents and preview, not just the current dir
   - this is already implemented, but has a few kinks to iron out.
   - To test, uncomment the yazi_full swap layout and panes, and increase the panes constraints by one
