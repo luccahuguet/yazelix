@@ -35,7 +35,8 @@ keybinds {
         bind "Ctrl e" { SwitchToMode "Session"; }
         
         // Previously: Ctrl + s (in helix: save_selection)
-        bind "Alt 1" { SwitchToMode "Scroll"; }
+        // bind "Alt 1" { SwitchToMode "Scroll"; }
+        bind "Ctrl y" { SwitchToMode "Scroll"; }
         
         // Previously: Alt + i (in helix: shrink_selection)
         bind "Alt w" { MoveTab "Left"; }
@@ -57,7 +58,8 @@ keybinds {
 
     scroll {
         // Exit scroll mode
-        bind "Alt 1" { SwitchToMode "Normal"; }
+        // bind "Alt 1" { SwitchToMode "Normal"; }
+        bind "Ctrl y" { SwitchToMode "Normal"; }
     }
 
     tmux {
