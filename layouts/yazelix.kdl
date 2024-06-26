@@ -6,12 +6,12 @@ layout {
         pane split_direction="vertical" {
             // pane name="yazi_full"{
             //     command "env"
-            //     args "YAZI_CONFIG_HOME=/home/lucca/.config/zellij/yazi_full/sidebar" "yazi"
+            //     args "YAZI_CONFIG_HOME=~/.config/zellij/yazi_full/sidebar" "yazi"
             //     size "1%"
             // }
             pane name="sidebar"{
                 command "env"
-                args "YAZI_CONFIG_HOME=/home/lucca/.config/zellij/yazi/sidebar" "yazi"
+                args "YAZI_CONFIG_HOME=~/.config/zellij/yazi/sidebar" "yazi"
                 size "20%"
             }
             pane {
