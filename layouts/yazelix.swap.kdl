@@ -1,13 +1,3 @@
-tab_template name="ui" {
-    pane size=1 borderless=true {
-       plugin location="zellij:tab-bar"
-    }
-    children
-    pane size=1 borderless=true {
-       plugin location="zellij:status-bar"
-    }
-}
-
 swap_tiled_layout name="sidebar_open" {
     ui min_panes=5 {
         pane split_direction="vertical" {

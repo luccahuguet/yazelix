@@ -1,25 +1,23 @@
 layout {
-    default_tab_template {
+    tab_template name="ui" {
         pane size=1 borderless=true {
            plugin location="zellij:tab-bar"
         }
+        children
+        pane size=1 borderless=true {
+           plugin location="zellij:status-bar"
+        }
+    }
+    ui min_panes=5 {
         pane split_direction="vertical" {
-            // pane name="yazi_full"{
-            //     command "env"
-            //     args "YAZI_CONFIG_HOME=~/.config/zellij/yazi_full/sidebar" "yazi"
-            //     size "1%"
-            // }
-            pane name="sidebar"{
+            pane name="sidebar" {
                 command "env"
                 args "YAZI_CONFIG_HOME=~/.config/zellij/yazi/sidebar" "yazi"
-                size "20%"
+            	size "20%"
             }
             pane {
                 focus true
             }
-        }
-        pane size=1 borderless=true {
-           plugin location="zellij:status-bar"
         }
     }
 }
