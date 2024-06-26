@@ -1,0 +1,57 @@
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+           plugin location="zellij:tab-bar"
+        }
+       pane split_direction="vertical" {
+            pane name="sidebar"{
+                command "env"
+                args "YAZI_CONFIG_HOME=~/.config/zellij/yazi/sidebar" "yazi"
+                size "20%"
+            }
+            pane {
+                focus true
+            }
+        }
+        pane size=1 borderless=true {
+           plugin location="zellij:status-bar"
+        }
+    }
+}
+
+keybinds {
+    shared {
+        // Previously: Ctrl + o (in helix: jump_backward)
+        bind "Ctrl e" { SwitchToMode "Session"; }
+        
+        // Previously: Ctrl + s (in helix: save_selection)
+        bind "Alt 1" { SwitchToMode "Scroll"; }
+        
+        // Previously: Alt + i (in helix: shrink_selection)
+        bind "Alt w" { MoveTab "Left"; }
+        
+        // Previously: Alt + o (in helix: expand_selection)
+        bind "Alt q" { MoveTab "Right"; }
+        
+        // Previously: Alt + n (in helix: select_next_sibling)
+        bind "Alt m" { NewPane; }
+
+        // Previously: Ctrl + b (in helix: move_page_up)
+        bind "Alt 2" { SwitchToMode "Tmux"; }
+    }
+
+    session {
+        // Exit session mode
+        bind "Ctrl e" { SwitchToMode "Normal"; }
+    }
+
+    scroll {
+        // Exit scroll mode
+        bind "Alt 1" { SwitchToMode "Normal"; }
+    }
+
+    tmux {
+        // Exit tmux mode
+        bind "Alt 2" { SwitchToMode "Normal"; }
+    }
+}

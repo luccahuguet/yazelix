@@ -11,6 +11,11 @@ tab_template name="ui" {
 swap_tiled_layout name="sidebar_open" {
     ui min_panes=5 {
         pane split_direction="vertical" {
+            // pane name="yazi_full" {
+            //     command "env"
+            //     args "YAZI_CONFIG_HOME=~/.config/zellij/yazi" "yazi"
+            //     size "1%"
+            // }
             pane name="sidebar" {
                 command "env"
                 args "YAZI_CONFIG_HOME=~/.config/zellij/yazi/sidebar" "yazi"
@@ -29,6 +34,11 @@ swap_tiled_layout name="sidebar_open" {
 swap_tiled_layout name="sidebar_closed" {
     ui min_panes=4 {
         pane split_direction="vertical" {
+            // pane name="yazi_full" {
+            //     command "env"
+            //     args "YAZI_CONFIG_HOME=~/.config/zellij/yazi" "yazi"
+            //     size "1%"
+            // }
             pane name="sidebar" {
                 command "env"
                 args "YAZI_CONFIG_HOME=~/.config/zellij/yazi/sidebar" "yazi"
@@ -44,4 +54,26 @@ swap_tiled_layout name="sidebar_closed" {
         }
     }
 }
+
+// swap_tiled_layout name="yazi_full_focus" {
+//     ui max_panes=6 {
+//         pane split_direction="vertical" {
+//             pane name="yazi_full" {
+//              command "env"
+//              args "YAZI_CONFIG_HOME=~/.config/zellij/yazi" "yazi"
+//             	size "97%"
+//             	focus true
+//             }
+//             pane name="sidebar" {
+//                 command "env"
+//                 args "YAZI_CONFIG_HOME=~/.config/yazi/sidebar" "yazi"
+//                 size "1%"
+//             }
+//             pane name="main" split_direction="vertical" size="2%" {
+//                 pane
+//                 pane stacked=true { children; }
+//             }
+//         }
+//     }
+// }
 
