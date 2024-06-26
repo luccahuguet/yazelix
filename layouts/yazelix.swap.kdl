@@ -15,7 +15,7 @@ swap_tiled_layout name="sidebar_open" {
 }
 
 swap_tiled_layout name="sidebar_closed" {
-    ui min_panes=4 {
+    ui min_panes=5 {
         pane split_direction="vertical" {
             pane name="sidebar" {
                 command "env"
