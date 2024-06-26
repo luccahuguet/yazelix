@@ -79,14 +79,14 @@ That's it, and feel free to open issues and PRs 😉
 <br>
 
 ### Keybinding remaps
-| New Zellij Keybinding | Previous Keybinding      | Helix Action that uses that previous key | Zellij Action remaped       |
-|-----------------------|--------------------------|------------------------------------------|-----------------------------|
-| Ctrl + e              | Ctrl + o                 | jump_backward                            | SwitchToMode "Session"      |
-| Alt 1                 | Ctrl + s                 | save_selection                           | SwitchToMode "Scroll"       |
-| Alt w                 | Alt + i                  | shrink_selection                         | MoveTab "Left"              |
-| Alt q                 | Alt + o                  | expand_selection                         | MoveTab "Right"             |
-| Alt m                 | Alt + n                  | select_next_sibling                      | NewPane                     |
-| Alt 2                 | Ctrl + b                 | move_page_up                             | SwitchToMode "Tmux"         |
+| New Zellij Keybinding | Previous Keybinding  | Helix Action that uses that previous key | Zellij Action remaped       |
+|-----------------------|----------------------|------------------------------------------|-----------------------------|
+| Ctrl e                | Ctrl o               | jump_backward                            | SwitchToMode "Session"      |
+| Ctrl y                | Ctrl s               | save_selection                           | SwitchToMode "Scroll"       |
+| Alt w                 | Alt i                | shrink_selection                         | MoveTab "Left"              |
+| Alt q                 | Alt o                | expand_selection                         | MoveTab "Right"             |
+| Alt m                 | Alt n                | select_next_sibling                      | NewPane                     |
+| Alt 2                 | Ctrl b               | move_page_up                             | SwitchToMode "Tmux"         |
 
 If you find a conflict, please open an issue. Keep in mind, though, that compatibility with tmux mode is not a goal of this project.
 
