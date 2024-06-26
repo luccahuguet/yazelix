@@ -8,7 +8,7 @@ Yazelix v3 integrates yazi, zellij and helix, hence the name, get it?
 - Helix is called when you hit enter on a file in the "sidebar", opening as a new pane in zellij
   - If helix is called like that, that pane will be closed as well when you quit helix
   - Note: I recommend running zellij from your shell (`nu -c "zellij -l welcome"` for nushell). This way you can load your enviroment variables like EDITOR and HELIX_RUNTIME
-- This project holds my config files for zellij and yazi, almost like a plugin or something, but it's just config!
+- This project holds my config files for zellij and yazi, almost like a plugin or something, but it's just a glorified config!
 
 <br>
 
