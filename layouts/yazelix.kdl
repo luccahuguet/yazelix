@@ -8,7 +8,11 @@ layout {
            plugin location="zellij:status-bar"
         }
     }
-    ui min_panes=5 {
+
+    default_tab_template {
+        pane size=1 borderless=true {
+           plugin location="zellij:tab-bar"
+        }
         pane split_direction="vertical" {
             pane name="sidebar" {
                 command "env"
@@ -18,6 +22,9 @@ layout {
             pane {
                 focus true
             }
+        }
+        pane size=1 borderless=true {
+           plugin location="zellij:status-bar"
         }
     }
 }
