@@ -75,6 +75,7 @@ That's it, and feel free to open issues and PRs 😉
   - Big thanks to zellij's maintainer and other people for helping with this
 - **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
 - **Rename the repo to yazelix:** I did try that but using a custom path to the layout folder just didn't work with `~` or `$HOME` (see some issues [here](https://github.com/zellij-org/zellij/issues/2764) and [here](https://github.com/zellij-org/zellij/issues/3115)
+- **Adjusting things for helix plugin system**: Namely making yazi just a full pane, and killing the sidebar, since there is a helix file tree plugin 
 
 <br>
 
