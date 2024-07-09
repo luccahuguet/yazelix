@@ -1,7 +1,7 @@
 # Yazelix v3: Helix with a File Tree!
 
 ### Overview
-Yazelix v3 integrates yazi, zellij and helix, hence the name, get it?
+Yazelix is a glorified config that integrates yazi, zellij and helix, hence the name, get it?
 - Zellij orchestrates everything, with yazi as a sidebar and helix as the editor
 - You can open and close the sidebar by switching zellij layouts (press `alt ]` and `alt [`)
 - Every keybinding from zellij that conflicts with helix is remapped (see them at the bottom)
