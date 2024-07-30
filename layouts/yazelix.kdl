@@ -17,10 +17,7 @@ layout {
             pane name="sidebar" {
                 command "env"
                 args "YAZI_CONFIG_HOME=~/.config/zellij/yazi/sidebar" "yazi"
-            	size "20%"
-            }
-            pane {
-                focus true
+            	size "100%"
             }
         }
         pane size=1 borderless=true {
