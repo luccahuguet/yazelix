@@ -46,6 +46,9 @@ keybinds {
 
         // Previously: Ctrl + b (in helix: move_page_up)
         bind "Alt 2" { SwitchToMode "Tmux"; }
+
+        // Not a remap, just for ease of use
+        bind "Alt f" { ToggleFocusFullscreen; SwitchToMode "Normal"; }
     }
 
     session {
