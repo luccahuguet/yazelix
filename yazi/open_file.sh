@@ -16,9 +16,12 @@ else
     # The current pane is not running helix, so open helix in a new pane
     zellij action new-pane
     sleep 0.3
-    zellij action write-chars "hx $1"
+    # Get the working directory
+    if [ -d "$1" ]; then
+        WORKING_DIR="$1"
+    else
+        WORKING_DIR=$(dirname "$1")
+    fi
+    zellij action write-chars "hx $1 -w $WORKING_DIR"
     zellij action write 13
-
-    # warning from before I got it working
-    # zellij action new-pane --name "WARNING" -- "echo" "please open helix in a pane right next to the sidebar (to the right of it) using 'hx path_to_file'"
 fi
