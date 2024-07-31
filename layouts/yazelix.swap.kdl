@@ -11,13 +11,29 @@ swap_tiled_layout name="one_pane" {
     }
 }
 
-swap_tiled_layout name="two_or_more_panes" {
+swap_tiled_layout name="sidebar_open_two_or_more_panes" {
     ui min_panes=5 {
         pane split_direction="vertical" {
             pane name="sidebar" {
                 command "env"
                 args "YAZI_CONFIG_HOME=~/.config/zellij/yazi/sidebar" "yazi"
             	size "20%"
+            }
+            pane name="main" split_direction="vertical" {
+                pane
+                pane stacked=true { children; }
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="sidebar_closed_two_or_more_panes" {
+    ui min_panes=5 {
+        pane split_direction="vertical" {
+            pane name="sidebar" {
+                command "env"
+                args "YAZI_CONFIG_HOME=~/.config/zellij/yazi/sidebar" "yazi"
+            	size "1%"
             }
             pane name="main" split_direction="vertical" {
                 pane
