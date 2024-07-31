@@ -350,7 +350,10 @@ scrollback_editor "hx"
 
 // The folder in which Zellij will look for layouts
 //
-// layout_dir "/home/lucca/.config/yazelix/zellij/layouts"
+layout_dir "/home/lucca/.config/yazelix/zellij/layouts"
+// layout_dir "~/.config/yazelix/zellij/layouts"
+// layout_dir "$HOME/.config/yazelix/zellij/layouts"
+// layout_dir "yazelix/zellij/layouts"
 
 // The folder in which Zellij will look for themes
 //

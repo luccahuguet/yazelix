@@ -1,14 +1,16 @@
-# Yazelix v3: Helix with a File Tree!
+# Yazelix v4: A true sidebar opens files in a helix buffer! 
 
 ### Overview
-Yazelix v3 integrates yazi, zellij and helix, hence the name, get it?
+Yazelix integrates yazi, zellij and helix, hence the name, get it?
+
 - Zellij orchestrates everything, with yazi as a sidebar and helix as the editor
 - You can open and close the sidebar by switching zellij layouts (press `alt ]` and `alt [`)
+  - Or if you only got one pane open, make it fullscreen (`ctrl p + f` or `alt f` )
 - Every keybinding from zellij that conflicts with helix is remapped (see them at the bottom)
-- Helix is called when you hit enter on a file in the "sidebar", opening as a new pane in zellij
-  - If helix is called like that, that pane will be closed as well when you quit helix
-  - Note: I recommend running zellij from your shell (`nu -c "zellij -l welcome"` for nushell). This way you can load your enviroment variables like EDITOR and HELIX_RUNTIME
-- This project holds my config files for zellij and yazi, almost like a plugin or something, but it's just a glorified config!
+- Helix is called when you hit enter on a file in the "sidebar"
+  - If helix is already open, in a pane next to the sidebar, it will open in a new buffer on that pane (magic)
+- This project holds my config files for zellij and yazi, almost like a plugin or something
+- But it's just some config files with a bit of shell scripting!
 
 <br>
 
@@ -36,14 +38,16 @@ The initial layout includes one usable pane (actually 4, counting the tab-bar, s
 
 <br>
 
-### Improvements Over v2
-- Before, the yazi config files were in a separate repo, now its all integrated here!  
-  - Thanks to Zykino from Zellij's discord for that tip!
-- Yazi's maintainer (what an honor!) added a init.lua file that makes the status-bar in yazi look really good in the small width it has
-- The project's got a name! Yazelix. It simply had no name before and that was a mistake.
-- This one is great: I've remapped 6 keybindings from zellij to avoid conflicts with helix 
-  - use `alt m` for new panes and the rest is in zellij's status-bar 
-  - this is configured in the `layouts/yazelix.kdl` file, if you want to change something 
+### Improvements Over v3
+- ROUNDED CORNERS
+- A wish come true: when you hit enter in a file or folder in yazi, if helix is open in a pane next to yazi, it will open in a helix buffer
+  - All it took was some shell scripting magic...
+  - it will also change your working dir, so when you press `SPACE f` you open the picker in that folder you're actually in
+- The repo was called `zellij` so people could just clone it in their `.config` folder directly, but this just sounded off. 
+  - The project's name is yazelix, not zellij, after all.
+  - So now you just ...[add instructions]
+- New-tab layout has improved. Now new panes are just yazi in a 100% width pane, working sort of like a picker.
+  - You just open a file or folder from yazi and it goes to it's proper place as a sidebar to the right
   
 <br>
 
@@ -58,23 +62,20 @@ That's it, and feel free to open issues and PRs 😉
 <br>
 
 ### Why use this project?
-- I think one of the main things is just how dead simple to configure this project is. No shell scripting magic
+- I think one of the main things is just how dead simple this project is. Just a bit shell scripting magic, but mostly config files
 - Easy to configure and make it yours
 - I daily drive this, and will change it according to my needs, keeping it updated and improving it
-- Even if you don't care about the sidebar, the keybindings may be helpful
+- zero conflict keybindings, very powerful sidebar (learning yazi is a process, but you can do a lot)
 
 <br>
 
 ### Possible Improvements
-- Be able to close the sidebar with only one pane besides the sidebar open (see the problem [here](https://github.com/luccahuguet/zellij/issues/3)
-- **Full Yazi pane:** Integrate a full Yazi pane in another swap layout showing parents and preview, not just the current dir
-  - this is already implemented, but has a few kinks to iron out.
-  - To test, uncomment the yazi_full swap layout and panes, and increase the panes constraints by one
-  - Problem 1: some panes swap with others when they shouldn't, like the sidebar and a normal pane
-  - Problem 2: you have to "walk" through the closed pane, which isn't great
-  - Big thanks to zellij's maintainer and other people for helping with this
-- **Higher Helix Integration:** Currently, selected files in Yazi open as a new pane in Zellij, running Helix. It would be nice to open them as a split or a buffer inside Helix (though this might be complex to code).
-- **Rename the repo to yazelix:** I did try that but using a custom path to the layout folder just didn't work with `~` or `$HOME` (see some issues [here](https://github.com/zellij-org/zellij/issues/2764) and [here](https://github.com/zellij-org/zellij/issues/3115)
+- Yazelix will only detect helix if it's adjacent to the sidebar. Would be nice to fix this limitation.
+- When you open a new tab, yazi opens as single pane taking all space
+  - But it does not show the parents and preview columns (like here TODO), it only show the current dir column
+- Rename the repo to yazelix: I did try that but using a custom path to the layout folder just didn't work with `~` or `$HOME` 
+  - see some issues [here](https://github.com/zellij-org/zellij/issues/2764) and [here](https://github.com/zellij-org/zellij/issues/3115)
+- 
 
 <br>
 
@@ -93,6 +94,8 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
 <br>
 
 ### Notes
+- I recommend running zellij from your shell (`nu -c "zellij -l welcome"` for nushell). 
+  - This way you can load your enviroment variables like EDITOR and HELIX_RUNTIME
 - I recommend using alacritty as your terminal
   - because it's a "dumb" terminal, it has no panes, no tabs. This means less keybindings conflicts to worry about, less feature overlap
   - very performant
@@ -100,7 +103,7 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
   - you can check out my alacritty files [here](https://github.com/luccahuguet/alacritty-files) (they include all alacritty themes)
 - Use [nushell](https://www.nushell.sh/), it's a great shell, it's fast and beautiful and a proper programming language. Why wouldn't you?
 - If you test this with nvim and it works, let me know (see the issue [here](https://github.com/luccahuguet/zellij/issues/2))
-- Special thanks to yazi's and zellij's maintainer (and discord members) for their help with some stuff. Also shoutout to helix's contributors!
+- Special thanks to yazi's, zellij's and helix's contributors/maintainers! 
 
 <br>
 
