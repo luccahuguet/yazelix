@@ -4,6 +4,10 @@
 ratio = [0, 4, 0]
 
 [opener]
-edit = [{ exec = 'zellij edit "$1"', desc = "Open File in a new pane" }]
-# edit = [{ run = 'zellij run -- nu -e "hx $1"', desc = "Open File in a new pane" }]
-# edit = [{ run = 'zellij run -- hx "$1"', desc = "Open File in a new pane" }]
+# yazelix v4
+edit = [
+  { run = '~/.config/yazelix/yazi/open_file.sh $1', desc = "Open File in a new pane" },
+]
+
+# yazelix v3
+# edit = [{ exec = 'zellij edit "$1"', desc = "Open File in a new pane" }]

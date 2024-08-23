@@ -1,9 +1,0 @@
-# yazi.toml
-
-[manager]
-ratio = [1, 4, 3]
-
-[opener]
-edit = [{ exec = 'zellij edit "$1"', desc = "Open File in a new pane" }]
-# edit = [{ run = 'zellij run -- nu -e "hx $1"', desc = "Open File in a new pane" }]
-# edit = [{ run = 'zellij run -- "hx $1"', desc = "Open File in a new pane" }]
