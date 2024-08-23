@@ -2,7 +2,6 @@
 
 ### Overview
 Yazelix integrates yazi, zellij and helix, hence the name, get it?
-
 - Zellij orchestrates everything, with yazi as a sidebar and helix as the editor
 - You can open and close the sidebar by switching zellij layouts (press `alt ]` and `alt [`)
   - Or if you only got one pane open, make it fullscreen (`ctrl p + f` or `alt f` )
