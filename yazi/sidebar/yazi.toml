@@ -6,7 +6,8 @@ ratio = [0, 4, 0]
 [opener]
 # yazelix v4
 edit = [
-  { run = '~/.config/yazelix/yazi/open_file.sh "$1"', desc = "Open File in a new pane" },
+  # { run = '~/.config/yazelix/yazi/open_file.sh "$1"', desc = "Open File in a new pane" },
+  { run = 'nu ~/.config/yazelix/yazi/open_file.nu "$1"', desc = "Open File in a new pane" },
 ]
 
 # yazelix v3

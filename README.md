@@ -1,4 +1,4 @@
-# Yazelix v4: A true sidebar opens files in a helix buffer! 
+# Yazelix v4.1
 
 ### Overview
 Yazelix integrates yazi, zellij and helix, hence the name, get it?
@@ -15,6 +15,14 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 
 ### Preview
 
+### Improvements of the v4.1 over v4
+- the open_file script is now written in nushell, with some modifications:
+  - now working with files with spaces in the filename
+  - now more sensitive to detecting hx on the next pane... previously it would sometimes not detect helix and thus open hx in a new pane instead of just opening the file in a new buffer the way it should)
+  - now it cds into the folder of the file being opened, if you clicked on a file, or into the folder itself, if you clicked on a folder 
+  - I do prefer quite a lot being able to write nushell instead of bash
+
+
 ### Improvements of the v4 over v3
 - ROUNDED CORNERS
 - A wish come true: when you hit enter in a file or folder in yazi, if helix is open in a pane next to yazi, it will open in a helix buffer
@@ -30,23 +38,9 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 <br>
 
 ### Instructions to set it up
-1. Make sure [yazi](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij) and [helix](https://helix-editor.com) are installed and in your path
+1. Make sure [yazi](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij), [helix](https://helix-editor.com), and [nushell](https://www.nushell.sh/book/installation.html) are installed and in your path
 2. Just clone this repo in your `~/.config` dir
-3. Set this command to run on your terminal startup (I prefer never leaving zellij): 
-  ```bash
-  zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts
-  ```
-  or if you don't like the welcome screen: 
-  ```bash
-  zellij -l ~/.config/yazelix/zellij/layouts/yazelix --config-dir ~/.config/yazelix/zellij 
-  ```
-  or if you need to run zellij from your shell because it sets your environment variables (that's what I do and recommend) 
-  ```bash
-  nu -c "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts" 
-  ```
-  (this is with nushell, but should be similar for zsh etc)
-  - My alacritty files are [here](https://github.com/luccahuguet/alacritty-files) if you'd like to take a look or mercilessly copy them
-  - If you like to run zellij on demand, then just run the command once and your shell should autocomplete the command after the first time (good shells like nushell do that)
+3. Take a look at the `configure wezterm` step on https://github.com/luccahuguet/rustifier to see how it configure yazelix on wezterm
 4. Optional: Using zoxide enhances the yazelix experience ten-fold, let me tell ya... and it integrates with yazi
 
 That's it, and feel free to open issues and PRs 😉
@@ -97,13 +91,9 @@ The initial layout includes one usable pane (actually 4, counting the tab-bar, s
 
 ### Notes
 - You can add more swap layouts as needed, using the KDL files in `layouts`.
-- I recommend running zellij from your shell (`nu -c "zellij -l welcome"` for nushell). 
-  - This way you can load your enviroment variables like EDITOR and HELIX_RUNTIME
-- I recommend using alacritty as your terminal
-  - because it's a "dumb" terminal, it has no panes, no tabs. This means less keybindings conflicts to worry about, less feature overlap
+- I recommend using wezterm as your terminal
+  - because it can be configured to remove its native tabs, very extensible, including its keybindings (haven't found a conflict yet)
   - very performant
-  - but I do want to explore more modern options, so long as they have a "plain mode", like [this](https://raphamorim.io/rio/pt-br/docs/next/navigation#plain)
-  - you can check out my alacritty files [here](https://github.com/luccahuguet/alacritty-files) (they include all alacritty themes)
 - Use [nushell](https://www.nushell.sh/), it's a great shell, it's fast and beautiful and a proper programming language. Why wouldn't you?
 - If you test this with nvim and it works, let me know (see the issue [here](https://github.com/luccahuguet/zellij/issues/2))
 - Special thanks to yazi's, zellij's and helix's contributors/maintainers! 
