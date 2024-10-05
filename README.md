@@ -21,6 +21,7 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
   - now more sensitive to detecting hx on the next pane... previously it would sometimes not detect helix and thus open hx in a new pane instead of just opening the file in a new buffer the way it should)
   - now it cds into the folder of the file being opened, if you clicked on a file, or into the folder itself, if you clicked on a folder 
   - I do prefer quite a lot being able to write nushell instead of bash
+- nushell is now a dependency (technically not an improvement, but feels like one, for me)
 
 
 ### Improvements of the v4 over v3
