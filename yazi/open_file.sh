@@ -15,7 +15,7 @@ if echo "$RUNNING_COMMAND" | grep -q "/hx$"; then
 else
     # The current pane is not running helix, so open helix in a new pane
     zellij action new-pane
-    sleep 0.4
+    sleep 0.5
     # Get the working directory
     if [ -d "$1" ]; then
         WORKING_DIR="$1"
