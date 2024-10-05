@@ -1,4 +1,4 @@
-# Yazelix v4: A true sidebar opens files in a helix buffer! 
+# Yazelix v4.1
 
 ### Overview
 Yazelix integrates yazi, zellij and helix, hence the name, get it?
@@ -14,6 +14,14 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 <br>
 
 ### Preview
+
+### Improvements of the v4.1 over v4
+- the open_file script is now written in nushell, with some modifications:
+  - now working with files with spaces in the filename
+  - now more sensitive to detecting hx on the next pane... previously it would sometimes not detect helix and thus open hx in a new pane instead of just opening the file in a new buffer the way it should)
+  - now it cds into the folder of the file being opened, if you clicked on a file, or into the folder itself, if you clicked on a folder 
+  - I do prefer quite a lot being able to write nushell instead of bash
+
 
 ### Improvements of the v4 over v3
 - ROUNDED CORNERS
