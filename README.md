@@ -15,6 +15,9 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 
 ### Preview
 
+![yazelix_v41_demo](https://github.com/user-attachments/assets/09a452e0-4a62-4e8e-afe6-2c7267f78b11)
+
+
 ### Improvements of the v4.1 over v4
 - the open_file script is now written in nushell, with some modifications:
   - now working with files with spaces in the filename
