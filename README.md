@@ -8,6 +8,7 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 - Every keybinding from zellij that conflicts with helix is remapped (see them at the bottom)
 - Helix is called when you hit enter on a file in the "sidebar"
   - If helix is already open, in a pane next to the sidebar, it will open in a new buffer on that pane (magic)
+  - Note: It is highly recommended that you let the shell script execute in peace, so during these miliseconds don´t move around
 - This project holds my config files for zellij and yazi, almost like a plugin or something
   - But it's just some config files with a bit of shell scripting!
 
