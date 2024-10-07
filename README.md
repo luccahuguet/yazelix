@@ -8,12 +8,16 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 - Every keybinding from zellij that conflicts with helix is remapped (see them at the bottom)
 - Helix is called when you hit enter on a file in the "sidebar"
   - If helix is already open, in a pane next to the sidebar, it will open in a new buffer on that pane (magic)
+  - Note: It is highly recommended that you let the shell script execute in peace, so during these miliseconds don´t move around
 - This project holds my config files for zellij and yazi, almost like a plugin or something
   - But it's just some config files with a bit of shell scripting!
 
 <br>
 
 ### Preview
+
+![yazelix_v41_demo](https://github.com/user-attachments/assets/09a452e0-4a62-4e8e-afe6-2c7267f78b11)
+
 
 ### Improvements of the v4.1 over v4
 - the open_file script is now written in nushell, with some modifications:
@@ -98,6 +102,8 @@ The initial layout includes one usable pane (actually 4, counting the tab-bar, s
 - Use [nushell](https://www.nushell.sh/), it's a great shell, it's fast and beautiful and a proper programming language. Why wouldn't you?
 - If you test this with nvim and it works, let me know (see the issue [here](https://github.com/luccahuguet/zellij/issues/2))
 - Special thanks to yazi's, zellij's and helix's contributors/maintainers! 
+- Yazi's author graciously contributed some lua code to make yazi's status bar look awesome in the small width of a sidebar
+  - Thanks for that!
 
 <br>
 
