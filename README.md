@@ -46,9 +46,9 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 1. Make sure [yazi](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij), [helix](https://helix-editor.com), and [nushell](https://www.nushell.sh/book/installation.html) are installed and in your path
 2. Just clone this repo in your `~/.config` dir
 3. Take a look at the `configure wezterm` step on [https://github.com/luccahuguet/rustifier](https://github.com/luccahuguet/rustifier#installation) to see how it configure yazelix on wezterm  
-  - If you use other shell, you have to configure it to run something like `nu -c "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts"` on startup  
-  - Or, if you wish, run this manually everytime you open yazelix  
-  - The recommended shell is Wezterm though. More on that on the Notes session below  
+    - If you use other shell, you have to configure it to run something like `nu -c "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts"` on startup  
+    - Or, if you wish, run this manually everytime you open yazelix  
+    - The recommended shell is Wezterm though. More on that on the Notes session below  
 4. Optional: Using zoxide enhances the yazelix experience ten-fold, let me tell ya... and it integrates with yazi
 
 That's it, and feel free to open issues and PRs 😉
