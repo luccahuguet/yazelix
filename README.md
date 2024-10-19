@@ -90,7 +90,14 @@ The initial layout includes one usable pane (actually 4, counting the tab-bar, s
 - **Status-bar** at the bottom
 - **Yazi pane** (20% width) acting as a sidebar on the left
 - **Empty pane** on the right
-
+  
+## Discoverability of keybindings
+- zellij: zellij is great at this, works out of the box, you'll visually see all the keybindings in the status-bar
+- helix: helix is the same honestly
+- yazi: There is only one keybinding to remember: `~` This shows all keybindings and commands, but make youre you are on yazi full pane (or press `alt f`) or it will be too cramped to read
+- nushell: you can run `tutor` on nushell, you can read the https://www.nushell.sh/book/, you can run `help commands | find regex` (if you want to learn about regex for example, but could be anything) 
+    - well, I do use `ctrl r` a lot in nushell, it opens a interactive history search
+  
 ## Notes
 
 - You can add more swap layouts as needed, using the KDL files in `layouts`.
