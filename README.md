@@ -104,7 +104,6 @@ The initial layout includes one usable pane (actually 4, counting the tab-bar, s
 - I recommend using wezterm as your terminal
   - because it can be configured to remove its native tabs, very extensible, including its keybindings (haven't found a conflict yet)
   - very performant
-- Use [nushell](https://www.nushell.sh/), it's a great shell, it's fast and beautiful and a proper programming language. Why wouldn't you?
 - If you test this with nvim and it works, let me know (see the issue [here](https://github.com/luccahuguet/zellij/issues/2))
 - Special thanks to yazi's, zellij's and helix's contributors/maintainers! 
 - Yazi's author graciously contributed some lua code to make yazi's status bar look awesome in the small width of a sidebar
