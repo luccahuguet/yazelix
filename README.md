@@ -60,6 +60,10 @@ That's it, and feel free to open issues and PRs 😉
 - I daily drive this, and will change it according to my needs, keeping it updated and improving it
 - Zero conflict keybindings, very powerful sidebar (learning yazi is a process, but you can do very cool stuff)
 
+## Troubleshooting
+
+- If it's not working, try upgrading yazi and zellij to the latest version
+
 ## Possible Improvements
 
 - Yazelix will only detect helix if it's adjacent to the sidebar. A minor thing.
