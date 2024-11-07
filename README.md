@@ -87,6 +87,8 @@ The initial layout includes one usable pane (actually 4, counting the tab-bar, s
 - Type `alt f` to make your pane fullscreen
 - Type `ctrl p` then `r` for a split to the right
 - Type `ctrl p` then `d` for a split in the "down" direction
+- Yazi: Type `z` to use zoxide (fuzzy find to known paths)
+- Yazi: Type `Z` to use fzf (fuzzy find to unknown paths)
 
 ## Tips
 - You can add more swap layouts as needed, using the KDL files in `layouts`.
