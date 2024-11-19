@@ -47,6 +47,8 @@ keybinds clear-defaults=true{
         bind "l" "Right" { MovePane "Right"; }
     }
     tab {
+        bind "Alt i" { MoveTab "Left"; }
+        bind "Alt o" { MoveTab "Right"; }
         bind "Ctrl t" { SwitchToMode "Normal"; }
         bind "r" { SwitchToMode "RenameTab"; TabNameInput 0; }
         bind "h" "Left" "Up" "k" { GoToPreviousTab; }
@@ -163,8 +165,6 @@ keybinds clear-defaults=true{
         bind "Ctrl q" { Quit; }
         // bind "Alt f" { ToggleFloatingPanes; }
         // bind "Alt n" { NewPane; }
-        // bind "Alt i" { MoveTab "Left"; }
-        // bind "Alt o" { MoveTab "Right"; }
         bind "Alt h" "Alt Left" { MoveFocusOrTab "Left"; }
         bind "Alt l" "Alt Right" { MoveFocusOrTab "Right"; }
         bind "Alt j" "Alt Down" { MoveFocus "Down"; }
