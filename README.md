@@ -90,9 +90,9 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
   
 
 ## Keybindings tips 
-- Type `alt f` to make your pane fullscreen
-- Type `ctrl p` then `r` for a split to the right
-- Type `ctrl p` then `d` for a split in the "down" direction
+- Zellij: Type `alt f` to make your pane fullscreen (and back)
+- Zellij: Type `ctrl p` then `r` for a split to the right
+- Zellij: Type `ctrl p` then `d` for a split in the "down" direction
 - Yazi: Type `z` to use zoxide (fuzzy find to known paths)
 - Yazi: Type `Z` to use fzf (fuzzy find to unknown paths)
 - Yazi: Type `SPACE` to select files
