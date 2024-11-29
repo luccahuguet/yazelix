@@ -19,10 +19,7 @@ swap_tiled_layout name="sidebar_open_two_or_more_panes" {
                 args "YAZI_CONFIG_HOME=~/.config/yazelix/yazi/sidebar" "yazi"
             	size "20%"
             }
-            pane name="main" split_direction="vertical" {
-                pane
-                pane stacked=true { children; }
-            }
+            pane stacked=true { children; }
         }
     }
 }
@@ -35,10 +32,7 @@ swap_tiled_layout name="sidebar_closed_two_or_more_panes" {
                 args "YAZI_CONFIG_HOME=~/.config/yazelix/yazi/sidebar" "yazi"
             	size "1%"
             }
-            pane name="main" split_direction="vertical" {
-                pane
-                pane stacked=true { children; }
-            }
+            pane stacked=true { children; }
         }
     }
 }

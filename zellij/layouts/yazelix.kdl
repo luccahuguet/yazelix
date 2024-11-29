@@ -26,44 +26,44 @@ layout {
     }
 }
 
-keybinds {
-    shared {
-        // Previously: Ctrl + o (in helix: jump_backward)
-        bind "Ctrl e" { SwitchToMode "Session"; }
+// keybinds {
+//     shared {
+//         // Previously: Ctrl + o (in helix: jump_backward)
+//         bind "Ctrl e" { SwitchToMode "Session"; }
         
-        // Previously: Ctrl + s (in helix: save_selection)
-        // bind "Alt 1" { SwitchToMode "Scroll"; }
-        bind "Ctrl y" { SwitchToMode "Scroll"; }
+//         // Previously: Ctrl + s (in helix: save_selection)
+//         // bind "Alt 1" { SwitchToMode "Scroll"; }
+//         bind "Ctrl y" { SwitchToMode "Scroll"; }
         
-        // Previously: Alt + i (in helix: shrink_selection)
-        bind "Alt w" { MoveTab "Left"; }
+//         // Previously: Alt + i (in helix: shrink_selection)
+//         bind "Alt w" { MoveTab "Left"; }
         
-        // Previously: Alt + o (in helix: expand_selection)
-        bind "Alt q" { MoveTab "Right"; }
+//         // Previously: Alt + o (in helix: expand_selection)
+//         bind "Alt q" { MoveTab "Right"; }
         
-        // Previously: Alt + n (in helix: select_next_sibling)
-        bind "Alt m" { NewPane; }
+//         // Previously: Alt + n (in helix: select_next_sibling)
+//         bind "Alt m" { NewPane; }
 
-        // Previously: Ctrl + b (in helix: move_page_up)
-        bind "Alt 2" { SwitchToMode "Tmux"; }
+//         // Previously: Ctrl + b (in helix: move_page_up)
+//         bind "Alt 2" { SwitchToMode "Tmux"; }
 
-        // Not a remap, just for ease of use
-        bind "Alt f" { ToggleFocusFullscreen; SwitchToMode "Normal"; }
-    }
+//         // Not a remap, just for ease of use
+//         bind "Alt f" { ToggleFocusFullscreen; SwitchToMode "Normal"; }
+//     }
 
-    session {
-        // Exit session mode
-        bind "Ctrl e" { SwitchToMode "Normal"; }
-    }
+//     session {
+//         // Exit session mode
+//         bind "Ctrl e" { SwitchToMode "Normal"; }
+//     }
 
-    scroll {
-        // Exit scroll mode
-        // bind "Alt 1" { SwitchToMode "Normal"; }
-        bind "Ctrl y" { SwitchToMode "Normal"; }
-    }
+//     scroll {
+//         // Exit scroll mode
+//         // bind "Alt 1" { SwitchToMode "Normal"; }
+//         bind "Ctrl y" { SwitchToMode "Normal"; }
+//     }
 
-    tmux {
-        // Exit tmux mode
-        bind "Alt 2" { SwitchToMode "Normal"; }
-    }
-}
+//     tmux {
+//         // Exit tmux mode
+//         bind "Alt 2" { SwitchToMode "Normal"; }
+//     }
+// }

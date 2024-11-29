@@ -72,6 +72,8 @@ def main [file_path: path] {
             $file_path | path dirname
         }
         
+        zellij action rename-tab ($working_dir | path basename)
+
         # Change to the working directory
         zellij action write-chars $"cd ($working_dir)"
         zellij action write 13

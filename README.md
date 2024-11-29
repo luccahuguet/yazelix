@@ -8,8 +8,9 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 - You can open and close the sidebar by switching zellij layouts (press `alt ]` and `alt [`)
   - Or if you only got one pane open, make it fullscreen (`ctrl p + f` or `alt f`)
 - Every keybinding from zellij that conflicts with helix is remapped (see them at the bottom)
-- Helix is called when you hit enter on a file in the "sidebar"
-  - If helix is already open, in a pane next to the sidebar, it will open in a new buffer on that pane (magic)
+- When you hit enter on a file/folder in the "sidebar" the following things happen:
+  - If helix is already open, in a pane next to the sidebar, it will open that file/folder in a new buffer on that pane (magic)
+  - If helix is not open, it will cd into the folder of the file (or the folder itself), and then open it in helix 
   - Note: It is highly recommended that you let the shell script execute in peace, so during these milliseconds don't move around
 - This project holds my config files for zellij and yazi, almost like a plugin or something
   - But it's just some config files with a bit of shell scripting!
@@ -18,27 +19,11 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 
 ![yazelix_v41_demo](https://github.com/user-attachments/assets/09a452e0-4a62-4e8e-afe6-2c7267f78b11)
 
-## Improvements of the v4.1 over v4
-
-- The open_file script is now written in nushell, with some modifications:
-  - Now working with files with spaces in the filename
-  - Now more sensitive to detecting hx on the next pane... previously it would sometimes not detect helix and thus open hx in a new pane instead of just opening the file in a new buffer the way it should)
-  - Now it cds into the folder of the file being opened, if you clicked on a file, or into the folder itself, if you clicked on a folder 
-  - I do prefer quite a lot being able to write nushell instead of bash
-- Nushell is now a dependency (technically not an improvement, but feels like one, for me)
-
-## Improvements of the v4 over v3
-
-- ROUNDED CORNERS
-- A wish come true: when you hit enter in a file or folder in yazi, if helix is open in a pane next to yazi, it will open in a helix buffer
-  - All it took was some shell scripting magic...
-  - It will also change your working dir, so when you press `SPACE f` you open the picker in that folder you're actually in
-- New-tab layout has improved. Now new panes are just yazi in a 100% width pane, working sort of like a picker.
-  - You just open a file or folder from yazi and it goes to its proper place as a sidebar to the right
-- Added a dedicated kb to make panes full screen `alt f`
-- The repo was previously called `zellij` so people could just clone it in their `.config` folder directly, but this just sounded off. 
-  - The project's name is yazelix, not zellij, after all. So now the repo name is yazelix the way god intended
-  - Take a look at the new instructions to set it up just below!
+## Improvements of v5 over v4.1
+- Now when you open a new pane besides the sidebar pane, it will stack by default
+- If you want to open a split, you can do so like this:
+  - Type `ctrl p` then `r` for a split to the right
+  - Type `ctrl p` then `d` for a split in the "down" direction
 
 ## Instructions to set it up
 
@@ -70,7 +55,6 @@ That's it, and feel free to open issues and PRs 😉
 - When you open a new tab, yazi opens as single pane taking all space
   - But it does not show the parents and preview columns, it only shows the current dir column
   - To address this I would have to reopen yazi with a different config? 
-- The opening of files in a helix buffer implementation works but feels like a workaround. But it does not matter much. Helix will get a plugin system and then a file tree plugin probably between the beginning and middle of 2025 anyways.. 
 
 ## Keybinding remaps
 
@@ -98,12 +82,19 @@ The initial layout includes one usable pane (actually 4, counting the tab-bar, s
 ## Discoverability of keybindings
 - zellij: zellij is great at this, works out of the box, you'll visually see all the keybindings in the status-bar
 - helix: helix is the same honestly
-- yazi: There is only one keybinding to remember: `~` This shows all keybindings and commands, but make youre you are on yazi full pane (or press `alt f`) or it will be too cramped to read
+- yazi: There is only one keybinding to remember: `~` This shows all keybindings and commands (press `alt f` to make the yazi pane fullscreen)
 - nushell: you can run `tutor` on nushell, you can read the https://www.nushell.sh/book/, you can run `help commands | find regex` (if you want to learn about regex for example, but could be anything) 
     - well, I do use `ctrl r` a lot in nushell, it opens a interactive history search
   
-## Notes
 
+## Keybindings tips 
+- Type `alt f` to make your pane fullscreen
+- Type `ctrl p` then `r` for a split to the right
+- Type `ctrl p` then `d` for a split in the "down" direction
+- Yazi: Type `z` to use zoxide (fuzzy find to known paths)
+- Yazi: Type `Z` to use fzf (fuzzy find to unknown paths)
+
+## Tips
 - You can add more swap layouts as needed, using the KDL files in `layouts`.
 - I recommend using wezterm as your terminal
   - because it can be configured to remove its native tabs, very extensible, including its keybindings (haven't found a conflict yet)
