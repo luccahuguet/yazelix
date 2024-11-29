@@ -20,15 +20,21 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 
 ## Improvements of v5 over v4.1
 - Now when you open a new pane besides the sidebar pane, it will stack by default, focusing on full panes, instead of splits
-- Change zellij tab name to the dir from the file you open from yazi
+- Change zellij tab name automatically to the dir from the file you open from yazi
   - The two changes above allow you to focus much more on using a tab per project! So that every tab has a dir of their own.
   - This helps you to visually and mentally know what each tab is doing.
 - Now if you want to open a split, you can still do so like this:
   - Type `ctrl p` then `r` for a split to the right
   - Type `ctrl p` then `d` for a split in the "down" direction
+- **New rule** IMPORTANT: to open a file from yazi into an existing yazelix buffer, the hx plane has to be the topmost of the stack (or a single pane with no stack), otherwise it will open a new helix instance
+  - If your helix pane is not the topmost, just press `ctrl h` and move it up with `k` 
 - Important fix: Remapped keybindings were previously lost when attaching to a session or ressurrecting
-- New rule: to open a file from yazi into an existing yazelix buffer, the hx plane has to be the topmost, otherwise it will open a new helix instance
+- Important fix: https://github.com/luccahuguet/yazelix/issues/17 Failed to check if the command running in the current pane is helix
 - fix: re-added move tab bindings. They were removed previously and now they work on tab mode
+- Added a license
+
+![image](https://github.com/user-attachments/assets/46f3f3a8-3c03-47e1-8cbd-cec30f293225)
+
 
 ## Instructions to set it up
 
@@ -74,16 +80,7 @@ That's it, and feel free to open issues and PRs 😉
 
 If you find a conflict, please open an issue. Keep in mind, though, that compatibility with tmux mode is not a goal of this project.
 
-## Details: Base Layout
 
-The initial layout includes one usable pane (actually 4, counting the tab-bar, status-bar and sidebar):
-![image](https://github.com/luccahuguet/zellij/assets/27565287/c8333411-b6f4-4c0e-9ea8-1992859c8749)
-
-- **Tab-bar** at the top
-- **Status-bar** at the bottom
-- **Yazi pane** (20% width) acting as a sidebar on the left
-- **Empty pane** on the right
-  
 ## Discoverability of keybindings
 - zellij: zellij is great at this, works out of the box, you'll visually see all the keybindings in the status-bar
 - helix: helix is the same honestly
@@ -98,6 +95,11 @@ The initial layout includes one usable pane (actually 4, counting the tab-bar, s
 - Type `ctrl p` then `d` for a split in the "down" direction
 - Yazi: Type `z` to use zoxide (fuzzy find to known paths)
 - Yazi: Type `Z` to use fzf (fuzzy find to unknown paths)
+- Yazi: Type `SPACE` to select files
+- Yazi: Type `y` to `yank` and `Y` to `unyank` (cancels the copy)
+- Yazi: Type `x` to `cut` and `X` to `uncut` (cancels the cut)
+- Yazi: Type `a` to `add` a file (`filename.ext`) or a folder (`foldername/`)
+
 
 ## Tips
 - You can add more swap layouts as needed, using the KDL files in `layouts`.
