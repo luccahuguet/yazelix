@@ -1,5 +1,4 @@
-# Yazelix v4.1
-
+# Yazelix v5
 ## Overview
 
 Yazelix integrates yazi, zellij and helix, hence the name, get it?
