@@ -19,11 +19,16 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 ![yazelix_v41_demo](https://github.com/user-attachments/assets/09a452e0-4a62-4e8e-afe6-2c7267f78b11)
 
 ## Improvements of v5 over v4.1
-- Now when you open a new pane besides the sidebar pane, it will stack by default
-- If you want to open a split, you can do so like this:
+- Now when you open a new pane besides the sidebar pane, it will stack by default, focusing on full panes, instead of splits
+- Change zellij tab name to the dir from the file you open from yazi
+  - The two changes above allow you to focus much more on using a tab per project! So that every tab has a dir of their own.
+  - This helps you to visually and mentally know what each tab is doing.
+- Now if you want to open a split, you can still do so like this:
   - Type `ctrl p` then `r` for a split to the right
   - Type `ctrl p` then `d` for a split in the "down" direction
-- New rule: to open a file from yazi into an existing yazelix buffer, the hx plane has to be the topmost
+- Important fix: Remapped keybindings were previously lost when attaching to a session or ressurrecting
+- New rule: to open a file from yazi into an existing yazelix buffer, the hx plane has to be the topmost, otherwise it will open a new helix instance
+- fix: re-added move tab bindings. They were removed previously and now they work on tab mode
 
 ## Instructions to set it up
 
