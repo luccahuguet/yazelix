@@ -23,6 +23,7 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 - If you want to open a split, you can do so like this:
   - Type `ctrl p` then `r` for a split to the right
   - Type `ctrl p` then `d` for a split in the "down" direction
+- New rule: to open a file from yazi into an existing yazelix buffer, the hx plane has to be the topmost
 
 ## Instructions to set it up
 
