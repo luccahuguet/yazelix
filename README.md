@@ -132,6 +132,7 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
 - Special thanks to yazi's, zellij's and helix's contributors/maintainers! 
 - Yazi's author graciously contributed some lua code to make yazi's status bar look awesome in the small width of a sidebar
   - Thanks for that!
+- If you accidentaly close the sidebar, you can get it back with `env YAZI_CONFIG_HOME=~/.config/yazelix/yazi/sidebar yazi`
 
 ## Im lost, it's too much information
 
