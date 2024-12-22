@@ -133,6 +133,10 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
 - Yazi's author graciously contributed some lua code to make yazi's status bar look awesome in the small width of a sidebar
   - Thanks for that!
 
+## Im lost, it's too much information
+
+In this case, learn how to use zellij on it's own first. And then optionally yazi. And then re-read the readme.
+
 ## Contributing to Yazelix
 
 See here in [contributing](./contributing.md)
