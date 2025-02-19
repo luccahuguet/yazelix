@@ -19,10 +19,13 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 ![yazelix_v41_demo](https://github.com/user-attachments/assets/09a452e0-4a62-4e8e-afe6-2c7267f78b11)
 v4.1 preview (obs: currect v5 flow is better)
 
+
+![image](https://github.com/user-attachments/assets/46f3f3a8-3c03-47e1-8cbd-cec30f293225)
+v5 layout
+
 ## Improvements of v5.1 over v5
 - Adds a yazi plugin to make the status bar in the yazi pane look good again, unclutered, and with a cool color
 
-![image](https://github.com/user-attachments/assets/46f3f3a8-3c03-47e1-8cbd-cec30f293225)
 
 
 ## Instructions to set it up
