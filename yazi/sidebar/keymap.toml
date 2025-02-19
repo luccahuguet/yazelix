@@ -1,0 +1,6 @@
+[manager]
+prepend_keymap = [
+  { on = [
+    "z",
+  ], run = "shell --block 'nu ~/.config/yazelix/yazi/sidebar/jump_zoxide.nu'", desc = "Jump with Zoxide" },
+]
