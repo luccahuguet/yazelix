@@ -134,6 +134,20 @@ In this case, learn how to use zellij on it's own first. And then optionally yaz
 
 See here in [contributing](./contributing.md)
 
+## Table of Versions of Yazelix V5.1 (last tested Frebuary 26th, 2025)
+
+| Component | Version                  |
+| --------- | ------------------------ |
+| OS        | Pop!_OS 24.04            |
+| DE        | COSMIC                   |
+| Zellij    | 0.41.2                   |
+| Helix     | helix 25.01.1 (7275b7f8) |
+| Nushell   | 0.102.0                  |
+| Zoxide    | 0.9.7                    |
+| Yazi      | 25.2.11                  |
+| WezTerm   | 20240203-110809-5046fc22 |
+| Ghostty   | 1.1.2                    |
+
 ## Similar projects
 - [File tree picker in Helix with Zellij](https://yazi-rs.github.io/docs/tips/#helix-with-zellij) 
   - Yazi can be used as a file picker to browse and open file(s) in your current Helix instance (running in a Zellij session)
