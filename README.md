@@ -33,32 +33,21 @@ v5 layout
 1. Make sure [yazi](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij), [helix](https://helix-editor.com), and [nushell](https://www.nushell.sh/book/installation.html) are installed and in your path
 2. Just clone this repo in your `~/.config` dir
 3. Configure WezTerm:  
-   a. Create or open your `~/.wezterm.lua` file  
-   b. Add the following content:  
+  ```
+  cp ~/.config/yazelix/terminal_configs/wez/.wezterm.lua ~/.wezterm.lua
+  ```
 
-      ```lua
-      -- Pull in the wezterm API
-      local wezterm = require 'wezterm'
-      -- This will hold the configuration.
-      local config = wezterm.config_builder()
-      -- This is where you actually apply your config choices
-      -- For example, changing the color scheme:
-      config.color_scheme = 'Abernathy'
-      -- Spawn a nushell shell in login mode
-      config.default_prog = { 'nu', '-c', "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts" }
-      -- Others
-      config.hide_tab_bar_if_only_one_tab = true
-      config.window_decorations = "NONE"
-      -- and finally, return the configuration to wezterm
-      return config
-      ```
+  Or Ghostty:
+   ```
+  cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config
+  ```
+
 
 Notes:
-  - For extra configuration, visit: https://wezfurlong.org/wezterm/config/files.html
+  - For extra configuration, visit: https://wezfurlong.org/wezterm/config/files.html or https://ghostty.org/docs/config
   - If you use another shell, you have to configure it to run something like `nu -c "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts"` on startup  
     - or `zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layout` (but you still need `nu` anyways)
-    - Another option, if you wish, run this command manually every time you open yazelix  
-    - The recommended shell is Wezterm though. More on that in the Notes section below  
+    - Nowadays I'm daily running Ghostty but both are great terminal emulators
 4. Optional: Using zoxide enhances the yazelix experience ten-fold, let me tell ya... and it integrates with yazi
 
 That's it, and feel free to open issues and PRs 😉
@@ -117,10 +106,8 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
 
 ## Tips
 - You can add more swap layouts as needed, using the KDL files in `layouts`.
-- I recommend using wezterm as your terminal
-  - because it can be configured to remove its native tabs, very extensible, including its keybindings (haven't found a conflict yet)
-  - very performant
-- If you test this with nvim and it works, let me know (see the issue [here](https://github.com/luccahuguet/zellij/issues/2))
+- I recommend using ghostty or wezterm as your terminal
+  - they are very extensible and performant
 - Special thanks to yazi's, zellij's and helix's contributors/maintainers! 
 - Yazi's author graciously contributed some lua code to make yazi's status bar look awesome in the small width of a sidebar
   - Thanks for that!
