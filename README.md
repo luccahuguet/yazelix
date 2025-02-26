@@ -147,6 +147,7 @@ See here in [contributing](./contributing.md)
 | Yazi      | 25.2.11                  |
 | WezTerm   | 20240203-110809-5046fc22 |
 | Ghostty   | 1.1.2                    |
+*Note: you can use either wezterm or ghostty
 
 ## Similar projects
 - [File tree picker in Helix with Zellij](https://yazi-rs.github.io/docs/tips/#helix-with-zellij) 
