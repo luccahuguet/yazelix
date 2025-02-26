@@ -1,4 +1,4 @@
-# Yazelix v5.1
+# Yazelix v5.2
 ## Overview
 
 Yazelix integrates yazi, zellij and helix, hence the name, get it?
@@ -23,8 +23,9 @@ v4.1 preview (obs: currect v5 flow is better)
 ![image](https://github.com/user-attachments/assets/46f3f3a8-3c03-47e1-8cbd-cec30f293225)
 v5 layout
 
-## Improvements of v5.1 over v5
+## Improvements of v5.2 over v5
 - Adds a yazi plugin to make the status bar in the yazi pane look good again, unclutered, and with a cool color
+- Adds ghostty config. Author also switched to ghostty as a daily driver, but plans to support both (it's just a config file). Author is happy with ghostty but wez is great as well
 
 
 
@@ -44,6 +45,7 @@ v5 layout
 
 
 Notes:
+  - Feel free to change the configs and make it yours, this is just a starting point
   - For extra configuration, visit: https://wezfurlong.org/wezterm/config/files.html or https://ghostty.org/docs/config
   - If you use another shell, you have to configure it to run something like `nu -c "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts"` on startup  
     - or `zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layout` (but you still need `nu` anyways)
@@ -62,6 +64,7 @@ That's it, and feel free to open issues and PRs 😉
 ## Troubleshooting
 
 - If it's not working, try upgrading yazi and zellij to the latest version
+- Check the versions table below! 
 
 ## Possible Improvements
 
@@ -121,7 +124,7 @@ In this case, learn how to use zellij on it's own first. And then optionally yaz
 
 See here in [contributing](./contributing.md)
 
-## Table of Versions of Yazelix V5.1 (last tested Frebuary 26th, 2025)
+## Table of Versions of Yazelix V5.2 (last tested Frebuary 26th, 2025)
 
 | Component | Version                  |
 | --------- | ------------------------ |
