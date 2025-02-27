@@ -1,7 +1,8 @@
 # yazi.toml
 
 [manager]
-ratio = [0, 4, 0]
+# ratio = [0, 4, 0]
+ratio = [1, 4, 3]
 
 [opener]
 # yazelix v4
