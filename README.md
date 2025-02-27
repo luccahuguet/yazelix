@@ -27,6 +27,12 @@ v5 layout
 - Adds a yazi plugin to make the status bar in the yazi pane look good again, unclutered, and with a cool color
 - Adds ghostty config. Author also switched to ghostty as a daily driver, but plans to support both (it's just a config file). Author is happy with ghostty but wez is great as well
 
+## Compatibility
+- Should work with any terminal emulator, but I the ones I use daily drive are wezterm and ghostty
+- I also provide config files for them below! They call zellij with the proper arguments
+- editor: helix
+- to do: test with shells other than nushell
+- Take a look at the versions of programs used near the end of the readme
 
 
 ## Instructions to set it up
