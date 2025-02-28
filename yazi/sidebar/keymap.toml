@@ -2,5 +2,5 @@
 prepend_keymap = [
   { on = [
     "b",
-  ], run = "shell --block 'nu ~/.config/yazelix/yazi/sidebar/adjust_sidebar.nu'", desc = "Adjust sidebar width dynamically" },
+  ], run = "plugin toggle-pane max-current", desc = "Adjust sidebar width dynamically" },
 ]
