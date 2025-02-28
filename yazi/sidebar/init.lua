@@ -1,12 +1,34 @@
 require("sidebar-status"):setup()
 
-local sidebar_size = os.getenv("YAZI_SIDEBAR_SIZE") or "medium"
-if sidebar_size == "big" then
-    require("toggle-pane"):entry("reset")       -- Wide terminals
-elseif sidebar_size == "medium" then
-    require("toggle-pane"):entry("reset")       -- Medium terminals
-elseif sidebar_size == "small" then
-    require("toggle-pane"):entry("max-current") -- Narrow terminals
-else
-    require("toggle-pane"):entry("reset")       -- Fallback
+-- Function to get terminal width
+local function get_terminal_width()
+    local handle = io.popen("tput cols")
+    local width = handle:read("*n")
+    handle:close()
+    return width or 80 -- Default to 80 if tput fails
 end
+
+-- Function to determine and set the layout
+local function set_layout()
+    -- Check env var first (set by script)
+    local sidebar_size = os.getenv("YAZI_SIDEBAR_SIZE")
+
+    -- If no env var, calculate size based on terminal width
+    if not sidebar_size then
+        local width = get_terminal_width()
+        if width > 120 then
+            sidebar_size = "big"
+        elseif width > 80 then
+            sidebar_size = "medium"
+        else
+            sidebar_size = "small"
+        end
+    end
+
+    -- Map size to layout
+    local layout = (sidebar_size == "small") and "max-current" or "reset"
+    require("toggle-pane"):entry(layout)
+end
+
+-- Apply layout on startup
+set_layout()

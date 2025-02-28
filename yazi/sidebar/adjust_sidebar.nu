@@ -9,13 +9,17 @@ def main [] {
     } else {
         "small"
     }
-    # Quit current Yazi instance if running
-    # if not ($env.YAZI_ID? | is-empty) {
-    #     ya emit quit
-    #     sleep 10ms  # Small delay to ensure quit completes
-    # }
-    # Launch new instance with env var
-    with-env { YAZI_SIDEBAR_SIZE: $sidebar_size } {
-        yazi &  # Background to avoid blocking
+
+    if not ($env.YAZI_ID? | is-empty) {
+        # Quit the current instance
+        ya emit-to $env.YAZI_ID quit
+        sleep 100ms
+        # Relaunch with the new size
+        with-env { YAZI_SIDEBAR_SIZE: $sidebar_size } {
+            yazi
+        }
+    } else {
+        print "No YAZI_ID, launching standalone"
+        with-env { YAZI_SIDEBAR_SIZE: $sidebar_size } { yazi }
     }
 }
