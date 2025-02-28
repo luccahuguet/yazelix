@@ -96,6 +96,7 @@ That's it, and feel free to open issues and PRs 😉
 - Easy to configure and make it yours
 - I daily drive this, and will change it according to my needs, keeping it updated and improving it
 - Zero conflict keybindings (i dont like having to lock zellij), very powerful sidebar (learning yazi is a process, but you can do very cool stuff)
+- Uses cool yazi plugins out of the box
 
 ## Troubleshooting
 
