@@ -1,4 +1,5 @@
 require("sidebar-status"):setup()
+require("git"):setup()
 
 -- Function to get terminal width
 local function get_terminal_width()

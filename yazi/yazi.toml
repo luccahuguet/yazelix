@@ -7,3 +7,13 @@ ratio = [1, 4, 3]
 edit = [
   { run = 'nu ~/.config/yazelix/nushell/open_file.nu "$1"', desc = "Open File in a new pane" },
 ]
+
+[[plugin.prepend_fetchers]]
+id = "git"
+name = "*"
+run = "git"
+
+[[plugin.prepend_fetchers]]
+id = "git"
+name = "*/"
+run = "git"
