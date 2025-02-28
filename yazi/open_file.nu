@@ -42,6 +42,10 @@ export def is_hx_running [list_clients_output: string] {
 
 
 def main [file_path: path] {
+    # Emit the toggle-pane command to the current Yazi instance
+    ya emit-to $env.YAZI_ID "plugin" "toggle-pane" "reset"
+    ya emit-to $env.YAZI_ID "plugin" "toggle-pane" "max-current"
+
     # Move focus to the next pane
     zellij action focus-next-pane
 
