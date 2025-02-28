@@ -1,5 +1,5 @@
 [manager]
-prepend_keymap = [
+append_keymap = [
   { on = [
     "b",
   ], run = "plugin toggle-pane max-current", desc = "Adjust sidebar width dynamically" },
