@@ -105,7 +105,7 @@ That's it, and feel free to open issues and PRs 😉
 
 ## Possible Improvements
 
-- Currently, to open a file from yazi in a helix buffer, helix has to the top pane
+- Currently, to open a file from yazi in a helix buffer, helix has to be the top pane
 
 ## Keybinding remaps
 
