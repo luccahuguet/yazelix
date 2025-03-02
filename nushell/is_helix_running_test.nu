@@ -1,11 +1,11 @@
 #!/usr/bin/env nu
 
-# run this with `nu path/to/this/file`
+# Run this with `nu ~/.config/yazelix/nushell/is_hx_running_test.nu`
 
 use std assert
 
-# Import the function to test
-use open_file.nu is_hx_running
+# Import the function to test from utils.nu
+use ~/.config/yazelix/nushell/utils.nu is_hx_running
 
 # Define test cases
 def test_cases [] {
@@ -41,7 +41,7 @@ def test_cases [] {
 # Run tests
 def run_tests [] {
     mut passed_count = 0
-    let n_tests = test_cases | length 
+    let n_tests = (test_cases | length)
     
     for case in (test_cases) {
         let input = $case.0
