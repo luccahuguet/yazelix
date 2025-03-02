@@ -25,7 +25,6 @@ def main [buffer_name: string] {
         print "Error: Buffer name not provided"
         return
     }
-    log $"Buffer name validated: ($buffer_name)"
 
     # Normalize buffer_name by expanding ~ if present
     let normalized_buffer_name = if ($buffer_name | str contains "~") {
@@ -33,18 +32,10 @@ def main [buffer_name: string] {
     } else {
         $buffer_name
     }
-    log $"Normalized buffer_name: ($normalized_buffer_name)"
 
-    # Resolve the full path based on normalized_buffer_name
-    # - If absolute, use it directly
-    # - If relative, resolve using PWD
-    let full_path = if ($normalized_buffer_name | path type) == "absolute" {
-        $normalized_buffer_name
-    } else {
-        # Resolve relative paths using PWD (current working directory of Helix pane)
-        log $"Trying to resolve relative path using PWD: ($env.PWD)"
-        ($env.PWD | path join $normalized_buffer_name | path expand)
-    }
+    # Resolve the full path using PWD (Helix’s working directory)
+    log $"Trying to resolve path using PWD: ($env.PWD)"
+    let full_path = ($env.PWD | path join $normalized_buffer_name | path expand)
     log $"Resolved full path: ($full_path)"
 
     # Validate the resolved path exists
