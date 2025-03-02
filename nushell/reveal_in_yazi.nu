@@ -17,7 +17,7 @@ def main [buffer_name: string] {
     }
 
     # Log script start
-    log $"Starting reveal_in_yazi.nu with buffer_name: '$buffer_name'"
+    log $"Starting reveal_in_yazi.nu with buffer_name: ($buffer_name)"
 
     # Validate the buffer name is provided
     if ($buffer_name | is-empty) {
@@ -25,7 +25,7 @@ def main [buffer_name: string] {
         print "Error: Buffer name not provided"
         return
     }
-    log $"Buffer name validated: '$buffer_name'"
+    log $"Buffer name validated: ($buffer_name)"
 
     # Normalize buffer_name by expanding ~ if present
     let normalized_buffer_name = if ($buffer_name | str contains "~") {
@@ -33,7 +33,7 @@ def main [buffer_name: string] {
     } else {
         $buffer_name
     }
-    log $"Normalized buffer_name: '$normalized_buffer_name'"
+    log $"Normalized buffer_name: ($normalized_buffer_name)"
 
     # Resolve the full path based on normalized_buffer_name
     # - If absolute, use it directly
@@ -43,18 +43,18 @@ def main [buffer_name: string] {
     } else if ($env.YAZELIX_INITIAL_PATH | is-not-empty) {
         # Use the initial path’s directory as context for relative paths
         let initial_dir = ($env.YAZELIX_INITIAL_PATH | path dirname)
-        log $"Resolving relative path using initial path directory: '$initial_dir'"
+        log $"Resolving relative path using initial path directory: ($initial_dir)"
         ($initial_dir | path join $normalized_buffer_name | path expand)
     } else {
         # Fallback to current working directory (less reliable)
         log "Falling back to PWD for path resolution"
         ($env.PWD | path join $normalized_buffer_name | path expand)
     }
-    log $"Resolved full path: '$full_path'"
+    log $"Resolved full path: ($full_path)"
 
     # Validate the resolved path exists
     if not ($full_path | path exists) {
-        log $"Error: Resolved path '$full_path' does not exist"
+        log $"Error: Resolved path ($full_path) does not exist"
         print $"Error: Resolved path '($full_path)' does not exist"
         return
     }
@@ -68,10 +68,10 @@ def main [buffer_name: string] {
         print "Error: YAZI_ID not set. Ensure Yazi is running and open_file.nu set it."
         return
     }
-    log $"YAZI_ID found: '$env.YAZI_ID'"
+    log $"YAZI_ID found: ($env.YAZI_ID)"
 
     # Navigate Yazi to the directory
-    log $"Navigating Yazi to directory: '$dir'"
+    log $"Navigating Yazi to directory: ($dir)"
     ya emit-to $env.YAZI_ID cd $dir
     log "Yazi navigation completed successfully"
 }
