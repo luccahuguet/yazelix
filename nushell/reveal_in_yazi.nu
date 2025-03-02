@@ -37,25 +37,13 @@ def main [buffer_name: string] {
 
     # Resolve the full path based on normalized_buffer_name
     # - If absolute, use it directly
-    # - If relative, try to resolve using PWD first, then fall back to YAZELIX_INITIAL_PATH if needed
+    # - If relative, resolve using PWD
     let full_path = if ($normalized_buffer_name | path type) == "absolute" {
         $normalized_buffer_name
     } else {
-        # Try resolving relative to PWD first (more likely to reflect current buffer context)
-        let pwd_path = ($env.PWD | path join $normalized_buffer_name | path expand)
+        # Resolve relative paths using PWD (current working directory of Helix pane)
         log $"Trying to resolve relative path using PWD: ($env.PWD)"
-        if ($pwd_path | path exists) {
-            $pwd_path
-        } else if ($env.YAZELIX_INITIAL_PATH | is-not-empty) {
-            # Fall back to YAZELIX_INITIAL_PATH if PWD doesn’t work
-            let initial_dir = ($env.YAZELIX_INITIAL_PATH | path dirname)
-            log $"Initial path resolution failed, falling back to initial path directory: ($initial_dir)"
-            ($initial_dir | path join $normalized_buffer_name | path expand)
-        } else {
-            # Fallback if neither PWD nor YAZELIX_INITIAL_PATH works
-            log "Falling back to default resolution (no PWD or YAZELIX_INITIAL_PATH)"
-            ($nu.home-path | path join $normalized_buffer_name | path expand)
-        }
+        ($env.PWD | path join $normalized_buffer_name | path expand)
     }
     log $"Resolved full path: ($full_path)"
 
