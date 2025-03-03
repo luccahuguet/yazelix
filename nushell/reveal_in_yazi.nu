@@ -6,6 +6,11 @@ def main [buffer_name: string] {
     let log_dir = ($nu.home-path | path join ".config/yazelix/logs" | path expand)
     let log_file = ($log_dir | path join "reveal_in_yazi.log")
     
+    # Trim log file to last 1000 lines if it exceeds 0.5 MB
+    if ($log_file | path exists) and ((ls $log_file).size.0 > 0.5mb) {
+        open $log_file | lines | last 1000 | save -f $log_file
+    }
+    
     # Ensure log directory exists
     mkdir $log_dir
     
