@@ -31,7 +31,7 @@ v5 layout
 - The default behavior is now, when you open a new tab, it opens full-yazi, and when you open a file it goes to sidebar mode automatically!
 - The item above was implemented via 'ya emit-to {yazi_id} {commmand}'. Very cool stuff! 
 - Adds yet another plugin called [git](https://github.com/yazi-rs/plugins/tree/main/git.yazi) that shows file changes on the yazi sidebar. Increadibly helpful!
-- Reveal-in-yazi command added. Pressing `alt y` in helix will reaveal the file in yazi. See how to set it up [here](<README#Yazelix Custom Keybindings>)
+- Reveal-in-yazi command added. Pressing `alt y` in helix will reaveal the file in yazi. See how to set it up [here](<README#Yazelix Custom Keybindings>). LIMITATION: currently it only works for helix instances you opened from yazi (easy: open them only from yazi)
 - I recommend making yazelix's yazi config your default (since it's plugin enhanced, and changes layout based on width):
 
 For nushell users, add this to env.nu file (you can run `config env` to open it): 
