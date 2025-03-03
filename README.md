@@ -1,4 +1,4 @@
-# Yazelix v5.4: The POWER of yazi PLUGINS!
+# Yazelix v6: The POWER of yazi PLUGINS! Lua and nushell, unite! 
 
 ## Overview
 Yazelix integrates yazi, zellij and helix, hence the name, get it?
@@ -22,7 +22,7 @@ v4.1 preview (obs: currect v5 flow is better)
 ![image](https://github.com/user-attachments/assets/46f3f3a8-3c03-47e1-8cbd-cec30f293225)
 v5 layout
 
-## Improvements of v5.4 over v5
+## Improvements of v6 over v5
 - WARNING: After upgrading to latest version of yazelix, kill old yazi instances and terminals to avoid conflicts. For good measure.
 - Adds a yazi plugin to make the status bar in the yazi pane look good again, unclutered, and with a cool color
 - Adds ghostty config. Author also switched to ghostty as a daily driver, but yazelix should work with any terminal (like wezterm that i used in the past). If it does not work, please open an issue!
@@ -30,27 +30,22 @@ v5 layout
 - And you can seamlessly switch between full-yazi and sidebar-yazi them by pressing `b`! It uses the [toggle-pane](https://github.com/yazi-rs/plugins/tree/main/toggle-pane.yazi) yazi plugin under the hood!
 - The default behavior is now, when you open a new tab, it opens full-yazi, and when you open a file it goes to sidebar mode automatically!
 - The item above was implemented via 'ya emit-to {yazi_id} {commmand}'. Very cool stuff! 
-- Adds yet another plugin called [git](https://github.com/yazi-rs/plugins/tree/main/git.yazi) that shows file changes on the yazi sidebar
+- Adds yet another plugin called [git](https://github.com/yazi-rs/plugins/tree/main/git.yazi) that shows file changes on the yazi sidebar. Increadibly helpful!
+- Reveal-in-yazi command added. Pressing `alt y` in helix will reaveal the file in yazi. See how to set it up [here](<README#Yazelix Custom Keybindings>)
 - I recommend making yazelix's yazi config your default (since it's plugin enhanced, and changes layout based on width):
 
-For bash, you can run this code or add the export manually to ~/.bashrc: 
-```
-echo 'export YAZI_CONFIG_HOME=~/.config/yazelix/yazi' >> ~/.bashrc
-source ~/.bashrc
-```
-
-Or for nushell, add this to env.nu file (you can run `config env` to open it): 
+For nushell users, add this to env.nu file (you can run `config env` to open it): 
 ```
 $env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"
 ```
 
-this way if you kill your yazi sidebar you can get it back with just `yazi`, instead of `env YAZI_CONFIG_HOME=~/.config/yazelix/yazi yazi`
+this way if you kill your yazi sidebar you can get it back with just `yazi`, instead of `env YAZI_CONFIG_HOME=~/.config/yazelix/yazi yazi`. Yazelix's yazi knows whether to open in sidebar mode or full mode, comes with the git and toggle-pane plugins
 but it's up to you and will work well either way! 
 
 ## Compatibility
 - Should work with any terminal emulator, but I the ones I use more are wezterm and ghostty
 - editor: helix (for now?)
-- Take a look at the versions of programs used near the end of the readme
+- Take a look at the [table of versions](<README#Table of Versions>)
 
 
 ## Instructions to set it up
@@ -68,7 +63,6 @@ Tip: if you use [cargo-update](https://github.com/nabijaczleweli/cargo-update), 
   ```
   cp ~/.config/yazelix/terminal_configs/wez/.wezterm.lua ~/.wezterm.lua
   ```
-
   Or Ghostty:
    ```
   cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config
@@ -77,11 +71,7 @@ Tip: if you use [cargo-update](https://github.com/nabijaczleweli/cargo-update), 
   ```
   nu -c "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts"
   ```
-  Or maybe
-  ```
-  bash -c "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts"
-  ```
-  I run it with `nu -c` because this is how I load my environment variables
+  I run it with `nu -c` because nushell loads my environment variables
 
 
 Notes:
@@ -92,7 +82,6 @@ That's it, and feel free to open issues and PRs 😉
 
 ## Why use this project?
 
-- This project is relatively simple to understand, the inner workings and all. Just a bit of shell scripting magic, but mostly config files
 - Easy to configure and make it yours
 - I daily drive this, and will change it according to my needs, keeping it updated and improving it
 - Zero conflict keybindings (i dont like having to lock zellij), very powerful sidebar (learning yazi is a process, but you can do very cool stuff)
@@ -103,13 +92,9 @@ That's it, and feel free to open issues and PRs 😉
 - If it's not working, try upgrading yazi and zellij to the latest version
 - Check the [versions table](<README#Table of Versions>)
 
-## Possible Improvements
-
-- Currently, to open a file from yazi in a helix buffer, helix has to be the top pane
-
 ## Keybinding remaps
 
-| New Zellij Keybinding | Previous Keybinding | Helix Action that uses that previous key | Zellij Action remapped    |
+| New Zellij Keybinding | Previous Keybinding | Helix Action that gets liberated!        | Zellij Action remapped      |
 |-----------------------|---------------------|------------------------------------------|-----------------------------|
 | Ctrl e                | Ctrl o              | jump_backward                            | SwitchToMode "Session"      |
 | Ctrl y                | Ctrl s              | save_selection                           | SwitchToMode "Scroll"       |
@@ -123,7 +108,7 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
 
 ## Discoverability of keybindings
 - zellij: zellij is great at this, works out of the box, you'll visually see all the keybindings in the status-bar
-- helix: helix is the same honestly
+- helix: helix is the same as zellij in that aspect honestly
 - yazi: There is only one keybinding to remember: `~` This shows all keybindings and commands (press `alt f` to make the yazi pane fullscreen and view it better)
 - nushell: you can run `tutor` on nushell, you can read the https://www.nushell.sh/book/, you can run `help commands | find regex` (if you want to learn about regex for example, but could be anything) 
     - well, I do use `ctrl r` a lot in nushell, it opens a interactive history search
@@ -132,6 +117,11 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
 ## Yazelix Custom Keybindings
 - Zellij: Type `alt f` to make your pane fullscreen (and back)
 - Yazi: Type `b` to toggle seamlessly between full-yazi and sidebar-yazi (whether it shows parent and preview dirs)
+- Helix: Type `alt y` to reaveal the file from helix buffer in yazi. Add this to your helix config:
+```toml
+[keys.normal]
+A-y = ":sh nu ~/.config/yazelix/nushell/reveal_in_yazi.nu \"%{buffer_name}\""
+````
 
 
 ## Keybindings tips 
