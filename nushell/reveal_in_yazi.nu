@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# ~/.config/yazelix/nushell/reveal_in_yazi.nu
 
 # Navigate Yazi to the directory of the current Helix buffer
 def main [buffer_name: string] {

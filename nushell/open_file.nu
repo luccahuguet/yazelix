@@ -1,11 +1,12 @@
 #!/usr/bin/env nu
+# ~/.config/yazelix/nushell/open_file.nu
 
 # Open a file in Helix, integrating with Yazi and Zellij
 source ~/.config/yazelix/nushell/utils.nu  # Import utility functions
 source ~/.config/yazelix/nushell/zellij_utils.nu  # Import Zellij helpers
 
 def main [file_path: path] {
-    # Validate file_path exists and is a file or directory
+    print $"DEBUG: file_path received: ($file_path), type: ($file_path | path type)"
     if not ($file_path | path exists) {
         print $"Error: File path ($file_path) does not exist"
         return
@@ -29,6 +30,6 @@ def main [file_path: path] {
     if (is_hx_running $running_command) {
         open_in_existing_helix $file_path
     } else {
-        open_new_helix_pane $file_path $yazi_id ($file_path | path expand)  # Pass initial path
+        open_new_helix_pane $file_path $yazi_id
     }
 }

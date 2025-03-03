@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# ~/.config/yazelix/nushell/zellij_utils.nu
 
 # Zellij utility functions for Yazelix
 
@@ -24,32 +25,31 @@ export def open_in_existing_helix [file_path: path] {
 }
 
 # Open a new pane and set up Helix with Yazi integration
-export def open_new_helix_pane [file_path: path, yazi_id: string, initial_path: string] {
-    zellij action new-pane
-    sleep 0.5sec  # Wait for pane to initialize
-    
-    # Determine working directory
+export def open_new_helix_pane [file_path: path, yazi_id: string] {
     let working_dir = if ($file_path | path exists) and ($file_path | path type) == "dir" {
         $file_path
     } else {
         $file_path | path dirname
     }
     
-    zellij action rename-tab ($working_dir | path basename)  # Name tab after directory
+    let log_file = ($nu.home-path | path join ".config/yazelix/logs/open_helix.log")
+    mkdir ($log_file | path dirname)
     
-    # Set environment variables for Yazi and initial path
-    zellij action write-chars $"$env.YAZI_ID = \"($yazi_id)\"; $env.YAZELIX_INITIAL_PATH = \"($initial_path)\""
-    zellij action write 13  # Enter
-    sleep 0.2sec
+    let timestamp = (date now | format date "%Y-%m-%d %H:%M:%S")
+    try {
+        $"[($timestamp)] Attempting to open new pane with YAZI_ID=($yazi_id) for file=($file_path)\n" | save -a $log_file
+    } catch {
+        print $"Failed to write to log file: ($log_file)"
+    }
     
-    # Change to working directory
-    zellij action write-chars $"cd ($working_dir)"
-    zellij action write 13  # Enter
-    sleep 0.2sec
-    
-    # Open Helix with the file
-    zellij action write-chars $"hx ($file_path)"
-    sleep 0.1sec
-    zellij action write 13  # Enter
-    sleep 0.1sec
+    let cmd = $"env YAZI_ID=($yazi_id) hx '($file_path)'"
+    try {
+        $"[($timestamp)] Preparing command: nu -c \"($cmd)\"\n" | save -a $log_file
+        zellij run --direction right --cwd $working_dir -- nu -c $cmd
+        sleep 0.2sec
+        $"[($timestamp)] Command executed successfully: nu -c \"($cmd)\"\n" | save -a $log_file
+    } catch {|err|
+        $"[($timestamp)] Error executing command: nu -c \"($cmd)\"\nError details: ($err.msg)\n" | save -a $log_file
+        print $"Error executing zellij command: nu -c \"($cmd)\"\nDetails: ($err.msg)"
+    }
 }
