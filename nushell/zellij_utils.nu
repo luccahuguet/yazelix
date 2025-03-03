@@ -45,7 +45,7 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
     let cmd = $"env YAZI_ID=($yazi_id) hx '($file_path)'"
     try {
         $"[($timestamp)] Preparing command: nu -c \"($cmd)\"\n" | save -a $log_file
-        zellij run --direction right --cwd $working_dir -- nu -c $cmd
+        zellij run --name "helix" --cwd $working_dir -- nu -c $cmd 
         sleep 0.2sec
         $"[($timestamp)] Command executed successfully: nu -c \"($cmd)\"\n" | save -a $log_file
     } catch {|err|
