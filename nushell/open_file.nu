@@ -18,10 +18,6 @@ def main [file_path: path] {
         print "Warning: YAZI_ID not set in this environment. Yazi navigation may fail."
     }
 
-    # Emit toggle-pane commands to the current Yazi instance
-    ya emit-to $yazi_id "plugin" "toggle-pane" "reset"
-    ya emit-to $yazi_id "plugin" "toggle-pane" "max-current"
-
     # Move focus and check Helix status
     focus_next_pane
     let running_command = (get_running_command)

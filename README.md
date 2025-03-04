@@ -22,24 +22,20 @@ v5 layout
 
 ## Improvements of v6 over v5
 - WARNING: After upgrading to latest version of yazelix, kill old yazi instances and terminals to avoid conflicts. For good measure.
-- Adds a yazi plugin to make the status bar in the yazi pane look good again, unclutered, and with a cool color
+- Adds a yazi plugin to make the status bar in the yazi pane look good, unclutered, and with a cool color, and the Yazelix name!
 - Adds ghostty config. Author also switched to ghostty as a daily driver, but yazelix should work with any terminal (like wezterm that i used in the past). If it does not work, please open an issue!
-- Now whenever you open yazelix's yazi, it knows whether to open yazi full pane (showing parent and preview sections) or yazi in sidebar mode by considering the width available
-- And you can seamlessly switch between full-yazi and sidebar-yazi them by pressing `b`! It uses the [toggle-pane](https://github.com/yazi-rs/plugins/tree/main/toggle-pane.yazi) yazi plugin under the hood!
-- The default behavior is now, when you open a new tab, it opens full-yazi, and when you open a file it goes to sidebar mode automatically!
-- The item above was implemented via 'ya emit-to {yazi_id} {commmand}'. Very cool stuff! 
+- Thanks to this great [plugin](https://github.com/josephschmitt/auto-layout.yazi) now whenever you open yazelix's yazi, it dinamically updates the number of columns (parent, current and preview), simply perfect for sidebar use. 
 - Adds yet another plugin called [git](https://github.com/yazi-rs/plugins/tree/main/git.yazi) that shows file changes on the yazi sidebar. Increadibly helpful!
 - Reveal-in-yazi command added. Pressing `alt y` in helix will reaveal the file in yazi. See how to set it up [here](<README#Yazelix Custom Keybindings>). LIMITATION: currently it only works for helix instances you opened from yazi (easy adaptation: only open helix from yazi)
-- Now when opening a file from yazi, yazi will always find a running instance of helix if it exists, and if it is in the bottom pane from the stacked group (zellij will push the helix pane naturally when you open a new pane, so it should always work, just dont move it)
-- I recommend making yazelix's yazi config your default (since it's plugin enhanced, and changes layout based on width):
+- Now when opening a file from yazi, yazi will always find a running instance of helix if
+  - it exists
+  - and if it is in the bottom pane from the stacked group (zellij will push the helix pane naturally when you open a new pane, so it should always work, just dont move it)
+- Now I recommend making yazelix's yazi config your default (since it's plugin enhanced, and changes layout based on width):
 
 For nushell users, add this to env.nu file (you can run `config env` to open it): 
 ```
 $env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"
 ```
-
-this way if you kill your yazi sidebar you can get it back with just `yazi`, instead of `env YAZI_CONFIG_HOME=~/.config/yazelix/yazi yazi`. Yazelix's yazi knows whether to open in sidebar mode or full mode, comes with the git and toggle-pane plugins
-but it's up to you and will work well either way! 
 
 ## Compatibility
 - Should work with any terminal emulator, but I the ones I use more are wezterm and ghostty
@@ -48,11 +44,11 @@ but it's up to you and will work well either way!
 
 
 ## Instructions to set it up
-1. Make sure [yazi-fm and yazi-cli](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij), [helix](https://helix-editor.com), [nushell](https://www.nushell.sh/book/installation.html), and [zoxide](https://github.com/ajeetdsouza/zoxide) are installed and in your path.
+1. Make sure [yazi-fm and yazi-cli](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij), [helix](https://helix-editor.com), [nushell](https://www.nushell.sh/book/installation.html), and [zoxide](https://github.com/ajeetdsouza/zoxide) are installed and in your path. Lua is not a dependency, since yazi already comes with it!
 Tip: if you use [cargo-update](https://github.com/nabijaczleweli/cargo-update), you can later use `cargo install-update -a` to update all your cargo tools at once, and fast! Because it often install binaries directly:
   ```
   cargo install cargo-update
-  cargo install-update -i zellij nu yazi-cli yazi-fm zoxide gitui # gitui is optional
+  cargo install-update -i zellij nu yazi-cli yazi-fm zoxide # zoxide is optional
   ```
 2. Just clone this repo in your `~/.config` dir:
   ```
@@ -70,7 +66,7 @@ Tip: if you use [cargo-update](https://github.com/nabijaczleweli/cargo-update), 
   ```
   nu -c "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts"
   ```
-  I run it with `nu -c` because nushell loads my environment variables
+  I run it with `nu -c` because nushell loads my environment variables, but you can go with `zellij -l [...] /layouts`
 
 
 Notes:
@@ -115,7 +111,6 @@ If you find a conflict, please open an issue. Keep in mind, though, that compati
 
 ## Yazelix Custom Keybindings
 - Zellij: Type `alt f` to make your pane fullscreen (and back)
-- Yazi: Type `b` to toggle seamlessly between full-yazi and sidebar-yazi (whether it shows parent and preview dirs)
 - Helix: Type `alt y` to reaveal the file from helix buffer in yazi. Add this to your helix config:
 ```toml
 [keys.normal]
@@ -138,15 +133,17 @@ A-y = ":sh nu ~/.config/yazelix/nushell/reveal_in_yazi.nu \"%{buffer_name}\""
 - You can add more swap layouts as needed, using the KDL files in `layouts`.
 - I recommend using ghostty or wezterm as your terminal
   - they are very extensible and performant
-- Special thanks to yazi's, zellij's and helix's contributors/maintainers! 
-- Yazi's author graciously contributed some lua code to make yazi's status bar look awesome in the small width of a sidebar
+
 
 ## Im lost, it's too much information
-
 In this case, learn how to use zellij on it's own first. And then optionally yazi. And then re-read the readme.
 
-## Contributing to Yazelix
+## Thanks
+- Thanks to yazi's, zellij's, helix's and nushell's contributors/maintainers for the great underlying projects and guidance 
+- Thanks to yazi's author for graciously contributing some lua code to make yazi's status bar look awesome in the small width of a sidebar
+- Thanks to https://github.com/josephschmitt for his awesome [plugin](https://github.com/josephschmitt/auto-layout.yazi)
 
+## Contributing to Yazelix
 See here in [contributing](./contributing.md)
 
 ## Table of Versions
