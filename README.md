@@ -4,15 +4,13 @@
 Yazelix integrates yazi, zellij and helix, hence the name, get it?
 
 - Zellij orchestrates everything, with yazi as a sidebar and helix as the editor
-- You can open and close the sidebar by switching zellij layouts (press `alt ]` and `alt [`)
-  - Or if you only got one pane open, make it fullscreen (`ctrl p + f` or `alt f`)
-- Every keybinding from zellij that conflicts with helix is remapped (see them at the bottom)
+- To get rid of the sidebar, just make your pane fullscreen! (`ctrl p + f` or `alt f`)
+- Every keybinding from zellij that conflicts with helix is remapped [see here](<README#Keybinding remaps>)
 - When you hit enter on a file/folder in the "sidebar" the following things happen:
-  - If helix is already open, in a pane next to the sidebar, it will open that file/folder in a new buffer on that pane (magic)
-  - If helix is not open, it will cd into the folder of the file (or the folder itself), and then open it in helix 
-  - Note: It is highly recommended that you let the shell script execute in peace, so during these milliseconds don't move around
-- This project holds my config files for zellij and yazi, almost like a plugin or something
-  - But it's just some config files with a bit of shell scripting!
+  - If helix is already open, in the bottom-most pane of the stack (default position), it will open that file/folder in a new buffer on helix!
+  - If helix is not open, it will open helix into a new pane for you
+- Some features include "reveal file in sidebar" and a yazi plugin that shows you when a file was added or changed
+- This project holds my config files for zellij, yazi, terminal emulators, nushell scripts, lua plugins and a lot of love
 
 ## Preview
 ![yazelix_v41_demo](https://github.com/user-attachments/assets/09a452e0-4a62-4e8e-afe6-2c7267f78b11)
@@ -31,7 +29,8 @@ v5 layout
 - The default behavior is now, when you open a new tab, it opens full-yazi, and when you open a file it goes to sidebar mode automatically!
 - The item above was implemented via 'ya emit-to {yazi_id} {commmand}'. Very cool stuff! 
 - Adds yet another plugin called [git](https://github.com/yazi-rs/plugins/tree/main/git.yazi) that shows file changes on the yazi sidebar. Increadibly helpful!
-- Reveal-in-yazi command added. Pressing `alt y` in helix will reaveal the file in yazi. See how to set it up [here](<README#Yazelix Custom Keybindings>). LIMITATION: currently it only works for helix instances you opened from yazi (easy: open them only from yazi)
+- Reveal-in-yazi command added. Pressing `alt y` in helix will reaveal the file in yazi. See how to set it up [here](<README#Yazelix Custom Keybindings>). LIMITATION: currently it only works for helix instances you opened from yazi (easy adaptation: only open helix from yazi)
+- Now when opening a file from yazi, yazi will always find a running instance of helix if it exists, and if it is in the bottom pane from the stacked group (zellij will push the helix pane naturally when you open a new pane, so it should always work, just dont move it)
 - I recommend making yazelix's yazi config your default (since it's plugin enhanced, and changes layout based on width):
 
 For nushell users, add this to env.nu file (you can run `config env` to open it): 
