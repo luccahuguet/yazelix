@@ -16,7 +16,7 @@ Yazelix integrates yazi, zellij and helix, hence the name, get it?
 
 ## Preview
 ![yazelix_v41_demo](https://github.com/user-attachments/assets/09a452e0-4a62-4e8e-afe6-2c7267f78b11)
-v4.1 preview (obs: currect v5 flow is better)
+v4.1 preview (obs: current v5 flow is better)
 
 
 ![image](https://github.com/user-attachments/assets/46f3f3a8-3c03-47e1-8cbd-cec30f293225)
