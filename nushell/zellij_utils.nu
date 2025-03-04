@@ -5,7 +5,13 @@
 
 # Focus the next Zellij pane
 export def focus_next_pane [] {
-    zellij action focus-next-pane
+    zellij action move-focus right
+
+    zellij action move-focus down
+    zellij action move-focus down
+    zellij action move-focus down
+    zellij action move-focus down
+    zellij action move-focus down
 }
 
 # Get the running command from the second Zellij client
