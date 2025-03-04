@@ -65,6 +65,7 @@ def main [buffer_name: string] {
     # Navigate Yazi to the directory
     log $"Navigating Yazi to directory: ($dir)"
     ya emit-to $env.YAZI_ID cd $dir
+    zellij action move-focus left
     log "Yazi navigation completed successfully"
 }
 
