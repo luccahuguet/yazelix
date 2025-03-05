@@ -70,7 +70,7 @@ v5 layout
      ```
    - For other emulators, configure it to run this command on startup (view [ghostty's config](<./terminal_configs/ghostty/config>) for a detailed explanation and alternatives):
      ```
-    "nu -c 'zellij --config-dir ~/.config/yazelix/zellij attach --create yazelix_ghostty options --default-layout yazelix'"
+     "nu -c 'zellij --config-dir ~/.config/yazelix/zellij attach --create yazelix_ghostty options --default-layout yazelix'"
      ```
 
 **Notes**:
