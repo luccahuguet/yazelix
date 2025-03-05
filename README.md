@@ -47,8 +47,10 @@ v5 layout
    - [Zellij](https://github.com/zellij-org/zellij)
    - [Helix](https://helix-editor.com)
    - [Nushell](https://www.nushell.sh/book/installation.html)
-   - [Zoxide](https://github.com/ajeetdsouza/zoxide) (optional)
-   - Tip: Use [cargo-update](https://github.com/nabijaczleweli/cargo-update) to keep them updated:
+   - [Zoxide](https://github.com/ajeetdsouza/zoxide): optional, allows you to quickly navigate directories using a smart, interactive command-line tool that learns your habits.
+   - [cargo-update](https://github.com/nabijaczleweli/cargo-update): optional, enables you to update Rust crates in your project by running a simple command to fetch the latest versions.
+   - [cargo-binstall](https://github.com/cargo-bins/cargo-binstall): optional, provides a faster way to install Rust binaries directly from pre-built releases, skipping the compilation step. Will be used by cargo-update if available. Very usefull.
+  - Example of how to install the deps:
      ```
      cargo install cargo-update cargo-binstall
      cargo install-update -i zellij nu yazi-cli yazi-fm zoxide
