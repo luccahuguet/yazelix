@@ -50,7 +50,7 @@ v5 layout
    - [Zoxide](https://github.com/ajeetdsouza/zoxide) (optional)
    - Tip: Use [cargo-update](https://github.com/nabijaczleweli/cargo-update) to keep them updated:
      ```
-     cargo install cargo-update
+     cargo install cargo-update cargo-binstall
      cargo install-update -i zellij nu yazi-cli yazi-fm zoxide
      ```
 2. Clone this repo into your `~/.config` directory:
