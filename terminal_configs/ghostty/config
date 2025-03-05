@@ -42,7 +42,12 @@
 # # Just for example:
 # resize-overlay-duration = 4s 200ms
 
-command = "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts"
+# to pick a layout
+# command = "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts"
+
+# to start with yazelix, creating a new session or attaching if a session called yazelix already exists
+command = "zellij --config-dir ~/.config/yazelix/zellij attach --create yazelix options --default-layout yazelix"
+
 theme = "Abernathy"
 window-decoration = "none"
 window-padding-y = 10,0
