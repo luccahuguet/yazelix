@@ -1,162 +1,162 @@
-# Yazelix v6: The POWER of yazi PLUGINS! Lua and nushell, unite! 
+# Yazelix v6: The POWER of Yazi PLUGINS! And nushell scripting!
 
 ## Overview
-Yazelix integrates yazi, zellij and helix, hence the name, get it?
+Yazelix integrates Yazi, Zellij and Helix, hence the name, get it?
 
-- Zellij orchestrates everything, with yazi as a sidebar and helix as the editor
-- To get rid of the sidebar, just make your pane fullscreen! (`ctrl p + f` or `alt f`)
-- Every keybinding from zellij that conflicts with helix is remapped [see here](<README#Keybinding remaps>)
-- When you hit enter on a file/folder in the "sidebar" the following things happen:
-  - If helix is already open, in the bottom-most pane of the stack (default position), it will open that file/folder in a new buffer on helix!
-  - If helix is not open, it will open helix into a new pane for you
-- Some features include "reveal file in sidebar" and a yazi plugin that shows you when a file was added or changed
-- This project holds my config files for zellij, yazi, terminal emulators, nushell scripts, lua plugins and a lot of love
+- Zellij orchestrates everything, with Yazi as a sidebar and Helix as the editor
+- To hide the sidebar, just make your pane fullscreen! (`Ctrl p + f` or `Alt f`)
+- Every keybinding from Zellij that conflicts with Helix is remapped [see here](<README#Keybindings>)
+- When you hit Enter on a file/folder in the "sidebar," the following happens:
+  - If Helix is already open in the bottom-most pane of the stack (default position), it opens that file/folder in a new buffer in Helix!
+  - If Helix isn’t open, it launches Helix in a new pane for you
+- Features include "reveal file in sidebar" and a Yazi plugin that shows when a file was added or changed
+- This project holds my config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins and a lot of love
 
 ## Preview
 ![yazelix_v41_demo](https://github.com/user-attachments/assets/09a452e0-4a62-4e8e-afe6-2c7267f78b11)
 v4.1 preview (obs: current v5 flow is better)
 
-
 ![image](https://github.com/user-attachments/assets/46f3f3a8-3c03-47e1-8cbd-cec30f293225)
 v5 layout
 
 ## Improvements of v6 over v5
-- WARNING: After upgrading to latest version of yazelix, kill old yazi instances and terminals to avoid conflicts. For good measure.
-- Adds a yazi plugin to make the status bar in the yazi pane look good, unclutered, and with a cool color, and the Yazelix name!
-- Adds ghostty config. Author also switched to ghostty as a daily driver, but yazelix should work with any terminal (like wezterm that i used in the past). If it does not work, please open an issue!
-- Thanks to this great [plugin](https://github.com/josephschmitt/auto-layout.yazi) now whenever you open yazelix's yazi, it dinamically updates the number of columns (parent, current and preview), simply perfect for sidebar use. 
-- Adds yet another plugin called [git](https://github.com/yazi-rs/plugins/tree/main/git.yazi) that shows file changes on the yazi sidebar. Increadibly helpful!
-- Reveal-in-yazi command added. Pressing `alt y` in helix will reaveal the file in yazi. See how to set it up [here](<README#Yazelix Custom Keybindings>). LIMITATION: currently it only works for helix instances you opened from yazi (easy adaptation: only open helix from yazi)
-- Now when opening a file from yazi, yazi will always find a running instance of helix if
-  - it exists
-  - and if it is in the bottom pane from the stacked group (zellij will push the helix pane naturally when you open a new pane, so it should always work, just dont move it)
-- Now I recommend making yazelix's yazi config your default (since it's plugin enhanced, and changes layout based on width):
-
-For nushell users, add this to env.nu file (you can run `config env` to open it): 
-```
-$env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"
-```
+- **Warning**: After upgrading to Yazelix v6, terminate any running Yazi instances and old terminals to prevent conflicts
+- Adds a Yazi plugin to enhance the status bar in the sidebar pane, making it uncluttered, colorful and branded with the Yazelix name
+- Includes a Ghostty config. The author now uses Ghostty as their daily driver, but Yazelix remains compatible with any terminal emulator!
+- Thanks to this great [plugin](https://github.com/josephschmitt/auto-layout.yazi), Yazelix’s Yazi now dynamically updates the number of columns (parent, current and preview), making it perfect for sidebar use
+- Adds a [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) that shows file changes in the Yazi sidebar, incredibly helpful!
+- Reveal-in-Yazi command added, pressing `Alt y` in Helix will reveal the file in Yazi, see how to set it up [here](<README#Yazelix Custom Keybindings>). It was implemented using nushell and the `ya emit-to` command
+  - LIMITATION (for now): currently it only works for helix instances you opened from yazi (easy adaptation: only open helix from yazi)
+  - Requirement: For now you have to [build helix from source](https://docs.helix-editor.com/building-from-source.html), while we wait for the next helix release (with command expansions)
+- When opening a file from Yazi, it now always finds a running Helix instance if:
+  - It exists
+  - It’s in the bottom pane of the stacked group (Zellij naturally pushes the Helix pane there when opening new panes, so it should work unless you reposition it manually)
+- Recommendation: Make Yazelix’s Yazi config your default (it’s plugin-enhanced and adjusts layout based on width), for Nushell users, add this to your `env.nu` file (run `config env` to edit):
+  ```
+  $env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"
+  ```
 
 ## Compatibility
-- Should work with any terminal emulator, but I the ones I use more are wezterm and ghostty
-- editor: helix (for now?)
-- Take a look at the [table of versions](<README#Table of Versions>)
+- Works with any terminal emulator, though I prefer WezTerm and Ghostty
+- Editor: Helix (for now)
+- See the version compatibility table [here](<README#Table of Versions>)
 
-
-## Instructions to set it up
-1. Make sure [yazi-fm and yazi-cli](https://github.com/sxyazi/yazi), [zellij](https://github.com/zellij-org/zellij), [helix](https://helix-editor.com), [nushell](https://www.nushell.sh/book/installation.html), and [zoxide](https://github.com/ajeetdsouza/zoxide) are installed and in your path. Lua is not a dependency, since yazi already comes with it!
-Tip: if you use [cargo-update](https://github.com/nabijaczleweli/cargo-update), you can later use `cargo install-update -a` to update all your cargo tools at once, and fast! Because it often install binaries directly:
-  ```
-  cargo install cargo-update
-  cargo install-update -i zellij nu yazi-cli yazi-fm zoxide # zoxide is optional
-  ```
-2. Just clone this repo in your `~/.config` dir:
-  ```
-  git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
-  ```
-3. Configure WezTerm:  
-  ```
-  cp ~/.config/yazelix/terminal_configs/wez/.wezterm.lua ~/.wezterm.lua
-  ```
-  Or Ghostty:
+## Instructions to Set It Up
+1. Ensure the following are installed and in your PATH:
+   - [Yazi-fm and Yazi-cli](https://github.com/sxyazi/yazi)
+   - [Zellij](https://github.com/zellij-org/zellij)
+   - [Helix](https://helix-editor.com)
+   - [Nushell](https://www.nushell.sh/book/installation.html)
+   - [Zoxide](https://github.com/ajeetdsouza/zoxide) (optional)
+   - Tip: Use [cargo-update](https://github.com/nabijaczleweli/cargo-update) to keep them updated:
+     ```
+     cargo install cargo-update
+     cargo install-update -i zellij nu yazi-cli yazi-fm zoxide
+     ```
+2. Clone this repo into your `~/.config` directory:
    ```
-  cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config
-  ```
-  Or, for other terminal emulators, you have to configure it to run something like
-  ```
-  nu -c "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts"
-  ```
-  I run it with `nu -c` because nushell loads my environment variables, but you can go with `zellij -l [...] /layouts`
+   git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
+   ```
+3. Configure your terminal emulator:
+   - For WezTerm:
+     ```
+     cp ~/.config/yazelix/terminal_configs/wez/.wezterm.lua ~/.wezterm.lua
+     ```
+   - For Ghostty:
+     ```
+     cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config
+     ```
+   - For other emulators, configure it to run:
+     ```
+     nu -c "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts"
+     ```
+     (I use `nu -c` to load Nushell env vars, but you could run it directly with `zellij -l...`)
 
+**Notes**:
+- Feel free to tweak the configs to make it yours—this is just a starting point
+- For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html) or [Ghostty Docs](https://ghostty.org/docs/config)
 
-Notes:
-  - Feel free to change the configs and make it yours, this is just a starting point
-  - For extra configuration, visit: https://wezfurlong.org/wezterm/config/files.html or https://ghostty.org/docs/config
+That’s it! Open issues or PRs if you’d like 😉
 
-That's it, and feel free to open issues and PRs 😉
-
-## Why use this project?
-
-- Easy to configure and make it yours
-- I daily drive this, and will change it according to my needs, keeping it updated and improving it
-- Zero conflict keybindings (i dont like having to lock zellij), very powerful sidebar (learning yazi is a process, but you can do very cool stuff)
-- Uses cool yazi plugins out of the box
+## Why Use This Project?
+- Easy to configure and personalize
+- I daily-drive Yazelix and will always try to improve it and maintain it
+- Zero-conflict keybindings (no need to lock Zellij) and a powerful, plugin-enhanced sidebar
+- Cool Yazi plugins included out of the box
 
 ## Troubleshooting
+- If it’s not working, try upgrading Yazi and Zellij to the latest versions
+- Check the version compatibility table [here](<README#Table of Versions>)
 
-- If it's not working, try upgrading yazi and zellij to the latest version
-- Check the [versions table](<README#Table of Versions>)
+## Keybindings
+| New Zellij Keybinding | Previous Keybinding | Helix Action that conflicted before  | Zellij Action Remapped     |
+|-----------------------|---------------------|--------------------------------------|----------------------------|
+| Ctrl e                | Ctrl o              | jump_backward                        | SwitchToMode "Session"     |
+| Ctrl y                | Ctrl s              | save_selection                       | SwitchToMode "Scroll"      |
+| Alt w                 | Alt i               | shrink_selection                     | MoveTab "Left"             |
+| Alt q                 | Alt o               | expand_selection                     | MoveTab "Right"            |
+| Alt m                 | Alt n               | select_next_sibling                  | NewPane                    |
+| Alt 2                 | Ctrl b              | move_page_up                         | SwitchToMode "Tmux"        |
 
-## Keybinding remaps
+If you find a conflict, please open an issue
 
-| New Zellij Keybinding | Previous Keybinding | Helix Action that gets liberated!        | Zellij Action remapped      |
-|-----------------------|---------------------|------------------------------------------|-----------------------------|
-| Ctrl e                | Ctrl o              | jump_backward                            | SwitchToMode "Session"      |
-| Ctrl y                | Ctrl s              | save_selection                           | SwitchToMode "Scroll"       |
-| Alt w                 | Alt i               | shrink_selection                         | MoveTab "Left"              |
-| Alt q                 | Alt o               | expand_selection                         | MoveTab "Right"             |
-| Alt m                 | Alt n               | select_next_sibling                      | NewPane                     |
-| Alt 2                 | Ctrl b              | move_page_up                             | SwitchToMode "Tmux"         |
-
-If you find a conflict, please open an issue. Keep in mind, though, that compatibility with tmux mode is not a goal of this project.
-
-
-## Discoverability of keybindings
-- zellij: zellij is great at this, works out of the box, you'll visually see all the keybindings in the status-bar
-- helix: helix is the same as zellij in that aspect honestly
-- yazi: There is only one keybinding to remember: `~` This shows all keybindings and commands (press `alt f` to make the yazi pane fullscreen and view it better)
-- nushell: you can run `tutor` on nushell, you can read the https://www.nushell.sh/book/, you can run `help commands | find regex` (if you want to learn about regex for example, but could be anything) 
-    - well, I do use `ctrl r` a lot in nushell, it opens a interactive history search
-  
+## Discoverability of Keybindings
+- **Zellij**: Shows all keybindings visually in the status bar—works out of the box
+- **Helix**: Similar to Zellij, keybindings are easy to discover
+- **Yazi**: Press `~` to see all keybindings and commands (use `Alt f` to fullscreen the pane for a better view)
+- **Nushell**:
+  - Run `tutor` on a nu shell
+  - Read the [Nushell Book](https://www.nushell.sh/book/)
+  - Use `help commands | find tables` to search, for example, commands that are related to tables
 
 ## Yazelix Custom Keybindings
-- Zellij: Type `alt f` to make your pane fullscreen (and back)
-- Helix: Type `alt y` to reaveal the file from helix buffer in yazi. Add this to your helix config:
-```toml
-[keys.normal]
-A-y = ":sh nu ~/.config/yazelix/nushell/reveal_in_yazi.nu \"%{buffer_name}\""
-````
+- **Zellij**: `Alt f` toggles pane fullscreen
+- **Helix**: `Alt y` reveals the file from the Helix buffer in Yazi, add this to your Helix config:
+  ```toml
+  [keys.normal]
+  A-y = ":sh nu ~/.config/yazelix/nushell/reveal_in_yazi.nu \"%{buffer_name}\""
+  ```
 
-
-## Keybindings tips 
-- Zellij: Type `ctrl p` then `r` for a split to the right
-- Zellij: Type `ctrl p` then `d` for a split in the "down" direction
-- Yazi: Type `z` to use zoxide (fuzzy find to known paths)
-- Yazi: Type `Z` to use fzf (fuzzy find to unknown paths)
-- Yazi: Type `SPACE` to select files
-- Yazi: Type `y` to `yank` and `Y` to `unyank` (cancels the copy)
-- Yazi: Type `x` to `cut` and `X` to `uncut` (cancels the cut)
-- Yazi: Type `a` to `add` a file (`filename.ext`) or a folder (`foldername/`)
+## Keybinding Tips
+- **Zellij**: `Ctrl p` then `r` for a split to the right; `Ctrl p` then `d` for a downward split
+- **Yazi**: 
+  - `z`: Use Zoxide (fuzzy find known paths)
+  - `Z`: Use fzf (fuzzy find unknown paths)
+  - `SPACE`: Select files
+  - `y`: Yank (copy); `Y`: Unyank (cancel copy)
+  - `x`: Cut; `X`: Uncut (cancel cut)
+  - `a`: Add a file (`filename.ext`) or folder (`foldername/`)
+- **Nushell**:
+  - `Ctrl r`: interactive history search
+  - `Ctrl o`: open a temporary buffer
 
 
 ## Tips
-- You can add more swap layouts as needed, using the KDL files in `layouts`.
-- I recommend using ghostty or wezterm as your terminal
-  - they are very extensible and performant
+- Add more swap layouts as needed using the KDL files in `layouts`
+- I recommend Ghostty or WezTerm, they are extensible and performant
 
-
-## Im lost, it's too much information
-In this case, learn how to use zellij on it's own first. And then optionally yazi. And then re-read the readme.
+## I’m Lost! Too Much Information
+Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterward
 
 ## Thanks
-- Thanks to yazi's, zellij's, helix's and nushell's contributors/maintainers for the great underlying projects and guidance 
-- Thanks to yazi's author for graciously contributing some lua code to make yazi's status bar look awesome in the small width of a sidebar
-- Thanks to https://github.com/josephschmitt for his awesome [plugin](https://github.com/josephschmitt/auto-layout.yazi)
+- To Yazi, Zellij, Helix and Nushell contributors/maintainers for their amazing projects and guidance
+- To Yazi’s author for contributing Lua code to make the sidebar status bar look awesome
+- To [Joseph Schmitt](https://github.com/josephschmitt) for his excellent [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi)
 
 ## Contributing to Yazelix
-See here in [contributing](./contributing.md)
+See [contributing](./contributing.md)
 
 ## Table of Versions
-  - Last tested Frebuary 28th, 2025
-  - Should work with older versions, but these are the ones I tested with
-  - Should work with other terminal emulators (i've used alacritty in the past)
+- Last tested: March 5, 2025
+- Should work with older versions, but these are tested:
+- Compatible with other terminal emulators (e.g., Alacritty in the past)
 
 | Component          | Version                  |
-| ------------------ | ------------------------ |
+|--------------------|--------------------------|
 | OS                 | Pop!_OS 24.04            |
 | DE                 | COSMIC                   |
 | Zellij             | 0.41.2                   |
-| Helix (from source)| helix 25.01.1 (0efa8207) |
+| Helix (from source)| 25.01.1 (0efa8207)       |
 | Nushell            | 0.102.0                  |
 | Zoxide             | 0.9.7                    |
 | Yazi               | 25.2.26                  |
