@@ -162,11 +162,11 @@ See [contributing](./contributing.md)
 | OS                 | Pop!_OS 24.04            |
 | DE                 | COSMIC                   |
 | Zellij             | 0.41.2                   |
-| Helix (from source)| 25.01.1 (0efa8207)       |
+| Helix (from source)| helix 25.01.1 (0efa8207) |
 | Nushell            | 0.102.0                  |
 | Zoxide             | 0.9.7                    |
-| Yazi               | 25.2.26                  |
+| Yazi               | 25.3.2                   |
 | WezTerm            | 20240203-110809-5046fc22 |
 | Ghostty            | 1.1.2                    |
-| ya (from yazi-cli) | 25.2.26                  |
+| ya (from yazi-cli) | 25.3.2                   |
 
