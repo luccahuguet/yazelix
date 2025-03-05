@@ -34,7 +34,7 @@ def main [buffer_name: string] {
     
     if ($env.YAZI_ID | is-empty) {
         log_to_file "reveal_in_yazi.log" "Error: YAZI_ID not set"
-        print "Error: YAZI_ID not set. Ensure Yazi is running and open_file.nu set it."
+        print "Error: YAZI_ID not set. reveal-in-yazi requires that you open helix from yazelix's yazi."
         return
     }
     
