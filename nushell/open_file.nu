@@ -19,7 +19,7 @@ def main [file_path: path] {
     }
 
     # Move focus and check Helix status
-    focus_next_pane
+    find_helix
     let running_command = (get_running_command)
 
     # Open file based on whether Helix is already running
