@@ -68,9 +68,9 @@ v5 layout
      ```
      cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config
      ```
-   - For other emulators, configure it to run:
+   - For other emulators, configure it to run this command on startup (view [ghostty's config](<./terminal_configs/ghostty/config>) for a detailed explanation and alternatives):
      ```
-     nu -c "zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts"
+    "nu -c 'zellij --config-dir ~/.config/yazelix/zellij attach --create yazelix_ghostty options --default-layout yazelix'"
      ```
      (I use `nu -c` to load Nushell env vars, but you could run it directly with `zellij -l...`)
 
