@@ -87,7 +87,11 @@ That’s it! Open issues or PRs if you’d like 😉
 - Cool Yazi plugins included out of the box
 
 ## Troubleshooting
-- If it’s not working, try upgrading Yazi and Zellij to the latest versions
+- If it’s not working properly, you can:
+  - Upgrade Yazi and Zellij to the latest versions for bug fixes and compatibility
+  - Check Yazelix logs in `~/.config/yazelix/logs/` (`open_helix.log`, `reveal_in_yazi.log`) for script-specific errors
+  - View Yazi logs in `~/.local/state/yazi/yazi.log` by running `YAZI_LOG=debug yazi` (or `info`, `warn`, `error` for progressively less verbosity) to enable logging, with `error` being the least verbose
+  - View Zellij logs by opening `~/.cache/zellij/zellij-log-<session>.log` or `/tmp/zellij-<uid>/zellij-log/zellij.log` (path varies by system) for session-specific issues
 - Check the version compatibility table [here](<README#Table of Versions>)
 
 ## Keybindings
