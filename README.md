@@ -72,7 +72,6 @@ v5 layout
      ```
     "nu -c 'zellij --config-dir ~/.config/yazelix/zellij attach --create yazelix_ghostty options --default-layout yazelix'"
      ```
-     (I use `nu -c` to load Nushell env vars, but you could run it directly with `zellij -l...`)
 
 **Notes**:
 - Feel free to tweak the configs to make it yours—this is just a starting point
