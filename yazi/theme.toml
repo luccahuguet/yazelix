@@ -1,5 +1,5 @@
 
 [status]
 overall = { bg = "magenta" }
-separator_open = " "
-separator_close = " "
+sep_left = { open = "", close = "" }
+sep_right = { open = "", close = "" }
