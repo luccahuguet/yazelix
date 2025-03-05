@@ -154,7 +154,7 @@ See [contributing](./contributing.md)
 
 ## Table of Versions
 - Last tested: March 5, 2025
-- Should work with older versions, but these are tested:
+- Should work with older versions, but these are tested
 - Compatible with other terminal emulators (e.g., Alacritty in the past)
 
 | Component          | Version                  |
