@@ -82,8 +82,9 @@ That’s it! Open issues or PRs if you’d like 😉
 ## Why Use This Project?
 - Easy to configure and personalize
 - I daily-drive Yazelix and will always try to improve it and maintain it
-- Zero-conflict keybindings (no need to lock Zellij) and a powerful, plugin-enhanced sidebar
+- Zero-conflict keybindings (no need to lock Zellij) and a powerful yazi sidebar
 - Cool Yazi plugins included out of the box
+- Features like `reaveal in yazi` (from helix) and opening files from yazi in a hx buffer
 
 ## Troubleshooting
 - If it’s not working properly, you can:
