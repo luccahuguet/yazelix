@@ -3,12 +3,27 @@
 
 source ~/.config/yazelix/nushell/logging.nu
 
-# Zellij utility functions for Yazelix
+# Get the tab name based on Git repo or working directory
+def get_tab_name [working_dir: path] {
+    let git_root = (git rev-parse --show-toplevel | str trim)
+    let tab_name = if ($git_root | is-not-empty) and (not ($git_root | str starts-with "fatal:")) {
+        log_to_file "open_helix.log" $"Git root found: ($git_root)"
+        $git_root | path basename
+    } else {
+        let basename = ($working_dir | str trim | path basename)
+        log_to_file "open_helix.log" $"No valid Git repo, using basename of ($working_dir): ($basename)"
+        if ($basename | is-empty) {
+            "unnamed"
+        } else {
+            $basename
+        }
+    }
+    $tab_name
+}
 
 # Focus the helix pane
 export def find_helix [] {
     zellij action move-focus right
-    
     zellij action move-focus down
     zellij action move-focus down
     zellij action move-focus down
@@ -26,7 +41,7 @@ export def get_running_command [] {
         | to text
 }
 
-# Open a file in an existing Helix pane
+# Open a file in an existing Helix pane and rename tab
 export def open_in_existing_helix [file_path: path] {
     log_to_file "open_helix.log" $"Starting open_in_existing_helix with file_path: ($file_path)"
     
@@ -46,6 +61,9 @@ export def open_in_existing_helix [file_path: path] {
     
     log_to_file "open_helix.log" $"File path validated as existing"
     
+    let tab_name = get_tab_name $working_dir
+    log_to_file "open_helix.log" $"Calculated tab_name: ($tab_name)"
+    
     try {
         zellij action write 27
         log_to_file "open_helix.log" "Sent Escape (27) to enter command mode"
@@ -62,6 +80,9 @@ export def open_in_existing_helix [file_path: path] {
         zellij action write 13
         log_to_file "open_helix.log" "Sent Enter (13) for open command"
         
+        zellij action rename-tab $tab_name
+        log_to_file "open_helix.log" $"Renamed tab to: ($tab_name)"
+        
         log_to_file "open_helix.log" "Commands executed successfully"
     } catch {|err|
         log_to_file "open_helix.log" $"Error executing commands: ($err.msg)"
@@ -69,7 +90,7 @@ export def open_in_existing_helix [file_path: path] {
     }
 }
 
-# Open a new pane and set up Helix with Yazi integration
+# Open a new pane and set up Helix with Yazi integration, renaming tab
 export def open_new_helix_pane [file_path: path, yazi_id: string] {
     let working_dir = if ($file_path | path exists) and ($file_path | path type) == "dir" {
         $file_path
@@ -79,12 +100,18 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
     
     log_to_file "open_helix.log" $"Attempting to open new pane with YAZI_ID=($yazi_id) for file=($file_path)"
     
+    let tab_name = get_tab_name $working_dir
+    log_to_file "open_helix.log" $"Calculated tab_name: ($tab_name)"
+    
     let cmd = $"env YAZI_ID=($yazi_id) hx '($file_path)'"
     
     try {
         log_to_file "open_helix.log" $"Preparing command: nu -c \"($cmd)\""
         zellij run --name "helix" --cwd $working_dir -- nu -c $cmd 
         log_to_file "open_helix.log" $"Command executed successfully: nu -c \"($cmd)\""
+        
+        zellij action rename-tab $tab_name
+        log_to_file "open_helix.log" $"Renamed tab to: ($tab_name)"
     } catch {|err|
         log_to_file "open_helix.log" $"Error executing command: nu -c \"($cmd)\"\nError details: ($err.msg)"
         print $"Error executing zellij command: nu -c \"($cmd)\"\nDetails: ($err.msg)"
