@@ -35,6 +35,8 @@ v5 layout
   ```
   $env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"
   ```
+- Added detailed logging for nushell scripts, and added logging instructions regarding zellij/yazi to the readme
+- Code is way more robust, and the features more polished (open from yazi specially so)
 
 ## Compatibility
 - Works with any terminal emulator, though I prefer WezTerm and Ghostty
