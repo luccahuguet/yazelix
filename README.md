@@ -13,11 +13,8 @@ Yazelix integrates Yazi, Zellij and Helix, hence the name, get it?
 - This project holds my config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins and a lot of love
 
 ## Preview
-![yazelix_v41_demo](https://github.com/user-attachments/assets/09a452e0-4a62-4e8e-afe6-2c7267f78b11)
-v4.1 preview (obs: current v5 flow is better)
-
-![image](https://github.com/user-attachments/assets/46f3f3a8-3c03-47e1-8cbd-cec30f293225)
-v5 layout
+![yazelix_v6_demo](assets/reveal_fullscreen_stacked.gif)
+v6 demo
 
 ## Improvements of v6 over v5
 - **Warning**: After upgrading to Yazelix v6, terminate any running Yazi instances and old terminals to prevent conflicts
