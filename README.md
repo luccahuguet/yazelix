@@ -32,6 +32,9 @@ v6 demo
   ```
   $env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"
   ```
+- Added detailed logging for nushell scripts, and added logging instructions regarding zellij/yazi to the readme
+- Code is way more robust, and the features more polished (open from yazi specially so)
+- When you open a file from yazi, it automatically renames to the tab to the underlying git repo or directory name (game changer)
 
 ## Compatibility
 - Works with any terminal emulator, though I prefer WezTerm and Ghostty
