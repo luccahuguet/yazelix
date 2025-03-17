@@ -16,7 +16,7 @@ layout {
         pane split_direction="vertical" {
             pane name="sidebar" {
                 command "env"
-                args "YAZI_CONFIG_HOME=~/.config/yazelix/yazi/sidebar" "yazi"
+                args "YAZI_CONFIG_HOME=~/.config/yazelix/yazi" "yazi"
             	size "100%"
             }
         }
@@ -25,6 +25,8 @@ layout {
         }
     }
 }
+
+// IMPORTANT REFERENCE
 
 // keybinds {
 //     shared {
