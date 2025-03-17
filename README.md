@@ -18,7 +18,7 @@ v6 demo
 
 ## Improvements of v6 over v5
 - **Warning**: After upgrading to Yazelix v6, terminate any running Yazi instances and old terminals to prevent conflicts
-- Adds a Yazi plugin to enhance the status bar in the sidebar pane, making it uncluttered, colorful and branded with the Yazelix name
+- Adds a Yazi plugin to enhance the status bar in the sidebar pane, making it uncluttered, colorful and restores showing file permissions
 - Includes a Ghostty config. The author now uses Ghostty as their daily driver, but Yazelix remains compatible with any terminal emulator!
 - Thanks to this great [plugin](https://github.com/josephschmitt/auto-layout.yazi), Yazelix’s Yazi now dynamically updates the number of columns (parent, current and preview), making it perfect for sidebar use
 - Adds a [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) that shows file changes in the Yazi sidebar, incredibly helpful!
