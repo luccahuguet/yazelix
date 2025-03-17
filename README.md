@@ -1,4 +1,4 @@
-# Yazelix v6: The POWER of Yazi PLUGINS! And nushell scripting!
+# Yazelix v6: The power of Yazi plugins and nushell scripting!
 
 ## Overview
 Yazelix integrates Yazi, Zellij and Helix, hence the name, get it?
