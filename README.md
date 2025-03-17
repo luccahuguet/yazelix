@@ -24,11 +24,11 @@ v6 demo
 - Adds a [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) that shows file changes in the Yazi sidebar, incredibly helpful!
 - Reveal-in-Yazi command added, pressing `Alt y` in Helix will reveal the file in Yazi, see how to set it up [here](<README#Yazelix Custom Keybindings>). It was implemented using nushell and the `ya emit-to` command
   - LIMITATION (for now): currently it only works for helix instances you opened from yazi (easy adaptation: only open helix from yazi)
-  - Requirement: For now you have to [build helix from source](https://docs.helix-editor.com/building-from-source.html), while we wait for the next helix release (with command expansions)
+  - Requirement: For now, to use this command, you have to [build helix from source](https://docs.helix-editor.com/building-from-source.html), while we wait for the next helix release (with command expansions)
 - When opening a file from Yazi, it now always finds a running Helix instance if:
   - It exists
   - It’s in the bottom pane of the stacked group (Zellij naturally pushes the Helix pane there when opening new panes, so it should work unless you reposition it manually)
-- Recommendation: Make Yazelix’s Yazi config your default (it’s plugin-enhanced and adjusts layout based on width), for Nushell users, add this to your `env.nu` file (run `config env` to edit):
+- Recommendation: Make Yazelix’s Yazi config your default (it’s plugin-enhanced and adjusts layout based on width). For Nushell users, add this to your `env.nu` file (run `config env` to edit):
   ```
   $env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"
   ```
@@ -170,3 +170,7 @@ See [contributing](./contributing.md)
 | Ghostty            | 1.1.2                    |
 | ya (from yazi-cli) | 25.3.2                   |
 
+## Similar Projects
+
+- If you frequently use other terminal editors besides helix or terminal file managers other than yazi, checkout [zide](https://github.com/josephschmitt/zide)
+- If you care about yazi, but dont care much about zellij or having a sidebar, you can integrate yazi and helix with [one line of config](https://github.com/sxyazi/yazi/pull/2461) (experimental, not working for some people as of march 15, 2025)
