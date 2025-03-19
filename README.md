@@ -7,7 +7,7 @@ Yazelix integrates Yazi, Zellij and Helix, hence the name, get it?
 - To hide the sidebar, just make your pane fullscreen! (`Ctrl p + f` or `Alt f`)
 - Every keybinding from Zellij that conflicts with Helix is remapped [see here](<README#Keybindings>)
 - When you hit Enter on a file/folder in the "sidebar," the following happens:
-  - If Helix is already open in the bottom-most pane of the stack (default position), it opens that file/folder in a new buffer in Helix!
+  - If Helix is already open in the topmost pane of the stack (default position in latest zellij version), it opens that file/folder in a new buffer in Helix!
   - If Helix isn’t open, it launches Helix in a new pane for you
 - Features include "reveal file in sidebar" and a Yazi plugin that shows when a file was added or changed
 - This project holds my config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins and a lot of love
@@ -27,7 +27,7 @@ v6 demo
   - Requirement: For now, to use this command, you have to [build helix from source](https://docs.helix-editor.com/building-from-source.html), while we wait for the next helix release (with command expansions)
 - When opening a file from Yazi, it now always finds a running Helix instance if:
   - It exists
-  - It’s in the bottom pane of the stacked group (Zellij naturally pushes the Helix pane there when opening new panes, so it should work unless you reposition it manually)
+  - It’s in the top pane of the stacked group (Zellij naturally pushes the Helix pane there when opening new panes, but sometimes it moves around when you delete a pane or create a new one)
 - Recommendation: Make Yazelix’s Yazi config your default (it’s plugin-enhanced and adjusts layout based on width). For Nushell users, add this to your `env.nu` file (run `config env` to edit):
   ```
   $env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"

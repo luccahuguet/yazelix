@@ -24,11 +24,11 @@ def get_tab_name [working_dir: path] {
 # Focus the helix pane
 export def find_helix [] {
     zellij action move-focus right
-    zellij action move-focus down
-    zellij action move-focus down
-    zellij action move-focus down
-    zellij action move-focus down
-    zellij action move-focus down
+    zellij action move-focus up
+    zellij action move-focus up
+    zellij action move-focus up
+    zellij action move-focus up
+    zellij action move-focus up
 }
 
 # Get the running command from the second Zellij client
