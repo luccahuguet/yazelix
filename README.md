@@ -154,22 +154,22 @@ Start by learning Zellij on its own, then optionally Yazi, and re-read this READ
 See [contributing](./contributing.md)
 
 ## Table of Versions
-- Last tested: March 5, 2025
+- Last tested: April 10th, 2025
 - Should work with older versions, but these are tested
 - Compatible with other terminal emulators (e.g., Alacritty in the past)
 
 | Component          | Version                  |
-|--------------------|--------------------------|
+| -------------------| ------------------------ |
 | OS                 | Pop!_OS 24.04            |
 | DE                 | COSMIC                   |
-| Zellij             | 0.41.2                   |
+| Zellij             | 0.42.1                   |
 | Helix (from source)| helix 25.01.1 (0efa8207) |
-| Nushell            | 0.102.0                  |
+| Nushell            | 0.103.0                  |
 | Zoxide             | 0.9.7                    |
-| Yazi               | 25.3.2                   |
+| Yazi               | 25.4.8                   |
 | WezTerm            | 20240203-110809-5046fc22 |
 | Ghostty            | 1.1.2                    |
-| ya (from yazi-cli) | 25.3.2                   |
+| ya (from yazi-cli) | 25.4.8                   |
 
 ## Similar Projects
 
