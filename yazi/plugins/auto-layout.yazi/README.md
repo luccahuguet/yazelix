@@ -5,7 +5,7 @@ This plugin for the [yazi file explorer](https://yazi-rs.github.io) will automat
 ## Installation
 
 ```sh
-$ ya pack -a josephschmitt/auto-layout.yazi
+$ ya pack -a josephschmitt/auto-layout
 ```
 
 ## Usage
