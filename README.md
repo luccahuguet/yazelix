@@ -127,8 +127,8 @@ If you find a conflict, please open an issue
 ## Keybinding Tips
 - **Zellij**: `Ctrl p` then `r` for a split to the right; `Ctrl p` then `d` for a downward split
 - **Yazi**: 
-  - `z`: Use Zoxide (fuzzy find known paths)
-  - `Z`: Use fzf (fuzzy find unknown paths)
+  - `Z`: Use Zoxide (fuzzy find known paths)
+  - `z`: Use fzf (fuzzy find unknown paths)
   - `SPACE`: Select files
   - `y`: Yank (copy); `Y`: Unyank (cancel copy)
   - `x`: Cut; `X`: Uncut (cancel cut)
