@@ -2,22 +2,31 @@
 
 # Utility functions for Yazelix
 
-# Check if Helix (hx) is running in a Zellij pane based on client output
+# Check if Helix (hx or helix) is running in a Zellij pane based on client output
 export def is_hx_running [list_clients_output: string] {
     let cmd = $list_clients_output | str trim | str downcase
     
     # Split the command into parts
     let parts = $cmd | split row " "
     
-    # Check if any part ends with 'hx' or is 'hx'
-    let has_hx = ($parts | any {|part| $part | str ends-with "/hx"})
-    let is_hx = ($parts | any {|part| $part == "hx"})
+    # Check if any part ends with 'hx', 'helix' or is 'hx', 'helix'
+    let has_hx_paths = ($parts | any {|part| ($part | str ends-with "/hx")})
+    let has_helix_paths = ($parts | any {|part| ($part | str ends-with "/helix")})
+    let has_hx = $has_hx_paths or $has_helix_paths
+    
+    let is_hx_cmd = ($parts | any {|part| $part == "hx"})
+    let is_helix_cmd = ($parts | any {|part| $part == "helix"})
+    let is_hx = $is_hx_cmd or $is_helix_cmd
+    
     let has_or_is_hx = $has_hx or $is_hx
     
-    # Find the position of 'hx' in the parts
-    let hx_positions = ($parts | enumerate | where {|x| ($x.item == "hx" or ($x.item | str ends-with "/hx"))} | get index)
+    # Find the position of 'hx' or 'helix' in the parts
+    let hx_positions = ($parts | enumerate | where {|x| 
+        (($x.item == "hx") or ($x.item == "helix") or 
+         ($x.item | str ends-with "/hx") or ($x.item | str ends-with "/helix"))
+    } | get index)
     
-    # Check if 'hx' is the first part or right after a path
+    # Check if 'hx' or 'helix' is the first part or right after a path
     let is_hx_at_start = if ($hx_positions | is-empty) {
         false
     } else {

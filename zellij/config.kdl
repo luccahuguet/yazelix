@@ -403,7 +403,7 @@ copy_command "wl-copy"                    // wayland
 // Path to the default editor to use to edit pane scrollbuffer
 // Default: $EDITOR or $VISUAL
 //
-scrollback_editor "hx"
+scrollback_editor "nu -c 'if (which helix | is-empty) { hx } else { helix }'"
 
 // When attaching to an existing session with other users,
 // should the session be mirrored (true)
