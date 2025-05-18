@@ -46,7 +46,7 @@
           fi
 
           # Yazi Setup
-          export YAZI_CONFIG_HOME="$PWD/config/yazi"
+          export YAZI_CONFIG_HOME="$PWD/yazi"
 
           # Nushell Setup
           export XDG_CONFIG_HOME="$HOME/.config"
