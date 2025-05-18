@@ -177,7 +177,7 @@ Start by learning Zellij on its own, then optionally Yazi, and re-read this READ
 - To [Joseph Schmitt](https://github.com/josephschmitt) for his excellent [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi)
 
 ## Contributing to Yazelix
-See [contributing](./contributing.md)
+See [contributing](./docs/contributing.md)
 
 ## Similar Projects
 - If you frequently use other terminal editors besides Helix or terminal file managers other than Yazi, check out [zide](https://github.com/josephschmitt/zide)
