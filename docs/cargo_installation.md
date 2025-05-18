@@ -1,6 +1,6 @@
-# Cargo-Based Installation for Yazelix v7
+# Cargo-Based Installation for Yazelix v6.4
 
-This guide provides instructions for installing Yazelix v7 using `cargo`, a straightforward Rust-based setup that supports any terminal emulator, including WezTerm and Ghostty. For the recommended Nix-based installation, see the [main README](../README.md).
+This guide provides instructions for installing Yazelix v6.4 using `cargo`, a straightforward Rust-based setup that supports any terminal emulator, including WezTerm and Ghostty. For the recommended Nix-based installation, see the [main README](../README.md).
 
 ## Steps
 
