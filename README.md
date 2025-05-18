@@ -1,4 +1,4 @@
-# Yazelix v7: Nix
+# Yazelix v6.4: Nix
 
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
@@ -31,14 +31,14 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 ![yazelix_v6_demo](assets/reveal_fullscreen_stacked.gif)
 v6 demo
 
-## Improvements of v7 over v6
-- **Warning**: After upgrading to Yazelix v7, terminate any running Yazi instances and old terminals to prevent conflicts
+## Improvements of v6.4 over v6
+- **Warning**: After upgrading to Yazelix v6.4, terminate any running Yazi instances and old terminals to prevent conflicts
 - Introduces a Nix-based development environment via `flake.nix`, simplifying dependency installation and ensuring consistent versions for Zellij, Yazi, Helix, Nushell, lazygit, Starship, and other tools (recommended installation method)
 - Adds [lazygit](https://github.com/jesseduffield/lazygit), a fast, terminal-based Git TUI for managing Git repositories
 - Adds [Starship](https://starship.rs), a customizable, fast prompt for Nushell, enhancing the terminal experience with Git status and contextual info
 
 ## Compatibility
-- The Nix-based installation currently supports only WezTerm; the Cargo-based installation supports any terminal emulator, including WezTerm and Ghostty (includes a Ghostty config; I use Ghostty as my daily driver)
+- The Nix-based installation currently supports only WezTerm; the Cargo-based installation supports any terminal emulator, including WezTerm and Ghostty (includes a Ghostty config)
 - Editor: Helix (for now)
 - See the version compatibility table [here](./docs/table_of_versions.md)
 
