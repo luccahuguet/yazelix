@@ -41,11 +41,10 @@
 
           # Set up Yazi config
           export YAZI_CONFIG_HOME="$PWD/config/yazi"
-          mkdir -p "$HOME/.local/state/yazi" || { echo "Error: Failed to create Yazi state directory"; exit 1; }
 
           # Ensure Nushell config directory
           export XDG_CONFIG_HOME="$HOME/.config"
-          mkdir -p "$HOME/.config/nushell" || { echo "Error: Failed to create Nushell config directory"; exit 1; }
+          mkdir -p "$HOME/.config/nushell" || echo "Warning: Could not create Nushell config directory; it may already exist or be managed elsewhere."
 
           # Check if ~/.config/yazelix/nushell/config.nu exists
           if [ ! -f "$HOME/.config/yazelix/nushell/config.nu" ]; then
@@ -53,17 +52,14 @@
             mkdir -p "$HOME/.config/yazelix/nushell"
             echo "# Custom Yazelix Nushell config" > "$HOME/.config/yazelix/nushell/config.nu"
             echo "$env.config.show_banner = false" >> "$HOME/.config/yazelix/nushell/config.nu"
-            echo "# Optional: Set Starship prompt manually if needed" >> "$HOME/.config/yazelix/nushell/config.nu"
-            echo "# let \$env.PROMPT_COMMAND = {|| starship prompt }" >> "$HOME/.config/yazelix/nushell/config.nu"
           fi
 
           # Set STARSHIP_SHELL for Nushell detection
           export STARSHIP_SHELL=nu
 
           # Generate Starship initialization script
-          mkdir -p "$HOME/.config/yazelix/nushell"
+          # Note: $HOME/.config/yazelix/nushell already exists
           echo "# Starship initialization for Nushell" > "$HOME/.config/yazelix/nushell/starship_init.nu"
-          echo "# Debug: STARSHIP_SHELL=$STARSHIP_SHELL" >> "$HOME/.config/yazelix/nushell/starship_init.nu"
           starship init nu >> "$HOME/.config/yazelix/nushell/starship_init.nu"
 
           # Append Starship script source to ~/.config/yazelix/nushell/config.nu
@@ -76,16 +72,35 @@
             rm "$HOME/.config/yazelix/nushell/starship.nu"
           fi
 
-          # Manage ~/.config/nushell/config.nu
+          # Generate Zoxide initialization script
+          # Note: $HOME/.config/yazelix/nushell already exists
+          echo "# Zoxide initialization for Nushell" > "$HOME/.config/yazelix/nushell/zoxide_init.nu"
+          zoxide init nushell >> "$HOME/.config/yazelix/nushell/zoxide_init.nu"
+
+          # Append Zoxide script source to ~/.config/yazelix/nushell/config.nu
+          if ! grep -q "source ~/.config/yazelix/nushell/zoxide_init.nu" "$HOME/.config/yazelix/nushell/config.nu"; then
+            echo "source ~/.config/yazelix/nushell/zoxide_init.nu" >> "$HOME/.config/yazelix/nushell/config.nu"
+          fi
+
+          # Manage ~/.config/nushell/config.nu for users with existing Nushell configs
           if [ -f "$HOME/.config/nushell/config.nu" ]; then
+            # Back up existing config if not already backed up
+            if [ ! -f "$HOME/.config/nushell/config.nu.bak" ]; then
+              cp "$HOME/.config/nushell/config.nu" "$HOME/.config/nushell/config.nu.bak"
+              echo "Backed up existing ~/.config/nushell/config.nu to ~/.config/nushell/config.nu.bak"
+            fi
             # Check if source command already exists
             if ! grep -q "source ~/.config/yazelix/nushell/config.nu" "$HOME/.config/nushell/config.nu"; then
+              echo "# Source Yazelix Nushell config for Starship and Zoxide integration" >> "$HOME/.config/nushell/config.nu"
               echo "source ~/.config/yazelix/nushell/config.nu" >> "$HOME/.config/nushell/config.nu"
+              echo "Added Yazelix config source to ~/.config/nushell/config.nu"
             fi
           else
-            # Create config.nu with source command
+            # Create config.nu with source command for new users
             echo "# Nushell config file" > "$HOME/.config/nushell/config.nu"
+            echo "# Source Yazelix Nushell config for Starship and Zoxide integration" >> "$HOME/.config/nushell/config.nu"
             echo "source ~/.config/yazelix/nushell/config.nu" >> "$HOME/.config/nushell/config.nu"
+            echo "Created new ~/.config/nushell/config.nu with Yazelix config source"
           fi
 
           # Set up Helix runtime
@@ -98,7 +113,7 @@
           export ZELLIJ_DEFAULT_LAYOUT=yazelix
 
           # Print welcome message
-          echo "Yazelix environment ready! "
+          echo "Yazelix environment ready! Use 'z' for smart directory navigation."
         '';
       };
     });
