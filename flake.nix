@@ -2,43 +2,23 @@
   description = "Nix shell for Yazelix";
 
   inputs = {
-    # Nixpkgs for package management
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
-    # Yazi Flake for version 25.4.8
-    yazi = {
-      url = "github:sxyazi/yazi/v25.4.8";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Helix Flake for source build (commit 0efa8207)
-    helix = {
-      url = "github:helix-editor/helix/0efa8207";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Nushell Flake for version 0.103.0
-    nushell = {
-      url = "github:nushell/nushell/0.103.0";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Flake-utils for multi-system support
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, yazi, helix, nushell, flake-utils, ... }:
+  outputs = { self, nixpkgs, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs { inherit system; };
     in {
       devShells.default = pkgs.mkShell {
-        # Dependencies for Yazelix
         buildInputs = with pkgs; [
-          zellij # Version ~0.42.1
-          helix.packages.${pkgs.system}.helix # Version 25.01.1 (commit 0efa8207)
-          nushell.packages.${pkgs.system}.default # Version 0.103.0
-          yazi.packages.${pkgs.system}.default # Version 25.4.8
-          zoxide # Version ~0.9.7
+          zellij
+          helix
+          nushell
+          yazi
+          zoxide
           cargo-update
           cargo-binstall
-          wezterm # Version ~20240203-110809-5046fc22
-          # Yazi dependencies
           ffmpeg
           p7zip
           jq
@@ -47,26 +27,55 @@
           ripgrep
           fzf
           imagemagick
+          lazygit
         ];
 
-        # Environment variables to point to config files in the repo
         shellHook = ''
-          export ZELLIJ_CONFIG_DIR=$PWD/config/zellij
-          export YAZI_CONFIG_HOME=$PWD/config/yazi
-          export HELIX_RUNTIME=$PWD/config/helix/runtime
-          export NU_CONFIG_DIR=$PWD/config/nushell
-          export EDITOR=helix
+          # Set up Zellij config directory
+          export ZELLIJ_CONFIG_DIR="$HOME/.config/yazelix/zellij"
+          mkdir -p "$ZELLIJ_CONFIG_DIR" || { echo "Error: Failed to create ZELLIJ_CONFIG_DIR"; exit 1; }
+          if [ -d "$PWD/config/zellij" ]; then
+            cp -r "$PWD/config/zellij/." "$ZELLIJ_CONFIG_DIR/" || { echo "Error: Failed to copy Zellij configs"; exit 1; }
+          fi
+
+          # Set up Yazi config
+          export YAZI_CONFIG_HOME="$PWD/config/yazi"
+          mkdir -p "$HOME/.local/state/yazi" || { echo "Error: Failed to create Yazi state directory"; exit 1; }
+
+          # Ensure Nushell config directory
+          export XDG_CONFIG_HOME="$HOME/.config"
+          mkdir -p "$HOME/.config/nushell" || { echo "Error: Failed to create Nushell config directory"; exit 1; }
+
+          # Check if ~/.config/yazelix/nushell/config.nu exists
+          if [ ! -f "$HOME/.config/yazelix/nushell/config.nu" ]; then
+            echo "Warning: ~/.config/yazelix/nushell/config.nu not found. Creating empty file."
+            mkdir -p "$HOME/.config/yazelix/nushell"
+            echo "# Custom Yazelix Nushell config" > "$HOME/.config/yazelix/nushell/config.nu"
+          fi
+
+          # Manage ~/.config/nushell/config.nu
+          if [ -f "$HOME/.config/nushell/config.nu" ]; then
+            # Check if source command already exists
+            if ! grep -q "source ~/.config/yazelix/nushell/config.nu" "$HOME/.config/nushell/config.nu"; then
+              echo "source ~/.config/yazelix/nushell/config.nu" >> "$HOME/.config/nushell/config.nu"
+            fi
+          else
+            # Create config.nu with source command
+            echo "# Nushell config file" > "$HOME/.config/nushell/config.nu"
+            echo "source ~/.config/yazelix/nushell/config.nu" >> "$HOME/.config/nushell/config.nu"
+          fi
+
+          # Set up Helix runtime
+          export HELIX_RUNTIME="$PWD/config/helix/runtime"
+
+          # Set editor
+          export EDITOR=hx
+
+          # Set Zellij default layout
           export ZELLIJ_DEFAULT_LAYOUT=yazelix
-          export WEZTERM_CONFIG_FILE=$PWD/terminal_configs/wez/.wezterm.lua
 
-          # Create log directories
-          mkdir -p $HOME/.config/yazelix/logs
-          mkdir -p $HOME/.local/state/yazi
-
-          # Alias for convenience
-          alias yazelix='zellij -l yazelix'
-
-          echo "Yazelix environment ready! Run 'zellij -l yazelix' to start."
+          # Print welcome message
+          echo "Yazelix environment ready! "
         '';
       };
     });
