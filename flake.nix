@@ -28,6 +28,7 @@
           fzf
           imagemagick
           lazygit
+          starship
         ];
 
         shellHook = ''
@@ -48,9 +49,31 @@
 
           # Check if ~/.config/yazelix/nushell/config.nu exists
           if [ ! -f "$HOME/.config/yazelix/nushell/config.nu" ]; then
-            echo "Warning: ~/.config/yazelix/nushell/config.nu not found. Creating empty file."
+            echo "Warning: ~/.config/yazelix/nushell/config.nu not found. Creating file."
             mkdir -p "$HOME/.config/yazelix/nushell"
             echo "# Custom Yazelix Nushell config" > "$HOME/.config/yazelix/nushell/config.nu"
+            echo "$env.config.show_banner = false" >> "$HOME/.config/yazelix/nushell/config.nu"
+            echo "# Optional: Set Starship prompt manually if needed" >> "$HOME/.config/yazelix/nushell/config.nu"
+            echo "# let \$env.PROMPT_COMMAND = {|| starship prompt }" >> "$HOME/.config/yazelix/nushell/config.nu"
+          fi
+
+          # Set STARSHIP_SHELL for Nushell detection
+          export STARSHIP_SHELL=nu
+
+          # Generate Starship initialization script
+          mkdir -p "$HOME/.config/yazelix/nushell"
+          echo "# Starship initialization for Nushell" > "$HOME/.config/yazelix/nushell/starship_init.nu"
+          echo "# Debug: STARSHIP_SHELL=$STARSHIP_SHELL" >> "$HOME/.config/yazelix/nushell/starship_init.nu"
+          STARSHIP_LOG=trace starship init nu >> "$HOME/.config/yazelix/nushell/starship_init.nu" 2>> "$HOME/.config/yazelix/logs/starship.log"
+
+          # Append Starship script source to ~/.config/yazelix/nushell/config.nu
+          if ! grep -q "source ~/.config/yazelix/nushell/starship_init.nu" "$HOME/.config/yazelix/nushell/config.nu"; then
+            echo "source ~/.config/yazelix/nushell/starship_init.nu" >> "$HOME/.config/yazelix/nushell/config.nu"
+          fi
+
+          # Remove old starship.nu if it exists
+          if [ -f "$HOME/.config/yazelix/nushell/starship.nu" ]; then
+            rm "$HOME/.config/yazelix/nushell/starship.nu"
           fi
 
           # Manage ~/.config/nushell/config.nu
@@ -64,6 +87,17 @@
             echo "# Nushell config file" > "$HOME/.config/nushell/config.nu"
             echo "source ~/.config/yazelix/nushell/config.nu" >> "$HOME/.config/nushell/config.nu"
           fi
+
+          # Set up log directory and enhanced logging
+          mkdir -p "$HOME/.config/yazelix/logs" || { echo "Error: Failed to create log directory"; exit 1; }
+          {
+            echo "Starship setup at $(date)"
+            echo "STARSHIP_SHELL=$STARSHIP_SHELL"
+            echo "Nushell version: $(nu --version 2>/dev/null || echo 'nu not found')"
+            echo "Starship version: $(starship --version 2>/dev/null || echo 'starship not found')"
+            env | grep -i starship
+            ls -l "$HOME/.config/yazelix/nushell" 2>/dev/null || echo "Yazelix nushell dir not found"
+          } >> "$HOME/.config/yazelix/logs/starship.log" 2>&1
 
           # Set up Helix runtime
           export HELIX_RUNTIME="$PWD/config/helix/runtime"

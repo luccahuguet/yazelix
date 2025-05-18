@@ -3,3 +3,4 @@
 
 # Disable Nushell welcome banner
 $env.config.show_banner = false
+source ~/.config/yazelix/nushell/starship_init.nu
