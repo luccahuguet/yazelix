@@ -17,18 +17,19 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
   - A [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) showing file changes in the Yazi sidebar
   - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi), perfect for sidebar use
 - This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
-- Code is robust, with polished features, especially for opening files from Yazi
 
 # Vision
 - Yazelix is always on the edge of project versions (do you like living on the edge, you know, dangerously?)
-- Yazelix is always changing, it's a living being
+- Yazelix is always evolving, it's a living being
 - Yazelix is easy to use and crazy at the same time (what really is this project?)
 - Yazelix enables you to say `I use yazelix btw` (careful saying that, you might accidentaly scare an innocent arch user)
 - Yazelix eats glass and laughs, says it wasnt crunchy enough
+- Boy, do we nix
+- Integration, integration, integration
 
 ## Preview
-![yazelix_v7_demo](assets/reveal_fullscreen_stacked.gif)
-v7 demo
+![yazelix_v6_demo](assets/reveal_fullscreen_stacked.gif)
+v6 demo
 
 ## Improvements of v7 over v6
 - **Warning**: After upgrading to Yazelix v7, terminate any running Yazi instances and old terminals to prevent conflicts
@@ -89,7 +90,7 @@ See the detailed [Cargo-based installation guide](./docs/cargo_installation.md) 
 **Notes**:
 - The Nix-based approach is recommended for its reproducibility and ease of dependency management but currently requires WezTerm
 - The Cargo-based approach supports any terminal emulator, offering more flexibility
-- Tweak configs to make them yours—this is a starting point
+- Tweak configs to make them yours, this is a starting point
 - For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html) or [Ghostty Docs](https://ghostty.org/docs/config)
 - Run `~/.config/yazelix/start-yazelix.sh` to launch Yazelix in Zellij
 
@@ -168,7 +169,7 @@ If you find a conflict, please open an issue
 - Customize the Starship prompt in `~/.config/starship.toml` for a personalized experience
 
 ## I’m Lost! Too Much Information
-Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterward
+Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterwards
 
 ## Thanks
 - To Yazi, Zellij, Helix, Nushell, lazygit, and Starship contributors/maintainers for their amazing projects and guidance
