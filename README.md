@@ -1,4 +1,4 @@
-# Yazelix v7: The power of Yazi plugins and Nushell scripting!
+# Yazelix v7: Nix
 
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
