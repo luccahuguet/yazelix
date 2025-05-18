@@ -1,5 +1,4 @@
 # Starship initialization for Nushell
-# Debug: STARSHIP_SHELL=nu
 # this file is both a valid
 # - overlay which can be loaded with `overlay use starship.nu`
 # - module which can be used with `use starship.nu`
