@@ -67,7 +67,6 @@
           export YAZI_CONFIG_HOME="$HOME/.config/yazelix/yazi"
 
           # Nushell Setup
-          export XDG_CONFIG_HOME="$HOME/.config"
           mkdir -p "$HOME/.config/nushell" || echo "Warning: Could not create Nushell config directory"
           if [ ! -f "$HOME/.config/nushell/config.nu" ]; then
             echo "# Nushell user configuration" > "$HOME/.config/nushell/config.nu"
