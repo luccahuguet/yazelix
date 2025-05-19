@@ -17,6 +17,8 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
   - A [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) showing file changes in the Yazi sidebar
   - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi), perfect for sidebar use
 - This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
+- The boot sequence of the nix version is the following
+  - You open wezterm -> Wezterm is configured to run `~/.config/yazelix/shell_scripts/start-yazelix.sh` -> the script finds your home and runs `HOME="$HOME" nix develop --impure --command zellij --config-dir "$YAZELIX_DIR/zellij" options --default-layout yazelix --default-shell nu` -> the flake reads your yazelix.toml, installs stuff, configures stuff and runs the command passed to nix develop (zellij --config-dir .... etc)
 
 ## Vision
 - Yazelix is always on the edge of project versions (do you like living on the edge, you know, dangerously?)
@@ -36,6 +38,8 @@ v6 demo
 - Introduces a Nix-based development environment via `flake.nix`, simplifying dependency installation and ensuring consistent versions for Zellij, Yazi, Helix, Nushell, lazygit, Starship, and other tools (recommended installation method)
 - Adds [lazygit](https://github.com/jesseduffield/lazygit), a fast, terminal-based Git TUI for managing Git repositories
 - Adds [Starship](https://starship.rs), a customizable, fast prompt for Nushell, enhancing the terminal experience with Git status and contextual info
+- Allows you to build helix from source
+- Installs and configures things for you
 
 ## Compatibility
 - The Nix-based installation currently supports only WezTerm; the Cargo-based installation supports any terminal emulator, including WezTerm and Ghostty (includes a Ghostty config)
