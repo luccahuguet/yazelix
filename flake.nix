@@ -9,28 +9,49 @@
   outputs = { self, nixpkgs, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs { inherit system; };
+
+      # Read configuration from yazelix.toml
+      homeDir = builtins.getEnv "HOME";
+      configFile = if homeDir != "" then "${homeDir}/.config/yazelix/yazelix.toml" else "/home/lucca/.config/yazelix/yazelix.toml";
+      config = if builtins.pathExists configFile
+               then builtins.fromTOML (builtins.readFile configFile)
+               else { include_optional_deps = true; };
+
+      # Variable to control optional dependencies (defaults to true if config is missing or invalid)
+      includeOptionalDeps = config.include_optional_deps or true;
+
+      # Essential dependencies (required for core Yazelix functionality)
+      essentialDeps = with pkgs; [
+        zellij
+        helix
+        yazi
+        nushell
+        fzf
+        cargo-update
+        cargo-binstall
+        zoxide
+        starship
+      ];
+
+      # Optional dependencies (enhance functionality but not strictly necessary)
+      optionalDeps = with pkgs; [
+        lazygit
+        ffmpeg
+        p7zip
+        jq
+        poppler
+        fd
+        ripgrep
+        imagemagick
+        mise
+        ouch
+      ];
+
+      # Combine dependencies based on includeOptionalDeps
+      allDeps = essentialDeps ++ (if includeOptionalDeps then optionalDeps else []);
     in {
       devShells.default = pkgs.mkShell {
-        buildInputs = with pkgs; [
-          zellij
-          helix
-          nushell
-          yazi
-          zoxide
-          cargo-update
-          cargo-binstall
-          ffmpeg
-          p7zip
-          jq
-          poppler
-          fd
-          ripgrep
-          fzf
-          imagemagick
-          lazygit
-          starship
-          mise # Added Mise to buildInputs
-        ];
+        buildInputs = allDeps;
 
         shellHook = ''
           # Logging Setup
@@ -88,7 +109,7 @@
           # Zoxide Setup
           echo "# Zoxide initialization for Nushell" > "$HOME/.config/yazelix/nushell/zoxide_init.nu"
           zoxide init nushell >> "$HOME/.config/yazelix/nushell/zoxide_init.nu"
-          if ! grep -q "source ~/.config/yazelix/nushell/zox ide_init.nu" "$HOME/.config/yazelix/nushell/config.nu"; then
+          if ! grep -q "source ~/.config/yazelix/nushell/zoxide_init.nu" "$HOME/.config/yazelix/nushell/config.nu"; then
             echo "source ~/.config/yazelix/nushell/zoxide_init.nu" >> "$HOME/.config/yazelix/nushell/config.nu"
           fi
 
