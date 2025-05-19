@@ -7,11 +7,12 @@ This guide provides instructions for installing Yazelix v6.4 using `cargo`, a st
 1. Install the required dependencies using `cargo` (you may prefer other methods, e.g., system package managers, for some dependencies):
    ```bash
    cargo install cargo-update cargo-binstall # this first line makes the installation waaaaay faster
-   cargo binstall yazi-fm yazi-cli zellij nu
+   cargo install-update -i yazi-fm yazi-cli zellij nu
+   cargo install-update -a # will update everything whenever you want
    ```
    Optionally, install additional tools to enhance Yazelix:
    ```bash
-   cargo install zoxide lazygit starship
+   cargo install-update -i zoxide lazygit starship
    ```
    Install optional Yazi-enhancing dependencies (e.g., for media previews, search, archives) using your system package manager:
 
