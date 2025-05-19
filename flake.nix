@@ -4,9 +4,10 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    helix.url = "github:helix-editor/helix";
   };
 
-  outputs = { self, nixpkgs, flake-utils, ... }:
+  outputs = { self, nixpkgs, flake-utils, helix, ... }:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs { inherit system; };
 
@@ -16,16 +17,25 @@
                    else throw "HOME environment variable is unset or empty";
       config = if builtins.pathExists configFile
                then builtins.fromTOML (builtins.readFile configFile)
-               else { include_optional_deps = true; include_yazi_extensions = true; };
+               else { 
+                 include_optional_deps = true; 
+                 include_yazi_extensions = true; 
+                 build_helix_from_source = true; 
+               };
 
-      # Variables to control optional and Yazi extension dependencies
+      # Variables to control optional, Yazi extension, and Helix source dependencies
       includeOptionalDeps = config.include_optional_deps or true;
       includeYaziExtensions = config.include_yazi_extensions or true;
+      buildHelixFromSource = config.build_helix_from_source or true;
+
+      # Helix package selection
+      helixFromSource = helix.packages.${system}.default;
+      helixPackage = if buildHelixFromSource then helixFromSource else pkgs.helix;
 
       # Essential dependencies (required for core Yazelix functionality)
       essentialDeps = with pkgs; [
         zellij
-        helix
+        helixPackage
         yazi
         nushell
         fzf
@@ -94,6 +104,7 @@
           fi
           echo "  include_optional_deps: ${if includeOptionalDeps then "true" else "false"}"
           echo "  include_yazi_extensions: ${if includeYaziExtensions then "true" else "false"}"
+          echo "  build_helix_from_source: ${if buildHelixFromSource then "true" else "false"}"
 
           # Final Configuration
           export ZELLIJ_DEFAULT_LAYOUT=yazelix
