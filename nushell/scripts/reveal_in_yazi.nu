@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # ~/.config/yazelix/nushell/reveal_in_yazi.nu
 
-source ~/.config/yazelix/nushell/logging.nu  # Import logging module
+source ~/.config/yazelix/nushell/scripts/logging.nu  # Import logging module
 
 # Navigate Yazi to the directory of the current Helix buffer
 def main [buffer_name: string] {

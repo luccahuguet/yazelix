@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # ~/.config/yazelix/nushell/zellij_utils.nu
 
-source ~/.config/yazelix/nushell/logging.nu
+source ~/.config/yazelix/nushell/scripts/logging.nu
 
 # Get the tab name based on Git repo or working directory
 def get_tab_name [working_dir: path] {

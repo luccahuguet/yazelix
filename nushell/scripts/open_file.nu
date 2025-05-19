@@ -2,8 +2,8 @@
 # ~/.config/yazelix/nushell/open_file.nu
 
 # Open a file in Helix, integrating with Yazi and Zellij
-source ~/.config/yazelix/nushell/utils.nu  # Import utility functions
-source ~/.config/yazelix/nushell/zellij_utils.nu  # Import Zellij helpers
+source ~/.config/yazelix/nushell/scripts/utils.nu  # Import utility functions
+source ~/.config/yazelix/nushell/scripts/zellij_utils.nu  # Import Zellij helpers
 
 def main [file_path: path] {
     print $"DEBUG: file_path received: ($file_path), type: ($file_path | path type)"
