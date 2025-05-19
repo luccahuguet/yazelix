@@ -34,34 +34,34 @@
 
       # Essential dependencies (required for core Yazelix functionality)
       essentialDeps = with pkgs; [
-        zellij
-        helixPackage
-        yazi
-        nushell
-        fzf
-        zoxide
-        starship
+        zellij        # Terminal multiplexer for managing panes and layouts
+        helixPackage  # Helix editor, either built from source or from nixpkgs
+        yazi          # Fast terminal file manager with sidebar integration
+        nushell       # Modern shell with structured data support
+        fzf           # Fuzzy finder for quick file and command navigation
+        zoxide        # Smart directory jumper for efficient navigation
+        starship      # Customizable shell prompt with Git status
       ];
 
       # Optional dependencies (enhance functionality but not Yazi-specific)
       optionalDeps = with pkgs; [
-        cargo-update
-        cargo-binstall
-        lazygit
-        mise
-        ouch
-        libnotify # used by the `clip` command from nushell as in `ls src/*.py | get name | to text | clip`
+        cargo-update  # Updates Rust crates for project maintenance
+        cargo-binstall # Faster installation of Rust tools
+        lazygit       # Terminal-based Git TUI for managing repositories
+        mise          # Tool version manager for consistent environments
+        ouch          # Compression tool for handling archives
+        libnotify     # Provides notify-send for desktop notifications (used by Nushell clip command)
       ];
 
       # Yazi extension dependencies (enhance Yazi functionality, e.g., previews, archives)
       yaziExtensionsDeps = with pkgs; [
-        ffmpeg
-        p7zip
-        jq
-        fd
-        ripgrep
-        poppler
-        imagemagick
+        ffmpeg        # Multimedia processing for media previews in Yazi
+        p7zip         # Archive utility for handling compressed files
+        jq            # JSON processor for parsing and formatting in Yazi plugins
+        fd            # Fast file finder for efficient search in Yazi
+        ripgrep       # High-performance search tool for file content
+        poppler       # PDF rendering for document previews in Yazi
+        imagemagick   # Image processing for thumbnail generation in Yazi
       ];
 
       # Combine dependencies based on config
