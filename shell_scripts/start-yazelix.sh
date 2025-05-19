@@ -1,8 +1,19 @@
 #!/bin/bash
 
-# Navigate to Yazelix directory to ensure flake.nix is found
-cd ~/.config/yazelix || { echo "Error: Cannot cd to ~/.config/yazelix"; exit 1; }
+# Resolve HOME using shell expansion
+HOME=$(eval echo ~)
+if [ -z "$HOME" ] || [ ! -d "$HOME" ]; then
+  echo "Error: Cannot resolve HOME directory"
+  exit 1
+fi
 
-# Enter Nix development shell and start Zellij with Nushell as default shell
-nix develop --command zellij --config-dir ~/.config/yazelix/zellij options --default-layout yazelix --default-shell nu
-# nix develop --command zellij --config-dir ~/.config/yazelix/zellij options --default-layout yazelix --default-shell "nu --config ~/.config/yazelix/nushell/config.nu"
+echo "Resolved HOME=$HOME"
+
+# Set absolute path for Yazelix directory
+YAZELIX_DIR="$HOME/.config/yazelix"
+
+# Navigate to Yazelix directory
+cd "$YAZELIX_DIR" || { echo "Error: Cannot cd to $YAZELIX_DIR"; exit 1; }
+
+# Run nix develop with explicit HOME
+HOME="$HOME" nix develop --impure --command zellij --config-dir "$YAZELIX_DIR/zellij" options --default-layout yazelix --default-shell nu
