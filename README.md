@@ -70,10 +70,19 @@ Yazelix v6.4 offers two installation pipelines: **Nix-based (recommended)** for 
    ```
 
    This installs and configures:
-   - Required: [Yazi](https://github.com/sxyazi/yazi) (file manager and CLI), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [helix](https://helix-editor.com) (editor), [Nushell](https://www.nushell.sh/book/installation.html) (shell), [fzf](https://github.com/junegunn/fzf) (fuzzy finder for Yazi), [zoxide](https://github.com/ajeetdsouza/zoxide) (smart directory navigation), [Starship](https://starship.rs) (customizable prompt)
+   - Required:
+    - [Yazi](https://github.com/sxyazi/yazi) (file manager and CLI)
+    - [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer)
+    - [helix](https://helix-editor.com) (editor, built from source by default)
+    - [Nushell](https://www.nushell.sh/book/installation.html) (shell)
+    - [fzf](https://github.com/junegunn/fzf) (fuzzy finder for Yazi)
+    - [zoxide](https://github.com/ajeetdsouza/zoxide) (smart directory navigation)
+    - [Starship](https://starship.rs) (customizable prompt)
    - Optional (enabled by default in `yazelix.toml`): [cargo-update](https://github.com/nabijaczleweli/cargo-update) (updates Rust crates), [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (faster Rust tool installation), [lazygit](https://github.com/jesseduffield/lazygit) (Git TUI), [mise](https://github.com/jdxcode/mise) (tool version manager), [ouch](https://github.com/ouch-org/ouch) (compression tool)
    - Yazi Extensions (enabled by default in `yazelix.toml`): `ffmpeg`, `p7zip`, `jq`, `poppler`, `fd`, `ripgrep`, `imagemagick` (extend Yazi’s functionality, e.g., media previews, archives, search)
-   - Sets environment variables: `YAZI_CONFIG_HOME` (points to `~/.config/yazelix/yazi`), `ZELLIJ_DEFAULT_LAYOUT` (set to `yazelix`),`STARSHIP_SHELL` (set to `nu`), and `EDITOR` (set to `hx`)
+   - Sets environment variables: `YAZI_CONFIG_HOME` (points to `~/.config/yazelix/yazi`), `ZELLIJ_DEFAULT_LAYOUT` (set to `yazelix`), `STARSHIP_SHELL` (set to `nu`), and `EDITOR` (set to `hx`)
+   - Configurable in `yazelix.toml`:
+     - `build_helix_from_source` (default: `true`): Set to `false` to use the pre-built Helix from `nixpkgs` instead of building from source. Building from source ensures the latest Helix features (e.g., for `Alt y` to reveal files in Yazi) but takes longer. Using `nixpkgs` is faster but may use an older version; check compatibility in `./docs/table_of_versions.md`.
 
 5. Configure WezTerm (required for Nix-based setup):
    - Copy the provided WezTerm config, which launches Yazelix via `start-yazelix.sh`:
@@ -86,7 +95,7 @@ Yazelix v6.4 offers two installation pipelines: **Nix-based (recommended)** for 
      $env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"
      ```
 
-### Option 2: Cargo-Based Installation
+### Option 2: Cargo-Based Installation (UNTESTED, you might prefer using the main branch....)
 See the detailed [Cargo-based installation guide](./docs/cargo_installation.md) for instructions on installing dependencies with `cargo` and configuring your terminal emulator.
 
 **Notes**:
@@ -113,10 +122,6 @@ That’s it! Open issues or PRs if you’d like 😉
   - For Nix users, ensure you're in the Nix shell (`nix develop --impure`) and using WezTerm
   - For Cargo users, verify all required dependencies are installed and up-to-date
   - Check version compatibility [here](./docs/table_of_versions.md)
-  - To debug WezTerm crashes, uncomment the alternative `default_prog` in `~/.wezterm.lua` to test without Zellij:
-    ```lua
-    config.default_prog = { 'bash', '-c', 'cd ~/.config/yazelix && nix develop --command nu' }
-    ```
   - Enable `config.debug_key_events = true` in `~/.wezterm.lua` for detailed logging
 
 ## Keybindings
