@@ -1,1 +1,2 @@
 include_optional_deps = true
+include_yazi_extensions = true
