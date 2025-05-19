@@ -68,6 +68,16 @@
 
           # Nushell Setup
           export XDG_CONFIG_HOME="$HOME/.config"
+          mkdir -p "$HOME/.config/nushell" || echo "Warning: Could not create Nushell config directory"
+          if [ ! -f "$HOME/.config/nushell/config.nu" ]; then
+            echo "# Nushell user configuration" > "$HOME/.config/nushell/config.nu"
+            echo "Created new $HOME/.config/nushell/config.nu"
+          fi
+          if ! grep -q "source.*yazelix/nushell/config/config.nu" "$HOME/.config/nushell/config.nu"; then
+            echo "# Source Yazelix Nushell configuration" >> "$HOME/.config/nushell/config.nu"
+            echo "source $HOME/.config/yazelix/nushell/config/config.nu" >> "$HOME/.config/nushell/config.nu"
+            echo "Added Yazelix config source to $HOME/.config/nushell/config.nu"
+          fi
 
           # Starship Setup
           export STARSHIP_SHELL=nu
@@ -88,7 +98,7 @@
 
           # Final Configuration
           export ZELLIJ_DEFAULT_LAYOUT=yazelix
-          echo "Yazelix environment ready! Use 'z' for smart directory navigation and 'mise' for runtime management."
+          echo "Yazelix environment ready! Use 'z' for smart directory navigation."
         '';
       };
     });
