@@ -50,6 +50,7 @@
         lazygit
         mise
         ouch
+        libnotify # used by the `clip` command from nushell as in `ls src/*.py | get name | to text | clip`
       ];
 
       # Yazi extension dependencies (enhance Yazi functionality, e.g., previews, archives)

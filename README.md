@@ -40,6 +40,7 @@ v6 demo
 - Adds [Starship](https://starship.rs), a customizable, fast prompt for Nushell, enhancing the terminal experience with Git status and contextual info
 - Allows you to build helix from source
 - Installs and configures things for you
+- The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip`.
 
 ## Compatibility
 - The Nix-based installation currently supports only WezTerm; the Cargo-based installation supports any terminal emulator, including WezTerm and Ghostty (includes a Ghostty config)
@@ -189,8 +190,9 @@ If you find a conflict, please open an issue
 Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterwards
 
 ## Thanks
-- To Yazi, Zellij, helix, Nushell, lazygit, and Starship contributors/maintainers for their amazing projects and guidance
+- To Yazi, Zellij, helix, Nushell, lazygit, zoxide and Starship contributors/maintainers for their amazing projects and sometimes even guidance
 - To Yazi’s author for contributing Lua code to make the sidebar status bar look awesome
+- Nix rocks
 - To [Joseph Schmitt](https://github.com/josephschmitt) for his excellent [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi)
 
 ## Contributing to Yazelix
@@ -199,3 +201,7 @@ See [contributing](./docs/contributing.md)
 ## Similar Projects
 - If you frequently use other terminal editors besides helix or terminal file managers other than Yazi, check out [zide](https://github.com/josephschmitt/zide)
 - If you care about Yazi but don’t care much about Zellij or having a sidebar, you can integrate Yazi and helix with [one line of config](https://github.com/sxyazi/yazi/pull/2461) (experimental, not working for some people as of March 15, 2025)
+
+## Acknowledgments
+- The `clip` command is sourced from the [nuscripts](https://github.com/nushell/nuscripts) repository, licensed under the MIT License.
+- 95% of the work (and the idea) of the excellent [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi) was made by [Joseph Schmitt](https://github.com/josephschmitt). Later I added some fixes for new versions of yazi and added logging and some checks
