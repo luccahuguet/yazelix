@@ -70,7 +70,7 @@ Yazelix v6.4 offers two installation pipelines: **Nix-based (recommended)** for 
    ```
 4. Move the wezterm terminal config to ~/.wezterm.lua:
    ```bash
-   cp ~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua ~/.config/.wezterm.lua
+   cp ~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua ~/.wezterm.lua
    ```
 5. Done! Now just open wezterm!
 
