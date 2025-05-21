@@ -66,6 +66,7 @@
 
       # Combine dependencies based on config
       allDeps = essentialDeps ++ (if includeOptionalDeps then optionalDeps else []) ++ (if includeYaziExtensions then yaziExtensionsDeps else []);
+
     in {
       devShells.default = pkgs.mkShell {
         buildInputs = allDeps;
@@ -73,6 +74,19 @@
         shellHook = ''
           # Log HOME for debugging
           echo "Using HOME=$HOME"
+
+          # Create initializers directory
+          mkdir -p "$HOME/.config/yazelix/nushell/initializers" || echo "Warning: Could not create initializers directory"
+
+          # Generate initializer scripts
+          ${if includeOptionalDeps then ''
+            mise activate nu > "$HOME/.config/yazelix/nushell/initializers/mise_init.nu" 2>/dev/null || echo "Warning: Failed to generate mise_init.nu"
+          '' else ''
+            echo "mise initialization skipped (include_optional_deps=false)"
+            touch "$HOME/.config/yazelix/nushell/initializers/mise_init.nu"
+          ''}
+          starship init nu > "$HOME/.config/yazelix/nushell/initializers/starship_init.nu" 2>/dev/null || echo "Warning: Failed to generate starship_init.nu"
+          zoxide init nushell --cmd z > "$HOME/.config/yazelix/nushell/initializers/zoxide_init.nu" 2>/dev/null || echo "Warning: Failed to generate zoxide_init.nu"
 
           # Yazi Setup
           export YAZI_CONFIG_HOME="$HOME/.config/yazelix/yazi"
@@ -88,9 +102,6 @@
             echo "source $HOME/.config/yazelix/nushell/config/config.nu" >> "$HOME/.config/nushell/config.nu"
             echo "Added Yazelix config source to $HOME/.config/nushell/config.nu"
           fi
-
-          # Starship Setup
-          export STARSHIP_SHELL=nu
 
           # Helix Setup
           export EDITOR=hx
