@@ -12,4 +12,9 @@ source ~/.config/yazelix/nushell/initializers/mise_init.nu
 # sources the `clip` command
 use ~/.config/yazelix/nushell/modules/system *
 
+# Tools aliases
 export alias lg = lazygit
+
+# Yazelix aliases
+alias yazelix = ~/.config/yazelix/shell_scripts/launch-yazelix.sh
+alias yzx = ~/.config/yazelix/shell_scripts/launch-yazelix.sh

@@ -106,6 +106,9 @@
           # Helix Setup
           export EDITOR=hx
 
+          # Set executable permissions for launch-yazelix.sh
+          chmod +x "$HOME/.config/yazelix/shell_scripts/launch-yazelix.sh" || echo "Warning: Could not set executable permissions for launch-yazelix.sh"
+
           # Display configuration status
           echo "Yazelix configuration:"
           echo "  Config file path: ${configFile}"
