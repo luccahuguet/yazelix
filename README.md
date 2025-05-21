@@ -68,11 +68,11 @@ Yazelix v6.4 offers two installation pipelines: **Nix-based (recommended)** for 
    ```bash
    git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
    ```
-4. Enter the Nix development environment:
+4. Move the wezterm terminal config to ~/.wezterm.lua:
    ```bash
-   cd ~/.config/yazelix
-   nix develop --impure
+   cp ~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua ~/.wezterm.lua
    ```
+5. Done! Now just open wezterm!
 
    This installs and configures:
    - Required:
