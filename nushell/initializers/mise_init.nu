@@ -22,15 +22,15 @@ export def --env --wrapped main [command?: string, --help, ...rest: string] {
   let commands = ["deactivate", "shell", "sh"]
 
   if ($command == null) {
-    ^"/home/lucca/.nix-profile/bin/mise"
+    ^"/nix/store/l8ifgz55vgdz166a8ph32zlrhx5l59gh-mise-2025.5.3/bin/mise"
   } else if ($command == "activate") {
     $env.MISE_SHELL = "nu"
   } else if ($command in $commands) {
-    ^"/home/lucca/.nix-profile/bin/mise" $command ...$rest
+    ^"/nix/store/l8ifgz55vgdz166a8ph32zlrhx5l59gh-mise-2025.5.3/bin/mise" $command ...$rest
     | parse vars
     | update-env
   } else {
-    ^"/home/lucca/.nix-profile/bin/mise" $command ...$rest
+    ^"/nix/store/l8ifgz55vgdz166a8ph32zlrhx5l59gh-mise-2025.5.3/bin/mise" $command ...$rest
   }
 }
 
@@ -49,7 +49,7 @@ def --env "update-env" [] {
 }
 
 def --env mise_hook [] {
-  ^"/home/lucca/.nix-profile/bin/mise" hook-env -s nu
+  ^"/nix/store/l8ifgz55vgdz166a8ph32zlrhx5l59gh-mise-2025.5.3/bin/mise" hook-env -s nu
     | parse vars
     | update-env
 }
