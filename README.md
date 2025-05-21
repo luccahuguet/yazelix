@@ -136,10 +136,7 @@ Keybindings are discoverable in each tool (e.g., `~` in Yazi, `?` in lazygit). S
 
 ## Tips
 - Add more swap layouts as needed using the KDL files in `layouts`
-- I recommend WezTerm for Nix-based setups; Ghostty or WezTerm for Cargo-based setups
-- Use `lazygit` for fast Git operations in a Zellij pane
-- Customize the Starship prompt in `~/.config/starship.toml` for a personalized experience
-- For stability, consider pinning `nixpkgs` to a specific commit in `flake.nix` (e.g., `nixpkgs.url = "github:nixos/nixpkgs/<commit-hash>"`)
+- Use `lazygit`
 
 ## I’m Lost! Too Much Information
 Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterwards
