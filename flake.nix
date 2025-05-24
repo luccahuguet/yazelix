@@ -153,7 +153,7 @@
 
           # --- Set executable permissions ---
           chmod +x "$HOME/.config/yazelix/shell_scripts/launch-yazelix.sh" || echo "Warning: Could not set executable permissions for launch-yazelix.sh"
-          chmod +x "$HOME/.config/yazelix/shell_scripts/start-yazelix.nu" || echo "Warning: Could not set executable permissions for start-yazelix.sh"
+          chmod +x "$HOME/.config/yazelix/shell_scripts/start-yazelix.sh" || echo "Warning: Could not set executable permissions for start-yazelix.sh"
 
 
           # --- Display configuration status ---
