@@ -25,19 +25,56 @@ if ! command -v wezterm &> /dev/null; then
   exit 1
 fi
 
-# Add aliases to Bash/Zsh configuration
-SHELL_CONFIG="$HOME/.bashrc"
-if [ -f "$HOME/.zshrc" ]; then
-  SHELL_CONFIG="$HOME/.zshrc"
+# Determine shell configuration file
+SHELL_CONFIG_FILE=""
+CURRENT_SHELL_NAME=$(basename "$SHELL")
+
+if [ "$CURRENT_SHELL_NAME" = "bash" ]; then
+  SHELL_CONFIG_FILE="$HOME/.bashrc"
+elif [ "$CURRENT_SHELL_NAME" = "zsh" ]; then
+  SHELL_CONFIG_FILE="$HOME/.zshrc"
+else
+  # Fallback for unknown shells, user might need to adjust
+  SHELL_CONFIG_FILE="$HOME/.bashrc"
+  echo "Warning: Could not reliably determine shell from '$SHELL'."
+  echo "Attempting to use $SHELL_CONFIG_FILE for aliases."
+  echo "If this is incorrect, please add aliases manually."
 fi
 
-if ! grep -q "alias yazelix=" "$SHELL_CONFIG"; then
-  echo "# Yazelix aliases" >> "$SHELL_CONFIG"
-  echo "alias yazelix=\"$HOME/.config/yazelix/shell_scripts/launch-yazelix.sh\"" >> "$SHELL_CONFIG"
-  echo "alias yzx=\"$HOME/.config/yazelix/shell_scripts/launch-yazelix.sh\"" >> "$SHELL_CONFIG"
-  echo "Added yazelix and yzx aliases to $SHELL_CONFIG. Run 'source $SHELL_CONFIG' to apply in the current session."
+YAZELIX_LAUNCH_SCRIPT_PATH="$HOME/.config/yazelix/shell_scripts/launch-yazelix.sh"
+# Standardized markers
+YAZELIX_ALIAS_BLOCK_START="# BEGIN YAZELIX ALIASES (added by Yazelix)"
+YAZELIX_ALIAS_BLOCK_END="# END YAZELIX ALIASES (added by Yazelix)"
+YAZELIX_ALIAS_YAZELIX="alias yazelix=\"$YAZELIX_LAUNCH_SCRIPT_PATH\""
+YAZELIX_ALIAS_YZX="alias yzx=\"$YAZELIX_LAUNCH_SCRIPT_PATH\""
+
+# Check if the alias block already exists using the start marker
+if [ -f "$SHELL_CONFIG_FILE" ] && grep -qF -- "$YAZELIX_ALIAS_BLOCK_START" "$SHELL_CONFIG_FILE"; then
+  echo "Yazelix aliases (marked by Yazelix) already configured in $SHELL_CONFIG_FILE."
 else
-  echo "Aliases yazelix and yzx already exist in $SHELL_CONFIG"
+  echo "Yazelix can add 'yazelix' and 'yzx' aliases to your $SHELL_CONFIG_FILE."
+  read -r -p "Would you like to add these aliases? (Y/n) " response
+  response=${response,,} # tolower
+
+  if [[ "$response" =~ ^(yes|y|"")$ ]]; then
+    echo "Adding Yazelix aliases to $SHELL_CONFIG_FILE..."
+    touch "$SHELL_CONFIG_FILE" # Ensure file exists
+    {
+      echo "" # Add a newline for separation
+      echo "$YAZELIX_ALIAS_BLOCK_START"
+      echo "$YAZELIX_ALIAS_YAZELIX"
+      echo "$YAZELIX_ALIAS_YZX"
+      echo "$YAZELIX_ALIAS_BLOCK_END"
+    } >> "$SHELL_CONFIG_FILE"
+    echo "Aliases added. Please run 'source $SHELL_CONFIG_FILE' or open a new terminal to use them."
+  else
+    echo "Skipping Yazelix alias installation."
+    echo "You can add them manually to your $SHELL_CONFIG_FILE if you change your mind:"
+    echo "  $YAZELIX_ALIAS_BLOCK_START"
+    echo "  $YAZELIX_ALIAS_YAZELIX"
+    echo "  $YAZELIX_ALIAS_YZX"
+    echo "  $YAZELIX_ALIAS_BLOCK_END"
+  fi
 fi
 
 # Launch WezTerm in a detached manner

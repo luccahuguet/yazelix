@@ -108,27 +108,25 @@
           # --- Ensure ~/.bashrc sources the PERSISTED Yazelix Bash config ---
           PERSISTED_YAZELIX_BASH_CONFIG_FILE="$HOME/.config/yazelix/bash/yazelix_bash_config.sh"
           BASHRC_FILE="$HOME/.bashrc"
+          # Standardized comment and source line for Bash
+          YAZELIX_BASH_COMMENT_LINE="# Source Yazelix Bash configuration (added by Yazelix)"
+          YAZELIX_BASH_SOURCE_LINE="source \"$PERSISTED_YAZELIX_BASH_CONFIG_FILE\""
 
           if [ ! -f "$PERSISTED_YAZELIX_BASH_CONFIG_FILE" ]; then
             echo "Warning: Persisted Yazelix Bash config not found at $PERSISTED_YAZELIX_BASH_CONFIG_FILE"
             echo "Please ensure it exists in your Yazelix project."
           else
-            YAZELIX_BASH_SOURCE_LINE="source \"$PERSISTED_YAZELIX_BASH_CONFIG_FILE\""
-
-            if [ -f "$BASHRC_FILE" ]; then
-              if ! grep -qF -- "$YAZELIX_BASH_SOURCE_LINE" "$BASHRC_FILE"; then
-                echo "" >> "$BASHRC_FILE"
-                echo "# Source Yazelix Bash configuration (added by Yazelix)" >> "$BASHRC_FILE"
-                echo "$YAZELIX_BASH_SOURCE_LINE" >> "$BASHRC_FILE"
-                echo "Added Yazelix Bash config source to $BASHRC_FILE."
-                echo "You might need to source it manually in existing Bash sessions: source $BASHRC_FILE"
-              else
-                echo "Yazelix Bash config already sourced in $BASHRC_FILE."
-              fi
+            # Ensure .bashrc exists before trying to read or write to it
+            touch "$BASHRC_FILE"
+            # Check for the Yazelix standard comment
+            if ! grep -qF -- "$YAZELIX_BASH_COMMENT_LINE" "$BASHRC_FILE"; then
+              echo "" >> "$BASHRC_FILE"
+              echo "$YAZELIX_BASH_COMMENT_LINE" >> "$BASHRC_FILE"
+              echo "$YAZELIX_BASH_SOURCE_LINE" >> "$BASHRC_FILE"
+              echo "Added Yazelix Bash config source to $BASHRC_FILE."
+              echo "You might need to source it manually in existing Bash sessions: source $BASHRC_FILE"
             else
-              echo "Warning: $BASHRC_FILE not found. Cannot automatically add Yazelix Bash config source."
-              echo "To enable Yazelix Bash integration, create $BASHRC_FILE and add the following line:"
-              echo "$YAZELIX_BASH_SOURCE_LINE"
+              echo "Yazelix Bash config (with standard comment) already sourced in $BASHRC_FILE."
             fi
           fi
 
@@ -136,16 +134,26 @@
           export YAZI_CONFIG_HOME="$HOME/.config/yazelix/yazi"
 
           # --- Nushell Setup ---
-          mkdir -p "$HOME/.config/nushell" || echo "Warning: Could not create Nushell config directory"
-          if [ ! -f "$HOME/.config/nushell/config.nu" ]; then
-            echo "# Nushell user configuration" > "$HOME/.config/nushell/config.nu"
-            echo "Created new $HOME/.config/nushell/config.nu"
+          NUSHELL_USER_CONFIG_FILE="$HOME/.config/nushell/config.nu"
+          YAZELIX_NUSHELL_CONFIG_TO_SOURCE="$HOME/.config/yazelix/nushell/config/config.nu"
+          # Standardized comment and source line for Nushell
+          YAZELIX_NUSHELL_COMMENT_LINE="# Source Yazelix Nushell configuration (added by Yazelix)"
+          YAZELIX_NUSHELL_SOURCE_LINE="source \"$YAZELIX_NUSHELL_CONFIG_TO_SOURCE\""
+
+          mkdir -p "$(dirname "$NUSHELL_USER_CONFIG_FILE")" || echo "Warning: Could not create Nushell config directory"
+          # Ensure Nushell config file exists before trying to read or write to it
+          if [ ! -f "$NUSHELL_USER_CONFIG_FILE" ]; then
+            echo "# Nushell user configuration (created by Yazelix setup)" > "$NUSHELL_USER_CONFIG_FILE"
+            echo "Created new $NUSHELL_USER_CONFIG_FILE"
           fi
-          if ! grep -q "source.*yazelix/nushell/config/config.nu" "$HOME/.config/nushell/config.nu"; then
-            echo "" >> "$HOME/.config/nushell/config.nu"
-            echo "# Source Yazelix Nushell configuration (added by Yazelix)" >> "$HOME/.config/nushell/config.nu"
-            echo "source $HOME/.config/yazelix/nushell/config/config.nu" >> "$HOME/.config/nushell/config.nu"
-            echo "Added Yazelix Nushell config source to $HOME/.config/nushell/config.nu"
+          # Check for the Yazelix standard comment
+          if ! grep -qF -- "$YAZELIX_NUSHELL_COMMENT_LINE" "$NUSHELL_USER_CONFIG_FILE"; then
+            echo "" >> "$NUSHELL_USER_CONFIG_FILE"
+            echo "$YAZELIX_NUSHELL_COMMENT_LINE" >> "$NUSHELL_USER_CONFIG_FILE"
+            echo "$YAZELIX_NUSHELL_SOURCE_LINE" >> "$NUSHELL_USER_CONFIG_FILE"
+            echo "Added Yazelix Nushell config source to $NUSHELL_USER_CONFIG_FILE"
+          else
+            echo "Yazelix Nushell config (with standard comment) already sourced in $NUSHELL_USER_CONFIG_FILE."
           fi
 
           # --- Helix Setup ---
@@ -158,9 +166,9 @@
 
           # --- Display configuration status ---
           echo "Yazelix configuration:"
-          CONFIG_FILE_PATH_FOR_SHELL="${configFile}"
+          CONFIG_FILE_PATH_FOR_SHELL="${configFile}" # This uses Nix interpolation, correct for display
           echo "  Config file path: $CONFIG_FILE_PATH_FOR_SHELL"
-          if [ -f "$CONFIG_FILE_PATH_FOR_SHELL" ]; then
+          if [ -f "$CONFIG_FILE_PATH_FOR_SHELL" ]; then # This check uses the shell variable
             echo "  Config file found at $CONFIG_FILE_PATH_FOR_SHELL"
           else
             echo "  Config file not found at $CONFIG_FILE_PATH_FOR_SHELL, using defaults"
