@@ -19,7 +19,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
 - The boot sequence of the Nix version is the following:
   - You run `yazelix` or `yzx` (or `~/.config/yazelix/shell_scripts/launch-yazelix.sh`) -> The `launch-yazelix.sh` script automatically adds `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`) and launches WezTerm with the Yazelix-specific configuration.
-  - WezTerm, as configured by `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`, then executes the `~/.config/yazelix/shell_scripts/start-yazelix.nu` script.
+  - WezTerm, as configured by `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`, then executes the `~/.config/yazelix/shell_scripts/start-yazelix.sh` script.
   - The `start-yazelix.nu` script navigates to the Yazelix project directory and runs `nix develop --impure --command ...`.
   - Inside the `nix develop` environment:
     - The `flake.nix` reads `~/.config/yazelix/yazelix.toml` to determine configurations, including the `default_shell` (which defaults to `nu` but can be set to `bash`).
