@@ -41,6 +41,7 @@
         fzf           # Fuzzy finder for quick file and command navigation
         zoxide        # Smart directory jumper for efficient navigation
         starship      # Customizable shell prompt with Git status
+        bashInteractive
       ];
 
       # Optional dependencies (enhance functionality but not Yazi-specific)
@@ -71,60 +72,103 @@
       devShells.default = pkgs.mkShell {
         buildInputs = allDeps;
 
-        shellHook = ''
-          # Log HOME for debugging
+shellHook = ''
           echo "Using HOME=$HOME"
 
-          # Create initializers directory
-          mkdir -p "$HOME/.config/yazelix/nushell/initializers" || echo "Warning: Could not create initializers directory"
-
-          # Generate initializer scripts
+          # --- Nushell Initializers ---
+          mkdir -p "$HOME/.config/yazelix/nushell/initializers" || echo "Warning: Could not create Nushell initializers directory"
           ${if includeOptionalDeps then ''
             mise activate nu > "$HOME/.config/yazelix/nushell/initializers/mise_init.nu" 2>/dev/null || echo "Warning: Failed to generate mise_init.nu"
           '' else ''
-            echo "mise initialization skipped (include_optional_deps=false)"
+            echo "mise Nushell initialization skipped (include_optional_deps=false)"
             touch "$HOME/.config/yazelix/nushell/initializers/mise_init.nu"
           ''}
           starship init nu > "$HOME/.config/yazelix/nushell/initializers/starship_init.nu" 2>/dev/null || echo "Warning: Failed to generate starship_init.nu"
           zoxide init nushell --cmd z > "$HOME/.config/yazelix/nushell/initializers/zoxide_init.nu" 2>/dev/null || echo "Warning: Failed to generate zoxide_init.nu"
 
-          # Yazi Setup
+          # --- Bash Initializers (generate individual scripts) ---
+          echo "Setting up Bash initializers..."
+          BASH_INITIALIZERS_DIR="$HOME/.config/yazelix/bash/initializers"
+          mkdir -p "$BASH_INITIALIZERS_DIR" || echo "Warning: Could not create Bash initializers directory"
+
+          starship init bash > "$BASH_INITIALIZERS_DIR/starship_init.sh" 2>/dev/null || echo "Warning: Failed to generate starship_init.sh for Bash"
+          zoxide init bash --cmd z > "$BASH_INITIALIZERS_DIR/zoxide_init.sh" 2>/dev/null || echo "Warning: Failed to generate zoxide_init.sh for Bash"
+
+          ${if includeOptionalDeps then ''
+            mise activate bash > "$BASH_INITIALIZERS_DIR/mise_init.sh" 2>/dev/null || echo "Warning: Failed to generate mise_init.sh for Bash"
+          '' else ''
+            echo "mise Bash initialization skipped (include_optional_deps=false)"
+            touch "$BASH_INITIALIZERS_DIR/mise_init.sh" # Create empty if not included
+          ''}
+
+          # --- Ensure ~/.bashrc sources the PERSISTED Yazelix Bash config ---
+          # This path should point to the yazelix_bash_config.sh file in your repository
+          PERSISTED_YAZELIX_BASH_CONFIG_FILE="$HOME/.config/yazelix/bash/yazelix_bash_config.sh"
+          BASHRC_FILE="$HOME/.bashrc"
+
+          # Check if the persisted config file actually exists before trying to source it
+          if [ ! -f "$PERSISTED_YAZELIX_BASH_CONFIG_FILE" ]; then
+            echo "Warning: Persisted Yazelix Bash config not found at $PERSISTED_YAZELIX_BASH_CONFIG_FILE"
+            echo "Please ensure it exists in your Yazelix project."
+          else
+            YAZELIX_BASH_SOURCE_LINE="source \"$PERSISTED_YAZELIX_BASH_CONFIG_FILE\""
+
+            if [ -f "$BASHRC_FILE" ]; then
+              if ! grep -qF -- "$YAZELIX_BASH_SOURCE_LINE" "$BASHRC_FILE"; then
+                echo "" >> "$BASHRC_FILE"
+                echo "# Source Yazelix Bash configuration (added by Yazelix)" >> "$BASHRC_FILE"
+                echo "$YAZELIX_BASH_SOURCE_LINE" >> "$BASHRC_FILE"
+                echo "Added Yazelix Bash config source to $BASHRC_FILE."
+                echo "You might need to source it manually in existing Bash sessions: source $BASHRC_FILE"
+              else
+                echo "Yazelix Bash config already sourced in $BASHRC_FILE."
+              fi
+            else
+              echo "Warning: $BASHRC_FILE not found. Cannot automatically add Yazelix Bash config source."
+              echo "To enable Yazelix Bash integration, create $BASHRC_FILE and add the following line:"
+              echo "$YAZELIX_BASH_SOURCE_LINE"
+            fi
+          fi
+
+          # --- Yazi Setup ---
           export YAZI_CONFIG_HOME="$HOME/.config/yazelix/yazi"
 
-          # Nushell Setup
+          # --- Nushell Setup ---
           mkdir -p "$HOME/.config/nushell" || echo "Warning: Could not create Nushell config directory"
           if [ ! -f "$HOME/.config/nushell/config.nu" ]; then
             echo "# Nushell user configuration" > "$HOME/.config/nushell/config.nu"
             echo "Created new $HOME/.config/nushell/config.nu"
           fi
           if ! grep -q "source.*yazelix/nushell/config/config.nu" "$HOME/.config/nushell/config.nu"; then
-            echo "# Source Yazelix Nushell configuration" >> "$HOME/.config/nushell/config.nu"
+            echo "" >> "$HOME/.config/nushell/config.nu"
+            echo "# Source Yazelix Nushell configuration (added by Yazelix)" >> "$HOME/.config/nushell/config.nu"
             echo "source $HOME/.config/yazelix/nushell/config/config.nu" >> "$HOME/.config/nushell/config.nu"
-            echo "Added Yazelix config source to $HOME/.config/nushell/config.nu"
+            echo "Added Yazelix Nushell config source to $HOME/.config/nushell/config.nu"
           fi
 
-          # Helix Setup
+          # --- Helix Setup ---
           export EDITOR=hx
 
-          # Set executable permissions for launch-yazelix.sh
+          # --- Set executable permissions ---
           chmod +x "$HOME/.config/yazelix/shell_scripts/launch-yazelix.sh" || echo "Warning: Could not set executable permissions for launch-yazelix.sh"
 
-          # Display configuration status
+          # --- Display configuration status ---
           echo "Yazelix configuration:"
-          echo "  Config file path: ${configFile}"
-          if [ -f "${configFile}" ]; then
-            echo "  Config file found at ${configFile}"
+          CONFIG_FILE_PATH_FOR_SHELL="${configFile}"
+          echo "  Config file path: $CONFIG_FILE_PATH_FOR_SHELL"
+          if [ -f "$CONFIG_FILE_PATH_FOR_SHELL" ]; then
+            echo "  Config file found at $CONFIG_FILE_PATH_FOR_SHELL"
           else
-            echo "  Config file not found at ${configFile}, using defaults"
+            echo "  Config file not found at $CONFIG_FILE_PATH_FOR_SHELL, using defaults"
           fi
           echo "  include_optional_deps: ${if includeOptionalDeps then "true" else "false"}"
           echo "  include_yazi_extensions: ${if includeYaziExtensions then "true" else "false"}"
           echo "  build_helix_from_source: ${if buildHelixFromSource then "true" else "false"}"
 
-          # Final Configuration
+          # --- Final Configuration ---
           export ZELLIJ_DEFAULT_LAYOUT=yazelix
           echo "Yazelix environment ready! Use 'z' for smart directory navigation."
         '';
-      };
+        };
     });
 }
