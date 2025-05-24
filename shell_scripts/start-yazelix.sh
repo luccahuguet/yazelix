@@ -16,5 +16,8 @@ YAZELIX_DIR="$HOME/.config/yazelix"
 # Navigate to Yazelix directory
 cd "$YAZELIX_DIR" || { echo "Error: Cannot cd to $YAZELIX_DIR"; exit 1; }
 
-# Run nix develop with explicit HOME
-HOME="$HOME" nix develop --impure --command zellij --config-dir "$YAZELIX_DIR/zellij" options --default-layout yazelix --default-shell nu
+# Run nix develop with explicit HOME.
+# The YAZELIX_DEFAULT_SHELL variable will be set by the shellHook of the flake
+# and used by the inner zellij command.
+# We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after nix develop sets it.
+HOME="$HOME" nix develop --impure --command bash -c "zellij --config-dir \"$YAZELIX_DIR/zellij\" options --default-layout yazelix --default-shell \"\$YAZELIX_DEFAULT_SHELL\""

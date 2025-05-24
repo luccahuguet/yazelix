@@ -1,4 +1,4 @@
-# Yazelix v7: Nix installs everything for you! 
+# Yazelix v7: Nix installs everything for you!
 
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
@@ -18,7 +18,14 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
   - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi), perfect for sidebar use
 - This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
 - The boot sequence of the Nix version is the following:
-  - You run `yazelix` or `yzx` (or `~/.config/yazelix/shell_scripts/launch-yazelix.sh`) -> The script automatically adds `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`) -> WezTerm launches with the Yazelix-specific config -> the script navigates to the Yazelix directory and runs `nix develop --impure --command zellij ...` -> the flake reads `yazelix.toml`, installs dependencies, generates initializer scripts, configures the environment, and launches Zellij with Nushell as the default shell
+  - You run `yazelix` or `yzx` (or `~/.config/yazelix/shell_scripts/launch-yazelix.sh`) -> The `launch-yazelix.sh` script automatically adds `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`) and launches WezTerm with the Yazelix-specific configuration.
+  - WezTerm, as configured by `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`, then executes the `~/.config/yazelix/shell_scripts/start-yazelix.nu` script.
+  - The `start-yazelix.nu` script navigates to the Yazelix project directory and runs `nix develop --impure --command ...`.
+  - Inside the `nix develop` environment:
+    - The `flake.nix` reads `~/.config/yazelix/yazelix.toml` to determine configurations, including the `default_shell` (which defaults to `nu` but can be set to `bash`).
+    - Dependencies are installed.
+    - The `shellHook` generates initializer scripts for Bash and Nushell, and exports the chosen default shell as an environment variable (`YAZELIX_DEFAULT_SHELL`).
+    - Finally, Zellij is launched using the `YAZELIX_DEFAULT_SHELL` to set its default shell (e.g., `zellij --default-shell nu`).
 
 ## Vision
 - Yazelix is always on the edge of project versions (do you like living on the edge, you know, dangerously?)
@@ -94,10 +101,14 @@ Yazelix v7 offers two installation pipelines: **Nix-based (recommended)** for a 
    - Optional (enabled by default in `yazelix.toml`): [cargo-update](https://github.com/nabijaczleweli/cargo-update) (updates Rust crates), [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (faster Rust tool installation), [lazygit](https://github.com/jesseduffield/lazygit) (Git TUI), [mise](https://github.com/jdxcode/mise) (tool version manager), [ouch](https://github.com/ouch-org/ouch) (compression tool)
    - Yazi Extensions (enabled by default in `yazelix.toml`): `ffmpeg`, `p7zip`, `jq`, `poppler`, `fd`, `ripgrep`, `imagemagick` (extend Yazi’s functionality, e.g., media previews, archives, search)
    - Sets environment variables: `YAZI_CONFIG_HOME` (points to `~/.config/yazelix/yazi`), `ZELLIJ_DEFAULT_LAYOUT` (set to `yazelix`), and `EDITOR` (set to `hx`)
-   - Configurable in `yazelix.toml`:
+   - Configurable in `~/.config/yazelix/yazelix.toml`:
      - `build_helix_from_source` (default: `true`): Set to `false` to use the pre-built Helix from `nixpkgs` instead of building from source. Building from source ensures the latest Helix features (e.g., for `Alt y` to reveal files in Yazi) but takes longer. Using `nixpkgs` is faster but may use an older version; check compatibility in `./docs/table_of_versions.md`.
      - `include_optional_deps` (default: `true`): Set to `false` to exclude optional dependencies like `mise` and `lazygit`.
      - `include_yazi_extensions` (default: `true`): Set to `false` to exclude Yazi extension dependencies like `ffmpeg` and `poppler`.
+     - `default_shell` (default: `"nu"`): Sets the default shell for Zellij when Yazelix starts.
+       - Accepted values: `"nu"` (for Nushell) or `"bash"`.
+       - If this option is omitted from `yazelix.toml`, it defaults to `"nu"`.
+       - Both Nushell and Bash are always installed by the Nix environment and available for use, regardless of this setting. This option only controls the default shell Zellij launches into.
 
 6. (Optional) Make Yazelix’s Yazi config your default (plugin-enhanced, width-adjusted):
    - For Nushell users, add to `~/.config/nushell/env.nu` (edit with `config env`):
@@ -109,12 +120,12 @@ Yazelix v7 offers two installation pipelines: **Nix-based (recommended)** for a 
 See the detailed [Cargo-based installation guide](./docs/cargo_installation.md) for instructions on installing dependencies with `cargo` and configuring your terminal emulator.
 
 ## Notes
-- The Nix-based approach is recommended for its reproducibility and ease of dependency management but requires WezTerm, which runs `launch-yazelix.sh` to launch Zellij with the Yazelix layout
-- The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
-- The Cargo-based approach supports any terminal emulator, offering more flexibility
-- Tweak configs to make them yours; this is a starting point
-- For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html) or [Ghostty Docs](https://ghostty.org/docs/config)
-- Run `~/.config/yazelix/shell_scripts/launch-yazelix.sh` to launch Yazelix in Zellij
+- The Nix-based approach is recommended for its reproducibility and ease of dependency management. It requires WezTerm, which is configured (via `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`) to run the `~/.config/yazelix/shell_scripts/start-yazelix.nu` script upon launch. The `launch-yazelix.sh` script initiates this process. The `start-yazelix.nu` script then sets up the Nix environment and starts Zellij.
+- The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths.
+- The Cargo-based approach supports any terminal emulator, offering more flexibility.
+- Tweak configs to make them yours; this is a starting point.
+- For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html) or [Ghostty Docs](https://ghostty.org/docs/config).
+- Run `~/.config/yazelix/shell_scripts/launch-yazelix.sh` to launch Yazelix in Zellij.
 
 ## Why Use This Project?
 - Easy to configure and personalize

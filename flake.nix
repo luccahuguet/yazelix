@@ -1,3 +1,4 @@
+# flake.nix
 {
   description = "Nix shell for Yazelix";
 
@@ -17,16 +18,19 @@
                    else throw "HOME environment variable is unset or empty";
       config = if builtins.pathExists configFile
                then builtins.fromTOML (builtins.readFile configFile)
-               else { 
-                 include_optional_deps = true; 
-                 include_yazi_extensions = true; 
-                 build_helix_from_source = true; 
+               else {
+                 include_optional_deps = true;
+                 include_yazi_extensions = true;
+                 build_helix_from_source = true;
+                 default_shell = "nu"; # Default value for the new option
                };
 
-      # Variables to control optional, Yazi extension, and Helix source dependencies
+      # Variables to control optional, Yazi extension, Helix source, and default shell
       includeOptionalDeps = config.include_optional_deps or true;
       includeYaziExtensions = config.include_yazi_extensions or true;
       buildHelixFromSource = config.build_helix_from_source or true;
+      # Read default_shell, fallback to "nushell" if missing or yazelix.toml doesn't exist
+      yazelixDefaultShell = config.default_shell or "nu";
 
       # Helix package selection
       helixFromSource = helix.packages.${system}.default;
@@ -41,7 +45,7 @@
         fzf           # Fuzzy finder for quick file and command navigation
         zoxide        # Smart directory jumper for efficient navigation
         starship      # Customizable shell prompt with Git status
-        bashInteractive
+        bashInteractive # Interactive Bash shell
       ];
 
       # Optional dependencies (enhance functionality but not Yazi-specific)
@@ -72,7 +76,7 @@
       devShells.default = pkgs.mkShell {
         buildInputs = allDeps;
 
-shellHook = ''
+        shellHook = ''
           echo "Using HOME=$HOME"
 
           # --- Nushell Initializers ---
@@ -102,11 +106,9 @@ shellHook = ''
           ''}
 
           # --- Ensure ~/.bashrc sources the PERSISTED Yazelix Bash config ---
-          # This path should point to the yazelix_bash_config.sh file in your repository
           PERSISTED_YAZELIX_BASH_CONFIG_FILE="$HOME/.config/yazelix/bash/yazelix_bash_config.sh"
           BASHRC_FILE="$HOME/.bashrc"
 
-          # Check if the persisted config file actually exists before trying to source it
           if [ ! -f "$PERSISTED_YAZELIX_BASH_CONFIG_FILE" ]; then
             echo "Warning: Persisted Yazelix Bash config not found at $PERSISTED_YAZELIX_BASH_CONFIG_FILE"
             echo "Please ensure it exists in your Yazelix project."
@@ -151,6 +153,8 @@ shellHook = ''
 
           # --- Set executable permissions ---
           chmod +x "$HOME/.config/yazelix/shell_scripts/launch-yazelix.sh" || echo "Warning: Could not set executable permissions for launch-yazelix.sh"
+          chmod +x "$HOME/.config/yazelix/shell_scripts/start-yazelix.nu" || echo "Warning: Could not set executable permissions for start-yazelix.sh"
+
 
           # --- Display configuration status ---
           echo "Yazelix configuration:"
@@ -164,11 +168,13 @@ shellHook = ''
           echo "  include_optional_deps: ${if includeOptionalDeps then "true" else "false"}"
           echo "  include_yazi_extensions: ${if includeYaziExtensions then "true" else "false"}"
           echo "  build_helix_from_source: ${if buildHelixFromSource then "true" else "false"}"
+          echo "  default_shell: ${yazelixDefaultShell}" # Display the chosen default shell
 
           # --- Final Configuration ---
           export ZELLIJ_DEFAULT_LAYOUT=yazelix
+          export YAZELIX_DEFAULT_SHELL="${yazelixDefaultShell}" # Export for start-yazelix.sh
           echo "Yazelix environment ready! Use 'z' for smart directory navigation."
         '';
-        };
+      };
     });
 }
