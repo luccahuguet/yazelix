@@ -8,13 +8,14 @@ $env.config.show_banner = false
 source ~/.config/yazelix/nushell/initializers/starship_init.nu
 source ~/.config/yazelix/nushell/initializers/zoxide_init.nu
 source ~/.config/yazelix/nushell/initializers/mise_init.nu
+source ~/.config/yazelix/nushell/initializers/carapace_init.nu
 
-# sources the `clip` command
+# Sources the `clip` command
 use ~/.config/yazelix/nushell/modules/system *
 
 # Tools aliases
 export alias lg = lazygit
 
 # Yazelix aliases
-alias yazelix = ~/.config/yazelix/shell_scripts/launch-yazelix.sh
-alias yzx = ~/.config/yazelix/shell_scripts/launch-yazelix.sh
+export alias yazelix = ~/.config/yazelix/shell_scripts/launch-yazelix.sh
+export alias yzx = ~/.config/yazelix/shell_scripts/launch-yazelix.sh

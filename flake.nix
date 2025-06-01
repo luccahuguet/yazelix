@@ -22,8 +22,8 @@
                  include_optional_deps = true;
                  include_yazi_extensions = true;
                  build_helix_from_source = true;
-                 default_shell = "nu"; # Default value for the new option
-                 debug_mode = false;   # Default for debug_mode
+                 default_shell = "nu";
+                 debug_mode = false; # Default for debug_mode
                };
 
       # Variables to control optional, Yazi extension, Helix source, default shell, and debug mode
@@ -57,6 +57,7 @@
         mise          # Tool version manager for consistent environments
         ouch          # Compression tool for handling archives
         libnotify     # Provides notify-send for desktop notifications (used by Nushell clip command)
+        carapace      # Command-line completion tool for multiple shells
       ];
 
       # Yazi extension dependencies (enhance Yazi functionality, e.g., previews, archives)
@@ -120,9 +121,12 @@
           ${if includeOptionalDeps then ''
             debug_msg "Generating mise_init.nu (include_optional_deps=true)"
             mise activate nu > "$NUSHELL_INITIALIZERS_DIR/mise_init.nu" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate mise_init.nu"
+            debug_msg "Generating carapace_init.nu (include_optional_deps=true)"
+            carapace _carapace nushell > "$NUSHELL_INITIALIZERS_DIR/carapace_init.nu" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate carapace_init.nu"
           '' else ''
-            debug_msg "Skipping mise Nushell initialization (include_optional_deps=false)"
+            debug_msg "Skipping mise and carapace Nushell initialization (include_optional_deps=false)"
             touch "$NUSHELL_INITIALIZERS_DIR/mise_init.nu" || warn_msg "Failed to touch empty mise_init.nu"
+            touch "$NUSHELL_INITIALIZERS_DIR/carapace_init.nu" || warn_msg "Failed to touch empty carapace_init.nu"
           ''}
           debug_msg "Generating starship_init.nu"
           starship init nu > "$NUSHELL_INITIALIZERS_DIR/starship_init.nu" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate starship_init.nu"
@@ -144,9 +148,12 @@
           ${if includeOptionalDeps then ''
             debug_msg "Generating mise_init.sh for Bash (include_optional_deps=true)"
             mise activate bash > "$BASH_INITIALIZERS_DIR/mise_init.sh" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate mise_init.sh for Bash"
+            debug_msg "Generating carapace_init.sh for Bash (include_optional_deps=true)"
+            carapace _carapace bash > "$BASH_INITIALIZERS_DIR/carapace_init.sh" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate carapace_init.sh for Bash"
           '' else ''
-            debug_msg "Skipping mise Bash initialization (include_optional_deps=false)"
+            debug_msg "Skipping mise and carapace Bash initialization (include_optional_deps=false)"
             touch "$BASH_INITIALIZERS_DIR/mise_init.sh" # Create empty if not included
+            touch "$BASH_INITIALIZERS_DIR/carapace_init.sh" || warn_msg "Failed to touch empty carapace_init.sh"
           ''}
           debug_msg "Bash initializers setup complete."
           debug_msg ""
