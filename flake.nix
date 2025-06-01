@@ -22,8 +22,8 @@
                  include_optional_deps = true;
                  include_yazi_extensions = true;
                  build_helix_from_source = true;
-                 default_shell = "nu";
-                 debug_mode = false; # Default for debug_mode
+                 default_shell = "nu"; # Default value for the new option
+                 debug_mode = false;   # Default for debug_mode
                };
 
       # Variables to control optional, Yazi extension, Helix source, default shell, and debug mode
@@ -78,179 +78,182 @@
         buildInputs = allDeps;
 
         shellHook = ''
-          # Convert Nix boolean to shell string for easier conditional
           YAZELIX_DEBUG_MODE_SHELL="${if yazelixDebugMode then "true" else "false"}"
+          YAZELIX_LOG_DIR="$HOME/.config/yazelix/logs"
+          mkdir -p "$YAZELIX_LOG_DIR" # Ensure log directory exists
 
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then
-            echo "--- Yazelix Flake shellHook Started (DEBUG MODE) ---"
-            echo "[DEBUG] Using HOME=$HOME"
-            echo "[DEBUG] Resolved Yazelix config file: ${configFile}"
-            echo "[DEBUG] include_optional_deps: ${if includeOptionalDeps then "true" else "false"}"
-            echo "[DEBUG] include_yazi_extensions: ${if includeYaziExtensions then "true" else "false"}"
-            echo "[DEBUG] build_helix_from_source: ${if buildHelixFromSource then "true" else "false"}"
-            echo "[DEBUG] default_shell: ${yazelixDefaultShell}"
-            echo "[DEBUG] debug_mode active: $YAZELIX_DEBUG_MODE_SHELL"
-            echo ""
-          else
-            echo "--- Yazelix Flake shellHook Started ---"
-          fi
+          YAZELIX_SHELLHOOK_LOG_FILE="$YAZELIX_LOG_DIR/shellhook_$(date +%Y%m%d_%H%M%S).log"
+
+          # Logging functions
+          _log_to_file_and_stdout() {
+            local message="$1"
+            echo "$message" >> "$YAZELIX_SHELLHOOK_LOG_FILE"
+            # Conditionally echo to stderr for interactive `nix develop` sessions or for WARN/key INFO
+            # Avoid echoing "already sourced" messages to stdout unless in debug mode.
+            if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ] || [[ "$message" == *"[WARN]"* ]] || \
+               ([[ "$message" == *"[INFO]"* ]] && ! [[ "$message" == *"[INFO] Yazelix Bash config (with standard comment) already sourced"* || \
+                                                       "$message" == *"[INFO] Yazelix Nushell config (with standard comment) already sourced"* ]]); then
+              echo "$message" >&2 
+            fi
+          }
+          log_msg() { _log_to_file_and_stdout "[$(date +'%T')] $1"; }
+          debug_msg() { if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then _log_to_file_and_stdout "[$(date +'%T') DEBUG] $1"; fi; }
+          warn_msg() { _log_to_file_and_stdout "[$(date +'%T') WARN] $1"; }
+          info_msg() { _log_to_file_and_stdout "[$(date +'%T') INFO] $1"; } # Key info messages
+
+          log_msg "--- Yazelix Flake shellHook Started (Logging to: $YAZELIX_SHELLHOOK_LOG_FILE) ---"
+          debug_msg "Using HOME=$HOME"
+          # Nix variable `configFile` is used here for logging its value from Nix context
+          debug_msg "Nix 'configFile' variable value: ${configFile}"
+          debug_msg "include_optional_deps: ${if includeOptionalDeps then "true" else "false"}"
+          debug_msg "include_yazi_extensions: ${if includeYaziExtensions then "true" else "false"}"
+          debug_msg "build_helix_from_source: ${if buildHelixFromSource then "true" else "false"}"
+          debug_msg "default_shell: ${yazelixDefaultShell}"
+          debug_msg "debug_mode active: $YAZELIX_DEBUG_MODE_SHELL"
+          debug_msg ""
 
           # --- Nushell Initializers ---
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Setting up Nushell initializers..."; fi
+          debug_msg "Setting up Nushell initializers..."
           NUSHELL_INITIALIZERS_DIR="$HOME/.config/yazelix/nushell/initializers"
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Nushell initializers directory: $NUSHELL_INITIALIZERS_DIR"; fi
-          mkdir -p "$NUSHELL_INITIALIZERS_DIR" || echo "[WARN] Could not create Nushell initializers directory: $NUSHELL_INITIALIZERS_DIR"
-
+          mkdir -p "$NUSHELL_INITIALIZERS_DIR" || warn_msg "Could not create Nushell initializers directory: $NUSHELL_INITIALIZERS_DIR"
+          
           ${if includeOptionalDeps then ''
-            if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Generating mise_init.nu (include_optional_deps=true)"; fi
-            mise activate nu > "$NUSHELL_INITIALIZERS_DIR/mise_init.nu" 2>/dev/null || echo "[WARN] Failed to generate mise_init.nu"
+            debug_msg "Generating mise_init.nu (include_optional_deps=true)"
+            mise activate nu > "$NUSHELL_INITIALIZERS_DIR/mise_init.nu" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate mise_init.nu"
           '' else ''
-            if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Skipping mise Nushell initialization (include_optional_deps=false)"; fi
-            touch "$NUSHELL_INITIALIZERS_DIR/mise_init.nu" || echo "[WARN] Failed to touch empty mise_init.nu"
+            debug_msg "Skipping mise Nushell initialization (include_optional_deps=false)"
+            touch "$NUSHELL_INITIALIZERS_DIR/mise_init.nu" || warn_msg "Failed to touch empty mise_init.nu"
           ''}
+          debug_msg "Generating starship_init.nu"
+          starship init nu > "$NUSHELL_INITIALIZERS_DIR/starship_init.nu" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate starship_init.nu"
+          debug_msg "Generating zoxide_init.nu"
+          zoxide init nushell --cmd z > "$NUSHELL_INITIALIZERS_DIR/zoxide_init.nu" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate zoxide_init.nu"
+          debug_msg "Nushell initializers setup complete."
+          debug_msg ""
 
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Generating starship_init.nu"; fi
-          starship init nu > "$NUSHELL_INITIALIZERS_DIR/starship_init.nu" 2>/dev/null || echo "[WARN] Failed to generate starship_init.nu"
-
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Generating zoxide_init.nu"; fi
-          zoxide init nushell --cmd z > "$NUSHELL_INITIALIZERS_DIR/zoxide_init.nu" 2>/dev/null || echo "[WARN] Failed to generate zoxide_init.nu"
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Nushell initializers setup complete."; echo ""; fi
-
-          # --- Bash Initializers ---
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Setting up Bash initializers..."; fi
+          # --- Bash Initializers (generate individual scripts) ---
+          debug_msg "Setting up Bash initializers..."
           BASH_INITIALIZERS_DIR="$HOME/.config/yazelix/bash/initializers"
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Bash initializers directory: $BASH_INITIALIZERS_DIR"; fi
-          mkdir -p "$BASH_INITIALIZERS_DIR" || echo "[WARN] Could not create Bash initializers directory: $BASH_INITIALIZERS_DIR"
+          mkdir -p "$BASH_INITIALIZERS_DIR" || warn_msg "Could not create Bash initializers directory: $BASH_INITIALIZERS_DIR"
 
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Generating starship_init.sh for Bash"; fi
-          starship init bash > "$BASH_INITIALIZERS_DIR/starship_init.sh" 2>/dev/null || echo "[WARN] Failed to generate starship_init.sh for Bash"
-
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Generating zoxide_init.sh for Bash"; fi
-          zoxide init bash --cmd z > "$BASH_INITIALIZERS_DIR/zoxide_init.sh" 2>/dev/null || echo "[WARN] Failed to generate zoxide_init.sh for Bash"
+          debug_msg "Generating starship_init.sh for Bash"
+          starship init bash > "$BASH_INITIALIZERS_DIR/starship_init.sh" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate starship_init.sh for Bash"
+          debug_msg "Generating zoxide_init.sh for Bash"
+          zoxide init bash --cmd z > "$BASH_INITIALIZERS_DIR/zoxide_init.sh" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate zoxide_init.sh for Bash"
 
           ${if includeOptionalDeps then ''
-            if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Generating mise_init.sh for Bash (include_optional_deps=true)"; fi
-            mise activate bash > "$BASH_INITIALIZERS_DIR/mise_init.sh" 2>/dev/null || echo "[WARN] Failed to generate mise_init.sh for Bash"
+            debug_msg "Generating mise_init.sh for Bash (include_optional_deps=true)"
+            mise activate bash > "$BASH_INITIALIZERS_DIR/mise_init.sh" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate mise_init.sh for Bash"
           '' else ''
-            if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Skipping mise Bash initialization (include_optional_deps=false)"; fi
-            touch "$BASH_INITIALIZERS_DIR/mise_init.sh" || echo "[WARN] Failed to touch empty mise_init.sh"
+            debug_msg "Skipping mise Bash initialization (include_optional_deps=false)"
+            touch "$BASH_INITIALIZERS_DIR/mise_init.sh" # Create empty if not included
           ''}
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Bash initializers setup complete."; echo ""; fi
+          debug_msg "Bash initializers setup complete."
+          debug_msg ""
 
-          # --- Bash Configuration Sourcing ---
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Setting up Bash configuration sourcing..."; fi
+          # --- Ensure ~/.bashrc sources the PERSISTED Yazelix Bash config ---
+          debug_msg "Setting up Bash configuration sourcing..."
           PERSISTED_YAZELIX_BASH_CONFIG_FILE="$HOME/.config/yazelix/bash/yazelix_bash_config.sh"
           BASHRC_FILE="$HOME/.bashrc"
           YAZELIX_BASH_COMMENT_LINE="# Source Yazelix Bash configuration (added by Yazelix)"
           YAZELIX_BASH_SOURCE_LINE="source \"$PERSISTED_YAZELIX_BASH_CONFIG_FILE\""
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then
-            echo "[DEBUG] Persisted Yazelix Bash config: $PERSISTED_YAZELIX_BASH_CONFIG_FILE"
-            echo "[DEBUG] User .bashrc file: $BASHRC_FILE"
-          fi
 
           if [ ! -f "$PERSISTED_YAZELIX_BASH_CONFIG_FILE" ]; then
-            echo "[WARN] Persisted Yazelix Bash config not found at $PERSISTED_YAZELIX_BASH_CONFIG_FILE. Please ensure it exists."
+            warn_msg "Persisted Yazelix Bash config not found at $PERSISTED_YAZELIX_BASH_CONFIG_FILE. Please ensure it exists in your Yazelix project."
           else
-            if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Persisted Yazelix Bash config found. Checking $BASHRC_FILE..."; fi
-            touch "$BASHRC_FILE" || echo "[WARN] Failed to touch $BASHRC_FILE"
+            touch "$BASHRC_FILE" || warn_msg "Failed to touch $BASHRC_FILE"
             if ! grep -qF -- "$YAZELIX_BASH_COMMENT_LINE" "$BASHRC_FILE"; then
-              if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Yazelix Bash sourcing not found in $BASHRC_FILE. Adding it."; fi
+              debug_msg "Yazelix Bash sourcing not found in $BASHRC_FILE. Adding it."
               {
-                echo ""
+                echo "" # Add a newline for separation
                 echo "$YAZELIX_BASH_COMMENT_LINE"
                 echo "$YAZELIX_BASH_SOURCE_LINE"
               } >> "$BASHRC_FILE"
-              echo "[INFO] Added Yazelix Bash config source to $BASHRC_FILE. You might need to source it manually: source $BASHRC_FILE"
+              info_msg "Added Yazelix Bash config source to $BASHRC_FILE. You might need to source it manually: source $BASHRC_FILE"
             else
-              if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[INFO] Yazelix Bash config (with standard comment) already sourced in $BASHRC_FILE."; fi
+              info_msg "Yazelix Bash config (with standard comment) already sourced in $BASHRC_FILE."
             fi
           fi
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Bash configuration sourcing setup complete."; echo ""; fi
+          debug_msg "Bash configuration sourcing setup complete."
+          debug_msg ""
 
           # --- Yazi Setup ---
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Setting up Yazi..."; fi
+          debug_msg "Setting up Yazi..."
           export YAZI_CONFIG_HOME="$HOME/.config/yazelix/yazi"
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[INFO] YAZI_CONFIG_HOME set to: $YAZI_CONFIG_HOME"; fi
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Yazi setup complete."; echo ""; fi
+          info_msg "YAZI_CONFIG_HOME set to: $YAZI_CONFIG_HOME"
+          debug_msg "Yazi setup complete."
+          debug_msg ""
 
-          # --- Nushell Configuration Sourcing ---
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Setting up Nushell configuration sourcing..."; fi
+          # --- Nushell Setup ---
+          debug_msg "Setting up Nushell configuration sourcing..."
           NUSHELL_USER_CONFIG_FILE="$HOME/.config/nushell/config.nu"
           YAZELIX_NUSHELL_CONFIG_TO_SOURCE="$HOME/.config/yazelix/nushell/config/config.nu"
           YAZELIX_NUSHELL_COMMENT_LINE="# Source Yazelix Nushell configuration (added by Yazelix)"
           YAZELIX_NUSHELL_SOURCE_LINE="source \"$YAZELIX_NUSHELL_CONFIG_TO_SOURCE\""
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then
-            echo "[DEBUG] User Nushell config file: $NUSHELL_USER_CONFIG_FILE"
-            echo "[DEBUG] Yazelix Nushell config to source: $YAZELIX_NUSHELL_CONFIG_TO_SOURCE"
-          fi
 
-          mkdir -p "$(dirname "$NUSHELL_USER_CONFIG_FILE")" || echo "[WARN] Could not create Nushell config directory: $(dirname "$NUSHELL_USER_CONFIG_FILE")"
+          mkdir -p "$(dirname "$NUSHELL_USER_CONFIG_FILE")" || warn_msg "Could not create Nushell config directory: $(dirname "$NUSHELL_USER_CONFIG_FILE")"
           if [ ! -f "$NUSHELL_USER_CONFIG_FILE" ]; then
-            if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] $NUSHELL_USER_CONFIG_FILE not found. Creating it."; fi
+            debug_msg "$NUSHELL_USER_CONFIG_FILE not found. Creating it."
             echo "# Nushell user configuration (created by Yazelix setup)" > "$NUSHELL_USER_CONFIG_FILE"
-            echo "[INFO] Created new $NUSHELL_USER_CONFIG_FILE"
+            info_msg "Created new $NUSHELL_USER_CONFIG_FILE"
           fi
-
           if ! grep -qF -- "$YAZELIX_NUSHELL_COMMENT_LINE" "$NUSHELL_USER_CONFIG_FILE"; then
-            if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Yazelix Nushell sourcing not found in $NUSHELL_USER_CONFIG_FILE. Adding it."; fi
+            debug_msg "Yazelix Nushell sourcing not found in $NUSHELL_USER_CONFIG_FILE. Adding it."
             {
-              echo ""
+              echo "" # Add a newline for separation
               echo "$YAZELIX_NUSHELL_COMMENT_LINE"
               echo "$YAZELIX_NUSHELL_SOURCE_LINE"
             } >> "$NUSHELL_USER_CONFIG_FILE"
-            echo "[INFO] Added Yazelix Nushell config source to $NUSHELL_USER_CONFIG_FILE"
+            info_msg "Added Yazelix Nushell config source to $NUSHELL_USER_CONFIG_FILE"
           else
-            if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[INFO] Yazelix Nushell config (with standard comment) already sourced in $NUSHELL_USER_CONFIG_FILE."; fi
+            info_msg "Yazelix Nushell config (with standard comment) already sourced in $NUSHELL_USER_CONFIG_FILE."
           fi
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Nushell configuration sourcing setup complete."; echo ""; fi
+          debug_msg "Nushell configuration sourcing setup complete."
+          debug_msg ""
 
           # --- Helix Setup ---
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Setting up Helix..."; fi
+          debug_msg "Setting up Helix..."
           export EDITOR=hx
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[INFO] EDITOR set to: $EDITOR"; fi
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Helix setup complete."; echo ""; fi
+          info_msg "EDITOR set to: $EDITOR"
+          debug_msg "Helix setup complete."
+          debug_msg ""
 
           # --- Set executable permissions ---
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Setting executable permissions for shell scripts..."; fi
-          LAUNCH_SCRIPT="$HOME/.config/yazelix/shell_scripts/launch-yazelix.sh"
-          START_SCRIPT="$HOME/.config/yazelix/shell_scripts/start-yazelix.sh"
-          chmod +x "$LAUNCH_SCRIPT" || echo "[WARN] Could not set executable permissions for $LAUNCH_SCRIPT"
-          chmod +x "$START_SCRIPT" || echo "[WARN] Could not set executable permissions for $START_SCRIPT"
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Executable permissions setup complete."; echo ""; fi
+          debug_msg "Setting executable permissions for shell scripts..."
+          chmod +x "$HOME/.config/yazelix/shell_scripts/launch-yazelix.sh" || warn_msg "Could not set executable permissions for launch-yazelix.sh"
+          chmod +x "$HOME/.config/yazelix/shell_scripts/start-yazelix.sh" || warn_msg "Could not set executable permissions for start-yazelix.sh"
+          debug_msg "Executable permissions setup complete."
+          debug_msg ""
 
           # --- Display configuration status ---
-          echo "--- Yazelix Configuration Status ---"
-          CONFIG_FILE_PATH_FOR_SHELL="${configFile}"
-          echo "  Config file path (from Nix): $CONFIG_FILE_PATH_FOR_SHELL"
+          # This shell variable holds the path determined by Nix, used for display and shell checks
+          CONFIG_FILE_PATH_FOR_SHELL="${configFile}" 
+          log_msg "--- Yazelix Configuration Status ---"
+          log_msg "  Config file path: $CONFIG_FILE_PATH_FOR_SHELL"
           if [ -f "$CONFIG_FILE_PATH_FOR_SHELL" ]; then # This check uses the shell variable
-            echo "  Config file found at $CONFIG_FILE_PATH_FOR_SHELL"
+            log_msg "  Config file found at $CONFIG_FILE_PATH_FOR_SHELL"
           else
-            echo "  Config file NOT FOUND at $CONFIG_FILE_PATH_FOR_SHELL, using defaults."
+            log_msg "  Config file not found at $CONFIG_FILE_PATH_FOR_SHELL, using defaults"
           fi
-          echo "  include_optional_deps: ${if includeOptionalDeps then "true" else "false"}"
-          echo "  include_yazi_extensions: ${if includeYaziExtensions then "true" else "false"}"
-          echo "  build_helix_from_source: ${if buildHelixFromSource then "true" else "false"}"
-          echo "  default_shell: ${yazelixDefaultShell}"
-          echo "  debug_mode: ${if yazelixDebugMode then "true" else "false"}" # Display debug_mode status
-          echo "------------------------------------"
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo ""; fi
+          log_msg "  include_optional_deps: ${if includeOptionalDeps then "true" else "false"}"
+          log_msg "  include_yazi_extensions: ${if includeYaziExtensions then "true" else "false"}"
+          log_msg "  build_helix_from_source: ${if buildHelixFromSource then "true" else "false"}"
+          log_msg "  default_shell: ${yazelixDefaultShell}"
+          log_msg "  debug_mode: ${if yazelixDebugMode then "true" else "false"}"
+          log_msg "------------------------------------"
+          debug_msg ""
 
           # --- Final Configuration ---
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then echo "[DEBUG] Setting final environment variables..."; fi
+          debug_msg "Setting final environment variables..."
           export ZELLIJ_DEFAULT_LAYOUT=yazelix
-          export YAZELIX_DEFAULT_SHELL="${yazelixDefaultShell}"
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then
-            echo "[INFO] ZELLIJ_DEFAULT_LAYOUT set to: $ZELLIJ_DEFAULT_LAYOUT"
-            echo "[INFO] YAZELIX_DEFAULT_SHELL set to: $YAZELIX_DEFAULT_SHELL"
-            echo ""
-          fi
-
-          if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ]; then
-            echo "--- Yazelix Flake shellHook Finished (DEBUG MODE) ---"
-          else
-            echo "--- Yazelix Flake shellHook Finished ---"
-          fi
-          echo "Yazelix environment ready! Use 'z' for smart directory navigation."
+          export YAZELIX_DEFAULT_SHELL="${yazelixDefaultShell}" # Export for start-yazelix.sh
+          info_msg "ZELLIJ_DEFAULT_LAYOUT set to: $ZELLIJ_DEFAULT_LAYOUT"
+          info_msg "YAZELIX_DEFAULT_SHELL set to: $YAZELIX_DEFAULT_SHELL"
+          debug_msg ""
+          
+          log_msg "--- Yazelix Flake shellHook Finished ---"
+          # This final message will always go to stdout/stderr for interactive shells
+          echo "Yazelix environment ready! Use 'z' for smart directory navigation. ShellHook logs in $YAZELIX_SHELLHOOK_LOG_FILE"
         '';
       };
     });
