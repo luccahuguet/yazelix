@@ -12,4 +12,7 @@ build_helix_from_source = false
 # Default shell for Zellij: "nu" or "bash". (default: "nu")
 default_shell = "nu"
 
-# Learn more in <add link>
+# Enable verbose debug logging in the shellHook (default: false)
+debug_mode = false
+
+# learn more here: link to repo file in docs (to be created)
