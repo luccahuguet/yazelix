@@ -58,6 +58,8 @@
         ouch          # Compression tool for handling archives
         libnotify     # Provides notify-send for desktop notifications (used by Nushell clip command)
         carapace      # Command-line completion tool for multiple shells
+        serpl         # Command-line tool for search and replace
+        biome         # formats JS, TS, JSON, CSS, and lints js/ts
       ];
 
       # Yazi extension dependencies (enhance Yazi functionality, e.g., previews, archives)
