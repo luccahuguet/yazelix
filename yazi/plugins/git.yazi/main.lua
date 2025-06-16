@@ -190,8 +190,8 @@ local function fetch(_, job)
 	-- stylua: ignore
 	local output, err = Command("git")
 		:cwd(tostring(cwd))
-		:args({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--porcelain", "-unormal", "--no-renames", "--ignored=matching" })
-		:args(paths)
+		:arg({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--porcelain", "-unormal", "--no-renames", "--ignored=matching" })
+		:arg(paths)
 		:stdout(Command.PIPED)
 		:output()
 	if not output then
