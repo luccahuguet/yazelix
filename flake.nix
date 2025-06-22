@@ -60,6 +60,7 @@
         carapace      # Command-line completion tool for multiple shells
         serpl         # Command-line tool for search and replace
         biome         # formats JS, TS, JSON, CSS, and lints js/ts
+        markdown-oxide # Personal Knowledge Management System (PKMS) that works with text editors through LSP
       ];
 
       # Yazi extension dependencies (enhance Yazi functionality, e.g., previews, archives)
@@ -96,7 +97,7 @@
             if [ "$YAZELIX_DEBUG_MODE_SHELL" = "true" ] || [[ "$message" == *"[WARN]"* ]] || \
                ([[ "$message" == *"[INFO]"* ]] && ! [[ "$message" == *"[INFO] Yazelix Bash config (with standard comment) already sourced"* || \
                                                        "$message" == *"[INFO] Yazelix Nushell config (with standard comment) already sourced"* ]]); then
-              echo "$message" >&2 
+              echo "$message" >&2
             fi
           }
           log_msg() { _log_to_file_and_stdout "[$(date +'%T')] $1"; }
@@ -119,7 +120,7 @@
           debug_msg "Setting up Nushell initializers..."
           NUSHELL_INITIALIZERS_DIR="$HOME/.config/yazelix/nushell/initializers"
           mkdir -p "$NUSHELL_INITIALIZERS_DIR" || warn_msg "Could not create Nushell initializers directory: $NUSHELL_INITIALIZERS_DIR"
-          
+
           ${if includeOptionalDeps then ''
             debug_msg "Generating mise_init.nu (include_optional_deps=true)"
             mise activate nu > "$NUSHELL_INITIALIZERS_DIR/mise_init.nu" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate mise_init.nu"
@@ -236,7 +237,7 @@
 
           # --- Display configuration status ---
           # This shell variable holds the path determined by Nix, used for display and shell checks
-          CONFIG_FILE_PATH_FOR_SHELL="${configFile}" 
+          CONFIG_FILE_PATH_FOR_SHELL="${configFile}"
           log_msg "--- Yazelix Configuration Status ---"
           log_msg "  Config file path: $CONFIG_FILE_PATH_FOR_SHELL"
           if [ -f "$CONFIG_FILE_PATH_FOR_SHELL" ]; then # This check uses the shell variable
@@ -259,7 +260,7 @@
           info_msg "ZELLIJ_DEFAULT_LAYOUT set to: $ZELLIJ_DEFAULT_LAYOUT"
           info_msg "YAZELIX_DEFAULT_SHELL set to: $YAZELIX_DEFAULT_SHELL"
           debug_msg ""
-          
+
           log_msg "--- Yazelix Flake shellHook Finished ---"
           # This final message will always go to stdout/stderr for interactive shells
           echo "Yazelix environment ready! Use 'z' for smart directory navigation. ShellHook logs in $YAZELIX_SHELLHOOK_LOG_FILE"

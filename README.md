@@ -8,7 +8,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Every keybinding from Zellij that conflicts with Helix is remapped [see here](#keybindings)
 - When you hit Enter on a file/folder in the "sidebar":
   - If Helix is already open in the topmost pane of the stack (default position in latest Zellij version), it opens that file/folder in a new buffer in Helix
-  - If Helix isn’t open, it launches Helix in a new pane for you
+  - If Helix isn't open, it launches Helix in a new pane for you
   - It always finds a running Helix instance if it exists and is in the top pane of the stacked group (Zellij naturally pushes the Helix pane there, though it may move when deleting or creating panes)
   - It automatically renames the Zellij tab to the file's underlying Git repo or directory name
 - Features include:
@@ -44,6 +44,7 @@ v6 demo
 - Introduces a Nix-based development environment via `flake.nix`, simplifying dependency installation and ensuring consistent versions for Zellij, Yazi, Helix, Nushell, lazygit, Starship, and other tools (recommended installation method)
 - Adds [lazygit](https://github.com/jesseduffield/lazygit), a fast, terminal-based Git TUI for managing Git repositories
 - Adds [Starship](https://starship.rs), a customizable, fast prompt for Nushell, enhancing the terminal experience with Git status and contextual info
+- Adds [markdown-oxide](https://oxide.md/index), a Personal Knowledge Management System (PKMS) that works with your favorite text editor through LSP, inspired by and compatible with Obsidian
 - Allows you to build Helix from source automatically
 - Installs and configures dependencies automatically
 - The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip`.
@@ -99,7 +100,7 @@ Yazelix v7 offers two installation pipelines: **Nix-based (recommended)** for a 
      - [zoxide](https://github.com/ajeetdsouza/zoxide) (smart directory navigation)
      - [Starship](https://starship.rs) (customizable prompt)
    - Optional (enabled by default in `yazelix.toml`): [cargo-update](https://github.com/nabijaczleweli/cargo-update) (updates Rust crates), [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (faster Rust tool installation), [lazygit](https://github.com/jesseduffield/lazygit) (Git TUI), [mise](https://github.com/jdxcode/mise) (tool version manager), [ouch](https://github.com/ouch-org/ouch) (compression tool)
-   - Yazi Extensions (enabled by default in `yazelix.toml`): `ffmpeg`, `p7zip`, `jq`, `poppler`, `fd`, `ripgrep`, `imagemagick` (extend Yazi’s functionality, e.g., media previews, archives, search)
+   - Yazi Extensions (enabled by default in `yazelix.toml`): `ffmpeg`, `p7zip`, `jq`, `poppler`, `fd`, `ripgrep`, `imagemagick` (extend Yazi's functionality, e.g., media previews, archives, search)
    - Sets environment variables: `YAZI_CONFIG_HOME` (points to `~/.config/yazelix/yazi`), `ZELLIJ_DEFAULT_LAYOUT` (set to `yazelix`), and `EDITOR` (set to `hx`)
    - Configurable in `~/.config/yazelix/yazelix.toml`:
      - `build_helix_from_source` (default: `true`): Set to `false` to use the pre-built Helix from `nixpkgs` instead of building from source. Building from source ensures the latest Helix features (e.g., for `Alt y` to reveal files in Yazi) but takes longer. Using `nixpkgs` is faster but may use an older version; check compatibility in `./docs/table_of_versions.md`.
@@ -110,7 +111,7 @@ Yazelix v7 offers two installation pipelines: **Nix-based (recommended)** for a 
        - If this option is omitted from `yazelix.toml`, it defaults to `"nu"`.
        - Both Nushell and Bash are always installed by the Nix environment and available for use, regardless of this setting. This option only controls the default shell Zellij launches into.
 
-6. (Optional) Make Yazelix’s Yazi config your default (plugin-enhanced, width-adjusted):
+6. (Optional) Make Yazelix's Yazi config your default (plugin-enhanced, width-adjusted):
    - For Nushell users, add to `~/.config/nushell/env.nu` (edit with `config env`):
      ```nushell
      $env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"
@@ -149,7 +150,7 @@ Keybindings are discoverable in each tool (e.g., `~` in Yazi, `?` in lazygit). S
 - Add more swap layouts as needed using the KDL files in `layouts`
 - Use `lazygit`
 
-## I’m Lost! Too Much Information
+## I'm Lost! Too Much Information
 Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterwards
 
 ## Contributing to Yazelix
@@ -157,7 +158,7 @@ See [contributing](./docs/contributing.md)
 
 ## Similar Projects
 - If you frequently use other terminal editors besides Helix or terminal file managers other than Yazi, check out [zide](https://github.com/josephschmitt/zide)
-- If you care about Yazi but don’t care much about Zellij or having a sidebar, you can integrate Yazi and Helix with [one line of config](https://github.com/sxyazi/yazi/pull/2461) (experimental, not working for some people as of March 15, 2025)
+- If you care about Yazi but don't care much about Zellij or having a sidebar, you can integrate Yazi and Helix with [one line of config](https://github.com/sxyazi/yazi/pull/2461) (experimental, not working for some people as of March 15, 2025)
 
 ## Acknowledgments
 - The `clip` command is sourced from the [nuscripts](https://github.com/nushell/nuscripts) repository, licensed under the MIT License.
