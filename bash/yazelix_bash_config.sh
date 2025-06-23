@@ -22,8 +22,8 @@ if [ -f "$YAZELIX_BASH_INITIALIZERS_DIR/mise_init.sh" ] && [ -s "$YAZELIX_BASH_I
 fi
 
 # Yazelix Aliases for Bash
-alias yazelix="$HOME/.config/yazelix/shell_scripts/launch-yazelix.sh"
-alias yzx="$HOME/.config/yazelix/shell_scripts/launch-yazelix.sh"
+alias yazelix="$HOME/.config/yazelix/bash/launch-yazelix.sh"
+alias yzx="$HOME/.config/yazelix/bash/launch-yazelix.sh"
 alias lg='lazygit'
 
 # Add other Bash-specific aliases or functions for Yazelix here if needed.

@@ -17,5 +17,5 @@ use ~/.config/yazelix/nushell/modules/system *
 export alias lg = lazygit
 
 # Yazelix aliases
-export alias yazelix = ~/.config/yazelix/shell_scripts/launch-yazelix.sh
-export alias yzx = ~/.config/yazelix/shell_scripts/launch-yazelix.sh
+export alias yazelix = ~/.config/yazelix/bash/launch-yazelix.sh
+export alias yzx = ~/.config/yazelix/bash/launch-yazelix.sh

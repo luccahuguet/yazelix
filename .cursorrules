@@ -1,0 +1,31 @@
+# Cursor Rules for Yazelix Project
+
+## Terminal Command Rules
+- When running terminal commands, use `nu -c` for nushell commands
+- Use full paths like `/bin/mv` when PATH environment has issues
+- Dont assume commands failed - check if they actually worked first
+- Keep terminal commands simple and direct
+- Always check the working directory before running commands
+
+## Content Style Rules
+- Use direct, no-nonsense, actionable tone in all responses
+- Use consistent naming conventions
+- Follow yazelix naming patterns: lowercase with hyphens for files, camelCase for variables
+- Reference the three main tools: Yazi (file manager), Zellij (terminal multiplexer), Helix (editor)
+
+## Project-Specific Rules
+- Always consider the integration between Yazi, Zellij, and Helix when making changes
+- When modifying shell scripts, test both Nushell and Bash compatibility
+- When adding new dependencies to flake.nix, categorize them properly (essential, optional, or yazi extensions)
+- Follow the existing structure: bash/, nushell/, yazi/, zellij/, terminal_configs/
+- When updating documentation, ensure it reflects both Nix-based and Cargo-based installation methods
+
+## File Organization Rules
+- Maintain the existing folder structure and naming conventions
+- Bash scripts go in bash/
+- Nushell configs go in nushell/
+- Yazi configs go in yazi/
+- Zellij configs go in zellij/
+- Terminal emulator configs go in terminal_configs/
+- Documentation goes in docs/
+- Keep related content organized in appropriate folders 

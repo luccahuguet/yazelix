@@ -1,5 +1,5 @@
 #!/bin/bash
-# ~/.config/yazelix/shell_scripts/launch-yazelix.sh
+# ~/.config/yazelix/bash/launch-yazelix.sh
 
 # Resolve HOME using shell expansion
 HOME=$(eval echo ~)
@@ -41,7 +41,7 @@ else
   echo "If this is incorrect, please add aliases manually."
 fi
 
-YAZELIX_LAUNCH_SCRIPT_PATH="$HOME/.config/yazelix/shell_scripts/launch-yazelix.sh"
+YAZELIX_LAUNCH_SCRIPT_PATH="$HOME/.config/yazelix/bash/launch-yazelix.sh"
 # Standardized markers
 YAZELIX_ALIAS_BLOCK_START="# BEGIN YAZELIX ALIASES (added by Yazelix)"
 YAZELIX_ALIAS_BLOCK_END="# END YAZELIX ALIASES (added by Yazelix)"

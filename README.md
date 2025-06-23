@@ -18,8 +18,8 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
   - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi), perfect for sidebar use
 - This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
 - The boot sequence of the Nix version is the following:
-  - You run `yazelix` or `yzx` (or `~/.config/yazelix/shell_scripts/launch-yazelix.sh`) -> The `launch-yazelix.sh` script automatically adds `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`) and launches WezTerm with the Yazelix-specific configuration.
-  - WezTerm, as configured by `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`, then executes the `~/.config/yazelix/shell_scripts/start-yazelix.sh` script.
+  - You run `yazelix` or `yzx` (or `~/.config/yazelix/bash/launch-yazelix.sh`) -> The `launch-yazelix.sh` script automatically adds `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`) and launches WezTerm with the Yazelix-specific configuration.
+  - WezTerm, as configured by `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`, then executes the `~/.config/yazelix/bash/start-yazelix.sh` script.
   - The `start-yazelix.sh` script navigates to the Yazelix project directory and runs `nix develop --impure --command ...`.
   - Inside the `nix develop` environment:
     - The `flake.nix` reads `~/.config/yazelix/yazelix.toml` to determine configurations, including the `default_shell` (which defaults to `nu` but can be set to `bash`).
@@ -78,8 +78,8 @@ Yazelix v7 offers two installation pipelines: **Nix-based (recommended)** for a 
    ```
 4. Launch Yazelix with this command:
      ```bash
-     chmod +x ~/.config/yazelix/shell_scripts/launch-yazelix.sh
-     ~/.config/yazelix/shell_scripts/launch-yazelix.sh
+     chmod +x ~/.config/yazelix/bash/launch-yazelix.sh
+     ~/.config/yazelix/bash/launch-yazelix.sh
      ```
    - This launches WezTerm with the Yazelix-specific configuration, starting Zellij with the Yazelix layout. The script automatically adds `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`). To use the aliases in the current session, run `source ~/.bashrc` (or `source ~/.zshrc` if using Zsh).
    - After sourcing, you can launch Yazelix by running `yazelix` or `yzx` in your terminal.
@@ -121,12 +121,12 @@ Yazelix v7 offers two installation pipelines: **Nix-based (recommended)** for a 
 See the detailed [Cargo-based installation guide](./docs/cargo_installation.md) for instructions on installing dependencies with `cargo` and configuring your terminal emulator.
 
 ## Notes
-- The Nix-based approach is recommended for its reproducibility and ease of dependency management. It requires WezTerm, which is configured (via `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`) to run the `~/.config/yazelix/shell_scripts/start-yazelix.sh` script upon launch. The `launch-yazelix.sh` script initiates this process. The `start-yazelix.sh` script then sets up the Nix environment and starts Zellij.
+- The Nix-based approach is recommended for its reproducibility and ease of dependency management. It requires WezTerm, which is configured (via `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`) to run the `~/.config/yazelix/bash/start-yazelix.sh` script upon launch. The `launch-yazelix.sh` script initiates this process. The `start-yazelix.sh` script then sets up the Nix environment and starts Zellij.
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths.
 - The Cargo-based approach supports any terminal emulator, offering more flexibility.
 - Tweak configs to make them yours; this is a starting point.
 - For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html) or [Ghostty Docs](https://ghostty.org/docs/config).
-- Run `~/.config/yazelix/shell_scripts/launch-yazelix.sh` to launch Yazelix in Zellij.
+- Run `~/.config/yazelix/bash/launch-yazelix.sh` to launch Yazelix in Zellij.
 
 ## Why Use This Project?
 - Easy to configure and personalize

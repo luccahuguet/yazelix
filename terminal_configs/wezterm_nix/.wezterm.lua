@@ -9,7 +9,7 @@ config.color_scheme = 'Abernathy'
 config.hide_tab_bar_if_only_one_tab = true
 
 -- Start Yazelix via script
-config.default_prog = { 'bash', '-c', '~/.config/yazelix/shell_scripts/start-yazelix.sh' }
+config.default_prog = { 'bash', '-c', '~/.config/yazelix/bash/start-yazelix.sh' }
 
 -- Alternative: Test without Zellij to debug crash (uncomment to test)
 -- config.default_prog = { 'bash', '-c', 'cd ~/.config/yazelix && nix develop --command nu' }
