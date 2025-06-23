@@ -6,6 +6,11 @@
 - Dont assume commands failed - check if they actually worked first
 - Keep terminal commands simple and direct
 - Always check the working directory before running commands
+- **PATH Environment Issues**: When encountering "command not found" errors in Nix environments:
+  - Set proper PATH: `export PATH="/bin:/usr/bin:/usr/local/bin:$PATH"`
+  - Or use inline PATH: `PATH="/bin:/usr/bin:/usr/local/bin:$PATH" command`
+  - Common issue in Nix shells where basic system commands aren't in PATH
+  - Always try setting PATH before assuming commands are missing
 
 ## Content Style Rules
 - Use direct, no-nonsense, actionable tone in all responses
