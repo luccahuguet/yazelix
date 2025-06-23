@@ -1,0 +1,10 @@
+// Yazelix-specific overrides
+default_layout "yazelix"
+copy_command "wl-copy"
+scrollback_editor "nu -c 'if (which helix | is-empty) { hx } else { helix }'"
+
+ui {
+    pane_frames {
+        rounded_corners true
+    }
+}
