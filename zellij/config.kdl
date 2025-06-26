@@ -432,6 +432,7 @@ load_plugins {
 //
 // show_startup_tips false
 
+// === Yazelix-specific overrides ===
 // Yazelix-specific overrides
 default_layout "yazelix"
 copy_command "wl-copy"
@@ -441,4 +442,6 @@ ui {
     pane_frames {
         rounded_corners true
     }
-} 
+}
+
+// User-specific settings: add below
