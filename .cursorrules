@@ -12,6 +12,47 @@
   - Common issue in Nix shells where basic system commands aren't in PATH
   - Always try setting PATH before assuming commands are missing
 
+## Terminal Environment Debugging Rules
+- **Shell Detection**: Always verify which shell is actually running with `echo $0` - prompts can be misleading
+- **VSCode/Cursor Integration Issues**: Integrated terminals often launch system shells instead of Nix-provided ones
+  - System Nushell (`/usr/bin/nu`) lacks Yazelix environment and tools like zoxide
+  - WezTerm launches proper Yazelix environment, VSCode/Cursor may not
+  - Test commands in both environments when debugging
+  - **Working Solution**: Configure Cursor terminal profile with:
+    ```json
+    "nu": {
+      "path": "/usr/bin/bash",
+      "args": ["-c", "source ~/.nix-profile/etc/profile.d/nix.sh && cd ~/.config/yazelix && nix develop --impure --command nu"]
+    }
+    ```
+- **Environment Variable Verification**: Check `YAZELIX_DEFAULT_SHELL` and other environment variables to confirm proper setup
+- **Process Inspection**: Use `ps aux | grep` to verify if expected processes (like Zellij) are actually running
+
+## Nushell Configuration Rules
+- **Scoping Issues**: Avoid `export-env` blocks for aliases - they create separate scopes
+  - Export aliases at top level: `export alias z = cd`
+  - Move environment variable setup outside export-env when possible
+- **Conditional Logic**: Structure conditionals to work with Nushell's scoping:
+  - Always export basic fallback aliases first
+  - Override with advanced functionality when tools are available
+  - Use `if (which tool | is-not-empty)` for tool availability checks
+- **Error Handling**: Wrap external commands with safety checks:
+  - `try { command } catch { fallback }`
+  - Check tool availability before using: `if (which tool | is-not-empty)`
+- **Configuration Loading**: Test configuration sourcing manually when debugging:
+  - `source ~/.config/yazelix/nushell/config/config.nu`
+  - `source ~/.config/yazelix/nushell/initializers/specific_init.nu`
+
+## Environment Compatibility Rules
+- **Multi-Environment Support**: Code should work in:
+  - Full Yazelix environment (Nix shell with all tools)
+  - Partial environments (system shells with limited tools)
+  - External environments (VSCode/Cursor integrated terminals)
+- **Safety-First Initialization**: Generate initializer scripts that never break:
+  - Check tool availability before setup
+  - Wrap all external commands in try-catch or availability checks
+  - Provide meaningful fallbacks for all functionality
+
 ## Content Style Rules
 - Use direct, no-nonsense, actionable tone in all responses
 - Use consistent naming conventions
