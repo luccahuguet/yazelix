@@ -45,7 +45,7 @@ v6 demo
 
 ## Compatibility
 - Terminal: WezTerm (required)
-- Editor: Helix (for now)
+- Editor: Helix (supports both `helix` and `hx` binaries - works with all distributions)
 - See the version compatibility table [here](./docs/table_of_versions.md)
 
 ## Instructions to Set It Up
@@ -93,15 +93,15 @@ v6 demo
      - [Starship](https://starship.rs) (customizable prompt)
    - Optional (enabled by default in `yazelix.nix`): [cargo-update](https://github.com/nabijaczleweli/cargo-update) (updates Rust crates), [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (faster Rust tool installation), [lazygit](https://github.com/jesseduffield/lazygit) (Git TUI), [mise](https://github.com/jdxcode/mise) (tool version manager), [ouch](https://github.com/ouch-org/ouch) (compression tool)
    - Yazi Extensions (enabled by default in `yazelix.nix`): `ffmpeg`, `p7zip`, `jq`, `poppler`, `fd`, `ripgrep`, `imagemagick` (extend Yazi's functionality, e.g., media previews, archives, search)
-   - Sets environment variables: `YAZI_CONFIG_HOME` (points to `~/.config/yazelix/yazi`), `ZELLIJ_DEFAULT_LAYOUT` (set to `yazelix`), and `EDITOR` (set to `hx`)
+   - Sets environment variables: `YAZI_CONFIG_HOME` (points to `~/.config/yazelix/yazi`), `ZELLIJ_DEFAULT_LAYOUT` (set to `yazelix`), and `EDITOR` (automatically set to available Helix binary: `helix` or `hx`)
    - Configurable in `~/.config/yazelix/yazelix.nix`:
      - `build_helix_from_source` (default: `true`): Set to `false` to use the pre-built Helix from `nixpkgs` instead of building from source. Building from source ensures the latest Helix features (e.g., for `Alt y` to reveal files in Yazi) but takes longer. Using `nixpkgs` is faster but may use an older version; check compatibility in `./docs/table_of_versions.md`.
      - `include_optional_deps` (default: `true`): Set to `false` to exclude optional dependencies like `mise` and `lazygit`.
      - `include_yazi_extensions` (default: `true`): Set to `false` to exclude Yazi extension dependencies like `ffmpeg` and `poppler`.
      - `default_shell` (default: `"nu"`): Sets the default shell for Zellij when Yazelix starts.
-       - Accepted values: `"nu"` (for Nushell) or `"bash"`.
+       - Accepted values: `"nu"` (for Nushell), `"bash"`, or `"fish"`.
        - If this option is omitted from `yazelix.nix`, it defaults to `"nu"`.
-       - Both Nushell and Bash are always installed by the Nix environment and available for use, regardless of this setting. This option only controls the default shell Zellij launches into.
+       - Nushell, Bash, and Fish are always installed by the Nix environment and available for use, regardless of this setting. This option only controls the default shell Zellij launches into.
      - `user_packages`: Add custom Nix packages with full Nix expressions: `user_packages = with pkgs; [ discord vlc ];`
 
 6. (Optional) Make Yazelix's Yazi config your default (plugin-enhanced, width-adjusted):
