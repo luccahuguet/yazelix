@@ -46,7 +46,7 @@ v6 demo
 ## Compatibility
 - Terminal: WezTerm (required)
 - Editor: Helix (supports both `helix` and `hx` binaries - works with all distributions)
-- See the version compatibility table [here](./docs/table_of_versions.md)
+- See the version compatibility table [here](./docs/table_of_versions.md) (now generated dynamically!)
 
 ## Instructions to Set It Up
 

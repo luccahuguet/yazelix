@@ -19,3 +19,6 @@ export alias lg = lazygit
 # Yazelix aliases
 export alias yazelix = ~/.config/yazelix/bash/launch-yazelix.sh
 export alias yzx = ~/.config/yazelix/bash/launch-yazelix.sh
+
+# Version info alias
+export alias yazelix-versions = nu ~/.config/yazelix/nushell/scripts/generate-version-table.nu

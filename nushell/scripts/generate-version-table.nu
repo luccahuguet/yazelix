@@ -7,7 +7,7 @@ use utils/version-info.nu
 def main [--save (-s)] {
     print "🔄 Generating Yazelix version table..."
     
-    let output = (version-info main)
+    let output = (version-info)
     
     if $save {
         let table_file = "docs/table_of_versions.md"
