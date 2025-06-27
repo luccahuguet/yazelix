@@ -2,4 +2,5 @@ logs/*
 nushell/initializers
 bash/initializers
 fish/initializers
+zsh/initializers
 yazelix.nix
