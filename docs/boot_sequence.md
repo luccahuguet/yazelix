@@ -12,5 +12,13 @@ The boot sequence of the Nix version is the following:
 4. **Inside Nix Environment**:
    - The `flake.nix` reads `~/.config/yazelix/yazelix.nix` to determine configurations, including the `default_shell` (which defaults to `nu` but can be set to `bash` or `fish`).
    - Dependencies are installed.
-   - The `shellHook` generates initializer scripts for Bash and Nushell, and exports the chosen default shell as an environment variable (`YAZELIX_DEFAULT_SHELL`). Fish users get access to all tools via PATH and can configure them manually.
-   - Finally, Zellij is launched using the `YAZELIX_DEFAULT_SHELL` to set its default shell (e.g., `zellij --default-shell nu`). 
+   - The **streamlined shellHook** exports essential environment variables and calls the main setup script.
+   
+5. **Automated Setup**: `nushell/scripts/setup-yazelix-environment.nu`
+   - **Universal initializer generation** for all supported shells (Nu, Bash, Fish)
+   - **Shell configuration setup** - ensures user configs source Yazelix configs
+   - **Helix editor detection** - automatically sets EDITOR to `helix` or `hx`
+   - **Log management** - handles logging and rotation
+   - **Permission setting** - makes scripts executable
+   
+6. **Shell Launch**: Zellij is launched using the `YAZELIX_DEFAULT_SHELL` to set its default shell (e.g., `zellij --default-shell nu`). 
