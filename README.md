@@ -17,15 +17,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
   - A [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) showing file changes in the Yazi sidebar
   - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi), perfect for sidebar use
 - This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
-- The boot sequence of the Nix version is the following:
-  - You run `yazelix` or `yzx` (or `~/.config/yazelix/bash/launch-yazelix.sh`) -> The `launch-yazelix.sh` script automatically adds `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`) and launches WezTerm with the Yazelix-specific configuration.
-  - WezTerm, as configured by `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`, then executes the `~/.config/yazelix/bash/start-yazelix.sh` script.
-  - The `start-yazelix.sh` script navigates to the Yazelix project directory and runs `nix develop --impure --command ...`.
-  - Inside the `nix develop` environment:
-    - The `flake.nix` reads `~/.config/yazelix/yazelix.nix` to determine configurations, including the `default_shell` (which defaults to `nu` but can be set to `bash`).
-    - Dependencies are installed.
-    - The `shellHook` generates initializer scripts for Bash and Nushell, and exports the chosen default shell as an environment variable (`YAZELIX_DEFAULT_SHELL`).
-    - Finally, Zellij is launched using the `YAZELIX_DEFAULT_SHELL` to set its default shell (e.g., `zellij --default-shell nu`).
+- See [boot sequence](./docs/boot_sequence.md) for details on how Yazelix starts up
 
 ## Vision
 - Yazelix is always on the edge of project versions (do you like living on the edge, you know, dangerously?)
