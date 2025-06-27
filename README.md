@@ -44,14 +44,13 @@ v6 demo
 - Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/generate-zellij-config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `zellij/yazelix-overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
 
 ## Compatibility
-- The Nix-based installation currently supports only WezTerm; the Cargo-based installation supports any terminal emulator, including WezTerm and Ghostty (includes a Ghostty config)
+- Terminal: WezTerm (required)
 - Editor: Helix (for now)
 - See the version compatibility table [here](./docs/table_of_versions.md)
 
 ## Instructions to Set It Up
-Yazelix v7 offers two installation pipelines: **Nix-based (recommended)** for a consistent, reproducible environment (requires WezTerm), and **Cargo-based** for users preferring a straightforward Rust-based setup with any terminal emulator.
 
-### Option 1: Nix-Based Installation (Recommended)
+### Nix-Based Installation
 1. Install Nix (Single-User):
    - On Linux/macOS, run the following command to install Nix in single-user mode:
      ```bash
@@ -111,13 +110,11 @@ Yazelix v7 offers two installation pipelines: **Nix-based (recommended)** for a 
      $env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"
      ```
 
-### Option 2: Cargo-Based Installation (UNTESTED, you might prefer using the main branch...)
-See the detailed [Cargo-based installation guide](./docs/cargo_installation.md) for instructions on installing dependencies with `cargo` and configuring your terminal emulator.
+
 
 ## Notes
-- The Nix-based approach is recommended for its reproducibility and ease of dependency management. It requires WezTerm, which is configured (via `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`) to run the `~/.config/yazelix/bash/start-yazelix.sh` script upon launch. The `launch-yazelix.sh` script initiates this process. The `start-yazelix.sh` script then sets up the Nix environment and starts Zellij.
+- Yazelix requires WezTerm, which is configured (via `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`) to run the `~/.config/yazelix/bash/start-yazelix.sh` script upon launch. The `launch-yazelix.sh` script initiates this process. The `start-yazelix.sh` script then sets up the Nix environment and starts Zellij.
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths.
-- The Cargo-based approach supports any terminal emulator, offering more flexibility.
 - Tweak configs to make them yours; this is a starting point.
 - For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html) or [Ghostty Docs](https://ghostty.org/docs/config).
 - Run `~/.config/yazelix/bash/launch-yazelix.sh` to launch Yazelix in Zellij.
