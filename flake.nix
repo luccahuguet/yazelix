@@ -68,6 +68,7 @@
           yazi # Fast terminal file manager with sidebar integration
           nushell # Modern shell with structured data support
           fish # Fish shell for users who prefer it
+          zsh # Z shell for users who prefer it
           fzf # Fuzzy finder for quick file and command navigation
           zoxide # Smart directory jumper for efficient navigation
           starship # Customizable shell prompt with Git status

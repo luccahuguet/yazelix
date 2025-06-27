@@ -9,10 +9,10 @@
   # Include heavy media packages for Yazi (WARNING: ~800MB-1.2GB) (default: true)
   include_yazi_media = true;
 
-  # Build Helix from source (true) or use nixpkgs version (false). (default: true)
-  build_helix_from_source = true;
+  # Build Helix from source (true) or use nixpkgs version (false). (default: false)
+  build_helix_from_source = false;
 
-  # Default shell for Zellij: "nu", "bash", or "fish". (default: "nu")
+  # Default shell for Zellij: "nu", "bash", "fish", or "zsh". (default: "nu")
   default_shell = "nu";
 
   # Enable verbose debug logging in the shellHook (default: false)

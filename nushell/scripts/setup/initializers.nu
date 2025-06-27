@@ -17,6 +17,7 @@ def main [yazelix_dir: string, include_optional: bool] {
         { name: "nu", dir: "nushell", ext: "nu" }
         { name: "bash", dir: "bash", ext: "sh" }
         { name: "fish", dir: "fish", ext: "fish" }
+        { name: "zsh", dir: "zsh", ext: "zsh" }
     ]
 
     # Generate initializers for each shell

@@ -99,10 +99,11 @@ v6 demo
      - `include_optional_deps` (default: `true`): Set to `false` to exclude optional dependencies like `mise` and `lazygit`.
      - `include_yazi_extensions` (default: `true`): Set to `false` to exclude Yazi extension dependencies like `ffmpeg` and `poppler`.
      - `default_shell` (default: `"nu"`): Sets the default shell for Zellij when Yazelix starts.
-       - Accepted values: `"nu"` (for Nushell), `"bash"`, or `"fish"`.
+       - Accepted values: `"nu"` (for Nushell), `"bash"`, `"fish"`, or `"zsh"`.
        - If this option is omitted from `yazelix.nix`, it defaults to `"nu"`.
-       - Nushell, Bash, and Fish are always installed by the Nix environment and available for use, regardless of this setting. This option only controls the default shell Zellij launches into.
+       - Nushell, Bash, Fish, and Zsh are always installed by the Nix environment and available for use, regardless of this setting. This option only controls the default shell Zellij launches into.
        - **Fish users**: Fish inherits the environment with all tools (starship, zoxide, mise, etc.) available in PATH. Configure these in your `~/.config/fish/config.fish` as desired.
+       - **Zsh users**: Zsh inherits the environment with all tools (starship, zoxide, mise, etc.) available in PATH. Configure these in your `~/.zshrc` as desired.
      - `user_packages`: Add custom Nix packages with full Nix expressions: `user_packages = with pkgs; [ discord vlc ];`
 
 6. (Optional) Make Yazelix's Yazi config your default (plugin-enhanced, width-adjusted):

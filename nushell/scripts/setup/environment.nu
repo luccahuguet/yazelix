@@ -38,6 +38,7 @@ def main [
     setup_bash_config $yazelix_dir
     setup_nushell_config $yazelix_dir
     setup_fish_config $yazelix_dir
+    setup_zsh_config $yazelix_dir
 
     # Setup editor
     setup_helix_config
@@ -114,6 +115,29 @@ def setup_fish_config [yazelix_dir: string] {
         $"\n($comment)\n($source_line)" | save --append $fish_config
     } else {
         print $"✅ Fish config already sourced"
+    }
+}
+
+def setup_zsh_config [yazelix_dir: string] {
+    let zsh_config = $"($env.HOME)/.zshrc"
+    let yazelix_config = $"($yazelix_dir)/zsh/yazelix_zsh_config.zsh"
+    let comment = "# Source Yazelix Zsh configuration (added by Yazelix)"
+    let source_line = $"source \"($yazelix_config)\""
+
+    if not ($yazelix_config | path exists) {
+        print $"⚠️  Zsh config not found, skipping Zsh setup"
+        return
+    }
+
+    mkdir ($zsh_config | path dirname)
+    touch $zsh_config
+    let config_content = (open $zsh_config)
+
+    if not ($config_content | str contains $comment) {
+        print $"🐚 Adding Yazelix Zsh config to ($zsh_config)"
+        $"\n($comment)\n($source_line)" | save --append $zsh_config
+    } else {
+        print $"✅ Zsh config already sourced"
     }
 }
 
