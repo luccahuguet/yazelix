@@ -109,11 +109,11 @@ Simply open WezTerm! Yazelix will automatically launch with the full environment
 - Press `Enter` in Yazi to open files in Helix
 
 ### Alternative: CLI-Only Mode
-To use Yazelix tools without starting the full interface:
+To use Yazelix tools without starting the full interface (no sidebar, no zellij):
 ```bash
 nix develop --impure ~/.config/yazelix
 ```
-This gives you access to all tools (helix, yazi, lazygit, etc.) in your current terminal.
+This gives you access to all tools (helix, yazi, lazygit, etc.) in your current terminal, that includes yazi and zellij, but they'll open on demand, not on their own.
 
 ### What Gets Installed
 Yazelix installs and configures:
