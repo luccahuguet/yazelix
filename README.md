@@ -102,6 +102,7 @@ v6 demo
        - Accepted values: `"nu"` (for Nushell), `"bash"`, or `"fish"`.
        - If this option is omitted from `yazelix.nix`, it defaults to `"nu"`.
        - Nushell, Bash, and Fish are always installed by the Nix environment and available for use, regardless of this setting. This option only controls the default shell Zellij launches into.
+       - **Fish users**: Fish inherits the environment with all tools (starship, zoxide, mise, etc.) available in PATH. Configure these in your `~/.config/fish/config.fish` as desired.
      - `user_packages`: Add custom Nix packages with full Nix expressions: `user_packages = with pkgs; [ discord vlc ];`
 
 6. (Optional) Make Yazelix's Yazi config your default (plugin-enhanced, width-adjusted):

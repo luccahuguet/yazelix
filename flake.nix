@@ -67,6 +67,7 @@
           helixPackage # Helix editor, either built from source or from nixpkgs
           yazi # Fast terminal file manager with sidebar integration
           nushell # Modern shell with structured data support
+          fish # Fish shell for users who prefer it
           fzf # Fuzzy finder for quick file and command navigation
           zoxide # Smart directory jumper for efficient navigation
           starship # Customizable shell prompt with Git status
@@ -282,7 +283,17 @@
 
             # --- Helix Setup ---
             debug_msg "Setting up Helix..."
-            export EDITOR=hx
+            # Set EDITOR to the available Helix binary (helix first, then hx as fallback)
+            if command -v helix >/dev/null 2>&1; then
+              export EDITOR=helix
+              debug_msg "Found 'helix' binary, setting EDITOR=helix"
+            elif command -v hx >/dev/null 2>&1; then
+              export EDITOR=hx
+              debug_msg "Found 'hx' binary, setting EDITOR=hx"
+            else
+              export EDITOR=hx  # Default fallback
+              warn_msg "Neither 'helix' nor 'hx' binary found, defaulting to EDITOR=hx"
+            fi
             info_msg "EDITOR set to: $EDITOR"
             debug_msg "Helix setup complete."
             debug_msg ""

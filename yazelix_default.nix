@@ -12,7 +12,7 @@
   # Build Helix from source (true) or use nixpkgs version (false). (default: true)
   build_helix_from_source = true;
 
-  # Default shell for Zellij: "nu" or "bash". (default: "nu")
+  # Default shell for Zellij: "nu", "bash", or "fish". (default: "nu")
   default_shell = "nu";
 
   # Enable verbose debug logging in the shellHook (default: false)
