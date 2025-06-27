@@ -28,9 +28,16 @@
             "${homeDir}/.config/yazelix/yazelix.nix"
           else
             throw "HOME environment variable is unset or empty";
+        defaultConfigFile =
+          if homeDir != "" then
+            "${homeDir}/.config/yazelix/yazelix_default.nix"
+          else
+            throw "HOME environment variable is unset or empty";
         config =
           if builtins.pathExists configFile then
             import configFile { inherit pkgs; }
+          else if builtins.pathExists defaultConfigFile then
+            import defaultConfigFile { inherit pkgs; }
           else
             {
               include_optional_deps = true;
@@ -137,6 +144,16 @@
             info_msg() { _log_to_file_and_stdout "[$(date +'%T') INFO] $1"; } # Key info messages
 
             log_msg "--- Yazelix Flake shellHook Started (Logging to: $YAZELIX_SHELLHOOK_LOG_FILE) ---"
+
+            # Auto-copy config file if it doesn't exist
+            YAZELIX_CONFIG_FILE="$HOME/.config/yazelix/yazelix.nix"
+            YAZELIX_DEFAULT_CONFIG="$HOME/.config/yazelix/yazelix_default.nix"
+            if [ ! -f "$YAZELIX_CONFIG_FILE" ] && [ -f "$YAZELIX_DEFAULT_CONFIG" ]; then
+              debug_msg "Creating user config file from template: $YAZELIX_CONFIG_FILE"
+              cp "$YAZELIX_DEFAULT_CONFIG" "$YAZELIX_CONFIG_FILE" || warn_msg "Failed to copy config template"
+              info_msg "Created yazelix.nix from template. Customize it for your needs!"
+            fi
+
             debug_msg "Using HOME=$HOME"
             # Nix variable `configFile` is used here for logging its value from Nix context
             debug_msg "Nix 'configFile' variable value: ${configFile}"

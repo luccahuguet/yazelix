@@ -82,5 +82,6 @@
 
 ## TODO List
 - ✅ Add auto-trimming to the logs generated on shellhooks (or stop generating them) - COMPLETED: Added auto-trim to keep only 10 most recent shellhook logs
+- Add a copy/generate script that copies yazelix_default.nix to yazelix.nix (both in root) - yazelix.nix will be git ignored for user customization
 - Create option of having a folder that is gitignored containing user-specific configs that we can concatenate to yazelix configs when available 
 - Consider hybrid approach: some users want to commit their custom configs (for version control, sharing, contributing back), while others want private local-only configs 
