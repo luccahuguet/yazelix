@@ -14,7 +14,7 @@ The boot sequence of the Nix version is the following:
    - Dependencies are installed.
    - The **streamlined shellHook** exports essential environment variables and calls the main setup script.
    
-5. **Automated Setup**: `nushell/scripts/setup-yazelix-environment.nu`
+5. **Automated Setup**: `nushell/scripts/setup/environment.nu`
    - **Universal initializer generation** for all supported shells (Nu, Bash, Fish)
    - **Shell configuration setup** - ensures user configs source Yazelix configs
    - **Helix editor detection** - automatically sets EDITOR to `helix` or `hx`

@@ -1,24 +1,27 @@
 #!/usr/bin/env nu
-# ~/.config/yazelix/nushell/zellij_utils.nu
+# Zellij integration utilities for Yazelix
 
-source ~/.config/yazelix/nushell/scripts/logging.nu
+use ../utils/logging.nu *
 
 # Get the tab name based on Git repo or working directory
 def get_tab_name [working_dir: path] {
-    let git_root = (git rev-parse --show-toplevel | str trim)
-    let tab_name = if ($git_root | is-not-empty) and (not ($git_root | str starts-with "fatal:")) {
-        log_to_file "open_helix.log" $"Git root found: ($git_root)"
-        $git_root | path basename
-    } else {
-        let basename = ($working_dir | str trim | path basename)
-        log_to_file "open_helix.log" $"No valid Git repo, using basename of ($working_dir): ($basename)"
-        if ($basename | is-empty) {
-            "unnamed"
+    try {
+        let git_root = (git rev-parse --show-toplevel | str trim)
+        if ($git_root | is-not-empty) and (not ($git_root | str starts-with "fatal:")) {
+            log_to_file "open_helix.log" $"Git root found: ($git_root)"
+            $git_root | path basename
         } else {
-            $basename
+            let basename = ($working_dir | str trim | path basename)
+            log_to_file "open_helix.log" $"No valid Git repo, using basename of ($working_dir): ($basename)"
+            if ($basename | is-empty) {
+                "unnamed"
+            } else {
+                $basename
+            }
         }
+    } catch {
+        $working_dir | path basename
     }
-    $tab_name
 }
 
 # Focus the helix pane
@@ -33,12 +36,21 @@ export def find_helix [] {
 
 # Get the running command from the second Zellij client
 export def get_running_command [] {
-    let list_clients_output = (zellij action list-clients | lines | get 1)
-    
-    $list_clients_output 
-        | parse --regex '\w+\s+\w+\s+(?<rest>.*)' 
-        | get rest 
-        | to text
+    try {
+        let list_clients_output = (zellij action list-clients | lines | get 1)
+        
+        $list_clients_output 
+            | parse --regex '\w+\s+\w+\s+(?<rest>.*)' 
+            | get rest 
+            | to text
+    } catch {
+        ""
+    }
+}
+
+# Check if Helix is running (simplified version for zellij integration)
+export def is_hx_running [command: string] {
+    ($command | str contains "hx") or ($command | str contains "helix")
 }
 
 # Open a file in an existing Helix pane and rename tab
@@ -120,4 +132,4 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
         log_to_file "open_helix.log" $"Error executing command: nu -c \"($cmd)\"\nError details: ($err.msg)"
         print $"Error executing zellij command: nu -c \"($cmd)\"\nDetails: ($err.msg)"
     }
-}
+} 

@@ -134,7 +134,7 @@
             fi
 
             # Run main environment setup script
-            nu "$YAZELIX_DIR/nushell/scripts/setup-yazelix-environment.nu" \
+            nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu" \
               "$YAZELIX_DIR" \
               "${if includeOptionalDeps then "true" else "false"}" \
               "${if buildHelixFromSource then "true" else "false"}" \

@@ -32,7 +32,7 @@ def main [
     
     # Generate shell initializers
     print "🔧 Generating shell initializers..."
-    nu $"($yazelix_dir)/nushell/scripts/generate-shell-initializers.nu" $yazelix_dir $include_optional
+    nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir $include_optional
     
     # Setup shell configurations
     setup_bash_config $yazelix_dir
