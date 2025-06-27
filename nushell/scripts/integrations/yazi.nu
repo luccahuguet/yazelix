@@ -3,8 +3,6 @@
 
 # Navigate Yazi to the directory of the current Helix buffer
 export def reveal_in_yazi [buffer_name: string] {
-    print $"Starting reveal_in_yazi with buffer_name: ($buffer_name)"
-
     if ($buffer_name | is-empty) {
         print "Error: Buffer name not provided"
         return

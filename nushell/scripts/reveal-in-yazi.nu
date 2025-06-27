@@ -5,4 +5,4 @@ use integrations/yazi.nu reveal_in_yazi
 
 def main [buffer_name: string] {
     reveal_in_yazi $buffer_name
-} 
+}
