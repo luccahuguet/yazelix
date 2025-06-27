@@ -1,24 +1,31 @@
 # Boot Sequence
 
-The boot sequence of the Nix version is the following:
 
-1. **Launch**: You run `yazelix` or `yzx` (or `~/.config/yazelix/bash/launch-yazelix.sh`)
-   - The `launch-yazelix.sh` script automatically adds `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`) and launches WezTerm with the Yazelix-specific configuration.
+## 1.A: WezTerm Auto-Launch 
+- **Setup**: Copy WezTerm config: `cp ~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua ~/.wezterm.lua`
+- **Launch**: Open WezTerm and WezTerm's `default_prog` automatically executes `bash -c ~/.config/yazelix/bash/start-yazelix.sh`
 
-2. **WezTerm Start**: WezTerm, as configured by `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`, then executes the `~/.config/yazelix/bash/start-yazelix.sh` script.
+## 1.B: Terminal Commands  
+- **Setup**: See [Terminal Setup Guide](./terminal_setup.md) for `yazelix` and `yzx` alias configuration
+- **Launch**: Run `yazelix` or `yzx` from any terminal and it will execute `~/.config/yazelix/bash/launch-yazelix.sh`
+- That launches WezTerm with specific config: `nohup wezterm --config-file ~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`
+- WezTerm's `default_prog` automatically executes `bash -c ~/.config/yazelix/bash/start-yazelix.sh`
 
-3. **Nix Environment**: The `start-yazelix.sh` script navigates to the Yazelix project directory and runs `nix develop --impure --command ...`.
+## 2. **Nix Environment**: Changes to `~/.config/yazelix` and runs:
+   ```bash
+   nix develop --impure --command bash -c "zellij --config-dir ~/.config/yazelix/zellij options --default-cwd $HOME --default-layout yazelix --default-shell $YAZELIX_DEFAULT_SHELL"
+   ```
 
-4. **Inside Nix Environment**:
-   - The `flake.nix` reads `~/.config/yazelix/yazelix.nix` to determine configurations, including the `default_shell` (which defaults to `nu` but can be set to `bash` or `fish`).
-   - Dependencies are installed.
-   - The **streamlined shellHook** exports essential environment variables and calls the main setup script.
-   
-5. **Automated Setup**: `nushell/scripts/setup/environment.nu`
-   - **Universal initializer generation** for all supported shells (Nu, Bash, Fish)
-   - **Shell configuration setup** - ensures user configs source Yazelix configs
-   - **Helix editor detection** - automatically sets EDITOR to `helix` or `hx`
-   - **Log management** - handles logging and rotation
-   - **Permission setting** - makes scripts executable
-   
-6. **Shell Launch**: Zellij is launched using the `YAZELIX_DEFAULT_SHELL` to set its default shell (e.g., `zellij --default-shell nu`). 
+## 3. **Nix Dependencies**: 
+   - Reads `~/.config/yazelix/yazelix.nix` configuration (creates from `yazelix_default.nix` if missing)
+   - Installs dependencies based on config flags
+   - Sets environment variables (`YAZELIX_DIR`, `YAZELIX_DEFAULT_SHELL`, etc.)
+
+## 4. **shellHook Execution**: Nix shellHook runs `nushell/scripts/setup/environment.nu`:
+   - **Initializer Generation**: Creates shell initializers for Nu, Bash, Fish, Zsh  
+   - **Shell Configuration**: Adds Yazelix config sourcing to user shell configs
+   - **Editor Setup**: Sets `EDITOR` to `helix` or `hx`
+   - **Permissions**: Makes scripts executable
+   - **Logging**: Creates timestamped logs and auto-trims old ones
+
+## 5. **Zellij Launch**: Starts Zellij with yazelix layout and configured default shell 
