@@ -49,7 +49,7 @@ v6 demo
 - Installs and configures dependencies automatically
 - The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip`.
 - Adds `launch-yazelix.sh` script to streamline setup by launching WezTerm with the Yazelix-specific config and automatically adding `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`) and Nushell config, eliminating manual configuration steps
-- Introduces dynamic Zellij configuration generation using `nushell/scripts/generate-zellij-config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `zellij/yazelix-overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
+- Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/generate-zellij-config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `zellij/yazelix-overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
 
 ## Compatibility
 - The Nix-based installation currently supports only WezTerm; the Cargo-based installation supports any terminal emulator, including WezTerm and Ghostty (includes a Ghostty config)
@@ -143,6 +143,9 @@ See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details on 
 
 ## Troubleshooting
 See [docs/troubleshooting.md](./docs/troubleshooting.md) for help with setup issues, version compatibility, and debugging, including important notes for upgrading to v7.
+
+## VS Code and Cursor Integration
+Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code or Cursor integrated terminal? See our [VS Code/Cursor integration guide](./docs/vscode_cursor_integration.md) for step-by-step setup instructions that give you the full Yazelix environment in your editor's terminal.
 
 ## Keybindings
 Keybindings are discoverable in each tool (e.g., `~` in Yazi, `?` in lazygit). See [docs/keybindings.md](./docs/keybindings.md) for full details, custom keybindings, and usage tips.

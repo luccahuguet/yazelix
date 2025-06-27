@@ -1,5 +1,9 @@
 # Cursor Rules for Yazelix Project
 
+## General Rules
+- Make sure the user is happy and has to do as little work as possible
+- Yazelix can be opinionated at times, but recently we have been trying to be more flexible and allow for more customization
+
 ## Terminal Command Rules
 - When running terminal commands, use `nu -c` for nushell commands
 - Use full paths like `/bin/mv` when PATH environment has issues
@@ -75,3 +79,8 @@
 - Terminal emulator configs go in terminal_configs/
 - Documentation goes in docs/
 - Keep related content organized in appropriate folders 
+
+## TODO List
+- Add auto-trimming to the logs generated on shellhooks (or stop generating them)
+- Create option of having a folder that is gitignored containing user-specific configs that we can concatenate to yazelix configs when available 
+- Consider hybrid approach: some users want to commit their custom configs (for version control, sharing, contributing back), while others want private local-only configs 
