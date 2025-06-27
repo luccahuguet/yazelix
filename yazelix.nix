@@ -6,6 +6,9 @@
   # Include Yazi extensions for previews, archives, etc. (default: true)
   include_yazi_extensions = true;
 
+  # Include heavy media packages for Yazi (WARNING: ~800MB-1.2GB) (default: true)
+  include_yazi_media = true;
+
   # Build Helix from source (true) or use nixpkgs version (false). (default: true)
   build_helix_from_source = true;
 

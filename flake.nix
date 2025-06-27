@@ -35,6 +35,7 @@
             {
               include_optional_deps = true;
               include_yazi_extensions = true;
+              include_yazi_media = true;
               build_helix_from_source = true;
               default_shell = "nu";
               debug_mode = false;
@@ -44,6 +45,7 @@
         # Variables to control optional, Yazi extension, Helix source, default shell, and debug mode
         includeOptionalDeps = config.include_optional_deps or true;
         includeYaziExtensions = config.include_yazi_extensions or true;
+        includeYaziMedia = config.include_yazi_media or true;
         buildHelixFromSource = config.build_helix_from_source or true;
         yazelixDefaultShell = config.default_shell or "nu";
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
@@ -78,15 +80,19 @@
           markdown-oxide # Personal Knowledge Management System (PKMS) that works with text editors through LSP
         ];
 
-        # Yazi extension dependencies (enhance Yazi functionality, e.g., previews, archives)
+        # Yazi extension dependencies (enhance Yazi functionality, lightweight)
         yaziExtensionsDeps = with pkgs; [
-          ffmpeg # Multimedia processing for media previews in Yazi
           p7zip # Archive utility for handling compressed files
           jq # JSON processor for parsing and formatting in Yazi plugins
           fd # Fast file finder for efficient search in Yazi
           ripgrep # High-performance search tool for file content
           poppler # PDF rendering for document previews in Yazi
-          imagemagick # Image processing for thumbnail generation in Yazi
+        ];
+
+        # Heavy media packages (WARNING: ~800MB-1.2GB total)
+        yaziMediaDeps = with pkgs; [
+          ffmpeg # Multimedia processing for media previews (~400-600MB)
+          imagemagick # Image processing for thumbnails (~200-300MB)
         ];
 
         # Combine dependencies based on config
@@ -94,6 +100,7 @@
           essentialDeps
           ++ (if includeOptionalDeps then optionalDeps else [ ])
           ++ (if includeYaziExtensions then yaziExtensionsDeps else [ ])
+          ++ (if includeYaziMedia then yaziMediaDeps else [ ])
           ++ (config.user_packages or [ ]);
 
       in
@@ -135,6 +142,7 @@
             debug_msg "Nix 'configFile' variable value: ${configFile}"
             debug_msg "include_optional_deps: ${if includeOptionalDeps then "true" else "false"}"
             debug_msg "include_yazi_extensions: ${if includeYaziExtensions then "true" else "false"}"
+            debug_msg "include_yazi_media: ${if includeYaziMedia then "true" else "false"}"
             debug_msg "build_helix_from_source: ${if buildHelixFromSource then "true" else "false"}"
             debug_msg "default_shell: ${yazelixDefaultShell}"
             debug_msg "debug_mode active: $YAZELIX_DEBUG_MODE_SHELL"
@@ -281,6 +289,7 @@
             fi
             log_msg "  include_optional_deps: ${if includeOptionalDeps then "true" else "false"}"
             log_msg "  include_yazi_extensions: ${if includeYaziExtensions then "true" else "false"}"
+            log_msg "  include_yazi_media: ${if includeYaziMedia then "true" else "false"}"
             log_msg "  build_helix_from_source: ${if buildHelixFromSource then "true" else "false"}"
             log_msg "  default_shell: ${yazelixDefaultShell}"
             log_msg "  debug_mode: ${if yazelixDebugMode then "true" else "false"}"
