@@ -50,37 +50,106 @@ v6 demo
 
 ## Instructions to Set It Up
 
-### Nix-Based Installation
-1. Install Nix (Single-User):
-   - On Linux/macOS, run the following command to install Nix in single-user mode:
-     ```bash
-     curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
-     ```
-   - Follow the prompts to complete installation. This sets up Nix for the current user only, which is simpler and suits most Yazelix users.
-   - Multi-user installations (using `--daemon`) may work but are untested with Yazelix. If you need multi-user, see the [Nix installation docs](https://nixos.org/manual/nix/stable/installation/multi-user.html) and ensure `/nix` is accessible. For single-user, ensure `~/.nix-profile` is in your PATH.
-2. Enable Nix flakes:
-   - Create or edit `~/.config/nix/nix.conf` to enable experimental features:
-     ```bash
-     mkdir -p ~/.config/nix
-     echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
-     ```
-3. Clone this repo into your `~/.config` directory:
-   ```bash
-   git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
-   ```
-4. Launch Yazelix with this command:
-     ```bash
-     chmod +x ~/.config/yazelix/bash/launch-yazelix.sh
-     ~/.config/yazelix/bash/launch-yazelix.sh
-     ```
-   - This launches WezTerm with the Yazelix-specific configuration, starting Zellij with the Yazelix layout. The script automatically adds `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`). To use the aliases in the current session, run `source ~/.bashrc` (or `source ~/.zshrc` if using Zsh).
-   - After sourcing, you can launch Yazelix by running `yazelix` or `yzx` in your terminal.
-5. Optional: Enter the Nix development environment without Zellij:
-   - To load the Yazelix tools without starting Zellij, run:
-     ```bash
-     nix develop --impure ~/.config/yazelix
-     ```
-   - In this environment, `yazelix` and `yzx` aliases are also available in Nushell.
+### New to Nix? Don't Worry!
+
+**What is Nix?** Nix is a powerful package manager that ensures reproducible, reliable software installations. Think of it like a super-powered version of `apt`, `brew`, or `chocolatey` that:
+- ✅ Never breaks your system (installs are isolated)
+- ✅ Allows multiple versions of the same software
+- ✅ Makes it easy to share exact development environments
+- ✅ Can completely uninstall without leaving traces
+
+**Why does Yazelix use Nix?** It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software.
+
+### Prerequisites
+- **WezTerm terminal emulator** (required for Yazelix)
+  - **Linux**: Install via your distribution's package manager or [download from WezTerm releases](https://github.com/wez-flong/wezterm/releases)
+  - **macOS**: `brew install --cask wezterm` or [download from WezTerm website](https://wezfurlong.org/wezterm/installation.html)
+  - **Verify installation**: Run `wezterm --version` to confirm it's working
+
+### Step-by-Step Installation
+
+#### 1. Install Nix Package Manager
+We use the **Determinate Systems Nix Installer** - it's more reliable, faster, and includes modern features out of the box:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+```
+
+**What this does:**
+- Installs Nix with flakes and the modern CLI enabled automatically (no extra configuration needed!)
+- Sets up proper file permissions and system integration
+- Provides a reliable uninstaller if you ever want to remove Nix
+- Works on Linux, macOS, and WSL2
+
+**Follow the prompts** and restart your terminal when prompted.
+
+#### 2. Verify Nix Installation
+Test that Nix is working correctly:
+```bash
+nix --version
+```
+You should see output like `nix (Nix) 2.xx.x` with flakes enabled.
+#### 3. Download Yazelix
+Clone the Yazelix repository to your system:
+```bash
+git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
+```
+
+#### 4. Launch Yazelix for the First Time
+Run the launch script to set everything up:
+```bash
+chmod +x ~/.config/yazelix/bash/launch-yazelix.sh
+~/.config/yazelix/bash/launch-yazelix.sh
+```
+
+**What happens during first launch:**
+- Downloads and installs all required tools (Yazi, Zellij, Helix, Nushell, etc.)
+- Sets up configurations and integrations
+- Adds convenient `yazelix` and `yzx` aliases to your shell
+- Launches WezTerm with the Yazelix environment
+
+**Wait for the process to complete** - this may take a few minutes on first run as Nix downloads and builds everything.
+
+#### 5. Using Yazelix
+After the initial setup, you can launch Yazelix anytime with:
+```bash
+yazelix  # or yzx for short
+```
+
+If the aliases aren't available immediately, restart your terminal or run:
+```bash
+source ~/.bashrc  # or ~/.zshrc if using Zsh
+```
+
+### Alternative: CLI-Only Mode
+To use Yazelix tools without starting the full interface:
+```bash
+nix develop --impure ~/.config/yazelix
+```
+This gives you access to all tools (helix, yazi, lazygit, etc.) in your current terminal.
+
+### Installation Troubleshooting
+
+**🔧 "WezTerm not found" Error**
+- Ensure WezTerm is installed and in your PATH
+- Try running `wezterm --version` to verify installation
+
+**🔧 "curl: command not found"**
+- Install curl first: `sudo apt install curl` (Ubuntu/Debian) or `brew install curl` (macOS)
+
+**🔧 Nix Installation Fails**
+- The Determinate Systems installer usually handles most issues automatically
+- Check their [troubleshooting guide](https://install.determinate.systems/docs/troubleshooting) for specific problems
+- For SELinux systems, see their [SELinux support documentation](https://install.determinate.systems/docs/selinux)
+
+**🔧 "Permission denied" on first launch**
+- Make sure you made the script executable: `chmod +x ~/.config/yazelix/bash/launch-yazelix.sh`
+- Check that you have write permissions to `~/.config/yazelix`
+
+**🔧 Yazelix tools not working after installation**
+- Try restarting your terminal completely
+- Source your shell config: `source ~/.bashrc` or `source ~/.zshrc`
+- Verify Nix is working: `nix --version`
 
    This installs and configures:
    - Required:
