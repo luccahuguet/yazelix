@@ -7,7 +7,7 @@ def get_version [tool: string] {
         match $tool {
             "yazi" => {
                 if (which yazi | is-empty) { return "not installed" }
-                try { (yazi --version | lines | first | split column " " | get column2) } catch { "error" }
+                try { (yazi --version | lines | first | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
             }
             "zellij" => {
                 if (which zellij | is-empty) { return "not installed" }
@@ -15,7 +15,7 @@ def get_version [tool: string] {
             }
             "helix" => {
                 if (which hx | is-empty) { return "not installed" }
-                try { (hx --version | lines | first | split column " " | get column2) } catch { "error" }
+                try { (hx --version | lines | first | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
             }
             "nushell" => {
                 if (which nu | is-empty) { return "not installed" }
@@ -23,13 +23,13 @@ def get_version [tool: string] {
             }
             "zoxide" => {
                 if (which zoxide | is-empty) { return "not installed" }
-                try { (zoxide --version | split column " " | get column2) } catch { "error" }
+                try { (zoxide --version | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
             }
             "starship" => {
                 if (which starship | is-empty) { return "not installed" }
-                try { (starship --version | lines | first | split column " " | get column2) } catch { "error" }
+                try { (starship --version | lines | first | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
             }
-                        "lazygit" => {
+            "lazygit" => {
                 if (which lazygit | is-empty) { return "not installed" }
                 try {
                     let output = (lazygit --version | lines | first)
@@ -38,7 +38,7 @@ def get_version [tool: string] {
             }
             "fzf" => {
                 if (which fzf | is-empty) { return "not installed" }
-                try { (fzf --version | split column " " | get column1) } catch { "error" }
+                try { (fzf --version | split column " " | get column1 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
             }
             "wezterm" => {
                 if (which wezterm | is-empty) { return "not installed" }
@@ -46,7 +46,7 @@ def get_version [tool: string] {
             }
             "nix" => {
                 if (which nix | is-empty) { return "not installed" }
-                try { (nix --version | split column " " | get column3) } catch { "error" }
+                try { (nix --version | split column " " | get column3 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
             }
             _ => {
                 if (which $tool | is-empty) { return "not installed" }
@@ -61,11 +61,8 @@ def get_version [tool: string] {
     }
 }
 
-# Main function - simple version listing
-export def main [] {
-    print "Yazelix Tool Versions"
-    print "====================="
-
+# Main function - markdown table output
+export def main [--save(-s)] {
     let tools = [
         "yazi"
         "zellij"
@@ -79,11 +76,36 @@ export def main [] {
         "nix"
     ]
 
-    for tool in $tools {
+    # Collect tool information
+    let tool_data = ($tools | each { |tool|
         let version = get_version $tool
-        print $"($tool): ($version)"
-    }
+        {tool: $tool, version: $version}
+    })
 
-    print ""
-    print $"Generated: (date now | format date '%Y-%m-%d %H:%M:%S')"
+    let header = [
+        "# Yazelix Tool Versions"
+        ""
+        $"Generated: (date now | format date '%Y-%m-%d %H:%M:%S')"
+        ""
+    ]
+
+    let table_md = ($tool_data | to md --pretty)
+
+    let notes = [
+        ""
+        "## Usage"
+        ""
+        "- **Regenerate**: `nu nushell/scripts/utils/version-info.nu --save`"
+        "- **View only**: `nu nushell/scripts/utils/version-info.nu`"
+    ]
+
+    let full_output = ([$header [$table_md] $notes] | flatten | str join "\n")
+
+    if $save {
+        let file_path = "docs/version_table.md"
+        $full_output | save $file_path --force
+        print $"✅ Version table saved to ($file_path)"
+    } else {
+        print $full_output
+    }
 }
