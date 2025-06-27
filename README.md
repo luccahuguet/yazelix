@@ -22,7 +22,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
   - WezTerm, as configured by `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`, then executes the `~/.config/yazelix/bash/start-yazelix.sh` script.
   - The `start-yazelix.sh` script navigates to the Yazelix project directory and runs `nix develop --impure --command ...`.
   - Inside the `nix develop` environment:
-    - The `flake.nix` reads `~/.config/yazelix/yazelix.toml` to determine configurations, including the `default_shell` (which defaults to `nu` but can be set to `bash`).
+    - The `flake.nix` reads `~/.config/yazelix/yazelix.nix` to determine configurations, including the `default_shell` (which defaults to `nu` but can be set to `bash`).
     - Dependencies are installed.
     - The `shellHook` generates initializer scripts for Bash and Nushell, and exports the chosen default shell as an environment variable (`YAZELIX_DEFAULT_SHELL`).
     - Finally, Zellij is launched using the `YAZELIX_DEFAULT_SHELL` to set its default shell (e.g., `zellij --default-shell nu`).
@@ -100,17 +100,18 @@ Yazelix v7 offers two installation pipelines: **Nix-based (recommended)** for a 
      - [fzf](https://github.com/junegunn/fzf) (fuzzy finder for Yazi)
      - [zoxide](https://github.com/ajeetdsouza/zoxide) (smart directory navigation)
      - [Starship](https://starship.rs) (customizable prompt)
-   - Optional (enabled by default in `yazelix.toml`): [cargo-update](https://github.com/nabijaczleweli/cargo-update) (updates Rust crates), [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (faster Rust tool installation), [lazygit](https://github.com/jesseduffield/lazygit) (Git TUI), [mise](https://github.com/jdxcode/mise) (tool version manager), [ouch](https://github.com/ouch-org/ouch) (compression tool)
-   - Yazi Extensions (enabled by default in `yazelix.toml`): `ffmpeg`, `p7zip`, `jq`, `poppler`, `fd`, `ripgrep`, `imagemagick` (extend Yazi's functionality, e.g., media previews, archives, search)
+   - Optional (enabled by default in `yazelix.nix`): [cargo-update](https://github.com/nabijaczleweli/cargo-update) (updates Rust crates), [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (faster Rust tool installation), [lazygit](https://github.com/jesseduffield/lazygit) (Git TUI), [mise](https://github.com/jdxcode/mise) (tool version manager), [ouch](https://github.com/ouch-org/ouch) (compression tool)
+   - Yazi Extensions (enabled by default in `yazelix.nix`): `ffmpeg`, `p7zip`, `jq`, `poppler`, `fd`, `ripgrep`, `imagemagick` (extend Yazi's functionality, e.g., media previews, archives, search)
    - Sets environment variables: `YAZI_CONFIG_HOME` (points to `~/.config/yazelix/yazi`), `ZELLIJ_DEFAULT_LAYOUT` (set to `yazelix`), and `EDITOR` (set to `hx`)
-   - Configurable in `~/.config/yazelix/yazelix.toml`:
+   - Configurable in `~/.config/yazelix/yazelix.nix`:
      - `build_helix_from_source` (default: `true`): Set to `false` to use the pre-built Helix from `nixpkgs` instead of building from source. Building from source ensures the latest Helix features (e.g., for `Alt y` to reveal files in Yazi) but takes longer. Using `nixpkgs` is faster but may use an older version; check compatibility in `./docs/table_of_versions.md`.
      - `include_optional_deps` (default: `true`): Set to `false` to exclude optional dependencies like `mise` and `lazygit`.
      - `include_yazi_extensions` (default: `true`): Set to `false` to exclude Yazi extension dependencies like `ffmpeg` and `poppler`.
      - `default_shell` (default: `"nu"`): Sets the default shell for Zellij when Yazelix starts.
        - Accepted values: `"nu"` (for Nushell) or `"bash"`.
-       - If this option is omitted from `yazelix.toml`, it defaults to `"nu"`.
+       - If this option is omitted from `yazelix.nix`, it defaults to `"nu"`.
        - Both Nushell and Bash are always installed by the Nix environment and available for use, regardless of this setting. This option only controls the default shell Zellij launches into.
+     - `user_packages`: Add custom Nix packages with full Nix expressions: `user_packages = with pkgs; [ discord vlc ];`
 
 6. (Optional) Make Yazelix's Yazi config your default (plugin-enhanced, width-adjusted):
    - For Nushell users, add to `~/.config/nushell/env.nu` (edit with `config env`):

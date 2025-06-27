@@ -21,23 +21,24 @@
       let
         pkgs = import nixpkgs { inherit system; };
 
-        # Read configuration from yazelix.toml
+        # Read configuration from yazelix.nix
         homeDir = builtins.getEnv "HOME";
         configFile =
           if homeDir != "" then
-            "${homeDir}/.config/yazelix/yazelix.toml"
+            "${homeDir}/.config/yazelix/yazelix.nix"
           else
             throw "HOME environment variable is unset or empty";
         config =
           if builtins.pathExists configFile then
-            builtins.fromTOML (builtins.readFile configFile)
+            import configFile { inherit pkgs; }
           else
             {
               include_optional_deps = true;
               include_yazi_extensions = true;
               build_helix_from_source = true;
               default_shell = "nu";
-              debug_mode = false; # Default for debug_mode
+              debug_mode = false;
+              user_packages = [ ];
             };
 
         # Variables to control optional, Yazi extension, Helix source, default shell, and debug mode
@@ -92,7 +93,8 @@
         allDeps =
           essentialDeps
           ++ (if includeOptionalDeps then optionalDeps else [ ])
-          ++ (if includeYaziExtensions then yaziExtensionsDeps else [ ]);
+          ++ (if includeYaziExtensions then yaziExtensionsDeps else [ ])
+          ++ (config.user_packages or [ ]);
 
       in
       {
