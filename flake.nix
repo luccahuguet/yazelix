@@ -166,59 +166,12 @@
             debug_msg "debug_mode active: $YAZELIX_DEBUG_MODE_SHELL"
             debug_msg ""
 
-            # --- Nushell Initializers ---
-            debug_msg "Setting up Nushell initializers..."
-            NUSHELL_INITIALIZERS_DIR="$HOME/.config/yazelix/nushell/initializers"
-            mkdir -p "$NUSHELL_INITIALIZERS_DIR" || warn_msg "Could not create Nushell initializers directory: $NUSHELL_INITIALIZERS_DIR"
-
-            ${
-              if includeOptionalDeps then
-                ''
-                  debug_msg "Generating mise_init.nu (include_optional_deps=true)"
-                  mise activate nu > "$NUSHELL_INITIALIZERS_DIR/mise_init.nu" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate mise_init.nu"
-                  debug_msg "Generating carapace_init.nu (include_optional_deps=true)"
-                  carapace _carapace nushell > "$NUSHELL_INITIALIZERS_DIR/carapace_init.nu" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate carapace_init.nu"
-                ''
-              else
-                ''
-                  debug_msg "Skipping mise and carapace Nushell initialization (include_optional_deps=false)"
-                  touch "$NUSHELL_INITIALIZERS_DIR/mise_init.nu" || warn_msg "Failed to touch empty mise_init.nu"
-                  touch "$NUSHELL_INITIALIZERS_DIR/carapace_init.nu" || warn_msg "Failed to touch empty carapace_init.nu"
-                ''
-            }
-            debug_msg "Generating starship_init.nu"
-            starship init nu > "$NUSHELL_INITIALIZERS_DIR/starship_init.nu" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate starship_init.nu"
-            debug_msg "Generating zoxide_init.nu"
-            zoxide init nushell --cmd z > "$NUSHELL_INITIALIZERS_DIR/zoxide_init.nu" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate zoxide_init.nu"
-            debug_msg "Nushell initializers setup complete."
-            debug_msg ""
-
-            # --- Bash Initializers (generate individual scripts) ---
-            debug_msg "Setting up Bash initializers..."
-            BASH_INITIALIZERS_DIR="$HOME/.config/yazelix/bash/initializers"
-            mkdir -p "$BASH_INITIALIZERS_DIR" || warn_msg "Could not create Bash initializers directory: $BASH_INITIALIZERS_DIR"
-
-            debug_msg "Generating starship_init.sh for Bash"
-            starship init bash > "$BASH_INITIALIZERS_DIR/starship_init.sh" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate starship_init.sh for Bash"
-            debug_msg "Generating zoxide_init.sh for Bash"
-            zoxide init bash --cmd z > "$BASH_INITIALIZERS_DIR/zoxide_init.sh" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate zoxide_init.sh for Bash"
-
-            ${
-              if includeOptionalDeps then
-                ''
-                  debug_msg "Generating mise_init.sh for Bash (include_optional_deps=true)"
-                  mise activate bash > "$BASH_INITIALIZERS_DIR/mise_init.sh" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate mise_init.sh for Bash"
-                  debug_msg "Generating carapace_init.sh for Bash (include_optional_deps=true)"
-                  carapace _carapace bash > "$BASH_INITIALIZERS_DIR/carapace_init.sh" 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate carapace_init.sh for Bash"
-                ''
-              else
-                ''
-                  debug_msg "Skipping mise and carapace Bash initialization (include_optional_deps=false)"
-                  touch "$BASH_INITIALIZERS_DIR/mise_init.sh" # Create empty if not included
-                  touch "$BASH_INITIALIZERS_DIR/carapace_init.sh" || warn_msg "Failed to touch empty carapace_init.sh"
-                ''
-            }
-            debug_msg "Bash initializers setup complete."
+            # --- Shell Initializers (Universal Generator) ---
+            debug_msg "Generating shell initializers for all supported shells..."
+            nu "$HOME/.config/yazelix/nushell/scripts/generate-shell-initializers.nu" "$HOME/.config/yazelix" ${
+              if includeOptionalDeps then "true" else "false"
+            } 2>>"$YAZELIX_SHELLHOOK_LOG_FILE" || warn_msg "Failed to generate shell initializers"
+            debug_msg "Shell initializers generation complete."
             debug_msg ""
 
             # --- Ensure ~/.bashrc sources the PERSISTED Yazelix Bash config ---
@@ -279,6 +232,33 @@
               info_msg "Yazelix Nushell config (with standard comment) already sourced in $NUSHELL_USER_CONFIG_FILE."
             fi
             debug_msg "Nushell configuration sourcing setup complete."
+            debug_msg ""
+
+            # --- Fish Setup ---
+            debug_msg "Setting up Fish configuration sourcing..."
+            FISH_USER_CONFIG_FILE="$HOME/.config/fish/config.fish"
+            YAZELIX_FISH_CONFIG_TO_SOURCE="$HOME/.config/yazelix/fish/yazelix_fish_config.fish"
+            YAZELIX_FISH_COMMENT_LINE="# Source Yazelix Fish configuration (added by Yazelix)"
+            YAZELIX_FISH_SOURCE_LINE="source \"$YAZELIX_FISH_CONFIG_TO_SOURCE\""
+
+            if [ -f "$YAZELIX_FISH_CONFIG_TO_SOURCE" ]; then
+              mkdir -p "$(dirname "$FISH_USER_CONFIG_FILE")" || warn_msg "Could not create Fish config directory"
+              touch "$FISH_USER_CONFIG_FILE" || warn_msg "Failed to touch $FISH_USER_CONFIG_FILE"
+              if ! grep -qF -- "$YAZELIX_FISH_COMMENT_LINE" "$FISH_USER_CONFIG_FILE"; then
+                debug_msg "Adding Yazelix Fish sourcing to $FISH_USER_CONFIG_FILE"
+                {
+                  echo ""
+                  echo "$YAZELIX_FISH_COMMENT_LINE"
+                  echo "$YAZELIX_FISH_SOURCE_LINE"
+                } >> "$FISH_USER_CONFIG_FILE"
+                info_msg "Added Yazelix Fish config source to $FISH_USER_CONFIG_FILE"
+              else
+                info_msg "Yazelix Fish config already sourced in $FISH_USER_CONFIG_FILE"
+              fi
+            else
+              debug_msg "Fish config not found, skipping Fish setup"
+            fi
+            debug_msg "Fish configuration sourcing setup complete."
             debug_msg ""
 
             # --- Helix Setup ---
