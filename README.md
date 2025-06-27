@@ -50,76 +50,60 @@ v6 demo
 
 ## Instructions to Set It Up
 
-### New to Nix? Don't Worry!
-
-**What is Nix?** Nix is a powerful package manager that ensures reproducible, reliable software installations. Think of it like a super-powered version of `apt`, `brew`, or `chocolatey` that:
-- ✅ Never breaks your system (installs are isolated)
-- ✅ Allows multiple versions of the same software
-- ✅ Makes it easy to share exact development environments
-- ✅ Can completely uninstall without leaving traces
+**Firstly, what is Nix?** Nix is a powerful package manager that ensures reproducible, reliable software installations. Think of it like a super-powered version of `apt`, `brew`, or `chocolatey` that:
+- Never breaks your system (installs are isolated): High reproducibility
+- Allows multiple versions of the same software
+- Makes it easy to share exact development environments
+- Can completely uninstall without leaving traces
 
 **Why does Yazelix use Nix?** It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software.
 
 ### Prerequisites
 - **WezTerm terminal emulator** (required for Yazelix)
-  - **Linux**: Install via your distribution's package manager or [download from WezTerm releases](https://github.com/wez-flong/wezterm/releases)
-  - **macOS**: `brew install --cask wezterm` or [download from WezTerm website](https://wezfurlong.org/wezterm/installation.html)
-  - **Verify installation**: Run `wezterm --version` to confirm it's working
+  - **Linux** 
+    - Ubuntu/Debian: `sudo apt install wezterm`
+    - Arch Linux: `sudo pacman -S wezterm`
+    - NixOS: `nix-env -iA nixpkgs.wezterm`
+  - **macOS**: `brew install --cask wezterm`
+  - **Others**: [download from WezTerm website](https://wezfurlong.org/wezterm/installation.html)
+- **Verify installation**: Run `wezterm --version` to confirm it's working
 
 ### Step-by-Step Installation
 
 #### 1. Install Nix Package Manager
-We use the **Determinate Systems Nix Installer** - it's more reliable, faster, and includes modern features out of the box:
+We use the **Determinate Systems Nix Installer** - it's reliable, fast, and includes modern features out of the box:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
 **What this does:**
-- Installs Nix with flakes and the modern CLI enabled automatically (no extra configuration needed!)
+- Installs Nix with flakes
 - Sets up proper file permissions and system integration
 - Provides a reliable uninstaller if you ever want to remove Nix
-- Works on Linux, macOS, and WSL2
+- Verify it with `nix --version`
 
-**Follow the prompts** and restart your terminal when prompted.
-
-#### 2. Verify Nix Installation
-Test that Nix is working correctly:
-```bash
-nix --version
-```
-You should see output like `nix (Nix) 2.xx.x` with flakes enabled.
-#### 3. Download Yazelix
+#### 2. Download Yazelix
 Clone the Yazelix repository to your system:
 ```bash
 git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 ```
 
-#### 4. Launch Yazelix for the First Time
-Run the launch script to set everything up:
+#### 3. Set Up Yazelix to Auto-Launch in WezTerm
+Copy the WezTerm config to automatically start Yazelix whenever you open WezTerm:
 ```bash
-chmod +x ~/.config/yazelix/bash/launch-yazelix.sh
-~/.config/yazelix/bash/launch-yazelix.sh
+cp ~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua ~/.wezterm.lua
 ```
+**Result**: Every time you open WezTerm, it will automatically launch Yazelix. You won't need to run any commands.
 
-**What happens during first launch:**
-- Downloads and installs all required tools (Yazi, Zellij, Helix, Nushell, etc.)
-- Sets up configurations and integrations
-- Adds convenient `yazelix` and `yzx` aliases to your shell
-- Launches WezTerm with the Yazelix environment
+**Alternative**: See [Terminal Setup Guide](./docs/terminal_setup.md) to be able to launch Yazelix from your terminal (e.g., `yazelix` or `yzx`)
 
-**Wait for the process to complete** - this may take a few minutes on first run as Nix downloads and builds everything.
+#### 4. Using Yazelix
+Simply open WezTerm! Yazelix will automatically launch with the full environment.
 
-#### 5. Using Yazelix
-After the initial setup, you can launch Yazelix anytime with:
-```bash
-yazelix  # or yzx for short
-```
-
-If the aliases aren't available immediately, restart your terminal or run:
-```bash
-source ~/.bashrc  # or ~/.zshrc if using Zsh
-```
+**Quick start tips:**
+- Use `alt hjkl` to switch between Zellij panes and tabs
+- Press `Enter` in Yazi to open files in Helix
 
 ### Alternative: CLI-Only Mode
 To use Yazelix tools without starting the full interface:
@@ -128,67 +112,29 @@ nix develop --impure ~/.config/yazelix
 ```
 This gives you access to all tools (helix, yazi, lazygit, etc.) in your current terminal.
 
-### Installation Troubleshooting
+### What Gets Installed
+Yazelix installs and configures:
+- **Required tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), [Nushell](https://www.nushell.sh/book/installation.html) (shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
+- **Optional tools** (enabled by default): [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdxcode/mise), [cargo-update](https://github.com/nabijaczleweli/cargo-update), [ouch](https://github.com/ouch-org/ouch)
+- **Yazi extensions**: `ffmpeg`, `p7zip`, `jq`, `poppler`, `fd`, `ripgrep`, `imagemagick` (for media previews, archives, search)
+- **Environment setup**: Proper paths, variables, and shell configurations
+- Read more about what gets installed in [flake.nix](./flake.nix) and [yazelix_default.nix](./yazelix_default.nix)
 
-**🔧 "WezTerm not found" Error**
-- Ensure WezTerm is installed and in your PATH
-- Try running `wezterm --version` to verify installation
-
-**🔧 "curl: command not found"**
-- Install curl first: `sudo apt install curl` (Ubuntu/Debian) or `brew install curl` (macOS)
-
-**🔧 Nix Installation Fails**
-- The Determinate Systems installer usually handles most issues automatically
-- Check their [troubleshooting guide](https://install.determinate.systems/docs/troubleshooting) for specific problems
-- For SELinux systems, see their [SELinux support documentation](https://install.determinate.systems/docs/selinux)
-
-**🔧 "Permission denied" on first launch**
-- Make sure you made the script executable: `chmod +x ~/.config/yazelix/bash/launch-yazelix.sh`
-- Check that you have write permissions to `~/.config/yazelix`
-
-**🔧 Yazelix tools not working after installation**
-- Try restarting your terminal completely
-- Source your shell config: `source ~/.bashrc` or `source ~/.zshrc`
-- Verify Nix is working: `nix --version`
-
-   This installs and configures:
-   - Required:
-     - [Yazi](https://github.com/sxyazi/yazi) (file manager and CLI)
-     - [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer)
-     - [Helix](https://helix-editor.com) (editor, built from source by default)
-     - [Nushell](https://www.nushell.sh/book/installation.html) (shell)
-     - [fzf](https://github.com/junegunn/fzf) (fuzzy finder for Yazi)
-     - [zoxide](https://github.com/ajeetdsouza/zoxide) (smart directory navigation)
-     - [Starship](https://starship.rs) (customizable prompt)
-   - Optional (enabled by default in `yazelix.nix`): [cargo-update](https://github.com/nabijaczleweli/cargo-update) (updates Rust crates), [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (faster Rust tool installation), [lazygit](https://github.com/jesseduffield/lazygit) (Git TUI), [mise](https://github.com/jdxcode/mise) (tool version manager), [ouch](https://github.com/ouch-org/ouch) (compression tool)
-   - Yazi Extensions (enabled by default in `yazelix.nix`): `ffmpeg`, `p7zip`, `jq`, `poppler`, `fd`, `ripgrep`, `imagemagick` (extend Yazi's functionality, e.g., media previews, archives, search)
-   - Sets environment variables: `YAZI_CONFIG_HOME` (points to `~/.config/yazelix/yazi`), `ZELLIJ_DEFAULT_LAYOUT` (set to `yazelix`), and `EDITOR` (automatically set to available Helix binary: `helix` or `hx`)
-   - Configurable in `~/.config/yazelix/yazelix.nix`:
-     - `build_helix_from_source` (default: `true`): Set to `false` to use the pre-built Helix from `nixpkgs` instead of building from source. Building from source ensures the latest Helix features (e.g., for `Alt y` to reveal files in Yazi) but takes longer. Using `nixpkgs` is faster but may use an older version; check compatibility in `./docs/table_of_versions.md`.
-     - `include_optional_deps` (default: `true`): Set to `false` to exclude optional dependencies like `mise` and `lazygit`.
-     - `include_yazi_extensions` (default: `true`): Set to `false` to exclude Yazi extension dependencies like `ffmpeg` and `poppler`.
-     - `default_shell` (default: `"nu"`): Sets the default shell for Zellij when Yazelix starts.
-       - Accepted values: `"nu"` (for Nushell), `"bash"`, `"fish"`, or `"zsh"`.
-       - If this option is omitted from `yazelix.nix`, it defaults to `"nu"`.
-       - Nushell, Bash, Fish, and Zsh are always installed by the Nix environment and available for use, regardless of this setting. This option only controls the default shell Zellij launches into.
-       - **Fish users**: Fish inherits the environment with all tools (starship, zoxide, mise, etc.) available in PATH. Configure these in your `~/.config/fish/config.fish` as desired.
-       - **Zsh users**: Zsh inherits the environment with all tools (starship, zoxide, mise, etc.) available in PATH. Configure these in your `~/.zshrc` as desired.
-     - `user_packages`: Add custom Nix packages with full Nix expressions: `user_packages = with pkgs; [ discord vlc ];`
-
-6. (Optional) Make Yazelix's Yazi config your default (plugin-enhanced, width-adjusted):
-   - For Nushell users, add to `~/.config/nushell/env.nu` (edit with `config env`):
-     ```nushell
-     $env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"
-     ```
-
+### Customization
+Configure Yazelix by editing `~/.config/yazelix/yazelix.nix` (it will be generated automatically on first run):
+- `build_helix_from_source` (default: `false`): Build latest Helix or use stable nixpkgs version
+- `include_optional_deps` (default: `true`): Include tools like lazygit and mise
+- `include_yazi_extensions` (default: `true`): Include media preview dependencies
+- `default_shell` (default: `"nu"`): Set default shell - supports `"nu"`, `"bash"`, `"fish"`, `"zsh"`
+- `user_packages`: Add custom nix packages like `user_packages = with pkgs; [ discord vlc ];`
 
 
 ## Notes
-- Yazelix requires WezTerm, which is configured (via `~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`) to run the `~/.config/yazelix/bash/start-yazelix.sh` script upon launch. The `launch-yazelix.sh` script initiates this process. The `start-yazelix.sh` script then sets up the Nix environment and starts Zellij.
-- The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths.
-- Tweak configs to make them yours; this is a starting point.
-- For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html) or [Ghostty Docs](https://ghostty.org/docs/config).
-- Run `~/.config/yazelix/bash/launch-yazelix.sh` to launch Yazelix in Zellij.
+- The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
+- Tweak configs to make them yours; this is just a starting point! 
+- For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html)
+- Add more swap layouts as needed using the KDL files in `layouts`
+- Use `lazygit`
 
 ## Why Use This Project?
 - Easy to configure and personalize
@@ -210,10 +156,6 @@ Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code o
 
 ## Keybindings
 Keybindings are discoverable in each tool (e.g., `~` in Yazi, `?` in lazygit). See [docs/keybindings.md](./docs/keybindings.md) for full details, custom keybindings, and usage tips.
-
-## Tips
-- Add more swap layouts as needed using the KDL files in `layouts`
-- Use `lazygit`
 
 ## I'm Lost! Too Much Information
 Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterwards
