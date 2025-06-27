@@ -104,6 +104,10 @@
             YAZELIX_LOG_DIR="$HOME/.config/yazelix/logs"
             mkdir -p "$YAZELIX_LOG_DIR" # Ensure log directory exists
 
+            # Auto-trim old shellhook logs (keep only the 10 most recent)
+            find "$YAZELIX_LOG_DIR" -name "shellhook_*.log" -type f -print0 | \
+              xargs -0 ls -t | tail -n +11 | xargs -r rm -f 2>/dev/null || true
+
             YAZELIX_SHELLHOOK_LOG_FILE="$YAZELIX_LOG_DIR/shellhook_$(date +%Y%m%d_%H%M%S).log"
 
             # Logging functions

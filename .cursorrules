@@ -81,6 +81,6 @@
 - Keep related content organized in appropriate folders 
 
 ## TODO List
-- Add auto-trimming to the logs generated on shellhooks (or stop generating them)
+- ✅ Add auto-trimming to the logs generated on shellhooks (or stop generating them) - COMPLETED: Added auto-trim to keep only 10 most recent shellhook logs
 - Create option of having a folder that is gitignored containing user-specific configs that we can concatenate to yazelix configs when available 
 - Consider hybrid approach: some users want to commit their custom configs (for version control, sharing, contributing back), while others want private local-only configs 
