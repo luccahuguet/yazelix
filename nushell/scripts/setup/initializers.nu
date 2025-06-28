@@ -14,10 +14,10 @@ def main [yazelix_dir: string, include_optional: bool] {
     ]
 
     let shells = [
-        { name: "nu", dir: "nushell", ext: "nu" }
-        { name: "bash", dir: "bash", ext: "sh" }
-        { name: "fish", dir: "fish", ext: "fish" }
-        { name: "zsh", dir: "zsh", ext: "zsh" }
+        { name: "nu", dir: "nushell", ext: "nu", tool_overrides: { zoxide: "nushell" } }
+        { name: "bash", dir: "bash", ext: "sh", tool_overrides: {} }
+        { name: "fish", dir: "fish", ext: "fish", tool_overrides: {} }
+        { name: "zsh", dir: "zsh", ext: "zsh", tool_overrides: {} }
     ]
 
     # Generate initializers for each shell
@@ -41,12 +41,23 @@ def main [yazelix_dir: string, include_optional: bool] {
             print $"    🔨 Generating ($tool.name) for ($shell.name)"
 
             try {
-                let init_content = (run-external $tool.name "init" $shell.name)
+                # Use tool-specific shell name override if available
+                let effective_shell_name = if ($tool.name in $shell.tool_overrides) {
+                    $shell.tool_overrides | get $tool.name
+                } else {
+                    $shell.name
+                }
+
+                let init_content = if ($tool.name == "mise") {
+                    (run-external "mise" "activate" $effective_shell_name)
+                } else {
+                    (run-external $tool.name "init" $effective_shell_name)
+                }
                 let output_file = $"($init_dir)/($tool.name)_init.($shell.ext)"
-                $init_content | save $output_file
-                print $"    ✅ Created ($output_file)"
+                $init_content | save --force $output_file
+                print $"    ✅ Generated ($output_file)"
             } catch { |error|
-                print $"    ❌ Failed to generate ($tool.name) for ($shell.name): ($error.msg)"
+                print $"    Failed to generate ($tool.name) for ($shell.name): ($error.msg)"
             }
         }
     }
