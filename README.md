@@ -59,6 +59,8 @@ Check installed tool versions: `nu nushell/scripts/utils/version-info.nu`
 - Makes it easy to share exact development environments
 - Can completely uninstall without leaving traces
 
+**Nix allows yazelix to let you take _full_ control of your shell**
+
 **Why does Yazelix use Nix?** It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software.
 
 ### Prerequisites
