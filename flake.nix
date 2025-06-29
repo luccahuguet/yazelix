@@ -47,6 +47,7 @@
               default_shell = "nu";
               extra_shells = [ ];
               debug_mode = false;
+              skip_welcome_screen = false;
               user_packages = [ ];
             };
 
@@ -58,6 +59,7 @@
         yazelixDefaultShell = config.default_shell or "nu";
         yazelixExtraShells = config.extra_shells or [ ];
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
+        yazelixSkipWelcomeScreen = config.skip_welcome_screen or false; # Read skip_welcome_screen, default to false
 
         # Helix package selection
         helixFromSource = helix.packages.${system}.default;
@@ -153,7 +155,10 @@
               "${if buildHelixFromSource then "true" else "false"}" \
               "${yazelixDefaultShell}" \
               "${if yazelixDebugMode then "true" else "false"}" \
-              "${if yazelixExtraShells == [ ] then "" else builtins.concatStringsSep "," yazelixExtraShells}"
+              "${
+                if yazelixExtraShells == [ ] then "NONE" else builtins.concatStringsSep "," yazelixExtraShells
+              }" \
+              "${if yazelixSkipWelcomeScreen then "true" else "false"}"
           '';
         };
       }

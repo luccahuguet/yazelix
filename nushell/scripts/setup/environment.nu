@@ -8,10 +8,11 @@ def main [
     build_helix_from_source: bool
     default_shell: string
     debug_mode: bool
-    extra_shells_str: string = ""
+    extra_shells_str: string
+    skip_welcome_screen: bool
 ] {
     # Parse extra shells from comma-separated string
-    let extra_shells = if ($extra_shells_str | is-empty) { 
+    let extra_shells = if ($extra_shells_str | is-empty) or ($extra_shells_str == "NONE") { 
         [] 
     } else { 
         $extra_shells_str | split row "," | where $it != "" 
@@ -66,16 +67,31 @@ def main [
 
     print "✅ Yazelix environment setup complete!"
 
-    # Welcome screen with pause
-    print ""
-    print "🎉 Welcome to Yazelix v7!"
-    print "   Your integrated terminal environment with Yazi + Zellij + Helix"
-    print "   ✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide"
-    print "   🔧 All dependencies installed, shell configs updated, tools ready"
-    print ""
-    print "   Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files"
-    print ""
-    input "   Press Enter to launch Zellij and start your session... "
+    # Prepare welcome message
+    let welcome_message = [
+        "",
+        "🎉 Welcome to Yazelix v7!",
+        "   Your integrated terminal environment with Yazi + Zellij + Helix",
+        "   ✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide",
+        "   🔧 All dependencies installed, shell configs updated, tools ready",
+        "",
+        "   Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files",
+        ""
+    ]
+
+    # Show welcome screen or log it
+    if $skip_welcome_screen {
+        # Log welcome info instead of displaying it
+        let welcome_log_file = $"($log_dir)/welcome_(date now | format date '%Y%m%d_%H%M%S').log"
+        $welcome_message | str join "\n" | save $welcome_log_file
+        print $"💡 Welcome screen skipped. Welcome info logged to: ($welcome_log_file)"
+    } else {
+        # Display welcome screen with pause
+        for $line in $welcome_message {
+            print $line
+        }
+        input "   Press Enter to launch Zellij and start your session... "
+    }
 }
 
 def setup_bash_config [yazelix_dir: string] {

@@ -23,6 +23,10 @@
   # Enable verbose debug logging in the shellHook (default: false)
   debug_mode = false;
 
+  # Skip the welcome screen on startup (default: false)
+  # When true, welcome info is logged to the logs directory instead of displayed
+  skip_welcome_screen = false;
+
   # User packages - add your custom Nix packages here
   user_packages = with pkgs; [
     # discord
