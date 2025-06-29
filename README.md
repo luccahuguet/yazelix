@@ -132,22 +132,52 @@ nix develop --impure ~/.config/yazelix
 ```
 This gives you access to all tools (helix, yazi, lazygit, etc.) in your current terminal, that includes yazi and zellij, but they'll open on demand, not on their own.
 
-### What Gets Installed
-Yazelix installs and configures:
-- **Required tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), [Nushell](https://www.nushell.sh/book/installation.html) (shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
-- **Optional tools** (enabled by default): [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdxcode/mise), [cargo-update](https://github.com/nabijaczleweli/cargo-update), [ouch](https://github.com/ouch-org/ouch)
-- **Yazi extensions**: `ffmpeg`, `p7zip`, `jq`, `poppler`, `fd`, `ripgrep`, `imagemagick` (for media previews, archives, search)
-- **Environment setup**: Proper paths, variables, and shell configurations
-- Read more about what gets installed in [flake.nix](./flake.nix) and [yazelix_default.nix](./yazelix_default.nix)
+### Packages & Customization
 
-### Customization
-Configure Yazelix by editing `~/.config/yazelix/yazelix.nix` (it will be generated from `~/.config/yazelix/default_yazelix.nix`automatically on first run):
-- `build_helix_from_source` (default: `false`): Build latest Helix or use stable nixpkgs version
-- `include_optional_deps` (default: `true`): Include tools like lazygit and mise
-- `include_yazi_extensions` (default: `true`): Include media preview dependencies
-- `default_shell` (default: `"nu"`): Set default shell - supports `"nu"`, `"bash"`, `"fish"`, `"zsh"`
-- `extra_shells` (default: `[]`): Install additional shells beyond nu/bash (e.g., `["fish", "zsh"]`) - only install what you need
-- `user_packages`: Add custom nix packages like `user_packages = with pkgs; [ discord vlc ];`
+**What Gets Installed:**
+- **Required tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), [Nushell](https://www.nushell.sh/book/installation.html) (shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
+- **Optional tools** (enabled by default): [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdxcode/mise), [cargo-update](https://github.com/nabijaczleweli/cargo-update), [ouch](https://github.com/ouch-org/ouch), etc
+- **Yazi extensions** (enabled by default): `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` (for archives, search, document previews)
+- **Yazi media extensions** (enabled by default): `ffmpeg`, `imagemagick` (for media previews - ~800MB-1.2GB)
+- **Environment setup**: Proper paths, variables, and shell configurations
+
+**Customize Your Installation:**
+Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run):
+
+```nix
+{ pkgs }:
+{
+  # Include optional tools like lazygit, mise, etc. (default: true)
+  include_optional_deps = true;
+
+  # Include Yazi extensions for previews, archives, etc. (default: true)
+  include_yazi_extensions = true;
+
+  # Include heavy media packages for Yazi (WARNING: ~800MB-1.2GB) (default: true)
+  include_yazi_media = true;
+
+  # Build Helix from source (true) or use nixpkgs version (false). (default: false)
+  build_helix_from_source = false;
+
+  # Default shell for Zellij: "nu", "bash", "fish", or "zsh". (default: "nu")
+  # Note: fish and zsh will be automatically installed if set as default_shell or included in extra_shells
+  default_shell = "nu";
+
+  # Extra shells to install beyond nu/bash (e.g., ["fish", "zsh"]) (default: [])
+  # Only install additional shells if you plan to use them
+  extra_shells = [ ];
+
+  # Enable verbose debug logging in the shellHook (default: false)
+  debug_mode = false;
+
+  # User packages - add your custom Nix packages here
+  user_packages = with pkgs; [
+    # discord
+    # vlc
+    # inkscape
+  ];
+}
+```
 
 
 ## Notes
