@@ -8,7 +8,18 @@ def main [
     build_helix_from_source: bool
     default_shell: string
     debug_mode: bool
+    extra_shells_str: string = ""
 ] {
+    # Parse extra shells from comma-separated string
+    let extra_shells = if ($extra_shells_str | is-empty) { 
+        [] 
+    } else { 
+        $extra_shells_str | split row "," | where $it != "" 
+    }
+    
+    # Determine which shells to configure (always nu/bash, plus default_shell and extra_shells)
+    let shells_to_configure = (["nu", "bash"] ++ [$default_shell] ++ $extra_shells) | uniq
+
     # Setup logging
     let log_dir = $"($yazelix_dir)/logs"
     mkdir $log_dir
@@ -30,15 +41,21 @@ def main [
     print $"🚀 Yazelix Environment Setup Started"
     print $"📝 Logging to: ($log_file)"
 
-    # Generate shell initializers
+    # Generate shell initializers for configured shells only
     print "🔧 Generating shell initializers..."
-    nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir $include_optional
+    nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir $include_optional ($shells_to_configure | str join ",")
 
-    # Setup shell configurations
+    # Setup shell configurations (always setup bash/nu, conditionally setup fish/zsh)
     setup_bash_config $yazelix_dir
     setup_nushell_config $yazelix_dir
-    setup_fish_config $yazelix_dir
-    setup_zsh_config $yazelix_dir
+    
+    if ("fish" in $shells_to_configure) {
+        setup_fish_config $yazelix_dir
+    }
+    
+    if ("zsh" in $shells_to_configure) {
+        setup_zsh_config $yazelix_dir
+    }
 
     # Setup editor
     setup_helix_config

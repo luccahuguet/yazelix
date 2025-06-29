@@ -33,8 +33,19 @@ To use zsh as your default shell in Yazelix, update your `~/.config/yazelix/yaze
 }
 ```
 
+Alternatively, if you want zsh available but not as the default shell, add it to `extra_shells`:
+
+```nix
+{
+  default_shell = "nu";  # or "bash"
+  extra_shells = ["zsh"];
+  # ... other configuration
+}
+```
+
 ## Notes
 
+- **Conditional Installation**: Zsh is only installed when set as `default_shell` or included in `extra_shells`
 - All tools (starship, zoxide, mise, etc.) are available in your PATH when using zsh
 - The configuration is designed to not interfere with your existing zsh setup
 - Tool initializers are regenerated each time you start the Yazelix environment 

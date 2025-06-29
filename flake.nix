@@ -45,6 +45,7 @@
               include_yazi_media = true;
               build_helix_from_source = true;
               default_shell = "nu";
+              extra_shells = [ ];
               debug_mode = false;
               user_packages = [ ];
             };
@@ -55,6 +56,7 @@
         includeYaziMedia = config.include_yazi_media or true;
         buildHelixFromSource = config.build_helix_from_source or true;
         yazelixDefaultShell = config.default_shell or "nu";
+        yazelixExtraShells = config.extra_shells or [ ];
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
 
         # Helix package selection
@@ -62,18 +64,27 @@
         helixPackage = if buildHelixFromSource then helixFromSource else pkgs.helix;
 
         # Essential dependencies (required for core Yazelix functionality)
+        # Note: Only nu and bash are always included; fish/zsh are conditional
         essentialDeps = with pkgs; [
           zellij # Terminal multiplexer for managing panes and layouts
           helixPackage # Helix editor, either built from source or from nixpkgs
           yazi # Fast terminal file manager with sidebar integration
           nushell # Modern shell with structured data support
-          fish # Fish shell for users who prefer it
-          zsh # Z shell for users who prefer it
           fzf # Fuzzy finder for quick file and command navigation
           zoxide # Smart directory jumper for efficient navigation
           starship # Customizable shell prompt with Git status
           bashInteractive # Interactive Bash shell
         ];
+
+        # Extra shell dependencies (fish/zsh only when needed)
+        extraShellDeps =
+          with pkgs;
+          (
+            if (yazelixDefaultShell == "fish" || builtins.elem "fish" yazelixExtraShells) then [ fish ] else [ ]
+          )
+          ++ (
+            if (yazelixDefaultShell == "zsh" || builtins.elem "zsh" yazelixExtraShells) then [ zsh ] else [ ]
+          );
 
         # Optional dependencies (enhance functionality but not Yazi-specific)
         optionalDeps = with pkgs; [
@@ -107,6 +118,7 @@
         # Combine dependencies based on config
         allDeps =
           essentialDeps
+          ++ extraShellDeps
           ++ (if includeOptionalDeps then optionalDeps else [ ])
           ++ (if includeYaziExtensions then yaziExtensionsDeps else [ ])
           ++ (if includeYaziMedia then yaziMediaDeps else [ ])
@@ -140,7 +152,8 @@
               "${if includeOptionalDeps then "true" else "false"}" \
               "${if buildHelixFromSource then "true" else "false"}" \
               "${yazelixDefaultShell}" \
-              "${if yazelixDebugMode then "true" else "false"}"
+              "${if yazelixDebugMode then "true" else "false"}" \
+              "${if yazelixExtraShells == [ ] then "" else builtins.concatStringsSep "," yazelixExtraShells}"
           '';
         };
       }

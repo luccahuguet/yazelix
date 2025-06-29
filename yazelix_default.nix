@@ -13,7 +13,12 @@
   build_helix_from_source = false;
 
   # Default shell for Zellij: "nu", "bash", "fish", or "zsh". (default: "nu")
+  # Note: fish and zsh are only installed if set as default_shell or included in extra_shells
   default_shell = "nu";
+
+  # Extra shells to install beyond nu/bash (e.g., ["fish", "zsh"]) (default: [])
+  # Only install additional shells if you plan to use them
+  extra_shells = [ ];
 
   # Enable verbose debug logging in the shellHook (default: false)
   debug_mode = false;

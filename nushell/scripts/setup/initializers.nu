@@ -2,8 +2,15 @@
 # Universal shell initializer generator for Yazelix
 # Generates initializer scripts for all supported shells
 
-def main [yazelix_dir: string, include_optional: bool] {
+def main [yazelix_dir: string, include_optional: bool, shells_to_configure_str: string] {
     print "🔧 Generating shell initializers..."
+
+    # Parse shells to configure from comma-separated string
+    let shells_to_configure = if ($shells_to_configure_str | is-empty) { 
+        ["nu", "bash", "fish", "zsh"] 
+    } else { 
+        $shells_to_configure_str | split row "," | where $it != "" 
+    }
 
     # Configuration for tools and shells
     let tools = [
@@ -13,12 +20,15 @@ def main [yazelix_dir: string, include_optional: bool] {
         { name: "carapace", required: false, init_cmd: { |shell| $"carapace ($shell)" } }
     ]
 
-    let shells = [
+    let all_shells = [
         { name: "nu", dir: "nushell", ext: "nu", tool_overrides: { zoxide: "nushell" } }
         { name: "bash", dir: "bash", ext: "sh", tool_overrides: {} }
         { name: "fish", dir: "fish", ext: "fish", tool_overrides: {} }
         { name: "zsh", dir: "zsh", ext: "zsh", tool_overrides: {} }
     ]
+
+    # Filter shells to only include those we want to configure
+    let shells = ($all_shells | where name in $shells_to_configure)
 
     # Generate initializers and collect results
     let results = ($shells | each { |shell| 
