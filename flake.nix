@@ -45,8 +45,7 @@
               include_optional_deps = true;
               include_yazi_extensions = true;
               include_yazi_media = true;
-              build_helix_from_source = true;
-              use_patchy_helix = false;
+              helix_mode = "default";
               patchy_helix_config = {
                 pull_requests = [
                   "12309"
@@ -70,7 +69,12 @@
         includeOptionalDeps = config.include_optional_deps or true;
         includeYaziExtensions = config.include_yazi_extensions or true;
         includeYaziMedia = config.include_yazi_media or true;
-        usePatchyHelix = config.use_patchy_helix or false;
+        # Helix build mode: "default", "source", "patchy", or "steel"
+        helixMode = config.helix_mode or "default";
+        useNixpkgsHelix = helixMode == "default";
+        useSourceHelix = helixMode == "source";
+        usePatchyHelix = helixMode == "patchy";
+        useSteelHelix = helixMode == "steel";
         patchyHelixConfig =
           config.patchy_helix_config or {
             pull_requests = [
@@ -84,8 +88,8 @@
             patches = [ ];
             pin_commits = true;
           };
-        # Automatically enable build_helix_from_source if patchy is used
-        buildHelixFromSource = (config.build_helix_from_source or true) || usePatchyHelix;
+        # Build from source for all non-default modes
+        buildHelixFromSource = useSourceHelix || usePatchyHelix || useSteelHelix;
         yazelixDefaultShell = config.default_shell or "nu";
         yazelixExtraShells = config.extra_shells or [ ];
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
@@ -150,6 +154,14 @@
           imagemagick # Image processing for thumbnails (~200-300MB)
         ];
 
+        # Steel plugin system dependencies (only for steel mode)
+        steelDeps = with pkgs; [
+          steel # Steel scheme interpreter for helix scripting
+          # TODO: Add when available in nixpkgs:
+          # steel-language-server # Steel LSP server
+          # forge # Steel package manager
+        ];
+
         # Combine dependencies based on config
         allDeps =
           essentialDeps
@@ -157,6 +169,7 @@
           ++ (if includeOptionalDeps then optionalDeps else [ ])
           ++ (if includeYaziExtensions then yaziExtensionsDeps else [ ])
           ++ (if includeYaziMedia then yaziMediaDeps else [ ])
+          ++ (if useSteelHelix then steelDeps else [ ])
           ++ (config.user_packages or [ ]);
 
         # Helper variables for argument handling
@@ -184,14 +197,15 @@
             export ZELLIJ_DEFAULT_LAYOUT=yazelix
             export YAZELIX_DEFAULT_SHELL="${yazelixDefaultShell}"
             export YAZI_CONFIG_HOME="$YAZELIX_DIR/yazi"
-            export YAZELIX_USE_PATCHY_HELIX="${if usePatchyHelix then "true" else "false"}"
+            export YAZELIX_HELIX_MODE="${helixMode}"
 
-            # Set patchy helix path if enabled and binary exists
-            if [ "${
-              if usePatchyHelix then "true" else "false"
-            }" = "true" ] && [ -f "$YAZELIX_DIR/helix_patchy/target/release/hx" ]; then
-              export YAZELIX_PATCHY_HX="$YAZELIX_DIR/helix_patchy/target/release/hx"
-              export EDITOR="$YAZELIX_PATCHY_HX"
+
+            # Set helix path based on mode
+            if [ "${helixMode}" = "source" ] || [ "${helixMode}" = "patchy" ] || [ "${helixMode}" = "steel" ]; then
+              if [ -f "$YAZELIX_DIR/helix_patchy/target/release/hx" ]; then
+                export YAZELIX_PATCHY_HX="$YAZELIX_DIR/helix_patchy/target/release/hx"
+                export EDITOR="$YAZELIX_PATCHY_HX"
+              fi
             fi
 
             # Disable Nix warning about Git directory
@@ -214,7 +228,7 @@
                 if yazelixExtraShells == [ ] then "NONE" else builtins.concatStringsSep "," yazelixExtraShells
               }" \
               "${if yazelixSkipWelcomeScreen then "true" else "false"}" \
-              "${if usePatchyHelix then "true" else "false"}" \
+              "${helixMode}" \
               "${patchyPRsArg}" \
               "${patchyPatchesArg}" \
               "${if (patchyHelixConfig.pin_commits or true) then "true" else "false"}"

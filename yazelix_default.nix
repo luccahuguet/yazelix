@@ -9,23 +9,24 @@
   # Include heavy media packages for Yazi (WARNING: ~800MB-1.2GB) (default: true)
   include_yazi_media = true;
 
-  # Build Helix from source (true) or use nixpkgs version (false). (default: false)
-  build_helix_from_source = false;
+  # Helix build mode (choose ONE):
+  # "default" - Use nixpkgs Helix (stable, fast, recommended for most users)
+  # "source"  - Build vanilla Helix from source (latest features, slower build)
+  # "patchy"  - Build Helix with community PRs (customizable, moderate complexity)
+  # "steel"   - Build Helix with steel plugin system (experimental, advanced scripting)
+  #              Includes auto-generated example plugin with basic commands for testing
+  helix_mode = "default";
 
-  # Use patchy to build Helix with community PRs (default: false)
-  # Note: This requires build_helix_from_source = true or will enable it automatically
-  use_patchy_helix = false;
-
-  # Patchy Helix configuration
+  # Patchy Helix configuration (only used if helix_mode = "patchy")
   patchy_helix_config = {
-    # Popular community PRs (curated for stability)
+    # Popular community PRs (curated for stability) - uncomment to enable
     pull_requests = [
-      "12309" # syntax highlighting for nginx files
-      "8908" # global status line
-      "13197" # welcome screen
-      "11700" # add per view search location and total matches to statusline
-      "11497" # rounded-corners option to draw rounded borders
-      "13133" # inline git blame
+      # "12309" # syntax highlighting for nginx files
+      # "8908" # global status line
+      # "13197" # welcome screen
+      # "11700" # add per view search location and total matches to statusline
+      # "11497" # rounded-corners option to draw rounded borders
+      # "13133" # inline git blame
     ];
 
     # Custom patches (empty by default)
