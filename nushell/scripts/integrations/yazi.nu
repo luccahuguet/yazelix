@@ -33,9 +33,6 @@ export def reveal_in_yazi [buffer_name: string] {
         return
     }
 
-    let dir = ($full_path | path dirname)
-    log_to_file "reveal_in_yazi.log" $"Target directory: '($dir)'"
-
     if ($env.YAZI_ID | is-empty) {
         let error_msg = "YAZI_ID not set. reveal-in-yazi requires that you open helix from yazelix's yazi"
         log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
@@ -46,8 +43,9 @@ export def reveal_in_yazi [buffer_name: string] {
     log_to_file "reveal_in_yazi.log" $"YAZI_ID found: '($env.YAZI_ID)'"
 
     try {
-        ya emit-to $env.YAZI_ID cd $dir
-        log_to_file "reveal_in_yazi.log" $"Successfully sent 'cd ($dir)' command to yazi instance ($env.YAZI_ID)"
+        # Use 'reveal' command instead of 'cd' to both navigate to directory and select the file
+        ya emit-to $env.YAZI_ID reveal $full_path
+        log_to_file "reveal_in_yazi.log" $"Successfully sent 'reveal ($full_path)' command to yazi instance ($env.YAZI_ID)"
 
         zellij action move-focus left
         log_to_file "reveal_in_yazi.log" "Successfully moved focus left to yazi pane"
