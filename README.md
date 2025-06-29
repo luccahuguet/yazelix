@@ -130,7 +130,7 @@ Yazelix installs and configures:
 - Read more about what gets installed in [flake.nix](./flake.nix) and [yazelix_default.nix](./yazelix_default.nix)
 
 ### Customization
-Configure Yazelix by editing `~/.config/yazelix/yazelix.nix` (it will be generated automatically on first run):
+Configure Yazelix by editing `~/.config/yazelix/yazelix.nix` (it will be generated from `~/.config/yazelix/default_yazelix.nix`automatically on first run):
 - `build_helix_from_source` (default: `false`): Build latest Helix or use stable nixpkgs version
 - `include_optional_deps` (default: `true`): Include tools like lazygit and mise
 - `include_yazi_extensions` (default: `true`): Include media preview dependencies
