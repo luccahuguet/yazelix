@@ -7,7 +7,6 @@ def main [yazelix_dir: string] {
     let config_path = $"($yazelix_dir)/zellij/config.kdl"
     let template = $"
 default_shell \"nu\"
-theme \"catppuccin-mocha\"
     "
 
     # Generate basic config if it doesn't exist
