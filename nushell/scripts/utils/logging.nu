@@ -16,6 +16,3 @@ export def log_to_file [log_name: string, message: string] {
     let timestamp = (date now | format date "%Y-%m-%d %H:%M:%S")
     $"[($timestamp)] ($message)\n" | save -a $log_file
 }
-
-let log_dir = ($nu.home-path | path join ".config/yazelix/logs" | path expand)
-mkdir $log_dir

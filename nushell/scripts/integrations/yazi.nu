@@ -1,10 +1,17 @@
 #!/usr/bin/env nu
 # Yazi integration utilities for Yazelix
 
+use ../utils/logging.nu log_to_file
+use zellij.nu [find_helix, get_running_command, is_hx_running, open_in_existing_helix, open_new_helix_pane]
+
 # Navigate Yazi to the directory of the current Helix buffer
 export def reveal_in_yazi [buffer_name: string] {
+    log_to_file "reveal_in_yazi.log" $"reveal_in_yazi called with buffer_name: '($buffer_name)'"
+    
     if ($buffer_name | is-empty) {
-        print "Error: Buffer name not provided"
+        let error_msg = "Buffer name not provided"
+        log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
+        print $"Error: ($error_msg)"
         return
     }
 
@@ -13,51 +20,42 @@ export def reveal_in_yazi [buffer_name: string] {
     } else {
         $buffer_name
     }
+    
+    log_to_file "reveal_in_yazi.log" $"Normalized buffer name: '($normalized_buffer_name)'"
 
     let full_path = ($env.PWD | path join $normalized_buffer_name | path expand)
+    log_to_file "reveal_in_yazi.log" $"Resolved full path: '($full_path)'"
 
     if not ($full_path | path exists) {
-        print $"Error: Resolved path '($full_path)' does not exist"
+        let error_msg = $"Resolved path '($full_path)' does not exist"
+        log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
+        print $"Error: ($error_msg)"
         return
     }
 
     let dir = ($full_path | path dirname)
+    log_to_file "reveal_in_yazi.log" $"Target directory: '($dir)'"
 
     if ($env.YAZI_ID | is-empty) {
-        print "Error: YAZI_ID not set. reveal-in-yazi requires that you open helix from yazelix's yazi."
+        let error_msg = "YAZI_ID not set. reveal-in-yazi requires that you open helix from yazelix's yazi."
+        log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
+        print $"Error: ($error_msg)"
         return
     }
+    
+    log_to_file "reveal_in_yazi.log" $"YAZI_ID found: '($env.YAZI_ID)'"
 
-    ya emit-to $env.YAZI_ID cd $dir
-    zellij action move-focus left
-}
-
-# Simple check if Helix is running
-def is_hx_running [command: string] {
-    ($command | str contains "hx") or ($command | str contains "helix")
-}
-
-# Get running command from zellij
-def get_running_command [] {
     try {
-        let list_clients_output = (zellij action list-clients | lines | get 1)
-        $list_clients_output
-            | parse --regex '\w+\s+\w+\s+(?<rest>.*)'
-            | get rest
-            | to text
-    } catch {
-        ""
+        ya emit-to $env.YAZI_ID cd $dir
+        log_to_file "reveal_in_yazi.log" $"Successfully sent 'cd ($dir)' command to yazi instance ($env.YAZI_ID)"
+        
+        zellij action move-focus left
+        log_to_file "reveal_in_yazi.log" "Successfully moved focus left to yazi pane"
+    } catch {|err|
+        let error_msg = $"Failed to execute yazi/zellij commands: ($err.msg)"
+        log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
+        print $"Error: ($error_msg)"
     }
-}
-
-# Focus the helix pane
-def find_helix [] {
-    zellij action move-focus right
-    zellij action move-focus up
-    zellij action move-focus up
-    zellij action move-focus up
-    zellij action move-focus up
-    zellij action move-focus up
 }
 
 # Get tab name from directory
@@ -79,92 +77,45 @@ def get_tab_name [working_dir: path] {
     }
 }
 
-# Open file in existing Helix instance
-def open_in_existing_helix [file_path: path] {
-    print $"Opening ($file_path) in existing Helix instance"
-
-    let working_dir = if ($file_path | path exists) and ($file_path | path type) == "dir" {
-        $file_path
-    } else {
-        $file_path | path dirname
-    }
-
-    if not ($file_path | path exists) {
-        print $"Error: File path ($file_path) does not exist"
-        return
-    }
-
-    let tab_name = get_tab_name $working_dir
-
-    try {
-        zellij action write 27  # Escape
-
-        let cd_cmd = $":cd \"($working_dir)\""
-        zellij action write-chars $cd_cmd
-        zellij action write 13  # Enter
-
-        let open_cmd = $":open \"($file_path)\""
-        zellij action write-chars $open_cmd
-        zellij action write 13  # Enter
-
-        zellij action rename-tab $tab_name
-        print $"✅ Opened ($file_path) in existing Helix"
-    } catch {|err|
-        print $"❌ Error executing commands: ($err.msg)"
-    }
-}
-
-# Open new Helix pane
-def open_new_helix_pane [file_path: path, yazi_id: string] {
-    print $"Opening new Helix pane for ($file_path)"
-
-    let working_dir = if ($file_path | path exists) and ($file_path | path type) == "dir" {
-        $file_path
-    } else {
-        $file_path | path dirname
-    }
-
-    let tab_name = get_tab_name $working_dir
-
-    # Detect available Helix binary
-    let editor_command = if (which helix | is-not-empty) { "helix" } else { "hx" }
-    let cmd = $"env YAZI_ID=($yazi_id) ($editor_command) '($file_path)'"
-
-    try {
-        zellij run --name "helix" --cwd $working_dir -- nu -c $cmd
-        zellij action rename-tab $tab_name
-        print $"✅ Opened new Helix pane for ($file_path)"
-    } catch {|err|
-        print $"❌ Error opening new pane: ($err.msg)"
-    }
-}
-
 # Open a file in Helix, integrating with Yazi and Zellij
 export def open_file [file_path: path] {
+    log_to_file "open_helix.log" $"open_file called with file_path: '($file_path)'"
     print $"DEBUG: file_path received: ($file_path), type: ($file_path | path type)"
     if not ($file_path | path exists) {
-        print $"Error: File path ($file_path) does not exist"
+        let error_msg = $"File path ($file_path) does not exist"
+        log_to_file "open_helix.log" $"ERROR: ($error_msg)"
+        print $"Error: ($error_msg)"
         return
     }
 
     # Capture YAZI_ID from Yazi's pane
     let yazi_id = $env.YAZI_ID
     if ($yazi_id | is-empty) {
-        print "Warning: YAZI_ID not set in this environment. Yazi navigation may fail."
+        let warning_msg = "YAZI_ID not set in this environment. Yazi navigation may fail."
+        log_to_file "open_helix.log" $"WARNING: ($warning_msg)"
+        print $"Warning: ($warning_msg)"
+    } else {
+        log_to_file "open_helix.log" $"YAZI_ID found: '($yazi_id)'"
     }
 
     # Move focus and check Helix status
+    log_to_file "open_helix.log" "Moving focus to find helix"
     find_helix
     let running_command = (get_running_command)
 
+    log_to_file "open_helix.log" $"Running command detected: '($running_command)'"
     print $"DEBUG: Running command detected: ($running_command)"
 
     # Open file based on whether Helix is already running
     if (is_hx_running $running_command) {
+        log_to_file "open_helix.log" "Helix is running, opening in existing instance"
         print "Helix is running, opening in existing instance"
         open_in_existing_helix $file_path
     } else {
+        log_to_file "open_helix.log" "Helix not running, opening new pane"
         print "Helix not running, opening new pane"
         open_new_helix_pane $file_path $yazi_id
     }
+    
+    log_to_file "open_helix.log" "open_file function completed"
 }
