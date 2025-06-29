@@ -48,6 +48,17 @@ def main [
     chmod +x $"($yazelix_dir)/bash/start-yazelix.sh"
 
     print "✅ Yazelix environment setup complete!"
+
+    # Welcome screen with pause
+    print ""
+    print "🎉 Welcome to Yazelix v7!"
+    print "   Your integrated terminal environment with Yazi + Zellij + Helix"
+    print "   ✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide"
+    print "   🔧 All dependencies installed, shell configs updated, tools ready"
+    print ""
+    print "   Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files"
+    print ""
+    input "   Press Enter to launch Zellij and start your session... "
 }
 
 def setup_bash_config [yazelix_dir: string] {
