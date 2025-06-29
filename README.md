@@ -20,6 +20,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - See [boot sequence](./docs/boot_sequence.md) for details on how Yazelix starts up
 
 ## Vision
+- Using the terminal should be easy, beautiful, pratical and reproducible.
 - Yazelix is always on the edge of project versions (do you like living on the edge, you know, dangerously?)
 - Yazelix is always evolving, it's a living being
 - Yazelix is easy to use and crazy at the same time (what really is this project?)
