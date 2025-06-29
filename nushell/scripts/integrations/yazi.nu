@@ -27,7 +27,7 @@ export def reveal_in_yazi [buffer_name: string] {
     log_to_file "reveal_in_yazi.log" $"Resolved full path: '($full_path)'"
 
     if not ($full_path | path exists) {
-        let error_msg = $"Resolved path '($full_path)' does not exist"
+        let error_msg = $"Resolved path '($full_path)' does not exist. Also for now it is required that you build helix from source since the feature it uses is not yet in the latest release"
         log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
         print $"Error: ($error_msg)"
         return
@@ -37,7 +37,7 @@ export def reveal_in_yazi [buffer_name: string] {
     log_to_file "reveal_in_yazi.log" $"Target directory: '($dir)'"
 
     if ($env.YAZI_ID | is-empty) {
-        let error_msg = "YAZI_ID not set. reveal-in-yazi requires that you open helix from yazelix's yazi and that you build helix from source since the feature it uses is not yet in the latest release."
+        let error_msg = "YAZI_ID not set. reveal-in-yazi requires that you open helix from yazelix's yazi"
         log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
         print $"Error: ($error_msg)"
         return
