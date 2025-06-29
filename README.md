@@ -1,4 +1,4 @@
-# Yazelix v7: Nix installs everything for you!
+# Yazelix v7: Nix installs and configures everything for you!
 
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
@@ -34,11 +34,15 @@ v6 demo
 ## Improvements of v7 over v6
 - **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
 - Introduces a Nix-based development environment via `flake.nix`, simplifying dependency installation and ensuring consistent versions for Zellij, Yazi, Helix, Nushell, lazygit, Starship, and other tools (recommended installation method)
+- Introduces `yazelix.nix` configuration file for customizing dependencies, shells, and build options!
 - Adds [lazygit](https://github.com/jesseduffield/lazygit), a fast, terminal-based Git TUI for managing Git repositories
 - Adds [Starship](https://starship.rs), a customizable, fast prompt for Nushell, enhancing the terminal experience with Git status and contextual info
 - Adds [markdown-oxide](https://oxide.md/index), a Personal Knowledge Management System (PKMS) that works with your favorite text editor through LSP, inspired by and compatible with Obsidian
 - Allows you to build Helix from source automatically
 - Installs and configures dependencies automatically
+- Introduces welcome screen with helpful tips and better error handling during environment setup
+- Introduces dynamic version table generation using `nu nushell/scripts/utils/version-info.nu`
+- Adds terminal transparency settings because we reaaally believe in transparency
 - The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip`.
 - Adds `launch-yazelix.sh` script to streamline setup by launching WezTerm with the Yazelix-specific config and automatically adding `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`) and Nushell config, eliminating manual configuration steps
 - Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/generate-zellij-config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `zellij/yazelix-overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
@@ -131,6 +135,7 @@ Configure Yazelix by editing `~/.config/yazelix/yazelix.nix` (it will be generat
 - `include_optional_deps` (default: `true`): Include tools like lazygit and mise
 - `include_yazi_extensions` (default: `true`): Include media preview dependencies
 - `default_shell` (default: `"nu"`): Set default shell - supports `"nu"`, `"bash"`, `"fish"`, `"zsh"`
+- `extra_shells` (default: `[]`): Install additional shells beyond nu/bash (e.g., `["fish", "zsh"]`) - only install what you need
 - `user_packages`: Add custom nix packages like `user_packages = with pkgs; [ discord vlc ];`
 
 
@@ -158,6 +163,15 @@ See [docs/troubleshooting.md](./docs/troubleshooting.md) for help with setup iss
 
 ## VS Code and Cursor Integration
 Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code or Cursor integrated terminal? See our [VS Code/Cursor integration guide](./docs/vscode_cursor_integration.md) for step-by-step setup instructions that give you the full Yazelix environment in your editor's terminal.
+
+## Styling and Themes
+Yazelix includes transparency settings and theme configurations for a beautiful terminal experience. The WezTerm config includes transparency settings (`window_background_opacity = 0.9`), and Helix comes with transparent theme options. See [docs/styling.md](./docs/styling.md) for customization details.
+
+For Helix themes, you can use transparent themes by editing your Helix config:
+```toml
+# theme = "base16_transparent"
+theme = "term16_dark"  # Recommended transparent theme
+```
 
 ## Keybindings
 Keybindings are discoverable in each tool (e.g., `~` in Yazi, `?` in lazygit). See [docs/keybindings.md](./docs/keybindings.md) for full details, custom keybindings, and usage tips.
