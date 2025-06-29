@@ -10,11 +10,14 @@
 - Dont assume commands failed - check if they actually worked first
 - Keep terminal commands simple and direct
 - Always check the working directory before running commands
-- **PATH Environment Issues**: When encountering "command not found" errors in Nix environments:
-  - Set proper PATH: `export PATH="/bin:/usr/bin:/usr/local/bin:$PATH"`
-  - Or use inline PATH: `PATH="/bin:/usr/bin:/usr/local/bin:$PATH" command`
-  - Common issue in Nix shells where basic system commands aren't in PATH
-  - Always try setting PATH before assuming commands are missing
+- **PATH Environment Issues - IMMEDIATE ACTION REQUIRED**: When encountering "command not found" errors in Nix environments:
+  - **EXECUTE IMMEDIATELY**: Run `export PATH="/bin:/usr/bin:/usr/local/bin:$PATH"` as first response to any PATH issue
+  - **VERIFY THE FIX**: Follow up with `echo "Updated PATH: $PATH" && which ls && which cat` to confirm
+  - **SESSION PERSISTENCE**: The export command only lasts for the current shell session
+  - **PERMANENT FIX**: Use the terminal profile configuration shown above for persistent solution
+  - **ROOT CAUSE**: Common issue in Nix shells where basic system commands aren't in PATH
+  - **FALLBACK**: If export doesn't work, use inline PATH: `PATH="/bin:/usr/bin:/usr/local/bin:$PATH" command`
+  - **DO NOT**: Ask user for help - execute the PATH fix first, then proceed with original task
 
 ## Terminal Environment Debugging Rules
 - **Shell Detection**: Always verify which shell is actually running with `echo $0` - prompts can be misleading
@@ -81,7 +84,6 @@
 - Keep related content organized in appropriate folders 
 
 ## TODO List
-- ✅ Add auto-trimming to the logs generated on shellhooks (or stop generating them) - COMPLETED: Added auto-trim to keep only 10 most recent shellhook logs
-- Add a copy/generate script that copies yazelix_default.nix to yazelix.nix (both in root) - yazelix.nix will be git ignored for user customization
-- Create option of having a folder that is gitignored containing user-specific configs that we can concatenate to yazelix configs when available 
-- Consider hybrid approach: some users want to commit their custom configs (for version control, sharing, contributing back), while others want private local-only configs 
+- [x] Add auto-trimming to the logs generated on shellhooks (or stop generating them) - COMPLETED: Added auto-trim to keep only 10 most recent shellhook logs
+- [x] Add a copy/generate script that copies yazelix_default.nix to yazelix.nix (both in root) - yazelix.nix will be git ignored for user customization
+- [ ] Create option of having a folder that is gitignored containing user-specific configs that we can concatenate to yazelix configs when available 
