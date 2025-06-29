@@ -10,18 +10,30 @@ fi
 
 echo "Resolved HOME=$HOME"
 
-# Set absolute path for Yazelix WezTerm config
-WEZTERM_CONFIG="$HOME/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua"
+# Terminal config path will be set by the terminal detection logic below
 
-# Check if WezTerm config exists
-if [ ! -f "$WEZTERM_CONFIG" ]; then
-  echo "Error: WezTerm config not found at $WEZTERM_CONFIG"
+# Check if a supported terminal is installed
+TERMINAL=""
+TERMINAL_CONFIG=""
+
+if command -v ghostty &> /dev/null; then
+  TERMINAL="ghostty"
+  TERMINAL_CONFIG="$HOME/.config/yazelix/terminal_configs/ghostty/config"
+elif command -v wezterm &> /dev/null; then
+  TERMINAL="wezterm"
+  TERMINAL_CONFIG="$HOME/.config/yazelix/terminal_configs/wezterm/.wezterm.lua"
+else
+  echo "Error: Neither Ghostty nor WezTerm is installed. Please install one of these terminals to use Yazelix."
+  echo "  - Ghostty: https://ghostty.org/"
+  echo "  - WezTerm: https://wezfurlong.org/wezterm/"
   exit 1
 fi
 
-# Check if WezTerm is installed
-if ! command -v wezterm &> /dev/null; then
-  echo "Error: WezTerm is not installed. Please install WezTerm to use Yazelix."
+echo "Using terminal: $TERMINAL"
+
+# Check if terminal config exists
+if [ ! -f "$TERMINAL_CONFIG" ]; then
+  echo "Error: $TERMINAL config not found at $TERMINAL_CONFIG"
   exit 1
 fi
 
@@ -77,5 +89,9 @@ else
   fi
 fi
 
-# Launch WezTerm in a detached manner
-nohup wezterm --config-file "$WEZTERM_CONFIG" >/dev/null 2>&1 &
+# Launch terminal in a detached manner
+if [ "$TERMINAL" = "ghostty" ]; then
+  nohup ghostty --config "$TERMINAL_CONFIG" >/dev/null 2>&1 &
+elif [ "$TERMINAL" = "wezterm" ]; then
+  nohup wezterm --config-file "$TERMINAL_CONFIG" >/dev/null 2>&1 &
+fi

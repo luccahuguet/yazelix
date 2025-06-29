@@ -42,12 +42,16 @@
 # # Just for example:
 # resize-overlay-duration = 4s 200ms
 
-# to start with yazelix, creating a new session or attaching if a session called yazelix already exists
-command = "nu -c 'zellij --config-dir ~/.config/yazelix/zellij attach --create yazelix_ghostty options --default-layout yazelix'"
+# Start Yazelix via proper boot script (uses Nix environment)
+command = "bash -c ~/.config/yazelix/bash/start-yazelix.sh"
 
-# Alternative: Pick a Layout
-# command = "nu -c 'zellij -l welcome --config-dir ~/.config/yazelix/zellij options --layout-dir ~/.config/yazelix/zellij/layouts'"
+# Alternative: Test without Zellij to debug crash (uncomment to test)
+# command = "bash -c 'cd ~/.config/yazelix && nix develop --command nu'"
 
+# Theme and styling consistent with WezTerm config
 theme = "Abernathy"
 window-decoration = "none"
 window-padding-y = 10,0
+
+# Transparency consistent with WezTerm
+background-opacity = 0.9

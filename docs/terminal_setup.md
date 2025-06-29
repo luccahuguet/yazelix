@@ -1,6 +1,6 @@
 # Terminal Setup
 
-This guide shows you how to set up Yazelix so you can launch it from any terminal using the `yazelix` or `yzx` commands. It will open WezTerm with the Yazelix configuration and start Zellij with the integrated Yazi sidebar and Helix editor
+This guide shows you how to set up Yazelix so you can launch it from any terminal using the `yazelix` or `yzx` commands. It will open your configured terminal (Ghostty or WezTerm) with the Yazelix configuration and start Zellij with the integrated Yazi sidebar and Helix editor
 
 ## Setup Process
 
@@ -18,7 +18,7 @@ chmod +x ~/.config/yazelix/bash/launch-yazelix.sh
 
 ### What This Does
 - Adds convenient `yazelix` and `yzx` aliases to your shell configuration
-- Launches WezTerm with Yazelix
+- Detects and launches your preferred terminal (Ghostty or WezTerm) with Yazelix
 - **Note**: This may take quite a few minutes on first run as Nix downloads and builds everything, but following runs will be near instant
 
 ## Using Yazelix

@@ -1,15 +1,17 @@
 # Boot Sequence
 
 
-## 1.A: WezTerm Auto-Launch 
-- **Setup**: Copy WezTerm config: `cp ~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua ~/.wezterm.lua`
-- **Launch**: Open WezTerm and WezTerm's `default_prog` automatically executes `bash -c ~/.config/yazelix/bash/start-yazelix.sh`
+## 1.A: Terminal Auto-Launch 
+- **Setup**: Copy terminal config:
+  - **Ghostty**: `cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config`
+  - **WezTerm**: `cp ~/.config/yazelix/terminal_configs/wezterm/.wezterm.lua ~/.wezterm.lua`
+- **Launch**: Open your terminal and it automatically executes `bash -c ~/.config/yazelix/bash/start-yazelix.sh`
 
 ## 1.B: Terminal Commands  
 - **Setup**: See [Terminal Setup Guide](./terminal_setup.md) for `yazelix` and `yzx` alias configuration
 - **Launch**: Run `yazelix` or `yzx` from any terminal and it will execute `~/.config/yazelix/bash/launch-yazelix.sh`
-- That launches WezTerm with specific config: `nohup wezterm --config-file ~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua`
-- WezTerm's `default_prog` automatically executes `bash -c ~/.config/yazelix/bash/start-yazelix.sh`
+- That launches your configured terminal (Ghostty or WezTerm) with specific config
+- The terminal automatically executes `bash -c ~/.config/yazelix/bash/start-yazelix.sh`
 
 ## 2. **Nix Environment**: Changes to `~/.config/yazelix` and runs:
    ```bash

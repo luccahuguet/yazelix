@@ -49,7 +49,7 @@ v6 demo
 - Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/generate-zellij-config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `zellij/yazelix-overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
 
 ## Compatibility
-- Terminal: WezTerm (required)
+- Terminal: Ghostty or WezTerm
 - Editor: Helix (supports both `helix` and `hx` binaries - works with all distributions)
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
@@ -69,14 +69,14 @@ Check installed tool versions: `nu nushell/scripts/utils/version-info.nu`
 **Why does Yazelix use Nix?** It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software.
 
 ### Prerequisites
-- **WezTerm terminal emulator** (required for Yazelix)
-  - **Linux** 
-    - Ubuntu/Debian: `sudo apt install wezterm`
-    - Arch Linux: `sudo pacman -S wezterm`
-    - NixOS: `nix-env -iA nixpkgs.wezterm`
-  - **macOS**: `brew install --cask wezterm`
-  - **Others**: [download from WezTerm website](https://wezfurlong.org/wezterm/installation.html)
-- **Verify installation**: Run `wezterm --version` to confirm it's working
+- **Supported terminal emulator** (choose your favorite! Or both?):
+  - **Ghostty** 
+    - Modern, fast, written in Zig, newer
+    - Instructions here: https://ghostty.org/download
+    - **Note**: Due to a [Zellij/Yazi/Ghostty interaction](https://github.com/zellij-org/zellij/issues/2814#issuecomment-2965117327), image previews in Yazi may not display properly, for now
+  - **WezTerm** 
+    - Modern, fast, written in Rust
+    - Instructions here: https://wezfurlong.org/wezterm/installation.html
 
 ### Step-by-Step Installation
 
@@ -88,7 +88,7 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 ```
 
 **What this does:**
-- Installs Nix with flakes
+- Installs Nix with flakes: just follow the instructions
 - Sets up proper file permissions and system integration
 - Provides a reliable uninstaller if you ever want to remove Nix
 - Verify it with `nix --version`
@@ -99,17 +99,26 @@ Clone the Yazelix repository to your system:
 git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 ```
 
-#### 3. Set Up Yazelix to Auto-Launch in WezTerm
-Copy the WezTerm config to automatically start Yazelix whenever you open WezTerm:
+#### 3. Set Up Yazelix to Auto-Launch in Your Terminal
+Copy the appropriate terminal config to automatically start Yazelix:
+
+**For Ghostty:**
 ```bash
-cp ~/.config/yazelix/terminal_configs/wezterm_nix/.wezterm.lua ~/.wezterm.lua
+cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config
 ```
-**Result**: Every time you open WezTerm, it will automatically launch Yazelix. You won't need to run any commands.
+
+**For WezTerm:**
+```bash
+cp ~/.config/yazelix/terminal_configs/wezterm/.wezterm.lua ~/.wezterm.lua
+```
+
+**Result**: Every time you open your terminal, it will automatically launch Yazelix. You won't need to run any commands.
 
 **Alternative**: See [Terminal Setup Guide](./docs/terminal_setup.md) to be able to launch Yazelix from your terminal (e.g., `yazelix` or `yzx`)
 
 #### 4. Using Yazelix
-Simply open WezTerm! Yazelix will automatically launch with the full environment.
+Simply open your terminal (Ghostty or WezTerm)! Yazelix will automatically launch with the full environment.
+Might take a while to install the dependencies, but only on the first run
 
 **Quick start tips:**
 - Use `alt hjkl` to switch between Zellij panes and tabs

@@ -44,6 +44,10 @@ def get_version [tool: string] {
                 if (which wezterm | is-empty) { return "not installed" }
                 try { (wezterm --version | split column " " | get column2) } catch { "error" }
             }
+            "ghostty" => {
+                if (which ghostty | is-empty) { return "not installed" }
+                try { (ghostty --version | lines | first | split column " " | get column2) } catch { "error" }
+            }
             "nix" => {
                 if (which nix | is-empty) { return "not installed" }
                 try { (nix --version | split column " " | get column3 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
@@ -73,6 +77,7 @@ export def main [--save(-s)] {
         "lazygit"
         "fzf"
         "wezterm"
+        "ghostty"
         "nix"
     ]
 
