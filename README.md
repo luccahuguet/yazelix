@@ -297,5 +297,29 @@ See [contributing](./docs/contributing.md)
 - If you care about Yazi but don't care much about Zellij or having a sidebar, you can integrate Yazi and Helix with [one line of config](https://github.com/sxyazi/yazi/pull/2461) (experimental, not working for some people as of March 15, 2025)
 
 ## Acknowledgments
-- The `clip` command is sourced from the [nuscripts](https://github.com/nushell/nuscripts) repository, licensed under the MIT License.
-- 95% of the work (and the idea) of the excellent [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi) was made by [Joseph Schmitt](https://github.com/josephschmitt). Later I added some fixes for new versions of Yazi and added logging and some checks
+
+Yazelix is built on the shoulders of giants. We're grateful to the essential projects that make this integration possible:
+
+**Core Tools:**
+- **Yazi**
+- **Zellij**
+- **Helix**
+- **Nushell**
+- **Nix**
+
+**Utilities:**
+- **Starship**
+- **lazygit**
+- **fzf**
+- **zoxide**
+
+**Terminal Emulators:**
+- **WezTerm**
+- **Ghostty**
+
+**One of a Kind Contributions:**
+- **patchy** - Build Helix with community PRs
+ **nuscripts** - Source of the `clip` command (MIT License)
+- **auto-layout.yazi** - 95% of the work by Joseph Schmitt
+
+Thank you to all maintainers and the open source community. 
