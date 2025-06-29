@@ -10,6 +10,10 @@ def main [
     debug_mode: bool
     extra_shells_str: string
     skip_welcome_screen: bool
+    use_patchy_helix: bool
+    patchy_pull_requests: string
+    patchy_patches: string
+    patchy_pin_commits: bool
 ] {
     # Parse extra shells from comma-separated string
     let extra_shells = if ($extra_shells_str | is-empty) or ($extra_shells_str == "NONE") { 
@@ -46,6 +50,12 @@ def main [
     print "🔧 Generating shell initializers..."
     nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir $include_optional ($shells_to_configure | str join ",")
 
+    # Setup patchy Helix if enabled
+    if $use_patchy_helix {
+        print "🔧 Setting up patchy Helix with community PRs..."
+        setup_patchy_helix $yazelix_dir $patchy_pull_requests $patchy_patches $patchy_pin_commits
+    }
+
     # Setup shell configurations (always setup bash/nu, conditionally setup fish/zsh)
     setup_bash_config $yazelix_dir
     setup_nushell_config $yazelix_dir
@@ -59,7 +69,7 @@ def main [
     }
 
     # Setup editor
-    setup_helix_config
+    setup_helix_config $use_patchy_helix $yazelix_dir
 
     # Set permissions
     chmod +x $"($yazelix_dir)/bash/launch-yazelix.sh"
@@ -68,16 +78,22 @@ def main [
     print "✅ Yazelix environment setup complete!"
 
     # Prepare welcome message
+    let patchy_info = if $use_patchy_helix {
+        let pr_count = if ($patchy_pull_requests | is-empty) or ($patchy_pull_requests == "NONE") { 0 } else { ($patchy_pull_requests | split row "," | length) }
+        $"   🧩 Patchy Helix enabled with ($pr_count) community PRs for enhanced features"
+    } else { "" }
+    
     let welcome_message = [
         "",
         "🎉 Welcome to Yazelix v7!",
         "   Your integrated terminal environment with Yazi + Zellij + Helix",
         "   ✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide",
+        $patchy_info,
         "   🔧 All dependencies installed, shell configs updated, tools ready",
         "",
         "   Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files",
         ""
-    ]
+    ] | where $it != ""
 
     # Show welcome screen or log it
     if $skip_welcome_screen {
@@ -185,10 +201,143 @@ def setup_zsh_config [yazelix_dir: string] {
     }
 }
 
-def setup_helix_config [] {
-    # Use hx directly since Nix provides it
-    let editor = "hx"
+def setup_helix_config [use_patchy: bool = false, yazelix_dir: string = ""] {
+    let editor = if $use_patchy and ($yazelix_dir != "") {
+        let patchy_hx = $"($yazelix_dir)/helix_patchy/target/release/hx"
+        if ($patchy_hx | path exists) {
+            print $"📝 Using patchy-built Helix: ($patchy_hx)"
+            $patchy_hx
+        } else {
+            print $"⚠️  Patchy Helix not found, falling back to system hx"
+            "hx"
+        }
+    } else {
+        "hx"
+    }
     
     print $"📝 Setting EDITOR to: ($editor)"
     $env.EDITOR = $editor
+    
+    # Create hx alias for patchy if available
+    if $use_patchy and ($yazelix_dir != "") {
+        let patchy_hx = $"($yazelix_dir)/helix_patchy/target/release/hx"
+        if ($patchy_hx | path exists) {
+            # This will be picked up by shell configs
+            $env.YAZELIX_PATCHY_HX = $patchy_hx
+        }
+    }
+}
+
+def setup_patchy_helix [
+    yazelix_dir: string
+    pull_requests_str: string
+    patches_str: string
+    pin_commits: bool
+] {
+    let helix_patchy_dir = $"($yazelix_dir)/helix_patchy"
+    let patchy_config_dir = $"($helix_patchy_dir)/.patchy"
+    
+    # Create helix-patchy directory if it doesn't exist
+    if not ($helix_patchy_dir | path exists) {
+        print $"📂 Creating patchy Helix directory: ($helix_patchy_dir)"
+        mkdir $helix_patchy_dir
+        
+        # Initialize git repo and add helix remote
+        cd $helix_patchy_dir
+        git init
+        git remote add origin https://github.com/helix-editor/helix.git
+        print "🔄 Fetching Helix repository (this may take a moment)..."
+        git fetch origin master
+        git checkout -b patchy origin/master
+    }
+    
+    # Create .patchy directory
+    mkdir $patchy_config_dir
+    
+    # Parse pull requests and patches
+    let pull_requests = if ($pull_requests_str | is-empty) or ($pull_requests_str == "NONE") { 
+        [] 
+    } else { 
+        $pull_requests_str | split row "," | where $it != "" 
+    }
+    
+    let patches = if ($patches_str | is-empty) or ($patches_str == "NONE") { 
+        [] 
+    } else { 
+        $patches_str | split row "," | where $it != "" 
+    }
+    
+    # Generate patchy config.toml
+    let config_content = [
+        "# Patchy configuration for Yazelix Helix build"
+        "# Auto-generated from yazelix.nix configuration"
+        ""
+        "# Main repository to fetch from"
+        "repo = \"helix-editor/helix\""
+        ""
+        "# The repository's branch"
+        "remote-branch = \"master\""
+        ""
+        "# This is the branch where patchy will merge all PRs"
+        "local-branch = \"patchy\""
+        ""
+        "# List of pull requests to merge"
+        $"pull-requests = [($pull_requests | each {|pr| $'  "($pr)"'} | str join ',\n')]"
+        ""
+        "# List of patches to apply"
+        $"patches = [($patches | each {|patch| $'  "($patch)"'} | str join ',\n')]"
+    ]
+    
+    $config_content | str join "\n" | save -f $"($patchy_config_dir)/config.toml"
+    
+    print $"✅ Generated patchy config with ($pull_requests | length) PRs and ($patches | length) patches"
+    
+    # Run patchy to merge PRs
+    cd $helix_patchy_dir
+    if (which patchy | is-not-empty) {
+        print "🔄 Running patchy to merge pull requests..."
+        try {
+            patchy run
+            print "✅ Patchy completed successfully!"
+            
+            # Automatically build patchy Helix after successful merge
+            print "🔨 Building patchy Helix (this may take a few minutes)..."
+            try {
+                cargo build --release
+                print "✅ Patchy Helix built successfully!"
+                print $"🎯 Helix binary available at: ($helix_patchy_dir)/target/release/hx"
+                
+                # Create symlink for user helix config to be accessible
+                let user_helix_config = $"($env.HOME)/.config/helix"
+                let user_helix_runtime = $"($user_helix_config)/runtime"
+                let patchy_runtime = $"($helix_patchy_dir)/runtime"
+                
+                mkdir $user_helix_config
+                
+                # Remove existing runtime link/dir if it exists
+                if ($user_helix_runtime | path exists) {
+                    rm -rf $user_helix_runtime
+                }
+                
+                # Create symlink from user config to patchy runtime
+                try {
+                    ln -sf $patchy_runtime $user_helix_runtime
+                    print $"🔗 Created runtime symlink: ($user_helix_runtime) -> ($patchy_runtime)"
+                } catch {
+                    print $"⚠️  Could not create runtime symlink, you may need to set HELIX_RUNTIME manually"
+                }
+            } catch {|build_err|
+                print $"⚠️  Failed to build patchy Helix: ($build_err.msg)"
+                print "   You can build manually with: cargo build --release"
+                print $"   Navigate to: ($helix_patchy_dir)"
+            }
+        } catch {|err|
+            print $"⚠️  Patchy encountered issues: ($err.msg)"
+            print "   You may need to resolve merge conflicts manually"
+            print $"   Navigate to: ($helix_patchy_dir)"
+        }
+    } else {
+        print "⚠️  Patchy command not found, skipping PR merge"
+        print "   PRs will be available for manual merging when patchy is installed"
+    }
 }

@@ -26,6 +26,15 @@ alias yazelix="$HOME/.config/yazelix/bash/launch-yazelix.sh"
 alias yzx="$HOME/.config/yazelix/bash/launch-yazelix.sh"
 alias lg='lazygit'
 
+# Patchy Helix function (use patchy-built hx if available)
+hx() {
+    if [ -n "$YAZELIX_PATCHY_HX" ] && [ -f "$YAZELIX_PATCHY_HX" ]; then
+        "$YAZELIX_PATCHY_HX" "$@"
+    else
+        command hx "$@"
+    fi
+}
+
 # Add other Bash-specific aliases or functions for Yazelix here if needed.
 # For example, you could move environment variable exports specific to Bash sessions here:
 # export SOME_BASH_SPECIFIC_VAR="value"

@@ -25,7 +25,17 @@ export def is_helix_running_test [] {
     print "✅ Helix integration test completed"
 }
 
-# Get the Helix binary name (always hx since Nix provides it)
+# Get the Helix binary path (patchy version if available, otherwise hx)
 export def get_helix_binary [] {
-    "hx"
+    # Check if patchy is currently enabled
+    let use_patchy = ($env.YAZELIX_USE_PATCHY_HELIX? | default "false") == "true"
+    
+    if $use_patchy and ($env.YAZELIX_PATCHY_HX? | is-not-empty) and ($env.YAZELIX_PATCHY_HX | path exists) {
+        # Set runtime for patchy when using the binary
+        let patchy_runtime = $"($env.HOME)/.config/yazelix/helix_patchy/runtime"
+        $env.HELIX_RUNTIME = $patchy_runtime
+        $env.YAZELIX_PATCHY_HX
+    } else {
+        "hx"
+    }
 }

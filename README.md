@@ -36,6 +36,7 @@ v6 demo
 - **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
 - Introduces a Nix-based development environment via `flake.nix`, simplifying dependency installation and ensuring consistent versions for Zellij, Yazi, Helix, Nushell, lazygit, Starship, and other tools
 - Introduces `yazelix.nix` configuration file for customizing dependencies, shells, and build options!
+- Adds [patchy](https://github.com/nik-rev/patchy) integration for building Helix with community PRs - get cutting-edge helix features before they're officially merged!
 - Adds [lazygit](https://github.com/jesseduffield/lazygit), a fast, terminal-based Git TUI for managing Git repositories
 - Adds [Starship](https://starship.rs), a customizable, fast prompt for Nushell, enhancing the terminal experience with Git status and contextual info
 - Adds [markdown-oxide](https://oxide.md/index), a Personal Knowledge Management System (PKMS) that works with your favorite text editor through LSP, inspired by and compatible with Obsidian
@@ -138,6 +139,7 @@ This gives you access to all tools (helix, yazi, lazygit, etc.) in your current 
 **What Gets Installed:**
 - **Required tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), [Nushell](https://www.nushell.sh/book/installation.html) (shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
 - **Optional tools** (enabled by default): [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdxcode/mise), [cargo-update](https://github.com/nabijaczleweli/cargo-update), [ouch](https://github.com/ouch-org/ouch), etc
+- **Patchy integration** (optional): [patchy](https://github.com/nik-rev/patchy) for building Helix with community PRs
 - **Yazi extensions** (enabled by default): `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` (for archives, search, document previews)
 - **Yazi media extensions** (enabled by default): `ffmpeg`, `imagemagick` (for media previews - ~800MB-1.2GB)
 - **Environment setup**: Proper paths, variables, and shell configurations
@@ -159,6 +161,29 @@ Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run):
 
   # Build Helix from source (true) or use nixpkgs version (false). (default: false)
   build_helix_from_source = false;
+
+  # Use patchy to build Helix with community PRs (default: false)
+  # Note: This requires build_helix_from_source = true or will enable it automatically
+  use_patchy_helix = false;
+
+  # Patchy Helix configuration
+  patchy_helix_config = {
+    # Popular community PRs (curated for stability)
+    pull_requests = [
+      "12309"   # syntax highlighting for nginx files
+      "8908"    # global status line  
+      "13197"   # welcome screen
+      "11700"   # add per view search location and total matches to statusline
+      "11497"   # rounded-corners option to draw rounded borders
+      "13133"   # inline git blame
+    ];
+    
+    # Custom patches (empty by default)
+    patches = [];
+    
+    # Pin commits for stability (recommended: true)
+    pin_commits = true;
+  };
 
   # Default shell for Zellij: "nu", "bash", "fish", or "zsh". (default: "nu")
   # Note: fish and zsh will be automatically installed if set as default_shell or included in extra_shells
@@ -185,6 +210,41 @@ Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run):
 ```
 
 
+## Patchy Helix Integration (Optional)
+Want cutting-edge Helix features? Enable [patchy](https://github.com/nik-rev/patchy) integration to build Helix with community PRs!
+
+**Enable patchy Helix:**
+```nix
+# In yazelix.nix
+use_patchy_helix = true;
+
+patchy_helix_config = {
+  pull_requests = [
+    "12309"   # syntax highlighting for nginx files
+    "8908"    # global status line
+    "13197"   # welcome screen
+    # Add more PRs as desired
+  ];
+  pin_commits = true;  # For stability
+};
+```
+
+**Management commands:**
+- `yazelix_patchy status` - Show patchy configuration status
+- `yazelix_patchy list` - List configured PRs  
+- `yazelix_patchy sync` - Sync and rebuild PRs
+- `yazelix_patchy clean` - Clean patchy directory
+
+**Features:**
+- **Declarative**: All PR selections in `yazelix.nix`
+- **Stable**: Pin commits to avoid breakage
+- **Automatic**: Integrated with Nix build process
+- **Conflict handling**: Graceful handling of merge conflicts
+
+**Note:** This automatically enables `build_helix_from_source = true` and includes patchy as a dependency.
+
+📚 **Full Documentation**: See [Patchy Integration Guide](./docs/patchy_integration.md) for detailed setup, troubleshooting, and best practices.
+
 ## Notes
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
 - Tweak configs to make them yours; this is just a starting point! 
@@ -205,7 +265,11 @@ Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run):
 See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details on how Yazelix generates and uses initializer scripts for Nushell and Bash/Zsh.
 
 ## Troubleshooting
-See [docs/troubleshooting.md](./docs/troubleshooting.md) for help with setup issues, version compatibility, and debugging, including important notes for upgrading to v7.
+For setup issues, version compatibility, and debugging:
+- Check the [Patchy Integration Guide](./docs/patchy_integration.md) for patchy-specific issues
+- Review the [Terminal Setup Guide](./docs/terminal_setup.md) for terminal configuration problems
+- See [Version Table](./docs/version_table.md) for compatibility information
+- For general issues, check the logs in the `logs/` directory or enable debug mode in `yazelix.nix`
 
 ## VS Code and Cursor Integration
 Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code or Cursor integrated terminal? See our [VS Code/Cursor integration guide](./docs/vscode_cursor_integration.md) for step-by-step setup instructions that give you the full Yazelix environment in your editor's terminal.

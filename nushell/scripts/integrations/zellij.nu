@@ -115,9 +115,27 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
     let tab_name = get_tab_name $working_dir
     log_to_file "open_helix.log" $"Calculated tab_name: ($tab_name)"
 
-    # Use hx (provided by Nix)
-    let editor_command = "hx"
-    let cmd = $"env YAZI_ID=($yazi_id) ($editor_command) '($file_path)'"
+    # Check if patchy is currently enabled
+    let use_patchy = ($env.YAZELIX_USE_PATCHY_HELIX? | default "false") == "true"
+    
+    # Check for patchy helix first, fallback to regular hx
+    let editor_command = if $use_patchy and ($env.YAZELIX_PATCHY_HX? | is-not-empty) and ($env.YAZELIX_PATCHY_HX | path exists) {
+        $env.YAZELIX_PATCHY_HX
+    } else {
+        "hx"
+    }
+    
+    # Ensure helix config directory exists
+    let helix_config_dir = $"($env.HOME)/.config/helix"
+    mkdir $helix_config_dir
+    
+    # For patchy helix, ensure runtime files are accessible
+    let cmd = if $use_patchy and ($env.YAZELIX_PATCHY_HX? | is-not-empty) and ($env.YAZELIX_PATCHY_HX | path exists) {
+        let patchy_runtime = $"($env.HOME)/.config/yazelix/helix_patchy/runtime"
+        $"env YAZI_ID=($yazi_id) HELIX_RUNTIME=($patchy_runtime) ($editor_command) '($file_path)'"
+    } else {
+        $"env YAZI_ID=($yazi_id) ($editor_command) '($file_path)'"
+    }
 
     log_to_file "open_helix.log" $"Using editor command: ($editor_command)"
 

@@ -6,6 +6,7 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     helix.url = "github:helix-editor/helix";
+    patchy.url = "github:nik-rev/patchy/v1.3.0";
   };
 
   outputs =
@@ -14,6 +15,7 @@
       nixpkgs,
       flake-utils,
       helix,
+      patchy,
       ...
     }:
     flake-utils.lib.eachDefaultSystem (
@@ -44,6 +46,19 @@
               include_yazi_extensions = true;
               include_yazi_media = true;
               build_helix_from_source = true;
+              use_patchy_helix = false;
+              patchy_helix_config = {
+                pull_requests = [
+                  "12309"
+                  "8908"
+                  "13197"
+                  "11700"
+                  "11497"
+                  "13133"
+                ];
+                patches = [ ];
+                pin_commits = true;
+              };
               default_shell = "nu";
               extra_shells = [ ];
               debug_mode = false;
@@ -51,11 +66,26 @@
               user_packages = [ ];
             };
 
-        # Variables to control optional, Yazi extension, Helix source, default shell, and debug mode
+        # Variables to control optional, Yazi extension, Helix source, patchy, default shell, and debug mode
         includeOptionalDeps = config.include_optional_deps or true;
         includeYaziExtensions = config.include_yazi_extensions or true;
         includeYaziMedia = config.include_yazi_media or true;
-        buildHelixFromSource = config.build_helix_from_source or true;
+        usePatchyHelix = config.use_patchy_helix or false;
+        patchyHelixConfig =
+          config.patchy_helix_config or {
+            pull_requests = [
+              "12309"
+              "8908"
+              "13197"
+              "11700"
+              "11497"
+              "13133"
+            ];
+            patches = [ ];
+            pin_commits = true;
+          };
+        # Automatically enable build_helix_from_source if patchy is used
+        buildHelixFromSource = (config.build_helix_from_source or true) || usePatchyHelix;
         yazelixDefaultShell = config.default_shell or "nu";
         yazelixExtraShells = config.extra_shells or [ ];
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
@@ -89,18 +119,21 @@
           );
 
         # Optional dependencies (enhance functionality but not Yazi-specific)
-        optionalDeps = with pkgs; [
-          cargo-update # Updates Rust crates for project maintenance
-          cargo-binstall # Faster installation of Rust tools
-          lazygit # Terminal-based Git TUI for managing repositories
-          mise # Tool version manager for consistent environments
-          ouch # Compression tool for handling archives
-          libnotify # Provides notify-send for desktop notifications (used by Nushell clip command)
-          carapace # Command-line completion tool for multiple shells
-          serpl # Command-line tool for search and replace
-          biome # formats JS, TS, JSON, CSS, and lints js/ts
-          markdown-oxide # Personal Knowledge Management System (PKMS) that works with text editors through LSP
-        ];
+        optionalDeps =
+          with pkgs;
+          [
+            cargo-update # Updates Rust crates for project maintenance
+            cargo-binstall # Faster installation of Rust tools
+            lazygit # Terminal-based Git TUI for managing repositories
+            mise # Tool version manager for consistent environments
+            ouch # Compression tool for handling archives
+            libnotify # Provides notify-send for desktop notifications (used by Nushell clip command)
+            carapace # Command-line completion tool for multiple shells
+            serpl # Command-line tool for search and replace
+            biome # formats JS, TS, JSON, CSS, and lints js/ts
+            markdown-oxide # Personal Knowledge Management System (PKMS) that works with text editors through LSP
+          ]
+          ++ (if usePatchyHelix then [ patchy.packages.${system}.default ] else [ ]);
 
         # Yazi extension dependencies (enhance Yazi functionality, lightweight)
         yaziExtensionsDeps = with pkgs; [
@@ -126,6 +159,19 @@
           ++ (if includeYaziMedia then yaziMediaDeps else [ ])
           ++ (config.user_packages or [ ]);
 
+        # Helper variables for argument handling
+        patchyPRsArg =
+          let
+            prs = patchyHelixConfig.pull_requests or [ ];
+          in
+          if prs == [ ] then "NONE" else builtins.concatStringsSep "," prs;
+
+        patchyPatchesArg =
+          let
+            patches = patchyHelixConfig.patches or [ ];
+          in
+          if patches == [ ] then "NONE" else builtins.concatStringsSep "," patches;
+
       in
       {
         devShells.default = pkgs.mkShell {
@@ -138,6 +184,15 @@
             export ZELLIJ_DEFAULT_LAYOUT=yazelix
             export YAZELIX_DEFAULT_SHELL="${yazelixDefaultShell}"
             export YAZI_CONFIG_HOME="$YAZELIX_DIR/yazi"
+            export YAZELIX_USE_PATCHY_HELIX="${if usePatchyHelix then "true" else "false"}"
+
+            # Set patchy helix path if enabled and binary exists
+            if [ "${
+              if usePatchyHelix then "true" else "false"
+            }" = "true" ] && [ -f "$YAZELIX_DIR/helix_patchy/target/release/hx" ]; then
+              export YAZELIX_PATCHY_HX="$YAZELIX_DIR/helix_patchy/target/release/hx"
+              export EDITOR="$YAZELIX_PATCHY_HX"
+            fi
 
             # Disable Nix warning about Git directory
             export NIX_CONFIG="warn-dirty = false"
@@ -158,7 +213,11 @@
               "${
                 if yazelixExtraShells == [ ] then "NONE" else builtins.concatStringsSep "," yazelixExtraShells
               }" \
-              "${if yazelixSkipWelcomeScreen then "true" else "false"}"
+              "${if yazelixSkipWelcomeScreen then "true" else "false"}" \
+              "${if usePatchyHelix then "true" else "false"}" \
+              "${patchyPRsArg}" \
+              "${patchyPatchesArg}" \
+              "${if (patchyHelixConfig.pin_commits or true) then "true" else "false"}"
           '';
         };
       }
