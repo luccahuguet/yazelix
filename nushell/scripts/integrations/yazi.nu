@@ -7,7 +7,7 @@ use zellij.nu [find_helix, get_running_command, is_hx_running, open_in_existing_
 # Navigate Yazi to the directory of the current Helix buffer
 export def reveal_in_yazi [buffer_name: string] {
     log_to_file "reveal_in_yazi.log" $"reveal_in_yazi called with buffer_name: '($buffer_name)'"
-    
+
     if ($buffer_name | is-empty) {
         let error_msg = "Buffer name not provided"
         log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
@@ -20,7 +20,7 @@ export def reveal_in_yazi [buffer_name: string] {
     } else {
         $buffer_name
     }
-    
+
     log_to_file "reveal_in_yazi.log" $"Normalized buffer name: '($normalized_buffer_name)'"
 
     let full_path = ($env.PWD | path join $normalized_buffer_name | path expand)
@@ -37,18 +37,18 @@ export def reveal_in_yazi [buffer_name: string] {
     log_to_file "reveal_in_yazi.log" $"Target directory: '($dir)'"
 
     if ($env.YAZI_ID | is-empty) {
-        let error_msg = "YAZI_ID not set. reveal-in-yazi requires that you open helix from yazelix's yazi."
+        let error_msg = "YAZI_ID not set. reveal-in-yazi requires that you open helix from yazelix's yazi and that you build helix from source since the feature it uses is not yet in the latest release."
         log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
         print $"Error: ($error_msg)"
         return
     }
-    
+
     log_to_file "reveal_in_yazi.log" $"YAZI_ID found: '($env.YAZI_ID)'"
 
     try {
         ya emit-to $env.YAZI_ID cd $dir
         log_to_file "reveal_in_yazi.log" $"Successfully sent 'cd ($dir)' command to yazi instance ($env.YAZI_ID)"
-        
+
         zellij action move-focus left
         log_to_file "reveal_in_yazi.log" "Successfully moved focus left to yazi pane"
     } catch {|err|
@@ -116,6 +116,6 @@ export def open_file [file_path: path] {
         print "Helix not running, opening new pane"
         open_new_helix_pane $file_path $yazi_id
     }
-    
+
     log_to_file "open_helix.log" "open_file function completed"
 }
