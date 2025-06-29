@@ -20,47 +20,58 @@ def main [yazelix_dir: string, include_optional: bool] {
         { name: "zsh", dir: "zsh", ext: "zsh", tool_overrides: {} }
     ]
 
-    # Generate initializers for each shell
-    for $shell in $shells {
+    # Generate initializers and collect results
+    let results = ($shells | each { |shell| 
         let init_dir = $"($yazelix_dir)/($shell.dir)/initializers"
-        print $"  📁 Creating ($shell.name) initializers in ($init_dir)"
         mkdir $init_dir
-
-        for $tool in $tools {
+        
+        $tools | each { |tool|
             # Skip optional tools if not requested
             if (not $tool.required) and (not $include_optional) {
-                continue
-            }
+                { status: "skipped", tool: $tool.name, shell: $shell.name, reason: "optional" }
+            } else if (which $tool.name | is-empty) {
+                { status: "missing", tool: $tool.name, shell: $shell.name, reason: "tool not found" }
+            } else {
+                try {
+                    # Use tool-specific shell name override if available
+                    let effective_shell_name = if ($tool.name in $shell.tool_overrides) {
+                        $shell.tool_overrides | get $tool.name
+                    } else {
+                        $shell.name
+                    }
 
-            # Check if tool is available
-            if (which $tool.name | is-empty) {
-                print $"    ⚠️  ($tool.name) not found, skipping"
-                continue
-            }
-
-            print $"    🔨 Generating ($tool.name) for ($shell.name)"
-
-            try {
-                # Use tool-specific shell name override if available
-                let effective_shell_name = if ($tool.name in $shell.tool_overrides) {
-                    $shell.tool_overrides | get $tool.name
-                } else {
-                    $shell.name
+                    let init_content = if ($tool.name == "mise") {
+                        (run-external "mise" "activate" $effective_shell_name)
+                    } else {
+                        (run-external $tool.name "init" $effective_shell_name)
+                    }
+                    let output_file = $"($init_dir)/($tool.name)_init.($shell.ext)"
+                    $init_content | save --force $output_file
+                    { status: "success", tool: $tool.name, shell: $shell.name, file: $output_file }
+                } catch { |error|
+                    { status: "failed", tool: $tool.name, shell: $shell.name, error: $error.msg }
                 }
+            }
+        }
+    } | flatten)
 
-                let init_content = if ($tool.name == "mise") {
-                    (run-external "mise" "activate" $effective_shell_name)
-                } else {
-                    (run-external $tool.name "init" $effective_shell_name)
-                }
-                let output_file = $"($init_dir)/($tool.name)_init.($shell.ext)"
-                $init_content | save --force $output_file
-                print $"    ✅ Generated ($output_file)"
-            } catch { |error|
-                print $"    Failed to generate ($tool.name) for ($shell.name): ($error.msg)"
+    # Show concise summary
+    let successful = ($results | where status == "success")
+    let failed = ($results | where status == "failed")
+    let missing = ($results | where status == "missing" | get tool | uniq)
+    
+    if ($failed | is-empty) and ($missing | is-empty) {
+        print $"✅ Generated (($successful | length)) shell initializers successfully"
+    } else {
+        print $"✅ Generated (($successful | length)) shell initializers"
+        if (not ($missing | is-empty)) {
+            print $"⚠️  Tools not found: (($missing | str join ', '))"
+        }
+        if (not ($failed | is-empty)) {
+            print "❌ Failed to generate:"
+            for $failure in $failed {
+                print $"   ($failure.tool) for ($failure.shell): ($failure.error)"
             }
         }
     }
-
-    print "✨ Shell initializers generated!"
 }
