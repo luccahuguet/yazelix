@@ -26,7 +26,7 @@
 ## 4. **shellHook Execution**: Nix shellHook runs `nushell/scripts/setup/environment.nu`:
    - **Initializer Generation**: Creates shell initializers for Nu, Bash, Fish, Zsh  
    - **Shell Configuration**: Adds Yazelix config sourcing to user shell configs
-   - **Editor Setup**: Sets `EDITOR` to `helix` or `hx`
+   - **Editor Setup**: Sets `EDITOR` to `hx`
    - **Permissions**: Makes scripts executable
    - **Logging**: Creates timestamped logs and auto-trims old ones
 

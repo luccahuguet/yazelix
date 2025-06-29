@@ -186,13 +186,9 @@ def setup_zsh_config [yazelix_dir: string] {
 }
 
 def setup_helix_config [] {
-    # Detect available Helix binary
-    let editor = if (which helix | is-not-empty) {
-        "helix"
-    } else {
-        "hx"
-    }
-
+    # Use hx directly since Nix provides it
+    let editor = "hx"
+    
     print $"📝 Setting EDITOR to: ($editor)"
     $env.EDITOR = $editor
 }

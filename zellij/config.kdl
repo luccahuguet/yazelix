@@ -436,7 +436,7 @@ load_plugins {
 // Yazelix-specific overrides
 default_layout "yazelix"
 copy_command "wl-copy"
-scrollback_editor "nu -c 'if (which helix | is-empty) { hx } else { helix }'"
+scrollback_editor "hx"
 
 ui {
     pane_frames {

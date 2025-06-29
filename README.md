@@ -52,7 +52,7 @@ v6 demo
 
 ## Compatibility
 - Terminal: Ghostty or WezTerm
-- Editor: Helix (supports both `helix` and `hx` binaries - works with all distributions)
+- Editor: Helix (`hx` binary provided by Nix)
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
 ## Version Check

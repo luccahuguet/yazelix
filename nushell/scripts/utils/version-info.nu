@@ -14,7 +14,6 @@ def get_version [tool: string] {
                 try { (zellij --version | str replace "zellij " "") } catch { "error" }
             }
             "helix" => {
-                if (which hx | is-empty) { return "not installed" }
                 try { (hx --version | lines | first | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
             }
             "nushell" => {

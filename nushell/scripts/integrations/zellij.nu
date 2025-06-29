@@ -115,8 +115,8 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
     let tab_name = get_tab_name $working_dir
     log_to_file "open_helix.log" $"Calculated tab_name: ($tab_name)"
 
-    # Detect available Helix binary (prefer 'helix' over 'hx' for consistency)
-    let editor_command = if (which helix | is-not-empty) { "helix" } else { "hx" }
+    # Use hx (provided by Nix)
+    let editor_command = "hx"
     let cmd = $"env YAZI_ID=($yazi_id) ($editor_command) '($file_path)'"
 
     log_to_file "open_helix.log" $"Using editor command: ($editor_command)"
