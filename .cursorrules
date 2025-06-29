@@ -10,6 +10,7 @@
 - Dont assume commands failed - check if they actually worked first
 - Keep terminal commands simple and direct
 - Always check the working directory before running commands
+- **NEVER use the `exit` command to exit the shell** - this can disrupt the user's session and workflow
 - **PATH Environment Issues - IMMEDIATE ACTION REQUIRED**: When encountering "command not found" errors in Nix environments:
   - **EXECUTE IMMEDIATELY**: Run `export PATH="/bin:/usr/bin:/usr/local/bin:$PATH"` as first response to any PATH issue
   - **VERIFY THE FIX**: Follow up with `echo "Updated PATH: $PATH" && which ls && which cat` to confirm
