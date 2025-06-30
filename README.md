@@ -44,7 +44,6 @@ v6 demo
 - Allows you to build Helix from source automatically
 - Installs and configures dependencies automatically
 - Introduces yazelix welcome screen with helpful tips and better error handling during environment setup
-- Adds `skip_welcome_screen` option for faster startup - welcome info gets logged instead of displayed
 - Introduces dynamic version table generation using `nu nushell/scripts/utils/version-info.nu`
 - Adds terminal transparency settings because we reaaally believe in transparency
 - The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip` or `open data.csv | clip`, etc
@@ -54,6 +53,7 @@ v6 demo
 ## Compatibility
 - Terminal: Ghostty or WezTerm
 - Editor: Helix (`hx` binary provided by Nix)
+- Shell: Nushell, Bash, Fish, Zsh
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
 ## Version Check
@@ -173,12 +173,11 @@ Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run):
   patchy_helix_config = {
     # Popular community PRs (curated for stability)
     pull_requests = [
-      "12309"   # syntax highlighting for nginx files
-      "8908"    # global status line  
-      "13197"   # welcome screen
-      "11700"   # add per view search location and total matches to statusline
-      "11497"   # rounded-corners option to draw rounded borders
-      "13133"   # inline git blame
+      "13197"   # welcome screen: no conflicts on its own
+      "8908"    # global status line:   unknown  
+      "11700"   # add per view search location and total matches to statusline: unknown
+      "11497"   # rounded-corners option to draw rounded borders: unknown
+      "13133"   # inline git blame: unknown
     ];
     
     # Custom patches (empty by default)
