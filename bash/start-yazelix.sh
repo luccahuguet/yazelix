@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ~/.config/yazelix/bash/start-yazelix.sh
 
 # Resolve HOME using shell expansion
