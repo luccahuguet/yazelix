@@ -1,2 +1,7 @@
-logs/reveal_in_yazi.log
-logs/open_helix.log
+logs/*
+nushell/initializers
+bash/initializers
+fish/initializers
+zsh/initializers
+yazelix.nix
+helix_patchy/

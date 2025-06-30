@@ -1,177 +1,370 @@
-# Yazelix v6: The power of Yazi plugins and nushell scripting!
+# Yazelix v7: Nix installs and configures everything for you!
 
 ## Overview
-Yazelix integrates Yazi, Zellij and Helix, hence the name, get it?
+Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 
 - Zellij orchestrates everything, with Yazi as a sidebar and Helix as the editor
-- To hide the sidebar, just make your pane fullscreen! (`Ctrl p + f` or `Alt f`)
-- Every keybinding from Zellij that conflicts with Helix is remapped [see here](<README#Keybindings>)
-- When you hit Enter on a file/folder in the "sidebar," the following happens:
-  - If Helix is already open in the topmost pane of the stack (default position in latest zellij version), it opens that file/folder in a new buffer in Helix!
-  - If Helix isn’t open, it launches Helix in a new pane for you
-- Features include "reveal file in sidebar" and a Yazi plugin that shows when a file was added or changed
-- This project holds my config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins and a lot of love
+- To hide the sidebar, make your pane fullscreen! (`Ctrl p + f` or `Alt f`)
+- Every keybinding from Zellij that conflicts with Helix is remapped [see here](#keybindings)
+- When you hit Enter on a file/folder in the "sidebar":
+  - If Helix is already open in the topmost pane of the stack (default position in latest Zellij version), it opens that file/folder in a new buffer in Helix
+  - If Helix isn't open, it launches Helix in a new pane for you
+  - It always finds a running Helix instance if it exists and is in the top pane of the stacked group (Zellij naturally pushes the Helix pane there, though it may move when deleting or creating panes)
+  - It automatically renames the Zellij tab to the file's underlying Git repo or directory name
+- Features include:
+  - "Reveal file in sidebar" (press `Alt y` in Helix to reveal the file in Yazi, see [Keybindings](#keybindings))
+  - A Yazi plugin to enhance the status bar in the sidebar pane, making it uncluttered, colorful, and showing file permissions
+  - A [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) showing file changes in the Yazi sidebar
+  - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi), perfect for sidebar use
+- This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
+- See [boot sequence](./docs/boot_sequence.md) for details on how Yazelix starts up
+
+## Vision
+- Using the terminal should be easy, beautiful, pratical and reproducible.
+- Yazelix is always on the edge of project versions (do you like living on the edge, you know, dangerously?)
+- Yazelix is always evolving, it's a living being
+- Yazelix is easy to use and crazy at the same time (what really is this project?)
+- Yazelix lets you say `I use Yazelix btw` (careful saying that, you might accidentally scare an innocent Arch user)
+- Boy, do we Nix
+- Integration, integration, integration
 
 ## Preview
-![yazelix_v6_demo](assets/reveal_fullscreen_stacked.gif)
+![yazelix_v6_demo](assets/demos/reveal_fullscreen_stacked.gif)
 v6 demo
 
-## Improvements of v6 over v5
-- **Warning**: After upgrading to Yazelix v6, terminate any running Yazi instances and old terminals to prevent conflicts
-- Adds a Yazi plugin to enhance the status bar in the sidebar pane, making it uncluttered, colorful and restores showing file permissions
-- Includes a Ghostty config. The author now uses Ghostty as their daily driver, but Yazelix remains compatible with any terminal emulator!
-- Thanks to this great [plugin](https://github.com/josephschmitt/auto-layout.yazi), Yazelix’s Yazi now dynamically updates the number of columns (parent, current and preview), making it perfect for sidebar use
-- Adds a [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) that shows file changes in the Yazi sidebar, incredibly helpful!
-- Reveal-in-Yazi command added, pressing `Alt y` in Helix will reveal the file in Yazi, see how to set it up [here](<README#Yazelix Custom Keybindings>). It was implemented using nushell and the `ya emit-to` command
-  - LIMITATION (for now): currently it only works for helix instances you opened from yazi (easy adaptation: only open helix from yazi)
-  - Requirement: For now, to use this command, you have to [build helix from source](https://docs.helix-editor.com/building-from-source.html), while we wait for the next helix release (with command expansions)
-- When opening a file from Yazi, it now always finds a running Helix instance if:
-  - It exists
-  - It’s in the top pane of the stacked group (Zellij naturally pushes the Helix pane there when opening new panes, but sometimes it moves around when you delete a pane or create a new one)
-- Recommendation: Make Yazelix’s Yazi config your default (it’s plugin-enhanced and adjusts layout based on width). For Nushell users, add this to your `env.nu` file (run `config env` to edit):
-  ```
-  $env.YAZI_CONFIG_HOME = "~/.config/yazelix/yazi"
-  ```
-- Added detailed logging for nushell scripts, and added logging instructions regarding zellij/yazi to the readme
-- Code is way more robust, and the features more polished (open from yazi specially so)
-- When you open a file from yazi, it automatically renames the zellij tab to the file's underlying git repo or directory name (game changer)
+## Improvements of v7 over v6
+- **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
+- Introduces a Nix-based development environment via `flake.nix`, simplifying dependency installation and ensuring consistent versions for Zellij, Yazi, Helix, Nushell, lazygit, Starship, and other tools
+- Introduces `yazelix.nix` configuration file for customizing dependencies, shells, and build options!
+- Adds [patchy](https://github.com/nik-rev/patchy) integration for building Helix with community PRs - get cutting-edge helix features before they're officially merged!
+- Adds [lazygit](https://github.com/jesseduffield/lazygit), a fast, terminal-based Git TUI for managing Git repositories
+- Adds [Starship](https://starship.rs), a customizable, fast prompt for Nushell, enhancing the terminal experience with Git status and contextual info
+- Adds [markdown-oxide](https://oxide.md/index), a Personal Knowledge Management System (PKMS) that works with your favorite text editor through LSP, inspired by and compatible with Obsidian
+- Improves the "reveal file in sidebar" feature by using Yazi's `reveal` command to automatically highlight and select the specific file, eliminating manual searching in directories with many files
+- Allows you to build Helix from source automatically
+- Installs and configures dependencies automatically
+- Introduces yazelix welcome screen with helpful tips and better error handling during environment setup
+- Introduces dynamic version table generation using `nu nushell/scripts/utils/version-info.nu`
+- Adds terminal transparency settings because we reaaally believe in transparency
+- The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip` or `open data.csv | clip`, etc
+- Adds `launch-yazelix.sh` script to streamline setup by launching WezTerm with the Yazelix-specific config and automatically adding `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`) and Nushell config, eliminating manual configuration steps, if you want to! See more details [here](./docs/terminal_setup.md)
+- Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/setup/generate-zellij-config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `zellij/yazelix-overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
 
 ## Compatibility
-- Works with any terminal emulator, though I prefer WezTerm and Ghostty
-- Editor: Helix (for now)
-- See the version compatibility table [here](<README#Table of Versions>)
+- Terminal: Ghostty or WezTerm
+- Editor: Helix (`hx` binary provided by Nix)
+- Shell: Nushell, Bash, Fish, Zsh
+- See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
+
+## Version Check
+Check installed tool versions: `nu nushell/scripts/utils/version-info.nu`
 
 ## Instructions to Set It Up
-1. Ensure the following are installed and in your PATH:
-   - [Yazi-fm and Yazi-cli](https://github.com/sxyazi/yazi)
-   - [Zellij](https://github.com/zellij-org/zellij)
-   - [Helix](https://helix-editor.com)
-   - [Nushell](https://www.nushell.sh/book/installation.html)
-   - [Zoxide](https://github.com/ajeetdsouza/zoxide): optional, allows you to quickly navigate directories using a smart, interactive command-line tool that learns your habits
-   - [cargo-update](https://github.com/nabijaczleweli/cargo-update): optional, enables you to update Rust crates in your project by running a simple command: `cargo install-update -a`
-   - [cargo-binstall](https://github.com/cargo-bins/cargo-binstall): optional, provides a WAY faster way to install rust tools, using binaries directly, skipping the compilation step. Will be used by cargo-update if available. Very useful!
-  - Example of how to install the deps:
-     ```
-     cargo install cargo-update cargo-binstall
-     cargo install-update -i zellij nu yazi-cli yazi-fm zoxide
-     cargo install-update -a # will update everything
-     ```
-2. Clone this repo into your `~/.config` directory:
-   ```
-   git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
-   ```
-3. Configure your terminal emulator:
-   - For WezTerm:
-     ```
-     cp ~/.config/yazelix/terminal_configs/wez/.wezterm.lua ~/.wezterm.lua
-     ```
-   - For Ghostty:
-     ```
-     cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config
-     ```
-   - For other emulators, configure it to run this command on startup (view [ghostty's config](<./terminal_configs/ghostty/config>) for a detailed explanation and alternatives):
-     ```
-     "nu -c 'zellij --config-dir ~/.config/yazelix/zellij attach --create yazelix_ghostty options --default-layout yazelix'"
-     ```
 
-**Notes**:
-- Feel free to tweak the configs to make it yours—this is just a starting point
-- For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html) or [Ghostty Docs](https://ghostty.org/docs/config)
+**Firstly, what is Nix?** Nix is a powerful package manager that ensures reproducible, reliable software installations. Think of it like a super-powered version of `apt`, `brew`, or `chocolatey` that:
+- Never breaks your system (installs are isolated): High reproducibility
+- Allows multiple versions of the same software
+- Makes it easy to share exact development environments
+- Can completely uninstall without leaving traces
 
-That’s it! Open issues or PRs if you’d like 😉
+**Nix allows yazelix to let you take _full_ control of your shell**
+
+**Why does Yazelix use Nix?** It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software.
+
+### Prerequisites
+- **Supported terminal emulator** (choose your favorite! Or both?):
+  - **Ghostty** 
+    - Modern, fast, written in Zig, newer
+    - Instructions here: https://ghostty.org/download
+    - **Note**: Due to a [Zellij/Yazi/Ghostty interaction](https://github.com/zellij-org/zellij/issues/2814#issuecomment-2965117327), image previews in Yazi may not display properly, for now
+  - **WezTerm** 
+    - Modern, fast, written in Rust
+    - Instructions here: https://wezfurlong.org/wezterm/installation.html
+
+### Step-by-Step Installation
+
+#### 1. Install Nix Package Manager
+We use the **Determinate Systems Nix Installer** - it's reliable, fast, and includes modern features out of the box:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+```
+
+**What this does:**
+- Installs Nix with flakes: just follow the instructions
+- Sets up proper file permissions and system integration
+- Provides a reliable uninstaller if you ever want to remove Nix
+- Verify it with `nix --version`
+
+#### 2. Download Yazelix
+Clone the Yazelix repository to your system:
+```bash
+git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
+```
+
+#### 3. Set Up Yazelix to Auto-Launch in Your Terminal
+Copy the appropriate terminal config to automatically start Yazelix:
+
+**For Ghostty:**
+```bash
+cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config
+```
+
+**For WezTerm:**
+```bash
+cp ~/.config/yazelix/terminal_configs/wezterm/.wezterm.lua ~/.wezterm.lua
+```
+
+**Result**: Every time you open your terminal, it will automatically launch Yazelix. You won't need to run any commands.
+
+**Alternative**: See [Terminal Setup Guide](./docs/terminal_setup.md) to be able to launch Yazelix from your terminal (e.g., `yazelix` or `yzx`)
+
+#### 4. Using Yazelix
+Simply open your terminal (Ghostty or WezTerm)! Yazelix will automatically launch with the full environment.
+Might take a while to install the dependencies, but only on the first run
+
+**Quick start tips:**
+- Use `alt hjkl` to switch between Zellij panes and tabs
+- Press `Enter` in Yazi to open files in Helix
+
+### Alternative: CLI-Only Mode
+To use Yazelix tools without starting the full interface (no sidebar, no zellij):
+```bash
+nix develop --impure ~/.config/yazelix
+```
+This gives you access to all tools (helix, yazi, lazygit, etc.) in your current terminal, that includes yazi and zellij, but they'll open on demand, not on their own.
+
+### Packages & Customization
+
+**What Gets Installed:**
+- **Required tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), [Nushell](https://www.nushell.sh/book/installation.html) (shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
+- **Optional tools** (enabled by default): [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdxcode/mise), [cargo-update](https://github.com/nabijaczleweli/cargo-update), [ouch](https://github.com/ouch-org/ouch), etc
+- **Patchy integration** (optional): [patchy](https://github.com/nik-rev/patchy) for building Helix with community PRs
+- **Yazi extensions** (enabled by default): `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` (for archives, search, document previews)
+- **Yazi media extensions** (enabled by default): `ffmpeg`, `imagemagick` (for media previews - ~800MB-1.2GB)
+- **Environment setup**: Proper paths, variables, and shell configurations
+
+**Customize Your Installation:**
+Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run):
+
+```nix
+{ pkgs }:
+{
+  # Include optional tools like lazygit, mise, etc. (default: true)
+  include_optional_deps = true;
+
+  # Include Yazi extensions for previews, archives, etc. (default: true)
+  include_yazi_extensions = true;
+
+  # Include heavy media packages for Yazi (WARNING: ~800MB-1.2GB) (default: true)
+  include_yazi_media = true;
+
+  # Build Helix from source (true) or use nixpkgs version (false). (default: false)
+  build_helix_from_source = false;
+
+  # Helix build mode: "default", "source", "patchy", or "steel" (default: "default")
+  # - "default": Use nixpkgs Helix binary
+  # - "source": Build latest Helix from source  
+  # - "patchy": Build Helix with community PRs via patchy
+  # - "steel": Build Helix with Steel scripting support (Scheme/Lisp)
+  helix_mode = "default";
+
+  # Patchy Helix configuration (only used if helix_mode = "patchy")
+  patchy_helix_config = {
+    # Popular community PRs (curated for stability)
+    pull_requests = [
+      "13197"   # welcome screen: no conflicts on its own
+      "8908"    # global status line:   unknown  
+      "11700"   # add per view search location and total matches to statusline: unknown
+      "11497"   # rounded-corners option to draw rounded borders: unknown
+      "13133"   # inline git blame: unknown
+    ];
+    
+    # Custom patches (empty by default)
+    patches = [];
+    
+    # Pin commits for stability (recommended: true)
+    pin_commits = true;
+  };
+
+  # Default shell for Zellij: "nu", "bash", "fish", or "zsh". (default: "nu")
+  # Note: fish and zsh will be automatically installed if set as default_shell or included in extra_shells
+  default_shell = "nu";
+
+  # Extra shells to install beyond nu/bash (e.g., ["fish", "zsh"]) (default: [])
+  # Only install additional shells if you plan to use them
+  extra_shells = [ ];
+
+  # Enable verbose debug logging in the shellHook (default: false)
+  debug_mode = false;
+
+  # Skip the welcome screen on startup (default: false)
+  # When true, welcome info is logged to the logs directory instead of displayed
+  skip_welcome_screen = false;
+
+  # User packages - add your custom Nix packages here
+  user_packages = with pkgs; [
+    # discord
+    # vlc
+    # inkscape
+  ];
+}
+```
+
+
+## Patchy Helix Integration (Optional)
+Want cutting-edge Helix features? Enable [patchy](https://github.com/nik-rev/patchy) integration to build Helix with community PRs!
+
+**Enable patchy Helix:**
+```nix
+# In yazelix.nix
+helix_mode = "patchy";
+
+patchy_helix_config = {
+  pull_requests = [
+    "12309"   # syntax highlighting for nginx files
+    "8908"    # global status line
+    "13197"   # welcome screen
+    # Add more PRs as desired
+  ];
+  pin_commits = true;  # For stability
+};
+```
+
+**Management commands:**
+- `yazelix_patchy status` - Show patchy configuration status
+- `yazelix_patchy list` - List configured PRs  
+- `yazelix_patchy sync` - Sync and rebuild PRs
+- `yazelix_patchy clean` - Clean patchy directory
+
+**Features:**
+- **Declarative**: All PR selections in `yazelix.nix`
+- **Stable**: Pin commits to avoid breakage
+- **Automatic**: Integrated with Nix build process
+- **Conflict handling**: Graceful handling of merge conflicts
+
+**Note:** This automatically enables `build_helix_from_source = true` and includes patchy as a dependency.
+
+📚 **Full Documentation**: See [Patchy Integration Guide](./docs/patchy_integration.md) for detailed setup, troubleshooting, and best practices.
+
+## Steel Helix Integration (Optional)
+Want to script and extend Helix with Scheme/Lisp? Enable **Steel mode** to build Helix with [Steel](https://github.com/mattwparas/steel) scripting support!
+
+**What is Steel?**
+Steel is a Scheme/Lisp-like scripting language that can be embedded in Helix, allowing you to:
+- Create custom commands and text manipulation functions
+- Write complex automation scripts 
+- Build interactive development workflows
+- Extend Helix functionality with live code evaluation
+
+**Enable Steel Helix:**
+```nix
+# In yazelix.nix
+helix_mode = "steel";
+```
+
+**Built-in Steel Commands:**
+Once enabled, Helix includes example Steel commands accessible via `:` command mode:
+- `:hello-steel` - Test greeting with formatted output
+- `:steel-status` - Multi-line status display
+- `:math-test` - Mathematical operations demo
+- `:list-commands` - Show all available Steel commands
+- `:count-test` - Counting demonstration
+
+**Plugin Files:**
+Steel plugins are auto-generated in `~/.config/helix/`:
+- `helix.scm` - Command definitions and functions
+- `init.scm` - Startup configuration
+
+**Development Tools:**
+Steel mode includes additional tools:
+- `steel` - Steel interpreter for standalone scripting
+- `steel-language-server` - LSP for Steel development  
+- `forge` - Steel package manager
+
+**Features:**
+- **Programmable editor**: Transform Helix into a scriptable powerhouse
+- **Live evaluation**: Test and develop Steel code interactively
+- **Seamless integration**: Steel commands work from both terminal and Yazi
+- **Example plugins**: Pre-configured working examples to get started
+
+**Note:** Steel mode automatically enables `build_helix_from_source = true` and includes Steel toolchain dependencies.
+
+## Notes
+- The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
+- Tweak configs to make them yours; this is just a starting point! 
+- For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html)
+- Add more swap layouts as needed using the KDL files in `layouts`
+- Use `lazygit`
 
 ## Why Use This Project?
 - Easy to configure and personalize
-- I daily-drive Yazelix and will always try to improve it and maintain it
-- Zero-conflict keybindings (no need to lock Zellij) and a powerful yazi sidebar
+- I daily-drive Yazelix and will always try to improve and maintain it
+- Zero-conflict keybindings (no need to lock Zellij) and a powerful Yazi sidebar
 - Cool Yazi plugins included out of the box
-- Features like `reaveal in yazi` (from helix) and opening files from yazi in a hx buffer
+- Features like `reveal in Yazi` (from Helix) and opening files from Yazi in a Helix buffer
+- Enhanced Git integration with `lazygit` and a customizable Starship prompt
+- Nix-based setup ensures consistent, reproducible environments
+
+## Initializer Scripts
+See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details on how Yazelix generates and uses initializer scripts for Nushell and Bash/Zsh.
 
 ## Troubleshooting
-- If it’s not working properly, you can:
-  - Upgrade Yazi and Zellij to the latest versions for bug fixes and compatibility
-  - Check Yazelix logs in `~/.config/yazelix/logs/` (`open_helix.log`, `reveal_in_yazi.log`) for script-specific errors
-  - View Yazi logs in `~/.local/state/yazi/yazi.log` by running `YAZI_LOG=debug yazi` (or `info`, `warn`, `error` for progressively less verbosity) to enable logging, with `error` being the least verbose
-  - View Zellij logs by opening `~/.cache/zellij/zellij-log-<session>.log` or `/tmp/zellij-<uid>/zellij-log/zellij.log` (path varies by system) for session-specific issues
-- Check the version compatibility table [here](<README#Table of Versions>)
+For setup issues, version compatibility, and debugging:
+- Check the [Patchy Integration Guide](./docs/patchy_integration.md) for patchy-specific issues
+- Review the [Terminal Setup Guide](./docs/terminal_setup.md) for terminal configuration problems
+- See [Version Table](./docs/version_table.md) for compatibility information
+- For general issues, check the logs in the `logs/` directory or enable debug mode in `yazelix.nix`
+
+## VS Code and Cursor Integration
+Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code or Cursor integrated terminal? See our [VS Code/Cursor integration guide](./docs/vscode_cursor_integration.md) for step-by-step setup instructions that give you the full Yazelix environment in your editor's terminal.
+
+## Styling and Themes
+Yazelix includes transparency settings and theme configurations for a beautiful terminal experience. The WezTerm config includes transparency settings (`window_background_opacity = 0.9`), and Helix comes with transparent theme options. See [docs/styling.md](./docs/styling.md) for customization details.
+
+For Helix themes, you can use transparent themes by editing your Helix config:
+```toml
+# theme = "base16_transparent"
+theme = "term16_dark"  # Recommended transparent theme
+```
 
 ## Keybindings
-| New Zellij Keybinding | Previous Keybinding | Helix Action that conflicted before  | Zellij Action Remapped     |
-|-----------------------|---------------------|--------------------------------------|----------------------------|
-| Ctrl e                | Ctrl o              | jump_backward                        | SwitchToMode "Session"     |
-| Ctrl y                | Ctrl s              | save_selection                       | SwitchToMode "Scroll"      |
-| Alt w                 | Alt i               | shrink_selection                     | MoveTab "Left"             |
-| Alt q                 | Alt o               | expand_selection                     | MoveTab "Right"            |
-| Alt m                 | Alt n               | select_next_sibling                  | NewPane                    |
-| Alt 2                 | Ctrl b              | move_page_up                         | SwitchToMode "Tmux"        |
+Keybindings are discoverable in each tool (e.g., `~` in Yazi, `?` in lazygit). See [docs/keybindings.md](./docs/keybindings.md) for full details, custom keybindings, and usage tips.
 
-If you find a conflict, please open an issue
-
-## Discoverability of Keybindings
-- **Zellij**: Shows all keybindings visually in the status bar—works out of the box
-- **Helix**: Similar to Zellij, keybindings are easy to discover
-- **Yazi**: Press `~` to see all keybindings and commands (use `Alt f` to fullscreen the pane for a better view)
-- **Nushell**:
-  - Run `tutor` on a nu shell
-  - Read the [Nushell Book](https://www.nushell.sh/book/)
-  - Use `help commands | find tables` to search, for example, commands that are related to tables
-
-## Yazelix Custom Keybindings
-- **Zellij**: `Alt f` toggles pane fullscreen
-- **Helix**: `Alt y` reveals the file from the Helix buffer in Yazi, add this to your Helix config:
-  ```toml
-  [keys.normal]
-  A-y = ":sh nu ~/.config/yazelix/nushell/reveal_in_yazi.nu \"%{buffer_name}\""
-  ```
-
-## Keybinding Tips
-- **Zellij**: `Ctrl p` then `r` for a split to the right; `Ctrl p` then `d` for a downward split
-- **Yazi**: 
-  - `Z`: Use Zoxide (fuzzy find known paths)
-  - `z`: Use fzf (fuzzy find unknown paths)
-  - `SPACE`: Select files
-  - `y`: Yank (copy); `Y`: Unyank (cancel copy)
-  - `x`: Cut; `X`: Uncut (cancel cut)
-  - `a`: Add a file (`filename.ext`) or folder (`foldername/`)
-- **Nushell**:
-  - `Ctrl r`: interactive history search
-  - `Ctrl o`: open a temporary buffer
-
-
-## Tips
-- Add more swap layouts as needed using the KDL files in `layouts`
-- I recommend Ghostty or WezTerm, they are extensible and performant
-
-## I’m Lost! Too Much Information
-Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterward
-
-## Thanks
-- To Yazi, Zellij, Helix and Nushell contributors/maintainers for their amazing projects and guidance
-- To Yazi’s author for contributing Lua code to make the sidebar status bar look awesome
-- To [Joseph Schmitt](https://github.com/josephschmitt) for his excellent [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi)
+## I'm Lost! Too Much Information
+Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterwards
 
 ## Contributing to Yazelix
-See [contributing](./contributing.md)
-
-## Table of Versions
-- Last tested: April 10th, 2025
-- Should work with older versions, but these are tested
-- Compatible with other terminal emulators (e.g., Alacritty in the past)
-
-| Component          | Version                  |
-| -------------------| ------------------------ |
-| OS                 | Pop!_OS 24.04            |
-| DE                 | COSMIC                   |
-| Zellij             | 0.42.1                   |
-| Helix (from source)| helix 25.01.1 (0efa8207) |
-| Nushell            | 0.103.0                  |
-| Zoxide             | 0.9.7                    |
-| Yazi               | 25.4.8                   |
-| WezTerm            | 20240203-110809-5046fc22 |
-| Ghostty            | 1.1.2                    |
-| ya (from yazi-cli) | 25.4.8                   |
+See [contributing](./docs/contributing.md)
 
 ## Similar Projects
+- If you frequently use other terminal editors besides Helix or terminal file managers other than Yazi, check out [zide](https://github.com/josephschmitt/zide)
+- If you care about Yazi but don't care much about Zellij or having a sidebar, you can integrate Yazi and Helix with [one line of config](https://github.com/sxyazi/yazi/pull/2461) (experimental, not working for some people as of March 15, 2025)
 
-- If you frequently use other terminal editors besides helix or terminal file managers other than yazi, checkout [zide](https://github.com/josephschmitt/zide)
-- If you care about yazi, but dont care much about zellij or having a sidebar, you can integrate yazi and helix with [one line of config](https://github.com/sxyazi/yazi/pull/2461) (experimental, not working for some people as of march 15, 2025)
+## Acknowledgments
+
+Yazelix is built on the shoulders of giants. We're grateful to the essential projects that make this integration possible:
+
+**Core Tools:**
+- **Yazi**
+- **Zellij**
+- **Helix**
+- **Nushell**
+- **Nix**
+
+**Utilities:**
+- **Starship**
+- **lazygit**
+- **fzf**
+- **zoxide**
+
+**Terminal Emulators:**
+- **WezTerm**
+- **Ghostty**
+
+**One of a Kind Contributions:**
+- **patchy** - Build Helix with community PRs
+ **nuscripts** - Source of the `clip` command (MIT License)
+- **auto-layout.yazi** - 95% of the work by Joseph Schmitt
+
+Thank you to all maintainers and the open source community. 

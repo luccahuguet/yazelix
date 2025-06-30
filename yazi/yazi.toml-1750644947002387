@@ -1,6 +1,6 @@
 # yazi.toml
 
-[mgr]
+[manager]
 ratio = [1, 4, 3]
 
 [opener]
