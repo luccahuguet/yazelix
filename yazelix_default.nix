@@ -10,12 +10,12 @@
   include_yazi_media = true;
 
   # Helix build mode (choose ONE):
-  # "default" - Use latest Helix release from nixpkgs (fast)
-  # "source"  - Use Helix flake from repository (always updated, recommended for most users)
+  # "release" - Use latest Helix release from nixpkgs (fast, recommended for first-time users)
+  # "source"  - Use Helix flake from repository (bleeding edge, recommended for most users)
   # "patchy"  - Build Helix with community PRs (customizable, moderate complexity)
   # "steel"   - Build Helix with steel plugin system (experimental, advanced scripting)
   #              Includes auto-generated example plugin with basic commands for testing
-  helix_mode = "source";
+  helix_mode = "release";
 
   # Patchy Helix configuration (only used if helix_mode = "patchy")
   patchy_helix_config = {

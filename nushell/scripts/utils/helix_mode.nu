@@ -14,15 +14,17 @@ export def get_helix_mode [] {
             let helix_mode_line = ($config_content | lines | where $it | str contains "helix_mode")
             
             if not ($helix_mode_line | is-empty) {
-                $helix_mode_line | first | str replace "helix_mode = " "" | str replace "\"" "" | str replace ";" "" | str trim
+                let mode = $helix_mode_line | first | str replace "helix_mode = " "" | str replace "\"" "" | str replace ";" "" | str trim
+                # Handle backward compatibility: "default" maps to "release"
+                if $mode == "default" { "release" } else { $mode }
             } else {
-                "default"
+                "release"
             }
         } catch {
-            "default"
+            "release"
         }
     } else {
-        "default"
+        "release"
     }
 }
 
@@ -108,7 +110,7 @@ export def detect_actual_helix_mode [] {
         # The actual mode depends on what's configured
         get_helix_mode
     } else {
-        "default"
+        "release"
     }
 }
 
