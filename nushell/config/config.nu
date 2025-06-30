@@ -24,32 +24,34 @@ export def --env --wrapped hx [...rest] {
         mkdir $helix_config_dir
     }
     
-    # Check if patchy is currently enabled
+    # Check helix mode and patchy setting
+    let helix_mode = ($env.YAZELIX_HELIX_MODE? | default "default")
     let use_patchy = ($env.YAZELIX_USE_PATCHY_HELIX? | default "false") == "true"
+    let use_custom_helix = $use_patchy or ($helix_mode in ["patchy", "steel", "source"])
     
-    if $use_patchy {
+    if $use_custom_helix {
         # First check if YAZELIX_PATCHY_HX is set and valid
-        let patchy_env = $env.YAZELIX_PATCHY_HX? | default ""
-        if ($patchy_env | is-not-empty) and ($patchy_env | path exists) {
-            # Set HELIX_RUNTIME for patchy binary to find runtime files
-            let patchy_runtime = $"($env.HOME)/.config/yazelix/helix_patchy/runtime"
-            $env.HELIX_RUNTIME = $patchy_runtime
-            run-external $patchy_env ...$rest
+        let custom_env = $env.YAZELIX_PATCHY_HX? | default ""
+        if ($custom_env | is-not-empty) and ($custom_env | path exists) {
+            # Set HELIX_RUNTIME for custom binary to find runtime files
+            let custom_runtime = $"($env.HOME)/.config/yazelix/helix_patchy/runtime"
+            $env.HELIX_RUNTIME = $custom_runtime
+            run-external $custom_env ...$rest
             return
         }
         
-        # Fallback: Check for patchy binary in default location
-        let patchy_default = $"($env.HOME)/.config/yazelix/helix_patchy/target/release/hx"
-        if ($patchy_default | path exists) {
-            # Set HELIX_RUNTIME for patchy binary to find runtime files
-            let patchy_runtime = $"($env.HOME)/.config/yazelix/helix_patchy/runtime"
-            $env.HELIX_RUNTIME = $patchy_runtime
-            run-external $patchy_default ...$rest
+        # Fallback: Check for custom binary in default location
+        let custom_default = $"($env.HOME)/.config/yazelix/helix_patchy/target/release/hx"
+        if ($custom_default | path exists) {
+            # Set HELIX_RUNTIME for custom binary to find runtime files
+            let custom_runtime = $"($env.HOME)/.config/yazelix/helix_patchy/runtime"
+            $env.HELIX_RUNTIME = $custom_runtime
+            run-external $custom_default ...$rest
             return
         }
     }
     
-    # Final fallback: Use system hx (either patchy disabled or not available)
+    # Fallback to system helix
     run-external "hx" ...$rest
 }
 
