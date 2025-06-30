@@ -22,10 +22,10 @@
     # Popular community PRs (curated for stability)
     pull_requests = [
       # "13197" # welcome screen: no conflicts on its own
-      # "13133" # inline git blame: has merge conflicts
+      # "13133" # inline git blame: has merge conflicts with main
+      # "11497" # rounded-corners option to draw rounded borders: has merge conflicts with main 
       # "8908" # global status line: unknown
       # "11700" # add per view search location and total matches to statusline: unknown
-      # "11497" # rounded-corners option to draw rounded borders: unknown
     ];
 
     # Custom patches (empty by default)

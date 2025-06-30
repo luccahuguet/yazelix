@@ -274,8 +274,11 @@ def setup_patchy_helix [
         git checkout -b patchy origin/master
     }
 
-    # Create .patchy directory
-    mkdir $patchy_config_dir
+    # Nuclear cleanup: forcibly reset helix_patchy working tree before patchy run
+    cd $helix_patchy_dir
+    print "🧨 Forcibly resetting helix_patchy working tree before patchy run"
+    try { ^git reset --hard HEAD } catch { }
+    try { ^git clean -fd } catch { }
 
     # Parse pull requests and patches
     let pull_requests = if ($pull_requests_str | is-empty) or ($pull_requests_str == "NONE") {
@@ -289,33 +292,6 @@ def setup_patchy_helix [
     } else {
         $patches_str | split row "," | where $it != ""
     }
-
-    # Simple patchy setup - no branch merging for reliability
-
-    # Generate patchy config.toml
-    let config_content = [
-        "# Patchy configuration for Yazelix Helix build"
-        "# Auto-generated from yazelix.nix configuration"
-        ""
-        "# Main repository to fetch from"
-        "repo = \"helix-editor/helix\""
-        ""
-        "# The repository's branch"
-        "remote-branch = \"master\""
-        ""
-        "# This is the branch where patchy will merge all PRs"
-        "local-branch = \"patchy\""
-        ""
-        "# List of pull requests to merge"
-        $"pull-requests = [($pull_requests | each {|pr| $'  "($pr)"'} | str join ',\n')]"
-        ""
-        "# List of patches to apply"
-        $"patches = [($patches | each {|patch| $'  "($patch)"'} | str join ',\n')]"
-    ]
-
-    $config_content | str join "\n" | save -f $"($patchy_config_dir)/config.toml"
-
-    print $"✅ Generated patchy config with ($pull_requests | length) PRs and ($patches | length) patches"
 
     # Run patchy to merge PRs
     cd $helix_patchy_dir
@@ -365,6 +341,29 @@ def setup_patchy_helix [
         print "⚠️  Patchy command not found, skipping PR merge"
         print "   PRs will be available for manual merging when patchy is installed"
     }
+
+    # After patchy is done, always regenerate .patchy/config.toml to match the current config
+    let config_content = [
+        "# Patchy configuration for Yazelix Helix build"
+        "# Auto-generated from yazelix.nix configuration"
+        ""
+        "# Main repository to fetch from"
+        "repo = \"helix-editor/helix\""
+        ""
+        "# The repository's branch"
+        "remote-branch = \"master\""
+        ""
+        "# This is the branch where patchy will merge all PRs"
+        "local-branch = \"patchy\""
+        ""
+        "# List of pull requests to merge"
+        $"pull-requests = [($pull_requests | each {|pr| '"' + $pr + '"'} | str join ', ')]"
+        ""
+        "# List of patches to apply"
+        $"patches = [($patches | each {|patch| '"' + $patch + '"'} | str join ', ')]"
+    ]
+    $config_content | str join "\n" | save -f $"($patchy_config_dir)/config.toml"
+    print "✅ Regenerated .patchy/config.toml after patchy run"
 }
 
 def setup_steel_helix [
