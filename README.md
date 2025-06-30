@@ -43,7 +43,7 @@ demo
 - Improves the "reveal file in sidebar" feature by using Yazi's `reveal` command to automatically highlight and select the specific file, eliminating manual searching in directories with many files
 - Allows you to build Helix from source automatically
 - Installs and configures dependencies automatically
-- Introduces yazelix welcome screen with helpful tips and better error handling during environment setup
+- Introduces (optional) yazelix welcome screen with helpful tips and better error handling during environment setup
 - Introduces dynamic version table generation using `nu nushell/scripts/utils/version-info.nu`
 - Adds terminal transparency settings because we reaaally believe in transparency
 - The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip` or `open data.csv | clip`, etc
