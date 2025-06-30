@@ -11,7 +11,7 @@
 
   # Helix build mode (choose ONE):
   # "default" - Use nixpkgs Helix (stable, fast, recommended for most users)
-  # "source"  - Build vanilla Helix from source (latest features, slower build): recommended for most users! 
+  # "source"  - Use Helix flake from repository (always updated, from flake)
   # "patchy"  - Build Helix with community PRs (customizable, moderate complexity)
   # "steel"   - Build Helix with steel plugin system (experimental, advanced scripting)
   #              Includes auto-generated example plugin with basic commands for testing, buggy but working
