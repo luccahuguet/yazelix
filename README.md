@@ -30,7 +30,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 
 ## Preview
 ![yazelix_v6_demo](assets/demos/reveal_fullscreen_stacked.gif)
-v6 demo
+demo
 
 ## Improvements of v7 over v6
 - **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
