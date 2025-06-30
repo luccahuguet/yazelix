@@ -21,11 +21,11 @@
   patchy_helix_config = {
     # Popular community PRs (curated for stability)
     pull_requests = [
-      "13197" # welcome screen: no conflicts on its own
-      "8908" # global status line: unknown
-      "11700" # add per view search location and total matches to statusline: unknown
-      "11497" # rounded-corners option to draw rounded borders: unknown
-      "13133" # inline git blame: unknown
+      # "13197" # welcome screen: no conflicts on its own
+      # "13133" # inline git blame: has merge conflicts
+      # "8908" # global status line: unknown
+      # "11700" # add per view search location and total matches to statusline: unknown
+      # "11497" # rounded-corners option to draw rounded borders: unknown
     ];
 
     # Custom patches (empty by default)
