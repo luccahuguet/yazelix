@@ -266,6 +266,7 @@ helix_mode = "steel";
 ```
 
 **Built-in Steel Commands:**
+They are kinda broken, but they work. It's more of a starting point, and way to test the plugin system (for now at least!)
 Once enabled, Helix includes example Steel commands accessible via `:` command mode:
 - `:hello-steel` - Test greeting with formatted output
 - `:steel-status` - Multi-line status display
