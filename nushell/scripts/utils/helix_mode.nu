@@ -14,9 +14,7 @@ export def get_helix_mode [] {
             let helix_mode_line = ($config_content | lines | where $it | str contains "helix_mode")
             
             if not ($helix_mode_line | is-empty) {
-                let mode = $helix_mode_line | first | str replace "helix_mode = " "" | str replace "\"" "" | str replace ";" "" | str trim
-                # Handle backward compatibility: "default" maps to "release"
-                if $mode == "default" { "release" } else { $mode }
+                $helix_mode_line | first | str replace "helix_mode = " "" | str replace "\"" "" | str replace ";" "" | str trim
             } else {
                 "release"
             }

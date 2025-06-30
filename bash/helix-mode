@@ -1,0 +1,6 @@
+#!/bin/bash
+# Quick Helix mode detector
+# Usage: ./helix-mode
+
+cd "$(dirname "$0")/.."
+nix develop --impure --command nu nushell/scripts/utils/helix-mode-detector.nu 
