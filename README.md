@@ -29,7 +29,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Integration, integration, integration
 
 ## Preview
-![yazelix_v6_demo](assets/reveal_fullscreen_stacked.gif)
+![yazelix_v6_demo](assets/demos/reveal_fullscreen_stacked.gif)
 v6 demo
 
 ## Improvements of v7 over v6

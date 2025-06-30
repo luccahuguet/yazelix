@@ -136,6 +136,7 @@
             serpl # Command-line tool for search and replace
             biome # formats JS, TS, JSON, CSS, and lints js/ts
             markdown-oxide # Personal Knowledge Management System (PKMS) that works with text editors through LSP
+            vhs # Create terminal showcases and tutorials with code
           ]
           ++ (if usePatchyHelix then [ patchy.packages.${system}.default ] else [ ]);
 
