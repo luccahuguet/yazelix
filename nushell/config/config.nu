@@ -4,6 +4,12 @@
 # Disable Nushell welcome banner
 $env.config.show_banner = false
 
+# Set Helix mode environment variables if not already set
+if ($env.YAZELIX_HELIX_MODE? | is-empty) {
+    use ../scripts/utils/helix_mode.nu set_helix_env
+    set_helix_env
+}
+
 # Initializes some programs
 source ~/.config/yazelix/nushell/initializers/starship_init.nu
 source ~/.config/yazelix/nushell/initializers/zoxide_init.nu
@@ -24,35 +30,17 @@ export def --env --wrapped hx [...rest] {
         mkdir $helix_config_dir
     }
     
-    # Check helix mode and patchy setting
-    let helix_mode = ($env.YAZELIX_HELIX_MODE? | default "default")
-    let use_patchy = ($env.YAZELIX_USE_PATCHY_HELIX? | default "false") == "true"
-    let use_custom_helix = $use_patchy or ($helix_mode in ["patchy", "steel", "source"])
+    # Get the appropriate Helix binary
+    use ../scripts/utils/helix_mode.nu get_helix_binary
+    let editor_command = get_helix_binary
     
-    if $use_custom_helix {
-        # First check if YAZELIX_PATCHY_HX is set and valid
-        let custom_env = $env.YAZELIX_PATCHY_HX? | default ""
-        if ($custom_env | is-not-empty) and ($custom_env | path exists) {
-            # Set HELIX_RUNTIME for custom binary to find runtime files
-            let custom_runtime = $"($env.HOME)/.config/yazelix/helix_patchy/runtime"
-            $env.HELIX_RUNTIME = $custom_runtime
-            run-external $custom_env ...$rest
-            return
-        }
-        
-        # Fallback: Check for custom binary in default location
-        let custom_default = $"($env.HOME)/.config/yazelix/helix_patchy/target/release/hx"
-        if ($custom_default | path exists) {
-            # Set HELIX_RUNTIME for custom binary to find runtime files
-            let custom_runtime = $"($env.HOME)/.config/yazelix/helix_patchy/runtime"
-            $env.HELIX_RUNTIME = $custom_runtime
-            run-external $custom_default ...$rest
-            return
-        }
+    # Set runtime for custom builds
+    if ($editor_command != "hx") {
+        let custom_runtime = $"($env.HOME)/.config/yazelix/helix_patchy/runtime"
+        $env.HELIX_RUNTIME = $custom_runtime
     }
     
-    # Fallback to system helix
-    run-external "hx" ...$rest
+    run-external $editor_command ...$rest
 }
 
 # Yazelix aliases

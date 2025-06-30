@@ -2,6 +2,11 @@
 # ~/.config/yazelix/bash/yazelix_bash_config.sh
 # This file is part of Yazelix and should be persisted in the repository.
 
+# Source Helix mode detection using Nushell (essential dependency)
+if [ -z "$YAZELIX_HELIX_MODE" ]; then
+    eval "$(nu -c 'use ~/.config/yazelix/nushell/scripts/utils/helix_mode.nu export_helix_env; export_helix_env')"
+fi
+
 # Define the directory where Yazelix generates individual initializer scripts.
 # This path MUST match the one used in the flake.nix shellHook.
 YAZELIX_BASH_INITIALIZERS_DIR="$HOME/.config/yazelix/bash/initializers"
@@ -28,16 +33,20 @@ alias lg='lazygit'
 
 # Patchy Helix function (use patchy-built hx if available)
 hx() {
+    # Ensure helix config directory exists
+    local helix_config_dir="$HOME/.config/helix"
+    if [ ! -d "$helix_config_dir" ]; then
+        mkdir -p "$helix_config_dir"
+    fi
+
+    # Use custom Helix if available
     if [ -n "$YAZELIX_PATCHY_HX" ] && [ -f "$YAZELIX_PATCHY_HX" ]; then
-        "$YAZELIX_PATCHY_HX" "$@"
+        local custom_runtime="$HOME/.config/yazelix/helix_patchy/runtime"
+        HELIX_RUNTIME="$custom_runtime" "$YAZELIX_PATCHY_HX" "$@"
     else
         command hx "$@"
     fi
 }
-
-# Add other Bash-specific aliases or functions for Yazelix here if needed.
-# For example, you could move environment variable exports specific to Bash sessions here:
-# export SOME_BASH_SPECIFIC_VAR="value"
 
 # Ensure this script doesn't produce output unless it's an error,
 # as it's sourced by .bashrc.
