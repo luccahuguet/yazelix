@@ -10,19 +10,28 @@ def record_demo [demo_file: string, output_name: string, font_package?: string] 
         exit 1
     }
 
-    # Default to hack nerd font if no font specified
-    let font_pkg = if ($font_package | is-empty) { "nerd-fonts.hack" } else { $font_package }
+    # Use specified font package or no font (system default)
+    let font_pkg = $font_package
 
     print $"(ansi blue)🎬 Recording demo: ($demo_file)(ansi reset)"
     print $"(ansi yellow)📝 Output will be: ($output_name)(ansi reset)"
-    print $"(ansi cyan)🔤 Using font package: ($font_pkg)(ansi reset)"
+    let font_display = if ($font_pkg | is-empty) { "system default" } else { $font_pkg }
+    print $"(ansi cyan)🔤 Using font: ($font_display)(ansi reset)"
     print ""
     print $"(ansi yellow)⏳ This may take a few minutes...(ansi reset)"
 
-    # Record the demo using nix shell with specified font support
-    let result = (do {
-        nix shell $"nixpkgs#($font_pkg)" nixpkgs#vhs --command bash -c $"vhs '($demo_file)'"
-    } | complete)
+        # Record the demo using nix shell with font support (if specified)
+    let result = if ($font_pkg | is-empty) {
+        # No font specified - use system default
+        (do { 
+            nix shell nixpkgs#vhs --command bash -c $"vhs '($demo_file)'"
+        } | complete)
+    } else {
+        # Use specified font
+        (do { 
+            nix shell $"nixpkgs#($font_pkg)" nixpkgs#vhs --command bash -c $"vhs '($demo_file)'"
+        } | complete)
+    }
 
     if $result.exit_code == 0 {
         print ""
@@ -43,21 +52,20 @@ def record_demo [demo_file: string, output_name: string, font_package?: string] 
 
 # Quick demo recording
 def "main quick" [font?: string] {
-    let font_pkg = if ($font | is-empty) { "nerd-fonts.hack" } else { $font }
-    record_demo "assets/demos/yazelix-v7-quick-demo.tape" "assets/demos/yazelix-v7-quick-demo.gif" $font_pkg
+    record_demo "assets/demos/yazelix-v7-quick-demo.tape" "assets/demos/yazelix-v7-quick-demo.gif" $font
 }
 
-# Long demo recording
+# Long demo recording  
 def "main long" [font?: string] {
-    let font_pkg = if ($font | is-empty) { "nerd-fonts.hack" } else { $font }
-    record_demo "assets/demos/yazelix-v7-demo.tape" "assets/demos/yazelix-v7-demo.gif" $font_pkg
+    record_demo "assets/demos/yazelix-v7-demo.tape" "assets/demos/yazelix-v7-demo.gif" $font
 }
 
 # Custom demo recording
 def "main custom" [demo_file: string, font?: string] {
-    let output_name = ($demo_file | str replace ".tape" ".gif")
-    let font_pkg = if ($font | is-empty) { "nerd-fonts.hack" } else { $font }
-    record_demo $demo_file $output_name $font_pkg
+    # Extract just the filename and save to demos folder
+    let filename = ($demo_file | path basename | str replace ".tape" ".gif")
+    let output_name = $"assets/demos/($filename)"
+    record_demo $demo_file $output_name $font
 }
 
 # Show help
@@ -70,7 +78,8 @@ def "main help" [] {
     print "  nu record-demo.nu help                  # Show this help"
     print ""
     print "Font options (nixpkgs package names):"
-    print "  nerd-fonts.hack           # Hack Nerd Font (default)"
+    print "  (none)                    # System default font (default)"
+    print "  nerd-fonts.hack           # Hack Nerd Font"
     print "  nerd-fonts.jetbrains-mono # JetBrains Mono Nerd Font"
     print "  nerd-fonts.ubuntu-mono    # Ubuntu Mono Nerd Font"
     print "  nerd-fonts.fira-code      # Fira Code Nerd Font"
@@ -80,10 +89,12 @@ def "main help" [] {
     print "  # Or any other nixpkgs font package"
     print ""
     print "Examples:"
-    print "  nu record-demo.nu quick"
+    print "  nu record-demo.nu quick                      # Use system default font"
     print "  nu record-demo.nu quick nerd-fonts.ubuntu-mono"
     print "  nu record-demo.nu custom assets/demos/my-demo.tape nerd-fonts.jetbrains-mono"
     print "  nu record-demo.nu long jetbrains-mono"
+    print ""
+    print "Note: All outputs are saved to assets/demos/ by default"
 }
 
 # Default to help if no args

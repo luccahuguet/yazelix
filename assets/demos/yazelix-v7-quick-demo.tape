@@ -29,6 +29,11 @@ Type " ~/.config/yazelix/bash/start-yazelix.sh"
 Enter
 Sleep 8s
 Enter
+Sleep 500ms
+
+# exit the zellij welcome screen
+Ctrl+c
+Sleep 500ms
 
 # Navigate in Yazi (we're now in the file manager)
 # use zoxide
@@ -68,8 +73,13 @@ Sleep 500ms
 Alt+M
 Sleep 500ms
 
+Type "z yaze"
+Sleep 500ms
+Enter
+Sleep 500ms
+
 # Now we're in a Nushell terminal
-Type " # Welcome to Nushell - structured data made easy!"
+Type " # Welcome to Nushell..."
 Enter
 Sleep 1s
 Type " ls | select name type size | first 3"
@@ -77,7 +87,7 @@ Enter
 Sleep 1s
 
 # Start lazygit for git integration demo
-Type " lazygit"
+Type " lg"
 Enter
 Sleep 2s
 Type "q"         # Quit lazygit
