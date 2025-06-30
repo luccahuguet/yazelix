@@ -96,13 +96,13 @@ def main [
     let helix_info = if $helix_mode == "source" {
         $"   🔄 Using Helix flake from repository for latest features"
     } else if $helix_mode == "release" {
-        $"   📦 Using latest Helix release from nixpkgs (fast setup)"
+        "   📦 Using latest Helix release from nixpkgs (fast setup)"
     } else if $helix_mode == "patchy" {
         let pr_count = if ($patchy_pull_requests | is-empty) or ($patchy_pull_requests == "NONE") { 0 } else { ($patchy_pull_requests | split row "," | length) }
         $"   🧩 Patchy Helix enabled with ($pr_count) community PRs for enhanced features"
     } else if $helix_mode == "steel" {
         "   ⚡ Steel plugin system enabled with scheme scripting (interpreter + LSP auto-installed)"
-    } else {
+    } else { 
         $"   📝 Using stable nixpkgs Helix"
     }
 
