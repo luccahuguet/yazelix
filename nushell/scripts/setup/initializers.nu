@@ -52,6 +52,8 @@ def main [yazelix_dir: string, include_optional: bool, shells_to_configure_str: 
 
                     let init_content = if ($tool.name == "mise") {
                         (run-external "mise" "activate" $effective_shell_name)
+                    } else if ($tool.name == "carapace" and $shell.name == "nu") {
+                        (run-external "carapace" "_carapace" "nushell")
                     } else {
                         (run-external $tool.name "init" $effective_shell_name)
                     }
