@@ -40,15 +40,16 @@ v7 demo
 - Adds [lazygit](https://github.com/jesseduffield/lazygit), a fast, terminal-based Git TUI for managing Git repositories
 - Adds [Starship](https://starship.rs), a customizable, fast prompt for Nushell, enhancing the terminal experience with Git status and contextual info
 - Adds [markdown-oxide](https://oxide.md/index), a Personal Knowledge Management System (PKMS) that works with your favorite text editor through LSP, inspired by and compatible with Obsidian
-- Improves the "reveal file in sidebar" feature by using Yazi's `reveal` command to automatically highlight and select the specific file, eliminating manual searching in directories with many files
 - Allows you to build Helix from source automatically
 - Installs and configures dependencies automatically
 - Introduces (optional) yazelix welcome screen with helpful tips and better error handling during environment setup
-- Introduces dynamic version table generation using `nu nushell/scripts/utils/version-info.nu`
 - Adds terminal transparency settings because we reaaally believe in transparency
-- The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip` or `open data.csv | clip`, etc
 - Adds `launch-yazelix.sh` script to streamline setup by launching WezTerm with the Yazelix-specific config and automatically adding `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`) and Nushell config, eliminating manual configuration steps, if you want to! See more details [here](./docs/terminal_setup.md)
+- The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip` or `open data.csv | clip`, etc
 - Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/setup/generate-zellij-config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `zellij/yazelix-overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
+- Improves the "reveal file in sidebar" feature by using Yazi's `reveal` command to automatically highlight and select the specific file, eliminating manual searching in directories with many files
+- Introduces dynamic version table generation using `nu nushell/scripts/utils/version-info.nu`
+
 
 ## Compatibility
 - Terminal: Ghostty or WezTerm
