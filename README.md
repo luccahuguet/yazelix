@@ -27,6 +27,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Yazelix lets you say `I use Yazelix btw` (careful saying that, you might accidentally scare an innocent Arch user)
 - Boy, do we Nix
 - Integration, integration, integration
+- Like [Omakub](https://github.com/basecamp/omakub) but for your terminal
 
 ## Preview
 ![yazelix_v7_demo](assets/demos/yazelix-v7-demo.gif)
