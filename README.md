@@ -364,7 +364,7 @@ Yazelix is built on the shoulders of giants. We're grateful to the essential pro
 
 **One of a Kind Contributions:**
 - **patchy** - Build Helix with community PRs
- **nuscripts** - Source of the `clip` command (MIT License)
+- **nuscripts** - Source of the `clip` command (MIT License)
 - **auto-layout.yazi** - 95% of the work by Joseph Schmitt
 
 Thank you to all maintainers and the open source community. 
