@@ -31,7 +31,7 @@ export def get_helix_binary [] {
     let mode = get_helix_mode
     let custom_path = $"($env.HOME)/.config/yazelix/helix_patchy/target/release/hx"
     
-    if $mode in ["steel", "patchy", "source"] and ($custom_path | path exists) {
+    if $mode in ["steel", "source"] and ($custom_path | path exists) {
         $custom_path
     } else {
         "hx"
@@ -43,7 +43,7 @@ export def set_helix_env [] {
     let mode = get_helix_mode
     $env.YAZELIX_HELIX_MODE = $mode
     
-    if $mode in ["steel", "patchy", "source"] {
+    if $mode in ["steel", "source"] {
         $env.YAZELIX_PATCHY_HX = $"($env.HOME)/.config/yazelix/helix_patchy/target/release/hx"
     }
 }
@@ -51,7 +51,7 @@ export def set_helix_env [] {
 # Export environment variables as shell-compatible format
 export def export_helix_env [] {
     let mode = get_helix_mode
-    let exports = if $mode in ["steel", "patchy", "source"] {
+    let exports = if $mode in ["steel", "source"] {
         [
             $"export YAZELIX_HELIX_MODE=\"($mode)\""
             $"export YAZELIX_PATCHY_HX=\"($env.HOME)/.config/yazelix/helix_patchy/target/release/hx\""
@@ -98,12 +98,7 @@ export def detect_actual_helix_mode [] {
     # Determine actual mode
     if $has_steel_config or $has_steel_build or $has_steel_binary {
         "steel"
-    } else if ($helix_patchy_dir | path exists) and (try { 
-        cd $helix_patchy_dir
-        git branch --show-current 
-    } catch { "unknown" } | str contains "patchy") {
-        "patchy"
-    } else if ($helix_patchy_dir | path exists) {
+        } else if ($helix_patchy_dir | path exists) {
         # If there's a local build directory but not steel/patchy, it's likely from a previous setup
         # The actual mode depends on what's configured
         get_helix_mode

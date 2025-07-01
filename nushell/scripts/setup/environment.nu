@@ -11,9 +11,6 @@ def main [
     extra_shells_str: string
     skip_welcome_screen: bool
     helix_mode: string
-    patchy_pull_requests: string
-    patchy_patches: string
-    patchy_pin_commits: bool
 ] {
     # Parse extra shells from comma-separated string
     let extra_shells = if ($extra_shells_str | is-empty) or ($extra_shells_str == "NONE") {
@@ -61,9 +58,7 @@ def main [
         # No setup needed - flake.nix handles this automatically
     } else if $helix_mode == "release" {
         print "✅ Using latest Helix release from nixpkgs (no custom build needed)"
-    } else if $helix_mode == "patchy" {
-        print "🔧 Setting up patchy Helix with community PRs..."
-        setup_patchy_helix $yazelix_dir $patchy_pull_requests $patchy_patches $patchy_pin_commits
+
     } else if $helix_mode == "steel" {
         print "🔧 Setting up steel plugin system Helix..."
         setup_steel_helix $yazelix_dir
@@ -97,9 +92,7 @@ def main [
         $"   🔄 Using Helix flake from repository for latest features"
     } else if $helix_mode == "release" {
         "   📦 Using latest Helix release from nixpkgs (fast setup)"
-    } else if $helix_mode == "patchy" {
-        let pr_count = if ($patchy_pull_requests | is-empty) or ($patchy_pull_requests == "NONE") { 0 } else { ($patchy_pull_requests | split row "," | length) }
-        $"   🧩 Patchy Helix enabled with ($pr_count) community PRs for enhanced features"
+
     } else if $helix_mode == "steel" {
         "   ⚡ Steel plugin system enabled with scheme scripting (interpreter + LSP auto-installed)"
     } else { 
@@ -251,120 +244,7 @@ def setup_helix_config [use_patchy: bool = false, yazelix_dir: string = ""] {
     }
 }
 
-def setup_patchy_helix [
-    yazelix_dir: string
-    pull_requests_str: string
-    patches_str: string
-    pin_commits: bool
-] {
-    let helix_patchy_dir = $"($yazelix_dir)/helix_patchy"
-    let patchy_config_dir = $"($helix_patchy_dir)/.patchy"
 
-    # Create helix-patchy directory if it doesn't exist
-    if not ($helix_patchy_dir | path exists) {
-        print $"📂 Creating patchy Helix directory: ($helix_patchy_dir)"
-        mkdir $helix_patchy_dir
-
-        # Initialize git repo and add helix remote
-        cd $helix_patchy_dir
-        git init
-        git remote add origin https://github.com/helix-editor/helix.git
-        print "🔄 Fetching Helix repository (this may take a moment)..."
-        git fetch origin master
-        git checkout -b patchy origin/master
-    }
-
-    # Nuclear cleanup: forcibly reset helix_patchy working tree before patchy run
-    cd $helix_patchy_dir
-    print "🧨 Forcibly resetting helix_patchy working tree before patchy run"
-    try { ^git reset --hard HEAD } catch { }
-    try { ^git clean -fd } catch { }
-
-    # Parse pull requests and patches
-    let pull_requests = if ($pull_requests_str | is-empty) or ($pull_requests_str == "NONE") {
-        []
-    } else {
-        $pull_requests_str | split row "," | where $it != ""
-    }
-
-    let patches = if ($patches_str | is-empty) or ($patches_str == "NONE") {
-        []
-    } else {
-        $patches_str | split row "," | where $it != ""
-    }
-
-    # Run patchy to merge PRs
-    cd $helix_patchy_dir
-    if (which patchy | is-not-empty) {
-        print "🔄 Running patchy to merge pull requests..."
-        try {
-            patchy run
-            print "✅ Patchy completed successfully!"
-
-            # Automatically build patchy Helix after successful merge
-            print "🔨 Building patchy Helix (this may take a few minutes)..."
-            try {
-                cargo build --release
-                print "✅ Patchy Helix built successfully!"
-                print $"🎯 Helix binary available at: ($helix_patchy_dir)/target/release/hx"
-
-                # Create symlink for user helix config to be accessible
-                let user_helix_config = $"($env.HOME)/.config/helix"
-                let user_helix_runtime = $"($user_helix_config)/runtime"
-                let patchy_runtime = $"($helix_patchy_dir)/runtime"
-
-                mkdir $user_helix_config
-
-                # Remove existing runtime link/dir if it exists
-                if ($user_helix_runtime | path exists) {
-                    rm -rf $user_helix_runtime
-                }
-
-                # Create symlink from user config to patchy runtime
-                try {
-                    ln -sf $patchy_runtime $user_helix_runtime
-                    print $"🔗 Created runtime symlink: ($user_helix_runtime) -> ($patchy_runtime)"
-                } catch {
-                    print $"⚠️  Could not create runtime symlink, you may need to set HELIX_RUNTIME manually"
-                }
-            } catch {|build_err|
-                print $"⚠️  Failed to build patchy Helix: ($build_err.msg)"
-                print "   You can build manually with: cargo build --release"
-                print $"   Navigate to: ($helix_patchy_dir)"
-            }
-        } catch {|err|
-            print $"⚠️  Patchy encountered issues: ($err.msg)"
-            print "   You may need to resolve merge conflicts manually"
-            print $"   Navigate to: ($helix_patchy_dir)"
-        }
-    } else {
-        print "⚠️  Patchy command not found, skipping PR merge"
-        print "   PRs will be available for manual merging when patchy is installed"
-    }
-
-    # After patchy is done, always regenerate .patchy/config.toml to match the current config
-    let config_content = [
-        "# Patchy configuration for Yazelix Helix build"
-        "# Auto-generated from yazelix.nix configuration"
-        ""
-        "# Main repository to fetch from"
-        "repo = \"helix-editor/helix\""
-        ""
-        "# The repository's branch"
-        "remote-branch = \"master\""
-        ""
-        "# This is the branch where patchy will merge all PRs"
-        "local-branch = \"patchy\""
-        ""
-        "# List of pull requests to merge"
-        $"pull-requests = [($pull_requests | each {|pr| '"' + $pr + '"'} | str join ', ')]"
-        ""
-        "# List of patches to apply"
-        $"patches = [($patches | each {|patch| '"' + $patch + '"'} | str join ', ')]"
-    ]
-    $config_content | str join "\n" | save -f $"($patchy_config_dir)/config.toml"
-    print "✅ Regenerated .patchy/config.toml after patchy run"
-}
 
 def setup_steel_helix [
     yazelix_dir: string

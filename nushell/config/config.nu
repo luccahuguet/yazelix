@@ -22,7 +22,7 @@ use ~/.config/yazelix/nushell/modules/system *
 # Tools aliases
 export alias lg = lazygit
 
-# Patchy Helix wrapper (use patchy-built hx if available)
+# Helix wrapper (use custom-built hx if available)
 export def --env --wrapped hx [...rest] {
     # Ensure helix config directory exists
     let helix_config_dir = $"($env.HOME)/.config/helix"
@@ -50,7 +50,6 @@ export alias yzx = ~/.config/yazelix/bash/launch-yazelix.sh
 # Version info alias
 export alias yazelix-versions = nu ~/.config/yazelix/nushell/scripts/utils/version-info.nu
 
-# Patchy Helix management alias
-export alias yazelix_patchy = nu ~/.config/yazelix/nushell/scripts/utils/patchy_helix.nu
+
 
 

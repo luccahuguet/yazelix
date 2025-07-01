@@ -6,7 +6,6 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     helix.url = "github:helix-editor/helix";
-    patchy.url = "github:nik-rev/patchy/v1.3.0";
   };
 
   outputs =
@@ -15,7 +14,6 @@
       nixpkgs,
       flake-utils,
       helix,
-      patchy,
       ...
     }:
     flake-utils.lib.eachDefaultSystem (
@@ -46,18 +44,6 @@
               include_yazi_extensions = true;
               include_yazi_media = true;
               helix_mode = "default";
-              patchy_helix_config = {
-                pull_requests = [
-                  "12309"
-                  "8908"
-                  "13197"
-                  "11700"
-                  "11497"
-                  "13133"
-                ];
-                patches = [ ];
-                pin_commits = true;
-              };
               default_shell = "nu";
               extra_shells = [ ];
               debug_mode = false;
@@ -69,27 +55,13 @@
         includeOptionalDeps = config.include_optional_deps or true;
         includeYaziExtensions = config.include_yazi_extensions or true;
         includeYaziMedia = config.include_yazi_media or true;
-        # Helix build mode: "default", "source", "patchy", or "steel"
+        # Helix build mode: "default", "source", or "steel"
         helixMode = config.helix_mode or "default";
         useNixpkgsHelix = helixMode == "default";
         useSourceHelix = helixMode == "source";
-        usePatchyHelix = helixMode == "patchy";
         useSteelHelix = helixMode == "steel";
-        patchyHelixConfig =
-          config.patchy_helix_config or {
-            pull_requests = [
-              "12309"
-              "8908"
-              "13197"
-              "11700"
-              "11497"
-              "13133"
-            ];
-            patches = [ ];
-            pin_commits = true;
-          };
         # Build from source for all non-default modes
-        buildHelixFromSource = useSourceHelix || usePatchyHelix || useSteelHelix;
+        buildHelixFromSource = useSourceHelix || useSteelHelix;
         yazelixDefaultShell = config.default_shell or "nu";
         yazelixExtraShells = config.extra_shells or [ ];
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
@@ -123,22 +95,19 @@
           );
 
         # Optional dependencies (enhance functionality but not Yazi-specific)
-        optionalDeps =
-          with pkgs;
-          [
-            cargo-update # Updates Rust crates for project maintenance
-            cargo-binstall # Faster installation of Rust tools
-            lazygit # Terminal-based Git TUI for managing repositories
-            mise # Tool version manager for consistent environments
-            ouch # Compression tool for handling archives
-            libnotify # Provides notify-send for desktop notifications (used by Nushell clip command)
-            carapace # Command-line completion tool for multiple shells
-            serpl # Command-line tool for search and replace
-            biome # formats JS, TS, JSON, CSS, and lints js/ts
-            markdown-oxide # Personal Knowledge Management System (PKMS) that works with text editors through LSP
-            vhs # Create terminal showcases and tutorials with code
-          ]
-          ++ (if usePatchyHelix then [ patchy.packages.${system}.default ] else [ ]);
+        optionalDeps = with pkgs; [
+          cargo-update # Updates Rust crates for project maintenance
+          cargo-binstall # Faster installation of Rust tools
+          lazygit # Terminal-based Git TUI for managing repositories
+          mise # Tool version manager for consistent environments
+          ouch # Compression tool for handling archives
+          libnotify # Provides notify-send for desktop notifications (used by Nushell clip command)
+          carapace # Command-line completion tool for multiple shells
+          serpl # Command-line tool for search and replace
+          biome # formats JS, TS, JSON, CSS, and lints js/ts
+          markdown-oxide # Personal Knowledge Management System (PKMS) that works with text editors through LSP
+          vhs # Create terminal showcases and tutorials with code
+        ];
 
         # Yazi extension dependencies (enhance Yazi functionality, lightweight)
         yaziExtensionsDeps = with pkgs; [
@@ -173,19 +142,6 @@
           ++ (if useSteelHelix then steelDeps else [ ])
           ++ (config.user_packages or [ ]);
 
-        # Helper variables for argument handling
-        patchyPRsArg =
-          let
-            prs = patchyHelixConfig.pull_requests or [ ];
-          in
-          if prs == [ ] then "NONE" else builtins.concatStringsSep "," prs;
-
-        patchyPatchesArg =
-          let
-            patches = patchyHelixConfig.patches or [ ];
-          in
-          if patches == [ ] then "NONE" else builtins.concatStringsSep "," patches;
-
       in
       {
         devShells.default = pkgs.mkShell {
@@ -202,7 +158,7 @@
 
 
             # Set helix path based on mode
-            if [ "${helixMode}" = "source" ] || [ "${helixMode}" = "patchy" ] || [ "${helixMode}" = "steel" ]; then
+            if [ "${helixMode}" = "source" ] || [ "${helixMode}" = "steel" ]; then
               if [ -f "$YAZELIX_DIR/helix_patchy/target/release/hx" ]; then
                 export YAZELIX_PATCHY_HX="$YAZELIX_DIR/helix_patchy/target/release/hx"
                 export EDITOR="$YAZELIX_PATCHY_HX"
@@ -229,10 +185,7 @@
                 if yazelixExtraShells == [ ] then "NONE" else builtins.concatStringsSep "," yazelixExtraShells
               }" \
               "${if yazelixSkipWelcomeScreen then "true" else "false"}" \
-              "${helixMode}" \
-              "${patchyPRsArg}" \
-              "${patchyPatchesArg}" \
-              "${if (patchyHelixConfig.pin_commits or true) then "true" else "false"}"
+              "${helixMode}"
           '';
         };
       }

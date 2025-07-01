@@ -115,15 +115,14 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
     let tab_name = get_tab_name $working_dir
     log_to_file "open_helix.log" $"Calculated tab_name: ($tab_name)"
 
-    # Check helix mode (patchy, steel, or default)
+    # Check helix mode (steel, source, or default)
     let helix_mode = ($env.YAZELIX_HELIX_MODE? | default "default")
-    let use_patchy = ($env.YAZELIX_USE_PATCHY_HELIX? | default "false") == "true"
-    let use_custom_helix = $use_patchy or ($helix_mode in ["patchy", "steel", "source"])
+    let use_custom_helix = ($helix_mode in ["steel", "source"])
     
-    log_to_file "open_helix.log" $"Environment check - YAZELIX_HELIX_MODE: ($helix_mode), USE_PATCHY: ($use_patchy), use_custom: ($use_custom_helix)"
+    log_to_file "open_helix.log" $"Environment check - YAZELIX_HELIX_MODE: ($helix_mode), use_custom: ($use_custom_helix)"
     log_to_file "open_helix.log" $"YAZELIX_PATCHY_HX env var: ($env.YAZELIX_PATCHY_HX? | default 'not set')"
     
-    # Check for custom helix binary (patchy/steel/source)
+    # Check for custom helix binary (steel/source)
     let editor_command = if $use_custom_helix and ($env.YAZELIX_PATCHY_HX? | is-not-empty) and ($env.YAZELIX_PATCHY_HX | path exists) {
         $env.YAZELIX_PATCHY_HX
     } else {
@@ -142,7 +141,7 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
             # Pass ALL relevant environment variables to ensure Steel plugins work
             $"env YAZI_ID=($yazi_id) HELIX_RUNTIME=($custom_runtime) YAZELIX_HELIX_MODE=($helix_mode) YAZELIX_PATCHY_HX=($env.YAZELIX_PATCHY_HX) ($editor_command) '($file_path)'"
         } else {
-            # Patchy/source mode
+            # Source mode
             $"env YAZI_ID=($yazi_id) HELIX_RUNTIME=($custom_runtime) YAZELIX_HELIX_MODE=($helix_mode) YAZELIX_PATCHY_HX=($env.YAZELIX_PATCHY_HX) ($editor_command) '($file_path)'"
         }
     } else {
