@@ -120,11 +120,11 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
     let use_custom_helix = ($helix_mode in ["steel", "source"])
     
     log_to_file "open_helix.log" $"Environment check - YAZELIX_HELIX_MODE: ($helix_mode), use_custom: ($use_custom_helix)"
-    log_to_file "open_helix.log" $"YAZELIX_PATCHY_HX env var: ($env.YAZELIX_PATCHY_HX? | default 'not set')"
+    log_to_file "open_helix.log" $"YAZELIX_CUSTOM_HELIX env var: ($env.YAZELIX_CUSTOM_HELIX? | default 'not set')"
     
     # Check for custom helix binary (steel/source)
-    let editor_command = if $use_custom_helix and ($env.YAZELIX_PATCHY_HX? | is-not-empty) and ($env.YAZELIX_PATCHY_HX | path exists) {
-        $env.YAZELIX_PATCHY_HX
+    let editor_command = if $use_custom_helix and ($env.YAZELIX_CUSTOM_HELIX? | is-not-empty) and ($env.YAZELIX_CUSTOM_HELIX | path exists) {
+        $env.YAZELIX_CUSTOM_HELIX
     } else {
         "hx"
     }
@@ -134,15 +134,15 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
     mkdir $helix_config_dir
     
     # For custom helix builds, ensure runtime files are accessible and Steel plugins work
-    let cmd = if $use_custom_helix and ($env.YAZELIX_PATCHY_HX? | is-not-empty) and ($env.YAZELIX_PATCHY_HX | path exists) {
-        let custom_runtime = $"($env.HOME)/.config/yazelix/helix_patchy/runtime"
+    let cmd = if $use_custom_helix and ($env.YAZELIX_CUSTOM_HELIX? | is-not-empty) and ($env.YAZELIX_CUSTOM_HELIX | path exists) {
+        let custom_runtime = $"($env.HOME)/.config/yazelix/helix_custom/runtime"
         if $helix_mode == "steel" {
             # Steel mode needs the custom runtime and config for plugins to work
             # Pass ALL relevant environment variables to ensure Steel plugins work
-            $"env YAZI_ID=($yazi_id) HELIX_RUNTIME=($custom_runtime) YAZELIX_HELIX_MODE=($helix_mode) YAZELIX_PATCHY_HX=($env.YAZELIX_PATCHY_HX) ($editor_command) '($file_path)'"
+            $"env YAZI_ID=($yazi_id) HELIX_RUNTIME=($custom_runtime) YAZELIX_HELIX_MODE=($helix_mode) YAZELIX_CUSTOM_HELIX=($env.YAZELIX_CUSTOM_HELIX) ($editor_command) '($file_path)'"
         } else {
             # Source mode
-            $"env YAZI_ID=($yazi_id) HELIX_RUNTIME=($custom_runtime) YAZELIX_HELIX_MODE=($helix_mode) YAZELIX_PATCHY_HX=($env.YAZELIX_PATCHY_HX) ($editor_command) '($file_path)'"
+            $"env YAZI_ID=($yazi_id) HELIX_RUNTIME=($custom_runtime) YAZELIX_HELIX_MODE=($helix_mode) YAZELIX_CUSTOM_HELIX=($env.YAZELIX_CUSTOM_HELIX) ($editor_command) '($file_path)'"
         }
     } else {
         $"env YAZI_ID=($yazi_id) ($editor_command) '($file_path)'"

@@ -21,7 +21,7 @@ alias yazelix="$HOME/.config/yazelix/bash/launch-yazelix.sh"
 alias yzx="$HOME/.config/yazelix/bash/launch-yazelix.sh"
 alias lg='lazygit'
 
-# Patchy Helix function (use patchy-built hx if available)
+# Helix function (use custom-built hx if available)
 function hx --description "Helix editor with Yazelix mode support"
     # Ensure helix config directory exists
     set -l helix_config_dir "$HOME/.config/helix"
@@ -30,10 +30,10 @@ function hx --description "Helix editor with Yazelix mode support"
     end
 
     # Use custom Helix if available
-    if test -n $YAZELIX_PATCHY_HX -a -f $YAZELIX_PATCHY_HX
-        set -l custom_runtime "$HOME/.config/yazelix/helix_patchy/runtime"
+    if test -n $YAZELIX_CUSTOM_HELIX -a -f $YAZELIX_CUSTOM_HELIX
+        set -l custom_runtime "$HOME/.config/yazelix/helix_custom/runtime"
         set -gx HELIX_RUNTIME $custom_runtime
-        $YAZELIX_PATCHY_HX $argv
+        $YAZELIX_CUSTOM_HELIX $argv
     else
         command hx $argv
     end
@@ -61,9 +61,9 @@ function detect_helix_mode --description "Detect Helix mode from yazelix.nix con
                 set -l mode (echo $helix_mode_line | sed 's/helix_mode = //' | sed 's/"//g' | sed 's/;//' | tr -d ' ')
 
                 # Set environment variables based on detected mode
-                if test "$mode" = "steel" -o "$mode" = "patchy" -o "$mode" = "source"
+                if test "$mode" = "steel" -o "$mode" = "source"
                     set -gx YAZELIX_HELIX_MODE $mode
-                    set -gx YAZELIX_PATCHY_HX "$HOME/.config/yazelix/helix_patchy/target/release/hx"
+                    set -gx YAZELIX_CUSTOM_HELIX "$HOME/.config/yazelix/helix_custom/target/release/hx"
                 else
                     set -gx YAZELIX_HELIX_MODE $mode
                 end

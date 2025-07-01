@@ -4,4 +4,4 @@ bash/initializers
 fish/initializers
 zsh/initializers
 yazelix.nix
-helix_patchy/
+helix_custom/

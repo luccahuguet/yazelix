@@ -31,7 +31,7 @@ alias yazelix="$HOME/.config/yazelix/bash/launch-yazelix.sh"
 alias yzx="$HOME/.config/yazelix/bash/launch-yazelix.sh"
 alias lg='lazygit'
 
-# Patchy Helix function (use patchy-built hx if available)
+# Helix function (use custom-built hx if available)
 hx() {
     # Ensure helix config directory exists
     local helix_config_dir="$HOME/.config/helix"
@@ -40,9 +40,9 @@ hx() {
     fi
 
     # Use custom Helix if available
-    if [ -n "$YAZELIX_PATCHY_HX" ] && [ -f "$YAZELIX_PATCHY_HX" ]; then
-        local custom_runtime="$HOME/.config/yazelix/helix_patchy/runtime"
-        HELIX_RUNTIME="$custom_runtime" "$YAZELIX_PATCHY_HX" "$@"
+    if [ -n "$YAZELIX_CUSTOM_HELIX" ] && [ -f "$YAZELIX_CUSTOM_HELIX" ]; then
+        local custom_runtime="$HOME/.config/yazelix/helix_custom/runtime"
+        HELIX_RUNTIME="$custom_runtime" "$YAZELIX_CUSTOM_HELIX" "$@"
     else
         command hx "$@"
     fi

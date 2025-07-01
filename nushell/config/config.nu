@@ -36,7 +36,7 @@ export def --env --wrapped hx [...rest] {
     
     # Set runtime for custom builds
     if ($editor_command != "hx") {
-        let custom_runtime = $"($env.HOME)/.config/yazelix/helix_patchy/runtime"
+        let custom_runtime = $"($env.HOME)/.config/yazelix/helix_custom/runtime"
         $env.HELIX_RUNTIME = $custom_runtime
     }
     

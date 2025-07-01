@@ -51,7 +51,7 @@
               user_packages = [ ];
             };
 
-        # Variables to control optional, Yazi extension, Helix source, patchy, default shell, and debug mode
+        # Variables to control optional, Yazi extension, Helix source, default shell, and debug mode
         includeOptionalDeps = config.include_optional_deps or true;
         includeYaziExtensions = config.include_yazi_extensions or true;
         includeYaziMedia = config.include_yazi_media or true;
@@ -159,9 +159,9 @@
 
             # Set helix path based on mode
             if [ "${helixMode}" = "source" ] || [ "${helixMode}" = "steel" ]; then
-              if [ -f "$YAZELIX_DIR/helix_patchy/target/release/hx" ]; then
-                export YAZELIX_PATCHY_HX="$YAZELIX_DIR/helix_patchy/target/release/hx"
-                export EDITOR="$YAZELIX_PATCHY_HX"
+              if [ -f "$YAZELIX_DIR/helix_custom/target/release/hx" ]; then
+                export YAZELIX_CUSTOM_HELIX="$YAZELIX_DIR/helix_custom/target/release/hx"
+                export EDITOR="$YAZELIX_CUSTOM_HELIX"
               fi
             fi
 

@@ -215,12 +215,8 @@ helix_mode = "steel";
 
 **Built-in Steel Commands:**
 They are kinda broken, but they work. It's more of a starting point, and way to test the plugin system (for now at least!)
-Once enabled, Helix includes example Steel commands accessible via `:` command mode:
+Once enabled, Helix includes a simple Steel command accessible via `:` command mode:
 - `:hello-steel` - Test greeting with formatted output
-- `:steel-status` - Multi-line status display
-- `:math-test` - Mathematical operations demo
-- `:list-commands` - Show all available Steel commands
-- `:count-test` - Counting demonstration
 
 **Plugin Files:**
 Steel plugins are auto-generated in `~/.config/helix/`:

@@ -95,7 +95,7 @@ def main [
 
     } else if $helix_mode == "steel" {
         "   ⚡ Steel plugin system enabled with scheme scripting (interpreter + LSP auto-installed)"
-    } else { 
+    } else {
         $"   📝 Using stable nixpkgs Helix"
     }
 
@@ -217,14 +217,14 @@ def setup_zsh_config [yazelix_dir: string] {
     }
 }
 
-def setup_helix_config [use_patchy: bool = false, yazelix_dir: string = ""] {
-    let editor = if $use_patchy and ($yazelix_dir != "") {
-        let patchy_hx = $"($yazelix_dir)/helix_patchy/target/release/hx"
-        if ($patchy_hx | path exists) {
-            print $"📝 Using patchy-built Helix: ($patchy_hx)"
-            $patchy_hx
+def setup_helix_config [use_custom_helix: bool = false, yazelix_dir: string = ""] {
+    let editor = if $use_custom_helix and ($yazelix_dir != "") {
+        let custom_hx = $"($yazelix_dir)/helix_custom/target/release/hx"
+        if ($custom_hx | path exists) {
+            print $"📝 Using custom-built Helix: ($custom_hx)"
+            $custom_hx
         } else {
-            print $"⚠️  Patchy Helix not found, falling back to system hx"
+            print $"⚠️  Custom Helix not found, falling back to system hx"
             "hx"
         }
     } else {
@@ -234,12 +234,12 @@ def setup_helix_config [use_patchy: bool = false, yazelix_dir: string = ""] {
     print $"📝 Setting EDITOR to: ($editor)"
     $env.EDITOR = $editor
 
-    # Create hx alias for patchy if available
-    if $use_patchy and ($yazelix_dir != "") {
-        let patchy_hx = $"($yazelix_dir)/helix_patchy/target/release/hx"
-        if ($patchy_hx | path exists) {
+    # Create hx alias for custom build if available
+    if $use_custom_helix and ($yazelix_dir != "") {
+        let custom_hx = $"($yazelix_dir)/helix_custom/target/release/hx"
+        if ($custom_hx | path exists) {
             # This will be picked up by shell configs
-            $env.YAZELIX_PATCHY_HX = $patchy_hx
+            $env.YAZELIX_CUSTOM_HELIX = $custom_hx
         }
     }
 }
@@ -249,26 +249,26 @@ def setup_helix_config [use_patchy: bool = false, yazelix_dir: string = ""] {
 def setup_steel_helix [
     yazelix_dir: string
 ] {
-    let helix_patchy_dir = $"($yazelix_dir)/helix_patchy"
+    let helix_custom_dir = $"($yazelix_dir)/helix_custom"
 
-    # Create helix-patchy directory if it doesn't exist
-    if not ($helix_patchy_dir | path exists) {
-        print $"📂 Creating steel Helix directory: ($helix_patchy_dir)"
-        mkdir $helix_patchy_dir
+    # Create helix-custom directory if it doesn't exist
+    if not ($helix_custom_dir | path exists) {
+        print $"📂 Creating steel Helix directory: ($helix_custom_dir)"
+        mkdir $helix_custom_dir
 
         # Clone steel branch directly (much simpler than merging)
         cd $yazelix_dir
         print "🔄 Cloning steel plugin system branch..."
         try {
-            git clone -b steel-event-system https://github.com/mattwparas/helix.git helix_patchy
+            git clone -b steel-event-system https://github.com/mattwparas/helix.git helix_custom
             print "✅ Successfully cloned steel plugin system branch"
         } catch {
             print "⚠️  Failed to clone steel branch, falling back to master"
-            git clone https://github.com/helix-editor/helix.git helix_patchy
+            git clone https://github.com/helix-editor/helix.git helix_custom
         }
     } else {
-        print $"📂 Steel Helix directory exists: ($helix_patchy_dir)"
-        cd $helix_patchy_dir
+        print $"📂 Steel Helix directory exists: ($helix_custom_dir)"
+        cd $helix_custom_dir
 
         # Check if we're on the right branch
         let current_branch = try { git branch --show-current } catch { "unknown" }
@@ -290,17 +290,17 @@ def setup_steel_helix [
     }
 
     # Build steel Helix
-    cd $helix_patchy_dir
+    cd $helix_custom_dir
     print "🔨 Building steel plugin system Helix (this may take a few minutes)..."
     try {
         cargo build --release
         print "✅ Steel Helix built successfully!"
-        print $"🎯 Steel-enabled Helix binary available at: ($helix_patchy_dir)/target/release/hx"
+        print $"🎯 Steel-enabled Helix binary available at: ($helix_custom_dir)/target/release/hx"
 
         # Create symlink for user helix config to be accessible
         let user_helix_config = $"($env.HOME)/.config/helix"
         let user_helix_runtime = $"($user_helix_config)/runtime"
-        let steel_runtime = $"($helix_patchy_dir)/runtime"
+        let steel_runtime = $"($helix_custom_dir)/runtime"
 
         mkdir $user_helix_config
 
@@ -336,7 +336,7 @@ def setup_steel_helix [
     } catch {|build_err|
         print $"⚠️  Failed to build steel Helix: ($build_err.msg)"
         print "   You can build manually with: cargo build --release"
-        print $"   Navigate to: ($helix_patchy_dir)"
+        print $"   Navigate to: ($helix_custom_dir)"
     }
 }
 
@@ -363,72 +363,8 @@ def setup_default_steel_plugin [yazelix_dir: string] {
             "  (displayln \"========================\")"
             "  (displayln \"\"))"
             ""
-            ";; Simple echo command with clean formatting"
-            "(define (test-echo . args)"
-            "  (displayln \"\")"
-            "  (displayln \"=== Echo Test ===\")"
-            "  (display \"Echo: \")"
-            "  (if (null? args)"
-            "      (displayln \"Steel plugin test!\")"
-            "      (begin"
-            "        (for-each (lambda (arg)"
-            "                    (display arg)"
-            "                    (display \" \"))"
-            "                  args)"
-            "        (displayln \"\")))"
-            "  (displayln \"================\")"
-            "  (displayln \"\"))"
-            ""
-            ";; Math test with clean output"
-            "(define (math-test)"
-            "  (let ([result (+ (* 2 3) 4)])"
-            "    (displayln \"\")"
-            "    (displayln \"=== Math Test ===\")"
-            "    (display \"Calculation: 2 * 3 + 4 = \")"
-            "    (displayln result)"
-            "    (displayln \"=================\")"
-            "    (displayln \"\")))"
-            ""
-            ";; Status message with clean formatting"
-            "(define (steel-status)"
-            "  (displayln \"\")"
-            "  (displayln \"=== Steel Status ===\")"
-            "  (displayln \"Plugin: Active\")"
-            "  (displayln \"API: Basic Steel\")"
-            "  (displayln \"Mode: Ultra-Safe\")"
-            "  (displayln \"====================\")"
-            "  (displayln \"\"))"
-            ""
-            ";; Counter with clean output"
-            "(define (count-test)"
-            "  (displayln \"\")"
-            "  (displayln \"=== Count Test ===\")"
-            "  (display \"Counting: \")"
-            "  (display \"1 \") (display \"2 \") (display \"3\")"
-            "  (displayln \" Done!\")"
-            "  (displayln \"==================\")"
-            "  (displayln \"\"))"
-            ""
-            ";; Simple list command"
-            "(define (list-commands)"
-            "  (displayln \"\")"
-            "  (displayln \"=== Available Commands ===\")"
-            "  (displayln \":hello-steel    - Test greeting\")"
-            "  (displayln \":test-echo      - Echo test\")"
-            "  (displayln \":math-test      - Math demo\")"
-            "  (displayln \":steel-status   - Show status\")"
-            "  (displayln \":count-test     - Count demo\")"
-            "  (displayln \":list-commands  - Show this list\")"
-            "  (displayln \"==========================\")"
-            "  (displayln \"\"))"
-            ""
-            ";; Export all functions so they can be called as typed commands"
-            "(provide hello-steel"
-            "         test-echo"
-            "         math-test"
-            "         steel-status"
-            "         count-test"
-            "         list-commands)"
+            ";; Export the function so it can be called as a typed command"
+            "(provide hello-steel)"
         ]
         $plugin_content | str join "\n" | save $helix_scm
     } else {
@@ -451,14 +387,9 @@ def setup_default_steel_plugin [yazelix_dir: string] {
             "(displayln \"\")"
             "(displayln \"Available commands:\")"
             "(displayln \"  :hello-steel    - Test greeting\")"
-            "(displayln \"  :test-echo      - Echo test\")"
-            "(displayln \"  :math-test      - Math demo\")"
-            "(displayln \"  :steel-status   - Show status\")"
-            "(displayln \"  :count-test     - Count demo\")"
-            "(displayln \"  :list-commands  - Show command list\")"
             "(displayln \"\")"
             "(displayln \"💡 Tip: Type ':' followed by command name!\")"
-            "(displayln \"📖 Clean, safe Steel functions\")"
+            "(displayln \"📖 Clean, safe Steel function\")"
             "(displayln \"\")"
             "(displayln \"=========================================\")"
             "(displayln \"Steel initialization complete!\")"
@@ -479,12 +410,12 @@ def cleanup_steel_artifacts [yazelix_dir: string] {
     let helix_config_dir = $"($env.HOME)/.config/helix"
     let helix_scm = $"($helix_config_dir)/helix.scm"
     let init_scm = $"($helix_config_dir)/init.scm"
-    let helix_patchy_dir = $"($yazelix_dir)/helix_patchy"
+    let helix_custom_dir = $"($yazelix_dir)/helix_custom"
 
     # Check if Steel artifacts exist
     let has_steel_config = ($helix_scm | path exists) or ($init_scm | path exists)
-    let has_steel_build = ($helix_patchy_dir | path exists) and (try {
-        cd $helix_patchy_dir
+    let has_steel_build = ($helix_custom_dir | path exists) and (try {
+        cd $helix_custom_dir
         git branch --show-current
     } catch { "unknown" } | str contains "steel")
 
@@ -506,32 +437,13 @@ def cleanup_steel_artifacts [yazelix_dir: string] {
         # Clean Steel build artifacts if switching to non-Steel mode
         if $has_steel_build {
             print "   🔄 Steel build detected - cleaning for fresh build..."
-            if ($helix_patchy_dir | path exists) {
+            if ($helix_custom_dir | path exists) {
                 # Use system rm to avoid "cannot remove any parent directory" error
                 try {
-                    ^rm -rf $helix_patchy_dir
-                    print $"   ✅ Removed Steel build directory: ($helix_patchy_dir)"
+                    ^rm -rf $helix_custom_dir
+                    print $"   ✅ Removed Steel build directory: ($helix_custom_dir)"
                 } catch {
-                    print $"   ⚠️  Could not remove Steel build directory: ($helix_patchy_dir)"
-                    print "   💡 You may need to manually remove it or restart your terminal"
-                }
-            }
-        }
-
-        # Also clean patchy build artifacts if switching to non-patchy mode
-        let has_patchy_build = ($helix_patchy_dir | path exists) and (try {
-            cd $helix_patchy_dir
-            git branch --show-current
-        } catch { "unknown" } | str contains "patchy")
-
-        if $has_patchy_build {
-            print "   🔄 Patchy build detected - cleaning for fresh build..."
-            if ($helix_patchy_dir | path exists) {
-                try {
-                    ^rm -rf $helix_patchy_dir
-                    print $"   ✅ Removed Patchy build directory: ($helix_patchy_dir)"
-                } catch {
-                    print $"   ⚠️  Could not remove Patchy build directory: ($helix_patchy_dir)"
+                    print $"   ⚠️  Could not remove Steel build directory: ($helix_custom_dir)"
                     print "   💡 You may need to manually remove it or restart your terminal"
                 }
             }

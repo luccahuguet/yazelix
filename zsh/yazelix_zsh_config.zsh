@@ -45,9 +45,9 @@ hx() {
     fi
 
     # Use custom Helix if available
-    if [[ -n "$YAZELIX_PATCHY_HX" && -f "$YAZELIX_PATCHY_HX" ]]; then
-        local custom_runtime="$HOME/.config/yazelix/helix_patchy/runtime"
-        HELIX_RUNTIME="$custom_runtime" "$YAZELIX_PATCHY_HX" "$@"
+    if [[ -n "$YAZELIX_CUSTOM_HELIX" && -f "$YAZELIX_CUSTOM_HELIX" ]]; then
+        local custom_runtime="$HOME/.config/yazelix/helix_custom/runtime"
+        HELIX_RUNTIME="$custom_runtime" "$YAZELIX_CUSTOM_HELIX" "$@"
     else
         command hx "$@"
     fi
