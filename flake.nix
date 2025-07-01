@@ -146,6 +146,9 @@
             export YAZI_CONFIG_HOME="$YAZELIX_DIR/yazi"
             export YAZELIX_HELIX_MODE="${helixMode}"
 
+            # Set HELIX_RUNTIME for both modes - both use hx from PATH
+            export HELIX_RUNTIME="${helixPackage}/share/helix/runtime"
+
 
 
 

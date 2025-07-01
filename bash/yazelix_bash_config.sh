@@ -31,29 +31,5 @@ alias yazelix="$HOME/.config/yazelix/bash/launch-yazelix.sh"
 alias yzx="$HOME/.config/yazelix/bash/launch-yazelix.sh"
 alias lg='lazygit'
 
-# Helix function (ensure runtime is set correctly)
-hx() {
-    # Ensure helix config directory exists
-    local helix_config_dir="$HOME/.config/helix"
-    if [ ! -d "$helix_config_dir" ]; then
-        mkdir -p "$helix_config_dir"
-    fi
-
-    # Set runtime based on mode - both modes need HELIX_RUNTIME set
-    # The runtime path is already set by the Nix environment, but ensure it's available
-    if [ -z "$HELIX_RUNTIME" ]; then
-        # Fallback: try to find runtime from helix binary
-        local helix_path=$(which hx 2>/dev/null)
-        if [ -n "$helix_path" ]; then
-            local runtime_path=$(dirname "$(dirname "$helix_path")")/share/helix/runtime
-            if [ -d "$runtime_path" ]; then
-                export HELIX_RUNTIME="$runtime_path"
-            fi
-        fi
-    fi
-
-    command hx "$@"
-}
-
 # Ensure this script doesn't produce output unless it's an error,
 # as it's sourced by .bashrc.

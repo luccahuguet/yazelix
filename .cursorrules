@@ -91,3 +91,17 @@
 - [x] Add a copy/generate script that copies yazelix_default.nix to yazelix.nix (both in root) - yazelix.nix will be git ignored for user customization
 
 - [ ] Create option of having a folder that is gitignored containing user-specific configs that we can concatenate to yazelix configs when available 
+
+## Helix Configuration Issues
+- **Runtime Path Mismatches**: Helix requires its binary and runtime directory to match the installation method
+  - **Nix/System packages**: Binary in `/nix/store/.../bin/hx` or `/usr/bin/hx`, runtime in `/nix/store/.../share/helix/runtime` or `/usr/share/helix/runtime`
+  - **Cargo installs**: Binary in `~/.cargo/bin/hx`, runtime must be manually set up or `HELIX_RUNTIME` environment variable configured
+  - **Mismatch symptoms**: Helix ignores config.toml, creates empty `.scm` files, uses default theme instead of custom theme
+- **Multiple hx Binaries**: Having multiple `hx` binaries on PATH can cause confusion
+  - **Check with**: `which hx` to see which binary is being used
+  - **Fix**: Remove conflicting binaries (e.g., `rm ~/.cargo/bin/hx` if using Nix-managed Helix)
+  - **Verify**: Ensure `$env.HELIX_RUNTIME` points to the correct runtime directory for the active binary
+- **Environment Variable Setup**: Always set `HELIX_RUNTIME` to match the actual Helix installation
+  - For Cargo: `~/.local/share/helix/runtime` or `~/.cargo/registry/src/github.com-*/helix-*/runtime`
+  - For Nix: `~/.nix-profile/share/helix/runtime`
+  - For system packages: `/usr/share/helix/runtime`
