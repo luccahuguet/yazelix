@@ -12,8 +12,8 @@
   # Helix build mode (choose ONE):
   # "release" - Use latest Helix release from nixpkgs (fast, recommended for first-time users)
   # "source"  - Use Helix flake from repository (bleeding edge, recommended for most users)
-  # "patchy"  - Build Helix with community PRs (customizable, moderate complexity)
-  # "steel"   - Build Helix with steel plugin system (experimental, advanced scripting)
+  # "patchy"  - Build Helix with community PRs (experimental)
+  # "steel"   - Build Helix with steel plugin system (experimental)
   #              Includes auto-generated example plugin with basic commands for testing
   helix_mode = "release";
 
@@ -23,7 +23,7 @@
     pull_requests = [
       # "13197" # welcome screen: no conflicts on its own
       # "13133" # inline git blame: has merge conflicts with main
-      # "11497" # rounded-corners option to draw rounded borders: has merge conflicts with main 
+      # "11497" # rounded-corners option to draw rounded borders: has merge conflicts with main
       # "8908" # global status line: unknown
       # "11700" # add per view search location and total matches to statusline: unknown
     ];
