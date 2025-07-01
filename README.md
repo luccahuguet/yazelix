@@ -147,56 +147,7 @@ This gives you access to all tools (helix, yazi, lazygit, etc.) in your current 
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run):
-
-```nix
-{ pkgs }:
-{
-  # Include optional tools like lazygit, mise, etc. (default: true)
-  include_optional_deps = true;
-
-  # Include Yazi extensions for previews, archives, etc. (default: true)
-  include_yazi_extensions = true;
-
-  # Include heavy media packages for Yazi (WARNING: ~800MB-1.2GB) (default: true)
-  include_yazi_media = true;
-
-  # Build Helix from source (true) or use nixpkgs version (false). (default: false)
-  build_helix_from_source = false;
-
-  # Helix build mode: "default" or "source" (default: "default")
-  # - "default": Use nixpkgs Helix binary
-  # - "source": Build latest Helix from source  
-  helix_mode = "default";
-
-  # Default shell for Zellij: "nu", "bash", "fish", or "zsh". (default: "nu")
-  # Note: fish and zsh will be automatically installed if set as default_shell or included in extra_shells
-  default_shell = "nu";
-
-  # Extra shells to install beyond nu/bash (e.g., ["fish", "zsh"]) (default: [])
-  # Only install additional shells if you plan to use them
-  extra_shells = [ ];
-
-  # Enable verbose debug logging in the shellHook (default: false)
-  debug_mode = false;
-
-  # Skip the welcome screen on startup (default: false)
-  # When true, welcome info is logged to the logs directory instead of displayed
-  skip_welcome_screen = false;
-
-  # User packages - add your custom Nix packages here
-  user_packages = with pkgs; [
-    # discord
-    # vlc
-    # inkscape
-  ];
-}
-```
-
-
-
-
-
+Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run). See [yazelix_default.nix](./yazelix_default.nix) for all available options and their descriptions.
 
 ## Notes
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
@@ -204,6 +155,7 @@ Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run):
 - For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html)
 - Add more swap layouts as needed using the KDL files in `layouts`
 - Use `lazygit`
+- **Steel Support**: Patchy and Steel support was temporarily removed due to rapid codebase growth causing integration conflicts. Pre-release testing didn't catch all edge cases. A polished, stable Steel integration will be readded soon.
 
 ## Why Use This Project?
 - Easy to configure and personalize
