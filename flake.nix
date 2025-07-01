@@ -147,13 +147,7 @@
             export YAZELIX_HELIX_MODE="${helixMode}"
 
 
-            # Set helix path based on mode
-            if [ "${helixMode}" = "source" ]; then
-              if [ -f "$YAZELIX_DIR/helix_custom/target/release/hx" ]; then
-                export YAZELIX_CUSTOM_HELIX="$YAZELIX_DIR/helix_custom/target/release/hx"
-                export EDITOR="$YAZELIX_CUSTOM_HELIX"
-              fi
-            fi
+
 
             # Disable Nix warning about Git directory
             export NIX_CONFIG="warn-dirty = false"

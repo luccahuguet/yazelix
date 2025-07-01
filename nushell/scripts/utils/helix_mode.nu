@@ -26,43 +26,21 @@ export def get_helix_mode [] {
     }
 }
 
-# Get the appropriate Helix binary path based on mode
+# Get the appropriate Helix binary path (both modes use hx from PATH)
 export def get_helix_binary [] {
-    let mode = get_helix_mode
-    let custom_path = $"($env.HOME)/.config/yazelix/helix_custom/target/release/hx"
-
-    if $mode in ["source"] and ($custom_path | path exists) {
-        $custom_path
-    } else {
-        "hx"
-    }
+    "hx"
 }
 
 # Set environment variables for Helix mode
 export def set_helix_env [] {
     let mode = get_helix_mode
     $env.YAZELIX_HELIX_MODE = $mode
-
-    if $mode in ["source"] {
-        $env.YAZELIX_CUSTOM_HELIX = $"($env.HOME)/.config/yazelix/helix_custom/target/release/hx"
-    }
 }
 
 # Export environment variables as shell-compatible format
 export def export_helix_env [] {
     let mode = get_helix_mode
-    let exports = if $mode in ["source"] {
-        [
-            $"export YAZELIX_HELIX_MODE=\"($mode)\""
-            $"export YAZELIX_CUSTOM_HELIX=\"($env.HOME)/.config/yazelix/helix_custom/target/release/hx\""
-        ]
-    } else {
-        [
-            $"export YAZELIX_HELIX_MODE=\"($mode)\""
-        ]
-    }
-
-    $exports | str join "\n"
+    $"export YAZELIX_HELIX_MODE=\"($mode)\""
 }
 
 # Detect the actual running Helix mode

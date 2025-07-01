@@ -115,34 +115,13 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
     let tab_name = get_tab_name $working_dir
     log_to_file "open_helix.log" $"Calculated tab_name: ($tab_name)"
 
-    # Check helix mode (source or default)
-    let helix_mode = ($env.YAZELIX_HELIX_MODE? | default "default")
-    let use_custom_helix = ($helix_mode in ["source"])
-
-    log_to_file "open_helix.log" $"Environment check - YAZELIX_HELIX_MODE: ($helix_mode), use_custom: ($use_custom_helix)"
-    log_to_file "open_helix.log" $"YAZELIX_CUSTOM_HELIX env var: ($env.YAZELIX_CUSTOM_HELIX? | default 'not set')"
-
-    # Check for custom helix binary (source)
-    let editor_command = if $use_custom_helix and ($env.YAZELIX_CUSTOM_HELIX? | is-not-empty) and ($env.YAZELIX_CUSTOM_HELIX | path exists) {
-        $env.YAZELIX_CUSTOM_HELIX
-    } else {
-        "hx"
-    }
-
     # Ensure helix config directory exists
     let helix_config_dir = $"($env.HOME)/.config/helix"
     mkdir $helix_config_dir
 
-    # For custom helix builds, ensure runtime files are accessible
-    let cmd = if $use_custom_helix and ($env.YAZELIX_CUSTOM_HELIX? | is-not-empty) and ($env.YAZELIX_CUSTOM_HELIX | path exists) {
-        let custom_runtime = $"($env.HOME)/.config/yazelix/helix_custom/runtime"
-        # Source mode
-        $"env YAZI_ID=($yazi_id) HELIX_RUNTIME=($custom_runtime) YAZELIX_HELIX_MODE=($helix_mode) YAZELIX_CUSTOM_HELIX=($env.YAZELIX_CUSTOM_HELIX) ($editor_command) '($file_path)'"
-    } else {
-        $"env YAZI_ID=($yazi_id) ($editor_command) '($file_path)'"
-    }
+    # Simple command - both modes use 'hx' from PATH
+    let cmd = $"env YAZI_ID=($yazi_id) hx '($file_path)'"
 
-    log_to_file "open_helix.log" $"Using editor command: ($editor_command) - mode: ($helix_mode)"
     log_to_file "open_helix.log" $"Full command to execute: ($cmd)"
 
     try {

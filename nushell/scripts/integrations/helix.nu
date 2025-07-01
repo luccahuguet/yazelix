@@ -25,17 +25,7 @@ export def is_helix_running_test [] {
     print "✅ Helix integration test completed"
 }
 
-# Get the Helix binary path (custom version if available, otherwise hx)
+# Get the Helix binary path (both modes use hx from PATH)
 export def get_helix_binary [] {
-    # Check if custom helix is currently enabled
-    let use_custom_helix = ($env.YAZELIX_HELIX_MODE? | default "default") in ["source"]
-    
-    if $use_custom_helix and ($env.YAZELIX_CUSTOM_HELIX? | is-not-empty) and ($env.YAZELIX_CUSTOM_HELIX | path exists) {
-        # Set runtime for custom build when using the binary
-        let custom_runtime = $"($env.HOME)/.config/yazelix/helix_custom/runtime"
-        $env.HELIX_RUNTIME = $custom_runtime
-        $env.YAZELIX_CUSTOM_HELIX
-    } else {
-        "hx"
-    }
+    "hx"
 }

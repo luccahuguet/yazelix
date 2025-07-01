@@ -21,7 +21,7 @@ alias yazelix="$HOME/.config/yazelix/bash/launch-yazelix.sh"
 alias yzx="$HOME/.config/yazelix/bash/launch-yazelix.sh"
 alias lg='lazygit'
 
-# Helix function (use custom-built hx if available)
+# Helix function (both modes use hx from PATH)
 function hx --description "Helix editor with Yazelix mode support"
     # Ensure helix config directory exists
     set -l helix_config_dir "$HOME/.config/helix"
@@ -29,14 +29,7 @@ function hx --description "Helix editor with Yazelix mode support"
         mkdir -p $helix_config_dir
     end
 
-    # Use custom Helix if available
-    if test -n $YAZELIX_CUSTOM_HELIX -a -f $YAZELIX_CUSTOM_HELIX
-        set -l custom_runtime "$HOME/.config/yazelix/helix_custom/runtime"
-        set -gx HELIX_RUNTIME $custom_runtime
-        $YAZELIX_CUSTOM_HELIX $argv
-    else
-        command hx $argv
-    end
+    command hx $argv
 end
 
 # Function to detect Helix mode from yazelix.nix configuration
@@ -61,12 +54,7 @@ function detect_helix_mode --description "Detect Helix mode from yazelix.nix con
                 set -l mode (echo $helix_mode_line | sed 's/helix_mode = //' | sed 's/"//g' | sed 's/;//' | tr -d ' ')
 
                 # Set environment variables based on detected mode
-                if test "$mode" = "source"
-                    set -gx YAZELIX_HELIX_MODE $mode
-                    set -gx YAZELIX_CUSTOM_HELIX "$HOME/.config/yazelix/helix_custom/target/release/hx"
-                else
-                    set -gx YAZELIX_HELIX_MODE $mode
-                end
+                set -gx YAZELIX_HELIX_MODE $mode
             else
                 set -gx YAZELIX_HELIX_MODE "default"
             end
