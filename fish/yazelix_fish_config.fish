@@ -61,7 +61,7 @@ function detect_helix_mode --description "Detect Helix mode from yazelix.nix con
                 set -l mode (echo $helix_mode_line | sed 's/helix_mode = //' | sed 's/"//g' | sed 's/;//' | tr -d ' ')
 
                 # Set environment variables based on detected mode
-                if test "$mode" = "steel" -o "$mode" = "source"
+                if test "$mode" = "source"
                     set -gx YAZELIX_HELIX_MODE $mode
                     set -gx YAZELIX_CUSTOM_HELIX "$HOME/.config/yazelix/helix_custom/target/release/hx"
                 else

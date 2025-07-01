@@ -47,10 +47,7 @@ def main [
     print "🔧 Generating shell initializers..."
     nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir $include_optional ($shells_to_configure | str join ",")
 
-    # Clean up Steel artifacts if switching away from Steel mode
-    if $helix_mode != "steel" {
-        cleanup_steel_artifacts $yazelix_dir
-    }
+
 
     # Setup Helix based on mode
     if $helix_mode == "source" {
@@ -59,9 +56,7 @@ def main [
     } else if $helix_mode == "release" {
         print "✅ Using latest Helix release from nixpkgs (no custom build needed)"
 
-    } else if $helix_mode == "steel" {
-        print "🔧 Setting up steel plugin system Helix..."
-        setup_steel_helix $yazelix_dir
+
     } else {
         print "✅ Using default nixpkgs Helix (no custom build needed)"
     }
@@ -93,8 +88,7 @@ def main [
     } else if $helix_mode == "release" {
         "   📦 Using latest Helix release from nixpkgs (fast setup)"
 
-    } else if $helix_mode == "steel" {
-        "   ⚡ Steel plugin system enabled with scheme scripting (interpreter + LSP auto-installed)"
+
     } else {
         $"   📝 Using stable nixpkgs Helix"
     }
@@ -246,211 +240,3 @@ def setup_helix_config [use_custom_helix: bool = false, yazelix_dir: string = ""
 
 
 
-def setup_steel_helix [
-    yazelix_dir: string
-] {
-    let helix_custom_dir = $"($yazelix_dir)/helix_custom"
-
-    # Create helix-custom directory if it doesn't exist
-    if not ($helix_custom_dir | path exists) {
-        print $"📂 Creating steel Helix directory: ($helix_custom_dir)"
-        mkdir $helix_custom_dir
-
-        # Clone steel branch directly (much simpler than merging)
-        cd $yazelix_dir
-        print "🔄 Cloning steel plugin system branch..."
-        try {
-            git clone -b steel-event-system https://github.com/mattwparas/helix.git helix_custom
-            print "✅ Successfully cloned steel plugin system branch"
-        } catch {
-            print "⚠️  Failed to clone steel branch, falling back to master"
-            git clone https://github.com/helix-editor/helix.git helix_custom
-        }
-    } else {
-        print $"📂 Steel Helix directory exists: ($helix_custom_dir)"
-        cd $helix_custom_dir
-
-        # Check if we're on the right branch
-        let current_branch = try { git branch --show-current } catch { "unknown" }
-        if $current_branch != "steel-event-system" {
-            print "🔄 Switching to steel-event-system branch..."
-            try {
-                git remote add steel-origin https://github.com/mattwparas/helix.git
-            } catch {
-                # Remote might already exist
-            }
-            try {
-                git fetch steel-origin steel-event-system
-                git checkout -b steel-event-system steel-origin/steel-event-system
-                print "✅ Switched to steel plugin system branch"
-            } catch {
-                print "⚠️  Could not switch to steel branch"
-            }
-        }
-    }
-
-    # Build steel Helix
-    cd $helix_custom_dir
-    print "🔨 Building steel plugin system Helix (this may take a few minutes)..."
-    try {
-        cargo build --release
-        print "✅ Steel Helix built successfully!"
-        print $"🎯 Steel-enabled Helix binary available at: ($helix_custom_dir)/target/release/hx"
-
-        # Create symlink for user helix config to be accessible
-        let user_helix_config = $"($env.HOME)/.config/helix"
-        let user_helix_runtime = $"($user_helix_config)/runtime"
-        let steel_runtime = $"($helix_custom_dir)/runtime"
-
-        mkdir $user_helix_config
-
-        # Remove existing runtime link/dir if it exists
-        if ($user_helix_runtime | path exists) {
-            rm -rf $user_helix_runtime
-        }
-
-        # Create symlink from user config to steel runtime
-        try {
-            ln -sf $steel_runtime $user_helix_runtime
-            print $"🔗 Created runtime symlink: ($user_helix_runtime) -> ($steel_runtime)"
-        } catch {
-            print $"⚠️  Could not create runtime symlink, you may need to set HELIX_RUNTIME manually"
-        }
-
-        # Setup additional steel tools (language server, forge, etc.)
-        print "🔧 Setting up additional steel tools..."
-        try {
-            cargo xtask steel
-            print "✅ Additional steel tools installed successfully!"
-            print "   • steel-language-server - Steel LSP server"
-            print "   • forge - Steel package manager"
-            print "   • cargo-steel-lib - Steel library manager"
-        } catch {|err|
-            print $"⚠️  Failed to install additional steel tools: ($err.msg)"
-            print "   You can install them manually with: cargo xtask steel"
-        }
-
-        # Setup default Steel example plugin
-        print "🔧 Setting up default Steel example plugin..."
-        setup_default_steel_plugin $yazelix_dir
-    } catch {|build_err|
-        print $"⚠️  Failed to build steel Helix: ($build_err.msg)"
-        print "   You can build manually with: cargo build --release"
-        print $"   Navigate to: ($helix_custom_dir)"
-    }
-}
-
-def setup_default_steel_plugin [yazelix_dir: string] {
-    let helix_config_dir = $"($env.HOME)/.config/helix"
-    let helix_scm = $"($helix_config_dir)/helix.scm"
-    let init_scm = $"($helix_config_dir)/init.scm"
-
-    # Ensure helix config directory exists
-    mkdir $helix_config_dir
-
-    # Create default helix.scm plugin if it doesn't exist or is empty
-    if not ($helix_scm | path exists) or (($helix_scm | path exists) and ((open $helix_scm | str trim) == "")) {
-        print $"📝 Creating default Steel plugin: ($helix_scm)"
-        let plugin_content = [
-            ";; Yazelix Default Steel Plugin"
-            ";; Ultra-simplified plugin with clean output formatting"
-            ""
-            ";; Simple greeting function with clean output"
-            "(define (hello-steel)"
-            "  (displayln \"\")"
-            "  (displayln \"=== Steel Plugin Test ===\")"
-            "  (displayln \"Steel Plugin System is Working!\")"
-            "  (displayln \"========================\")"
-            "  (displayln \"\"))"
-            ""
-            ";; Export the function so it can be called as a typed command"
-            "(provide hello-steel)"
-        ]
-        $plugin_content | str join "\n" | save $helix_scm
-    } else {
-        print $"✅ Steel plugin already exists: ($helix_scm)"
-    }
-
-    # Create default init.scm if it doesn't exist or is empty
-    if not ($init_scm | path exists) or (($init_scm | path exists) and ((open $init_scm | str trim) == "")) {
-        print $"📝 Creating default Steel initialization: ($init_scm)"
-        let init_content = [
-            ";; Yazelix Steel Plugin System Initialization"
-            ";; Clean startup with better formatting"
-            ""
-            "(displayln \"\")"
-            "(displayln \"=========================================\")"
-            "(displayln \"🔧 Steel Plugin System Initialized!\")"
-            "(displayln \"=========================================\")"
-            "(displayln \"\")"
-            "(displayln \"Yazelix Ultra-Basic Steel Plugin Loaded\")"
-            "(displayln \"\")"
-            "(displayln \"Available commands:\")"
-            "(displayln \"  :hello-steel    - Test greeting\")"
-            "(displayln \"\")"
-            "(displayln \"💡 Tip: Type ':' followed by command name!\")"
-            "(displayln \"📖 Clean, safe Steel function\")"
-            "(displayln \"\")"
-            "(displayln \"=========================================\")"
-            "(displayln \"Steel initialization complete!\")"
-            "(displayln \"=========================================\")"
-            "(displayln \"\")"
-        ]
-        $init_content | str join "\n" | save $init_scm
-    } else {
-        print $"✅ Steel initialization already exists: ($init_scm)"
-    }
-
-    print $"✅ Default Steel plugin setup complete!"
-    print $"   Plugin file: ($helix_scm)"
-    print $"   Init file: ($init_scm)"
-}
-
-def cleanup_steel_artifacts [yazelix_dir: string] {
-    let helix_config_dir = $"($env.HOME)/.config/helix"
-    let helix_scm = $"($helix_config_dir)/helix.scm"
-    let init_scm = $"($helix_config_dir)/init.scm"
-    let helix_custom_dir = $"($yazelix_dir)/helix_custom"
-
-    # Check if Steel artifacts exist
-    let has_steel_config = ($helix_scm | path exists) or ($init_scm | path exists)
-    let has_steel_build = ($helix_custom_dir | path exists) and (try {
-        cd $helix_custom_dir
-        git branch --show-current
-    } catch { "unknown" } | str contains "steel")
-
-    if $has_steel_config or $has_steel_build {
-        print "🧹 Detected Steel artifacts from previous Steel mode setup"
-        print "   Cleaning up Steel configuration files and build artifacts..."
-
-        # Remove ONLY Steel configuration files (.scm files)
-        if ($helix_scm | path exists) {
-            rm $helix_scm
-            print $"   ✅ Removed Steel plugin: ($helix_scm)"
-        }
-
-        if ($init_scm | path exists) {
-            rm $init_scm
-            print $"   ✅ Removed Steel initialization: ($init_scm)"
-        }
-
-        # Clean Steel build artifacts if switching to non-Steel mode
-        if $has_steel_build {
-            print "   🔄 Steel build detected - cleaning for fresh build..."
-            if ($helix_custom_dir | path exists) {
-                # Use system rm to avoid "cannot remove any parent directory" error
-                try {
-                    ^rm -rf $helix_custom_dir
-                    print $"   ✅ Removed Steel build directory: ($helix_custom_dir)"
-                } catch {
-                    print $"   ⚠️  Could not remove Steel build directory: ($helix_custom_dir)"
-                    print "   💡 You may need to manually remove it or restart your terminal"
-                }
-            }
-        }
-
-        print "   🎯 Steel artifacts cleaned up successfully!"
-        print "   💡 Your Helix will now use the configured mode without Steel plugins"
-        print "   🔒 Preserved all other Helix configuration files"
-    }
-}

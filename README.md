@@ -164,10 +164,9 @@ Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run):
   # Build Helix from source (true) or use nixpkgs version (false). (default: false)
   build_helix_from_source = false;
 
-  # Helix build mode: "default", "source", or "steel" (default: "default")
+  # Helix build mode: "default" or "source" (default: "default")
   # - "default": Use nixpkgs Helix binary
   # - "source": Build latest Helix from source  
-  # - "steel": Build Helix with Steel scripting support (Scheme/Lisp)
   helix_mode = "default";
 
   # Default shell for Zellij: "nu", "bash", "fish", or "zsh". (default: "nu")
@@ -197,45 +196,7 @@ Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run):
 
 
 
-## Steel Helix Integration (Optional)
-Want to script and extend Helix with Scheme/Lisp? Enable **Steel mode** to build Helix with [Steel](https://github.com/mattwparas/steel) scripting support!
 
-**What is Steel?**
-Steel is a Scheme/Lisp-like scripting language that can be embedded in Helix, allowing you to:
-- Create custom commands and text manipulation functions
-- Write complex automation scripts 
-- Build interactive development workflows
-- Extend Helix functionality with live code evaluation
-
-**Enable Steel Helix:**
-```nix
-# In yazelix.nix
-helix_mode = "steel";
-```
-
-**Built-in Steel Commands:**
-They are kinda broken, but they work. It's more of a starting point, and way to test the plugin system (for now at least!)
-Once enabled, Helix includes a simple Steel command accessible via `:` command mode:
-- `:hello-steel` - Test greeting with formatted output
-
-**Plugin Files:**
-Steel plugins are auto-generated in `~/.config/helix/`:
-- `helix.scm` - Command definitions and functions
-- `init.scm` - Startup configuration
-
-**Development Tools:**
-Steel mode includes additional tools:
-- `steel` - Steel interpreter for standalone scripting
-- `steel-language-server` - LSP for Steel development  
-- `forge` - Steel package manager
-
-**Features:**
-- **Programmable editor**: Transform Helix into a scriptable powerhouse
-- **Live evaluation**: Test and develop Steel code interactively
-- **Seamless integration**: Steel commands work from both terminal and Yazi
-- **Example plugins**: Pre-configured working examples to get started
-
-**Note:** Steel mode automatically enables `build_helix_from_source = true` and includes Steel toolchain dependencies.
 
 ## Notes
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths

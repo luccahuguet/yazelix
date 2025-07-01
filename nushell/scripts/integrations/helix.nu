@@ -28,7 +28,7 @@ export def is_helix_running_test [] {
 # Get the Helix binary path (custom version if available, otherwise hx)
 export def get_helix_binary [] {
     # Check if custom helix is currently enabled
-    let use_custom_helix = ($env.YAZELIX_HELIX_MODE? | default "default") in ["steel", "source"]
+    let use_custom_helix = ($env.YAZELIX_HELIX_MODE? | default "default") in ["source"]
     
     if $use_custom_helix and ($env.YAZELIX_CUSTOM_HELIX? | is-not-empty) and ($env.YAZELIX_CUSTOM_HELIX | path exists) {
         # Set runtime for custom build when using the binary

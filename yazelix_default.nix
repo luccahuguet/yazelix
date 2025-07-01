@@ -12,8 +12,6 @@
   # Helix build mode (choose ONE):
   # "release" - Use latest Helix release from nixpkgs (fast, recommended for first-time users)
   # "source"  - Use Helix flake from repository (bleeding edge, recommended for most users)
-  # "steel"   - Build Helix with steel plugin system (experimental)
-  #              Includes auto-generated example plugin with basic commands for testing
   helix_mode = "release";
 
   # Default shell for Zellij: "nu", "bash", "fish", or "zsh". (default: "nu")

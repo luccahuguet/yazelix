@@ -55,13 +55,12 @@
         includeOptionalDeps = config.include_optional_deps or true;
         includeYaziExtensions = config.include_yazi_extensions or true;
         includeYaziMedia = config.include_yazi_media or true;
-        # Helix build mode: "default", "source", or "steel"
+        # Helix build mode: "default" or "source"
         helixMode = config.helix_mode or "default";
         useNixpkgsHelix = helixMode == "default";
         useSourceHelix = helixMode == "source";
-        useSteelHelix = helixMode == "steel";
-        # Build from source for all non-default modes
-        buildHelixFromSource = useSourceHelix || useSteelHelix;
+        # Build from source for source mode
+        buildHelixFromSource = useSourceHelix;
         yazelixDefaultShell = config.default_shell or "nu";
         yazelixExtraShells = config.extra_shells or [ ];
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
@@ -124,14 +123,6 @@
           imagemagick # Image processing for thumbnails (~200-300MB)
         ];
 
-        # Steel plugin system dependencies (only for steel mode)
-        steelDeps = with pkgs; [
-          steel # Steel scheme interpreter for helix scripting
-          # TODO: Add when available in nixpkgs:
-          # steel-language-server # Steel LSP server
-          # forge # Steel package manager
-        ];
-
         # Combine dependencies based on config
         allDeps =
           essentialDeps
@@ -139,7 +130,6 @@
           ++ (if includeOptionalDeps then optionalDeps else [ ])
           ++ (if includeYaziExtensions then yaziExtensionsDeps else [ ])
           ++ (if includeYaziMedia then yaziMediaDeps else [ ])
-          ++ (if useSteelHelix then steelDeps else [ ])
           ++ (config.user_packages or [ ]);
 
       in
@@ -158,7 +148,7 @@
 
 
             # Set helix path based on mode
-            if [ "${helixMode}" = "source" ] || [ "${helixMode}" = "steel" ]; then
+            if [ "${helixMode}" = "source" ]; then
               if [ -f "$YAZELIX_DIR/helix_custom/target/release/hx" ]; then
                 export YAZELIX_CUSTOM_HELIX="$YAZELIX_DIR/helix_custom/target/release/hx"
                 export EDITOR="$YAZELIX_CUSTOM_HELIX"

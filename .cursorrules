@@ -84,24 +84,10 @@
 - Documentation goes in docs/
 - Keep related content organized in appropriate folders 
 
-## Steel Plugin Development Rules (helix_mode = "steel")
-**Essential Steel API Tips:**
-- **Basic Steel Functions**: Use `(display "text")` and `(newline)` for output, `(displayln "text")` for output with newline
-- **Function Exports**: Use `(provide function-name)` to make functions available as `:function-name` commands  
-- **Math Operations**: Steel supports basic math: `(+ 1 2)`, `(* 3 4)` - display results with separate `(display)` calls
-- **String Operations**: Avoid `format` - use multiple `(display)` calls instead for string composition
-- **Variables**: Use `(let ([var value]) body)` for local variables, `(define name value)` for global definitions
-- **Control Flow**: Use `(if condition true-branch false-branch)` and `(begin expr1 expr2 ...)` for sequencing
-- **Lists**: Use `(for-each function list)` for iterating, `(null? list)` to check empty lists
-- **Error Handling**: Steel plugins auto-load on helix startup - check `~/.config/helix/helix.scm` and `~/.config/helix/init.scm`
-- **Testing**: Use `:command-name` in helix command mode to test plugin functions
-- **Plugin Location**: Files auto-generated in `~/.config/helix/` when steel mode enabled  
-- **Startup Config**: Use `init.scm` for startup configuration and `helix.scm` for command definitions
-- **Steel Tools**: Includes steel interpreter, language server, and package manager (forge)
-- **API Status**: Steel+Helix integration API is very limited - use only the most basic Steel functions
+
 
 ## TODO List
 - [x] Add auto-trimming to the logs generated on shellhooks (or stop generating them) - COMPLETED: Added auto-trim to keep only 10 most recent shellhook logs
 - [x] Add a copy/generate script that copies yazelix_default.nix to yazelix.nix (both in root) - yazelix.nix will be git ignored for user customization
-- [x] Add Steel plugin system integration with auto-generated example plugins and proper API documentation
+
 - [ ] Create option of having a folder that is gitignored containing user-specific configs that we can concatenate to yazelix configs when available 
