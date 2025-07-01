@@ -22,25 +22,30 @@ use ~/.config/yazelix/nushell/modules/system *
 # Tools aliases
 export alias lg = lazygit
 
-# Helix wrapper (use custom-built hx if available)
+# Helix wrapper (ensure runtime is set correctly)
 export def --env --wrapped hx [...rest] {
     # Ensure helix config directory exists
     let helix_config_dir = $"($env.HOME)/.config/helix"
     if not ($helix_config_dir | path exists) {
         mkdir $helix_config_dir
     }
-    
-    # Get the appropriate Helix binary
-    use ../scripts/utils/helix_mode.nu get_helix_binary
-    let editor_command = get_helix_binary
-    
-    # Set runtime for custom builds
-    if ($editor_command != "hx") {
-        let custom_runtime = $"($env.HOME)/.config/yazelix/helix_custom/runtime"
-        $env.HELIX_RUNTIME = $custom_runtime
+
+    # Set runtime based on mode - both modes need HELIX_RUNTIME set
+    # The runtime path is already set by the Nix environment, but ensure it's available
+    if ($env.HELIX_RUNTIME? | is-empty) {
+        # Fallback: try to find runtime from helix binary
+        try {
+            let helix_path = (which hx | str trim)
+            let runtime_path = ($helix_path | path dirname | path dirname | path join "share/helix/runtime")
+            if ($runtime_path | path exists) {
+                $env.HELIX_RUNTIME = $runtime_path
+            }
+        } catch {
+            # If we can't find it, helix will use its default
+        }
     }
-    
-    run-external $editor_command ...$rest
+
+    run-external hx ...$rest
 }
 
 # Yazelix aliases
