@@ -1,0 +1,302 @@
+#!/bin/bash
+# Shell-agnostic yzx command for Yazelix
+# Provides the same functionality as the nushell yzx command suite
+# Works on bash, fish, and zsh
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+YAZELIX_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Default values
+YAZELIX_VERSION="v7.1"
+YAZELIX_DESCRIPTION="Yazi + Zellij + Helix integrated terminal environment"
+DEFAULT_SHELL="nu"
+DEFAULT_TERMINAL="wezterm"
+DEFAULT_HELIX_MODE="release"
+
+# Shell configuration files
+declare -A SHELL_CONFIGS=(
+    ["bash"]="$HOME/.bashrc"
+    ["nushell"]="$HOME/.config/nushell/config.nu"
+    ["fish"]="$HOME/.config/fish/config.fish"
+    ["zsh"]="$HOME/.zshrc"
+)
+
+# Yazelix configuration files
+declare -A YAZELIX_CONFIG_FILES=(
+    ["bash"]="$HOME/.config/yazelix/bash/yazelix_bash_config.sh"
+    ["nushell"]="$HOME/.config/yazelix/nushell/config/config.nu"
+    ["fish"]="$HOME/.config/yazelix/fish/yazelix_fish_config.fish"
+    ["zsh"]="$HOME/.config/yazelix/zsh/yazelix_zsh_config.zsh"
+)
+
+# Function to show help
+show_help() {
+    echo "=== Yazelix Command Suite ==="
+    echo ""
+    echo "CONFIGURATION MANAGEMENT:"
+    echo "  yzx get_config [shell]         - Show status of all shell configurations"
+    echo "  yzx check_config               - Check if configurations are up to date"
+    echo "  yzx config_status [shell]      - Same as get_config (alias)"
+    echo ""
+    echo "VERSION AND SYSTEM:"
+    echo "  yzx versions                   - Show version info for all tools"
+    echo "  yzx version                    - Show yazelix version"
+    echo "  yzx info                       - Show yazelix system information"
+    echo ""
+    echo "LAUNCHER:"
+    echo "  yzx launch                     - Launch yazelix via terminal"
+    echo "  yzx start                      - Start yazelix directly"
+    echo ""
+    echo "HELP:"
+    echo "  yzx help                       - Show this help message"
+    echo ""
+    echo "Supported shells: bash, nushell, fish, zsh"
+    echo "=========================================="
+}
+
+# Function to extract yazelix section from a config file
+extract_yazelix_section() {
+    local config_file="$1"
+    local start_marker="# YAZELIX START - Yazelix managed configuration (do not modify this comment)"
+    local end_marker="# YAZELIX END - Yazelix managed configuration (do not modify this comment)"
+
+    if [[ ! -f "$config_file" ]]; then
+        echo "❌ Config file not found: $config_file"
+        return 1
+    fi
+
+    # Extract content between markers
+    local content
+    content=$(awk "/$start_marker/,/$end_marker/" "$config_file" 2>/dev/null)
+
+    if [[ -n "$content" ]]; then
+        echo "✅ Yazelix section found in $config_file"
+        echo "$content"
+        return 0
+    else
+        echo "❌ No yazelix section found in $config_file"
+        return 1
+    fi
+}
+
+# Function to check if yazelix section exists in config
+check_yazelix_section() {
+    local config_file="$1"
+    local start_marker="# YAZELIX START - Yazelix managed configuration (do not modify this comment)"
+
+    if [[ -f "$config_file" ]] && grep -q "$start_marker" "$config_file" 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Function to get configuration details
+get_config() {
+    local shell="$1"
+
+    if [[ -z "$shell" ]]; then
+        # Show all configurations
+        echo "=== Yazelix Configuration Status ==="
+        for shell_name in "${!SHELL_CONFIGS[@]}"; do
+            local config_file="${SHELL_CONFIGS[$shell_name]}"
+            local yazelix_config="${YAZELIX_CONFIG_FILES[$shell_name]}"
+
+            echo ""
+            echo "--- $shell_name ---"
+            echo "Config file: $config_file"
+            echo "Yazelix config: $yazelix_config"
+
+            if check_yazelix_section "$config_file"; then
+                echo "Status: ✅ Configured"
+            else
+                echo "Status: ❌ Not configured"
+            fi
+
+            if [[ -f "$yazelix_config" ]]; then
+                echo "Yazelix config: ✅ Exists"
+            else
+                echo "Yazelix config: ❌ Missing"
+            fi
+        done
+    else
+        # Show specific shell configuration
+        if [[ -z "${SHELL_CONFIGS[$shell]}" ]]; then
+            echo "❌ Unsupported shell: $shell"
+            echo "Supported shells: ${!SHELL_CONFIGS[*]}"
+            return 1
+        fi
+
+        local config_file="${SHELL_CONFIGS[$shell]}"
+        extract_yazelix_section "$config_file"
+    fi
+}
+
+# Function to check configuration validity
+check_config() {
+    echo "=== Checking Yazelix Configurations ==="
+    local all_good=true
+
+    for shell_name in "${!SHELL_CONFIGS[@]}"; do
+        local config_file="${SHELL_CONFIGS[$shell_name]}"
+        local yazelix_config="${YAZELIX_CONFIG_FILES[$shell_name]}"
+
+        echo ""
+        echo "--- $shell_name ---"
+
+        if check_yazelix_section "$config_file"; then
+            echo "✅ Config section: OK"
+        else
+            echo "❌ Config section: Missing"
+            all_good=false
+        fi
+
+        if [[ -f "$yazelix_config" ]]; then
+            echo "✅ Yazelix config: OK"
+        else
+            echo "❌ Yazelix config: Missing"
+            all_good=false
+        fi
+    done
+
+    echo ""
+    if [[ "$all_good" == true ]]; then
+        echo "✅ All yazelix configurations are current!"
+    else
+        echo "⚠️  Some configurations need attention"
+    fi
+}
+
+# Function to show version info
+show_versions() {
+    echo "=== Yazelix Tool Versions ==="
+    echo ""
+
+    # Core tools
+    echo "Core Tools:"
+    if command -v zellij >/dev/null 2>&1; then
+        echo "  zellij: $(zellij --version 2>/dev/null | head -n1 || echo 'unknown')"
+    else
+        echo "  zellij: not found"
+    fi
+
+    if command -v yazi >/dev/null 2>&1; then
+        echo "  yazi: $(yazi --version 2>/dev/null | head -n1 || echo 'unknown')"
+    else
+        echo "  yazi: not found"
+    fi
+
+    if command -v hx >/dev/null 2>&1; then
+        echo "  helix: $(hx --version 2>/dev/null | head -n1 || echo 'unknown')"
+    else
+        echo "  helix: not found"
+    fi
+
+    if command -v nu >/dev/null 2>&1; then
+        echo "  nushell: $(nu --version 2>/dev/null | head -n1 || echo 'unknown')"
+    else
+        echo "  nushell: not found"
+    fi
+
+    echo ""
+    echo "Shell Tools:"
+    if command -v starship >/dev/null 2>&1; then
+        echo "  starship: $(starship --version 2>/dev/null | head -n1 || echo 'unknown')"
+    else
+        echo "  starship: not found"
+    fi
+
+    if command -v zoxide >/dev/null 2>&1; then
+        echo "  zoxide: $(zoxide --version 2>/dev/null | head -n1 || echo 'unknown')"
+    else
+        echo "  zoxide: not found"
+    fi
+
+    if command -v lazygit >/dev/null 2>&1; then
+        echo "  lazygit: $(lazygit --version 2>/dev/null | head -n1 || echo 'unknown')"
+    else
+        echo "  lazygit: not found"
+    fi
+
+    if command -v mise >/dev/null 2>&1; then
+        echo "  mise: $(mise --version 2>/dev/null | head -n1 || echo 'unknown')"
+    else
+        echo "  mise: not found"
+    fi
+}
+
+# Function to show yazelix version
+show_version() {
+    echo "Yazelix $YAZELIX_VERSION"
+    echo "$YAZELIX_DESCRIPTION"
+}
+
+# Function to show system info
+show_info() {
+    echo "=== Yazelix Information ==="
+    echo "Version: $YAZELIX_VERSION"
+    echo "Description: $YAZELIX_DESCRIPTION"
+    echo "Directory: $YAZELIX_DIR"
+    echo "Logs: $YAZELIX_DIR/logs"
+    echo "Default Shell: $DEFAULT_SHELL"
+    echo "Preferred Terminal: $DEFAULT_TERMINAL"
+    echo "Helix Mode: $DEFAULT_HELIX_MODE"
+    echo "=========================="
+}
+
+# Function to launch yazelix
+launch_yazelix() {
+    if command -v nu >/dev/null 2>&1; then
+        nu "$YAZELIX_DIR/nushell/scripts/launch-yazelix.nu"
+    else
+        echo "❌ Nushell not found. Please install nushell to use this command."
+        exit 1
+    fi
+}
+
+# Function to start yazelix
+start_yazelix() {
+    nu "$YAZELIX_DIR/nushell/scripts/start-yazelix.nu"
+}
+
+# Main command dispatcher
+main() {
+    local subcommand="$1"
+
+    case "$subcommand" in
+        "help"|"")
+            show_help
+            ;;
+        "get_config"|"config_status")
+            get_config "$2"
+            ;;
+        "check_config")
+            check_config
+            ;;
+        "versions")
+            show_versions
+            ;;
+        "version")
+            show_version
+            ;;
+        "info")
+            show_info
+            ;;
+        "launch")
+            launch_yazelix
+            ;;
+        "start")
+            start_yazelix
+            ;;
+        *)
+            echo "❌ Unknown subcommand: $subcommand"
+            echo ""
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+# Run the main function with all arguments
+main "$@"
