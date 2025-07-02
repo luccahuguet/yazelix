@@ -1,4 +1,4 @@
-# Yazelix v7: Nix installs and configures everything for you!
+# Yazelix v7.1: Nix installs and configures everything for you!
 
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
@@ -31,6 +31,9 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 
 ## Preview
 ![yazelix_v7_demo](assets/demos/yazelix-v7-demo.gif)
+
+## Improvements of v7.1 over v7
+- **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell!
 
 ## Improvements of v7 over v6
 - **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
@@ -118,7 +121,7 @@ cp ~/.config/yazelix/terminal_configs/wezterm/.wezterm.lua ~/.wezterm.lua
 
 **Result**: Every time you open your terminal, it will automatically launch Yazelix. You won't need to run any commands.
 
-**Alternative**: Use `yazelix` or `yzx` commands from any terminal to launch Yazelix (aliases are automatically available when shell configs are sourced)
+**Alternative**: Use `yazelix` or `yzx` commands from any terminal to launch Yazelix (aliases are automatically available when shell configs are sourced). The `yzx` command also provides additional subcommands like `yzx help`, `yzx get_config`, `yzx versions`, etc. for managing your Yazelix installation.
 
 #### 4. Using Yazelix
 Simply open your terminal (Ghostty or WezTerm)! Yazelix will automatically launch with the full environment.
@@ -129,6 +132,7 @@ Simply open your terminal (Ghostty or WezTerm)! Yazelix will automatically launc
 - Use `alt hjkl` to switch between Zellij panes and tabs
 - Press `Enter` in Yazi to open files in Helix
 - Use `yazelix` or `yzx` commands from any terminal to launch Yazelix manually
+- Use `yzx help` to see all available management commands
 
 ### Alternative: CLI-Only Mode
 To use Yazelix tools without starting the full interface (no sidebar, no zellij):

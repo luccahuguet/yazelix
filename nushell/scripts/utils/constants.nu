@@ -55,7 +55,13 @@ export def get_yazelix_start_comment [] {
 # Get the complete yazelix section content for a shell
 export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
     let config_file = $YAZELIX_CONFIG_FILES | get $shell
-    let source_line = $"source \"($config_file)\""
+    let source_line = if $shell in ["bash", "zsh", "fish"] {
+        # Use $HOME for POSIX shells
+        let home_file = ($config_file | str replace "~" "$HOME")
+        $"source \"($home_file)\""
+    } else {
+        $"source \"($config_file)\""
+    }
 
     (get_yazelix_start_comment) + "\n" + $source_line + "\n" + $YAZELIX_END_MARKER
 }

@@ -18,7 +18,7 @@ end
 
 # Yazelix aliases
 alias yazelix="$HOME/.config/yazelix/bash/launch-yazelix.sh"
-alias yzx="$HOME/.config/yazelix/bash/launch-yazelix.sh"
+alias yzx="$HOME/.config/yazelix/bash/yzx"
 alias lg='lazygit'
 
 # Helix function (ensure runtime is set correctly)

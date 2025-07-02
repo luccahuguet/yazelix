@@ -28,7 +28,7 @@ fi
 
 # Yazelix Aliases for Bash
 alias yazelix="$HOME/.config/yazelix/bash/launch-yazelix.sh"
-alias yzx="$HOME/.config/yazelix/bash/launch-yazelix.sh"
+alias yzx="$HOME/.config/yazelix/bash/yzx"
 alias lg='lazygit'
 
 # Ensure this script doesn't produce output unless it's an error,
