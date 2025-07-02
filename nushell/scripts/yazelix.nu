@@ -7,11 +7,41 @@ use ./utils/constants.nu *
 use ./utils/version-info.nu *
 
 # =============================================================================
-# CONFIGURATION MANAGEMENT COMMANDS
+# YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
 # =============================================================================
 
-# Get configuration status - can show all or specific shell
-export def get_config [shell?: string] {
+# Main yazelix command - default shows help
+export def yazelix [] {
+    yazelix help
+}
+
+# Help subcommand
+export def "yazelix help" [] {
+    print "=== Yazelix Command Suite ==="
+    print ""
+    print "CONFIGURATION MANAGEMENT:"
+    print "  yazelix get_config [shell]     - Show status of all shell configurations"
+    print "  yazelix check_config           - Check if configurations are up to date"
+    print "  yazelix config_status [shell]  - Same as get_config (alias)"
+    print ""
+    print "VERSION AND SYSTEM:"
+    print "  yazelix versions               - Show version info for all tools"
+    print "  yazelix version                - Show yazelix version"
+    print "  yazelix info                   - Show yazelix system information"
+    print ""
+    print "LAUNCHER:"
+    print "  yazelix launch                 - Launch yazelix via terminal"
+    print "  yazelix start                  - Start yazelix directly"
+    print ""
+    print "HELP:"
+    print "  yazelix help                   - Show this help message"
+    print ""
+    print "Supported shells: bash, nushell, fish, zsh"
+    print "=========================================="
+}
+
+# Get configuration details
+export def "yazelix get_config" [shell?: string] {
     if ($shell | is-empty) {
         # Show all configurations
         show_config_status ~/.config/yazelix
@@ -38,8 +68,8 @@ export def get_config [shell?: string] {
     }
 }
 
-# Check if configurations are up to date
-export def check_config [] {
+# Check configuration validity
+export def "yazelix check_config" [] {
     let status = check_config_versions ~/.config/yazelix
     let outdated = ($status | where status == "outdated")
     let missing = ($status | where status == "missing")
@@ -64,46 +94,24 @@ export def check_config [] {
     $status
 }
 
-# Alias for get_config
-export def config_status [shell?: string] {
-    get_config $shell
+# Show configuration status (alias for get_config)
+export def "yazelix config_status" [shell?: string] {
+    yazelix get_config $shell
 }
 
-# =============================================================================
-# VERSION AND SYSTEM COMMANDS
-# =============================================================================
-
-# Show version information for all yazelix tools
-export def versions [] {
+# List available versions
+export def "yazelix versions" [] {
     nu nushell/scripts/utils/version-info.nu
 }
 
-# Show yazelix version and description
-export def version [] {
+# Show current version
+export def "yazelix version" [] {
     print $"Yazelix ($YAZELIX_VERSION)"
     print $YAZELIX_DESCRIPTION
 }
 
-# =============================================================================
-# LAUNCHER COMMANDS
-# =============================================================================
-
-# Launch yazelix using the preferred terminal
-export def launch [] {
-    nu ~/.config/yazelix/nushell/scripts/launch-yazelix.nu
-}
-
-# Start yazelix directly (bypasses terminal launcher)
-export def start [] {
-    bash ~/.config/yazelix/bash/start-yazelix.sh
-}
-
-# =============================================================================
-# UTILITY COMMANDS
-# =============================================================================
-
-# Show yazelix directory and important paths
-export def info [] {
+# Show system info
+export def "yazelix info" [] {
     print "=== Yazelix Information ==="
     print $"Version: ($YAZELIX_VERSION)"
     print $"Description: ($YAZELIX_DESCRIPTION)"
@@ -115,29 +123,54 @@ export def info [] {
     print "=========================="
 }
 
-# Show help for all yazelix commands
+# Launch yazelix
+export def "yazelix launch" [] {
+    nu ~/.config/yazelix/nushell/scripts/launch-yazelix.nu
+}
+
+# Start yazelix
+export def "yazelix start" [] {
+    bash ~/.config/yazelix/bash/start-yazelix.sh
+}
+
+# =============================================================================
+# LEGACY EXPORTS FOR COMPATIBILITY
+# =============================================================================
+
+# Re-export original commands for direct access and compatibility
+export def get_config [shell?: string] {
+    yazelix get_config $shell
+}
+
+export def check_config [] {
+    yazelix check_config
+}
+
+export def config_status [shell?: string] {
+    yazelix config_status $shell
+}
+
+export def versions [] {
+    yazelix versions
+}
+
+export def version [] {
+    yazelix version
+}
+
+export def info [] {
+    yazelix info
+}
+
+export def launch [] {
+    yazelix launch
+}
+
+export def start [] {
+    yazelix start
+}
+
 export def help [] {
-    print "=== Yazelix Command Suite ==="
-    print ""
-    print "CONFIGURATION MANAGEMENT:"
-    print "  yazelix get_config           - Show status of all shell configurations"
-    print "  yazelix get_config <shell>   - Show yazelix section from specific shell"
-    print "  yazelix check_config         - Check if configurations are up to date"
-    print "  yazelix config_status        - Same as get_config (alias)"
-    print ""
-    print "VERSION AND SYSTEM:"
-    print "  yazelix versions             - Show version info for all tools"
-    print "  yazelix version              - Show yazelix version"
-    print "  yazelix info                 - Show yazelix system information"
-    print ""
-    print "LAUNCHER:"
-    print "  yazelix launch               - Launch yazelix via terminal"
-    print "  yazelix start                - Start yazelix directly"
-    print ""
-    print "HELP:"
-    print "  yazelix help                 - Show this help message"
-    print ""
-    print "Supported shells: bash, nushell, fish, zsh"
-    print "=========================================="
+    yazelix help
 }
 
