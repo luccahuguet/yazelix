@@ -79,6 +79,7 @@ def main [
     # Set permissions
     chmod +x $"($yazelix_dir)/bash/launch-yazelix.sh"
     chmod +x $"($yazelix_dir)/bash/start-yazelix.sh"
+    chmod +x $"($yazelix_dir)/nushell/scripts/launch-yazelix.nu"
 
     print "✅ Yazelix environment setup complete!"
 
