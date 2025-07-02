@@ -76,14 +76,14 @@ Check installed tool versions: `nu nushell/scripts/utils/version-info.nu`
 **Why does Yazelix use Nix?** It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software.
 
 ### Prerequisites
-- **Nushell** - Required for the `yazelix` and `yzx` command launchers
+- **Nushell** - Required to boot Yazelix
   - Install via your package manager: `apt install nushell`, `brew install nushell`, `winget install nushell`, etc.
   - Or see installation instructions: https://www.nushell.sh/book/installation.html
-- **Supported terminal emulator** (choose your favorite! Or both?):
+- **Supported terminal emulators** (choose your favorite! Or both?):
   - **Ghostty** 
     - Modern, fast, written in Zig, newer
     - Instructions here: https://ghostty.org/download
-    - **Note**: Due to a [Zellij/Yazi/Ghostty interaction](https://github.com/zellij-org/zellij/issues/2814#issuecomment-2965117327), image previews in Yazi may not display properly, for now
+    - **Note**: Due to a [Zellij/Yazi/Ghostty interaction](https://github.com/zellij-org/zellij/issues/2814#issuecomment-2965117327), image previews in Yazi may not display properly, for now. If this is a problem for you, use WezTerm instead
   - **WezTerm** 
     - Modern, fast, written in Rust
     - Instructions here: https://wezfurlong.org/wezterm/installation.html
@@ -235,7 +235,7 @@ Yazelix is built on the shoulders of giants. We're grateful to the essential pro
 - **Ghostty**
 
 **One of a Kind Contributions:**
-- **nuscripts** - Source of the `clip` command (MIT License)
-- **auto-layout.yazi** - 95% of the work by Joseph Schmitt
+- **nuscripts** - Source of the `clip` command
+- **auto-layout.yazi** - 95% of the work by Joseph Schmitt, including the plugin creation
 
 Thank you to all maintainers and the open source community. 
