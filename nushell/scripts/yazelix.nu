@@ -101,7 +101,7 @@ export def "yzx config_status" [shell?: string] {
 
 # List available versions
 export def "yzx versions" [] {
-    nu nushell/scripts/utils/version-info.nu
+    nu ~/.config/yazelix/nushell/scripts/utils/version-info.nu
 }
 
 # Show current version
