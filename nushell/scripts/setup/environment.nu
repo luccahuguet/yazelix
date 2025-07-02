@@ -77,9 +77,9 @@ def main [
     setup_helix_config ($helix_mode != "default") $yazelix_dir
 
     # Set permissions
-    chmod +x $"($yazelix_dir)/bash/launch-yazelix.sh"
     chmod +x $"($yazelix_dir)/bash/start-yazelix.sh"
     chmod +x $"($yazelix_dir)/nushell/scripts/launch-yazelix.nu"
+    chmod +x $"($yazelix_dir)/nushell/scripts/start-yazelix.nu"
 
     print "✅ Yazelix environment setup complete!"
 

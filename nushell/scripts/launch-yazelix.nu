@@ -59,8 +59,8 @@ def main [] {
 
     # Launch terminal using bash to handle background processes properly
     if $terminal == "ghostty" {
-        print ("Running: ghostty --config " + $terminal_config)
-        ^bash -c $"nohup ghostty --config ($terminal_config) >/dev/null 2>&1 &"
+        print ("Running: ghostty --config-file=" + $terminal_config)
+        ^bash -c $"nohup ghostty --config-file=($terminal_config) >/dev/null 2>&1 &"
     } else if $terminal == "wezterm" {
         print ("Running: wezterm --config-file " + $terminal_config + " start")
         ^bash -c $"nohup wezterm --config-file ($terminal_config) start >/dev/null 2>&1 &"
@@ -70,4 +70,4 @@ def main [] {
 # Export the main function so it can be called
 export def launch_yazelix [] {
     main
-} 
+}

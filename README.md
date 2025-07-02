@@ -33,7 +33,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 ![yazelix_v7_demo](assets/demos/yazelix-v7-demo.gif)
 
 ## Improvements of v7.1 over v7
-- **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell!
+- **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell! Note: Requires system-wide Nushell installation for the launcher scripts.
 
 ## Improvements of v7 over v6
 - **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
@@ -46,7 +46,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Installs and configures dependencies automatically
 - Introduces (optional) yazelix welcome screen with helpful tips and better error handling during environment setup
 - Adds terminal transparency settings because we reaaally believe in transparency
-- Adds `launch-yazelix.sh` script to launch your preferred terminal with the Yazelix-specific config. The `yazelix` and `yzx` aliases are automatically available in your shell once the Yazelix shell configurations are sourced.
+- Adds `launch-yazelix.nu` script to launch your preferred terminal with the Yazelix-specific config. The `yazelix` and `yzx` aliases are automatically available in your shell once the Yazelix shell configurations are sourced.
 - The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip` or `open data.csv | clip`, etc
 - Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/setup/generate-zellij-config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `zellij/yazelix-overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
 - Allows for declaration user-defined git-ignored nix packages directly in yazelix.nix
@@ -76,6 +76,9 @@ Check installed tool versions: `nu nushell/scripts/utils/version-info.nu`
 **Why does Yazelix use Nix?** It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software.
 
 ### Prerequisites
+- **Nushell** - Required for the `yazelix` and `yzx` command launchers
+  - Install via your package manager: `apt install nushell`, `brew install nushell`, `winget install nushell`, etc.
+  - Or see installation instructions: https://www.nushell.sh/book/installation.html
 - **Supported terminal emulator** (choose your favorite! Or both?):
   - **Ghostty** 
     - Modern, fast, written in Zig, newer

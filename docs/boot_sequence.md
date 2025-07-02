@@ -9,9 +9,9 @@
 
 ## 1.B: Terminal Commands  
 - **Setup**: `yazelix` and `yzx` aliases are automatically available when shell configs are sourced
-- **Launch**: Run `yazelix` or `yzx` from any terminal and it will execute `~/.config/yazelix/bash/launch-yazelix.sh`
+- **Launch**: Run `yazelix` or `yzx` from any terminal and it will execute `~/.config/yazelix/nushell/scripts/launch-yazelix.nu`
 - That launches your preferred terminal (WezTerm by default, or Ghostty) with specific config
-- The terminal automatically executes `bash -c ~/.config/yazelix/bash/start-yazelix.sh`
+- The terminal automatically executes `nu ~/.config/yazelix/nushell/scripts/start-yazelix.nu`
 
 ## 2. **Nix Environment**: Changes to `~/.config/yazelix` and runs:
    ```bash

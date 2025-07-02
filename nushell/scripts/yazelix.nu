@@ -130,6 +130,7 @@ export def "yzx launch" [] {
 
 # Start yazelix
 export def "yzx start" [] {
-    bash ~/.config/yazelix/bash/start-yazelix.sh
+    use ~/.config/yazelix/nushell/scripts/start-yazelix.nu start_yazelix
+    start_yazelix
 }
 
