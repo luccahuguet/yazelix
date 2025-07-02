@@ -122,7 +122,8 @@ cp ~/.config/yazelix/terminal_configs/wezterm/.wezterm.lua ~/.wezterm.lua
 
 #### 4. Using Yazelix
 Simply open your terminal (Ghostty or WezTerm)! Yazelix will automatically launch with the full environment.
-Might take a while to install the dependencies, but only on the first run.
+
+**First Run**: The first time you open your terminal, Yazelix will install all dependencies (Zellij, Yazi, Helix, etc.). This may take several minutes, but subsequent launches will be instant.
 
 **Quick start tips:**
 - Use `alt hjkl` to switch between Zellij panes and tabs
