@@ -22,6 +22,11 @@
   # Only install additional shells if you plan to use them
   extra_shells = [ ];
 
+  # Preferred terminal emulator for launch-yazelix.sh (default: "wezterm")
+  # Options: "wezterm", "ghostty"
+  # WezTerm is the default because it currently has better image preview support in Yazi but both are great
+  preferred_terminal = "wezterm";
+
   # Enable verbose debug logging in the shellHook (default: false)
   debug_mode = false;
 

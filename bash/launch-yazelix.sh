@@ -12,16 +12,27 @@ echo "Resolved HOME=$HOME"
 
 # Terminal config path will be set by the terminal detection logic below
 
+# Read preference from environment (set by Nix shellHook)
+PREFERRED_TERMINAL="${YAZELIX_PREFERRED_TERMINAL:-wezterm}"
+
 # Check if a supported terminal is installed
 TERMINAL=""
 TERMINAL_CONFIG=""
 
-if command -v ghostty &> /dev/null; then
+if [ "$PREFERRED_TERMINAL" = "wezterm" ] && command -v wezterm &> /dev/null; then
+  TERMINAL="wezterm"
+  TERMINAL_CONFIG="$HOME/.config/yazelix/terminal_configs/wezterm/.wezterm.lua"
+elif [ "$PREFERRED_TERMINAL" = "ghostty" ] && command -v ghostty &> /dev/null; then
   TERMINAL="ghostty"
   TERMINAL_CONFIG="$HOME/.config/yazelix/terminal_configs/ghostty/config"
 elif command -v wezterm &> /dev/null; then
+  # Fallback to wezterm if preferred terminal not available
   TERMINAL="wezterm"
   TERMINAL_CONFIG="$HOME/.config/yazelix/terminal_configs/wezterm/.wezterm.lua"
+elif command -v ghostty &> /dev/null; then
+  # Fallback to ghostty if wezterm not available
+  TERMINAL="ghostty"
+  TERMINAL_CONFIG="$HOME/.config/yazelix/terminal_configs/ghostty/config"
 else
   echo "Error: Neither Ghostty nor WezTerm is installed. Please install one of these terminals to use Yazelix."
   echo "  - Ghostty: https://ghostty.org/"
@@ -29,64 +40,12 @@ else
   exit 1
 fi
 
-echo "Using terminal: $TERMINAL"
+echo "Using terminal: $TERMINAL (preferred: $PREFERRED_TERMINAL)"
 
 # Check if terminal config exists
 if [ ! -f "$TERMINAL_CONFIG" ]; then
   echo "Error: $TERMINAL config not found at $TERMINAL_CONFIG"
   exit 1
-fi
-
-# Determine shell configuration file
-SHELL_CONFIG_FILE=""
-CURRENT_SHELL_NAME=$(basename "$SHELL")
-
-if [ "$CURRENT_SHELL_NAME" = "bash" ]; then
-  SHELL_CONFIG_FILE="$HOME/.bashrc"
-elif [ "$CURRENT_SHELL_NAME" = "zsh" ]; then
-  SHELL_CONFIG_FILE="$HOME/.zshrc"
-else
-  # Fallback for unknown shells, user might need to adjust
-  SHELL_CONFIG_FILE="$HOME/.bashrc"
-  echo "Warning: Could not reliably determine shell from '$SHELL'."
-  echo "Attempting to use $SHELL_CONFIG_FILE for aliases."
-  echo "If this is incorrect, please add aliases manually."
-fi
-
-YAZELIX_LAUNCH_SCRIPT_PATH="$HOME/.config/yazelix/bash/launch-yazelix.sh"
-# Standardized markers
-YAZELIX_ALIAS_BLOCK_START="# BEGIN YAZELIX ALIASES (added by Yazelix)"
-YAZELIX_ALIAS_BLOCK_END="# END YAZELIX ALIASES (added by Yazelix)"
-YAZELIX_ALIAS_YAZELIX="alias yazelix=\"$YAZELIX_LAUNCH_SCRIPT_PATH\""
-YAZELIX_ALIAS_YZX="alias yzx=\"$YAZELIX_LAUNCH_SCRIPT_PATH\""
-
-# Check if the alias block already exists using the start marker
-if [ -f "$SHELL_CONFIG_FILE" ] && grep -qF -- "$YAZELIX_ALIAS_BLOCK_START" "$SHELL_CONFIG_FILE"; then
-  echo "Yazelix aliases (marked by Yazelix) already configured in $SHELL_CONFIG_FILE."
-else
-  echo "Yazelix can add 'yazelix' and 'yzx' aliases to your $SHELL_CONFIG_FILE."
-  read -r -p "Would you like to add these aliases? (Y/n) " response
-  response=${response,,} # tolower
-
-  if [[ "$response" =~ ^(yes|y|"")$ ]]; then
-    echo "Adding Yazelix aliases to $SHELL_CONFIG_FILE..."
-    touch "$SHELL_CONFIG_FILE" # Ensure file exists
-    {
-      echo "" # Add a newline for separation
-      echo "$YAZELIX_ALIAS_BLOCK_START"
-      echo "$YAZELIX_ALIAS_YAZELIX"
-      echo "$YAZELIX_ALIAS_YZX"
-      echo "$YAZELIX_ALIAS_BLOCK_END"
-    } >> "$SHELL_CONFIG_FILE"
-    echo "Aliases added. Please run 'source $SHELL_CONFIG_FILE' or open a new terminal to use them."
-  else
-    echo "Skipping Yazelix alias installation."
-    echo "You can add them manually to your $SHELL_CONFIG_FILE if you change your mind:"
-    echo "  $YAZELIX_ALIAS_BLOCK_START"
-    echo "  $YAZELIX_ALIAS_YAZELIX"
-    echo "  $YAZELIX_ALIAS_YZX"
-    echo "  $YAZELIX_ALIAS_BLOCK_END"
-  fi
 fi
 
 # Launch terminal in a detached manner

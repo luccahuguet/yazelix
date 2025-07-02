@@ -65,6 +65,7 @@
         yazelixExtraShells = config.extra_shells or [ ];
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
         yazelixSkipWelcomeScreen = config.skip_welcome_screen or false; # Read skip_welcome_screen, default to false
+        yazelixPreferredTerminal = config.preferred_terminal or "wezterm"; # Read preferred_terminal, default to wezterm
 
         # Helix package selection
         helixFromSource = helix.packages.${system}.default;
@@ -145,12 +146,10 @@
             export YAZELIX_DEFAULT_SHELL="${yazelixDefaultShell}"
             export YAZI_CONFIG_HOME="$YAZELIX_DIR/yazi"
             export YAZELIX_HELIX_MODE="${helixMode}"
+            export YAZELIX_PREFERRED_TERMINAL="${yazelixPreferredTerminal}"
 
             # Set HELIX_RUNTIME for both modes - both use hx from PATH
             export HELIX_RUNTIME="${helixPackage}/share/helix/runtime"
-
-
-
 
             # Disable Nix warning about Git directory
             export NIX_CONFIG="warn-dirty = false"

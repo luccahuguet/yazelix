@@ -36,7 +36,6 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
 - Introduces a Nix-based development environment via `flake.nix`, simplifying dependency installation and ensuring consistent versions for Zellij, Yazi, Helix, Nushell, lazygit, Starship, and other tools
 - Introduces `yazelix.nix` configuration file for customizing dependencies, shells, and build options!
-
 - Adds [lazygit](https://github.com/jesseduffield/lazygit), a fast, terminal-based Git TUI for managing Git repositories
 - Adds [Starship](https://starship.rs), a customizable, fast prompt for Nushell, enhancing the terminal experience with Git status and contextual info
 - Adds [markdown-oxide](https://oxide.md/index), a Personal Knowledge Management System (PKMS) that works with your favorite text editor through LSP, inspired by and compatible with Obsidian
@@ -44,7 +43,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Installs and configures dependencies automatically
 - Introduces (optional) yazelix welcome screen with helpful tips and better error handling during environment setup
 - Adds terminal transparency settings because we reaaally believe in transparency
-- Adds `launch-yazelix.sh` script to streamline setup by launching WezTerm with the Yazelix-specific config and automatically adding `yazelix` and `yzx` aliases to your shell configuration (e.g., `~/.bashrc` or `~/.zshrc`) and Nushell config, eliminating manual configuration steps, if you want to! See more details [here](./docs/terminal_setup.md)
+- Adds `launch-yazelix.sh` script to launch your preferred terminal with the Yazelix-specific config. The `yazelix` and `yzx` aliases are automatically available in your shell once the Yazelix shell configurations are sourced.
 - The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip` or `open data.csv | clip`, etc
 - Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/setup/generate-zellij-config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `zellij/yazelix-overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
 - Allows for declaration user-defined git-ignored nix packages directly in yazelix.nix
@@ -119,15 +118,16 @@ cp ~/.config/yazelix/terminal_configs/wezterm/.wezterm.lua ~/.wezterm.lua
 
 **Result**: Every time you open your terminal, it will automatically launch Yazelix. You won't need to run any commands.
 
-**Alternative**: See [Terminal Setup Guide](./docs/terminal_setup.md) to be able to launch Yazelix from your terminal (e.g., `yazelix` or `yzx`)
+**Alternative**: Use `yazelix` or `yzx` commands from any terminal to launch Yazelix (aliases are automatically available when shell configs are sourced)
 
 #### 4. Using Yazelix
 Simply open your terminal (Ghostty or WezTerm)! Yazelix will automatically launch with the full environment.
-Might take a while to install the dependencies, but only on the first run
+Might take a while to install the dependencies, but only on the first run.
 
 **Quick start tips:**
 - Use `alt hjkl` to switch between Zellij panes and tabs
 - Press `Enter` in Yazi to open files in Helix
+- Use `yazelix` or `yzx` commands from any terminal to launch Yazelix manually
 
 ### Alternative: CLI-Only Mode
 To use Yazelix tools without starting the full interface (no sidebar, no zellij):
@@ -148,6 +148,11 @@ This gives you access to all tools (helix, yazi, lazygit, etc.) in your current 
 
 **Customize Your Installation:**
 Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run). See [yazelix_default.nix](./yazelix_default.nix) for all available options and their descriptions.
+
+**Terminal Emulator Selection:**
+- **WezTerm** (default): Better image preview support in Yazi, recommended for most users
+- **Ghostty**: Modern, fast terminal written in Zig
+- Configure your preference in `yazelix.nix` with `preferred_terminal = "wezterm"` or `preferred_terminal = "ghostty"`
 
 ## Notes
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
@@ -172,7 +177,6 @@ See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details on 
 ## Troubleshooting
 For setup issues, version compatibility, and debugging:
 
-- Review the [Terminal Setup Guide](./docs/terminal_setup.md) for terminal configuration problems
 - See [Version Table](./docs/version_table.md) for compatibility information
 - For general issues, check the logs in the `logs/` directory or enable debug mode in `yazelix.nix`
 
