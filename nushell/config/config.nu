@@ -22,12 +22,43 @@ use ~/.config/yazelix/nushell/modules/system *
 # Tools aliases
 export alias lg = lazygit
 
-# Yazelix aliases
-export alias yazelix = nu ~/.config/yazelix/nushell/scripts/launch-yazelix.nu
-export alias yzx = nu ~/.config/yazelix/nushell/scripts/launch-yazelix.nu
+# Yazelix command function
+export def yazelix [command: string = "help", ...args] {
+    use ~/.config/yazelix/nushell/scripts/yazelix.nu *
+    match $command {
+        "help" => { help }
+        "get_config" => {
+            if ($args | is-empty) {
+                get_config
+            } else {
+                get_config ($args | get 0)
+            }
+        }
+        "check_config" => { check_config }
+        "config_status" => {
+            if ($args | is-empty) {
+                config_status
+            } else {
+                config_status ($args | get 0)
+            }
+        }
+        "versions" => { versions }
+        "version" => { version }
+        "info" => { info }
+        "launch" => { launch }
+        "start" => { start }
+        _ => {
+            print "❌ Unknown command: ($command)"
+            print ""
+            help
+        }
+    }
+}
 
-# Version info alias
-export alias yazelix-versions = nu ~/.config/yazelix/nushell/scripts/utils/version-info.nu
+export alias yzx = yazelix
+
+# Yazelix command suite
+use ~/.config/yazelix/nushell/scripts/yazelix.nu *
 
 
 

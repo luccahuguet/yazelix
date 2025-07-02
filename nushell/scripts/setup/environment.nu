@@ -122,10 +122,11 @@ def main [
 }
 
 def setup_bash_config [yazelix_dir: string] {
+    use ../utils/constants.nu *
+    
     let bash_config = $"($yazelix_dir)/bash/yazelix_bash_config.sh"
-    let bashrc = $"($env.HOME)/.bashrc"
-    let comment = "# Source Yazelix Bash configuration (added by Yazelix)"
-    let source_line = $"source \"($bash_config)\""
+    let bashrc = ($SHELL_CONFIGS | get bash | str replace "~" $env.HOME)
+    let section_content = get_yazelix_section_content "bash" $yazelix_dir
 
     if not ($bash_config | path exists) {
         print $"⚠️  Bash config not found: ($bash_config)"
@@ -135,19 +136,22 @@ def setup_bash_config [yazelix_dir: string] {
     touch $bashrc
     let bashrc_content = (open $bashrc)
 
-    if not ($bashrc_content | str contains $comment) {
-        print $"🐚 Adding Yazelix Bash config to ($bashrc)"
-        $"\n($comment)\n($source_line)" | save --append $bashrc
-    } else {
+    # Check if yazelix section already exists
+    if ($bashrc_content | str contains $YAZELIX_START_MARKER) {
         print $"✅ Bash config already sourced"
+        return
     }
+
+    print $"🐚 Adding Yazelix Bash config to ($bashrc)"
+    $"\n\n($section_content)" | save --append $bashrc
 }
 
 def setup_nushell_config [yazelix_dir: string] {
-    let nushell_config = $"($env.HOME)/.config/nushell/config.nu"
+    use ../utils/constants.nu *
+    
+    let nushell_config = ($SHELL_CONFIGS | get nushell | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/nushell/config/config.nu"
-    let comment = "# Source Yazelix Nushell configuration (added by Yazelix)"
-    let source_line = $"source \"($yazelix_config)\""
+    let section_content = get_yazelix_section_content "nushell" $yazelix_dir
 
     mkdir ($nushell_config | path dirname)
 
@@ -158,19 +162,22 @@ def setup_nushell_config [yazelix_dir: string] {
 
     let config_content = (open $nushell_config)
 
-    if not ($config_content | str contains $comment) {
-        print $"🐚 Adding Yazelix Nushell config to ($nushell_config)"
-        $"\n($comment)\n($source_line)" | save --append $nushell_config
-    } else {
+    # Check if yazelix section already exists
+    if ($config_content | str contains $YAZELIX_START_MARKER) {
         print $"✅ Nushell config already sourced"
+        return
     }
+
+    print $"🐚 Adding Yazelix Nushell config to ($nushell_config)"
+    $"\n\n($section_content)" | save --append $nushell_config
 }
 
 def setup_fish_config [yazelix_dir: string] {
-    let fish_config = $"($env.HOME)/.config/fish/config.fish"
+    use ../utils/constants.nu *
+    
+    let fish_config = ($SHELL_CONFIGS | get fish | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/fish/yazelix_fish_config.fish"
-    let comment = "# Source Yazelix Fish configuration (added by Yazelix)"
-    let source_line = $"source \"($yazelix_config)\""
+    let section_content = get_yazelix_section_content "fish" $yazelix_dir
 
     if not ($yazelix_config | path exists) {
         print $"⚠️  Fish config not found, skipping Fish setup"
@@ -181,19 +188,22 @@ def setup_fish_config [yazelix_dir: string] {
     touch $fish_config
     let config_content = (open $fish_config)
 
-    if not ($config_content | str contains $comment) {
-        print $"🐚 Adding Yazelix Fish config to ($fish_config)"
-        $"\n($comment)\n($source_line)" | save --append $fish_config
-    } else {
+    # Check if yazelix section already exists
+    if ($config_content | str contains $YAZELIX_START_MARKER) {
         print $"✅ Fish config already sourced"
+        return
     }
+
+    print $"🐚 Adding Yazelix Fish config to ($fish_config)"
+    $"\n\n($section_content)" | save --append $fish_config
 }
 
 def setup_zsh_config [yazelix_dir: string] {
-    let zsh_config = $"($env.HOME)/.zshrc"
+    use ../utils/constants.nu *
+    
+    let zsh_config = ($SHELL_CONFIGS | get zsh | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/zsh/yazelix_zsh_config.zsh"
-    let comment = "# Source Yazelix Zsh configuration (added by Yazelix)"
-    let source_line = $"source \"($yazelix_config)\""
+    let section_content = get_yazelix_section_content "zsh" $yazelix_dir
 
     if not ($yazelix_config | path exists) {
         print $"⚠️  Zsh config not found, skipping Zsh setup"
@@ -204,12 +214,14 @@ def setup_zsh_config [yazelix_dir: string] {
     touch $zsh_config
     let config_content = (open $zsh_config)
 
-    if not ($config_content | str contains $comment) {
-        print $"🐚 Adding Yazelix Zsh config to ($zsh_config)"
-        $"\n($comment)\n($source_line)" | save --append $zsh_config
-    } else {
+    # Check if yazelix section already exists
+    if ($config_content | str contains $YAZELIX_START_MARKER) {
         print $"✅ Zsh config already sourced"
+        return
     }
+
+    print $"🐚 Adding Yazelix Zsh config to ($zsh_config)"
+    $"\n\n($section_content)" | save --append $zsh_config
 }
 
 def setup_helix_config [use_custom_helix: bool = false, yazelix_dir: string = ""] {

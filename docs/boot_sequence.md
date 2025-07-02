@@ -25,9 +25,17 @@
 
 ## 4. **shellHook Execution**: Nix shellHook runs `nushell/scripts/setup/environment.nu`:
    - **Initializer Generation**: Creates shell initializers for Nu, Bash, Fish, Zsh  
-   - **Shell Configuration**: Adds Yazelix config sourcing to user shell configs
+   - **Shell Configuration**: Adds Yazelix config sourcing to user shell configs with managed sections
    - **Editor Setup**: Sets `EDITOR` to `hx`
    - **Permissions**: Makes scripts executable
    - **Logging**: Creates timestamped logs and auto-trims old ones
 
-## 5. **Zellij Launch**: Starts Zellij with yazelix layout and configured default shell 
+## 5. **Zellij Launch**: Starts Zellij with yazelix layout and configured default shell
+
+## Configuration Management
+Yazelix now uses managed configuration sections in user shell configs:
+- **Start/End Markers**: `# YAZELIX START/END` comments clearly mark yazelix-managed sections
+- **Configuration Commands**: Use `yazelix get_config`, `yazelix check_config`, or `yazelix config_status` to check configurations
+- **Extract Sections**: Use `yazelix extract_config <shell>` to view specific shell configurations
+- **Future Features**: Enables automatic updates and version compatibility warnings
+- **User Safety**: Clear markers prevent accidental modification of yazelix-managed sections 
