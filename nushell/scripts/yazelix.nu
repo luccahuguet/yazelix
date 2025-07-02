@@ -134,43 +134,38 @@ export def "yazelix start" [] {
 }
 
 # =============================================================================
-# LEGACY EXPORTS FOR COMPATIBILITY
+# ALIASES
 # =============================================================================
 
-# Re-export original commands for direct access and compatibility
-export def get_config [shell?: string] {
-    yazelix get_config $shell
-}
-
-export def check_config [] {
-    yazelix check_config
-}
-
-export def config_status [shell?: string] {
-    yazelix config_status $shell
-}
-
-export def versions [] {
-    yazelix versions
-}
-
-export def version [] {
-    yazelix version
-}
-
-export def info [] {
-    yazelix info
-}
-
-export def launch [] {
-    yazelix launch
-}
-
-export def start [] {
-    yazelix start
-}
-
-export def help [] {
-    yazelix help
+# Short alias for yazelix - function to handle subcommands
+export def yzx [subcommand: string = "help", ...args] {
+    match $subcommand {
+        "help" => { yazelix help }
+        "get_config" => {
+            if ($args | is-empty) {
+                yazelix get_config
+            } else {
+                yazelix get_config ($args | get 0)
+            }
+        }
+        "check_config" => { yazelix check_config }
+        "config_status" => {
+            if ($args | is-empty) {
+                yazelix config_status
+            } else {
+                yazelix config_status ($args | get 0)
+            }
+        }
+        "versions" => { yazelix versions }
+        "version" => { yazelix version }
+        "info" => { yazelix info }
+        "launch" => { yazelix launch }
+        "start" => { yazelix start }
+        _ => {
+            print "❌ Unknown subcommand: ($subcommand)"
+            print ""
+            yazelix help
+        }
+    }
 }
 
