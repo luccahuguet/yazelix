@@ -18,7 +18,7 @@ end
 
 # Yazelix aliases
 alias yazelix="nu $HOME/.config/yazelix/nushell/scripts/launch-yazelix.nu"
-alias yzx="nu -c 'use $HOME/.config/yazelix/nushell/scripts/yazelix.nu *'"
+alias yzx="$HOME/.config/yazelix/bash/yzx"
 alias lg='lazygit'
 
 # Helix function (ensure runtime is set correctly)
