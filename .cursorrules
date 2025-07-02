@@ -66,6 +66,8 @@
 - Use consistent naming conventions
 - Follow yazelix naming patterns: lowercase with hyphens for files, camelCase for variables
 - Reference the three main tools: Yazi (file manager), Zellij (terminal multiplexer), Helix (editor)
+- **Command Naming**: Use `yzx` as the primary command name, not `yazelix`
+- **No Legacy Exports**: Don't maintain legacy compatibility exports - keep code clean and simple
 
 ## Project-Specific Rules
 - Always consider the integration between Yazi, Zellij, and Helix when making changes
@@ -73,10 +75,6 @@
 - When adding new dependencies to flake.nix, categorize them properly (essential, optional, or yazi extensions)
 - Follow the existing structure: bash/, nushell/, yazi/, zellij/, terminal_configs/
 - When updating documentation, ensure it reflects both Nix-based and Cargo-based installation methods
-- **Legacy Code Cleanup**: Remove legacy exports and compatibility functions when refactoring
-  - Don't maintain backward compatibility for internal refactoring
-  - Focus on clean, idiomatic code rather than legacy support
-  - Remove redundant functions and exports that duplicate functionality
 
 ## File Organization Rules
 - Maintain the existing folder structure and naming conventions

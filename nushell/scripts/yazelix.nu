@@ -10,38 +10,38 @@ use ./utils/version-info.nu *
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
 # =============================================================================
 
-# Main yazelix command - default shows help
-export def yazelix [] {
-    yazelix help
+# Main yzx command - default shows help
+export def yzx [] {
+    yzx help
 }
 
 # Help subcommand
-export def "yazelix help" [] {
+export def "yzx help" [] {
     print "=== Yazelix Command Suite ==="
     print ""
     print "CONFIGURATION MANAGEMENT:"
-    print "  yazelix get_config [shell]     - Show status of all shell configurations"
-    print "  yazelix check_config           - Check if configurations are up to date"
-    print "  yazelix config_status [shell]  - Same as get_config (alias)"
+    print "  yzx get_config [shell]         - Show status of all shell configurations"
+    print "  yzx check_config               - Check if configurations are up to date"
+    print "  yzx config_status [shell]      - Same as get_config (alias)"
     print ""
     print "VERSION AND SYSTEM:"
-    print "  yazelix versions               - Show version info for all tools"
-    print "  yazelix version                - Show yazelix version"
-    print "  yazelix info                   - Show yazelix system information"
+    print "  yzx versions                   - Show version info for all tools"
+    print "  yzx version                    - Show yazelix version"
+    print "  yzx info                       - Show yazelix system information"
     print ""
     print "LAUNCHER:"
-    print "  yazelix launch                 - Launch yazelix via terminal"
-    print "  yazelix start                  - Start yazelix directly"
+    print "  yzx launch                     - Launch yazelix via terminal"
+    print "  yzx start                      - Start yazelix directly"
     print ""
     print "HELP:"
-    print "  yazelix help                   - Show this help message"
+    print "  yzx help                       - Show this help message"
     print ""
     print "Supported shells: bash, nushell, fish, zsh"
     print "=========================================="
 }
 
 # Get configuration details
-export def "yazelix get_config" [shell?: string] {
+export def "yzx get_config" [shell?: string] {
     if ($shell | is-empty) {
         # Show all configurations
         show_config_status ~/.config/yazelix
@@ -69,7 +69,7 @@ export def "yazelix get_config" [shell?: string] {
 }
 
 # Check configuration validity
-export def "yazelix check_config" [] {
+export def "yzx check_config" [] {
     let status = check_config_versions ~/.config/yazelix
     let outdated = ($status | where status == "outdated")
     let missing = ($status | where status == "missing")
@@ -95,23 +95,23 @@ export def "yazelix check_config" [] {
 }
 
 # Show configuration status (alias for get_config)
-export def "yazelix config_status" [shell?: string] {
-    yazelix get_config $shell
+export def "yzx config_status" [shell?: string] {
+    yzx get_config $shell
 }
 
 # List available versions
-export def "yazelix versions" [] {
+export def "yzx versions" [] {
     nu nushell/scripts/utils/version-info.nu
 }
 
 # Show current version
-export def "yazelix version" [] {
+export def "yzx version" [] {
     print $"Yazelix ($YAZELIX_VERSION)"
     print $YAZELIX_DESCRIPTION
 }
 
 # Show system info
-export def "yazelix info" [] {
+export def "yzx info" [] {
     print "=== Yazelix Information ==="
     print $"Version: ($YAZELIX_VERSION)"
     print $"Description: ($YAZELIX_DESCRIPTION)"
@@ -124,48 +124,12 @@ export def "yazelix info" [] {
 }
 
 # Launch yazelix
-export def "yazelix launch" [] {
+export def "yzx launch" [] {
     nu ~/.config/yazelix/nushell/scripts/launch-yazelix.nu
 }
 
 # Start yazelix
-export def "yazelix start" [] {
+export def "yzx start" [] {
     bash ~/.config/yazelix/bash/start-yazelix.sh
-}
-
-# =============================================================================
-# ALIASES
-# =============================================================================
-
-# Short alias for yazelix - function to handle subcommands
-export def yzx [subcommand: string = "help", ...args] {
-    match $subcommand {
-        "help" => { yazelix help }
-        "get_config" => {
-            if ($args | is-empty) {
-                yazelix get_config
-            } else {
-                yazelix get_config ($args | get 0)
-            }
-        }
-        "check_config" => { yazelix check_config }
-        "config_status" => {
-            if ($args | is-empty) {
-                yazelix config_status
-            } else {
-                yazelix config_status ($args | get 0)
-            }
-        }
-        "versions" => { yazelix versions }
-        "version" => { yazelix version }
-        "info" => { yazelix info }
-        "launch" => { yazelix launch }
-        "start" => { yazelix start }
-        _ => {
-            print "❌ Unknown subcommand: ($subcommand)"
-            print ""
-            yazelix help
-        }
-    }
 }
 

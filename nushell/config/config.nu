@@ -22,11 +22,11 @@ use ~/.config/yazelix/nushell/modules/system *
 # Tools aliases
 export alias lg = lazygit
 
-# Note: yazelix commands are available with native subcommand support
+# Note: yazelix commands are available directly from the script
 # Examples: yazelix help, yazelix get_config, yazelix versions, etc.
-# Short alias: yzx help, yzx get_config, yzx versions, etc.
 
-
+# Yazelix command suite
+use ~/.config/yazelix/nushell/scripts/yazelix.nu *
 
 
 
