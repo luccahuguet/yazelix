@@ -77,8 +77,7 @@ Check installed tool versions: `nu nushell/scripts/utils/version-info.nu`
 
 ### Prerequisites
 - **Nushell** - Required to boot Yazelix
-  - Install via your package manager: `apt install nushell`, `brew install nushell`, `winget install nushell`, etc.
-  - Or see installation instructions: https://www.nushell.sh/book/installation.html
+  - See installation instructions: https://www.nushell.sh/book/installation.html
 - **Supported terminal emulators** (choose your favorite! Or both?):
   - **Ghostty** 
     - Modern, fast, written in Zig, newer
