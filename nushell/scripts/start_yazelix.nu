@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # ~/.config/yazelix/nushell/scripts/start_yazelix.nu
 
-def main [] {
+export def main [] {
     # Resolve HOME using Nushell's built-in
     let home = $env.HOME
     if ($home | is-empty) or (not ($home | path exists)) {
@@ -32,9 +32,4 @@ def main [] {
     with-env {HOME: $home} {
         ^nix develop --impure --command bash -c $cmd
     }
-}
-
-# Export the main function so it can be called
-export def start_yazelix [] {
-    main
 } 

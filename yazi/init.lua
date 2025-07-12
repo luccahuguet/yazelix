@@ -1,4 +1,4 @@
-require("sidebar-status"):setup()
+require("sidebar_status"):setup()
 require("git"):setup()
 
-require("auto-layout").setup()
+require("auto_layout").setup()

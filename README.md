@@ -186,6 +186,7 @@ For setup issues, version compatibility, and debugging:
 
 - See [Version Table](./docs/version_table.md) for compatibility information
 - For general issues, check the logs in the `logs/` directory or enable debug mode in `yazelix.nix`
+- **Naming Convention**: If you encounter "file not found" errors, ensure your terminal configs reference the updated script names (using underscores instead of hyphens, e.g., `start_yazelix.nu` instead of `start-yazelix.nu`)
 
 ## VS Code and Cursor Integration
 Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code or Cursor integrated terminal? See our [VS Code/Cursor integration guide](./docs/vscode_cursor_integration.md) for step-by-step setup instructions that give you the full Yazelix environment in your editor's terminal.
