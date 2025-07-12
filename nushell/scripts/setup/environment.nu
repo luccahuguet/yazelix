@@ -77,7 +77,7 @@ def main [
     setup_helix_config ($helix_mode != "default") $yazelix_dir
 
     # Set permissions
-    chmod +x $"($yazelix_dir)/bash/start_yazelix.sh"
+    chmod +x $"($yazelix_dir)/shells/bash/start_yazelix.sh"
     chmod +x $"($yazelix_dir)/nushell/scripts/launch_yazelix.nu"
     chmod +x $"($yazelix_dir)/nushell/scripts/start_yazelix.nu"
 
@@ -124,7 +124,7 @@ def main [
 def setup_bash_config [yazelix_dir: string] {
     use ../utils/constants.nu *
     
-    let bash_config = $"($yazelix_dir)/bash/yazelix_bash_config.sh"
+    let bash_config = $"($yazelix_dir)/shells/bash/yazelix_bash_config.sh"
     let bashrc = ($SHELL_CONFIGS | get bash | str replace "~" $env.HOME)
     let section_content = get_yazelix_section_content "bash" $yazelix_dir
 
@@ -176,7 +176,7 @@ def setup_fish_config [yazelix_dir: string] {
     use ../utils/constants.nu *
     
     let fish_config = ($SHELL_CONFIGS | get fish | str replace "~" $env.HOME)
-    let yazelix_config = $"($yazelix_dir)/fish/yazelix_fish_config.fish"
+    let yazelix_config = $"($yazelix_dir)/shells/fish/yazelix_fish_config.fish"
     let section_content = get_yazelix_section_content "fish" $yazelix_dir
 
     if not ($yazelix_config | path exists) {
@@ -202,7 +202,7 @@ def setup_zsh_config [yazelix_dir: string] {
     use ../utils/constants.nu *
     
     let zsh_config = ($SHELL_CONFIGS | get zsh | str replace "~" $env.HOME)
-    let yazelix_config = $"($yazelix_dir)/zsh/yazelix_zsh_config.zsh"
+    let yazelix_config = $"($yazelix_dir)/shells/zsh/yazelix_zsh_config.zsh"
     let section_content = get_yazelix_section_content "zsh" $yazelix_dir
 
     if not ($yazelix_config | path exists) {

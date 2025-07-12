@@ -5,7 +5,7 @@
 - **Setup**: Copy terminal config:
   - **Ghostty**: `cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config`
   - **WezTerm**: `cp ~/.config/yazelix/terminal_configs/wezterm/.wezterm.lua ~/.wezterm.lua`
-- **Launch**: Open your terminal and it automatically executes `bash -c ~/.config/yazelix/bash/start_yazelix.sh`
+- **Launch**: Open your terminal and it automatically executes `bash -c ~/.config/yazelix/shells/bash/start_yazelix.sh`
 
 ## 1.B: Terminal Commands  
 - **Setup**: `yazelix` and `yzx` aliases are automatically available when shell configs are sourced

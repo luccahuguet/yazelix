@@ -24,10 +24,10 @@ declare -A SHELL_CONFIGS=(
 
 # Yazelix configuration files
 declare -A YAZELIX_CONFIG_FILES=(
-    ["bash"]="$HOME/.config/yazelix/bash/yazelix_bash_config.sh"
+    ["bash"]="$HOME/.config/yazelix/shells/bash/yazelix_bash_config.sh"
     ["nushell"]="$HOME/.config/yazelix/nushell/config/config.nu"
-    ["fish"]="$HOME/.config/yazelix/fish/yazelix_fish_config.fish"
-    ["zsh"]="$HOME/.config/yazelix/zsh/yazelix_zsh_config.zsh"
+    ["fish"]="$HOME/.config/yazelix/shells/fish/yazelix_fish_config.fish"
+    ["zsh"]="$HOME/.config/yazelix/shells/zsh/yazelix_zsh_config.zsh"
 )
 
 # Function to show help

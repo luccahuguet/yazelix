@@ -31,10 +31,10 @@ export const SHELL_CONFIGS = {
 
 # Yazelix configuration files
 export const YAZELIX_CONFIG_FILES = {
-    bash: "~/.config/yazelix/bash/yazelix_bash_config.sh"
+    bash: "~/.config/yazelix/shells/bash/yazelix_bash_config.sh"
     nushell: "~/.config/yazelix/nushell/config/config.nu"
-    fish: "~/.config/yazelix/fish/yazelix_fish_config.fish"
-    zsh: "~/.config/yazelix/zsh/yazelix_zsh_config.zsh"
+    fish: "~/.config/yazelix/shells/fish/yazelix_fish_config.fish"
+    zsh: "~/.config/yazelix/shells/zsh/yazelix_zsh_config.zsh"
 }
 
 # Environment variables

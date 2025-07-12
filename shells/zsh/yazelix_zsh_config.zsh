@@ -1,5 +1,5 @@
 #!/bin/zsh
-# ~/.config/yazelix/zsh/yazelix_zsh_config.zsh
+# ~/.config/yazelix/shells/zsh/yazelix_zsh_config.zsh
 # This file is part of Yazelix and should be persisted in the repository.
 
 # Source Helix mode detection using Nushell (essential dependency)
@@ -9,7 +9,7 @@ fi
 
 # Define the directory where Yazelix generates individual initializer scripts.
 # This path MUST match the one used in the flake.nix shellHook.
-YAZELIX_ZSH_INITIALIZERS_DIR="$HOME/.config/yazelix/zsh/initializers"
+YAZELIX_ZSH_INITIALIZERS_DIR="$HOME/.config/yazelix/shells/zsh/initializers"
 
 # Source individual initializers if they exist and are non-empty.
 if [[ -f "$YAZELIX_ZSH_INITIALIZERS_DIR/starship_init.zsh" && -s "$YAZELIX_ZSH_INITIALIZERS_DIR/starship_init.zsh" ]]; then
@@ -33,7 +33,7 @@ fi
 
 # Yazelix Aliases for Zsh
 alias yazelix="nu $HOME/.config/yazelix/nushell/scripts/launch_yazelix.nu"
-alias yzx="$HOME/.config/yazelix/bash/yzx"
+alias yzx="$HOME/.config/yazelix/shells/bash/yzx"
 alias lg='lazygit'
 
 # Helix function (ensure runtime is set correctly)

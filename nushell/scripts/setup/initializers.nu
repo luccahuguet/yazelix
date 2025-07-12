@@ -22,9 +22,9 @@ def main [yazelix_dir: string, include_optional: bool, shells_to_configure_str: 
 
     let all_shells = [
         { name: "nu", dir: "nushell", ext: "nu", tool_overrides: { zoxide: "nushell" } }
-        { name: "bash", dir: "bash", ext: "sh", tool_overrides: {} }
-        { name: "fish", dir: "fish", ext: "fish", tool_overrides: {} }
-        { name: "zsh", dir: "zsh", ext: "zsh", tool_overrides: {} }
+        { name: "bash", dir: "shells/bash", ext: "sh", tool_overrides: {} }
+        { name: "fish", dir: "shells/fish", ext: "fish", tool_overrides: {} }
+        { name: "zsh", dir: "shells/zsh", ext: "zsh", tool_overrides: {} }
     ]
 
     # Filter shells to only include those we want to configure

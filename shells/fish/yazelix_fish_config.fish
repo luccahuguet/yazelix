@@ -7,7 +7,7 @@ if test -z $YAZELIX_HELIX_MODE
 end
 
 # Source generated initializers if they exist
-set -l FISH_INITIALIZERS_DIR "$HOME/.config/yazelix/fish/initializers"
+set -l FISH_INITIALIZERS_DIR "$HOME/.config/yazelix/shells/fish/initializers"
 
 # Source each initializer if it exists
 for file in $FISH_INITIALIZERS_DIR/*.fish
@@ -18,7 +18,7 @@ end
 
 # Yazelix aliases
 alias yazelix="nu $HOME/.config/yazelix/nushell/scripts/launch_yazelix.nu"
-alias yzx="$HOME/.config/yazelix/bash/yzx"
+alias yzx="$HOME/.config/yazelix/shells/bash/yzx"
 alias lg='lazygit'
 
 # Helix function (ensure runtime is set correctly)
