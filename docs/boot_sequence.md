@@ -5,13 +5,13 @@
 - **Setup**: Copy terminal config:
   - **Ghostty**: `cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config`
   - **WezTerm**: `cp ~/.config/yazelix/terminal_configs/wezterm/.wezterm.lua ~/.wezterm.lua`
-- **Launch**: Open your terminal and it automatically executes `bash -c ~/.config/yazelix/bash/start-yazelix.sh`
+- **Launch**: Open your terminal and it automatically executes `bash -c ~/.config/yazelix/bash/start_yazelix.sh`
 
 ## 1.B: Terminal Commands  
 - **Setup**: `yazelix` and `yzx` aliases are automatically available when shell configs are sourced
-- **Launch**: Run `yazelix` or `yzx` from any terminal and it will execute `~/.config/yazelix/nushell/scripts/launch-yazelix.nu`
+- **Launch**: Run `yazelix` or `yzx` from any terminal and it will execute `~/.config/yazelix/nushell/scripts/launch_yazelix.nu`
 - That launches your preferred terminal (WezTerm by default, or Ghostty) with specific config
-- The terminal automatically executes `nu ~/.config/yazelix/nushell/scripts/start-yazelix.nu`
+- The terminal automatically executes `nu ~/.config/yazelix/nushell/scripts/start_yazelix.nu`
 
 ## 2. **Nix Environment**: Changes to `~/.config/yazelix` and runs:
    ```bash

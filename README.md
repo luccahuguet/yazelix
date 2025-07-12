@@ -30,7 +30,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Like [Omakub](https://github.com/basecamp/omakub) but for your terminal
 
 ## Preview
-![yazelix_v7_demo](assets/demos/yazelix-v7-demo.gif)
+![yazelix_v7_demo](assets/demos/yazelix_v7_demo.gif)
 
 ## Improvements of v7.1 over v7
 - **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell! Note: Requires system-wide Nushell installation for the launcher scripts.
@@ -48,10 +48,10 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Adds terminal transparency settings because we reaaally believe in transparency
 - Adds `launch-yazelix.nu` script to launch your preferred terminal with the Yazelix-specific config. The `yazelix` and `yzx` aliases are automatically available in your shell once the Yazelix shell configurations are sourced.
 - The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip` or `open data.csv | clip`, etc
-- Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/setup/generate-zellij-config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `zellij/yazelix-overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
+- Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/setup/generate_zellij_config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `zellij/yazelix_overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
 - Allows for declaration user-defined git-ignored nix packages directly in yazelix.nix
 - Improves the "reveal file in sidebar" feature by using Yazi's `reveal` command to automatically highlight and select the specific file, eliminating manual searching in directories with many files
-- Introduces dynamic version table generation using `nu nushell/scripts/utils/version-info.nu`
+- Introduces dynamic version table generation using `nu nushell/scripts/utils/version_info.nu`
 
 
 ## Compatibility

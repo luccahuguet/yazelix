@@ -17,7 +17,7 @@ for file in $FISH_INITIALIZERS_DIR/*.fish
 end
 
 # Yazelix aliases
-alias yazelix="nu $HOME/.config/yazelix/nushell/scripts/launch-yazelix.nu"
+alias yazelix="nu $HOME/.config/yazelix/nushell/scripts/launch_yazelix.nu"
 alias yzx="$HOME/.config/yazelix/bash/yzx"
 alias lg='lazygit'
 

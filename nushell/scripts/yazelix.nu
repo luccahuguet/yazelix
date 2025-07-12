@@ -4,7 +4,7 @@
 
 use ./utils/config_manager.nu *
 use ./utils/constants.nu *
-use ./utils/version-info.nu *
+use ./utils/version_info.nu *
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
@@ -101,7 +101,7 @@ export def "yzx config_status" [shell?: string] {
 
 # List available versions
 export def "yzx versions" [] {
-    nu ~/.config/yazelix/nushell/scripts/utils/version-info.nu
+    nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu
 }
 
 # Show current version
@@ -125,12 +125,12 @@ export def "yzx info" [] {
 
 # Launch yazelix
 export def "yzx launch" [] {
-    nu ~/.config/yazelix/nushell/scripts/launch-yazelix.nu
+    nu ~/.config/yazelix/nushell/scripts/launch_yazelix.nu
 }
 
 # Start yazelix
 export def "yzx start" [] {
-    use ~/.config/yazelix/nushell/scripts/start-yazelix.nu start_yazelix
+    use ~/.config/yazelix/nushell/scripts/start_yazelix.nu start_yazelix
     start_yazelix
 }
 

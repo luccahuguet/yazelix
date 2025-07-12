@@ -32,7 +32,7 @@ if [[ -f "$YAZELIX_ZSH_INITIALIZERS_DIR/carapace_init.zsh" && -s "$YAZELIX_ZSH_I
 fi
 
 # Yazelix Aliases for Zsh
-alias yazelix="nu $HOME/.config/yazelix/nushell/scripts/launch-yazelix.nu"
+alias yazelix="nu $HOME/.config/yazelix/nushell/scripts/launch_yazelix.nu"
 alias yzx="$HOME/.config/yazelix/bash/yzx"
 alias lg='lazygit'
 

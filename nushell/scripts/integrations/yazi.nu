@@ -34,7 +34,7 @@ export def reveal_in_yazi [buffer_name: string] {
     }
 
     if ($env.YAZI_ID | is-empty) {
-        let error_msg = "YAZI_ID not set. reveal-in-yazi requires that you open helix from yazelix's yazi"
+        let error_msg = "YAZI_ID not set. reveal_in_yazi requires that you open helix from yazelix's yazi"
         log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
         print $"Error: ($error_msg)"
         return
