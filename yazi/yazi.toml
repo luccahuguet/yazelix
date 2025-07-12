@@ -5,7 +5,7 @@ ratio = [1, 4, 3]
 
 [opener]
 edit = [
-  { run = 'nu ~/.config/yazelix/nushell/scripts/open-file.nu "$1"', desc = "Open File in a new pane" },
+  { run = 'nu ~/.config/yazelix/nushell/scripts/open_file.nu "$1"', desc = "Open File in a new pane" },
 ]
 
 [[plugin.prepend_fetchers]]

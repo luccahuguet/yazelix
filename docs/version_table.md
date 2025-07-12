@@ -17,5 +17,5 @@ Generated: 2025-06-27 16:16:44
 
 ## Usage
 
-- **Regenerate**: `nu nushell/scripts/utils/version-info.nu --save`
-- **View only**: `nu nushell/scripts/utils/version-info.nu`
+- **Regenerate**: `nu nushell/scripts/utils/version_info.nu --save`
+- **View only**: `nu nushell/scripts/utils/version_info.nu`

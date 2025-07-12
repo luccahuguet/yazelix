@@ -99,8 +99,8 @@ export def main [--save(-s)] {
         ""
         "## Usage"
         ""
-        "- **Regenerate**: `nu nushell/scripts/utils/version-info.nu --save`"
-        "- **View only**: `nu nushell/scripts/utils/version-info.nu`"
+        "- **Regenerate**: `nu nushell/scripts/utils/version_info.nu --save`"
+        "- **View only**: `nu nushell/scripts/utils/version_info.nu`"
     ]
 
     let full_output = ([$header [$table_md] $notes] | flatten | str join "\n")

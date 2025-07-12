@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# ~/.config/yazelix/nushell/scripts/start-yazelix.nu
+# ~/.config/yazelix/nushell/scripts/start_yazelix.nu
 
 def main [] {
     # Resolve HOME using Nushell's built-in

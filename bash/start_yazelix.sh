@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-# ~/.config/yazelix/bash/start-yazelix.sh
+#!/bin/bash
+# ~/.config/yazelix/bash/start_yazelix.sh
 
 # Resolve HOME using shell expansion
 HOME=$(eval echo ~)

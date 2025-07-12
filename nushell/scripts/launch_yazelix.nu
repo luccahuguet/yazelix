@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# ~/.config/yazelix/nushell/scripts/launch-yazelix.nu
+# ~/.config/yazelix/nushell/scripts/launch_yazelix.nu
 # Nushell version of the Yazelix launcher
 
 def main [] {

@@ -43,7 +43,7 @@
 # resize-overlay-duration = 4s 200ms
 
 # Start Yazelix via Nushell boot script (uses Nix environment)
-initial-command = "nu ~/.config/yazelix/nushell/scripts/start-yazelix.nu"
+initial-command = "nu ~/.config/yazelix/nushell/scripts/start_yazelix.nu"
 
 # Theme and styling consistent with WezTerm config
 theme = "Abernathy"
