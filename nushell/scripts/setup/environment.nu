@@ -27,15 +27,24 @@ def main [
     mkdir $log_dir
 
     # Auto-trim old logs (keep 10 most recent)
-    let old_logs = try {
+    let old_shellhook_logs = try {
         ls $"($log_dir)/shellhook_*.log"
         | sort-by modified -r
         | skip 10
         | get name
     } catch { [] }
 
-    if not ($old_logs | is-empty) {
-        rm ...$old_logs
+    let old_welcome_logs = try {
+        ls $"($log_dir)/welcome_*.log"
+        | sort-by modified -r
+        | skip 10
+        | get name
+    } catch { [] }
+
+    let all_old_logs = ($old_shellhook_logs | append $old_welcome_logs)
+
+    if not ($all_old_logs | is-empty) {
+        rm ...$all_old_logs
     }
 
     let log_file = $"($log_dir)/shellhook_(date now | format date '%Y%m%d_%H%M%S').log"
@@ -78,8 +87,8 @@ def main [
 
     # Set permissions
     chmod +x $"($yazelix_dir)/shells/bash/start_yazelix.sh"
-    chmod +x $"($yazelix_dir)/nushell/scripts/launch_yazelix.nu"
-    chmod +x $"($yazelix_dir)/nushell/scripts/start_yazelix.nu"
+    chmod +x $"($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu"
+    chmod +x $"($yazelix_dir)/nushell/scripts/core/start_yazelix.nu"
 
     print "✅ Yazelix environment setup complete!"
 
@@ -123,7 +132,7 @@ def main [
 
 def setup_bash_config [yazelix_dir: string] {
     use ../utils/constants.nu *
-    
+
     let bash_config = $"($yazelix_dir)/shells/bash/yazelix_bash_config.sh"
     let bashrc = ($SHELL_CONFIGS | get bash | str replace "~" $env.HOME)
     let section_content = get_yazelix_section_content "bash" $yazelix_dir
@@ -148,7 +157,7 @@ def setup_bash_config [yazelix_dir: string] {
 
 def setup_nushell_config [yazelix_dir: string] {
     use ../utils/constants.nu *
-    
+
     let nushell_config = ($SHELL_CONFIGS | get nushell | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/nushell/config/config.nu"
     let section_content = get_yazelix_section_content "nushell" $yazelix_dir
@@ -174,7 +183,7 @@ def setup_nushell_config [yazelix_dir: string] {
 
 def setup_fish_config [yazelix_dir: string] {
     use ../utils/constants.nu *
-    
+
     let fish_config = ($SHELL_CONFIGS | get fish | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/shells/fish/yazelix_fish_config.fish"
     let section_content = get_yazelix_section_content "fish" $yazelix_dir
@@ -200,7 +209,7 @@ def setup_fish_config [yazelix_dir: string] {
 
 def setup_zsh_config [yazelix_dir: string] {
     use ../utils/constants.nu *
-    
+
     let zsh_config = ($SHELL_CONFIGS | get zsh | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/shells/zsh/yazelix_zsh_config.zsh"
     let section_content = get_yazelix_section_content "zsh" $yazelix_dir

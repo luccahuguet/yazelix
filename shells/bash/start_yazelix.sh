@@ -22,7 +22,7 @@ cd "$YAZELIX_DIR" || { echo "Error: Cannot cd to $YAZELIX_DIR"; exit 1; }
 # and used by the inner zellij command.
 # We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after nix develop sets it.
 HOME="$HOME" nix develop --impure --command bash -c \
-  "zellij --config-dir \"$YAZELIX_DIR/zellij\" options \
+  "zellij --config-dir \"$YAZELIX_DIR/configs/zellij\" options \
     --default-cwd \"$HOME\" \
     --default-layout yazelix \
     --default-shell \"\$YAZELIX_DEFAULT_SHELL\""

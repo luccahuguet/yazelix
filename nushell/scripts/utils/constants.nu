@@ -43,7 +43,7 @@ export const YAZELIX_ENV_VARS = {
     YAZELIX_DEFAULT_SHELL: "nu"
     YAZELIX_PREFERRED_TERMINAL: "wezterm"
     YAZELIX_HELIX_MODE: "release"
-    YAZI_CONFIG_HOME: "~/.config/yazelix/yazi"
+    YAZI_CONFIG_HOME: "~/.config/yazelix/configs/yazi"
     ZELLIJ_DEFAULT_LAYOUT: "yazelix"
 }
 

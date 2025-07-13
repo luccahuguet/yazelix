@@ -2,9 +2,9 @@
 # Yazelix Command Suite
 # Consolidated commands for managing and interacting with yazelix
 
-use ./utils/config_manager.nu *
-use ./utils/constants.nu *
-use ./utils/version_info.nu *
+use ../utils/config_manager.nu *
+use ../utils/constants.nu *
+use ../utils/version_info.nu *
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
@@ -125,12 +125,12 @@ export def "yzx info" [] {
 
 # Launch yazelix
 export def "yzx launch" [] {
-    nu ~/.config/yazelix/nushell/scripts/launch_yazelix.nu
+    nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 }
 
 # Start yazelix
 export def "yzx start" [] {
-    use ~/.config/yazelix/nushell/scripts/start_yazelix.nu main
+    use ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu main
     main
 }
 

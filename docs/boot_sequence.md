@@ -3,19 +3,19 @@
 
 ## 1.A: Terminal Auto-Launch 
 - **Setup**: Copy terminal config:
-  - **Ghostty**: `cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config`
-  - **WezTerm**: `cp ~/.config/yazelix/terminal_configs/wezterm/.wezterm.lua ~/.wezterm.lua`
+  - **Ghostty**: `cp ~/.config/yazelix/configs/terminal_emulators/ghostty/config ~/.config/ghostty/config`
+- **WezTerm**: `cp ~/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua ~/.wezterm.lua`
 - **Launch**: Open your terminal and it automatically executes `bash -c ~/.config/yazelix/shells/bash/start_yazelix.sh`
 
 ## 1.B: Terminal Commands  
 - **Setup**: `yazelix` and `yzx` aliases are automatically available when shell configs are sourced
-- **Launch**: Run `yazelix` or `yzx` from any terminal and it will execute `~/.config/yazelix/nushell/scripts/launch_yazelix.nu`
+- **Launch**: Run `yazelix` or `yzx` from any terminal and it will execute `~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu`
 - That launches your preferred terminal (WezTerm by default, or Ghostty) with specific config
-- The terminal automatically executes `nu ~/.config/yazelix/nushell/scripts/start_yazelix.nu`
+- The terminal automatically executes `nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu`
 
 ## 2. **Nix Environment**: Changes to `~/.config/yazelix` and runs:
    ```bash
-   nix develop --impure --command bash -c "zellij --config-dir ~/.config/yazelix/zellij options --default-cwd $HOME --default-layout yazelix --default-shell $YAZELIX_DEFAULT_SHELL"
+   nix develop --impure --command bash -c "zellij --config-dir ~/.config/yazelix/configs/zellij options --default-cwd $HOME --default-layout yazelix --default-shell $YAZELIX_DEFAULT_SHELL"
    ```
 
 ## 3. **Nix Dependencies**: 

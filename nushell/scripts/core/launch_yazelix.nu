@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# ~/.config/yazelix/nushell/scripts/launch_yazelix.nu
+# ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 # Nushell version of the Yazelix launcher
 
 def main [] {
@@ -19,24 +19,24 @@ def main [] {
     let terminal_info = if ($preferred_terminal == "wezterm") and ((which wezterm | length) > 0) {
         {
             terminal: "wezterm"
-            config: $"($home)/.config/yazelix/terminal_configs/wezterm/.wezterm.lua"
+            config: $"($home)/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua"
         }
     } else if ($preferred_terminal == "ghostty") and ((which ghostty | length) > 0) {
         {
             terminal: "ghostty"
-            config: $"($home)/.config/yazelix/terminal_configs/ghostty/config"
+            config: $"($home)/.config/yazelix/configs/terminal_emulators/ghostty/config"
         }
     } else if (which wezterm | length) > 0 {
         # Fallback to wezterm if preferred terminal not available
         {
             terminal: "wezterm"
-            config: $"($home)/.config/yazelix/terminal_configs/wezterm/.wezterm.lua"
+            config: $"($home)/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua"
         }
     } else if (which ghostty | length) > 0 {
         # Fallback to ghostty if wezterm not available
         {
             terminal: "ghostty"
-            config: $"($home)/.config/yazelix/terminal_configs/ghostty/config"
+            config: $"($home)/.config/yazelix/configs/terminal_emulators/ghostty/config"
         }
     } else {
         print "Error: Neither Ghostty nor WezTerm is installed. Please install one of these terminals to use Yazelix."

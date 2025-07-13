@@ -66,6 +66,12 @@
 - Use consistent naming conventions
 - Follow yazelix naming patterns: lowercase with underscores for files, camelCase for variables
 - **Naming Convention**: All files use underscores (e.g., `start_yazelix.nu`, `yazelix_bash_config.sh`) - never hyphens
+- **Nushell Scripts Organization**: Scripts are organized in subdirectories:
+  - `core/` - Core Yazelix functionality (start_yazelix.nu, launch_yazelix.nu, yazelix.nu)
+  - `integrations/` - Tool integration scripts (yazi.nu, zellij.nu, helix.nu, open_file.nu, reveal_in_yazi.nu)
+  - `setup/` - Setup and configuration scripts
+  - `utils/` - Utility functions and helpers
+  - `dev/` - Development tools (record_demo.nu, test_fonts.nu)
 - Reference the three main tools: Yazi (file manager), Zellij (terminal multiplexer), Helix (editor)
 - **Command Naming**: Use `yzx` as the primary command name, not `yazelix`
 - **No Legacy Exports**: Don't maintain legacy compatibility exports - keep code clean and simple
@@ -74,23 +80,23 @@
 - Always consider the integration between Yazi, Zellij, and Helix when making changes
 - When modifying shell scripts, test both Nushell and Bash compatibility
 - When adding new dependencies to flake.nix, categorize them properly (essential, optional, or yazi extensions)
-- Follow the existing structure: shells/, nushell/, yazi/, zellij/, terminal_configs/
+- Follow the existing structure: shells/, nushell/, configs/
 - When updating documentation, ensure it reflects both Nix-based and Cargo-based installation methods
 
 ## File Organization Rules
 - Maintain the existing folder structure and naming conventions
 - Shell scripts go in shells/
 - Nushell configs go in nushell/
-- Yazi configs go in yazi/
-- Zellij configs go in zellij/
-- Terminal emulator configs go in terminal_configs/
+- Yazi configs go in configs/yazi/
+- Zellij configs go in configs/zellij/
+- Terminal emulator configs go in configs/terminal_emulators/
 - Documentation goes in docs/
 - Keep related content organized in appropriate folders 
 
 
 
 ## TODO List
-- [x] Add auto-trimming to the logs generated on shellhooks (or stop generating them) - COMPLETED: Added auto-trim to keep only 10 most recent shellhook logs
+- [x] Add auto-trimming to the logs generated on shellhooks (or stop generating them) - COMPLETED: Added auto-trim to keep only 10 most recent shellhook logs and welcome logs
 - [x] Add a copy/generate script that copies yazelix_default.nix to yazelix.nix (both in root) - yazelix.nix will be git ignored for user customization
 
 - [ ] Create option of having a folder that is gitignored containing user-specific configs that we can concatenate to yazelix configs when available 

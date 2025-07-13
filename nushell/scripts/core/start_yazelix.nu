@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# ~/.config/yazelix/nushell/scripts/start_yazelix.nu
+# ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 export def main [] {
     # Resolve HOME using Nushell's built-in
@@ -27,7 +27,7 @@ export def main [] {
     # The YAZELIX_DEFAULT_SHELL variable will be set by the shellHook of the flake
     # and used by the inner zellij command.
     # We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after nix develop sets it.
-    let cmd = $"zellij --config-dir \"($yazelix_dir)/zellij\" options --default-cwd \"($home)\" --default-layout yazelix --default-shell \"$YAZELIX_DEFAULT_SHELL\""
+    let cmd = $"zellij --config-dir \"($yazelix_dir)/configs/zellij\" options --default-cwd \"($home)\" --default-layout yazelix --default-shell \"$YAZELIX_DEFAULT_SHELL\""
     
     with-env {HOME: $home} {
         ^nix develop --impure --command bash -c $cmd

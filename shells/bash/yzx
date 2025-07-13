@@ -248,7 +248,7 @@ show_info() {
 # Function to launch yazelix
 launch_yazelix() {
     if command -v nu >/dev/null 2>&1; then
-        nu "$YAZELIX_DIR/nushell/scripts/launch_yazelix.nu"
+        nu "$YAZELIX_DIR/nushell/scripts/core/launch_yazelix.nu"
     else
         echo "❌ Nushell not found. Please install nushell to use this command."
         exit 1
@@ -257,7 +257,7 @@ launch_yazelix() {
 
 # Function to start yazelix
 start_yazelix() {
-    nu "$YAZELIX_DIR/nushell/scripts/start_yazelix.nu"
+    nu "$YAZELIX_DIR/nushell/scripts/core/start_yazelix.nu"
 }
 
 # Main command dispatcher

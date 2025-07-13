@@ -7,8 +7,8 @@
 def main [yazelix_dir: string] {
     print "🔧 Generating Zellij configuration..."
 
-    let config_path = $"($yazelix_dir)/zellij/config.kdl"
-    let overrides_path = $"($yazelix_dir)/zellij/yazelix_overrides.kdl"
+    let config_path = $"($yazelix_dir)/configs/zellij/config.kdl"
+let overrides_path = $"($yazelix_dir)/configs/zellij/yazelix_overrides.kdl"
 
     # Get the default config from Zellij
     # Note: You can replace this with your own existing config file:

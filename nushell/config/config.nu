@@ -26,7 +26,7 @@ export alias lg = lazygit
 # Examples: yazelix help, yazelix get_config, yazelix versions, etc.
 
 # Yazelix command suite
-use ~/.config/yazelix/nushell/scripts/yazelix.nu *
+use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *
 
 
 

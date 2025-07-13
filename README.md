@@ -48,7 +48,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Adds terminal transparency settings because we reaaally believe in transparency
 - Adds `launch_yazelix.nu` script to launch your preferred terminal with the Yazelix-specific config. The `yazelix` and `yzx` aliases are automatically available in your shell once the Yazelix shell configurations are sourced.
 - The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip` or `open data.csv | clip`, etc
-- Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/setup/generate_zellij_config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `zellij/yazelix_overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
+- Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/setup/generate_zellij_config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `configs/zellij/yazelix_overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
 - Allows for declaration user-defined git-ignored nix packages directly in yazelix.nix
 - Improves the "reveal file in sidebar" feature by using Yazi's `reveal` command to automatically highlight and select the specific file, eliminating manual searching in directories with many files
 - Introduces dynamic version table generation using `nu nushell/scripts/utils/version_info.nu`
@@ -113,12 +113,12 @@ Copy the appropriate terminal config to automatically start Yazelix:
 
 **For Ghostty:**
 ```bash
-cp ~/.config/yazelix/terminal_configs/ghostty/config ~/.config/ghostty/config
+cp ~/.config/yazelix/configs/terminal_emulators/ghostty/config ~/.config/ghostty/config
 ```
 
 **For WezTerm:**
 ```bash
-cp ~/.config/yazelix/terminal_configs/wezterm/.wezterm.lua ~/.wezterm.lua
+cp ~/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua ~/.wezterm.lua
 ```
 
 **Result**: Every time you open your terminal, it will automatically launch Yazelix. You won't need to run any commands.
@@ -187,6 +187,9 @@ For setup issues, version compatibility, and debugging:
 - See [Version Table](./docs/version_table.md) for compatibility information
 - For general issues, check the logs in the `logs/` directory or enable debug mode in `yazelix.nix`
 - **Naming Convention**: If you encounter "file not found" errors, ensure your terminal configs reference the updated script names (using underscores instead of hyphens, e.g., `start_yazelix.nu` instead of `start-yazelix.nu`)
+- **Script Reorganization**: If you encounter "file not found" errors after updating Yazelix, your terminal configs may need updating. The scripts have been reorganized into subdirectories:
+  - **WezTerm**: Update `~/.wezterm.lua` to use `~/.config/yazelix/nushell/scripts/core/start_yazelix.nu`
+  - **Ghostty**: Update `~/.config/ghostty/config` to use `~/.config/yazelix/nushell/scripts/core/start_yazelix.nu`
 
 ## VS Code and Cursor Integration
 Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code or Cursor integrated terminal? See our [VS Code/Cursor integration guide](./docs/vscode_cursor_integration.md) for step-by-step setup instructions that give you the full Yazelix environment in your editor's terminal.

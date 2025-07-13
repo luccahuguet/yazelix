@@ -144,7 +144,7 @@
             export YAZELIX_DEBUG_MODE="${if yazelixDebugMode then "true" else "false"}"
             export ZELLIJ_DEFAULT_LAYOUT=yazelix
             export YAZELIX_DEFAULT_SHELL="${yazelixDefaultShell}"
-            export YAZI_CONFIG_HOME="$YAZELIX_DIR/yazi"
+            export YAZI_CONFIG_HOME="$YAZELIX_DIR/configs/yazi"
             export YAZELIX_HELIX_MODE="${helixMode}"
             export YAZELIX_PREFERRED_TERMINAL="${yazelixPreferredTerminal}"
 

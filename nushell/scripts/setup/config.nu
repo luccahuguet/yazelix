@@ -4,7 +4,7 @@
 def main [yazelix_dir: string] {
     print "🔧 Generating Zellij configuration..."
 
-    let config_path = $"($yazelix_dir)/zellij/config.kdl"
+    let config_path = $"($yazelix_dir)/configs/zellij/config.kdl"
     let template = $"
 default_shell \"nu\"
     "

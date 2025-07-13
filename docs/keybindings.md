@@ -28,7 +28,7 @@ If you find a conflict, please open an issue
 - **Helix**: `Alt y` reveals the file from the Helix buffer in Yazi, add this to your Helix config:
   ```toml
   [keys.normal]
-  A-y = ":sh nu ~/.config/yazelix/nushell/scripts/reveal_in_yazi.nu \"%{buffer_name}\""
+  A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
   ```
   - **Limitation**: Only works for Helix instances opened from Yazi
   - **Requirement**: Build Helix from source until the next release includes command expansions

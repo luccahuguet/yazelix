@@ -24,7 +24,7 @@ Sleep 2s
 Set TypingSpeed 40ms
 
 # Start yazelix
-# Type " cd ~/.config/yazelix && nix develop --impure --command bash -c 'zellij --config-dir ~/.config/yazelix/zellij options --default-layout yazelix --default-shell nu'"
+# Type " cd ~/.config/yazelix && nix develop --impure --command bash -c 'zellij --config-dir ~/.config/yazelix/configs/zellij options --default-layout yazelix --default-shell nu'"
 Type " ~/.config/yazelix/shells/bash/start_yazelix.sh"
 Enter
 Sleep 8s
