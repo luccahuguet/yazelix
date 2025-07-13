@@ -90,3 +90,96 @@ export def get_welcome_ascii_art [] {
     # Return the magic sphere
     $magic_sphere
 }
+
+export def get_animated_ascii_art [frame_count: int = 10] {
+    let colors = get_yazelix_colors
+    let purple = $colors.purple
+    let cyan = $colors.cyan
+    let blue = $colors.blue
+    let reset = $colors.reset
+
+    # Generate animated magic sphere with YAZELIX in the center
+    let sphere_height = 15
+    let max_width = 60
+    let center_row = ($sphere_height / 2)
+
+    # Create frames for animation
+    0..($frame_count - 1) | each { |frame|
+        0..($sphere_height - 1) | each { |row|
+            # Calculate sphere shape
+            let width = if $row < $center_row {
+                let progress = ($row / $center_row)
+                let base_width = 2
+                let growth_factor = ($progress * $progress * $progress * $max_width * 1.2)
+                ($base_width + $growth_factor) | math round
+            } else {
+                let progress = (($sphere_height - $row - 1) / $center_row)
+                let base_width = 2
+                let growth_factor = ($progress * $progress * $progress * $max_width * 1.2)
+                ($base_width + $growth_factor) | math round
+            }
+
+            let width = if $width < 2 { 2 } else { $width }
+            let before_count = (($width - 7) / 2 | math floor)
+            let after_count = $width - $before_count - 7 + 2
+
+            # Animate colors by adding frame offset
+            let before_yazelix = (
+                0..($before_count - 1) | each { |i|
+                    let color_idx = ($i + $row + $frame) mod 3
+                    let color = if $color_idx == 0 { $purple } else if $color_idx == 1 { $cyan } else { $blue }
+                    let symbol = "★ "
+                    $color + $symbol
+                } | str join ""
+            )
+
+            # Animate YAZELIX text colors
+            let yazelix_chars = ["Y", "A", "Z", "E", "L", "I", "X"]
+            let yazelix_text = (
+                0..6 | each { |i|
+                    let color_idx = ($i + $frame) mod 3
+                    let color = if $color_idx == 0 { $purple } else if $color_idx == 1 { $cyan } else { $blue }
+                    $color + ($yazelix_chars | get $i)
+                } | str join ""
+            )
+
+            let after_yazelix = (
+                0..($after_count - 1) | each { |i|
+                    let color_idx = ($before_count + 7 + $i + $row + $frame) mod 3
+                    let color = if $color_idx == 0 { $purple } else if $color_idx == 1 { $cyan } else { $blue }
+                    let symbol = "★ "
+                    $color + $symbol
+                } | str join ""
+            )
+
+            let sphere_content = if ($row == 7) {
+                $before_yazelix + $yazelix_text + $after_yazelix
+            } else {
+                (0..($width - 1) | each { |i|
+                    let color_idx = ($i + $row + $frame) mod 3
+                    let color = if $color_idx == 0 { $purple } else if $color_idx == 1 { $cyan } else { $blue }
+                    let symbol = "★ "
+                    $color + $symbol
+                } | str join "")
+            }
+
+            $sphere_content + $reset
+        }
+    }
+}
+
+export def play_animation [duration: duration = 1sec] {
+    let frames = get_animated_ascii_art 12
+    let frame_delay = ($duration / ($frames | length))
+    let art_height = 15
+
+    # Play animation once (draw at current cursor position)
+    for frame in $frames {
+        print ($frame | str join "\n")
+        sleep $frame_delay
+        # Move cursor up by art_height + 1 lines to redraw in place (accounting for newline)
+        print ("\u{1b}[" + (($art_height + 1) | into string) + "A")
+    }
+    # After animation, move cursor just below the art
+    print ((0..($art_height - 1) | each { "" } | str join "\n"))
+}
