@@ -96,15 +96,16 @@ def main [
     # Import ASCII art module
     use ../utils/ascii_art.nu *
 
-    # Prepare welcome message
+    # Get color scheme for consistent styling
+    let colors = get_yazelix_colors
+
+    # Prepare welcome message with consistent colors
     let helix_info = if $helix_mode == "source" {
-        $"   🔄 Using Helix flake from repository for latest features"
+        $"($colors.cyan)🔄 Using Helix flake from repository for latest features($colors.reset)"
     } else if $helix_mode == "release" {
-        "   📦 Using latest Helix release from nixpkgs (fast setup)"
-
-
+        $"($colors.cyan)📦 Using latest Helix release from nixpkgs (fast setup)($colors.reset)"
     } else {
-        $"   📝 Using stable nixpkgs Helix"
+        $"($colors.cyan)📝 Using stable nixpkgs Helix($colors.reset)"
     }
 
     # Get ASCII art
@@ -114,13 +115,13 @@ def main [
         "",
         ...$ascii_art,
         "",
-        "🎉 Welcome to Yazelix v7!",
-        "   Your integrated terminal environment with Yazi + Zellij + Helix",
-        "   ✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide",
+        $"($colors.purple)🎉 Welcome to Yazelix v7!($colors.reset)",
+        $"($colors.blue)Your integrated terminal environment with Yazi + Zellij + Helix($colors.reset)",
+        $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",
         $helix_info,
-        "   🔧 All dependencies installed, shell configs updated, tools ready",
+        $"($colors.blue)🔧 All dependencies installed, shell configs updated, tools ready($colors.reset)",
         "",
-        "   Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files",
+        $"($colors.cyan)Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files($colors.reset)",
         ""
     ] | where $it != ""
 
@@ -129,13 +130,13 @@ def main [
         # Log welcome info instead of displaying it
         let welcome_log_file = $"($log_dir)/welcome_(date now | format date '%Y%m%d_%H%M%S').log"
         $welcome_message | str join "\n" | save $welcome_log_file
-        print $"💡 Welcome screen skipped. Welcome info logged to: ($welcome_log_file)"
+        print $"($colors.cyan)💡 Welcome screen skipped. Welcome info logged to: ($welcome_log_file)($colors.reset)"
     } else {
         # Display welcome screen with pause
         for $line in $welcome_message {
             print $line
         }
-        input "   Press Enter to launch Zellij and start your session... "
+        input $"($colors.purple)   Press Enter to launch Zellij and start your session... ($colors.reset)"
     }
 }
 
