@@ -1,4 +1,4 @@
-# Yazelix v7.1: Nix installs and configures everything for you!
+# Yazelix v7.2: Nix installs and configures everything for you!
 
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
@@ -31,6 +31,9 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 
 ## Preview
 ![yazelix_v7_demo](assets/demos/yazelix_v7_demo.gif)
+
+## Improvements of v7.2 over v7.1
+- **Configurable Welcome ASCII Art**: You can now choose between animated or static ASCII art in the welcome screen using the new `ascii_art_mode` option in your `yazelix.nix` config. Set `ascii_art_mode = "animated"` (default) or `ascii_art_mode = "static"` for a non-animated welcome.
 
 ## Improvements of v7.1 over v7
 - **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell! Note: Requires system-wide Nushell installation for the launcher scripts.
