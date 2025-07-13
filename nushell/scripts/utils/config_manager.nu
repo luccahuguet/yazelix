@@ -48,10 +48,10 @@ export def check_config_versions [yazelix_dir: string] {
     use ./constants.nu *
 
     let configs = [
-        { name: "bash", file: ($SHELL_CONFIGS.bash | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.bash | str replace "~" $env.HOME) }
-        { name: "nushell", file: ($SHELL_CONFIGS.nushell | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.nushell | str replace "~" $env.HOME) }
-        { name: "fish", file: ($SHELL_CONFIGS.fish | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.fish | str replace "~" $env.HOME) }
-        { name: "zsh", file: ($SHELL_CONFIGS.zsh | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.zsh | str replace "~" $env.HOME) }
+        { name: "bash", file: ($SHELL_CONFIGS.bash | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.bash) }
+        { name: "nushell", file: ($SHELL_CONFIGS.nushell | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.nushell) }
+        { name: "fish", file: ($SHELL_CONFIGS.fish | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.fish) }
+        { name: "zsh", file: ($SHELL_CONFIGS.zsh | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.zsh) }
     ]
 
     let results = ($configs | each { |config|
@@ -62,8 +62,21 @@ export def check_config_versions [yazelix_dir: string] {
             if not $section.exists {
                 { shell: $config.name, status: "missing", file: $config.file }
             } else {
-                let expected_source_line = $"source \"($config.expected_source)\""
-                if ($section.content | str contains $expected_source_line) {
+                let expected_source_lines = if $config.name in ["bash", "fish", "zsh"] {
+                    [
+                        $"source \"($config.expected_source | str replace '~' $env.HOME)\""
+                        $"source ($config.expected_source | str replace '~' $env.HOME)"
+                        $"source \"$HOME/($config.expected_source | str replace '~/.config/' '.config/')\""
+                        $"source $HOME/($config.expected_source | str replace '~/.config/' '.config/')"
+                        $"source \"~($config.expected_source | str replace '~' '')\""
+                        $"source ~($config.expected_source | str replace '~' '')"
+                        $"source \"($config.expected_source)\""
+                        $"source ($config.expected_source)"
+                    ]
+                } else {
+                    [ $"source \"($config.expected_source)\"" ]
+                }
+                if ($expected_source_lines | any { |line| $section.content | str contains $line }) {
                     { shell: $config.name, status: "current", file: $config.file }
                 } else {
                     { shell: $config.name, status: "outdated", file: $config.file, current_content: $section.content }
@@ -83,7 +96,7 @@ export def show_config_status [yazelix_dir: string] {
 
     for $result in $status {
         if $result.status == "missing" {
-            print $"❌ ($result.shell): No yazelix section found in ($result.file)"
+            print $"ℹ️  ($result.shell): Not configured \(optional\)"
         } else if $result.status == "current" {
             print $"✅ ($result.shell): Configuration is current"
         } else if $result.status == "outdated" {

@@ -35,9 +35,8 @@ show_help() {
     echo "=== Yazelix Command Suite ==="
     echo ""
     echo "CONFIGURATION MANAGEMENT:"
-    echo "  yzx get_config [shell]         - Show status of all shell configurations"
-    echo "  yzx check_config               - Check if configurations are up to date"
-    echo "  yzx config_status [shell]      - Same as get_config (alias)"
+    echo "  yzx config_status [shell]      - Show status of all shell configurations"
+    echo "  yzx config_schema              - Show the configuration schema"
     echo ""
     echo "VERSION AND SYSTEM:"
     echo "  yzx versions                   - Show version info for all tools"
@@ -75,7 +74,7 @@ extract_yazelix_section() {
         echo "$content"
         return 0
     else
-        echo "❌ No yazelix section found in $config_file"
+        echo "ℹ️  No yazelix section found in $config_file (optional)"
         return 1
     fi
 }
@@ -92,8 +91,8 @@ check_yazelix_section() {
     fi
 }
 
-# Function to get configuration details
-get_config() {
+# Function to show configuration status (canonical, no aliases)
+config_status() {
     local shell="$1"
 
     if [[ -z "$shell" ]]; then
@@ -111,7 +110,7 @@ get_config() {
             if check_yazelix_section "$config_file"; then
                 echo "Status: ✅ Configured"
             else
-                echo "Status: ❌ Not configured"
+                echo "Status: ℹ️  Not configured (optional)"
             fi
 
             if [[ -f "$yazelix_config" ]]; then
@@ -130,41 +129,6 @@ get_config() {
 
         local config_file="${SHELL_CONFIGS[$shell]}"
         extract_yazelix_section "$config_file"
-    fi
-}
-
-# Function to check configuration validity
-check_config() {
-    echo "=== Checking Yazelix Configurations ==="
-    local all_good=true
-
-    for shell_name in "${!SHELL_CONFIGS[@]}"; do
-        local config_file="${SHELL_CONFIGS[$shell_name]}"
-        local yazelix_config="${YAZELIX_CONFIG_FILES[$shell_name]}"
-
-        echo ""
-        echo "--- $shell_name ---"
-
-        if check_yazelix_section "$config_file"; then
-            echo "✅ Config section: OK"
-        else
-            echo "❌ Config section: Missing"
-            all_good=false
-        fi
-
-        if [[ -f "$yazelix_config" ]]; then
-            echo "✅ Yazelix config: OK"
-        else
-            echo "❌ Yazelix config: Missing"
-            all_good=false
-        fi
-    done
-
-    echo ""
-    if [[ "$all_good" == true ]]; then
-        echo "✅ All yazelix configurations are current!"
-    else
-        echo "⚠️  Some configurations need attention"
     fi
 }
 
@@ -268,11 +232,18 @@ main() {
         "help"|"")
             show_help
             ;;
-        "get_config"|"config_status")
-            get_config "$2"
+        "config_status")
+            config_status "$2"
             ;;
-        "check_config")
-            check_config
+        "config_schema")
+            echo "=== Yazelix Configuration Schema ==="
+            echo "This command will display the YAZELIX_CONFIG_FILES structure."
+            echo "It's not directly tied to a specific shell's config file."
+            echo "YAZELIX_CONFIG_FILES:"
+            for shell_name in "${!YAZELIX_CONFIG_FILES[@]}"; do
+                echo "  $shell_name: ${YAZELIX_CONFIG_FILES[$shell_name]}"
+            done
+            echo "==================================="
             ;;
         "versions")
             show_versions

@@ -93,6 +93,9 @@ def main [
 
     print "✅ Yazelix environment setup complete!"
 
+    # Import ASCII art module
+    use ../utils/ascii_art.nu *
+
     # Prepare welcome message
     let helix_info = if $helix_mode == "source" {
         $"   🔄 Using Helix flake from repository for latest features"
@@ -104,7 +107,12 @@ def main [
         $"   📝 Using stable nixpkgs Helix"
     }
 
+    # Get ASCII art
+    let ascii_art = get_welcome_ascii_art
+
     let welcome_message = [
+        "",
+        ...$ascii_art,
         "",
         "🎉 Welcome to Yazelix v7!",
         "   Your integrated terminal environment with Yazi + Zellij + Helix",

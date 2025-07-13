@@ -20,10 +20,8 @@ export def "yzx help" [] {
     print "=== Yazelix Command Suite ==="
     print ""
     print "CONFIGURATION MANAGEMENT:"
-print "  yzx get_config [shell]         - Show status of all shell configurations"
-print "  yzx check_config               - Check if configurations are up to date"
-print "  yzx config_status [shell]      - Same as get_config (alias)"
-print "  yzx config_schema              - Show the configuration schema"
+    print "  yzx config_status [shell]      - Show status of all shell configurations"
+    print "  yzx config_schema              - Show the configuration schema"
     print ""
     print "VERSION AND SYSTEM:"
     print "  yzx versions                   - Show version info for all tools"
@@ -41,22 +39,17 @@ print "  yzx config_schema              - Show the configuration schema"
     print "=========================================="
 }
 
-# Get configuration details
-export def "yzx get_config" [shell?: string] {
+# Show configuration status (canonical, no aliases)
+export def "yzx config_status" [shell?: string] {
     if ($shell | is-empty) {
-        # Show all configurations
         show_config_status ~/.config/yazelix
     } else {
-        # Show specific shell configuration
         let config_file = ($SHELL_CONFIGS | get $shell | str replace "~" $env.HOME)
-
         if not ($config_file | path exists) {
             print $"❌ Config file not found: ($config_file)"
             return
         }
-
         let section = extract_yazelix_section $config_file
-
         if $section.exists {
             print $"=== Yazelix Section in ($shell) ==="
             print $section.content
@@ -64,40 +57,8 @@ export def "yzx get_config" [shell?: string] {
         } else {
             print $"❌ No yazelix section found in ($config_file)"
         }
-
         $section
     }
-}
-
-# Check configuration validity
-export def "yzx check_config" [] {
-    let status = check_config_versions ~/.config/yazelix
-    let outdated = ($status | where status == "outdated")
-    let missing = ($status | where status == "missing")
-
-    if ($outdated | is-empty) and ($missing | is-empty) {
-        print "✅ All yazelix configurations are current!"
-    } else {
-        if not ($outdated | is-empty) {
-            print "⚠️  Outdated configurations:"
-            for $config in $outdated {
-                print $"   ($config.shell): ($config.file)"
-            }
-        }
-        if not ($missing | is-empty) {
-            print "❌ Missing configurations:"
-            for $config in $missing {
-                print $"   ($config.shell): ($config.file)"
-            }
-        }
-    }
-
-    $status
-}
-
-# Show configuration status (alias for get_config)
-export def "yzx config_status" [shell?: string] {
-    yzx get_config $shell
 }
 
 # List available versions
