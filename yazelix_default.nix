@@ -46,6 +46,10 @@
   # When true, welcome info is logged to the logs directory instead of displayed
   skip_welcome_screen = false;
 
+  # ASCII art display mode (default: "animated")
+  # Options: "static" - Show static ASCII art, "animated" - Show animated ASCII art
+  ascii_art_mode = "animated";
+
   # User packages - add your custom Nix packages here
   user_packages = with pkgs; [
     # discord

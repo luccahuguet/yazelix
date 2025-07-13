@@ -79,6 +79,12 @@ export def get_config_schema [] {
             default: false
             description: "Skip the welcome screen on startup"
         }
+        ascii_art_mode: {
+            type: "string"
+            default: "animated"
+            valid_values: ["static", "animated"]
+            description: "ASCII art display mode: 'static' or 'animated'"
+        }
         user_packages: {
             type: "array"
             default: []

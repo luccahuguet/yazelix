@@ -11,6 +11,7 @@ def main [
     extra_shells_str: string
     skip_welcome_screen: bool
     helix_mode: string
+    ascii_art_mode: string
 ] {
     # Validate user config against schema
     validate_user_config $yazelix_dir
@@ -99,9 +100,19 @@ def main [
     # Import ASCII art module
     use ../utils/ascii_art.nu *
 
-    # Play animated ASCII art (below setup messages)
+    # Show ASCII art based on configuration
     if not $skip_welcome_screen {
-        play_animation 1sec
+        if $ascii_art_mode == "animated" {
+            # Play animated ASCII art
+            play_animation 1sec
+        } else if $ascii_art_mode == "static" {
+            # Show static ASCII art
+            let ascii_art = get_welcome_ascii_art
+            for $line in $ascii_art {
+                print $line
+            }
+            print ""
+        }
     }
 
     # Get color scheme for consistent styling
