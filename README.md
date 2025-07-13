@@ -1,4 +1,4 @@
-# Yazelix v7.2: Nix installs and configures everything for you!
+# Yazelix v7.6: Nix installs and configures everything for you!
 
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
@@ -32,10 +32,12 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 ## Preview
 ![yazelix_v7_demo](assets/demos/yazelix_v7_demo.gif)
 
-## Improvements of v7.2 over v7.1
+## Improvements of v7.6 over v7
+- **Big File/Folder Project-Wide Refactoring**: Complete reorganization of the codebase structure for better maintainability and organization
+- **YZX Command Polish**: Enhanced the `yzx` command with improved functionality and user experience
+- **Yazelix Config Validation**: Added validation system to warn users of invalid configuration options in `yazelix.nix`
+- **Configurable Editor Environment Variables**: New config options to set EDITOR environment variable when empty, override existing EDITOR, and add custom editor commands
 - **Configurable Welcome ASCII Art**: You can now choose between animated or static ASCII art in the welcome screen using the new `ascii_art_mode` option in your `yazelix.nix` config. Set `ascii_art_mode = "animated"` (default) or `ascii_art_mode = "static"` for a non-animated welcome.
-
-## Improvements of v7.1 over v7
 - **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell! Note: Requires system-wide Nushell installation for the launcher scripts.
 
 ## Improvements of v7 over v6
@@ -245,3 +247,7 @@ Yazelix is built on the shoulders of giants. We're grateful to the essential pro
 - **auto-layout.yazi** - 95% of the work by Joseph Schmitt, including the plugin creation
 
 Thank you to all maintainers and the open source community. 
+
+# Cursor Rules for Yazelix Project
+
+- Never commit or push on your own. Only do so when the user prompts it. 
