@@ -1,5 +1,8 @@
 # Yazelix v7.6: Nix installs and configures everything for you!
 
+## Preview
+![yazelix_v7_demo](assets/demos/yazelix_v7_demo.gif)
+
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 
@@ -28,9 +31,6 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Boy, do we Nix
 - Integration, integration, integration
 - Like [Omakub](https://github.com/basecamp/omakub) but for your terminal
-
-## Preview
-![yazelix_v7_demo](assets/demos/yazelix_v7_demo.gif)
 
 ## Improvements of v7.6 over v7
 - **Big File/Folder Project-Wide Refactoring**: Complete reorganization of the codebase structure for better maintainability and organization
