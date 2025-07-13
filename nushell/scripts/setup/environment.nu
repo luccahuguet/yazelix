@@ -93,8 +93,16 @@ def main [
 
     print "✅ Yazelix environment setup complete!"
 
+    # Insert newline to push animation below setup messages
+    print ""
+
     # Import ASCII art module
     use ../utils/ascii_art.nu *
+
+    # Play animated ASCII art (below setup messages)
+    if not $skip_welcome_screen {
+        play_animation 1sec
+    }
 
     # Get color scheme for consistent styling
     let colors = get_yazelix_colors
@@ -113,7 +121,7 @@ def main [
 
     let welcome_message = [
         "",
-        ...$ascii_art,
+        # ...$ascii_art,  # REMOVE this line, animation will be shown instead
         "",
         $"($colors.purple)🎉 Welcome to Yazelix v7!($colors.reset)",
         $"($colors.blue)Your integrated terminal environment with Yazi + Zellij + Helix($colors.reset)",
@@ -132,7 +140,7 @@ def main [
         $welcome_message | str join "\n" | save $welcome_log_file
         print $"($colors.cyan)💡 Welcome screen skipped. Welcome info logged to: ($welcome_log_file)($colors.reset)"
     } else {
-        # Display welcome screen with pause
+        # Display the rest of the welcome message (animation already played above)
         for $line in $welcome_message {
             print $line
         }
