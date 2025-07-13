@@ -105,6 +105,7 @@ def main [
         if $ascii_art_mode == "animated" {
             # Play animated ASCII art
             play_animation 1sec
+            print ""
         } else if $ascii_art_mode == "static" {
             # Show static ASCII art
             let ascii_art = get_welcome_ascii_art
@@ -122,7 +123,7 @@ def main [
     let helix_info = if $helix_mode == "source" {
         $"($colors.cyan)🔄 Using Helix flake from repository for latest features($colors.reset)"
     } else if $helix_mode == "release" {
-        $"($colors.cyan)📦 Using latest Helix release from nixpkgs (fast setup)($colors.reset)"
+        $"($colors.cyan)📦 Using latest Helix release from nixpkgs \(fast setup\)($colors.reset)"
     } else {
         $"($colors.cyan)📝 Using stable nixpkgs Helix($colors.reset)"
     }
