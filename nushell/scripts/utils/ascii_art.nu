@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 # Yazelix ASCII Art for Welcome Screen
-# Diagonal magic rays with YAZELIX sandwiched in the middle of each row
+# Magic sphere with YAZELIX in the center
 
 export def get_welcome_ascii_art [] {
     let purple = (ansi purple)
@@ -8,51 +8,62 @@ export def get_welcome_ascii_art [] {
     let blue = (ansi blue)
     let reset = (ansi reset)
 
-    # Generate diagonal magic rays with YAZELIX in the middle
-    let stream_width = 150
-    let stream_height = 12
-    let magic_stream = (
-        0..($stream_height - 1) | each { |row|
-            # Create diagonal rays
-            let diagonal_offset = ($row * 5)
-            let ray_start = (5 + $diagonal_offset)
-            let ray_length = 80
+    # Generate magic sphere with YAZELIX in the center
+    let sphere_height = 15
+    let magic_sphere = (
+        0..($sphere_height - 1) | each { |row|
+            # Calculate sphere shape - wider in the middle, narrower at top/bottom
+            let max_width = 40
+            let center_row = ($sphere_height / 2)
+            let distance_from_center = (($row - $center_row) | math abs)
+            let width = if $row < $center_row {
+                $max_width - ($distance_from_center * 3)
+            } else {
+                $max_width - ($distance_from_center * 3)
+            }
 
-            # Calculate the middle position for YAZELIX
-            let total_width = ($ray_start + $ray_length)
-            let yazelix_start = ($total_width / 2 - 3)  # YAZELIX is 7 chars, so center at -3
-            let yazelix_pos = ($yazelix_start - $ray_start)
+            # Ensure minimum width
+            let width = if $width < 10 { 10 } else { $width }
 
-            # Create padding for the ray position
-            let padding = ('' | fill -c ' ' -w $ray_start)
+            # No padding - left align the sphere
+            let pad_str = ""
 
-            # Generate the ray with YAZELIX in the middle
+            # Generate the sphere line with YAZELIX in the center
             let before_yazelix = (
-                0..($yazelix_pos - 1) | each { |i|
+                0..(($width / 2 - 3) - 1) | each { |i|
                     let color_idx = ($i + $row) mod 3
                     let color = if $color_idx == 0 { $purple } else if $color_idx == 1 { $cyan } else { $blue }
-                    let symbol = if ($i mod 2) == 0 { "█" } else { "▓" }
+                    let symbol = "★ "
                     $color + $symbol
                 } | str join ""
             )
 
-            let yazelix_text = "   \u{1b}[35mY\u{1b}[36mA\u{1b}[34mZ\u{1b}[35mE\u{1b}[36mL\u{1b}[34mI\u{1b}[35mX   "
+            let yazelix_text = "\u{1b}[35mY\u{1b}[36mA\u{1b}[34mZ\u{1b}[35mE\u{1b}[36mL\u{1b}[34mI\u{1b}[35mX"
 
             let after_yazelix = (
-                ($yazelix_pos + 7)..($ray_length - 1) | each { |i|
+                ($width / 2 + 4)..($width - 1) | each { |i|
                     let color_idx = ($i + $row) mod 3
                     let color = if $color_idx == 0 { $purple } else if $color_idx == 1 { $cyan } else { $blue }
-                    let symbol = if ($i mod 2) == 0 { "█" } else { "▓" }
+                    let symbol = "★ "
                     $color + $symbol
                 } | str join ""
             )
 
-            let ray_content = $before_yazelix + $yazelix_text + $after_yazelix
+            let sphere_content = if ($row == 7) {
+                $before_yazelix + $yazelix_text + $after_yazelix
+            } else {
+                (0..($width - 1) | each { |i|
+                    let color_idx = ($i + $row) mod 3
+                    let color = if $color_idx == 0 { $purple } else if $color_idx == 1 { $cyan } else { $blue }
+                    let symbol = "★ "
+                    $color + $symbol
+                } | str join "")
+            }
 
-            $padding + $ray_content + $reset
+            $pad_str + $sphere_content + $reset
         }
     )
 
-    # Return just the magic stream (no separate YAZELIX line needed)
-    $magic_stream
+    # Return the magic sphere
+    $magic_sphere
 }
