@@ -23,18 +23,28 @@ export def get_welcome_ascii_art [] {
     let sphere_height = 15
     let magic_sphere = (
         0..($sphere_height - 1) | each { |row|
-            # Calculate sphere shape - wider in the middle, narrower at top/bottom
-            let max_width = 40
+            # Calculate sphere shape - start narrow and rapidly expand
+            let max_width = 60  # Reduced from 80 to a more reasonable size
             let center_row = ($sphere_height / 2)
             let distance_from_center = (($row - $center_row) | math abs)
+
+            # More aggressive growth pattern - start smaller, grow faster
             let width = if $row < $center_row {
-                $max_width - ($distance_from_center * 3)
+                # Top half: start very narrow, grow rapidly
+                let progress = ($row / $center_row)
+                let base_width = 2  # Start with just 2 stars
+                let growth_factor = ($progress * $progress * $progress * $max_width * 1.2)  # Reduced multiplier from 1.5 to 1.2
+                ($base_width + $growth_factor) | math round
             } else {
-                $max_width - ($distance_from_center * 3)
+                # Bottom half: mirror the top half
+                let progress = (($sphere_height - $row - 1) / $center_row)
+                let base_width = 2
+                let growth_factor = ($progress * $progress * $progress * $max_width * 1.2)
+                ($base_width + $growth_factor) | math round
             }
 
             # Ensure minimum width
-            let width = if $width < 10 { 10 } else { $width }
+            let width = if $width < 2 { 2 } else { $width }
 
             # No padding - left align the sphere
             let pad_str = ""
