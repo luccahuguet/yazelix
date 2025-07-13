@@ -49,6 +49,11 @@
               debug_mode = false;
               skip_welcome_screen = false;
               user_packages = [ ];
+              editor_config = {
+                set_editor = true;
+                override_existing = true;
+                editor_command = "hx";
+              };
             };
 
         # Variables to control optional, Yazi extension, Helix source, default shell, and debug mode
@@ -66,6 +71,14 @@
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
         yazelixSkipWelcomeScreen = config.skip_welcome_screen or false; # Read skip_welcome_screen, default to false
         yazelixPreferredTerminal = config.preferred_terminal or "wezterm"; # Read preferred_terminal, default to wezterm
+
+        # Editor configuration
+        editorConfig =
+          config.editor_config or {
+            set_editor = true;
+            override_existing = true;
+            editor_command = "hx";
+          };
 
         # Helix package selection
         helixFromSource = helix.packages.${system}.default;
@@ -150,6 +163,20 @@
 
             # Set HELIX_RUNTIME for both modes - both use hx from PATH
             export HELIX_RUNTIME="${helixPackage}/share/helix/runtime"
+
+            # Set EDITOR environment variable based on configuration
+            if [ "${if editorConfig.set_editor then "true" else "false"}" = "true" ]; then
+              if [ -z "$EDITOR" ] || [ "${
+                if editorConfig.override_existing then "true" else "false"
+              }" = "true" ]; then
+                export EDITOR="${editorConfig.editor_command}"
+                echo "📝 Set EDITOR to: ${editorConfig.editor_command}"
+              else
+                echo "📝 Keeping existing EDITOR='$EDITOR' (override_existing=false)"
+              fi
+            else
+              echo "📝 Skipping EDITOR setup (set_editor=false)"
+            fi
 
             # Disable Nix warning about Git directory
             export NIX_CONFIG="warn-dirty = false"

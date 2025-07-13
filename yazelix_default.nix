@@ -10,7 +10,7 @@
   include_yazi_media = true;
 
   # Helix build mode (choose ONE):
-  # "release" - Use latest Helix release from nixpkgs (fast, recommended for first-time users)
+  # "release" - Use latest Helix release from nixpkgs (recommended for first-time users)
   # "source"  - Use Helix flake from repository (bleeding edge, recommended for most users)
   helix_mode = "release";
 
@@ -26,6 +26,18 @@
   # Options: "wezterm", "ghostty"
   # WezTerm is the default because it currently has better image preview support in Yazi but both are great
   preferred_terminal = "wezterm";
+
+  # Editor configuration
+  editor_config = {
+    # Whether to set EDITOR environment variable (default: true)
+    set_editor = true;
+    # Whether to override existing EDITOR if already set (default: true)
+    # Set to false if you want to keep your existing EDITOR
+    override_existing = true;
+    # Custom editor command (default: "hx" for Helix)
+    # You can change this to "vim", "nano", etc. if you prefer
+    editor_command = "hx";
+  };
 
   # Enable verbose debug logging in the shellHook (default: false)
   debug_mode = false;

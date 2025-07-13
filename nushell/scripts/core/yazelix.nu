@@ -20,9 +20,10 @@ export def "yzx help" [] {
     print "=== Yazelix Command Suite ==="
     print ""
     print "CONFIGURATION MANAGEMENT:"
-    print "  yzx get_config [shell]         - Show status of all shell configurations"
-    print "  yzx check_config               - Check if configurations are up to date"
-    print "  yzx config_status [shell]      - Same as get_config (alias)"
+print "  yzx get_config [shell]         - Show status of all shell configurations"
+print "  yzx check_config               - Check if configurations are up to date"
+print "  yzx config_status [shell]      - Same as get_config (alias)"
+print "  yzx config_schema              - Show the configuration schema"
     print ""
     print "VERSION AND SYSTEM:"
     print "  yzx versions                   - Show version info for all tools"
@@ -132,5 +133,40 @@ export def "yzx launch" [] {
 export def "yzx start" [] {
     use ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu main
     main
+}
+
+# Show configuration schema
+export def "yzx config_schema" [] {
+    use ../utils/config_schema.nu get_config_schema
+
+    let schema = get_config_schema
+
+    print "=== Yazelix Configuration Schema ==="
+    print ""
+
+    for field in ($schema | columns) {
+        let field_schema = ($schema | get $field)
+        print $"📝 ($field):"
+        print $"   Type: ($field_schema.type)"
+        print $"   Default: ($field_schema.default)"
+        print $"   Description: ($field_schema.description)"
+
+        if ($field_schema | get valid_values? | default [] | length) > 0 {
+            let valid_values = ($field_schema | get valid_values | str join ", ")
+            print $"   Valid values: ($valid_values)"
+        }
+
+        if ($field_schema.type == "object") {
+            print "   Fields:"
+            for nested_field in ($field_schema | get fields | columns) {
+                let nested_schema = ($field_schema | get fields | get $nested_field)
+                print $"     - ($nested_field): ($nested_schema.type) (default: ($nested_schema.default))"
+            }
+        }
+
+        print ""
+    }
+
+    print "====================================="
 }
 
