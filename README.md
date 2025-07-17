@@ -1,4 +1,4 @@
-# Yazelix v7.6: Nix installs and configures everything for you!
+# Yazelix v7.7: Nix installs and configures everything for you!
 
 ## Preview
 ![yazelix_v7_demo](assets/demos/yazelix_v7_demo.gif)
@@ -32,7 +32,8 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Integration, integration, integration
 - Like [Omakub](https://github.com/basecamp/omakub) but for your terminal
 
-## Improvements of v7.6 over v7
+## Improvements of v7.7 over v7.6
+- **Modular Editor Support**: Complete rewrite of file opening logic to support any editor while preserving full Helix integration. Now you can use Vim, Nano, Emacs, or any editor via the `editor_command` setting in `yazelix.nix` - Helix users get all advanced features (open in same buffer, reveal in sidebar, etc), while other editors get basic Zellij integration (new panes, tab renaming)
 - **Big File/Folder Project-Wide Refactoring**: Complete reorganization of the codebase structure for better maintainability and organization
 - **YZX Command Polish**: Enhanced the `yzx` command with improved functionality and user experience
 - **Yazelix Config Validation**: Added validation system to warn users of invalid configuration options in `yazelix.nix`
@@ -61,7 +62,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 
 ## Compatibility
 - Terminal: Ghostty or WezTerm
-- Editor: Helix (`hx` binary provided by Nix)
+- Editor: Any editor, but hx is has first class support (`reaveal in sidebar, open buffer in running hx instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
 - Shell: Nushell, Bash, Fish, Zsh
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
@@ -137,7 +138,7 @@ Simply open your terminal (Ghostty or WezTerm)! Yazelix will automatically launc
 
 **Quick start tips:**
 - Use `alt hjkl` to switch between Zellij panes and tabs
-- Press `Enter` in Yazi to open files in Helix
+- Press `Enter` in Yazi to open files in your configured editor
 - Use `yazelix` or `yzx` commands from any terminal to launch Yazelix manually
 - Use `yzx help` to see all available management commands
 
@@ -179,7 +180,7 @@ Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run). 
 - I daily-drive Yazelix and will always try to improve and maintain it
 - Zero-conflict keybindings (no need to lock Zellij) and a powerful Yazi sidebar
 - Cool Yazi plugins included out of the box
-- Features like `reveal in Yazi` (from Helix) and opening files from Yazi in a Helix buffer
+- Features like `reveal in Yazi` (from Helix) and opening files from Yazi in your configured editor
 - Enhanced Git integration with `lazygit` and a customizable Starship prompt
 - Nix-based setup ensures consistent, reproducible environments
 
