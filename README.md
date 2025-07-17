@@ -38,7 +38,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - **Yazelix Config Validation**: Added validation system to warn users of invalid configuration options in `yazelix.nix`
 - **Configurable Editor Environment Variables**: New config options to set EDITOR environment variable when empty, override existing EDITOR, and add custom editor commands
 - **Configurable Welcome ASCII Art**: You can now choose between animated or static ASCII art in the welcome screen using the new `ascii_art_mode` option in your `yazelix.nix` config. Set `ascii_art_mode = "animated"` (default) or `ascii_art_mode = "static"` for a non-animated welcome.
-- **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell! Note: Requires system-wide Nushell installation for the launcher scripts.
+- **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell!
 
 ## Improvements of v7 over v6
 - **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
