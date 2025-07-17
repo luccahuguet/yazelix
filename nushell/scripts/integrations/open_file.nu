@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# Simple wrapper for open_file function
+# Dynamic file opener that respects the configured editor
 # This script is called by Yazi to open files
 
 # Ensure we have the Yazelix environment available
@@ -10,9 +10,9 @@ if ($env.YAZELIX_HELIX_MODE? | is-empty) {
     set_helix_env
 }
 
-use ./yazi.nu open_file
+use ./yazi.nu open_file_with_editor
 
 def main [file_path: path] {
-    print $"DEBUG: Opening file ($file_path) with YAZELIX_HELIX_MODE=($env.YAZELIX_HELIX_MODE? | default 'not set')"
-    open_file $file_path
+    print $"DEBUG: Opening file ($file_path) with EDITOR=($env.EDITOR? | default 'not set')"
+    open_file_with_editor $file_path
 }

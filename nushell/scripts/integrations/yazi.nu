@@ -75,26 +75,9 @@ def get_tab_name [working_dir: path] {
     }
 }
 
-# Open a file in Helix, integrating with Yazi and Zellij
-export def open_file [file_path: path] {
-    log_to_file "open_helix.log" $"open_file called with file_path: '($file_path)'"
-    print $"DEBUG: file_path received: ($file_path), type: ($file_path | path type)"
-    if not ($file_path | path exists) {
-        let error_msg = $"File path ($file_path) does not exist"
-        log_to_file "open_helix.log" $"ERROR: ($error_msg)"
-        print $"Error: ($error_msg)"
-        return
-    }
-
-    # Capture YAZI_ID from Yazi's pane
-    let yazi_id = $env.YAZI_ID
-    if ($yazi_id | is-empty) {
-        let warning_msg = "YAZI_ID not set in this environment. Yazi navigation may fail."
-        log_to_file "open_helix.log" $"WARNING: ($warning_msg)"
-        print $"Warning: ($warning_msg)"
-    } else {
-        log_to_file "open_helix.log" $"YAZI_ID found: '($yazi_id)'"
-    }
+# Open file with Helix (with full Yazelix integration)
+def open_with_helix [file_path: path, yazi_id: string] {
+    log_to_file "open_helix.log" $"open_with_helix called with file_path: '($file_path)'"
 
     # Move focus and check Helix status
     log_to_file "open_helix.log" "Moving focus to find helix"
@@ -115,5 +98,77 @@ export def open_file [file_path: path] {
         open_new_helix_pane $file_path $yazi_id
     }
 
-    log_to_file "open_helix.log" "open_file function completed"
+    log_to_file "open_helix.log" "open_with_helix function completed"
 }
+
+# Open file with generic editor (basic Zellij integration)
+def open_with_generic_editor [file_path: path, editor: string, yazi_id: string] {
+    log_to_file "open_generic.log" $"open_with_generic_editor called with file_path: '($file_path)', editor: '($editor)'"
+
+    # Get the directory of the file for tab naming
+    let file_dir = ($file_path | path dirname)
+    let tab_name = (get_tab_name $file_dir)
+
+    try {
+        # Create a new pane with the editor
+        zellij action new-pane --cwd $file_dir -- $editor $file_path
+
+        # Rename the tab
+        zellij action rename-tab $tab_name
+
+        log_to_file "open_generic.log" $"Successfully opened ($file_path) with ($editor) in new pane"
+        print $"Opened ($file_path) with ($editor) in new pane"
+    } catch {|err|
+        let error_msg = $"Failed to open file with ($editor): ($err.msg)"
+        log_to_file "open_generic.log" $"ERROR: ($error_msg)"
+        print $"Error: ($error_msg)"
+    }
+
+    log_to_file "open_generic.log" "open_with_generic_editor function completed"
+}
+
+# Main file opening function - dispatches to appropriate editor handler
+export def open_file_with_editor [file_path: path] {
+    log_to_file "open_editor.log" $"open_file_with_editor called with file_path: '($file_path)'"
+    print $"DEBUG: file_path received: ($file_path), type: ($file_path | path type)"
+
+    if not ($file_path | path exists) {
+        let error_msg = $"File path ($file_path) does not exist"
+        log_to_file "open_editor.log" $"ERROR: ($error_msg)"
+        print $"Error: ($error_msg)"
+        return
+    }
+
+    # Get the configured editor
+    let editor = $env.EDITOR
+    if ($editor | is-empty) {
+        let error_msg = "EDITOR environment variable is not set"
+        log_to_file "open_editor.log" $"ERROR: ($error_msg)"
+        print $"Error: ($error_msg)"
+        return
+    }
+
+    log_to_file "open_editor.log" $"Using editor: ($editor)"
+
+    # Capture YAZI_ID from Yazi's pane
+    let yazi_id = $env.YAZI_ID
+    if ($yazi_id | is-empty) {
+        let warning_msg = "YAZI_ID not set in this environment. Yazi navigation may fail."
+        log_to_file "open_editor.log" $"WARNING: ($warning_msg)"
+        print $"Warning: ($warning_msg)"
+    } else {
+        log_to_file "open_editor.log" $"YAZI_ID found: '($yazi_id)'"
+    }
+
+    # Dispatch to appropriate editor handler
+    if ($editor == "hx") {
+        log_to_file "open_editor.log" "Detected Helix editor, using Helix-specific logic"
+        open_with_helix $file_path $yazi_id
+    } else {
+        log_to_file "open_editor.log" $"Using generic editor approach for: ($editor)"
+        open_with_generic_editor $file_path $editor $yazi_id
+    }
+
+    log_to_file "open_editor.log" "open_file_with_editor function completed"
+}
+

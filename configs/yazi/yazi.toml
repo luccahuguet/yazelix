@@ -5,7 +5,7 @@ ratio = [1, 4, 3]
 
 [opener]
 edit = [
-  { run = 'nu ~/.config/yazelix/nushell/scripts/integrations/open_file.nu "$1"', desc = "Open File in a new pane" },
+  { run = 'nu ~/.config/yazelix/nushell/scripts/integrations/open_file.nu "$1"', desc = "Open File with configured editor (with Zellij integration)" },
 ]
 
 [[plugin.prepend_fetchers]]
