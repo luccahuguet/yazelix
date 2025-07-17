@@ -35,7 +35,7 @@
     # Set to false if you want to keep your existing EDITOR
     override_existing = true;
     # Custom editor command (default: "hx" for Helix)
-    # You can change this to "vim", "nano", etc. if you prefer
+    # You can change this to "vim", "nvim", "kak", etc. if you prefer
     editor_command = "hx";
   };
 
