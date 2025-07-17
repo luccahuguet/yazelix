@@ -6,19 +6,19 @@
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 
-- Zellij orchestrates everything, with Yazi as a sidebar and Helix as the editor
+- Zellij orchestrates everything, with Yazi as a sidebar and your chosen editor (Helix by default)
 - To hide the sidebar, make your pane fullscreen! (`Ctrl p + f` or `Alt f`)
 - Every keybinding from Zellij that conflicts with Helix is remapped [see here](#keybindings)
 - When you hit Enter on a file/folder in the "sidebar":
-  - If Helix is already open in the topmost pane of the stack (default position in latest Zellij version), it opens that file/folder in a new buffer in Helix
-  - If Helix isn't open, it launches Helix in a new pane for you
-  - It always finds a running Helix instance if it exists and is in the top pane of the stacked group (Zellij naturally pushes the Helix pane there, though it may move when deleting or creating panes)
+  - **With Helix**: If Helix is already open in the topmost pane of the stack, it opens that file/folder in a new buffer in Helix. If Helix isn't open, it launches Helix in a new pane for you. It always finds a running Helix instance if it exists and is in the top pane of the stacked group.
+  - **With other editors**: Opens the file in a new pane with your configured editor
   - It automatically renames the Zellij tab to the file's underlying Git repo or directory name
 - Features include:
   - "Reveal file in sidebar" (press `Alt y` in Helix to reveal the file in Yazi, see [Keybindings](#keybindings))
   - A Yazi plugin to enhance the status bar in the sidebar pane, making it uncluttered, colorful, and showing file permissions
   - A [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) showing file changes in the Yazi sidebar
   - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/josephschmitt/auto-layout.yazi), perfect for sidebar use
+  - **Modular editor support**: Use Helix for full integration features, or any other editor via the `editor_command` setting
 - This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
 - See [boot sequence](./docs/boot_sequence.md) for details on how Yazelix starts up
 
