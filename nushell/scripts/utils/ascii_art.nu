@@ -88,7 +88,7 @@ export def get_welcome_ascii_art [] {
     )
 
     # Return the magic sphere
-    $magic_sphere
+    $magic_sphere | where { |line| $line != "" }
 }
 
 export def get_animated_ascii_art [frame_count: int = 10] {
@@ -168,7 +168,7 @@ export def get_animated_ascii_art [frame_count: int = 10] {
     }
 }
 
-export def play_animation [duration: duration = 1sec] {
+export def play_animation [duration: duration = 0.5sec] {
     let frames = get_animated_ascii_art 12
     let frame_delay = ($duration / ($frames | length))
     let art_height = 15

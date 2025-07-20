@@ -85,6 +85,11 @@ export def get_config_schema [] {
             valid_values: ["static", "animated"]
             description: "ASCII art display mode: 'static' or 'animated'"
         }
+        show_macchina_on_welcome: {
+            type: "boolean"
+            default: false
+            description: "Show macchina system info on the welcome screen if enabled (uses macchina, always available in Yazelix)"
+        }
         user_packages: {
             type: "array"
             default: []

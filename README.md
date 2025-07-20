@@ -24,7 +24,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 
 ## Vision
 - Using the terminal should be easy, beautiful, pratical and reproducible.
-- Yazelix is always on the edge of project versions (do you like living on the edge, you know, dangerously?)
+- Yazelix is always on the edge of project versions
 - Yazelix is always evolving, it's a living being
 - Yazelix is easy to use and crazy at the same time (what really is this project?)
 - Yazelix lets you say `I use Yazelix btw` (careful saying that, you might accidentally scare an innocent Arch user)

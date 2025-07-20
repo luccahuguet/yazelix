@@ -3,7 +3,6 @@
 # Generates initializer scripts for all supported shells
 
 def main [yazelix_dir: string, include_optional: bool, shells_to_configure_str: string] {
-    print "🔧 Generating shell initializers..."
 
     # Parse shells to configure from comma-separated string
     let shells_to_configure = if ($shells_to_configure_str | is-empty) {

@@ -12,6 +12,7 @@ def main [
     skip_welcome_screen: bool
     helix_mode: string
     ascii_art_mode: string
+    show_macchina_on_welcome: bool = false
 ] {
     # Validate user config against schema
     validate_user_config $yazelix_dir
@@ -52,26 +53,11 @@ def main [
 
     let log_file = $"($log_dir)/shellhook_(date now | format date '%Y%m%d_%H%M%S').log"
 
-    print $"🚀 Yazelix Environment Setup Started"
     print $"📝 Logging to: ($log_file)"
 
+
     # Generate shell initializers for configured shells only
-    print "🔧 Generating shell initializers..."
     nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir $include_optional ($shells_to_configure | str join ",")
-
-
-
-    # Setup Helix based on mode
-    if $helix_mode == "source" {
-        print "🔧 Using Helix flake from repository (always updated)..."
-        # No setup needed - flake.nix handles this automatically
-    } else if $helix_mode == "release" {
-        print "✅ Using latest Helix release from nixpkgs (no custom build needed)"
-
-
-    } else {
-        print "✅ Using default nixpkgs Helix (no custom build needed)"
-    }
 
     # Setup shell configurations (always setup bash/nu, conditionally setup fish/zsh)
     setup_bash_config $yazelix_dir
@@ -94,9 +80,6 @@ def main [
 
     print "✅ Yazelix environment setup complete!"
 
-    # Insert newline to push animation below setup messages
-    print ""
-
     # Import ASCII art module
     use ../utils/ascii_art.nu *
 
@@ -113,6 +96,10 @@ def main [
                 print $line
             }
             print ""
+        }
+        # Show macchina if enabled and available
+        if $show_macchina_on_welcome {
+            macchina -o machine -o distribution -o desktop-environment -o processor -o gpu -o terminal
         }
     }
 
@@ -133,16 +120,11 @@ def main [
 
     let welcome_message = [
         "",
-        # ...$ascii_art,  # REMOVE this line, animation will be shown instead
-        "",
         $"($colors.purple)🎉 Welcome to Yazelix v7!($colors.reset)",
         $"($colors.blue)Your integrated terminal environment with Yazi + Zellij + Helix($colors.reset)",
         $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",
         $helix_info,
-        $"($colors.blue)🔧 All dependencies installed, shell configs updated, tools ready($colors.reset)",
-        "",
-        $"($colors.cyan)Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files($colors.reset)",
-        ""
+        $"($colors.cyan)💡 Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files($colors.reset)"
     ] | where $it != ""
 
     # Show welcome screen or log it
@@ -156,7 +138,7 @@ def main [
         for $line in $welcome_message {
             print $line
         }
-        input $"($colors.purple)   Press Enter to launch Zellij and start your session... ($colors.reset)"
+        input $"($colors.purple)Press Enter to launch Zellij and start your session... ($colors.reset)"
     }
 }
 

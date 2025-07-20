@@ -96,6 +96,7 @@
           zoxide # Smart directory jumper for efficient navigation
           starship # Customizable shell prompt with Git status
           bashInteractive # Interactive Bash shell
+          macchina # Modern, fast system info fetch tool (Rust, maintained)
         ];
 
         # Extra shell dependencies (fish/zsh only when needed)
@@ -201,7 +202,8 @@
               }" \
               "${if yazelixSkipWelcomeScreen then "true" else "false"}" \
               "${helixMode}" \
-              "${yazelixAsciiArtMode}"
+              "${yazelixAsciiArtMode}" \
+              "${if config.show_macchina_on_welcome or false then "true" else "false"}"
           '';
         };
       }

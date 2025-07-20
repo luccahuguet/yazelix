@@ -50,6 +50,9 @@
   # Options: "static" - Show static ASCII art, "animated" - Show animated ASCII art
   ascii_art_mode = "animated";
 
+  # Show macchina system info on the welcome screen if enabled (uses macchina, always available in Yazelix)
+  show_macchina_on_welcome = true;
+
   # User packages - add your custom Nix packages here
   user_packages = with pkgs; [
     # discord
