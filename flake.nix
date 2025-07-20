@@ -43,7 +43,7 @@
               recommended_deps = true;
               yazi_extensions = true;
               yazi_media = true;
-              helix_mode = "default";
+              helix_mode = "release";
               default_shell = "nu";
               extra_shells = [ ];
               debug_mode = false;
@@ -60,9 +60,9 @@
         recommendedDepsEnabled = config.recommended_deps or true;
         yaziExtensionsEnabled = config.yazi_extensions or true;
         yaziMediaEnabled = config.yazi_media or true;
-        # Helix build mode: "default" or "source"
-        helixMode = config.helix_mode or "default";
-        useNixpkgsHelix = helixMode == "default";
+        # Helix build mode: "release" or "source"
+        helixMode = config.helix_mode or "release";
+        useNixpkgsHelix = helixMode == "release";
         useSourceHelix = helixMode == "source";
         # Build from source for source mode
         buildHelixFromSource = useSourceHelix;
