@@ -27,17 +27,14 @@
   # WezTerm is the default because it currently has better image preview support in Yazi but both are great
   preferred_terminal = "wezterm";
 
-  # Editor configuration
-  editor_config = {
-    # Whether to set EDITOR environment variable (default: true)
-    set_editor = true;
-    # Whether to override existing EDITOR if already set (default: true)
-    # Set to false if you want to keep your existing EDITOR
-    override_existing = true;
-    # Custom editor command (default: "hx" for Helix)
-    # You can change this to "vim", "nvim", "kak", etc. if you prefer
-    editor_command = "hx";
-  };
+  # Whether to set EDITOR environment variable (default: true)
+  set_editor = true;
+  # Whether to override existing EDITOR if already set (default: true)
+  # Set to false if you want to keep your existing EDITOR
+  override_existing = true;
+  # Custom editor command (default: "hx" for Helix)
+  # You can change this to "vim", "nvim", "kak", etc. if you prefer
+  editor_command = "hx";
 
   # Enable verbose debug logging in the shellHook (default: false)
   debug_mode = false;

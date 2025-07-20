@@ -15,7 +15,8 @@ def main [
     show_macchina_on_welcome: bool = false
 ] {
     # Validate user config against schema
-    validate_user_config $yazelix_dir
+    use ../utils/config_schema.nu *
+    validate_config_against_default $yazelix_dir
     # Parse extra shells from comma-separated string
     let extra_shells = if ($extra_shells_str | is-empty) or ($extra_shells_str == "NONE") {
         []
@@ -159,48 +160,6 @@ def main [
             print $line
         }
         input $"($colors.purple)Press Enter to launch Zellij and start your session... ($colors.reset)"
-    }
-}
-
-# Validate user config against schema and print warnings
-def validate_user_config [yazelix_dir: string] {
-    let validate_script = $"($yazelix_dir)/validate_config.nix"
-    if ($validate_script | path exists) {
-        try {
-            use ../utils/config_schema.nu *
-            let config_json = (nix eval --raw --file $validate_script | str trim)
-            let user_config = ($config_json | from json)
-            let schema = get_config_schema
-            mut warnings = []
-
-            # Check for unknown fields
-            for field in ($user_config | columns) {
-                let schema_fields = ($schema | columns)
-                if not ($schema_fields | where $it == $field | is-not-empty) {
-                    $warnings = ($warnings | append $"⚠️  Unknown config field: ($field)")
-                }
-            }
-
-            # Check for missing fields (optional for now)
-            for field in ($schema | columns) {
-                if not ($field in ($user_config | columns)) {
-                    let field_schema = ($schema | get $field)
-                    $warnings = ($warnings | append $"⚠️  Missing config field: ($field) (default: ($field_schema.default))")
-                }
-            }
-
-            # Print warnings
-            if ($warnings | length) > 0 {
-                print "🔧 Yazelix Config Validation:"
-                for warning in $warnings {
-                    print $"   ($warning)"
-                }
-                print ""
-            }
-        } catch {|err|
-            # Config validation failed, continue without it
-            print $"⚠️  Config validation failed: ($err.msg)"
-        }
     }
 }
 
