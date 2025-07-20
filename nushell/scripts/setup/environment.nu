@@ -87,8 +87,8 @@ def main [
     if not $skip_welcome_screen {
         if $ascii_art_mode == "animated" {
             # Play animated ASCII art
-            play_animation 1sec
             print ""
+           play_animation 0.5sec
         } else if $ascii_art_mode == "static" {
             # Show static ASCII art
             let ascii_art = get_welcome_ascii_art
