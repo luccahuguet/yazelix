@@ -15,8 +15,7 @@ def main [
     show_macchina_on_welcome: bool = false
 ] {
     # Validate user config against schema
-    use ../utils/config_schema.nu *
-    validate_config_against_default $yazelix_dir
+    use ../utils/config_schema.nu validate_config_against_default
     # Parse extra shells from comma-separated string
     let extra_shells = if ($extra_shells_str | is-empty) or ($extra_shells_str == "NONE") {
         []

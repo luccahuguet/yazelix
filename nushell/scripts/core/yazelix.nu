@@ -21,7 +21,6 @@ export def "yzx help" [] {
     print ""
     print "CONFIGURATION MANAGEMENT:"
     print "  yzx config_status [shell]      - Show status of all shell configurations"
-    print "  yzx config_schema              - Show the configuration schema"
     print ""
     print "VERSION AND SYSTEM:"
     print "  yzx versions                   - Show version info for all tools"
