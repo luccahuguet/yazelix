@@ -1,13 +1,13 @@
 { pkgs }:
 {
-  # Include optional tools like lazygit, mise, etc. (default: true)
-  include_optional_deps = true;
+  # Recommended tools like lazygit, mise, etc. (default: true)
+  recommended_deps = true;
 
-  # Include Yazi extensions for previews, archives, etc. (default: true)
-  include_yazi_extensions = true;
+  # Yazi extensions for previews, archives, etc. (default: true)
+  yazi_extensions = true;
 
-  # Include heavy media packages for Yazi (WARNING: ~800MB-1.2GB) (default: true)
-  include_yazi_media = true;
+  # Heavy media packages for Yazi (WARNING: ~800MB-1.2GB) (default: true)
+  yazi_media = true;
 
   # Helix build mode (choose ONE):
   # "release" - Use latest Helix release from nixpkgs (recommended for first-time users)

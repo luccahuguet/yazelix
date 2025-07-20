@@ -2,7 +2,7 @@
 # Universal shell initializer generator for Yazelix
 # Generates initializer scripts for all supported shells
 
-def main [yazelix_dir: string, include_optional: bool, shells_to_configure_str: string] {
+def main [yazelix_dir: string, recommended: bool, shells_to_configure_str: string] {
 
     # Parse shells to configure from comma-separated string
     let shells_to_configure = if ($shells_to_configure_str | is-empty) {
@@ -35,9 +35,9 @@ def main [yazelix_dir: string, include_optional: bool, shells_to_configure_str: 
         mkdir $init_dir
 
         $tools | each { |tool|
-            # Skip optional tools if not requested
-            if (not $tool.required) and (not $include_optional) {
-                { status: "skipped", tool: $tool.name, shell: $shell.name, reason: "optional" }
+            # Skip recommended tools if not requested
+            if (not $tool.required) and (not $recommended) {
+                { status: "skipped", tool: $tool.name, shell: $shell.name, reason: "recommended" }
             } else if (which $tool.name | is-empty) {
                 { status: "missing", tool: $tool.name, shell: $shell.name, reason: "tool not found" }
             } else {

@@ -40,9 +40,9 @@
             import defaultConfigFile { inherit pkgs; }
           else
             {
-              include_optional_deps = true;
-              include_yazi_extensions = true;
-              include_yazi_media = true;
+              recommended_deps = true;
+              yazi_extensions = true;
+              yazi_media = true;
               helix_mode = "default";
               default_shell = "nu";
               extra_shells = [ ];
@@ -56,10 +56,10 @@
               };
             };
 
-        # Variables to control optional, Yazi extension, Helix source, default shell, and debug mode
-        includeOptionalDeps = config.include_optional_deps or true;
-        includeYaziExtensions = config.include_yazi_extensions or true;
-        includeYaziMedia = config.include_yazi_media or true;
+        # Variables to control recommended, Yazi extension, Helix source, default shell, and debug mode
+        recommendedDepsEnabled = config.recommended_deps or true;
+        yaziExtensionsEnabled = config.yazi_extensions or true;
+        yaziMediaEnabled = config.yazi_media or true;
         # Helix build mode: "default" or "source"
         helixMode = config.helix_mode or "default";
         useNixpkgsHelix = helixMode == "default";
@@ -109,8 +109,8 @@
             if (yazelixDefaultShell == "zsh" || builtins.elem "zsh" yazelixExtraShells) then [ zsh ] else [ ]
           );
 
-        # Optional dependencies (enhance functionality but not Yazi-specific)
-        optionalDeps = with pkgs; [
+        # Recommended dependencies (enhance functionality but not Yazi-specific)
+        recommendedDeps = with pkgs; [
           cargo-update # Updates Rust crates for project maintenance
           cargo-binstall # Faster installation of Rust tools
           lazygit # Terminal-based Git TUI for managing repositories
@@ -143,9 +143,9 @@
         allDeps =
           essentialDeps
           ++ extraShellDeps
-          ++ (if includeOptionalDeps then optionalDeps else [ ])
-          ++ (if includeYaziExtensions then yaziExtensionsDeps else [ ])
-          ++ (if includeYaziMedia then yaziMediaDeps else [ ])
+          ++ (if recommendedDepsEnabled then recommendedDeps else [ ])
+          ++ (if yaziExtensionsEnabled then yaziExtensionsDeps else [ ])
+          ++ (if yaziMediaEnabled then yaziMediaDeps else [ ])
           ++ (config.user_packages or [ ]);
 
       in
@@ -193,7 +193,7 @@
             # Run main environment setup script
             nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu" \
               "$YAZELIX_DIR" \
-              "${if includeOptionalDeps then "true" else "false"}" \
+              "${if recommendedDepsEnabled then "true" else "false"}" \
               "${if buildHelixFromSource then "true" else "false"}" \
               "${yazelixDefaultShell}" \
               "${if yazelixDebugMode then "true" else "false"}" \

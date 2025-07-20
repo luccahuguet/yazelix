@@ -5,20 +5,20 @@
 # Define the expected config schema
 export def get_config_schema [] {
     {
-        include_optional_deps: {
+        recommended_deps: {
             type: "boolean"
             default: true
-            description: "Include optional tools like lazygit, mise, etc."
+            description: "Recommended tools like lazygit, mise, etc."
         }
-        include_yazi_extensions: {
+        yazi_extensions: {
             type: "boolean"
             default: true
-            description: "Include Yazi extensions for previews, archives, etc."
+            description: "Yazi extensions for previews, archives, etc."
         }
-        include_yazi_media: {
+        yazi_media: {
             type: "boolean"
             default: true
-            description: "Include heavy media packages for Yazi (WARNING: ~800MB-1.2GB)"
+            description: "Heavy media packages for Yazi (WARNING: ~800MB-1.2GB)"
         }
         helix_mode: {
             type: "string"
