@@ -144,6 +144,17 @@ Simply open your terminal (Ghostty or WezTerm)! Yazelix will automatically launc
 - Use `yazelix` or `yzx` commands from any terminal to launch Yazelix manually
 - Use `yzx help` to see all available management commands
 
+#### 5. (Optional but Recommended) Configure Helix Keybinding for Yazelix Integration
+To enable the "reveal file in Yazi sidebar" feature from within Helix (press `Alt-y` in normal mode), add the following to your Helix config (usually `~/.config/helix/config.toml`):
+
+```toml
+[keys.normal]
+A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
+```
+- This lets you quickly reveal the current file in the Yazi sidebar from Helix.
+- See [docs/keybindings.md](./docs/keybindings.md) for more details and tips.
+- **Limitation:** Only works for Helix instances opened from Yazi.
+
 ### Alternative: CLI-Only Mode
 To use Yazelix tools without starting the full interface (no sidebar, no zellij):
 ```bash

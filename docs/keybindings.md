@@ -31,7 +31,6 @@ If you find a conflict, please open an issue
   A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
   ```
   - **Limitation**: Only works for Helix instances opened from Yazi
-  - **Requirement**: Build Helix from source until the next release includes command expansions
 
 ## Keybinding Tips
 - **Zellij**: `Ctrl p` then `r` for a split to the right; `Ctrl p` then `d` for a downward split
