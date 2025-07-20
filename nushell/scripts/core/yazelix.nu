@@ -96,38 +96,20 @@ export def "yzx start" [] {
     main
 }
 
-# Show configuration schema
-export def "yzx config_schema" [] {
-    use ../utils/config_schema.nu get_config_schema
-
-    let schema = get_config_schema
-
-    print "=== Yazelix Configuration Schema ==="
-    print ""
-
-    for field in ($schema | columns) {
-        let field_schema = ($schema | get $field)
-        print $"📝 ($field):"
-        print $"   Type: ($field_schema.type)"
-        print $"   Default: ($field_schema.default)"
-        print $"   Description: ($field_schema.description)"
-
-        if ($field_schema | get valid_values? | default [] | length) > 0 {
-            let valid_values = ($field_schema | get valid_values | str join ", ")
-            print $"   Valid values: ($valid_values)"
-        }
-
-        if ($field_schema.type == "object") {
-            print "   Fields:"
-            for nested_field in ($field_schema | get fields | columns) {
-                let nested_schema = ($field_schema | get fields | get $nested_field)
-                print $"     - ($nested_field): ($nested_schema.type) (default: ($nested_schema.default))"
-            }
-        }
-
-        print ""
+# Restart yazelix
+export def "yzx restart" [] {
+    print "Attempting to kill the current Zellij session..."
+    let current_session = (zellij list-sessions | lines | where $it =~ 'current' | first | split row " " | first)
+    let clean_session = ($current_session | str replace -ra '\u001b\[[0-9;]*[A-Za-z]' '')
+    print "Restarting Yazelix..."
+    yzx launch
+    print "Waiting for Zellij to shut down..."
+    sleep 1sec
+    if ($clean_session | is-empty) {
+        print "No current Zellij session detected. Skipping kill step."
+    } else {
+        print $"Killing Zellij session: ($clean_session)"
+        try { zellij kill-session $clean_session } catch { print $"Failed to kill session: ($clean_session)" }
     }
-
-    print "====================================="
 }
 
