@@ -42,6 +42,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell!
 - **Added macchina to welcome screen**: Added a system info summary using macchina (neofetch alternative) to the welcome screen. It can be disabled in the config.
 - **Dynamic Config Validation**: Yazelix now uses a dynamic config validator that checks your config against yazelix_default.nix every time Yazelix starts. It warns about unknown fields, missing fields, and invalid values for key options (like default_shell, helix_mode, preferred_terminal, ascii_art_mode). No more silent config errors!
+- **Zellij Tab Movement Shortcuts**: Added new keybindings in Zellij: <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd> to move the current tab left, and <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> to move the current tab right. This makes tab management much faster and more intuitive.
 
 ## Improvements of v7 over v6
 - **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts

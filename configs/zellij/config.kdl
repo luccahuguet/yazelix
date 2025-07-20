@@ -181,6 +181,9 @@ keybinds {
         bind "Alt -" { Resize "Decrease"; }
         bind "Alt [" { PreviousSwapLayout; }
         bind "Alt ]" { NextSwapLayout; }
+        // --- Added for Alt+Shift+h/l to move tabs ---
+        bind "Alt Shift H" { MoveTab "Left"; }
+        bind "Alt Shift L" { MoveTab "Right"; }
     }
     shared_except "normal" "locked" {
         bind "Enter" "Esc" { SwitchToMode "Normal"; }
