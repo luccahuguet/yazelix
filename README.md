@@ -238,27 +238,4 @@ See [contributing](./docs/contributing.md)
 
 ## Acknowledgments
 
-Yazelix is built on the shoulders of giants. We're grateful to the essential projects that make this integration possible:
-
-**Core Tools:**
-- **Yazi**
-- **Zellij**
-- **Helix**
-- **Nushell**
-- **Nix**
-
-**Utilities:**
-- **Starship**
-- **lazygit**
-- **fzf**
-- **zoxide**
-
-**Terminal Emulators:**
-- **WezTerm**
-- **Ghostty**
-
-**One of a Kind Contributions:**
-- **nuscripts** - Source of the `clip` command
-- **auto-layout.yazi** - 95% of the work by Joseph Schmitt, including the plugin creation
-
-Thank you to all maintainers and the open source community. 
+See [Project Credits](./docs/project_credits.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages. 
