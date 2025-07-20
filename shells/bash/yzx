@@ -5,7 +5,7 @@
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-YAZELIX_DIR="$(dirname "$SCRIPT_DIR")"
+YAZELIX_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Default values
 YAZELIX_VERSION="v7.6"
@@ -224,6 +224,25 @@ start_yazelix() {
     nu "$YAZELIX_DIR/nushell/scripts/core/start_yazelix.nu"
 }
 
+# Function to restart yazelix
+restart_yazelix() {
+    # Get the current Zellij session name (strip ANSI codes)
+    local current_session_raw
+    current_session_raw=$(zellij list-sessions | grep current | head -n1 | awk '{print $1}')
+    # Remove ANSI escape codes (robust)
+    local clean_session
+    clean_session=$(echo "$current_session_raw" | sed -E 's/\x1B\[[0-9;]*[A-Za-z]//g')
+    echo "Restarting Yazelix..."
+    launch_yazelix &
+    sleep 1
+    if [[ -z "$clean_session" ]]; then
+        echo "No current Zellij session detected. Skipping kill step."
+    else
+        echo "Killing Zellij session: $clean_session"
+        zellij kill-session "$clean_session" || echo "Failed to kill session: $clean_session"
+    fi
+}
+
 # Main command dispatcher
 main() {
     local subcommand="$1"
@@ -259,6 +278,9 @@ main() {
             ;;
         "start")
             start_yazelix
+            ;;
+        "restart")
+            restart_yazelix
             ;;
         *)
             echo "❌ Unknown subcommand: $subcommand"
