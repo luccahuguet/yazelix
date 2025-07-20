@@ -1,4 +1,4 @@
-# Yazelix v7.8: Nix installs and configures everything for you!
+# Yazelix v7.5: Nix installs and configures everything for you!
 
 ## Preview
 ![yazelix_v7_demo](assets/demos/yazelix_v7_demo.gif)

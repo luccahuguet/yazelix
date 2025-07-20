@@ -139,7 +139,7 @@ def main [
 
     let welcome_message = [
         "",
-        $"($colors.purple)🎉 Welcome to Yazelix v7!($colors.reset)",
+        $"($colors.purple)🎉 Welcome to Yazelix v7.5!($colors.reset)",
         $"($colors.blue)Your integrated terminal environment with Yazi + Zellij + Helix($colors.reset)",
         $flake_info,
         $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",
