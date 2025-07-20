@@ -106,6 +106,25 @@ def main [
     # Get color scheme for consistent styling
     let colors = get_yazelix_colors
 
+    # Get flake.nix last updated date dynamically (in days ago, using into duration)
+    let flake_path = $"($yazelix_dir)/flake.nix"
+    let flake_days_ago = if ($flake_path | path exists) {
+        let last_mod = (ls $flake_path | get modified | first | into datetime)
+        let now = (date now)
+        let diff = ($now - $last_mod | into duration)
+        let days = ($diff / 1day | math floor)
+        $days
+    } else {
+        null
+    }
+    let flake_info = if ($flake_days_ago | describe) == 'int' {
+        $"($colors.cyan)🕒 Flake last updated: ($flake_days_ago) day\(s\) ago($colors.reset)"
+    } else if ($flake_days_ago | describe) == 'string' and ($flake_days_ago | is-empty) == false {
+        $"($colors.cyan)🕒 Flake last updated: ($flake_days_ago) day\(s\) ago($colors.reset)"
+    } else {
+        $"($colors.cyan)🕒 Flake last updated: unknown($colors.reset)"
+    }
+
     # Prepare welcome message with consistent colors
     let helix_info = if $helix_mode == "source" {
         $"($colors.cyan)🔄 Using Helix flake from repository for latest features($colors.reset)"
@@ -122,6 +141,7 @@ def main [
         "",
         $"($colors.purple)🎉 Welcome to Yazelix v7!($colors.reset)",
         $"($colors.blue)Your integrated terminal environment with Yazi + Zellij + Helix($colors.reset)",
+        $flake_info,
         $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",
         $helix_info,
         $"($colors.cyan)💡 Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files($colors.reset)"
