@@ -115,6 +115,7 @@
           cargo-binstall # Faster installation of Rust tools
           lazygit # Terminal-based Git TUI for managing repositories
           mise # Tool version manager for consistent environments
+          atuin # Shell history manager with sync and search capabilities
           ouch # Compression tool for handling archives
           libnotify # Provides notify-send for desktop notifications (used by Nushell clip command)
           carapace # Command-line completion tool for multiple shells
