@@ -181,6 +181,10 @@ Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run). 
 - **Ghostty**: Modern, fast terminal written in Zig
 - Configure your preference in `yazelix.nix` with `preferred_terminal = "wezterm"` or `preferred_terminal = "ghostty"`
 
+[See the full Customization Guide here.](./docs/customization.md)
+
+---
+
 ## Notes
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
 - Tweak configs to make them yours; this is just a starting point! 
