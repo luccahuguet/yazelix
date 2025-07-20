@@ -1,4 +1,4 @@
-# Yazelix v7.7: Nix installs and configures everything for you!
+# Yazelix v7.8: Nix installs and configures everything for you!
 
 ## Preview
 ![yazelix_v7_demo](assets/demos/yazelix_v7_demo.gif)
@@ -32,7 +32,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Integration, integration, integration
 - Like [Omakub](https://github.com/basecamp/omakub) but for your terminal
 
-## Improvements of v7.7 over v7.6
+## Improvements of v7.8 over v7
 - **Modular Editor Support**: Complete rewrite of file opening logic to support any editor while preserving full Helix integration. Now you can use Vim, Nano, Emacs, or any editor via the `editor_command` setting in `yazelix.nix` - Helix users get all advanced features (open in same buffer, reveal in sidebar, etc), while other editors get basic Zellij integration (new panes, tab renaming)
 - **Big File/Folder Project-Wide Refactoring**: Complete reorganization of the codebase structure for better maintainability and organization
 - **YZX Command Polish**: Enhanced the `yzx` command with improved functionality and user experience
@@ -40,6 +40,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - **Configurable Editor Environment Variables**: New config options to set EDITOR environment variable when empty, override existing EDITOR, and add custom editor commands
 - **Configurable Welcome ASCII Art**: You can now choose between animated or static ASCII art in the welcome screen using the new `ascii_art_mode` option in your `yazelix.nix` config. Set `ascii_art_mode = "animated"` (default) or `ascii_art_mode = "static"` for a non-animated welcome.
 - **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell!
+- **Added macchina to welcome screen**: Added a system info summary using macchina (neofetch alternative) to the welcome screen. It can be disabled in the config.
 
 ## Improvements of v7 over v6
 - **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
@@ -248,7 +249,3 @@ Yazelix is built on the shoulders of giants. We're grateful to the essential pro
 - **auto-layout.yazi** - 95% of the work by Joseph Schmitt, including the plugin creation
 
 Thank you to all maintainers and the open source community. 
-
-# Cursor Rules for Yazelix Project
-
-- Never commit or push on your own. Only do so when the user prompts it. 
