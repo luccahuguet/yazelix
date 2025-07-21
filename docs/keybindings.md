@@ -24,13 +24,16 @@ If you find a conflict, please open an issue
 - **Starship**: Customizable prompt; configure in `~/.config/starship.toml` (see [Starship docs](https://starship.rs/config/))
 
 ## Yazelix Custom Keybindings
-- **Zellij**: `Alt f` toggles pane fullscreen
+- **Zellij**:
+  - `Alt f` toggles pane fullscreen
+  - `Alt+Shift+H` moves the current tab left
+  - `Alt+Shift+L` moves the current tab right
 - **Helix**: `Alt y` reveals the file from the Helix buffer in Yazi, add this to your Helix config:
   ```toml
   [keys.normal]
   A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
   ```
-  - **Limitation**: Only works for Helix instances opened from Yazi
+  - **Note**: Only works for Helix instances opened from Yazi
 
 ## Keybinding Tips
 - **Zellij**: `Ctrl p` then `r` for a split to the right; `Ctrl p` then `d` for a downward split

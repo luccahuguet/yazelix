@@ -32,6 +32,9 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Integration, integration, integration
 - Like [Omakub](https://github.com/basecamp/omakub) but for your terminal
 
+## Acknowledgments
+See [Project Credits](./docs/project_credits.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
+
 ## Improvements of v7.5 over v7
 - **Modular Editor Support**: Complete rewrite of file opening logic to support any editor while preserving full Helix integration. Now you can use Vim, Nano, Emacs, or any editor via the `editor_command` setting in `yazelix.nix` - Helix users get all advanced features (open in same buffer, reveal in sidebar, etc), while other editors get basic Zellij integration (new panes, tab renaming)
 - **Big File/Folder Project-Wide Refactoring**: Complete reorganization of the codebase structure for better maintainability and organization
@@ -44,7 +47,6 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - **Project Credits page**: Yazelix now includes a dedicated credits page (`docs/project_credits.md`) listing all integrated tools and inspirations.
 - **Added macchina to welcome screen**: Added a system info summary using macchina (neofetch alternative) to the welcome screen. It can be disabled in the config.
 - **Dynamic Config Validation**: Yazelix now uses a dynamic config validator that checks your config against yazelix_default.nix every time Yazelix starts. It warns about unknown fields, missing fields, and invalid values for key options (like default_shell, helix_mode, preferred_terminal, ascii_art_mode). No more silent config errors!
-- **Zellij Tab Movement Shortcuts**: Added new keybindings in Zellij: `Alt+Shift+H` to move the current tab left, and `Alt+Shift+L` to move the current tab right. This makes tab management much faster and more intuitive.
 - **Improved Helix Pane Detection**: Yazelix now checks the topmost pane and the next two below for a Zellij pane named `editor` (the Helix pane) when opening files from Yazi, reusing it if found, or opening a new one if not. See [Helix Pane Detection Logic](#helix-pane-detection-logic) for details.
 
 ## Improvements of v7 over v6
@@ -209,7 +211,7 @@ Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run). 
 - Cool Yazi plugins included out of the box
 - Features like `reveal in Yazi` (from Helix) and opening files from Yazi in your configured editor
 - Enhanced Git integration with `lazygit` and a customizable Starship prompt
-- Nix-based setup ensures consistent, reproducible environments
+- Nix-based setup ensures consistent, declarative, reproducible environments
 
 ## Initializer Scripts
 See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details on how Yazelix generates and uses initializer scripts for Nushell and Bash/Zsh.
@@ -246,9 +248,4 @@ Start by learning Zellij on its own, then optionally Yazi, and re-read this READ
 See [contributing](./docs/contributing.md)
 
 ## Similar Projects
-- If you frequently use other terminal editors besides Helix or terminal file managers other than Yazi, check out [zide](https://github.com/josephschmitt/zide)
-- If you care about Yazi but don't care much about Zellij or having a sidebar, you can integrate Yazi and Helix with [one line of config](https://github.com/sxyazi/yazi/pull/2461) (experimental, not working for some people as of March 15, 2025)
-
-## Acknowledgments
-
-See [Project Credits](./docs/project_credits.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages. 
+- If you care about Yazi but don't care much about Zellij or having a sidebar, you can integrate Yazi and Helix with [one line of config](https://github.com/sxyazi/yazi/pull/2461) (experimental, not working for some people as of March 15, 2025) 
