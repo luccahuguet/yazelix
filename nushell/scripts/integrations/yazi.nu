@@ -2,7 +2,7 @@
 # Yazi integration utilities for Yazelix
 
 use ../utils/logging.nu log_to_file
-use zellij.nu [find_helix, get_running_command, is_hx_running, open_in_existing_helix, open_new_helix_pane]
+use zellij.nu [get_running_command, is_hx_running, open_in_existing_helix, open_new_helix_pane, find_and_focus_helix_pane, move_focused_pane_to_top, get_focused_pane_name]
 
 # Navigate Yazi to the directory of the current Helix buffer
 export def reveal_in_yazi [buffer_name: string] {
@@ -79,22 +79,31 @@ def get_tab_name [working_dir: path] {
 def open_with_helix [file_path: path, yazi_id: string] {
     log_to_file "open_helix.log" $"open_with_helix called with file_path: '($file_path)'"
 
-    # Move focus and check Helix status
-    log_to_file "open_helix.log" "Moving focus to find helix"
-    find_helix
-    let running_command = (get_running_command)
+    # Always check the topmost and next three panes below for Helix
+    log_to_file "open_helix.log" "Checking up to 4 panes for Helix pane (editor)"
+    let helix_pane_name = "editor"
+    let max_panes = 4
+    mut found_index = -1
+    mut i = 0
+    while ($i < $max_panes) {
+        let running_command = (get_running_command)
+        let pane_name = (get_focused_pane_name)
+        if (is_hx_running $running_command) or ($pane_name == $helix_pane_name) {
+            $found_index = $i
+            break
+        }
+        zellij action focus-next-pane
+        $i = $i + 1
+    }
 
-    log_to_file "open_helix.log" $"Running command detected: '($running_command)'"
-    print $"DEBUG: Running command detected: ($running_command)"
-
-    # Open file based on whether Helix is already running
-    if (is_hx_running $running_command) {
-        log_to_file "open_helix.log" "Helix is running, opening in existing instance"
-        print "Helix is running, opening in existing instance"
+    if $found_index != -1 {
+        log_to_file "open_helix.log" "Helix pane found and focused, moving to top and opening in existing instance"
+        print "Helix pane found and focused, moving to top and opening in existing instance"
+        move_focused_pane_to_top $found_index
         open_in_existing_helix $file_path
     } else {
-        log_to_file "open_helix.log" "Helix not running, opening new pane"
-        print "Helix not running, opening new pane"
+        log_to_file "open_helix.log" "Helix pane not found in top 4, opening new pane"
+        print "Helix pane not found in top 4, opening new pane"
         open_new_helix_pane $file_path $yazi_id
     }
 

@@ -24,16 +24,6 @@ def get_tab_name [working_dir: path] {
     }
 }
 
-# Focus the helix pane
-export def find_helix [] {
-    zellij action move-focus right
-    zellij action move-focus up
-    zellij action move-focus up
-    zellij action move-focus up
-    zellij action move-focus up
-    zellij action move-focus up
-}
-
 # Get the running command from the second Zellij client
 export def get_running_command [] {
     try {
@@ -51,6 +41,42 @@ export def get_running_command [] {
 # Check if Helix is running (simplified version for zellij integration)
 export def is_hx_running [command: string] {
     ($command | str contains "hx") or ($command | str contains "helix")
+}
+
+# Cycle through up to max_panes, looking for a Helix pane by name or running command
+export def find_and_focus_helix_pane [max_panes: int = 3, helix_pane_name: string = "editor"] {
+    mut i = 0
+    while ($i < $max_panes) {
+        let running_command = (get_running_command)
+        let pane_name = (get_focused_pane_name)
+        if (is_hx_running $running_command) or ($pane_name == $helix_pane_name) {
+            return true
+        }
+        zellij action focus-next-pane
+        $i = $i + 1
+    }
+    return false
+}
+
+# Helper to get the name of the currently focused pane (best effort)
+export def get_focused_pane_name [] {
+    try {
+        let output = (zellij action list-clients | lines | get 1)
+        # Example output: CLIENT_ID ZELLIJ_PANE_ID RUNNING_COMMAND
+        # We try to parse the pane name from the ZELLIJ_PANE_ID if possible
+        $output | split row " " | get 1 | to text
+    } catch {
+        ""
+    }
+}
+
+# Move the currently focused pane to the top of the stack by moving up 'steps' times
+export def move_focused_pane_to_top [steps: int] {
+    mut i = 0
+    while ($i < $steps) {
+        zellij action move-pane up
+        $i = $i + 1
+    }
 }
 
 # Open a file in an existing Helix pane and rename tab
@@ -124,15 +150,19 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
 
     log_to_file "open_helix.log" $"Full command to execute: ($cmd)"
 
+    # Try to use 'editor' as the pane name, fallback to 'yazelix_editor' if needed
+    let pane_name = "editor"
     try {
-        log_to_file "open_helix.log" $"Preparing command: nu -c \"($cmd)\""
-        zellij run --name "helix" --cwd $working_dir -- nu -c $cmd
-        log_to_file "open_helix.log" $"Command executed successfully: nu -c \"($cmd)\""
-
-        zellij action rename-tab $tab_name
-        log_to_file "open_helix.log" $"Renamed tab to: ($tab_name)"
+        log_to_file "open_helix.log" $"Preparing command: nu -c \"($cmd)\" with pane name: ($pane_name)"
+        zellij run --name $pane_name --cwd $working_dir -- nu -c $cmd
+        log_to_file "open_helix.log" $"Command executed successfully: nu -c \"($cmd)\" with pane name: ($pane_name)"
     } catch {|err|
-        log_to_file "open_helix.log" $"Error executing command: nu -c \"($cmd)\"\nError details: ($err.msg)"
-        print $"Error executing zellij command: nu -c \"($cmd)\"\nDetails: ($err.msg)"
+        let fallback_pane_name = "yazelix_editor"
+        log_to_file "open_helix.log" $"Failed to use pane name 'editor', falling back to: ($fallback_pane_name)"
+        zellij run --name $fallback_pane_name --cwd $working_dir -- nu -c $cmd
+        log_to_file "open_helix.log" $"Command executed successfully: nu -c \"($cmd)\" with pane name: ($fallback_pane_name)"
     }
+
+    zellij action rename-tab $tab_name
+    log_to_file "open_helix.log" $"Renamed tab to: ($tab_name)"
 }

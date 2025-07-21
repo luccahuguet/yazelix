@@ -32,7 +32,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Integration, integration, integration
 - Like [Omakub](https://github.com/basecamp/omakub) but for your terminal
 
-## Improvements of v7.9 over v7
+## Improvements of v7.5 over v7
 - **Modular Editor Support**: Complete rewrite of file opening logic to support any editor while preserving full Helix integration. Now you can use Vim, Nano, Emacs, or any editor via the `editor_command` setting in `yazelix.nix` - Helix users get all advanced features (open in same buffer, reveal in sidebar, etc), while other editors get basic Zellij integration (new panes, tab renaming)
 - **Big File/Folder Project-Wide Refactoring**: Complete reorganization of the codebase structure for better maintainability and organization
 - **YZX Command Polish**: Enhanced the `yzx` command with improved functionality and user experience
@@ -45,6 +45,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - **Added macchina to welcome screen**: Added a system info summary using macchina (neofetch alternative) to the welcome screen. It can be disabled in the config.
 - **Dynamic Config Validation**: Yazelix now uses a dynamic config validator that checks your config against yazelix_default.nix every time Yazelix starts. It warns about unknown fields, missing fields, and invalid values for key options (like default_shell, helix_mode, preferred_terminal, ascii_art_mode). No more silent config errors!
 - **Zellij Tab Movement Shortcuts**: Added new keybindings in Zellij: `Alt+Shift+H` to move the current tab left, and `Alt+Shift+L` to move the current tab right. This makes tab management much faster and more intuitive.
+- **Improved Helix Pane Detection**: Yazelix now checks the topmost pane and the next two below for a Zellij pane named `editor` (the Helix pane) when opening files from Yazi, reusing it if found, or opening a new one if not. See [Helix Pane Detection Logic](#helix-pane-detection-logic) for details.
 
 ## Improvements of v7 over v6
 - **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
@@ -64,6 +65,12 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Improves the "reveal file in sidebar" feature by using Yazi's `reveal` command to automatically highlight and select the specific file, eliminating manual searching in directories with many files
 - Introduces dynamic version table generation using `nu nushell/scripts/utils/version_info.nu`
 
+## Helix Pane Detection Logic
+
+When opening files from Yazi, Yazelix will:
+- Check the topmost pane and the next two below for a zellij pane named `editor` (which will be the Helix pane).
+- If Helix is found, it is moved to the top and reused; if not, a new Helix pane is opened.
+- This is need because sometimes when opening a new zellij pane in the pane stack, or deleting one, the editor pane will move around. Most of the times it will move down twice! So the workaround works.
 
 ## Compatibility
 - Terminal: Ghostty or WezTerm
