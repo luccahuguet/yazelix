@@ -59,7 +59,7 @@ See [Project Credits](./docs/project_credits.md) for a full list of all projects
 - Installs and configures dependencies automatically
 - Introduces (optional) yazelix welcome screen with helpful tips and better error handling during environment setup
 - Adds terminal transparency settings because we reaaally believe in transparency
-- Adds `launch_yazelix.nu` script to launch your preferred terminal with the Yazelix-specific config. The `yazelix` and `yzx` aliases are automatically available in your shell once the Yazelix shell configurations are sourced.
+- Adds `launch_yazelix.nu` script to launch your preferred terminal with the Yazelix-specific config. The `yzx` alias is automatically available in your shell once the Yazelix shell configurations are sourced.
 - The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip` or `open data.csv | clip`, etc
 - Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/setup/generate_zellij_config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `configs/zellij/yazelix_overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
 - Allows for declaration user-defined git-ignored nix packages directly in yazelix.nix
@@ -142,7 +142,7 @@ cp ~/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua ~/.wezterm.
 
 **Result**: Every time you open your terminal, it will automatically launch Yazelix. You won't need to run any commands.
 
-**Alternative**: Use `yazelix` or `yzx` commands from any terminal to launch Yazelix (aliases are automatically available when shell configs are sourced). The `yzx` command also provides additional subcommands like `yzx help`, `yzx get_config`, `yzx versions`, etc. for managing your Yazelix installation.
+**Alternative**: Use the `yzx` command from any terminal to launch Yazelix (aliases are automatically available when shell configs are sourced). The `yzx` command also provides additional subcommands like `yzx help`, `yzx get_config`, `yzx versions`, etc. for managing your Yazelix installation.
 
 #### 4. Using Yazelix
 Simply open your terminal (Ghostty or WezTerm)! Yazelix will automatically launch with the full environment.
@@ -152,7 +152,7 @@ Simply open your terminal (Ghostty or WezTerm)! Yazelix will automatically launc
 **Quick start tips:**
 - Use `alt hjkl` to switch between Zellij panes and tabs
 - Press `Enter` in Yazi to open files in your configured editor
-- Use `yazelix` or `yzx` commands from any terminal to launch Yazelix manually
+- Use the `yzx` command from any terminal to launch Yazelix manually
 - Use `yzx help` to see all available management commands
 
 #### 5. (Optional but Recommended) Configure Helix Keybinding for Yazelix Integration
