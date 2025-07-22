@@ -52,6 +52,7 @@ See [Project Credits](./docs/project_credits.md) for a full list of all projects
   - `Alt+w/q` to walk (focus) next/previous tab
   - `Alt+Shift+H/L` to move tabs left/right
   - Cleaned up legacy/conflicting keybindings for a more user-friendly experience
+- **Full version history and project evolution is now documented in detail (see Version History & Changelog below)**
 
 ## Improvements of v7 over v6
 - **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
@@ -70,6 +71,10 @@ See [Project Credits](./docs/project_credits.md) for a full list of all projects
 - Allows for declaration user-defined git-ignored nix packages directly in yazelix.nix
 - Improves the "reveal file in sidebar" feature by using Yazi's `reveal` command to automatically highlight and select the specific file, eliminating manual searching in directories with many files
 - Introduces dynamic version table generation using `nu nushell/scripts/utils/version_info.nu`
+
+## Version History & Changelog
+
+For a detailed history of all major Yazelix version bumps and changelogs, see [Version History](./docs/history.md).
 
 ## Helix Pane Detection Logic
 
