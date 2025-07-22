@@ -150,12 +150,15 @@
 
       in
       {
+        homeManagerModules.default = import ./home_manager_module.nix;
+
         devShells.default = pkgs.mkShell {
           buildInputs = allDeps;
 
           shellHook = ''
             # Export essential environment variables
             export YAZELIX_DIR="$HOME/.config/yazelix"
+            export YAZELIX_STATE_DIR="$HOME/.local/share/yazelix"
             export YAZELIX_DEBUG_MODE="${if yazelixDebugMode then "true" else "false"}"
             export ZELLIJ_DEFAULT_LAYOUT=yazelix
             export YAZELIX_DEFAULT_SHELL="${yazelixDefaultShell}"
@@ -184,13 +187,7 @@
             # Disable Nix warning about Git directory
             export NIX_CONFIG="warn-dirty = false"
 
-            # Auto-copy config file if it doesn't exist
-            if [ ! -f "$YAZELIX_DIR/yazelix.nix" ] && [ -f "$YAZELIX_DIR/yazelix_default.nix" ]; then
-              cp "$YAZELIX_DIR/yazelix_default.nix" "$YAZELIX_DIR/yazelix.nix"
-              echo "Created yazelix.nix from template. Customize it for your needs!"
-            fi
-
-            # Run main environment setup script
+            # Run main environment setup script (handles yazelix.nix creation based on environment)
             nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu" \
               "$YAZELIX_DIR" \
               "${if recommendedDepsEnabled then "true" else "false"}" \
