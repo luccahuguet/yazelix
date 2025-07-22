@@ -25,32 +25,34 @@ def main [
         print $"🔍 Environment detection: ($env_info)"
     }
 
-    # Handle different environment types
-    match $env_info.environment_type {
-        "home-manager" => {
-            if $debug_mode {
-                print "🏠 Home-manager environment detected - using read-only config approach"
-            }
-        }
-        "read-only" => {
-            print "⚠️  WARNING: Read-only configuration directory detected!"
-            print "   This may indicate a managed environment or permission issue."
-            print "   If using home-manager, see docs/home_manager_integration.md"
-            print "   Some features may not work correctly."
-        }
-        "standard" => {
-            # Auto-create yazelix.nix in standard environments (preserve existing behavior)
-            let user_config = $"($yazelix_dir)/yazelix.nix"
-            let default_config = $"($yazelix_dir)/yazelix_default.nix"
-            
-            if not ($user_config | path exists) and ($default_config | path exists) {
-                try {
-                    cp $default_config $user_config
+    # Handle different environment types  
+    if $env_info.read_only_config {
+        print "⚠️  WARNING: Read-only configuration directory detected!"
+        print "   Cannot auto-create yazelix.nix due to write permissions."
+        print "   If using home-manager, see docs/home_manager_integration.md"
+        print "   Some features may not work correctly."
+    } else {
+        # Auto-create yazelix.nix in writable environments (standard + home-manager)
+        let user_config = $"($yazelix_dir)/yazelix.nix"
+        let default_config = $"($yazelix_dir)/yazelix_default.nix"
+        
+        if not ($user_config | path exists) and ($default_config | path exists) {
+            try {
+                cp $default_config $user_config
+                if $env_info.home_manager {
+                    print "📋 Created yazelix.nix from template."
+                    print "   💡 Tip: Consider using the home-manager module for declarative config!"
+                } else {
                     print "📋 Created yazelix.nix from template. Customize it for your needs!"
-                } catch {|err|
-                    print $"⚠️  Could not create yazelix.nix: ($err.msg)"
                 }
+            } catch {|err|
+                print $"⚠️  Could not create yazelix.nix: ($err.msg)"
             }
+        }
+        
+        # Show environment-specific guidance
+        if $env_info.home_manager and $debug_mode {
+            print "🏠 Home-manager environment detected - both file and module approaches supported"
         }
     }
 
