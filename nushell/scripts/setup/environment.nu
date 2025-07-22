@@ -14,8 +14,47 @@ def main [
     ascii_art_mode: string
     show_macchina_on_welcome: bool = false
 ] {
+    # Import constants and environment detection
+    use ../utils/constants.nu *
+
+    # Detect environment first
+    let env_info = (detect_environment)
+    if $debug_mode {
+        print $"🔍 Environment detection: ($env_info)"
+    }
+
+    # Handle different environment types
+    match $env_info.environment_type {
+        "home-manager" => {
+            if $debug_mode {
+                print "🏠 Home-manager environment detected - using read-only config approach"
+            }
+        }
+        "read-only" => {
+            print "⚠️  WARNING: Read-only configuration directory detected!"
+            print "   This may indicate a managed environment or permission issue."
+            print "   If using home-manager, see docs/home_manager_integration.md"
+            print "   Some features may not work correctly."
+        }
+        "standard" => {
+            # Auto-create yazelix.nix in standard environments (preserve existing behavior)
+            let user_config = $"($yazelix_dir)/yazelix.nix"
+            let default_config = $"($yazelix_dir)/yazelix_default.nix"
+            
+            if not ($user_config | path exists) and ($default_config | path exists) {
+                try {
+                    cp $default_config $user_config
+                    print "📋 Created yazelix.nix from template. Customize it for your needs!"
+                } catch {|err|
+                    print $"⚠️  Could not create yazelix.nix: ($err.msg)"
+                }
+            }
+        }
+    }
+
     # Validate user config against schema
     use ../utils/config_schema.nu validate_config_against_default
+    
     # Parse extra shells from comma-separated string
     let extra_shells = if ($extra_shells_str | is-empty) or ($extra_shells_str == "NONE") {
         []
@@ -26,8 +65,10 @@ def main [
     # Determine which shells to configure (always nu/bash, plus default_shell and extra_shells)
     let shells_to_configure = (["nu", "bash"] ++ [$default_shell] ++ $extra_shells) | uniq
 
-    # Setup logging
-    let log_dir = $"($yazelix_dir)/logs"
+    # Setup logging in state directory (XDG-compliant)
+    let state_dir = ($YAZELIX_STATE_DIR | str replace "~" $env.HOME)
+    let log_dir = ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)
+    mkdir $state_dir
     mkdir $log_dir
 
     # Auto-trim old logs (keep 10 most recent)
