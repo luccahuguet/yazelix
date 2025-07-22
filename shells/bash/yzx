@@ -40,7 +40,6 @@ show_help() {
     echo ""
     echo "VERSION AND SYSTEM:"
     echo "  yzx versions                   - Show version info for all tools"
-    echo "  yzx version                    - Show yazelix version"
     echo "  yzx info                       - Show yazelix system information"
     echo ""
     echo "LAUNCHER:"
@@ -190,11 +189,7 @@ show_versions() {
     fi
 }
 
-# Function to show yazelix version
-show_version() {
-    echo "Yazelix $YAZELIX_VERSION"
-    echo "$YAZELIX_DESCRIPTION"
-}
+
 
 # Function to show system info
 show_info() {
@@ -267,9 +262,7 @@ main() {
         "versions")
             show_versions
             ;;
-        "version")
-            show_version
-            ;;
+
         "info")
             show_info
             ;;

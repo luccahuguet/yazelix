@@ -24,7 +24,6 @@ export def "yzx help" [] {
     print ""
     print "VERSION AND SYSTEM:"
     print "  yzx versions                   - Show version info for all tools"
-    print "  yzx version                    - Show yazelix version"
     print "  yzx info                       - Show yazelix system information"
     print ""
     print "LAUNCHER:"
@@ -65,11 +64,7 @@ export def "yzx versions" [] {
     nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu
 }
 
-# Show current version
-export def "yzx version" [] {
-    print $"Yazelix ($YAZELIX_VERSION)"
-    print $YAZELIX_DESCRIPTION
-}
+
 
 # Show system info
 export def "yzx info" [] {
