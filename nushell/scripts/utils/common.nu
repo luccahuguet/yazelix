@@ -50,3 +50,43 @@ export def is_hx_running [list_clients_output: string] {
     
     $result
 }
+
+# Environment detection functions
+export def is_read_only_config [] {
+    use ./constants.nu YAZELIX_CONFIG_DIR
+    let config_dir = ($YAZELIX_CONFIG_DIR | str replace "~" $env.HOME)
+    try {
+        # Test write access by trying to create a temporary file
+        let test_file = $"($config_dir)/.yazelix_write_test"
+        touch $test_file
+        rm $test_file
+        false
+    } catch {
+        true
+    }
+}
+
+export def is_home_manager_environment [] {
+    # Check for common home-manager indicators
+    let home_manager_indicators = [
+        ($env.HOME + "/.local/state/nix/profiles/home-manager")
+        ($env.HOME + "/.nix-profile/etc/profile.d/hm-session-vars.sh")
+        $env.NIX_PROFILE?
+    ]
+    $home_manager_indicators | any { |path| $path | path exists }
+}
+
+export def detect_environment [] {
+    let is_readonly = (is_read_only_config)
+    let is_hm = (is_home_manager_environment)
+    
+    {
+        read_only_config: $is_readonly
+        home_manager: $is_hm
+        environment_type: (
+            if $is_hm { "home-manager" } 
+            else if $is_readonly { "read-only" }
+            else { "standard" }
+        )
+    }
+}

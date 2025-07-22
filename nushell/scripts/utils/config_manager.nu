@@ -108,3 +108,23 @@ export def show_config_status [yazelix_dir: string] {
     $status
 }
 
+# Configuration section generation functions
+export def get_yazelix_start_comment [] {
+    use ./constants.nu *
+    $YAZELIX_START_MARKER + "\n" + $YAZELIX_REGENERATE_COMMENT
+}
+
+export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
+    use ./constants.nu *
+    let config_file = $YAZELIX_CONFIG_FILES | get $shell
+    let source_line = if $shell in ["bash", "zsh", "fish"] {
+        # Use $HOME for POSIX shells
+        let home_file = ($config_file | str replace "~" "$HOME")
+        $"source \"($home_file)\""
+    } else {
+        $"source \"($config_file)\""
+    }
+
+    (get_yazelix_start_comment) + "\n" + $source_line + "\n" + $YAZELIX_END_MARKER
+}
+

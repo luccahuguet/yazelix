@@ -14,8 +14,10 @@ def main [
     ascii_art_mode: string
     show_macchina_on_welcome: bool = false
 ] {
-    # Import constants and environment detection
+    # Import constants and utility functions
     use ../utils/constants.nu *
+    use ../utils/common.nu detect_environment
+    use ../utils/config_manager.nu get_yazelix_section_content
 
     # Detect environment first
     let env_info = (detect_environment)
@@ -205,6 +207,7 @@ def main [
 
 def setup_bash_config [yazelix_dir: string] {
     use ../utils/constants.nu *
+    use ../utils/config_manager.nu get_yazelix_section_content
 
     let bash_config = $"($yazelix_dir)/shells/bash/yazelix_bash_config.sh"
     let bashrc = ($SHELL_CONFIGS | get bash | str replace "~" $env.HOME)
@@ -230,6 +233,7 @@ def setup_bash_config [yazelix_dir: string] {
 
 def setup_nushell_config [yazelix_dir: string] {
     use ../utils/constants.nu *
+    use ../utils/config_manager.nu get_yazelix_section_content
 
     let nushell_config = ($SHELL_CONFIGS | get nushell | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/nushell/config/config.nu"
@@ -256,6 +260,7 @@ def setup_nushell_config [yazelix_dir: string] {
 
 def setup_fish_config [yazelix_dir: string] {
     use ../utils/constants.nu *
+    use ../utils/config_manager.nu get_yazelix_section_content
 
     let fish_config = ($SHELL_CONFIGS | get fish | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/shells/fish/yazelix_fish_config.fish"
@@ -282,6 +287,7 @@ def setup_fish_config [yazelix_dir: string] {
 
 def setup_zsh_config [yazelix_dir: string] {
     use ../utils/constants.nu *
+    use ../utils/config_manager.nu get_yazelix_section_content
 
     let zsh_config = ($SHELL_CONFIGS | get zsh | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/shells/zsh/yazelix_zsh_config.zsh"
