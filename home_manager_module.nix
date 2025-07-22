@@ -175,16 +175,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # Install Yazelix files to ~/.config/yazelix
-    home.file.".config/yazelix" = {
-      source = cfg.package;
-      recursive = true;
-    };
-
-    # Create yazelix.nix configuration file
-    home.file.".config/yazelix/yazelix.nix" = {
-      text = yazelixNixContent;
-    };
+    # NOTE: We don't manage the yazelix files directly to avoid git conflicts.
+    # Users should manage their yazelix installation separately (git clone, nix develop, etc.)
 
     # Ensure state directory exists with proper permissions
     home.activation.yazelixStateDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
