@@ -2,9 +2,13 @@
 # Zellij configuration generator for Yazelix
 
 def main [yazelix_dir: string] {
+    use ../utils/constants.nu YAZELIX_CACHE_DIR
     print "🔧 Generating Zellij configuration..."
 
-    let config_path = $"($yazelix_dir)/configs/zellij/config.kdl"
+    # Store generated config in cache directory (XDG-compliant)
+    let cache_dir = ($YAZELIX_CACHE_DIR | str replace "~" $env.HOME)
+    mkdir $cache_dir
+    let config_path = $"($cache_dir)/zellij_config.kdl"
     let template = $"
 default_shell \"nu\"
     "

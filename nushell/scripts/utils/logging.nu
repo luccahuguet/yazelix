@@ -4,7 +4,8 @@
 # Logging utility module
 
 export def log_to_file [log_name: string, message: string] {
-    let log_dir = ($nu.home-path | path join ".config/yazelix/logs" | path expand)
+    use ./constants.nu YAZELIX_LOGS_DIR
+    let log_dir = ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)
     let log_file = ($log_dir | path join $log_name)
     
     if ($log_file | path exists) and ((ls $log_file).size.0 > 0.5mb) {

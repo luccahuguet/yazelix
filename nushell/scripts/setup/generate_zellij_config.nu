@@ -5,10 +5,14 @@
 # This creates a minimal config with Yazelix-specific settings
 
 def main [yazelix_dir: string] {
+    use ../utils/constants.nu YAZELIX_CACHE_DIR
     print "🔧 Generating Zellij configuration..."
 
-    let config_path = $"($yazelix_dir)/configs/zellij/config.kdl"
-let overrides_path = $"($yazelix_dir)/configs/zellij/yazelix_overrides.kdl"
+    # Store generated config in cache directory (XDG-compliant)
+    let cache_dir = ($YAZELIX_CACHE_DIR | str replace "~" $env.HOME)
+    mkdir $cache_dir
+    let config_path = $"($cache_dir)/zellij_config.kdl"
+    let overrides_path = $"($yazelix_dir)/configs/zellij/yazelix_overrides.kdl"
 
     # Get the default config from Zellij
     # Note: You can replace this with your own existing config file:
@@ -41,9 +45,10 @@ let overrides_path = $"($yazelix_dir)/configs/zellij/yazelix_overrides.kdl"
     try {
         $combined_config | save $config_path
         print "✅ Zellij configuration generated successfully!"
-        print $"   📁 Config saved to: ($config_path)"
+        print $"   📁 Config cached at: ($config_path)"
         print "   - Combined Zellij defaults with Yazelix overrides from yazelix_overrides.kdl"
         print "   - Edit yazelix_overrides.kdl to customize Yazelix-specific settings"
+        print $"   💡 Generated config is cached in (~/.local/share/yazelix/cache/)"
     } catch {|err|
         print $"❌ Failed to write config: ($err.msg)"
         exit 1
