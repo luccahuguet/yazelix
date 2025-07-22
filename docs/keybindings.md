@@ -1,14 +1,18 @@
 # Keybindings
 
 ## Zellij Keybindings
-| New Zellij Keybinding | Previous Keybinding | Helix Action that conflicted before | Zellij Action Remapped     |
-|-----------------------|---------------------|-------------------------------------|----------------------------|
-| Ctrl e                | Ctrl o              | jump_backward                       | SwitchToMode "Session"     |
-| Ctrl y                | Ctrl s              | save_selection                      | SwitchToMode "Scroll"      |
-| Alt w                 | Alt i               | shrink_selection                    | MoveTab "Left"             |
-| Alt q                 | Alt o               | expand_selection                    | MoveTab "Right"            |
-| Alt m                 | Alt n               | select_next_sibling                 | NewPane                    |
-| Alt 2                 | Ctrl b              | move_page_up                        | SwitchToMode "Tmux"        |
+| Keybinding                | Action                        |
+|--------------------------|-------------------------------|
+| Alt+number (1-9)         | Go to tab 1-9                 |
+| Alt+w                    | Walk to next tab (focus)      |
+| Alt+q                    | Walk to previous tab (focus)  |
+| Alt+Shift+H              | Move tab left                 |
+| Alt+Shift+L              | Move tab right                |
+| Alt f                    | Toggle pane fullscreen        |
+
+- **Tab walking**: Alt+w/q walks (focuses) next/previous tab, like browser tab switching.
+- **Tab moving**: Alt+Shift+H/L moves the current tab left/right.
+- **Direct tab access**: Alt+1 through Alt+9 jumps directly to a tab.
 
 If you find a conflict, please open an issue
 
@@ -28,6 +32,8 @@ If you find a conflict, please open an issue
   - `Alt f` toggles pane fullscreen
   - `Alt+Shift+H` moves the current tab left
   - `Alt+Shift+L` moves the current tab right
+  - `Ctrl+Alt+H` walks left (focus previous tab)
+  - `Ctrl+Alt+L` walks right (focus next tab)
 - **Helix**: `Alt y` reveals the file from the Helix buffer in Yazi, add this to your Helix config:
   ```toml
   [keys.normal]
@@ -36,7 +42,7 @@ If you find a conflict, please open an issue
   - **Note**: Only works for Helix instances opened from Yazi
 
 ## Keybinding Tips
-- **Zellij**: `Ctrl p` then `r` for a split to the right; `Ctrl p` then `d` for a downward split
+- **Zellij**: `Alt+number` for tab, `Alt+w/q` for tab walk, `Alt+Shift+H/L` for tab move
 - **Yazi**: 
   - `Z`: Use Zoxide (fuzzy find known paths)
   - `z`: Use fzf (fuzzy find unknown paths)

@@ -38,23 +38,41 @@ keybinds {
         unbind "Ctrl s"
 
         // Previously: Alt + i (in helix: shrink_selection)
-        bind "Alt w" { MoveTab "Left"; }
         unbind "Alt i"
+        // Move tab left (new)
+        bind "Alt Shift H" { MoveTab "Left"; }
 
         // Previously: Alt + o (in helix: expand_selection)
-        bind "Alt q" { MoveTab "Right"; }
         unbind "Alt o"
+        // Move tab right (new)
+        bind "Alt Shift L" { MoveTab "Right"; }
 
         // Previously: Alt + n (in helix: select_next_sibling)
         bind "Alt m" { NewPane; }
         unbind "Alt n"
 
         // Previously: Ctrl + b (in helix: move_page_up)
-        bind "Alt 2" { SwitchToMode "Tmux"; }
-        unbind "Ctrl b"
+        // Alt+number: Go directly to tab 1-9 (tmux style)
+        bind "Alt 1" { GoToTab 1; }
+        bind "Alt 2" { GoToTab 2; }
+        bind "Alt 3" { GoToTab 3; }
+        bind "Alt 4" { GoToTab 4; }
+        bind "Alt 5" { GoToTab 5; }
+        bind "Alt 6" { GoToTab 6; }
+        bind "Alt 7" { GoToTab 7; }
+        bind "Alt 8" { GoToTab 8; }
+        bind "Alt 9" { GoToTab 9; }
 
         // Not a remap, just for ease of use
         bind "Alt f" { ToggleFocusFullscreen; SwitchToMode "Normal"; }
+
+        // New: Ctrl+Alt+H/L to walk left/right in tabs (change focus, not move tab)
+        bind "Ctrl Alt H" { GoToPreviousTab; }
+        bind "Ctrl Alt L" { GoToNextTab; }
+
+        // Alt+q/w: Walk (focus) left/right between tabs
+        bind "Alt q" { GoToPreviousTab; }
+        bind "Alt w" { GoToNextTab; }
     }
 
     session {

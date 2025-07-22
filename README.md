@@ -47,6 +47,11 @@ See [Project Credits](./docs/project_credits.md) for a full list of all projects
 - **Added macchina to welcome screen**: Added a system info summary using macchina (neofetch alternative) to the welcome screen. It can be disabled in the config.
 - **Dynamic Config Validation**: Yazelix now uses a dynamic config validator that checks your config against yazelix_default.nix every time Yazelix starts. It warns about unknown fields, missing fields, and invalid values for key options (like default_shell, helix_mode, preferred_terminal, ascii_art_mode). No more silent config errors!
 - **Improved Helix Pane Detection**: Yazelix now checks the topmost pane and the next two below for a Zellij pane named `editor` (the Helix pane) when opening files from Yazi, reusing it if found, or opening a new one if not. See [Helix Pane Detection Logic](#helix-pane-detection-logic) for details.
+- **Ergonomic Tab Navigation**: Added browser-like tab navigation in Zellij:
+  - `Alt+number` to jump directly to tabs 1-9
+  - `Alt+w/q` to walk (focus) next/previous tab
+  - `Alt+Shift+H/L` to move tabs left/right
+  - Cleaned up legacy/conflicting keybindings for a more user-friendly experience
 
 ## Improvements of v7 over v6
 - **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
