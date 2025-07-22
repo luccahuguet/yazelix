@@ -36,6 +36,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 See [Project Credits](./docs/project_credits.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
 ## Improvements of v7.5 over v7
+- **Home-Manager Integration**: First-class support for NixOS and home-manager users with XDG-compliant directory structure, automatic environment detection, and dedicated home-manager module. Static config in `~/.config/yazelix/` (manageable by home-manager), runtime state in `~/.local/share/yazelix/` (always writable)
 - **Modular Editor Support**: Complete rewrite of file opening logic to support any editor while preserving full Helix integration. Now you can use Vim, Nano, Emacs, or any editor via the `editor_command` setting in `yazelix.nix` - Helix users get all advanced features (open in same buffer, reveal in sidebar, etc), while other editors get basic Zellij integration (new panes, tab renaming)
 - **Big File/Folder Project-Wide Refactoring**: Complete reorganization of the codebase structure for better maintainability and organization
 - **Yazelix Config Validation**: Added validation system to warn users of invalid configuration options in `yazelix.nix`
@@ -84,9 +85,10 @@ When opening files from Yazi, Yazelix will:
 - This is need because sometimes when opening a new zellij pane in the pane stack, or deleting one, the editor pane will move around. Most of the times it will move down twice! So the workaround works.
 
 ## Compatibility
-- Terminal: WezTerm, Ghostty, or Kitty
-- Editor: Any editor, but hx is has first class support (`reaveal in sidebar, open buffer in running hx instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
-- Shell: Nushell, Bash, Fish, Zsh
+- **System**: Linux, macOS, NixOS (first-class [home-manager support](./docs/home_manager_integration.md))
+- **Terminal**: WezTerm, Ghostty, or Kitty
+- **Editor**: Any editor, but hx has first class support (`reveal in sidebar`, `open buffer in running hx instance`, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
+- **Shell**: Nushell, Bash, Fish, Zsh
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
 ## Version Check
