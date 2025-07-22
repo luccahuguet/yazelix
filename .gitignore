@@ -1,7 +1,13 @@
+# Old locations (kept for backward compatibility during migration)
 logs/*
 nushell/initializers
 shells/bash/initializers
 shells/fish/initializers
 shells/zsh/initializers
+
+# New XDG-compliant state directory (local machine state, not tracked)
+.local/
+
+# User configuration
 yazelix.nix
 helix_custom/
