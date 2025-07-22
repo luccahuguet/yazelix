@@ -167,7 +167,7 @@ cp ~/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf ~/.config/kitty
 **Alternative**: Use the `yzx` command from any terminal to launch Yazelix (aliases are automatically available when shell configs are sourced). The `yzx` command also provides additional subcommands like `yzx help`, `yzx get_config`, `yzx versions`, etc. for managing your Yazelix installation.
 
 #### 4. Using Yazelix
-Simply open your terminal (Ghostty or WezTerm)! Yazelix will automatically launch with the full environment.
+Simply open your terminal! Yazelix will automatically launch with the full environment.
 
 **First Run**: The first time you open your terminal, Yazelix will install all dependencies (Zellij, Yazi, Helix, etc.). This may take several minutes, but subsequent launches will be instant.
 
