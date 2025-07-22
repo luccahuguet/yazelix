@@ -2,32 +2,6 @@
 
 This guide explains how to use Yazelix with [Home Manager](https://github.com/nix-community/home-manager), the declarative configuration management system for NixOS and other Nix-based systems.
 
-## Prerequisites
-
-### For NixOS Users
-You likely already have Nix and can install Home Manager directly.
-
-### For Non-NixOS Users (Ubuntu, PopOS, etc.)
-
-First, install the Nix package manager:
-```bash
-# Install Nix (multi-user installation recommended)
-curl -L https://nixos.org/nix/install | sh -s -- --daemon
-
-# Restart your shell or source the profile
-source /etc/profile.d/nix.sh
-```
-
-Then install Home Manager:
-```bash
-# Add the home-manager channel
-nix-channel --add https://github.com/nix-community/home-manager/archive/master.tar.gz home-manager
-nix-channel --update
-
-# Install home-manager
-nix-shell '<home-manager>' -A install
-```
-
 ## Why Home-Manager Integration?
 
 Home-Manager allows you to declaratively manage your entire user environment, including Yazelix. This provides:
@@ -55,64 +29,7 @@ Yazelix now follows XDG Base Directory standards for clean home-manager integrat
 └── cache/                  # Generated configurations
 ```
 
-## Setup Approaches
-
-### Option 1: Released Version (Recommended for Users)
-Use the official Yazelix releases through GitHub:
-
-```nix
-# flake.nix
-{
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    home-manager.url = "github:nix-community/home-manager";
-    yazelix.url = "github:luccahuguet/yazelix";  # Latest release
-    # Or pin to specific version: yazelix.url = "github:luccahuguet/yazelix/v7.5";
-  };
-}
-```
-
-### Option 2: Local Development (For Contributors/Customizers)
-**⚠️ IMPORTANT**: Never let home-manager manage the yazelix git repository directly!
-
-**❌ WRONG** - This will corrupt your git repository:
-```nix
-# DON'T DO THIS - Creates circular symlinks!
-home.file.".config/yazelix" = {
-  source = /path/to/yazelix;
-  recursive = true;
-};
-```
-
-**✅ CORRECT** - Keep git and home-manager separate:
-
-1. **Clone Yazelix manually**:
-   ```bash
-   git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
-   cd ~/.config/yazelix
-   nix develop  # Enter development shell
-   ```
-
-2. **Import the local module**:
-   ```nix
-   # flake.nix
-   {
-     outputs = { nixpkgs, home-manager, ... }: {
-       homeConfigurations."username" = home-manager.lib.homeManagerConfiguration {
-         modules = [
-           # Import the local module directly
-           (import /home/username/.config/yazelix/home_manager_module.nix)
-           ./home.nix
-         ];
-       };
-     };
-   }
-   ```
-
-3. **Apply with impure flag**:
-   ```bash
-   home-manager switch --impure --flake '.#username@hostname'
-   ```
+**Important**: The home-manager module only handles shell integration and state directories. You manage the Yazelix installation itself separately (`git clone`, `nix develop`) to avoid git conflicts and circular symlinks.
 
 ## Home-Manager Configuration
 
@@ -253,23 +170,6 @@ Yazelix automatically detects your environment:
 
 ## Troubleshooting
 
-### Circular Symlink Error / Git Repository Corruption
-**Symptoms:**
-- Git shows all files as `typechange` 
-- Error: "Too many levels of symbolic links"
-- Repository appears corrupted after `home-manager switch`
-
-**Cause:** Home-manager tried to manage the yazelix directory directly, creating circular symlinks.
-
-**Fix:**
-```bash
-cd ~/.config/yazelix
-git reset --hard HEAD  # Restore all files
-rm -f *.backup        # Clean up backup files
-```
-
-**Prevention:** Never use `home.file.".config/yazelix" = { source = ...; }` in your home-manager config!
-
 ### Read-Only Configuration Warning
 If you see this warning:
 ```
@@ -338,83 +238,6 @@ programs.yazelix = {
 3. **Backup**: Keep your configuration in version control
 4. **Testing**: Test configuration changes in a VM or separate user account
 5. **Gradual Migration**: Migrate one tool at a time if coming from imperative setup
-
-## Quick Start for PopOS/Ubuntu Users
-
-Here's the complete setup process for PopOS users:
-
-### 1. Install Nix and Home Manager
-```bash
-# Install Nix
-curl -L https://nixos.org/nix/install | sh -s -- --daemon
-
-# Reload your shell
-exec $SHELL
-
-# Install Home Manager
-nix-channel --add https://github.com/nix-community/home-manager/archive/master.tar.gz home-manager
-nix-channel --update
-nix-shell '<home-manager>' -A install
-```
-
-### 2. Initialize Home Manager Configuration
-```bash
-# Create home-manager directory
-mkdir -p ~/.config/home-manager
-
-# Create flake.nix
-cat > ~/.config/home-manager/flake.nix << 'EOF'
-{
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    home-manager.url = "github:nix-community/home-manager";
-    yazelix.url = "github:luccahuguet/yazelix";
-  };
-
-  outputs = { nixpkgs, home-manager, yazelix, ... }: {
-    homeConfigurations."$(whoami)" = home-manager.lib.homeManagerConfiguration {
-      pkgs = nixpkgs.legacyPackages.x86_64-linux;
-      modules = [
-        yazelix.homeManagerModules.default
-        ./home.nix
-      ];
-    };
-  };
-}
-EOF
-
-# Create home.nix
-cat > ~/.config/home-manager/home.nix << 'EOF'
-{ config, pkgs, ... }: {
-  home.username = "$(whoami)";
-  home.homeDirectory = "/home/$(whoami)";
-  home.stateVersion = "23.11";
-
-  programs.yazelix = {
-    enable = true;
-    helixMode = "release";
-    recommendedDeps = true;
-    yaziExtensions = true;
-    yaziMedia = true;
-    defaultShell = "nu";
-    preferredTerminal = "wezterm";
-  };
-}
-EOF
-```
-
-### 3. Apply Configuration
-```bash
-cd ~/.config/home-manager
-home-manager switch --flake '.#$(whoami)'
-```
-
-### 4. Start Using Yazelix
-```bash
-# The yzx command should now be available
-source ~/.bashrc  # Or restart your terminal
-yzx launch
-```
 
 ## Getting Help
 
