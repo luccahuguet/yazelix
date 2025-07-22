@@ -3,6 +3,8 @@
 # Generates initializer scripts for all supported shells
 
 def main [yazelix_dir: string, recommended: bool, shells_to_configure_str: string] {
+    # Import constants for XDG paths
+    use ../utils/constants.nu *
 
     # Parse shells to configure from comma-separated string
     let shells_to_configure = if ($shells_to_configure_str | is-empty) {
@@ -19,11 +21,32 @@ def main [yazelix_dir: string, recommended: bool, shells_to_configure_str: strin
         { name: "carapace", required: false, init_cmd: { |shell| $"carapace ($shell)" } }
     ]
 
+    # Use XDG-compliant state directories for initializers
     let all_shells = [
-        { name: "nu", dir: "nushell", ext: "nu", tool_overrides: { zoxide: "nushell" } }
-        { name: "bash", dir: "shells/bash", ext: "sh", tool_overrides: {} }
-        { name: "fish", dir: "shells/fish", ext: "fish", tool_overrides: {} }
-        { name: "zsh", dir: "shells/zsh", ext: "zsh", tool_overrides: {} }
+        { 
+            name: "nu" 
+            dir: ($SHELL_INITIALIZER_DIRS.nushell | str replace "~" $env.HOME)
+            ext: "nu" 
+            tool_overrides: { zoxide: "nushell" } 
+        }
+        { 
+            name: "bash" 
+            dir: ($SHELL_INITIALIZER_DIRS.bash | str replace "~" $env.HOME)
+            ext: "sh" 
+            tool_overrides: {} 
+        }
+        { 
+            name: "fish" 
+            dir: ($SHELL_INITIALIZER_DIRS.fish | str replace "~" $env.HOME)
+            ext: "fish" 
+            tool_overrides: {} 
+        }
+        { 
+            name: "zsh" 
+            dir: ($SHELL_INITIALIZER_DIRS.zsh | str replace "~" $env.HOME)
+            ext: "zsh" 
+            tool_overrides: {} 
+        }
     ]
 
     # Filter shells to only include those we want to configure
@@ -31,7 +54,7 @@ def main [yazelix_dir: string, recommended: bool, shells_to_configure_str: strin
 
     # Generate initializers and collect results
     let results = ($shells | each { |shell|
-        let init_dir = $"($yazelix_dir)/($shell.dir)/initializers"
+        let init_dir = $shell.dir
         mkdir $init_dir
 
         $tools | each { |tool|
