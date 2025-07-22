@@ -10,11 +10,11 @@ if ($env.YAZELIX_HELIX_MODE? | is-empty) {
     set_helix_env
 }
 
-# Initializes some programs
-source ~/.config/yazelix/nushell/initializers/starship_init.nu
-source ~/.config/yazelix/nushell/initializers/zoxide_init.nu
-source ~/.config/yazelix/nushell/initializers/mise_init.nu
-source ~/.config/yazelix/nushell/initializers/carapace_init.nu
+# Initializes some programs from XDG-compliant state directory
+source ~/.local/share/yazelix/initializers/nushell/starship_init.nu
+source ~/.local/share/yazelix/initializers/nushell/zoxide_init.nu
+source ~/.local/share/yazelix/initializers/nushell/mise_init.nu
+source ~/.local/share/yazelix/initializers/nushell/carapace_init.nu
 
 # Sources the `clip` command
 use ~/.config/yazelix/nushell/modules/system *

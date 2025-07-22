@@ -8,8 +8,8 @@ if [[ -z "$YAZELIX_HELIX_MODE" ]]; then
 fi
 
 # Define the directory where Yazelix generates individual initializer scripts.
-# This path MUST match the one used in the flake.nix shellHook.
-YAZELIX_ZSH_INITIALIZERS_DIR="$HOME/.config/yazelix/shells/zsh/initializers"
+# Using XDG-compliant state directory (not config directory)
+YAZELIX_ZSH_INITIALIZERS_DIR="$HOME/.local/share/yazelix/initializers/zsh"
 
 # Source individual initializers if they exist and are non-empty.
 if [[ -f "$YAZELIX_ZSH_INITIALIZERS_DIR/starship_init.zsh" && -s "$YAZELIX_ZSH_INITIALIZERS_DIR/starship_init.zsh" ]]; then

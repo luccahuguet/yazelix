@@ -7,7 +7,8 @@ if test -z $YAZELIX_HELIX_MODE
 end
 
 # Source generated initializers if they exist
-set -l FISH_INITIALIZERS_DIR "$HOME/.config/yazelix/shells/fish/initializers"
+# Using XDG-compliant state directory (not config directory)
+set -l FISH_INITIALIZERS_DIR "$HOME/.local/share/yazelix/initializers/fish"
 
 # Source each initializer if it exists
 for file in $FISH_INITIALIZERS_DIR/*.fish
