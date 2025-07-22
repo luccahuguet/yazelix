@@ -84,7 +84,7 @@ When opening files from Yazi, Yazelix will:
 - This is need because sometimes when opening a new zellij pane in the pane stack, or deleting one, the editor pane will move around. Most of the times it will move down twice! So the workaround works.
 
 ## Compatibility
-- Terminal: Ghostty or WezTerm
+- Terminal: WezTerm, Ghostty, or Kitty
 - Editor: Any editor, but hx is has first class support (`reaveal in sidebar, open buffer in running hx instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
 - Shell: Nushell, Bash, Fish, Zsh
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
@@ -107,14 +107,17 @@ Check installed tool versions: `nu nushell/scripts/utils/version_info.nu`
 ### Prerequisites
 - **Nushell** - Required to boot Yazelix
   - See installation instructions: https://www.nushell.sh/book/installation.html
-- **Supported terminal emulators** (choose your favorite! Or both?):
+- **Supported terminal emulators** (choose your favorite!):
+  - **WezTerm** 
+    - Modern, fast, written in Rust
+    - Instructions here: https://wezfurlong.org/wezterm/installation.html
   - **Ghostty** 
     - Modern, fast, written in Zig, newer
     - Instructions here: https://ghostty.org/download
     - **Note**: Due to a [Zellij/Yazi/Ghostty interaction](https://github.com/zellij-org/zellij/issues/2814#issuecomment-2965117327), image previews in Yazi may not display properly, for now. If this is a problem for you, use WezTerm instead
-  - **WezTerm** 
-    - Modern, fast, written in Rust
-    - Instructions here: https://wezfurlong.org/wezterm/installation.html
+  - **Kitty**
+    - Fast, feature-rich, GPU-accelerated terminal
+    - Instructions here: https://sw.kovidgoyal.net/kitty/binary/
 
 ### Step-by-Step Installation
 
@@ -140,14 +143,23 @@ git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 #### 3. Set Up Yazelix to Auto-Launch in Your Terminal
 Copy the appropriate terminal config to automatically start Yazelix:
 
+**For WezTerm:**
+```bash
+cp ~/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua ~/.wezterm.lua
+```
+
 **For Ghostty:**
 ```bash
 cp ~/.config/yazelix/configs/terminal_emulators/ghostty/config ~/.config/ghostty/config
 ```
 
-**For WezTerm:**
+**For Kitty:**
 ```bash
-cp ~/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua ~/.wezterm.lua
+# Install nerd fonts for proper Yazi icon display
+nix-env -iA nixpkgs.fira-code-nerdfont nixpkgs.nerd-fonts.symbols-only
+
+# Copy the configuration  
+cp ~/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf ~/.config/kitty/kitty.conf
 ```
 
 **Result**: Every time you open your terminal, it will automatically launch Yazelix. You won't need to run any commands.
@@ -199,7 +211,8 @@ Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run). 
 **Terminal Emulator Selection:**
 - **WezTerm** (default): Better image preview support in Yazi, recommended for most users
 - **Ghostty**: Modern, fast terminal written in Zig
-- Configure your preference in `yazelix.nix` with `preferred_terminal = "wezterm"` or `preferred_terminal = "ghostty"`
+- **Kitty**: Fast, feature-rich, GPU-accelerated terminal
+- Configure your preference in `yazelix.nix` with `preferred_terminal = "wezterm"`, `preferred_terminal = "ghostty"`, or `preferred_terminal = "kitty"`
 
 [See the full Customization Guide here.](./docs/customization.md)
 
