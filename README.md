@@ -144,7 +144,16 @@ Clone the Yazelix repository to your system:
 git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 ```
 
-#### 3. Set Up Yazelix to Auto-Launch in Your Terminal
+#### 3. Install Fonts (Required for Kitty and Alacritty)
+If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display:
+
+```bash
+nix-env -iA nixpkgs.nerd-fonts.fira-code nixpkgs.nerd-fonts.symbols-only
+```
+
+**Note**: WezTerm and Ghostty have better font fallback and don't require this step.
+
+#### 4. Set Up Yazelix to Auto-Launch in Your Terminal
 Copy the appropriate terminal config to automatically start Yazelix:
 
 **For WezTerm:**
@@ -159,19 +168,11 @@ cp ~/.config/yazelix/configs/terminal_emulators/ghostty/config ~/.config/ghostty
 
 **For Kitty:**
 ```bash
-# Install nerd fonts for proper Yazi icon display
-nix-env -iA nixpkgs.fira-code-nerdfont nixpkgs.nerd-fonts.symbols-only
-
-# Copy the configuration  
 cp ~/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf ~/.config/kitty/kitty.conf
 ```
 
 **For Alacritty:**
 ```bash
-# Install nerd fonts for proper Yazi icon display
-nix-env -iA nixpkgs.fira-code-nerdfont nixpkgs.nerd-fonts.symbols-only
-
-# Copy the configuration
 cp ~/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
 ```
 
@@ -179,7 +180,7 @@ cp ~/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml ~/.conf
 
 **Alternative**: Use the `yzx` command from any terminal to launch Yazelix (aliases are automatically available when shell configs are sourced). The `yzx` command also provides additional subcommands like `yzx help`, `yzx get_config`, `yzx versions`, etc. for managing your Yazelix installation.
 
-#### 4. Using Yazelix
+#### 5. Using Yazelix
 Simply open your terminal! Yazelix will automatically launch with the full environment.
 
 **First Run**: The first time you open your terminal, Yazelix will install all dependencies (Zellij, Yazi, Helix, etc.). This may take several minutes, but subsequent launches will be instant.
@@ -190,7 +191,7 @@ Simply open your terminal! Yazelix will automatically launch with the full envir
 - Use the `yzx` command from any terminal to launch Yazelix manually
 - Use `yzx help` to see all available management commands
 
-#### 5. (Optional but Recommended) Configure Helix Keybinding for Yazelix Integration
+#### 6. (Optional but Recommended) Configure Helix Keybinding for Yazelix Integration
 To enable the "reveal file in Yazi sidebar" feature from within Helix (press `Alt-y` in normal mode), add the following to your Helix config (usually `~/.config/helix/config.toml`):
 
 ```toml

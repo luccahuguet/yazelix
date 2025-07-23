@@ -2,7 +2,7 @@
 # Copy this to: ~/.config/alacritty/alacritty.toml
 #
 # SETUP INSTRUCTIONS:
-# 1. Install nerd fonts: nix-env -iA nixpkgs.fira-code-nerdfont nixpkgs.nerd-fonts.symbols-only
+# 1. Follow the README font installation step (if needed)
 # 2. Copy this config to your Alacritty config directory
 # 3. Restart Alacritty
 # 4. Enjoy working Yazi icons! 🎉
