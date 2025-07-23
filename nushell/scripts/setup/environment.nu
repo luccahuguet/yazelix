@@ -236,10 +236,29 @@ def setup_bash_config [yazelix_dir: string] {
 def setup_nushell_config [yazelix_dir: string] {
     use ../utils/constants.nu *
     use ../utils/config_manager.nu get_yazelix_section_content
+    use ../utils/common.nu detect_environment
 
     let nushell_config = ($SHELL_CONFIGS | get nushell | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/nushell/config/config.nu"
     let section_content = get_yazelix_section_content "nushell" $yazelix_dir
+    let env_info = (detect_environment)
+
+    # Skip nushell config setup in home-manager environments
+    # The home-manager module handles nushell integration directly
+    if $env_info.home_manager {
+        print $"✅ Nushell integration handled by home-manager module"
+        return
+    }
+
+    # Check if nushell config is a symlink (managed by home-manager)
+    if ($nushell_config | path exists) {
+        let file_info = (ls $nushell_config | get 0)
+        if $file_info.type == "symlink" {
+            print $"⚠️  Nushell config is managed externally (symlink), skipping direct modification"
+            print $"   💡 If using home-manager, the integration should work automatically"
+            return
+        }
+    }
 
     mkdir ($nushell_config | path dirname)
 
