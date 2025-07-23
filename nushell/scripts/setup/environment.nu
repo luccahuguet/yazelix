@@ -25,7 +25,7 @@ def main [
         print $"🔍 Environment detection: ($env_info)"
     }
 
-    # Handle different environment types  
+    # Handle different environment types
     if $env_info.read_only_config {
         print "⚠️  WARNING: Read-only configuration directory detected!"
         print "   Cannot auto-create yazelix.nix due to write permissions."
@@ -35,7 +35,7 @@ def main [
         # Auto-create yazelix.nix in writable environments (standard + home-manager)
         let user_config = $"($yazelix_dir)/yazelix.nix"
         let default_config = $"($yazelix_dir)/yazelix_default.nix"
-        
+
         if not ($user_config | path exists) and ($default_config | path exists) {
             try {
                 cp $default_config $user_config
@@ -49,7 +49,7 @@ def main [
                 print $"⚠️  Could not create yazelix.nix: ($err.msg)"
             }
         }
-        
+
         # Show environment-specific guidance
         if $env_info.home_manager and $debug_mode {
             print "🏠 Home-manager environment detected - both file and module approaches supported"
@@ -58,7 +58,7 @@ def main [
 
     # Validate user config against schema
     use ../utils/config_schema.nu validate_config_against_default
-    
+
     # Parse extra shells from comma-separated string
     let extra_shells = if ($extra_shells_str | is-empty) or ($extra_shells_str == "NONE") {
         []
@@ -254,7 +254,7 @@ def setup_nushell_config [yazelix_dir: string] {
     if ($nushell_config | path exists) {
         let file_info = (ls $nushell_config | get 0)
         if $file_info.type == "symlink" {
-            print $"⚠️  Nushell config is managed externally (symlink), skipping direct modification"
+            print $"⚠️  Nushell config is managed externally \(symlink\), skipping direct modification"
             print $"   💡 If using home-manager, the integration should work automatically"
             return
         }
