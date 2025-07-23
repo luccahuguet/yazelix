@@ -9,11 +9,12 @@ Control Yazelix's disk usage by enabling/disabling dependency groups in your `ya
 | **Essential Tools** | ~200-250MB | Always included | Core Yazelix functionality |
 | **Recommended Tools** | ~300-400MB | Default: enabled | Productivity enhancers |
 | **Yazi Extensions** | ~100-150MB | Default: enabled | File preview & archive support |
-| **Yazi Media** | ~800MB-1.5GB | Default: enabled | Heavy media processing |
+| **Yazi Media** | ~800MB-1.5GB | Default: disabled | Heavy media processing |
 
 **Installation sizes:**
 - **Minimal**: ~200-250MB (essential only)
-- **Standard**: ~1.3-2.3GB (all groups enabled)
+- **Standard**: ~600-800MB (default config)
+- **Full**: ~1.3-2.3GB (all groups enabled)
 
 ## 📦 Key Package Breakdown
 
@@ -39,8 +40,8 @@ Edit `yazelix.nix` to control dependency groups:
 
 **Common configurations:**
 - **Minimal** (~250MB): Set all to `false`
-- **Lightweight** (~650MB): `yazi_media = false`
-- **Full** (~2GB): Keep all `true` (default)
+- **Standard** (~650MB): Default config (media disabled)
+- **Full** (~2GB): Set `yazi_media = true` for media processing
 
 ## 📝 Notes
 
