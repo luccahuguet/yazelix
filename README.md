@@ -144,7 +144,37 @@ Clone the Yazelix repository to your system:
 git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 ```
 
-#### 3. Install Fonts (Required for Kitty and Alacritty)
+#### 3. Configure Your Installation (Recommended)
+**Before installing dependencies**, create and customize your configuration to control what gets downloaded:
+
+```bash
+# Create your personal config from the template
+cp ~/.config/yazelix/yazelix_default.nix ~/.config/yazelix/yazelix.nix
+
+# Edit the configuration to suit your needs
+# Use your preferred editor (hx, vim, etc.)
+hx ~/.config/yazelix/yazelix.nix
+```
+
+**📦 Dependency Groups & Size Estimates:**
+
+| Group | Size | Default | Description |
+|-------|------|---------|-------------|
+| **✅ Essential Tools** | ~200-250MB | Always included | Core Yazelix functionality |
+| **🔧 Recommended Tools** | ~300-400MB | Enabled | Productivity enhancers |
+| **🗂️ Yazi Extensions** | ~100-150MB | Enabled | File preview & archive support |
+| **🎬 Yazi Media** | ~800MB-1.5GB | Enabled | Heavy media processing |
+
+**💡 Installation Options:**
+- **Minimal install**: ~200-250MB (essential only)
+- **Standard install**: ~1.3-2.3GB (all groups enabled)
+
+📋 For detailed package breakdowns and configuration strategies, see **[Package Sizes Documentation](./docs/package_sizes.md)**
+- **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
+- **Terminal preference**: Set `preferred_terminal` (`"ghostty"`, `"wezterm"`, `"kitty"`, `"alacritty"`)
+- **Editor choice**: Change `editor_command` from `"hx"` to `"vim"`, `"nvim"`, etc. if you prefer
+
+#### 4. Install Fonts (Required for Kitty and Alacritty)
 If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display:
 
 ```bash
@@ -153,7 +183,7 @@ nix-env -iA nixpkgs.nerd-fonts.fira-code nixpkgs.nerd-fonts.symbols-only
 
 **Note**: WezTerm and Ghostty have better font fallback and don't require this step.
 
-#### 4. Set Up Yazelix to Auto-Launch in Your Terminal
+#### 5. Set Up Yazelix to Auto-Launch in Your Terminal
 
 **Option A: Automatic Launch (Recommended for most users)**  
 Copy the appropriate terminal config to automatically start Yazelix:
@@ -195,7 +225,7 @@ This will automatically configure your shell and then you can use:
 - `yzx start` (starts Yazelix in current terminal)
 - `yzx help` (see all available commands)
 
-#### 5. Using Yazelix
+#### 6. Using Yazelix
 **Option A users**: Simply open your terminal! Yazelix will automatically launch with the full environment.  
 **Option B users**: Use `yzx launch` or `yzx start` to launch Yazelix when needed.
 
@@ -207,7 +237,7 @@ This will automatically configure your shell and then you can use:
 - Use `yzx help` to see all available management commands
 - Use `Alt+f` to toggle fullscreen on the current pane
 
-#### 6. (Optional but Recommended) Configure Helix Keybinding for Yazelix Integration
+#### 7. (Optional but Recommended) Configure Helix Keybinding for Yazelix Integration
 To enable the "reveal file in Yazi sidebar" feature from within Helix (press `Alt-y` in normal mode), add the following to your Helix config (usually `~/.config/helix/config.toml`):
 
 ```toml
@@ -236,7 +266,7 @@ This gives you access to all tools (helix, yazi, lazygit, etc.) in your current 
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run). See [yazelix_default.nix](./yazelix_default.nix) for all available options and their descriptions.
+If you followed [step 3](#3-configure-your-installation-recommended), you already have your `~/.config/yazelix/yazelix.nix` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.nix](./yazelix_default.nix) for all available options and their descriptions.
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default): Modern, fast terminal written in Zig with great performance

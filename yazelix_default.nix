@@ -1,13 +1,9 @@
 { pkgs }:
 {
-  # Recommended tools like lazygit, mise, etc. (default: true)
-  recommended_deps = true;
-
-  # Yazi extensions for previews, archives, etc. (default: true)
-  yazi_extensions = true;
-
-  # Heavy media packages for Yazi (WARNING: ~800MB-1.2GB) (default: true)
-  yazi_media = true;
+  # Dependency groups - See docs/package_sizes.md for details
+  recommended_deps = true; # Productivity tools (~300-400MB)
+  yazi_extensions = true; # File preview support (~100-150MB)
+  yazi_media = true; # Media processing (~800MB-1.5GB)
 
   # Helix build mode (choose ONE):
   # "release" - Use latest Helix release from nixpkgs (recommended for first-time users)
