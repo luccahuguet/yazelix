@@ -154,6 +154,8 @@ nix-env -iA nixpkgs.nerd-fonts.fira-code nixpkgs.nerd-fonts.symbols-only
 **Note**: WezTerm and Ghostty have better font fallback and don't require this step.
 
 #### 4. Set Up Yazelix to Auto-Launch in Your Terminal
+
+**Option A: Automatic Launch (Recommended for most users)**  
 Copy the appropriate terminal config to automatically start Yazelix:
 
 **For WezTerm:**
@@ -178,18 +180,32 @@ cp ~/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml ~/.conf
 
 **Result**: Every time you open your terminal, it will automatically launch Yazelix. You won't need to run any commands.
 
-**Alternative**: Use the `yzx` command from any terminal to launch Yazelix (aliases are automatically available when shell configs are sourced). The `yzx` command also provides additional subcommands like `yzx help`, `yzx get_config`, `yzx versions`, etc. for managing your Yazelix installation.
+---
+
+**Option B: Manual Launch (For users who don't want to modify terminal configs)**
+
+If you prefer to keep your existing terminal configuration unchanged, just run Yazelix once and it will automatically set up the `yzx` command for you:
+
+```bash
+nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
+```
+
+This will automatically configure your shell and then you can use:
+- `yzx launch` (opens Yazelix in a new terminal window)  
+- `yzx start` (starts Yazelix in current terminal)
+- `yzx help` (see all available commands)
 
 #### 5. Using Yazelix
-Simply open your terminal! Yazelix will automatically launch with the full environment.
+**Option A users**: Simply open your terminal! Yazelix will automatically launch with the full environment.  
+**Option B users**: Use `yzx launch` or `yzx start` to launch Yazelix when needed.
 
-**First Run**: The first time you open your terminal, Yazelix will install all dependencies (Zellij, Yazi, Helix, etc.). This may take several minutes, but subsequent launches will be instant.
+**First Run**: The first time you launch Yazelix, it will install all dependencies (Zellij, Yazi, Helix, etc.). This may take several minutes, but subsequent launches will be instant.
 
 **Quick start tips:**
 - Use `alt hjkl` to switch between Zellij panes and tabs
 - Press `Enter` in Yazi to open files in your configured editor
-- Use the `yzx` command from any terminal to launch Yazelix manually
 - Use `yzx help` to see all available management commands
+- Use `Alt+f` to toggle fullscreen on the current pane
 
 #### 6. (Optional but Recommended) Configure Helix Keybinding for Yazelix Integration
 To enable the "reveal file in Yazi sidebar" feature from within Helix (press `Alt-y` in normal mode), add the following to your Helix config (usually `~/.config/helix/config.toml`):
