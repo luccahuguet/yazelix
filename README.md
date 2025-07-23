@@ -6,6 +6,7 @@
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 
+- **Use your preferred shell**: Bash, Fish, Zsh, or Nushell - Yazelix works with all of them
 - Zellij orchestrates everything, with Yazi as a sidebar and your chosen editor (Helix by default)
 - To hide the sidebar, make your pane fullscreen! (`Ctrl p + f` or `Alt f`)
 - Every keybinding from Zellij that conflicts with Helix is remapped [see here](#keybindings)
@@ -84,9 +85,9 @@ When opening files from Yazi, Yazelix will:
 - This is need because sometimes when opening a new zellij pane in the pane stack, or deleting one, the editor pane will move around. Most of the times it will move down twice! So the workaround works.
 
 ## Compatibility
-- Terminal: WezTerm, Ghostty, Kitty, or Alacritty
-- Editor: Any editor, but hx is has first class support (reaveal in sidebar, open buffer in running hx instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
-- Shell: Nushell, Bash, Fish, Zsh
+- **Terminal**: WezTerm, Ghostty, Kitty, or Alacritty
+- **Editor**: Any editor, but Helix has first-class support (reveal in sidebar, open buffer in running instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
+- **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
 ## Version Check
@@ -94,18 +95,18 @@ Check installed tool versions: `nu nushell/scripts/utils/version_info.nu`
 
 ## Instructions to Set It Up
 
-**Firstly, what is Nix?** Nix is a powerful package manager that ensures reproducible, reliable software installations. Think of it like a super-powered version of `apt`, `brew`, or `chocolatey` that:
-- Never breaks your system (installs are isolated): High reproducibility
+**What is Nix?** Nix is just a package manager that ensures reproducible, reliable software installations. Think of it like a super-powered version of `apt`, `brew`, or `chocolatey` that:
+- Never breaks your system (installs are isolated)
 - Allows multiple versions of the same software
 - Makes it easy to share exact development environments
 - Can completely uninstall without leaving traces
 
-**Nix allows yazelix to let you take _full_ control of your shell**
-
 **Why does Yazelix use Nix?** It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software.
 
+**Important**: You don't need to learn Nix or Nushell to use Yazelix! Nix just installs the tools and yazelix uses nushell internally, and you can use your preferred shell (bash, fish, zsh, or nushell) for your daily work. You can install nix and nushell once, and forget they ever existed
+
 ### Prerequisites
-- **Nushell** - Required to boot Yazelix
+- **Nushell** - Required to run yazelix, used internally (but you can use any of our supported shells)
   - See installation instructions: https://www.nushell.sh/book/installation.html
 - **Supported terminal emulators** (choose your favorite!):
   - **WezTerm** 
@@ -205,12 +206,12 @@ To use Yazelix tools without starting the full interface (no sidebar, no zellij)
 ```bash
 nix develop --impure ~/.config/yazelix
 ```
-This gives you access to all tools (helix, yazi, lazygit, etc.) in your current terminal, that includes yazi and zellij, but they'll open on demand, not on their own.
+This gives you access to all tools (helix, yazi, lazygit, etc.) in your current terminal with your preferred shell. The tools are available on-demand without the automatic Zellij workspace.
 
 ### Packages & Customization
 
 **What Gets Installed:**
-- **Essential tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), [Nushell](https://www.nushell.sh/book/installation.html) (shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
+- **Essential tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), shells (bash/nushell, plus your preferred shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
 - **Recommended tools** (enabled by default): [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdx/mise), [cargo-update](https://github.com/nabijaczleweli/cargo-update), [ouch](https://github.com/ouch-org/ouch), [atuin](https://github.com/atuinsh/atuin) (shell history manager), etc
 
 - **Yazi extensions** (enabled by default): `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` (for archives, search, document previews)
