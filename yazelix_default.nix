@@ -1,9 +1,9 @@
 { pkgs }:
 {
   # Dependency groups - See docs/package_sizes.md for details
-  recommended_deps = true; # Productivity tools (~300-400MB)
-  yazi_extensions = true; # File preview support (~100-150MB)
-  yazi_media = false; # Media processing (~800MB-1.5GB)
+  recommended_deps = true; # Productivity tools (~350MB)
+  yazi_extensions = true; # File preview support (~125MB)
+  yazi_media = false; # Media processing (~1GB)
 
   # Helix build mode (choose ONE):
   # "release" - Use latest Helix release from nixpkgs (recommended for first-time users)

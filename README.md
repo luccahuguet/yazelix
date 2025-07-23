@@ -160,15 +160,15 @@ hx ~/.config/yazelix/yazelix.nix
 
 | Group | Size | Default | Description |
 |-------|------|---------|-------------|
-| **✅ Essential Tools** | ~200-250MB | Always included | Core Yazelix functionality |
-| **🔧 Recommended Tools** | ~300-400MB | Enabled | Productivity enhancers |
-| **🗂️ Yazi Extensions** | ~100-150MB | Enabled | File preview & archive support |
-| **🎬 Yazi Media** | ~800MB-1.5GB | Disabled | Heavy media processing |
+| **✅ Essential Tools** | ~225MB | Always included | Core Yazelix functionality |
+| **🔧 Recommended Tools** | ~350MB | Enabled | Productivity enhancers |
+| **🗂️ Yazi Extensions** | ~125MB | Enabled | File preview & archive support |
+| **🎬 Yazi Media** | ~1GB | Disabled | Heavy media processing |
 
 **💡 Installation Options:**
-- **Minimal install**: ~200-250MB (essential only)
-- **Standard install**: ~600-800MB (default config)
-- **Full install**: ~1.3-2.3GB (all groups enabled)
+- **Minimal install**: ~225MB (essential only)
+- **Standard install**: ~700MB (default config)
+- **Full install**: ~1.7GB (all groups enabled)
 
 📋 For detailed package breakdowns and configuration strategies, see **[Package Sizes Documentation](./docs/package_sizes.md)**
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
