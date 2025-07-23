@@ -29,7 +29,7 @@
 - Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/setup/generate_zellij_config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `configs/zellij/yazelix_overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
 - Allows for declaration user-defined git-ignored nix packages directly in yazelix.nix
 - Improves the "reveal file in sidebar" feature by using Yazi's `reveal` command to automatically highlight and select the specific file, eliminating manual searching in directories with many files
-- Introduces dynamic version table generation using `nu nushell/scripts/utils/version_info.nu` 
+- Introduces dynamic version table generation using `nu nushell/scripts/utils/version_info.nu`
 
 ## v6: Reveal, Integrate, Automate: Smarter sidebar, Git status, and seamless file opening
 

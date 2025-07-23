@@ -55,24 +55,6 @@ See [Project Credits](./docs/project_credits.md) for a full list of all projects
   - Cleaned up legacy/conflicting keybindings for a more user-friendly experience
 - **Full version history and project evolution is now documented in detail (see Version History & Changelog below)**
 
-## Improvements of v7 over v6
-- **Warning**: After upgrading to Yazelix v7, terminate any running zellij sessions and old terminals to prevent conflicts
-- Introduces a Nix-based development environment via `flake.nix`, simplifying dependency installation and ensuring consistent versions for Zellij, Yazi, Helix, Nushell, lazygit, Starship, and other tools
-- Introduces `yazelix.nix` configuration file for customizing dependencies, shells, and build options!
-- Adds [lazygit](https://github.com/jesseduffield/lazygit), a fast, terminal-based Git TUI for managing Git repositories
-- Adds [Starship](https://starship.rs), a customizable, fast prompt for Nushell, enhancing the terminal experience with Git status and contextual info
-- Adds [markdown-oxide](https://oxide.md/index), a Personal Knowledge Management System (PKMS) that works with your favorite text editor through LSP, inspired by and compatible with Obsidian
-- Allows you to build Helix from source automatically
-- Installs and configures dependencies automatically
-- Introduces (optional) yazelix welcome screen with helpful tips and better error handling during environment setup
-- Adds terminal transparency settings because we reaaally believe in transparency
-- Adds `launch_yazelix.nu` script to launch your preferred terminal with the Yazelix-specific config. The `yzx` alias is automatically available in your shell once the Yazelix shell configurations are sourced.
-- The `clip` command from [nuscripts](https://github.com/nushell/nuscripts) is included, allowing you to copy text to the system clipboard directly from Nushell. Use it like `ls src/*.py | get name | to text | clip` or `open data.csv | clip`, etc
-- Introduces dynamic Zellij configuration generation on demand using `nushell/scripts/setup/generate_zellij_config.nu`, which combines Zellij's default settings with Yazelix-specific overrides from `configs/zellij/yazelix_overrides.kdl`, making it easy to stay up-to-date with Zellij defaults while preserving custom settings
-- Allows for declaration user-defined git-ignored nix packages directly in yazelix.nix
-- Improves the "reveal file in sidebar" feature by using Yazi's `reveal` command to automatically highlight and select the specific file, eliminating manual searching in directories with many files
-- Introduces dynamic version table generation using `nu nushell/scripts/utils/version_info.nu`
-
 ## Version History & Changelog
 
 For a detailed history of all major Yazelix version bumps and changelogs, see [Version History](./docs/history.md).
