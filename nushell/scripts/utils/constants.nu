@@ -13,7 +13,7 @@ export const YAZELIX_DESCRIPTION = "Yazi + Zellij + Helix integrated terminal en
 
 # Default configuration values
 export const DEFAULT_SHELL = "nu"
-export const DEFAULT_TERMINAL = "wezterm"
+export const DEFAULT_TERMINAL = "ghostty"
 export const DEFAULT_HELIX_MODE = "release"
 
 # File paths and directories - XDG-compliant separation
@@ -53,7 +53,7 @@ export const YAZELIX_CONFIG_FILES = {
 export const YAZELIX_ENV_VARS = {
     YAZELIX_DIR: "~/.config/yazelix"
     YAZELIX_DEFAULT_SHELL: "nu"
-    YAZELIX_PREFERRED_TERMINAL: "wezterm"
+    YAZELIX_PREFERRED_TERMINAL: "ghostty"
     YAZELIX_HELIX_MODE: "release"
     YAZI_CONFIG_HOME: "~/.config/yazelix/configs/yazi"
     ZELLIJ_DEFAULT_LAYOUT: "yazelix"

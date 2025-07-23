@@ -22,10 +22,10 @@
   # Only install additional shells if you plan to use them
   extra_shells = [ ];
 
-  # Preferred terminal emulator for launch_yazelix.nu (default: "wezterm")
-  # Options: "wezterm", "ghostty", "kitty", "alacritty"
-  # WezTerm is the default because it currently has better image preview support in Yazi but all four are great
-  preferred_terminal = "wezterm";
+  # Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
+  # Options: "ghostty", "kitty", "alacritty", "wezterm"
+  # Ghostty is the default as a modern, fast terminal written in Zig, but all four are great
+  preferred_terminal = "ghostty";
 
   # Whether to set EDITOR environment variable (default: true)
   set_editor = true;

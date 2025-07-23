@@ -84,7 +84,7 @@ When opening files from Yazi, Yazelix will:
 - This is need because sometimes when opening a new zellij pane in the pane stack, or deleting one, the editor pane will move around. Most of the times it will move down twice! So the workaround works.
 
 ## Compatibility
-- Terminal: WezTerm, Ghostty, Kitty, or Alacritty
+- Terminal: Ghostty, Kitty, Alacritty, or WezTerm
 - Editor: Any editor, but hx is has first class support (reaveal in sidebar, open buffer in running hx instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
 - Shell: Nushell, Bash, Fish, Zsh
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
@@ -221,11 +221,11 @@ This gives you access to all tools (helix, yazi, lazygit, etc.) in your current 
 Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run). See [yazelix_default.nix](./yazelix_default.nix) for all available options and their descriptions.
 
 **Terminal Emulator Selection:**
-- **WezTerm** (default): Better image preview support in Yazi, recommended for most users
-- **Ghostty**: Modern, fast terminal written in Zig
+- **Ghostty** (default): Modern, fast terminal written in Zig
 - **Kitty**: Fast, feature-rich, GPU-accelerated terminal
 - **Alacritty**: Fast, GPU-accelerated terminal written in Rust
-- Configure your preference in `yazelix.nix` with `preferred_terminal = "terminal_name"` (options: wezterm, ghostty, kitty, alacritty)
+- **WezTerm**: Better image preview support in Yazi, great for media-heavy workflows
+- Configure your preference in `yazelix.nix` with `preferred_terminal = "terminal_name"` (options: ghostty, kitty, alacritty, wezterm)
 
 [See the full Customization Guide here.](./docs/customization.md)
 

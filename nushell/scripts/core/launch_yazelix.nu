@@ -13,7 +13,7 @@ def main [] {
     print $"Resolved HOME=($home)"
 
     # Read preference from environment (set by Nix shellHook)
-    let preferred_terminal = ($env.YAZELIX_PREFERRED_TERMINAL? | default "wezterm")
+    let preferred_terminal = ($env.YAZELIX_PREFERRED_TERMINAL? | default "ghostty")
 
     # Check if a supported terminal is installed
     let terminal_info = if ($preferred_terminal == "wezterm") and ((which wezterm | length) > 0) {
@@ -36,36 +36,36 @@ def main [] {
             terminal: "alacritty"
             config: $"($home)/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml"
         }
-    } else if (which wezterm | length) > 0 {
-        # Fallback to wezterm if preferred terminal not available
-        {
-            terminal: "wezterm"
-            config: $"($home)/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua"
-        }
     } else if (which ghostty | length) > 0 {
-        # Fallback to ghostty if wezterm not available
+        # Fallback to ghostty if preferred terminal not available
         {
             terminal: "ghostty"
             config: $"($home)/.config/yazelix/configs/terminal_emulators/ghostty/config"
         }
     } else if (which kitty | length) > 0 {
-        # Fallback to kitty if wezterm and ghostty not available
+        # Fallback to kitty if ghostty not available
         {
             terminal: "kitty"
             config: $"($home)/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf"
         }
     } else if (which alacritty | length) > 0 {
-        # Fallback to alacritty if other terminals not available
+        # Fallback to alacritty if ghostty and kitty not available
         {
             terminal: "alacritty"
             config: $"($home)/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml"
         }
+    } else if (which wezterm | length) > 0 {
+        # Fallback to wezterm if other terminals not available
+        {
+            terminal: "wezterm"
+            config: $"($home)/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua"
+        }
     } else {
-        print "Error: None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty) are installed. Please install one of these terminals to use Yazelix."
-        print "  - WezTerm: https://wezfurlong.org/wezterm/"
+        print "Error: None of the supported terminals (Ghostty, Kitty, Alacritty, WezTerm) are installed. Please install one of these terminals to use Yazelix."
         print "  - Ghostty: https://ghostty.org/"
         print "  - Kitty: https://sw.kovidgoyal.net/kitty/"
         print "  - Alacritty: https://alacritty.org/"
+        print "  - WezTerm: https://wezfurlong.org/wezterm/"
         exit 1
     }
 
