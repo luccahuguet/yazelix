@@ -118,6 +118,9 @@ Check installed tool versions: `nu nushell/scripts/utils/version_info.nu`
   - **Kitty**
     - Fast, feature-rich, GPU-accelerated terminal
     - Instructions here: https://sw.kovidgoyal.net/kitty/binary/
+  - **Alacritty**
+    - Fast, GPU-accelerated terminal written in Rust
+    - Instructions here: https://github.com/alacritty/alacritty/blob/master/INSTALL.md
 
 ### Step-by-Step Installation
 
@@ -160,6 +163,15 @@ nix-env -iA nixpkgs.fira-code-nerdfont nixpkgs.nerd-fonts.symbols-only
 
 # Copy the configuration  
 cp ~/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf ~/.config/kitty/kitty.conf
+```
+
+**For Alacritty:**
+```bash
+# Install nerd fonts for proper Yazi icon display
+nix-env -iA nixpkgs.fira-code-nerdfont nixpkgs.nerd-fonts.symbols-only
+
+# Copy the configuration
+cp ~/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
 ```
 
 **Result**: Every time you open your terminal, it will automatically launch Yazelix. You won't need to run any commands.
@@ -212,7 +224,8 @@ Edit `~/.config/yazelix/yazelix.nix` (auto-created from template on first run). 
 - **WezTerm** (default): Better image preview support in Yazi, recommended for most users
 - **Ghostty**: Modern, fast terminal written in Zig
 - **Kitty**: Fast, feature-rich, GPU-accelerated terminal
-- Configure your preference in `yazelix.nix` with `preferred_terminal = "wezterm"`, `preferred_terminal = "ghostty"`, or `preferred_terminal = "kitty"`
+- **Alacritty**: Fast, GPU-accelerated terminal written in Rust
+- Configure your preference in `yazelix.nix` with `preferred_terminal = "terminal_name"` (options: wezterm, ghostty, kitty, alacritty)
 
 [See the full Customization Guide here.](./docs/customization.md)
 

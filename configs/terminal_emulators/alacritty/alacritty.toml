@@ -1,0 +1,48 @@
+# Alacritty Configuration for Yazelix
+# Copy this to: ~/.config/alacritty/alacritty.toml
+#
+# SETUP INSTRUCTIONS:
+# 1. Install nerd fonts: nix-env -iA nixpkgs.fira-code-nerdfont nixpkgs.nerd-fonts.symbols-only
+# 2. Copy this config to your Alacritty config directory
+# 3. Restart Alacritty
+# 4. Enjoy working Yazi icons! 🎉
+
+[shell]
+program = "nu"
+args = ["~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]
+
+[window]
+decorations = "none"
+opacity = 0.9
+padding = { x = 4, y = 10 }
+
+[font]
+normal = { family = "FiraCode Nerd Font Mono", style = "Regular" }
+bold = { family = "FiraCode Nerd Font Mono", style = "Bold" }
+italic = { family = "FiraCode Nerd Font Mono", style = "Italic" }
+bold_italic = { family = "FiraCode Nerd Font Mono", style = "Bold Italic" }
+size = 11.0
+
+[colors]
+# Abernathy theme colors (matching other terminal configs)
+primary = { background = "#1f1f1f", foreground = "#d4d4d4" }
+
+normal = { black = "#1f1f1f", red = "#d16969", green = "#608b4e", yellow = "#dcdcaa", blue = "#569cd6", magenta = "#c586c0", cyan = "#4ec9b0", white = "#d4d4d4" }
+
+bright = { black = "#6a9955", red = "#f14c4c", green = "#23d18b", yellow = "#f5f543", blue = "#3b8eea", magenta = "#d670d6", cyan = "#29b8db", white = "#e5e5e5" }
+
+[cursor]
+style = { shape = "Block", blinking = "Off" }
+
+[scrolling]
+history = 10000
+
+[keyboard]
+bindings = [
+    # Allow copy/paste
+    { key = "C", mods = "Control|Shift", action = "Copy" },
+    { key = "V", mods = "Control|Shift", action = "Paste" },
+]
+
+[env]
+TERM = "alacritty"

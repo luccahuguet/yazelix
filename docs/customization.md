@@ -3,9 +3,11 @@
 Yazelix is highly customizable! Here are the main ways you can tailor your experience:
 
 - **Configuration File**: Edit `~/.config/yazelix/yazelix.nix` for all core options. See [yazelix_default.nix](../yazelix_default.nix) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, debug mode, etc).
-- **Terminal Emulator Configs**: For WezTerm and Ghostty, copy and edit the provided configs:
+- **Terminal Emulator Configs**: For all supported terminals, copy and edit the provided configs:
   - [WezTerm config](../configs/terminal_emulators/wezterm/.wezterm.lua)
   - [Ghostty config](../configs/terminal_emulators/ghostty/config)
+  - [Kitty config](../configs/terminal_emulators/kitty/kitty.conf)
+  - [Alacritty config](../configs/terminal_emulators/alacritty/alacritty.toml)
   - See [WezTerm docs](https://wezfurlong.org/wezterm/config/files.html) for advanced customization.
 - **Zellij Layouts & Configs**: Customize Zellij layouts in [../configs/zellij/layouts/](../configs/zellij/layouts/) and overrides in [../configs/zellij/yazelix_overrides.kdl](../configs/zellij/yazelix_overrides.kdl).
 - **Yazi Plugins & Keymaps**: Tweak Yazi behavior in [../configs/yazi/](../configs/yazi/) (see [init.lua](../configs/yazi/init.lua), [keymap.toml](../configs/yazi/keymap.toml), and [plugins/](../configs/yazi/plugins/)).

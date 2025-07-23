@@ -31,6 +31,11 @@ def main [] {
             terminal: "kitty"
             config: $"($home)/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf"
         }
+    } else if ($preferred_terminal == "alacritty") and ((which alacritty | length) > 0) {
+        {
+            terminal: "alacritty"
+            config: $"($home)/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml"
+        }
     } else if (which wezterm | length) > 0 {
         # Fallback to wezterm if preferred terminal not available
         {
@@ -49,11 +54,18 @@ def main [] {
             terminal: "kitty"
             config: $"($home)/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf"
         }
+    } else if (which alacritty | length) > 0 {
+        # Fallback to alacritty if other terminals not available
+        {
+            terminal: "alacritty"
+            config: $"($home)/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml"
+        }
     } else {
-        print "Error: None of the supported terminals (WezTerm, Ghostty, Kitty) are installed. Please install one of these terminals to use Yazelix."
+        print "Error: None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty) are installed. Please install one of these terminals to use Yazelix."
         print "  - WezTerm: https://wezfurlong.org/wezterm/"
         print "  - Ghostty: https://ghostty.org/"
         print "  - Kitty: https://sw.kovidgoyal.net/kitty/"
+        print "  - Alacritty: https://alacritty.org/"
         exit 1
     }
 
@@ -79,6 +91,9 @@ def main [] {
     } else if $terminal == "kitty" {
         print ("Running: kitty --config=" + $terminal_config)
         ^bash -c $"nohup kitty --config=($terminal_config) >/dev/null 2>&1 &"
+    } else if $terminal == "alacritty" {
+        print ("Running: alacritty --config-file=" + $terminal_config)
+        ^bash -c $"nohup alacritty --config-file ($terminal_config) >/dev/null 2>&1 &"
     }
 }
 
