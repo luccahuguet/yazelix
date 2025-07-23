@@ -73,6 +73,12 @@ keybinds {
         // Alt+q/w: Walk (focus) left/right between tabs
         bind "Alt q" { GoToPreviousTab; }
         bind "Alt w" { GoToNextTab; }
+
+        // Unbind Alt+( and Alt+)
+        // fixes selection cycling in helix for alacritty and wezterm
+        // does not work for kitty or ghostty
+        unbind "Alt ("
+        unbind "Alt )"
     }
 
     session {
