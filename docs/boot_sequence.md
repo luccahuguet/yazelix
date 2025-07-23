@@ -12,7 +12,7 @@
 ## 1.B: Terminal Commands  
 - **Setup**: `yazelix` and `yzx` aliases are automatically available when shell configs are sourced
 - **Launch**: Run `yazelix` or `yzx` from any terminal and it will execute `~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu`
-- That launches your preferred terminal (Ghostty by default, Kitty, Alacritty, or WezTerm) with specific config
+- That launches your preferred terminal (Ghostty by default, WezTerm, Kitty, or Alacritty) with specific config
 - The terminal automatically executes `nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu`
 
 ## 2. **Nix Environment**: Changes to `~/.config/yazelix` and runs:

@@ -11,7 +11,7 @@ YAZELIX_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 YAZELIX_VERSION="v7.5"
 YAZELIX_DESCRIPTION="Yazi + Zellij + Helix integrated terminal environment"
 DEFAULT_SHELL="nu"
-DEFAULT_TERMINAL="wezterm"
+DEFAULT_TERMINAL="ghostty"
 DEFAULT_HELIX_MODE="release"
 
 # Shell configuration files

@@ -23,8 +23,8 @@
   extra_shells = [ ];
 
   # Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
-  # Options: "ghostty", "kitty", "alacritty", "wezterm"
-  # Ghostty is the default as a modern, fast terminal written in Zig, but all four are great
+  # Options: "wezterm", "ghostty", "kitty", "alacritty"
+  # Ghostty is the default for great performance; use WezTerm if you need better image preview support in Yazi
   preferred_terminal = "ghostty";
 
   # Whether to set EDITOR environment variable (default: true)

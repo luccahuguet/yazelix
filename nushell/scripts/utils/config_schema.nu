@@ -31,7 +31,7 @@ export def validate_enum_values [user: record] {
     let enums = [
         { key: "default_shell", allowed: ["nu", "bash", "fish", "zsh"] },
         { key: "helix_mode", allowed: ["release", "source"] },
-        { key: "preferred_terminal", allowed: ["ghostty", "kitty", "alacritty", "wezterm"] },
+        { key: "preferred_terminal", allowed: ["wezterm", "ghostty", "kitty", "alacritty"] },
         { key: "ascii_art_mode", allowed: ["static", "animated"] }
     ]
     for enum in $enums {
