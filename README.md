@@ -85,7 +85,7 @@ When opening files from Yazi, Yazelix will:
 
 ## Compatibility
 - Terminal: WezTerm, Ghostty, Kitty, or Alacritty
-- Editor: Any editor, but hx is has first class support (`reaveal in sidebar, open buffer in running hx instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
+- Editor: Any editor, but hx is has first class support (reaveal in sidebar, open buffer in running hx instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
 - Shell: Nushell, Bash, Fish, Zsh
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
