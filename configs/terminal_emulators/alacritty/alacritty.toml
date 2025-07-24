@@ -1,13 +1,13 @@
-# Alacritty Configuration for Yazelix
+# Alacritty Configuration for Yazelix with Alacritty v0.15.0
 # Copy this to: ~/.config/alacritty/alacritty.toml
 #
 # SETUP INSTRUCTIONS:
-# 1. Follow the README font installation step (if needed)
-# 2. Copy this config to your Alacritty config directory
+# 1. Verify font installation and name (see troubleshooting below)
+# 2. Copy this config to ~/.config/alacritty/alacritty.toml
 # 3. Restart Alacritty
-# 4. Enjoy working Yazi icons! 🎉
+# 4. Check Yazi icons
 
-[shell]
+[terminal.shell]
 program = "nu"
 args = ["~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]
 
@@ -16,20 +16,26 @@ decorations = "none"
 opacity = 0.9
 padding = { x = 4, y = 10 }
 
+# Font configuration for Alacritty v0.15.0
 [font]
-normal = { family = "FiraCode Nerd Font Mono", style = "Regular" }
-bold = { family = "FiraCode Nerd Font Mono", style = "Bold" }
-italic = { family = "FiraCode Nerd Font Mono", style = "Italic" }
-bold_italic = { family = "FiraCode Nerd Font Mono", style = "Bold Italic" }
 size = 11.0
+builtin_box_drawing = false # Use Nerd Font glyphs for icons
 
-[colors]
-# Abernathy theme colors (matching other terminal configs)
-primary = { background = "#1f1f1f", foreground = "#d4d4d4" }
+[font.normal]
+family = "FiraCode Nerd Font Mono"
+style = "Regular"
 
-normal = { black = "#1f1f1f", red = "#d16969", green = "#608b4e", yellow = "#dcdcaa", blue = "#569cd6", magenta = "#c586c0", cyan = "#4ec9b0", white = "#d4d4d4" }
+[font.bold]
+family = "FiraCode Nerd Font Mono"
+style = "Bold"
 
-bright = { black = "#6a9955", red = "#f14c4c", green = "#23d18b", yellow = "#f5f543", blue = "#3b8eea", magenta = "#d670d6", cyan = "#29b8db", white = "#e5e5e5" }
+[font.italic]
+family = "FiraCode Nerd Font Mono"
+style = "Italic"
+
+[font.bold_italic]
+family = "FiraCode Nerd Font Mono"
+style = "Bold Italic"
 
 [cursor]
 style = { shape = "Block", blinking = "Off" }
@@ -37,12 +43,15 @@ style = { shape = "Block", blinking = "Off" }
 [scrolling]
 history = 10000
 
-[keyboard]
-bindings = [
-    # Allow copy/paste
-    { key = "C", mods = "Control|Shift", action = "Copy" },
-    { key = "V", mods = "Control|Shift", action = "Paste" },
-]
+[[keyboard.bindings]]
+key = "C"
+mods = "Control|Shift"
+action = "Copy"
+
+[[keyboard.bindings]]
+key = "V"
+mods = "Control|Shift"
+action = "Paste"
 
 [env]
 TERM = "alacritty"
