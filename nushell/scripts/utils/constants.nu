@@ -85,7 +85,7 @@ export def is_home_manager_environment [] {
         ($env.HOME + "/.nix-profile/etc/profile.d/hm-session-vars.sh")
         $env.NIX_PROFILE?
     ]
-    $home_manager_indicators | any { |path| $path | path exists }
+    $home_manager_indicators | where ($it != null) | any { |path| $path | path exists }
 }
 
 export def detect_environment [] {
