@@ -51,6 +51,20 @@ def get_version [tool: string] {
                 if (which nix | is-empty) { return "not installed" }
                 try { (nix --version | split column " " | get column3 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
             }
+            "kitty" => {
+                if (which kitty | is-empty) { return "not installed" }
+                try { (kitty --version | split column " " | get column2) } catch { "error" }
+            }
+            "alacritty" => {
+                if (which alacritty | is-empty) { return "not installed" }
+                try { (alacritty --version | split column " " | get column2) } catch { "error" }
+            }
+            "macchina" => {
+                if (which macchina | is-empty) { return "not installed" }
+                try {
+                    (macchina -v | lines | first | split row ' ' | where $it != '' | get 1)
+                } catch { "error" }
+            }
             _ => {
                 if (which $tool | is-empty) { return "not installed" }
                 try {
@@ -78,6 +92,9 @@ export def main [--save(-s)] {
         "wezterm"
         "ghostty"
         "nix"
+        "kitty"
+        "alacritty"
+        "macchina"
     ]
 
     # Collect tool information
