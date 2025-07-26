@@ -127,8 +127,8 @@ Clone the Yazelix repository to your system:
 git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 ```
 
-#### 3. Configure Your Installation (Recommended)
-**Before installing dependencies**, create and customize your configuration to control what gets downloaded:
+#### 3. Configure Your Installation (Optional)
+**Before installing dependencies**, create and customize your configuration to control what gets downloaded (else, yazelix will create a config for you based on yazelix_default.nix):
 
 ```bash
 # Create your personal config from the template
@@ -250,7 +250,7 @@ This gives you access to all tools (helix, yazi, lazygit, etc.) in your current 
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 3](#3-configure-your-installation-recommended), you already have your `~/.config/yazelix/yazelix.nix` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.nix](./yazelix_default.nix) for all available options and their descriptions.
+If you followed [step 3](#3-configure-your-installation-optional), you already have your `~/.config/yazelix/yazelix.nix` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.nix](./yazelix_default.nix) for all available options and their descriptions.
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default): Modern, fast terminal written in Zig with great performance
