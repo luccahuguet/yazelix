@@ -2,6 +2,7 @@
 
 ## Major Version Descriptions
 
+- **v8**: Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!
 - **v7**: Nix installs and configures everything for you! ([announcement](#v7-nix-installs-and-configures-everything-for-you))
 - **v6**: Reveal, Integrate, Automate: Smarter sidebar, Git status, and seamless file opening.
 - **v5**: The POWER of yazi PLUGINS!
@@ -9,6 +10,30 @@
 - **v3**: Helix with a File Tree! Now with helix-friendly keybindings, and monorepo! ([announcement](https://www.reddit.com/r/HelixEditor/comments/1doefzt/yazelix_v3_helix_with_a_file_tree_now_with/))
 - **v2**: Yazi-Helix File Tree v2, now with a Closeable Sidebar! (the name 'Yazelix' did not exist yet; [announcement](https://www.reddit.com/r/HelixEditor/comments/1d6nkxs/yazihelix_file_tree_v2_now_with_a_closeable/))
 - **v1**: My first Zellij/Yazi/Helix/Nushell setup, inspired by a Reddit interaction, with no integration and a lot of hacks ([announcement](https://www.reddit.com/r/HelixEditor/comments/1d59br3/file_tree_setup_using_yazi_zellij_helix_and/))
+
+## v8: Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!
+
+### Changes from v7 to v8
+
+- **Home Manager Integration**: Optional declarative configuration management via Home Manager module
+- **Modular Editor Support**: Complete rewrite of file opening logic to support any editor while preserving full Helix integration. Now you can use Vim, Nano, Emacs, or any editor via the `editor_command` setting in `yazelix.nix` - Helix users get all advanced features (open in same buffer, reveal in sidebar, etc), while other editors get basic Zellij integration (new panes, tab renaming)
+- **Big File/Folder Project-Wide Refactoring**: Complete reorganization of the codebase structure for better maintainability and organization
+- **Yazelix Config Validation**: Added validation system to warn users of invalid configuration options in `yazelix.nix`
+- **Configurable Editor Environment Variables**: New config options to set EDITOR environment variable when empty, override existing EDITOR, and add custom editor commands
+- **Configurable Welcome ASCII Art**: You can now choose between animated or static ASCII art in the welcome screen using the new `ascii_art_mode` option in your `yazelix.nix` config. Set `ascii_art_mode = "animated"` (default) or `ascii_art_mode = "static"` for a non-animated welcome.
+- **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell!
+- **Seamless Yazelix restart**: `yzx restart` launches a new Yazelix instance before killing the old one, providing a smooth and reliable restart experience.
+- **Project Credits page**: Yazelix now includes a dedicated credits page (`docs/project_credits.md`) listing all integrated tools and inspirations.
+- **Added macchina to welcome screen**: Added a system info summary using macchina (neofetch alternative) to the welcome screen. It can be disabled in the config.
+- **Dynamic Config Validation**: Yazelix now uses a dynamic config validator that checks your config against yazelix_default.nix every time Yazelix starts. It warns about unknown fields, missing fields, and invalid values for key options (like default_shell, helix_mode, preferred_terminal, ascii_art_mode). No more silent config errors!
+- **Improved Helix Pane Detection**: Yazelix now checks the topmost pane and the next two below for a Zellij pane named `editor` (the Helix pane) when opening files from Yazi, reusing it if found, or opening a new one if not. See [Helix Pane Detection Logic](../README.md#helix-pane-detection-logic) for details.
+- **Ergonomic Tab Navigation**: Added browser-like tab navigation in Zellij:
+  - `Alt+number` to jump directly to tabs 1-9
+  - `Alt+w/q` to walk (focus) next/previous tab
+  - `Alt+Shift+H/L` to move tabs left/right
+  - Cleaned up legacy/conflicting keybindings for a more user-friendly experience
+- **Persistent Sessions Configuration**: Added support for persistent Zellij sessions with flexible configuration parsing. Configure `persistent_sessions = true` and `session_name = "your_session"` in `yazelix.nix` to reuse the same session across restarts
+- **Full version history and project evolution is now documented in detail, right here!**
 
 ## v7: Nix installs and configures everything for you!
 

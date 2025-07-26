@@ -1,4 +1,4 @@
-# Yazelix v7.5: Nix installs and configures everything for you!
+# Yazelix v8: Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!
 
 ## Preview
 ![yazelix_v7_demo](assets/demos/yazelix_v7_demo.gif)
@@ -36,7 +36,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 ## Acknowledgments
 See [Project Credits](./docs/project_credits.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
-## Improvements of v7.5 over v7
+## Improvements of v8 over v7
 - **Home Manager Integration**: Optional declarative configuration management via Home Manager module
 - **Modular Editor Support**: Complete rewrite of file opening logic to support any editor while preserving full Helix integration. Now you can use Vim, Nano, Emacs, or any editor via the `editor_command` setting in `yazelix.nix` - Helix users get all advanced features (open in same buffer, reveal in sidebar, etc), while other editors get basic Zellij integration (new panes, tab renaming)
 - **Big File/Folder Project-Wide Refactoring**: Complete reorganization of the codebase structure for better maintainability and organization
