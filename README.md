@@ -53,6 +53,7 @@ See [Project Credits](./docs/project_credits.md) for a full list of all projects
   - `Alt+w/q` to walk (focus) next/previous tab
   - `Alt+Shift+H/L` to move tabs left/right
   - Cleaned up legacy/conflicting keybindings for a more user-friendly experience
+- **Persistent Sessions Configuration**: Added support for persistent Zellij sessions with flexible configuration parsing. Configure `persistent_sessions = true` and `session_name = "your_session"` in `yazelix.nix` to reuse the same session across restarts
 - **Full version history and project evolution is now documented in detail (see Version History & Changelog below)**
 
 ## Version History & Changelog
