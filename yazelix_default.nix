@@ -57,8 +57,22 @@
 
   # User packages - add your custom Nix packages here
   user_packages = with pkgs; [
-    # discord
-    # vlc
-    # inkscape
+    # Package Management Pack
+    # cargo-update # Updates Rust crates for project maintenance
+    # cargo-binstall # Faster installation of Rust tools
+    # mise # Tool version manager for consistent environments
+
+    # JavaScript/TypeScript Pack
+    # biome # formats JS, TS, JSON, CSS, and lints js/ts
+
+    # Python Pack
+    # ruff # Fast Python linter and code formatter
+    # uv # Ultra-fast Python package installer and resolver
+    # ty # Extremely fast Python type checker from Astral
+
+    # File Management Pack
+    # ouch # Compression tool for handling archives
+    # erdtree # Modern tree command with file size display
+    # serpl # Command-line tool for search and replace operations
   ];
 }

@@ -97,6 +97,7 @@
           starship # Customizable shell prompt with Git status
           bashInteractive # Interactive Bash shell
           macchina # Modern, fast system info fetch tool (Rust, maintained)
+          libnotify # Provides notify-send for desktop notifications (used by Nushell clip command)
         ];
 
         # Extra shell dependencies (fish/zsh only when needed)
@@ -111,16 +112,9 @@
 
         # Recommended dependencies (enhance functionality but not Yazi-specific)
         recommendedDeps = with pkgs; [
-          cargo-update # Updates Rust crates for project maintenance
-          cargo-binstall # Faster installation of Rust tools
           lazygit # Terminal-based Git TUI for managing repositories
-          mise # Tool version manager for consistent environments
           atuin # Shell history manager with sync and search capabilities
-          ouch # Compression tool for handling archives
-          libnotify # Provides notify-send for desktop notifications (used by Nushell clip command)
           carapace # Command-line completion tool for multiple shells
-          serpl # Command-line tool for search and replace
-          biome # formats JS, TS, JSON, CSS, and lints js/ts
           markdown-oxide # Personal Knowledge Management System (PKMS) that works with text editors through LSP
         ];
 
