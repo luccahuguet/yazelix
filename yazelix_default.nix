@@ -46,6 +46,15 @@
   # Show macchina system info on the welcome screen if enabled (uses macchina, always available in Yazelix)
   show_macchina_on_welcome = true;
 
+  # Zellij persistent session configuration
+  # Enable persistent sessions (default: false)
+  # When true, Yazelix will use zellij attach with the specified session name
+  # When false, Yazelix will create a new session each time
+  persistent_sessions = false;
+  # Session name for persistent sessions (default: "yazelix")
+  # This name will be used when creating or attaching to persistent sessions
+  session_name = "yazelix";
+
   # User packages - add your custom Nix packages here
   user_packages = with pkgs; [
     # discord

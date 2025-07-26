@@ -103,12 +103,12 @@ export def "yzx restart" [] {
     let config = parse_yazelix_config
 
     if ($config.persistent_sessions == "true") {
-        print $"Persistent sessions are enabled \(session: $config.session_name\)"
+        print $"Persistent sessions are enabled \(session: ($config.session_name)\)"
         print "yzx restart is disabled when persistent sessions are enabled."
         print "Your session will persist automatically - no restart needed."
         print ""
         print "To start a new session, use: yzx start"
-        print $"To kill the current session, use: zellij kill-session $config.session_name"
+        print $"To kill the current session, use: zellij kill-session ($config.session_name)"
     } else {
         print "Attempting to kill the current Zellij session..."
         let current_session = (zellij list-sessions | lines | where $it =~ 'current' | first | split row " " | first)
