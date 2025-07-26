@@ -14,6 +14,7 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 - [starship](https://starship.rs) — A minimal, blazing-fast, and customizable prompt for any shell. Provides Yazelix with a beautiful, informative, and context-aware shell prompt.
 - [bash](https://www.gnu.org/software/bash/) — The GNU Bourne Again Shell, included for compatibility and as a fallback shell option.
 - [macchina](https://github.com/Macchina-CLI/macchina) — A fast, customizable system information fetch tool. Used to display system info on the Yazelix welcome screen.
+- [libnotify](https://github.com/GNOME/libnotify) — Provides desktop notifications from the command line. Used for visual feedback in some Yazelix scripts.
 
 ## Extra Shells
 - [Fish](https://fishshell.com/) — The Friendly Interactive Shell. Fish offers user-friendly features, autosuggestions, and syntax highlighting. Yazelix can install and integrate with Fish if selected in the configuration.
@@ -21,16 +22,9 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 
 ## Recommended Tools
 - [lazygit](https://github.com/jesseduffield/lazygit) — A simple terminal UI for git commands, making version control fast and intuitive. Yazelix includes lazygit for easy git management.
-- [mise](https://github.com/jdx/mise) — A dev environment manager that handles multiple language runtimes and tool versions. Ensures Yazelix users have consistent environments.
-- [cargo-update](https://github.com/nabijaczleweli/cargo-update) — A tool to update installed Rust binaries. Keeps Yazelix's Rust-based tools up to date.
-- [ouch](https://github.com/ouch-org/ouch) — A command-line tool for compressing and decompressing files in many formats. Used for archive management in Yazelix.
 - [atuin](https://github.com/atuinsh/atuin) — A shell history manager with sync and search capabilities. Enhances command recall and productivity in Yazelix.
-- [libnotify](https://github.com/GNOME/libnotify) — Provides desktop notifications from the command line. Used for visual feedback in some Yazelix scripts.
 - [carapace](https://github.com/rsteube/carapace-bin) — A cross-shell command-line completion engine. Improves tab completion in supported shells.
-- [serpl](https://github.com/serpl/serpl) — A CLI tool for fast search and replace operations. Useful for batch editing and scripting.
-- [biome](https://biomejs.dev/) — A fast formatter and linter for JavaScript, TypeScript, JSON, and CSS. Helps maintain code quality in Yazelix-related projects.
 - [markdown-oxide](https://oxide.md/index) — A personal knowledge management system (PKMS) that works with text editors through LSP. Included for advanced note-taking and documentation workflows.
-- [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) — A fast installer for Rust binaries. Speeds up installation of Rust-based tools in Yazelix.
 
 ## Yazi Extensions
 - [p7zip](https://github.com/p7zip-project/p7zip) — A port of the 7-Zip archiver. Enables archive extraction and compression in Yazi.
@@ -64,7 +58,31 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 - [auto-layout.yazi](https://github.com/josephschmitt/auto-layout.yazi) — Special thanks to Joseph Schmitt for the auto-layout plugin, which is essential to the Yazelix sidebar experience.
 
 ## User Packages
-Yazelix allows you to add your own Nix packages via the `user_packages` config option. Cool Stuff!
+Yazelix allows you to add your own Nix packages via the `user_packages` config option in `yazelix.nix`. The default configuration includes examples organized by "packs":
+
+### Package Management Pack
+- [cargo-update](https://github.com/nabijaczleweli/cargo-update) — Updates Rust crates for project maintenance
+- [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) — Faster installation of Rust tools
+- [mise](https://github.com/jdx/mise) — Tool version manager for consistent environments
+
+### JavaScript/TypeScript Pack
+- [biome](https://biomejs.dev/) — Formats JS, TS, JSON, CSS, and lints JS/TS
+- [bun](https://bun.sh/) — Fast all-in-one JavaScript runtime, bundler, test runner, and package manager
+
+### Python Pack
+- [ruff](https://github.com/astral-sh/ruff) — Fast Python linter and code formatter
+- [uv](https://github.com/astral-sh/uv) — Ultra-fast Python package installer and resolver
+- [ty](https://github.com/astral-sh/ruff) — Extremely fast Python type checker from Astral
+
+### File Management Pack
+- [ouch](https://github.com/ouch-org/ouch) — Compression tool for handling archives
+- [erdtree](https://github.com/solidiquis/erdtree) — Modern tree command with file size display
+- [serpl](https://github.com/serpl/serpl) — Command-line tool for search and replace operations
+
+### Configuration Pack
+- [taplo](https://github.com/tamasfe/taplo) — TOML toolkit for formatting, validation, and language server support
+
+These packages are commented out by default in `yazelix_default.nix` - uncomment the ones you want to use!
 
 ---
 
