@@ -8,6 +8,8 @@ export def get_yazelix_colors [] {
         purple: (ansi purple)
         cyan: (ansi cyan)
         blue: (ansi blue)
+        green: (ansi green)
+        yellow: (ansi yellow)
         reset: (ansi reset)
     }
 }

@@ -2,6 +2,8 @@
 # Main Yazelix environment setup script
 # Called from flake.nix shellHook to reduce complexity
 
+use ../utils/config_parser.nu parse_yazelix_config
+
 def main [
     yazelix_dir: string
     recommended: bool
@@ -40,7 +42,7 @@ def main [
             # Auto-create yazelix.nix in standard environments (preserve existing behavior)
             let user_config = $"($yazelix_dir)/yazelix.nix"
             let default_config = $"($yazelix_dir)/yazelix_default.nix"
-            
+
             if not ($user_config | path exists) and ($default_config | path exists) {
                 try {
                     cp $default_config $user_config
@@ -54,7 +56,7 @@ def main [
 
     # Validate user config against schema
     use ../utils/config_schema.nu validate_config_against_default
-    
+
     # Parse extra shells from comma-separated string
     let extra_shells = if ($extra_shells_str | is-empty) or ($extra_shells_str == "NONE") {
         []
@@ -178,6 +180,18 @@ def main [
     # Get ASCII art
     let ascii_art = get_welcome_ascii_art
 
+    # Check persistent session configuration
+    let persistent_session_info = try {
+        let config = parse_yazelix_config
+        if ($config.persistent_sessions == "true") {
+            $"($colors.green)🔗 Using persistent session: ($config.session_name)($colors.reset)"
+        } else {
+            $"($colors.yellow)🆕 Creating new Zellij session($colors.reset)"
+        }
+    } catch {
+        $"($colors.yellow)🆕 Creating new Zellij session($colors.reset)"
+    }
+
     let welcome_message = [
         "",
         $"($colors.purple)🎉 Welcome to Yazelix v7.5!($colors.reset)",
@@ -185,6 +199,7 @@ def main [
         $flake_info,
         $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",
         $helix_info,
+        $persistent_session_info,
         $"($colors.cyan)💡 Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files($colors.reset)"
     ] | where $it != ""
 

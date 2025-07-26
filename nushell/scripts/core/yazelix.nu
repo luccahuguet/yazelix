@@ -5,6 +5,7 @@
 use ../utils/config_manager.nu *
 use ../utils/constants.nu *
 use ../utils/version_info.nu *
+use ../utils/config_parser.nu parse_yazelix_config
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
@@ -29,6 +30,7 @@ export def "yzx help" [] {
     print "LAUNCHER:"
     print "  yzx launch                     - Launch yazelix via terminal"
     print "  yzx start                      - Start yazelix directly"
+    print "  yzx restart                    - Restart yazelix (preserves persistent sessions)"
     print ""
     print "HELP:"
     print "  yzx help                       - Show this help message"
@@ -64,10 +66,11 @@ export def "yzx versions" [] {
     nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu
 }
 
-
-
 # Show system info
 export def "yzx info" [] {
+    # Parse configuration using the shared module
+    let config = parse_yazelix_config
+
     print "=== Yazelix Information ==="
     print $"Version: ($YAZELIX_VERSION)"
     print $"Description: ($YAZELIX_DESCRIPTION)"
@@ -76,6 +79,10 @@ export def "yzx info" [] {
     print $"Default Shell: ($DEFAULT_SHELL)"
     print $"Preferred Terminal: ($DEFAULT_TERMINAL)"
     print $"Helix Mode: ($DEFAULT_HELIX_MODE)"
+    print $"Persistent Sessions: ($config.persistent_sessions)"
+    if ($config.persistent_sessions == "true") {
+        print $"Session Name: ($config.session_name)"
+    }
     print "=========================="
 }
 
@@ -92,18 +99,30 @@ export def "yzx start" [] {
 
 # Restart yazelix
 export def "yzx restart" [] {
-    print "Attempting to kill the current Zellij session..."
-    let current_session = (zellij list-sessions | lines | where $it =~ 'current' | first | split row " " | first)
-    let clean_session = ($current_session | str replace -ra '\u001b\[[0-9;]*[A-Za-z]' '')
-    print "Restarting Yazelix..."
-    yzx launch
-    print "Waiting for Zellij to shut down..."
-    sleep 1sec
-    if ($clean_session | is-empty) {
-        print "No current Zellij session detected. Skipping kill step."
+    # Parse configuration using the shared module
+    let config = parse_yazelix_config
+
+    if ($config.persistent_sessions == "true") {
+        print $"Persistent sessions are enabled \(session: $config.session_name\)"
+        print "yzx restart is disabled when persistent sessions are enabled."
+        print "Your session will persist automatically - no restart needed."
+        print ""
+        print "To start a new session, use: yzx start"
+        print $"To kill the current session, use: zellij kill-session $config.session_name"
     } else {
-        print $"Killing Zellij session: ($clean_session)"
-        try { zellij kill-session $clean_session } catch { print $"Failed to kill session: ($clean_session)" }
+        print "Attempting to kill the current Zellij session..."
+        let current_session = (zellij list-sessions | lines | where $it =~ 'current' | first | split row " " | first)
+        let clean_session = ($current_session | str replace -ra '\u001b\[[0-9;]*[A-Za-z]' '')
+        print "Restarting Yazelix..."
+        yzx launch
+        print "Waiting for Zellij to shut down..."
+        sleep 1sec
+        if ($clean_session | is-empty) {
+            print "No current Zellij session detected. Skipping kill step."
+        } else {
+            print $"Killing Zellij session: ($clean_session)"
+            try { zellij kill-session $clean_session } catch { print $"Failed to kill session: ($clean_session)" }
+        }
     }
 }
 

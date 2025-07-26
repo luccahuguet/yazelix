@@ -1,6 +1,8 @@
 #!/usr/bin/env nu
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
+use ../utils/config_parser.nu parse_yazelix_config
+
 export def main [] {
     # Resolve HOME using Nushell's built-in
     let home = $env.HOME
@@ -8,8 +10,6 @@ export def main [] {
         print "Error: Cannot resolve HOME directory"
         exit 1
     }
-
-    print $"Resolved HOME=($home)"
 
     # Set absolute path for Yazelix directory
     let yazelix_dir = $"($home)/.config/yazelix"
@@ -23,10 +23,9 @@ export def main [] {
 
     cd $yazelix_dir
 
-    # Run nix develop with explicit HOME.
-    # The YAZELIX_DEFAULT_SHELL variable will be set by the shellHook of the flake
-    # and used by the inner zellij command.
-    # We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after nix develop sets it.
+    # Parse configuration using the shared module
+    let config = parse_yazelix_config
+
     # Build the appropriate zellij command based on persistent session setting
     let cmd = if ($config.persistent_sessions == "true") {
         # Use zellij attach with create flag for persistent sessions
@@ -51,8 +50,12 @@ export def main [] {
             "--default-shell" "$YAZELIX_DEFAULT_SHELL"
         ] | str join " "
     }
-    
+
+    # Run nix develop with explicit HOME.
+    # The YAZELIX_DEFAULT_SHELL variable will be set by the shellHook of the flake
+    # and used by the inner zellij command.
+    # We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after nix develop sets it.
     with-env {HOME: $home} {
         ^nix develop --impure --command bash -c $cmd
     }
-} 
+}
