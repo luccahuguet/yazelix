@@ -2,6 +2,8 @@
 # ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 # Nushell version of the Yazelix launcher
 
+use ../utils/config_parser.nu parse_yazelix_config
+
 def main [] {
     # Resolve HOME using shell expansion
     let home = $env.HOME
@@ -12,8 +14,9 @@ def main [] {
 
     print $"Resolved HOME=($home)"
 
-    # Read preference from environment (set by Nix shellHook)
-    let preferred_terminal = ($env.YAZELIX_PREFERRED_TERMINAL? | default "ghostty")
+    # Always read preference directly from config file to avoid stale environment variables
+    let config = parse_yazelix_config
+    let preferred_terminal = $config.preferred_terminal
 
     # Check if a supported terminal is installed
     let terminal_info = if ($preferred_terminal == "wezterm") and ((which wezterm | length) > 0) {
