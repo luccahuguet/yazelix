@@ -253,8 +253,6 @@ This gives you access to all tools (helix, yazi, lazygit, etc.) in your current 
 **Customize Your Installation:**
 If you followed [step 3](#3-configure-your-installation-optional), you already have your `~/.config/yazelix/yazelix.nix` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.nix](./yazelix_default.nix) for all available options and their descriptions.
 
-**Home Manager Integration**: Yazelix includes optional Home Manager support for declarative configuration management. See [home_manager/README.md](home_manager/README.md) for setup instructions.
-
 **Terminal Emulator Selection:**
 - **Ghostty** (default): Modern, fast terminal written in Zig with great performance
 - **WezTerm**: Better image preview support in Yazi, recommended if you need media previews
@@ -265,6 +263,10 @@ If you followed [step 3](#3-configure-your-installation-optional), you already h
 [See the full Customization Guide here.](./docs/customization.md)
 
 ---
+
+## Home Manager Integration
+
+Yazelix includes optional Home Manager support for declarative configuration management. See [home_manager/README.md](home_manager/README.md) for setup instructions.
 
 ## Notes
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
