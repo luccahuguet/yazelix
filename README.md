@@ -1,7 +1,7 @@
 # Yazelix v8: Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!
 
 ## Preview
-![yazelix_v7_demo](assets/demos/yazelix_v7_demo.gif)
+![yazelix_v8_demo](assets/demos/yazelix_v8_demo.gif)
 
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
