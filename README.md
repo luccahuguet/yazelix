@@ -318,6 +318,3 @@ Start by learning Zellij on its own, then optionally Yazi, and re-read this READ
 
 ## Contributing to Yazelix
 See [contributing](./docs/contributing.md)
-
-## Similar Projects
-- If you care about Yazi but don't care much about Zellij or having a sidebar, you can integrate Yazi and Helix with [one line of config](https://github.com/sxyazi/yazi/pull/2461) (experimental, not working for some people as of March 15, 2025) 
