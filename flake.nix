@@ -6,12 +6,18 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     helix.url = "github:helix-editor/helix";
+    # Pin nushell to specific commit with version 0.105.1 for carapace compatibility
+    # Carapace 1.3.3 (in nixpkgs) has outdated nushell integration code that uses
+    # deprecated 'get -i' syntax instead of 'get -o', causing warnings with newer nushell versions
+    # This will be fixed in carapace 1.4.1, but until nixpkgs updates we pin nushell to 0.105.1
+    nixpkgs-nushell.url = "github:nixos/nixpkgs/6027c30c8e9810896b92429f0092f624f7b1aace";
   };
 
   outputs =
     {
       self,
       nixpkgs,
+      nixpkgs-nushell,
       flake-utils,
       helix,
       ...
@@ -20,6 +26,7 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
+        nushellPkgs = import nixpkgs-nushell { inherit system; };
 
         # Read configuration from yazelix.nix
         homeDir = builtins.getEnv "HOME";
@@ -91,7 +98,7 @@
           zellij # Terminal multiplexer for managing panes and layouts
           helixPackage # Helix editor, either built from source or from nixpkgs
           yazi # Fast terminal file manager with sidebar integration
-          nushell # Modern shell with structured data support
+          nushellPkgs.nushell # Modern shell with structured data support (pinned to v0.105.1)
           fzf # Fuzzy finder for quick file and command navigation
           zoxide # Smart directory jumper for efficient navigation
           starship # Customizable shell prompt with Git status
