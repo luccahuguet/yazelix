@@ -200,7 +200,7 @@ def main [
         $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",
         $helix_info,
         $persistent_session_info,
-        $"($colors.cyan)💡 Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files($colors.reset)"
+        $"($colors.cyan)💡 Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files, 'Alt [' or 'Alt ]' to swap layouts($colors.reset)"
     ] | where $it != ""
 
     # Show welcome screen or log it

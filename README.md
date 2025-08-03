@@ -316,6 +316,9 @@ For Helix themes, you can use transparent themes by editing your Helix config:
 theme = "term16_dark"  # Recommended transparent theme
 ```
 
+## Layouts
+Yazelix includes adaptive layouts that organize your workspace automatically. Use `three_column` for Claude Code and AI tools, `bottom_terminal` for IDE-like development, and more. See [docs/layouts.md](./docs/layouts.md) for details and customization.
+
 ## Keybindings
 Keybindings are discoverable in each tool (e.g., `~` in Yazi, `?` in lazygit). See [docs/keybindings.md](./docs/keybindings.md) for full details, custom keybindings, and usage tips.
 
