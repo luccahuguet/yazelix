@@ -15,4 +15,4 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
 - **Keybindings**: Yazelix remaps conflicting keybindings and provides discoverable shortcuts. See [keybindings.md](./keybindings.md) for all details.
 - **Styling & Transparency**: Adjust terminal and editor appearance. See [styling.md](./styling.md).
 - **VSCode/Cursor Integration**: Use Yazelix tools in your editor's integrated terminal. See [vscode_cursor_integration.md](./vscode_cursor_integration.md).
-- **Project Credits**: For a full list of integrated tools and links to their documentation, see [project_credits.md](./project_credits.md). 
+- **Yazelix Collection**: For a full list of integrated tools and links to their documentation, see [yazelix_collection.md](./yazelix_collection.md). 

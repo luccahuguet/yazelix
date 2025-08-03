@@ -1,4 +1,4 @@
-# Project Credits
+# Yazelix Collection
 
 Yazelix is built on the shoulders of giants. Here are the projects, tools, and plugins that Yazelix integrates with or is inspired by, organized to match the Yazelix configuration structure. Each entry links to the project's homepage or repository and includes a description of its role in Yazelix.
 
