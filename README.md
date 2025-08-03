@@ -41,11 +41,6 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - Full-screen layouts maximize editor space
   - On-demand file picking with `yazi` command or `Ctrl+y` in Helix (with toggle behavior - `Ctrl+y` in Yazi returns to Helix)
   - Sidebar mode still available via `enable_sidebar = true` for IDE-like workflows
-- **Smart directory start**: Intelligent editor opening using zoxide database:
-  - Editor opens in your most frequently accessed directory instead of always starting in `~/.config/yazelix`
-  - Uses zoxide's smart directory ranking to choose the best starting location
-  - Fallback to home directory if no suitable directories found
-  - Configurable via `smart_directory_start = true/false` in `yazelix.nix`
 - **Pack-based configuration system**: Simplified package management with technology stacks:
   - Enable entire tech stacks with `packs = ["python", "js_ts", "config"]` instead of commenting individual packages
   - 5 curated packs: `python` (ruff, uv, ty), `js_ts` (biome, bun), `rust` (cargo tools), `config` (formatters), `file-management` (utilities)
@@ -53,6 +48,10 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Enhanced Zellij layouts**: Added comprehensive layout system with both sidebar and no-sidebar variants:
   - **No-sidebar layouts** (default): `basic`, `stacked`, `two_column`, `bottom_terminal` - clean, full-screen workflows
   - **Sidebar layouts**: `basic`, `stacked`, `three_column`, `bottom_terminal` - persistent file navigation
+- **Improved Helix-Yazi integration**: Enhanced file picker workflow with intuitive toggle behavior:
+  - **Toggle behavior**: `Ctrl+y` in Helix opens Yazi file picker, `Ctrl+y` in Yazi returns to Helix without selection
+  - **Smart mode detection**: Friendly warnings for mode-specific features (e.g., Alt+y reveal only works in sidebar mode)
+  - **Streamlined keybindings**: Removed redundant Ctrl+Shift+y, focused on essential Ctrl+y and Alt+y bindings
 
 ## Improvements of v8 over v7
 - **Home Manager Integration**: Optional declarative configuration management via Home Manager module
@@ -176,7 +175,6 @@ hx ~/.config/yazelix/yazelix.nix
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
 - **Terminal preference**: Set `preferred_terminal` (`"ghostty"`, `"wezterm"`, `"kitty"`, `"alacritty"`)
 - **Editor choice**: Change `editor_command` from `"hx"` to `"vim"`, `"nvim"`, etc. if you prefer
-- **Smart directory**: Set `smart_directory_start = false` if you prefer opening editor in current directory instead of most-used directory
 
 #### 4. Install Fonts (Required for Kitty and Alacritty)
 If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display:
