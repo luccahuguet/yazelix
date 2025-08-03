@@ -58,11 +58,9 @@
               enable_sidebar = false;
               packs = [ ];
               user_packages = [ ];
-              editor_config = {
-                set_editor = true;
-                override_existing = true;
-                editor_command = "hx";
-              };
+              set_editor = true;
+              override_existing = true;
+              editor_command = "hx";
             };
 
         # Variables to control recommended, Yazi extension, Helix source, default shell, and debug mode
@@ -83,12 +81,11 @@
         yazelixAsciiArtMode = config.ascii_art_mode or "animated"; # Read ascii_art_mode, default to animated
 
         # Editor configuration
-        editorConfig =
-          config.editor_config or {
-            set_editor = true;
-            override_existing = true;
-            editor_command = "hx";
-          };
+        editorConfig = {
+          set_editor = config.set_editor or true;
+          override_existing = config.override_existing or true;
+          editor_command = config.editor_command or "hx";
+        };
 
         # Sidebar configuration
         yazelixEnableSidebar = config.enable_sidebar or true;
