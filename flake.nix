@@ -55,6 +55,7 @@
               extra_shells = [ ];
               debug_mode = false;
               skip_welcome_screen = false;
+              packs = [ ];
               user_packages = [ ];
               editor_config = {
                 set_editor = true;
@@ -105,6 +106,7 @@
           bashInteractive # Interactive Bash shell
           macchina # Modern, fast system info fetch tool (Rust, maintained)
           libnotify # Provides notify-send for desktop notifications (used by Nushell clip command)
+          mise # Tool version manager - pre-configured in Yazelix shell initializers
         ];
 
         # Extra shell dependencies (fish/zsh only when needed)
@@ -140,6 +142,43 @@
           imagemagick # Image processing for thumbnails (~200-300MB)
         ];
 
+        # Pack definitions - technology stacks for easy bulk installation
+        packDefinitions = {
+          python = with pkgs; [
+            ruff # Fast Python linter and code formatter
+            uv # Ultra-fast Python package installer and resolver
+            ty # Extremely fast Python type checker from Astral
+          ];
+          js_ts = with pkgs; [
+            biome # Formats JS, TS, JSON, CSS, and lints JS/TS
+            bun # Fast all-in-one JavaScript runtime, bundler, test runner, and package manager
+          ];
+          rust = with pkgs; [
+            cargo-update # Updates Rust crates for project maintenance
+            cargo-binstall # Faster installation of Rust tools
+          ];
+          config = with pkgs; [
+            taplo # TOML formatter and language server for configuration files
+            nixfmt-rfc-style # Official Nix code formatter following RFC style guidelines
+            mpls # Markdown Preview Language Server with live browser preview
+          ];
+          file-management = with pkgs; [
+            ouch # Compression tool for handling archives
+            erdtree # Modern tree command with file size display
+            serpl # Command-line tool for search and replace operations
+          ];
+        };
+
+        # Resolve packs to packages
+        selectedPacks = config.packs or [];
+        packPackages = builtins.concatLists (
+          map (packName: 
+            if builtins.hasAttr packName packDefinitions 
+            then packDefinitions.${packName}
+            else throw "Unknown pack '${packName}'. Available packs: ${builtins.concatStringsSep ", " (builtins.attrNames packDefinitions)}"
+          ) selectedPacks
+        );
+
         # Combine dependencies based on config
         allDeps =
           essentialDeps
@@ -147,6 +186,7 @@
           ++ (if recommendedDepsEnabled then recommendedDeps else [ ])
           ++ (if yaziExtensionsEnabled then yaziExtensionsDeps else [ ])
           ++ (if yaziMediaEnabled then yaziMediaDeps else [ ])
+          ++ packPackages
           ++ (config.user_packages or [ ]);
 
       in

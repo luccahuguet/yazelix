@@ -65,7 +65,20 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 - [nuscripts](https://github.com/nushell/nuscripts) — A collection of Nushell scripts, including the `clip` command for copying to the system clipboard. Used in Yazelix for clipboard integration. 🔧 auto-configured
 
 ## User Packages
-Yazelix allows you to add your own Nix packages via the `user_packages` config option in `yazelix.nix`. The default configuration includes examples organized by "packs":
+
+Yazelix offers two ways to add packages:
+
+**Pack-based (Recommended)**: Enable entire technology stacks with one line:
+```nix
+packs = ["python", "javascript", "config"];
+```
+
+**Individual packages**: Add specific tools via `user_packages` in `yazelix.nix`:
+```nix
+user_packages = with pkgs; [ gh docker kubectl ];
+```
+
+Available packs organized by technology:
 
 ### Package Management Pack
 - [cargo-update](https://github.com/nabijaczleweli/cargo-update) — Updates Rust crates for project maintenance

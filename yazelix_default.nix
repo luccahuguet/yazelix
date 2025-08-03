@@ -55,30 +55,29 @@
   # This name will be used when creating or attaching to persistent sessions
   session_name = "yazelix";
 
-  # User packages - add your custom Nix packages here
+  # Package packs - enable entire technology stacks
+  packs = [
+    # "python"         # ruff (formatter/linter), uv (package manager), ty (type checker)
+    # "js_ts"          # biome (formatter/linter), bun (runtime/bundler)  
+    # "rust"           # cargo-update (crate updater), cargo-binstall (binary installer)
+    # "config"         # taplo (TOML), nixfmt-rfc-style (Nix), mpls (Markdown preview)
+    # "file-management" # ouch (archives), erdtree (tree view), serpl (search/replace)
+  ];
+
+  # User packages - add individual packages here
+  # Tip: if you don't want an entire pack from above, place the individual deps below. (example: taplo)
   user_packages = with pkgs; [
-    # Package Management Pack
-    # cargo-update # Updates Rust crates for project maintenance
-    # cargo-binstall # Faster installation of Rust tools
-    # mise # Tool version manager for consistent environments
+    # Add custom packages here
+    # gh # GitHub CLI for repository management
+    # docker # Container platform for development  
+    # kubectl # Kubernetes command-line tool
 
-    # JavaScript/TypeScript Pack
-    # biome # formats JS, TS, JSON, CSS, and lints js/ts
-
-    # Python Pack
-    # ruff # Fast Python linter and code formatter
-    # uv # Ultra-fast Python package installer and resolver
-    # ty # Extremely fast Python type checker from Astral
-
-    # File Management Pack
-    # ouch # Compression tool for handling archives
-    # erdtree # Modern tree command with file size display
-    # serpl # Command-line tool for search and replace operations
-
-    # Config Files Pack
-    # taplo # TOML formatter and language server for configuration files
-    # nixfmt-rfc-style # Official Nix code formatter following RFC style guidelines
-    # mpls # Markdown Preview Language Server with live browser preview
+    # Note: The following are now available via packs:
+    # "rust" pack: cargo-update, cargo-binstall
+    # "js_ts" pack: biome, bun
+    # "python" pack: ruff, uv, ty
+    # "config" pack: taplo, nixfmt-rfc-style, mpls
+    # "file-management" pack: ouch, erdtree, serpl
 
   ];
 }
