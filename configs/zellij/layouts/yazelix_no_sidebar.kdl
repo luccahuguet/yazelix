@@ -14,9 +14,9 @@ layout {
            plugin location="zellij:tab-bar"
         }
         pane split_direction="vertical" {
-            pane name="editor" {
-                command "nu"
-                args "~/.config/yazelix/nushell/scripts/integrations/smart_editor_launcher.nu"
+            pane name="filemanager" {
+                command "env"
+                args "YAZI_CONFIG_HOME=~/.config/yazelix/configs/yazi" "yazi"
             	size "100%"
             }
         }

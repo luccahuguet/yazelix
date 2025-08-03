@@ -38,11 +38,6 @@
   # You can access Yazi manually with `yazi` command or `Ctrl+y` in Helix
   enable_sidebar = false;
 
-  # Smart directory start using zoxide database (default: true)
-  # When true, editor opens in the most frequently accessed directory from zoxide
-  # When false, editor opens in the current working directory (~/.config/yazelix)
-  # Helps avoid always starting in the config directory and instead opens your most-used project
-  smart_directory_start = true;
 
   # Enable verbose debug logging in the shellHook (default: false)
   debug_mode = false;

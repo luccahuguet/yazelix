@@ -56,7 +56,6 @@
               debug_mode = false;
               skip_welcome_screen = false;
               enable_sidebar = false;
-              smart_directory_start = true;
               packs = [ ];
               user_packages = [ ];
               editor_config = {
@@ -95,8 +94,6 @@
         yazelixEnableSidebar = config.enable_sidebar or true;
         yazelixLayoutName = if yazelixEnableSidebar then "yazelix" else "yazelix_no_sidebar";
 
-        # Smart directory start configuration
-        yazelixSmartDirectoryStart = config.smart_directory_start or true;
 
         # Helix package selection
         helixFromSource = helix.packages.${system}.default;
@@ -210,7 +207,6 @@
             export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
             export YAZELIX_DEFAULT_SHELL="${yazelixDefaultShell}"
             export YAZELIX_ENABLE_SIDEBAR="${if yazelixEnableSidebar then "true" else "false"}"
-            export YAZELIX_SMART_DIRECTORY_START="${if yazelixSmartDirectoryStart then "true" else "false"}"
             export YAZI_CONFIG_HOME="$YAZELIX_DIR/configs/yazi"
             export YAZELIX_HELIX_MODE="${helixMode}"
             export YAZELIX_PREFERRED_TERMINAL="${yazelixPreferredTerminal}"

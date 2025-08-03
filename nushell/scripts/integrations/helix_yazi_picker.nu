@@ -7,6 +7,8 @@
 def main [
     current_file?: string  # Current buffer file path (optional)
 ] {
+    # Basic file picker functionality
+    
     # Use fixed temp file that Helix expects
     let chooser_file = "/tmp/yazi-helix-chooser"
     
@@ -44,4 +46,6 @@ def main [
         # Fallback to current directory if path doesn't exist
         run-external "yazi" "." "--chooser-file" $chooser_file
     }
+    
+    # Basic file picker functionality only
 }
