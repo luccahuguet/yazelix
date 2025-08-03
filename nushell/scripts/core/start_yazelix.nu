@@ -2,6 +2,8 @@
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
+use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
 export def main [] {
     # Resolve HOME using Nushell's built-in
@@ -26,12 +28,17 @@ export def main [] {
     # Parse configuration using the shared module
     let config = parse_yazelix_config
 
+    # Generate merged Zellij configuration
+    print "🔧 Preparing Zellij configuration..."
+    let merged_config_path = generate_merged_zellij_config $yazelix_dir
+    let merged_config_dir = ($merged_config_path | path dirname)
+
     # Build the appropriate zellij command based on persistent session setting
     let cmd = if ($config.persistent_sessions == "true") {
         # Use zellij attach with create flag for persistent sessions
         [
             "zellij"
-            "--config-dir" $"($yazelix_dir)/configs/zellij"
+            "--config-dir" $merged_config_dir
             "attach"
             "-c" $config.session_name
             "options"
@@ -43,7 +50,7 @@ export def main [] {
         # Use zellij options for new sessions (original behavior)
         [
             "zellij"
-            "--config-dir" $"($yazelix_dir)/configs/zellij"
+            "--config-dir" $merged_config_dir
             "options"
             "--default-cwd" $home
             "--default-layout" "$ZELLIJ_DEFAULT_LAYOUT"

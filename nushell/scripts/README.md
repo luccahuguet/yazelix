@@ -21,8 +21,7 @@ Scripts that handle integration between Yazi, Zellij, and Helix:
 ### `setup/` - Setup and Configuration Scripts
 Scripts for initial setup and configuration:
 - `environment.nu` - Main environment setup script
-- `config.nu` - Configuration management
-- `generate_zellij_config.nu` - Dynamic Zellij configuration generation
+- `zellij_config_merger.nu` - Dynamic three-layer Zellij configuration merger
 - `initializers.nu` - Initializer script generation
 
 ### `utils/` - Utility Functions

@@ -52,6 +52,15 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - **Toggle behavior**: `Ctrl+y` in Helix opens Yazi file picker, `Ctrl+y` in Yazi returns to Helix without selection
   - **Smart mode detection**: Friendly warnings for mode-specific features (e.g., Alt+y reveal only works in sidebar mode)
   - **Streamlined keybindings**: Removed redundant Ctrl+Shift+y, focused on essential Ctrl+y and Alt+y bindings
+- **Dynamic Three-Layer Zellij Configuration**: Completely rewritten configuration system with modular, maintainable approach:
+  - **Layer 1**: Zellij defaults (fetched dynamically via `zellij setup --dump-config`)
+  - **Layer 2**: Yazelix overrides (`yazelix_overrides.kdl`) - Yazelix-specific settings
+  - **Layer 3**: User configuration (`user_config.kdl`) - Your personal customizations with **highest priority**
+  - **Smart caching**: Only regenerates when source files change for faster startup
+  - **XDG-compliant**: Generated config saved to `~/.local/share/yazelix/configs/zellij/`
+  - **Comprehensive template**: `user_config.kdl` includes documented examples for themes, keybindings, plugins, and advanced options
+  - **Improved maintainability**: Removed old static `config.kdl` system that required manual updates
+  - **Better user experience**: Users can now easily customize Zellij by editing a single, well-documented file
 
 ## Improvements of v8 over v7
 - **Home Manager Integration**: Optional declarative configuration management via Home Manager module

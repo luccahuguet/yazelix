@@ -9,7 +9,11 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
   - [Kitty config](../configs/terminal_emulators/kitty/kitty.conf)
   - [Alacritty config](../configs/terminal_emulators/alacritty/alacritty.toml)
   - See [WezTerm docs](https://wezfurlong.org/wezterm/config/files.html) for advanced customization.
-- **Zellij Layouts & Configs**: Customize Zellij layouts in [../configs/zellij/layouts/](../configs/zellij/layouts/) and overrides in [../configs/zellij/yazelix_overrides.kdl](../configs/zellij/yazelix_overrides.kdl).
+- **Zellij Configuration**: Three-layer configuration system for maximum flexibility:
+  - **User customizations**: Edit [../configs/zellij/user_config.kdl](../configs/zellij/user_config.kdl) for your personal Zellij settings (themes, keybindings, plugins, etc.)
+  - **Yazelix overrides**: [../configs/zellij/yazelix_overrides.kdl](../configs/zellij/yazelix_overrides.kdl) contains Yazelix-specific defaults
+  - **Layouts**: Customize layouts in [../configs/zellij/layouts/](../configs/zellij/layouts/)
+  - **Dynamic merging**: Configurations automatically merge on startup with your settings taking highest priority
 - **Yazi Plugins & Keymaps**: Tweak Yazi behavior in [../configs/yazi/](../configs/yazi/) (see [init.lua](../configs/yazi/init.lua), [keymap.toml](../configs/yazi/keymap.toml), and [plugins/](../configs/yazi/plugins/)).
 - **Helix Themes & Keybindings**: Change Helix themes and keybindings in your `~/.config/helix/config.toml`. See [Styling and Themes](./styling.md) and [Keybindings](./keybindings.md).
 - **Keybindings**: Yazelix remaps conflicting keybindings and provides discoverable shortcuts. See [keybindings.md](./keybindings.md) for all details.

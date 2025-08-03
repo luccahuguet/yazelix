@@ -1,0 +1,137 @@
+// ========================================
+// USER ZELLIJ CONFIGURATION
+// ========================================
+// This file contains your personal Zellij customizations.
+// It gets merged with Zellij defaults and Yazelix overrides.
+//
+// Yazelix automatically regenerates the final config when this file changes.
+// 
+// Configuration layers (in order of precedence):
+//   1. Zellij defaults (from `zellij setup --dump-config`)
+//   2. Yazelix overrides (yazelix_overrides.kdl) 
+//   3. Your settings (this file) - HIGHEST PRIORITY
+//
+// Documentation: https://zellij.dev/documentation/
+// ========================================
+
+// ========================================
+// COMMON CUSTOMIZATIONS
+// ========================================
+// Uncomment and modify the sections you want to customize.
+// Remove the '//' at the beginning of lines to enable them.
+
+// === THEME AND UI ===
+// Choose a built-in theme or define your own
+theme "dracula"
+// theme "nord"
+// theme "tokyo-night"
+
+// Disable mouse support if it interferes with terminal selection
+// mouse_mode false
+
+// Increase scrollback buffer for more history
+// scroll_buffer_size 50000
+
+// Use simplified UI without arrow fonts for better compatibility
+// simplified_ui true
+
+// === COPY/PASTE BEHAVIOR ===
+// Automatically copy selection when releasing mouse (default: true) 
+// copy_on_select false
+
+// Use primary clipboard instead of system clipboard (Linux/X11)
+// copy_clipboard "primary"
+
+// Custom copy command (overrides Yazelix default of "wl-copy")
+// copy_command "xclip -selection clipboard"  // For X11
+// copy_command "pbcopy"                      // For macOS
+
+// === SESSION BEHAVIOR ===
+// What to do when terminal is closed: "detach" or "quit"
+// on_force_close "quit"
+
+// Enable session serialization for persistence across restarts
+// session_serialization true
+
+// === CUSTOM KEYBINDINGS ===
+// Add your own keybindings or override existing ones
+// Yazelix uses these modes: normal, locked, resize, pane, move, tab, scroll, search, session
+
+// keybinds {
+//     normal {
+//         // Example: Add custom binding for floating panes
+//         bind "Alt t" { ToggleFloatingPanes; }
+//         
+//         // Example: Custom session manager binding
+//         bind "Ctrl Space" { 
+//             LaunchOrFocusPlugin "session-manager" {
+//                 floating true
+//                 move_to_focused_tab true
+//             };
+//         }
+//     }
+//     
+//     pane {
+//         // Example: Add vim-style pane navigation
+//         bind "Ctrl w" { SwitchToMode "Normal"; }
+//     }
+// }
+
+// === CUSTOM THEMES ===
+// Define your own color schemes
+// themes {
+//     my_custom_theme {
+//         fg 248 248 242
+//         bg 40 42 54  
+//         red 255 85 85
+//         green 80 250 123
+//         yellow 241 250 140
+//         blue 98 114 164
+//         magenta 255 121 198
+//         orange 255 184 108
+//         cyan 139 233 253
+//         black 0 0 0
+//         white 255 255 255
+//     }
+// }
+
+// === PLUGINS ===
+// Load custom plugins or override plugin settings
+// load_plugins {
+//     "https://github.com/user/my-plugin/releases/latest/download/my-plugin.wasm"
+// }
+
+// Override plugin configurations
+// plugins {
+//     // Example: Customize the tab bar plugin
+//     tab-bar location="zellij:tab-bar" {
+//         // Plugin-specific configuration here
+//     }
+// }
+
+// ========================================
+// ADVANCED CONFIGURATION
+// ========================================
+
+// === LAYOUT SETTINGS ===
+// Override the default layout (Yazelix sets this to "yazelix")
+// default_layout "compact"
+
+// Disable automatic layout management
+// auto_layout false
+
+// === EDITOR INTEGRATION ===
+// Override scrollback editor (Yazelix sets this to "hx")
+// scrollback_editor "nvim"
+// scrollback_editor "code --wait"
+
+// === DEVELOPMENT/DEBUG ===
+// Enable more verbose logging
+// Additional settings for development work
+
+// ========================================
+// RAW KDL CONFIGURATION
+// ========================================
+// Any additional KDL configuration can be added below.
+// This is useful for very advanced customizations or new Zellij features
+// not yet covered by the examples above.

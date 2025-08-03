@@ -2,6 +2,7 @@
 default_layout "yazelix"
 copy_command "wl-copy"
 scrollback_editor "hx"
+session_serialization true
 
 ui {
     pane_frames {

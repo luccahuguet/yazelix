@@ -24,6 +24,19 @@ export const YAZELIX_STATE_DIR = "~/.local/share/yazelix"
 export const YAZELIX_LOGS_DIR = "~/.local/share/yazelix/logs"
 export const YAZELIX_INITIALIZERS_DIR = "~/.local/share/yazelix/initializers"
 export const YAZELIX_CACHE_DIR = "~/.local/share/yazelix/cache"
+export const YAZELIX_GENERATED_CONFIGS_DIR = "~/.local/share/yazelix/configs"
+
+# Zellij configuration paths
+export const ZELLIJ_CONFIG_PATHS = {
+    # Source configuration files (in config dir, tracked by git)
+    yazelix_overrides: "configs/zellij/yazelix_overrides.kdl"
+    user_config: "configs/zellij/user_config.kdl"
+    layouts_dir: "configs/zellij/layouts"
+    
+    # Generated/merged configuration (in state dir, not tracked)
+    merged_config_dir: "~/.local/share/yazelix/configs/zellij"
+    merged_config: "~/.local/share/yazelix/configs/zellij/config.kdl"
+}
 
 # Shell-specific initializer directories (in state, not config)
 export const SHELL_INITIALIZER_DIRS = {
