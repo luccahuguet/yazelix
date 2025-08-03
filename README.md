@@ -38,7 +38,7 @@ See [Project Credits](./docs/project_credits.md) for a full list of all projects
 
 ## Improvements of v8.5 over v8
 - **Enhanced Zellij layouts**: Added two new layouts and improved naming for all layouts:
-  - `basic`: Sidebar + main pane for focused work
+  - `basic`/`stacked`: Sidebar + main area (auto-stacks with 3+ user panes) for general workflow
   - `three_column`: Sidebar + stacked + vertical split, great for Claude Code and AI agentic tools (new)
   - `bottom_terminal`: Sidebar + stacked + bottom terminal, IDE-like for quick commands (new)
 
