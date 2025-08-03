@@ -74,5 +74,11 @@
     # ouch # Compression tool for handling archives
     # erdtree # Modern tree command with file size display
     # serpl # Command-line tool for search and replace operations
+
+    # Config Files Pack
+    # taplo # TOML formatter and language server for configuration files
+    # nixfmt-rfc-style # Official Nix code formatter following RFC style guidelines
+    # mpls # Markdown Preview Language Server with live browser preview
+
   ];
 }
