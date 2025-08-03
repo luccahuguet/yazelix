@@ -45,12 +45,10 @@
                 # Terminal preference
                 preferred_terminal = "ghostty";
                 
-                # Editor configuration
-                editor_config = {
-                  set_editor = true;
-                  override_existing = true;
-                  editor_command = "hx";
-                };
+                # Editor configuration (flat structure)
+                set_editor = true;
+                override_existing = true;
+                editor_command = "hx";
                 
                 # Display options
                 ascii_art_mode = "animated";

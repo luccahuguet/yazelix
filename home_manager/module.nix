@@ -57,28 +57,21 @@ in {
       description = "Preferred terminal emulator for launch commands";
     };
     
-    editor_config = mkOption {
-      type = types.submodule {
-        options = {
-          set_editor = mkOption {
-            type = types.bool;
-            default = true;
-            description = "Whether to set EDITOR environment variable";
-          };
-          override_existing = mkOption {
-            type = types.bool;
-            default = true;
-            description = "Whether to override existing EDITOR if already set";
-          };
-          editor_command = mkOption {
-            type = types.str;
-            default = "hx";
-            description = "Custom editor command (hx, vim, nvim, etc.)";
-          };
-        };
-      };
-      default = {};
-      description = "Editor configuration options";
+    # Editor configuration (flat structure to match main flake)
+    set_editor = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Whether to set EDITOR environment variable";
+    };
+    override_existing = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Whether to override existing EDITOR if already set";
+    };
+    editor_command = mkOption {
+      type = types.str;
+      default = "hx";
+      description = "Custom editor command (hx, vim, nvim, etc.)";
     };
     
     debug_mode = mkOption {
@@ -146,10 +139,10 @@ in {
           preferred_terminal = "${cfg.preferred_terminal}";
           
           # Editor configuration
-          ${if cfg.editor_config.set_editor then ''
+          ${if cfg.set_editor then ''
           set_editor = true;
-          override_existing = ${if cfg.editor_config.override_existing then "true" else "false"};
-          editor_command = "${cfg.editor_config.editor_command}";
+          override_existing = ${if cfg.override_existing then "true" else "false"};
+          editor_command = "${cfg.editor_command}";
           '' else ''
           set_editor = false;
           override_existing = false;

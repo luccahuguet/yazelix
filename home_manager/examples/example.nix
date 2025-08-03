@@ -28,12 +28,10 @@
     # Terminal preference
     preferred_terminal = "wezterm";  # Better for media previews
     
-    # Custom editor configuration
-    editor_config = {
-      set_editor = true;
-      override_existing = false;     # Keep existing EDITOR if set
-      editor_command = "hx";         # or "vim", "nvim", etc.
-    };
+    # Custom editor configuration (flat structure)
+    set_editor = true;
+    override_existing = false;     # Keep existing EDITOR if set
+    editor_command = "hx";         # or "vim", "nvim", etc.
     
     # Development-friendly settings
     debug_mode = true;             # Enable verbose logging
