@@ -72,12 +72,5 @@
     # docker # Container platform for development  
     # kubectl # Kubernetes command-line tool
 
-    # Note: The following are now available via packs:
-    # "rust" pack: cargo-update, cargo-binstall
-    # "js_ts" pack: biome, bun
-    # "python" pack: ruff, uv, ty
-    # "config" pack: taplo, nixfmt-rfc-style, mpls
-    # "file-management" pack: ouch, erdtree, serpl
-
   ];
 }

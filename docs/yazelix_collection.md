@@ -70,7 +70,7 @@ Yazelix offers two ways to add packages:
 
 **Pack-based (Recommended)**: Enable entire technology stacks with one line:
 ```nix
-packs = ["python", "javascript", "config"];
+packs = ["python", "js_ts", "config"];
 ```
 
 **Individual packages**: Add specific tools via `user_packages` in `yazelix.nix`:
@@ -80,31 +80,30 @@ user_packages = with pkgs; [ gh docker kubectl ];
 
 Available packs organized by technology:
 
-### Package Management Pack
-- [cargo-update](https://github.com/nabijaczleweli/cargo-update) — Updates Rust crates for project maintenance
-- [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) — Faster installation of Rust tools
-- [mise](https://github.com/jdx/mise) — Tool version manager for consistent environments. 🔧 auto-configured
+### Python Pack (`python`)
+- [ruff](https://github.com/astral-sh/ruff) — Fast Python linter and code formatter
+- [uv](https://github.com/astral-sh/uv) — Ultra-fast Python package installer and resolver
+- [ty](https://github.com/astral-sh/ty) — Extremely fast Python type checker from Astral
 
-### JavaScript/TypeScript Pack
+### JavaScript/TypeScript Pack (`js_ts`)
 - [biome](https://biomejs.dev/) — Formats JS, TS, JSON, CSS, and lints JS/TS
 - [bun](https://bun.sh/) — Fast all-in-one JavaScript runtime, bundler, test runner, and package manager
 
-### Python Pack
-- [ruff](https://github.com/astral-sh/ruff) — Fast Python linter and code formatter
-- [uv](https://github.com/astral-sh/uv) — Ultra-fast Python package installer and resolver
-- [ty](https://github.com/astral-sh/ruff) — Extremely fast Python type checker from Astral
+### Rust Pack (`rust`)
+- [cargo-update](https://github.com/nabijaczleweli/cargo-update) — Updates Rust crates for project maintenance
+- [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) — Faster installation of Rust tools
 
-### File Management Pack
-- [ouch](https://github.com/ouch-org/ouch) — Compression tool for handling archives
-- [erdtree](https://github.com/solidiquis/erdtree) — Modern tree command with file size display
-- [serpl](https://github.com/serpl/serpl) — Command-line tool for search and replace operations
-
-### Configuration Pack
+### Configuration Pack (`config`)
 - [taplo](https://github.com/tamasfe/taplo) — TOML formatter and language server for configuration files
 - [nixfmt-rfc-style](https://github.com/NixOS/nixfmt) — Official Nix code formatter following RFC style guidelines
 - [mpls](https://github.com/mhersson/mpls) — Markdown Preview Language Server with live browser preview and Mermaid/PlantUML support
 
-These packages are commented out by default in `yazelix_default.nix` - uncomment the ones you want to use!
+### File Management Pack (`file-management`)
+- [ouch](https://github.com/ouch-org/ouch) — Compression tool for handling archives
+- [erdtree](https://github.com/solidiquis/erdtree) — Modern tree command with file size display
+- [serpl](https://github.com/serpl/serpl) — Command-line tool for search and replace operations
+
+**Usage**: Enable packs in `yazelix.nix` by uncommenting them in the `packs = [...]` array, or add individual tools via `user_packages` for fine-grained control.
 
 ---
 
