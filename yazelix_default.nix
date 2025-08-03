@@ -71,6 +71,5 @@
     # gh # GitHub CLI for repository management
     # docker # Container platform for development  
     # kubectl # Kubernetes command-line tool
-
   ];
 }

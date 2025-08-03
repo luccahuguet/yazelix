@@ -68,7 +68,7 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 
 Yazelix offers two ways to add packages:
 
-**Pack-based (Recommended)**: Enable entire technology stacks with one line:
+**Pack-based**: Enable entire technology stacks with one line:
 ```nix
 packs = ["python", "js_ts", "config"];
 ```
