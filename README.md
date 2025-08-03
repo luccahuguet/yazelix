@@ -41,6 +41,11 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - Full-screen layouts maximize editor space
   - On-demand file picking with `yazi` command or `Ctrl+y` in Helix
   - Sidebar mode still available via `enable_sidebar = true` for IDE-like workflows
+- **Smart directory start**: Intelligent editor opening using zoxide database:
+  - Editor opens in your most frequently accessed directory instead of always starting in `~/.config/yazelix`
+  - Uses zoxide's smart directory ranking to choose the best starting location
+  - Fallback to home directory if no suitable directories found
+  - Configurable via `smart_directory_start = true/false` in `yazelix.nix`
 - **Pack-based configuration system**: Simplified package management with technology stacks:
   - Enable entire tech stacks with `packs = ["python", "js_ts", "config"]` instead of commenting individual packages
   - 5 curated packs: `python` (ruff, uv, ty), `js_ts` (biome, bun), `rust` (cargo tools), `config` (formatters), `file-management` (utilities)
@@ -171,6 +176,7 @@ hx ~/.config/yazelix/yazelix.nix
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
 - **Terminal preference**: Set `preferred_terminal` (`"ghostty"`, `"wezterm"`, `"kitty"`, `"alacritty"`)
 - **Editor choice**: Change `editor_command` from `"hx"` to `"vim"`, `"nvim"`, etc. if you prefer
+- **Smart directory**: Set `smart_directory_start = false` if you prefer opening editor in current directory instead of most-used directory
 
 #### 4. Install Fonts (Required for Kitty and Alacritty)
 If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display:

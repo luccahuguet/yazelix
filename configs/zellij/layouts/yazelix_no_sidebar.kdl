@@ -15,7 +15,8 @@ layout {
         }
         pane split_direction="vertical" {
             pane name="editor" {
-                command "$EDITOR"
+                command "nu"
+                args "~/.config/yazelix/nushell/scripts/integrations/smart_editor_launcher.nu"
             	size "100%"
             }
         }
