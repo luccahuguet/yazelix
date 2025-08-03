@@ -80,13 +80,6 @@ C-y = [
     ':redraw'
 ]
 
-# Ctrl+Shift+y: Open Yazi file picker from current working directory
-C-S-y = [
-    ':sh rm -f /tmp/yazi-helix-chooser',
-    ':insert-output nu ~/.config/yazelix/nushell/scripts/integrations/helix_yazi_picker.nu',
-    ':open %sh{cat /tmp/yazi-helix-chooser}',
-    ':redraw'
-]
 ```
 
 #### Usage
@@ -95,12 +88,11 @@ C-S-y = [
 |------------|--------|
 | `Alt+y` | Reveal current file in Yazelix sidebar |
 | `Ctrl+y` | Open Yazi file picker from current file's directory |
-| `Ctrl+Shift+y` | Open Yazi file picker from working directory |
 
 **Workflow**:
 1. Press the desired keybinding in Helix normal mode
 2. Navigate in Yazi and press `Enter` to select a file
-3. The selected file opens automatically in Helix (for `Ctrl+y`/`Ctrl+Shift+y`) or is revealed in sidebar (for `Alt+y`)
+3. The selected file opens automatically in Helix (for `Ctrl+y`) or is revealed in sidebar (for `Alt+y`)
 
 ### Benefits
 

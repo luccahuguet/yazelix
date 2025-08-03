@@ -1,2 +1,5 @@
 [mgr]
-append_keymap = []
+append_keymap = [
+    # Ctrl+y to quit Yazi (for toggle behavior with Helix Ctrl+y)
+    { on = [ "<C-y>" ], run = "quit", desc = "Quit Yazi (toggle with Helix)" },
+]

@@ -8,6 +8,16 @@ use zellij.nu [get_running_command, is_hx_running, open_in_existing_helix, open_
 export def reveal_in_yazi [buffer_name: string] {
     log_to_file "reveal_in_yazi.log" $"reveal_in_yazi called with buffer_name: '($buffer_name)'"
 
+    # Check if sidebar mode is enabled
+    let sidebar_enabled = ($env.YAZELIX_ENABLE_SIDEBAR? | default "true") == "true"
+    if (not $sidebar_enabled) {
+        let friendly_msg = "📂 Reveal in Yazi (Alt+y) only works in sidebar mode. You're currently using no-sidebar mode."
+        let tip_msg = "💡 Tip: Use Ctrl+y for file picking in no-sidebar mode, or enable sidebar mode in yazelix.nix"
+        print $"($friendly_msg)\n($tip_msg)"
+        log_to_file "reveal_in_yazi.log" "Sidebar mode disabled - reveal_in_yazi not available"
+        return
+    }
+
     if ($buffer_name | is-empty) {
         let error_msg = "Buffer name not provided"
         log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
