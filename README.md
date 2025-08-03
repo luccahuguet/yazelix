@@ -37,6 +37,10 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
 ## Improvements of v8.5 over v8
+- **Pack-based configuration system**: Simplified package management with technology stacks:
+  - Enable entire tech stacks with `packs = ["python", "js_ts", "config"]` instead of commenting individual packages
+  - 5 curated packs: `python` (ruff, uv, ty), `js_ts` (biome, bun), `rust` (cargo tools), `config` (formatters), `file-management` (utilities)
+  - Hybrid approach: use packs for bulk selection, `user_packages` for individual tools
 - **Enhanced Zellij layouts**: Added two new layouts and improved naming for all layouts:
   - `basic`/`stacked`: Sidebar + main area (auto-stacks with 3+ user panes) for general workflow
   - `three_column`: Sidebar + stacked + vertical split, great for Claude Code and AI agentic tools (new)
