@@ -2,7 +2,7 @@
 
 Yazelix is highly customizable! Here are the main ways you can tailor your experience:
 
-- **Configuration File**: Edit `~/.config/yazelix/yazelix.nix` for all core options. See [yazelix_default.nix](../yazelix_default.nix) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, debug mode, etc).
+- **Configuration File**: Edit `~/.config/yazelix/yazelix.nix` for all core options. See [yazelix_default.nix](../yazelix_default.nix) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, sidebar toggle, debug mode, etc).
 - **Terminal Emulator Configs**: For all supported terminals, copy and edit the provided configs:
   - [WezTerm config](../configs/terminal_emulators/wezterm/.wezterm.lua)
   - [Ghostty config](../configs/terminal_emulators/ghostty/config)

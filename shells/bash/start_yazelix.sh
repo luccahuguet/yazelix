@@ -24,5 +24,5 @@ cd "$YAZELIX_DIR" || { echo "Error: Cannot cd to $YAZELIX_DIR"; exit 1; }
 HOME="$HOME" nix develop --impure --command bash -c \
   "zellij --config-dir \"$YAZELIX_DIR/configs/zellij\" options \
     --default-cwd \"$HOME\" \
-    --default-layout yazelix \
+    --default-layout \"\$ZELLIJ_DEFAULT_LAYOUT\" \
     --default-shell \"\$YAZELIX_DEFAULT_SHELL\""

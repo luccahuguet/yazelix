@@ -14,9 +14,8 @@ layout {
            plugin location="zellij:tab-bar"
         }
         pane split_direction="vertical" {
-            pane name="sidebar" {
-                command "env"
-                args "YAZI_CONFIG_HOME=~/.config/yazelix/configs/yazi" "yazi"
+            pane name="editor" {
+                command "$EDITOR"
             	size "100%"
             }
         }

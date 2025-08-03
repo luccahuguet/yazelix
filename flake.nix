@@ -55,6 +55,7 @@
               extra_shells = [ ];
               debug_mode = false;
               skip_welcome_screen = false;
+              enable_sidebar = false;
               packs = [ ];
               user_packages = [ ];
               editor_config = {
@@ -88,6 +89,10 @@
             override_existing = true;
             editor_command = "hx";
           };
+
+        # Sidebar configuration
+        yazelixEnableSidebar = config.enable_sidebar or true;
+        yazelixLayoutName = if yazelixEnableSidebar then "yazelix" else "yazelix_no_sidebar";
 
         # Helix package selection
         helixFromSource = helix.packages.${system}.default;
@@ -198,8 +203,9 @@
             # Export essential environment variables
             export YAZELIX_DIR="$HOME/.config/yazelix"
             export YAZELIX_DEBUG_MODE="${if yazelixDebugMode then "true" else "false"}"
-            export ZELLIJ_DEFAULT_LAYOUT=yazelix
+            export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
             export YAZELIX_DEFAULT_SHELL="${yazelixDefaultShell}"
+            export YAZELIX_ENABLE_SIDEBAR="${if yazelixEnableSidebar then "true" else "false"}"
             export YAZI_CONFIG_HOME="$YAZELIX_DIR/configs/yazi"
             export YAZELIX_HELIX_MODE="${helixMode}"
             export YAZELIX_PREFERRED_TERMINAL="${yazelixPreferredTerminal}"

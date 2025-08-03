@@ -2,11 +2,54 @@
 
 Yazelix includes several swap layouts that automatically organize your workspace based on the number of panes. These layouts are defined in `configs/zellij/layouts/yazelix.swap.kdl`.
 
+## Sidebar Toggle
+
+Yazelix supports running with or without the Yazi sidebar. Configure this in your `yazelix.nix`:
+
+```nix
+# Enable or disable the Yazi sidebar (default: false)
+enable_sidebar = true;   # Set to true to enable persistent sidebar
+enable_sidebar = false;  # Default: clean, full-screen layouts
+```
+
+**Default behavior** (`enable_sidebar = false`): Starts with your editor for immediate coding. Use `Ctrl+y` in Helix for native file picking, or manually run `yazi` for file management.
+
+**Sidebar mode** (`enable_sidebar = true`): Persistent Yazi sidebar for IDE-like file navigation.
+
 **Note on Pane Counting**: Zellij internally counts the tab bar and status bar as "panes", but for user clarity, we refer to "user panes" (sidebar, editor, terminal, etc.) since those are what you actually interact with. So when we say "2 user panes", Zellij sees 4 total panes including its UI elements.
 
 ## Available Layouts
 
-### `basic` / `stacked` (2+ user panes)
+### Without Sidebar (`enable_sidebar = false`) - Default
+
+When the sidebar is disabled, Yazelix uses layouts optimized for full-screen editor workflows:
+
+
+#### `basic` (1 user pane)
+- **Structure**: Single main pane (100% width)
+- **Best for**: Focused editing without distractions
+- **Use cases**: Writing, deep focus coding, single-file editing
+
+#### `stacked` (2+ user panes)
+- **Structure**: Stacked panes (100% width)
+- **Best for**: Multiple editors or editor + terminal
+- **Use cases**: Comparing files, editor + terminal workflow
+
+#### `two_column` (2+ user panes)
+- **Structure**: Stacked panes (50%) + vertical split (50%)
+- **Best for**: Side-by-side workflows
+- **Use cases**: Code review, documentation + code, split editing
+
+#### `bottom_terminal` (2+ user panes)
+- **Structure**: Stacked panes (70%) + bottom terminal (30%)
+- **Best for**: IDE-like experience with persistent terminal
+- **Use cases**: Development with quick command access, monitoring logs
+
+### With Sidebar (`enable_sidebar = true`)
+
+For users who prefer persistent file navigation:
+
+#### `basic` / `stacked` (2+ user panes)
 - **Structure**: Sidebar (20%) + main area (80%)
 - **Behavior**: 
   - **2 user panes exactly**: Single main pane (`basic` layout)
@@ -15,7 +58,7 @@ Yazelix includes several swap layouts that automatically organize your workspace
 - **Use cases**: Writing code, editing documents, comparing files, keeping multiple editors open
 - **Note**: These are essentially the same layout - Zellij automatically stacks panes when you have more than 4
 
-### `three_column` (3+ user panes)
+#### `three_column` (3+ user panes)
 - **Structure**: Sidebar (20%) + stacked panes (40%) + vertical split (40%)
 - **Best for**: Advanced workflows requiring multiple simultaneous views
 - **Use cases**: 
@@ -23,7 +66,7 @@ Yazelix includes several swap layouts that automatically organize your workspace
   - **Code review**: Compare files side-by-side with navigation in sidebar
   - **Development**: Editor in center, terminal/output in right pane
 
-### `bottom_terminal` (3+ user panes)
+#### `bottom_terminal` (3+ user panes)
 - **Structure**: Sidebar (20%) + horizontal split with stacked panes (70%) + bottom terminal (30%)
 - **Best for**: IDE-like experience with persistent terminal access
 - **Use cases**:

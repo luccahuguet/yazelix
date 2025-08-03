@@ -37,14 +37,17 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
 ## Improvements of v8.5 over v8
+- **Modern default experience**: No-sidebar mode is now the default for a cleaner, more screen-space-efficient workflow:
+  - Full-screen layouts maximize editor space
+  - On-demand file picking with `yazi` command or `Ctrl+y` in Helix
+  - Sidebar mode still available via `enable_sidebar = true` for IDE-like workflows
 - **Pack-based configuration system**: Simplified package management with technology stacks:
   - Enable entire tech stacks with `packs = ["python", "js_ts", "config"]` instead of commenting individual packages
   - 5 curated packs: `python` (ruff, uv, ty), `js_ts` (biome, bun), `rust` (cargo tools), `config` (formatters), `file-management` (utilities)
   - Hybrid approach: use packs for bulk selection, `user_packages` for individual tools
-- **Enhanced Zellij layouts**: Added two new layouts and improved naming for all layouts:
-  - `basic`/`stacked`: Sidebar + main area (auto-stacks with 3+ user panes) for general workflow
-  - `three_column`: Sidebar + stacked + vertical split, great for Claude Code and AI agentic tools (new)
-  - `bottom_terminal`: Sidebar + stacked + bottom terminal, IDE-like for quick commands (new)
+- **Enhanced Zellij layouts**: Added comprehensive layout system with both sidebar and no-sidebar variants:
+  - **No-sidebar layouts** (default): `basic`, `stacked`, `two_column`, `bottom_terminal` - clean, full-screen workflows
+  - **Sidebar layouts**: `basic`, `stacked`, `three_column`, `bottom_terminal` - persistent file navigation
 
 ## Improvements of v8 over v7
 - **Home Manager Integration**: Optional declarative configuration management via Home Manager module
@@ -325,6 +328,7 @@ Yazelix includes adaptive layouts that organize your workspace automatically. Us
 
 ## Keybindings
 Keybindings are discoverable in each tool (e.g., `~` in Yazi, `?` in lazygit). See [docs/keybindings.md](./docs/keybindings.md) for full details, custom keybindings, and usage tips.
+
 
 ## I'm Lost! Too Much Information
 Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterwards

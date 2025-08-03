@@ -36,7 +36,7 @@ export def main [] {
             "-c" $config.session_name
             "options"
             "--default-cwd" $home
-            "--default-layout" "yazelix"
+            "--default-layout" "$ZELLIJ_DEFAULT_LAYOUT"
             "--default-shell" "$YAZELIX_DEFAULT_SHELL"
         ] | str join " "
     } else {
@@ -46,7 +46,7 @@ export def main [] {
             "--config-dir" $"($yazelix_dir)/configs/zellij"
             "options"
             "--default-cwd" $home
-            "--default-layout" "yazelix"
+            "--default-layout" "$ZELLIJ_DEFAULT_LAYOUT"
             "--default-shell" "$YAZELIX_DEFAULT_SHELL"
         ] | str join " "
     }

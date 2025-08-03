@@ -1,0 +1,45 @@
+swap_tiled_layout name="basic" {
+    ui exact_panes=2 {
+        pane split_direction="vertical" {
+            pane name="yazi" {
+                command "env"
+                args "YAZI_CONFIG_HOME=~/.config/yazelix/configs/yazi" "yazi"
+                size "100%"
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="stacked" {
+    ui min_panes=3 {
+        pane stacked=true { children; }
+    }
+}
+
+swap_tiled_layout name="two_column" {
+    ui min_panes=3 {
+        pane split_direction="vertical" {
+            pane stacked=true { 
+                children; 
+                size "50%"
+            }
+            pane split_direction="vertical" {
+                size "50%"
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="bottom_terminal" {
+    ui min_panes=3 {
+        pane split_direction="horizontal" {
+            pane stacked=true { 
+                children; 
+                size "70%"
+            }
+            pane name="terminal" {
+                size "30%"
+            }
+        }
+    }
+}

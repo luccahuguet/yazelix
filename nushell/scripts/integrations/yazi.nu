@@ -136,6 +136,7 @@ def open_with_generic_editor [file_path: path, editor: string, yazi_id: string] 
     log_to_file "open_generic.log" "open_with_generic_editor function completed"
 }
 
+
 # Main file opening function - dispatches to appropriate editor handler
 export def open_file_with_editor [file_path: path] {
     log_to_file "open_editor.log" $"open_file_with_editor called with file_path: '($file_path)'"
@@ -159,6 +160,10 @@ export def open_file_with_editor [file_path: path] {
 
     log_to_file "open_editor.log" $"Using editor: ($editor)"
 
+    # Check if sidebar is enabled
+    let sidebar_enabled = ($env.YAZELIX_ENABLE_SIDEBAR? | default "true") == "true"
+    log_to_file "open_editor.log" $"Sidebar enabled: ($sidebar_enabled)"
+
     # Capture YAZI_ID from Yazi's pane
     let yazi_id = $env.YAZI_ID
     if ($yazi_id | is-empty) {
@@ -169,7 +174,10 @@ export def open_file_with_editor [file_path: path] {
         log_to_file "open_editor.log" $"YAZI_ID found: '($yazi_id)'"
     }
 
-    # Dispatch to appropriate editor handler
+    # For no-sidebar mode, we still use the multi-pane approach since we start with editor
+    # The native Helix-Yazi integration (Ctrl+y) handles the "open in same pane" workflow
+
+    # Sidebar mode: use the existing multi-pane logic
     if ($editor == "hx") {
         log_to_file "open_editor.log" "Detected Helix editor, using Helix-specific logic"
         open_with_helix $file_path $yazi_id
