@@ -13,7 +13,7 @@ args = ["~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]
 
 [window]
 decorations = "none"
-opacity = 0.9
+# opacity = 0.9
 padding = { x = 4, y = 10 }
 
 # Font configuration for Alacritty v0.15.0

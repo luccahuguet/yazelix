@@ -51,4 +51,4 @@ window-decoration = "none"
 window-padding-y = 10,0
 
 # Transparency consistent with WezTerm
-background-opacity = 0.9
+# background-opacity = 0.9

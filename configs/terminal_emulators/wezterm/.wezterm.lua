@@ -20,7 +20,7 @@ config.window_decorations = "NONE"
 config.clean_exit_codes = { 0, 1 }
 
 -- Lets make it more transparent
-config.window_background_opacity = 0.9
+-- config.window_background_opacity = 0.9
 
 -- Enable debug logging to diagnose crash (commented out as stable)
 -- config.debug_key_events = true
