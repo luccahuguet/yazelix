@@ -26,3 +26,11 @@ When creating new files or directories, always use underscores to maintain consi
 - All paths reference `~/.config/yazelix/` as the base directory
 - Scripts are organized in `nushell/scripts/` with subdirectories using underscores
 
+## Documentation and User Guidance Principles
+
+When documenting limitations or potential issues:
+1. **Positive Direction Instead of Warnings** - Instead of telling users "don't do this", provide clear guidance on "do this instead"
+2. Point users to specific files they should edit
+3. Explain the recommended approach first, then mention alternatives
+4. Focus on the workflow that works best rather than listing what doesn't work
+

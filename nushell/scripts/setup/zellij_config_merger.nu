@@ -74,6 +74,10 @@ def merge_zellij_configs [
     let user_config = read_config_file $user_config_path "personal configuration"
     
     # Combine all layers with clear separation
+    # NOTE: This uses simple concatenation. Zellij processes all sections
+    # and uses the last occurrence of any setting. For nested blocks like
+    # ui, keybinds, themes - this means the user's entire block overrides
+    # Yazelix's block (which is the desired behavior for most cases).
     let merged = [
         "// ========================================",
         "// DYNAMICALLY GENERATED ZELLIJ CONFIG",

@@ -13,6 +13,10 @@
 //   2. Yazelix overrides (yazelix_overrides.kdl) 
 //   3. Your settings (personal/user_config.kdl) - HIGHEST PRIORITY
 //
+// IMPORTANT: Merging uses simple concatenation. Zellij uses the last occurrence
+// of any setting. For nested blocks (ui, keybinds, themes), avoid duplicates
+// by overriding the entire section rather than adding partial blocks.
+//
 // Documentation: https://zellij.dev/documentation/
 // ========================================
 
@@ -37,6 +41,15 @@ theme "dracula"
 // Use simplified UI without arrow fonts for better compatibility
 // simplified_ui true
 
+// === UI CUSTOMIZATION ===
+// Yazelix doesn't define UI settings, so you can safely add them here:
+// ui {
+//     pane_frames {
+//         rounded_corners true
+//         hide false
+//     }
+// }
+
 // === COPY/PASTE BEHAVIOR ===
 // Automatically copy selection when releasing mouse (default: true) 
 // copy_on_select false
@@ -59,31 +72,26 @@ show_startup_tips false
 // session_serialization true
 
 // === CUSTOM KEYBINDINGS ===
-// Add your own keybindings or override existing ones
-// Yazelix uses these modes: normal, locked, resize, pane, move, tab, scroll, search, session
+// RECOMMENDED: For small keybinding changes, edit the layout files directly:
+//   - configs/zellij/layouts/yazelix.kdl
+//   - configs/zellij/layouts/yazelix_no_sidebar.kdl
+//
+// Only use this section if you want to completely replace all keybindings:
 
 // keybinds {
 //     normal {
 //         // Example: Add custom binding for floating panes
 //         bind "Alt t" { ToggleFloatingPanes; }
 //         
-//         // Example: Custom session manager binding
-//         bind "Ctrl Space" { 
-//             LaunchOrFocusPlugin "session-manager" {
-//                 floating true
-//                 move_to_focused_tab true
-//             };
-//         }
-//     }
-//     
-//     pane {
-//         // Example: Add vim-style pane navigation
-//         bind "Ctrl w" { SwitchToMode "Normal"; }
+//         // NOTE: This replaces ALL keybindings, including Yazelix defaults
+//         // You'll need to redefine any bindings you want to keep
 //     }
 // }
 
 // === CUSTOM THEMES ===
-// Define your own color schemes
+// Define your own color schemes. Safe to uncomment - adds new themes
+// without conflicting with existing ones.
+
 // themes {
 //     my_custom_theme {
 //         fg 248 248 242
