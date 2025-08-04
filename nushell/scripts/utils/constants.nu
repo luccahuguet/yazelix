@@ -38,6 +38,12 @@ export const ZELLIJ_CONFIG_PATHS = {
     merged_config: "~/.local/share/yazelix/configs/zellij/config.kdl"
 }
 
+# Yazi configuration paths
+export const YAZI_CONFIG_PATHS = {
+    # Generated/merged configuration (in state dir, not tracked)
+    merged_config_dir: "~/.local/share/yazelix/configs/yazi"
+}
+
 # Shell-specific initializer directories (in state, not config)
 export const SHELL_INITIALIZER_DIRS = {
     bash: "~/.local/share/yazelix/initializers/bash"
@@ -68,7 +74,7 @@ export const YAZELIX_ENV_VARS = {
     YAZELIX_DEFAULT_SHELL: "nu"
     YAZELIX_PREFERRED_TERMINAL: "wezterm"
     YAZELIX_HELIX_MODE: "release"
-    YAZI_CONFIG_HOME: "~/.config/yazelix/configs/yazi"
+    YAZI_CONFIG_HOME: "~/.local/share/yazelix/configs/yazi"
     ZELLIJ_DEFAULT_LAYOUT: "yazelix"
 }
 

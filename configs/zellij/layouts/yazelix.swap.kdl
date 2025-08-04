@@ -2,8 +2,7 @@ swap_tiled_layout name="basic" {
     ui exact_panes=4 {
         pane split_direction="vertical" {
             pane name="sidebar" {
-                command "env"
-                args "YAZI_CONFIG_HOME=~/.config/yazelix/configs/yazi" "yazi"
+                command "yazi"
             	size "20%"
             }
             pane 
@@ -15,8 +14,7 @@ swap_tiled_layout name="stacked" {
     ui min_panes=5 {
         pane split_direction="vertical" {
             pane name="sidebar" {
-                command "env"
-                args "YAZI_CONFIG_HOME=~/.config/yazelix/configs/yazi" "yazi"
+                command "yazi"
             	size "20%"
             }
             pane stacked=true { children; }
@@ -28,8 +26,7 @@ swap_tiled_layout name="three_column" {
     ui min_panes=5 {
         pane split_direction="vertical" {
             pane name="sidebar" {
-                command "env"
-                args "YAZI_CONFIG_HOME=~/.config/yazelix/configs/yazi" "yazi"
+                command "yazi"
                 size "20%"
             }
             pane stacked=true { 
@@ -47,8 +44,7 @@ swap_tiled_layout name="bottom_terminal" {
     ui min_panes=5 {
         pane split_direction="vertical" {
             pane name="sidebar" {
-                command "env"
-                args "YAZI_CONFIG_HOME=~/.config/yazelix/configs/yazi" "yazi"
+                command "yazi"
                 size "20%"
             }
             pane split_direction="horizontal" {

@@ -47,6 +47,9 @@ theme "dracula"
 // copy_command "pbcopy"                      // For macOS
 
 // === SESSION BEHAVIOR ===
+// Show startup tips when Zellij starts (overrides Yazelix default of false)
+show_startup_tips false
+
 // What to do when terminal is closed: "detach" or "quit"
 // on_force_close "quit"
 

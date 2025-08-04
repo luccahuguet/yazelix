@@ -14,7 +14,7 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
   - **Yazelix overrides**: [../configs/zellij/yazelix_overrides.kdl](../configs/zellij/yazelix_overrides.kdl) contains Yazelix-specific defaults
   - **Layouts**: Customize layouts in [../configs/zellij/layouts/](../configs/zellij/layouts/)
   - **Dynamic merging**: Configurations automatically merge on startup with your settings taking highest priority
-- **Yazi Plugins & Keymaps**: Tweak Yazi behavior in [../configs/yazi/](../configs/yazi/) (see [init.lua](../configs/yazi/init.lua), [keymap.toml](../configs/yazi/keymap.toml), and [plugins/](../configs/yazi/plugins/)).
+- **Yazi Plugins & Keymaps**: Tweak Yazi behavior in [../configs/yazi/](../configs/yazi/) (see [init.lua](../configs/yazi/init.lua), [keymap.toml](../configs/yazi/keymap.toml), and [plugins/](../configs/yazi/plugins/)). For comprehensive configuration options, see the [official Yazi configuration documentation](https://yazi-rs.github.io/docs/configuration/yazi).
 - **Helix Themes & Keybindings**: Change Helix themes and keybindings in your `~/.config/helix/config.toml`. See [Styling and Themes](./styling.md) and [Keybindings](./keybindings.md).
 - **Keybindings**: Yazelix remaps conflicting keybindings and provides discoverable shortcuts. See [keybindings.md](./keybindings.md) for all details.
 - **Styling & Transparency**: Adjust terminal and editor appearance. See [styling.md](./styling.md).
