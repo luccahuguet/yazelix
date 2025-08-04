@@ -1,15 +1,17 @@
 // ========================================
-// USER ZELLIJ CONFIGURATION
+// USER ZELLIJ CONFIGURATION TEMPLATE
 // ========================================
-// This file contains your personal Zellij customizations.
-// It gets merged with Zellij defaults and Yazelix overrides.
-//
-// Yazelix automatically regenerates the final config when this file changes.
+// This is a template file with documentation and examples.
 // 
+// To customize Zellij:
+// 1. Copy this directory: cp -r configs/zellij/user configs/zellij/personal
+// 2. Edit files in configs/zellij/personal/ to customize your settings
+// 3. Your personal configs are git ignored - no conflicts on updates!
+//
 // Configuration layers (in order of precedence):
 //   1. Zellij defaults (from `zellij setup --dump-config`)
 //   2. Yazelix overrides (yazelix_overrides.kdl) 
-//   3. Your settings (this file) - HIGHEST PRIORITY
+//   3. Your settings (personal/user_config.kdl) - HIGHEST PRIORITY
 //
 // Documentation: https://zellij.dev/documentation/
 // ========================================

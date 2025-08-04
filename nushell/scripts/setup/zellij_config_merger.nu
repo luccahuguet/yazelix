@@ -69,9 +69,9 @@ def merge_zellij_configs [
     let yazelix_overrides = read_config_file $yazelix_overrides_path "Yazelix overrides"
     
     # Layer 3: User config
-    let user_config_path = $"($yazelix_dir)/configs/zellij/user_config.kdl"
-    print "   📥 Reading user configuration..."
-    let user_config = read_config_file $user_config_path "user configuration"
+    let user_config_path = $"($yazelix_dir)/configs/zellij/personal/user_config.kdl"
+    print "   📥 Reading personal configuration..."
+    let user_config = read_config_file $user_config_path "personal configuration"
     
     # Combine all layers with clear separation
     let merged = [
@@ -82,7 +82,7 @@ def merge_zellij_configs [
         "// Do not edit directly - changes will be lost!",
         "//",
         "// To customize Zellij, edit:",
-        "//   - configs/zellij/user_config.kdl (your personal settings)",
+        "//   - configs/zellij/personal/user_config.kdl (your personal settings)",
         "//   - configs/zellij/yazelix_overrides.kdl (Yazelix defaults)",
         "//",
         $"// Generated: (date now | format date '%Y-%m-%d %H:%M:%S')",

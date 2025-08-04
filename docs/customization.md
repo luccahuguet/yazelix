@@ -9,12 +9,16 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
   - [Kitty config](../configs/terminal_emulators/kitty/kitty.conf)
   - [Alacritty config](../configs/terminal_emulators/alacritty/alacritty.toml)
   - See [WezTerm docs](https://wezfurlong.org/wezterm/config/files.html) for advanced customization.
-- **Zellij Configuration**: Three-layer configuration system for maximum flexibility:
-  - **User customizations**: Edit [../configs/zellij/user_config.kdl](../configs/zellij/user_config.kdl) for your personal Zellij settings (themes, keybindings, plugins, etc.)
-  - **Yazelix overrides**: [../configs/zellij/yazelix_overrides.kdl](../configs/zellij/yazelix_overrides.kdl) contains Yazelix-specific defaults
-  - **Layouts**: Customize layouts in [../configs/zellij/layouts/](../configs/zellij/layouts/)
-  - **Dynamic merging**: Configurations automatically merge on startup with your settings taking highest priority
-- **Yazi Plugins & Keymaps**: Tweak Yazi behavior in [../configs/yazi/](../configs/yazi/) (see [init.lua](../configs/yazi/init.lua), [keymap.toml](../configs/yazi/keymap.toml), and [plugins/](../configs/yazi/plugins/)). For comprehensive configuration options, see the [official Yazi configuration documentation](https://yazi-rs.github.io/docs/configuration/yazi).
+- **Zellij Configuration**: Git-conflict-free three-layer configuration system:
+  - **Quick start**: `cp -r configs/zellij/user configs/zellij/personal` then edit personal configs
+  - **Full guide**: [Zellij Configuration Documentation](./zellij-configuration.md)
+  - **Three layers**: Zellij defaults + Yazelix overrides + your personal settings (highest priority)
+  - **Smart merging**: Configurations automatically merge on startup, personal configs are git ignored
+- **Yazi Configuration**: Git-conflict-free two-layer configuration system:
+  - **Quick start**: `cp -r configs/yazi/user configs/yazi/personal` then edit personal configs  
+  - **Full guide**: [Yazi Configuration Documentation](./yazi-configuration.md)
+  - **Two layers**: Yazelix defaults + your personal overrides (highest priority)
+  - **TOML merging**: Intelligent section merging prevents duplicate keys, personal configs are git ignored
 - **Helix Themes & Keybindings**: Change Helix themes and keybindings in your `~/.config/helix/config.toml`. See [Styling and Themes](./styling.md) and [Keybindings](./keybindings.md).
 - **Keybindings**: Yazelix remaps conflicting keybindings and provides discoverable shortcuts. See [keybindings.md](./keybindings.md) for all details.
 - **Styling & Transparency**: Adjust terminal and editor appearance. See [styling.md](./styling.md).

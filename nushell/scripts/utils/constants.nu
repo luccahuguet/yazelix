@@ -30,7 +30,7 @@ export const YAZELIX_GENERATED_CONFIGS_DIR = "~/.local/share/yazelix/configs"
 export const ZELLIJ_CONFIG_PATHS = {
     # Source configuration files (in config dir, tracked by git)
     yazelix_overrides: "configs/zellij/yazelix_overrides.kdl"
-    user_config: "configs/zellij/user_config.kdl"
+    user_config: "configs/zellij/personal/user_config.kdl"
     layouts_dir: "configs/zellij/layouts"
     
     # Generated/merged configuration (in state dir, not tracked)
