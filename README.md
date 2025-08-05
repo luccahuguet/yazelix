@@ -41,6 +41,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - Full-screen layouts maximize editor space
   - On-demand file picking with `yazi` command or `Ctrl+y` in Helix (with toggle behavior - `Ctrl+y` in Yazi returns to Helix)
   - Sidebar mode still available via `enable_sidebar = true` for IDE-like workflows
+  - **Note**: No-sidebar mode is experimental and has some minor quirks (background color inconsistencies, occasional mouse scrolling issues) but nothing deal-breaking
 - **Pack-based configuration system**: Simplified package management with technology stacks:
   - Enable entire tech stacks with `packs = ["python", "js_ts", "config"]` instead of commenting individual packages
   - 5 curated packs: `python` (ruff, uv, ty), `js_ts` (biome, bun), `rust` (cargo tools), `config` (formatters), `file-management` (utilities)
