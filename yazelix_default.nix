@@ -32,11 +32,11 @@
   # You can change this to "vim", "nvim", "kak", etc. if you prefer
   editor_command = "hx";
 
-  # Enable or disable the Yazi sidebar (default: false)
+  # Enable or disable the Yazi sidebar (default: true)
   # When false, Yazelix uses clean, full-screen layouts with on-demand file picking
   # When true, Yazelix uses persistent sidebar layouts for IDE-like workflow
   # You can access Yazi manually with `yazi` command or `Ctrl+y` in Helix
-  enable_sidebar = false;
+  enable_sidebar = true;
 
 
   # Enable verbose debug logging in the shellHook (default: false)
