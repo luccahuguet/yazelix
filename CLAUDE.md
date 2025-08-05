@@ -26,6 +26,23 @@ When creating new files or directories, always use underscores to maintain consi
 - All paths reference `~/.config/yazelix/` as the base directory
 - Scripts are organized in `nushell/scripts/` with subdirectories using underscores
 
+## Configuration Management Principles
+
+### Synchronization Requirements
+1. **Always sync Home Manager module with default config** - When changing `yazelix_default.nix`, update `home_manager/module.nix` to maintain identical options and defaults
+2. **Verify both configuration paths work** - Test changes through both direct config files and Home Manager integration
+
+### Code Robustness Requirements  
+1. **Avoid fallbacks** - Fallback behavior can mask underlying issues and lead to unpredictable behavior across different environments
+2. **Fail fast with clear errors** - When something is wrong, provide explicit error messages rather than degraded functionality
+3. **Universal robustness** - Yazelix must work reliably for all users, not just maintainers who can manually fix issues
+4. **Avoid redundant code** - Focus on elegant, concise code when possible; eliminate duplication and unnecessary complexity
+
+### Error Handling Philosophy
+- **No silent failures** - Every error should be visible and actionable
+- **Environment independence** - Code should work regardless of host system quirks
+- **Consistent behavior** - Same input should produce same output across all user environments
+
 ## Documentation and User Guidance Principles
 
 When documenting limitations or potential issues:
