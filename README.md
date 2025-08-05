@@ -8,7 +8,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 
 - **Use your preferred shell**: Bash, Fish, Zsh, or Nushell - Yazelix works with all of them
 - Zellij orchestrates everything, with Yazi as a sidebar and your chosen editor (Helix by default)
-- To hide the sidebar, make your pane fullscreen! (`Ctrl p + f` or `Alt f`)
+- To hide the sidebar, make your pane fullscreen! (`Ctrl p + f` or `Alt Shift f`)
 - Every keybinding from Zellij that conflicts with Helix is remapped [see here](#keybindings)
 - When you hit Enter on a file/folder in the "sidebar":
   - **With Helix**: If Helix is already open in the topmost pane of the stack, it opens that file/folder in a new buffer in Helix. If Helix isn't open, it launches Helix in a new pane for you. It always finds a running Helix instance if it exists and is in the top pane of the stacked group.
@@ -246,7 +246,7 @@ This will automatically configure your shell and then you can use:
 - Use `alt hjkl` to switch between Zellij panes and tabs
 - Press `Enter` in Yazi to open files in your configured editor
 - Use `yzx help` to see all available management commands
-- Use `Alt+f` to toggle fullscreen on the current pane
+- Use `Alt+Shift+f` to toggle fullscreen on the current pane
 
 #### 7. (Optional but Recommended) Configure Helix Keybindings for Yazelix Integration
 To enable full Helix-Yazi integration, add the following to your Helix config (usually `~/.config/helix/config.toml`):

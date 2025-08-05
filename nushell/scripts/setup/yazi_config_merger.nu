@@ -243,11 +243,11 @@ export def generate_merged_yazi_config [yazelix_dir: string] {
     let merged_config_dir = $"($state_dir)/configs/yazi"
     let source_config_dir = $"($yazelix_dir)/configs/yazi"
     
-    # Check if regeneration is needed
-    if (is_yazi_config_current $merged_config_dir $source_config_dir) {
-        print "✅ Yazi config is current, skipping regeneration"
-        return $merged_config_dir
-    }
+    # Always regenerate configs to avoid stale config issues
+    # if (is_yazi_config_current $merged_config_dir $source_config_dir) {
+    #     print "✅ Yazi config is current, skipping regeneration"
+    #     return $merged_config_dir
+    # }
     
     print "🔄 Regenerating Yazi configuration..."
     

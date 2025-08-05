@@ -122,11 +122,11 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     let yazelix_overrides_path = $"($yazelix_dir)/($ZELLIJ_CONFIG_PATHS.yazelix_overrides)"
     let user_config_path = $"($yazelix_dir)/($ZELLIJ_CONFIG_PATHS.user_config)"
     
-    # Check if regeneration is needed
-    if (is_config_current $merged_config_path $yazelix_overrides_path $user_config_path) {
-        print "✅ Zellij config is current, skipping regeneration"
-        return $merged_config_path
-    }
+    # Always regenerate configs to avoid stale config issues
+    # if (is_config_current $merged_config_path $yazelix_overrides_path $user_config_path) {
+    #     print "✅ Zellij config is current, skipping regeneration"
+    #     return $merged_config_path
+    # }
     
     print "🔄 Regenerating Zellij configuration..."
     

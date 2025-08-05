@@ -115,7 +115,7 @@ Modify pane sizes, split directions, or minimum pane requirements:
 
 ## Tips
 
-- **Use `Alt+f`** to toggle pane fullscreen and hide the layout temporarily
+- **Use `Alt+Shift+f`** to toggle pane fullscreen and hide the layout temporarily
 - **Experiment** with different layouts by opening more panes and tools
 - **Customize** layouts to match your specific workflow needs
 - **Consider pane count** when planning your workspace - layouts adapt automatically

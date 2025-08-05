@@ -63,7 +63,7 @@ keybinds {
         bind "Alt 9" { GoToTab 9; }
 
         // Not a remap, just for ease of use
-        bind "Alt f" { ToggleFocusFullscreen; SwitchToMode "Normal"; }
+        bind "Alt Shift f" { ToggleFocusFullscreen; SwitchToMode "Normal"; }
 
         // New: Ctrl+Alt+H/L to walk left/right in tabs (change focus, not move tab)
         bind "Ctrl Alt H" { GoToPreviousTab; }

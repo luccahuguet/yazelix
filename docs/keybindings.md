@@ -8,7 +8,7 @@
 | Alt+q                    | Walk to previous tab (focus)  |
 | Alt+Shift+H              | Move tab left                 |
 | Alt+Shift+L              | Move tab right                |
-| Alt f                    | Toggle pane fullscreen        |
+| Alt Shift f              | Toggle pane fullscreen        |
 | Ctrl+x                   | Enter scroll mode             |
 
 - **Tab walking**: Alt+w/q walks (focuses) next/previous tab, like browser tab switching.
@@ -20,7 +20,7 @@ If you find a conflict, please open an issue
 ## Discoverability of Keybindings
 - **Zellij**: Shows all keybindings visually in the status bar—works out of the box
 - **Helix**: Similar to Zellij, key bindings are easy to discover
-- **Yazi**: Press `~` to see all keybindings and commands (use `Alt f` to fullscreen the pane for a better view)
+- **Yazi**: Press `~` to see all keybindings and commands (use `Alt Shift f` to fullscreen the pane for a better view)
 - **Nushell**:
   - Run `tutor` in Nushell
   - Read the [Nushell Book](https://www.nushell.sh/book/)
@@ -30,7 +30,7 @@ If you find a conflict, please open an issue
 
 ## Yazelix Custom Keybindings
 - **Zellij**:
-  - `Alt f` toggles pane fullscreen
+  - `Alt Shift f` toggles pane fullscreen
   - `Alt+Shift+H` moves the current tab left
   - `Alt+Shift+L` moves the current tab right
   - `Ctrl+Alt+H` walks left (focus previous tab)
