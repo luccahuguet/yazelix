@@ -74,6 +74,12 @@ in {
       description = "Custom editor command (hx, vim, nvim, etc.)";
     };
     
+    enable_sidebar = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable or disable the Yazi sidebar";
+    };
+    
     debug_mode = mkOption {
       type = types.bool;
       default = false;
@@ -108,6 +114,12 @@ in {
       type = types.str;
       default = "yazelix";
       description = "Session name for persistent sessions";
+    };
+    
+    packs = mkOption {
+      type = types.listOf (types.enum [ "python" "js_ts" "rust" "config" "file-management" ]);
+      default = [];
+      description = "Package packs to enable entire technology stacks";
     };
     
     user_packages = mkOption {
@@ -149,6 +161,9 @@ in {
           editor_command = "hx";
           ''}
           
+          # UI configuration
+          enable_sidebar = ${if cfg.enable_sidebar then "true" else "false"};
+          
           # Debug and display options
           debug_mode = ${if cfg.debug_mode then "true" else "false"};
           skip_welcome_screen = ${if cfg.skip_welcome_screen then "true" else "false"};
@@ -158,6 +173,9 @@ in {
           # Session configuration
           persistent_sessions = ${if cfg.persistent_sessions then "true" else "false"};
           session_name = "${cfg.session_name}";
+          
+          # Package packs
+          packs = ${builtins.toJSON cfg.packs};
           
           # User packages
           user_packages = with pkgs; ${nixPackagesToString cfg.user_packages};
