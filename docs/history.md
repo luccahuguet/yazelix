@@ -20,7 +20,7 @@
 - **Big File/Folder Project-Wide Refactoring**: Complete reorganization of the codebase structure for better maintainability and organization
 - **Yazelix Config Validation**: Added validation system to warn users of invalid configuration options in `yazelix.nix`
 - **Configurable Editor Environment Variables**: New config options to set EDITOR environment variable when empty, override existing EDITOR, and add custom editor commands
-- **Configurable Welcome ASCII Art**: You can now choose between static or animated ASCII art in the welcome screen using the `ascii_art_mode` option in your `yazelix.nix` config. Set `ascii_art_mode = "static"` (default for faster startup) or `ascii_art_mode = "animated"` for animated welcome.
+- **Configurable Welcome ASCII Art**: You can now choose between animated or static ASCII art in the welcome screen using the new `ascii_art_mode` option in your `yazelix.nix` config. Set `ascii_art_mode = "animated"` (default) or `ascii_art_mode = "static"` for a non-animated welcome.
 - **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell!
 - **Seamless Yazelix restart**: `yzx restart` launches a new Yazelix instance before killing the old one, providing a smooth and reliable restart experience.
 - **Yazelix Collection page**: Yazelix now includes a dedicated collection page (`docs/yazelix_collection.md`) listing all integrated tools and inspirations.
