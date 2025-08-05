@@ -78,7 +78,7 @@
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
         yazelixSkipWelcomeScreen = config.skip_welcome_screen or false; # Read skip_welcome_screen, default to false
         yazelixPreferredTerminal = config.preferred_terminal or "ghostty"; # Read preferred_terminal, default to ghostty
-        yazelixAsciiArtMode = config.ascii_art_mode or "animated"; # Read ascii_art_mode, default to animated
+        yazelixAsciiArtMode = config.ascii_art_mode or "static"; # Read ascii_art_mode, default to static
 
         # Editor configuration
         editorConfig = {

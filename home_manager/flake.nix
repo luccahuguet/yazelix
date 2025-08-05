@@ -51,7 +51,7 @@
                 editor_command = "hx";
                 
                 # Display options
-                ascii_art_mode = "animated";
+                ascii_art_mode = "animated";  # Opt-in for animated welcome (default: "static")
                 show_macchina_on_welcome = true;
                 
                 # Session configuration

@@ -88,7 +88,7 @@ in {
     
     ascii_art_mode = mkOption {
       type = types.enum [ "static" "animated" ];
-      default = "animated";
+      default = "static";
       description = "ASCII art display mode";
     };
     
