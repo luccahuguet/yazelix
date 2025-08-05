@@ -29,16 +29,20 @@ export def main [] {
     # Parse configuration using the shared module
     let config = parse_yazelix_config
 
-    # Generate merged configurations
-    print "🔧 Preparing configurations..."
-    let merged_zellij_path = generate_merged_zellij_config $yazelix_dir
-    let merged_zellij_dir = ($merged_zellij_path | path dirname)
+    # Generate merged Yazi configuration (doesn't need zellij)
+    print "🔧 Preparing Yazi configuration..."
     let merged_yazi_dir = generate_merged_yazi_config $yazelix_dir
+    
+    # For Zellij config, create a placeholder for now - will be generated inside Nix environment
+    let merged_zellij_dir = $"($env.HOME)/.local/share/yazelix/configs/zellij"
 
-    # Build the appropriate zellij command based on persistent session setting
+    # Build the command that first generates the zellij config, then starts zellij
+    let zellij_merger_cmd = $"nu ($yazelix_dir)/nushell/scripts/setup/zellij_config_merger.nu ($yazelix_dir)"
+    
     let cmd = if ($config.persistent_sessions == "true") {
         # Use zellij attach with create flag for persistent sessions
         [
+            $zellij_merger_cmd "&&"
             "zellij"
             "--config-dir" $merged_zellij_dir
             "attach"
@@ -51,6 +55,7 @@ export def main [] {
     } else {
         # Use zellij options for new sessions (original behavior)
         [
+            $zellij_merger_cmd "&&"
             "zellij"
             "--config-dir" $merged_zellij_dir
             "options"

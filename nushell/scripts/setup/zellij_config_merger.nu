@@ -31,12 +31,14 @@ def is_config_current [
 
 # Fetch Zellij default configuration
 def get_zellij_defaults [] {
-    try {
-        zellij setup --dump-config
-    } catch {
-        print "⚠️  Could not fetch Zellij defaults, using minimal fallback"
-        "// Minimal Zellij configuration fallback\ndefault_shell \"nu\"\n"
-    }
+    let result = (try { zellij setup --dump-config } catch {|err| 
+        print $"❌ CRITICAL ERROR: Cannot fetch Zellij defaults: ($err.msg)"
+        print "   Zellij must be available in PATH for Yazelix to work properly."
+        print "   This indicates the merger is running outside the Nix environment."
+        print "   Yazelix cannot function without proper Zellij configuration."
+        exit 1
+    })
+    $result
 }
 
 # Read config file with error handling
