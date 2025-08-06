@@ -89,7 +89,7 @@
 
         # Sidebar configuration
         yazelixEnableSidebar = config.enable_sidebar or true;
-        yazelixLayoutName = if yazelixEnableSidebar then "yazelix" else "yazelix_no_sidebar";
+        yazelixLayoutName = if yazelixEnableSidebar then "yzx_side" else "yzx_no_side";
 
 
         # Helix package selection

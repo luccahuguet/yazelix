@@ -75,7 +75,7 @@ export const YAZELIX_ENV_VARS = {
     YAZELIX_PREFERRED_TERMINAL: "wezterm"
     YAZELIX_HELIX_MODE: "release"
     YAZI_CONFIG_HOME: "~/.local/share/yazelix/configs/yazi"
-    ZELLIJ_DEFAULT_LAYOUT: "yazelix"
+    ZELLIJ_DEFAULT_LAYOUT: "yzx_side"
 }
 
 # Get the full start comment with regeneration instruction

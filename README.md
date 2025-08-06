@@ -312,7 +312,7 @@ Yazelix includes optional Home Manager support for declarative configuration man
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
 - Tweak configs to make them yours; this is just a starting point! 
 - For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html)
-- Add more swap layouts as needed using the KDL files in `layouts`
+- Add more swap layouts as needed using the KDL files in `configs/zellij/layouts`
 - Use `lazygit`
 - **Steel Support**: Patchy and Steel support was temporarily removed due to rapid codebase growth causing integration conflicts. Pre-release testing didn't catch all edge cases. A polished, stable Steel integration will be readded soon.
 
