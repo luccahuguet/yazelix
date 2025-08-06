@@ -45,11 +45,11 @@ swap_tiled_layout name="sidebar_closed" {
         pane split_direction="vertical" {
             pane name="sidebar" {
                 command "yazi"
-                size "1%"
+                size "1"
             }
             pane stacked=true { 
                 children; 
-                size "49%"
+                size "50%"
             }
             pane split_direction="vertical" {
                 size "50%"
