@@ -47,8 +47,8 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - 5 curated packs: `python` (ruff, uv, ty), `js_ts` (biome, bun), `rust` (cargo tools), `config` (formatters), `file-management` (utilities)
   - Hybrid approach: use packs for bulk selection, `user_packages` for individual tools
 - **Enhanced Zellij layouts**: Added comprehensive layout system with both sidebar and no-sidebar variants:
-  - **No-sidebar layouts** (default): `basic`, `stacked`, `two_column`, `bottom_terminal` - clean, full-screen workflows
-  - **Sidebar layouts**: `basic`, `stacked`, `three_column`, `bottom_terminal` - persistent file navigation
+  - **No-sidebar layouts** (default): `basic`, `stacked`, `two_column` - clean, full-screen workflows
+  - **Sidebar layouts**: `basic`, `stacked`, `three_column`, `sidebar_closed` - persistent file navigation
 - **Improved Helix-Yazi integration**: Enhanced file picker workflow with intuitive toggle behavior:
   - **Toggle behavior**: `Ctrl+y` in Helix opens Yazi file picker, `Ctrl+y` in Yazi returns to Helix without selection
   - **Smart mode detection**: Friendly warnings for mode-specific features (e.g., Alt+y reveal only works in sidebar mode)
@@ -351,7 +351,7 @@ theme = "term16_dark"  # Recommended transparent theme
 ```
 
 ## Layouts
-Yazelix includes adaptive layouts that organize your workspace automatically. Use `three_column` for Claude Code and AI tools, `bottom_terminal` for IDE-like development, and more. See [docs/layouts.md](./docs/layouts.md) for details and customization.
+Yazelix includes adaptive layouts that organize your workspace automatically. Use `three_column` for Claude Code and AI tools, and more. See [docs/layouts.md](./docs/layouts.md) for details and customization.
 
 ## Keybindings
 Keybindings are discoverable in each tool (e.g., `~` in Yazi, `?` in lazygit). See [docs/keybindings.md](./docs/keybindings.md) for full details, custom keybindings, and usage tips.

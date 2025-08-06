@@ -29,16 +29,16 @@ swap_tiled_layout name="two_column" {
     }
 }
 
-swap_tiled_layout name="bottom_terminal" {
-    ui min_panes=3 {
-        pane split_direction="horizontal" {
-            pane stacked=true { 
-                children; 
-                size "70%"
-            }
-            pane name="terminal" {
-                size "30%"
-            }
-        }
-    }
-}
+// swap_tiled_layout name="bottom_terminal" {
+//     ui min_panes=3 {
+//         pane split_direction="horizontal" {
+//             pane stacked=true { 
+//                 children; 
+//                 size "70%"
+//             }
+//             pane name="terminal" {
+//                 size "30%"
+//             }
+//         }
+//     }
+// }

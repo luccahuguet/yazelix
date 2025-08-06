@@ -40,24 +40,42 @@ swap_tiled_layout name="three_column" {
     }
 }
 
-swap_tiled_layout name="bottom_terminal" {
+swap_tiled_layout name="sidebar_closed" {
     ui min_panes=5 {
         pane split_direction="vertical" {
             pane name="sidebar" {
                 command "yazi"
-                size "20%"
+                size "1%"
             }
-            pane split_direction="horizontal" {
-                pane stacked=true { 
-                    children; 
-                    size "70%"
-                }
-                pane name="terminal" {
-                    size "30%"
-                }
+            pane stacked=true { 
+                children; 
+                size "49%"
+            }
+            pane split_direction="vertical" {
+                size "50%"
             }
         }
     }
 }
+
+// swap_tiled_layout name="bottom_terminal" {
+//     ui min_panes=5 {
+//         pane split_direction="vertical" {
+//             pane name="sidebar" {
+//                 command "yazi"
+//                 size "20%"
+//             }
+//             pane split_direction="horizontal" {
+//                 pane stacked=true { 
+//                     children; 
+//                     size "70%"
+//                 }
+//                 pane name="terminal" {
+//                     size "30%"
+//                 }
+//             }
+//         }
+//     }
+// }
 
 
