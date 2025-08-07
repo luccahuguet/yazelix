@@ -121,7 +121,7 @@
 - **Sidebar Control**: Now you can open and close the sidebar.
 - **Simplified Dependencies**: No more nushell dependency. Nushell is a beautiful table-centric cross-platform shell written in Rust, but the way I used it was an ugly hack.
 - **Simpler Layout Files**: The KDL files are more streamlined.
-- **Removes zjstatus Plugin**: The plugin had to be downloaded and configured, while adding nothing really important.
+- **Removes zjstatus Plugin**: The plugin had to be downloaded and configured, while adding nothing game-changing, and I had no ideia how to bundle it in yazelix
 - **Status-bar is Back, baby!**: Life without it isn't easy. The status-bar (help bar) makes the setup much more user-friendly. 
 
 ## v1: File Tree Setup using Yazi, Zellij, Helix, and Nushell ([announcement](https://www.reddit.com/r/HelixEditor/comments/1d59br3/file_tree_setup_using_yazi_zellij_helix_and/))
