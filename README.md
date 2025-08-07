@@ -289,10 +289,10 @@ C-y = [
 ]
 ```
 
-**⚠️ Important Limitations:**
+**Important Limitations:**
 - **Background color issues**: The Helix instance will use the terminal emulator's background color mixed with helix's own background, making the editor appearance inconsistent and a bit ugly
 - **Mouse scrolling problems**: Mouse scrolling in Helix stops working properly, at least when running inside Zellij
-- **Experimental status**: This feature is experimental and may cause other visual/interaction issues
+- **Experimental status**: This feature is experimental and may cause other visual/interaction issues. You're probably better off just using the sidebar!
 
 **Feature when working:**
 - **`Ctrl+y`**: Open Yazi file picker directly in Helix - **toggle behavior**: press `Ctrl+y` in Yazi to return to Helix without selecting a file
