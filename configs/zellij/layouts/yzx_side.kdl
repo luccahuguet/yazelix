@@ -23,7 +23,7 @@ layout {
                
                command_shell_command "bash -c 'echo ${YAZELIX_DEFAULT_SHELL:-$(basename $SHELL)}'"
                
-               command_editor_command "echo $EDITOR"
+               command_editor_command "bash -c 'echo $EDITOR'"
                command_editor_format "{stdout}"
                command_editor_interval "300"
                command_shell_format "{stdout}"
@@ -60,7 +60,7 @@ layout {
                
                command_shell_command "bash -c 'echo ${YAZELIX_DEFAULT_SHELL:-$(basename $SHELL)}'"
                
-               command_editor_command "echo $EDITOR"
+               command_editor_command "bash -c 'echo $EDITOR'"
                command_editor_format "{stdout}"
                command_editor_interval "300"
                command_shell_format "{stdout}"
