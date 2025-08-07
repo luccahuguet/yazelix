@@ -3,7 +3,7 @@ layout {
         pane size=1 borderless=true {
            plugin location="file:zjstatus.wasm" {
                format_left   "{mode} {tabs}"
-               format_center "#[fg=#ff6600,bold]{session} #[fg=#00ff88,bold]{swap_layout}"
+               format_center "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold]{swap_layout}"
                format_right  "#[fg=#00ccff,bold]YAZELIX {datetime}"
                format_space  ""
                
@@ -15,8 +15,8 @@ layout {
                mode_session "#[bg=#ff6600,fg=#000000,bold] SESSION "
                mode_scroll  "#[bg=#ff0088,fg=#ffffff,bold] SCROLL "
                
-               tab_normal   "#[fg=#00ccff] {name} "
-               tab_active   "#[bg=#ff0088,fg=#ffffff,bold] {name} "
+               tab_normal   "#[fg=#ff6600] {name} "
+               tab_active   "#[bg=#ffff00,fg=#000000,bold] {name} "
                
                datetime        "#[fg=#bb88ff,bold] {format} "
                datetime_format "%H:%M %d/%m"
@@ -32,7 +32,7 @@ layout {
         pane size=1 borderless=true {
            plugin location="file:zjstatus.wasm" {
                format_left   "{mode} {tabs}"
-               format_center "#[fg=#ff6600,bold]{session} #[fg=#00ff88,bold]{swap_layout}"
+               format_center "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold]{swap_layout}"
                format_right  "#[fg=#00ccff,bold]YAZELIX {datetime}"
                format_space  ""
                
@@ -44,8 +44,8 @@ layout {
                mode_session "#[bg=#ff6600,fg=#000000,bold] SESSION "
                mode_scroll  "#[bg=#ff0088,fg=#ffffff,bold] SCROLL "
                
-               tab_normal   "#[fg=#00ccff] {name} "
-               tab_active   "#[bg=#ff0088,fg=#ffffff,bold] {name} "
+               tab_normal   "#[fg=#ff6600] {name} "
+               tab_active   "#[bg=#ffff00,fg=#000000,bold] {name} "
                
                datetime        "#[fg=#bb88ff,bold] {format} "
                datetime_format "%H:%M %d/%m"
