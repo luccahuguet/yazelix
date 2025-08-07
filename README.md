@@ -28,8 +28,9 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Good defaults over customization. Have both when possible
 - Yazelix is always on the edge of project versions
 - Yazelix is always evolving, it's a living being
-- Yazelix is easy to use and crazy at the same time (what really is this project?)
-- Yazelix lets you say `I use Yazelix btw` (careful saying that, you might accidentally scare an innocent Arch user)
+- Yazelix is easy to use
+- What is even Yazelix?
+- Yazelix lets you say `I use Yazelix btw`
 - Boy, do we Nix
 - Integration, integration, integration
 - Like [Omakub](https://github.com/basecamp/omakub) but for your terminal
@@ -55,6 +56,11 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - **Toggle behavior**: `Ctrl+y` in Helix opens Yazi file picker, `Ctrl+y` in Yazi returns to Helix without selection
   - **Smart mode detection**: Friendly warnings for mode-specific features (e.g., Alt+y reveal only works in sidebar mode)
   - **Streamlined keybindings**: Removed redundant Ctrl+Shift+y, focused on essential Ctrl+y and Alt+y bindings
+- **New zjstatus plugin integration**: Added custom status bar plugin with shell and editor information:
+  - **Shell indicator**: Shows current configured shell (e.g., `[shell: nu]`)
+  - **Editor indicator**: Shows current configured editor (e.g., `[editor: vim]`)
+  - **Clean layout**: `[shell: nu] [editor: vim] YAZELIX` with proper spacing and color coding
+  - **Replaces default Zellij status bar** with more informative yazelix-specific display
 - **Dynamic Three-Layer Zellij Configuration**: Completely rewritten configuration system with modular, maintainable approach:
   - **Layer 1**: Zellij defaults (fetched dynamically via `zellij setup --dump-config`)
   - **Layer 2**: Yazelix overrides (`yazelix_overrides.kdl`) - Yazelix-specific settings

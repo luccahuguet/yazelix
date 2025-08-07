@@ -15,6 +15,7 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 ## Essential Tools
 - [Yazi](https://github.com/sxyazi/yazi) — A blazing-fast, modern terminal file manager with Vim-like keybindings, preview support, and extensibility. Yazi is the sidebar and file navigation backbone of Yazelix. 🚀 deep-integration
 - [Zellij](https://github.com/zellij-org/zellij) — A powerful terminal multiplexer that manages panes, layouts, and tabs. Zellij orchestrates the Yazelix workspace, allowing seamless integration between file manager, editor, and shell. 🚀 deep-integration
+- [zjstatus](https://github.com/dj95/zjstatus) — A configurable status bar plugin for Zellij. Yazelix uses zjstatus to display shell and editor information with custom formatting: `[shell: nu] [editor: hx] YAZELIX`. 🚀 deep-integration
 - [Helix](https://helix-editor.com) — A modal text editor inspired by Kakoune and Neovim, featuring fast performance, tree-sitter syntax highlighting, and LSP support. Helix is the default editor for Yazelix, enabling advanced workflows and sidebar integration. 🚀 deep-integration
 - [Nushell](https://www.nushell.sh) — A modern shell that treats data as structured tables, making scripting and configuration more robust. Nushell is the default shell for Yazelix and powers its configuration and scripting. (default shell)
 - [fzf](https://github.com/junegunn/fzf) — A general-purpose command-line fuzzy finder. Used in Yazelix for quick file and directory navigation. Press `z` in Yazi or `fzf` from terminal.
