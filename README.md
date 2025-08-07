@@ -39,9 +39,10 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 ## Improvements of v8.5 over v8
 - **Modern default experience**: No-sidebar mode is now the default for a cleaner, more screen-space-efficient workflow:
   - Full-screen layouts maximize editor space
-  - On-demand file picking with `yazi` command or `Ctrl+y` in Helix (with toggle behavior - `Ctrl+y` in Yazi returns to Helix)
+  - On-demand file picking with `yazi` command or experimental `Ctrl+y` in Helix (with toggle behavior - `Ctrl+y` in Yazi returns to Helix)
   - Sidebar mode still available via `enable_sidebar = true` for IDE-like workflows
   - **Note**: No-sidebar mode is experimental and has some minor quirks (background color inconsistencies, occasional mouse scrolling issues) but nothing deal-breaking
+  - **⚠️ Ctrl+y integration warning**: The `Ctrl+y` Helix-Yazi file picker causes significant visual issues (wrong background colors, broken mouse scrolling) and is not recommended for regular use
 - **Pack-based configuration system**: Simplified package management with technology stacks:
   - Enable entire tech stacks with `packs = ["python", "js_ts", "config"]` instead of commenting individual packages
   - 5 curated packs: `python` (ruff, uv, ty), `js_ts` (biome, bun), `rust` (cargo tools), `config` (formatters), `file-management` (utilities)
@@ -257,9 +258,19 @@ To enable full Helix-Yazi integration, add the following to your Helix config (u
 [keys.normal]
 # Yazelix sidebar integration - reveal current file in Yazi sidebar
 A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
+```
 
-# Native Yazi integration - file picker within Helix (with toggle behavior)
-# Ctrl+y: Open Yazi file picker from current file's directory
+**Features:**
+- **`Alt+y`**: Reveal current file in Yazelix sidebar (requires sidebar mode)
+- **Limitation:** Only works for Helix instances opened from Yazi.
+
+#### 8. (Experimental) Direct Yazi File Picker Integration
+For users who want a direct Yazi file picker within Helix, you can optionally add this experimental keybinding:
+
+```toml
+[keys.normal]
+# Experimental: Direct Yazi integration - file picker within Helix (with toggle behavior)
+# WARNING: This feature has significant drawbacks (see below)
 C-y = [
     ':sh rm -f /tmp/yazi-helix-chooser',
     ':insert-output nu ~/.config/yazelix/nushell/scripts/integrations/helix_yazi_picker.nu "%{buffer_name}"',
@@ -268,11 +279,15 @@ C-y = [
 ]
 ```
 
-**Features:**
-- **`Alt+y`**: Reveal current file in Yazelix sidebar (requires sidebar mode)
+**⚠️ Important Limitations:**
+- **Background color issues**: The Helix instance will use the terminal emulator's background color instead of the configured Helix theme background, making the editor appearance inconsistent
+- **Mouse scrolling problems**: Mouse scrolling in Helix stops working properly, at least when running inside Zellij
+- **Experimental status**: This feature is experimental and may cause other visual/interaction issues
+
+**Feature when working:**
 - **`Ctrl+y`**: Open Yazi file picker directly in Helix - **toggle behavior**: press `Ctrl+y` in Yazi to return to Helix without selecting a file
-- See [docs/keybindings.md](./docs/keybindings.md) for complete details and usage tips.
-- **Limitation for Alt+y:** Only works for Helix instances opened from Yazi.
+
+See [docs/keybindings.md](./docs/keybindings.md) for complete details and usage tips.
 
 ### Alternative: CLI-Only Mode
 To use Yazelix tools without starting the full interface (no sidebar, no zellij):
