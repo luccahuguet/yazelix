@@ -264,7 +264,7 @@ A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \
 - **`Alt+y`**: Reveal current file in Yazelix sidebar (requires sidebar mode)
 - **Limitation:** Only works for Helix instances opened from Yazi.
 
-#### 8. (Experimental) Direct Yazi File Picker Integration
+#### 8. (Experimental) Direct Yazi File Picker Integration (Not Recommended for Now)
 For users who want a direct Yazi file picker within Helix, you can optionally add this experimental keybinding:
 
 ```toml
