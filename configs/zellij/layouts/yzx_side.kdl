@@ -15,8 +15,8 @@ layout {
                mode_session "#[bg=#ff6600,fg=#000000,bold] SESSION "
                mode_scroll  "#[bg=#ff0088,fg=#ffffff,bold] SCROLL "
                
-               tab_normal   "#[fg=#ff6600] {name} "
-               tab_active   "#[bg=#ffff00,fg=#000000,bold] {name} "
+               tab_normal   "#[fg=#ffff00] {name} "
+               tab_active   "#[bg=#ff6600,fg=#000000,bold] {name} "
                
                datetime        "#[fg=#bb88ff,bold] {format} "
                datetime_format "%H:%M %d/%m"
@@ -44,8 +44,8 @@ layout {
                mode_session "#[bg=#ff6600,fg=#000000,bold] SESSION "
                mode_scroll  "#[bg=#ff0088,fg=#ffffff,bold] SCROLL "
                
-               tab_normal   "#[fg=#ff6600] {name} "
-               tab_active   "#[bg=#ffff00,fg=#000000,bold] {name} "
+               tab_normal   "#[fg=#ffff00] {name} "
+               tab_active   "#[bg=#ff6600,fg=#000000,bold] {name} "
                
                datetime        "#[fg=#bb88ff,bold] {format} "
                datetime_format "%H:%M %d/%m"
