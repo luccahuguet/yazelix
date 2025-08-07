@@ -25,6 +25,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 
 ## Vision
 - Using the terminal should be easy, beautiful, pratical and reproducible.
+- Good defaults over customization. Have both when possible
 - Yazelix is always on the edge of project versions
 - Yazelix is always evolving, it's a living being
 - Yazelix is easy to use and crazy at the same time (what really is this project?)
