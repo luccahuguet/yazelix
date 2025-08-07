@@ -57,21 +57,11 @@ in {
       description = "Preferred terminal emulator for launch commands";
     };
     
-    # Editor configuration (flat structure to match main flake)
-    set_editor = mkOption {
-      type = types.bool;
-      default = true;
-      description = "Whether to set EDITOR environment variable";
-    };
-    override_existing = mkOption {
-      type = types.bool;
-      default = true;
-      description = "Whether to override existing EDITOR if already set";
-    };
+    # Editor configuration
     editor_command = mkOption {
       type = types.str;
       default = "hx";
-      description = "Custom editor command (hx, vim, nvim, etc.)";
+      description = "Editor command - yazelix will always set this as EDITOR (hx, vim, nvim, etc.)";
     };
     
     enable_sidebar = mkOption {
@@ -151,15 +141,7 @@ in {
           preferred_terminal = "${cfg.preferred_terminal}";
           
           # Editor configuration
-          ${if cfg.set_editor then ''
-          set_editor = true;
-          override_existing = ${if cfg.override_existing then "true" else "false"};
           editor_command = "${cfg.editor_command}";
-          '' else ''
-          set_editor = false;
-          override_existing = false;
-          editor_command = "hx";
-          ''}
           
           # UI configuration
           enable_sidebar = ${if cfg.enable_sidebar then "true" else "false"};

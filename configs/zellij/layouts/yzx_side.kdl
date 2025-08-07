@@ -4,7 +4,7 @@ layout {
            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
                format_center "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold]{swap_layout}"
-               format_right  "#[fg=#00ccff,bold]YAZELIX {datetime}"
+               format_right  "#[fg=#ffff00][shell: {command_shell}] [editor: {command_editor}] #[fg=#00ccff,bold]YAZELIX " // {datetime}
                format_space  ""
                
                border_enabled  "false"
@@ -20,6 +20,14 @@ layout {
                
                datetime        "#[fg=#bb88ff,bold] {format} "
                datetime_format "%H:%M %d/%m"
+               
+               command_shell_command "bash -c 'echo ${YAZELIX_DEFAULT_SHELL:-$(basename $SHELL)}'"
+               
+               command_editor_command "echo $EDITOR"
+               command_editor_format "{stdout}"
+               command_editor_interval "300"
+               command_shell_format "{stdout}"
+               command_shell_interval "300"
            }
         }
         children
@@ -33,7 +41,7 @@ layout {
            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
                format_center "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold]{swap_layout}"
-               format_right  "#[fg=#00ccff,bold]YAZELIX {datetime}"
+               format_right  "#[fg=#ffff00][shell: {command_shell}] [editor: {command_editor}] #[fg=#00ccff,bold]YAZELIX " // {datetime}
                format_space  ""
                
                border_enabled  "false"
@@ -49,6 +57,14 @@ layout {
                
                datetime        "#[fg=#bb88ff,bold] {format} "
                datetime_format "%H:%M %d/%m"
+               
+               command_shell_command "bash -c 'echo ${YAZELIX_DEFAULT_SHELL:-$(basename $SHELL)}'"
+               
+               command_editor_command "echo $EDITOR"
+               command_editor_format "{stdout}"
+               command_editor_interval "300"
+               command_shell_format "{stdout}"
+               command_shell_interval "300"
            }
         }
         pane split_direction="vertical" {

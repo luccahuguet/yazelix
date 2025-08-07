@@ -67,8 +67,6 @@
               enable_sidebar = false;
               packs = [ ];
               user_packages = [ ];
-              set_editor = true;
-              override_existing = true;
               editor_command = "hx";
             };
 
@@ -90,11 +88,8 @@
         yazelixAsciiArtMode = config.ascii_art_mode or "static"; # Read ascii_art_mode, default to static
 
         # Editor configuration
-        editorConfig = {
-          set_editor = config.set_editor or true;
-          override_existing = config.override_existing or true;
-          editor_command = config.editor_command or "hx";
-        };
+        # Editor configuration - yazelix always sets EDITOR to the configured command
+        editorCommand = config.editor_command or "hx";
 
         # Sidebar configuration
         yazelixEnableSidebar = config.enable_sidebar or true;
@@ -222,19 +217,9 @@
             # Set HELIX_RUNTIME for both modes - both use hx from PATH
             export HELIX_RUNTIME="${helixPackage}/share/helix/runtime"
 
-            # Set EDITOR environment variable based on configuration
-            if [ "${if editorConfig.set_editor then "true" else "false"}" = "true" ]; then
-              if [ -z "$EDITOR" ] || [ "${
-                if editorConfig.override_existing then "true" else "false"
-              }" = "true" ]; then
-                export EDITOR="${editorConfig.editor_command}"
-                echo "📝 Set EDITOR to: ${editorConfig.editor_command}"
-              else
-                echo "📝 Keeping existing EDITOR='$EDITOR' (override_existing=false)"
-              fi
-            else
-              echo "📝 Skipping EDITOR setup (set_editor=false)"
-            fi
+            # Set EDITOR environment variable to configured command
+            export EDITOR="${editorCommand}"
+            echo "📝 Set EDITOR to: ${editorCommand}"
 
             # Disable Nix warning about Git directory
             export NIX_CONFIG="warn-dirty = false"

@@ -23,12 +23,8 @@
   # Ghostty is the default for great performance; use WezTerm if you need better image preview support in Yazi
   preferred_terminal = "ghostty";
 
-  # Whether to set EDITOR environment variable (default: true)
-  set_editor = true;
-  # Whether to override existing EDITOR if already set (default: true)
-  # Set to false if you want to keep your existing EDITOR
-  override_existing = true;
-  # Custom editor command (default: "hx" for Helix)
+  # Editor command (default: "hx" for Helix)
+  # Yazelix will always set this as your EDITOR environment variable
   # You can change this to "vim", "nvim", "kak", etc. if you prefer
   editor_command = "hx";
 
