@@ -43,6 +43,14 @@ When creating new files or directories, always use underscores to maintain consi
 - **Environment independence** - Code should work regardless of host system quirks
 - **Consistent behavior** - Same input should produce same output across all user environments
 
+## Planning and Decision Making
+
+**ALWAYS PLAN FIRST** - Before taking significant actions (like git commits, major changes, or file operations), explicitly discuss the approach and get user approval. This includes:
+- Git operations: What files to commit, whether to include binaries, commit message strategy
+- File changes: Whether to edit, create, or delete files
+- Tool selection: Which approach to use when multiple options exist
+- Architecture decisions: How to structure or integrate new features
+
 ## Documentation and User Guidance Principles
 
 When documenting limitations or potential issues:

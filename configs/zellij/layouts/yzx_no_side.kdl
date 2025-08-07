@@ -1,7 +1,26 @@
 layout {
     tab_template name="ui" {
         pane size=1 borderless=true {
-           plugin location="zellij:tab-bar"
+           plugin location="file:zjstatus.wasm" {
+               format_left   "{mode} {tabs}"
+               format_center "#[fg=#ff6600,bold]{session} #[fg=#00ff88,bold]{swap_layout}"
+               format_right  "#[fg=#00ccff,bold]YAZELIX {datetime}"
+               format_space  ""
+               
+               border_enabled  "false"
+               hide_frame_for_single_pane "true"
+               
+               mode_normal  "#[bg=#00ff88,fg=#000000,bold] NORMAL "
+               mode_tmux    "#[bg=#ffff00,fg=#000000,bold] TMUX "
+               mode_session "#[bg=#ff6600,fg=#000000,bold] SESSION "
+               mode_scroll  "#[bg=#ff0088,fg=#ffffff,bold] SCROLL "
+               
+               tab_normal   "#[fg=#00ccff] {name} "
+               tab_active   "#[bg=#ff0088,fg=#ffffff,bold] {name} "
+               
+               datetime        "#[fg=#bb88ff,bold] {format} "
+               datetime_format "%H:%M %d/%m"
+           }
         }
         children
         pane size=1 borderless=true {
@@ -11,7 +30,26 @@ layout {
 
     default_tab_template {
         pane size=1 borderless=true {
-           plugin location="zellij:tab-bar"
+           plugin location="file:zjstatus.wasm" {
+               format_left   "{mode} {tabs}"
+               format_center "#[fg=#ff6600,bold]{session} #[fg=#00ff88,bold]{swap_layout}"
+               format_right  "#[fg=#00ccff,bold]YAZELIX {datetime}"
+               format_space  ""
+               
+               border_enabled  "false"
+               hide_frame_for_single_pane "true"
+               
+               mode_normal  "#[bg=#00ff88,fg=#000000,bold] NORMAL "
+               mode_tmux    "#[bg=#ffff00,fg=#000000,bold] TMUX "
+               mode_session "#[bg=#ff6600,fg=#000000,bold] SESSION "
+               mode_scroll  "#[bg=#ff0088,fg=#ffffff,bold] SCROLL "
+               
+               tab_normal   "#[fg=#00ccff] {name} "
+               tab_active   "#[bg=#ff0088,fg=#ffffff,bold] {name} "
+               
+               datetime        "#[fg=#bb88ff,bold] {format} "
+               datetime_format "%H:%M %d/%m"
+           }
         }
         pane split_direction="vertical" {
             pane name="filemanager" {

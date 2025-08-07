@@ -11,6 +11,7 @@
     # deprecated 'get -i' syntax instead of 'get -o', causing warnings with newer nushell versions
     # This will be fixed in carapace 1.4.1, but until nixpkgs updates we pin nushell to 0.105.1
     nixpkgs-nushell.url = "github:nixos/nixpkgs/6027c30c8e9810896b92429f0092f624f7b1aace";
+    zjstatus.url = "github:dj95/zjstatus";
   };
 
   outputs =
@@ -20,12 +21,20 @@
       nixpkgs-nushell,
       flake-utils,
       helix,
+      zjstatus,
       ...
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = import nixpkgs { inherit system; };
+        pkgs = import nixpkgs { 
+          inherit system; 
+          overlays = [
+            (final: prev: {
+              zjstatus = zjstatus.packages.${system}.default;
+            })
+          ];
+        };
         nushellPkgs = import nixpkgs-nushell { inherit system; };
 
         # Read configuration from yazelix.nix
@@ -185,6 +194,7 @@
         # Combine dependencies based on config
         allDeps =
           essentialDeps
+          ++ [ pkgs.zjstatus ] # Add zjstatus from overlay
           ++ extraShellDeps
           ++ (if recommendedDepsEnabled then recommendedDeps else [ ])
           ++ (if yaziExtensionsEnabled then yaziExtensionsDeps else [ ])
