@@ -15,4 +15,3 @@ configs/yazi/user/
 configs/yazi/personal/
 configs/zellij/personal/*
 !configs/zellij/personal/README.md
-configs/zellij/*.wasm

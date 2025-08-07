@@ -1,7 +1,7 @@
 layout {
     tab_template name="ui" {
         pane size=1 borderless=true {
-           plugin location="file:zjstatus.wasm" {
+           plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
                format_center "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold]{swap_layout}"
                format_right  "#[fg=#00ccff,bold]YAZELIX {datetime}"
@@ -30,7 +30,7 @@ layout {
 
     default_tab_template {
         pane size=1 borderless=true {
-           plugin location="file:zjstatus.wasm" {
+           plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
                format_center "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold]{swap_layout}"
                format_right  "#[fg=#00ccff,bold]YAZELIX {datetime}"
