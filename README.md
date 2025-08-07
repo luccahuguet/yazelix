@@ -37,6 +37,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Boy, do we Nix
 - Integration, integration, integration
 - Like [Omakub](https://github.com/basecamp/omakub) but for your terminal
+- Made with love.
 
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
@@ -108,6 +109,7 @@ When opening files from Yazi, Yazelix will:
 - This is need because sometimes when opening a new zellij pane in the pane stack, or deleting one, the editor pane will move around. Most of the times it will move down twice! So the workaround works.
 
 ## Compatibility
+- **Platform**: Works on any Linux distribution. Likely works on macOS as well (untested)
 - **Terminal**: WezTerm, Ghostty, Kitty, or Alacritty
 - **Editor**: Any editor, but Helix has first-class support (reveal in sidebar, open buffer in running instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
