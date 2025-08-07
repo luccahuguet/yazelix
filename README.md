@@ -45,7 +45,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Flexible layout system**: Sidebar mode remains the default, with optional no-sidebar mode for different workflows:
   - **Sidebar mode** (default): IDE-like workflow with persistent Yazi file navigation
   - **No-sidebar mode**: Available via `enable_sidebar = false` for full-screen, on-demand file picking
-  - On-demand file picking with `yazi` command or experimental `Ctrl+y` in Helix (with toggle behavior - `Ctrl+y` in Yazi returns to Helix)
+  - Use the experimental `Ctrl+y` in Helix to call yazi from helix (and `Ctrl+y` again in Yazi returns to Helix, or select a file to open)
   - **Note**: No-sidebar mode is experimental and has some minor quirks (background color inconsistencies, occasional mouse scrolling issues) but nothing deal-breaking
   - **⚠️ Ctrl+y integration warning**: The `Ctrl+y` Helix-Yazi file picker causes significant visual issues (wrong background colors, broken mouse scrolling) and is not recommended for regular use
 - **Pack-based configuration system**: Simplified package management with technology stacks:
