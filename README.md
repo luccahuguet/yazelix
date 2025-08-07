@@ -3,6 +3,9 @@
 ## Preview
 ![yazelix_v8_demo](assets/demos/yazelix_v8_demo.gif)
 
+**Latest v8.5 with zjstatus:**
+![yazelix_v8_5_example](assets/screenshots/yazelix_v8_5_example.jpeg)
+
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 
