@@ -290,7 +290,7 @@ C-y = [
 ```
 
 **⚠️ Important Limitations:**
-- **Background color issues**: The Helix instance will use the terminal emulator's background color instead of the configured Helix theme background, making the editor appearance inconsistent
+- **Background color issues**: The Helix instance will use the terminal emulator's background color mixed with helix's own background, making the editor appearance inconsistent and a bit ugly
 - **Mouse scrolling problems**: Mouse scrolling in Helix stops working properly, at least when running inside Zellij
 - **Experimental status**: This feature is experimental and may cause other visual/interaction issues
 
@@ -339,8 +339,7 @@ Yazelix includes optional Home Manager support for declarative configuration man
 - Tweak configs to make them yours; this is just a starting point! 
 - For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html)
 - Add more swap layouts as needed using the KDL files in `configs/zellij/layouts`
-- Use `lazygit`
-- **Steel Support**: Patchy and Steel support was temporarily removed due to rapid codebase growth causing integration conflicts. Pre-release testing didn't catch all edge cases. A polished, stable Steel integration will be readded soon.
+- Use `lazygit`, it's great
 
 ## Why Use This Project?
 - Easy to configure and personalize
@@ -350,6 +349,11 @@ Yazelix includes optional Home Manager support for declarative configuration man
 - Features like `reveal in Yazi` (from Helix) and opening files from Yazi in your configured editor
 - Enhanced Git integration with `lazygit` and a customizable Starship prompt
 - Nix-based setup ensures consistent, declarative, reproducible environments
+
+
+## When should you not use yazelix?
+- If you hate having fun
+- If you suffer from a severe case of nix-allergy
 
 ## Initializer Scripts
 See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details on how Yazelix generates and uses initializer scripts for Nushell and Bash/Zsh.
@@ -377,7 +381,7 @@ theme = "term16_dark"  # Recommended transparent theme
 ```
 
 ## Layouts
-Yazelix includes adaptive layouts that organize your workspace automatically. Use `three_column` for Claude Code and AI tools, and more. See [docs/layouts.md](./docs/layouts.md) for details and customization.
+Yazelix includes adaptive layouts that organize your workspace. Use `three_column` for Claude Code and AI tools, and more. See [docs/layouts.md](./docs/layouts.md) for details and customization.
 
 ## Keybindings
 Keybindings are discoverable in each tool (e.g., `~` in Yazi, `?` in lazygit). See [docs/keybindings.md](./docs/keybindings.md) for full details, custom keybindings, and usage tips.
