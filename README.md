@@ -62,6 +62,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - **Comprehensive template**: `user_config.kdl` includes documented examples for themes, keybindings, plugins, and advanced options
   - **Improved maintainability**: Removed old static `config.kdl` system that required manual updates
   - **Better user experience**: Users can now easily customize Zellij by editing a single, well-documented file
+  - **Reference documentation**: See [configs/zellij/example_generated_config.kdl](./configs/zellij/example_generated_config.kdl) for the complete default Zellij configuration with all available keybindings and options
 
 ## Improvements of v8 over v7
 - **Home Manager Integration**: Optional declarative configuration management via Home Manager module
