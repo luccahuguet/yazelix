@@ -81,13 +81,11 @@ layout {
 
 keybinds {
     shared {
-        // Use original Zellij keybinding but with Ctrl+Alt modifier
-        // Original: Ctrl+O, now: Ctrl+Alt+O to avoid Helix conflicts
+        // Remap only Ctrl+O due to Helix conflict (jump_backward)
         unbind "Ctrl o"
         bind "Ctrl Alt o" { SwitchToMode "Session"; }
 
-        // Use original Zellij keybinding but with Ctrl+Alt modifier
-        // Original: Ctrl+S, now: Ctrl+Alt+S to avoid Helix conflicts
+        // Remap only Ctrl+S due to Helix conflict (save_selection)
         unbind "Ctrl s"
         bind "Ctrl Alt s" { SwitchToMode "Scroll"; }
 
@@ -120,10 +118,6 @@ keybinds {
         // Not a remap, just for ease of use
         bind "Alt Shift f" { ToggleFocusFullscreen; SwitchToMode "Normal"; }
 
-        // NOTE: Ctrl+Alt+H conflicts with Move mode, using uppercase for tab navigation
-        bind "Ctrl Alt H" { GoToPreviousTab; }
-        bind "Ctrl Alt L" { GoToNextTab; }
-
         // Alt+q/w: Walk (focus) left/right between tabs
         bind "Alt q" { GoToPreviousTab; }
         bind "Alt w" { GoToNextTab; }
@@ -137,18 +131,15 @@ keybinds {
 
     // Remap all Zellij default Ctrl keybindings to Ctrl+Alt to avoid conflicts
     shared_except "locked" {
-        unbind "Ctrl g"
-        bind "Ctrl Alt g" { SwitchToMode "Locked"; }
+        bind "Ctrl g" { SwitchToMode "Locked"; }
     }
     
     shared_except "pane" "locked" {
-        unbind "Ctrl p"
-        bind "Ctrl Alt p" { SwitchToMode "Pane"; }
+        bind "Ctrl p" { SwitchToMode "Pane"; }
     }
     
     shared_except "resize" "locked" {
-        unbind "Ctrl n"  
-        bind "Ctrl Alt n" { SwitchToMode "Resize"; }
+        bind "Ctrl n" { SwitchToMode "Resize"; }
     }
     
     shared_except "scroll" "locked" {
@@ -162,38 +153,31 @@ keybinds {
     }
     
     shared_except "tab" "locked" {
-        unbind "Ctrl t"
-        bind "Ctrl Alt t" { SwitchToMode "Tab"; }
+        bind "Ctrl t" { SwitchToMode "Tab"; }
     }
     
     shared_except "move" "locked" {
-        unbind "Ctrl h"
-        bind "Ctrl Alt h" { SwitchToMode "Move"; }
+        bind "Ctrl h" { SwitchToMode "Move"; }
     }
     
-    shared_except "tmux" "locked" {
+    shared_except "locked" {
         unbind "Ctrl b"
-        bind "Ctrl Alt b" { SwitchToMode "Tmux"; }
     }
 
     shared_except "locked" {
-        unbind "Ctrl q"
-        bind "Ctrl Alt q" { Quit; }
+        bind "Ctrl q" { Quit; }
     }
 
     locked {
-        unbind "Ctrl g"
-        bind "Ctrl Alt g" { SwitchToMode "Normal"; }
+        bind "Ctrl g" { SwitchToMode "Normal"; }
     }
 
     pane {
-        unbind "Ctrl p"
-        bind "Ctrl Alt p" { SwitchToMode "Normal"; }
+        bind "Ctrl p" { SwitchToMode "Normal"; }
     }
 
     resize {
-        unbind "Ctrl n"
-        bind "Ctrl Alt n" { SwitchToMode "Normal"; }
+        bind "Ctrl n" { SwitchToMode "Normal"; }
     }
 
     session {
@@ -209,18 +193,11 @@ keybinds {
     }
 
     tab {
-        unbind "Ctrl t"
-        bind "Ctrl Alt t" { SwitchToMode "Normal"; }
+        bind "Ctrl t" { SwitchToMode "Normal"; }
     }
 
     move {
-        unbind "Ctrl h"
-        bind "Ctrl Alt h" { SwitchToMode "Normal"; }
+        bind "Ctrl h" { SwitchToMode "Normal"; }
     }
 
-    tmux {
-        // Exit tmux mode
-        unbind "Ctrl b"
-        bind "Ctrl Alt b" { SwitchToMode "Normal"; }
-    }
 }

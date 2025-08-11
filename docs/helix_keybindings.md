@@ -152,21 +152,24 @@ When configuring Zellij keybindings for Yazelix:
 
 ## Recent Changes (January 2025)
 
-**Keybinding Conflict Resolution:**
-- Commented out all `Ctrl+E` (session mode) and `Ctrl+X` (scroll mode) bindings in layout files
-- These caused conflicts with Helix (`Ctrl+X` = decrement/autocomplete) and Nushell (`Ctrl+R` = history)
+**Selective Keybinding Remapping Applied:**
+- **Smart approach**: Only remap Zellij keys that actually conflict with Helix
+- **Minimal changes**: Preserve original Zellij muscle memory where possible
 - Layouts affected: `yzx_side.kdl`, `yzx_no_side.kdl`
-- **Next Step**: Implement `Ctrl+Shift` modifier scheme for conflict-free operation
 
-**Proposed Conflict-Free Scheme:**
+**Final Keybinding Scheme:**
 ```
-Ctrl+Shift+S = Scroll Mode    (instead of Ctrl+X)
-Ctrl+Shift+E = Session Mode   (instead of Ctrl+E)  
-Ctrl+Shift+P = Pane Mode      (instead of Ctrl+P)
-Ctrl+Shift+T = Tab Mode       (instead of Ctrl+T)
+Ctrl+G = Locked Mode     ✅ No conflict (original Zellij)
+Ctrl+P = Pane Mode       ✅ No conflict (original Zellij)  
+Ctrl+N = Resize Mode     ✅ No conflict (original Zellij)
+Ctrl+Alt+S = Scroll Mode ⚠️  Remapped (Helix conflict: save_selection)
+Ctrl+Alt+O = Session Mode ⚠️ Remapped (Helix conflict: jump_backward)
+Ctrl+T = Tab Mode        ✅ No conflict (original Zellij)
+Ctrl+H = Move Mode       ✅ No conflict (original Zellij)
+Ctrl+Q = Quit            ✅ No conflict (original Zellij)
 ```
 
-This ensures zero conflicts with Helix, Nushell, and other terminal applications.
+This approach minimizes disruption while ensuring zero conflicts with Helix editor.
 
 **Terminal Emulator Conflicts:**
 
@@ -181,3 +184,11 @@ These conflicts affect Yazelix keybindings for:
 **Workaround for Ghostty users:**
 - Use `Ctrl+Alt` scheme instead of `Ctrl+Shift` when using Ghostty
 - Or disable Ghostty's `Ctrl+Shift+O` binding in Ghostty configuration
+
+**WezTerm Terminal:**
+- `Ctrl+Alt+H` - Does not work / not recognized
+
+**COMPATIBILITY FIX APPLIED:**
+- Move mode now uses `Ctrl+H` (instead of `Ctrl+Alt+H`) for universal terminal compatibility
+- This breaks consistency with other modes but ensures Move mode works in all terminals
+- **Trade-off**: Sacrificed keybinding consistency for broader terminal support
