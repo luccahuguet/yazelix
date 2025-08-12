@@ -10,7 +10,7 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
   - [Alacritty config](../configs/terminal_emulators/alacritty/alacritty.toml)
   - See [WezTerm docs](https://wezfurlong.org/wezterm/config/files.html) for advanced customization.
 - **Zellij Configuration**: Git-conflict-free three-layer configuration system:
-  - **Quick start**: `cp -r configs/zellij/user configs/zellij/personal` then edit `configs/zellij/personal/user_config.kdl`
+  - **Quick start**: `cp ~/.config/yazelix/configs/zellij/user/user_config.kdl ~/.config/yazelix/configs/zellij/personal/user_config.kdl` then edit the personal copy
   - **Full guide**: [Zellij Configuration Documentation](./zellij-configuration.md)
   - **Three layers**: Zellij defaults + Yazelix overrides + your personal settings (highest priority)
   - **Smart merging**: Configurations automatically merge on startup, personal configs are git ignored
