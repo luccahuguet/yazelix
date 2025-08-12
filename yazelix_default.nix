@@ -28,6 +28,11 @@
   # You can change this to "vim", "nvim", "kak", etc. if you prefer
   editor_command = "hx";
 
+  # Helix runtime path (optional, default: uses Nix-provided runtime)
+  # Set this if you're using a custom Helix build with editor_command
+  # Example: "/home/user/helix/runtime" for a custom build in ~/helix
+  helix_runtime_path = null;
+
   # Enable or disable the Yazi sidebar (default: true)
   # When false, Yazelix uses clean, full-screen layouts with on-demand file picking
   # When true, Yazelix uses persistent sidebar layouts for IDE-like workflow

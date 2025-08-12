@@ -68,6 +68,7 @@
               packs = [ ];
               user_packages = [ ];
               editor_command = "hx";
+              helix_runtime_path = null;
             };
 
         # Variables to control recommended, Yazi extension, Helix source, default shell, and debug mode
@@ -90,6 +91,9 @@
         # Editor configuration
         # Editor configuration - yazelix always sets EDITOR to the configured command
         editorCommand = config.editor_command or "hx";
+        
+        # Helix runtime path configuration
+        helixRuntimePath = config.helix_runtime_path or null;
 
         # Sidebar configuration
         yazelixEnableSidebar = config.enable_sidebar or true;
@@ -214,8 +218,12 @@
             export YAZELIX_PREFERRED_TERMINAL="${yazelixPreferredTerminal}"
             export YAZELIX_ASCII_ART_MODE="${yazelixAsciiArtMode}"
 
-            # Set HELIX_RUNTIME for both modes - both use hx from PATH
-            export HELIX_RUNTIME="${helixPackage}/share/helix/runtime"
+            # Set HELIX_RUNTIME - use custom path if specified, otherwise use Nix package runtime
+            ${if helixRuntimePath != null then 
+              ''export HELIX_RUNTIME="${helixRuntimePath}"'' 
+            else 
+              ''export HELIX_RUNTIME="${helixPackage}/share/helix/runtime"''
+            }
 
             # Set EDITOR environment variable to configured command
             export EDITOR="${editorCommand}"

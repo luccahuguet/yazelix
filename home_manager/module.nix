@@ -64,6 +64,12 @@ in {
       description = "Editor command - yazelix will always set this as EDITOR (hx, vim, nvim, etc.)";
     };
     
+    helix_runtime_path = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      description = "Custom Helix runtime path - set this if using a custom Helix build with editor_command";
+    };
+    
     enable_sidebar = mkOption {
       type = types.bool;
       default = true;
@@ -142,6 +148,7 @@ in {
           
           # Editor configuration
           editor_command = "${cfg.editor_command}";
+          helix_runtime_path = ${if cfg.helix_runtime_path != null then ''"${cfg.helix_runtime_path}"'' else "null"};
           
           # UI configuration
           enable_sidebar = ${if cfg.enable_sidebar then "true" else "false"};
