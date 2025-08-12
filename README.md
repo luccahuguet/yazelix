@@ -301,6 +301,17 @@ C-y = [
 
 See [docs/keybindings.md](./docs/keybindings.md) for complete details and usage tips.
 
+## Customization & Configuration
+
+Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
+
+- **Core settings**: Edit `~/.config/yazelix/yazelix.nix` for shell, editor, terminal, and package preferences
+- **Tool customization**: Add personal overrides in `configs/yazi/personal/` or `configs/zellij/personal/` directories 
+- **Your configs persist** across Yazelix updates without git conflicts
+- **Intelligent merging**: TOML sections merge properly, avoiding duplicate keys and conflicts
+
+📖 **[Complete Customization Guide →](./docs/customization.md)** - Detailed instructions for customizing every tool
+
 ### Alternative: CLI-Only Mode
 To use Yazelix tools without starting the full interface (no sidebar, no zellij):
 ```bash
