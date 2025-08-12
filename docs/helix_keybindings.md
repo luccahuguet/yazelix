@@ -187,8 +187,3 @@ These conflicts affect Yazelix keybindings for:
 
 **WezTerm Terminal:**
 - `Ctrl+Alt+H` - Does not work / not recognized
-
-**COMPATIBILITY FIX APPLIED:**
-- Move mode now uses `Ctrl+H` (instead of `Ctrl+Alt+H`) for universal terminal compatibility
-- This breaks consistency with other modes but ensures Move mode works in all terminals
-- **Trade-off**: Sacrificed keybinding consistency for broader terminal support
