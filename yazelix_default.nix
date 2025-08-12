@@ -25,7 +25,9 @@
 
   # Editor command (default: "hx" for Helix)
   # Yazelix will always set this as your EDITOR environment variable
-  # You can change this to "vim", "nvim", "kak", etc. if you prefer
+  # - For other editors: "vim", "nvim", "kak", etc.
+  # - For custom Helix builds, something like: "/home/user/helix/target/release/hx" 
+  #   (combine with helix_runtime_path below for full custom build support)
   editor_command = "hx";
 
   # Helix runtime path (optional, default: uses Nix-provided runtime)
