@@ -11,8 +11,9 @@ copy_command "wl-copy"
 // Use Helix for viewing scrollback history when pressing Ctrl+Alt+s
 scrollback_editor "hx"
 
-// Disable session serialization to avoid conflicts with Yazelix startup
-session_serialization false
+// Enable session serialization for workspace recovery
+session_serialization true
+pane_viewport_serialization true
 
 // Remove pane borders - required for zjstatus plugin to display properly
 pane_frames false
