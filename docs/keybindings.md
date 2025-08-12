@@ -1,6 +1,10 @@
 # Keybindings
 
 ## Zellij Keybindings
+
+Yazelix uses **selective remapping** - only conflicting Zellij keybindings are changed, preserving muscle memory where possible.
+
+### Core Navigation
 | Keybinding                | Action                        |
 |--------------------------|-------------------------------|
 | Alt+number (1-9)         | Go to tab 1-9                 |
@@ -8,8 +12,19 @@
 | Alt+q                    | Walk to previous tab (focus)  |
 | Alt+Shift+H              | Move tab left                 |
 | Alt+Shift+L              | Move tab right                |
-| Alt Shift f              | Toggle pane fullscreen        |
-| Ctrl+x                   | Enter scroll mode             |
+| Alt+Shift+f              | Toggle pane fullscreen        |
+
+### Zellij Modes (Helix-Compatible)
+| Keybinding                | Action                        | Notes |
+|--------------------------|-------------------------------|-------|
+| Ctrl+g                   | Locked mode                   | ✅ Original (no conflict) |
+| Ctrl+p                   | Pane mode                     | ✅ Original (no conflict) |
+| Ctrl+n                   | Resize mode                   | ✅ Original (no conflict) |
+| Ctrl+t                   | Tab mode                      | ✅ Original (no conflict) |
+| Ctrl+h                   | Move mode                     | ✅ Original (no conflict) |
+| Ctrl+q                   | Quit                          | ✅ Original (no conflict) |
+| **Ctrl+Alt+s**           | **Scroll mode**               | ⚠️ Remapped (was Ctrl+s) |
+| **Ctrl+Alt+o**           | **Session mode**              | ⚠️ Remapped (was Ctrl+o) |
 
 - **Tab walking**: Alt+w/q walks (focuses) next/previous tab, like browser tab switching.
 - **Tab moving**: Alt+Shift+H/L moves the current tab left/right.
@@ -30,11 +45,11 @@ If you find a conflict, please open an issue
 
 ## Yazelix Custom Keybindings
 - **Zellij**:
-  - `Alt Shift f` toggles pane fullscreen
+  - `Alt+Shift+f` toggles pane fullscreen
   - `Alt+Shift+H` moves the current tab left
   - `Alt+Shift+L` moves the current tab right
-  - `Ctrl+Alt+H` walks left (focus previous tab)
-  - `Ctrl+Alt+L` walks right (focus next tab)
+  - `Alt+w/q` walks left/right (focus tabs)
+  - `Ctrl+Alt+s` scroll mode, `Ctrl+Alt+o` session mode
 - **Helix**: See [Helix Custom Keybindings](#helix-custom-keybindings) section below
 
 ## Keybinding Tips
@@ -101,7 +116,7 @@ C-y = [
 - **Familiar**: Uses the same Yazi interface you know from Yazelix
 - **Smart**: Automatically starts from the most relevant directory
 - **Complementary**: Works alongside the main Yazelix sidebar workflow
-- **Conflict-free**: Yazelix has remapped Zellij's scroll mode from `Ctrl+y` to `Ctrl+x` to avoid conflicts
+- **Conflict-free**: Yazelix has remapped Zellij's scroll mode from `Ctrl+s` to `Ctrl+Alt+s` to avoid conflicts
 
 ### Integration Script
 
