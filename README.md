@@ -376,6 +376,7 @@ For setup issues, version compatibility, and debugging:
 
 - See [Version Table](./docs/version_table.md) for compatibility information
 - For general issues, check the logs in the `logs/` directory or enable debug mode in `yazelix.nix`
+- **Empty/buggy status bar**: If the top status bar (zjstatus plugin) appears empty or looks weird, focus on it and press `y` to authorize the plugin. This is a one-time Zellij security requirement that persists in cache.
 - **Naming Convention**: If you encounter "file not found" errors, ensure your terminal configs reference the updated script names (using underscores instead of hyphens, e.g., `start_yazelix.nu` instead of `start-yazelix.nu`)
 - **Script Reorganization**: If you encounter "file not found" errors after updating Yazelix, your terminal configs may need updating. The scripts have been reorganized into subdirectories:
   - **WezTerm**: Update `~/.wezterm.lua` to use `~/.config/yazelix/nushell/scripts/core/start_yazelix.nu`
