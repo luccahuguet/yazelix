@@ -86,14 +86,6 @@ Add the following to your `~/.config/helix/config.toml`:
 # Yazelix sidebar integration - reveal current file in Yazi sidebar
 A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
 
-# Native Yazi integration - file picker within Helix
-# Ctrl+y: Open Yazi file picker from current file's directory
-C-y = [
-    ':sh rm -f /tmp/yazi-helix-chooser',
-    ':insert-output nu ~/.config/yazelix/nushell/scripts/integrations/helix_yazi_picker.nu "%{buffer_name}"',
-    ':open %sh{cat /tmp/yazi-helix-chooser}',
-    ':redraw'
-]
 
 ```
 
@@ -102,12 +94,11 @@ C-y = [
 | Keybinding | Action |
 |------------|--------|
 | `Alt+y` | Reveal current file in Yazelix sidebar |
-| `Ctrl+y` | Open Yazi file picker from current file's directory |
 
 **Workflow**:
 1. Press the desired keybinding in Helix normal mode
 2. Navigate in Yazi and press `Enter` to select a file
-3. The selected file opens automatically in Helix (for `Ctrl+y`) or is revealed in sidebar (for `Alt+y`)
+3. The file is revealed in the sidebar
 
 ### Benefits
 

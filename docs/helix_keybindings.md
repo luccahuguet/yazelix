@@ -108,7 +108,7 @@ This document catalogs Helix editor keybindings to help avoid conflicts when con
 |-----|--------|
 | `Ctrl+r` | History search (menu) |
 | `Ctrl+x` | Pull more records in history menu |
-| `Ctrl+y` | Can be assigned to history menu |
+| `Ctrl+y` | [Available for custom assignment] |
 | `Ctrl+z` | Go to previous page in menus |
 | `Ctrl+t` | Activate completion menu / next element |
 | `Ctrl+o` | Various menu operations |
@@ -126,7 +126,7 @@ Based on the Helix documentation, these Ctrl+ combinations appear to be unbound 
 - `Ctrl+q` - Not mentioned
 - `Ctrl+t` - Not mentioned (only used in picker mode, but conflicts with Nushell)
 - `Ctrl+v` - Not mentioned (only used in window/picker modes)
-- `Ctrl+y` - Not mentioned (but can be used by Nushell)
+- `Ctrl+y` - Available for custom assignment
 - `Ctrl+z` - Not mentioned (but used by Nushell)
 
 ## Potentially Unbound Alt+ Keys

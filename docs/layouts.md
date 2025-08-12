@@ -12,7 +12,7 @@ enable_sidebar = true;   # Set to true to enable persistent sidebar
 enable_sidebar = false;  # Default: clean, full-screen layouts
 ```
 
-**Default behavior** (`enable_sidebar = false`): Starts with your editor for immediate coding. Use `Ctrl+y` in Helix for native file picking, or manually run `yazi` for file management.
+**Default behavior** (`enable_sidebar = false`): Starts with your editor for immediate coding. Use `yazi` command or `Alt+y` reveal for file management.
 
 **Sidebar mode** (`enable_sidebar = true`): Persistent Yazi sidebar for IDE-like file navigation.
 

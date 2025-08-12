@@ -44,11 +44,8 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 ## Improvements of v8.5 over v8
 - **Flexible layout system**: Sidebar mode remains the default, with optional no-sidebar mode for different workflows:
-  - **Sidebar mode** (default): IDE-like workflow with persistent Yazi file navigation
-  - **No-sidebar mode**: Available via `enable_sidebar = false` for full-screen, on-demand file picking
-  - Use the experimental `Ctrl+y` in Helix to call yazi from helix (and `Ctrl+y` again in Yazi returns to Helix, or select a file to open)
-  - **Note**: No-sidebar mode is experimental and has some minor quirks (background color inconsistencies, occasional mouse scrolling issues) but nothing deal-breaking
-  - **⚠️ Ctrl+y integration warning**: The `Ctrl+y` Helix-Yazi file picker causes significant visual issues (wrong background colors, broken mouse scrolling) and is not recommended for regular use
+  - **Sidebar mode** (default): IDE-like workflow with persistent Yazi file navigation (recommended!)
+  - **No-sidebar mode**: Available via `enable_sidebar = false`, no yazi sidebar, saves some screen space. Usefull if you use other editors that have a builtin file tree 
 - **Pack-based configuration system**: Simplified package management with technology stacks:
   - Enable entire tech stacks with `packs = ["python", "js_ts", "config"]` instead of commenting individual packages
   - 5 curated packs: `python` (ruff, uv, ty), `js_ts` (biome, bun), `rust` (cargo tools), `config` (formatters), `file-management` (utilities)
@@ -56,10 +53,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Enhanced Zellij layouts**: Added comprehensive layout system with both sidebar and no-sidebar variants:
   - **Sidebar layouts** (default): `basic`, `stacked`, `three_column`, `sidebar_closed` - persistent file navigation
   - **No-sidebar layouts**: `basic`, `stacked`, `two_column` - clean, full-screen workflows
-- **Improved Helix-Yazi integration**: Enhanced file picker workflow with intuitive toggle behavior:
-  - **Toggle behavior**: `Ctrl+y` in Helix opens Yazi file picker, `Ctrl+y` in Yazi returns to Helix without selection
-  - **Smart mode detection**: Friendly warnings for mode-specific features (e.g., Alt+y reveal only works in sidebar mode)
-  - **Streamlined keybindings**: Removed redundant Ctrl+Shift+y, focused on essential Ctrl+y and Alt+y bindings
+- **New sidebar_closed swap layout**: Dynamic sidebar toggling: use the sidebar_closed swap layout, reach it with `Alt+[` / `Alt+]` for space optimization when needed
 - **New zjstatus plugin integration**: Added custom status bar plugin with shell and editor information:
   - **Shell indicator**: Shows current configured shell (e.g., `[shell: nu]`)
   - **Editor indicator**: Shows current configured editor (e.g., `[editor: vim]`)
@@ -279,17 +273,6 @@ A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \
 #### 8. (Experimental) Direct Yazi File Picker Integration (Not Recommended for Now)
 For users who want a direct Yazi file picker within Helix, you can optionally add this experimental keybinding:
 
-```toml
-[keys.normal]
-# Experimental: Direct Yazi integration - file picker within Helix (with toggle behavior)
-# WARNING: This feature has significant drawbacks (see below)
-C-y = [
-    ':sh rm -f /tmp/yazi-helix-chooser',
-    ':insert-output nu ~/.config/yazelix/nushell/scripts/integrations/helix_yazi_picker.nu "%{buffer_name}"',
-    ':open %sh{cat /tmp/yazi-helix-chooser}',
-    ':redraw'
-]
-```
 
 **Important Limitations:**
 - **Background color issues**: The Helix instance will use the terminal emulator's background color mixed with helix's own background, making the editor appearance inconsistent and a bit ugly
@@ -297,7 +280,6 @@ C-y = [
 - **Experimental status**: This feature is experimental and may cause other visual/interaction issues. You're probably better off just using the sidebar!
 
 **Feature when working:**
-- **`Ctrl+y`**: Open Yazi file picker directly in Helix - **toggle behavior**: press `Ctrl+y` in Yazi to return to Helix without selecting a file
 
 See [docs/keybindings.md](./docs/keybindings.md) for complete details and usage tips.
 
