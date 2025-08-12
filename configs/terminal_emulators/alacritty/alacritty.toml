@@ -53,5 +53,31 @@ key = "V"
 mods = "Control|Shift"
 action = "Paste"
 
+# Color scheme for vivid colors
+[colors]
+[colors.primary]
+background = "#1e1e1e"
+foreground = "#d4d4d4"
+
+[colors.normal]
+black = "#000000"
+red = "#f44747"
+green = "#4ec9b0"
+yellow = "#ffcc02"
+blue = "#569cd6"
+magenta = "#c586c0"
+cyan = "#4fc1ff"
+white = "#cccccc"
+
+[colors.bright]
+black = "#666666"
+red = "#f44747"
+green = "#4ec9b0"
+yellow = "#ffcc02"
+blue = "#569cd6"
+magenta = "#c586c0"
+cyan = "#4fc1ff"
+white = "#ffffff"
+
 [env]
 TERM = "alacritty"
