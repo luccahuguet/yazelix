@@ -351,7 +351,7 @@ Yazelix includes optional Home Manager support for declarative configuration man
 - If you suffer from a severe case of nix-allergy
 
 ## Initializer Scripts
-See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details on how Yazelix generates and uses initializer scripts for Nushell and Bash/Zsh.
+Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Carapace for your configured default shell, regenerated every startup. See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details.
 
 ## Troubleshooting
 For setup issues, version compatibility, and debugging:
