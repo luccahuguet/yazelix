@@ -1,7 +1,18 @@
 // Yazelix-specific overrides
+ 
+// override these in zellij/personal/user_config.kdl
+ 
+// Use Yazelix's custom layouts (yzx_side.kdl or yzx_no_side.kdl)
 default_layout "yazelix"
+
+// Copy to Wayland clipboard - 
 copy_command "wl-copy"
+
+// Use Helix for viewing scrollback history when pressing Ctrl+Alt+s
 scrollback_editor "hx"
-session_serialization true
+
+// Disable session serialization to avoid conflicts with Yazelix startup
+session_serialization false
+
+// Remove pane borders - required for zjstatus plugin to display properly
 pane_frames false
-// show_startup_tips false
