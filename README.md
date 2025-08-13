@@ -271,6 +271,8 @@ A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \
 X = "extend_line_up"
 # Print the current line's git blame information to the statusline
 space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
+# Reload config and buffer
+A-r = [":config-reload", ":reload"]
 ```
 
 **Features:**
