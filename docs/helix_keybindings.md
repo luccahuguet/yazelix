@@ -187,3 +187,15 @@ These conflicts affect Yazelix keybindings for:
 
 **WezTerm Terminal:**
 - `Ctrl+Alt+H` - Does not work / not recognized
+
+## Recommended Helix Configuration
+
+Add these keybindings to your Helix `config.toml` for improved navigation:
+
+```toml
+[keys.normal]
+"{" = "goto_prev_paragraph"
+"}" = "goto_next_paragraph"
+```
+
+This provides vim-like paragraph navigation using `{` and `}` instead of the default `[p` and `]p`.
