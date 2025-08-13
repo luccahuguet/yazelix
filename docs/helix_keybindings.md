@@ -196,7 +196,9 @@ Add these keybindings to your Helix `config.toml` for improved navigation:
 [keys.normal]
 "{" = "goto_prev_paragraph"
 "}" = "goto_next_paragraph"
-"X" = "extend_line_up"
+X = "extend_line_up"
+# Print the current line's git blame information to the statusline
+space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
 ```
 
-This provides vim-like paragraph navigation using `{` and `}` instead of the default `[p` and `]p`, plus `X` for extending selection upward by line.
+This provides vim-like paragraph navigation using `{` and `}` instead of the default `[p` and `]p`, plus `X` for extending selection upward by line, and `Space+B` for git blame on the current line.

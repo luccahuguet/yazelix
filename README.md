@@ -268,7 +268,9 @@ A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \
 "{" = "goto_prev_paragraph"
 "}" = "goto_next_paragraph"
 # Extend selection up by line
-"X" = "extend_line_up"
+X = "extend_line_up"
+# Print the current line's git blame information to the statusline
+space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
 ```
 
 **Features:**
