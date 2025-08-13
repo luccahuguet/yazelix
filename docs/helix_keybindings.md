@@ -203,6 +203,28 @@ space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
 A-r = [":config-reload", ":reload"]
 # Toggle hidden files in file picker
 space.H = ":toggle-option file-picker.hidden"
+# Yank diagnostic information
+C-y = ":yank-diagnostic"
+# Move line up with Ctrl+k
+C-k = [
+  "extend_to_line_bounds",
+  "delete_selection",
+  "move_line_up",
+  "paste_before",
+]
+# Move line down with Ctrl+j
+C-j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
+# Navigate down and go to first non-whitespace
+ret = ["move_line_down", "goto_first_nonwhitespace"]
+# Navigate up and go to first non-whitespace
+A-ret = ["move_line_up", "goto_first_nonwhitespace"]
+# Open languages.toml config
+tab.l = ":o ~/.config/helix/languages.toml"
+# Open Helix config
+tab.c = ":config-open"
+
+[keys.select]
+"g" = { "e" = "goto_file_end" }
 ```
 
 This provides vim-like paragraph navigation using `{` and `}` instead of the default `[p` and `]p`, plus `X` for extending selection upward by line, and `Space+B` for git blame on the current line.

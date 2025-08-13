@@ -264,6 +264,13 @@ To enable full Helix-Yazi integration, add the following to your Helix config (u
 [keys.normal]
 # Yazelix sidebar integration - reveal current file in Yazi sidebar
 A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
+```
+
+**Additional Recommended Helix Keybindings:**
+Add these keybindings for improved editing experience:
+
+```toml
+[keys.normal]
 # Vim-like paragraph navigation
 "{" = "goto_prev_paragraph"
 "}" = "goto_next_paragraph"
@@ -275,6 +282,26 @@ space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
 A-r = [":config-reload", ":reload"]
 # Toggle hidden files in file picker
 space.H = ":toggle-option file-picker.hidden"
+# Yank diagnostic information
+C-y = ":yank-diagnostic"
+# Move line up with Ctrl+k
+C-k = [
+  "extend_to_line_bounds",
+  "delete_selection",
+  "move_line_up",
+  "paste_before",
+]
+# Move line down with Ctrl+j
+C-j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
+# Navigate down and go to first non-whitespace
+ret = ["move_line_down", "goto_first_nonwhitespace"]
+# Navigate up and go to first non-whitespace
+A-ret = ["move_line_up", "goto_first_nonwhitespace"]
+# Open languages.toml config
+tab.l = ":o ~/.config/helix/languages.toml"
+# Open Helix config
+tab.c = ":config-open"
+g.e = "goto_file_end"
 ```
 
 **Features:**
