@@ -201,6 +201,8 @@ X = "extend_line_up"
 space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
 # Reload config and buffer
 A-r = [":config-reload", ":reload"]
+# Toggle hidden files in file picker
+space.H = ":toggle-option file-picker.hidden"
 ```
 
 This provides vim-like paragraph navigation using `{` and `}` instead of the default `[p` and `]p`, plus `X` for extending selection upward by line, and `Space+B` for git blame on the current line.
