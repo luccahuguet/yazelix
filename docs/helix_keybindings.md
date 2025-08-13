@@ -196,6 +196,7 @@ Add these keybindings to your Helix `config.toml` for improved navigation:
 [keys.normal]
 "{" = "goto_prev_paragraph"
 "}" = "goto_next_paragraph"
+"X" = "extend_line_up"
 ```
 
-This provides vim-like paragraph navigation using `{` and `}` instead of the default `[p` and `]p`.
+This provides vim-like paragraph navigation using `{` and `}` instead of the default `[p` and `]p`, plus `X` for extending selection upward by line.

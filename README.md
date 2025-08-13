@@ -267,6 +267,8 @@ A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \
 # Vim-like paragraph navigation
 "{" = "goto_prev_paragraph"
 "}" = "goto_next_paragraph"
+# Extend selection up by line
+"X" = "extend_line_up"
 ```
 
 **Features:**
