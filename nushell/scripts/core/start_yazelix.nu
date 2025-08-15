@@ -50,7 +50,7 @@ export def main [] {
             "options"
             "--default-cwd" $home
             "--default-layout" "$ZELLIJ_DEFAULT_LAYOUT"
-            "--default-shell" "$YAZELIX_DEFAULT_SHELL"
+            "--default-shell" $config.default_shell
         ] | str join " "
     } else {
         # Use zellij options for new sessions (original behavior)
@@ -61,14 +61,13 @@ export def main [] {
             "options"
             "--default-cwd" $home
             "--default-layout" "$ZELLIJ_DEFAULT_LAYOUT"
-            "--default-shell" "$YAZELIX_DEFAULT_SHELL"
+            "--default-shell" $config.default_shell
         ] | str join " "
     }
 
     # Run nix develop with explicit HOME.
-    # The YAZELIX_DEFAULT_SHELL variable will be set by the shellHook of the flake
-    # and used by the inner zellij command.
-    # We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after nix develop sets it.
+    # The default shell is dynamically read from yazelix.nix configuration
+    # and passed directly to the zellij command.
     with-env {HOME: $home} {
         ^nix develop --impure --command bash -c $cmd
     }
