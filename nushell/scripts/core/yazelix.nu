@@ -76,9 +76,9 @@ export def "yzx info" [] {
     print $"Description: ($YAZELIX_DESCRIPTION)"
     print $"Directory: ($YAZELIX_CONFIG_DIR | str replace "~" $env.HOME)"
     print $"Logs: ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)"
-    print $"Default Shell: ($DEFAULT_SHELL)"
-    print $"Preferred Terminal: ($DEFAULT_TERMINAL)"
-    print $"Helix Mode: ($DEFAULT_HELIX_MODE)"
+    print $"Default Shell: ($config.default_shell)"
+    print $"Preferred Terminal: ($config.preferred_terminal)"
+    print $"Helix Mode: ($config.helix_mode)"
     print $"Persistent Sessions: ($config.persistent_sessions)"
     if ($config.persistent_sessions == "true") {
         print $"Session Name: ($config.session_name)"

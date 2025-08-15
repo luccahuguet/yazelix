@@ -193,15 +193,7 @@ show_versions() {
 
 # Function to show system info
 show_info() {
-    echo "=== Yazelix Information ==="
-    echo "Version: $YAZELIX_VERSION"
-    echo "Description: $YAZELIX_DESCRIPTION"
-    echo "Directory: $YAZELIX_DIR"
-    echo "Logs: $YAZELIX_DIR/logs"
-    echo "Default Shell: $DEFAULT_SHELL"
-    echo "Preferred Terminal: $DEFAULT_TERMINAL"
-    echo "Helix Mode: $DEFAULT_HELIX_MODE"
-    echo "=========================="
+    nu -c "use $YAZELIX_DIR/nushell/scripts/core/yazelix.nu *; yzx info"
 }
 
 # Function to launch yazelix
