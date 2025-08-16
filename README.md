@@ -175,7 +175,7 @@ If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display u
 
 **Option A: Using nix profile (recommended - modern replacement for nix-env):**
 ```bash
-nix profile install nixpkgs#nerd-fonts.fira-code nixpkgs#nerd-fonts.symbols-only
+nix profile add nixpkgs#nerd-fonts.fira-code nixpkgs#nerd-fonts.symbols-only
 ```
 
 **Option B: Using Home Manager (if you use Home Manager for system configuration):**
