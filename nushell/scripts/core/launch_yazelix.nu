@@ -3,8 +3,11 @@
 # Nushell version of the Yazelix launcher
 
 use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/nix_detector.nu ensure_nix_available
 
 def main [] {
+    # Check if Nix is properly installed before proceeding
+    ensure_nix_available
     # Resolve HOME using shell expansion
     let home = $env.HOME
     if ($home | is-empty) or (not ($home | path exists)) {

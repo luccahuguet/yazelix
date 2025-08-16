@@ -88,11 +88,15 @@ export def "yzx info" [] {
 
 # Launch yazelix
 export def "yzx launch" [] {
+    use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
+    ensure_nix_available
     nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 }
 
 # Start yazelix
 export def "yzx start" [] {
+    use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
+    ensure_nix_available
     use ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu main
     main
 }

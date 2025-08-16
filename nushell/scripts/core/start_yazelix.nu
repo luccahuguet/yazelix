@@ -3,10 +3,13 @@
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZI_CONFIG_PATHS]
+use ../utils/nix_detector.nu ensure_nix_available
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 
 export def main [] {
+    # Check if Nix is properly installed before proceeding
+    ensure_nix_available
     # Resolve HOME using Nushell's built-in
     let home = $env.HOME
     if ($home | is-empty) or (not ($home | path exists)) {
