@@ -176,19 +176,83 @@ export def ensure_nix_available [] {
     if not $nix_status.installed or ($nix_status.error | is-not-empty) {
         show_nix_installation_help $nix_status.error
         print ""
-        print $"($colors.yellow)⚠️  If you believe your Nix installation is working correctly,($colors.reset)"
-        print $"($colors.yellow)   this might be a detection issue.($colors.reset)"
-        print ""
         
-        let response = (input $"($colors.cyan)Do you want to try running Yazelix anyway? \(y/N\): ($colors.reset)")
-        
-        if ($response | str downcase) in ["y", "yes"] {
-            print $"($colors.yellow)⚠️  Proceeding despite Nix detection issues...($colors.reset)"
-            print $"($colors.yellow)   If Yazelix fails to start, please check your Nix installation.($colors.reset)"
-            return true
+        # Special handling for nix_not_in_path - offer to source it automatically
+        if $nix_status.error == "nix_not_in_path" {
+            print $"($colors.cyan)🔧 Quick fix options:($colors.reset)"
+            print $"($colors.cyan)  s\) Try to source Nix profile automatically($colors.reset)"
+            print $"($colors.cyan)  y\) Continue anyway \(bypass detection\)($colors.reset)"
+            print $"($colors.cyan)  n\) Abort and fix manually($colors.reset)"
+            print ""
+            
+            let response = (input $"($colors.cyan)Choose an option \(s/y/N\): ($colors.reset)")
+            
+            if ($response | str downcase) in ["s", "source"] {
+                print $"($colors.yellow)🔧 Attempting to fix Nix PATH...($colors.reset)"
+                
+                # Simple and safe approach: just add Nix bin directories to PATH
+                let nix_bin_paths = [
+                    "/nix/var/nix/profiles/default/bin"
+                    "~/.nix-profile/bin"
+                ]
+                
+                print $"($colors.cyan)Checking for Nix binary directories...($colors.reset)"
+                    
+                try {
+                    # Find existing Nix binary directories
+                    let existing_nix_paths = ($nix_bin_paths | where ($it | path expand | path exists) | each { |p| $p | path expand })
+                    
+                    if ($existing_nix_paths | is-empty) {
+                        print $"($colors.red)❌ No Nix binary directories found($colors.reset)"
+                        print $"($colors.yellow)Expected locations: ($nix_bin_paths | str join ', ')($colors.reset)"
+                        return false
+                    }
+                    
+                    print $"($colors.cyan)Found Nix directories: ($existing_nix_paths | str join ', ')($colors.reset)"
+                    
+                    # Safely update PATH
+                    $env.PATH = ($existing_nix_paths | append $env.PATH | uniq)
+                    print $"($colors.cyan)Updated PATH with Nix directories($colors.reset)"
+                    
+                    # Test if nix is now available
+                    if (which nix | is-not-empty) {
+                        let nix_version = try { (^nix --version | lines | first) } catch { "unknown" }
+                        print $"($colors.green)✅ Success! Nix is now available: ($nix_version)($colors.reset)"
+                        return true
+                    } else {
+                        print $"($colors.yellow)⚠️  PATH updated but nix command still not found($colors.reset)"
+                        print $"($colors.yellow)   This might indicate a more complex issue($colors.reset)"
+                        print $"($colors.yellow)   Continuing anyway...($colors.reset)"
+                        return true
+                    }
+                } catch { |err|
+                    print $"($colors.red)❌ Error during PATH update: ($err.msg)($colors.reset)"
+                    print $"($colors.yellow)Falling back to bypass mode...($colors.reset)"
+                    return true
+                }
+            } else if ($response | str downcase) in ["y", "yes"] {
+                print $"($colors.yellow)⚠️  Proceeding despite Nix detection issues...($colors.reset)"
+                return true
+            } else {
+                print $"($colors.red)❌ Aborting. Please fix your Nix installation and try again.($colors.reset)"
+                exit 1
+            }
         } else {
-            print $"($colors.red)❌ Aborting. Please fix your Nix installation and try again.($colors.reset)"
-            exit 1
+            # For other errors, just offer bypass option
+            print $"($colors.yellow)⚠️  If you believe your Nix installation is working correctly,($colors.reset)"
+            print $"($colors.yellow)   this might be a detection issue.($colors.reset)"
+            print ""
+            
+            let response = (input $"($colors.cyan)Do you want to try running Yazelix anyway? \(y/N\): ($colors.reset)")
+            
+            if ($response | str downcase) in ["y", "yes"] {
+                print $"($colors.yellow)⚠️  Proceeding despite Nix detection issues...($colors.reset)"
+                print $"($colors.yellow)   If Yazelix fails to start, please check your Nix installation.($colors.reset)"
+                return true
+            } else {
+                print $"($colors.red)❌ Aborting. Please fix your Nix installation and try again.($colors.reset)"
+                exit 1
+            }
         }
     }
     
