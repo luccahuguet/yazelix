@@ -3,14 +3,37 @@
 
 # Check if Nix is installed and properly configured
 export def check_nix_installation [] {
-    # Check if nix command is available
+    # Check if nix command is available in PATH
     let nix_available = (which nix | is-not-empty)
     
-    if not $nix_available {
+    # If not in PATH, check common Nix installation locations
+    let nix_locations = [
+        "/nix/var/nix/profiles/default/bin/nix"
+        "~/.nix-profile/bin/nix"
+        "/run/current-system/sw/bin/nix"
+    ]
+    
+    let nix_found = if $nix_available {
+        true
+    } else {
+        # Check if Nix exists in common locations
+        $nix_locations | any { |path| ($path | path expand | path exists) }
+    }
+    
+    if not $nix_found {
         return {
             installed: false
             error: "nix_not_found"
             message: "Nix package manager is not installed or not in PATH"
+        }
+    }
+    
+    # If Nix exists but not in PATH, suggest sourcing profile
+    if not $nix_available and $nix_found {
+        return {
+            installed: true
+            error: "nix_not_in_path"
+            message: "Nix is installed but not in PATH - shell profile may need to be sourced"
         }
     }
     
@@ -93,6 +116,24 @@ export def show_nix_installation_help [error_type: string] {
             print ""
             print "Or reinstall with the modern installer:"
             print $"($colors.cyan)curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install($colors.reset)"
+        }
+        
+        "nix_not_in_path" => {
+            print $"($colors.yellow)🔍 Problem:($colors.reset) Nix is installed but not available in your current shell's PATH."
+            print ""
+            print $"($colors.blue)💡 Solution:($colors.reset) Your shell needs to load the Nix profile. Try one of these:"
+            print ""
+            print "Option 1 - Source Nix profile in current session:"
+            print $"($colors.cyan)source ~/.nix-profile/etc/profile.d/nix.sh($colors.reset)"
+            print ""
+            print "Option 2 - Restart your terminal emulator (recommended)"
+            print "Option 3 - Start a login shell:"
+            print $"($colors.cyan)bash -l($colors.reset)"
+            print ""
+            print "This issue can happen when:"
+            print "  • Using certain terminal emulators that don't load login shells"
+            print "  • Shell configuration files weren't properly updated during Nix installation"
+            print "  • Using non-standard shell configurations"
         }
         
         "flakes_disabled" => {
