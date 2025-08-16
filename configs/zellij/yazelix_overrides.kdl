@@ -8,8 +8,8 @@ default_layout "yazelix"
 // Copy to Wayland clipboard - 
 copy_command "wl-copy"
 
-// Use Helix for viewing scrollback history when pressing Ctrl+Alt+s
-scrollback_editor "hx"
+// Use configured editor (via EDITOR env var) for viewing scrollback history when pressing Ctrl+Alt+s
+// scrollback_editor defaults to $EDITOR when not specified
 
 // Enable session serialization for workspace recovery
 session_serialization true
