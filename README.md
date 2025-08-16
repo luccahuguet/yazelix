@@ -91,26 +91,12 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Persistent Sessions Configuration**: Added support for persistent Zellij sessions with flexible configuration parsing. Configure `persistent_sessions = true` and `session_name = "your_session"` in `yazelix.nix` to reuse the same session across restarts
 - **Full version history and project evolution is now documented in detail (see Version History & Changelog below)**
 
-## Version History & Changelog
-
-For a detailed history of all major Yazelix version bumps and changelogs, see [Version History](./docs/history.md).
-
-## Helix Pane Detection Logic
-
-When opening files from Yazi, Yazelix will:
-- Check the topmost pane and the next two below for a zellij pane named `editor` (which will be the Helix pane).
-- If Helix is found, it is moved to the top and reused; if not, a new Helix pane is opened.
-- This is need because sometimes when opening a new zellij pane in the pane stack, or deleting one, the editor pane will move around. Most of the times it will move down twice! So the workaround works.
-
 ## Compatibility
 - **Platform**: Works on any Linux distribution. Likely works on macOS as well (untested)
 - **Terminal**: WezTerm, Ghostty, Kitty, or Alacritty
 - **Editor**: Any editor, but Helix has first-class support (reveal in sidebar, open buffer in running instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
-
-## Version Check
-Check installed tool versions: `nu nushell/scripts/utils/version_info.nu`
 
 ## Instructions to Set It Up
 
@@ -265,6 +251,7 @@ To enable full Helix-Yazi integration, add the following to your Helix config (u
 # Yazelix sidebar integration - reveal current file in Yazi sidebar
 A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
 ```
+- **Note:** Only works for Helix instances opened from Yazi.
 
 **Additional Recommended Helix Keybindings:**
 Add these keybindings for improved editing experience:
@@ -304,22 +291,21 @@ tab.c = ":config-open"
 g.e = "goto_file_end"
 ```
 
-**Features:**
-- **`Alt+y`**: Reveal current file in Yazelix sidebar (requires sidebar mode)
-- **Note:** Only works for Helix instances opened from Yazi.
-
-#### 8. (Experimental) Direct Yazi File Picker Integration (Not Recommended for Now)
-For users who want a direct Yazi file picker within Helix, you can optionally add this experimental keybinding:
-
-
-**Important Limitations:**
-- **Background color issues**: The Helix instance will use the terminal emulator's background color mixed with helix's own background, making the editor appearance inconsistent and a bit ugly
-- **Mouse scrolling problems**: Mouse scrolling in Helix stops working properly, at least when running inside Zellij
-- **Experimental status**: This feature is experimental and may cause other visual/interaction issues. You're probably better off just using the sidebar!
-
-**Feature when working:**
-
 See [docs/keybindings.md](./docs/keybindings.md) for complete details and usage tips.
+
+## Version Check
+Check installed tool versions: `nu nushell/scripts/utils/version_info.nu`
+
+## Helix Pane Detection Logic
+
+When opening files from Yazi, Yazelix will:
+- Check the topmost pane and the next two below for a zellij pane named `editor` (which will be the Helix pane).
+- If Helix is found, it is moved to the top and reused; if not, a new Helix pane is opened.
+- This is need because sometimes when opening a new zellij pane in the pane stack, or deleting one, the editor pane will move around. Most of the times it will move down twice! So the workaround works.
+
+## Version History & Changelog
+
+For a detailed history of all major Yazelix version bumps and changelogs, see [Version History](./docs/history.md).
 
 ## Customization & Configuration
 
