@@ -78,6 +78,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - **Quick pane creation**: `Alt+p` in Yazi opens selected directory in new Zellij pane
   - **Smart file handling**: For files, opens parent directory; for directories, opens the directory itself
   - **Proper shell environment**: New panes start with correctly configured Nushell in target directory
+- **Enhanced startup robustness**: Improved Nix detection with automatic environment setup, reliable terminal integration across all emulators, and graceful error handling with clear diagnostics
 
 
 ## Compatibility
