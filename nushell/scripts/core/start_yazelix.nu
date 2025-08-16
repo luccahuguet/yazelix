@@ -31,7 +31,7 @@ export def main [] {
 
     # Generate merged Yazi configuration (doesn't need zellij)
     print "🔧 Preparing Yazi configuration..."
-    let merged_yazi_dir = generate_merged_yazi_config $yazelix_dir
+    let merged_yazi_dir = generate_merged_yazi_config $yazelix_dir --quiet
     
     # For Zellij config, create a placeholder for now - will be generated inside Nix environment
     let merged_zellij_dir = $"($env.HOME)/.local/share/yazelix/configs/zellij"

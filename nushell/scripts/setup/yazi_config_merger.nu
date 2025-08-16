@@ -155,13 +155,16 @@ def merge_lua_files [yazelix_content: string, user_content: string, file_name: s
 def merge_config_file [
     yazelix_dir: string,
     merged_dir: string,
-    file_name: string
+    file_name: string,
+    --quiet
 ] {
     let yazelix_path = $"($yazelix_dir)/yazelix_($file_name)"
     let user_path = $"($yazelix_dir)/personal/($file_name)"
     let merged_path = $"($merged_dir)/($file_name)"
     
-    print $"   📄 Merging ($file_name)..."
+    if not $quiet {
+        print $"   📄 Merging ($file_name)..."
+    }
     
     # Read source files
     let yazelix_content = read_config_file $yazelix_path "Yazelix defaults"
@@ -177,19 +180,23 @@ def merge_config_file [
     # Write merged file (overwrite if exists)
     try {
         $merged_content | save --force $merged_path
-        print $"     ✅ ($file_name) merged successfully"
+        if not $quiet {
+            print $"     ✅ ($file_name) merged successfully"
+        }
     } catch {|err|
         print $"     ❌ Failed to merge ($file_name): ($err.msg)"
     }
 }
 
 # Copy plugins directory
-def copy_plugins_directory [yazelix_dir: string, merged_dir: string] {
+def copy_plugins_directory [yazelix_dir: string, merged_dir: string, --quiet] {
     let source_plugins_dir = $"($yazelix_dir)/plugins"
     let user_plugins_dir = $"($yazelix_dir)/personal/plugins"
     let target_plugins_dir = $"($merged_dir)/plugins"
     
-    print "   📁 Copying plugins directory..."
+    if not $quiet {
+        print "   📁 Copying plugins directory..."
+    }
     
     # Remove existing plugins dir if it exists
     if ($target_plugins_dir | path exists) {
@@ -200,7 +207,9 @@ def copy_plugins_directory [yazelix_dir: string, merged_dir: string] {
     if ($source_plugins_dir | path exists) {
         try {
             cp -r $source_plugins_dir $target_plugins_dir
-            print $"     ✅ Yazelix plugins copied"
+            if not $quiet {
+                print $"     ✅ Yazelix plugins copied"
+            }
         } catch {|err|
             print $"     ❌ Failed to copy Yazelix plugins: ($err.msg)"
         }
@@ -221,7 +230,9 @@ def copy_plugins_directory [yazelix_dir: string, merged_dir: string] {
                 
                 cp -r $plugin_dir $target_plugin_dir
             }
-            print $"     ✅ Personal plugins copied (overriding Yazelix plugins)"
+            if not $quiet {
+                print $"     ✅ Personal plugins copied (overriding Yazelix plugins)"
+            }
         } catch {|err|
             print $"     ❌ Failed to copy personal plugins: ($err.msg)"
         }
@@ -237,7 +248,7 @@ def ensure_dir [path: string] {
 }
 
 # Main function: Generate merged Yazi configuration
-export def generate_merged_yazi_config [yazelix_dir: string] {
+export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
     # Define paths
     let state_dir = ($YAZELIX_STATE_DIR | path expand)
     let merged_config_dir = $"($state_dir)/configs/yazi"
@@ -249,7 +260,9 @@ export def generate_merged_yazi_config [yazelix_dir: string] {
     #     return $merged_config_dir
     # }
     
-    print "🔄 Regenerating Yazi configuration..."
+    if not $quiet {
+        print "🔄 Regenerating Yazi configuration..."
+    }
     
     # Ensure output directory exists
     ensure_dir $"($merged_config_dir)/yazi.toml"
@@ -257,20 +270,22 @@ export def generate_merged_yazi_config [yazelix_dir: string] {
     # Merge each config file
     let config_files = ["yazi.toml", "keymap.toml", "theme.toml", "init.lua", "package.toml"]
     for file in $config_files {
-        merge_config_file $source_config_dir $merged_config_dir $file
+        merge_config_file $source_config_dir $merged_config_dir $file --quiet=$quiet
     }
     
     # Copy plugins directory
-    copy_plugins_directory $source_config_dir $merged_config_dir
+    copy_plugins_directory $source_config_dir $merged_config_dir --quiet=$quiet
     
-    print $"✅ Yazi configuration generated successfully!"
-    print $"   📁 Config saved to: ($merged_config_dir)"
-    print "   🔄 Config will auto-regenerate when source files change"
+    if not $quiet {
+        print $"✅ Yazi configuration generated successfully!"
+        print $"   📁 Config saved to: ($merged_config_dir)"
+        print "   🔄 Config will auto-regenerate when source files change"
+    }
     
     $merged_config_dir
 }
 
 # Export main function for external use
-export def main [yazelix_dir: string] {
-    generate_merged_yazi_config $yazelix_dir | ignore
+export def main [yazelix_dir: string, --quiet] {
+    generate_merged_yazi_config $yazelix_dir --quiet=$quiet | ignore
 }
