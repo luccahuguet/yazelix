@@ -185,20 +185,26 @@ export def ensure_nix_available [] {
             print $"($colors.cyan)  n\) Abort and fix manually($colors.reset)"
             print ""
             
-            let response = (input $"($colors.cyan)Choose an option \(s/y/N\): ($colors.reset)")
+            let response = try {
+                (input $"($colors.cyan)Choose an option \(s/y/N\): ($colors.reset)")
+            } catch { |err|
+                print $"($colors.red)❌ Error getting user input: ($err.msg)($colors.reset)"
+                print $"($colors.yellow)Defaulting to bypass mode...($colors.reset)"
+                "y"
+            }
             
             if ($response | str downcase) in ["s", "source"] {
-                print $"($colors.yellow)🔧 Attempting to fix Nix PATH...($colors.reset)"
-                
-                # Simple and safe approach: just add Nix bin directories to PATH
-                let nix_bin_paths = [
-                    "/nix/var/nix/profiles/default/bin"
-                    "~/.nix-profile/bin"
-                ]
-                
-                print $"($colors.cyan)Checking for Nix binary directories...($colors.reset)"
-                    
                 try {
+                    print $"($colors.yellow)🔧 Attempting to fix Nix PATH...($colors.reset)"
+                    
+                    # Simple and safe approach: just add Nix bin directories to PATH
+                    let nix_bin_paths = [
+                        "/nix/var/nix/profiles/default/bin"
+                        "~/.nix-profile/bin"
+                    ]
+                    
+                    print $"($colors.cyan)Checking for Nix binary directories...($colors.reset)"
+                        
                     # Find existing Nix binary directories
                     let existing_nix_paths = ($nix_bin_paths | where ($it | path expand | path exists) | each { |p| $p | path expand })
                     
@@ -226,16 +232,38 @@ export def ensure_nix_available [] {
                         return true
                     }
                 } catch { |err|
-                    print $"($colors.red)❌ Error during PATH update: ($err.msg)($colors.reset)"
-                    print $"($colors.yellow)Falling back to bypass mode...($colors.reset)"
+                    print $"($colors.red)❌ DETAILED ERROR in source option:($colors.reset)"
+                    print $"($colors.red)   Error message: ($err.msg)($colors.reset)"
+                    print $"($colors.red)   Error debug: ($err.debug)($colors.reset)"
+                    print $"($colors.red)   Error span: ($err.span)($colors.reset)"
+                    print $"($colors.yellow)   Please copy this error and report it!($colors.reset)"
+                    print $"($colors.yellow)   Falling back to bypass mode...($colors.reset)"
                     return true
                 }
             } else if ($response | str downcase) in ["y", "yes"] {
-                print $"($colors.yellow)⚠️  Proceeding despite Nix detection issues...($colors.reset)"
-                return true
+                try {
+                    print $"($colors.yellow)⚠️  Proceeding despite Nix detection issues...($colors.reset)"
+                    return true
+                } catch { |err|
+                    print $"($colors.red)❌ DETAILED ERROR in bypass option:($colors.reset)"
+                    print $"($colors.red)   Error message: ($err.msg)($colors.reset)"
+                    print $"($colors.red)   Error debug: ($err.debug)($colors.reset)"
+                    print $"($colors.red)   Error span: ($err.span)($colors.reset)"
+                    print $"($colors.yellow)   Please copy this error and report it!($colors.reset)"
+                    return true
+                }
             } else {
-                print $"($colors.red)❌ Aborting. Please fix your Nix installation and try again.($colors.reset)"
-                exit 1
+                try {
+                    print $"($colors.red)❌ Aborting. Please fix your Nix installation and try again.($colors.reset)"
+                    exit 1
+                } catch { |err|
+                    print $"($colors.red)❌ DETAILED ERROR in abort option:($colors.reset)"
+                    print $"($colors.red)   Error message: ($err.msg)($colors.reset)"
+                    print $"($colors.red)   Error debug: ($err.debug)($colors.reset)"
+                    print $"($colors.red)   Error span: ($err.span)($colors.reset)"
+                    print $"($colors.yellow)   Please copy this error and report it!($colors.reset)"
+                    exit 1
+                }
             }
         } else {
             # For other errors, just offer bypass option
@@ -243,15 +271,39 @@ export def ensure_nix_available [] {
             print $"($colors.yellow)   this might be a detection issue.($colors.reset)"
             print ""
             
-            let response = (input $"($colors.cyan)Do you want to try running Yazelix anyway? \(y/N\): ($colors.reset)")
+            let response = try {
+                (input $"($colors.cyan)Do you want to try running Yazelix anyway? \(y/N\): ($colors.reset)")
+            } catch { |err|
+                print $"($colors.red)❌ Error getting user input: ($err.msg)($colors.reset)"
+                print $"($colors.yellow)Defaulting to bypass mode...($colors.reset)"
+                "y"
+            }
             
             if ($response | str downcase) in ["y", "yes"] {
-                print $"($colors.yellow)⚠️  Proceeding despite Nix detection issues...($colors.reset)"
-                print $"($colors.yellow)   If Yazelix fails to start, please check your Nix installation.($colors.reset)"
-                return true
+                try {
+                    print $"($colors.yellow)⚠️  Proceeding despite Nix detection issues...($colors.reset)"
+                    print $"($colors.yellow)   If Yazelix fails to start, please check your Nix installation.($colors.reset)"
+                    return true
+                } catch { |err|
+                    print $"($colors.red)❌ DETAILED ERROR in general bypass option:($colors.reset)"
+                    print $"($colors.red)   Error message: ($err.msg)($colors.reset)"
+                    print $"($colors.red)   Error debug: ($err.debug)($colors.reset)"
+                    print $"($colors.red)   Error span: ($err.span)($colors.reset)"
+                    print $"($colors.yellow)   Please copy this error and report it!($colors.reset)"
+                    return true
+                }
             } else {
-                print $"($colors.red)❌ Aborting. Please fix your Nix installation and try again.($colors.reset)"
-                exit 1
+                try {
+                    print $"($colors.red)❌ Aborting. Please fix your Nix installation and try again.($colors.reset)"
+                    exit 1
+                } catch { |err|
+                    print $"($colors.red)❌ DETAILED ERROR in general abort option:($colors.reset)"
+                    print $"($colors.red)   Error message: ($err.msg)($colors.reset)"
+                    print $"($colors.red)   Error debug: ($err.debug)($colors.reset)"
+                    print $"($colors.red)   Error span: ($err.span)($colors.reset)"
+                    print $"($colors.yellow)   Please copy this error and report it!($colors.reset)"
+                    exit 1
+                }
             }
         }
     }

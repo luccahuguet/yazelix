@@ -391,6 +391,19 @@ For setup issues, version compatibility, and debugging:
 - **Script Reorganization**: If you encounter "file not found" errors after updating Yazelix, your terminal configs may need updating. The scripts have been reorganized into subdirectories:
   - **WezTerm**: Update `~/.wezterm.lua` to use `~/.config/yazelix/nushell/scripts/core/start_yazelix.nu`
   - **Ghostty**: Update `~/.config/ghostty/config` to use `~/.config/yazelix/nushell/scripts/core/start_yazelix.nu`
+- **Terminal Not Starting After Update**: If your terminal fails to launch Yazelix, try updating your terminal emulator config with the latest template:
+  ```bash
+  # Example for Ghostty:
+  cd ~/.config/yazelix
+  git pull
+  cp ~/.config/yazelix/configs/terminal_emulators/ghostty/config ~/.config/ghostty/config
+  ```
+  Then restart your terminal. Should work now
+- **Nix "trusted-public-keys" Warnings**: If you see repeated warnings about "trusted-public-keys" being a restricted setting, this is a known issue with the Determinate Nix installer. To fix it, add yourself to trusted users:
+  ```bash
+  bash -c 'echo -e "\n# Add user to trusted users to avoid warnings\ntrusted-users = root $(whoami)" | sudo tee -a /etc/nix/nix.custom.conf && sudo systemctl restart nix-daemon'
+  ```
+  This uses Determinate Nix's official customization mechanism and will persist through updates. Alternatively, these warnings are harmless and can be ignored - they don't affect yazelix functionality.
 
 ## VS Code and Cursor Integration
 Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code or Cursor integrated terminal? See our [VS Code/Cursor integration guide](./docs/vscode_cursor_integration.md) for step-by-step setup instructions that give you the full Yazelix environment in your editor's terminal.

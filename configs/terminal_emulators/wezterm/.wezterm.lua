@@ -8,8 +8,8 @@ local config = wezterm.config_builder()
 config.color_scheme = 'Abernathy'
 config.hide_tab_bar_if_only_one_tab = true
 
--- Start Yazelix via Nushell boot script (uses Nix environment)
-config.default_prog = { 'nu', '~/.config/yazelix/nushell/scripts/core/start_yazelix.nu' }
+-- Start Yazelix via login shell to ensure Nix environment is loaded
+config.default_prog = { 'bash', '-l', '-c', 'nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu' }
 
 -- Alternative: Test without Zellij to debug crash (uncomment to test)
 -- config.default_prog = { 'bash', '-c', 'cd ~/.config/yazelix && nix develop --command nu' }

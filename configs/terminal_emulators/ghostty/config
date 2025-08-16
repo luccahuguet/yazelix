@@ -42,8 +42,8 @@
 # # Just for example:
 # resize-overlay-duration = 4s 200ms
 
-# Start Yazelix via Nushell boot script (uses Nix environment)
-initial-command = "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"
+# Start Yazelix via login shell to ensure Nix environment is loaded
+initial-command = "bash -l -c 'nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu'"
 
 # Theme and styling consistent with WezTerm config
 theme = "Abernathy"
