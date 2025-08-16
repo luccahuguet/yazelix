@@ -74,7 +74,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - **From Yazi**: `Alt+y` focuses and moves Helix pane to top (new functionality)
   - **Consistent behavior**: Uses same intelligent Helix detection logic as file opening system
   - **Smart pane management**: Automatically moves found Helix pane to top of stack for better workflow
-- **Alt+P directory opening**: New Yazi keybinding for instant workspace expansion:
+- **Alt+p directory opening**: New Yazi keybinding for instant workspace expansion:
   - **Quick pane creation**: `Alt+p` in Yazi opens selected directory in new Zellij pane
   - **Smart file handling**: For files, opens parent directory; for directories, opens the directory itself
   - **Proper shell environment**: New panes start with correctly configured Nushell in target directory
