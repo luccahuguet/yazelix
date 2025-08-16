@@ -70,26 +70,6 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - **Better user experience**: Users can now easily customize Zellij by editing a single, well-documented file
   - **Reference documentation**: See [configs/zellij/example_generated_config.kdl](./configs/zellij/example_generated_config.kdl) for the complete default Zellij configuration with all available keybindings and options
 
-## Improvements of v8 over v7
-- **Home Manager Integration**: Optional declarative configuration management via Home Manager module
-- **Modular Editor Support**: Complete rewrite of file opening logic to support any editor while preserving full Helix integration. Now you can use Vim, Nano, Emacs, or any editor via the `editor_command` setting in `yazelix.nix` - Helix users get all advanced features (open in same buffer, reveal in sidebar, etc), while other editors get basic Zellij integration (new panes, tab renaming)
-- **Big File/Folder Project-Wide Refactoring**: Complete reorganization of the codebase structure for better maintainability and organization
-- **Yazelix Config Validation**: Added validation system to warn users of invalid configuration options in `yazelix.nix`
-- **Simplified Editor Configuration**: Yazelix now always sets the EDITOR environment variable to your configured `editor_command`, ensuring consistent editor behavior throughout the environment
-- **Configurable Welcome ASCII Art**: You can now choose between static or animated ASCII art in the welcome screen using the `ascii_art_mode` option in your `yazelix.nix` config. Set `ascii_art_mode = "static"` (default for faster startup) or `ascii_art_mode = "animated"` for animated welcome.
-- **Shell-agnostic `yzx` command**: Introduces a unified `yzx` command that works across all supported shells (bash, fish, zsh, nushell) with full subcommand support. No more shell-specific limitations - use `yzx help`, `yzx get_config`, `yzx versions`, etc. from any shell!
-- **Seamless Yazelix restart**: `yzx restart` launches a new Yazelix instance before killing the old one, providing a smooth and reliable restart experience.
-- **Yazelix Collection page**: Yazelix now includes a dedicated collection page (`docs/yazelix_collection.md`) listing all integrated tools and inspirations.
-- **Added macchina to welcome screen**: Added a system info summary using macchina (neofetch alternative) to the welcome screen. It can be disabled in the config.
-- **Dynamic Config Validation**: Yazelix now uses a dynamic config validator that checks your config against yazelix_default.nix every time Yazelix starts. It warns about unknown fields, missing fields, and invalid values for key options (like default_shell, helix_mode, preferred_terminal, ascii_art_mode). No more silent config errors!
-- **Improved Helix Pane Detection**: Yazelix now checks the topmost pane and the next two below for a Zellij pane named `editor` (the Helix pane) when opening files from Yazi, reusing it if found, or opening a new one if not. See [Helix Pane Detection Logic](#helix-pane-detection-logic) for details.
-- **Ergonomic Tab Navigation**: Added browser-like tab navigation in Zellij:
-  - `Alt+number` to jump directly to tabs 1-9
-  - `Alt+w/q` to walk (focus) next/previous tab
-  - `Alt+Shift+H/L` to move tabs left/right
-  - Cleaned up legacy/conflicting keybindings for a more user-friendly experience
-- **Persistent Sessions Configuration**: Added support for persistent Zellij sessions with flexible configuration parsing. Configure `persistent_sessions = true` and `session_name = "your_session"` in `yazelix.nix` to reuse the same session across restarts
-- **Full version history and project evolution is now documented in detail (see Version History & Changelog below)**
 
 ## Compatibility
 - **Platform**: Works on any Linux distribution. Likely works on macOS as well (untested)
