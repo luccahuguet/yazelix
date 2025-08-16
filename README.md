@@ -170,8 +170,23 @@ hx ~/.config/yazelix/yazelix.nix
 - **Editor choice**: Change `editor_command` from `"hx"` to `"vim"`, `"nvim"`, etc. if you prefer
 
 #### 4. Install Fonts (Required for Kitty and Alacritty)
-If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display:
+If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display using modern Nix commands:
 
+**Option A: Using nix profile (recommended - modern replacement for nix-env):**
+```bash
+nix profile install nixpkgs#nerd-fonts.fira-code nixpkgs#nerd-fonts.symbols-only
+```
+
+**Option B: Using Home Manager (if you use Home Manager for system configuration):**
+Add to your Home Manager configuration:
+```nix
+home.packages = with pkgs; [
+  nerd-fonts.fira-code
+  nerd-fonts.symbols-only
+];
+```
+
+**Fallback: Legacy nix-env (if modern methods don't work):**
 ```bash
 nix-env -iA nixpkgs.nerd-fonts.fira-code nixpkgs.nerd-fonts.symbols-only
 ```

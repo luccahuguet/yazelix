@@ -55,10 +55,14 @@ export def check_nix_installation [] {
 
 # Display helpful error message and installation instructions
 export def show_nix_installation_help [error_type: string] {
-    use ascii_art.nu get_yazelix_colors
-    let colors = get_yazelix_colors
-    
-    # Add red color since it's not in the standard Yazelix palette
+    let colors = {
+        red: $"\u{1b}[31m"
+        yellow: $"\u{1b}[33m"
+        blue: $"\u{1b}[34m"
+        green: $"\u{1b}[32m"
+        cyan: $"\u{1b}[36m"
+        reset: $"\u{1b}[0m"
+    }
     let red = (ansi red)
     
     print $"($red)❌ Yazelix requires Nix but it's not properly set up!($colors.reset)"
@@ -117,11 +121,34 @@ export def show_nix_installation_help [error_type: string] {
 
 # Main function to check Nix and fail gracefully if not available
 export def ensure_nix_available [] {
+    let colors = {
+        red: $"\u{1b}[31m"
+        yellow: $"\u{1b}[33m"
+        blue: $"\u{1b}[34m"
+        green: $"\u{1b}[32m"
+        cyan: $"\u{1b}[36m"
+        reset: $"\u{1b}[0m"
+    }
+    
     let nix_status = check_nix_installation
     
     if not $nix_status.installed or ($nix_status.error | is-not-empty) {
         show_nix_installation_help $nix_status.error
-        exit 1
+        print ""
+        print $"($colors.yellow)⚠️  If you believe your Nix installation is working correctly,($colors.reset)"
+        print $"($colors.yellow)   this might be a detection issue.($colors.reset)"
+        print ""
+        
+        let response = (input $"($colors.cyan)Do you want to try running Yazelix anyway? \(y/N\): ($colors.reset)")
+        
+        if ($response | str downcase) in ["y", "yes"] {
+            print $"($colors.yellow)⚠️  Proceeding despite Nix detection issues...($colors.reset)"
+            print $"($colors.yellow)   If Yazelix fails to start, please check your Nix installation.($colors.reset)"
+            return true
+        } else {
+            print $"($colors.red)❌ Aborting. Please fix your Nix installation and try again.($colors.reset)"
+            exit 1
+        }
     }
     
     # If we get here, Nix is properly installed
