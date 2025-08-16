@@ -61,6 +61,8 @@ If you find a conflict, please open an issue
   - `y`: Yank (copy); `Y`: Unyank (cancel copy)
   - `x`: Cut; `X`: Uncut (cancel cut)
   - `a`: Add a file (`filename.ext`) or folder (`foldername/`)
+  - `Alt+y`: Focus Helix pane (bidirectional navigation)
+  - `Alt+p`: Open directory in new Zellij pane
 - **Nushell**:
   - `Ctrl r`: interactive history search
   - `Ctrl o`: open a temporary buffer
