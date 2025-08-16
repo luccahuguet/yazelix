@@ -127,6 +127,14 @@ keybinds {
         // does not work for kitty or ghostty
         unbind "Alt ("
         unbind "Alt )"
+
+        // Unbind Alt+p and Alt+Shift+p to avoid conflicts with Helix (select_previous_sibling)
+        // Original: Alt+p for TogglePaneInGroup, Alt+Shift+p for ToggleGroupMarking
+        // Rebind to Ctrl+Alt+p for pane grouping actions
+        unbind "Alt p"
+        unbind "Alt Shift p"
+        bind "Ctrl Alt p" { TogglePaneInGroup; }
+        bind "Ctrl Alt Shift p" { ToggleGroupMarking; }
     }
 
     // Remap all Zellij default Ctrl keybindings to Ctrl+Alt to avoid conflicts
