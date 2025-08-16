@@ -1,5 +1,9 @@
-[mgr]
-append_keymap = [
-    # Ctrl+y to quit Yazi (for toggle behavior with Helix Ctrl+y)
-    { on = [ "<C-y>" ], run = "quit", desc = "Quit Yazi (toggle with Helix)" },
-]
+[[mgr.append_keymap]]
+on = [ "<C-y>" ]
+run = "quit"
+desc = "Quit Yazi (toggle with Helix)"
+
+[[mgr.append_keymap]]
+on = [ "<A-y>" ] 
+run = "shell 'zellij action focus-next-pane' --block"
+desc = "Focus next pane"
