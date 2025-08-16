@@ -228,3 +228,19 @@ tab.c = ":config-open"
 ```
 
 This provides vim-like paragraph navigation using `{` and `}` instead of the default `[p` and `]p`, plus `X` for extending selection upward by line, and `Space+B` for git blame on the current line.
+
+## Yazelix Integration Keybindings
+
+For seamless integration with Yazelix, add these keybindings to your Helix `config.toml`:
+
+```toml
+[keys.normal]
+# Yazelix integration - reveal current file in Yazi sidebar
+A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
+```
+
+| Keybinding | Action | Notes |
+|------------|--------|-------|
+| `Alt+y` | Reveal current file in Yazi sidebar | Integrates with Yazelix bidirectional navigation |
+
+**Note**: `Alt+p` is reserved by Helix for "select previous sibling node" and should not be overridden for Yazelix integration. The Yazi-side `Alt+p` (open directory in new pane) works independently and doesn't conflict with Helix.
