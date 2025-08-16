@@ -18,7 +18,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
   - **With other editors**: Opens the file in a new pane with your configured editor
   - It automatically renames the Zellij tab to the file's underlying Git repo or directory name
 - Features include:
-  - "Reveal file in sidebar" (press `Alt y` in Helix to reveal the file in Yazi, see [Keybindings](#keybindings))
+  - "Reveal file in sidebar" (press `Alt y` in Helix to reveal the file in Yazi, `Alt y` in Yazi to focus Helix, see [Keybindings](#keybindings))
   - A Yazi plugin to enhance the status bar in the sidebar pane, making it uncluttered, colorful, and showing file permissions
   - A [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) showing file changes in the Yazi sidebar
   - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/luccahuguet/auto-layout.yazi), perfect for sidebar use
@@ -69,6 +69,11 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - **Improved maintainability**: Removed old static `config.kdl` system that required manual updates
   - **Better user experience**: Users can now easily customize Zellij by editing a single, well-documented file
   - **Reference documentation**: See [configs/zellij/example_generated_config.kdl](./configs/zellij/example_generated_config.kdl) for the complete default Zellij configuration with all available keybindings and options
+- **Bidirectional Alt+y navigation**: Enhanced file manager and editor integration with seamless navigation:
+  - **From Helix**: `Alt+y` reveals current file in Yazi sidebar (existing functionality)
+  - **From Yazi**: `Alt+y` focuses and moves Helix pane to top (new functionality)
+  - **Consistent behavior**: Uses same intelligent Helix detection logic as file opening system
+  - **Smart pane management**: Automatically moves found Helix pane to top of stack for better workflow
 
 
 ## Compatibility

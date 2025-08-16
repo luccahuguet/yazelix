@@ -5,5 +5,5 @@ desc = "Quit Yazi (toggle with Helix)"
 
 [[mgr.append_keymap]]
 on = [ "<A-y>" ] 
-run = "shell 'zellij action focus-next-pane'"
-desc = "Focus next pane"
+run = "shell 'nu $HOME/.config/yazelix/nushell/scripts/integrations/focus_helix.nu'"
+desc = "Focus Helix pane"
