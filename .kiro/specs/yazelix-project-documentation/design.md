@@ -48,10 +48,12 @@ The system is organized into several key components:
 
 Yazelix uses Nix flakes for dependency management with the following structure:
 
-- **Core Dependencies**: Always installed (Zellij, Yazi, Helix, Nushell, Bash)
-- **Recommended Dependencies**: Productivity tools (lazygit, mise, starship, zoxide, carapace)
-- **Optional Dependencies**: Grouped by functionality (python pack, js_ts pack, etc.)
-- **Shell Dependencies**: Installed based on user configuration (fish, zsh)
+- **Essential Dependencies**: Always installed (Zellij, Yazi, Helix, Nushell, Bash, fzf, zoxide, starship, macchina, libnotify, mise)
+- **Extra Shell Dependencies**: Installed based on user configuration (fish, zsh)
+- **Recommended Dependencies**: Productivity tools (lazygit, atuin, carapace, markdown-oxide)
+- **Yazi Extensions**: Lightweight tools for enhanced Yazi functionality (p7zip, jq, fd, ripgrep, poppler)
+- **Yazi Media**: Heavy media processing tools (~800MB-1.2GB) (ffmpeg, imagemagick, etc.)
+- **Package Packs**: Grouped by functionality (python pack, js_ts pack, rust pack, config pack, file-management pack)
 
 ## Components and Interfaces
 
@@ -110,9 +112,9 @@ def main [yazelix_dir: string, recommended: bool, shells_to_configure_str: strin
 ```
 
 **Responsibilities**:
-- Generate init scripts for Starship, Zoxide, Mise, and Carapace
+- Generate init scripts for Starship and Zoxide (required) and Mise and Carapace (recommended)
 - Support bash, fish, zsh, and nushell shells
-- Handle missing tools gracefully
+- Handle missing recommended tools gracefully
 - Use XDG-compliant directories for storage
 
 ### Zellij Configuration Merger
