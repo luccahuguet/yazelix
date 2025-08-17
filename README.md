@@ -294,6 +294,8 @@ A-g.l = ":sh git log --oneline -10 %{buffer_name}"
 # Execute selections in shells
 tab.x = ":sh bash -c '%{selection}'"
 tab.n = ":sh nu -c '%{selection}'"
+tab.X = ":sh bash -c 'source ~/.bashrc && %{selection}'"
+tab.N = ":sh nu -c 'source ~/.config/nushell/config.nu; %{selection}'"
 
 # File picker toggles
 tab.h = ":toggle-option file-picker.hidden"
