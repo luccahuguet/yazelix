@@ -300,7 +300,7 @@ tab.N = ":sh nu -c 'source ~/.config/nushell/config.nu; %{selection}'"
 
 # File picker toggles
 tab.h = ":toggle-option file-picker.hidden"
-tab.i = [":toggle-option file-picker.git-ignore", ":toggle-option file-picker.ignore"]
+tab.i = ":toggle-option file-picker.git-ignore"
 
 # Configuration shortcuts
 tab.l = ":o ~/.config/helix/languages.toml"
