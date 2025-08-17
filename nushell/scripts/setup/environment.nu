@@ -149,20 +149,23 @@ def main [
     # Get color scheme for consistent styling
     let colors = get_yazelix_colors
 
-    # Get flake.nix last updated date dynamically (in days ago, using into duration)
+    # Get flake.nix last updated date dynamically (in days ago)
     let flake_path = $"($yazelix_dir)/flake.nix"
     let flake_days_ago = if ($flake_path | path exists) {
-        let last_mod = (ls $flake_path | get modified | first | into datetime)
-        let now = (date now)
-        let diff = ($now - $last_mod | into duration)
-        let days = ($diff / 1day | math floor)
-        $days
+        try {
+            let file_info = (ls $flake_path | first)
+            let now_seconds = (date now | format date %s | into int)
+            let mod_seconds = ($file_info.modified | format date %s | into int)
+            let diff_seconds = ($now_seconds - $mod_seconds)
+            let days = ($diff_seconds / 86400 | math floor)
+            $days
+        } catch {
+            0
+        }
     } else {
-        null
+        0
     }
     let flake_info = if ($flake_days_ago | describe) == 'int' {
-        $"($colors.cyan)🕒 Flake last updated: ($flake_days_ago) day\(s\) ago($colors.reset)"
-    } else if ($flake_days_ago | describe) == 'string' and ($flake_days_ago | is-empty) == false {
         $"($colors.cyan)🕒 Flake last updated: ($flake_days_ago) day\(s\) ago($colors.reset)"
     } else {
         $"($colors.cyan)🕒 Flake last updated: unknown($colors.reset)"
