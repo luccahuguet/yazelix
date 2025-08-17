@@ -392,28 +392,8 @@ Yazelix includes optional Home Manager support for declarative configuration man
 Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Carapace for your configured default shell, regenerated every startup. See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details.
 
 ## Troubleshooting
-For setup issues, version compatibility, and debugging:
 
-- See [Version Table](./docs/version_table.md) for compatibility information
-- For general issues, check the logs in the `logs/` directory or enable debug mode in `yazelix.nix`
-- **Empty/buggy status bar**: If the top status bar (zjstatus plugin) appears empty or looks weird, focus on it and press `y` to authorize the plugin. This is a one-time Zellij security requirement that persists in cache.
-- **Naming Convention**: If you encounter "file not found" errors, ensure your terminal configs reference the updated script names (using underscores instead of hyphens, e.g., `start_yazelix.nu` instead of `start-yazelix.nu`)
-- **Script Reorganization**: If you encounter "file not found" errors after updating Yazelix, your terminal configs may need updating. The scripts have been reorganized into subdirectories:
-  - **WezTerm**: Update `~/.wezterm.lua` to use `~/.config/yazelix/nushell/scripts/core/start_yazelix.nu`
-  - **Ghostty**: Update `~/.config/ghostty/config` to use `~/.config/yazelix/nushell/scripts/core/start_yazelix.nu`
-- **Terminal Not Starting After Update**: If your terminal fails to launch Yazelix, try updating your terminal emulator config with the latest template:
-  ```bash
-  # Example for Ghostty:
-  cd ~/.config/yazelix
-  git pull
-  cp ~/.config/yazelix/configs/terminal_emulators/ghostty/config ~/.config/ghostty/config
-  ```
-  Then restart your terminal. Should work now
-- **Nix "trusted-public-keys" Warnings**: If you see repeated warnings about "trusted-public-keys" being a restricted setting, this is a known issue with the Determinate Nix installer. To fix it, add yourself to trusted users:
-  ```bash
-  bash -c 'echo -e "\n# Add user to trusted users to avoid warnings\ntrusted-users = root $(whoami)" | sudo tee -a /etc/nix/nix.custom.conf && sudo systemctl restart nix-daemon'
-  ```
-  This uses Determinate Nix's official customization mechanism and will persist through updates. Alternatively, these warnings are harmless and can be ignored - they don't affect yazelix functionality.
+📖 **[Complete Troubleshooting Guide →](./docs/troubleshooting.md)** - Comprehensive solutions for common issues
 
 ## VS Code and Cursor Integration
 Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code or Cursor integrated terminal? See our [VS Code/Cursor integration guide](./docs/vscode_cursor_integration.md) for step-by-step setup instructions that give you the full Yazelix environment in your editor's terminal.

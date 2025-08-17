@@ -1,5 +1,27 @@
 # Troubleshooting
 
+## Helix Syntax Highlighting Issues
+
+### Missing Syntax Highlighting
+If Helix opens files but shows no syntax highlighting, you likely have **conflicting runtime directories** from a previous Helix installation.
+
+**Symptoms:**
+- Files open in Helix but appear as plain text
+- No language-specific colors or features
+- Error messages about missing grammars
+
+**Solution - Clean Conflicting Runtime:**
+```bash
+# Check for conflicting runtime directory
+ls ~/.config/helix/runtime 2>/dev/null && echo "⚠️  Conflicting runtime found"
+
+# Remove old runtime directory (backup first if needed)
+mv ~/.config/helix/runtime ~/.config/helix/runtime.backup
+```
+
+**Prevention:**
+Yazelix manages its own Helix runtime via `HELIX_RUNTIME` environment variable. Old `~/.config/helix/runtime` directories from previous installations can override this and cause conflicts.
+
 ## Quick Fixes
 
 ### Reset Configuration
