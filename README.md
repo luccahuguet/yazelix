@@ -286,10 +286,20 @@ C-j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
 C-y = ":yank-diagnostic"
 A-r = [":config-reload", ":reload"]
 
-# Tab commands (configuration and tools)
+# Execute selections in shells
+tab.x = ":sh bash -c '%{selection}'"
+tab.n = ":sh nu -c '%{selection}'"
+
+# Git integration
 tab.b = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
+tab.s = ":echo %sh{git status --porcelain}"
+tab.l = ":echo %sh{git log --oneline -10 %{buffer_name}}"
+
+# File picker toggles
 tab.h = ":toggle-option file-picker.hidden"
 tab.i = [":toggle-option file-picker.git-ignore", ":toggle-option file-picker.ignore"]
+
+# Configuration shortcuts
 tab.l = ":o ~/.config/helix/languages.toml"
 tab.c = ":config-open"
 ```
