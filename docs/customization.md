@@ -10,12 +10,20 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
   - [Alacritty config](../configs/terminal_emulators/alacritty/alacritty.toml)
   - See [WezTerm docs](https://wezfurlong.org/wezterm/config/files.html) for advanced customization.
 - **Zellij Configuration**: Git-conflict-free three-layer configuration system:
-  - **Quick start**: `cp ~/.config/yazelix/configs/zellij/user/user_config.kdl ~/.config/yazelix/configs/zellij/personal/user_config.kdl` then edit the personal copy
+  - **Quick start**: 
+    ```bash
+    cp ~/.config/yazelix/configs/zellij/user/user_config.kdl ~/.config/yazelix/configs/zellij/personal/user_config.kdl
+    ```
+    Then edit the personal copy
   - **Full guide**: [Zellij Configuration Documentation](./zellij-configuration.md)
   - **Three layers**: Zellij defaults + Yazelix overrides + your personal settings (highest priority)
   - **Smart merging**: Configurations automatically merge on startup, personal configs are git ignored
 - **Yazi Configuration**: Git-conflict-free two-layer configuration system:
-  - **Quick start**: `cp -r configs/yazi/user configs/yazi/personal` then edit personal configs  
+  - **Quick start**: 
+    ```bash
+    cp -r configs/yazi/user configs/yazi/personal
+    ```
+    Then edit personal configs
   - **Full guide**: [Yazi Configuration Documentation](./yazi-configuration.md)
   - **Two layers**: Yazelix defaults + your personal overrides (highest priority)
   - **TOML merging**: Intelligent section merging prevents duplicate keys, personal configs are git ignored
