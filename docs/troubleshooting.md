@@ -1,5 +1,26 @@
 # Troubleshooting
 
+## Quick Diagnosis
+
+**🔍 Start here:** Run the automated health check to identify common issues:
+
+```bash
+yzx doctor                    # Check for problems
+yzx doctor --verbose          # Detailed information  
+yzx doctor --fix              # Auto-fix safe issues
+```
+
+**What it checks:**
+- **Helix runtime conflicts** - Detects old `~/.config/helix/runtime` that breaks syntax highlighting
+- **Environment variables** - EDITOR, HELIX_RUNTIME, and other critical settings
+- **Configuration health** - yazelix.nix validation and shell integration
+- **System status** - Log file sizes, file permissions, git repository state
+
+**Auto-fix capabilities:**
+- Backup conflicting runtime directories
+- Clean oversized log files  
+- Create missing configuration files
+
 ## Helix Syntax Highlighting Issues
 
 ### Missing Syntax Highlighting

@@ -79,6 +79,8 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - **Smart file handling**: For files, opens parent directory; for directories, opens the directory itself
   - **Proper shell environment**: New panes start with correctly configured Nushell in target directory
 - **Enhanced startup robustness**: Improved Nix detection with automatic environment setup, reliable terminal integration across all emulators, and graceful error handling with clear diagnostics
+- **Health Check System (`yzx doctor`)**: Comprehensive diagnostic tool that automatically detects and fixes common issues including Helix runtime conflicts, environment variable problems, configuration validation, and system health monitoring. Supports `--verbose` and `--fix` flags for detailed output and automatic issue resolution.
+- **Atuin shell history integration**: Added atuin to the automatic initializer system for enhanced shell history with search, sync, and statistics across all supported shells
 
 
 ## Compatibility
@@ -388,6 +390,8 @@ Yazelix includes optional Home Manager support for declarative configuration man
 Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Carapace for your configured default shell, regenerated every startup. See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details.
 
 ## Troubleshooting
+
+🔍 **Quick diagnosis:** `yzx doctor` - Automated health checks and fixes
 
 📖 **[Complete Troubleshooting Guide →](./docs/troubleshooting.md)** - Comprehensive solutions for common issues
 

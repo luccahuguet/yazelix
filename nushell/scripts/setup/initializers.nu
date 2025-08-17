@@ -17,6 +17,7 @@ def main [yazelix_dir: string, recommended: bool, shells_to_configure_str: strin
     let tools = [
         { name: "starship", required: true, init_cmd: { |shell| $"starship init ($shell)" } }
         { name: "zoxide", required: true, init_cmd: { |shell| $"zoxide init ($shell)" } }
+        { name: "atuin", required: false, init_cmd: { |shell| $"atuin init ($shell)" } }
         { name: "mise", required: false, init_cmd: { |shell| $"mise activate ($shell)" } }
         { name: "carapace", required: false, init_cmd: { |shell| $"carapace ($shell)" } }
     ]
