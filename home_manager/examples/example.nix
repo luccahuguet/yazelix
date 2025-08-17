@@ -28,8 +28,10 @@
     # Terminal preference
     preferred_terminal = "wezterm";  # Better for media previews
     
-    # Editor configuration
-    editor_command = "hx";         # yazelix always sets this as EDITOR (hx, vim, nvim, etc.)
+    # Editor configuration  
+    # editor_command = null;       # Default: Use yazelix's Helix (recommended)
+    editor_command = "hx";         # Alternative: Use system Helix (requires helix_runtime_path)
+    # editor_command = "nvim";     # Alternative: Use other editor (loses Helix features)
     
     # Development-friendly settings
     debug_mode = true;             # Enable verbose logging

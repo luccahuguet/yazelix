@@ -168,7 +168,7 @@ hx ~/.config/yazelix/yazelix.nix
 📋 For detailed package breakdowns and configuration strategies, see **[Package Sizes Documentation](./docs/package_sizes.md)**
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
 - **Terminal preference**: Set `preferred_terminal` (`"ghostty"`, `"wezterm"`, `"kitty"`, `"alacritty"`)
-- **Editor choice**: Change `editor_command` from `"hx"` to `"vim"`, `"nvim"`, etc. if you prefer
+- **Editor choice**: Configure your editor (see Editor Configuration section below)
 
 #### 4. Install Fonts (Required for Kitty and Alacritty)
 If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display using modern Nix commands:
@@ -322,6 +322,15 @@ Yazelix uses a **layered configuration system** that safely merges your personal
 - **Intelligent merging**: TOML sections merge properly, avoiding duplicate keys and conflicts
 
 📖 **[Complete Customization Guide →](./docs/customization.md)** - Detailed instructions for customizing every tool
+
+### Editor Configuration
+
+📝 **[Editor Configuration Guide →](./docs/editor_configuration.md)** - Complete guide for configuring editors
+
+**Quick setup:**
+- **Default (recommended)**: `editor_command = null` - Uses yazelix's Helix, no conflicts
+- **System Helix**: `editor_command = "hx"` - Requires matching `helix_runtime_path` 
+- **Other editors**: `editor_command = "nvim"` - Basic integration, loses Helix features
 
 ### Alternative: CLI-Only Mode
 To use Yazelix tools without starting the full interface (no sidebar, no zellij):

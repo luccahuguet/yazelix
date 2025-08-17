@@ -89,8 +89,11 @@
         yazelixAsciiArtMode = config.ascii_art_mode or "static"; # Read ascii_art_mode, default to static
 
         # Editor configuration
-        # Editor configuration - yazelix always sets EDITOR to the configured command
-        editorCommand = config.editor_command or "hx";
+        # When editor_command is null, use yazelix's Helix to ensure binary/runtime compatibility
+        # When set to a string, use that command (user must ensure runtime compatibility)
+        editorCommand = if (config.editor_command or null) == null 
+                       then "${helixPackage}/bin/hx"
+                       else config.editor_command;
         
         # Helix runtime path configuration
         helixRuntimePath = config.helix_runtime_path or null;

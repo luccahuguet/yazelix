@@ -4,6 +4,15 @@
 use ../utils/logging.nu log_to_file
 use zellij.nu [get_running_command, is_hx_running, open_in_existing_helix, open_new_helix_pane, find_and_focus_helix_pane, move_focused_pane_to_top, get_focused_pane_name]
 
+# Check if the editor command is Helix (supports both simple names and full paths)
+# This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
+def is_helix_editor [editor: string] {
+    ($editor | str ends-with "/hx") or 
+    ($editor == "hx") or 
+    ($editor | str ends-with "/helix") or 
+    ($editor == "helix")
+}
+
 # Navigate Yazi to the directory of the current Helix buffer
 export def reveal_in_yazi [buffer_name: string] {
     log_to_file "reveal_in_yazi.log" $"reveal_in_yazi called with buffer_name: '($buffer_name)'"
@@ -205,7 +214,7 @@ export def open_file_with_editor [file_path: path] {
     # The native Helix-Yazi integration (Ctrl+y) handles the "open in same pane" workflow
 
     # Sidebar mode: use the existing multi-pane logic
-    if ($editor == "hx") {
+    if (is_helix_editor $editor) {
         log_to_file "open_editor.log" "Detected Helix editor, using Helix-specific logic"
         open_with_helix $file_path $yazi_id
     } else {

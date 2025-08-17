@@ -23,16 +23,17 @@
   # Ghostty is the default for great performance; use WezTerm if you need better image preview support in Yazi
   preferred_terminal = "ghostty";
 
-  # Editor command (default: "hx" for Helix)
-  # Yazelix will always set this as your EDITOR environment variable
-  # - For other editors: "vim", "nvim", "kak", etc.
-  # - For custom Helix builds, something like: "/home/user/helix/target/release/hx" 
-  #   (combine with helix_runtime_path below for full custom build support)
-  editor_command = "hx";
+  
+  # Editor configuration - yazelix always sets this as your EDITOR
+  # Default (null): Use yazelix's Nix-provided Helix to avoid runtime conflicts
+  # Custom: Set to "hx" to use your system Helix (requires matching helix_runtime_path)
+  # Other editors: Set to "vim", "nvim", "nano", etc. (loses Helix-specific features)
+  editor_command = null;
 
   # Helix runtime path (optional, default: uses Nix-provided runtime)
-  # Set this if you're using a custom Helix build with editor_command
-  # Example: "/home/user/helix/runtime" for a custom build in ~/helix
+  # IMPORTANT: Only set this if editor_command points to a custom Helix build
+  # The runtime MUST match your Helix binary version to avoid startup errors
+  # Example: "/home/user/helix/runtime" for a custom Helix build in ~/helix
   helix_runtime_path = null;
 
   # Enable or disable the Yazi sidebar (default: true)

@@ -145,8 +145,9 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
     let helix_config_dir = $"($env.HOME)/.config/helix"
     mkdir $helix_config_dir
 
-    # Use hx directly, relying on Nushell environment
-    let cmd = $"env YAZI_ID=($yazi_id) hx '($file_path)'"
+    # Use the configured editor from environment, preserving YAZI_ID
+    let editor = $env.EDITOR
+    let cmd = $"env YAZI_ID=($yazi_id) ($editor) '($file_path)'"
 
     log_to_file "open_helix.log" $"Full command to execute: ($cmd)"
 
