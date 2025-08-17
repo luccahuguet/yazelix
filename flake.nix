@@ -225,7 +225,7 @@
             ${if helixRuntimePath != null then 
               ''export HELIX_RUNTIME="${helixRuntimePath}"'' 
             else 
-              ''export HELIX_RUNTIME="${helixPackage}/share/helix/runtime"''
+              ''export HELIX_RUNTIME="${helixPackage}/lib/runtime"''
             }
 
             # Set EDITOR environment variable to configured command
