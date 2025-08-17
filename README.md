@@ -389,6 +389,19 @@ Yazelix includes optional Home Manager support for declarative configuration man
 ## Initializer Scripts
 Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Carapace for your configured default shell, regenerated every startup. See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details.
 
+## yzx Command Line Interface
+
+🔧 **Complete CLI Reference:** `yzx help` - Shell-agnostic command suite
+
+📖 **[Complete yzx CLI Documentation →](./docs/yzx_cli.md)** - Comprehensive command reference and usage guide
+
+**Quick Commands:**
+- `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics  
+- `yzx launch` - Launch Yazelix in new terminal window
+- `yzx start` - Start Yazelix in current terminal
+- `yzx info` - Show system information and current settings
+- `yzx versions` - Display all tool versions
+
 ## Troubleshooting
 
 🔍 **Quick diagnosis:** `yzx doctor` - Automated health checks and fixes
