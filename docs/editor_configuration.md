@@ -132,7 +132,7 @@ helix_runtime_path = null;       # Not needed for non-Helix editors
 
 **📋 [Complete Troubleshooting Guide →](./troubleshooting.md)** - Quick fixes for common issues
 
-**Quick reset:** Delete `yazelix.nix` and restart yazelix to regenerate defaults.
+**Quick reset:** Delete `yazelix.nix` and run `yzx launch` to regenerate defaults.
 
 ## Advanced Scenarios
 

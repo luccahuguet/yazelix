@@ -5,17 +5,14 @@
 ### Reset Configuration
 ```bash
 rm ~/.config/yazelix/yazelix.nix
-exit && yazelix  # Regenerates defaults
-```
-
-### Delete Swap Files
-```bash
-rm ~/.config/yazelix/.*.swp
+exit         # Exit current session
+yzx launch   # Start fresh in new window - regenerates defaults
 ```
 
 ### Restart Fresh
 ```bash
-exit && yazelix
+exit        # Exit current session  
+yzx launch  # Start new session in new window
 ```
 
 ## Editor Issues
