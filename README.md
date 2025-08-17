@@ -263,37 +263,33 @@ Add these keybindings for improved editing experience:
 
 ```toml
 [keys.normal]
-# Vim-like paragraph navigation
+# Navigation and movement
 "{" = "goto_prev_paragraph"
 "}" = "goto_next_paragraph"
-# Extend selection up by line
+g.e = "goto_file_end"
+ret = ["move_line_down", "goto_first_nonwhitespace"]
+A-ret = ["move_line_up", "goto_first_nonwhitespace"]
+
+# Selection and editing
 X = "extend_line_up"
-# Print the current line's git blame information to the statusline
-space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
-# Reload config and buffer
-A-r = [":config-reload", ":reload"]
-# Toggle hidden files in file picker
-space.H = ":toggle-option file-picker.hidden"
-# Yank diagnostic information
-C-y = ":yank-diagnostic"
-# Move line up with Ctrl+k
 C-k = [
   "extend_to_line_bounds",
   "delete_selection",
   "move_line_up",
   "paste_before",
 ]
-# Move line down with Ctrl+j
 C-j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
-# Navigate down and go to first non-whitespace
-ret = ["move_line_down", "goto_first_nonwhitespace"]
-# Navigate up and go to first non-whitespace
-A-ret = ["move_line_up", "goto_first_nonwhitespace"]
-# Open languages.toml config
+
+# System integration
+C-y = ":yank-diagnostic"
+A-r = [":config-reload", ":reload"]
+
+# Tab commands (configuration and tools)
+tab.b = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
+tab.h = ":toggle-option file-picker.hidden"
+tab.i = [":toggle-option file-picker.git-ignore", ":toggle-option file-picker.ignore"]
 tab.l = ":o ~/.config/helix/languages.toml"
-# Open Helix config
 tab.c = ":config-open"
-g.e = "goto_file_end"
 ```
 
 See [docs/keybindings.md](./docs/keybindings.md) for complete details and usage tips.
