@@ -123,21 +123,11 @@ def open_with_helix [file_path: path, yazi_id: string] {
         open_new_helix_pane $file_path $yazi_id
     }
 
-    # Check if we should close the Yazi pane after opening file
-    # Only for no-sidebar mode where Yazi starts as the main pane
+    # In no-sidebar mode, we leave the Yazi pane open - no need to close it
+    # This eliminates any flicker issues entirely
     let sidebar_enabled = ($env.YAZELIX_ENABLE_SIDEBAR? | default "true") == "true"
     if (not $sidebar_enabled) {
-        # In no-sidebar mode, close the Yazi pane to focus on editing
-        try {
-            # Since we're already focused on the Helix pane, go back to the previous pane (Yazi)
-            # and close it
-            zellij action focus-previous-pane
-            sleep 100ms
-            zellij action close-pane
-            log_to_file "open_helix.log" "Closed Yazi pane in no-sidebar mode"
-        } catch {
-            log_to_file "open_helix.log" "Could not close Yazi pane (might not exist)"
-        }
+        log_to_file "open_helix.log" "No-sidebar mode: leaving Yazi pane open, no close operation needed"
     }
     
     log_to_file "open_helix.log" "open_with_helix function completed"
