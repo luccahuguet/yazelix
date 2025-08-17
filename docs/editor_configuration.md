@@ -130,83 +130,9 @@ helix_runtime_path = null;       # Not needed for non-Helix editors
 
 ## Troubleshooting
 
-### Runtime Mismatch Errors
+**📋 [Complete Troubleshooting Guide →](./troubleshooting.md)** - Quick fixes for common issues
 
-If you see errors like "runtime not found", "failed to load grammar", or version mismatches:
-
-1. **Check your Helix version and yazelix's version:**
-   ```bash
-   hx --version                    # Your system Helix
-   echo $EDITOR | xargs -- --version  # Yazelix's Helix
-   ```
-
-2. **Verify runtime path exists and is valid:**
-   ```bash
-   echo "HELIX_RUNTIME: $HELIX_RUNTIME"
-   ls $HELIX_RUNTIME  # Should show: grammars/ languages.toml queries/ themes/
-   ```
-
-3. **Quick fix - use yazelix's Helix:**
-   ```nix
-   editor_command = null;        # Use yazelix's Helix
-   helix_runtime_path = null;    # Use matching runtime
-   ```
-
-4. **Debug your custom setup:**
-   ```bash
-   # Test if your Helix works with its runtime
-   HELIX_RUNTIME=/your/runtime/path hx --version
-   ```
-
-### Missing Integration Features
-
-If Helix-specific features don't work:
-
-1. **Verify Helix detection:**
-   - Check that your `editor_command` ends with `hx` or `helix`
-   - Full paths like `/usr/bin/hx` should work
-
-2. **Check sidebar mode:**
-   - Reveal in Yazi (Alt+y) only works with `enable_sidebar = true`
-
-3. **Restart yazelix:**
-   ```bash
-   exit  # Exit current session
-   yazelix  # Start fresh session
-   ```
-
-### File Opening Not Working
-
-If files don't open when clicked in Yazi:
-
-1. **Check EDITOR is set:**
-   ```bash
-   echo "EDITOR: $EDITOR"  # Should show your editor path
-   ```
-
-2. **Restart yazelix** to pick up configuration changes:
-   ```bash
-   exit  # Exit current session
-   yazelix  # Start fresh
-   ```
-
-3. **Check logs for errors:**
-   ```bash
-   tail ~/.config/yazelix/logs/open_editor.log
-   tail ~/.config/yazelix/logs/open_helix.log  # If using Helix
-   ```
-
-### Performance Issues
-
-If editor startup is slow:
-
-1. **Use default configuration** for fastest startup
-2. **Check runtime path** - incorrect paths cause delays  
-3. **Verify Helix plugins** - Custom configs can slow startup
-4. **Profile startup time:**
-   ```bash
-   time $EDITOR --version  # Quick test
-   ```
+**Quick reset:** Delete `yazelix.nix` and restart yazelix to regenerate defaults.
 
 ## Advanced Scenarios
 
