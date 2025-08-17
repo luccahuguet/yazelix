@@ -14,7 +14,15 @@ def get_version [tool: string] {
                 try { (zellij --version | str replace "zellij " "") } catch { "error" }
             }
             "helix" => {
-                try { (hx --version | lines | first | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
+                # Check if EDITOR is actually Helix before using it
+                let editor = $env.EDITOR
+                let is_helix = ($editor | str ends-with "/hx") or ($editor == "hx") or ($editor | str ends-with "/helix") or ($editor == "helix")
+                if $is_helix {
+                    try { (do { $editor } --version | lines | first | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
+                } else {
+                    # Fallback to 'hx' for non-Helix editors
+                    try { (hx --version | lines | first | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "not available" }
+                }
             }
             "nushell" => {
                 if (which nu | is-empty) { return "not installed" }

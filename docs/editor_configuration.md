@@ -2,12 +2,25 @@
 
 Yazelix provides smart editor configuration to avoid conflicts with existing installations while maintaining full integration features.
 
-## Overview
+## Quick Start
+
+**Most users should use the default:**
+```nix
+editor_command = null;  # Uses yazelix's Helix - no conflicts, full features
+```
+
+**If you have specific needs:**
+- Existing Helix setup → [Using Your Existing Helix](#using-your-existing-helix)
+- Prefer other editors → [Using Other Editors](#using-other-editors)  
+- Runtime conflicts → See [Troubleshooting](#troubleshooting)
+
+## How It Works
 
 Yazelix sets your configured editor as the `EDITOR` environment variable throughout the system. The editor choice affects:
 - **File opening behavior** from Yazi file manager
 - **Integration features** (reveal in sidebar, open in same instance, etc.)
 - **Zellij pane management** and tab naming
+- **Shell commands** that respect `$EDITOR`
 
 ## Configuration Options
 
@@ -48,12 +61,17 @@ helix_runtime_path = "/home/user/helix/runtime"; # MUST match your Helix version
 
 **Finding your runtime path:**
 ```bash
-# For system-installed Helix:
-which hx  # e.g., /usr/bin/hx
-# Runtime is typically at: /usr/share/helix/runtime
+# Automatic detection:
+ls $(dirname $(which hx))/../share/helix/runtime
+
+# Manual check for system-installed Helix:
+which hx  # e.g., /usr/bin/hx → runtime at /usr/share/helix/runtime
 
 # For custom builds:
 ls ~/helix/runtime  # Should contain themes/, grammars/, queries/ directories
+
+# Verify runtime is valid:
+ls $HELIX_RUNTIME  # Should show: grammars/ languages.toml queries/ themes/
 ```
 
 ### Using Other Editors
@@ -114,22 +132,30 @@ helix_runtime_path = null;       # Not needed for non-Helix editors
 
 ### Runtime Mismatch Errors
 
-If you see errors like "runtime not found" or version mismatches:
+If you see errors like "runtime not found", "failed to load grammar", or version mismatches:
 
-1. **Check your Helix version:**
+1. **Check your Helix version and yazelix's version:**
    ```bash
-   hx --version
+   hx --version                    # Your system Helix
+   echo $EDITOR | xargs -- --version  # Yazelix's Helix
    ```
 
-2. **Verify runtime path exists:**
+2. **Verify runtime path exists and is valid:**
    ```bash
-   ls $HELIX_RUNTIME  # Should show themes/, grammars/, etc.
+   echo "HELIX_RUNTIME: $HELIX_RUNTIME"
+   ls $HELIX_RUNTIME  # Should show: grammars/ languages.toml queries/ themes/
    ```
 
-3. **Switch to default configuration:**
+3. **Quick fix - use yazelix's Helix:**
    ```nix
    editor_command = null;        # Use yazelix's Helix
    helix_runtime_path = null;    # Use matching runtime
+   ```
+
+4. **Debug your custom setup:**
+   ```bash
+   # Test if your Helix works with its runtime
+   HELIX_RUNTIME=/your/runtime/path hx --version
    ```
 
 ### Missing Integration Features
@@ -149,13 +175,38 @@ If Helix-specific features don't work:
    yazelix  # Start fresh session
    ```
 
+### File Opening Not Working
+
+If files don't open when clicked in Yazi:
+
+1. **Check EDITOR is set:**
+   ```bash
+   echo "EDITOR: $EDITOR"  # Should show your editor path
+   ```
+
+2. **Restart yazelix** to pick up configuration changes:
+   ```bash
+   exit  # Exit current session
+   yazelix  # Start fresh
+   ```
+
+3. **Check logs for errors:**
+   ```bash
+   tail ~/.config/yazelix/logs/open_editor.log
+   tail ~/.config/yazelix/logs/open_helix.log  # If using Helix
+   ```
+
 ### Performance Issues
 
 If editor startup is slow:
 
 1. **Use default configuration** for fastest startup
-2. **Check runtime path** - incorrect paths cause delays
+2. **Check runtime path** - incorrect paths cause delays  
 3. **Verify Helix plugins** - Custom configs can slow startup
+4. **Profile startup time:**
+   ```bash
+   time $EDITOR --version  # Quick test
+   ```
 
 ## Advanced Scenarios
 
@@ -208,3 +259,62 @@ programs.yazelix = {
 ```
 
 See `home_manager/examples/example.nix` for complete configuration examples.
+
+## Common Configuration Examples
+
+### Most Users (Recommended)
+```nix
+# yazelix.nix
+{
+  editor_command = null;           # Use yazelix's Helix
+  helix_runtime_path = null;       # Use matching runtime
+  # ... other settings
+}
+```
+
+### Helix Developer
+```nix
+# yazelix.nix  
+{
+  editor_command = "/home/user/helix/target/release/hx";
+  helix_runtime_path = "/home/user/helix/runtime";
+  # ... other settings
+}
+```
+
+### Vim User
+```nix
+# yazelix.nix
+{
+  editor_command = "nvim";         # Or "vim", "nano", etc.
+  helix_runtime_path = null;       # Not needed for non-Helix
+  # ... other settings
+}
+```
+
+### System Helix User (Advanced)
+```nix
+# yazelix.nix
+{
+  editor_command = "hx";                              # Use system Helix
+  helix_runtime_path = "/usr/share/helix/runtime";    # Match system runtime
+  # ... other settings
+}
+```
+
+## Integration Feature Matrix
+
+| Editor Type | File Opening | Reveal in Sidebar | Same Instance | File Picker | Tab Naming |
+|-------------|--------------|-------------------|---------------|-------------|------------|
+| Yazelix Helix (null) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| System Helix ("hx") | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Custom Helix (path) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Vim/Neovim | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Other Editors | ✅ | ❌ | ❌ | ❌ | ✅ |
+
+**Legend:**
+- **File Opening**: Click files in Yazi to open in editor
+- **Reveal in Sidebar**: Alt+y from Helix jumps to file in Yazi
+- **Same Instance**: Files open in existing editor instance when possible  
+- **File Picker**: Ctrl+y in Helix for native file picking
+- **Tab Naming**: Zellij tabs named after project/directory

@@ -27,5 +27,12 @@ export def is_helix_running_test [] {
 
 # Get the Helix binary path (both modes use hx from PATH)
 export def get_helix_binary [] {
-    "hx"
+    # Only return EDITOR if it's actually Helix, fallback to 'hx' for safety
+    let editor = $env.EDITOR
+    let is_helix = ($editor | str ends-with "/hx") or ($editor == "hx") or ($editor | str ends-with "/helix") or ($editor == "helix")
+    if $is_helix {
+        $editor
+    } else {
+        "hx"  # Fallback for non-Helix editors
+    }
 }

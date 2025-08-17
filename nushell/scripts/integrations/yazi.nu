@@ -7,10 +7,7 @@ use zellij.nu [get_running_command, is_hx_running, open_in_existing_helix, open_
 # Check if the editor command is Helix (supports both simple names and full paths)
 # This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
 def is_helix_editor [editor: string] {
-    ($editor | str ends-with "/hx") or 
-    ($editor == "hx") or 
-    ($editor | str ends-with "/helix") or 
-    ($editor == "helix")
+    ($editor | str ends-with "/hx") or ($editor == "hx") or ($editor | str ends-with "/helix") or ($editor == "helix")
 }
 
 # Navigate Yazi to the directory of the current Helix buffer

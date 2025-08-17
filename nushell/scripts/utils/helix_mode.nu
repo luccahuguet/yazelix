@@ -26,9 +26,17 @@ export def get_helix_mode [] {
     }
 }
 
-# Get the appropriate Helix binary path (both modes use hx from PATH)
+# Get the appropriate Helix binary path from environment
+# Note: This assumes EDITOR is set to a Helix binary
 export def get_helix_binary [] {
-    "hx"
+    # Only return EDITOR if it's actually Helix, fallback to 'hx' for safety
+    let editor = $env.EDITOR
+    let is_helix = ($editor | str ends-with "/hx") or ($editor == "hx") or ($editor | str ends-with "/helix") or ($editor == "helix")
+    if $is_helix {
+        $editor
+    } else {
+        "hx"  # Fallback for non-Helix editors
+    }
 }
 
 # Set environment variables for Helix mode
