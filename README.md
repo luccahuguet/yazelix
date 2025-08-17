@@ -292,9 +292,10 @@ A-g.s = ":sh git status --porcelain"
 A-g.l = ":sh git log --oneline -10 %{buffer_name}"
 
 # Execute selections in shells
-tab.x = ":sh bash -c '%{selection}'"
+tab.x = ":sh $YAZELIX_DEFAULT_SHELL -c '%{selection}'"
+tab.b = ":sh bash -c '%{selection}'"
+tab.B = ":sh bash -c 'source ~/.bashrc && %{selection}'"
 tab.n = ":sh nu -c '%{selection}'"
-tab.X = ":sh bash -c 'source ~/.bashrc && %{selection}'"
 tab.N = ":sh nu -c 'source ~/.config/nushell/config.nu; %{selection}'"
 
 # File picker toggles
