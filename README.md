@@ -286,14 +286,14 @@ C-j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
 C-y = ":yank-diagnostic"
 A-r = [":config-reload", ":reload"]
 
-# Execute selections in shells
-tab.x = ":sh bash -c '%{selection}'"
-tab.n = ":sh nu -c '%{selection}'"
-
 # Git integration
 A-g.b = ":sh git blame -L %{cursor_line},+1 %{buffer_name}"
 A-g.s = ":sh git status --porcelain"
 A-g.l = ":sh git log --oneline -10 %{buffer_name}"
+
+# Execute selections in shells
+tab.x = ":sh bash -c '%{selection}'"
+tab.n = ":sh nu -c '%{selection}'"
 
 # File picker toggles
 tab.h = ":toggle-option file-picker.hidden"
