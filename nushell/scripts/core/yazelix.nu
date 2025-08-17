@@ -20,6 +20,9 @@ export def yzx [] {
 export def "yzx help" [] {
     print "=== Yazelix Command Suite ==="
     print ""
+    print "DIAGNOSTICS:"
+    print "  yzx doctor [--verbose] [--fix] - Run health checks and diagnostics"
+    print ""
     print "CONFIGURATION MANAGEMENT:"
     print "  yzx config_status [shell]      - Show status of all shell configurations"
     print ""
@@ -128,5 +131,14 @@ export def "yzx restart" [] {
             try { zellij kill-session $clean_session } catch { print $"Failed to kill session: ($clean_session)" }
         }
     }
+}
+
+# Run health checks and diagnostics
+export def "yzx doctor" [
+    --verbose(-v)  # Show detailed information
+    --fix(-f)      # Attempt to auto-fix issues
+] {
+    use ../utils/doctor.nu run_doctor_checks
+    run_doctor_checks $verbose $fix
 }
 

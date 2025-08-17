@@ -51,6 +51,15 @@ When creating new files or directories, always use underscores to maintain consi
 - Tool selection: Which approach to use when multiple options exist
 - Architecture decisions: How to structure or integrate new features
 
+**REASON FROM FIRST PRINCIPLES** - When faced with design decisions or trade-offs, analyze the fundamental requirements and constraints rather than following conventions blindly. Consider:
+- What is the core problem being solved?
+- What are the fundamental constraints (safety, user expectations, system behavior)?
+- What are the actual risks vs. perceived risks?
+- What does the user explicitly want vs. what they implicitly expect?
+- How do similar tools handle this situation and why?
+
+Example: When deciding whether `yzx doctor --fix` should auto-fix user runtime conflicts, reason through user intent (explicit `--fix` flag), safety (backup approach), and the nature of the problem (system debris vs. user data).
+
 ## Documentation and User Guidance Principles
 
 When documenting limitations or potential issues:
