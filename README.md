@@ -291,9 +291,9 @@ tab.x = ":sh bash -c '%{selection}'"
 tab.n = ":sh nu -c '%{selection}'"
 
 # Git integration
-tab.b = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
-tab.s = ":echo %sh{git status --porcelain}"
-tab.l = ":echo %sh{git log --oneline -10 %{buffer_name}}"
+A-g.b = ":sh git blame -L %{cursor_line},+1 %{buffer_name}"
+A-g.s = ":sh git status --porcelain"
+A-g.l = ":sh git log --oneline -10 %{buffer_name}"
 
 # File picker toggles
 tab.h = ":toggle-option file-picker.hidden"
