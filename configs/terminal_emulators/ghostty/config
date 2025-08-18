@@ -54,4 +54,4 @@ window-padding-y = 10,0
 # background-opacity = 0.9
 
 # Cursor trail effect (similar to Kitty's cursor_trail)
-custom-shader = ./shaders/cursor_smear.glsl
+# custom-shader = ./shaders/cursor_smear.glsl
