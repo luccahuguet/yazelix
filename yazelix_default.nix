@@ -18,9 +18,15 @@
   # Only install additional shells if you plan to use them
   extra_shells = [ ];
 
+  # Include terminal emulator in yazelix (default: true)
+  # When true, yazelix includes Ghostty with automatic nixGL GPU acceleration
+  # When false, uses traditional external terminal approach (requires separate installation)
+  include_terminal = true;
+
   # Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
   # Options: "wezterm", "ghostty", "kitty", "alacritty"
-  # Ghostty is the default for great performance; use WezTerm if you need better image preview support in Yazi
+  # Note: Only relevant when include_terminal = false
+  # When include_terminal = true, yazelix uses its built-in Ghostty terminal
   preferred_terminal = "ghostty";
 
   

@@ -238,6 +238,16 @@ This will automatically configure your shell and then you can use:
 - `yzx start` (starts Yazelix in current terminal)
 - `yzx help` (see all available commands)
 
+**Optional: Desktop Application Entry**
+
+To make Yazelix searchable from your desktop environment (GNOME, KDE, etc.), copy the desktop entry:
+
+```nushell
+cp ~/.config/yazelix/scripts/yazelix.desktop ~/.local/share/applications/
+```
+
+Run this command from within your yazelix terminal session. After this, you can search for "Yazelix" in your application launcher and launch it directly.
+
 #### 6. Using Yazelix
 **Option A users**: Simply open your terminal! Yazelix will automatically launch with the full environment.  
 **Option B users**: Use `yzx launch` or `yzx start` to launch Yazelix when needed.

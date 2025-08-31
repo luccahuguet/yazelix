@@ -195,6 +195,23 @@ def main [
         $"($colors.yellow)🆕 Creating new Zellij session($colors.reset)"
     }
 
+    # Check terminal configuration - only show included terminal if we actually have include_terminal=true
+    let terminal_info = try {
+        let config = parse_yazelix_config
+        if ($config.include_terminal == "true") and ((which yazelix-ghostty | length) > 0) {
+            $"($colors.green)🖥️  Using yazelix included terminal \(Ghostty with nixGL acceleration\)($colors.reset)"
+        } else {
+            $"($colors.cyan)🖥️  Using external terminal: ($config.preferred_terminal)($colors.reset)"
+        }
+    } catch {
+        # Fallback: check if we have yazelix-ghostty but no config
+        if (which yazelix-ghostty | length) > 0 {
+            $"($colors.green)🖥️  Using yazelix included terminal \(Ghostty with nixGL acceleration\)($colors.reset)"
+        } else {
+            $"($colors.cyan)🖥️  Using external terminal \(configuration not found\)($colors.reset)"
+        }
+    }
+
     let welcome_message = [
         "",
         $"($colors.purple)🎉 Welcome to Yazelix v8!($colors.reset)",
@@ -203,6 +220,7 @@ def main [
         $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",
         $helix_info,
         $persistent_session_info,
+        $terminal_info,
         $"($colors.cyan)💡 Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files, 'Alt [' or 'Alt ]' to swap layouts($colors.reset)"
     ] | where $it != ""
 

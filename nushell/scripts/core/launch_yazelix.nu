@@ -21,8 +21,14 @@ def main [] {
     let config = parse_yazelix_config
     let preferred_terminal = $config.preferred_terminal
 
-    # Check if a supported terminal is installed
-    let terminal_info = if ($preferred_terminal == "wezterm") and ((which wezterm | length) > 0) {
+    # Check for yazelix included terminal first (include_terminal = true)
+    let terminal_info = if (which yazelix-ghostty | length) > 0 {
+        print "Using yazelix included terminal (Ghostty with nixGL acceleration)"
+        {
+            terminal: "yazelix-ghostty"
+            config: null # Config is handled internally by the wrapper
+        }
+    } else if ($preferred_terminal == "wezterm") and ((which wezterm | length) > 0) {
         {
             terminal: "wezterm"
             config: $"($home)/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua"
@@ -81,14 +87,17 @@ def main [] {
     # Print which terminal is being used and the preferred terminal
     print ("Using terminal: " + $terminal + " (preferred: " + $preferred_terminal + ")")
 
-    # Check if terminal config exists
-    if not ($terminal_config | path exists) {
+    # Check if terminal config exists (skip for yazelix-ghostty which handles config internally)
+    if ($terminal_config != null) and (not ($terminal_config | path exists)) {
         print $"Error: ($terminal) config not found at ($terminal_config)"
         exit 1
     }
 
     # Launch terminal using bash to handle background processes properly
-    if $terminal == "ghostty" {
+    if $terminal == "yazelix-ghostty" {
+        print "Running: yazelix-ghostty (with nixGL auto-detection)"
+        ^bash -c "nohup yazelix-ghostty >/dev/null 2>&1 &"
+    } else if $terminal == "ghostty" {
         print ("Running: ghostty --config-file=" + $terminal_config)
         ^bash -c $"nohup ghostty --config-file=($terminal_config) >/dev/null 2>&1 &"
     } else if $terminal == "wezterm" {

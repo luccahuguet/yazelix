@@ -43,6 +43,12 @@ When creating new files or directories, always use underscores to maintain consi
 - **Environment independence** - Code should work regardless of host system quirks
 - **Consistent behavior** - Same input should produce same output across all user environments
 
+## Nushell Development Notes
+
+**Parentheses in String Interpolation** - Nushell interprets unescaped parentheses `()` in string interpolation as command substitution. Always escape parentheses in display strings:
+- ✅ Correct: `$"Using terminal \(Ghostty with nixGL\)"`  
+- ❌ Wrong: `$"Using terminal (Ghostty with nixGL)"` (tries to execute `Ghostty` command)
+
 ## Planning and Decision Making
 
 **ALWAYS PLAN FIRST** - Before taking significant actions (like git commits, major changes, or file operations), explicitly discuss the approach and get user approval. This includes:

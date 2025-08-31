@@ -12,6 +12,7 @@
     # This will be fixed in carapace 1.4.1, but until nixpkgs updates we pin nushell to 0.105.1
     nixpkgs-nushell.url = "github:nixos/nixpkgs/6027c30c8e9810896b92429f0092f624f7b1aace";
     zjstatus.url = "github:dj95/zjstatus";
+    nixgl.url = "github:guibou/nixGL";
   };
 
   outputs =
@@ -22,6 +23,7 @@
       flake-utils,
       helix,
       zjstatus,
+      nixgl,
       ...
     }:
     flake-utils.lib.eachDefaultSystem (
@@ -33,6 +35,7 @@
             (final: prev: {
               zjstatus = zjstatus.packages.${system}.default;
             })
+            nixgl.overlay
           ];
         };
         nushellPkgs = import nixpkgs-nushell { inherit system; };
@@ -75,6 +78,8 @@
         recommendedDepsEnabled = config.recommended_deps or true;
         yaziExtensionsEnabled = config.yazi_extensions or true;
         yaziMediaEnabled = config.yazi_media or true;
+        # Terminal inclusion option
+        yazelixIncludeTerminal = config.include_terminal or true; # Include terminal by default
         # Helix build mode: "release" or "source"
         helixMode = config.helix_mode or "release";
         useNixpkgsHelix = helixMode == "release";
@@ -107,6 +112,38 @@
         helixFromSource = helix.packages.${system}.default;
         helixPackage = if buildHelixFromSource then helixFromSource else pkgs.helix;
 
+        # Ghostty wrapper with nixGL integration (following home-manager pattern)
+        ghosttyWrapper = if yazelixIncludeTerminal then
+          pkgs.writeShellScriptBin "yazelix-ghostty" ''
+            # Use nixGLIntel for GPU acceleration (works for Intel/Mesa/AMD)
+            exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.ghostty}/bin/ghostty \
+              --config-file="$YAZELIX_DIR/configs/terminal_emulators/ghostty/config" "$@"
+          ''
+        else null;
+
+        # Desktop launcher script for yazelix - force rebuild with timestamp
+        yazelixDesktopLauncher = if yazelixIncludeTerminal then
+          pkgs.writeShellScriptBin "yazelix-desktop-launcher" ''
+            #!/bin/sh
+            # Updated launcher - should use yazelix environment
+            cd ~/.config/yazelix
+            export YAZELIX_DIR="$HOME/.config/yazelix"
+            exec nix develop --impure --command nu "$YAZELIX_DIR/nushell/scripts/core/launch_yazelix.nu"
+          ''
+        else null;
+
+        # Desktop entry for yazelix with logo  
+        yazelixDesktopEntry = if yazelixIncludeTerminal then
+          pkgs.makeDesktopItem {
+            name = "yazelix";
+            exec = "${yazelixDesktopLauncher}/bin/yazelix-desktop-launcher";
+            icon = "yazelix"; # Generic name, we'll copy logo separately
+            desktopName = "Yazelix";
+            comment = "Yazi + Zellij + Helix integrated terminal environment";
+            categories = [ "Development" ];
+          }
+        else null;
+
         # Essential dependencies (required for core Yazelix functionality)
         # Note: Only nu and bash are always included; fish/zsh are conditional
         essentialDeps = with pkgs; [
@@ -121,7 +158,15 @@
           macchina # Modern, fast system info fetch tool (Rust, maintained)
           libnotify # Provides notify-send for desktop notifications (used by Nushell clip command)
           mise # Tool version manager - pre-configured in Yazelix shell initializers
-        ];
+        ] ++ (if yazelixIncludeTerminal then [
+          # Terminal emulator with GPU acceleration support
+          ghosttyWrapper # Ghostty with automatic nixGL wrapper detection
+          ghostty # Base ghostty package
+          yazelixDesktopLauncher # Desktop launcher script
+          yazelixDesktopEntry # Desktop entry with logo
+          # Add nixGL packages (following home-manager pattern)
+          pkgs.nixgl.nixGLIntel # For Intel/Mesa GPU acceleration
+        ] else []);
 
         # Extra shell dependencies (fish/zsh only when needed)
         extraShellDeps =
