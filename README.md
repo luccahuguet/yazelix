@@ -248,6 +248,19 @@ cp ~/.config/yazelix/scripts/yazelix.desktop ~/.local/share/applications/
 
 Run this command from within your yazelix terminal session. After this, you can search for "Yazelix" in your application launcher and launch it directly.
 
+**COSMIC Desktop Environment Users**: If you're using COSMIC and the Yazelix icon doesn't display properly (shows as gray square), apply this workaround for the known COSMIC alpha icon display bug:
+
+```bash
+# Convert logo to PNG and copy to pixmaps
+convert ~/.config/yazelix/assets/logo.jpg ~/.local/share/pixmaps/yazelix.png
+
+# Update desktop entry to use direct path
+sed -i 's|Icon=yazelix|Icon=/home/$USER/.local/share/pixmaps/yazelix.png|' ~/.local/share/applications/yazelix.desktop
+
+# Refresh desktop database
+update-desktop-database ~/.local/share/applications
+```
+
 #### 6. Using Yazelix
 **Option A users**: Simply open your terminal! Yazelix will automatically launch with the full environment.  
 **Option B users**: Use `yzx launch` or `yzx start` to launch Yazelix when needed.
