@@ -3,8 +3,8 @@ layout {
         pane size=1 borderless=true {
            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
-               format_center "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold]{swap_layout}"
-               format_right  "#[fg=#ffff00][shell: {command_shell}] [editor: {command_editor}] #[fg=#00ccff,bold]YAZELIX " // {datetime}
+               format_center ""
+               format_right  "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold]{swap_layout} #[fg=#ffff00][shell: {command_shell}] [editor: {command_editor}] #[fg=#00ccff,bold]YAZELIX " // {datetime}
                format_space  ""
                
                border_enabled  "false"
@@ -40,8 +40,8 @@ layout {
         pane size=1 borderless=true {
            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
-               format_center "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold]{swap_layout}"
-               format_right  "#[fg=#ffff00][shell: {command_shell}] [editor: {command_editor}] #[fg=#00ccff,bold]YAZELIX " // {datetime}
+               format_center ""
+               format_right  "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold]{swap_layout} #[fg=#ffff00][shell: {command_shell}] [editor: {command_editor}] #[fg=#00ccff,bold]YAZELIX " // {datetime}
                format_space  ""
                
                border_enabled  "false"
