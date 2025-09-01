@@ -9,7 +9,7 @@
 ## Preview
 ![yazelix_v8_demo](assets/demos/yazelix_v8_demo.gif)
 
-**Latest v9 with zjstatus and CLI-only mode:**
+**v8.5 with zjstatus:**
 ![yazelix_v8_5_example](assets/screenshots/yazelix_v8_5_example.jpeg)
 
 ## Overview
