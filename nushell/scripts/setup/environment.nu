@@ -214,7 +214,7 @@ def main [
 
     let welcome_message = [
         "",
-        $"($colors.purple)🎉 Welcome to Yazelix v8!($colors.reset)",
+        $"($colors.purple)🎉 Welcome to Yazelix v9!($colors.reset)",
         $"($colors.blue)Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!($colors.reset)",
         $flake_info,
         $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",

@@ -33,6 +33,7 @@ export def "yzx help" [] {
     print "LAUNCHER:"
     print "  yzx launch                     - Launch yazelix via terminal"
     print "  yzx start                      - Start yazelix directly"
+    print "  yzx env                        - Load yazelix environment without UI"
     print "  yzx restart                    - Restart yazelix (preserves persistent sessions)"
     print ""
     print "HELP:"
@@ -102,6 +103,16 @@ export def "yzx start" [] {
     ensure_nix_available
     use ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu main
     main
+}
+
+# Load yazelix environment without UI
+export def "yzx env" [] {
+    use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
+    ensure_nix_available
+    print "Loading Yazelix environment (CLI-only mode)..."
+    with-env {YAZELIX_ENV_ONLY: "true"} {
+        ^nix develop --impure ~/.config/yazelix
+    }
 }
 
 # Restart yazelix

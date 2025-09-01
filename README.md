@@ -1,9 +1,9 @@
-# Yazelix v8: Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!
+# Yazelix v9: CLI-only environment mode, lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!
 
 ## Preview
 ![yazelix_v8_demo](assets/demos/yazelix_v8_demo.gif)
 
-**Latest v8.5 with zjstatus:**
+**Latest v9 with zjstatus and CLI-only mode:**
 ![yazelix_v8_5_example](assets/screenshots/yazelix_v8_5_example.jpeg)
 
 ## Overview
@@ -42,7 +42,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
-## Improvements of v8.5 over v8
+## Improvements of v9 over v8
 - **Flexible layout system**: Sidebar mode remains the default, with optional no-sidebar mode for different workflows:
   - **Sidebar mode** (default): IDE-like workflow with persistent Yazi file navigation (recommended!)
   - **No-sidebar mode**: Available via `enable_sidebar = false`, no yazi sidebar, saves some screen space. Usefull if you use other editors that have a builtin file tree 

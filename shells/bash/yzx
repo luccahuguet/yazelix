@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 YAZELIX_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Default values
-YAZELIX_VERSION="v8"
+YAZELIX_VERSION="v9"
 YAZELIX_DESCRIPTION="Yazi + Zellij + Helix integrated terminal environment"
 DEFAULT_SHELL="nu"
 DEFAULT_TERMINAL="ghostty"
