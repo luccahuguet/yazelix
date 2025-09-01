@@ -1,5 +1,4 @@
-# Yazelix v9
-### CLI-only environment mode (`yzx env`), health check system (`yzx doctor`), pack-based config, logo & desktop integration, flexible layouts and more!
+# Yazelix v9: `yzx env`, `yzx doctor`, logo, desktop entry and better zjstatus setup
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
@@ -227,6 +226,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 📖 **[Complete yzx CLI Documentation →](./docs/yzx_cli.md)** - Comprehensive command reference and usage guide
 
 **Quick Commands:**
+- `yzx env` - Load Yazelix tools without UI (CLI-only mode)
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics  
 - `yzx launch` - Launch Yazelix in new terminal window
 - `yzx start` - Start Yazelix in current terminal
