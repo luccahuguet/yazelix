@@ -42,7 +42,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - Yazelix lets you say `I use Yazelix btw`
 - Boy, do we Nix
 - Integration, integration, integration
-- Like [Omakub](https://github.com/basecamp/omakub) but for your terminal
+- Like [Omarchy](https://github.com/olimorris/omarchy) but for your terminal
 - Made with love.
 
 ## Acknowledgments
