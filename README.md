@@ -103,236 +103,29 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
-## Instructions to Set It Up
+## Installation
 
-**What is Nix?** Nix is just a package manager that ensures reproducible, reliable software installations. Think of it like a super-powered version of `apt`, `brew`, or `chocolatey` that:
-- Never breaks your system (installs are isolated)
-- Allows multiple versions of the same software
-- Makes it easy to share exact development environments
-- Can completely uninstall without leaving traces
+📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions
 
-**Why does Yazelix use Nix?** It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software. And it's way easier than having to install everying separately and manually.
+**Quick Overview**: Yazelix uses Nix for reproducible, reliable installations that guarantee everyone gets the exact same tool versions. You don't need to learn Nix - just install it once and forget it exists!
 
-**Important**: You don't need to learn Nix or Nushell to use Yazelix! Nix just installs the tools and yazelix uses nushell internally, and you can use your preferred shell (bash, fish, zsh, or nushell) for your daily work. You can install nix and nushell once, and forget they ever existed
+## Quick Setup
 
-### Prerequisites
-- **Nushell** - Required to run yazelix, used internally (but you can use any of our supported shells)
-  - See installation instructions: https://www.nushell.sh/book/installation.html
-- **Supported terminal emulators** (choose your favorite!):
-  - **WezTerm** 
-    - Modern, fast, written in Rust
-    - Instructions here: https://wezfurlong.org/wezterm/installation.html
-  - **Ghostty** 
-    - Modern, fast, written in Zig, newer
-    - Instructions here: https://ghostty.org/download
-    - **Note**: Due to a [Zellij/Yazi/Ghostty interaction](https://github.com/zellij-org/zellij/issues/2814#issuecomment-2965117327), image previews in Yazi may not display properly, for now. If this is a problem for you, use WezTerm instead
-  - **Kitty**
-    - Fast, feature-rich, GPU-accelerated terminal
-    - Instructions here: https://sw.kovidgoyal.net/kitty/binary/
-  - **Alacritty**
-    - Fast, GPU-accelerated terminal written in Rust
-    - Instructions here: https://github.com/alacritty/alacritty/blob/master/INSTALL.md
+1. **Install Nix**: `curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install`
+2. **Clone Yazelix**: `git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix`  
+3. **Copy terminal config** (optional): See [Step 5 in installation guide](./docs/installation.md#step-5-set-up-yazelix-to-auto-launch-in-your-terminal)
+4. **Launch**: Open your terminal or run `nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu`
 
-### Step-by-Step Installation
-
-#### 1. Install Nix Package Manager
-We use the **Determinate Systems Nix Installer** - it's reliable, fast, and includes modern features out of the box:
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
-```
-
-**What this does:**
-- Installs Nix with flakes: just follow the instructions
-- Sets up proper file permissions and system integration
-- Provides a reliable uninstaller if you ever want to remove Nix
-- Verify it with `nix --version`
-
-#### 2. Download Yazelix
-Clone the Yazelix repository to your system:
-```bash
-git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
-```
-
-#### 3. Configure Your Installation (Optional)
-**Before installing dependencies**, create and customize your configuration to control what gets downloaded (else, yazelix will create a config for you based on yazelix_default.nix):
-
-```bash
-# Create your personal config from the template
-cp ~/.config/yazelix/yazelix_default.nix ~/.config/yazelix/yazelix.nix
-
-# Edit the configuration to suit your needs
-# Use your preferred editor (hx, vim, etc.)
-hx ~/.config/yazelix/yazelix.nix
-```
-
-**📦 Dependency Groups & Size Estimates:**
-
-| Group | Size | Default | Description |
-|-------|------|---------|-------------|
-| **✅ Essential Tools** | ~225MB | Always included | Core Yazelix functionality |
-| **🔧 Recommended Tools** | ~350MB | Enabled | Productivity enhancers |
-| **🗂️ Yazi Extensions** | ~125MB | Enabled | File preview & archive support |
-| **🎬 Yazi Media** | ~1GB | Disabled | Heavy media processing |
-
-**💡 Installation Options:**
-- **Minimal install**: ~225MB (essential only)
-- **Standard install**: ~700MB (default config)
-- **Full install**: ~1.7GB (all groups enabled)
-
-📋 For detailed package breakdowns and configuration strategies, see **[Package Sizes Documentation](./docs/package_sizes.md)**
-- **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
-- **Terminal preference**: Set `preferred_terminal` (`"ghostty"`, `"wezterm"`, `"kitty"`, `"alacritty"`)
-- **Editor choice**: Configure your editor (see Editor Configuration section below)
-
-#### 4. Install Fonts (Required for Kitty and Alacritty)
-If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display using modern Nix commands:
-
-**Option A: Using nix profile (recommended - modern replacement for nix-env):**
-```bash
-nix profile add nixpkgs#nerd-fonts.fira-code nixpkgs#nerd-fonts.symbols-only
-```
-
-**Option B: Using Home Manager (if you use Home Manager for system configuration):**
-Add to your Home Manager configuration:
-```nix
-home.packages = with pkgs; [
-  nerd-fonts.fira-code
-  nerd-fonts.symbols-only
-];
-```
-
-**Fallback: Legacy nix-env (if modern methods don't work):**
-```bash
-nix-env -iA nixpkgs.nerd-fonts.fira-code nixpkgs.nerd-fonts.symbols-only
-```
-
-**Note**: WezTerm and Ghostty have better font fallback and don't require this step.
-
-#### 5. Set Up Yazelix to Auto-Launch in Your Terminal
-
-**Option A: Automatic Launch (Recommended for most users)**  
-Copy the appropriate terminal config to automatically start Yazelix:
-
-**For WezTerm:**
-```bash
-cp ~/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua ~/.wezterm.lua
-```
-
-**For Ghostty:**
-```bash
-cp ~/.config/yazelix/configs/terminal_emulators/ghostty/config ~/.config/ghostty/config
-```
-
-**For Kitty:**
-```bash
-cp ~/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf ~/.config/kitty/kitty.conf
-```
-
-**For Alacritty:**
-```bash
-cp ~/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
-```
-
-**Result**: Every time you open your terminal, it will automatically launch Yazelix. You won't need to run any commands.
-
----
-
-**Option B: Manual Launch (For users who don't want to modify terminal configs)**
-
-If you prefer to keep your existing terminal configuration unchanged, just run Yazelix once and it will automatically set up the `yzx` command for you:
-
-```bash
-nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
-```
-
-This will automatically configure your shell and then you can use:
-- `yzx launch` (opens Yazelix in a new terminal window)  
-- `yzx start` (starts Yazelix in current terminal)
-- `yzx help` (see all available commands)
-
-**Optional: Desktop Application Entry**
-
-To make Yazelix searchable from your desktop environment (GNOME, KDE, etc.), copy the desktop entry:
-
-```nushell
-cp ~/.config/yazelix/scripts/yazelix.desktop ~/.local/share/applications/
-```
-
-Run this command from within your yazelix terminal session. After this, you can search for "Yazelix" in your application launcher and launch it directly.
-
-For better icon quality, see [docs/desktop_icon_setup.md](./docs/desktop_icon_setup.md).
-
-#### 6. Using Yazelix
-**Option A users**: Simply open your terminal! Yazelix will automatically launch with the full environment.  
-**Option B users**: Use `yzx launch` or `yzx start` to launch Yazelix when needed.
-
-**First Run**: The first time you launch Yazelix, it will install all dependencies (Zellij, Yazi, Helix, etc.). This may take several minutes, but subsequent launches will be instant.
-
-**Quick start tips:**
-- Use `alt hjkl` to switch between Zellij panes and tabs
-- Press `Enter` in Yazi to open files in your configured editor
-- Use `yzx help` to see all available management commands
-- Use `Alt+Shift+f` to toggle fullscreen on the current pane
-
-#### 7. (Optional but Recommended) Configure Helix Keybindings for Yazelix Integration
-To enable full Helix-Yazi integration, add the following to your Helix config (usually `~/.config/helix/config.toml`):
+### Helix Integration
+For Helix-Yazi integration, add this to your Helix config (`~/.config/helix/config.toml`):
 
 ```toml
 [keys.normal]
 # Yazelix sidebar integration - reveal current file in Yazi sidebar
 A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
 ```
-- **Note:** Only works for Helix instances opened from Yazi.
 
-**Additional Recommended Helix Keybindings:**
-Add these keybindings for improved editing experience:
-
-```toml
-[keys.normal]
-# Navigation and movement
-"{" = "goto_prev_paragraph"
-"}" = "goto_next_paragraph"
-g.e = "goto_file_end"
-ret = ["move_line_down", "goto_first_nonwhitespace"]
-A-ret = ["move_line_up", "goto_first_nonwhitespace"]
-
-# Selection and editing
-X = "extend_line_up"
-C-k = [
-  "extend_to_line_bounds",
-  "delete_selection",
-  "move_line_up",
-  "paste_before",
-]
-C-j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
-
-# System integration
-C-y = ":yank-diagnostic"
-A-r = [":config-reload", ":reload"]
-
-# Git integration
-A-g.b = ":sh git blame -L %{cursor_line},+1 %{buffer_name}"
-A-g.s = ":sh git status --porcelain"
-A-g.l = ":sh git log --oneline -10 %{buffer_name}"
-
-# Execute selections in shells
-tab.x = ":sh $YAZELIX_DEFAULT_SHELL -c '%{selection}'"
-tab.b = ":sh bash -c '%{selection}'"
-tab.B = ":sh bash -c 'source ~/.bashrc && %{selection}'"
-tab.n = ":sh nu -c '%{selection}'"
-tab.N = ":sh nu -c 'source ~/.config/nushell/config.nu; %{selection}'"
-
-# File picker toggles
-tab.h = ":toggle-option file-picker.hidden"
-tab.i = ":toggle-option file-picker.git-ignore"
-
-# Configuration shortcuts
-tab.l = ":o ~/.config/helix/languages.toml"
-tab.c = ":config-open"
-```
-
-See [docs/keybindings.md](./docs/keybindings.md) for complete details and usage tips.
+📖 **[Complete Helix Keybindings Guide →](./docs/keybindings.md)** - Recommended keybindings for enhanced editing experience
 
 ## Version Check
 Check installed tool versions: `nu nushell/scripts/utils/version_info.nu`
@@ -386,7 +179,7 @@ This gives you access to all tools (helix, yazi, lazygit, etc.) in your current 
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 3](#3-configure-your-installation-optional), you already have your `~/.config/yazelix/yazelix.nix` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.nix](./yazelix_default.nix) for all available options and their descriptions.
+If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), you already have your `~/.config/yazelix/yazelix.nix` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.nix](./yazelix_default.nix) for all available options and their descriptions.
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default): Modern, fast terminal written in Zig with great performance
