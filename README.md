@@ -1,5 +1,9 @@
 # Yazelix v9: CLI-only environment mode, lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!
 
+<div align="center">
+  <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
+</div>
+
 ## Preview
 ![yazelix_v8_demo](assets/demos/yazelix_v8_demo.gif)
 
