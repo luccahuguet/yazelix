@@ -3,7 +3,7 @@
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
   <br/>
-  <a href="docs/desktop_icon_setup.md">📱 Desktop Integration Setup</a>
+  <a href="docs/desktop_icon_setup.md">Desktop Integration Setup</a>
 </div>
 
 ## Preview
