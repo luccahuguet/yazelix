@@ -45,6 +45,7 @@ show_help() {
     echo "LAUNCHER:"
     echo "  yzx launch                     - Launch yazelix via terminal"
     echo "  yzx start                      - Start yazelix directly"
+    echo "  yzx env                        - Load yazelix environment without UI"
     echo ""
     echo "HELP:"
     echo "  yzx help                       - Show this help message"
@@ -211,6 +212,12 @@ start_yazelix() {
     nu "$YAZELIX_DIR/nushell/scripts/core/start_yazelix.nu"
 }
 
+# Function to load yazelix environment without UI
+env_yazelix() {
+    echo "Loading Yazelix environment (CLI-only mode)..."
+    YAZELIX_ENV_ONLY=true nix develop --impure "$YAZELIX_DIR"
+}
+
 # Function to restart yazelix
 restart_yazelix() {
     # Get the current Zellij session name (strip ANSI codes)
@@ -263,6 +270,9 @@ main() {
             ;;
         "start")
             start_yazelix
+            ;;
+        "env")
+            env_yazelix
             ;;
         "restart")
             restart_yazelix

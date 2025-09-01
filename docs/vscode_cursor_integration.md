@@ -1,7 +1,20 @@
 # VS Code and Cursor Integration
 
 This guide shows you how to use Yazelix tools (Nushell, zoxide, starship, lazygit, etc.) directly in your VS Code or Cursor integrated terminal.
-Configure your editor to launch the integrated terminal with the full Yazelix environment.
+
+## Quick Method (Recommended): Using `yzx env`
+
+The easiest way to get Yazelix tools in your VS Code/Cursor terminal:
+
+1. **Open integrated terminal** in VS Code/Cursor
+2. **Run**: `yzx env` 
+3. **Done!** All Yazelix tools are now available
+
+This method works instantly and doesn't require any configuration changes.
+
+## Advanced Method: Automatic Terminal Profile
+
+Configure your editor to launch the integrated terminal with the full Yazelix environment automatically.
 
 ## For Cursor Users
 
@@ -21,13 +34,13 @@ Configure your editor to launch the integrated terminal with the full Yazelix en
 ```json
 {
   "terminal.integrated.profiles.linux": {
-    "yazelix-nushell": {
+    "yazelix-env": {
       "path": "/usr/bin/bash",
-      "args": ["-c", "source ~/.nix-profile/etc/profile.d/nix.sh && cd ~/.config/yazelix && nix develop --impure --command nu"],
+      "args": ["-c", "source ~/.nix-profile/etc/profile.d/nix.sh && yzx env"],
       "icon": "terminal-bash"
     }
   },
-  "terminal.integrated.defaultProfile.linux": "yazelix-nushell"
+  "terminal.integrated.defaultProfile.linux": "yazelix-env"
 }
 ```
 
@@ -35,12 +48,12 @@ Configure your editor to launch the integrated terminal with the full Yazelix en
 ```json
 {
   "terminal.integrated.profiles.osx": {
-    "yazelix-nushell": {
+    "yazelix-env": {
       "path": "/bin/bash",
-      "args": ["-c", "source ~/.nix-profile/etc/profile.d/nix.sh && cd ~/.config/yazelix && nix develop --impure --command nu"]
+      "args": ["-c", "source ~/.nix-profile/etc/profile.d/nix.sh && yzx env"]
     }
   },
-  "terminal.integrated.defaultProfile.osx": "yazelix-nushell"
+  "terminal.integrated.defaultProfile.osx": "yazelix-env"
 }
 ```
 
@@ -48,13 +61,11 @@ You're done!
 
 ## How It Works
 
-The configuration:
+The advanced configuration:
 
 1. **Uses bash as launcher**: `/usr/bin/bash` (reliable path across systems)
-2. **Sources Nix profile**: `source ~/.nix-profile/etc/profile.d/nix.sh` (makes `nix` command available)
-3. **Navigates to Yazelix**: `cd ~/.config/yazelix` (required for `nix develop`)
-4. **Launches Nix environment**: `nix develop --impure` (loads all Yazelix tools)
-5. **Starts Nushell**: `--command nu` (with full Yazelix configuration)
+2. **Sources Nix profile**: `source ~/.nix-profile/etc/profile.d/nix.sh` (makes `yzx` command available)
+3. **Runs yzx env**: Loads all Yazelix tools without the UI interface
 
 ## What You Get
 

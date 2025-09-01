@@ -224,12 +224,21 @@ def main [
         $"($colors.cyan)💡 Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files, 'Alt [' or 'Alt ]' to swap layouts($colors.reset)"
     ] | where $it != ""
 
+    # Check if we're in env-only mode (overrides skip_welcome_screen)
+    let env_only_mode = ($env.YAZELIX_ENV_ONLY? == "true")
+    let should_skip_welcome = $skip_welcome_screen or $env_only_mode
+    
     # Show welcome screen or log it
-    if $skip_welcome_screen {
-        # Log welcome info instead of displaying it
-        let welcome_log_file = $"($log_dir)/welcome_(date now | format date '%Y%m%d_%H%M%S').log"
-        $welcome_message | str join "\n" | save $welcome_log_file
-        print $"($colors.cyan)💡 Welcome screen skipped. Welcome info logged to: ($welcome_log_file)($colors.reset)"
+    if $should_skip_welcome {
+        if $env_only_mode {
+            print $"($colors.cyan)🔧 Yazelix environment loaded! All tools are available in your current shell.($colors.reset)"
+            print $"($colors.cyan)💡 Use 'yzx start' or 'yzx launch' to open the full Yazelix interface when needed.($colors.reset)"
+        } else {
+            # Log welcome info instead of displaying it
+            let welcome_log_file = $"($log_dir)/welcome_(date now | format date '%Y%m%d_%H%M%S').log"
+            $welcome_message | str join "\n" | save $welcome_log_file
+            print $"($colors.cyan)💡 Welcome screen skipped. Welcome info logged to: ($welcome_log_file)($colors.reset)"
+        }
     } else {
         # Display the rest of the welcome message (animation already played above)
         for $line in $welcome_message {

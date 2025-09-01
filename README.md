@@ -82,6 +82,11 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Health Check System (`yzx doctor`)**: Comprehensive diagnostic tool that automatically detects and fixes common issues including Helix runtime conflicts, environment variable problems, configuration validation, and system health monitoring. Supports `--verbose` and `--fix` flags for detailed output and automatic issue resolution.
 - **Atuin shell history integration**: Added atuin to the automatic initializer system for enhanced shell history with search, sync, and statistics across all supported shells
 - **Professional logo and desktop integration**: High-quality Yazelix logo with crisp multi-size icons and automatic desktop entry setup for all desktop environments (GNOME, KDE, XFCE, COSMIC, etc.)
+- **CLI-only environment mode (`yzx env`)**: New command for loading Yazelix tools without the UI interface:
+  - **Quick access**: `yzx env` loads all Yazelix tools (helix, yazi, lazygit, etc.) in your current terminal
+  - **No interface overhead**: Skips welcome screen and Zellij launch, giving you direct access to tools
+  - **Clean messaging**: Shows environment status and available commands without interruption
+  - **Perfect for scripts**: Ideal for automation, VS Code integration, or when you just need the tools
 
 
 ## Compatibility
@@ -435,7 +440,14 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 📖 **[Complete Troubleshooting Guide →](./docs/troubleshooting.md)** - Comprehensive solutions for common issues
 
 ## VS Code and Cursor Integration
-Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code or Cursor integrated terminal? See our [VS Code/Cursor integration guide](./docs/vscode_cursor_integration.md) for step-by-step setup instructions that give you the full Yazelix environment in your editor's terminal.
+Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code or Cursor integrated terminal? Now it's even easier with `yzx env`!
+
+**Quick Setup:**
+1. Open VS Code/Cursor integrated terminal
+2. Run `yzx env` to load all Yazelix tools without the UI
+3. Enjoy full Yazelix environment in your editor
+
+For more advanced integration options, see our [VS Code/Cursor integration guide](./docs/vscode_cursor_integration.md).
 
 ## Styling and Themes
 Yazelix includes transparency settings and theme configurations for a beautiful terminal experience. The terminal emulator configs include transparency settings you can comment/uncomment, and Helix comes with transparent theme options. See [docs/styling.md](./docs/styling.md) for customization details.
