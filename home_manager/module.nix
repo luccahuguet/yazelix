@@ -137,6 +137,25 @@ in {
   };
 
   config = mkIf cfg.enable {
+    # Desktop integration - copy yazelix assets
+    xdg.configFile."yazelix/assets/logo.png".source = ../assets/logo.png;
+    xdg.configFile."yazelix/assets/icons/48x48/yazelix.png".source = ../assets/icons/48x48/yazelix.png;
+    xdg.configFile."yazelix/assets/icons/64x64/yazelix.png".source = ../assets/icons/64x64/yazelix.png;
+    xdg.configFile."yazelix/assets/icons/128x128/yazelix.png".source = ../assets/icons/128x128/yazelix.png;
+    xdg.configFile."yazelix/assets/icons/256x256/yazelix.png".source = ../assets/icons/256x256/yazelix.png;
+    xdg.configFile."yazelix/docs/desktop_icon_setup.md".source = ../docs/desktop_icon_setup.md;
+
+    # Desktop entry for application launcher
+    xdg.desktopEntries.yazelix = {
+      name = "Yazelix";
+      comment = "Yazi + Zellij + Helix integrated terminal environment";
+      exec = "${config.xdg.configHome}/yazelix/scripts/yazelix-desktop-launcher.nu";
+      icon = "yazelix";
+      categories = [ "Development" ];
+      type = "Application";
+      startupWMClass = "yazelix";
+    };
+
     # Generate yazelix.nix configuration file
     xdg.configFile."yazelix/yazelix.nix" = {
       text = ''

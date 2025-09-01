@@ -81,6 +81,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Enhanced startup robustness**: Improved Nix detection with automatic environment setup, reliable terminal integration across all emulators, and graceful error handling with clear diagnostics
 - **Health Check System (`yzx doctor`)**: Comprehensive diagnostic tool that automatically detects and fixes common issues including Helix runtime conflicts, environment variable problems, configuration validation, and system health monitoring. Supports `--verbose` and `--fix` flags for detailed output and automatic issue resolution.
 - **Atuin shell history integration**: Added atuin to the automatic initializer system for enhanced shell history with search, sync, and statistics across all supported shells
+- **Professional logo and desktop integration**: High-quality Yazelix logo with crisp multi-size icons and automatic desktop entry setup for all desktop environments (GNOME, KDE, XFCE, etc.) including COSMIC alpha workarounds
 
 
 ## Compatibility
