@@ -4,7 +4,7 @@ layout {
            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
                format_center ""
-               format_right  "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold][layout: {swap_layout}] [shell: {command_shell}] [editor: {command_editor}] #[fg=#00ccff,bold]YAZELIX " // {datetime}
+               format_right  "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold][layout: {swap_layout}] [shell: {command_shell}] [editor: {command_editor}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX " // {datetime}
                format_space  ""
                
                border_enabled  "false"
@@ -28,6 +28,15 @@ layout {
                command_editor_interval "300"
                command_shell_format "{stdout}"
                command_shell_interval "300"
+               
+               command_cpu_command "bash -c 'macchina -o processor-load 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
+               command_cpu_format "#[fg=#ff6600]󰚂{stdout}"
+               command_cpu_interval "5"
+               
+               command_ram_command "bash -c 'macchina -o memory -m 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
+               command_ram_format "#[fg=#ff6600]󰇾{stdout}"
+               command_ram_interval "5"
+               
            }
         }
         children
@@ -41,7 +50,7 @@ layout {
            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
                format_center ""
-               format_right  "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold][layout: {swap_layout}] [shell: {command_shell}] [editor: {command_editor}] #[fg=#00ccff,bold]YAZELIX " // {datetime}
+               format_right  "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold][layout: {swap_layout}] [shell: {command_shell}] [editor: {command_editor}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX " // {datetime}
                format_space  ""
                
                border_enabled  "false"
@@ -65,6 +74,15 @@ layout {
                command_editor_interval "300"
                command_shell_format "{stdout}"
                command_shell_interval "300"
+               
+               command_cpu_command "bash -c 'macchina -o processor-load 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
+               command_cpu_format "#[fg=#ff6600] {stdout}"
+               command_cpu_interval "5"
+               
+               command_ram_command "bash -c 'macchina -o memory -m 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
+               command_ram_format "#[fg=#ff6600]  {stdout}"
+               command_ram_interval "5"
+               
            }
         }
         pane split_direction="vertical" {
