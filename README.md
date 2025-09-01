@@ -1,4 +1,10 @@
-# Yazelix v9: `yzx env`, `yzx doctor`, logo, desktop entry and better zjstatus setup
+# Yazelix v9
+- `yzx env`
+- `yzx doctor`
+- New project logo
+- Desktop entry
+- Better zjstatus setup
+- And more...
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
