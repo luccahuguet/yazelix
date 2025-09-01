@@ -1,5 +1,5 @@
-# Yazelix
-### v9: CLI-only environment mode (`yzx env`), health check system (`yzx doctor`), pack-based config, logo & desktop integration, flexible layouts and more!
+# Yazelix v9
+### CLI-only environment mode (`yzx env`), health check system (`yzx doctor`), pack-based config, logo & desktop integration, flexible layouts and more!
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
