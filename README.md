@@ -1,7 +1,9 @@
-# Yazelix v9: CLI-only environment mode, lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!
+# Yazelix v9: CLI-only environment mode (`yzx env`), health check system (`yzx doctor`), pack-based config, logo & desktop integration, flexible layouts and more!
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
+  <br/>
+  <a href="docs/desktop_icon_setup.md">📱 Desktop Integration Setup</a>
 </div>
 
 ## Preview
