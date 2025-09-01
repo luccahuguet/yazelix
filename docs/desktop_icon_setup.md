@@ -46,17 +46,3 @@ gtk-update-icon-cache ~/.local/share/icons/hicolor/ 2>/dev/null || true
 update-desktop-database ~/.local/share/applications
 ```
 
-## COSMIC Desktop Fix
-
-If using COSMIC and the icon still doesn't appear (known alpha bug), use this fallback:
-
-```bash
-# Copy logo to pixmaps directory
-cp ~/.config/yazelix/assets/logo.png ~/.local/share/pixmaps/yazelix.png
-
-# Update desktop entry to use direct path
-sed -i 's|Icon=yazelix|Icon=/home/$USER/.local/share/pixmaps/yazelix.png|' ~/.local/share/applications/yazelix.desktop
-
-# Refresh desktop database
-update-desktop-database ~/.local/share/applications
-```
