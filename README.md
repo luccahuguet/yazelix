@@ -1,4 +1,5 @@
-# Yazelix v9
+# Yazelix
+### Added in Yazelix v9
 - `yzx env`
 - `yzx doctor`
 - New project logo
