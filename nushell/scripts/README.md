@@ -37,6 +37,7 @@ Reusable utility functions and helpers:
 Scripts for development, testing, and maintenance:
 - `record_demo.nu` - VHS demo recording with font support
 - `test_fonts.nu` - Font testing for VHS recordings
+ - `update_zjstatus.nu` - Safely update the bundled zjstatus.wasm (from local path, URL, or version)
 
 ## Usage
 
