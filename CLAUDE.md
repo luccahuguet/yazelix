@@ -49,6 +49,16 @@ When creating new files or directories, always use underscores to maintain consi
 - ✅ Correct: `$"Using terminal \(Ghostty with nixGL\)"`  
 - ❌ Wrong: `$"Using terminal (Ghostty with nixGL)"` (tries to execute `Ghostty` command)
 
+## Python Notes
+
+- Use `python3` explicitly in all commands, scripts, and documentation.
+- Avoid `python` as it can point to Python 2 on some systems or be unset.
+- Prefer fenced code blocks with `bash` and examples like:
+  ```bash
+  python3 -m venv .venv
+  python3 script.py
+  ```
+
 ## Planning and Decision Making
 
 **ALWAYS PLAN FIRST** - Before taking significant actions (like git commits, major changes, or file operations), explicitly discuss the approach and get user approval. This includes:
@@ -73,4 +83,3 @@ When documenting limitations or potential issues:
 2. Point users to specific files they should edit
 3. Explain the recommended approach first, then mention alternatives
 4. Focus on the workflow that works best rather than listing what doesn't work
-
