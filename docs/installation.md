@@ -25,8 +25,6 @@ For Nix users, install Nushell with modern profile commands:
 
 ```bash
 nix profile add nixpkgs#nushell
-# or (equivalent):
-nix profile install nixpkgs#nushell
 ```
 
 Other platforms and package managers: see official instructions:
