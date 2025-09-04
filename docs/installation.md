@@ -64,7 +64,10 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 - Installs Nix with flakes: just follow the instructions
 - Sets up proper file permissions and system integration
 - Provides a reliable uninstaller if you ever want to remove Nix
-- Verify it with `nix --version`
+- Verify installation:
+```bash
+nix --version
+```
 
 ### Step 2: Download Yazelix
 
