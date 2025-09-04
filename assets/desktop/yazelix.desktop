@@ -1,8 +1,9 @@
 [Desktop Entry]
 Categories=Development
 Comment=Yazi + Zellij + Helix integrated terminal environment
-Exec=/home/lucca/.config/yazelix/scripts/yazelix-desktop-launcher.nu
+Exec=/home/lucca/.config/yazelix/nushell/scripts/core/desktop_launcher.nu
 Icon=yazelix
 Name=Yazelix
 Type=Application
 Version=1.4
+

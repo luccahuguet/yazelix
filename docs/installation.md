@@ -170,7 +170,7 @@ This will automatically configure your shell and then you can use:
 To make Yazelix searchable from your desktop environment (GNOME, KDE, etc.), copy the desktop entry:
 
 ```bash
-cp ~/.config/yazelix/scripts/yazelix.desktop ~/.local/share/applications/
+cp ~/.config/yazelix/assets/desktop/yazelix.desktop ~/.local/share/applications/
 ```
 
 Run this command from within your yazelix terminal session. After this, you can search for "Yazelix" in your application launcher and launch it directly.
