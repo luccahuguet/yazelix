@@ -5,6 +5,7 @@
 </div>
 
 ## Preview
+**v8:**
 ![yazelix_v8_demo](assets/demos/yazelix_v8_demo.gif)
 
 **v8.5 with zjstatus:**
