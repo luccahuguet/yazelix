@@ -36,6 +36,9 @@ export def "yzx help" [] {
     print "  yzx env                        - Load yazelix environment without UI"
     print "  yzx restart                    - Restart yazelix (preserves persistent sessions)"
     print ""
+    print "MAINTENANCE:"
+    print "  yzx update                     - Update bundled zjstatus plugin"
+    print ""
     print "HELP:"
     print "  yzx help                       - Show this help message"
     print ""
@@ -153,3 +156,14 @@ export def "yzx doctor" [
     run_doctor_checks $verbose $fix
 }
 
+# Update bundled components (currently: zjstatus wasm)
+export def "yzx update" [] {
+    print "Updating bundled zjstatus plugin..."
+    try {
+        nu ~/.config/yazelix/nushell/scripts/dev/update_zjstatus.nu
+        print "Done. Restart Yazelix to reload the plugin if running."
+    } catch {|err|
+        print $"Update failed: ($err.msg)"
+        exit 1
+    }
+}
