@@ -32,7 +32,7 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - See [boot sequence](./docs/boot_sequence.md) for details on how Yazelix starts up
 
 ## Vision
-- Using the terminal should be easy, beautiful, pratical and reproducible.
+- Using the terminal should be easy, beautiful, practical and reproducible
 - Good defaults over customization. Have both when possible
 - Yazelix is always on the edge of project versions
 - Yazelix is always evolving, it's a living being
@@ -50,7 +50,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 ## Improvements of v9 over v8
 - **Flexible layout system**: Sidebar mode remains the default, with optional no-sidebar mode for different workflows:
   - **Sidebar mode** (default): IDE-like workflow with persistent Yazi file navigation (recommended!)
-  - **No-sidebar mode**: Available via `enable_sidebar = false`, no yazi sidebar, saves some screen space. Usefull if you use other editors that have a builtin file tree 
+  - **No-sidebar mode**: Available via `enable_sidebar = false`, no Yazi sidebar, saves some screen space. Useful if you use other editors that have a built-in file tree 
 - **Pack-based configuration system**: Simplified package management with technology stacks:
   - Enable entire tech stacks with `packs = ["python", "js_ts", "config"]` instead of commenting individual packages
   - 5 curated packs: `python` (ruff, uv, ty), `js_ts` (biome, bun), `rust` (cargo tools), `config` (formatters), `file-management` (utilities)
@@ -147,8 +147,7 @@ For Helix-Yazi integration, add this to your Helix config (`~/.config/helix/conf
 A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
 ```
 
-📖 **[Complete Helix Keybindings Guide →](./docs/keybindings.md)** - Recommended awesome keybindings for enhanced editing experience
-- want git blame inside helix? Check it out
+📖 **[Complete Helix Keybindings Guide →](./docs/keybindings.md)** - Recommended keybindings for enhanced editing experience (git blame!)
 
 ## Version Check
 Check installed tool versions:
