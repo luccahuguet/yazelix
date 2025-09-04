@@ -47,6 +47,9 @@ show_help() {
     echo "  yzx start                      - Start yazelix directly"
     echo "  yzx env                        - Load yazelix environment without UI"
     echo ""
+    echo "MAINTENANCE:"
+    echo "  yzx update                     - Run 'nix flake update' for Yazelix"
+    echo ""
     echo "HELP:"
     echo "  yzx help                       - Show this help message"
     echo ""
@@ -273,6 +276,9 @@ main() {
             ;;
         "env")
             env_yazelix
+            ;;
+        "update")
+            nu -c "use $YAZELIX_DIR/nushell/scripts/core/yazelix.nu *; yzx update"
             ;;
         "restart")
             restart_yazelix

@@ -37,7 +37,7 @@ export def "yzx help" [] {
     print "  yzx restart                    - Restart yazelix (preserves persistent sessions)"
     print ""
     print "MAINTENANCE:"
-    print "  yzx update                     - Update bundled zjstatus plugin"
+    print "  yzx update                     - Run 'nix flake update' for Yazelix"
     print ""
     print "HELP:"
     print "  yzx help                       - Show this help message"
@@ -156,14 +156,22 @@ export def "yzx doctor" [
     run_doctor_checks $verbose $fix
 }
 
-# Update bundled components (currently: zjstatus wasm)
+# Update flake inputs for Yazelix
 export def "yzx update" [] {
-    print "Updating bundled zjstatus plugin..."
+    use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
+    ensure_nix_available
+    let dir = $"($env.HOME)/.config/yazelix"
+    if not ($dir | path exists) {
+        print $"Error: Yazelix directory not found at ($dir)"
+        exit 1
+    }
+    print "Running: nix flake update (this may take a while)"
+    cd $dir
     try {
-        nu ~/.config/yazelix/nushell/scripts/dev/update_zjstatus.nu
-        print "Done. Restart Yazelix to reload the plugin if running."
+        ^nix flake update
+        print "Done: flake inputs updated. Review and commit flake.lock changes."
     } catch {|err|
-        print $"Update failed: ($err.msg)"
+        print $"flake update failed: ($err.msg)"
         exit 1
     }
 }
