@@ -110,7 +110,10 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 ## Quick Setup
 
 1. **Install Nix**: `curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install`
-2. **Install Nushell**: Required to run Yazelix - see https://www.nushell.sh/book/installation.html
+2. **Install Nushell**: Required to run Yazelix. On Nix:
+   - `nix profile add nixpkgs#nushell`
+   - Or: `nix profile install nixpkgs#nushell`
+   - Other platforms: see https://www.nushell.sh/book/installation.html
 3. **Clone Yazelix**: `git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix`  
 4. **Install fonts** (if using Kitty/Alacritty): `nix profile add nixpkgs#nerd-fonts.fira-code nixpkgs#nerd-fonts.symbols-only`
 5. **Copy terminal config** (optional): See [Step 5 in installation guide](./docs/installation.md#step-5-set-up-yazelix-to-auto-launch-in-your-terminal)

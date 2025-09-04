@@ -20,7 +20,17 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 
 ### Nushell
 Required to run yazelix, used internally (but you can use any of our supported shells)
-- See installation instructions: https://www.nushell.sh/book/installation.html
+
+For Nix users, install Nushell with modern profile commands:
+
+```bash
+nix profile add nixpkgs#nushell
+# or (equivalent):
+nix profile install nixpkgs#nushell
+```
+
+Other platforms and package managers: see official instructions:
+https://www.nushell.sh/book/installation.html
 
 ### Supported Terminal Emulators
 Choose your favorite:
