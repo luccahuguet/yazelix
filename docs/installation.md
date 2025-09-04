@@ -218,11 +218,16 @@ For additional recommended Helix keybindings that enhance your editing experienc
 ## Alternative Installation Methods
 
 ### CLI-Only Mode
-To use Yazelix tools without starting the full interface (no sidebar, no zellij):
+Use Yazelix tools without starting the full interface (no sidebar, no Zellij):
+```bash
+yzx env
+```
+This loads all tools (helix, yazi, lazygit, etc.) into your current shell with Yazelix environment variables set.
+
+If you prefer a raw Nix shell:
 ```bash
 nix develop --impure ~/.config/yazelix
 ```
-This gives you access to all tools (helix, yazi, lazygit, etc.) in your current terminal with your preferred shell. The tools are available on-demand without the automatic Zellij workspace.
 
 ### Home Manager Integration
 Yazelix includes optional Home Manager support for declarative configuration management. See [home_manager/README.md](../home_manager/README.md) for setup instructions.

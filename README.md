@@ -125,7 +125,7 @@ Other platforms: see https://www.nushell.sh/book/installation.html
 git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 ```
 
-4. Install fonts (Kitty/Alacritty)
+4. Install fonts (for Kitty/Alacritty)
 ```bash
 nix profile add nixpkgs#nerd-fonts.fira-code nixpkgs#nerd-fonts.symbols-only
 ```
@@ -147,7 +147,8 @@ For Helix-Yazi integration, add this to your Helix config (`~/.config/helix/conf
 A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
 ```
 
-📖 **[Complete Helix Keybindings Guide →](./docs/keybindings.md)** - Recommended keybindings for enhanced editing experience
+📖 **[Complete Helix Keybindings Guide →](./docs/keybindings.md)** - Recommended awesome keybindings for enhanced editing experience
+- want git blame inside helix? Check it out
 
 ## Version Check
 Check installed tool versions:
@@ -187,11 +188,16 @@ Yazelix uses a **layered configuration system** that safely merges your personal
 - **Other editors**: `editor_command = "nvim"` - Basic integration, loses Helix features
 
 ### Alternative: CLI-Only Mode
-To use Yazelix tools without starting the full interface (no sidebar, no zellij):
+To use Yazelix tools without starting the full interface (no sidebar, no Zellij), use:
+```bash
+yzx env
+```
+This loads all tools (helix, yazi, lazygit, etc.) into your current shell, with Yazelix env vars set and clean messaging.
+
+If you prefer a raw Nix shell, you can use:
 ```bash
 nix develop --impure ~/.config/yazelix
 ```
-This gives you access to all tools (helix, yazi, lazygit, etc.) in your current terminal with your preferred shell. The tools are available on-demand without the automatic Zellij workspace.
 
 ### Packages & Customization
 
