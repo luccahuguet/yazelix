@@ -41,6 +41,7 @@ show_help() {
     echo "VERSION AND SYSTEM:"
     echo "  yzx versions                   - Show version info for all tools"
     echo "  yzx info                       - Show yazelix system information"
+    echo "  yzx why                        - Why Yazelix (elevator pitch)"
     echo ""
     echo "LAUNCHER:"
     echo "  yzx launch                     - Launch yazelix via terminal"
@@ -267,6 +268,18 @@ main() {
 
         "info")
             show_info
+            ;;
+        "why")
+            cat << 'PITCH'
+Yazelix is a reproducible terminal IDE (Yazi + Zellij + Helix) with:
+• Zero‑conflict keybindings, zjstatus, smooth Yazi↔editor flows
+• Top terminals (Ghostty/WezTerm/Kitty/Alacritty) and shells (Bash/Zsh/Fish/Nushell)
+• One‑file config (Nix) with sane defaults and curated packs
+• Remote‑ready over SSH; same superterminal on barebones hosts
+• Git and tooling preconfigured (lazygit, starship, zoxide, carapace)
+Get everything running in <10 minutes. No extra deps, only Nix.
+Install once, get the same environment everywhere.
+PITCH
             ;;
         "launch")
             launch_yazelix

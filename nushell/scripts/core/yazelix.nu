@@ -29,6 +29,7 @@ export def "yzx help" [] {
     print "VERSION AND SYSTEM:"
     print "  yzx versions                   - Show version info for all tools"
     print "  yzx info                       - Show yazelix system information"
+    print "  yzx why                        - Why Yazelix (elevator pitch)"
     print ""
     print "LAUNCHER:"
     print "  yzx launch                     - Launch yazelix via terminal"
@@ -44,6 +45,18 @@ export def "yzx help" [] {
     print ""
     print "Supported shells: bash, nushell, fish, zsh"
     print "=========================================="
+}
+
+# Elevator pitch: Why Yazelix
+export def "yzx why" [] {
+    print "Yazelix is a reproducible terminal IDE (Yazi + Zellij + Helix) with:"
+    print "• Zero‑conflict keybindings, zjstatus, smooth Yazi↔editor flows"
+    print "• Top terminals (Ghostty/WezTerm/Kitty/Alacritty) and shells (Bash/Zsh/Fish/Nushell)"
+    print "• One‑file config (Nix) with sane defaults and curated packs"
+    print "• Remote‑ready over SSH; same superterminal on barebones hosts"
+    print "• Git and tooling preconfigured (lazygit, starship, zoxide, carapace)"
+    print "Get everything running in <10 minutes. No extra deps, only Nix."
+    print "Install once, get the same environment everywhere."
 }
 
 # Show configuration status (canonical, no aliases)
