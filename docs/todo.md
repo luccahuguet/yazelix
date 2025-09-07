@@ -1,38 +1,35 @@
 # Backlog (Ordered)
 
-- [ ] [P1] Add testing (#189): baseline tests for core flows (launch, layouts, keybindings, zjstatus).
-- [ ] [P2] Packaging: make yazelix a single package (#232): reduce complexity and drift.
-- [ ] [P3] Plugin hygiene: remove hardcoded yazi plugins or add update script (#205).
-- [x] [P4] Nix deprecation: replace `mesa.drivers` with `mesa` (#254).
-- [ ] [P5] Core IPC: use pipes instead of `zellij action write-chars` (#49).
-- [ ] [P6] Yazi UX: remove extra step after zoxide jump (#30).
-- [ ] [P7] Keybindings: fix Alt-( and Alt-) in Helix inside Zellij (#176).
-- [x] [P8] Layout/UX: make zjstatus look good on 13” half‑width splits (#255).
-- [ ] [P9] VS Code integration: use `yzx env` via VS Code task syntax (#238).
-- [ ] [P10] Packs: LSP/formatter/linter packs for Go, Rust, Kotlin, TS/JS, Python; link each to Helix languages.toml config (#199).
-- [ ] [P11] Language servers: Tailwind LSP pack option (#195).
-- [ ] [P12] Language servers: postgres-language-server support (#239).
-- [ ] [P13] Yazi: open multiple files from selection (#158).
-- [x] [P14] Docs: POSIX and XDG usage and paths (#206).
-- [x] [P15] Docs: notes on using yazelix via SSH (#253).
-- [ ] [P16] Docs: explain note‑taking in Helix (#181).
-- [x] [P17] Docs: add “yzx why” elevator pitch (reuse in README) (#190).
-- [ ] [P18] Platform: verify Windows support on WSL (#140).
-- [ ] [P19] Terminal support: include terminal emulators (Alacritty/Kitty/Wezterm) bundled via nixGL (#247).
-- [ ] [P20] Comparative table: terminal emulators (#234).
-- [ ] [P21] Benchmark: clean install using Nix (#92).
-- [ ] [P22] zjstatus: user‑configurable strings (#237).
-- [ ] [P23] Integrated theming (#26).
-- [ ] [P24] Yazi → system file manager: open native file manager on Linux (#242).
-- [ ] [P25] UX: option to use a floating pane with lazygit / or an AI TUI of choice (#73).
-- [ ] [P26] Zellij plugin: create a yazelix plugin (#167).
-- [ ] [P27] UX experiment: job freeze/unfreeze to remove sidebar? (nushell freeze/unfreeze; no‑sidebar flow) (#240).
-- [ ] [P28] Emoji support (#224).
-- [ ] [P29] Integration: further Claude Code integration (#172).
-- [ ] [P30] Evaluate Nushell AI integration (#223).
-- [ ] [P31] Static preview: refresh/update preview assets (#250).
-- [ ] [P32] Repo hygiene: filter large GIFs from history (#249).
-- [ ] [P33] Media optimization: split demo GIFs into smaller pieces (#228).
+- [ ] Add testing (#189): baseline tests for core flows (launch, layouts, keybindings, zjstatus).
+- [ ] Packaging: make yazelix a single package (#232): reduce complexity and drift.
+- [ ] Profile boot/initialization end-to-end (#257): instrument startup and log timings.
+- [ ] Faster boot with included Ghostty (nixGL) (#258): reduce cold/warm start time.
+- [ ] Plugin hygiene: remove hardcoded yazi plugins or add update script (#205).
+- [ ] Core IPC: use pipes instead of `zellij action write-chars` (#49).
+- [ ] Yazi UX: remove extra step after zoxide jump (#30).
+- [ ] Keybindings: fix Alt-( and Alt-) in Helix inside Zellij (#176).
+- [ ] VS Code integration: use `yzx env` via VS Code task syntax (#238).
+- [ ] Desktop entry: Ghostty window shows blank icon/name; align with Yazelix (#259).
+- [ ] Packs: LSP/formatter/linter packs for Go, Rust, Kotlin, TS/JS, Python; link each to Helix languages.toml config (#199).
+- [ ] Language servers: Tailwind LSP pack option (#195).
+- [ ] Language servers: postgres-language-server support (#239).
+- [ ] Yazi: open multiple files from selection (#158).
+- [ ] Platform: verify Windows support on WSL (#140).
+- [ ] Terminal support: include terminal emulators (Alacritty/Kitty/Wezterm) bundled via nixGL (#247).
+- [ ] Comparative table: terminal emulators (#234).
+- [ ] Benchmark: clean install using Nix (#92).
+- [ ] zjstatus: user‑configurable strings (#237).
+- [ ] Integrated theming (#26).
+- [ ] Yazi → system file manager: open native file manager on Linux (#242).
+- [ ] UX: option to use a floating pane with lazygit / or an AI TUI of choice (#73).
+- [ ] Zellij plugin: create a yazelix plugin (#167).
+- [ ] UX experiment: job freeze/unfreeze to remove sidebar? (nushell freeze/unfreeze; no‑sidebar flow) (#240).
+- [ ] Emoji support (#224).
+- [ ] Integration: further Claude Code integration (#172).
+- [ ] Evaluate Nushell AI integration (#223).
+- [ ] Static preview: refresh/update preview assets (#250).
+- [ ] Repo hygiene: filter large GIFs from history (#249).
+- [ ] Media optimization: split demo GIFs into smaller pieces (#228).
 
 ## Notes and Rationale
 
@@ -66,3 +63,11 @@
 - Docs: clear install instructions (Nix profile + Home Manager) and migration from repo-clone installs.
 - Build/test: flake outputs build in CI; smoke test that `yazelix --version` runs and a minimal session starts.
 - Out of scope: bundling terminal emulators via nixGL (#247) and other integrations (tracked separately).
+
+## Done
+
+- [x] Nix deprecation: replace `mesa.drivers` with `mesa` (#254)
+- [x] Layout/UX: zjstatus looks good on 13” half‑width splits (#255)
+- [x] Docs: POSIX and XDG usage and paths (#206)
+- [x] Docs: notes on using yazelix via SSH (#253)
+- [x] Docs: add “yzx why” elevator pitch and README section (#190)
