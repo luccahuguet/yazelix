@@ -5,6 +5,8 @@ layout {
                format_left   "{mode} {tabs}"
                format_center ""
                format_right  "#[fg=#ff0088,bold]{session} {swap_layout} #[fg=#00ff88,bold][shell: {command_shell}] #[fg=#00ff88,bold][editor: {command_editor}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX " // {datetime}
+               format_hide_on_overlength "true"
+               format_precedence "lrc"
                swap_layout_format "#[fg=#00ff88,bold][layout: {name}]"
                swap_layout_hide_if_empty "true"
                format_space  ""
@@ -53,6 +55,8 @@ layout {
                format_left   "{mode} {tabs}"
                format_center ""
                format_right  "#[fg=#ff0088,bold]{session} {swap_layout} #[fg=#00ff88,bold][shell: {command_shell}] #[fg=#00ff88,bold][editor: {command_editor}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX " // {datetime}
+               format_hide_on_overlength "true"
+               format_precedence "lrc"
                swap_layout_format "#[fg=#00ff88,bold][layout: {name}]"
                swap_layout_hide_if_empty "true"
                format_space  ""
