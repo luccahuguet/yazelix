@@ -7,7 +7,7 @@
 - [ ] [P5] Core IPC: use pipes instead of `zellij action write-chars` (#49).
 - [ ] [P6] Yazi UX: remove extra step after zoxide jump (#30).
 - [ ] [P7] Keybindings: fix Alt-( and Alt-) in Helix inside Zellij (#176).
-- [ ] [P8] Layout/UX: make zjstatus look good on 13” half‑width splits (#255).
+- [x] [P8] Layout/UX: make zjstatus look good on 13” half‑width splits (#255).
 - [ ] [P9] VS Code integration: use `yzx env` via VS Code task syntax (#238).
 - [ ] [P10] Packs: LSP/formatter/linter packs for Go, Rust, Kotlin, TS/JS, Python; link each to Helix languages.toml config (#199).
 - [ ] [P11] Language servers: Tailwind LSP pack option (#195).
