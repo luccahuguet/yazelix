@@ -61,10 +61,8 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 ## Improvements of v9.5 over v9
 - zjstatus polish: swap layout widget (colored, hide‑if‑empty), colored shell/editor, smarter overlength hiding with tabs prioritized, improved inactive/active tab variants (fullscreen/sync/floating), and cleaner status without tab separators.
-- Small screens: status layout tuned for 13" half‑width splits.
-- CLI: new `yzx why` command for a concise elevator pitch.
+- CLI: new `yzx why` command for a concise "elevator pitch".
 - Docs: POSIX/XDG paths doc + README link; SSH/Remote section in README.
-- Terminal integration: Ghostty with nixGL enabled by default for non‑NixOS.
   
 Full v9 notes moved to Version History: ./docs/history.md
 
