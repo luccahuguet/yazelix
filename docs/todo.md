@@ -30,3 +30,4 @@
 - [ ] Static preview: refresh/update preview assets (#250).
 - [ ] Repo hygiene: filter large GIFs from history (#249).
 - [ ] Media optimization: split demo GIFs into smaller pieces (#228).
+- [ ] Mobile: Yazelix Android/iOS app (#260).
