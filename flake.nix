@@ -6,11 +6,6 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     helix.url = "github:helix-editor/helix";
-    # Pin nushell to specific commit with version 0.105.1 for carapace compatibility
-    # Carapace 1.3.3 (in nixpkgs) has outdated nushell integration code that uses
-    # deprecated 'get -i' syntax instead of 'get -o', causing warnings with newer nushell versions
-    # This will be fixed in carapace 1.4.1, but until nixpkgs updates we pin nushell to 0.105.1
-    nixpkgs-nushell.url = "github:nixos/nixpkgs/6027c30c8e9810896b92429f0092f624f7b1aace";
     nixgl.url = "github:guibou/nixGL";
   };
 
@@ -18,7 +13,6 @@
     {
       self,
       nixpkgs,
-      nixpkgs-nushell,
       flake-utils,
       helix,
       nixgl,
@@ -27,13 +21,10 @@
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = import nixpkgs { 
-          inherit system; 
-          overlays = [
-            nixgl.overlay
-          ];
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ nixgl.overlay ];
         };
-        nushellPkgs = import nixpkgs-nushell { inherit system; };
 
         # Read configuration from yazelix.nix
         homeDir = builtins.getEnv "HOME";
@@ -107,10 +98,9 @@
         helixFromSource = helix.packages.${system}.default;
         helixPackage = if buildHelixFromSource then helixFromSource else pkgs.helix;
 
-        # Ghostty wrapper with nixGL integration (following home-manager pattern)
+        # Ghostty wrapper with nixGL for GL drivers on non-NixOS
         ghosttyWrapper = if yazelixIncludeTerminal then
           pkgs.writeShellScriptBin "yazelix-ghostty" ''
-            # Use nixGLIntel for GPU acceleration (works for Intel/Mesa/AMD)
             exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.ghostty}/bin/ghostty \
               --config-file="$YAZELIX_DIR/configs/terminal_emulators/ghostty/config" "$@"
           ''
@@ -127,7 +117,7 @@
           ''
         else null;
 
-        # Desktop entry for yazelix with logo  
+        # Desktop entry for yazelix with logo
         yazelixDesktopEntry = if yazelixIncludeTerminal then
           pkgs.makeDesktopItem {
             name = "yazelix";
@@ -145,7 +135,7 @@
           zellij # Terminal multiplexer for managing panes and layouts
           helixPackage # Helix editor, either built from source or from nixpkgs
           yazi # Fast terminal file manager with sidebar integration
-          nushellPkgs.nushell # Modern shell with structured data support (pinned to v0.105.1)
+          nushell # Modern shell with structured data support (follow nixpkgs)
           fzf # Fuzzy finder for quick file and command navigation
           zoxide # Smart directory jumper for efficient navigation
           starship # Customizable shell prompt with Git status
@@ -155,11 +145,10 @@
           mise # Tool version manager - pre-configured in Yazelix shell initializers
         ] ++ (if yazelixIncludeTerminal then [
           # Terminal emulator with GPU acceleration support
-          ghosttyWrapper # Ghostty with automatic nixGL wrapper detection
+          ghosttyWrapper # Ghostty with nixGL wrapper
           ghostty # Base ghostty package
           yazelixDesktopLauncher # Desktop launcher script
           yazelixDesktopEntry # Desktop entry with logo
-          # Add nixGL packages (following home-manager pattern)
           pkgs.nixgl.nixGLIntel # For Intel/Mesa GPU acceleration
         ] else []);
 

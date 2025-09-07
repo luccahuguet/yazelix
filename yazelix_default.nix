@@ -19,8 +19,7 @@
   extra_shells = [ ];
 
   # Include terminal emulator in yazelix (default: true)
-  # When true, yazelix includes Ghostty with automatic nixGL GPU acceleration
-  # When false, uses traditional external terminal approach (requires separate installation)
+  # Uses Ghostty with nixGL for GPU acceleration on non-NixOS.
   include_terminal = true;
 
   # Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
