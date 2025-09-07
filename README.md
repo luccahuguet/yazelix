@@ -59,45 +59,14 @@ Install once, get the same environment everywhere
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
-## Improvements of v9 over v8: zjstatus, `yzx env`, `yzx doctor`, `no_sidebar` mode, pack-based system, new logo, desktop entry and more! 
-- **Flexible layout system**: Sidebar mode remains the default, with optional no-sidebar mode for different workflows:
-  - **Sidebar mode** (default): IDE-like workflow with persistent Yazi file navigation (recommended!)
-  - **No-sidebar mode**: Available via `enable_sidebar = false`, no Yazi sidebar, saves some screen space. Useful if you use other editors that have a built-in file tree 
-- **Pack-based configuration system**: Simplified package management with technology stacks:
-  - Enable entire tech stacks with `packs = ["python", "js_ts", "config"]` instead of commenting individual packages
-  - 5 curated packs: `python` (ruff, uv, ty), `js_ts` (biome, bun), `rust` (cargo tools), `config` (formatters), `file-management` (utilities)
-  - Hybrid approach: use packs for bulk selection, `user_packages` for individual tools
-- **Enhanced Zellij layouts**: Added comprehensive layout system with both sidebar and no-sidebar variants:
-  - **Sidebar layouts** (default): `basic`, `stacked`, `three_column`, `sidebar_closed` - persistent file navigation
-  - **No-sidebar layouts**: `basic`, `stacked`, `two_column` - clean, full-screen workflows
-- **New sidebar_closed swap layout**: Dynamic sidebar toggling: use the sidebar_closed swap layout, reach it with `Alt+[` / `Alt+]` for space optimization when needed
-- **New zjstatus plugin integration**: Added custom status bar plugin with shell and editor information:
-  - **Shows your configured shell and editor**: `[shell: nu] [editor: hx] YAZELIX` with proper spacing and color coding (would show your configured editor)
-  - **Replaces default Zellij status bar** with more informative yazelix-specific display
-- **Dynamic Three-Layer Zellij Configuration**: Completely rewritten configuration system with modular, maintainable approach:
-  - **Layer 1**: Zellij defaults (fetched dynamically via `zellij setup --dump-config`)
-  - **Layer 2**: Yazelix overrides (`yazelix_overrides.kdl`) - Yazelix-specific settings
-  - **Layer 3**: User configuration (`user_config.kdl`) - Your personal customizations with **highest priority**
-  - **Smart caching**: Only regenerates when source files change for faster startup
-  - **XDG-compliant**: Generated config saved to `~/.local/share/yazelix/configs/zellij/`
-  - **Comprehensive template**: `user_config.kdl` includes documented examples for themes, keybindings, plugins, and advanced options
-  - **Improved maintainability**: Removed old static `config.kdl` system that required manual updates
-  - **Better user experience**: Users can now easily customize Zellij by editing a single, well-documented file
-  - **Reference documentation**: See [configs/zellij/example_generated_config.kdl](./configs/zellij/example_generated_config.kdl) for the complete default Zellij configuration with all available keybindings and options
-- **Alt+p directory opening**: New Yazi keybinding for instant workspace expansion:
-  - **Quick pane creation**: `Alt+p` in Yazi opens selected directory in new Zellij pane
-  - **Smart file handling**: For files, opens parent directory; for directories, opens the directory itself
-  - **Proper shell environment**: New panes start with correctly configured Nushell in target directory
-- **Enhanced startup robustness**: Improved Nix detection with automatic environment setup, reliable terminal integration across all emulators, and graceful error handling with clear diagnostics
-- **Health Check System (`yzx doctor`)**: Comprehensive diagnostic tool that automatically detects and fixes common issues including Helix runtime conflicts, environment variable problems, configuration validation, and system health monitoring. Supports `--verbose` and `--fix` flags for detailed output and automatic issue resolution.
-- **Atuin shell history integration**: Added atuin to the automatic initializer system for enhanced shell history with search, sync, and statistics across all supported shells
-- **Project logo and desktop integration**: High-quality Yazelix logo with crisp multi-size icons and automatic desktop entry setup for all desktop environments (GNOME, KDE, XFCE, COSMIC, etc.)
-- **CLI-only environment mode (`yzx env`)**: New command for loading Yazelix tools without the UI interface:
-  - **Quick access**: `yzx env` loads all Yazelix tools (helix, yazi, lazygit, etc.) in your current terminal
-  - **No interface overhead**: Skips welcome screen and Zellij launch, giving you direct access to tools
-  - **Clean messaging**: Shows environment status and available commands without interruption
-  - **Perfect for scripts**: Ideal for automation, VS Code integration, or when you just need the tools
-- **New sponsor button!**: I never made a cent on yazelix, but I love improving it! You can now support the project through github sponsors (in the repo) if you'd like :smiley:
+## Improvements of v9.5 over v9
+- zjstatus polish: swap layout widget (colored, hide‑if‑empty), colored shell/editor, smarter overlength hiding with tabs prioritized, improved inactive/active tab variants (fullscreen/sync/floating), and cleaner status without tab separators.
+- Small screens: status layout tuned for 13" half‑width splits.
+- CLI: new `yzx why` command for a concise elevator pitch.
+- Docs: POSIX/XDG paths doc + README link; SSH/Remote section in README.
+- Terminal integration: Ghostty with nixGL enabled by default for non‑NixOS.
+  
+Full v9 notes moved to Version History: ./docs/history.md
 
 ## Compatibility
 - **Platform**: Works on any Linux distribution. Likely works on macOS as well (untested)
