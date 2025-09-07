@@ -31,12 +31,24 @@ Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
 - This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
 - See [boot sequence](./docs/boot_sequence.md) for details on how Yazelix starts up
 
+## Why Yazelix
+Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix. It delivers a consistent, fast “superterminal” locally or over SSH with zero manual setup: smart pane/layout orchestration, sidebar reveal/open flows, curated packs, and sane defaults. It also solves helix/zellij keybinding conflicts (no need to ever lock zellij), auto‑configures great tools like starship, zoxide, carapace (that normally require editing shell config files), and includes many tools from the Yazelix Collection, like lazygit
+
+It already comes with cool zellij and yazi plugins, some of which I maintain myself
+
+It has features like `reveal in Yazi` (from Helix) and opening files from Yazi in your configured editor
+
+Supports top terminals (Ghostty, WezTerm, Kitty, Alacritty) and popular shells (Bash, Zsh, Fish, Nushell). Easy to configure via a single Nix file with sensible defaults
+
+Get everything running in less than 10 minutes. No extra dependencies, only Nix
+
+Install once, get the same environment everywhere
+
 ## Vision
 - Using the terminal should be easy, beautiful, practical and reproducible
 - Good defaults over customization. Have both when possible
 - Yazelix is always on the edge of project versions
 - Yazelix is always evolving, it's a living being
-- Yazelix is easy to use
 - What is even Yazelix?
 - Yazelix lets you say `I use Yazelix btw`
 - Boy, do we Nix
@@ -159,6 +171,14 @@ When opening files from Yazi, Yazelix will:
 
 For a detailed history of all major Yazelix version bumps and changelogs, see [Version History](./docs/history.md).
 
+## POSIX/XDG Paths
+
+Yazelix respects XDG directories for config, data, state, and cache. See POSIX/XDG Paths for details: ./docs/posix_xdg.md
+
+## SSH / Remote
+
+Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly without any GUI, giving you a fully configured, consistent “superterminal” on barebones hosts (for example, an AWS EC2 instance). The flake delivers the same tools, keybindings, and layouts you use locally, minimizing drift on ephemeral servers.
+
 ## Customization & Configuration
 
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
@@ -226,16 +246,6 @@ Yazelix includes optional Home Manager support for declarative configuration man
 - For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html)
 - Add more swap layouts as needed using the KDL files in `configs/zellij/layouts`
 - Use `lazygit`, it's great
-
-## Why Use This Project?
-- Easy to configure and personalize
-- I daily-drive Yazelix and will always try to improve and maintain it
-- Zero-conflict keybindings (no need to lock Zellij) and a powerful Yazi sidebar
-- Cool Yazi plugins included out of the box
-- Features like `reveal in Yazi` (from Helix) and opening files from Yazi in your configured editor
-- Enhanced Git integration with `lazygit` and a customizable Starship prompt
-- Nix-based setup ensures consistent, declarative, reproducible environments
-
 
 ## When should you not use yazelix?
 - If you hate having fun
