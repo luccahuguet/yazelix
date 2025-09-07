@@ -4,7 +4,9 @@ layout {
            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
                format_center ""
-               format_right  "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold][layout: {swap_layout}] [shell: {command_shell}] [editor: {command_editor}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX " // {datetime}
+               format_right  "#[fg=#ff0088,bold]{session} {swap_layout} #[fg=#00ff88,bold][shell: {command_shell}] #[fg=#00ff88,bold][editor: {command_editor}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX " // {datetime}
+               swap_layout_format "#[fg=#00ff88,bold][layout: {name}]"
+               swap_layout_hide_if_empty "true"
                format_space  ""
                
                border_enabled  "false"
@@ -24,9 +26,9 @@ layout {
                command_shell_command "bash -c 'echo ${YAZELIX_DEFAULT_SHELL:-$(basename $SHELL)}'"
                
                command_editor_command "bash -c 'basename $EDITOR'"
-               command_editor_format "{stdout}"
+               command_editor_format "#[fg=#00ff88,bold]{stdout}"
                command_editor_interval "300"
-               command_shell_format "{stdout}"
+               command_shell_format "#[fg=#00ff88,bold]{stdout}"
                command_shell_interval "300"
                
                command_cpu_command "bash -c 'macchina -o processor-load 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
@@ -50,7 +52,9 @@ layout {
            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
                format_center ""
-               format_right  "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold][layout: {swap_layout}] [shell: {command_shell}] [editor: {command_editor}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX " // {datetime}
+               format_right  "#[fg=#ff0088,bold]{session} {swap_layout} #[fg=#00ff88,bold][shell: {command_shell}] #[fg=#00ff88,bold][editor: {command_editor}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX " // {datetime}
+               swap_layout_format "#[fg=#00ff88,bold][layout: {name}]"
+               swap_layout_hide_if_empty "true"
                format_space  ""
                
                border_enabled  "false"
