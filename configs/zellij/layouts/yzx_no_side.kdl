@@ -4,7 +4,7 @@ layout {
            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
                format_center ""
-               format_right  "#[fg=#ff0088,bold]{session} {swap_layout} #[fg=#00ff88,bold][shell: {command_shell}] #[fg=#00ff88,bold][editor: {command_editor}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX " // {datetime}
+               format_right  "#[fg=#ff0088,bold]{session} {swap_layout} #[fg=#00ff88,bold][shell: {command_shell}] #[fg=#00ff88,bold][editor: {command_editor}] #[fg=#00ff88,bold][term: {command_term}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX " // {datetime}
                format_hide_on_overlength "true"
                format_precedence "lrc"
                swap_layout_format "#[fg=#00ff88,bold][layout: {name}]"
@@ -42,6 +42,10 @@ layout {
                command_shell_format "#[fg=#00ff88,bold]{stdout}"
                command_shell_interval "300"
                
+               command_term_command "bash -c 'echo ${YAZELIX_PREFERRED_TERMINAL:-unknown}'"
+               command_term_format "#[fg=#00ff88,bold]{stdout}"
+               command_term_interval "300"
+               
                command_cpu_command "bash -c 'macchina -o processor-load 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
                command_cpu_format "#[fg=#ff6600]󰚂{stdout}"
                command_cpu_interval "5"
@@ -63,7 +67,7 @@ layout {
            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
                format_center ""
-               format_right  "#[fg=#ff0088,bold]{session} {swap_layout} #[fg=#00ff88,bold][shell: {command_shell}] #[fg=#00ff88,bold][editor: {command_editor}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX " // {datetime}
+               format_right  "#[fg=#ff0088,bold]{session} {swap_layout} #[fg=#00ff88,bold][shell: {command_shell}] #[fg=#00ff88,bold][editor: {command_editor}] #[fg=#00ff88,bold][term: {command_term}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX " // {datetime}
                format_hide_on_overlength "true"
                format_precedence "lrc"
                swap_layout_format "#[fg=#00ff88,bold][layout: {name}]"
@@ -100,6 +104,10 @@ layout {
                command_editor_interval "300"
                command_shell_format "{stdout}"
                command_shell_interval "300"
+               
+               command_term_command "bash -c 'echo ${YAZELIX_PREFERRED_TERMINAL:-unknown}'"
+               command_term_format "{stdout}"
+               command_term_interval "300"
                
                command_cpu_command "bash -c 'macchina -o processor-load 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
                command_cpu_format "#[fg=#ff6600]󰚂{stdout}"

@@ -8,6 +8,11 @@ local config = wezterm.config_builder()
 config.color_scheme = 'Abernathy'
 config.hide_tab_bar_if_only_one_tab = true
 
+-- Ensure consistent desktop branding across Wayland/X11
+-- Wayland compositors use app_id; X11 uses window class (general/instance)
+config.wayland_app_id = 'com.yazelix.Yazelix'
+config.window_class = { instance = 'yazelix', general = 'com.yazelix.Yazelix' }
+
 -- Start Yazelix via login shell to ensure Nix environment is loaded
 config.default_prog = { 'bash', '-l', '-c', 'nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu' }
 
