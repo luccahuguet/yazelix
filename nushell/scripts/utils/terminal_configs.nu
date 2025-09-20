@@ -90,7 +90,6 @@ window-padding-y = 10,0
     # Add cursor trail configuration based on setting
     let cursor_config = match $cursor_trail {
         "blaze" => "custom-shader = ./shaders/cursor_smear.glsl",
-        "white" => "custom-shader = ./shaders/cursor_trail_white.glsl",
         "snow" => "custom-shader = ./shaders/cursor_trail_white.glsl",
         "cosmic" => "custom-shader = ./shaders/cursor_trail_cosmic.glsl",
         "ocean" => "custom-shader = ./shaders/cursor_trail_ocean.glsl",
@@ -103,7 +102,7 @@ window-padding-y = 10,0
 
     $base_config + "\n" + $transparency_config + "\n\n# Cursor trail effect \(configurable via yazelix.nix\)\n" + $cursor_config + "\n" +
     "# Alternative presets (uncomment to try)\n" +
-    "# snow (white):  custom-shader = ./shaders/cursor_trail_white.glsl\n" +
+    "# snow:  custom-shader = ./shaders/cursor_trail_white.glsl\n" +
     "# blaze (fire):  custom-shader = ./shaders/cursor_smear.glsl\n" +
     "# cosmic (violet): custom-shader = ./shaders/cursor_trail_cosmic.glsl\n" +
     "# ocean (blue):  custom-shader = ./shaders/cursor_trail_ocean.glsl\n" +
@@ -169,8 +168,7 @@ export def generate_kitty_config [] {
 
     # Kitty cursor trail support (built-in animation)
     let cursor_config = match $cursor_trail {
-        # Kitty supports a built-in white trail; map white/snow to it
-        "white" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
+        # Kitty supports a built-in white trail; map snow to it
         "snow" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
         "none" => "# cursor_trail 0",
         _ => "# cursor_trail 0  # Custom effects (blaze/ocean/forest/sunset/neon/cosmic) not supported in Kitty"

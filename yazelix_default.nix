@@ -29,9 +29,9 @@
   extra_terminals = [ ];
 
   # Cursor trail effect (default: "blaze")
-  # Options: "blaze", "white", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "none"
+  # Options: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "none"
   # - "blaze":  Orange/red fire trail effect (Ghostty only)
-  # - "white":  Clean white trail effect (Ghostty and Kitty); alias: "snow"
+  # - "snow":   Clean white trail effect (Ghostty and Kitty)
   # - "cosmic": Cosmic purple trail effect (Ghostty only)
   # - "ocean":  Blue trail effect (Ghostty only)
   # - "forest": Green trail effect (Ghostty only)

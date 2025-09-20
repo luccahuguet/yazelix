@@ -60,7 +60,7 @@ background-opacity = 0.95
 # Cursor trail effect (configurable via yazelix.nix)
 custom-shader = ./shaders/cursor_trail_cosmic.glsl
 # Alternative presets (uncomment to try)
-# snow (white):  custom-shader = ./shaders/cursor_trail_white.glsl
+# snow:  custom-shader = ./shaders/cursor_trail_white.glsl
 # blaze (fire):  custom-shader = ./shaders/cursor_smear.glsl
 # cosmic (violet): custom-shader = ./shaders/cursor_trail_cosmic.glsl
 # ocean (blue):  custom-shader = ./shaders/cursor_trail_ocean.glsl

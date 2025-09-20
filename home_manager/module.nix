@@ -64,13 +64,13 @@ in {
     };
 
     cursor_trail = mkOption {
-      type = types.enum [ "blaze" "white" "snow" "cosmic" "ocean" "forest" "sunset" "neon" "none" ];
+      type = types.enum [ "blaze" "snow" "cosmic" "ocean" "forest" "sunset" "neon" "none" ];
       default = "blaze";
       description = ''
         Cursor trail effect for supported terminals.
 
         - "blaze": Orange/red fire trail effect (Ghostty only)
-        - "white" / "snow": Clean white trail effect (Ghostty and Kitty)
+        - "snow": Clean white trail effect (Ghostty and Kitty)
         - "cosmic": Cosmic purple trail effect (Ghostty only)
         - "ocean": Blue trail effect (Ghostty only)
         - "forest": Green trail effect (Ghostty only)
