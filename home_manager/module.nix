@@ -64,11 +64,12 @@ in {
     };
 
     cursor_trail = mkOption {
-      type = types.enum [ "blaze" "snow" "cosmic" "ocean" "forest" "sunset" "neon" "none" ];
-      default = "blaze";
+      type = types.listOf (types.enum [ "blaze" "snow" "cosmic" "ocean" "forest" "sunset" "neon" "none" ]);
+      default = [ "blaze" ];
       description = ''
-        Cursor trail effect for supported terminals.
+        Cursor trail effect priority list (first uncommented wins).
 
+        Presets:
         - "blaze": Orange/red fire trail effect (Ghostty only)
         - "snow": Clean white trail effect (Ghostty and Kitty)
         - "cosmic": Cosmic purple trail effect (Ghostty only)
@@ -214,7 +215,7 @@ in {
           # Terminal configuration
           preferred_terminal = "${cfg.preferred_terminal}";
           extra_terminals = ${builtins.toJSON cfg.extra_terminals};
-          cursor_trail = "${cfg.cursor_trail}";
+          cursor_trail = ${builtins.toJSON cfg.cursor_trail};
           transparency = "${cfg.transparency}";
           
           # Editor configuration

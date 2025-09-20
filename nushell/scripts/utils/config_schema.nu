@@ -36,14 +36,25 @@ export def validate_enum_values [user: record] {
         { key: "ascii_art_mode", allowed: ["static", "animated"] }
     ]
     for enum in $enums {
-        if ($user | get $enum.key | is-empty) {
+        if not ($user | columns | any {|k| $k == $enum.key }) {
             continue
         }
         let value = ($user | get $enum.key)
-        if not ($value in $enum.allowed) {
-            let allowed_str = ($enum.allowed | str join ", ")
-            let msg = '⚠️  Invalid value for ' + $enum.key + ': ' + $value + ' (allowed: [' + $allowed_str + '])'
-            $warnings = ($warnings | append $msg)
+        if ($enum.key == "cursor_trail") and (value | describe | str contains "list") {
+            # Validate each list entry
+            for v in $value {
+                if not ($v in $enum.allowed) {
+                    let allowed_str = ($enum.allowed | str join ", ")
+                    let msg = '⚠️  Invalid value for cursor_trail: ' + $v + ' (allowed: [' + $allowed_str + '])'
+                    $warnings = ($warnings | append $msg)
+                }
+            }
+        } else {
+            if not ($value in $enum.allowed) {
+                let allowed_str = ($enum.allowed | str join ", ")
+                let msg = '⚠️  Invalid value for ' + $enum.key + ': ' + $value + ' (allowed: [' + $allowed_str + '])'
+                $warnings = ($warnings | append $msg)
+            }
         }
     }
     $warnings

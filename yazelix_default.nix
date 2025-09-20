@@ -28,8 +28,13 @@
   # Only install additional terminals if you plan to use them
   extra_terminals = [ ];
 
-  # Cursor trail effect (default: "blaze")
-  # Options: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "none"
+  # Cursor trail effect priority list (first uncommented wins)
+  #
+  # How to use:
+  # - Leave multiple presets and comment/uncomment to try options quickly
+  # - The generator picks the first uncommented entry in this list
+  #
+  # Presets:
   # - "blaze":  Orange/red fire trail effect (Ghostty only)
   # - "snow":   Clean white trail effect (Ghostty and Kitty)
   # - "cosmic": Cosmic purple trail effect (Ghostty only)
@@ -39,7 +44,16 @@
   # - "neon":   Cyan/magenta trail effect (Ghostty only)
   # - "none":   No cursor trail shader (all terminals)
   # Note: WezTerm and Alacritty do not support cursor trails
-  cursor_trail = "blaze";
+  cursor_trail = [
+    "blaze"
+    # "snow"
+    # "cosmic"
+    # "ocean"
+    # "forest"
+    # "sunset"
+    # "neon"
+    # "none"
+  ];
 
   # Terminal transparency level (default: "low")
   # Options: "none", "low", "medium", "high"
