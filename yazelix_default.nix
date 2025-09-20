@@ -29,9 +29,10 @@
   extra_terminals = [ ];
 
   # Cursor trail effect (default: "blaze")
-  # Options: "blaze", "white", "none"
+  # Options: "blaze", "white", "cosmic", "none"
   # - "blaze": Orange/red fire trail effect (Ghostty only)
   # - "white": Clean white trail effect (Ghostty and Kitty only)
+  # - "cosmic": Cosmic purple trail effect (Ghostty only)
   # - "none": No cursor trail shader (all terminals)
   # Note: WezTerm and Alacritty do not support cursor trails
   cursor_trail = "blaze";

@@ -91,6 +91,7 @@ window-padding-y = 10,0
     let cursor_config = match $cursor_trail {
         "blaze" => "custom-shader = ./shaders/cursor_smear.glsl",
         "white" => "custom-shader = ./shaders/cursor_trail_white.glsl",
+        "cosmic" => "custom-shader = ./shaders/cursor_trail_cosmic.glsl",
         "none" => "# custom-shader = ./shaders/cursor_smear.glsl",
         _ => "custom-shader = ./shaders/cursor_smear.glsl" # Default to blaze
     }
