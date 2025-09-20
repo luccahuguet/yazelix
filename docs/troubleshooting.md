@@ -43,6 +43,22 @@ mv ~/.config/helix/runtime ~/.config/helix/runtime.backup
 **Prevention:**
 Yazelix manages its own Helix runtime via `HELIX_RUNTIME` environment variable. Old `~/.config/helix/runtime` directories from previous installations can override this and cause conflicts.
 
+## v10 Migration Notes
+
+**If upgrading from v9 or earlier:**
+- Terminal configs are now generated dynamically - no manual copying needed
+- Home Manager users: `include_terminal` option removed, replaced with `extra_terminals = []`
+- New options: `cursor_trail` and `transparency` automatically apply to all terminals
+
+**Terminal config migration:**
+```bash
+# Old manual approach (no longer needed):
+# cp ~/.config/yazelix/configs/terminal_emulators/ghostty/config ~/.config/ghostty/config
+
+# New approach: configs auto-generated when launching yazelix
+nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
+```
+
 ## Quick Fixes
 
 ### Reset Configuration

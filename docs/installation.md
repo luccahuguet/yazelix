@@ -137,6 +137,8 @@ nix-env -iA nixpkgs.nerd-fonts.fira-code nixpkgs.nerd-fonts.symbols-only
 
 ### Step 5: Set Up Yazelix to Auto-Launch in Your Terminal
 
+**Note for v9 users:** Terminal configs are now auto-generated - no more manual copying! See [troubleshooting](./troubleshooting.md#v10-migration-notes) for migration details.
+
 #### Option A: Automatic Launch (Recommended for most users)
 
 Use the yazelix launcher to automatically configure your terminal and start yazelix:
