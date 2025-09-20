@@ -201,6 +201,8 @@
           # Alacritty terminal with GPU acceleration support
           alacrittyWrapper # Alacritty with nixGL wrapper
           alacritty # Base alacritty package
+          nerd-fonts.jetbrains-mono # Preferred Nerd Font for Alacritty config
+          nerd-fonts.symbols-only # Symbols fallback for extra glyphs
         ] else []);
 
         # Extra shell dependencies (fish/zsh only when needed)

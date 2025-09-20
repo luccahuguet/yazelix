@@ -230,10 +230,11 @@ class = { instance = \"yazelix\", general = \"com.yazelix.Yazelix\" }
 # Cursor trails: Not supported in Alacritty
 
 [font]
-normal = { family = \"JetBrains Mono\", style = \"Regular\" }
-bold = { family = \"JetBrains Mono\", style = \"Bold\" }
-italic = { family = \"JetBrains Mono\", style = \"Italic\" }
-bold_italic = { family = \"JetBrains Mono\", style = \"Bold Italic\" }
+normal = { family = \"JetBrainsMono Nerd Font\", style = \"Regular\" }
+bold = { family = \"JetBrainsMono Nerd Font\", style = \"Bold\" }
+italic = { family = \"JetBrainsMono Nerd Font\", style = \"Italic\" }
+bold_italic = { family = \"JetBrainsMono Nerd Font\", style = \"Bold Italic\" }
+builtin_box_drawing = true
 size = 12
 
 [colors]
