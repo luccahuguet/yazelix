@@ -58,4 +58,4 @@ window-padding-y = 10,0
 background-opacity = 0.95
 
 # Cursor trail effect (configurable via yazelix.nix)
-custom-shader = ./shaders/cursor_trail_white.glsl
+custom-shader = ./shaders/cursor_trail_cosmic.glsl

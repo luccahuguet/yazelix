@@ -264,10 +264,12 @@ export def generate_all_terminal_configs [] {
     let ghostty_config = ($ghostty_dir | path join "config")
     save_config_with_backup $ghostty_config (generate_ghostty_config)
 
-    # Note: WezTerm, Kitty, and Alacritty configs remain as static examples
-    # for users with system-installed terminals. Only bundled terminals
-    # get dynamic config generation with yazelix settings integration.
+    # Generate Alacritty config (used by wrappers and system installs)
+    let alacritty_dir = ($configs_dir | path join "alacritty")
+    mkdir $alacritty_dir
+    let alacritty_config = ($alacritty_dir | path join "alacritty.toml")
+    save_config_with_backup $alacritty_config (generate_alacritty_config)
 
-    print "✓ Generated bundled terminal configurations"
-    print "📋 Static example configs available for system terminals in configs/terminal_emulators/"
+    print "✓ Generated terminal configurations (Ghostty, Alacritty)"
+    print "📋 Static example configs for other terminals in configs/terminal_emulators/"
 }
