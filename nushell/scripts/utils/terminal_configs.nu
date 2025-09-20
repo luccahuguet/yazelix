@@ -181,7 +181,7 @@ x11_hide_window_decorations yes
 ($transparency_config)
 
 # Font settings
-font_family      JetBrains Mono
+font_family      FiraCode Nerd Font
 bold_font        auto
 italic_font      auto
 bold_italic_font auto
@@ -230,10 +230,10 @@ class = { instance = \"yazelix\", general = \"com.yazelix.Yazelix\" }
 # Cursor trails: Not supported in Alacritty
 
 [font]
-normal = { family = \"JetBrainsMono Nerd Font\", style = \"Regular\" }
-bold = { family = \"JetBrainsMono Nerd Font\", style = \"Bold\" }
-italic = { family = \"JetBrainsMono Nerd Font\", style = \"Italic\" }
-bold_italic = { family = \"JetBrainsMono Nerd Font\", style = \"Bold Italic\" }
+normal = { family = \"FiraCode Nerd Font\", style = \"Regular\" }
+bold = { family = \"FiraCode Nerd Font\", style = \"Bold\" }
+italic = { family = \"FiraCode Nerd Font\", style = \"Italic\" }
+bold_italic = { family = \"FiraCode Nerd Font\", style = \"Bold Italic\" }
 builtin_box_drawing = true
 size = 12
 
