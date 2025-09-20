@@ -64,7 +64,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - CLI: new `yzx why` command for a concise "elevator pitch".
 - Docs: POSIX/XDG paths doc + README link; SSH/Remote section in README.
 - Desktop integration: Fixed window branding to show "Yazelix" in taskbars/docks, with proper StartupWMClass for desktop entry association.
-- Terminal bundling: Added bundled terminal emulators (yazelix-ghostty, yazelix-kitty, etc.) with automatic nixGL GPU acceleration. Only downloads your preferred terminal, with Ghostty always included as fallback.
+- Terminal bundling: Added bundled terminal emulators (Ghostty, WezTerm, Kitty, Alacritty) with automatic nixGL GPU acceleration. Only downloads your preferred terminal, with Ghostty always included as fallback.
   
 Full v9 notes moved to Version History: ./docs/history.md
 
