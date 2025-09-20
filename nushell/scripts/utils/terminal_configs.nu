@@ -215,7 +215,7 @@ import = []
 [env]
 TERM = \"xterm-256color\"
 
-[shell]
+[terminal.shell]
 program = \"bash\"
 args = [\"-l\", \"-c\", \"nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu\"]
 
