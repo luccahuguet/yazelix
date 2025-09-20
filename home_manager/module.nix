@@ -68,6 +68,19 @@ in {
         - "none": No cursor trail shader
       '';
     };
+
+    transparency = mkOption {
+      type = types.enum [ "none" "low" "medium" "high" ];
+      default = "none";
+      description = ''
+        Terminal transparency level for all terminals.
+
+        - "none": No transparency (opacity = 1.0)
+        - "low": Light transparency (opacity = 0.95)
+        - "medium": Medium transparency (opacity = 0.9)
+        - "high": High transparency (opacity = 0.8)
+      '';
+    };
     
     # Editor configuration
     editor_command = mkOption {
@@ -188,6 +201,7 @@ in {
           # Terminal configuration
           preferred_terminal = "${cfg.preferred_terminal}";
           cursor_trail = "${cfg.cursor_trail}";
+          transparency = "${cfg.transparency}";
           
           # Editor configuration
           editor_command = ${if cfg.editor_command != null then ''"${cfg.editor_command}"'' else "null"};

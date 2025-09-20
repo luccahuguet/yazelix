@@ -3,10 +3,22 @@
 
 use config_parser.nu parse_yazelix_config
 
+# Get transparency value as opacity
+def get_opacity_value [transparency: string] {
+    match $transparency {
+        "none" => "1.0",
+        "low" => "0.95",
+        "medium" => "0.9",
+        "high" => "0.8",
+        _ => "1.0" # Default to no transparency
+    }
+}
+
 # Generate Ghostty configuration
 export def generate_ghostty_config [] {
     let config = parse_yazelix_config
     let cursor_trail = $config.cursor_trail
+    let transparency = $config.transparency
 
     # Base configuration template
     let base_config = "# This is the configuration file for Ghostty.
@@ -65,10 +77,15 @@ theme = \"Abernathy\"
 window-decoration = \"none\"
 window-padding-y = 10,0
 
-# Transparency consistent with WezTerm
-# background-opacity = 0.9
+# Transparency (configurable via yazelix.nix)"
 
-# Cursor trail effect (configurable via yazelix.nix)"
+    # Add transparency configuration based on setting
+    let opacity_value = (get_opacity_value $transparency)
+    let transparency_config = if $transparency == "none" {
+        "# background-opacity = 0.9"
+    } else {
+        $"background-opacity = ($opacity_value)"
+    }
 
     # Add cursor trail configuration based on setting
     let cursor_config = match $cursor_trail {
@@ -78,14 +95,22 @@ window-padding-y = 10,0
         _ => "custom-shader = ./shaders/cursor_smear.glsl" # Default to blaze
     }
 
-    $base_config + "\n" + $cursor_config + "\n"
+    $base_config + "\n" + $transparency_config + "\n\n# Cursor trail effect (configurable via yazelix.nix)\n" + $cursor_config + "\n"
 }
 
 # Generate WezTerm configuration
 export def generate_wezterm_config [] {
     let config = parse_yazelix_config
+    let transparency = $config.transparency
 
-    "-- WezTerm configuration for Yazelix
+    let transparency_config = if $transparency == "none" {
+        "-- config.window_background_opacity = 0.9"
+    } else {
+        let opacity_value = (get_opacity_value $transparency)
+        $"config.window_background_opacity = ($opacity_value)"
+    }
+
+    $"-- WezTerm configuration for Yazelix
 local wezterm = require 'wezterm'
 local config = wezterm.config_builder()
 
@@ -107,8 +132,8 @@ config.color_scheme = 'Abernathy'
 -- Window class for desktop integration
 config.window_class = 'com.yazelix.Yazelix'
 
--- Transparency (commented out by default)
--- config.window_background_opacity = 0.9
+-- Transparency (configurable via yazelix.nix)
+($transparency_config)
 
 return config"
 }
@@ -116,8 +141,16 @@ return config"
 # Generate Kitty configuration
 export def generate_kitty_config [] {
     let config = parse_yazelix_config
+    let transparency = $config.transparency
 
-    "# Kitty configuration for Yazelix
+    let transparency_config = if $transparency == "none" {
+        "# background_opacity 0.9"
+    } else {
+        let opacity_value = (get_opacity_value $transparency)
+        $"background_opacity ($opacity_value)"
+    }
+
+    $"# Kitty configuration for Yazelix
 
 # Basic Yazelix setup
 shell bash -l -c \"nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu\"
@@ -133,8 +166,8 @@ include Abernathy.conf
 linux_display_server x11
 x11_hide_window_decorations yes
 
-# Transparency (commented out by default)
-# background_opacity 0.9
+# Transparency (configurable via yazelix.nix)
+($transparency_config)
 
 # Font settings
 font_family      JetBrains Mono
@@ -151,8 +184,16 @@ sync_to_monitor yes"
 # Generate Alacritty configuration
 export def generate_alacritty_config [] {
     let config = parse_yazelix_config
+    let transparency = $config.transparency
 
-    "# Alacritty configuration for Yazelix
+    let transparency_config = if $transparency == "none" {
+        "# opacity = 0.9"
+    } else {
+        let opacity_value = (get_opacity_value $transparency)
+        $"opacity = ($opacity_value)"
+    }
+
+    $"# Alacritty configuration for Yazelix
 
 [general]
 import = []
@@ -169,8 +210,8 @@ decorations = \"None\"
 padding = { x = 0, y = 10 }
 class = { instance = \"yazelix\", general = \"com.yazelix.Yazelix\" }
 
-# Transparency (commented out by default)
-# opacity = 0.9
+# Transparency (configurable via yazelix.nix)
+($transparency_config)
 
 [font]
 normal = { family = \"JetBrains Mono\", style = \"Regular\" }

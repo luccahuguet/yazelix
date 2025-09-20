@@ -35,6 +35,14 @@
   # - "none": No cursor trail shader
   cursor_trail = "blaze";
 
+  # Terminal transparency level (default: "none")
+  # Options: "none", "low", "medium", "high"
+  # - "none": No transparency (opacity = 1.0)
+  # - "low": Light transparency (opacity = 0.95)
+  # - "medium": Medium transparency (opacity = 0.9)
+  # - "high": High transparency (opacity = 0.8)
+  transparency = "none";
+
   
   # ==================== Editor Configuration ====================
   # Yazelix always sets this as your EDITOR environment variable

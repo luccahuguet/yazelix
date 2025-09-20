@@ -139,29 +139,19 @@ nix-env -iA nixpkgs.nerd-fonts.fira-code nixpkgs.nerd-fonts.symbols-only
 
 #### Option A: Automatic Launch (Recommended for most users)
 
-Copy the appropriate terminal config to automatically start Yazelix:
+Use the yazelix launcher to automatically configure your terminal and start yazelix:
 
-**For WezTerm:**
 ```bash
-cp ~/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua ~/.wezterm.lua
+nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 ```
 
-**For Ghostty:**
-```bash
-cp ~/.config/yazelix/configs/terminal_emulators/ghostty/config ~/.config/ghostty/config
-```
+**What this does**:
+- Automatically generates optimized terminal configs based on your yazelix settings
+- Configures cursor trails and transparency from your `yazelix.nix` preferences
+- Launches your preferred terminal with yazelix pre-loaded
+- No manual copying required - everything is handled dynamically
 
-**For Kitty:**
-```bash
-cp ~/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf ~/.config/kitty/kitty.conf
-```
-
-**For Alacritty:**
-```bash
-cp ~/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
-```
-
-**Result**: Every time you open your terminal, it will automatically launch Yazelix. You won't need to run any commands.
+**Result**: Your terminal opens with yazelix ready to use, with your personalized settings applied.
 
 #### Option B: Manual Launch (For users who don't want to modify terminal configs)
 

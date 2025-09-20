@@ -3,12 +3,11 @@
 Yazelix is highly customizable! Here are the main ways you can tailor your experience:
 
 - **Configuration File**: Edit `~/.config/yazelix/yazelix.nix` for all core options. See [yazelix_default.nix](../yazelix_default.nix) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, sidebar toggle, debug mode, etc).
-- **Terminal Emulator Configs**: For all supported terminals, copy and edit the provided configs:
-  - [WezTerm config](../configs/terminal_emulators/wezterm/.wezterm.lua)
-  - [Ghostty config](../configs/terminal_emulators/ghostty/config)
-  - [Kitty config](../configs/terminal_emulators/kitty/kitty.conf)
-  - [Alacritty config](../configs/terminal_emulators/alacritty/alacritty.toml)
-  - See [WezTerm docs](https://wezfurlong.org/wezterm/config/files.html) for advanced customization.
+- **Terminal Configurations**: All terminal configs are generated dynamically from your yazelix settings:
+  - **Cursor trails**: Configure `cursor_trail = "blaze"`, `"white"`, or `"none"` (Ghostty only)
+  - **Transparency**: Configure `transparency = "none"`, `"low"`, `"medium"`, or `"high"` (all terminals)
+  - **No manual copying required** - configs are auto-generated when launching yazelix
+  - For advanced terminal customization beyond yazelix settings, manually edit the generated configs in `~/.config/yazelix/configs/terminal_emulators/`
 - **Zellij Configuration**: Git-conflict-free three-layer configuration system:
   - **Quick start**: 
     ```bash
