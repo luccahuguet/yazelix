@@ -49,14 +49,18 @@ Yazelix manages its own Helix runtime via `HELIX_RUNTIME` environment variable. 
 - Terminal configs are now generated dynamically - no manual copying needed
 - Home Manager users: `include_terminal` option removed, replaced with `extra_terminals = []`
 - New options: `cursor_trail` and `transparency` automatically apply to all terminals
+- **Your existing configs are safe**: Backed up as `.yazelix-backup` before generation
 
 **Terminal config migration:**
 ```bash
 # Old manual approach (no longer needed):
 # cp ~/.config/yazelix/configs/terminal_emulators/ghostty/config ~/.config/ghostty/config
 
-# New approach: configs auto-generated when launching yazelix
+# New approach: configs auto-generated when launching yazelix (with backup)
 nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
+
+# Your customizations are preserved in backup files:
+# ~/.config/yazelix/configs/terminal_emulators/ghostty/config.yazelix-backup
 ```
 
 ## Quick Fixes

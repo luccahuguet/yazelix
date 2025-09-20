@@ -1,4 +1,8 @@
-# Alacritty configuration for Yazelix
+# Alacritty configuration example for Yazelix
+#
+# This is a STATIC EXAMPLE for users with system-installed Alacritty.
+# For bundled terminals, configs are generated dynamically with your yazelix settings.
+# To use: cp ~/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml
 
 [general]
 import = []

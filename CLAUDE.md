@@ -80,6 +80,16 @@ When creating new files or directories, always use underscores to maintain consi
 
 Example: When deciding whether `yzx doctor --fix` should auto-fix user runtime conflicts, reason through user intent (explicit `--fix` flag), safety (backup approach), and the nature of the problem (system debris vs. user data).
 
+## Yazelix Versioning
+
+**Yazelix uses simple major.minor versioning:**
+- Major versions: v9, v10, v11, etc. (for significant feature releases)
+- Minor versions: v9.5, v10.5, etc. (for incremental improvements)
+- **No patch versions** - only major and minor releases exist
+- Example: v9 → v9.5 → v10 → v10.5 (never v9.1, v9.2, v9.4, etc.)
+
+When referencing versions in documentation or migration notes, only use actual version numbers that exist.
+
 ## Documentation and User Guidance Principles
 
 When documenting limitations or potential issues:

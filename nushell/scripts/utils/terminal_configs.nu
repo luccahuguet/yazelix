@@ -240,32 +240,33 @@ size = 12
 primary = { background = \"#000000\", foreground = \"#ffffff\" }"
 }
 
-# Write all terminal configurations
+# Safely save config with backup
+def save_config_with_backup [file_path: string, content: string] {
+    if ($file_path | path exists) {
+        let backup_path = ($file_path + ".yazelix-backup")
+        print $"Backing up existing config: ($file_path) → ($backup_path)"
+        cp $file_path $backup_path
+    }
+    $content | save $file_path --force
+}
+
+# Write terminal configurations (bundled terminals only)
 export def generate_all_terminal_configs [] {
     let yazelix_dir = "~/.config/yazelix" | path expand
     let configs_dir = ($yazelix_dir | path join "configs" "terminal_emulators")
 
-    print "Generating terminal configurations..."
+    print "Generating bundled terminal configurations..."
 
-    # Generate Ghostty config
+    # Generate Ghostty config (always bundled by default)
     let ghostty_dir = ($configs_dir | path join "ghostty")
     mkdir $ghostty_dir
-    generate_ghostty_config | save ($ghostty_dir | path join "config") --force
+    let ghostty_config = ($ghostty_dir | path join "config")
+    save_config_with_backup $ghostty_config (generate_ghostty_config)
 
-    # Generate WezTerm config
-    let wezterm_dir = ($configs_dir | path join "wezterm")
-    mkdir $wezterm_dir
-    generate_wezterm_config | save ($wezterm_dir | path join ".wezterm.lua") --force
+    # Note: WezTerm, Kitty, and Alacritty configs remain as static examples
+    # for users with system-installed terminals. Only bundled terminals
+    # get dynamic config generation with yazelix settings integration.
 
-    # Generate Kitty config
-    let kitty_dir = ($configs_dir | path join "kitty")
-    mkdir $kitty_dir
-    generate_kitty_config | save ($kitty_dir | path join "kitty.conf") --force
-
-    # Generate Alacritty config
-    let alacritty_dir = ($configs_dir | path join "alacritty")
-    mkdir $alacritty_dir
-    generate_alacritty_config | save ($alacritty_dir | path join "alacritty.toml") --force
-
-    print "✓ Generated all terminal configurations"
+    print "✓ Generated bundled terminal configurations"
+    print "📋 Static example configs available for system terminals in configs/terminal_emulators/"
 }

@@ -1,4 +1,8 @@
--- WezTerm configuration for Yazelix
+-- WezTerm configuration example for Yazelix
+--
+-- This is a STATIC EXAMPLE for users with system-installed WezTerm.
+-- For bundled terminals, configs are generated dynamically with your yazelix settings.
+-- To use: cp ~/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua ~/.wezterm.lua
 local wezterm = require 'wezterm'
 local config = wezterm.config_builder
 
