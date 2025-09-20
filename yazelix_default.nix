@@ -28,11 +28,12 @@
   # Only install additional terminals if you plan to use them
   extra_terminals = [ ];
 
-  # Cursor trail effect for Ghostty (default: "blaze")
+  # Cursor trail effect (default: "blaze")
   # Options: "blaze", "white", "none"
-  # - "blaze": Orange/red fire trail effect
-  # - "white": Clean white trail effect
-  # - "none": No cursor trail shader
+  # - "blaze": Orange/red fire trail effect (Ghostty only)
+  # - "white": Clean white trail effect (Ghostty and Kitty only)
+  # - "none": No cursor trail shader (all terminals)
+  # Note: WezTerm and Alacritty do not support cursor trails
   cursor_trail = "blaze";
 
   # Terminal transparency level (default: "low")

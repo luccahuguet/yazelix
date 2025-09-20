@@ -21,6 +21,8 @@ config.color_scheme = 'Abernathy'
 config.window_class = 'com.yazelix.Yazelix'
 
 -- Transparency (configurable via yazelix.nix)
--- config.window_background_opacity = 0.9
+config.window_background_opacity = 0.95
+
+-- Cursor trails: Not supported in WezTerm
 
 return config

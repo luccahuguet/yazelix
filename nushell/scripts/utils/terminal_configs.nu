@@ -135,6 +135,8 @@ config.window_class = 'com.yazelix.Yazelix'
 -- Transparency \(configurable via yazelix.nix\)
 ($transparency_config)
 
+-- Cursor trails: Not supported in WezTerm
+
 return config"
 }
 
@@ -142,12 +144,20 @@ return config"
 export def generate_kitty_config [] {
     let config = parse_yazelix_config
     let transparency = $config.transparency
+    let cursor_trail = $config.cursor_trail
 
     let transparency_config = if $transparency == "none" {
         "# background_opacity 0.9"
     } else {
         let opacity_value = (get_opacity_value $transparency)
         $"background_opacity ($opacity_value)"
+    }
+
+    # Kitty cursor trail support (built-in animation)
+    let cursor_config = match $cursor_trail {
+        "white" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
+        "none" => "# cursor_trail 0",
+        _ => "# cursor_trail 0  # Blaze effect not supported in Kitty"
     }
 
     $"# Kitty configuration for Yazelix
@@ -157,7 +167,7 @@ shell bash -l -c \"nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu\"
 
 # Window styling to match other terminals
 hide_window_decorations yes
-window_padding_width 0 10
+window_padding_width 2
 
 # Theme
 include Abernathy.conf
@@ -178,7 +188,10 @@ bold_italic_font auto
 # Performance
 repaint_delay 10
 input_delay 3
-sync_to_monitor yes"
+sync_to_monitor yes
+
+# Cursor trail effect \(configurable via yazelix.nix\)
+($cursor_config)"
 }
 
 # Generate Alacritty configuration
@@ -212,6 +225,8 @@ class = { instance = \"yazelix\", general = \"com.yazelix.Yazelix\" }
 
 # Transparency \(configurable via yazelix.nix\)
 ($transparency_config)
+
+# Cursor trails: Not supported in Alacritty
 
 [font]
 normal = { family = \"JetBrains Mono\", style = \"Regular\" }

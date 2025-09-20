@@ -4,7 +4,11 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
 
 - **Configuration File**: Edit `~/.config/yazelix/yazelix.nix` for all core options. See [yazelix_default.nix](../yazelix_default.nix) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, sidebar toggle, debug mode, etc).
 - **Terminal Configurations**: All terminal configs are generated dynamically from your yazelix settings:
-  - **Cursor trails**: Configure `cursor_trail = "blaze"`, `"white"`, or `"none"` (Ghostty only)
+  - **Cursor trails**: Configure `cursor_trail = "blaze"`, `"white"`, or `"none"`
+    - `"blaze"`: Orange/red fire trail effect (Ghostty only)
+    - `"white"`: Clean white trail effect (Ghostty and Kitty only)
+    - `"none"`: No cursor trails (all terminals)
+    - Note: WezTerm and Alacritty do not support cursor trails
   - **Transparency**: Configure `transparency = "none"`, `"low"`, `"medium"`, or `"high"` (all terminals)
   - **No manual copying required** - configs are auto-generated when launching yazelix
   - For advanced terminal customization beyond yazelix settings, manually edit the generated configs in `~/.config/yazelix/configs/terminal_emulators/`

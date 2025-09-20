@@ -67,11 +67,13 @@ in {
       type = types.enum [ "blaze" "white" "none" ];
       default = "blaze";
       description = ''
-        Cursor trail effect for Ghostty terminal.
+        Cursor trail effect for supported terminals.
 
-        - "blaze": Orange/red fire trail effect
-        - "white": Clean white trail effect
-        - "none": No cursor trail shader
+        - "blaze": Orange/red fire trail effect (Ghostty only)
+        - "white": Clean white trail effect (Ghostty and Kitty only)
+        - "none": No cursor trail shader (all terminals)
+
+        Note: WezTerm and Alacritty do not support cursor trails.
       '';
     };
 

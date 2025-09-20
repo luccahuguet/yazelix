@@ -16,7 +16,9 @@ padding = { x = 0, y = 10 }
 class = { instance = "yazelix", general = "com.yazelix.Yazelix" }
 
 # Transparency (configurable via yazelix.nix)
-# opacity = 0.9
+opacity = 0.95
+
+# Cursor trails: Not supported in Alacritty
 
 [font]
 normal = { family = "JetBrains Mono", style = "Regular" }
