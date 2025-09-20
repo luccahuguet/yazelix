@@ -17,8 +17,8 @@ config.default_prog = { 'bash', '-l', '-c', 'nu ~/.config/yazelix/nushell/script
 -- Alternative: Test without Zellij to debug crash (uncomment to test)
 -- config.default_prog = { 'bash', '-c', 'cd ~/.config/yazelix && nix develop --command nu' }
 
--- Use server-side decorations to avoid Wayland decoration manager issues
-config.window_decorations = "NONE"
+-- Remove title bar but keep resize border (recommended by WezTerm docs)
+config.window_decorations = "RESIZE"
 -- Ensure clean exit to reduce Wayland resource leaks
 config.clean_exit_codes = { 0, 1 }
 
