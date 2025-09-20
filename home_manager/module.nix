@@ -50,11 +50,17 @@ in {
       default = [];
       description = "Additional shells to install beyond nu/bash";
     };
-    
+
     preferred_terminal = mkOption {
       type = types.enum [ "wezterm" "ghostty" "kitty" "alacritty" ];
       default = "ghostty";
       description = "Preferred terminal emulator for launch commands";
+    };
+
+    extra_terminals = mkOption {
+      type = types.listOf (types.enum [ "wezterm" "kitty" "alacritty" ]);
+      default = [];
+      description = "Additional terminal emulators to install beyond Ghostty";
     };
 
     cursor_trail = mkOption {
@@ -71,7 +77,7 @@ in {
 
     transparency = mkOption {
       type = types.enum [ "none" "low" "medium" "high" ];
-      default = "none";
+      default = "low";
       description = ''
         Terminal transparency level for all terminals.
 
@@ -197,9 +203,10 @@ in {
           # Shell configuration
           default_shell = "${cfg.default_shell}";
           extra_shells = ${builtins.toJSON cfg.extra_shells};
-          
+
           # Terminal configuration
           preferred_terminal = "${cfg.preferred_terminal}";
+          extra_terminals = ${builtins.toJSON cfg.extra_terminals};
           cursor_trail = "${cfg.cursor_trail}";
           transparency = "${cfg.transparency}";
           

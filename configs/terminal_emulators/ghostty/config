@@ -54,8 +54,8 @@ theme = "Abernathy"
 window-decoration = "none"
 window-padding-y = 10,0
 
-# Transparency consistent with WezTerm
+# Transparency (configurable via yazelix.nix)
 # background-opacity = 0.9
 
-# Cursor trail effect (similar to Kitty's cursor_trail)
+# Cursor trail effect (configurable via yazelix.nix)
 custom-shader = ./shaders/cursor_smear.glsl

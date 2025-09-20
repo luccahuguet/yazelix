@@ -18,15 +18,15 @@
   # Only install additional shells if you plan to use them
   extra_shells = [ ];
 
-  # Include terminal emulator in yazelix (default: true)
-  # Uses Ghostty with nixGL for GPU acceleration on non-NixOS.
-  include_terminal = true;
-
   # Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
   # Options: "wezterm", "ghostty", "kitty", "alacritty"
-  # When include_terminal = true: Only downloads your preferred terminal + Ghostty fallback
-  # When include_terminal = false: Uses system terminals, prioritizing your preference
+  # Ghostty is always included by default with nixGL acceleration
   preferred_terminal = "ghostty";
+
+  # Extra terminal emulators to install beyond Ghostty (default: [])
+  # Options: ["wezterm", "kitty", "alacritty"]
+  # Only install additional terminals if you plan to use them
+  extra_terminals = [ ];
 
   # Cursor trail effect for Ghostty (default: "blaze")
   # Options: "blaze", "white", "none"
@@ -35,13 +35,13 @@
   # - "none": No cursor trail shader
   cursor_trail = "blaze";
 
-  # Terminal transparency level (default: "none")
+  # Terminal transparency level (default: "low")
   # Options: "none", "low", "medium", "high"
   # - "none": No transparency (opacity = 1.0)
   # - "low": Light transparency (opacity = 0.95)
   # - "medium": Medium transparency (opacity = 0.9)
   # - "high": High transparency (opacity = 0.8)
-  transparency = "none";
+  transparency = "low";
 
   
   # ==================== Editor Configuration ====================

@@ -77,7 +77,7 @@ theme = \"Abernathy\"
 window-decoration = \"none\"
 window-padding-y = 10,0
 
-# Transparency (configurable via yazelix.nix)"
+# Transparency \(configurable via yazelix.nix\)"
 
     # Add transparency configuration based on setting
     let opacity_value = (get_opacity_value $transparency)
@@ -95,7 +95,7 @@ window-padding-y = 10,0
         _ => "custom-shader = ./shaders/cursor_smear.glsl" # Default to blaze
     }
 
-    $base_config + "\n" + $transparency_config + "\n\n# Cursor trail effect (configurable via yazelix.nix)\n" + $cursor_config + "\n"
+    $base_config + "\n" + $transparency_config + "\n\n# Cursor trail effect \(configurable via yazelix.nix\)\n" + $cursor_config + "\n"
 }
 
 # Generate WezTerm configuration
@@ -132,7 +132,7 @@ config.color_scheme = 'Abernathy'
 -- Window class for desktop integration
 config.window_class = 'com.yazelix.Yazelix'
 
--- Transparency (configurable via yazelix.nix)
+-- Transparency \(configurable via yazelix.nix\)
 ($transparency_config)
 
 return config"
@@ -166,7 +166,7 @@ include Abernathy.conf
 linux_display_server x11
 x11_hide_window_decorations yes
 
-# Transparency (configurable via yazelix.nix)
+# Transparency \(configurable via yazelix.nix\)
 ($transparency_config)
 
 # Font settings
@@ -210,7 +210,7 @@ decorations = \"None\"
 padding = { x = 0, y = 10 }
 class = { instance = \"yazelix\", general = \"com.yazelix.Yazelix\" }
 
-# Transparency (configurable via yazelix.nix)
+# Transparency \(configurable via yazelix.nix\)
 ($transparency_config)
 
 [font]

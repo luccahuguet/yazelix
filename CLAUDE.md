@@ -45,9 +45,13 @@ When creating new files or directories, always use underscores to maintain consi
 
 ## Nushell Development Notes
 
-**Parentheses in String Interpolation** - Nushell interprets unescaped parentheses `()` in string interpolation as command substitution. Always escape parentheses in display strings:
-- ✅ Correct: `$"Using terminal \(Ghostty with nixGL\)"`  
+**CRITICAL: Parentheses in String Interpolation** - Nushell interprets unescaped parentheses `()` in string interpolation as command substitution. This is a common source of errors. Always escape parentheses in display strings:
+- ✅ Correct: `$"Using terminal \(Ghostty with nixGL\)"`
 - ❌ Wrong: `$"Using terminal (Ghostty with nixGL)"` (tries to execute `Ghostty` command)
+- ✅ Correct: `"# Comment \(with parentheses\)"`
+- ❌ Wrong: `"# Comment (with parentheses)"` (tries to execute command inside parentheses)
+
+**Always check for unescaped parentheses when debugging Nushell errors!**
 
 ## Python Notes
 

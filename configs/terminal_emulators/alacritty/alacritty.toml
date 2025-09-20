@@ -1,83 +1,30 @@
-# Alacritty Configuration for Yazelix with Alacritty v0.15.0
-# Copy this to: ~/.config/alacritty/alacritty.toml
-#
-# SETUP INSTRUCTIONS:
-# 1. Verify font installation and name (see troubleshooting below)
-# 2. Copy this config to ~/.config/alacritty/alacritty.toml
-# 3. Restart Alacritty
-# 4. Check Yazi icons
+# Alacritty configuration for Yazelix
 
-[terminal.shell]
+[general]
+import = []
+
+[env]
+TERM = "xterm-256color"
+
+[shell]
 program = "bash"
 args = ["-l", "-c", "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]
 
 [window]
-decorations = "none"
+decorations = "None"
+padding = { x = 0, y = 10 }
+class = { instance = "yazelix", general = "com.yazelix.Yazelix" }
+
+# Transparency (configurable via yazelix.nix)
 # opacity = 0.9
-padding = { x = 4, y = 10 }
 
-# Font configuration for Alacritty v0.15.0
 [font]
-size = 11.0
-builtin_box_drawing = false # Use Nerd Font glyphs for icons
+normal = { family = "JetBrains Mono", style = "Regular" }
+bold = { family = "JetBrains Mono", style = "Bold" }
+italic = { family = "JetBrains Mono", style = "Italic" }
+bold_italic = { family = "JetBrains Mono", style = "Bold Italic" }
+size = 12
 
-[font.normal]
-family = "FiraCode Nerd Font Mono"
-style = "Regular"
-
-[font.bold]
-family = "FiraCode Nerd Font Mono"
-style = "Bold"
-
-[font.italic]
-family = "FiraCode Nerd Font Mono"
-style = "Italic"
-
-[font.bold_italic]
-family = "FiraCode Nerd Font Mono"
-style = "Bold Italic"
-
-[cursor]
-style = { shape = "Block", blinking = "Off" }
-
-[scrolling]
-history = 10000
-
-[[keyboard.bindings]]
-key = "C"
-mods = "Control|Shift"
-action = "Copy"
-
-[[keyboard.bindings]]
-key = "V"
-mods = "Control|Shift"
-action = "Paste"
-
-# Color scheme for vivid colors
 [colors]
-[colors.primary]
-background = "#0a0a0a"
-foreground = "#d4d4d4"
-
-[colors.normal]
-black = "#000000"
-red = "#f44747"
-green = "#4ec9b0"
-yellow = "#ffcc02"
-blue = "#569cd6"
-magenta = "#c586c0"
-cyan = "#4fc1ff"
-white = "#cccccc"
-
-[colors.bright]
-black = "#666666"
-red = "#f44747"
-green = "#4ec9b0"
-yellow = "#ffcc02"
-blue = "#569cd6"
-magenta = "#c586c0"
-cyan = "#4fc1ff"
-white = "#ffffff"
-
-[env]
-TERM = "alacritty"
+# Abernathy theme colors would go here
+primary = { background = "#000000", foreground = "#ffffff" }
