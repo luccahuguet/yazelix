@@ -45,7 +45,7 @@ Yazelix manages its own Helix runtime via `HELIX_RUNTIME` environment variable. 
 
 ## v9.5 Migration Notes
 
-**If upgrading from v9.4 or earlier:**
+**If upgrading from v9:**
 - Terminal configs are now generated dynamically - no manual copying needed
 - Home Manager users: `include_terminal` option removed, replaced with `extra_terminals = []`
 - New options: `cursor_trail` and `transparency` automatically apply to all terminals
