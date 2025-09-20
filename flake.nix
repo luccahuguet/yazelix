@@ -98,13 +98,40 @@
         helixFromSource = helix.packages.${system}.default;
         helixPackage = if buildHelixFromSource then helixFromSource else pkgs.helix;
 
-        # Ghostty wrapper with nixGL for GL drivers on non-NixOS
+        # Ghostty wrapper with nixGL for GL drivers on non-NixOS (always provided as fallback)
         ghosttyWrapper = if yazelixIncludeTerminal then
           pkgs.writeShellScriptBin "yazelix-ghostty" ''
             exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.ghostty}/bin/ghostty \
               --config-file="$YAZELIX_DIR/configs/terminal_emulators/ghostty/config" \
               --class="com.yazelix.Yazelix" \
               --x11-instance-name="yazelix" "$@"
+          ''
+        else null;
+
+        # Kitty wrapper with nixGL for GL drivers on non-NixOS
+        kittyWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "kitty" then
+          pkgs.writeShellScriptBin "yazelix-kitty" ''
+            exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.kitty}/bin/kitty \
+              --config="$YAZELIX_DIR/configs/terminal_emulators/kitty/kitty.conf" \
+              --class="com.yazelix.Yazelix" "$@"
+          ''
+        else null;
+
+        # WezTerm wrapper with nixGL for GL drivers on non-NixOS
+        weztermWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "wezterm" then
+          pkgs.writeShellScriptBin "yazelix-wezterm" ''
+            exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.wezterm}/bin/wezterm \
+              --config-file="$YAZELIX_DIR/configs/terminal_emulators/wezterm/.wezterm.lua" \
+              start --class="com.yazelix.Yazelix" "$@"
+          ''
+        else null;
+
+        # Alacritty wrapper with nixGL for GL drivers on non-NixOS
+        alacrittyWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "alacritty" then
+          pkgs.writeShellScriptBin "yazelix-alacritty" ''
+            exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.alacritty}/bin/alacritty \
+              --config-file="$YAZELIX_DIR/configs/terminal_emulators/alacritty/alacritty.toml" \
+              --class="com.yazelix.Yazelix" "$@"
           ''
         else null;
 
@@ -147,12 +174,26 @@
           libnotify # Provides notify-send for desktop notifications (used by Nushell clip command)
           mise # Tool version manager - pre-configured in Yazelix shell initializers
         ] ++ (if yazelixIncludeTerminal then [
-          # Terminal emulator with GPU acceleration support
-          ghosttyWrapper # Ghostty with nixGL wrapper
-          ghostty # Base ghostty package
+          # Desktop integration
           yazelixDesktopLauncher # Desktop launcher script
           yazelixDesktopEntry # Desktop entry with logo
           pkgs.nixgl.nixGLIntel # For Intel/Mesa GPU acceleration
+        ] else []) ++ (if yazelixIncludeTerminal then [
+          # Ghostty terminal with GPU acceleration support (always provided as fallback)
+          ghosttyWrapper # Ghostty with nixGL wrapper
+          ghostty # Base ghostty package
+        ] else []) ++ (if yazelixIncludeTerminal && yazelixPreferredTerminal == "kitty" then [
+          # Kitty terminal with GPU acceleration support
+          kittyWrapper # Kitty with nixGL wrapper
+          kitty # Base kitty package
+        ] else []) ++ (if yazelixIncludeTerminal && yazelixPreferredTerminal == "wezterm" then [
+          # WezTerm terminal with GPU acceleration support
+          weztermWrapper # WezTerm with nixGL wrapper
+          wezterm # Base wezterm package
+        ] else []) ++ (if yazelixIncludeTerminal && yazelixPreferredTerminal == "alacritty" then [
+          # Alacritty terminal with GPU acceleration support
+          alacrittyWrapper # Alacritty with nixGL wrapper
+          alacritty # Base alacritty package
         ] else []);
 
         # Extra shell dependencies (fish/zsh only when needed)

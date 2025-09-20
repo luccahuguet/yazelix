@@ -21,11 +21,47 @@ def main [] {
     let config = parse_yazelix_config
     let preferred_terminal = $config.preferred_terminal
 
-    # Check for yazelix included terminal first (include_terminal = true)
-    let terminal_info = if (which yazelix-ghostty | length) > 0 {
-        print "Using yazelix included terminal (Ghostty with nixGL acceleration)"
+    # Check for yazelix included terminals first, prioritizing preferred terminal
+    let terminal_info = if ($preferred_terminal == "kitty") and ((which yazelix-kitty | length) > 0) {
+        print "Using Yazelix - Kitty (with nixGL acceleration)"
+        {
+            terminal: "yazelix-kitty"
+            config: null # Config is handled internally by the wrapper
+        }
+    } else if ($preferred_terminal == "wezterm") and ((which yazelix-wezterm | length) > 0) {
+        print "Using Yazelix - WezTerm (with nixGL acceleration)"
+        {
+            terminal: "yazelix-wezterm"
+            config: null # Config is handled internally by the wrapper
+        }
+    } else if ($preferred_terminal == "alacritty") and ((which yazelix-alacritty | length) > 0) {
+        print "Using Yazelix - Alacritty (with nixGL acceleration)"
+        {
+            terminal: "yazelix-alacritty"
+            config: null # Config is handled internally by the wrapper
+        }
+    } else if (which yazelix-ghostty | length) > 0 {
+        print "Using Yazelix - Ghostty (with nixGL acceleration)"
         {
             terminal: "yazelix-ghostty"
+            config: null # Config is handled internally by the wrapper
+        }
+    } else if (which yazelix-kitty | length) > 0 {
+        print "Using Yazelix - Kitty (with nixGL acceleration)"
+        {
+            terminal: "yazelix-kitty"
+            config: null # Config is handled internally by the wrapper
+        }
+    } else if (which yazelix-wezterm | length) > 0 {
+        print "Using Yazelix - WezTerm (with nixGL acceleration)"
+        {
+            terminal: "yazelix-wezterm"
+            config: null # Config is handled internally by the wrapper
+        }
+    } else if (which yazelix-alacritty | length) > 0 {
+        print "Using Yazelix - Alacritty (with nixGL acceleration)"
+        {
+            terminal: "yazelix-alacritty"
             config: null # Config is handled internally by the wrapper
         }
     } else if ($preferred_terminal == "wezterm") and ((which wezterm | length) > 0) {
@@ -97,15 +133,24 @@ def main [] {
     if $terminal == "yazelix-ghostty" {
         print "Running: yazelix-ghostty (with nixGL auto-detection)"
         ^bash -c "nohup yazelix-ghostty >/dev/null 2>&1 &"
+    } else if $terminal == "yazelix-kitty" {
+        print "Running: yazelix-kitty (with nixGL auto-detection)"
+        ^bash -c "nohup yazelix-kitty >/dev/null 2>&1 &"
+    } else if $terminal == "yazelix-wezterm" {
+        print "Running: yazelix-wezterm (with nixGL auto-detection)"
+        ^bash -c "nohup yazelix-wezterm >/dev/null 2>&1 &"
+    } else if $terminal == "yazelix-alacritty" {
+        print "Running: yazelix-alacritty (with nixGL auto-detection)"
+        ^bash -c "nohup yazelix-alacritty >/dev/null 2>&1 &"
     } else if $terminal == "ghostty" {
         print ("Running: ghostty --config-file=" + $terminal_config)
         ^bash -c $"nohup ghostty --config-file=($terminal_config) >/dev/null 2>&1 &"
     } else if $terminal == "wezterm" {
-        print ("Running: wezterm --config-file " + $terminal_config + " start")
-        ^bash -c $"nohup wezterm --config-file ($terminal_config) start >/dev/null 2>&1 &"
+        print ("Running: wezterm --config-file " + $terminal_config + " start --class=com.yazelix.Yazelix")
+        ^bash -c $"nohup wezterm --config-file ($terminal_config) start --class=com.yazelix.Yazelix >/dev/null 2>&1 &"
     } else if $terminal == "kitty" {
-        print ("Running: kitty --config=" + $terminal_config)
-        ^bash -c $"nohup kitty --config=($terminal_config) >/dev/null 2>&1 &"
+        print ("Running: kitty --config=" + $terminal_config + " --class=com.yazelix.Yazelix")
+        ^bash -c $"nohup kitty --config=($terminal_config) --class=com.yazelix.Yazelix >/dev/null 2>&1 &"
     } else if $terminal == "alacritty" {
         print ("Running: alacritty --config-file=" + $terminal_config)
         ^bash -c $"nohup alacritty --config-file ($terminal_config) >/dev/null 2>&1 &"

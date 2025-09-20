@@ -64,6 +64,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - CLI: new `yzx why` command for a concise "elevator pitch".
 - Docs: POSIX/XDG paths doc + README link; SSH/Remote section in README.
 - Desktop integration: Fixed window branding to show "Yazelix" in taskbars/docks, with proper StartupWMClass for desktop entry association.
+- Terminal bundling: Added bundled terminal emulators (yazelix-ghostty, yazelix-kitty, etc.) with automatic nixGL GPU acceleration. Only downloads your preferred terminal, with Ghostty always included as fallback.
   
 Full v9 notes moved to Version History: ./docs/history.md
 
@@ -199,6 +200,7 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 - **Kitty**: Fast, feature-rich, GPU-accelerated terminal
 - **Alacritty**: Fast, GPU-accelerated terminal written in Rust
 - Configure your preference in `yazelix.nix` with `preferred_terminal = "terminal_name"` (options: wezterm, ghostty, kitty, alacritty)
+- **Bundled terminals**: Yazelix provides `yazelix-ghostty`, `yazelix-kitty`, etc. with automatic nixGL GPU acceleration and proper desktop branding. Only your preferred terminal is downloaded, with Ghostty always included as a fallback.
 
 [See the full Customization Guide here.](./docs/customization.md)
 

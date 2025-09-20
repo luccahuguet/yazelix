@@ -153,7 +153,7 @@ in {
       icon = "yazelix";
       categories = [ "Development" ];
       type = "Application";
-      startupWMClass = "yazelix";
+      startupWMClass = "com.yazelix.Yazelix";
     };
 
     # Generate yazelix.nix configuration file
