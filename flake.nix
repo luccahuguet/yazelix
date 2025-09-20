@@ -98,27 +98,14 @@
         helixFromSource = helix.packages.${system}.default;
         helixPackage = if buildHelixFromSource then helixFromSource else pkgs.helix;
 
-        # Helper to select the appropriate nixGL wrapper (honors override, auto-detects Nvidia)
-        nixglSelector = if yazelixIncludeTerminal then
-          pkgs.writeShellScriptBin "yazelix-nixgl-select" ''
-            #!/usr/bin/env sh
-            if [ -n "${YAZELIX_NIXGL}" ]; then
-              printf "%s\n" "${YAZELIX_NIXGL}"
-              exit 0
-            fi
-            if command -v nvidia-smi >/dev/null 2>&1 || lsmod | grep -qi '^nvidia' || [ -d /sys/module/nvidia ]; then
-              printf "%s\n" "${pkgs.nixgl.nixGLNvidia}/bin/nixGLNvidia"
-            else
-              printf "%s\n" "${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel"
-            fi
-          ''
-        else null;
+        # Simplified approach - no vendor-specific nixGL for now
+
+        # Simplified terminal wrappers without nixGL complexity
 
         # Ghostty wrapper with nixGL for GL drivers on non-NixOS (always provided as fallback)
         ghosttyWrapper = if yazelixIncludeTerminal then
           pkgs.writeShellScriptBin "yazelix-ghostty" ''
-            nixgl_cmd="$(yazelix-nixgl-select)"
-            exec "$nixgl_cmd" ${pkgs.ghostty}/bin/ghostty \
+            exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.ghostty}/bin/ghostty \
               --config-file="$YAZELIX_DIR/configs/terminal_emulators/ghostty/config" \
               --class="com.yazelix.Yazelix" \
               --x11-instance-name="yazelix" "$@"
@@ -128,8 +115,7 @@
         # Kitty wrapper with nixGL for GL drivers on non-NixOS
         kittyWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "kitty" then
           pkgs.writeShellScriptBin "yazelix-kitty" ''
-            nixgl_cmd="$(yazelix-nixgl-select)"
-            exec "$nixgl_cmd" ${pkgs.kitty}/bin/kitty \
+            exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.kitty}/bin/kitty \
               --config="$YAZELIX_DIR/configs/terminal_emulators/kitty/kitty.conf" \
               --class="com.yazelix.Yazelix" "$@"
           ''
@@ -138,8 +124,7 @@
         # WezTerm wrapper with nixGL for GL drivers on non-NixOS
         weztermWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "wezterm" then
           pkgs.writeShellScriptBin "yazelix-wezterm" ''
-            nixgl_cmd="$(yazelix-nixgl-select)"
-            exec "$nixgl_cmd" ${pkgs.wezterm}/bin/wezterm \
+            exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.wezterm}/bin/wezterm \
               --config-file="$YAZELIX_DIR/configs/terminal_emulators/wezterm/.wezterm.lua" \
               start --class="com.yazelix.Yazelix" "$@"
           ''
@@ -148,8 +133,7 @@
         # Alacritty wrapper with nixGL for GL drivers on non-NixOS
         alacrittyWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "alacritty" then
           pkgs.writeShellScriptBin "yazelix-alacritty" ''
-            nixgl_cmd="$(yazelix-nixgl-select)"
-            exec "$nixgl_cmd" ${pkgs.alacritty}/bin/alacritty \
+            exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.alacritty}/bin/alacritty \
               --config-file="$YAZELIX_DIR/configs/terminal_emulators/alacritty/alacritty.toml" \
               --class="com.yazelix.Yazelix" "$@"
           ''
@@ -158,7 +142,6 @@
         # Desktop launcher script for yazelix - force rebuild with timestamp
         yazelixDesktopLauncher = if yazelixIncludeTerminal then
           pkgs.writeShellScriptBin "yazelix-desktop-launcher" ''
-            #!/bin/sh
             # Updated launcher - should use yazelix environment
             cd ~/.config/yazelix
             export YAZELIX_DIR="$HOME/.config/yazelix"
@@ -197,8 +180,9 @@
           # Desktop integration
           yazelixDesktopLauncher # Desktop launcher script
           yazelixDesktopEntry # Desktop entry with logo
+        ] else []) ++ (if yazelixIncludeTerminal then [
+          # nixGL for GPU acceleration on non-NixOS systems
           pkgs.nixgl.nixGLIntel # For Intel/Mesa GPU acceleration
-          nixglSelector # Helper for selecting the correct nixGL shim
         ] else []) ++ (if yazelixIncludeTerminal then [
           # Ghostty terminal with GPU acceleration support (always provided as fallback)
           ghosttyWrapper # Ghostty with nixGL wrapper
@@ -207,6 +191,8 @@
           # Kitty terminal with GPU acceleration support
           kittyWrapper # Kitty with nixGL wrapper
           kitty # Base kitty package
+          nerd-fonts.fira-code # Required fonts for Kitty config
+          nerd-fonts.symbols-only # Required symbols for Kitty config
         ] else []) ++ (if yazelixIncludeTerminal && yazelixPreferredTerminal == "wezterm" then [
           # WezTerm terminal with GPU acceleration support
           weztermWrapper # WezTerm with nixGL wrapper

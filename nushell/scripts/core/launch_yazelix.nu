@@ -65,6 +65,30 @@ def main [] {
             config: null # Config is handled internally by the wrapper
         }
     } else if ($preferred_terminal == "wezterm") and ((which wezterm | length) > 0) {
+        print $"Using terminal: wezterm \(preferred: ($preferred_terminal)\)"
+        {
+            terminal: "wezterm"
+            config: $"($home)/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua"
+        }
+    } else if ($preferred_terminal == "ghostty") and ((which ghostty | length) > 0) {
+        print $"Using terminal: ghostty \(preferred: ($preferred_terminal)\)"
+        {
+            terminal: "ghostty"
+            config: $"($home)/.config/yazelix/configs/terminal_emulators/ghostty/config"
+        }
+    } else if ($preferred_terminal == "kitty") and ((which kitty | length) > 0) {
+        print $"Using terminal: kitty \(preferred: ($preferred_terminal)\)"
+        {
+            terminal: "kitty"
+            config: $"($home)/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf"
+        }
+    } else if ($preferred_terminal == "alacritty") and ((which alacritty | length) > 0) {
+        print $"Using terminal: alacritty \(preferred: ($preferred_terminal)\)"
+        {
+            terminal: "alacritty"
+            config: $"($home)/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml"
+        }
+    } else if ($preferred_terminal == "wezterm") and ((which wezterm | length) > 0) {
         {
             terminal: "wezterm"
             config: $"($home)/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua"
@@ -84,26 +108,26 @@ def main [] {
             terminal: "alacritty"
             config: $"($home)/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml"
         }
-    } else if (which ghostty | length) > 0 {
-        # Fallback to ghostty if preferred terminal not available
-        {
-            terminal: "ghostty"
-            config: $"($home)/.config/yazelix/configs/terminal_emulators/ghostty/config"
-        }
     } else if (which wezterm | length) > 0 {
-        # Fallback to wezterm if ghostty not available
+        print $"Using terminal: wezterm \(preferred: ($preferred_terminal)\)"
         {
             terminal: "wezterm"
             config: $"($home)/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua"
         }
+    } else if (which ghostty | length) > 0 {
+        print $"Using terminal: ghostty \(preferred: ($preferred_terminal)\)"
+        {
+            terminal: "ghostty"
+            config: $"($home)/.config/yazelix/configs/terminal_emulators/ghostty/config"
+        }
     } else if (which kitty | length) > 0 {
-        # Fallback to kitty if ghostty and wezterm not available
+        print $"Using terminal: kitty \(preferred: ($preferred_terminal)\)"
         {
             terminal: "kitty"
             config: $"($home)/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf"
         }
     } else if (which alacritty | length) > 0 {
-        # Fallback to alacritty if other terminals not available
+        print $"Using terminal: alacritty \(preferred: ($preferred_terminal)\)"
         {
             terminal: "alacritty"
             config: $"($home)/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml"

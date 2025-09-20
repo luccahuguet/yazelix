@@ -24,8 +24,8 @@
 
   # Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
   # Options: "wezterm", "ghostty", "kitty", "alacritty"
-  # Note: Only relevant when include_terminal = false
-  # When include_terminal = true, yazelix uses its built-in Ghostty terminal
+  # When include_terminal = true: Only downloads your preferred terminal + Ghostty fallback
+  # When include_terminal = false: Uses system terminals, prioritizing your preference
   preferred_terminal = "ghostty";
 
   
