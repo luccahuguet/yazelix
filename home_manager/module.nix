@@ -56,6 +56,18 @@ in {
       default = "ghostty";
       description = "Preferred terminal emulator for launch commands";
     };
+
+    cursor_trail = mkOption {
+      type = types.enum [ "blaze" "white" "none" ];
+      default = "blaze";
+      description = ''
+        Cursor trail effect for Ghostty terminal.
+
+        - "blaze": Orange/red fire trail effect
+        - "white": Clean white trail effect
+        - "none": No cursor trail shader
+      '';
+    };
     
     # Editor configuration
     editor_command = mkOption {
@@ -175,6 +187,7 @@ in {
           
           # Terminal configuration
           preferred_terminal = "${cfg.preferred_terminal}";
+          cursor_trail = "${cfg.cursor_trail}";
           
           # Editor configuration
           editor_command = ${if cfg.editor_command != null then ''"${cfg.editor_command}"'' else "null"};

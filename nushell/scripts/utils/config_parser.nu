@@ -50,6 +50,7 @@ export def parse_yazelix_config [] {
         persistent_sessions: (extract_config_value "persistent_sessions" "false" $config_content),
         session_name: (extract_config_value "session_name" "yazelix" $config_content),
         preferred_terminal: (extract_config_value "preferred_terminal" "ghostty" $config_content),
+        cursor_trail: (extract_config_value "cursor_trail" "blaze" $config_content),
         default_shell: (extract_config_value "default_shell" "nu" $config_content),
         helix_mode: (extract_config_value "helix_mode" "release" $config_content),
         config_file: $config_to_read

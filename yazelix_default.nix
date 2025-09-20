@@ -28,6 +28,13 @@
   # When include_terminal = false: Uses system terminals, prioritizing your preference
   preferred_terminal = "ghostty";
 
+  # Cursor trail effect for Ghostty (default: "blaze")
+  # Options: "blaze", "white", "none"
+  # - "blaze": Orange/red fire trail effect
+  # - "white": Clean white trail effect
+  # - "none": No cursor trail shader
+  cursor_trail = "blaze";
+
   
   # ==================== Editor Configuration ====================
   # Yazelix always sets this as your EDITOR environment variable

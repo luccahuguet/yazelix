@@ -4,6 +4,7 @@
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/nix_detector.nu ensure_nix_available
+use ../utils/terminal_configs.nu generate_all_terminal_configs
 
 def main [] {
     # Check if Nix is properly installed before proceeding
@@ -20,6 +21,9 @@ def main [] {
     # Always read preference directly from config file to avoid stale environment variables
     let config = parse_yazelix_config
     let preferred_terminal = $config.preferred_terminal
+
+    # Generate all terminal configurations for safety and consistency
+    generate_all_terminal_configs
 
     # Check for yazelix included terminals first, prioritizing preferred terminal
     let terminal_info = if ($preferred_terminal == "kitty") and ((which yazelix-kitty | length) > 0) {
