@@ -102,7 +102,9 @@
         ghosttyWrapper = if yazelixIncludeTerminal then
           pkgs.writeShellScriptBin "yazelix-ghostty" ''
             exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.ghostty}/bin/ghostty \
-              --config-file="$YAZELIX_DIR/configs/terminal_emulators/ghostty/config" "$@"
+              --config-file="$YAZELIX_DIR/configs/terminal_emulators/ghostty/config" \
+              --class="com.yazelix.Yazelix" \
+              --x11-instance-name="yazelix" "$@"
           ''
         else null;
 
@@ -120,12 +122,13 @@
         # Desktop entry for yazelix with logo
         yazelixDesktopEntry = if yazelixIncludeTerminal then
           pkgs.makeDesktopItem {
-            name = "yazelix";
+            name = "com.yazelix.Yazelix";
             exec = "${yazelixDesktopLauncher}/bin/yazelix-desktop-launcher";
             icon = "yazelix"; # Generic name, we'll copy logo separately
             desktopName = "Yazelix";
             comment = "Yazi + Zellij + Helix integrated terminal environment";
             categories = [ "Development" ];
+            startupWMClass = "com.yazelix.Yazelix";
           }
         else null;
 

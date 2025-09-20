@@ -45,6 +45,10 @@
 # Start Yazelix via login shell to ensure Nix environment is loaded
 initial-command = "bash -l -c 'nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu'"
 
+# Yazelix branding for desktop environment recognition
+class = com.yazelix.Yazelix
+x11-instance-name = yazelix
+
 # Theme and styling consistent with WezTerm config
 theme = "Abernathy"
 window-decoration = "none"

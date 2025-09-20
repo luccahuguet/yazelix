@@ -63,6 +63,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - zjstatus polish: swap layout widget (colored, hide‑if‑empty), colored shell/editor, smarter overlength hiding with tabs prioritized, improved inactive/active tab variants (fullscreen/sync/floating), and cleaner status without tab separators.
 - CLI: new `yzx why` command for a concise "elevator pitch".
 - Docs: POSIX/XDG paths doc + README link; SSH/Remote section in README.
+- Desktop integration: Fixed window branding to show "Yazelix" in taskbars/docks, with proper StartupWMClass for desktop entry association.
   
 Full v9 notes moved to Version History: ./docs/history.md
 

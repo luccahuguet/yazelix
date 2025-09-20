@@ -244,7 +244,14 @@ def main [
         for $line in $welcome_message {
             print $line
         }
-        input $"($colors.purple)Press Enter to launch Zellij and start your session... ($colors.reset)"
+
+        # Check if we're in an interactive terminal before trying to read input
+        try {
+            input $"($colors.purple)Press Enter to launch Zellij and start your session... ($colors.reset)"
+        } catch {
+            # If input fails (non-interactive context), continue without waiting
+            print $"($colors.purple)Launching Zellij...($colors.reset)"
+        }
     }
 }
 
