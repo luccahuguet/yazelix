@@ -64,14 +64,18 @@ in {
     };
 
     cursor_trail = mkOption {
-      type = types.enum [ "blaze" "white" "cosmic" "none" ];
+      type = types.enum [ "blaze" "white" "snow" "cosmic" "ocean" "forest" "sunset" "neon" "none" ];
       default = "blaze";
       description = ''
         Cursor trail effect for supported terminals.
 
         - "blaze": Orange/red fire trail effect (Ghostty only)
-        - "white": Clean white trail effect (Ghostty and Kitty only)
+        - "white" / "snow": Clean white trail effect (Ghostty and Kitty)
         - "cosmic": Cosmic purple trail effect (Ghostty only)
+        - "ocean": Blue trail effect (Ghostty only)
+        - "forest": Green trail effect (Ghostty only)
+        - "sunset": Orange/pink trail effect (Ghostty only)
+        - "neon": Cyan/magenta trail effect (Ghostty only)
         - "none": No cursor trail shader (all terminals)
 
         Note: WezTerm and Alacritty do not support cursor trails.

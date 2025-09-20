@@ -91,7 +91,12 @@ window-padding-y = 10,0
     let cursor_config = match $cursor_trail {
         "blaze" => "custom-shader = ./shaders/cursor_smear.glsl",
         "white" => "custom-shader = ./shaders/cursor_trail_white.glsl",
+        "snow" => "custom-shader = ./shaders/cursor_trail_white.glsl",
         "cosmic" => "custom-shader = ./shaders/cursor_trail_cosmic.glsl",
+        "ocean" => "custom-shader = ./shaders/cursor_trail_ocean.glsl",
+        "forest" => "custom-shader = ./shaders/cursor_trail_forest.glsl",
+        "sunset" => "custom-shader = ./shaders/cursor_trail_sunset.glsl",
+        "neon" => "custom-shader = ./shaders/cursor_trail_neon.glsl",
         "none" => "# custom-shader = ./shaders/cursor_smear.glsl",
         _ => "custom-shader = ./shaders/cursor_smear.glsl" # Default to blaze
     }
@@ -164,9 +169,11 @@ export def generate_kitty_config [] {
 
     # Kitty cursor trail support (built-in animation)
     let cursor_config = match $cursor_trail {
+        # Kitty supports a built-in white trail; map white/snow to it
         "white" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
+        "snow" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
         "none" => "# cursor_trail 0",
-        _ => "# cursor_trail 0  # Blaze effect not supported in Kitty"
+        _ => "# cursor_trail 0  # Custom effects (blaze/ocean/forest/sunset/neon/cosmic) not supported in Kitty"
     }
 
     $"# Kitty configuration for Yazelix
