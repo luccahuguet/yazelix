@@ -96,7 +96,15 @@ window-padding-y = 10,0
         _ => "custom-shader = ./shaders/cursor_smear.glsl" # Default to blaze
     }
 
-    $base_config + "\n" + $transparency_config + "\n\n# Cursor trail effect \(configurable via yazelix.nix\)\n" + $cursor_config + "\n"
+    $base_config + "\n" + $transparency_config + "\n\n# Cursor trail effect \(configurable via yazelix.nix\)\n" + $cursor_config + "\n" +
+    "# Alternative presets (uncomment to try)\n" +
+    "# snow (white):  custom-shader = ./shaders/cursor_trail_white.glsl\n" +
+    "# blaze (fire):  custom-shader = ./shaders/cursor_smear.glsl\n" +
+    "# cosmic (violet): custom-shader = ./shaders/cursor_trail_cosmic.glsl\n" +
+    "# ocean (blue):  custom-shader = ./shaders/cursor_trail_ocean.glsl\n" +
+    "# forest (green): custom-shader = ./shaders/cursor_trail_forest.glsl\n" +
+    "# sunset (orange/pink): custom-shader = ./shaders/cursor_trail_sunset.glsl\n" +
+    "# neon (cyan/magenta): custom-shader = ./shaders/cursor_trail_neon.glsl\n"
 }
 
 # Generate WezTerm configuration
