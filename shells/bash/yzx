@@ -44,7 +44,7 @@ show_help() {
     echo "  yzx why                        - Why Yazelix (elevator pitch)"
     echo ""
     echo "LAUNCHER:"
-    echo "  yzx launch                     - Launch yazelix via terminal"
+    echo "  yzx launch                     - Launch yazelix via desktop entry (bundled terminals)"
     echo "  yzx start                      - Start yazelix directly"
     echo "  yzx env                        - Load yazelix environment without UI"
     echo ""
@@ -201,12 +201,17 @@ show_info() {
     nu -c "use $YAZELIX_DIR/nushell/scripts/core/yazelix.nu *; yzx info"
 }
 
-# Function to launch yazelix
+# Function to launch yazelix via desktop entry (uses bundled terminals)
 launch_yazelix() {
-    if command -v nu >/dev/null 2>&1; then
+    # Try to launch via desktop entry first (uses Yazelix bundled terminals)
+    if command -v gtk-launch >/dev/null 2>&1 && [[ -f "$HOME/.local/share/applications/com.yazelix.Yazelix.desktop" ]]; then
+        echo "🚀 Launching Yazelix via desktop entry (bundled terminals)..."
+        gtk-launch com.yazelix.Yazelix
+    elif command -v nu >/dev/null 2>&1; then
+        echo "⚠️  Desktop entry not found, falling back to terminal detection..."
         nu "$YAZELIX_DIR/nushell/scripts/core/launch_yazelix.nu"
     else
-        echo "❌ Nushell not found. Please install nushell to use this command."
+        echo "❌ Neither desktop entry nor nushell found. Please install nushell or set up desktop integration."
         exit 1
     fi
 }
