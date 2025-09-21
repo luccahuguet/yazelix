@@ -66,7 +66,15 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - Desktop integration: Fixed window branding to show "Yazelix" in taskbars/docks, with proper StartupWMClass for desktop entry association.
 - Terminal bundling: Added bundled terminal emulators (Ghostty, WezTerm, Kitty, Alacritty) with automatic nixGL GPU acceleration. Only downloads your preferred terminal, with Ghostty always included as fallback.
 - Ghostty cursor trails: New presets (blaze, snow, cosmic, ocean, forest, sunset, neon, party). Configure via `cursor_trail` in `yazelix.nix`. Kitty supports `snow`; WezTerm/Alacritty do not support trails.
-  
+ - Shell initializers: Aggregate per‑shell initializer (`yazelix_init.*`) to source only what exists. Essential tools (starship, zoxide) are robust; optional tools (mise, carapace, atuin) are omitted when disabled or missing. No more parse‑time source errors.
+ - Terminal configs: New `terminal_config_mode` with three modes:
+   - `yazelix` (default): use Yazelix‑managed configs under `~/.local/share/yazelix/configs` (user configs untouched)
+   - `auto`: prefer user configs if present, else Yazelix configs
+   - `user`: always use user configs
+   Wrappers and `yzx launch` honor this consistently (including via desktop entry) and pass the mode via env.
+ - Config location: All generated terminal configs moved to XDG state dir `~/.local/share/yazelix/configs/terminal_emulators`.
+ - Atuin toggle: `enable_atuin` added (default: false). Nushell uses its native history by default; Atuin can be enabled explicitly.
+
 Full v9 notes moved to Version History: ./docs/history.md
 
 ## Compatibility
@@ -187,7 +195,8 @@ nix develop --impure ~/.config/yazelix
 See the full catalog of tools and integrations in the Yazelix Collection:
 [docs/yazelix_collection.md](./docs/yazelix_collection.md).
 - **Essential tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), shells (bash/nushell, plus your preferred shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
-- **Recommended tools** (enabled by default): [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdx/mise), [cargo-update](https://github.com/nabijaczleweli/cargo-update), [ouch](https://github.com/ouch-org/ouch), [atuin](https://github.com/atuinsh/atuin) (shell history manager), etc
+- **Recommended tools** (enabled by default): [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdx/mise), [cargo-update](https://github.com/nabijaczleweli/cargo-update), [ouch](https://github.com/ouch-org/ouch), etc
+- **Optional history**: [atuin](https://github.com/atuinsh/atuin) integration is now controlled by `enable_atuin` (disabled by default).
 - **Yazi extensions** (enabled by default): `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` (for archives, search, document previews)
 - **Yazi media extensions** (enabled by default): `ffmpeg`, `imagemagick` (for media previews - ~800MB-1.2GB)
 - **Environment setup**: Proper paths, variables, and shell configurations
