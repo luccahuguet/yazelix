@@ -54,44 +54,47 @@ def main [] {
         }
     }
 
-    # Check for yazelix included terminals first, prioritizing preferred terminal
-    let terminal_info = if ($preferred_terminal == "kitty") and ((which yazelix-kitty | length) > 0) {
+    # Prefer wrappers only when terminal_config_mode = "yazelix"
+    let prefer_wrappers = ($terminal_config_mode == "yazelix")
+
+    # Check for yazelix included terminals first only if preferred
+    let terminal_info = if $prefer_wrappers and ($preferred_terminal == "kitty") and ((which yazelix-kitty | length) > 0) {
         print "Using Yazelix - Kitty (with nixGL acceleration)"
         {
             terminal: "yazelix-kitty"
             config: null # Config is handled internally by the wrapper
         }
-    } else if ($preferred_terminal == "wezterm") and ((which yazelix-wezterm | length) > 0) {
+    } else if $prefer_wrappers and ($preferred_terminal == "wezterm") and ((which yazelix-wezterm | length) > 0) {
         print "Using Yazelix - WezTerm (with nixGL acceleration)"
         {
             terminal: "yazelix-wezterm"
             config: null # Config is handled internally by the wrapper
         }
-    } else if ($preferred_terminal == "alacritty") and ((which yazelix-alacritty | length) > 0) {
+    } else if $prefer_wrappers and ($preferred_terminal == "alacritty") and ((which yazelix-alacritty | length) > 0) {
         print "Using Yazelix - Alacritty (with nixGL acceleration)"
         {
             terminal: "yazelix-alacritty"
             config: null # Config is handled internally by the wrapper
         }
-    } else if (which yazelix-ghostty | length) > 0 {
+    } else if $prefer_wrappers and (which yazelix-ghostty | length) > 0 {
         print "Using Yazelix - Ghostty (with nixGL acceleration)"
         {
             terminal: "yazelix-ghostty"
             config: null # Config is handled internally by the wrapper
         }
-    } else if (which yazelix-kitty | length) > 0 {
+    } else if $prefer_wrappers and (which yazelix-kitty | length) > 0 {
         print "Using Yazelix - Kitty (with nixGL acceleration)"
         {
             terminal: "yazelix-kitty"
             config: null # Config is handled internally by the wrapper
         }
-    } else if (which yazelix-wezterm | length) > 0 {
+    } else if $prefer_wrappers and (which yazelix-wezterm | length) > 0 {
         print "Using Yazelix - WezTerm (with nixGL acceleration)"
         {
             terminal: "yazelix-wezterm"
             config: null # Config is handled internally by the wrapper
         }
-    } else if (which yazelix-alacritty | length) > 0 {
+    } else if $prefer_wrappers and (which yazelix-alacritty | length) > 0 {
         print "Using Yazelix - Alacritty (with nixGL acceleration)"
         {
             terminal: "yazelix-alacritty"

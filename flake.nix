@@ -106,7 +106,7 @@
         # Ghostty wrapper with nixGL for GL drivers on non-NixOS (always provided as fallback)
         ghosttyWrapper = if yazelixIncludeTerminal then
           pkgs.writeShellScriptBin "yazelix-ghostty" ''
-            MODE="${yazelixTerminalConfigMode}"
+            MODE="${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
             MODE="${MODE:-auto}"
             USER_CONF="$HOME/.config/ghostty/config"
             YZ_CONF="$YAZELIX_DIR/configs/terminal_emulators/ghostty/config"
@@ -124,7 +124,7 @@
         # Kitty wrapper with nixGL for GL drivers on non-NixOS
         kittyWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "kitty" then
           pkgs.writeShellScriptBin "yazelix-kitty" ''
-            MODE="${yazelixTerminalConfigMode}"
+            MODE="${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
             MODE="${MODE:-auto}"
             USER_CONF="$HOME/.config/kitty/kitty.conf"
             YZ_CONF="$YAZELIX_DIR/configs/terminal_emulators/kitty/kitty.conf"
@@ -141,7 +141,7 @@
         # WezTerm wrapper with nixGL for GL drivers on non-NixOS
         weztermWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "wezterm" then
           pkgs.writeShellScriptBin "yazelix-wezterm" ''
-            MODE="${yazelixTerminalConfigMode}"
+            MODE="${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
             MODE="${MODE:-auto}"
             USER_CONF_MAIN="$HOME/.wezterm.lua"
             USER_CONF_ALT="$HOME/.config/wezterm/wezterm.lua"
@@ -160,7 +160,7 @@
         # Alacritty wrapper with nixGL for GL drivers on non-NixOS
         alacrittyWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "alacritty" then
           pkgs.writeShellScriptBin "yazelix-alacritty" ''
-            MODE="${yazelixTerminalConfigMode}"
+            MODE="${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
             MODE="${MODE:-auto}"
             USER_CONF="$HOME/.config/alacritty/alacritty.toml"
             YZ_CONF="$YAZELIX_DIR/configs/terminal_emulators/alacritty/alacritty.toml"
