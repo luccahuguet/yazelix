@@ -34,7 +34,7 @@ def extract_config_value [key: string, default: string, config_content: string] 
 def extract_first_list_value [key: string, default: string, config_content: string] {
     let lines = ($config_content | lines)
     # Find start of list for the key
-    let start_idx = ($lines | enumerate | where {|it| ($it.item | str contains $key) and ($it.item | str contains "=") and ($it.item | str contains "[") } | get index? | default -1)
+    let start_idx = ($lines | enumerate | where {|it| ($it.item | str contains $key) and ($it.item | str contains "=") and ($it.item | str contains "[") } | get index? | default (-1))
     if $start_idx == -1 {
         $default
     } else {
