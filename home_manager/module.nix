@@ -57,6 +57,17 @@ in {
       description = "Preferred terminal emulator for launch commands";
     };
 
+    terminal_config_mode = mkOption {
+      type = types.enum [ "auto" "user" "yazelix" ];
+      default = "yazelix";
+      description = ''
+        How Yazelix selects terminal configs:
+        - "yazelix": use Yazelix-managed configs in ~/.local/share/yazelix (default)
+        - "auto": prefer user configs if present, otherwise Yazelix configs
+        - "user": always use user configs (e.g., ~/.config/ghostty/config)
+      '';
+    };
+
     extra_terminals = mkOption {
       type = types.listOf (types.enum [ "wezterm" "kitty" "alacritty" ]);
       default = [];
@@ -203,6 +214,7 @@ in {
 
           # Terminal configuration
           preferred_terminal = "${cfg.preferred_terminal}";
+          terminal_config_mode = "${cfg.terminal_config_mode}";
           extra_terminals = ${builtins.toJSON cfg.extra_terminals};
           cursor_trail = "${cfg.cursor_trail}";
           transparency = "${cfg.transparency}";
