@@ -28,17 +28,10 @@
   # Only install additional terminals if you plan to use them
   extra_terminals = [ ];
 
-  # Cursor trail presets (first uncommented wins). Ghostty-only unless noted; Kitty supports "snow"; WezTerm/Alacritty: no trails.
-  cursor_trail = [
-    "blaze"   # Ghostty
-    # "snow"   # Ghostty, Kitty
-    # "cosmic" # Ghostty
-    # "ocean"  # Ghostty
-    # "forest" # Ghostty
-    # "sunset" # Ghostty
-    # "neon"   # Ghostty
-    # "none"   # All terminals
-  ];
+  # Cursor trail preset (Ghostty-only unless noted; Kitty supports "snow"; WezTerm/Alacritty: no trails)
+  # Options: "blaze" (Ghostty), "snow" (Ghostty, Kitty), "cosmic" (Ghostty), "ocean" (Ghostty),
+  #          "forest" (Ghostty), "sunset" (Ghostty), "neon" (Ghostty), "none" (All terminals)
+  cursor_trail = "blaze";
 
   # Terminal transparency level (default: "low")
   # Options: "none", "low", "medium", "high"
@@ -48,17 +41,17 @@
   # - "high": High transparency (opacity = 0.8)
   transparency = "low";
 
-  
+
   # ==================== Editor Configuration ====================
   # Yazelix always sets this as your EDITOR environment variable
-  
+
   # editor_command options:
   # • null (recommended): Use yazelix's Nix-provided Helix
   #   - Eliminates runtime conflicts with existing Helix installations
   #   - Binary and runtime are perfectly matched
   #   - Full yazelix integration features (reveal in sidebar, same-instance opening, etc.)
   #
-  # • "hx": Use your system Helix from PATH  
+  # • "hx": Use your system Helix from PATH
   #   - Requires setting helix_runtime_path to match your Helix version
   #   - Full yazelix integration if runtime matches
   #   - Use this if you have a custom Helix build you prefer
@@ -74,7 +67,7 @@
   # The runtime MUST exactly match your Helix binary version to avoid errors
   #
   # Common scenarios:
-  # • Development build: "/home/user/helix/runtime" 
+  # • Development build: "/home/user/helix/runtime"
   # • Custom install: "/opt/helix/share/helix/runtime"
   # • System package: "/usr/share/helix/runtime"
   #
@@ -115,7 +108,7 @@
   # Package packs - enable entire technology stacks
   packs = [
     # "python"         # ruff (formatter/linter), uv (package manager), ty (type checker)
-    # "js_ts"          # biome (formatter/linter), bun (runtime/bundler)  
+    # "js_ts"          # biome (formatter/linter), bun (runtime/bundler)
     # "rust"           # cargo-update (crate updater), cargo-binstall (binary installer)
     # "config"         # taplo (TOML), nixfmt-rfc-style (Nix), mpls (Markdown preview)
     # "file-management" # ouch (archives), erdtree (tree view), serpl (search/replace)
@@ -126,7 +119,7 @@
   user_packages = with pkgs; [
     # Add custom packages here
     # gh # GitHub CLI for repository management
-    # docker # Container platform for development  
+    # docker # Container platform for development
     # kubectl # Kubernetes command-line tool
   ];
 }

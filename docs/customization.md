@@ -5,16 +5,7 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
 - **Configuration File**: Edit `~/.config/yazelix/yazelix.nix` for all core options. See [yazelix_default.nix](../yazelix_default.nix) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, sidebar toggle, debug mode, etc).
 - **Terminal Configurations**:
   - **Bundled terminals** (yazelix-ghostty, etc.): Configs generated dynamically from your yazelix settings
-    - **Cursor trails**: Use a priority list and comment/uncomment entries. The first uncommented wins, e.g.:
-      
-      ```nix
-      cursor_trail = [
-        "snow"
-        # "ocean"
-        # "cosmic"
-        # "none"
-      ];
-      ```
+    - **Cursor trails**: Set a single preset: `cursor_trail = "blaze" | "snow" | "cosmic" | "ocean" | "forest" | "sunset" | "neon" | "none"`
     - **Transparency**: Configure `transparency = "none"`, `"low"`, `"medium"`, or `"high"`
     - **No manual copying required** - auto-generated when launching yazelix
   - **System terminals** (user-installed): Static example configs in `configs/terminal_emulators/`

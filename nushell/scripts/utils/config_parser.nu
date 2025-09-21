@@ -74,21 +74,12 @@ export def parse_yazelix_config [] {
     # Parse the configuration file
     let config_content = (open $config_to_read)
 
-    # Extract all configuration values using helpers
-    # For cursor_trail: support either a string assignment or a list; list takes precedence
-    let cursor_trail_list_first = (extract_first_list_value "cursor_trail" "" $config_content)
-    let cursor_trail_value = if $cursor_trail_list_first == "" {
-        extract_config_value "cursor_trail" "blaze" $config_content
-    } else {
-        $cursor_trail_list_first
-    }
-
     {
         persistent_sessions: (extract_config_value "persistent_sessions" "false" $config_content),
         session_name: (extract_config_value "session_name" "yazelix" $config_content),
         preferred_terminal: (extract_config_value "preferred_terminal" "ghostty" $config_content),
         extra_terminals: (extract_config_value "extra_terminals" "[]" $config_content),
-        cursor_trail: $cursor_trail_value,
+        cursor_trail: (extract_config_value "cursor_trail" "blaze" $config_content),
         transparency: (extract_config_value "transparency" "low" $config_content),
         default_shell: (extract_config_value "default_shell" "nu" $config_content),
         helix_mode: (extract_config_value "helix_mode" "release" $config_content),
