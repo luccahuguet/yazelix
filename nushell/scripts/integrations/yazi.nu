@@ -2,7 +2,7 @@
 # Yazi integration utilities for Yazelix
 
 use ../utils/logging.nu log_to_file
-use zellij.nu [get_running_command, is_hx_running, open_in_existing_helix, open_new_helix_pane, find_and_focus_helix_pane, move_focused_pane_to_top, get_focused_pane_name]
+use zellij.nu [get_running_command, is_hx_running, open_in_existing_helix, open_new_helix_pane, find_and_focus_helix_pane, move_focused_pane_to_top, get_focused_pane_name, get_tab_name]
 
 # Check if the editor command is Helix (supports both simple names and full paths)
 # This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
@@ -72,24 +72,6 @@ export def reveal_in_yazi [buffer_name: string] {
     }
 }
 
-# Get tab name from directory
-def get_tab_name [working_dir: path] {
-    try {
-        let git_root = (git rev-parse --show-toplevel | str trim)
-        if ($git_root | is-not-empty) and (not ($git_root | str starts-with "fatal:")) {
-            $git_root | path basename
-        } else {
-            let basename = ($working_dir | str trim | path basename)
-            if ($basename | is-empty) {
-                "unnamed"
-            } else {
-                $basename
-            }
-        }
-    } catch {
-        $working_dir | path basename
-    }
-}
 
 # Open file with Helix (with full Yazelix integration)
 def open_with_helix [file_path: path, yazi_id: string] {

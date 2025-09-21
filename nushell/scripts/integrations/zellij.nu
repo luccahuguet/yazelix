@@ -4,9 +4,9 @@
 use ../utils/logging.nu *
 
 # Get the tab name based on Git repo or working directory
-def get_tab_name [working_dir: path] {
+export def get_tab_name [working_dir: path] {
     try {
-        let git_root = (git rev-parse --show-toplevel 2>/dev/null | str trim)
+        let git_root = (bash -c $"cd '($working_dir)' && git rev-parse --show-toplevel 2>/dev/null" | str trim)
         if ($git_root | is-not-empty) and (not ($git_root | str starts-with "fatal:")) {
             log_to_file "open_helix.log" $"Git root found: ($git_root)"
             $git_root | path basename
