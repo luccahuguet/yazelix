@@ -33,7 +33,7 @@
   # - "auto"   : Prefer the user's config if present; otherwise use Yazelix's config
   # - "user"   : Always use the user's config paths
   # - "yazelix": Always use Yazelix-provided configs under ~/.config/yazelix/configs/terminal_emulators
-  terminal_config_mode = "auto";
+  terminal_config_mode = "yazelix";
 
   # Cursor trail preset (Ghostty-only unless noted; Kitty supports "snow"; WezTerm/Alacritty: no trails)
   # Options: "blaze" (Ghostty), "snow" (Ghostty, Kitty), "cosmic" (Ghostty), "ocean" (Ghostty),
