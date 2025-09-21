@@ -62,6 +62,7 @@
 
         # Variables to control recommended, Yazi extension, Helix source, default shell, and debug mode
         recommendedDepsEnabled = config.recommended_deps or true;
+        atuinEnabled = config.enable_atuin or false;
         yaziExtensionsEnabled = config.yazi_extensions or true;
         yaziMediaEnabled = config.yazi_media or true;
         # Terminal inclusion option
@@ -362,6 +363,7 @@
             nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu" \
               "$YAZELIX_DIR" \
               "${if recommendedDepsEnabled then "true" else "false"}" \
+              "${if atuinEnabled then "true" else "false"}" \
               "${if buildHelixFromSource then "true" else "false"}" \
               "${yazelixDefaultShell}" \
               "${if yazelixDebugMode then "true" else "false"}" \

@@ -2,6 +2,8 @@
 {
   # Dependency groups - See docs/package_sizes.md for details
   recommended_deps = true; # Productivity tools (~350MB)
+  # Atuin shell history integration (separate control; disabled by default)
+  enable_atuin = false;
   yazi_extensions = true; # File preview support (~125MB)
   yazi_media = false; # Media processing: ffmpeg + imagemagick (~1GB)
 

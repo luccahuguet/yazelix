@@ -167,6 +167,12 @@ in {
       default = [];
       description = "Package packs to enable entire technology stacks";
     };
+
+    enable_atuin = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Enable Atuin shell history integration (disabled by default).";
+    };
     
     user_packages = mkOption {
       type = types.listOf types.package;
@@ -215,6 +221,7 @@ in {
           # Terminal configuration
           preferred_terminal = "${cfg.preferred_terminal}";
           terminal_config_mode = "${cfg.terminal_config_mode}";
+          enable_atuin = ${if cfg.enable_atuin then "true" else "false"};
           extra_terminals = ${builtins.toJSON cfg.extra_terminals};
           cursor_trail = "${cfg.cursor_trail}";
           transparency = "${cfg.transparency}";

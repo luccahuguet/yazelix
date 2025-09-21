@@ -7,6 +7,7 @@ use ../utils/config_parser.nu parse_yazelix_config
 def main [
     yazelix_dir: string
     recommended: bool
+    enable_atuin: bool
     build_helix_from_source: bool
     default_shell: string
     debug_mode: bool
@@ -100,7 +101,7 @@ def main [
 
 
     # Generate shell initializers for configured shells only
-    nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir $recommended ($shells_to_configure | str join ",")
+    nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir $recommended $enable_atuin ($shells_to_configure | str join ",")
 
     # Setup shell configurations (always setup bash/nu, conditionally setup fish/zsh)
     setup_bash_config $yazelix_dir
@@ -357,7 +358,6 @@ def setup_zsh_config [yazelix_dir: string] {
     print $"🐚 Adding Yazelix Zsh config to ($zsh_config)"
     $"\n\n($section_content)" | save --append $zsh_config
 }
-
 
 
 
