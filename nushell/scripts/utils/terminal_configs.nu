@@ -289,6 +289,13 @@ export def generate_all_terminal_configs [] {
     let ghostty_config = ($ghostty_dir | path join "config")
     save_config_with_backup $ghostty_config (generate_ghostty_config)
 
+    # Copy shader files to bundled config directory so relative paths work
+    let shaders_src = $"($env.HOME)/.config/yazelix/configs/terminal_emulators/ghostty/shaders"
+    let shaders_dest = ($ghostty_dir | path join "shaders")
+    if ($shaders_src | path exists) {
+        cp -r $shaders_src $shaders_dest
+    }
+
     # Generate Alacritty config (used by wrappers and system installs)
     let alacritty_dir = ($configs_dir | path join "alacritty")
     mkdir $alacritty_dir
