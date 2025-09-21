@@ -77,6 +77,7 @@
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
         yazelixSkipWelcomeScreen = config.skip_welcome_screen or false; # Read skip_welcome_screen, default to false
         yazelixPreferredTerminal = config.preferred_terminal or "ghostty"; # Read preferred_terminal, default to ghostty
+        yazelixTerminalConfigMode = config.terminal_config_mode or "auto"; # Respect user vs yazelix terminal configs
         yazelixAsciiArtMode = config.ascii_art_mode or "static"; # Read ascii_art_mode, default to static
 
         # Editor configuration
@@ -105,8 +106,16 @@
         # Ghostty wrapper with nixGL for GL drivers on non-NixOS (always provided as fallback)
         ghosttyWrapper = if yazelixIncludeTerminal then
           pkgs.writeShellScriptBin "yazelix-ghostty" ''
+            MODE="${yazelixTerminalConfigMode}"
+            MODE="${MODE:-auto}"
+            USER_CONF="$HOME/.config/ghostty/config"
+            YZ_CONF="$YAZELIX_DIR/configs/terminal_emulators/ghostty/config"
+            CONF="$YZ_CONF"
+            if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
+              if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
+            fi
             exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.ghostty}/bin/ghostty \
-              --config-file="$YAZELIX_DIR/configs/terminal_emulators/ghostty/config" \
+              --config-file="$CONF" \
               --class="com.yazelix.Yazelix" \
               --x11-instance-name="yazelix" "$@"
           ''
@@ -115,8 +124,16 @@
         # Kitty wrapper with nixGL for GL drivers on non-NixOS
         kittyWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "kitty" then
           pkgs.writeShellScriptBin "yazelix-kitty" ''
+            MODE="${yazelixTerminalConfigMode}"
+            MODE="${MODE:-auto}"
+            USER_CONF="$HOME/.config/kitty/kitty.conf"
+            YZ_CONF="$YAZELIX_DIR/configs/terminal_emulators/kitty/kitty.conf"
+            CONF="$YZ_CONF"
+            if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
+              if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
+            fi
             exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.kitty}/bin/kitty \
-              --config="$YAZELIX_DIR/configs/terminal_emulators/kitty/kitty.conf" \
+              --config="$CONF" \
               --class="com.yazelix.Yazelix" "$@"
           ''
         else null;
@@ -124,8 +141,18 @@
         # WezTerm wrapper with nixGL for GL drivers on non-NixOS
         weztermWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "wezterm" then
           pkgs.writeShellScriptBin "yazelix-wezterm" ''
+            MODE="${yazelixTerminalConfigMode}"
+            MODE="${MODE:-auto}"
+            USER_CONF_MAIN="$HOME/.wezterm.lua"
+            USER_CONF_ALT="$HOME/.config/wezterm/wezterm.lua"
+            if [ -f "$USER_CONF_MAIN" ]; then USER_CONF="$USER_CONF_MAIN"; else USER_CONF="$USER_CONF_ALT"; fi
+            YZ_CONF="$YAZELIX_DIR/configs/terminal_emulators/wezterm/.wezterm.lua"
+            CONF="$YZ_CONF"
+            if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
+              if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
+            fi
             exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.wezterm}/bin/wezterm \
-              --config-file="$YAZELIX_DIR/configs/terminal_emulators/wezterm/.wezterm.lua" \
+              --config-file="$CONF" \
               start --class="com.yazelix.Yazelix" "$@"
           ''
         else null;
@@ -133,8 +160,16 @@
         # Alacritty wrapper with nixGL for GL drivers on non-NixOS
         alacrittyWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "alacritty" then
           pkgs.writeShellScriptBin "yazelix-alacritty" ''
+            MODE="${yazelixTerminalConfigMode}"
+            MODE="${MODE:-auto}"
+            USER_CONF="$HOME/.config/alacritty/alacritty.toml"
+            YZ_CONF="$YAZELIX_DIR/configs/terminal_emulators/alacritty/alacritty.toml"
+            CONF="$YZ_CONF"
+            if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
+              if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
+            fi
             exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.alacritty}/bin/alacritty \
-              --config-file="$YAZELIX_DIR/configs/terminal_emulators/alacritty/alacritty.toml" \
+              --config-file="$CONF" \
               --class="com.yazelix.Yazelix" "$@"
           ''
         else null;
@@ -300,6 +335,7 @@
             export YAZI_CONFIG_HOME="$HOME/.local/share/yazelix/configs/yazi"
             export YAZELIX_HELIX_MODE="${helixMode}"
             export YAZELIX_PREFERRED_TERMINAL="${yazelixPreferredTerminal}"
+            export YAZELIX_TERMINAL_CONFIG_MODE="${yazelixTerminalConfigMode}"
             export YAZELIX_ASCII_ART_MODE="${yazelixAsciiArtMode}"
 
             # Set HELIX_RUNTIME - use custom path if specified, otherwise use Nix package runtime

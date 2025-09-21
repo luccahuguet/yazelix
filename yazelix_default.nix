@@ -28,6 +28,13 @@
   # Only install additional terminals if you plan to use them
   extra_terminals = [ ];
 
+  # Terminal config mode (how Yazelix handles terminal emulator configs)
+  # Options:
+  # - "auto"   : Prefer the user's config if present; otherwise use Yazelix's config
+  # - "user"   : Always use the user's config paths
+  # - "yazelix": Always use Yazelix-provided configs under ~/.config/yazelix/configs/terminal_emulators
+  terminal_config_mode = "auto";
+
   # Cursor trail preset (Ghostty-only unless noted; Kitty supports "snow"; WezTerm/Alacritty: no trails)
   # Options: "blaze" (Ghostty), "snow" (Ghostty, Kitty), "cosmic" (Ghostty), "ocean" (Ghostty),
   #          "forest" (Ghostty), "sunset" (Ghostty), "neon" (Ghostty), "party" (Ghostty), "none" (All terminals)
