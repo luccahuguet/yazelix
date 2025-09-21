@@ -193,16 +193,24 @@ def main [] {
     # Launch terminal using bash to handle background processes properly
     if $terminal == "yazelix-ghostty" {
         print "Running: yazelix-ghostty (with nixGL auto-detection)"
-        ^bash -c "nohup yazelix-ghostty >/dev/null 2>&1 &"
+        with-env { YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode } {
+            ^bash -c "nohup yazelix-ghostty >/dev/null 2>&1 &"
+        }
     } else if $terminal == "yazelix-kitty" {
         print "Running: yazelix-kitty (with nixGL auto-detection)"
-        ^bash -c "nohup yazelix-kitty >/dev/null 2>&1 &"
+        with-env { YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode } {
+            ^bash -c "nohup yazelix-kitty >/dev/null 2>&1 &"
+        }
     } else if $terminal == "yazelix-wezterm" {
         print "Running: yazelix-wezterm (with nixGL auto-detection)"
-        ^bash -c "nohup yazelix-wezterm >/dev/null 2>&1 &"
+        with-env { YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode } {
+            ^bash -c "nohup yazelix-wezterm >/dev/null 2>&1 &"
+        }
     } else if $terminal == "yazelix-alacritty" {
         print "Running: yazelix-alacritty (with nixGL auto-detection)"
-        ^bash -c "nohup yazelix-alacritty >/dev/null 2>&1 &"
+        with-env { YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode } {
+            ^bash -c "nohup yazelix-alacritty >/dev/null 2>&1 &"
+        }
     } else if $terminal == "ghostty" {
         print ("Running: ghostty --config-file=" + $terminal_config)
         ^bash -c $"nohup ghostty --config-file=($terminal_config) >/dev/null 2>&1 &"
