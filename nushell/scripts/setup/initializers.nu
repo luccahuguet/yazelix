@@ -58,7 +58,8 @@ def main [yazelix_dir: string, recommended: bool, shells_to_configure_str: strin
         let init_dir = $shell.dir
         mkdir $init_dir
 
-        $tools | each { |tool|
+        # Collect per-tool generation results for this shell
+        let tool_results = ($tools | each { |tool|
             # Compute expected output path for this tool/shell
             let output_file = $"($init_dir)/($tool.name)_init.($shell.ext)"
 
@@ -67,9 +68,14 @@ def main [yazelix_dir: string, recommended: bool, shells_to_configure_str: strin
                 if ($output_file | path exists) { rm $output_file }
                 { status: "skipped", tool: $tool.name, shell: $shell.name, reason: "recommended" }
             } else if (which $tool.name | is-empty) {
-                # Tool not found; remove any stale initializer
-                if ($output_file | path exists) { rm $output_file }
-                { status: "missing", tool: $tool.name, shell: $shell.name, reason: "tool not found" }
+                # Tool not found: record and remove any previous output
+                if $tool.required {
+                    if ($output_file | path exists) { rm $output_file }
+                    { status: "required-missing", tool: $tool.name, shell: $shell.name, reason: "tool not found" }
+                } else {
+                    if ($output_file | path exists) { rm $output_file }
+                    { status: "missing", tool: $tool.name, shell: $shell.name, reason: "tool not found" }
+                }
             } else {
                 try {
                     # Use tool-specific shell name override if available
@@ -89,10 +95,44 @@ def main [yazelix_dir: string, recommended: bool, shells_to_configure_str: strin
                     $init_content | save --force $output_file
                     { status: "success", tool: $tool.name, shell: $shell.name, file: $output_file }
                 } catch { |error|
-                    { status: "failed", tool: $tool.name, shell: $shell.name, error: $error.msg }
+                    # On failure, record and remove any previous output
+                    if ($output_file | path exists) { rm $output_file }
+                    if $tool.required {
+                        { status: "required-failed", tool: $tool.name, shell: $shell.name, error: $error.msg }
+                    } else {
+                        { status: "failed", tool: $tool.name, shell: $shell.name, error: $error.msg }
+                    }
                 }
             }
-        }
+        })
+
+        # After per-tool generation, build an aggregate initializer that always exists
+        let aggregate_file = $"($init_dir)/yazelix_init.($shell.ext)"
+        let header = $"# Yazelix aggregate initializer for ($shell.name)\n# Concatenates generated initializers for available tools.\n"
+
+        # Determine inclusion order: required first, then optional successes
+        let included = (
+            $tool_results 
+            | where status == "success" 
+            | sort-by {|r| (if ($tools | where name == $r.tool | first).required { 0 } else { 1 }) }
+        )
+
+        let aggregate_content = (
+            $included 
+            | each {|r| open $r.file } 
+            | str join "\n"
+        )
+
+        let required_issues = (
+            $tool_results | where status in ["required-missing", "required-failed"]
+            | each {|r| $"# WARNING: required initializer not generated for ($r.tool): (($r.reason? | default $r.error))\n" }
+            | str join ""
+        )
+
+        ($header + $required_issues + $aggregate_content + "\n") | save --force $aggregate_file
+
+        # Return both per-tool results and the aggregate file info
+        $tool_results | append [{ status: "aggregate", shell: $shell.name, file: $aggregate_file }]
     } | flatten)
 
     # Show concise summary
