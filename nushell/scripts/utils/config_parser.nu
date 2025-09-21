@@ -34,28 +34,24 @@ def extract_config_value [key: string, default: string, config_content: string] 
 def extract_first_list_value [key: string, default: string, config_content: string] {
     let lines = ($config_content | lines)
     # Find start of list for the key
-    let start_idx = ($lines | enumerate | where {|it| ($it.item | str contains $key) and ($it.item | str contains "=") and ($it.item | str contains "[") } | get index? | default (-1))
-    if $start_idx == -1 {
+    let match_row = ($lines | enumerate | where {|it| ($it.item | str contains $key) and ($it.item | str contains "=") and ($it.item | str contains "[") })
+    if ($match_row | is-empty) {
         $default
     } else {
-        # From start line onward, gather until closing bracket
+        let start_idx = ($match_row | first | get index)
+        # From start line onward, scan until we parse the first quoted value
         let tail = ($lines | skip ($start_idx))
-        mut items = []
         for l in $tail {
             let t = ($l | str trim)
-            if ($t | str contains "]") {
-                break
+            if ($t | str starts-with "#") { continue }
+            # Try to capture the first quoted token anywhere in the line
+            let cap1 = ($t | parse '*"{val}"*' | get val? | default [])
+            if (not ($cap1 | is-empty)) {
+                return ($cap1 | first)
             }
-            if ($t | str starts-with "#") {
-                continue
-            }
-            # Capture first quoted token on the line
-            let captured = ($t | parse '"{val}"' | get val? | default [])
-            if (not ($captured | is-empty)) {
-                $items = ($items | append ($captured | first))
-            }
+            if ($t | str contains "]") { break }
         }
-        if ($items | is-empty) { $default } else { ($items | first) }
+        $default
     }
 }
 
