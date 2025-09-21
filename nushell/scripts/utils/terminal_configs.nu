@@ -2,6 +2,7 @@
 # Modular terminal configuration generator for yazelix
 
 use config_parser.nu parse_yazelix_config
+use ./constants.nu *
 
 # Get transparency value as opacity
 def get_opacity_value [transparency: string] {
@@ -276,8 +277,9 @@ def save_config_with_backup [file_path: string, content: string] {
 
 # Write terminal configurations (bundled terminals only)
 export def generate_all_terminal_configs [] {
-    let yazelix_dir = "~/.config/yazelix" | path expand
-    let configs_dir = ($yazelix_dir | path join "configs" "terminal_emulators")
+    # Write generated configs to XDG state dir, not the user's terminal config
+    let generated_dir = ($YAZELIX_GENERATED_CONFIGS_DIR | str replace "~" $env.HOME)
+    let configs_dir = ($generated_dir | path join "terminal_emulators")
 
     print "Generating bundled terminal configurations..."
 

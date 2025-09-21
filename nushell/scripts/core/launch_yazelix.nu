@@ -29,11 +29,12 @@ def main [] {
     # Helper to resolve which config file to use for a terminal
     def resolve_config [term: string] {
         let home = $env.HOME
+        # Yazelix-generated configs now live in XDG state dir
         let yz = match $term {
-            "wezterm" => $"($home)/.config/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua",
-            "ghostty" => $"($home)/.config/yazelix/configs/terminal_emulators/ghostty/config",
-            "kitty" => $"($home)/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf",
-            "alacritty" => $"($home)/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml",
+            "wezterm" => $"($home)/.local/share/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua",
+            "ghostty" => $"($home)/.local/share/yazelix/configs/terminal_emulators/ghostty/config",
+            "kitty" => $"($home)/.local/share/yazelix/configs/terminal_emulators/kitty/kitty.conf",
+            "alacritty" => $"($home)/.local/share/yazelix/configs/terminal_emulators/alacritty/alacritty.toml",
             _ => null
         }
         let user = match $term {
@@ -54,8 +55,8 @@ def main [] {
         }
     }
 
-    # Prefer wrappers only when terminal_config_mode = "yazelix"
-    let prefer_wrappers = ($terminal_config_mode == "yazelix")
+    # Prefer wrappers when available (they handle nixGL and respect config mode)
+    let prefer_wrappers = true
 
     # Check for yazelix included terminals first only if preferred
     let terminal_info = if $prefer_wrappers and ($preferred_terminal == "kitty") and ((which yazelix-kitty | length) > 0) {

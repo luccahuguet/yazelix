@@ -106,10 +106,10 @@
         # Ghostty wrapper with nixGL for GL drivers on non-NixOS (always provided as fallback)
         ghosttyWrapper = if yazelixIncludeTerminal then
           pkgs.writeShellScriptBin "yazelix-ghostty" ''
-            MODE="${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
-            MODE="${MODE:-auto}"
+            MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
+            MODE="''${MODE:-auto}"
             USER_CONF="$HOME/.config/ghostty/config"
-            YZ_CONF="$YAZELIX_DIR/configs/terminal_emulators/ghostty/config"
+            YZ_CONF="$HOME/.local/share/yazelix/configs/terminal_emulators/ghostty/config"
             CONF="$YZ_CONF"
             if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
               if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
@@ -124,10 +124,10 @@
         # Kitty wrapper with nixGL for GL drivers on non-NixOS
         kittyWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "kitty" then
           pkgs.writeShellScriptBin "yazelix-kitty" ''
-            MODE="${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
-            MODE="${MODE:-auto}"
+            MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
+            MODE="''${MODE:-auto}"
             USER_CONF="$HOME/.config/kitty/kitty.conf"
-            YZ_CONF="$YAZELIX_DIR/configs/terminal_emulators/kitty/kitty.conf"
+            YZ_CONF="$HOME/.local/share/yazelix/configs/terminal_emulators/kitty/kitty.conf"
             CONF="$YZ_CONF"
             if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
               if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
@@ -141,12 +141,12 @@
         # WezTerm wrapper with nixGL for GL drivers on non-NixOS
         weztermWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "wezterm" then
           pkgs.writeShellScriptBin "yazelix-wezterm" ''
-            MODE="${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
-            MODE="${MODE:-auto}"
+            MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
+            MODE="''${MODE:-auto}"
             USER_CONF_MAIN="$HOME/.wezterm.lua"
             USER_CONF_ALT="$HOME/.config/wezterm/wezterm.lua"
             if [ -f "$USER_CONF_MAIN" ]; then USER_CONF="$USER_CONF_MAIN"; else USER_CONF="$USER_CONF_ALT"; fi
-            YZ_CONF="$YAZELIX_DIR/configs/terminal_emulators/wezterm/.wezterm.lua"
+            YZ_CONF="$HOME/.local/share/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua"
             CONF="$YZ_CONF"
             if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
               if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
@@ -160,10 +160,10 @@
         # Alacritty wrapper with nixGL for GL drivers on non-NixOS
         alacrittyWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "alacritty" then
           pkgs.writeShellScriptBin "yazelix-alacritty" ''
-            MODE="${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
-            MODE="${MODE:-auto}"
+            MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
+            MODE="''${MODE:-auto}"
             USER_CONF="$HOME/.config/alacritty/alacritty.toml"
-            YZ_CONF="$YAZELIX_DIR/configs/terminal_emulators/alacritty/alacritty.toml"
+            YZ_CONF="$HOME/.local/share/yazelix/configs/terminal_emulators/alacritty/alacritty.toml"
             CONF="$YZ_CONF"
             if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
               if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
