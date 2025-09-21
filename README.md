@@ -65,6 +65,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - Docs: POSIX/XDG paths doc + README link; SSH/Remote section in README.
 - Desktop integration: Fixed window branding to show "Yazelix" in taskbars/docks, with proper StartupWMClass for desktop entry association.
 - Terminal bundling: Added bundled terminal emulators (Ghostty, WezTerm, Kitty, Alacritty) with automatic nixGL GPU acceleration. Only downloads your preferred terminal, with Ghostty always included as fallback.
+- Ghostty cursor trails: New presets (blaze, snow, cosmic, ocean, forest, sunset, neon, party). Configure via `cursor_trail` in `yazelix.nix`. Kitty supports `snow`; WezTerm/Alacritty do not support trails.
   
 Full v9 notes moved to Version History: ./docs/history.md
 
