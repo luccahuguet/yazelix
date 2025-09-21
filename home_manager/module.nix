@@ -78,8 +78,10 @@ in {
       type = types.enum [ "blaze" "snow" "cosmic" "ocean" "forest" "sunset" "neon" "party" "none" ];
       default = "blaze";
       description = ''
-        Cursor trail preset (Ghostty-only unless noted; Kitty supports "snow").
-        WezTerm and Alacritty do not support cursor trails.
+        Cursor trail preset.
+        Supported by all terminal emulators: "none"
+        Supported by Ghostty: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party"
+        Supported by Ghostty and Kitty: "snow"
       '';
     };
 

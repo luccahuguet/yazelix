@@ -37,9 +37,11 @@
   # - "yazelix": Always use Yazelix-provided configs under ~/.config/yazelix/configs/terminal_emulators
   terminal_config_mode = "yazelix";
 
-  # Cursor trail preset (Ghostty-only unless noted; Kitty supports "snow"; WezTerm/Alacritty: no trails)
-  # Options: "blaze" (Ghostty), "snow" (Ghostty, Kitty), "cosmic" (Ghostty), "ocean" (Ghostty),
-  #          "forest" (Ghostty), "sunset" (Ghostty), "neon" (Ghostty), "party" (Ghostty), "none" (All terminals)
+  # Cursor trail preset
+  # Supported by all terminal emulators: "none"
+  # Supported by Ghostty: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party"
+  # Supported by Ghostty and Kitty: "snow"
+  # In Short: only ghostty supports all the cool cursor trails
   cursor_trail = "blaze";
 
   # Terminal transparency level (default: "low")
