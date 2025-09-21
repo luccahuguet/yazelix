@@ -2,8 +2,6 @@
 {
   # Dependency groups - See docs/package_sizes.md for details
   recommended_deps = true; # Productivity tools (~350MB)
-  # Atuin shell history integration (separate control; disabled by default)
-  enable_atuin = false;
   yazi_extensions = true; # File preview support (~125MB)
   yazi_media = false; # Media processing: ffmpeg + imagemagick (~1GB)
 
@@ -19,6 +17,9 @@
   # Extra shells to install beyond nu/bash (e.g., ["fish", "zsh"]) (default: [])
   # Only install additional shells if you plan to use them
   extra_shells = [ ];
+
+  # Atuin shell history integration (separate control; disabled by default)
+  enable_atuin = false;
 
   # Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
   # Options: "wezterm", "ghostty", "kitty", "alacritty"
