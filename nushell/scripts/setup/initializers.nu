@@ -59,10 +59,16 @@ def main [yazelix_dir: string, recommended: bool, shells_to_configure_str: strin
         mkdir $init_dir
 
         $tools | each { |tool|
-            # Skip recommended tools if not requested
+            # Compute expected output path for this tool/shell
+            let output_file = $"($init_dir)/($tool.name)_init.($shell.ext)"
+
+            # Skip recommended tools if not requested; remove any stale initializer
             if (not $tool.required) and (not $recommended) {
+                if ($output_file | path exists) { rm $output_file }
                 { status: "skipped", tool: $tool.name, shell: $shell.name, reason: "recommended" }
             } else if (which $tool.name | is-empty) {
+                # Tool not found; remove any stale initializer
+                if ($output_file | path exists) { rm $output_file }
                 { status: "missing", tool: $tool.name, shell: $shell.name, reason: "tool not found" }
             } else {
                 try {
@@ -80,7 +86,6 @@ def main [yazelix_dir: string, recommended: bool, shells_to_configure_str: strin
                     } else {
                         (run-external $tool.name "init" $effective_shell_name)
                     }
-                    let output_file = $"($init_dir)/($tool.name)_init.($shell.ext)"
                     $init_content | save --force $output_file
                     { status: "success", tool: $tool.name, shell: $shell.name, file: $output_file }
                 } catch { |error|
