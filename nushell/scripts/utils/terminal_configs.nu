@@ -96,6 +96,7 @@ window-padding-y = 10,0
         "forest" => "custom-shader = ./shaders/cursor_trail_forest.glsl",
         "sunset" => "custom-shader = ./shaders/cursor_trail_sunset.glsl",
         "neon" => "custom-shader = ./shaders/cursor_trail_neon.glsl",
+        "party" => "custom-shader = ./shaders/cursor_trail_party.glsl",
         "none" => "# custom-shader = ./shaders/cursor_smear.glsl",
         _ => "custom-shader = ./shaders/cursor_smear.glsl" # Default to blaze
     }
@@ -115,6 +116,7 @@ window-padding-y = 10,0
         "# forest (green): custom-shader = ./shaders/cursor_trail_forest.glsl\n",
         "# sunset (orange/pink): custom-shader = ./shaders/cursor_trail_sunset.glsl\n",
         "# neon (cyan/magenta): custom-shader = ./shaders/cursor_trail_neon.glsl\n",
+        "# party (multi-hue): custom-shader = ./shaders/cursor_trail_party.glsl\n",
     ] | str join ""
 }
 

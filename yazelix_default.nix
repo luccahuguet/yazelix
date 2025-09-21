@@ -30,7 +30,7 @@
 
   # Cursor trail preset (Ghostty-only unless noted; Kitty supports "snow"; WezTerm/Alacritty: no trails)
   # Options: "blaze" (Ghostty), "snow" (Ghostty, Kitty), "cosmic" (Ghostty), "ocean" (Ghostty),
-  #          "forest" (Ghostty), "sunset" (Ghostty), "neon" (Ghostty), "none" (All terminals)
+  #          "forest" (Ghostty), "sunset" (Ghostty), "neon" (Ghostty), "party" (Ghostty), "none" (All terminals)
   cursor_trail = "blaze";
 
   # Terminal transparency level (default: "low")

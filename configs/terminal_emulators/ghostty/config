@@ -67,3 +67,4 @@ custom-shader = ./shaders/cursor_trail_neon.glsl
 # forest (green): custom-shader = ./shaders/cursor_trail_forest.glsl
 # sunset (orange/pink): custom-shader = ./shaders/cursor_trail_sunset.glsl
 # neon (cyan/magenta): custom-shader = ./shaders/cursor_trail_neon.glsl
+# party (multi-hue): custom-shader = ./shaders/cursor_trail_party.glsl

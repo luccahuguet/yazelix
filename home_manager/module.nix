@@ -64,7 +64,7 @@ in {
     };
 
     cursor_trail = mkOption {
-      type = types.enum [ "blaze" "snow" "cosmic" "ocean" "forest" "sunset" "neon" "none" ];
+      type = types.enum [ "blaze" "snow" "cosmic" "ocean" "forest" "sunset" "neon" "party" "none" ];
       default = "blaze";
       description = ''
         Cursor trail preset (Ghostty-only unless noted; Kitty supports "snow").

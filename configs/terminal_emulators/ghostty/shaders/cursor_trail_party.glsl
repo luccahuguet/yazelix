@@ -59,11 +59,14 @@ vec4 saturate(vec4 color, float factor) {
     return mix(vec4(gray), color, factor);
 }
 
-// Classic neon palette: cyan + magenta + subtle lime blend (reduced animation)
-const vec4 NEON_CYAN = vec4(0.00, 0.94, 1.00, 1.0);
-const vec4 NEON_MAGENTA = vec4(1.00, 0.00, 1.00, 1.0);
-const vec4 NEON_LIME = vec4(0.67, 1.00, 0.20, 1.0);
-const float DURATION = 0.22;
+// Party: vivid multi-hue neon with animated HSV palette
+const float DURATION = 0.24;
+
+vec3 hsv2rgb(vec3 c) {
+    vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
@@ -95,25 +98,27 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 
     float mod = .005;
 
-    // Blend classic neon colors along the trail axis with a very subtle time pulse
+    // Parameter along the trail axis for color blend
     vec2 axis = normalize(centerCC - centerCP + 1e-6);
     float u = dot(vu - centerCP, axis);
     float t = clamp(u / max(lineLength, 1e-4), 0.0, 1.0);
-    float pulse = 0.08 * sin(iTime * 1.2);
+    // Animate slightly for a living neon feel
+    float hue = fract(t * 0.85 + iTime * 0.12);
+    vec4 neonBase = vec4(hsv2rgb(vec3(hue, 1.0, 1.0)), 1.0);
+    vec4 neonEdge = vec4(hsv2rgb(vec3(fract(hue + 0.12), 1.0, 1.0)), 1.0);
 
-    vec4 c1 = mix(NEON_CYAN, NEON_MAGENTA, smoothstep(0.0, 1.0, t));
-    vec4 c2 = mix(NEON_MAGENTA, NEON_LIME, smoothstep(0.0, 1.0, t));
-    vec4 neonBase = mix(c1, c2, 0.35 + pulse);
-    vec4 neonEdge = mix(neonBase, NEON_MAGENTA, 0.25);
-
-    // Build glow with restrained intensity
+    // Build vibrant core, bright edges, and soft outer glow
     vec4 trail = fragColor;
-    trail = mix(saturate(neonBase, 1.4), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
-    trail = mix(saturate(neonEdge, 1.5), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
-    trail = mix(trail, saturate(neonBase, 1.45), step(sdfTrail + mod, 0.));
+    // Outer glow
+    trail = mix(saturate(neonBase, 1.6), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
+    // Edge highlight
+    trail = mix(saturate(neonEdge, 1.7), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
+    // Core fill
+    trail = mix(saturate(neonBase, 1.6), trail, step(sdfTrail + mod, 0.));
 
-    // Cursor core and edge
-    trail = mix(saturate(neonEdge, 1.55), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
-    trail = mix(saturate(neonBase, 1.5), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
+    // Cursor core and edge pop
+    trail = mix(saturate(neonEdge, 1.8), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
+    trail = mix(saturate(neonBase, 1.7), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }
+
