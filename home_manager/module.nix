@@ -51,6 +51,12 @@ in {
       description = "Additional shells to install beyond nu/bash";
     };
 
+    include_terminal = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Include customized terminal configurations";
+    };
+
     preferred_terminal = mkOption {
       type = types.enum [ "wezterm" "ghostty" "kitty" "alacritty" ];
       default = "ghostty";
@@ -227,7 +233,8 @@ in {
           extra_terminals = ${builtins.toJSON cfg.extra_terminals};
           cursor_trail = "${cfg.cursor_trail}";
           transparency = "${cfg.transparency}";
-          
+          include_terminal = ${if cfg.include_terminal then "true" else "false"};
+
           # Editor configuration
           editor_command = ${if cfg.editor_command != null then ''"${cfg.editor_command}"'' else "null"};
           helix_runtime_path = ${if cfg.helix_runtime_path != null then ''"${cfg.helix_runtime_path}"'' else "null"};

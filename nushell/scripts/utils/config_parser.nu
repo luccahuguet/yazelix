@@ -85,6 +85,7 @@ export def parse_yazelix_config [] {
         transparency: (extract_config_value "transparency" "low" $config_content),
         default_shell: (extract_config_value "default_shell" "nu" $config_content),
         helix_mode: (extract_config_value "helix_mode" "release" $config_content),
+        include_terminal: (extract_config_value "include_terminal" "true" $config_content),
         config_file: $config_to_read
     }
 }
