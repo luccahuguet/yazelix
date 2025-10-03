@@ -52,7 +52,7 @@ in {
     };
 
     preferred_terminal = mkOption {
-      type = types.enum [ "wezterm" "ghostty" "kitty" "alacritty" ];
+      type = types.enum [ "wezterm" "ghostty" "kitty" "alacritty" "foot"];
       default = "ghostty";
       description = "Preferred terminal emulator for launch commands";
     };
@@ -69,7 +69,7 @@ in {
     };
 
     extra_terminals = mkOption {
-      type = types.listOf (types.enum [ "wezterm" "kitty" "alacritty" ]);
+      type = types.listOf (types.enum [ "wezterm" "kitty" "alacritty" "foot" ]);
       default = [];
       description = "Additional terminal emulators to install beyond Ghostty";
     };

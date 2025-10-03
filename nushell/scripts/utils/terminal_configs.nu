@@ -265,6 +265,34 @@ size = 12
 primary = { background = \"#000000\", foreground = \"#ffffff\" }"
 }
 
+export def generate_foot_config [] {
+    let config = parse_yazelix_config
+    let transparency = $config.transparency
+
+    let transparency_config = if $transparency == "none" {
+        "# alpha=0.9"
+    } else {
+        let opacity_value = (get_opacity_value $transparency)
+        $"alpha=($opacity_value)"
+    }
+    $"# Foot configuration for Yazelix
+shell=bash -l -c \"nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu\"
+
+[colors]
+# Transparency \(configurable via yazelix.nix)
+($transparency_config)
+
+[main]
+# Window class
+app-id=com.yazelix.Yazelix
+# Font configuration
+font=FiraCode Nerd Font
+
+# Foot does not support cursor trails
+[cursor]
+shape=block"
+}
+
 # Safely save config with backup
 def save_config_with_backup [file_path: string, content: string] {
     if ($file_path | path exists) {
