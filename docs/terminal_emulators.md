@@ -8,8 +8,8 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 | yazi-image-preview | **Works properly** (current best inside Zellij) 🏆 | Blurry/unsupported in Zellij (no Sixel) | Blurry/unsupported in Zellij (needs Sixel) | N/A (no image protocol) | **Untested** (Sixel present; not validated) |
 | Graphics protocols | Kitty Graphics **and** Sixel 🏆 | Kitty Graphics only | Kitty Graphics | None (no Kitty Graphics/Sixel) | Sixel |
 | Cursor shaders (cursor trail) | No | **Yes** (shader-based trails, all 8 colors) 🏆 | **Yes** (`cursor_trail` presets, snow only) 🏆 | No | No |
-| Startup - bundled | Fast | Very fast 🏆 | Fast | Very fast 🏆 | Very fast 🏆 |
-| Render – bundled (5-tier) | **very fast** 🏆 | **blazing** 🏆 | **very fast** 🏆 | **okay** | **very fast** 🏆 |
+| Startup speed | Fast | Very fast 🏆 | Fast | Very fast 🏆 | Very fast 🏆 |
+| Render speed (5-tier) | **very fast** 🏆 | **blazing** 🏆 | **very fast** 🏆 | **okay** | **very fast** 🏆 |
 | 🏆 Score | 4 | 4 | 2 | 2 | 2 |
 
 ## Qualitative deep dive
