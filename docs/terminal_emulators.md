@@ -4,8 +4,7 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 
 | Category | **WezTerm** | **Ghostty** | **Kitty** | **Alacritty** | **foot** |
 | --- | --- | --- | --- | --- | --- |
-| Platforms | Linux, macOS, Windows 🏆 | macOS, Linux (Wayland & X11) | Linux, macOS | Linux, macOS, Windows 🏆 | Linux (Wayland) |
-| Yazelix status | Optional (`preferred_terminal`, `extra_terminals`) | **Default**; bundled with nixGL 🏆 | Optional (`preferred_terminal`, `extra_terminals`) | Optional (`preferred_terminal`, `extra_terminals`) | Under evaluation (not yet packaged) |
+| Platforms | Linux, macOS, Windows 🏆 | macOS, Linux (Wayland & X11) **(default)** | Linux, macOS | Linux, macOS, Windows 🏆 | Linux (Wayland) |
 | yazi-image-preview | **Works properly** (current best inside Zellij) 🏆 | Blurry/unsupported in Zellij (no Sixel) | Blurry/unsupported in Zellij (needs Sixel) | N/A (no image protocol) | **Untested** (Sixel present; not validated) |
 | Graphics protocols | Kitty Graphics **and** Sixel 🏆 | Kitty Graphics only | Kitty Graphics | None (no Kitty Graphics/Sixel) | Sixel |
 | Cursor shaders (cursor trail) | No | **Yes** (shader-based trails, all 8 colors) 🏆 | **Yes** (`cursor_trail` presets, snow only) 🏆 | No | No |
