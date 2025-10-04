@@ -19,9 +19,9 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 | --- | --- | --- | --- | --- | --- |
 | SSH (latency/remote UX) | Excellent over SSH; smooth scrollback; resize stable | Very good; fast input echo; stable resize | Very good; solid remote feel | Good; minimal features but stable | Good; lightweight, snappy on weak links |
 | Nix size (bundled) | Medium-large | Medium | Medium | Small | **Tiny** |
-| nixGL / GPU | Works reliably with nixGL (GPU accel) | Works with nixGL; shaders OK (Wayland/X11) | Works with nixGL (OpenGL) | Works with nixGL (OpenGL) | **No nixGL needed** (software render; Wayland) |
-| Unicode support (emoji/CJK/ligatures) | **Excellent** font fallback & shaping | Very good | Very good | Good (fallback depends on fonts) | Good |
-| Extras | Built-in mux & SSH “domains”; great font fallback | Quick Terminal (Wayland); cursor shaders (cursor trail) | `icat`/Kitty Graphics; remote control; cursor trail | Minimalist; easy to script; very small footprint | Sixel built-in; ultra-light; Wayland-native |
+| nixGL / GPU | Reliable with nixGL (GPU accel) | Works with nixGL; shaders OK (Wayland/X11) | Works with nixGL (OpenGL) | Works with nixGL (OpenGL) | **No nixGL needed** (Wayland, very light deps) |
+| Unicode support (emoji/CJK/ligatures) | **Excellent** fallback & shaping | Very good | Very good | Good (fallback depends on fonts) | Good |
+| Extras | Lua-config automation; per-domain profiles | Quick Terminal (Wayland layer-shell); server-side decorations toggle | “Kitten” tools & remote-control API | Plain TOML, low deps, vi-mode selection | `foot`/`footclient` server-client model; fast built-in search |
 
 ## Foot evaluation notes
 
