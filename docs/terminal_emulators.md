@@ -9,7 +9,7 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 | yazi-image-preview | **Works properly** (current best inside Zellij) | Blurry/unsupported in Zellij (no Sixel) | Blurry/unsupported in Zellij (needs Sixel) | N/A (no image protocol) | **Untested** (Sixel present; not validated) |
 | Graphics protocols | Kitty Graphics **and** Sixel | Kitty Graphics only | Kitty Graphics | None (no Kitty Graphics/Sixel) | Sixel |
 | Cursor shaders (cursor trail) | No | **Yes** (shader-based trails) | **Yes** (`cursor_trail` presets) | No | No |
-| Performance (qualitative) | Fast start; smooth scroll; stable previews | Very fast start; smooth render | Fast GPU render | Very small & quick | Extremely light |
+| Performance (qualitative) | Startup: fast; Render: smooth; Previews: stable | Startup: very fast; Render: smooth | Startup: fast; Render: GPU-accelerated | Startup: very fast; Render: lightweight | Startup: very fast; Render: minimal overhead |
 | Windows support | Full native | Native on macOS/Linux | **No native Windows** (WSL only) | Full native | N/A |
 
 ## Foot evaluation notes
