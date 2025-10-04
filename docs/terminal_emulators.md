@@ -30,5 +30,6 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 - Multiplexing: lacks native tabbing, so Yazelix would lean on Zellij even more; acceptable, but we should document it explicitly when shipping support.
 - Image previews: should be verified once packaged to confirm Sixel works with Zellij + Yazi.
 - Platform coverage: pure Wayland means we must gate enablement where Ghostty/WezTerm cover X11 or macOS; documentation should steer users accordingly.
+- Revisit after profiling: if full Yazelix profiling shows foot materially improves startup/render times, bring it back as an option.
 
 These gaps are the blockers to making foot a first-class option. Once the packaging and config automation land, revisit this table to update its status.
