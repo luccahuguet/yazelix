@@ -11,7 +11,6 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 | Cursor shaders (cursor trail) | No | **Yes** (shader-based trails) | **Yes** (`cursor_trail` presets) | No | No |
 | Performance (qualitative) | Fast start; smooth scroll; stable previews | Very fast start; smooth render | Fast GPU render | Very small & quick | Extremely light |
 | Windows support | Full native | Native on macOS/Linux | **No native Windows** (WSL only) | Full native | N/A |
-| Current gaps | Heavier binary than Kitty/Alacritty | yazi previews unreliable under Zellij; Quick Terminal is Wayland-only | Tabs not embeddable in Yazelix layouts | Fewer UX niceties; use Zellij for mux | Wayland-only; needs packaging + config template before bundling |
 
 ## Foot evaluation notes
 
