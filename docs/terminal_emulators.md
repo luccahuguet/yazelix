@@ -10,7 +10,7 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 | Graphics protocols | Kitty Graphics **and** Sixel | Kitty Graphics only | Kitty Graphics | None (no Kitty Graphics/Sixel) | Sixel |
 | Cursor shaders (cursor trail) | No | **Yes** (shader-based trails) | **Yes** (`cursor_trail` presets) | No | No |
 | Startup - bundled | Fast | Very fast | Fast | Very fast | Very fast |
-| Render - bundled | Smooth | Smooth | GPU-accelerated | Lightweight | Minimal overhead |
+| Render - bundled | Stable rendering, supports Kitty Graphics & Sixel | Smooth render; shader trails supported | GPU-accelerated pipeline | Lightweight renderer (no images) | Minimal overhead, text-first renderer |
 | Windows support | Full native | Native on macOS/Linux | **No native Windows** (WSL only) | Full native | N/A |
 
 ## Foot evaluation notes
