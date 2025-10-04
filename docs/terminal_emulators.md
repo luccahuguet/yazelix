@@ -11,6 +11,7 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 | Cursor shaders (cursor trail) | No | **Yes** (shader-based trails, all 8 colors) 🏆 | **Yes** (`cursor_trail` presets, snow only) 🏆 | No | No |
 | Startup - bundled | Fast | Very fast 🏆 | Fast | Very fast 🏆 | Very fast 🏆 |
 | Render - bundled | Fast 🏆 | Fast 🏆 | Fast 🏆 | Average | Fast 🏆 |
+| 🏆 Score | 4 | 4 | 2 | 2 | 2 |
 
 ## Foot evaluation notes
 
