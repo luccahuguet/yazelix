@@ -2,13 +2,17 @@
 
 Yazelix ships with multiple terminals so users can match platform needs and personal preferences. The table below summarizes how each option fits into the current stack and highlights what still needs work.
 
-| Terminal | Platforms | Yazelix status | yazi-image-preview | Graphics protocols | Cursor shaders (cursor trail) | Multiplexing | Performance (qualitative) | Windows support | Current gaps |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **WezTerm** | Linux, macOS, Windows | Optional (`preferred_terminal`, `extra_terminals`) | **Works properly** (current best inside Zellij) | Kitty Graphics **and** Sixel | No | Irrelevant (Zellij handles) | Fast start; smooth scroll; stable previews | Full native | Heavier binary than Kitty/Alacritty |
-| **Ghostty** | macOS, Linux (Wayland & X11) | **Default**; bundled with nixGL | Blurry/unsupported in Zellij (no Sixel) | Kitty Graphics only | **Yes** (shader-based trails) | Irrelevant (Zellij handles) | Very fast start; smooth render | Native on macOS/Linux | yazi previews unreliable under Zellij; Quick Terminal is Wayland-only |
-| **Kitty** | Linux, macOS | Optional (`preferred_terminal`, `extra_terminals`) | Blurry/unsupported in Zellij (needs Sixel) | Kitty Graphics | **Yes** (`cursor_trail` presets) | Irrelevant (Zellij handles) | Fast GPU render | **No native Windows** (WSL only) | Tabs not embeddable in Yazelix layouts |
-| **Alacritty** | Linux, macOS, Windows | Optional (`preferred_terminal`, `extra_terminals`) | N/A (no image protocol) | None (no Kitty Graphics/Sixel) | No | Irrelevant (Zellij handles) | Very small & quick | Full native | Fewer UX niceties; use Zellij for mux |
-| **foot** | Linux (Wayland) | Under evaluation (not yet packaged) | **Untested** (Sixel present; not validated) | Sixel | No | Irrelevant (Zellij handles) | Extremely light | N/A | Wayland-only; needs packaging + config template before bundling |
+| Category | **WezTerm** | **Ghostty** | **Kitty** | **Alacritty** | **foot** |
+| --- | --- | --- | --- | --- | --- |
+| Platforms | Linux, macOS, Windows | macOS, Linux (Wayland & X11) | Linux, macOS | Linux, macOS, Windows | Linux (Wayland) |
+| Yazelix status | Optional (`preferred_terminal`, `extra_terminals`) | **Default**; bundled with nixGL | Optional (`preferred_terminal`, `extra_terminals`) | Optional (`preferred_terminal`, `extra_terminals`) | Under evaluation (not yet packaged) |
+| yazi-image-preview | **Works properly** (current best inside Zellij) | Blurry/unsupported in Zellij (no Sixel) | Blurry/unsupported in Zellij (needs Sixel) | N/A (no image protocol) | **Untested** (Sixel present; not validated) |
+| Graphics protocols | Kitty Graphics **and** Sixel | Kitty Graphics only | Kitty Graphics | None (no Kitty Graphics/Sixel) | Sixel |
+| Cursor shaders (cursor trail) | No | **Yes** (shader-based trails) | **Yes** (`cursor_trail` presets) | No | No |
+| Multiplexing | Irrelevant (Zellij handles) | Irrelevant (Zellij handles) | Irrelevant (Zellij handles) | Irrelevant (Zellij handles) | Irrelevant (Zellij handles) |
+| Performance (qualitative) | Fast start; smooth scroll; stable previews | Very fast start; smooth render | Fast GPU render | Very small & quick | Extremely light |
+| Windows support | Full native | Native on macOS/Linux | **No native Windows** (WSL only) | Full native | N/A |
+| Current gaps | Heavier binary than Kitty/Alacritty | yazi previews unreliable under Zellij; Quick Terminal is Wayland-only | Tabs not embeddable in Yazelix layouts | Fewer UX niceties; use Zellij for mux | Wayland-only; needs packaging + config template before bundling |
 
 ## Foot evaluation notes
 
