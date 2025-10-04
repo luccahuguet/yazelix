@@ -13,6 +13,16 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 | Render - bundled | Fast 🏆 | Fast 🏆 | Fast 🏆 | Average | Fast 🏆 |
 | 🏆 Score | 4 | 4 | 2 | 2 | 2 |
 
+## Qualitative deep dive
+
+| Category | **WezTerm** | **Ghostty** | **Kitty** | **Alacritty** | **foot** |
+| --- | --- | --- | --- | --- | --- |
+| SSH (latency/remote UX) | Excellent over SSH; smooth scrollback; resize stable | Very good; fast input echo; stable resize | Very good; solid remote feel | Good; minimal features but stable | Good; lightweight, snappy on weak links |
+| Nix size (bundled) | Medium-large | Medium | Medium | Small | **Tiny** |
+| nixGL / GPU | Works reliably with nixGL (GPU accel) | Works with nixGL; shaders OK (Wayland/X11) | Works with nixGL (OpenGL) | Works with nixGL (OpenGL) | **No nixGL needed** (software render; Wayland) |
+| Unicode support (emoji/CJK/ligatures) | **Excellent** font fallback & shaping | Very good | Very good | Good (fallback depends on fonts) | Good |
+| Extras | Built-in mux & SSH “domains”; great font fallback | Quick Terminal (Wayland); cursor shaders (cursor trail) | `icat`/Kitty Graphics; remote control; cursor trail | Minimalist; easy to script; very small footprint | Sixel built-in; ultra-light; Wayland-native |
+
 ## Foot evaluation notes
 
 - Packaging: we would need to add `foot` plus its shader/fonts story to the devshell; currently nothing in `yazelix_default.nix` or Home Manager module handles it.
