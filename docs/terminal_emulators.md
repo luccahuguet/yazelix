@@ -4,13 +4,13 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 
 | Category | **WezTerm** | **Ghostty** | **Kitty** | **Alacritty** | **foot** |
 | --- | --- | --- | --- | --- | --- |
-| Platforms | Linux, macOS, Windows | macOS, Linux (Wayland & X11) | Linux, macOS | Linux, macOS, Windows | Linux (Wayland) |
-| Yazelix status | Optional (`preferred_terminal`, `extra_terminals`) | **Default**; bundled with nixGL | Optional (`preferred_terminal`, `extra_terminals`) | Optional (`preferred_terminal`, `extra_terminals`) | Under evaluation (not yet packaged) |
-| yazi-image-preview | **Works properly** (current best inside Zellij) | Blurry/unsupported in Zellij (no Sixel) | Blurry/unsupported in Zellij (needs Sixel) | N/A (no image protocol) | **Untested** (Sixel present; not validated) |
-| Graphics protocols | Kitty Graphics **and** Sixel | Kitty Graphics only | Kitty Graphics | None (no Kitty Graphics/Sixel) | Sixel |
-| Cursor shaders (cursor trail) | No | **Yes** (shader-based trails) | **Yes** (`cursor_trail` presets) | No | No |
-| Startup - bundled | Fast | Very fast | Fast | Very fast | Very fast |
-| Render - bundled | Fast | Fast | Fast | Average | Fast |
+| Platforms | Linux, macOS, Windows 🏆 | macOS, Linux (Wayland & X11) | Linux, macOS | Linux, macOS, Windows 🏆 | Linux (Wayland) |
+| Yazelix status | Optional (`preferred_terminal`, `extra_terminals`) | **Default**; bundled with nixGL 🏆 | Optional (`preferred_terminal`, `extra_terminals`) | Optional (`preferred_terminal`, `extra_terminals`) | Under evaluation (not yet packaged) |
+| yazi-image-preview | **Works properly** (current best inside Zellij) 🏆 | Blurry/unsupported in Zellij (no Sixel) | Blurry/unsupported in Zellij (needs Sixel) | N/A (no image protocol) | **Untested** (Sixel present; not validated) |
+| Graphics protocols | Kitty Graphics **and** Sixel 🏆 | Kitty Graphics only | Kitty Graphics | None (no Kitty Graphics/Sixel) | Sixel |
+| Cursor shaders (cursor trail) | No | **Yes** (shader-based trails) 🏆 | **Yes** (`cursor_trail` presets) 🏆 | No | No |
+| Startup - bundled | Fast | Very fast 🏆 | Fast | Very fast 🏆 | Very fast 🏆 |
+| Render - bundled | Fast 🏆 | Fast 🏆 | Fast 🏆 | Average | Fast 🏆 |
 | Windows support | Full native | Native on macOS/Linux | **No native Windows** (WSL only) | Full native | N/A |
 
 ## Foot evaluation notes
