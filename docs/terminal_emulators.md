@@ -11,7 +11,6 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 | Cursor shaders (cursor trail) | No | **Yes** (shader-based trails) 🏆 | **Yes** (`cursor_trail` presets) 🏆 | No | No |
 | Startup - bundled | Fast | Very fast 🏆 | Fast | Very fast 🏆 | Very fast 🏆 |
 | Render - bundled | Fast 🏆 | Fast 🏆 | Fast 🏆 | Average | Fast 🏆 |
-| Windows support | Full native | Native on macOS/Linux | **No native Windows** (WSL only) | Full native | N/A |
 
 ## Foot evaluation notes
 
