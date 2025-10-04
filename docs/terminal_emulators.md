@@ -9,7 +9,7 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 | Graphics protocols | Kitty Graphics **and** Sixel 🏆 | Kitty Graphics only | Kitty Graphics | None (no Kitty Graphics/Sixel) | Sixel |
 | Cursor shaders (cursor trail) | No | **Yes** (shader-based trails, all 8 colors) 🏆 | **Yes** (`cursor_trail` presets, snow only) 🏆 | No | No |
 | Startup - bundled | Fast | Very fast 🏆 | Fast | Very fast 🏆 | Very fast 🏆 |
-| Render - bundled | Fast 🏆 | Fast 🏆 | Fast 🏆 | Average | Fast 🏆 |
+| Render – bundled (5-tier) | **very fast** 🏆 | **blazing** 🏆 | **very fast** 🏆 | **okay** | **very fast** 🏆 |
 | 🏆 Score | 4 | 4 | 2 | 2 | 2 |
 
 ## Qualitative deep dive
