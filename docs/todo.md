@@ -16,7 +16,7 @@
 - [ ] Yazi: open multiple files from selection (#158).
 - [ ] Platform: verify Windows support on WSL (#140).
 - [ ] Terminal support: include terminal emulators (Alacritty/Kitty/Wezterm) bundled via nixGL (#247).
-- [ ] Comparative table: terminal emulators (#234).
+- [x] Comparative table: terminal emulators (#234) - see docs/terminal_emulators.md.
 - [ ] Benchmark: clean install using Nix (#92).
 - [ ] zjstatus: user‑configurable strings (#237).
 - [ ] Integrated theming (#26).

@@ -33,6 +33,8 @@ https://www.nushell.sh/book/installation.html
 ### Supported Terminal Emulators
 Choose your favorite:
 
+See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
+
 **WezTerm**
 - Modern, fast, written in Rust
 - Instructions here: https://wezfurlong.org/wezterm/installation.html
