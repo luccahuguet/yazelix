@@ -53,6 +53,33 @@ export const TERMINAL_METADATA = {
     foot: {name: "Foot", wrapper: "yazelix-foot"}
 }
 
+# Common terminal configuration values
+export const YAZELIX_WINDOW_CLASS = "com.yazelix.Yazelix"
+export const YAZELIX_X11_INSTANCE = "yazelix"
+export const YAZELIX_SHELL_COMMAND = "bash -l -c 'nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu'"
+export const YAZELIX_THEME = "Abernathy"
+
+# Transparency opacity mapping
+export const TRANSPARENCY_VALUES = {
+    none: "1.0"
+    low: "0.95"
+    medium: "0.9"
+    high: "0.8"
+}
+
+# Cursor trail shader paths for Ghostty
+export const CURSOR_TRAIL_SHADERS = {
+    blaze: "./shaders/cursor_smear.glsl"
+    snow: "./shaders/cursor_trail_white.glsl"
+    cosmic: "./shaders/cursor_trail_cosmic.glsl"
+    ocean: "./shaders/cursor_trail_ocean.glsl"
+    forest: "./shaders/cursor_trail_forest.glsl"
+    sunset: "./shaders/cursor_trail_sunset.glsl"
+    neon: "./shaders/cursor_trail_neon.glsl"
+    party: "./shaders/cursor_trail_party.glsl"
+    none: ""
+}
+
 # File paths and directories - XDG-compliant separation
 # Static configuration (potentially managed by home-manager)
 export const YAZELIX_CONFIG_DIR = "~/.config/yazelix"
