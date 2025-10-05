@@ -87,6 +87,17 @@ export const SHELL_ARGS_STRING = '[\"-l\", \"-c\", \"nu ~/.config/yazelix/nushel
 # Font configurations
 export const FONT_FIRACODE = "FiraCode Nerd Font"
 
+# Cursor trail presets documentation
+export const CURSOR_TRAIL_PRESETS_COMMENT = "# Alternative presets (uncomment to try)
+# snow:  custom-shader = ./shaders/cursor_trail_white.glsl
+# blaze (fire):  custom-shader = ./shaders/cursor_smear.glsl
+# cosmic (violet): custom-shader = ./shaders/cursor_trail_cosmic.glsl
+# ocean (blue):  custom-shader = ./shaders/cursor_trail_ocean.glsl
+# forest (green): custom-shader = ./shaders/cursor_trail_forest.glsl
+# sunset (orange/pink): custom-shader = ./shaders/cursor_trail_sunset.glsl
+# neon (cyan/magenta): custom-shader = ./shaders/cursor_trail_neon.glsl
+# party (multi-hue): custom-shader = ./shaders/cursor_trail_party.glsl"
+
 # Ghostty config header template
 export const GHOSTTY_CONFIG_HEADER = "# This is the configuration file for Ghostty.
 #

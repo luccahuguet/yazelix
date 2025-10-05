@@ -63,15 +63,7 @@ window-padding-y = 10,0
 # Cursor trail effect \(configurable via yazelix.nix\)
 (build_cursor_trail $config.cursor_trail)
 
-# Alternative presets \(uncomment to try\)
-# snow:  custom-shader = ./shaders/cursor_trail_white.glsl
-# blaze \(fire\):  custom-shader = ./shaders/cursor_smear.glsl
-# cosmic \(violet\): custom-shader = ./shaders/cursor_trail_cosmic.glsl
-# ocean \(blue\):  custom-shader = ./shaders/cursor_trail_ocean.glsl
-# forest \(green\): custom-shader = ./shaders/cursor_trail_forest.glsl
-# sunset \(orange/pink\): custom-shader = ./shaders/cursor_trail_sunset.glsl
-# neon \(cyan/magenta\): custom-shader = ./shaders/cursor_trail_neon.glsl
-# party \(multi-hue\): custom-shader = ./shaders/cursor_trail_party.glsl
+($CURSOR_TRAIL_PRESETS_COMMENT)
 "
 }
 
