@@ -290,7 +290,8 @@ font=FiraCode Nerd Font
 
 # Foot does not support cursor trails
 [cursor]
-shape=block"
+style=block
+blink=false"
 }
 
 # Safely save config with backup
