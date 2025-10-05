@@ -108,7 +108,7 @@ flake.nix → yazelix.nix/yazelix_default.nix → Nushell environment setup → 
 ### Key File Locations
 - **Core configs**: `yazelix.nix`, `yazelix_default.nix`, `flake.nix`
 - **Nushell scripts**: `nushell/scripts/{core,utils,integrations,setup}`
-- **Terminal configs**: `configs/terminal_emulators/{ghostty,kitty,alacritty,wezterm}/`
+- **Terminal configs**: `configs/terminal_emulators/{ghostty,wezterm,kitty,alacritty,foot}/`
 - **Yazi setup**: `configs/yazi/` with plugins in `plugins/`
 - **Zellij layouts**: `configs/zellij/layouts/`
 - **Shell integrations**: `shells/{bash,fish,zsh}/`

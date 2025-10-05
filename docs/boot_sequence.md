@@ -7,12 +7,13 @@
   - **Ghostty**: `cp ~/.config/yazelix/configs/terminal_emulators/ghostty/config ~/.config/ghostty/config`
   - **Kitty**: `cp ~/.config/yazelix/configs/terminal_emulators/kitty/kitty.conf ~/.config/kitty/kitty.conf`
   - **Alacritty**: `cp ~/.config/yazelix/configs/terminal_emulators/alacritty/alacritty.toml ~/.config/alacritty/alacritty.toml`
+  - **Foot**: `cp ~/.config/yazelix/configs/terminal_emulators/foot/foot.ini ~/.config/foot/foot.ini`
 - **Launch**: Open your terminal and it automatically executes the Yazelix startup script
 
 ## 1.B: Terminal Commands  
 - **Setup**: `yazelix` and `yzx` aliases are automatically available when shell configs are sourced
 - **Launch**: Run `yazelix` or `yzx` from any terminal and it will execute `~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu`
-- That launches your preferred terminal (Ghostty by default, WezTerm, Kitty, or Alacritty) with specific config
+- That launches your preferred terminal (Ghostty by default, or one of WezTerm, Kitty, Alacritty, Foot) with specific config
 - The terminal automatically executes `nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu`
 
 ## 2. **Nix Environment**: Changes to `~/.config/yazelix` and runs:

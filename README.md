@@ -209,7 +209,7 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 - **WezTerm**: Better image preview support in Yazi, recommended if you need media previews
 - **Kitty**: Fast, feature-rich, GPU-accelerated terminal
 - **Alacritty**: Fast, GPU-accelerated terminal written in Rust
-- Configure your preference in `yazelix.nix` with `preferred_terminal = "terminal_name"` (options: wezterm, ghostty, kitty, alacritty)
+- Configure your preference in `yazelix.nix` with `preferred_terminal = "terminal_name"` (options: ghostty, wezterm, kitty, alacritty, foot)
 - **Bundled terminals**: Yazelix provides `yazelix-ghostty`, `yazelix-kitty`, etc. with automatic nixGL GPU acceleration and proper desktop branding. Only your preferred terminal is downloaded, with Ghostty always included as a fallback. Required fonts are included automatically.
 
 [See the full Customization Guide here.](./docs/customization.md)

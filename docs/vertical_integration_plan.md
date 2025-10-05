@@ -75,6 +75,7 @@ yazelix-ghostty = mkYazelix { terminal = pkgs.ghostty; };
 yazelix-kitty = mkYazelix { terminal = pkgs.kitty; };
 yazelix-alacritty = mkYazelix { terminal = pkgs.alacritty; };
 yazelix-wezterm = mkYazelix { terminal = pkgs.wezterm; };
+yazelix-foot = mkYazelix { terminal = pkgs.foot; };
 
 # Default points to ghostty
 yazelix = yazelix-ghostty;
@@ -93,9 +94,10 @@ let
   # Select appropriate yazelix variant
   yazelixPackage = 
     if cfg.terminal == "ghostty" then pkgs.yazelix-ghostty
+    else if cfg.terminal == "wezterm" then pkgs.yazelix-wezterm
     else if cfg.terminal == "kitty" then pkgs.yazelix-kitty
     else if cfg.terminal == "alacritty" then pkgs.yazelix-alacritty
-    else if cfg.terminal == "wezterm" then pkgs.yazelix-wezterm
+    else if cfg.terminal == "foot" then pkgs.yazelix-foot
     else pkgs.yazelix; # default
     
 in {
@@ -103,7 +105,7 @@ in {
     enable = mkEnableOption "Yazelix terminal environment";
     
     terminal = mkOption {
-      type = types.enum [ "ghostty" "kitty" "alacritty" "wezterm" ];
+      type = types.enum [ "ghostty" "wezterm" "kitty" "alacritty" "foot" ];
       default = "ghostty";
       description = "Terminal emulator to bundle with Yazelix";
     };

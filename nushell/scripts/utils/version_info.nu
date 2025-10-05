@@ -63,6 +63,10 @@ def get_version [tool: string] {
                 if (which kitty | is-empty) { return "not installed" }
                 try { (kitty --version | split column " " | get column2) } catch { "error" }
             }
+            "foot" => {
+                if (which foot | is-empty) { return "not installed" }
+                try { (foot --version | split column " " | get column2?) } catch { "error" }
+            }
             "alacritty" => {
                 if (which alacritty | is-empty) { return "not installed" }
                 try { (alacritty --version | split column " " | get column2) } catch { "error" }
@@ -101,6 +105,7 @@ export def main [--save(-s)] {
         "ghostty"
         "nix"
         "kitty"
+        "foot"
         "alacritty"
         "macchina"
     ]

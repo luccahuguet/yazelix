@@ -52,7 +52,7 @@ in {
     };
 
     preferred_terminal = mkOption {
-      type = types.enum [ "wezterm" "ghostty" "kitty" "alacritty" "foot"];
+      type = types.enum [ "wezterm" "ghostty" "kitty" "alacritty" "foot" ];
       default = "ghostty";
       description = "Preferred terminal emulator for launch commands";
     };
