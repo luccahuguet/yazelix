@@ -25,11 +25,8 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 
 ## Foot evaluation notes
 
-- Packaging: we would need to add `foot` plus its shader/fonts story to the devshell; currently nothing in `yazelix_default.nix` or Home Manager module handles it.
-- Configuration: Yazelix relies on generated configs per terminal. foot would require a new template plus logic for `terminal_config_mode` handling.
-- Multiplexing: lacks native tabbing, so Yazelix would lean on Zellij even more; acceptable, but we should document it explicitly when shipping support.
-- Image previews: should be verified once packaged to confirm Sixel works with Zellij + Yazi.
-- Platform coverage: pure Wayland means we must gate enablement where Ghostty/WezTerm cover X11 or macOS; documentation should steer users accordingly.
-- Revisit after profiling: if full Yazelix profiling shows foot materially improves startup/render times, bring it back as an option.
+- Packaging: yet another maintenance burden, but could bring more options to the table. What if it's the fastest terminal? We will know after running benchmarks
+- Image previews: should be verified once packaged to confirm Sixel works with Zellij + Yazi. As currently only Wezterm shows image previews on yazi under zellij correctly, that would be a nice thing to have.
+- Platform coverage: No macos is unfortunate
+- Conclusion: merge first, on main or a separate branch, and test for a while
 
-These gaps are the blockers to making foot a first-class option. Once the packaging and config automation land, revisit this table to update its status.
