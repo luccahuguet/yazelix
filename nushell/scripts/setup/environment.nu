@@ -225,15 +225,19 @@ def main [
         $"($colors.cyan)💡 Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files, 'Alt [' or 'Alt ]' to swap layouts($colors.reset)"
     ] | where $it != ""
 
-    # Check if we're in env-only mode (overrides skip_welcome_screen)
+    # Check if we're in env-only mode or test mode (overrides skip_welcome_screen)
     let env_only_mode = ($env.YAZELIX_ENV_ONLY? == "true")
-    let should_skip_welcome = $skip_welcome_screen or $env_only_mode
+    let test_mode = ($env.YAZELIX_SKIP_WELCOME? == "true")
+    let should_skip_welcome = $skip_welcome_screen or $env_only_mode or $test_mode
     
     # Show welcome screen or log it
     if $should_skip_welcome {
         if $env_only_mode {
             print $"($colors.cyan)🔧 Yazelix environment loaded! All tools are available in your current shell.($colors.reset)"
             print $"($colors.cyan)💡 Use 'yzx start' or 'yzx launch' to open the full Yazelix interface when needed.($colors.reset)"
+        } else if $test_mode {
+            # Test mode - minimal output
+            print $"($colors.cyan)🧪 Yazelix test mode - Welcome screen skipped($colors.reset)"
         } else {
             # Log welcome info instead of displaying it
             let welcome_log_file = $"($log_dir)/welcome_(date now | format date '%Y%m%d_%H%M%S').log"

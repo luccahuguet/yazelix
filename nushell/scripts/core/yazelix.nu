@@ -22,6 +22,7 @@ export def "yzx help" [] {
     print ""
     print "DIAGNOSTICS:"
     print "  yzx doctor [--verbose] [--fix] - Run health checks and diagnostics"
+    print "  yzx test [--verbose] [--filter] [--new-window] - Run test suite"
     print ""
     print "CONFIGURATION MANAGEMENT:"
     print "  yzx config_status [shell]      - Show status of all shell configurations"
@@ -187,4 +188,14 @@ export def "yzx update" [] {
         print $"flake update failed: ($err.msg)"
         exit 1
     }
+}
+
+# Run Yazelix test suite
+export def "yzx test" [
+    --verbose(-v)  # Show detailed test output
+    --filter(-f): string  # Filter tests by name pattern
+    --new-window(-n)  # Run tests in a new Yazelix window
+] {
+    use ../utils/test_runner.nu run_all_tests
+    run_all_tests --verbose=$verbose --filter=$filter --new-window=$new_window
 }

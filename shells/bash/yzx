@@ -34,6 +34,9 @@ declare -A YAZELIX_CONFIG_FILES=(
 show_help() {
     echo "=== Yazelix Command Suite ==="
     echo ""
+    echo "DIAGNOSTICS:"
+    echo "  yzx test [--verbose] [--filter] [--new-window] - Run test suite"
+    echo ""
     echo "CONFIGURATION MANAGEMENT:"
     echo "  yzx config_status [shell]      - Show status of all shell configurations"
     echo "  yzx config_schema              - Show the configuration schema"
@@ -300,6 +303,11 @@ PITCH
             ;;
         "restart")
             restart_yazelix
+            ;;
+        "test")
+            # Pass through flags to nushell
+            shift  # Remove 'test' from arguments
+            nu -c "use $YAZELIX_DIR/nushell/scripts/core/yazelix.nu *; yzx test $*"
             ;;
         *)
             echo "❌ Unknown subcommand: $subcommand"

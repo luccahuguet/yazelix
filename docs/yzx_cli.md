@@ -9,6 +9,12 @@ Health checks and diagnostics
 - `--verbose`: Detailed output
 - `--fix`: Auto-fix safe issues
 
+### `yzx test [--verbose] [--filter] [--new-window]`
+Run Yazelix test suite
+- `--verbose`: Show detailed test output
+- `--filter`: Filter tests by name pattern
+- `--new-window`: Launch tests in a new Yazelix window (useful for debugging crashes)
+
 ### `yzx launch`
 Launch Yazelix in new terminal window
 
@@ -34,6 +40,10 @@ Show command reference
 
 ```bash
 yzx doctor --fix              # Health check with auto-fix
+yzx test                      # Run all tests
+yzx test --verbose            # Run tests with detailed output
+yzx test --filter nix         # Run only Nix-related tests
+yzx test --new-window         # Run tests in separate window (for debugging)
 yzx launch                    # New terminal window
 yzx info                      # System information
 yzx config_status bash        # Check bash integration

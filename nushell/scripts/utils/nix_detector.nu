@@ -161,7 +161,9 @@ export def show_nix_installation_help [error_type: string] {
 }
 
 # Main function to check Nix and fail gracefully if not available
-export def ensure_nix_available [] {
+export def ensure_nix_available [
+    --non-interactive  # Skip interactive prompts (for testing)
+] {
     let colors = {
         red: $"\u{1b}[31m"
         yellow: $"\u{1b}[33m"
@@ -170,13 +172,18 @@ export def ensure_nix_available [] {
         cyan: $"\u{1b}[36m"
         reset: $"\u{1b}[0m"
     }
-    
+
     let nix_status = check_nix_installation
-    
+
     if not $nix_status.installed or ($nix_status.error | is-not-empty) {
         show_nix_installation_help $nix_status.error
         print ""
-        
+
+        # If non-interactive mode, just fail
+        if $non_interactive {
+            error make { msg: $"Nix not available: ($nix_status.error)" }
+        }
+
         # Special handling for nix_not_in_path - offer to source it automatically
         if $nix_status.error == "nix_not_in_path" {
             print $"($colors.cyan)🔧 Quick fix options:($colors.reset)"
