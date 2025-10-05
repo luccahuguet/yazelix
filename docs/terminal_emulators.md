@@ -2,6 +2,8 @@
 
 Yazelix ships with multiple terminals so users can match platform needs and personal preferences. The table below summarizes how each option fits into the current stack and highlights what still needs work.
 
+> ⚠️ This comparison is a work in progress. Some details may be incomplete or become outdated as we add benchmarking data and bundle changes.
+
 | Category | **WezTerm** | **Ghostty** | **Kitty** | **Alacritty** | **foot** |
 | --- | --- | --- | --- | --- | --- |
 | Platforms | Linux, macOS, Windows 🏆 | macOS, Linux (Wayland & X11) **(default)** | Linux, macOS | Linux, macOS, Windows 🏆 | Linux (Wayland) |
@@ -29,4 +31,3 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 - Image previews: should be verified once packaged to confirm Sixel works with Zellij + Yazi. As currently only Wezterm shows image previews on yazi under zellij correctly, that would be a nice thing to have.
 - Platform coverage: No macos is unfortunate
 - Conclusion: merge first, on main or a separate branch, and test for a while
-
