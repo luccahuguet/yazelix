@@ -305,6 +305,23 @@ def save_config_with_backup [file_path: string, content: string] {
 
 # Write terminal configurations (bundled terminals only)
 export def generate_all_terminal_configs [] {
+    let config = parse_yazelix_config
+
+    # Helper to parse extra terminals from string representation like "[ wezterm kitty ]"
+    let extra_terminals = (
+        $config.extra_terminals
+        | str replace '[' ''
+        | str replace ']' ''
+        | str replace '"' ''
+        | str trim
+        | split row ' '
+        | where {|t| ($t | str length) > 0 }
+    )
+
+    let should_generate_foot = (
+        ($config.preferred_terminal == "foot") or ($extra_terminals | any {|t| $t == "foot" })
+    )
+
     # Write generated configs to XDG state dir, not the user's terminal config
     let generated_dir = ($YAZELIX_GENERATED_CONFIGS_DIR | str replace "~" $env.HOME)
     let configs_dir = ($generated_dir | path join "terminal_emulators")
@@ -330,6 +347,17 @@ export def generate_all_terminal_configs [] {
     let alacritty_config = ($alacritty_dir | path join "alacritty.toml")
     save_config_with_backup $alacritty_config (generate_alacritty_config)
 
-    print "✓ Generated terminal configurations (Ghostty, Alacritty)"
+    mut generated = ["Ghostty", "Alacritty"]
+
+    if $should_generate_foot {
+        let foot_dir = ($configs_dir | path join "foot")
+        mkdir $foot_dir
+        let foot_config = ($foot_dir | path join "foot.ini")
+        save_config_with_backup $foot_config (generate_foot_config)
+        $generated = ($generated | append "Foot")
+    }
+
+    let generated_list = ($generated | str join ", ")
+    print $"✓ Generated terminal configurations ($generated_list)"
     print "📋 Static example configs for other terminals in configs/terminal_emulators/"
 }

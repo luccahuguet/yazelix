@@ -79,6 +79,12 @@ def main [] {
             terminal: "yazelix-alacritty"
             config: null # Config is handled internally by the wrapper
         }
+    } else if $prefer_wrappers and ($preferred_terminal == "foot") and ((which yazelix-foot | length) > 0) {
+        print "Using Yazelix - Foot (with nixGL acceleration)"
+        {
+            terminal: "yazelix-foot",
+            config: null # Config is handled internally by the wrapper
+        }
     } else if $prefer_wrappers and (which yazelix-ghostty | length) > 0 {
         print "Using Yazelix - Ghostty (with nixGL acceleration)"
         {
@@ -104,7 +110,7 @@ def main [] {
             config: null # Config is handled internally by the wrapper
         }
     } else if $prefer_wrappers and (which yazelix-foot | length) > 0 {
-        print "Using Yazelix - Foot (with nixGl acceleration)"
+        print "Using Yazelix - Foot (with nixGL acceleration)"
         {
             terminal: "yazelix-foot",
             config: null # Config is handled internally by the wrapper
