@@ -16,6 +16,43 @@ export const DEFAULT_SHELL = "nu"
 export const DEFAULT_TERMINAL = "ghostty"
 export const DEFAULT_HELIX_MODE = "release"
 
+# Supported terminal emulators
+export const SUPPORTED_TERMINALS = ["ghostty", "kitty", "wezterm", "alacritty", "foot"]
+
+# Terminal configuration paths
+export const TERMINAL_CONFIG_PATHS = {
+    ghostty: {
+        yazelix: "~/.local/share/yazelix/configs/terminal_emulators/ghostty/config"
+        user: "~/.config/ghostty/config"
+    }
+    kitty: {
+        yazelix: "~/.local/share/yazelix/configs/terminal_emulators/kitty/kitty.conf"
+        user: "~/.config/kitty/kitty.conf"
+    }
+    wezterm: {
+        yazelix: "~/.local/share/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua"
+        user_main: "~/.wezterm.lua"
+        user_alt: "~/.config/wezterm/wezterm.lua"
+    }
+    alacritty: {
+        yazelix: "~/.local/share/yazelix/configs/terminal_emulators/alacritty/alacritty.toml"
+        user: "~/.config/alacritty/alacritty.toml"
+    }
+    foot: {
+        yazelix: "~/.local/share/yazelix/configs/terminal_emulators/foot/foot.ini"
+        user: "~/.config/foot/foot.ini"
+    }
+}
+
+# Terminal display names and wrappers
+export const TERMINAL_METADATA = {
+    ghostty: {name: "Ghostty", wrapper: "yazelix-ghostty"}
+    kitty: {name: "Kitty", wrapper: "yazelix-kitty"}
+    wezterm: {name: "WezTerm", wrapper: "yazelix-wezterm"}
+    alacritty: {name: "Alacritty", wrapper: "yazelix-alacritty"}
+    foot: {name: "Foot", wrapper: "yazelix-foot"}
+}
+
 # File paths and directories - XDG-compliant separation
 # Static configuration (potentially managed by home-manager)
 export const YAZELIX_CONFIG_DIR = "~/.config/yazelix"
