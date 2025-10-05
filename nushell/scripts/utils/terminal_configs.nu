@@ -286,7 +286,7 @@ shell=bash -l -c \"nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu\"
 # Window class
 app-id=com.yazelix.Yazelix
 # Font configuration
-font=FiraCode Nerd Font
+font=FiraCode Nerd Font:size=12
 
 # Foot does not support cursor trails
 [cursor]
