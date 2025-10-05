@@ -52,6 +52,10 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 - Fast, GPU-accelerated terminal written in Rust
 - Instructions here: https://github.com/alacritty/alacritty/blob/master/INSTALL.md
 
+**Foot**
+- Fast, simple, written in C
+- Instructions here: https://codeberg.org/dnkl/foot/src/branch/master/INSTALL.md
+
 ## Step-by-Step Installation
 
 ### Step 1: Install Nix Package Manager
@@ -166,7 +170,7 @@ nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 ```
 
 This will automatically configure your shell and then you can use:
-- `yzx launch` (opens Yazelix in a new terminal window)  
+- `yzx launch` (opens Yazelix in a new terminal window)
 - `yzx start` (starts Yazelix in current terminal)
 - `yzx help` (see all available commands)
 
@@ -184,7 +188,7 @@ For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 
 ### Step 6: Using Yazelix
 
-**Option A users**: Simply open your terminal! Yazelix will automatically launch with the full environment.  
+**Option A users**: Simply open your terminal! Yazelix will automatically launch with the full environment.
 **Option B users**: Use `yzx launch` or `yzx start` to launch Yazelix when needed.
 
 **First Run**: The first time you launch Yazelix, it will install all dependencies (Zellij, Yazi, Helix, etc.). This may take several minutes, but subsequent launches will be instant.

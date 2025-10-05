@@ -35,6 +35,7 @@ def main [] {
             "ghostty" => $"($home)/.local/share/yazelix/configs/terminal_emulators/ghostty/config",
             "kitty" => $"($home)/.local/share/yazelix/configs/terminal_emulators/kitty/kitty.conf",
             "alacritty" => $"($home)/.local/share/yazelix/configs/terminal_emulators/alacritty/alacritty.toml",
+            "foot" => $"($home)/.local/share/yazelix/configs/terminal_emulators/foot/foot.ini"
             _ => null
         }
         let user = match $term {
@@ -42,6 +43,7 @@ def main [] {
             "ghostty" => $"($home)/.config/ghostty/config",
             "kitty" => $"($home)/.config/kitty/kitty.conf",
             "alacritty" => $"($home)/.config/alacritty/alacritty.toml",
+            "foot" => $"($home)/.config/foot/foot.ini"
             _ => null
         }
         let mode = $terminal_config_mode
@@ -101,6 +103,12 @@ def main [] {
             terminal: "yazelix-alacritty"
             config: null # Config is handled internally by the wrapper
         }
+    } else if $prefer_wrappers and (which yazelix-foot | length) > 0 {
+        print "Using Yazelix - Foot (with nixGl acceleration)"
+        {
+            terminal: "yazelix-foot",
+            config: null # Config is handled internally by the wrapper
+        }
     } else if ($preferred_terminal == "wezterm") and ((which wezterm | length) > 0) {
         print $"Using terminal: wezterm \(preferred: ($preferred_terminal)\)"
         {
@@ -118,6 +126,12 @@ def main [] {
         {
             terminal: "kitty"
             config: (resolve_config kitty)
+        }
+    } else if ($preferred_terminal == "foot") and ((which foot | length) > 0) {
+        print $"Using terminal: foot \(preferred: ($preferred_terminal)\)"
+        {
+            terminal: "foot",
+            config: (resolve_config foot)
         }
     } else if ($preferred_terminal == "alacritty") and ((which alacritty | length) > 0) {
         print $"Using terminal: alacritty \(preferred: ($preferred_terminal)\)"
@@ -139,6 +153,11 @@ def main [] {
         {
             terminal: "kitty"
             config: (resolve_config kitty)
+        }
+    } else if ($preferred_terminal == "foot") and ((which foot | length) > 0) {
+        {
+            terminal: "foot",
+            config: (resolve_config foot)
         }
     } else if ($preferred_terminal == "alacritty") and ((which alacritty | length) > 0) {
         {
@@ -169,12 +188,19 @@ def main [] {
             terminal: "alacritty"
             config: (resolve_config alacritty)
         }
+    } else if (which foot | length) > 0 {
+        print $"Using terminal: foot \(preferred: ($preferred_terminal)\)"
+        {
+            terminal: "foot",
+            config: (resolve_config foot)
+        }
     } else {
-        print "Error: None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty) are installed. Please install one of these terminals to use Yazelix."
+        print "Error: None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty, Foot) are installed. Please install one of these terminals to use Yazelix."
         print "  - WezTerm: https://wezfurlong.org/wezterm/"
         print "  - Ghostty: https://ghostty.org/"
         print "  - Kitty: https://sw.kovidgoyal.net/kitty/"
         print "  - Alacritty: https://alacritty.org/"
+        print " - Foot: https://codeberg.org/dnkl/foot"
         exit 1
     }
 
@@ -211,6 +237,11 @@ def main [] {
         with-env { YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode } {
             ^bash -c "nohup yazelix-alacritty >/dev/null 2>&1 &"
         }
+    } else if $terminal == "yazelix-foot" {
+        print "Running: yazelix-foot (with nixGL auto-detection)"
+        with-env { YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode } {
+            ^bash -c "nohup yazelix-foot >/dev/null 2>&1 &"
+        }
     } else if $terminal == "ghostty" {
         print ("Running: ghostty --config-file=" + $terminal_config)
         ^bash -c $"nohup ghostty --config-file=($terminal_config) >/dev/null 2>&1 &"
@@ -223,6 +254,9 @@ def main [] {
     } else if $terminal == "alacritty" {
         print ("Running: alacritty --config-file=" + $terminal_config)
         ^bash -c $"nohup alacritty --config-file ($terminal_config) >/dev/null 2>&1 &"
+    } else if $terminal == "foot" {
+        print ("Running: foot --config " + $terminal_config + " --app-id com.yazelix.Yazelix")
+        ^bash -c $"nohup foot --config ($terminal_config) --app-id com.yazelix.Yazelix >/dev/null 2>&1 &"
     }
 }
 

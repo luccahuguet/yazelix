@@ -22,12 +22,12 @@
   enable_atuin = false;
 
   # Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
-  # Options: "wezterm", "ghostty", "kitty", "alacritty"
+  # Options: "wezterm", "ghostty", "kitty", "alacritty", "foot"
   # Ghostty is always included by default with nixGL acceleration
   preferred_terminal = "ghostty";
 
   # Extra terminal emulators to install beyond Ghostty (default: [])
-  # Options: ["wezterm", "kitty", "alacritty"]
+  # Options: ["wezterm", "kitty", "alacritty", "foot"]
   # Only install additional terminals if you plan to use them
   extra_terminals = [ ];
 

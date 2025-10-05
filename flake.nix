@@ -175,6 +175,23 @@
           ''
         else null;
 
+        # Foot wrapper with nixGL for GL drivers on non-NixOS
+        footWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "foot" then
+          pkgs.writeShellScriptBin "yazelix-foot" ''
+            MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
+            MODE="''${MODE:-auto}"
+            USER_CONF="$HOME/.config/foot/foot.ini"
+            YZ_CONF="$HOME/.local/share/yazelix/configs/terminal_emulators/foot/foot.ini"
+            CONF="$YZ_CONF"
+            if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
+              if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
+            fi
+            exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.foot}/bin/foot \
+              --config="$CONF" \
+              --app-id="com.yazelix.Yazelix" "$@"
+          ''
+        else null;
+
         # Desktop launcher script for yazelix - force rebuild with timestamp
         yazelixDesktopLauncher = if yazelixIncludeTerminal then
           pkgs.writeShellScriptBin "yazelix-desktop-launcher" ''
@@ -239,6 +256,9 @@
           alacritty # Base alacritty package
           nerd-fonts.fira-code # Preferred Nerd Font (matches README)
           nerd-fonts.symbols-only # Symbols fallback for extra glyphs
+        ] else []) ++ (if yazelixIncludeTerminal && yazelixPreferredTerminal == "foot" then [
+          footWrapper
+          foot
         ] else []);
 
         # Extra shell dependencies (fish/zsh only when needed)
