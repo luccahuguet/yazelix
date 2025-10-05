@@ -53,7 +53,7 @@ Install once, get the same environment everywhere
 - Yazelix lets you say `I use Yazelix btw`
 - Boy, do we Nix
 - Integration, integration, integration
-- Like [Omarchy](https://github.com/olimorris/omarchy) but for your terminal
+- Like [Omarchy](https://github.com/basecamp/omarchy) but for your terminal
 - Made with love.
 
 ## Acknowledgments
