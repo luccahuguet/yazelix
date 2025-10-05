@@ -166,7 +166,14 @@ shell=($YAZELIX_SHELL_COMMAND)
 [main]
 app-id=($YAZELIX_WINDOW_CLASS)
 title=(get_terminal_title "foot")
+locked-title=yes
 font=($FONT_FIRACODE):size=12
+pad=6x6 center-when-maximized-and-fullscreen
+
+[csd]
+preferred=client
+size=0
+border-width=0
 
 [cursor]
 style=block
