@@ -20,80 +20,75 @@ def get_cursor_trail_shader [cursor_trail: string] {
     $CURSOR_TRAIL_SHADERS | get -o $cursor_trail | default $CURSOR_TRAIL_SHADERS.blaze
 }
 
-# Generate Ghostty configuration
-export def generate_ghostty_config [] {
-    let config = parse_yazelix_config
-    let cursor_trail = $config.cursor_trail
-    let transparency = $config.transparency
-    let opacity = get_opacity_value $transparency
-    let title = get_terminal_title "ghostty"
+# Section builder: Yazelix branding (class, instance, title)
+def build_branding_section [terminal: string, format: string = "ini"] {
+    let title = get_terminal_title $terminal
 
-    # Transparency config
-    let transparency_config = if $transparency == "none" {
-        "# background-opacity = 0.9"
-    } else {
-        $"background-opacity = ($opacity)"
+    match $format {
+        "ini" => $"class = ($YAZELIX_WINDOW_CLASS)
+x11-instance-name = ($YAZELIX_X11_INSTANCE)
+title = ($title)",
+        "toml" => $"class = { instance = \"($YAZELIX_X11_INSTANCE)\", general = \"($YAZELIX_WINDOW_CLASS)\" }
+title = \"($title)\"",
+        _ => ""
     }
+}
 
-    # Cursor trail config
+# Section builder: Transparency config
+def build_transparency_section [transparency: string, format: string = "ini", key: string = "opacity"] {
+    let opacity = get_opacity_value $transparency
+
+    if $transparency == "none" {
+        match $format {
+            "ini" => $"# ($key) = 0.9",
+            "lua" => "-- config.window_background_opacity = 0.9",
+            "toml" => "# opacity = 0.9",
+            _ => ""
+        }
+    } else {
+        match $format {
+            "ini" => $"($key) = ($opacity)",
+            "lua" => $"config.window_background_opacity = ($opacity)",
+            "toml" => $"opacity = ($opacity)",
+            _ => ""
+        }
+    }
+}
+
+# Section builder: Cursor trail config (Ghostty-specific)
+def build_cursor_trail_section [cursor_trail: string] {
     let shader_path = get_cursor_trail_shader $cursor_trail
-    let cursor_config = if $cursor_trail == "none" {
+
+    if $cursor_trail == "none" {
         "# custom-shader = ./shaders/cursor_smear.glsl"
     } else {
         $"custom-shader = ($shader_path)"
     }
+}
 
-    $"# This is the configuration file for Ghostty.
-#
-# This template file has been automatically created at the following
-# path since Ghostty couldn't find any existing config files on your system:
-#
-#   /home/lucca/.config/ghostty/config
-#
-# The template does not set any default options, since Ghostty ships
-# with sensible defaults for all options. Users should only need to set
-# options that they want to change from the default.
-#
-# Run `ghostty +show-config --default --docs` to view a list of
-# all available config options and their default values.
-#
-# Additionally, each config option is also explained in detail
-# on Ghostty's website, at https://ghostty.org/docs/config.
+# Section builder: Kitty cursor trail (built-in only supports snow)
+def build_kitty_cursor_section [cursor_trail: string] {
+    match $cursor_trail {
+        "snow" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
+        "none" => "# cursor_trail 0",
+        _ => "# cursor_trail 0  # Custom effects \(blaze/ocean/forest/sunset/neon/cosmic\) not supported in Kitty"
+    }
+}
 
-# Config syntax crash course
-# ==========================
-# # The config file consists of simple key-value pairs,
-# # separated by equals signs.
-# font-family = Iosevka
-# window-padding-x = 2
-#
-# # Spacing around the equals sign does not matter.
-# # All of these are identical:
-# key=value
-# key= value
-# key =value
-# key = value
-#
-# # Any line beginning with a # is a comment. It's not possible to put
-# # a comment after a config option, since it would be interpreted as a
-# # part of the value. For example, this will have a value of \"#123abc\":
-# background = #123abc
-#
-# # Empty values are used to reset config keys to default.
-# key =
-#
-# # Some config options have unique syntaxes for their value,
-# # which is explained in the docs for that config option.
-# # Just for example:
-# resize-overlay-duration = 4s 200ms
+# Generate Ghostty configuration
+export def generate_ghostty_config [] {
+    let config = parse_yazelix_config
+    let branding = build_branding_section "ghostty" "ini"
+    let transparency = build_transparency_section $config.transparency "ini" "background-opacity"
+    let cursor_trail = build_cursor_trail_section $config.cursor_trail
+
+    $"($GHOSTTY_CONFIG_HEADER)
 
 # Start Yazelix via login shell to ensure Nix environment is loaded
 initial-command = \"($YAZELIX_SHELL_COMMAND)\"
 
 # Yazelix branding for desktop environment recognition
-class = ($YAZELIX_WINDOW_CLASS)
-x11-instance-name = ($YAZELIX_X11_INSTANCE)
-title = ($title)
+($branding)
 
 # Theme and styling consistent with WezTerm config
 theme = \"($YAZELIX_THEME)\"
@@ -101,10 +96,10 @@ window-decoration = \"none\"
 window-padding-y = 10,0
 
 # Transparency \(configurable via yazelix.nix\)
-($transparency_config)
+($transparency)
 
 # Cursor trail effect \(configurable via yazelix.nix\)
-($cursor_config)
+($cursor_trail)
 
 # Alternative presets \(uncomment to try\)
 # snow:  custom-shader = ./shaders/cursor_trail_white.glsl
@@ -121,15 +116,8 @@ window-padding-y = 10,0
 # Generate WezTerm configuration
 export def generate_wezterm_config [] {
     let config = parse_yazelix_config
-    let transparency = $config.transparency
-    let opacity = get_opacity_value $transparency
     let title = get_terminal_title "wezterm"
-
-    let transparency_config = if $transparency == "none" {
-        "-- config.window_background_opacity = 0.9"
-    } else {
-        $"config.window_background_opacity = ($opacity)"
-    }
+    let transparency = build_transparency_section $config.transparency "lua"
 
     $"-- WezTerm configuration for Yazelix
 local wezterm = require 'wezterm'
@@ -157,7 +145,7 @@ config.window_class = '($YAZELIX_WINDOW_CLASS)'
 config.window_title = '($title)'
 
 -- Transparency \(configurable via yazelix.nix\)
-($transparency_config)
+($transparency)
 
 -- Cursor trails: Not supported in WezTerm
 
@@ -167,24 +155,9 @@ return config"
 # Generate Kitty configuration
 export def generate_kitty_config [] {
     let config = parse_yazelix_config
-    let transparency = $config.transparency
-    let cursor_trail = $config.cursor_trail
-    let opacity = get_opacity_value $transparency
     let title = get_terminal_title "kitty"
-
-    let transparency_config = if $transparency == "none" {
-        "# background_opacity 0.9"
-    } else {
-        $"background_opacity ($opacity)"
-    }
-
-    # Kitty cursor trail support (built-in animation)
-    let cursor_config = match $cursor_trail {
-        # Kitty supports a built-in white trail; map snow to it
-        "snow" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
-        "none" => "# cursor_trail 0",
-        _ => "# cursor_trail 0  # Custom effects \(blaze/ocean/forest/sunset/neon/cosmic\) not supported in Kitty"
-    }
+    let transparency = build_transparency_section $config.transparency "ini" "background_opacity"
+    let cursor = build_kitty_cursor_section $config.cursor_trail
 
     $"# Kitty configuration for Yazelix
 
@@ -206,7 +179,7 @@ x11_hide_window_decorations yes
 window_title ($title)
 
 # Transparency \(configurable via yazelix.nix\)
-($transparency_config)
+($transparency)
 
 # Font settings
 font_family      FiraCode Nerd Font
@@ -220,21 +193,14 @@ input_delay 3
 sync_to_monitor yes
 
 # Cursor trail effect \(configurable via yazelix.nix\)
-($cursor_config)"
+($cursor)"
 }
 
 # Generate Alacritty configuration
 export def generate_alacritty_config [] {
     let config = parse_yazelix_config
-    let transparency = $config.transparency
-    let opacity = get_opacity_value $transparency
-    let title = get_terminal_title "alacritty"
-
-    let transparency_config = if $transparency == "none" {
-        "# opacity = 0.9"
-    } else {
-        $"opacity = ($opacity)"
-    }
+    let branding = build_branding_section "alacritty" "toml"
+    let transparency = build_transparency_section $config.transparency "toml"
 
     $"# Alacritty configuration for Yazelix
 
@@ -251,11 +217,10 @@ args = [\"-l\", \"-c\", \"nu ~/.config/yazelix/nushell/scripts/core/start_yazeli
 [window]
 decorations = \"None\"
 padding = { x = 0, y = 10 }
-class = { instance = \"($YAZELIX_X11_INSTANCE)\", general = \"($YAZELIX_WINDOW_CLASS)\" }
-title = \"($title)\"
+($branding)
 
 # Transparency \(configurable via yazelix.nix\)
-($transparency_config)
+($transparency)
 
 # Cursor trails: Not supported in Alacritty
 
@@ -275,22 +240,15 @@ primary = { background = \"#000000\", foreground = \"#ffffff\" }"
 # Generate Foot configuration
 export def generate_foot_config [] {
     let config = parse_yazelix_config
-    let transparency = $config.transparency
-    let opacity = get_opacity_value $transparency
     let title = get_terminal_title "foot"
-
-    let transparency_config = if $transparency == "none" {
-        "# alpha=0.9"
-    } else {
-        $"alpha=($opacity)"
-    }
+    let transparency = build_transparency_section $config.transparency "ini" "alpha"
 
     $"# Foot configuration for Yazelix
 shell=($YAZELIX_SHELL_COMMAND)
 
 [colors]
 # Transparency \(configurable via yazelix.nix)
-($transparency_config)
+($transparency)
 
 [main]
 # Window class
