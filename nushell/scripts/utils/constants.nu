@@ -80,6 +80,13 @@ export const CURSOR_TRAIL_SHADERS = {
     none: ""
 }
 
+# Common config sections
+export const SHELL_ARGS_BASH = '["bash", "-l", "-c", "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]'
+export const SHELL_ARGS_STRING = '[\"-l\", \"-c\", \"nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu\"]'
+
+# Font configurations
+export const FONT_FIRACODE = "FiraCode Nerd Font"
+
 # Ghostty config header template
 export const GHOSTTY_CONFIG_HEADER = "# This is the configuration file for Ghostty.
 #
