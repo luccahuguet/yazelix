@@ -180,12 +180,13 @@ export def run_all_tests [
         print "❌ Some tests failed"
         $"\n❌ Some tests failed\n" | save --append $log_file
         print $"📝 Full log: ($log_file)"
-        exit 1
+        print ""
+        error make { msg: "Test suite failed" }
     } else {
         print ""
         print "✅ All tests passed!"
         $"\n✅ All tests passed!\n" | save --append $log_file
         print $"📝 Full log: ($log_file)"
-        exit 0
+        print ""
     }
 }
