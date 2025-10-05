@@ -250,16 +250,16 @@ def main [] {
         }
     } else if $terminal == "ghostty" {
         print ("Running: ghostty --config-file=" + $terminal_config)
-        ^bash -c $"nohup ghostty --config-file=($terminal_config) >/dev/null 2>&1 &"
+        ^bash -c $"nohup ghostty --config-file=($terminal_config) --title=\"Yazelix - Ghostty\" >/dev/null 2>&1 &"
     } else if $terminal == "wezterm" {
         print ("Running: wezterm --config-file " + $terminal_config + " start --class=com.yazelix.Yazelix")
         ^bash -c $"nohup wezterm --config-file ($terminal_config) start --class=com.yazelix.Yazelix >/dev/null 2>&1 &"
     } else if $terminal == "kitty" {
         print ("Running: kitty --config=" + $terminal_config + " --class=com.yazelix.Yazelix")
-        ^bash -c $"nohup kitty --config=($terminal_config) --class=com.yazelix.Yazelix >/dev/null 2>&1 &"
+        ^bash -c $"nohup kitty --config=($terminal_config) --class=com.yazelix.Yazelix --title=\"Yazelix - Kitty\" >/dev/null 2>&1 &"
     } else if $terminal == "alacritty" {
         print ("Running: alacritty --config-file=" + $terminal_config)
-        ^bash -c $"nohup alacritty --config-file ($terminal_config) >/dev/null 2>&1 &"
+        ^bash -c $"nohup alacritty --config-file ($terminal_config) --title \"Yazelix - Alacritty\" >/dev/null 2>&1 &"
     } else if $terminal == "foot" {
         print ("Running: foot --config " + $terminal_config + " --app-id com.yazelix.Yazelix")
         ^bash -c $"nohup foot --config ($terminal_config) --app-id com.yazelix.Yazelix >/dev/null 2>&1 &"

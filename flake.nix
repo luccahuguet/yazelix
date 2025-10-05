@@ -118,7 +118,8 @@
             exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.ghostty}/bin/ghostty \
               --config-file="$CONF" \
               --class="com.yazelix.Yazelix" \
-              --x11-instance-name="yazelix" "$@"
+              --x11-instance-name="yazelix" \
+              --title="Yazelix - Ghostty" "$@"
           ''
         else null;
 
@@ -135,7 +136,8 @@
             fi
             exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.kitty}/bin/kitty \
               --config="$CONF" \
-              --class="com.yazelix.Yazelix" "$@"
+              --class="com.yazelix.Yazelix" \
+              --title="Yazelix - Kitty" "$@"
           ''
         else null;
 
@@ -171,7 +173,8 @@
             fi
             exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.alacritty}/bin/alacritty \
               --config-file="$CONF" \
-              --class="com.yazelix.Yazelix" "$@"
+              --class="com.yazelix.Yazelix" \
+              --title="Yazelix - Alacritty" "$@"
           ''
         else null;
 

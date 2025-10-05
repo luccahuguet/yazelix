@@ -72,6 +72,7 @@ initial-command = \"bash -l -c 'nu ~/.config/yazelix/nushell/scripts/core/start_
 # Yazelix branding for desktop environment recognition
 class = com.yazelix.Yazelix
 x11-instance-name = yazelix
+title = Yazelix - Ghostty
 
 # Theme and styling consistent with WezTerm config
 theme = \"Abernathy\"
@@ -155,6 +156,9 @@ config.color_scheme = 'Abernathy'
 -- Window class for desktop integration
 config.window_class = 'com.yazelix.Yazelix'
 
+-- Window title
+config.window_title = 'Yazelix - WezTerm'
+
 -- Transparency \(configurable via yazelix.nix\)
 ($transparency_config)
 
@@ -199,6 +203,9 @@ include Abernathy.conf
 # Window class for desktop integration
 linux_display_server x11
 x11_hide_window_decorations yes
+
+# Window title
+window_title Yazelix - Kitty
 
 # Transparency \(configurable via yazelix.nix\)
 ($transparency_config)
@@ -246,6 +253,7 @@ args = [\"-l\", \"-c\", \"nu ~/.config/yazelix/nushell/scripts/core/start_yazeli
 decorations = \"None\"
 padding = { x = 0, y = 10 }
 class = { instance = \"yazelix\", general = \"com.yazelix.Yazelix\" }
+title = \"Yazelix - Alacritty\"
 
 # Transparency \(configurable via yazelix.nix\)
 ($transparency_config)
@@ -285,6 +293,8 @@ shell=bash -l -c \"nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu\"
 [main]
 # Window class
 app-id=com.yazelix.Yazelix
+# Window title
+title=Yazelix - Foot
 # Font configuration
 font=FiraCode Nerd Font:size=12
 
