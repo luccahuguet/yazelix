@@ -112,7 +112,7 @@ export def build_launch_command [
 export def get_terminal_display_name [terminal_info: record]: nothing -> string {
     let name = $terminal_info.name
     if $terminal_info.use_wrapper {
-        $"Yazelix - ($name) \(with nixGL acceleration\)"
+        $"Yazelix - ($name) \(with GPU acceleration\)"
     } else {
         $"($name)"
     }

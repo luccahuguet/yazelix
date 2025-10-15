@@ -200,14 +200,14 @@ def main [
     let terminal_info = try {
         let config = parse_yazelix_config
         if ($config.include_terminal == "true") and ((which yazelix-ghostty | length) > 0) {
-            $"($colors.green)🖥️  Using yazelix included terminal \(Ghostty with nixGL acceleration\)($colors.reset)"
+            $"($colors.green)🖥️  Using yazelix included terminal \(Ghostty with GPU acceleration\)($colors.reset)"
         } else {
             $"($colors.cyan)🖥️  Using external terminal: ($config.preferred_terminal)($colors.reset)"
         }
     } catch {
         # Fallback: check if we have yazelix-ghostty but no config
         if (which yazelix-ghostty | length) > 0 {
-            $"($colors.green)🖥️  Using yazelix included terminal \(Ghostty with nixGL acceleration\)($colors.reset)"
+            $"($colors.green)🖥️  Using yazelix included terminal \(Ghostty with GPU acceleration\)($colors.reset)"
         } else {
             $"($colors.cyan)🖥️  Using external terminal \(configuration not found\)($colors.reset)"
         }

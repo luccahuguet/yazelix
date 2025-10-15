@@ -23,7 +23,7 @@
 
   # Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
   # Options: "wezterm", "ghostty", "kitty", "alacritty", "foot"
-  # Ghostty is always included by default with nixGL acceleration
+  # Ghostty is always included by default with GPU acceleration (nixGL on Linux, native on macOS)
   preferred_terminal = "ghostty";
 
   # Extra terminal emulators to install beyond Ghostty (default: [])

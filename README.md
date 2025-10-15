@@ -78,7 +78,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 Full v9 notes moved to Version History: ./docs/history.md
 
 ## Compatibility
-- **Platform**: Works on any Linux distribution. Likely works on macOS as well (untested)
+- **Platform**: Works on Linux and macOS
 - **Terminal**: WezTerm, Ghostty, Kitty, or Alacritty
 - **Editor**: Any editor, but Helix has first-class support (reveal in sidebar, open buffer in running instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
@@ -210,7 +210,7 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 - **Kitty**: Fast, feature-rich, GPU-accelerated terminal
 - **Alacritty**: Fast, GPU-accelerated terminal written in Rust
 - Configure your preference in `yazelix.nix` with `preferred_terminal = "terminal_name"` (options: ghostty, wezterm, kitty, alacritty, foot)
-- **Bundled terminals**: Yazelix provides `yazelix-ghostty`, `yazelix-kitty`, etc. with automatic nixGL GPU acceleration and proper desktop branding. Only your preferred terminal is downloaded, with Ghostty always included as a fallback. Required fonts are included automatically.
+- **Bundled terminals**: Yazelix provides `yazelix-ghostty`, `yazelix-kitty`, etc. with proper desktop branding and GPU acceleration (nixGL on Linux, native on macOS). Only your preferred terminal is downloaded, with Ghostty always included as a fallback. Required fonts are included automatically.
 
 [See the full Customization Guide here.](./docs/customization.md)
 
