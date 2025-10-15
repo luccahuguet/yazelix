@@ -16,8 +16,8 @@ export const DEFAULT_SHELL = "nu"
 export const DEFAULT_TERMINAL = "ghostty"
 export const DEFAULT_HELIX_MODE = "release"
 
-# Supported terminal emulators
-export const SUPPORTED_TERMINALS = ["ghostty", "kitty", "wezterm", "alacritty", "foot"]
+# Supported terminal emulators (fallback priority order)
+export const SUPPORTED_TERMINALS = ["ghostty", "wezterm", "kitty", "alacritty", "foot"]
 
 # Terminal configuration paths
 export const TERMINAL_CONFIG_PATHS = {

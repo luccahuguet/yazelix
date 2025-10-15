@@ -208,11 +208,11 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 - **Ghostty** (default): Modern, fast terminal written in Zig with great performance
   - **Linux**: Provided by Yazelix via Nix
   - **macOS**: Install via Homebrew: `brew install --cask ghostty` (Nix doesn't support macOS app bundles)
-  - Detection falls back to other terminals if not found
+- **WezTerm** (recommended fallback): Works on both platforms via Nix, best image preview support in Yazi
 - **Kitty**: Fast, feature-rich, GPU-accelerated terminal (works on both platforms)
-- **WezTerm**: Better image preview support in Yazi, recommended if you need media previews
 - **Alacritty**: Fast, GPU-accelerated terminal written in Rust
 - **Foot**: Wayland-native terminal (Linux-only)
+- **Auto-detection**: If preferred terminal not found, fallback order is: ghostty → wezterm → kitty → alacritty → foot
 - Configure your preference in `yazelix.nix` with `preferred_terminal = "terminal_name"`
 - **Bundled terminals**: On Linux, Yazelix provides GPU-accelerated wrappers (`yazelix-ghostty`, `yazelix-kitty`, etc.) via Nix. On macOS, install your preferred terminal via Homebrew or system package manager.
 

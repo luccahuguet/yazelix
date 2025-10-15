@@ -29,7 +29,8 @@
   # - macOS: Install via Homebrew: `brew install --cask ghostty`
   #   (Nix package doesn't support macOS due to app bundle limitations)
   #
-  # Detection fallback: If preferred terminal not found, Yazelix auto-detects alternatives
+  # Auto-detection fallback order: ghostty → wezterm → kitty → alacritty → foot
+  # WezTerm is the recommended fallback (works on both platforms, best image preview)
   preferred_terminal = "ghostty";
 
   # Extra terminal emulators to install beyond Ghostty (default: [])
