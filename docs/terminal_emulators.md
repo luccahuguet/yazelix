@@ -27,7 +27,7 @@ Yazelix ships with multiple terminals so users can match platform needs and pers
 
 ## Foot evaluation notes
 
-- Packaging: yet another maintenance burden, but could bring more options to the table. What if it's the fastest terminal? We will know after running benchmarks
-- Image previews: should be verified once packaged to confirm Sixel works with Zellij + Yazi. As currently only Wezterm shows image previews on yazi under zellij correctly, that would be a nice thing to have.
-- Platform coverage: No macos is unfortunate
-- Conclusion: merge first, on main or a separate branch, and test for a while
+- **Platform**: Linux-only (Wayland native). Conditionally included only on Linux systems.
+- **Packaging**: Lightweight terminal with minimal dependencies, no nixGL required.
+- **Image previews**: Sixel support exists but untested with Zellij + Yazi.
+- **macOS**: Not available (Wayland requirement). Desktop integration features also Linux-only.
