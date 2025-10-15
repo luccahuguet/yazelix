@@ -206,12 +206,20 @@ show_info() {
 
 # Function to launch yazelix via desktop entry (uses bundled terminals)
 launch_yazelix() {
-    # Try to launch via desktop entry first (uses Yazelix bundled terminals)
-    if command -v gtk-launch >/dev/null 2>&1 && [[ -f "$HOME/.local/share/applications/com.yazelix.Yazelix.desktop" ]]; then
+    # Detect platform
+    local platform
+    platform="$(uname -s)"
+
+    # Try to launch via desktop entry first (Linux-only - uses Yazelix bundled terminals)
+    if [[ "$platform" == "Linux" ]] && command -v gtk-launch >/dev/null 2>&1 && [[ -f "$HOME/.local/share/applications/com.yazelix.Yazelix.desktop" ]]; then
         echo "🚀 Launching Yazelix via desktop entry (bundled terminals)..."
         gtk-launch com.yazelix.Yazelix
     elif command -v nu >/dev/null 2>&1; then
-        echo "⚠️  Desktop entry not found, falling back to terminal detection..."
+        if [[ "$platform" != "Linux" ]]; then
+            echo "🚀 Launching Yazelix (desktop entries not available on macOS)..."
+        else
+            echo "⚠️  Desktop entry not found, falling back to terminal detection..."
+        fi
         nu "$YAZELIX_DIR/nushell/scripts/core/launch_yazelix.nu"
     else
         echo "❌ Neither desktop entry nor nushell found. Please install nushell or set up desktop integration."

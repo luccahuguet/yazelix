@@ -251,8 +251,8 @@
           )
         else null;
 
-        # Foot wrapper - with nixGL on Linux, native on macOS
-        footWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "foot" then
+        # Foot wrapper - Linux-only (Wayland terminal, not available on macOS)
+        footWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "foot" && isLinux then
           pkgs.writeShellScriptBin "yazelix-foot" (
             if isLinux then ''
               MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
@@ -317,10 +317,11 @@
           starship # Customizable shell prompt with Git status
           bashInteractive # Interactive Bash shell
           macchina # Modern, fast system info fetch tool (Rust, maintained)
-          libnotify # Provides notify-send for desktop notifications (used by Nushell clip command)
           mise # Tool version manager - pre-configured in Yazelix shell initializers
-        ] ++ (if yazelixIncludeTerminal then [
-          # Desktop integration
+        ] ++ (if isLinux then [
+          libnotify # Provides notify-send for desktop notifications (used by Nushell clip command, Linux-only)
+        ] else []) ++ (if yazelixIncludeTerminal && isLinux then [
+          # Desktop integration (Linux-only - .desktop files are FreeDesktop standard)
           yazelixDesktopLauncher # Desktop launcher script
           yazelixDesktopEntry # Desktop entry with logo
         ] else []) ++ (if yazelixIncludeTerminal && isLinux then [
@@ -346,7 +347,7 @@
           alacritty # Base alacritty package
           nerd-fonts.fira-code # Preferred Nerd Font (matches README)
           nerd-fonts.symbols-only # Symbols fallback for extra glyphs
-        ] else []) ++ (if yazelixIncludeTerminal && yazelixPreferredTerminal == "foot" then [
+        ] else []) ++ (if yazelixIncludeTerminal && yazelixPreferredTerminal == "foot" && isLinux then [
           footWrapper
           foot
         ] else []);
