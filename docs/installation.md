@@ -39,9 +39,13 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 - Modern, fast, written in Rust
 - Instructions here: https://wezfurlong.org/wezterm/installation.html
 
-**Ghostty**
+**Ghostty** (Default)
 - Modern, fast, written in Zig, newer
-- Instructions here: https://ghostty.org/download
+- **Linux**: Provided by Yazelix via Nix (no installation needed)
+- **macOS**: Install via Homebrew: `brew install --cask ghostty`
+  - Nix package doesn't support macOS due to app bundle limitations
+  - Yazelix will auto-detect Homebrew installation
+- Download page: https://ghostty.org/download
 - **Note**: Due to a [Zellij/Yazi/Ghostty interaction](https://github.com/zellij-org/zellij/issues/2814#issuecomment-2965117327), image previews in Yazi may not display properly, for now. If this is a problem for you, use WezTerm instead
 
 **Kitty**

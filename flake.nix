@@ -89,7 +89,7 @@
         yazelixExtraShells = config.extra_shells or [ ];
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
         yazelixSkipWelcomeScreen = config.skip_welcome_screen or false; # Read skip_welcome_screen, default to false
-        yazelixPreferredTerminal = config.preferred_terminal or (if isLinux then "ghostty" else "kitty"); # Platform-aware default
+        yazelixPreferredTerminal = config.preferred_terminal or "ghostty"; # Default to ghostty (Homebrew on macOS, Nix on Linux)
         yazelixTerminalConfigMode = config.terminal_config_mode or "yazelix"; # Default to Yazelix-managed configs
         yazelixAsciiArtMode = config.ascii_art_mode or "static"; # Read ascii_art_mode, default to static
 

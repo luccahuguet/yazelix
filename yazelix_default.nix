@@ -21,10 +21,15 @@
   # Atuin shell history integration (separate control; disabled by default)
   enable_atuin = false;
 
-  # Preferred terminal emulator for launch_yazelix.nu
-  # Default: "ghostty" on Linux, "kitty" on macOS
-  # Options: "wezterm", "ghostty" (Linux-only in nixpkgs), "kitty", "alacritty", "foot" (Linux-only)
-  # Note: Ghostty itself supports macOS, but nixpkgs version is currently Linux-only
+  # Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
+  # Options: "ghostty", "wezterm", "kitty", "alacritty", "foot" (Linux-only)
+  #
+  # Ghostty installation:
+  # - Linux: Provided by Yazelix via Nix
+  # - macOS: Install via Homebrew: `brew install --cask ghostty`
+  #   (Nix package doesn't support macOS due to app bundle limitations)
+  #
+  # Detection fallback: If preferred terminal not found, Yazelix auto-detects alternatives
   preferred_terminal = "ghostty";
 
   # Extra terminal emulators to install beyond Ghostty (default: [])
