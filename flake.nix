@@ -89,7 +89,7 @@
         yazelixExtraShells = config.extra_shells or [ ];
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
         yazelixSkipWelcomeScreen = config.skip_welcome_screen or false; # Read skip_welcome_screen, default to false
-        yazelixPreferredTerminal = config.preferred_terminal or "ghostty"; # Read preferred_terminal, default to ghostty
+        yazelixPreferredTerminal = config.preferred_terminal or (if isLinux then "ghostty" else "kitty"); # Platform-aware default
         yazelixTerminalConfigMode = config.terminal_config_mode or "yazelix"; # Default to Yazelix-managed configs
         yazelixAsciiArtMode = config.ascii_art_mode or "static"; # Read ascii_art_mode, default to static
 
@@ -116,8 +116,8 @@
 
         # Simplified terminal wrappers without nixGL complexity
 
-        # Ghostty wrapper - with nixGL on Linux, native on macOS (always provided as fallback)
-        ghosttyWrapper = if yazelixIncludeTerminal then
+        # Ghostty wrapper - Linux-only (nixpkgs Ghostty is Linux-only)
+        ghosttyWrapper = if yazelixIncludeTerminal && isLinux then
           pkgs.writeShellScriptBin "yazelix-ghostty" (
             if isLinux then ''
               MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
@@ -327,8 +327,8 @@
         ] else []) ++ (if yazelixIncludeTerminal && isLinux then [
           # nixGL for GPU acceleration on non-NixOS Linux systems (not needed on macOS)
           pkgsWithNixGL.nixgl.nixGLIntel # For Intel/Mesa GPU acceleration
-        ] else []) ++ (if yazelixIncludeTerminal then [
-          # Ghostty terminal with GPU acceleration support (always provided as fallback)
+        ] else []) ++ (if yazelixIncludeTerminal && isLinux then [
+          # Ghostty terminal with GPU acceleration support (Linux-only in nixpkgs)
           ghosttyWrapper # Ghostty with nixGL wrapper
           ghostty # Base ghostty package
         ] else []) ++ (if yazelixIncludeTerminal && yazelixPreferredTerminal == "kitty" then [

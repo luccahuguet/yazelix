@@ -21,9 +21,10 @@
   # Atuin shell history integration (separate control; disabled by default)
   enable_atuin = false;
 
-  # Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
-  # Options: "wezterm", "ghostty", "kitty", "alacritty", "foot" (Linux-only)
-  # Ghostty is always included by default with GPU acceleration (nixGL on Linux, native on macOS)
+  # Preferred terminal emulator for launch_yazelix.nu
+  # Default: "ghostty" on Linux, "kitty" on macOS
+  # Options: "wezterm", "ghostty" (Linux-only in nixpkgs), "kitty", "alacritty", "foot" (Linux-only)
+  # Note: Ghostty itself supports macOS, but nixpkgs version is currently Linux-only
   preferred_terminal = "ghostty";
 
   # Extra terminal emulators to install beyond Ghostty (default: [])

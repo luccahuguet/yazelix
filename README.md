@@ -79,7 +79,7 @@ Full v9 notes moved to Version History: ./docs/history.md
 
 ## Compatibility
 - **Platform**: Works on Linux and macOS
-- **Terminal**: WezTerm, Ghostty, Kitty, Alacritty, or Foot (Linux-only)
+- **Terminal**: Kitty, WezTerm, Alacritty on both platforms; Ghostty and Foot on Linux only (nixpkgs limitation)
 - **Editor**: Any editor, but Helix has first-class support (reveal in sidebar, open buffer in running instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
@@ -205,13 +205,13 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), you already have your `~/.config/yazelix/yazelix.nix` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.nix](./yazelix_default.nix) for all available options and their descriptions.
 
 **Terminal Emulator Selection:**
-- **Ghostty** (default): Modern, fast terminal written in Zig with great performance
+- **Ghostty** (default on Linux): Modern, fast terminal written in Zig - currently nixpkgs Linux-only
+- **Kitty** (default on macOS): Fast, feature-rich, GPU-accelerated terminal
 - **WezTerm**: Better image preview support in Yazi, recommended if you need media previews
-- **Kitty**: Fast, feature-rich, GPU-accelerated terminal
 - **Alacritty**: Fast, GPU-accelerated terminal written in Rust
 - **Foot**: Wayland-native terminal (Linux-only)
-- Configure your preference in `yazelix.nix` with `preferred_terminal = "terminal_name"` (options: ghostty, wezterm, kitty, alacritty, foot on Linux)
-- **Bundled terminals**: Yazelix provides `yazelix-ghostty`, `yazelix-kitty`, etc. with proper desktop branding and GPU acceleration (nixGL on Linux, native on macOS). Only your preferred terminal is downloaded, with Ghostty always included as a fallback. Required fonts are included automatically.
+- Configure your preference in `yazelix.nix` with `preferred_terminal = "terminal_name"` (options: ghostty/kitty/wezterm/alacritty on both platforms, foot on Linux only)
+- **Bundled terminals**: Yazelix provides platform-aware wrappers (`yazelix-ghostty`, `yazelix-kitty`, etc.) with proper desktop branding and GPU acceleration (nixGL on Linux, native on macOS). Only your preferred terminal is downloaded. Required fonts included automatically.
 
 [See the full Customization Guide here.](./docs/customization.md)
 
