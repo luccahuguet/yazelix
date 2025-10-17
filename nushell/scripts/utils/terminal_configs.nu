@@ -73,12 +73,13 @@ export def generate_wezterm_config [] {
 local wezterm = require 'wezterm'
 local config = wezterm.config_builder\(\)
 
-config.default_prog = ($SHELL_ARGS_BASH)
+config.default_prog = {\"bash\", \"-l\", \"-c\", \"nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu\"}
 config.window_decorations = \"NONE\"
 config.window_padding = { left = 0, right = 0, top = 10, bottom = 0 }
 config.color_scheme = '($YAZELIX_THEME)'
-config.window_class = '($YAZELIX_WINDOW_CLASS)'
-config.window_title = '(get_terminal_title "wezterm")'
+
+-- Hide tab bar \(Zellij handles tabs\)
+config.enable_tab_bar = false
 
 -- Transparency \(configurable via yazelix.nix\)
 (build_transparency $config.transparency "lua" "")
@@ -193,6 +194,8 @@ export def generate_all_terminal_configs [] {
     let config = parse_yazelix_config
     let extra_terminals = ($config.extra_terminals | str replace -a '["\] ' '' | split row ' ' | where {|t| ($t | str length) > 0 })
     let should_generate_foot = ($config.preferred_terminal == "foot") or ($extra_terminals | any {|t| $t == "foot" })
+    let should_generate_wezterm = ($config.preferred_terminal == "wezterm") or ($extra_terminals | any {|t| $t == "wezterm" })
+    let should_generate_kitty = ($config.preferred_terminal == "kitty") or ($extra_terminals | any {|t| $t == "kitty" })
     let generated_dir = ($YAZELIX_GENERATED_CONFIGS_DIR | str replace "~" $env.HOME)
     let configs_dir = ($generated_dir | path join "terminal_emulators")
 
@@ -211,6 +214,22 @@ export def generate_all_terminal_configs [] {
     save_config_with_backup ($alacritty_dir | path join "alacritty.toml") (generate_alacritty_config)
 
     mut generated = ["Ghostty", "Alacritty"]
+
+    # WezTerm (conditional)
+    if $should_generate_wezterm {
+        let wezterm_dir = ($configs_dir | path join "wezterm")
+        mkdir $wezterm_dir
+        save_config_with_backup ($wezterm_dir | path join ".wezterm.lua") (generate_wezterm_config)
+        $generated = ($generated | append "WezTerm")
+    }
+
+    # Kitty (conditional)
+    if $should_generate_kitty {
+        let kitty_dir = ($configs_dir | path join "kitty")
+        mkdir $kitty_dir
+        save_config_with_backup ($kitty_dir | path join "kitty.conf") (generate_kitty_config)
+        $generated = ($generated | append "Kitty")
+    }
 
     # Foot (conditional)
     if $should_generate_foot {

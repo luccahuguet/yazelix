@@ -199,7 +199,9 @@
               fi
               exec ${pkgsWithNixGL.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.wezterm}/bin/wezterm \
                 --config-file="$CONF" \
-                start --class="com.yazelix.Yazelix" "$@"
+                --config 'window_decorations="NONE"' \
+                --config enable_tab_bar=false \
+                start "$@"
             '' else ''
               MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
               MODE="''${MODE:-auto}"
@@ -213,7 +215,9 @@
               fi
               exec ${pkgs.wezterm}/bin/wezterm \
                 --config-file="$CONF" \
-                start --class="com.yazelix.Yazelix" "$@"
+                --config 'window_decorations="NONE"' \
+                --config enable_tab_bar=false \
+                start "$@"
             ''
           )
         else null;
