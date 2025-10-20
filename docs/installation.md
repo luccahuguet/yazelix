@@ -224,7 +224,7 @@ Use Yazelix tools without starting the full interface (no sidebar, no Zellij):
 ```bash
 yzx env
 ```
-This loads all tools (helix, yazi, lazygit, etc.) into your current shell with Yazelix environment variables set.
+This loads all tools (helix, yazi, lazygit, etc.) into your configured shell with Yazelix environment variables set. Add `--no-shell` to keep using your current shell instead.
 
 If you prefer a raw Nix shell:
 ```bash

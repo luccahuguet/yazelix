@@ -49,7 +49,7 @@ show_help() {
     echo "LAUNCHER:"
     echo "  yzx launch                     - Launch yazelix via desktop entry (bundled terminals)"
     echo "  yzx start                      - Start yazelix directly"
-    echo "  yzx env                        - Load yazelix environment without UI"
+    echo "  yzx env [--no-shell]           - Load yazelix environment without UI (configured shell)"
     echo ""
     echo "MAINTENANCE:"
     echo "  yzx update                     - Run 'nix flake update' for Yazelix"
@@ -234,8 +234,27 @@ start_yazelix() {
 
 # Function to load yazelix environment without UI
 env_yazelix() {
-    echo "Loading Yazelix environment (CLI-only mode)..."
-    YAZELIX_ENV_ONLY=true nix develop --impure "$YAZELIX_DIR"
+    if ! command -v nu >/dev/null 2>&1; then
+        echo "❌ Nushell is required to run 'yzx env'."
+        echo "   Tip: install Nushell or use 'nix run nixpkgs#nushell'."
+        return 1
+    fi
+
+    local nu_script="use '${YAZELIX_DIR}/nushell/scripts/core/yazelix.nu' *; yzx env"
+    for arg in "$@"; do
+        case "$arg" in
+            --no-shell|-n)
+                nu_script+=" --no-shell"
+                ;;
+            *)
+                echo "❌ Unknown option for 'yzx env': $arg"
+                echo "   Supported option: --no-shell"
+                return 1
+                ;;
+        esac
+    done
+
+    nu -c "$nu_script"
 }
 
 # Function to restart yazelix
@@ -304,7 +323,8 @@ PITCH
             start_yazelix
             ;;
         "env")
-            env_yazelix
+            shift
+            env_yazelix "$@"
             ;;
         "update")
             nu -c "use $YAZELIX_DIR/nushell/scripts/core/yazelix.nu *; yzx update"

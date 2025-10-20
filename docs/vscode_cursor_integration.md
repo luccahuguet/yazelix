@@ -8,9 +8,10 @@ The easiest way to get Yazelix tools in your VS Code/Cursor terminal:
 
 1. **Open integrated terminal** in VS Code/Cursor
 2. **Run**: `yzx env` 
-3. **Done!** All Yazelix tools are now available
+3. **Done!** Yazelix drops you into the shell configured in `yazelix.nix`, with every tool ready to go
 
 This method works instantly and doesn't require any configuration changes.
+Want to keep using your existing terminal shell? Run `yzx env --no-shell`.
 
 ## Advanced Method: Automatic Terminal Profile
 
@@ -65,9 +66,8 @@ The advanced configuration:
 
 1. **Uses bash as launcher**: `/usr/bin/bash` (reliable path across systems)
 2. **Sources Nix profile**: `source ~/.nix-profile/etc/profile.d/nix.sh` (makes `yzx` command available)
-3. **Runs yzx env**: Loads all Yazelix tools without the UI interface
+3. **Runs yzx env**: Loads all Yazelix tools without the UI interface and starts your configured shell automatically (pass `--no-shell` to keep your original shell)
 
 ## What You Get
 
 ✅ **All Yazelix tools** available instantly, like `z`, `lg`, `mise`, `starship`, `nu`, etc.  
-
