@@ -20,6 +20,9 @@ def main [
     # Import constants and environment detection
     use ../utils/constants.nu *
 
+    # Detect quiet mode from environment
+    let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
+
     # Detect environment first
     let env_info = (detect_environment)
     if $debug_mode {
@@ -97,22 +100,25 @@ def main [
 
     let log_file = $"($log_dir)/shellhook_(date now | format date '%Y%m%d_%H%M%S').log"
 
-    print $"📝 Logging to: ($log_file)"
-
+    if not $quiet_mode {
+        print $"📝 Logging to: ($log_file)"
+    }
 
     # Generate shell initializers for configured shells only
-    nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir $recommended $enable_atuin ($shells_to_configure | str join ",")
+    with-env {YAZELIX_QUIET_MODE: (if $quiet_mode { "true" } else { "false" })} {
+        nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir $recommended $enable_atuin ($shells_to_configure | str join ",")
+    }
 
     # Setup shell configurations (always setup bash/nu, conditionally setup fish/zsh)
-    setup_bash_config $yazelix_dir
-    setup_nushell_config $yazelix_dir
+    setup_bash_config $yazelix_dir $quiet_mode
+    setup_nushell_config $yazelix_dir $quiet_mode
 
     if ("fish" in $shells_to_configure) {
-        setup_fish_config $yazelix_dir
+        setup_fish_config $yazelix_dir $quiet_mode
     }
 
     if ("zsh" in $shells_to_configure) {
-        setup_zsh_config $yazelix_dir
+        setup_zsh_config $yazelix_dir $quiet_mode
     }
 
     # Editor setup is now handled in the shellHook
@@ -122,13 +128,15 @@ def main [
     chmod +x $"($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu"
     chmod +x $"($yazelix_dir)/nushell/scripts/core/start_yazelix.nu"
 
-    print "✅ Yazelix environment setup complete!"
+    if not $quiet_mode {
+        print "✅ Yazelix environment setup complete!"
+    }
 
     # Import ASCII art module
     use ../utils/ascii_art.nu *
 
-    # Show ASCII art based on configuration
-    if not $skip_welcome_screen {
+    # Show ASCII art based on configuration (skip in quiet mode)
+    if (not $skip_welcome_screen) and (not $quiet_mode) {
         if $ascii_art_mode == "animated" {
             # Play animated ASCII art
             print ""
@@ -260,7 +268,7 @@ def main [
     }
 }
 
-def setup_bash_config [yazelix_dir: string] {
+def setup_bash_config [yazelix_dir: string, quiet_mode: bool = false] {
     use ../utils/constants.nu *
 
     let bash_config = $"($yazelix_dir)/shells/bash/yazelix_bash_config.sh"
@@ -277,15 +285,19 @@ def setup_bash_config [yazelix_dir: string] {
 
     # Check if yazelix section already exists
     if ($bashrc_content | str contains $YAZELIX_START_MARKER) {
-        print $"✅ Bash config already sourced"
+        if not $quiet_mode {
+            print $"✅ Bash config already sourced"
+        }
         return
     }
 
-    print $"🐚 Adding Yazelix Bash config to ($bashrc)"
+    if not $quiet_mode {
+        print $"🐚 Adding Yazelix Bash config to ($bashrc)"
+    }
     $"\n\n($section_content)" | save --append $bashrc
 }
 
-def setup_nushell_config [yazelix_dir: string] {
+def setup_nushell_config [yazelix_dir: string, quiet_mode: bool = false] {
     use ../utils/constants.nu *
 
     let nushell_config = ($SHELL_CONFIGS | get nushell | str replace "~" $env.HOME)
@@ -295,7 +307,9 @@ def setup_nushell_config [yazelix_dir: string] {
     mkdir ($nushell_config | path dirname)
 
     if not ($nushell_config | path exists) {
-        print $"📝 Creating new Nushell config: ($nushell_config)"
+        if not $quiet_mode {
+            print $"📝 Creating new Nushell config: ($nushell_config)"
+        }
         "# Nushell user configuration (created by Yazelix setup)" | save $nushell_config
     }
 
@@ -303,15 +317,19 @@ def setup_nushell_config [yazelix_dir: string] {
 
     # Check if yazelix section already exists
     if ($config_content | str contains $YAZELIX_START_MARKER) {
-        print $"✅ Nushell config already sourced"
+        if not $quiet_mode {
+            print $"✅ Nushell config already sourced"
+        }
         return
     }
 
-    print $"🐚 Adding Yazelix Nushell config to ($nushell_config)"
+    if not $quiet_mode {
+        print $"🐚 Adding Yazelix Nushell config to ($nushell_config)"
+    }
     $"\n\n($section_content)" | save --append $nushell_config
 }
 
-def setup_fish_config [yazelix_dir: string] {
+def setup_fish_config [yazelix_dir: string, quiet_mode: bool = false] {
     use ../utils/constants.nu *
 
     let fish_config = ($SHELL_CONFIGS | get fish | str replace "~" $env.HOME)
@@ -319,7 +337,9 @@ def setup_fish_config [yazelix_dir: string] {
     let section_content = get_yazelix_section_content "fish" $yazelix_dir
 
     if not ($yazelix_config | path exists) {
-        print $"⚠️  Fish config not found, skipping Fish setup"
+        if not $quiet_mode {
+            print $"⚠️  Fish config not found, skipping Fish setup"
+        }
         return
     }
 
@@ -329,15 +349,19 @@ def setup_fish_config [yazelix_dir: string] {
 
     # Check if yazelix section already exists
     if ($config_content | str contains $YAZELIX_START_MARKER) {
-        print $"✅ Fish config already sourced"
+        if not $quiet_mode {
+            print $"✅ Fish config already sourced"
+        }
         return
     }
 
-    print $"🐚 Adding Yazelix Fish config to ($fish_config)"
+    if not $quiet_mode {
+        print $"🐚 Adding Yazelix Fish config to ($fish_config)"
+    }
     $"\n\n($section_content)" | save --append $fish_config
 }
 
-def setup_zsh_config [yazelix_dir: string] {
+def setup_zsh_config [yazelix_dir: string, quiet_mode: bool = false] {
     use ../utils/constants.nu *
 
     let zsh_config = ($SHELL_CONFIGS | get zsh | str replace "~" $env.HOME)
@@ -345,7 +369,9 @@ def setup_zsh_config [yazelix_dir: string] {
     let section_content = get_yazelix_section_content "zsh" $yazelix_dir
 
     if not ($yazelix_config | path exists) {
-        print $"⚠️  Zsh config not found, skipping Zsh setup"
+        if not $quiet_mode {
+            print $"⚠️  Zsh config not found, skipping Zsh setup"
+        }
         return
     }
 
@@ -355,11 +381,15 @@ def setup_zsh_config [yazelix_dir: string] {
 
     # Check if yazelix section already exists
     if ($config_content | str contains $YAZELIX_START_MARKER) {
-        print $"✅ Zsh config already sourced"
+        if not $quiet_mode {
+            print $"✅ Zsh config already sourced"
+        }
         return
     }
 
-    print $"🐚 Adding Yazelix Zsh config to ($zsh_config)"
+    if not $quiet_mode {
+        print $"🐚 Adding Yazelix Zsh config to ($zsh_config)"
+    }
     $"\n\n($section_content)" | save --append $zsh_config
 }
 

@@ -129,13 +129,12 @@ export def "yzx env" [
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
     if $no_shell {
-        print "Loading Yazelix environment (CLI-only mode) without launching configured shell..."
         with-env {YAZELIX_ENV_ONLY: "true"} {
             ^nix develop --impure ~/.config/yazelix
         }
     } else {
         let config = (try { parse_yazelix_config } catch {|err|
-            print $"Failed to parse Yazelix configuration: ($err.msg)"
+            print $"❌ Failed to parse Yazelix configuration: ($err.msg)"
             exit 1
         })
         let shell_name = ($config.default_shell? | default "nu" | str downcase)
@@ -149,22 +148,9 @@ export def "yzx env" [
         let shell_exec = ($shell_command | first)
         let command_str = ($shell_command | str join " ")
         let exec_command = $"exec ($command_str)"
-        let launch_msg = ["Loading Yazelix environment (CLI-only mode) with " $shell_exec " shell..."] | str join ""
-        print $launch_msg
-        let command_msg = [
-            "Configured shell command: "
-            $command_str
-        ] | str join ""
-        print $command_msg
-        let nix_msg = [
-            "Invoking via nix develop: exec "
-            $command_str
-        ] | str join ""
-        print $nix_msg
         with-env {YAZELIX_ENV_ONLY: "true", SHELL: $shell_exec} {
             try {
                 ^nix develop --impure ~/.config/yazelix --command bash "-lc" $exec_command
-                print "ℹ️  Configured shell exited; returning to current shell."
             } catch {|err|
                 print $"❌ Failed to launch configured shell: ($err.msg)"
                 print "   Tip: rerun with 'yzx env --no-shell' to stay in your current shell."

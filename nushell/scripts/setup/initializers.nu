@@ -138,22 +138,25 @@ def main [yazelix_dir: string, recommended: bool, atuin_enabled: bool, shells_to
         $tool_results | append [{ status: "aggregate", shell: $shell.name, file: $aggregate_file }]
     } | flatten)
 
-    # Show concise summary
+    # Show concise summary (unless in quiet mode)
+    let quiet_mode = ($env.YAZELIX_QUIET_MODE? == "true")
     let successful = ($results | where status == "success")
     let failed = ($results | where status == "failed")
     let missing = ($results | where status == "missing" | get tool | uniq)
 
-    if ($failed | is-empty) and ($missing | is-empty) {
-        print $"✅ Generated (($successful | length)) shell initializers successfully"
-    } else {
-        print $"✅ Generated (($successful | length)) shell initializers"
-        if (not ($missing | is-empty)) {
-            print $"⚠️  Tools not found: (($missing | str join ', '))"
-        }
-        if (not ($failed | is-empty)) {
-            print "❌ Failed to generate:"
-            for $failure in $failed {
-                print $"   ($failure.tool) for ($failure.shell): ($failure.error)"
+    if not $quiet_mode {
+        if ($failed | is-empty) and ($missing | is-empty) {
+            print $"✅ Generated (($successful | length)) shell initializers successfully"
+        } else {
+            print $"✅ Generated (($successful | length)) shell initializers"
+            if (not ($missing | is-empty)) {
+                print $"⚠️  Tools not found: (($missing | str join ', '))"
+            }
+            if (not ($failed | is-empty)) {
+                print "❌ Failed to generate:"
+                for $failure in $failed {
+                    print $"   ($failure.tool) for ($failure.shell): ($failure.error)"
+                }
             }
         }
     }

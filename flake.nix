@@ -463,7 +463,9 @@
 
             # Set EDITOR environment variable to configured command
             export EDITOR="${editorCommand}"
-            echo "📝 Set EDITOR to: ${editorCommand}"
+            if [ "$YAZELIX_ENV_ONLY" != "true" ]; then
+              echo "📝 Set EDITOR to: ${editorCommand}"
+            fi
 
             # Disable Nix warning about Git directory
             export NIX_CONFIG="warn-dirty = false"
