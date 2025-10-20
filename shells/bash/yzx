@@ -246,9 +246,12 @@ env_yazelix() {
             --no-shell|-n)
                 nu_script+=" --no-shell"
                 ;;
+            --help|-h)
+                nu_script+=" --help"
+                ;;
             *)
                 echo "❌ Unknown option for 'yzx env': $arg"
-                echo "   Supported option: --no-shell"
+                echo "   Supported options: --no-shell, --help"
                 return 1
                 ;;
         esac
