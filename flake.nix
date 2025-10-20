@@ -201,7 +201,7 @@
                 --config-file="$CONF" \
                 --config 'window_decorations="NONE"' \
                 --config enable_tab_bar=false \
-                start "$@"
+                start --class=com.yazelix.Yazelix "$@"
             '' else ''
               MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
               MODE="''${MODE:-auto}"
@@ -217,7 +217,7 @@
                 --config-file="$CONF" \
                 --config 'window_decorations="NONE"' \
                 --config enable_tab_bar=false \
-                start "$@"
+                start --class=com.yazelix.Yazelix "$@"
             ''
           )
         else null;
