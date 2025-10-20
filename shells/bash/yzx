@@ -48,7 +48,7 @@ show_help() {
     echo ""
     echo "LAUNCHER:"
     echo "  yzx launch                     - Launch yazelix via desktop entry (bundled terminals)"
-    echo "  yzx start                      - Start yazelix directly"
+    echo "  yzx start [--here]             - Start yazelix directly (--here: start in current directory)"
     echo "  yzx env                        - Load yazelix environment without UI"
     echo ""
     echo "MAINTENANCE:"
@@ -229,7 +229,14 @@ launch_yazelix() {
 
 # Function to start yazelix
 start_yazelix() {
-    nu "$YAZELIX_DIR/nushell/scripts/core/start_yazelix.nu"
+    local use_current_dir="$1"
+    if [[ "$use_current_dir" == "--here" ]]; then
+        # Pass current directory to nushell script
+        nu "$YAZELIX_DIR/nushell/scripts/core/start_yazelix.nu" "$(pwd)"
+    else
+        # Default behavior
+        nu "$YAZELIX_DIR/nushell/scripts/core/start_yazelix.nu"
+    fi
 }
 
 # Function to load yazelix environment without UI
@@ -301,7 +308,7 @@ PITCH
             launch_yazelix
             ;;
         "start")
-            start_yazelix
+            start_yazelix "$2"
             ;;
         "env")
             env_yazelix
