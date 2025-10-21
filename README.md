@@ -182,7 +182,7 @@ To use Yazelix tools without starting the full interface (no sidebar, no Zellij)
 ```bash
 yzx env
 ```
-This loads all tools (helix, yazi, lazygit, etc.) into your current shell, with Yazelix env vars set and clean messaging.
+This loads all tools (helix, yazi, lazygit, etc.) into your current shell, with Yazelix env vars set and clean messaging, and automatically launches the shell configured in your `yazelix.nix`. Prefer the legacy behavior? Run `yzx env --no-shell` to stay in your current shell.
 
 If you prefer a raw Nix shell, you can use:
 ```bash
@@ -245,7 +245,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 📖 **[Complete yzx CLI Documentation →](./docs/yzx_cli.md)** - Comprehensive command reference and usage guide
 
 **Quick Commands:**
-- `yzx env` - Load Yazelix tools without UI (CLI-only mode)
+- `yzx env [--no-shell]` - Load Yazelix tools without UI and drop into your configured shell (`--no-shell` keeps your current shell)
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics  
 - `yzx launch` - Launch Yazelix in new terminal window
 - `yzx start` - Start Yazelix in current terminal
@@ -263,8 +263,9 @@ Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code o
 
 **Quick Setup:**
 1. Open VS Code/Cursor integrated terminal
-2. Run `yzx env` to load all Yazelix tools without the UI
+2. Run `yzx env` to load all Yazelix tools without the UI in your configured shell
 3. Enjoy full Yazelix environment in your editor
+Need to stay in your editor's existing shell? Run `yzx env --no-shell` instead.
 
 For more advanced integration options, see our [VS Code/Cursor integration guide](./docs/vscode_cursor_integration.md).
 

@@ -80,7 +80,7 @@ There's much to be done yet. Infinite possibilities. But some rather closer than
 - Atuin shell history integration: Added atuin to the automatic initializer system
 - Project logo and desktop integration: Logo with icons and automatic desktop entry setup
 - CLI-only environment mode (`yzx env`): Load Yazelix tools without the UI interface
-  - Quick access: `yzx env` loads all tools (helix, yazi, lazygit, etc.) in your current terminal
+  - Quick access: `yzx env` loads all tools (helix, yazi, lazygit, etc.) in your configured shell
   - No interface overhead: Skips welcome screen and Zellij launch
   - Clean messaging: Shows environment status and available commands
   - Perfect for scripts: Ideal for automation, VS Code integration, or when you just need the tools
