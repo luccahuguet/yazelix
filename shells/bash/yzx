@@ -36,7 +36,7 @@ show_help() {
     echo ""
     echo "DIAGNOSTICS:"
     echo "  yzx test [--verbose] [--filter] [--new-window] - Run test suite"
-    echo "  yzx sweep [--verbose] [--visual] - Test shell/terminal combinations"
+    echo "  yzx sweep <shells|terminals|all>               - Matrix testing (shells/terminals/features)"
     echo ""
     echo "CONFIGURATION MANAGEMENT:"
     echo "  yzx config_status [shell]      - Show status of all shell configurations"

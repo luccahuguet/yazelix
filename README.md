@@ -61,7 +61,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 ## Improvements of v10.5 over v10
 
-- **Sweep Testing Framework** - Matrix testing for all shell/terminal/feature combinations (`yzx sweep`)
+- **Sweep Testing Framework** - Matrix testing for all shell/terminal/feature combinations (`yzx sweep shells|terminals|all`)
 - **Terminal Detection** - Proper terminal identification via `YAZELIX_TERMINAL` environment variable
 
 Full version history: [Version History](./docs/history.md)

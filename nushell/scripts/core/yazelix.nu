@@ -263,20 +263,60 @@ export def "yzx update" [] {
 }
 
 # Run configuration sweep tests across shell/terminal combinations
-export def "yzx sweep" [
-    --verbose(-v)           # Show detailed output
-    --visual(-w)            # Launch visual Yazelix windows for each test
-    --visual-delay: int     # Delay between visual launches in seconds (default: 3)
+# Matrix testing for shell/terminal/feature combinations
+export def "yzx sweep" [] {
+    print "Usage: yzx sweep <subcommand>"
+    print ""
+    print "Subcommands:"
+    print "  shells      Test all shell combinations (fast, 8 tests)"
+    print "  terminals   Test all terminal launches (slow, 5 tests)"
+    print "  all         Run all tests (13 tests total)"
+    print ""
+    print "Examples:"
+    print "  yzx sweep shells         # Quick shell/feature validation"
+    print "  yzx sweep terminals      # Verify all terminals launch correctly"
+    print "  yzx sweep all            # Comprehensive testing"
+}
+
+# Test all shell combinations
+export def "yzx sweep shells" [
+    --verbose(-v)  # Show detailed output
 ] {
     use ../dev/test_config_sweep.nu run_all_sweep_tests
 
-    if $visual {
-        run_all_sweep_tests --visual --verbose=$verbose --visual-delay ($visual_delay | default 3)
-    } else if $verbose {
+    if $verbose {
         run_all_sweep_tests --verbose
     } else {
         run_all_sweep_tests
     }
+}
+
+# Test all terminal launches
+export def "yzx sweep terminals" [
+    --verbose(-v)       # Show detailed output
+    --delay: int = 3    # Delay between terminal launches in seconds
+] {
+    use ../dev/test_config_sweep.nu run_all_sweep_tests
+
+    run_all_sweep_tests --visual --verbose=$verbose --visual-delay $delay
+}
+
+# Run all sweep tests (shells + terminals)
+export def "yzx sweep all" [
+    --verbose(-v)       # Show detailed output
+    --delay: int = 3    # Delay between terminal launches in seconds
+] {
+    print "=== Running All Sweep Tests ==="
+    print "Phase 1: Shell combinations (fast)"
+    print ""
+
+    yzx sweep shells --verbose=$verbose
+
+    print ""
+    print "=== Phase 2: Terminal launches (slow) ==="
+    print ""
+
+    yzx sweep terminals --verbose=$verbose --delay $delay
 }
 
 # Run Yazelix test suite
