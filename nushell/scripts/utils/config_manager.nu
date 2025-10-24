@@ -7,39 +7,63 @@ export def extract_yazelix_section [config_file: string] {
     use ./constants.nu *
 
     if not ($config_file | path exists) {
-        return { exists: false, content: "", start_line: -1, end_line: -1, full_content: "" }
+        return { exists: false, content: "", start_line: -1, end_line: -1, full_content: "", version: 0 }
     }
 
-    let start_marker = $YAZELIX_START_MARKER
-    let end_marker = $YAZELIX_END_MARKER
     let content = (open $config_file | lines)
 
-        # Handle empty content
+    # Handle empty content
     if ($content | is-empty) {
-        return { exists: false, content: "", start_line: -1, end_line: -1, full_content: "" }
+        return { exists: false, content: "", start_line: -1, end_line: -1, full_content: "", version: 0 }
     }
 
     # Handle content with only whitespace/empty lines
     let non_empty_content = ($content | where ($it | str trim) != "")
     if ($non_empty_content | is-empty) {
-        return { exists: false, content: "", start_line: -1, end_line: -1, full_content: ($content | str join "\n") }
+        return { exists: false, content: "", start_line: -1, end_line: -1, full_content: ($content | str join "\n"), version: 0 }
     }
 
-    let start_line = try { ($content | enumerate | where item == $start_marker | get index | first | default (-1)) } catch { -1 }
-    let end_line = try { ($content | enumerate | where item == $end_marker | get index | first | default (-1)) } catch { -1 }
+    # Try v2 markers first
+    let start_line_v2 = try { ($content | enumerate | where item == $YAZELIX_START_MARKER | get index | first | default (-1)) } catch { -1 }
+    let end_line_v2 = try { ($content | enumerate | where item == $YAZELIX_END_MARKER | get index | first | default (-1)) } catch { -1 }
 
-    if ($start_line == -1) or ($end_line == -1) {
-        return { exists: false, content: "", start_line: -1, end_line: -1, full_content: ($content | str join "\n") }
+    # If v2 found, return it
+    if ($start_line_v2 != -1) and ($end_line_v2 != -1) {
+        let section_content = ($content | slice ($start_line_v2 + 1)..($end_line_v2 - 1) | str join "\n")
+        return {
+            exists: true
+            content: $section_content
+            start_line: $start_line_v2
+            end_line: $end_line_v2
+            full_content: ($content | str join "\n")
+            version: 2
+        }
     }
 
-    let section_content = ($content | slice ($start_line + 1)..($end_line - 1) | str join "\n")
+    # Try v1 markers as fallback
+    let start_line_v1 = try { ($content | enumerate | where item == $YAZELIX_START_MARKER_V1 | get index | first | default (-1)) } catch { -1 }
+    let end_line_v1 = try { ($content | enumerate | where item == $YAZELIX_END_MARKER_V1 | get index | first | default (-1)) } catch { -1 }
 
+    if ($start_line_v1 != -1) and ($end_line_v1 != -1) {
+        let section_content = ($content | slice ($start_line_v1 + 1)..($end_line_v1 - 1) | str join "\n")
+        return {
+            exists: true
+            content: $section_content
+            start_line: $start_line_v1
+            end_line: $end_line_v1
+            full_content: ($content | str join "\n")
+            version: 1
+        }
+    }
+
+    # No yazelix section found
     {
-        exists: true
-        content: $section_content
-        start_line: $start_line
-        end_line: $end_line
+        exists: false
+        content: ""
+        start_line: -1
+        end_line: -1
         full_content: ($content | str join "\n")
+        version: 0
     }
 }
 
@@ -86,6 +110,78 @@ export def check_config_versions [yazelix_dir: string] {
     })
 
     $results
+}
+
+# Safely migrate v1 hooks to v2 with backup
+export def migrate_shell_hooks [shell: string, config_file: string, yazelix_dir: string]: nothing -> record {
+    use ./constants.nu *
+
+    if not ($config_file | path exists) {
+        return { migrated: false, reason: "config file not found" }
+    }
+
+    # Extract current section
+    let section = extract_yazelix_section $config_file
+
+    # Only migrate if v1 hooks exist
+    if not $section.exists {
+        return { migrated: false, reason: "no yazelix section found" }
+    }
+
+    if $section.version == 2 {
+        return { migrated: false, reason: "already on v2" }
+    }
+
+    if $section.version != 1 {
+        return { migrated: false, reason: "unknown version" }
+    }
+
+    # Create timestamped backup
+    let timestamp = (date now | format date "%Y%m%d_%H%M%S")
+    let backup_file = $"($config_file).yazelix-backup-($timestamp)"
+
+    try {
+        # Backup original file
+        cp $config_file $backup_file
+
+        # Read file content as lines
+        let content_lines = (open $config_file | lines)
+
+        # Generate new v2 section content
+        let new_section = get_yazelix_section_content $shell $yazelix_dir
+
+        # Replace old section with new section
+        let before_section = ($content_lines | take ($section.start_line))
+        let after_section = ($content_lines | skip ($section.end_line + 1))
+        let new_content = (
+            $before_section
+            | append ($new_section | lines)
+            | append $after_section
+            | str join "\n"
+        )
+
+        # Write new content
+        $new_content | save -f $config_file
+
+        {
+            migrated: true
+            backup: $backup_file
+            shell: $shell
+            config: $config_file
+        }
+    } catch { |err|
+        # If something went wrong and backup exists, try to restore
+        if ($backup_file | path exists) {
+            try {
+                cp $backup_file $config_file
+            }
+        }
+        {
+            migrated: false
+            reason: $"migration failed: ($err.msg)"
+            error: $err
+        }
+    }
 }
 
 # Show configuration status for all shells

@@ -270,6 +270,7 @@ def main [
 
 def setup_bash_config [yazelix_dir: string, quiet_mode: bool = false] {
     use ../utils/constants.nu *
+    use ../utils/config_manager.nu migrate_shell_hooks
 
     let bash_config = $"($yazelix_dir)/shells/bash/yazelix_bash_config.sh"
     let bashrc = ($SHELL_CONFIGS | get bash | str replace "~" $env.HOME)
@@ -283,7 +284,7 @@ def setup_bash_config [yazelix_dir: string, quiet_mode: bool = false] {
     touch $bashrc
     let bashrc_content = (open $bashrc)
 
-    # Check if yazelix section already exists
+    # Check if yazelix section already exists (v2)
     if ($bashrc_content | str contains $YAZELIX_START_MARKER) {
         if not $quiet_mode {
             print $"✅ Bash config already sourced"
@@ -291,6 +292,20 @@ def setup_bash_config [yazelix_dir: string, quiet_mode: bool = false] {
         return
     }
 
+    # Check for v1 hooks and migrate
+    if ($bashrc_content | str contains $YAZELIX_START_MARKER_V1) {
+        let migration = migrate_shell_hooks "bash" $bashrc $yazelix_dir
+        if $migration.migrated {
+            if not $quiet_mode {
+                print $"🔄 Migrated Bash hooks to v2 \(backup: ($migration.backup)\)"
+            }
+        } else if not $quiet_mode {
+            print $"⚠️  Migration skipped: ($migration.reason)"
+        }
+        return
+    }
+
+    # No existing hooks, add new v2 hooks
     if not $quiet_mode {
         print $"🐚 Adding Yazelix Bash config to ($bashrc)"
     }
@@ -299,6 +314,7 @@ def setup_bash_config [yazelix_dir: string, quiet_mode: bool = false] {
 
 def setup_nushell_config [yazelix_dir: string, quiet_mode: bool = false] {
     use ../utils/constants.nu *
+    use ../utils/config_manager.nu migrate_shell_hooks
 
     let nushell_config = ($SHELL_CONFIGS | get nushell | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/nushell/config/config.nu"
@@ -315,7 +331,7 @@ def setup_nushell_config [yazelix_dir: string, quiet_mode: bool = false] {
 
     let config_content = (open $nushell_config)
 
-    # Check if yazelix section already exists
+    # Check if yazelix section already exists (v2)
     if ($config_content | str contains $YAZELIX_START_MARKER) {
         if not $quiet_mode {
             print $"✅ Nushell config already sourced"
@@ -323,6 +339,20 @@ def setup_nushell_config [yazelix_dir: string, quiet_mode: bool = false] {
         return
     }
 
+    # Check for v1 hooks and migrate
+    if ($config_content | str contains $YAZELIX_START_MARKER_V1) {
+        let migration = migrate_shell_hooks "nushell" $nushell_config $yazelix_dir
+        if $migration.migrated {
+            if not $quiet_mode {
+                print $"🔄 Migrated Nushell hooks to v2 \(backup: ($migration.backup)\)"
+            }
+        } else if not $quiet_mode {
+            print $"⚠️  Migration skipped: ($migration.reason)"
+        }
+        return
+    }
+
+    # No existing hooks, add new v2 hooks
     if not $quiet_mode {
         print $"🐚 Adding Yazelix Nushell config to ($nushell_config)"
     }
@@ -331,6 +361,7 @@ def setup_nushell_config [yazelix_dir: string, quiet_mode: bool = false] {
 
 def setup_fish_config [yazelix_dir: string, quiet_mode: bool = false] {
     use ../utils/constants.nu *
+    use ../utils/config_manager.nu migrate_shell_hooks
 
     let fish_config = ($SHELL_CONFIGS | get fish | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/shells/fish/yazelix_fish_config.fish"
@@ -347,7 +378,7 @@ def setup_fish_config [yazelix_dir: string, quiet_mode: bool = false] {
     touch $fish_config
     let config_content = (open $fish_config)
 
-    # Check if yazelix section already exists
+    # Check if yazelix section already exists (v2)
     if ($config_content | str contains $YAZELIX_START_MARKER) {
         if not $quiet_mode {
             print $"✅ Fish config already sourced"
@@ -355,6 +386,20 @@ def setup_fish_config [yazelix_dir: string, quiet_mode: bool = false] {
         return
     }
 
+    # Check for v1 hooks and migrate
+    if ($config_content | str contains $YAZELIX_START_MARKER_V1) {
+        let migration = migrate_shell_hooks "fish" $fish_config $yazelix_dir
+        if $migration.migrated {
+            if not $quiet_mode {
+                print $"🔄 Migrated Fish hooks to v2 \(backup: ($migration.backup)\)"
+            }
+        } else if not $quiet_mode {
+            print $"⚠️  Migration skipped: ($migration.reason)"
+        }
+        return
+    }
+
+    # No existing hooks, add new v2 hooks
     if not $quiet_mode {
         print $"🐚 Adding Yazelix Fish config to ($fish_config)"
     }
@@ -363,6 +408,7 @@ def setup_fish_config [yazelix_dir: string, quiet_mode: bool = false] {
 
 def setup_zsh_config [yazelix_dir: string, quiet_mode: bool = false] {
     use ../utils/constants.nu *
+    use ../utils/config_manager.nu migrate_shell_hooks
 
     let zsh_config = ($SHELL_CONFIGS | get zsh | str replace "~" $env.HOME)
     let yazelix_config = $"($yazelix_dir)/shells/zsh/yazelix_zsh_config.zsh"
@@ -379,7 +425,7 @@ def setup_zsh_config [yazelix_dir: string, quiet_mode: bool = false] {
     touch $zsh_config
     let config_content = (open $zsh_config)
 
-    # Check if yazelix section already exists
+    # Check if yazelix section already exists (v2)
     if ($config_content | str contains $YAZELIX_START_MARKER) {
         if not $quiet_mode {
             print $"✅ Zsh config already sourced"
@@ -387,6 +433,20 @@ def setup_zsh_config [yazelix_dir: string, quiet_mode: bool = false] {
         return
     }
 
+    # Check for v1 hooks and migrate
+    if ($config_content | str contains $YAZELIX_START_MARKER_V1) {
+        let migration = migrate_shell_hooks "zsh" $zsh_config $yazelix_dir
+        if $migration.migrated {
+            if not $quiet_mode {
+                print $"🔄 Migrated Zsh hooks to v2 \(backup: ($migration.backup)\)"
+            }
+        } else if not $quiet_mode {
+            print $"⚠️  Migration skipped: ($migration.reason)"
+        }
+        return
+    }
+
+    # No existing hooks, add new v2 hooks
     if not $quiet_mode {
         print $"🐚 Adding Yazelix Zsh config to ($zsh_config)"
     }

@@ -3,8 +3,12 @@
 # Centralized constants for yazelix configuration and management
 
 # Configuration section markers
-export const YAZELIX_START_MARKER = "# YAZELIX START - Yazelix managed configuration (do not modify this comment)"
-export const YAZELIX_END_MARKER = "# YAZELIX END - Yazelix managed configuration (do not modify this comment)"
+# v1 markers (for detecting old hooks)
+export const YAZELIX_START_MARKER_V1 = "# YAZELIX START - Yazelix managed configuration (do not modify this comment)"
+export const YAZELIX_END_MARKER_V1 = "# YAZELIX END - Yazelix managed configuration (do not modify this comment)"
+# v2 markers (current version with conditional loading)
+export const YAZELIX_START_MARKER = "# YAZELIX START v2 - Yazelix managed configuration (do not modify this comment)"
+export const YAZELIX_END_MARKER = "# YAZELIX END v2 - Yazelix managed configuration (do not modify this comment)"
 export const YAZELIX_REGENERATE_COMMENT = "# delete this whole section to re-generate the config, if needed"
 
 # Version information
