@@ -33,8 +33,7 @@ export def "yzx help" [] {
     print "  yzx why                        - Why Yazelix (elevator pitch)"
     print ""
     print "LAUNCHER:"
-    print "  yzx launch                     - Launch yazelix via terminal"
-    print "  yzx start                      - Start yazelix directly"
+    print "  yzx launch [--here] [--path DIR] [--home] - Launch yazelix (--here: current terminal, --path: specific dir, --home: home dir)"
     print "  yzx env [--no-shell]           - Load yazelix environment without UI (configured shell)"
     print "  yzx restart                    - Restart yazelix (preserves persistent sessions)"
     print ""
@@ -108,20 +107,35 @@ export def "yzx info" [] {
 }
 
 # Launch yazelix
-export def "yzx launch" [] {
+export def "yzx launch" [
+    --here             # Start in current terminal instead of launching new terminal
+    --path(-p): string # Start in specific directory
+    --home             # Start in home directory
+] {
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
-    # Capture current working directory and pass it to launch script
-    let launch_cwd = pwd
-    nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu $launch_cwd
-}
 
-# Start yazelix
-export def "yzx start" [] {
-    use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
-    ensure_nix_available
-    use ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu main
-    main
+    if $here {
+        # Start in current terminal (like old yzx start)
+        use ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu main
+        if $home {
+            main $env.HOME
+        } else if ($path | is-not-empty) {
+            main $path
+        } else {
+            main
+        }
+    } else {
+        # Launch new terminal (original behavior)
+        let launch_cwd = if $home {
+            $env.HOME
+        } else if ($path | is-not-empty) {
+            $path
+        } else {
+            pwd
+        }
+        nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu $launch_cwd
+    }
 }
 
 # Load yazelix environment without UI
