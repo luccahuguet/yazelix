@@ -42,7 +42,7 @@ export def run_all_tests [
     let log_file = $"($log_dir)/test_run_($timestamp).log"
 
     # Log header
-    let header = $"=== Yazelix Test Run ===\nDate: (date now)\nFilter: ($filter)\nVerbose: ($verbose)\n\n"
+    let header = $"=== Yazelix Test Run ===\nDate: (date now)\nVerbose: ($verbose)\n\n"
     $header | save $log_file
 
     # Find all test_*.nu files (excluding test_fonts.nu which is for manual testing)
@@ -58,7 +58,7 @@ export def run_all_tests [
     }
 
     let msg_header = "=== Yazelix Test Suite ==="
-    let msg_count = $"Running ($filtered_tests | length) test file\(s\)..."
+    let msg_count = $"Running ($test_files | length) test file\(s\)..."
 
     print $msg_header
     print $msg_count
@@ -68,7 +68,7 @@ export def run_all_tests [
     # Log to file
     $"($msg_header)\n($msg_count)\n\n" | save --append $log_file
 
-    let results = $filtered_tests | each { |test_file|
+    let results = $test_files | each { |test_file|
         let test_name = ($test_file | path basename | str replace ".nu" "")
 
         if $verbose {

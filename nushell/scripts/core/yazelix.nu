@@ -118,13 +118,13 @@ export def "yzx launch" [
 
     if $here {
         # Start in current terminal (like old yzx start)
-        use ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu main
+        let start_script = ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
         if $home {
-            main $env.HOME
+            nu $start_script $env.HOME
         } else if ($path | is-not-empty) {
-            main $path
+            nu $start_script $path
         } else {
-            main
+            nu $start_script
         }
     } else {
         # Launch new terminal (original behavior)
