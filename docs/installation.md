@@ -174,8 +174,8 @@ nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 ```
 
 This will automatically configure your shell and then you can use:
-- `yzx launch` (opens Yazelix in a new terminal window)
-- `yzx start` (starts Yazelix in current terminal)
+- `yzx launch` (opens Yazelix in a new terminal window in current directory)
+- `yzx launch --here` (starts Yazelix in current terminal)
 - `yzx help` (see all available commands)
 
 #### Optional: Desktop Application Entry
@@ -193,7 +193,7 @@ For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 ### Step 6: Using Yazelix
 
 **Option A users**: Simply open your terminal! Yazelix will automatically launch with the full environment.
-**Option B users**: Use `yzx launch` or `yzx start` to launch Yazelix when needed.
+**Option B users**: Use `yzx launch` or `yzx launch --here` to launch Yazelix when needed.
 
 **First Run**: The first time you launch Yazelix, it will install all dependencies (Zellij, Yazi, Helix, etc.). This may take several minutes, but subsequent launches will be instant.
 

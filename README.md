@@ -247,8 +247,10 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 **Quick Commands:**
 - `yzx env [--no-shell]` - Load Yazelix tools without UI and drop into your configured shell (`--no-shell` keeps your current shell)
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics  
-- `yzx launch` - Launch Yazelix in new terminal window
-- `yzx start` - Start Yazelix in current terminal
+- `yzx launch` - Launch Yazelix (new terminal in current directory by default)
+- `yzx launch --here` - Start Yazelix in current terminal
+- `yzx launch --path DIR` - Launch in specific directory
+- `yzx launch --home` - Launch in home directory
 - `yzx info` - Show system information and current settings
 - `yzx versions` - Display all tool versions
 
