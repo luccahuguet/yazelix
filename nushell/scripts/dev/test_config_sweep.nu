@@ -205,34 +205,43 @@ export def run_visual_sweep_test [
                 print "   Session cleanup skipped"
             }
 
-            # Kill the terminal process launched for this test
+            # Kill terminal processes associated with this test
             try {
-                # Wait a moment for session cleanup to complete
-                sleep 500ms
+                # Wait for session cleanup to complete
+                sleep 1sec
 
+                # Find terminal processes that were started after our baseline and kill them
                 let after_pids = try {
                     ps | where name =~ $terminal | get pid
                 } catch {
                     []
                 }
 
-                # Find new terminal processes (those not present before launch)
                 let new_pids = $after_pids | where $it not-in $before_pids
 
                 if not ($new_pids | is-empty) {
                     for $pid in $new_pids {
                         print $"   Terminating terminal process: ($pid)"
                         try {
-                            kill -9 $pid
+                            # Graceful termination first (SIGTERM = 15)
+                            kill --signal 15 $pid
+                            sleep 300ms
+                            # Force kill if still running
+                            let still_running = try {
+                                (ps | where pid == $pid | length) > 0
+                            } catch { false }
+                            if $still_running {
+                                kill --force $pid
+                            }
                         } catch {
                             print $"   Failed to kill process ($pid)"
                         }
                     }
                 } else {
-                    print $"   No terminal processes to clean up"
+                    print $"   No new terminal processes detected for cleanup"
                 }
             } catch {
-                print "   Terminal cleanup skipped"
+                print $"   Terminal cleanup failed"
             }
 
             {
