@@ -7,7 +7,7 @@ use ../utils/nix_detector.nu ensure_nix_available
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/terminal_launcher.nu *
 
-def main [] {
+def main [launch_cwd?: string] {
     # Check if Nix is properly installed before proceeding
     ensure_nix_available
 
@@ -19,6 +19,10 @@ def main [] {
     }
 
     print $"Resolved HOME=($home)"
+
+    # Use provided launch directory or fall back to current directory
+    let working_dir = if ($launch_cwd | is-empty) { pwd } else { $launch_cwd }
+    print $"Launch directory: ($working_dir)"
 
     # Always read preference directly from config file to avoid stale environment variables
     let config = parse_yazelix_config
@@ -81,15 +85,12 @@ def main [] {
 
     # Launch terminal using bash to handle background processes properly
     if $terminal_info.use_wrapper {
-        with-env { YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode } {
+        with-env { YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode, YAZELIX_LAUNCH_CWD: $working_dir } {
             ^bash -c $launch_cmd
         }
     } else {
-        ^bash -c $launch_cmd
+        with-env { YAZELIX_LAUNCH_CWD: $working_dir } {
+            ^bash -c $launch_cmd
+        }
     }
-}
-
-# Export the main function so it can be called
-export def launch_yazelix [] {
-    main
 }

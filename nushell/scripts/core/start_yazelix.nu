@@ -10,7 +10,7 @@ use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 export def main [] {
     # Try to set up Nix environment automatically
     use ../utils/nix_env_helper.nu ensure_nix_in_environment
-    
+
     # If automatic setup fails, fall back to the detector with user interaction
     if not (ensure_nix_in_environment) {
         ensure_nix_available
@@ -20,6 +20,13 @@ export def main [] {
     if ($home | is-empty) or (not ($home | path exists)) {
         print "Error: Cannot resolve HOME directory"
         exit 1
+    }
+
+    # Use launch directory if provided, otherwise use current working directory
+    let working_dir = if ($env.YAZELIX_LAUNCH_CWD? | is-not-empty) {
+        $env.YAZELIX_LAUNCH_CWD
+    } else {
+        pwd
     }
 
     # Set absolute path for Yazelix directory
@@ -56,7 +63,7 @@ export def main [] {
             "attach"
             "-c" $config.session_name
             "options"
-            "--default-cwd" $home
+            "--default-cwd" $working_dir
             "--default-layout" "$ZELLIJ_DEFAULT_LAYOUT"
             "--default-shell" $config.default_shell
         ] | str join " "
@@ -67,7 +74,7 @@ export def main [] {
             "zellij"
             "--config-dir" $merged_zellij_dir
             "options"
-            "--default-cwd" $home
+            "--default-cwd" $working_dir
             "--default-layout" "$ZELLIJ_DEFAULT_LAYOUT"
             "--default-shell" $config.default_shell
         ] | str join " "

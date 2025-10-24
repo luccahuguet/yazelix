@@ -111,7 +111,9 @@ export def "yzx info" [] {
 export def "yzx launch" [] {
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
-    nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
+    # Capture current working directory and pass it to launch script
+    let launch_cwd = pwd
+    nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu $launch_cwd
 }
 
 # Start yazelix
