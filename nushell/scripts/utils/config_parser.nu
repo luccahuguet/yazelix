@@ -57,18 +57,23 @@ def extract_first_list_value [key: string, default: string, config_content: stri
 
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
-    # Read configuration directly from yazelix.nix file
-    let yazelix_dir = "~/.config/yazelix" | path expand
-    let config_file = ($yazelix_dir | path join "yazelix.nix")
-    let default_config_file = ($yazelix_dir | path join "yazelix_default.nix")
-
-    # Determine which config file to use
-    let config_to_read = if ($config_file | path exists) {
-        $config_file
-    } else if ($default_config_file | path exists) {
-        $default_config_file
+    # Check for config override first (for testing)
+    let config_to_read = if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) {
+        $env.YAZELIX_CONFIG_OVERRIDE
     } else {
-        error make {msg: "No yazelix configuration file found"}
+        # Read configuration directly from yazelix.nix file
+        let yazelix_dir = "~/.config/yazelix" | path expand
+        let config_file = ($yazelix_dir | path join "yazelix.nix")
+        let default_config_file = ($yazelix_dir | path join "yazelix_default.nix")
+
+        # Determine which config file to use
+        if ($config_file | path exists) {
+            $config_file
+        } else if ($default_config_file | path exists) {
+            $default_config_file
+        } else {
+            error make {msg: "No yazelix configuration file found"}
+        }
     }
 
     # Parse the configuration file
@@ -85,6 +90,7 @@ export def parse_yazelix_config [] {
         transparency: (extract_config_value "transparency" "low" $config_content),
         default_shell: (extract_config_value "default_shell" "nu" $config_content),
         helix_mode: (extract_config_value "helix_mode" "release" $config_content),
+        disable_zellij_tips: (extract_config_value "disable_zellij_tips" "false" $config_content),
         config_file: $config_to_read
     }
 }

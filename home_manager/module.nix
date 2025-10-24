@@ -127,6 +127,12 @@ in {
       default = true;
       description = "Enable or disable the Yazi sidebar";
     };
+
+    disable_zellij_tips = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Disable Zellij tips popup on startup for cleaner launches";
+    };
     
     debug_mode = mkOption {
       type = types.bool;
@@ -234,7 +240,8 @@ in {
           
           # UI configuration
           enable_sidebar = ${if cfg.enable_sidebar then "true" else "false"};
-          
+          disable_zellij_tips = ${if cfg.disable_zellij_tips then "true" else "false"};
+
           # Debug and display options
           debug_mode = ${if cfg.debug_mode then "true" else "false"};
           skip_welcome_screen = ${if cfg.skip_welcome_screen then "true" else "false"};

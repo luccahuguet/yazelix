@@ -5,27 +5,19 @@
 # Run all tests and report results
 export def run_all_tests [
     --verbose(-v)  # Show detailed output
-    --filter(-f): string  # Filter tests by name pattern
     --new-window(-n)  # Run tests in a new Yazelix window
 ] {
+
     # If --new-window flag is set, launch tests in a new Yazelix instance
     if $new_window {
         print "🚀 Launching new Yazelix window for testing..."
         print ""
 
         # Build the command to run in the new window
-        let test_cmd = if ($filter | is-empty) {
-            if $verbose {
-                "yzx test --verbose"
-            } else {
-                "yzx test"
-            }
+        let test_cmd = if $verbose {
+            "yzx test --verbose"
         } else {
-            if $verbose {
-                $"yzx test --verbose --filter ($filter)"
-            } else {
-                $"yzx test --filter ($filter)"
-            }
+            "yzx test"
         }
 
         # Launch Yazelix with skip welcome screen
@@ -60,15 +52,8 @@ export def run_all_tests [
         []
     }
 
-    # Filter if requested
-    let filtered_tests = if ($filter | is-empty) {
-        $test_files
-    } else {
-        $test_files | where $it =~ $filter
-    }
-
-    if ($filtered_tests | is-empty) {
-        print "❌ No tests found matching the filter"
+    if ($test_files | is-empty) {
+        print "❌ No test files found"
         return
     }
 

@@ -36,6 +36,7 @@ show_help() {
     echo ""
     echo "DIAGNOSTICS:"
     echo "  yzx test [--verbose] [--filter] [--new-window] - Run test suite"
+    echo "  yzx sweep [--verbose] [--visual] - Test shell/terminal combinations"
     echo ""
     echo "CONFIGURATION MANAGEMENT:"
     echo "  yzx config_status [shell]      - Show status of all shell configurations"
@@ -48,7 +49,7 @@ show_help() {
     echo ""
     echo "LAUNCHER:"
     echo "  yzx launch [--here] [--path DIR] [--home] - Launch yazelix (--here: current terminal, --path: specific dir, --home: home dir)"
-    echo "  yzx env [--no-shell]           - Load yazelix environment without UI (configured shell)"
+    echo "  yzx env [--no-shell] [--command CMD] - Load yazelix environment without UI (configured shell)"
     echo ""
     echo "MAINTENANCE:"
     echo "  yzx update                     - Run 'nix flake update' for Yazelix"
@@ -285,17 +286,26 @@ env_yazelix() {
     fi
 
     local nu_script="use '${YAZELIX_DIR}/nushell/scripts/core/yazelix.nu' *; yzx env"
-    for arg in "$@"; do
-        case "$arg" in
+    local command_arg=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
             --no-shell|-n)
                 nu_script+=" --no-shell"
+                shift
+                ;;
+            --command|-c)
+                command_arg="$2"
+                nu_script+=" --command \"$2\""
+                shift 2
                 ;;
             --help|-h)
                 nu_script+=" --help"
+                shift
                 ;;
             *)
-                echo "❌ Unknown option for 'yzx env': $arg"
-                echo "   Supported options: --no-shell, --help"
+                echo "❌ Unknown option for 'yzx env': $1"
+                echo "   Supported options: --no-shell, --command, --help"
                 return 1
                 ;;
         esac
@@ -381,6 +391,11 @@ PITCH
             # Pass through flags to nushell
             shift  # Remove 'test' from arguments
             nu -c "use $YAZELIX_DIR/nushell/scripts/core/yazelix.nu *; yzx test $*"
+            ;;
+        "sweep")
+            # Pass through flags to nushell
+            shift  # Remove 'sweep' from arguments
+            nu -c "use $YAZELIX_DIR/nushell/scripts/core/yazelix.nu *; yzx sweep $*"
             ;;
         *)
             echo "❌ Unknown subcommand: $subcommand"

@@ -3,6 +3,7 @@
 # Merges three layers: Zellij defaults + Yazelix overrides + User config
 
 use ../utils/constants.nu [YAZELIX_STATE_DIR, ZELLIJ_CONFIG_PATHS]
+use ../utils/config_parser.nu parse_yazelix_config
 
 # Get modification time of a file, or 0 if file doesn't exist
 def get_mtime [path: string] {
@@ -55,21 +56,47 @@ def read_config_file [path: string, name: string] {
     }
 }
 
+# Generate dynamic Yazelix overrides based on yazelix.nix config
+export def get_dynamic_yazelix_overrides [yazelix_dir: string] {
+    let config = (try {
+        # Don't override the existing YAZELIX_CONFIG_OVERRIDE if it's set
+        parse_yazelix_config
+    } catch {
+        # If config parsing fails, use defaults
+        {disable_zellij_tips: "false"}
+    })
+
+    mut overrides = []
+
+    # Add tips disable setting if enabled (handle both "true" and "true  # comment" formats)
+    if ($config.disable_zellij_tips | str starts-with "true") {
+        $overrides = ($overrides | append "// Disable startup tips (set via disable_zellij_tips in yazelix.nix)")
+        $overrides = ($overrides | append "show_startup_tips false")
+        $overrides = ($overrides | append "")
+    }
+
+    $overrides | str join "\n"
+}
+
 # Merge three configuration layers
 def merge_zellij_configs [
     yazelix_dir: string
 ] {
     print "🔧 Merging Zellij configuration layers..."
-    
+
     # Layer 1: Zellij defaults
     print "   📥 Fetching Zellij defaults..."
     let defaults = get_zellij_defaults
-    
+
     # Layer 2: Yazelix overrides
     let yazelix_overrides_path = $"($yazelix_dir)/configs/zellij/yazelix_overrides.kdl"
     print "   📥 Reading Yazelix overrides..."
     let yazelix_overrides = read_config_file $yazelix_overrides_path "Yazelix overrides"
-    
+
+    # Layer 2.5: Dynamic Yazelix settings based on config
+    print "   ⚙️  Applying dynamic configuration..."
+    let dynamic_overrides = get_dynamic_yazelix_overrides $yazelix_dir
+
     # Layer 3: User config
     let user_config_path = $"($yazelix_dir)/configs/zellij/personal/user_config.kdl"
     print "   📥 Reading personal configuration..."
@@ -90,6 +117,7 @@ def merge_zellij_configs [
         "// To customize Zellij, edit:",
         "//   - configs/zellij/personal/user_config.kdl (your personal settings)",
         "//   - configs/zellij/yazelix_overrides.kdl (Yazelix defaults)",
+        "//   - yazelix.nix (global Yazelix options)",
         "//",
         $"// Generated: (date now | format date '%Y-%m-%d %H:%M:%S')",
         "// ========================================",
@@ -99,6 +127,9 @@ def merge_zellij_configs [
         "",
         "// === LAYER 2: YAZELIX OVERRIDES ===",
         $yazelix_overrides,
+        "",
+        "// === LAYER 2.5: DYNAMIC YAZELIX SETTINGS ===",
+        $dynamic_overrides,
         "",
         "// === LAYER 3: USER CONFIGURATION ===",
         $user_config,

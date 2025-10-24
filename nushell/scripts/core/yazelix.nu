@@ -23,6 +23,7 @@ export def "yzx help" [] {
     print "DIAGNOSTICS:"
     print "  yzx doctor [--verbose] [--fix] - Run health checks and diagnostics"
     print "  yzx test [--verbose] [--filter] [--new-window] - Run test suite"
+    print "  yzx sweep [--verbose] [--visual] - Test shell/terminal combinations"
     print ""
     print "CONFIGURATION MANAGEMENT:"
     print "  yzx config_status [shell]      - Show status of all shell configurations"
@@ -34,7 +35,7 @@ export def "yzx help" [] {
     print ""
     print "LAUNCHER:"
     print "  yzx launch [--here] [--path DIR] [--home] - Launch yazelix (--here: current terminal, --path: specific dir, --home: home dir)"
-    print "  yzx env [--no-shell]           - Load yazelix environment without UI (configured shell)"
+    print "  yzx env [--no-shell] [--command CMD] - Load yazelix environment without UI (configured shell)"
     print "  yzx restart                    - Restart yazelix (preserves persistent sessions)"
     print ""
     print "MAINTENANCE:"
@@ -141,10 +142,16 @@ export def "yzx launch" [
 # Load yazelix environment without UI
 export def "yzx env" [
     --no-shell(-n)  # Keep current shell instead of launching configured shell
+    --command(-c): string  # Run a command in the Yazelix environment
 ] {
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
-    if $no_shell {
+    if ($command | is-not-empty) {
+        # Run command in Yazelix environment (skip welcome screen for automation)
+        with-env {YAZELIX_ENV_ONLY: "true", YAZELIX_SKIP_WELCOME: "true"} {
+            ^nix develop --impure ~/.config/yazelix --command bash -c $command
+        }
+    } else if $no_shell {
         with-env {YAZELIX_ENV_ONLY: "true"} {
             ^nix develop --impure ~/.config/yazelix
         }
@@ -234,12 +241,28 @@ export def "yzx update" [] {
     }
 }
 
+# Run configuration sweep tests across shell/terminal combinations
+export def "yzx sweep" [
+    --verbose(-v)           # Show detailed output
+    --visual(-w)            # Launch visual Yazelix windows for each test
+    --visual-delay: int     # Delay between visual launches in seconds (default: 3)
+] {
+    use ../dev/test_config_sweep.nu run_all_sweep_tests
+
+    if $visual {
+        run_all_sweep_tests --visual --verbose=$verbose --visual-delay ($visual_delay | default 3)
+    } else if $verbose {
+        run_all_sweep_tests --verbose
+    } else {
+        run_all_sweep_tests
+    }
+}
+
 # Run Yazelix test suite
 export def "yzx test" [
     --verbose(-v)  # Show detailed test output
-    --filter(-f): string  # Filter tests by name pattern
     --new-window(-n)  # Run tests in a new Yazelix window
 ] {
     use ../utils/test_runner.nu run_all_tests
-    run_all_tests --verbose=$verbose --filter=$filter --new-window=$new_window
+    run_all_tests --verbose=$verbose --new-window=$new_window
 }
