@@ -152,6 +152,13 @@ export def run_visual_sweep_test [
     let session_name = $"sweep_test_($test_id)"
 
     let result = try {
+        # Get terminal process count before launch (to identify new processes)
+        let before_pids = try {
+            ps | where name =~ $terminal | get pid
+        } catch {
+            []
+        }
+
         # Launch Yazelix with the test config and specific session name
         let launch_output = (do {
             with-env {YAZELIX_CONFIG_OVERRIDE: $config_path, YAZELIX_SKIP_WELCOME: "true"} {
@@ -196,6 +203,36 @@ export def run_visual_sweep_test [
                 }
             } catch {
                 print "   Session cleanup skipped"
+            }
+
+            # Kill the terminal process launched for this test
+            try {
+                # Wait a moment for session cleanup to complete
+                sleep 500ms
+
+                let after_pids = try {
+                    ps | where name =~ $terminal | get pid
+                } catch {
+                    []
+                }
+
+                # Find new terminal processes (those not present before launch)
+                let new_pids = $after_pids | where $it not-in $before_pids
+
+                if not ($new_pids | is-empty) {
+                    for $pid in $new_pids {
+                        print $"   Terminating terminal process: ($pid)"
+                        try {
+                            kill -9 $pid
+                        } catch {
+                            print $"   Failed to kill process ($pid)"
+                        }
+                    }
+                } else {
+                    print $"   No terminal processes to clean up"
+                }
+            } catch {
+                print "   Terminal cleanup skipped"
             }
 
             {
