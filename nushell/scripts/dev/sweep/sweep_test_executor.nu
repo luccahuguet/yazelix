@@ -2,7 +2,7 @@
 # Sweep Testing - Test Execution Utilities
 # Handles individual test execution and validation
 
-use config_parser.nu parse_yazelix_config
+use ../../utils/config_parser.nu parse_yazelix_config
 
 # Validate that environment setup works for a given config
 export def validate_environment [config_path: string]: nothing -> record {

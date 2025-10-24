@@ -3,10 +3,10 @@
 # Tests shell/terminal combinations and configuration variations
 
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/sweep_config_generator.nu *
-use ../utils/sweep_process_manager.nu *
-use ../utils/sweep_test_executor.nu *
-use ../utils/sweep_test_combinations.nu *
+use sweep/sweep_config_generator.nu *
+use sweep/sweep_process_manager.nu *
+use sweep/sweep_test_executor.nu *
+use sweep/sweep_test_combinations.nu *
 
 # Helper: Get the status field name based on test mode
 def get_status_field [visual: bool]: nothing -> string {

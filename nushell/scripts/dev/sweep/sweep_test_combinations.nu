@@ -2,7 +2,7 @@
 # Sweep Testing - Test Combinations Generator
 # Generates test matrices for different shell/terminal/feature combinations
 
-use constants.nu *
+use ../../utils/constants.nu *
 
 # Test sweep definitions - using supported shells and terminals from constants
 const SHELLS = ["nu", "bash", "fish", "zsh"]
