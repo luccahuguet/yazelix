@@ -67,7 +67,7 @@ layout {
            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
                format_center ""
-               format_right  "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold][SWEEP TEST] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX "
+               format_right  "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold][SWEEP TEST] #[fg=#ffff00,bold][term: {command_terminal}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX "
                format_hide_on_overlength "true"
                format_precedence "lrc"
                format_space  ""
@@ -92,6 +92,10 @@ layout {
                tab_fullscreen_indicator "[] "
                tab_floating_indicator   "⬚ "
 
+               command_terminal_command "bash -c 'echo ${YAZELIX_TERMINAL:-unknown}'"
+               command_terminal_format "#[fg=#ffff00,bold]{stdout}"
+               command_terminal_interval "300"
+
                command_cpu_command "bash -c 'macchina -o processor-load 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
                command_cpu_format "#[fg=#ff6600]󰚂{stdout}"
                command_cpu_interval "5"
@@ -106,6 +110,7 @@ layout {
             command "bash"
             args "-c" "nu ~/.config/yazelix/nushell/scripts/dev/sweep_verify.nu && sleep 3"
             close_on_exit true
+            start_suspended false
         }
         pane size=1 borderless=true {
            plugin location="zellij:status-bar"

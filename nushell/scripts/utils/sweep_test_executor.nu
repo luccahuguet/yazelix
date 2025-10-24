@@ -111,6 +111,7 @@ export def run_demo_command [
 
         if $all_tools_ok {
             print $"   ✓ Verification passed - all tools available in launched session"
+            print $"     - Terminal: ($content.terminal)"
             print $"     - Zellij: ($content.tools.zellij.version)"
             print $"     - Yazi: ($content.tools.yazi.version)"
             print $"     - Helix: ($content.tools.helix.version)"

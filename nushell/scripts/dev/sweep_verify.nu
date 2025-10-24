@@ -37,11 +37,21 @@ def check_tool [tool_name: string, version_flag: string] {
     }
 }
 
+# Detect which terminal emulator we're running in
+def detect_terminal [] {
+    # Read from YAZELIX_TERMINAL env var set by launch_yazelix.nu
+    let term = ($env.YAZELIX_TERMINAL? | default "unknown")
+    print $"✓ Terminal: ($term)"
+    $term
+}
+
 # Build results
+let terminal_detected = (detect_terminal)
 let results = {
     test_id: $test_id,
     session: $session_name,
     timestamp: (date now | format date "%Y-%m-%dT%H:%M:%S"),
+    terminal: $terminal_detected,
     tools: {
         zellij: (check_tool "zellij" "--version"),
         yazi: (check_tool "yazi" "--version"),

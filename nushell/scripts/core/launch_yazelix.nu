@@ -6,8 +6,12 @@ use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/nix_detector.nu ensure_nix_available
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/terminal_launcher.nu *
+use ../utils/constants.nu [TERMINAL_METADATA]
 
-def main [launch_cwd?: string] {
+def main [
+    launch_cwd?: string
+    --terminal(-t): string  # Override terminal selection (for sweep testing)
+] {
     # Check if Nix is properly installed before proceeding
     ensure_nix_available
 
@@ -24,16 +28,52 @@ def main [launch_cwd?: string] {
     let working_dir = if ($launch_cwd | is-empty) { pwd } else { $launch_cwd }
     print $"Launch directory: ($working_dir)"
 
-    # Always read preference directly from config file to avoid stale environment variables
+    # Read config (for terminal_config_mode and fallback)
     let config = parse_yazelix_config
-    let preferred_terminal = $config.preferred_terminal
     let terminal_config_mode = $config.terminal_config_mode
+
+    # Use terminal override if provided, otherwise use config preference
+    let preferred_terminal = if ($terminal | is-not-empty) {
+        $terminal
+    } else {
+        $config.preferred_terminal
+    }
 
     # Generate all terminal configurations for safety and consistency
     generate_all_terminal_configs
 
     # Detect available terminal (wrappers preferred)
-    let terminal_info = detect_terminal $preferred_terminal true
+    # If terminal was explicitly specified via --terminal flag, force that specific terminal only
+    let terminal_info = if ($terminal | is-not-empty) {
+        # Strict mode: only try the specified terminal, no fallbacks
+        let specified_terminal = $terminal  # Use the --terminal flag value
+        let term_meta = $TERMINAL_METADATA | get $specified_terminal
+        let wrapper_cmd = $term_meta.wrapper
+
+        # Try wrapper first, then direct
+        if (command_exists $wrapper_cmd) {
+            {
+                terminal: $specified_terminal
+                name: $term_meta.name
+                command: $wrapper_cmd
+                use_wrapper: true
+            }
+        } else if (command_exists $specified_terminal) {
+            {
+                terminal: $specified_terminal
+                name: $term_meta.name
+                command: $specified_terminal
+                use_wrapper: false
+            }
+        } else {
+            print $"Error: Specified terminal '($specified_terminal)' is not installed"
+            print "Please install it or choose a different terminal for testing"
+            exit 1
+        }
+    } else {
+        # Normal mode: use detect_terminal with fallbacks
+        detect_terminal $preferred_terminal true
+    }
 
     if $terminal_info == null {
         print "Error: None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty, Foot) are installed. Please install one of these terminals to use Yazelix."
@@ -84,12 +124,20 @@ def main [launch_cwd?: string] {
     }
 
     # Launch terminal using bash to handle background processes properly
+    # Pass YAZELIX_TERMINAL so verification scripts know which terminal launched
     if $terminal_info.use_wrapper {
-        with-env { YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode, YAZELIX_LAUNCH_CWD: $working_dir } {
+        with-env {
+            YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode,
+            YAZELIX_LAUNCH_CWD: $working_dir,
+            YAZELIX_TERMINAL: $terminal_info.terminal
+        } {
             ^bash -c $launch_cmd
         }
     } else {
-        with-env { YAZELIX_LAUNCH_CWD: $working_dir } {
+        with-env {
+            YAZELIX_LAUNCH_CWD: $working_dir,
+            YAZELIX_TERMINAL: $terminal_info.terminal
+        } {
             ^bash -c $launch_cmd
         }
     }

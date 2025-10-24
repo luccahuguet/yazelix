@@ -36,7 +36,8 @@
   # Extra terminal emulators to install beyond Ghostty (default: [])
   # Options: ["wezterm", "kitty", "alacritty", "foot" (Linux-only)]
   # Only install additional terminals if you plan to use them
-  extra_terminals = [ ];
+  # Note: All terminals are included by default for testing/development
+  extra_terminals = [ "wezterm" "kitty" "alacritty" "foot" ];
 
   # Terminal config mode (how Yazelix handles terminal emulator configs)
   # Options:

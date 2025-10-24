@@ -77,8 +77,6 @@
         atuinEnabled = config.enable_atuin or false;
         yaziExtensionsEnabled = config.yazi_extensions or true;
         yaziMediaEnabled = config.yazi_media or true;
-        # Terminal inclusion option
-        yazelixIncludeTerminal = config.include_terminal or true; # Include terminal by default
         # Helix build mode: "release" or "source"
         helixMode = config.helix_mode or "release";
         useNixpkgsHelix = helixMode == "release";
@@ -87,6 +85,7 @@
         buildHelixFromSource = useSourceHelix;
         yazelixDefaultShell = config.default_shell or "nu";
         yazelixExtraShells = config.extra_shells or [ ];
+        yazelixExtraTerminals = config.extra_terminals or [ ];
         yazelixDebugMode = config.debug_mode or false; # Read debug_mode, default to false
         yazelixSkipWelcomeScreen = config.skip_welcome_screen or false; # Read skip_welcome_screen, default to false
         yazelixPreferredTerminal = config.preferred_terminal or "ghostty"; # Default to ghostty (Homebrew on macOS, Nix on Linux)
@@ -120,7 +119,7 @@
         # Simplified terminal wrappers without nixGL complexity
 
         # Ghostty wrapper - Linux-only (nixpkgs Ghostty is Linux-only)
-        ghosttyWrapper = if yazelixIncludeTerminal && isLinux then
+        ghosttyWrapper = if isLinux then
           pkgs.writeShellScriptBin "yazelix-ghostty" (
             if isLinux then ''
               MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
@@ -154,7 +153,7 @@
         else null;
 
         # Kitty wrapper - with nixGL on Linux, native on macOS
-        kittyWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "kitty" then
+        kittyWrapper = if (yazelixPreferredTerminal == "kitty" || builtins.elem "kitty" yazelixExtraTerminals) then
           pkgs.writeShellScriptBin "yazelix-kitty" (
             if isLinux then ''
               MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
@@ -187,7 +186,7 @@
         else null;
 
         # WezTerm wrapper - with nixGL on Linux, native on macOS
-        weztermWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "wezterm" then
+        weztermWrapper = if (yazelixPreferredTerminal == "wezterm" || builtins.elem "wezterm" yazelixExtraTerminals) then
           pkgs.writeShellScriptBin "yazelix-wezterm" (
             if isLinux then ''
               MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
@@ -226,7 +225,7 @@
         else null;
 
         # Alacritty wrapper - with nixGL on Linux, native on macOS
-        alacrittyWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "alacritty" then
+        alacrittyWrapper = if (yazelixPreferredTerminal == "alacritty" || builtins.elem "alacritty" yazelixExtraTerminals) then
           pkgs.writeShellScriptBin "yazelix-alacritty" (
             if isLinux then ''
               MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
@@ -259,7 +258,7 @@
         else null;
 
         # Foot wrapper - Linux-only (Wayland terminal, not available on macOS)
-        footWrapper = if yazelixIncludeTerminal && yazelixPreferredTerminal == "foot" && isLinux then
+        footWrapper = if (yazelixPreferredTerminal == "foot" || builtins.elem "foot" yazelixExtraTerminals) && isLinux then
           pkgs.writeShellScriptBin "yazelix-foot" (
             if isLinux then ''
               MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${yazelixTerminalConfigMode}}"
@@ -290,7 +289,7 @@
         else null;
 
         # Desktop launcher script for yazelix - force rebuild with timestamp
-        yazelixDesktopLauncher = if yazelixIncludeTerminal then
+        yazelixDesktopLauncher = if true then
           pkgs.writeShellScriptBin "yazelix-desktop-launcher" ''
             # Updated launcher - should use yazelix environment
             cd ~/.config/yazelix
@@ -300,7 +299,7 @@
         else null;
 
         # Desktop entry for yazelix with logo
-        yazelixDesktopEntry = if yazelixIncludeTerminal then
+        yazelixDesktopEntry = if true then
           pkgs.makeDesktopItem {
             name = "com.yazelix.Yazelix";
             exec = "${yazelixDesktopLauncher}/bin/yazelix-desktop-launcher";
@@ -327,34 +326,34 @@
           mise # Tool version manager - pre-configured in Yazelix shell initializers
         ] ++ (if isLinux then [
           libnotify # Provides notify-send for desktop notifications (used by Nushell clip command, Linux-only)
-        ] else []) ++ (if yazelixIncludeTerminal && isLinux then [
+        ] else []) ++ (if isLinux then [
           # Desktop integration (Linux-only - .desktop files are FreeDesktop standard)
           yazelixDesktopLauncher # Desktop launcher script
           yazelixDesktopEntry # Desktop entry with logo
-        ] else []) ++ (if yazelixIncludeTerminal && isLinux then [
+        ] else []) ++ (if isLinux then [
           # nixGL for GPU acceleration on non-NixOS Linux systems (not needed on macOS)
           pkgsWithNixGL.nixgl.nixGLIntel # For Intel/Mesa GPU acceleration
-        ] else []) ++ (if yazelixIncludeTerminal && isLinux then [
+        ] else []) ++ (if isLinux then [
           # Ghostty terminal with GPU acceleration support (Linux-only in nixpkgs)
           ghosttyWrapper # Ghostty with nixGL wrapper
           ghostty # Base ghostty package
-        ] else []) ++ (if yazelixIncludeTerminal && yazelixPreferredTerminal == "kitty" then [
+        ] else []) ++ (if (yazelixPreferredTerminal == "kitty" || builtins.elem "kitty" yazelixExtraTerminals) then [
           # Kitty terminal with GPU acceleration support
           kittyWrapper # Kitty with nixGL wrapper
           kitty # Base kitty package
           nerd-fonts.fira-code # Required fonts for Kitty config
           nerd-fonts.symbols-only # Required symbols for Kitty config
-        ] else []) ++ (if yazelixIncludeTerminal && yazelixPreferredTerminal == "wezterm" then [
+        ] else []) ++ (if (yazelixPreferredTerminal == "wezterm" || builtins.elem "wezterm" yazelixExtraTerminals) then [
           # WezTerm terminal with GPU acceleration support
           weztermWrapper # WezTerm with nixGL wrapper
           wezterm # Base wezterm package
-        ] else []) ++ (if yazelixIncludeTerminal && yazelixPreferredTerminal == "alacritty" then [
+        ] else []) ++ (if (yazelixPreferredTerminal == "alacritty" || builtins.elem "alacritty" yazelixExtraTerminals) then [
           # Alacritty terminal with GPU acceleration support
           alacrittyWrapper # Alacritty with nixGL wrapper
           alacritty # Base alacritty package
           nerd-fonts.fira-code # Preferred Nerd Font (matches README)
           nerd-fonts.symbols-only # Symbols fallback for extra glyphs
-        ] else []) ++ (if yazelixIncludeTerminal && yazelixPreferredTerminal == "foot" && isLinux then [
+        ] else []) ++ (if isLinux && (yazelixPreferredTerminal == "foot" || builtins.elem "foot" yazelixExtraTerminals) then [
           footWrapper
           foot
         ] else []);

@@ -112,6 +112,7 @@ export def "yzx launch" [
     --here             # Start in current terminal instead of launching new terminal
     --path(-p): string # Start in specific directory
     --home             # Start in home directory
+    --terminal(-t): string  # Override terminal selection (for sweep testing)
 ] {
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
@@ -135,7 +136,27 @@ export def "yzx launch" [
         } else {
             pwd
         }
-        nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu $launch_cwd
+
+        # Run launch_yazelix.nu inside nix develop so all terminal wrappers are available
+        # Pass through sweep test environment variables if present
+        let launch_script = "~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu"
+        let launch_cmd = if ($terminal | is-not-empty) {
+            $"nu ($launch_script) ($launch_cwd) --terminal ($terminal)"
+        } else {
+            $"nu ($launch_script) ($launch_cwd)"
+        }
+
+        # Build environment variable exports for bash
+        let env_exports = [
+            (if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) { $"export YAZELIX_CONFIG_OVERRIDE='($env.YAZELIX_CONFIG_OVERRIDE)'; " } else { "" })
+            (if ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) { $"export ZELLIJ_DEFAULT_LAYOUT='($env.ZELLIJ_DEFAULT_LAYOUT)'; " } else { "" })
+            (if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) { $"export YAZELIX_SWEEP_TEST_ID='($env.YAZELIX_SWEEP_TEST_ID)'; " } else { "" })
+            (if ($env.YAZELIX_SKIP_WELCOME? | is-not-empty) { $"export YAZELIX_SKIP_WELCOME='($env.YAZELIX_SKIP_WELCOME)'; " } else { "" })
+            (if ($env.YAZELIX_TERMINAL? | is-not-empty) { $"export YAZELIX_TERMINAL='($env.YAZELIX_TERMINAL)'; " } else { "" })
+        ] | str join ""
+
+        let full_cmd = $"($env_exports)($launch_cmd)"
+        ^nix develop --impure ~/.config/yazelix --command bash -c $full_cmd
     }
 }
 

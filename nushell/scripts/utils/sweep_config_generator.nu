@@ -37,9 +37,9 @@ export def generate_sweep_config [
   enable_atuin = false;
   disable_zellij_tips = true;  # Prevent tips popup during visual testing
 
-  # Minimal extras for testing
+  # Include all terminals for cross-terminal testing
   extra_shells = [];
-  extra_terminals = [];
+  extra_terminals = [\"ghostty\" \"wezterm\" \"kitty\" \"alacritty\" \"foot\"];
   packs = [];
   user_packages = with pkgs; [];
 
