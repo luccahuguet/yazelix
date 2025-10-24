@@ -61,7 +61,20 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 ## Improvements of v10.5 over v10
 
-Coming soon...
+**Testing & Quality Infrastructure:**
+- **Comprehensive Sweep Testing Framework** - Matrix testing for shell/terminal/feature combinations
+  - Non-visual mode: Fast environment and configuration validation (8 test combinations)
+  - Visual mode: Actual terminal launch verification with in-session validation (5 terminals tested)
+  - Automated cross-terminal testing (Ghostty, WezTerm, Kitty, Alacritty, Foot)
+- **Terminal Detection System** - Proper terminal identification via `YAZELIX_TERMINAL` environment variable
+  - Reliable detection across all supported terminals
+  - Environment variable propagation through `nix develop`
+  - Dynamic zjstatus updates showing current terminal
+- **Code Quality Improvements** - Applied DRY principle throughout codebase
+  - Eliminated 562 lines of duplicate code
+  - Added reusable helper functions and feature builders
+  - Better code organization with dedicated `dev/sweep/` test utilities
+- **Enhanced CLI** - Simplified `yzx sweep` command interface for matrix testing
 
 Full version history moved to: [Version History](./docs/history.md)
 
