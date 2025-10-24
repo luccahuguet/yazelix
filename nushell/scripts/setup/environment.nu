@@ -109,16 +109,18 @@ def main [
         nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir $recommended $enable_atuin ($shells_to_configure | str join ",")
     }
 
-    # Setup shell configurations (always setup bash/nu, conditionally setup fish/zsh)
-    setup_bash_config $yazelix_dir $quiet_mode
-    setup_nushell_config $yazelix_dir $quiet_mode
+    # Setup shell hooks for configured shells
+    use ./shell_hooks.nu setup_shell_hooks
+
+    setup_shell_hooks "bash" $yazelix_dir $quiet_mode
+    setup_shell_hooks "nushell" $yazelix_dir $quiet_mode
 
     if ("fish" in $shells_to_configure) {
-        setup_fish_config $yazelix_dir $quiet_mode
+        setup_shell_hooks "fish" $yazelix_dir $quiet_mode
     }
 
     if ("zsh" in $shells_to_configure) {
-        setup_zsh_config $yazelix_dir $quiet_mode
+        setup_shell_hooks "zsh" $yazelix_dir $quiet_mode
     }
 
     # Editor setup is now handled in the shellHook
@@ -132,327 +134,16 @@ def main [
         print "✅ Yazelix environment setup complete!"
     }
 
-    # Import ASCII art module
-    use ../utils/ascii_art.nu *
-
-    # Show ASCII art based on configuration (skip in quiet mode)
-    if (not $skip_welcome_screen) and (not $quiet_mode) {
-        if $ascii_art_mode == "animated" {
-            # Play animated ASCII art
-            print ""
-           play_animation 0.5sec
-        } else if $ascii_art_mode == "static" {
-            # Show static ASCII art
-            let ascii_art = get_welcome_ascii_art
-            for $line in $ascii_art {
-                print $line
-            }
-            print ""
-        }
-        # Show macchina if enabled and available
-        if $show_macchina_on_welcome {
-            macchina -o machine -o distribution -o desktop-environment -o processor -o gpu -o terminal
-        }
-    }
+    # Import welcome module
+    use ./welcome.nu *
+    use ../utils/ascii_art.nu get_yazelix_colors
 
     # Get color scheme for consistent styling
     let colors = get_yazelix_colors
 
-    # Get flake.nix last updated date dynamically (in days ago)
-    let flake_path = $"($yazelix_dir)/flake.nix"
-    let flake_days_ago = if ($flake_path | path exists) {
-        try {
-            let file_info = (ls $flake_path | first)
-            let now_seconds = (date now | format date %s | into int)
-            let mod_seconds = ($file_info.modified | format date %s | into int)
-            let diff_seconds = ($now_seconds - $mod_seconds)
-            let days = ($diff_seconds / 86400 | math floor)
-            $days
-        } catch {
-            0
-        }
-    } else {
-        0
-    }
-    let flake_info = if ($flake_days_ago | describe) == 'int' {
-        $"($colors.cyan)🕒 Flake last updated: ($flake_days_ago) day\(s\) ago($colors.reset)"
-    } else {
-        $"($colors.cyan)🕒 Flake last updated: unknown($colors.reset)"
-    }
+    # Build welcome message
+    let welcome_message = build_welcome_message $yazelix_dir $helix_mode $colors
 
-    # Prepare welcome message with consistent colors
-    let helix_info = if $helix_mode == "source" {
-        $"($colors.cyan)🔄 Using Helix flake from repository for latest features($colors.reset)"
-    } else if $helix_mode == "release" {
-        $"($colors.cyan)📦 Using latest Helix release from nixpkgs \(fast setup\)($colors.reset)"
-    } else {
-        $"($colors.cyan)📝 Using stable nixpkgs Helix($colors.reset)"
-    }
-
-    # Get ASCII art
-    let ascii_art = get_welcome_ascii_art
-
-    # Check persistent session configuration
-    let persistent_session_info = try {
-        let config = parse_yazelix_config
-        if ($config.persistent_sessions == "true") {
-            $"($colors.green)🔗 Using persistent session: ($config.session_name)($colors.reset)"
-        } else {
-            $"($colors.yellow)🆕 Creating new Zellij session($colors.reset)"
-        }
-    } catch {
-        $"($colors.yellow)🆕 Creating new Zellij session($colors.reset)"
-    }
-
-    # Check terminal configuration - only show included terminal if we actually have include_terminal=true
-    let terminal_info = try {
-        let config = parse_yazelix_config
-        if ($config.include_terminal == "true") and ((which yazelix-ghostty | length) > 0) {
-            $"($colors.green)🖥️  Using yazelix included terminal \(Ghostty with GPU acceleration\)($colors.reset)"
-        } else {
-            $"($colors.cyan)🖥️  Using external terminal: ($config.preferred_terminal)($colors.reset)"
-        }
-    } catch {
-        # Fallback: check if we have yazelix-ghostty but no config
-        if (which yazelix-ghostty | length) > 0 {
-            $"($colors.green)🖥️  Using yazelix included terminal \(Ghostty with GPU acceleration\)($colors.reset)"
-        } else {
-            $"($colors.cyan)🖥️  Using external terminal \(configuration not found\)($colors.reset)"
-        }
-    }
-
-    let welcome_message = [
-        "",
-        $"($colors.purple)🎉 Welcome to Yazelix v9!($colors.reset)",
-        $"($colors.blue)Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!($colors.reset)",
-        $flake_info,
-        $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",
-        $helix_info,
-        $persistent_session_info,
-        $terminal_info,
-        $"($colors.cyan)💡 Quick tips: Use 'alt hjkl' to navigate, 'Enter' in Yazi to open files, 'Alt [' or 'Alt ]' to swap layouts($colors.reset)"
-    ] | where $it != ""
-
-    # Check if we're in env-only mode or test mode (overrides skip_welcome_screen)
-    let env_only_mode = ($env.YAZELIX_ENV_ONLY? == "true")
-    let test_mode = ($env.YAZELIX_SKIP_WELCOME? == "true")
-    let should_skip_welcome = $skip_welcome_screen or $env_only_mode or $test_mode
-    
-    # Show welcome screen or log it
-    if $should_skip_welcome {
-        if $env_only_mode {
-            print $"($colors.cyan)🔧 Yazelix environment loaded! All tools are available in your current shell.($colors.reset)"
-            print $"($colors.cyan)💡 Use 'yzx start' or 'yzx launch' to open the full Yazelix interface when needed.($colors.reset)"
-        } else if $test_mode {
-            # Test mode - minimal output
-            print $"($colors.cyan)🧪 Yazelix test mode - Welcome screen skipped($colors.reset)"
-        } else {
-            # Log welcome info instead of displaying it
-            let welcome_log_file = $"($log_dir)/welcome_(date now | format date '%Y%m%d_%H%M%S').log"
-            $welcome_message | str join "\n" | save $welcome_log_file
-            print $"($colors.cyan)💡 Welcome screen skipped. Welcome info logged to: ($welcome_log_file)($colors.reset)"
-        }
-    } else {
-        # Display the rest of the welcome message (animation already played above)
-        for $line in $welcome_message {
-            print $line
-        }
-
-        # Check if we're in an interactive terminal before trying to read input
-        try {
-            input $"($colors.purple)Press Enter to launch Zellij and start your session... ($colors.reset)"
-        } catch {
-            # If input fails (non-interactive context), continue without waiting
-            print $"($colors.purple)Launching Zellij...($colors.reset)"
-        }
-    }
+    # Display welcome screen or log it
+    show_welcome $skip_welcome_screen $quiet_mode $ascii_art_mode $show_macchina_on_welcome $welcome_message $log_dir $colors
 }
-
-def setup_bash_config [yazelix_dir: string, quiet_mode: bool = false] {
-    use ../utils/constants.nu *
-    use ../utils/config_manager.nu migrate_shell_hooks
-
-    let bash_config = $"($yazelix_dir)/shells/bash/yazelix_bash_config.sh"
-    let bashrc = ($SHELL_CONFIGS | get bash | str replace "~" $env.HOME)
-    let section_content = get_yazelix_section_content "bash" $yazelix_dir
-
-    if not ($bash_config | path exists) {
-        print $"⚠️  Bash config not found: ($bash_config)"
-        return
-    }
-
-    touch $bashrc
-    let bashrc_content = (open $bashrc)
-
-    # Check if yazelix section already exists (v2)
-    if ($bashrc_content | str contains $YAZELIX_START_MARKER) {
-        if not $quiet_mode {
-            print $"✅ Bash config already sourced"
-        }
-        return
-    }
-
-    # Check for v1 hooks and migrate
-    if ($bashrc_content | str contains $YAZELIX_START_MARKER_V1) {
-        let migration = migrate_shell_hooks "bash" $bashrc $yazelix_dir
-        if $migration.migrated {
-            if not $quiet_mode {
-                print $"🔄 Migrated Bash hooks to v2 \(backup: ($migration.backup)\)"
-            }
-        } else if not $quiet_mode {
-            print $"⚠️  Migration skipped: ($migration.reason)"
-        }
-        return
-    }
-
-    # No existing hooks, add new v2 hooks
-    if not $quiet_mode {
-        print $"🐚 Adding Yazelix Bash config to ($bashrc)"
-    }
-    $"\n\n($section_content)" | save --append $bashrc
-}
-
-def setup_nushell_config [yazelix_dir: string, quiet_mode: bool = false] {
-    use ../utils/constants.nu *
-    use ../utils/config_manager.nu migrate_shell_hooks
-
-    let nushell_config = ($SHELL_CONFIGS | get nushell | str replace "~" $env.HOME)
-    let yazelix_config = $"($yazelix_dir)/nushell/config/config.nu"
-    let section_content = get_yazelix_section_content "nushell" $yazelix_dir
-
-    mkdir ($nushell_config | path dirname)
-
-    if not ($nushell_config | path exists) {
-        if not $quiet_mode {
-            print $"📝 Creating new Nushell config: ($nushell_config)"
-        }
-        "# Nushell user configuration (created by Yazelix setup)" | save $nushell_config
-    }
-
-    let config_content = (open $nushell_config)
-
-    # Check if yazelix section already exists (v2)
-    if ($config_content | str contains $YAZELIX_START_MARKER) {
-        if not $quiet_mode {
-            print $"✅ Nushell config already sourced"
-        }
-        return
-    }
-
-    # Check for v1 hooks and migrate
-    if ($config_content | str contains $YAZELIX_START_MARKER_V1) {
-        let migration = migrate_shell_hooks "nushell" $nushell_config $yazelix_dir
-        if $migration.migrated {
-            if not $quiet_mode {
-                print $"🔄 Migrated Nushell hooks to v2 \(backup: ($migration.backup)\)"
-            }
-        } else if not $quiet_mode {
-            print $"⚠️  Migration skipped: ($migration.reason)"
-        }
-        return
-    }
-
-    # No existing hooks, add new v2 hooks
-    if not $quiet_mode {
-        print $"🐚 Adding Yazelix Nushell config to ($nushell_config)"
-    }
-    $"\n\n($section_content)" | save --append $nushell_config
-}
-
-def setup_fish_config [yazelix_dir: string, quiet_mode: bool = false] {
-    use ../utils/constants.nu *
-    use ../utils/config_manager.nu migrate_shell_hooks
-
-    let fish_config = ($SHELL_CONFIGS | get fish | str replace "~" $env.HOME)
-    let yazelix_config = $"($yazelix_dir)/shells/fish/yazelix_fish_config.fish"
-    let section_content = get_yazelix_section_content "fish" $yazelix_dir
-
-    if not ($yazelix_config | path exists) {
-        if not $quiet_mode {
-            print $"⚠️  Fish config not found, skipping Fish setup"
-        }
-        return
-    }
-
-    mkdir ($fish_config | path dirname)
-    touch $fish_config
-    let config_content = (open $fish_config)
-
-    # Check if yazelix section already exists (v2)
-    if ($config_content | str contains $YAZELIX_START_MARKER) {
-        if not $quiet_mode {
-            print $"✅ Fish config already sourced"
-        }
-        return
-    }
-
-    # Check for v1 hooks and migrate
-    if ($config_content | str contains $YAZELIX_START_MARKER_V1) {
-        let migration = migrate_shell_hooks "fish" $fish_config $yazelix_dir
-        if $migration.migrated {
-            if not $quiet_mode {
-                print $"🔄 Migrated Fish hooks to v2 \(backup: ($migration.backup)\)"
-            }
-        } else if not $quiet_mode {
-            print $"⚠️  Migration skipped: ($migration.reason)"
-        }
-        return
-    }
-
-    # No existing hooks, add new v2 hooks
-    if not $quiet_mode {
-        print $"🐚 Adding Yazelix Fish config to ($fish_config)"
-    }
-    $"\n\n($section_content)" | save --append $fish_config
-}
-
-def setup_zsh_config [yazelix_dir: string, quiet_mode: bool = false] {
-    use ../utils/constants.nu *
-    use ../utils/config_manager.nu migrate_shell_hooks
-
-    let zsh_config = ($SHELL_CONFIGS | get zsh | str replace "~" $env.HOME)
-    let yazelix_config = $"($yazelix_dir)/shells/zsh/yazelix_zsh_config.zsh"
-    let section_content = get_yazelix_section_content "zsh" $yazelix_dir
-
-    if not ($yazelix_config | path exists) {
-        if not $quiet_mode {
-            print $"⚠️  Zsh config not found, skipping Zsh setup"
-        }
-        return
-    }
-
-    mkdir ($zsh_config | path dirname)
-    touch $zsh_config
-    let config_content = (open $zsh_config)
-
-    # Check if yazelix section already exists (v2)
-    if ($config_content | str contains $YAZELIX_START_MARKER) {
-        if not $quiet_mode {
-            print $"✅ Zsh config already sourced"
-        }
-        return
-    }
-
-    # Check for v1 hooks and migrate
-    if ($config_content | str contains $YAZELIX_START_MARKER_V1) {
-        let migration = migrate_shell_hooks "zsh" $zsh_config $yazelix_dir
-        if $migration.migrated {
-            if not $quiet_mode {
-                print $"🔄 Migrated Zsh hooks to v2 \(backup: ($migration.backup)\)"
-            }
-        } else if not $quiet_mode {
-            print $"⚠️  Migration skipped: ($migration.reason)"
-        }
-        return
-    }
-
-    # No existing hooks, add new v2 hooks
-    if not $quiet_mode {
-        print $"🐚 Adding Yazelix Zsh config to ($zsh_config)"
-    }
-    $"\n\n($section_content)" | save --append $zsh_config
-}
-
-
-
-
