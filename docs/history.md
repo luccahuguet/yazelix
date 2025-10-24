@@ -43,6 +43,39 @@ There's much to be done yet. Infinite possibilities. But some rather closer than
 - **v2**: Yazi-Helix File Tree v2, now with a Closeable Sidebar! (the name 'Yazelix' did not exist yet; [announcement](https://www.reddit.com/r/HelixEditor/comments/1d6nkxs/yazihelix_file_tree_v2_now_with_a_closeable/))
 - **v1**: My first Zellij/Yazi/Helix/Nushell setup, inspired by a Reddit interaction, with no integration and a lot of hacks ([announcement](https://www.reddit.com/r/HelixEditor/comments/1d59br3/file_tree_setup_using_yazi_zellij_helix_and/))
 
+## v10: Launch interface consolidation, IDE integration, project-oriented workflow, and enhanced UX!
+
+### Changes from v9 to v10
+- zjstatus polish: swap layout widget (colored, hide‑if‑empty), colored shell/editor, smarter overlength hiding with tabs prioritized, improved inactive/active tab variants (fullscreen/sync/floating), and cleaner status without tab separators.
+- CLI: new `yzx why` command for a concise "elevator pitch".
+- **Launch interface consolidation**: Simplified `yzx start` and `yzx launch` into a single `yzx launch` command with intuitive flags:
+  - `yzx launch` (default): new terminal in current directory (project-oriented)
+  - `yzx launch --here`: start in current terminal
+  - `yzx launch --path DIR`: launch in specific directory
+  - `yzx launch --home`: launch in home directory
+  - All flags are composable for maximum flexibility while maintaining a clean interface
+- **IDE integration enhancements**: Added quiet mode to `yzx env` for seamless IDE terminal integration:
+  - Suppresses verbose output when `YAZELIX_ENV_ONLY=true`
+  - Clean, minimal output suitable for IDE/editor terminals (Zed, DataGrip, etc.)
+  - Eliminates ASCII art and chatty setup messages in quiet mode
+- **Enhanced yzx env functionality**: Improved shell handling and user experience:
+  - Now launches configured shell by default (more intuitive than keeping current shell)
+  - Added `--no-shell` flag for users who want to keep their current shell
+  - Aligned bash and nushell implementations for consistent cross-shell behavior
+- **Project-oriented workspace behavior**: All launch commands now start in current working directory by default, creating a more intuitive project-focused workflow that eliminates the need to navigate from home directory
+- Docs: POSIX/XDG paths doc + README link; SSH/Remote section in README.
+- Desktop integration: Fixed window branding to show "Yazelix" in taskbars/docks, with proper StartupWMClass for desktop entry association.
+- Terminal bundling: Added bundled terminal emulators (Ghostty, WezTerm, Kitty, Alacritty) with automatic nixGL GPU acceleration. Only downloads your preferred terminal, with Ghostty always included as fallback.
+- Ghostty cursor trails: New presets (blaze, snow, cosmic, ocean, forest, sunset, neon, party). Configure via `cursor_trail` in `yazelix.nix`. Kitty supports `snow`; WezTerm/Alacritty do not support trails.
+- Shell initializers: Aggregate per‑shell initializer (`yazelix_init.*`) to source only what exists. Essential tools (starship, zoxide) are robust; optional tools (mise, carapace, atuin) are omitted when disabled or missing. No more parse‑time source errors.
+- Terminal configs: New `terminal_config_mode` with three modes:
+  - `yazelix` (default): use Yazelix‑managed configs under `~/.local/share/yazelix/configs` (user configs untouched)
+  - `auto`: prefer user configs if present, else Yazelix configs
+  - `user`: always use user configs
+  Wrappers and `yzx launch` honor this consistently (including via desktop entry) and pass the mode via env.
+- Config location: All generated terminal configs moved to XDG state dir `~/.local/share/yazelix/configs/terminal_emulators`.
+- Atuin toggle: `enable_atuin` added (default: false). Nushell uses its native history by default; Atuin can be enabled explicitly.
+
 ## v9: zjstatus, `yzx env`, `yzx doctor`, no_sidebar mode, pack-based system, new logo, desktop entry and more!
 
 ### Changes from v8 to v9
