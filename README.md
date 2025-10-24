@@ -63,6 +63,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 - **Sweep Testing Framework** - Matrix testing for all shell/terminal/feature combinations (`yzx sweep shells|terminals|all`)
 - **Terminal Detection** - Proper terminal identification via `YAZELIX_TERMINAL` environment variable
+- **Conditional Shell Hooks** - Shell hooks only load Yazelix tools when inside the environment, preventing errors in regular terminals
 
 Full version history: [Version History](./docs/history.md)
 
