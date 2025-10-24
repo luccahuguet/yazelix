@@ -82,7 +82,7 @@ export const CURSOR_TRAIL_SHADERS = {
 
 # Common config sections
 export const SHELL_ARGS_BASH = '["bash", "-l", "-c", "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]'
-export const SHELL_ARGS_STRING = '[\"-l\", \"-c\", \"nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu\"]'
+export const SHELL_ARGS_STRING = '["-l", "-c", "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]'
 
 # Font configurations
 export const FONT_FIRACODE = "FiraCode Nerd Font"
