@@ -7,7 +7,7 @@ use ../utils/nix_detector.nu ensure_nix_available
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 
-export def main [] {
+export def main [cwd_override?: string] {
     # Try to set up Nix environment automatically
     use ../utils/nix_env_helper.nu ensure_nix_in_environment
     
@@ -44,6 +44,9 @@ export def main [] {
     # For Zellij config, create a placeholder for now - will be generated inside Nix environment
     let merged_zellij_dir = $"($env.HOME)/.local/share/yazelix/configs/zellij"
 
+    # Determine which directory to use as default CWD
+    let default_cwd = if ($cwd_override | is-not-empty) { $cwd_override } else { $home }
+    
     # Build the command that first generates the zellij config, then starts zellij
     let zellij_merger_cmd = $"nu ($yazelix_dir)/nushell/scripts/setup/zellij_config_merger.nu ($yazelix_dir)"
     
@@ -56,7 +59,7 @@ export def main [] {
             "attach"
             "-c" $config.session_name
             "options"
-            "--default-cwd" $home
+            "--default-cwd" $default_cwd
             "--default-layout" "$ZELLIJ_DEFAULT_LAYOUT"
             "--default-shell" $config.default_shell
         ] | str join " "
@@ -67,7 +70,7 @@ export def main [] {
             "zellij"
             "--config-dir" $merged_zellij_dir
             "options"
-            "--default-cwd" $home
+            "--default-cwd" $default_cwd
             "--default-layout" "$ZELLIJ_DEFAULT_LAYOUT"
             "--default-shell" $config.default_shell
         ] | str join " "
