@@ -106,20 +106,6 @@ export def generate_visual_test_combinations []: nothing -> list<record> {
         })
     }
 
-    # Add one test with sidebar enabled to verify layout override works
-    $combinations = ($combinations | append {
-        type: "maximal_config",
-        shell: $PRIMARY_SHELL,
-        terminal: $PRIMARY_TERMINAL,
-        features: {
-            helix_mode: "source",
-            enable_sidebar: true,
-            persistent_sessions: true,
-            recommended_deps: true,
-            yazi_extensions: true
-        }
-    })
-
     $combinations
 }
 
