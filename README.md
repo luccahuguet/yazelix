@@ -68,6 +68,15 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
   - `yzx launch --path DIR`: launch in specific directory
   - `yzx launch --home`: launch in home directory
   - All flags are composable for maximum flexibility while maintaining a clean interface
+- **IDE integration enhancements**: Added quiet mode to `yzx env` for seamless IDE terminal integration:
+  - Suppresses verbose output when `YAZELIX_ENV_ONLY=true`
+  - Clean, minimal output suitable for IDE/editor terminals (Zed, DataGrip, etc.)
+  - Eliminates ASCII art and chatty setup messages in quiet mode
+- **Enhanced yzx env functionality**: Improved shell handling and user experience:
+  - Now launches configured shell by default (more intuitive than keeping current shell)
+  - Added `--no-shell` flag for users who want to keep their current shell
+  - Aligned bash and nushell implementations for consistent cross-shell behavior
+- **Project-oriented workspace behavior**: All launch commands now start in current working directory by default, creating a more intuitive project-focused workflow that eliminates the need to navigate from home directory
 - Docs: POSIX/XDG paths doc + README link; SSH/Remote section in README.
 - Desktop integration: Fixed window branding to show "Yazelix" in taskbars/docks, with proper StartupWMClass for desktop entry association.
 - Terminal bundling: Added bundled terminal emulators (Ghostty, WezTerm, Kitty, Alacritty) with automatic nixGL GPU acceleration. Only downloads your preferred terminal, with Ghostty always included as fallback.
