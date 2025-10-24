@@ -253,13 +253,35 @@ export def detect_environment [] {
 # Get the complete yazelix section content for a shell
 export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
     let config_file = $YAZELIX_CONFIG_FILES | get $shell
-    let source_line = if $shell in ["bash", "zsh", "fish"] {
-        # Use $HOME for POSIX shells
+
+    # Generate shell-specific conditional loading + yzx availability
+    let section_body = if $shell == "bash" or $shell == "zsh" {
         let home_file = ($config_file | str replace "~" "$HOME")
-        $"source \"($home_file)\""
+        let yzx_path = $"($yazelix_dir)/shells/bash/yzx"
+        [
+            $"if [ -n \"$IN_YAZELIX_SHELL\" ]; then"
+            $"  source \"($home_file)\""
+            "fi"
+            $"alias yzx=\"($yzx_path)\""
+        ] | str join "\n"
+    } else if $shell == "fish" {
+        let home_file = ($config_file | str replace "~" "$HOME")
+        let yzx_path = $"($yazelix_dir)/shells/bash/yzx"
+        [
+            "if test -n \"$IN_YAZELIX_SHELL\""
+            $"  source \"($home_file)\""
+            "end"
+            $"alias yzx=\"($yzx_path)\""
+        ] | str join "\n"
     } else {
-        $"source \"($config_file)\""
+        # Nushell
+        [
+            "if ($env.IN_YAZELIX_SHELL? == \"true\") {"
+            $"  source \"($config_file)\""
+            "}"
+            "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *"
+        ] | str join "\n"
     }
 
-    (get_yazelix_start_comment) + "\n" + $source_line + "\n" + $YAZELIX_END_MARKER
+    (get_yazelix_start_comment) + "\n" + $section_body + "\n" + $YAZELIX_END_MARKER
 }
