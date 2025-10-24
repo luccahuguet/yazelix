@@ -25,23 +25,27 @@ export def run_visual_sweep_test [
         # Get terminal process baseline before launch
         let before_pids = get_terminal_pids $terminal
 
-        # Launch Yazelix with the test config
-        let launch_result = launch_visual_test $config_path
+        # Launch Yazelix with the test config and test_id for verification
+        let launch_result = launch_visual_test $config_path $test_id
 
         if $launch_result.exit_code != 0 {
             print $"❌ Failed to launch ($shell) + ($terminal): ($launch_result.stderr)"
             create_test_result $test_id $shell $terminal "fail" "Launch failed" $launch_result.stderr
         } else {
             print $"✅ Launched ($shell) + ($terminal) successfully"
-            print $"   Running demo command to show functionality..."
 
-            # Execute a demo command to show the environment works
-            run_demo_command $config_path $shell $terminal
+            # Wait for verification from sweep_verify.nu script in launched session
+            let demo_result = run_demo_command $test_id
 
             # Clean up after demo period
             cleanup_visual_test $session_name $terminal $before_pids $delay
 
-            create_test_result $test_id $shell $terminal "pass" "Visual launch successful"
+            # Mark test as pass only if both launch and verification succeeded
+            if $demo_result.verified {
+                create_test_result $test_id $shell $terminal "pass" "Visual launch and verification successful"
+            } else {
+                create_test_result $test_id $shell $terminal "fail" $"Launch succeeded but verification failed: ($demo_result.status)" $demo_result.output
+            }
         }
     } catch { |err|
         print $"💥 Error launching ($shell) + ($terminal): ($err.msg)"

@@ -49,6 +49,9 @@ export def generate_sweep_config [
   # Session settings
   session_name = \"sweep_test_($test_id)\";
 
+  # Force sweep test layout - uses yzx_sweep_test for testing
+  zellij_layout_override = \"yzx_sweep_test\";
+
   # Appearance \(minimal\)
   cursor_trail = \"none\";
   transparency = \"none\";

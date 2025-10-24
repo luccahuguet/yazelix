@@ -53,25 +53,89 @@ export def validate_environment [config_path: string]: nothing -> record {
     }
 }
 
-# Run a demo command in the visual test environment
+# Wait for verification file from sweep_verify.nu script running in launched session
 export def run_demo_command [
-    config_path: string,
-    shell: string,
-    terminal: string
-]: nothing -> nothing {
+    test_id: string
+]: nothing -> record {
     try {
-        with-env {YAZELIX_CONFIG_OVERRIDE: $config_path} {
-            nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx env --command 'echo \\\"($shell) + ($terminal) environment ready\\\" && zellij --version && echo \\\"Demo complete\\\"'"
+        let result_file = $"/tmp/yazelix_sweep_result_($test_id).json"
+
+        print $"   Waiting for verification script in session to complete..."
+
+        # Clean up any existing result file
+        if ($result_file | path exists) {
+            rm $result_file
         }
-    } catch {
-        print "   Demo command skipped"
+
+        # Wait for the verification file to be created by the pane in the layout
+        mut attempts = 0
+        let max_attempts = 20  # 20 * 500ms = 10 seconds
+        mut file_found = false
+
+        while $attempts < $max_attempts {
+            if ($result_file | path exists) {
+                $file_found = true
+                break
+            }
+            sleep 500ms
+            $attempts = $attempts + 1
+        }
+
+        if not $file_found {
+            print $"   ✗ Verification timeout - script didn't create result file"
+            return {status: "fail", output: "Verification script timeout", verified: false}
+        }
+
+        # Wait a moment for file to be completely written
+        sleep 500ms
+
+        # Read and parse the verification results
+        let content = try {
+            let raw = (open --raw $result_file)
+            $raw | from json
+        } catch { |err|
+            print $"   ✗ Failed to parse verification file: ($err.msg)"
+            print $"   File path: ($result_file)"
+            return {status: "error", output: $"Parse error: ($err.msg)", verified: false}
+        }
+
+        # Check if all tools were found
+        let all_tools_ok = try {
+            (($content.tools.zellij.available == true) and
+             ($content.tools.yazi.available == true) and
+             ($content.tools.helix.available == true))
+        } catch { |err|
+            print $"   ✗ Failed to check tool availability: ($err.msg)"
+            return {status: "error", output: $"Check error: ($err.msg)", verified: false}
+        }
+
+        if $all_tools_ok {
+            print $"   ✓ Verification passed - all tools available in launched session"
+            print $"     - Zellij: ($content.tools.zellij.version)"
+            print $"     - Yazi: ($content.tools.yazi.version)"
+            print $"     - Helix: ($content.tools.helix.version)"
+            rm $result_file
+            {status: "pass", output: $content, verified: true}
+        } else {
+            print $"   ✗ Verification failed - some tools not available in session"
+            rm $result_file
+            {status: "fail", output: $content, verified: false}
+        }
+    } catch { |err|
+        print $"   ✗ Verification error: ($err.msg)"
+        {status: "error", output: $err.msg, verified: false}
     }
 }
 
-# Launch Yazelix for visual testing
-export def launch_visual_test [config_path: string]: nothing -> record {
+# Launch Yazelix for visual testing with sweep layout
+export def launch_visual_test [config_path: string, test_id: string]: nothing -> record {
     let launch_output = (do {
-        with-env {YAZELIX_CONFIG_OVERRIDE: $config_path, YAZELIX_SKIP_WELCOME: "true"} {
+        with-env {
+            YAZELIX_CONFIG_OVERRIDE: $config_path,
+            YAZELIX_SKIP_WELCOME: "true",
+            ZELLIJ_DEFAULT_LAYOUT: "yzx_sweep_test",
+            YAZELIX_SWEEP_TEST_ID: $test_id
+        } {
             nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx launch"
         }
     } | complete)

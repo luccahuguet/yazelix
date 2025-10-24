@@ -57,6 +57,13 @@ export def main [cwd_override?: string] {
     # Build the command that first generates the zellij config, then starts zellij
     let zellij_merger_cmd = $"nu ($yazelix_dir)/nushell/scripts/setup/zellij_config_merger.nu ($yazelix_dir)"
 
+    # Check for layout override (for testing)
+    let layout = if ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
+        $env.ZELLIJ_DEFAULT_LAYOUT
+    } else {
+        "$ZELLIJ_DEFAULT_LAYOUT"  # Will be expanded by bash in nix shell
+    }
+
     let cmd = if ($config.persistent_sessions == "true") {
         # Use zellij attach with create flag for persistent sessions
         [
@@ -67,7 +74,7 @@ export def main [cwd_override?: string] {
             "-c" $config.session_name
             "options"
             "--default-cwd" $working_dir
-            "--default-layout" "$ZELLIJ_DEFAULT_LAYOUT"
+            "--default-layout" $layout
             "--default-shell" $config.default_shell
         ] | str join " "
     } else {
@@ -78,7 +85,7 @@ export def main [cwd_override?: string] {
             "--config-dir" $merged_zellij_dir
             "options"
             "--default-cwd" $working_dir
-            "--default-layout" "$ZELLIJ_DEFAULT_LAYOUT"
+            "--default-layout" $layout
             "--default-shell" $config.default_shell
         ] | str join " "
     }

@@ -105,7 +105,10 @@
 
         # Sidebar configuration
         yazelixEnableSidebar = config.enable_sidebar or true;
-        yazelixLayoutName = if yazelixEnableSidebar then "yzx_side" else "yzx_no_side";
+        yazelixLayoutName =
+          if (builtins.hasAttr "zellij_layout_override" config && config.zellij_layout_override != "")
+          then config.zellij_layout_override
+          else if yazelixEnableSidebar then "yzx_side" else "yzx_no_side";
 
 
         # Helix package selection
