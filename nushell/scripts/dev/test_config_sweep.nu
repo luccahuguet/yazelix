@@ -139,8 +139,14 @@ export def run_all_sweep_tests [
     }
     print ""
 
-    # Generate test combinations
-    let combinations = generate_test_combinations
+    # Generate test combinations based on mode
+    # Visual mode: tests terminal launches (cross-terminal tests)
+    # Non-visual mode: tests environment/shell setup (cross-shell, feature tests)
+    let combinations = if $visual {
+        generate_visual_test_combinations
+    } else {
+        generate_test_combinations
+    }
 
     print $"Running ($combinations | length) sweep test combinations..."
     print ""

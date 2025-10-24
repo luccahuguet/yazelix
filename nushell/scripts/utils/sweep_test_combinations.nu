@@ -19,7 +19,7 @@ const BOOLEAN_FEATURES = [
     "yazi_extensions"
 ]
 
-# Generate all test combinations
+# Generate test combinations for non-visual mode (environment/shell testing)
 export def generate_test_combinations []: nothing -> list<record> {
     mut combinations = []
 
@@ -39,25 +39,7 @@ export def generate_test_combinations []: nothing -> list<record> {
         })
     }
 
-    # 2. Cross-terminal testing (primary shell with each terminal)
-    for $terminal in $TERMINALS {
-        if $terminal != $PRIMARY_TERMINAL {  # Avoid duplicate
-            $combinations = ($combinations | append {
-                type: "cross_terminal",
-                shell: $PRIMARY_SHELL,
-                terminal: $terminal,
-                features: {
-                    helix_mode: "release",
-                    enable_sidebar: true,
-                    persistent_sessions: false,
-                    recommended_deps: true,
-                    yazi_extensions: true
-                }
-            })
-        }
-    }
-
-    # 3. Feature variation testing (primary shell/terminal with different features)
+    # 2. Feature variation testing (primary shell/terminal with different features)
     for $helix_mode in $HELIX_MODES {
         $combinations = ($combinations | append {
             type: "feature_variation",
@@ -73,7 +55,7 @@ export def generate_test_combinations []: nothing -> list<record> {
         })
     }
 
-    # 4. Boolean feature combinations (test key features on/off)
+    # 3. Boolean feature combinations (test key features on/off)
     $combinations = ($combinations | append {
         type: "minimal_config",
         shell: $PRIMARY_SHELL,
@@ -87,6 +69,44 @@ export def generate_test_combinations []: nothing -> list<record> {
         }
     })
 
+    $combinations = ($combinations | append {
+        type: "maximal_config",
+        shell: $PRIMARY_SHELL,
+        terminal: $PRIMARY_TERMINAL,
+        features: {
+            helix_mode: "source",
+            enable_sidebar: true,
+            persistent_sessions: true,
+            recommended_deps: true,
+            yazi_extensions: true
+        }
+    })
+
+    $combinations
+}
+
+# Generate test combinations for visual mode (terminal launch testing)
+export def generate_visual_test_combinations []: nothing -> list<record> {
+    mut combinations = []
+
+    # Cross-terminal testing (primary shell with each terminal)
+    # Visual mode is required to actually launch and verify terminals work
+    for $terminal in $TERMINALS {
+        $combinations = ($combinations | append {
+            type: "cross_terminal",
+            shell: $PRIMARY_SHELL,
+            terminal: $terminal,
+            features: {
+                helix_mode: "release",
+                enable_sidebar: false,
+                persistent_sessions: false,
+                recommended_deps: true,
+                yazi_extensions: true
+            }
+        })
+    }
+
+    # Add one test with sidebar enabled to verify layout override works
     $combinations = ($combinations | append {
         type: "maximal_config",
         shell: $PRIMARY_SHELL,
