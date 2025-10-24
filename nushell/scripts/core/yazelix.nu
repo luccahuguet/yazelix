@@ -121,11 +121,11 @@ export def "yzx launch" [
         # Start in current terminal (like old yzx start)
         let start_script = ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
         if $home {
-            nu $start_script $env.HOME
+            ^nu $start_script $env.HOME
         } else if ($path | is-not-empty) {
-            nu $start_script $path
+            ^nu $start_script $path
         } else {
-            nu $start_script
+            ^nu $start_script
         }
     } else {
         # Launch new terminal (original behavior)
@@ -137,26 +137,38 @@ export def "yzx launch" [
             pwd
         }
 
-        # Run launch_yazelix.nu inside nix develop so all terminal wrappers are available
-        # Pass through sweep test environment variables if present
-        let launch_script = "~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu"
-        let launch_cmd = if ($terminal | is-not-empty) {
-            $"nu ($launch_script) ($launch_cwd) --terminal ($terminal)"
+        let launch_script = $"($env.HOME)/.config/yazelix/nushell/scripts/core/launch_yazelix.nu"
+
+        # Check if already in Yazelix environment to skip redundant nix develop
+        let in_yazelix_shell = ($env.IN_YAZELIX_SHELL? == "true")
+
+        if $in_yazelix_shell {
+            # Already in Yazelix environment - run directly via bash
+            if ($terminal | is-not-empty) {
+                ^bash -c $"nu '($launch_script)' '($launch_cwd)' --terminal '($terminal)'"
+            } else {
+                ^bash -c $"nu '($launch_script)' '($launch_cwd)'"
+            }
         } else {
-            $"nu ($launch_script) ($launch_cwd)"
+            # Not in Yazelix environment - wrap with nix develop
+            let launch_cmd = if ($terminal | is-not-empty) {
+                $"nu '($launch_script)' '($launch_cwd)' --terminal '($terminal)'"
+            } else {
+                $"nu '($launch_script)' '($launch_cwd)'"
+            }
+
+            # Build environment variable exports for bash
+            let env_exports = [
+                (if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) { $"export YAZELIX_CONFIG_OVERRIDE='($env.YAZELIX_CONFIG_OVERRIDE)'; " } else { "" })
+                (if ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) { $"export ZELLIJ_DEFAULT_LAYOUT='($env.ZELLIJ_DEFAULT_LAYOUT)'; " } else { "" })
+                (if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) { $"export YAZELIX_SWEEP_TEST_ID='($env.YAZELIX_SWEEP_TEST_ID)'; " } else { "" })
+                (if ($env.YAZELIX_SKIP_WELCOME? | is-not-empty) { $"export YAZELIX_SKIP_WELCOME='($env.YAZELIX_SKIP_WELCOME)'; " } else { "" })
+                (if ($env.YAZELIX_TERMINAL? | is-not-empty) { $"export YAZELIX_TERMINAL='($env.YAZELIX_TERMINAL)'; " } else { "" })
+            ] | str join ""
+
+            let full_cmd = $"($env_exports)($launch_cmd)"
+            ^nix develop --impure ~/.config/yazelix --command bash -c $full_cmd
         }
-
-        # Build environment variable exports for bash
-        let env_exports = [
-            (if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) { $"export YAZELIX_CONFIG_OVERRIDE='($env.YAZELIX_CONFIG_OVERRIDE)'; " } else { "" })
-            (if ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) { $"export ZELLIJ_DEFAULT_LAYOUT='($env.ZELLIJ_DEFAULT_LAYOUT)'; " } else { "" })
-            (if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) { $"export YAZELIX_SWEEP_TEST_ID='($env.YAZELIX_SWEEP_TEST_ID)'; " } else { "" })
-            (if ($env.YAZELIX_SKIP_WELCOME? | is-not-empty) { $"export YAZELIX_SKIP_WELCOME='($env.YAZELIX_SKIP_WELCOME)'; " } else { "" })
-            (if ($env.YAZELIX_TERMINAL? | is-not-empty) { $"export YAZELIX_TERMINAL='($env.YAZELIX_TERMINAL)'; " } else { "" })
-        ] | str join ""
-
-        let full_cmd = $"($env_exports)($launch_cmd)"
-        ^nix develop --impure ~/.config/yazelix --command bash -c $full_cmd
     }
 }
 

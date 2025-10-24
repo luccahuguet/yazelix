@@ -446,6 +446,7 @@
           shellHook = ''
             # Export essential environment variables
             export YAZELIX_DIR="$HOME/.config/yazelix"
+            export IN_YAZELIX_SHELL="true"
             export YAZELIX_DEBUG_MODE="${if yazelixDebugMode then "true" else "false"}"
             export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
             export YAZELIX_DEFAULT_SHELL="${yazelixDefaultShell}"
