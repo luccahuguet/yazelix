@@ -7,7 +7,7 @@ use ../utils/nix_detector.nu ensure_nix_available
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 
-export def main [] {
+export def main [cwd_override?: string] {
     # Try to set up Nix environment automatically
     use ../utils/nix_env_helper.nu ensure_nix_in_environment
 
@@ -20,13 +20,6 @@ export def main [] {
     if ($home | is-empty) or (not ($home | path exists)) {
         print "Error: Cannot resolve HOME directory"
         exit 1
-    }
-
-    # Use launch directory if provided, otherwise use current working directory
-    let working_dir = if ($env.YAZELIX_LAUNCH_CWD? | is-not-empty) {
-        $env.YAZELIX_LAUNCH_CWD
-    } else {
-        pwd
     }
 
     # Set absolute path for Yazelix directory
@@ -51,9 +44,19 @@ export def main [] {
     # For Zellij config, create a placeholder for now - will be generated inside Nix environment
     let merged_zellij_dir = $"($env.HOME)/.local/share/yazelix/configs/zellij"
 
+    # Determine which directory to use as default CWD
+    # Priority: 1. cwd_override parameter 2. YAZELIX_LAUNCH_CWD env var 3. current directory 4. home
+    let working_dir = if ($cwd_override | is-not-empty) {
+        $cwd_override
+    } else if ($env.YAZELIX_LAUNCH_CWD? | is-not-empty) {
+        $env.YAZELIX_LAUNCH_CWD
+    } else {
+        pwd
+    }
+
     # Build the command that first generates the zellij config, then starts zellij
     let zellij_merger_cmd = $"nu ($yazelix_dir)/nushell/scripts/setup/zellij_config_merger.nu ($yazelix_dir)"
-    
+
     let cmd = if ($config.persistent_sessions == "true") {
         # Use zellij attach with create flag for persistent sessions
         [
