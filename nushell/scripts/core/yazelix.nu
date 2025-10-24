@@ -263,19 +263,8 @@ export def "yzx update" [] {
 }
 
 # Run configuration sweep tests across shell/terminal combinations
-# Matrix testing for shell/terminal/feature combinations
 export def "yzx sweep" [] {
-    print "Usage: yzx sweep <subcommand>"
-    print ""
-    print "Subcommands:"
-    print "  shells      Test all shell combinations (fast, 8 tests)"
-    print "  terminals   Test all terminal launches (slow, 5 tests)"
-    print "  all         Run all tests (13 tests total)"
-    print ""
-    print "Examples:"
-    print "  yzx sweep shells         # Quick shell/feature validation"
-    print "  yzx sweep terminals      # Verify all terminals launch correctly"
-    print "  yzx sweep all            # Comprehensive testing"
+    print "Run 'yzx sweep --help' to see available subcommands"
 }
 
 # Test all shell combinations
