@@ -62,6 +62,12 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 ## Improvements of v9.5 over v9
 - zjstatus polish: swap layout widget (colored, hide‑if‑empty), colored shell/editor, smarter overlength hiding with tabs prioritized, improved inactive/active tab variants (fullscreen/sync/floating), and cleaner status without tab separators.
 - CLI: new `yzx why` command for a concise "elevator pitch".
+- **Launch interface consolidation**: Simplified `yzx start` and `yzx launch` into a single `yzx launch` command with intuitive flags:
+  - `yzx launch` (default): new terminal in current directory (project-oriented)
+  - `yzx launch --here`: start in current terminal
+  - `yzx launch --path DIR`: launch in specific directory
+  - `yzx launch --home`: launch in home directory
+  - All flags are composable for maximum flexibility while maintaining a clean interface
 - Docs: POSIX/XDG paths doc + README link; SSH/Remote section in README.
 - Desktop integration: Fixed window branding to show "Yazelix" in taskbars/docks, with proper StartupWMClass for desktop entry association.
 - Terminal bundling: Added bundled terminal emulators (Ghostty, WezTerm, Kitty, Alacritty) with automatic nixGL GPU acceleration. Only downloads your preferred terminal, with Ghostty always included as fallback.
