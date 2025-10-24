@@ -64,6 +64,13 @@ export def generate_sweep_config [
     $config_path
 }
 
+# Clean up a single test config file
+export def cleanup_test_config [config_path: string]: nothing -> nothing {
+    if ($config_path | path exists) {
+        rm $config_path
+    }
+}
+
 # Clean up temporary test configs
 export def cleanup_sweep_configs []: nothing -> nothing {
     let temp_dir = $"($env.HOME)/.local/share/yazelix/sweep_tests"

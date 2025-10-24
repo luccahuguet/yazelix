@@ -19,6 +19,37 @@ const BOOLEAN_FEATURES = [
     "yazi_extensions"
 ]
 
+# Feature record builders
+def make_standard_features [helix_mode: string = "release"]: nothing -> record {
+    {
+        helix_mode: $helix_mode,
+        enable_sidebar: true,
+        persistent_sessions: false,
+        recommended_deps: true,
+        yazi_extensions: true
+    }
+}
+
+def make_minimal_features []: nothing -> record {
+    {
+        helix_mode: "release",
+        enable_sidebar: false,
+        persistent_sessions: false,
+        recommended_deps: false,
+        yazi_extensions: false
+    }
+}
+
+def make_maximal_features []: nothing -> record {
+    {
+        helix_mode: "source",
+        enable_sidebar: true,
+        persistent_sessions: true,
+        recommended_deps: true,
+        yazi_extensions: true
+    }
+}
+
 # Generate test combinations for non-visual mode (environment/shell testing)
 export def generate_test_combinations []: nothing -> list<record> {
     mut combinations = []
@@ -29,13 +60,7 @@ export def generate_test_combinations []: nothing -> list<record> {
             type: "cross_shell",
             shell: $shell,
             terminal: $PRIMARY_TERMINAL,
-            features: {
-                helix_mode: "release",
-                enable_sidebar: true,
-                persistent_sessions: false,
-                recommended_deps: true,
-                yazi_extensions: true
-            }
+            features: (make_standard_features)
         })
     }
 
@@ -45,13 +70,7 @@ export def generate_test_combinations []: nothing -> list<record> {
             type: "feature_variation",
             shell: $PRIMARY_SHELL,
             terminal: $PRIMARY_TERMINAL,
-            features: {
-                helix_mode: $helix_mode,
-                enable_sidebar: true,
-                persistent_sessions: false,
-                recommended_deps: true,
-                yazi_extensions: true
-            }
+            features: (make_standard_features $helix_mode)
         })
     }
 
@@ -60,26 +79,14 @@ export def generate_test_combinations []: nothing -> list<record> {
         type: "minimal_config",
         shell: $PRIMARY_SHELL,
         terminal: $PRIMARY_TERMINAL,
-        features: {
-            helix_mode: "release",
-            enable_sidebar: false,
-            persistent_sessions: false,
-            recommended_deps: false,
-            yazi_extensions: false
-        }
+        features: (make_minimal_features)
     })
 
     $combinations = ($combinations | append {
         type: "maximal_config",
         shell: $PRIMARY_SHELL,
         terminal: $PRIMARY_TERMINAL,
-        features: {
-            helix_mode: "source",
-            enable_sidebar: true,
-            persistent_sessions: true,
-            recommended_deps: true,
-            yazi_extensions: true
-        }
+        features: (make_maximal_features)
     })
 
     $combinations
@@ -91,18 +98,14 @@ export def generate_visual_test_combinations []: nothing -> list<record> {
 
     # Cross-terminal testing (primary shell with each terminal)
     # Visual mode is required to actually launch and verify terminals work
+    # Use standard features but with sidebar disabled for simpler visual testing
     for $terminal in $TERMINALS {
+        let features = (make_standard_features) | update enable_sidebar false
         $combinations = ($combinations | append {
             type: "cross_terminal",
             shell: $PRIMARY_SHELL,
             terminal: $terminal,
-            features: {
-                helix_mode: "release",
-                enable_sidebar: false,
-                persistent_sessions: false,
-                recommended_deps: true,
-                yazi_extensions: true
-            }
+            features: $features
         })
     }
 

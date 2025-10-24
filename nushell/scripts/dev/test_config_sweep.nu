@@ -8,6 +8,27 @@ use ../utils/sweep_process_manager.nu *
 use ../utils/sweep_test_executor.nu *
 use ../utils/sweep_test_combinations.nu *
 
+# Helper: Get the status field name based on test mode
+def get_status_field [visual: bool]: nothing -> string {
+    if $visual { "status" } else { "overall" }
+}
+
+# Helper: Count results by status value
+def count_results_by_status [
+    results: list,
+    visual: bool,
+    status_value: string
+]: nothing -> int {
+    let field = get_status_field $visual
+    $results | where ($it | get $field) == $status_value | length
+}
+
+# Helper: Get status value from a result
+def get_result_status [result: record, visual: bool]: nothing -> string {
+    let field = get_status_field $visual
+    $result | get $field
+}
+
 # Run a visual sweep test by launching actual Yazelix
 export def run_visual_sweep_test [
     shell: string,
@@ -52,11 +73,7 @@ export def run_visual_sweep_test [
         create_test_result $test_id $shell $terminal "error" $"Launch error: ($err.msg)"
     }
 
-    # Clean up config file
-    if ($config_path | path exists) {
-        rm $config_path
-    }
-
+    cleanup_test_config $config_path
     $result
 }
 
@@ -114,11 +131,7 @@ def run_sweep_test [
         create_env_test_result $test_id $shell $terminal $features "error" $"Test failed: ($err.msg)" "error" "Test execution error" "error"
     }
 
-    # Clean up individual test config
-    if ($config_path | path exists) {
-        rm $config_path
-    }
-
+    cleanup_test_config $config_path
     $result
 }
 
@@ -171,7 +184,7 @@ export def run_all_sweep_tests [
         # Progress indicator
         if not $verbose and not $visual {
             let completed = ($results | length)
-            let status = if $visual { $result.status } else { $result.overall }
+            let status = get_result_status $result $visual
             print $"  Progress: ($completed)/($total_tests) - ($status | str upcase) ($combo.shell)+($combo.terminal)"
         }
     }
@@ -181,21 +194,9 @@ export def run_all_sweep_tests [
     print "=== Sweep Test Results ==="
 
     # Handle both visual and regular test result formats
-    let passed = if $visual {
-        ($results | where status == "pass" | length)
-    } else {
-        ($results | where overall == "pass" | length)
-    }
-    let failed = if $visual {
-        ($results | where status == "fail" | length)
-    } else {
-        ($results | where overall == "fail" | length)
-    }
-    let errors = if $visual {
-        ($results | where status == "error" | length)
-    } else {
-        ($results | where overall == "error" | length)
-    }
+    let passed = count_results_by_status $results $visual "pass"
+    let failed = count_results_by_status $results $visual "fail"
+    let errors = count_results_by_status $results $visual "error"
     let skipped = if $visual {
         0  # Visual tests don't have skip status
     } else {
@@ -204,8 +205,8 @@ export def run_all_sweep_tests [
 
     # Show detailed results
     for $result in $results {
-        let status_field = if $visual { $result.status } else { $result.overall }
-        let status_icon = match $status_field {
+        let status = get_result_status $result $visual
+        let status_icon = match $status {
             "pass" => "✅",
             "fail" => "❌",
             "error" => "💥"
@@ -216,7 +217,7 @@ export def run_all_sweep_tests [
             let shell_name = ($result | get shell? | default "unknown")
             let terminal_name = ($result | get terminal? | default "unknown")
             print $"($status_icon) ($test_name): ($shell_name) + ($terminal_name)"
-            if $verbose or ($status_field != "pass") {
+            if $verbose or ($status != "pass") {
                 print $"   Message: ($result.message)"
                 if ($result.details | is-not-empty) {
                     print $"   Details: ($result.details)"
@@ -224,10 +225,10 @@ export def run_all_sweep_tests [
             }
         } else {
             print $"($status_icon) ($result.test_id): ($result.shell) + ($result.terminal)"
-            if $verbose or ($result.overall != "pass") {
+            if $verbose or ($status != "pass") {
                 print $"   Config: ($result.config_status) - ($result.config_message)"
                 print $"   Environment: ($result.env_status) - ($result.env_message)"
-                if ($result.overall != "pass") {
+                if ($status != "pass") {
                     print ""
                 }
             }
