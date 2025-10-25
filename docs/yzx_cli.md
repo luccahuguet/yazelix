@@ -15,12 +15,20 @@ Run Yazelix test suite
 - `--filter`: Filter tests by name pattern
 - `--new-window`: Launch tests in a new Yazelix window (useful for debugging crashes)
 
-### `yzx launch [--here] [--path DIR] [--home]`
+### `yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose]`
 Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
 - `--here`: Start in current terminal (instead of new terminal)
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
+- `--terminal TERM`: Override terminal selection (e.g., ghostty, wezterm, kitty)
+- `--verbose`: Print detailed launch diagnostics
+
+### `yzx env [--no-shell] [--command CMD]`
+Load Yazelix environment without UI
+- Default: Drop into your configured shell with all Yazelix tools available
+- `--no-shell`: Stay in current shell (doesn't switch shells)
+- `--command CMD`: Run a single command in Yazelix environment and exit
 
 ### `yzx restart`
 Restart Yazelix (handles persistent sessions)
@@ -40,15 +48,28 @@ Show command reference
 ## Examples
 
 ```bash
-yzx doctor --fix              # Health check with auto-fix
-yzx test                      # Run all tests
-yzx test --verbose            # Run tests with detailed output
-yzx test --filter nix         # Run only Nix-related tests
-yzx test --new-window         # Run tests in separate window (for debugging)
+# Launch Yazelix
 yzx launch                    # New terminal in current directory
 yzx launch --here             # Start in current terminal
 yzx launch --home             # New terminal in home directory
 yzx launch --here --path ~/project  # Current terminal, specific directory
+yzx launch --terminal wezterm # Force WezTerm for this launch
+yzx launch --verbose          # Detailed launch diagnostics
+
+# Environment-only mode (no UI)
+yzx env                       # Drop into configured shell with Yazelix tools
+yzx env --no-shell            # Load tools but stay in current shell
+yzx env --command "lazygit"   # Run single command and exit
+
+# Diagnostics and info
+yzx doctor --fix              # Health check with auto-fix
 yzx info                      # System information
+yzx versions                  # Show all tool versions
 yzx config_status bash        # Check bash integration
+
+# Testing
+yzx test                      # Run all tests
+yzx test --verbose            # Run tests with detailed output
+yzx test --filter nix         # Run only Nix-related tests
+yzx test --new-window         # Run tests in separate window (for debugging)
 ```

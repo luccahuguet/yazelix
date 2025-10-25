@@ -34,8 +34,7 @@ export def "yzx help" [] {
     print "  yzx why                        - Why Yazelix (elevator pitch)"
     print ""
     print "LAUNCHER:"
-    print "  yzx start [path] [--verbose]  - Start Yazelix in current terminal"
-    print "  yzx launch [--path DIR] [--home] [--terminal TERM] [--verbose] - Launch Yazelix in new terminal"
+    print "  yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose] - Launch Yazelix"
     print "  yzx env [--no-shell] [--command CMD] - Load yazelix environment without UI"
     print "  yzx restart                   - Restart yazelix (preserves persistent sessions)"
     print ""
@@ -109,14 +108,8 @@ export def "yzx info" [] {
 }
 
 # Launch yazelix
-export def "yzx start" [] {
-    use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
-    ensure_nix_available
-    $env.YAZELIX_ENV_ONLY = "false"
-    nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
-}
-
 export def "yzx launch" [
+    --here             # Start in current terminal instead of launching new terminal
     --path(-p): string # Start in specific directory
     --home             # Start in home directory
     --terminal(-t): string  # Override terminal selection (for sweep testing)
@@ -128,6 +121,31 @@ export def "yzx launch" [
     let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
     if $verbose_mode {
         print "🔍 yzx launch: verbose mode enabled"
+    }
+
+    if $here {
+        # Start in current terminal - run script directly (no spawning)
+        $env.YAZELIX_ENV_ONLY = "false"
+
+        let script = ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
+        mut args = []
+
+        if $home {
+            $args = ($args | append $env.HOME)
+        } else if ($path | is-not-empty) {
+            $args = ($args | append $path)
+        }
+
+        if $verbose {
+            $args = ($args | append "--verbose")
+        }
+
+        if ($args | is-empty) {
+            nu $script
+        } else {
+            nu $script ...$args
+        }
+        return
     }
 
     # Launch new terminal
