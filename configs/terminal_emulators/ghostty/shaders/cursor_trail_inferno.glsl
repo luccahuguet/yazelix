@@ -100,8 +100,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     float pulse = 0.05 * sin(iTime * 1.8);
     float edgeMix = clamp(verticalMix + pulse * 0.5, 0.0, 1.0);
 
-    vec4 base = mix(INFERNO_GUNMETAL, INFERNO_CRIMSON, verticalMix);
-    vec4 edge = mix(INFERNO_GUNMETAL, INFERNO_CRIMSON, edgeMix);
+    vec4 base = mix(INFERNO_CRIMSON, INFERNO_GUNMETAL, verticalMix);
+    vec4 edge = mix(INFERNO_CRIMSON, INFERNO_GUNMETAL, edgeMix);
 
     vec4 trail = fragColor;
     trail = mix(saturate(base, 1.6), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
