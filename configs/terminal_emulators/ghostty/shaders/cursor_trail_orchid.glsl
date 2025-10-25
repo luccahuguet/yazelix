@@ -78,11 +78,11 @@ vec4 triBlend(float segment, vec4 c0, vec4 c1, vec4 c2) {
     return mix(a, b, blend);
 }
 
-// Orchid preset: tri-color orbit (stealth indigo → ember orange → charcoal)
-const vec4 ORCHID_INDIGO = vec4(0.102, 0.129, 0.278, 1.0);   // #1A223C
-const vec4 ORCHID_EMBER = vec4(0.878, 0.298, 0.039, 1.0);    // #E0470A
-const vec4 ORCHID_CHARCOAL = vec4(0.200, 0.224, 0.259, 1.0); // #343942
-const float DURATION = 0.28;
+// Orchid preset: tri-color orbit (midnight blue → molten amber → cobalt flash)
+const vec4 ORCHID_MIDNIGHT = vec4(0.051, 0.106, 0.165, 1.0); // #0D1B2A
+const vec4 ORCHID_AMBER = vec4(1.0, 0.420, 0.0, 1.0);        // #FF6B00
+const vec4 ORCHID_COBALT = vec4(0.126, 0.427, 0.808, 1.0);   // #206DCE
+const float DURATION = 0.26;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
@@ -126,15 +126,15 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     float segment = normAngle * 3.0;
     float pulse = 0.05 * sin(iTime * 1.4);
 
-    vec4 base = triBlend(segment, ORCHID_INDIGO, ORCHID_EMBER, ORCHID_CHARCOAL);
-    vec4 edge = triBlend(segment + 0.5 + pulse * 0.2, ORCHID_INDIGO, ORCHID_EMBER, ORCHID_CHARCOAL);
+    vec4 base = triBlend(segment, ORCHID_MIDNIGHT, ORCHID_AMBER, ORCHID_COBALT);
+    vec4 edge = triBlend(segment + 0.5 + pulse * 0.2, ORCHID_MIDNIGHT, ORCHID_AMBER, ORCHID_COBALT);
 
     vec4 trail = fragColor;
-    trail = mix(saturate(base, 1.35), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
-    trail = mix(saturate(edge, 1.45), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
-    trail = mix(trail, saturate(base, 1.4), step(sdfTrail + mod, 0.));
+    trail = mix(saturate(base, 1.5), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
+    trail = mix(saturate(edge, 1.6), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
+    trail = mix(trail, saturate(base, 1.55), step(sdfTrail + mod, 0.));
 
-    trail = mix(saturate(edge, 1.5), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
-    trail = mix(saturate(base, 1.45), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
+    trail = mix(saturate(edge, 1.6), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
+    trail = mix(saturate(base, 1.55), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }
