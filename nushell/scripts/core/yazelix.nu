@@ -154,27 +154,20 @@ export def "yzx launch" [
         }
 
         if $env_only_mode {
-            let quote_single = {|text|
-                let escaped = ($text | str replace "'" "'\"'\"'")
-                "'" + $escaped + "'"
+            let cmd = ($run_args | first)
+            let cmd_args = ($run_args | skip 1)
+            let env_map = if $verbose_mode {
+                {YAZELIX_ENV_ONLY: "false", YAZELIX_VERBOSE: "true"}
+            } else {
+                {YAZELIX_ENV_ONLY: "false"}
             }
-            let start_cmd = (
-                $run_args
-                | each {|arg| do $quote_single $arg }
-                | str join " "
-            )
-            let env_exports = (
-                [
-                    "export YAZELIX_ENV_ONLY=false; "
-                    (if $verbose_mode { "export YAZELIX_VERBOSE=true; " } else { "" })
-                ]
-                | str join ""
-            )
-            let bash_cmd = $"($env_exports)($start_cmd)"
             if $verbose_mode {
-                print $"⚙️ Running via bash -lc: ($bash_cmd)"
+                print $"⚙️ Replacing env shell via exec to start_yazelix.nu"
             }
-            ^bash -lc $bash_cmd
+            with-env $env_map {
+                exec $cmd ...$cmd_args
+            }
+            return
         } else if $verbose_mode {
             with-env {YAZELIX_VERBOSE: "true"} {
                 ^nu ...$run_args
