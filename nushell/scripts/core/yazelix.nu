@@ -135,10 +135,10 @@ export def "yzx launch" [
         }
 
         if $verbose_mode {
-            let cwd_display = if ($args | length) > 1 { $args | last } else { "(default)" }
+            let cwd_display = if ($args | length) > 1 { $args | last } else { "default" }
             $args = ($args | append "--verbose")
             let run_args = $args
-            print $"⚙️ Executing start_yazelix.nu (cwd_override: ($cwd_display))"
+            print $"⚙️ Executing start_yazelix.nu - cwd_override: ($cwd_display)"
             with-env {YAZELIX_VERBOSE: "true"} {
                 ^nu ...$run_args
             }
@@ -173,7 +173,7 @@ export def "yzx launch" [
             if $verbose_mode {
                 $args = ($args | append "--verbose")
                 let run_args = $args
-                print $"⚙️ Executing launch_yazelix.nu inside Yazelix shell (cwd: ($launch_cwd))"
+                print $"⚙️ Executing launch_yazelix.nu inside Yazelix shell - cwd: ($launch_cwd)"
                 with-env {YAZELIX_VERBOSE: "true"} {
                     ^nu ...$run_args
                 }
@@ -202,7 +202,7 @@ export def "yzx launch" [
 
             let launch_cmd = ($segments | str join " ")
             if $verbose_mode {
-                print $"⚙️ launch_yazelix command (via nix develop): ($launch_cmd)"
+                print $"⚙️ launch_yazelix command via nix develop: ($launch_cmd)"
             }
 
             # Build environment variable exports for bash
