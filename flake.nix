@@ -21,9 +21,12 @@
     flake-utils.lib.eachDefaultSystem (
       system:
       let
+        mesaCompatibilityOverlay = final: prev:
+          if prev ? mesa then { mesa = prev.mesa // { drivers = prev.mesa; }; } else { };
+
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [ ];
+          overlays = [ mesaCompatibilityOverlay ];
         };
 
         # Platform detection - nixGL is Linux-only (macOS uses native Metal API)
@@ -33,7 +36,10 @@
         pkgsWithNixGL = if isLinux then
           import nixpkgs {
             inherit system;
-            overlays = [ nixgl.overlay ];
+            overlays = [
+              mesaCompatibilityOverlay
+              nixgl.overlay
+            ];
           }
         else
           pkgs;
