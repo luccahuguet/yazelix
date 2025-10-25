@@ -34,9 +34,10 @@ export def "yzx help" [] {
     print "  yzx why                        - Why Yazelix (elevator pitch)"
     print ""
     print "LAUNCHER:"
-    print "  yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose] - Launch Yazelix"
-    print "  yzx env [--no-shell] [--command CMD] - Load yazelix environment without UI (configured shell)"
-    print "  yzx restart                    - Restart yazelix (preserves persistent sessions)"
+    print "  yzx start [path] [--verbose]  - Start Yazelix in current terminal"
+    print "  yzx launch [--path DIR] [--home] [--terminal TERM] [--verbose] - Launch Yazelix in new terminal"
+    print "  yzx env [--no-shell] [--command CMD] - Load yazelix environment without UI"
+    print "  yzx restart                   - Restart yazelix (preserves persistent sessions)"
     print ""
     print "MAINTENANCE:"
     print "  yzx update                     - Run 'nix flake update' for Yazelix"
@@ -108,8 +109,14 @@ export def "yzx info" [] {
 }
 
 # Launch yazelix
+export def "yzx start" [] {
+    use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
+    ensure_nix_available
+    $env.YAZELIX_ENV_ONLY = "false"
+    nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
+}
+
 export def "yzx launch" [
-    --here             # Start in current terminal instead of launching new terminal
     --path(-p): string # Start in specific directory
     --home             # Start in home directory
     --terminal(-t): string  # Override terminal selection (for sweep testing)
@@ -123,55 +130,8 @@ export def "yzx launch" [
         print "🔍 yzx launch: verbose mode enabled"
     }
 
-    if $here {
-        # Start in current terminal (like old yzx start)
-        let start_script = ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
-        mut args = [$start_script]
-
-        if $home {
-            $args = ($args | append $env.HOME)
-        } else if ($path | is-not-empty) {
-            $args = ($args | append $path)
-        }
-
-        let cwd_display = if ($args | length) > 1 { $args | last } else { "default" }
-
-        if $verbose_mode {
-            $args = ($args | append "--verbose")
-        }
-
-        let env_only_mode = ($env.YAZELIX_ENV_ONLY? == "true")
-        let run_args = $args
-
-        if $verbose_mode {
-            print $"⚙️ Executing start_yazelix.nu - cwd_override: ($cwd_display)"
-        }
-
-        if $env_only_mode {
-            let cmd = ($run_args | first)
-            let cmd_args = ($run_args | skip 1)
-            let env_map = if $verbose_mode {
-                {YAZELIX_ENV_ONLY: "false", YAZELIX_VERBOSE: "true"}
-            } else {
-                {YAZELIX_ENV_ONLY: "false"}
-            }
-            if $verbose_mode {
-                print $"⚙️ Replacing env shell via exec to start_yazelix.nu"
-            }
-            with-env $env_map {
-                exec $cmd ...$cmd_args
-            }
-            return
-        } else if $verbose_mode {
-            with-env {YAZELIX_VERBOSE: "true"} {
-                ^nu ...$run_args
-            }
-        } else {
-            ^nu ...$run_args
-        }
-    } else {
-        # Launch new terminal (original behavior)
-        let launch_cwd = if $home {
+    # Launch new terminal
+    let launch_cwd = if $home {
             $env.HOME
         } else if ($path | is-not-empty) {
             $path
@@ -245,7 +205,6 @@ export def "yzx launch" [
             }
             ^nix develop --impure ~/.config/yazelix --command bash -c $full_cmd
         }
-    }
 }
 
 # Load yazelix environment without UI

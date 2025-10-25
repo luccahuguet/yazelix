@@ -48,8 +48,9 @@ show_help() {
     echo "  yzx why                        - Why Yazelix (elevator pitch)"
     echo ""
     echo "LAUNCHER:"
-    echo "  yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose] - Launch Yazelix"
-    echo "  yzx env [--no-shell] [--command CMD] - Load yazelix environment without UI (configured shell)"
+    echo "  yzx start [path] [--verbose]  - Start Yazelix in current terminal"
+    echo "  yzx launch [--path DIR] [--home] [--terminal TERM] [--verbose] - Launch Yazelix in new terminal"
+    echo "  yzx env [--no-shell] [--command CMD] - Load yazelix environment without UI"
     echo ""
     echo "MAINTENANCE:"
     echo "  yzx update                     - Run 'nix flake update' for Yazelix"
@@ -203,6 +204,7 @@ show_versions() {
 show_info() {
     nu -c "use $YAZELIX_DIR/nushell/scripts/core/yazelix.nu *; yzx info"
 }
+
 
 # Function to launch yazelix via desktop entry (uses bundled terminals)
 launch_yazelix() {
@@ -415,6 +417,10 @@ Yazelix is a reproducible terminal IDE (Yazi + Zellij + Helix) with:
 Get everything running in <10 minutes. No extra deps, only Nix.
 Install once, get the same environment everywhere.
 PITCH
+            ;;
+        "start")
+            shift
+            nu -c "use $YAZELIX_DIR/nushell/scripts/core/yazelix.nu *; yzx start $*"
             ;;
         "launch")
             shift  # Remove 'launch' from arguments
