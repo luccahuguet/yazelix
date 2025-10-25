@@ -76,7 +76,7 @@ in {
 
     cursor_trail = mkOption {
       type = types.enum [ "blaze" "snow" "cosmic" "ocean" "forest" "sunset" "neon" "party" "prism" "orchid" "reef" "random" "none" ];
-      default = "blaze";
+      default = "random";
       description = ''
         Cursor trail preset.
         Supported by all terminal emulators: "none"

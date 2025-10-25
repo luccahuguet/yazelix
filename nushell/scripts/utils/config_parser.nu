@@ -86,7 +86,7 @@ export def parse_yazelix_config [] {
         extra_terminals: (extract_config_value "extra_terminals" "[]" $config_content),
         enable_atuin: (extract_config_value "enable_atuin" "false" $config_content),
         terminal_config_mode: (extract_config_value "terminal_config_mode" "yazelix" $config_content),
-        cursor_trail: (extract_config_value "cursor_trail" "blaze" $config_content),
+        cursor_trail: (extract_config_value "cursor_trail" "random" $config_content),
         transparency: (extract_config_value "transparency" "low" $config_content),
         default_shell: (extract_config_value "default_shell" "nu" $config_content),
         helix_mode: (extract_config_value "helix_mode" "release" $config_content),

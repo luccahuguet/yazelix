@@ -52,7 +52,7 @@
   # Special: "random" (chooses any Ghostty preset except "none" and "party")
   # Supported by Ghostty and Kitty: "snow"
   # In short: only ghostty supports tri-color trails
-  cursor_trail = "blaze";
+  cursor_trail = "random";
 
   # Terminal transparency level (default: "low")
   # Options: "none", "low", "medium", "high"
