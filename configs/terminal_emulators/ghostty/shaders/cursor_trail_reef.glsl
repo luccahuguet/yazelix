@@ -78,11 +78,11 @@ vec4 triBlend(float segment, vec4 c0, vec4 c1, vec4 c2) {
     return mix(a, b, blend);
 }
 
-// Reef preset: tri-color orbit (deep navy → bright aqua → seafoam cyan)
-const vec4 REEF_NAVY = vec4(0.043, 0.075, 0.169, 1.0);  // #0B132B
-const vec4 REEF_AQUA = vec4(0.435, 1.0, 0.914, 1.0);    // #6FFFE9
-const vec4 REEF_SEAFOAM = vec4(0.357, 0.753, 0.745, 1.0); // #5BC0BE
-const float DURATION = 0.30;
+// Reef preset: tri-color orbit (steel blue → electric cyan → tropical teal)
+const vec4 REEF_STEEL = vec4(0.129, 0.204, 0.361, 1.0);  // #21345C
+const vec4 REEF_CYAN = vec4(0.435, 1.0, 0.914, 1.0);     // #6FFFE9
+const vec4 REEF_TEAL = vec4(0.078, 0.545, 0.576, 1.0);   // #148B93
+const float DURATION = 0.28;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
@@ -126,8 +126,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     float segment = normAngle * 3.0;
     float pulse = 0.05 * sin(iTime * 1.5);
 
-    vec4 base = triBlend(segment, REEF_NAVY, REEF_AQUA, REEF_SEAFOAM);
-    vec4 edge = triBlend(segment + 0.5 + pulse * 0.2, REEF_NAVY, REEF_AQUA, REEF_SEAFOAM);
+    vec4 base = triBlend(segment, REEF_STEEL, REEF_CYAN, REEF_TEAL);
+    vec4 edge = triBlend(segment + 0.5 + pulse * 0.2, REEF_STEEL, REEF_CYAN, REEF_TEAL);
 
     vec4 trail = fragColor;
     trail = mix(saturate(base, 1.35), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));

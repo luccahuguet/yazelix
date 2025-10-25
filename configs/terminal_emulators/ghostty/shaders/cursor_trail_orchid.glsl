@@ -78,10 +78,10 @@ vec4 triBlend(float segment, vec4 c0, vec4 c1, vec4 c2) {
     return mix(a, b, blend);
 }
 
-// Orchid preset: tri-color orbit (royal purple → magenta → orchid violet)
-const vec4 ORCHID_PURPLE = vec4(0.227, 0.047, 0.639, 1.0);   // #3A0CA3
-const vec4 ORCHID_MAGENTA = vec4(0.969, 0.145, 0.522, 1.0); // #F72585
-const vec4 ORCHID_VIOLET = vec4(0.706, 0.090, 0.620, 1.0);  // #B5179E
+// Orchid preset: tri-color orbit (stealth indigo → ember orange → charcoal)
+const vec4 ORCHID_INDIGO = vec4(0.102, 0.129, 0.278, 1.0);   // #1A223C
+const vec4 ORCHID_EMBER = vec4(0.878, 0.298, 0.039, 1.0);    // #E0470A
+const vec4 ORCHID_CHARCOAL = vec4(0.200, 0.224, 0.259, 1.0); // #343942
 const float DURATION = 0.28;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
@@ -126,8 +126,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     float segment = normAngle * 3.0;
     float pulse = 0.05 * sin(iTime * 1.4);
 
-    vec4 base = triBlend(segment, ORCHID_PURPLE, ORCHID_MAGENTA, ORCHID_VIOLET);
-    vec4 edge = triBlend(segment + 0.5 + pulse * 0.2, ORCHID_PURPLE, ORCHID_MAGENTA, ORCHID_VIOLET);
+    vec4 base = triBlend(segment, ORCHID_INDIGO, ORCHID_EMBER, ORCHID_CHARCOAL);
+    vec4 edge = triBlend(segment + 0.5 + pulse * 0.2, ORCHID_INDIGO, ORCHID_EMBER, ORCHID_CHARCOAL);
 
     vec4 trail = fragColor;
     trail = mix(saturate(base, 1.35), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
