@@ -68,9 +68,9 @@ vec4 dualBlend(float segment, vec4 c0, vec4 c1) {
     return mix(a, b, blend);
 }
 
-// Inferno preset: duo orbit (blazing crimson ↔ storm silver)
+// Inferno preset: duo orbit (blazing crimson ↔ gunmetal steel)
 const vec4 INFERNO_CRIMSON = vec4(1.0, 0.086, 0.0, 1.0);    // #FF1600
-const vec4 INFERNO_SILVER = vec4(0.686, 0.745, 0.820, 1.0); // #AFBDEE
+const vec4 INFERNO_GUNMETAL = vec4(0.165, 0.200, 0.245, 1.0); // #2A3340
 const float DURATION = 0.24;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
@@ -109,8 +109,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     float segment = normAngle * 2.0;
     float pulse = 0.05 * sin(iTime * 1.8);
 
-    vec4 base = dualBlend(segment, INFERNO_CRIMSON, INFERNO_SILVER);
-    vec4 edge = dualBlend(segment + 0.5 + pulse * 0.2, INFERNO_CRIMSON, INFERNO_SILVER);
+    vec4 base = dualBlend(segment, INFERNO_CRIMSON, INFERNO_GUNMETAL);
+    vec4 edge = dualBlend(segment + 0.5 + pulse * 0.2, INFERNO_CRIMSON, INFERNO_GUNMETAL);
 
     vec4 trail = fragColor;
     trail = mix(saturate(base, 1.6), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
