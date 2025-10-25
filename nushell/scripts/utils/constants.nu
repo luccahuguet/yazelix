@@ -82,6 +82,7 @@ export const CURSOR_TRAIL_SHADERS = {
     neon: "./shaders/cursor_trail_neon.glsl"
     party: "./shaders/cursor_trail_party.glsl"
     eclipse: "./shaders/cursor_trail_eclipse.glsl"
+    dusk: "./shaders/cursor_trail_dusk.glsl"
     orchid: "./shaders/cursor_trail_orchid.glsl"
     reef: "./shaders/cursor_trail_reef.glsl"
     none: ""
@@ -97,6 +98,7 @@ export const CURSOR_TRAIL_RANDOM_POOL = [
     "sunset"
     "neon"
     "eclipse"
+    "dusk"
     "orchid"
     "reef"
 ]
@@ -119,6 +121,7 @@ export const CURSOR_TRAIL_PRESETS_COMMENT = "# Alternative presets (uncomment to
 # neon (cyan/magenta): custom-shader = ./shaders/cursor_trail_neon.glsl
 # party (multi-hue): custom-shader = ./shaders/cursor_trail_party.glsl
 # eclipse (indigo/gold): custom-shader = ./shaders/cursor_trail_eclipse.glsl
+# dusk (blue/coral): custom-shader = ./shaders/cursor_trail_dusk.glsl
 # orchid (tri-color gradient): custom-shader = ./shaders/cursor_trail_orchid.glsl
 # reef (aqua tri-color): custom-shader = ./shaders/cursor_trail_reef.glsl
 # random (pick on generate): custom-shader = ./shaders/cursor_trail_<random>.glsl"

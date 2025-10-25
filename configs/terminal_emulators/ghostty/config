@@ -69,6 +69,7 @@ custom-shader = ./shaders/cursor_smear.glsl
 # neon (cyan/magenta): custom-shader = ./shaders/cursor_trail_neon.glsl
 # party (multi-hue): custom-shader = ./shaders/cursor_trail_party.glsl
 # eclipse (indigo/gold): custom-shader = ./shaders/cursor_trail_eclipse.glsl
+# dusk (blue/coral): custom-shader = ./shaders/cursor_trail_dusk.glsl
 # orchid (tri-color gradient): custom-shader = ./shaders/cursor_trail_orchid.glsl
 # reef (aqua tri-color): custom-shader = ./shaders/cursor_trail_reef.glsl
 # random (rotating preset): set cursor_trail = \"random\" in yazelix.nix
