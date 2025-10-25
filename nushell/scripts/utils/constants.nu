@@ -85,6 +85,7 @@ export const CURSOR_TRAIL_SHADERS = {
     dusk: "./shaders/cursor_trail_dusk.glsl"
     orchid: "./shaders/cursor_trail_orchid.glsl"
     reef: "./shaders/cursor_trail_reef.glsl"
+    inferno: "./shaders/cursor_trail_inferno.glsl"
     none: ""
 }
 
@@ -101,6 +102,7 @@ export const CURSOR_TRAIL_RANDOM_POOL = [
     "dusk"
     "orchid"
     "reef"
+    "inferno"
 ]
 
 # Common config sections
@@ -124,6 +126,7 @@ export const CURSOR_TRAIL_PRESETS_COMMENT = "# Alternative presets (uncomment to
 # dusk (blue/coral): custom-shader = ./shaders/cursor_trail_dusk.glsl
 # orchid (amber/cobalt): custom-shader = ./shaders/cursor_trail_orchid.glsl
 # reef (cyan/green): custom-shader = ./shaders/cursor_trail_reef.glsl
+# inferno (crimson/silver): custom-shader = ./shaders/cursor_trail_inferno.glsl
 # random (pick on generate): custom-shader = ./shaders/cursor_trail_<random>.glsl"
 
 # Ghostty config header template

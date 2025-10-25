@@ -72,4 +72,5 @@ custom-shader = ./shaders/cursor_smear.glsl
 # dusk (blue/coral): custom-shader = ./shaders/cursor_trail_dusk.glsl
 # orchid (amber/cobalt): custom-shader = ./shaders/cursor_trail_orchid.glsl
 # reef (cyan/green): custom-shader = ./shaders/cursor_trail_reef.glsl
+# inferno (crimson/silver): custom-shader = ./shaders/cursor_trail_inferno.glsl
 # random (rotating preset): set cursor_trail = \"random\" in yazelix.nix
