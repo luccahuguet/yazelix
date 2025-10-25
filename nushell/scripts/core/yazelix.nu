@@ -125,11 +125,6 @@ export def "yzx launch" [
 
     if $here {
         let env_only_mode = ($env.YAZELIX_ENV_ONLY? == "true")
-        if $env_only_mode {
-            print "⚠️  yzx env is active in this shell. Exit that shell before running 'yzx launch --here'."
-            exit 1
-        }
-
         # Start in current terminal (like old yzx start)
         let start_script = ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
         mut args = [$start_script]
@@ -140,7 +135,6 @@ export def "yzx launch" [
             $args = ($args | append $path)
         }
 
-        let env_only_mode = ($env.YAZELIX_ENV_ONLY? == "true")
         let cwd_display = if ($args | length) > 1 { $args | last } else { "default" }
 
         if $verbose_mode {
@@ -154,6 +148,7 @@ export def "yzx launch" [
         }
 
         if $env_only_mode {
+            print "⚠️  Detected yzx env shell; exiting it before launch..."
             let quote_single = {|text|
                 let escaped = ($text | str replace "'" "'\"'\"'")
                 "'" + $escaped + "'"
@@ -175,6 +170,7 @@ export def "yzx launch" [
                 print $"⚙️ Running via bash -lc: ($bash_cmd)"
             }
             ^bash -lc $bash_cmd
+            exit 0
         } else if $verbose_mode {
             with-env {YAZELIX_VERBOSE: "true"} {
                 ^nu ...$run_args
