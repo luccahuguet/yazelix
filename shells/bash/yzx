@@ -254,6 +254,15 @@ launch_yazelix() {
             nu_args+=("$custom_path")
         fi
 
+        if [[ "$YAZELIX_ENV_ONLY" == "true" ]]; then
+            if [[ "$verbose_mode" == true ]]; then
+                echo "🔍 yzx launch (--here): replacing env shell"
+                export YAZELIX_VERBOSE=true
+            fi
+            export YAZELIX_ENV_ONLY=false
+            exec "${nu_args[@]}"
+        fi
+
         if [[ "$verbose_mode" == true ]]; then
             nu_args+=("--verbose")
             echo "🔍 yzx launch (--here): invoking start_yazelix.nu"
