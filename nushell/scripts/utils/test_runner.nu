@@ -6,6 +6,7 @@
 export def run_all_tests [
     --verbose(-v)  # Show detailed output
     --new-window(-n)  # Run tests in a new Yazelix window
+    --all(-a)  # Include visual terminal sweep tests
 ] {
 
     # If --new-window flag is set, launch tests in a new Yazelix instance
@@ -173,5 +174,20 @@ export def run_all_tests [
         $"\n✅ All tests passed!\n" | save --append $log_file
         print $"📝 Full log: ($log_file)"
         print ""
+
+        # Run visual terminal sweep tests if --all flag is set
+        if $all {
+            print ""
+            print "=== Running Visual Terminal Sweep Tests (--all) ==="
+            print ""
+
+            let yazelix_dir = $"($env.HOME)/.config/yazelix"
+
+            if $verbose {
+                nu -c $"use ($yazelix_dir)/nushell/scripts/core/yazelix.nu *; yzx sweep terminals --verbose"
+            } else {
+                nu -c $"use ($yazelix_dir)/nushell/scripts/core/yazelix.nu *; yzx sweep terminals"
+            }
+        }
     }
 }

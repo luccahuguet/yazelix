@@ -35,7 +35,7 @@ show_help() {
     echo "=== Yazelix Command Suite ==="
     echo ""
     echo "DIAGNOSTICS:"
-    echo "  yzx test [--verbose] [--filter] [--new-window] - Run test suite"
+    echo "  yzx test [--verbose] [--new-window] [--all] - Run test suite (--all includes visual sweep)"
     echo "  yzx sweep <shells|terminals|all>               - Matrix testing (shells/terminals/features)"
     echo ""
     echo "CONFIGURATION MANAGEMENT:"

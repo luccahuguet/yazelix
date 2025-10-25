@@ -22,7 +22,7 @@ export def "yzx help" [] {
     print ""
     print "DIAGNOSTICS:"
     print "  yzx doctor [--verbose] [--fix] - Run health checks and diagnostics"
-    print "  yzx test [--verbose] [--filter] [--new-window] - Run test suite"
+    print "  yzx test [--verbose] [--new-window] [--all] - Run test suite (--all includes visual sweep)"
     print "  yzx sweep [--verbose] [--visual] - Test shell/terminal combinations"
     print ""
     print "CONFIGURATION MANAGEMENT:"
@@ -377,7 +377,8 @@ export def "yzx sweep all" [
 export def "yzx test" [
     --verbose(-v)  # Show detailed test output
     --new-window(-n)  # Run tests in a new Yazelix window
+    --all(-a)  # Include visual terminal sweep tests
 ] {
     use ../utils/test_runner.nu run_all_tests
-    run_all_tests --verbose=$verbose --new-window=$new_window
+    run_all_tests --verbose=$verbose --new-window=$new_window --all=$all
 }

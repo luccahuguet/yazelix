@@ -9,11 +9,11 @@ Health checks and diagnostics
 - `--verbose`: Detailed output
 - `--fix`: Auto-fix safe issues
 
-### `yzx test [--verbose] [--filter] [--new-window]`
+### `yzx test [--verbose] [--new-window] [--all]`
 Run Yazelix test suite
 - `--verbose`: Show detailed test output
-- `--filter`: Filter tests by name pattern
 - `--new-window`: Launch tests in a new Yazelix window (useful for debugging crashes)
+- `--all`: Include visual terminal sweep tests (launches actual terminal windows)
 
 ### `yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose]`
 Launch Yazelix with directory and mode options
@@ -68,8 +68,8 @@ yzx versions                  # Show all tool versions
 yzx config_status bash        # Check bash integration
 
 # Testing
-yzx test                      # Run all tests
+yzx test                      # Run all tests (non-visual)
 yzx test --verbose            # Run tests with detailed output
-yzx test --filter nix         # Run only Nix-related tests
 yzx test --new-window         # Run tests in separate window (for debugging)
+yzx test --all                # Run all tests including visual terminal sweep
 ```
