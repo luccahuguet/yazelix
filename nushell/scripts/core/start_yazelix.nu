@@ -8,12 +8,19 @@ use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 
 export def main [cwd_override?: string, --verbose] {
-    # Try to set up Nix environment automatically
+    # Try to set up Nix environment automatically when outside Yazelix/nix shells
     use ../utils/nix_env_helper.nu ensure_nix_in_environment
 
-    # If automatic setup fails, fall back to the detector with user interaction
-    if not (ensure_nix_in_environment) {
-        ensure_nix_available
+    let already_in_env = (
+        ($env.IN_YAZELIX_SHELL? == "true")
+        or ($env.IN_NIX_SHELL? | is-not-empty)
+    )
+
+    if not $already_in_env {
+        # If automatic setup fails, fall back to the detector with user interaction
+        if not (ensure_nix_in_environment) {
+            ensure_nix_available
+        }
     }
 
     let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
