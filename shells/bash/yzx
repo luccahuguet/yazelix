@@ -48,7 +48,7 @@ show_help() {
     echo "  yzx why                        - Why Yazelix (elevator pitch)"
     echo ""
     echo "LAUNCHER:"
-    echo "  yzx launch [--here] [--path DIR] [--home] - Launch yazelix (--here: current terminal, --path: specific dir, --home: home dir)"
+    echo "  yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose] - Launch Yazelix"
     echo "  yzx env [--no-shell] [--command CMD] - Load yazelix environment without UI (configured shell)"
     echo ""
     echo "MAINTENANCE:"
@@ -209,6 +209,8 @@ launch_yazelix() {
     local use_here=false
     local custom_path=""
     local use_home=false
+    local terminal_override=""
+    local verbose_mode=false
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -225,9 +227,17 @@ launch_yazelix() {
                 use_home=true
                 shift
                 ;;
+            --terminal|-t)
+                terminal_override="$2"
+                shift 2
+                ;;
+            --verbose)
+                verbose_mode=true
+                shift
+                ;;
             *)
                 echo "❌ Unknown option for 'yzx launch': $1"
-                echo "   Supported options: --here, --path DIR, --home"
+                echo "   Supported options: --here, --path DIR, --home, --terminal TERM, --verbose"
                 return 1
                 ;;
         esac
@@ -235,12 +245,21 @@ launch_yazelix() {
 
     if [[ "$use_here" == true ]]; then
         # Start in current terminal (like old yzx start)
+        local start_script="$YAZELIX_DIR/nushell/scripts/core/start_yazelix.nu"
+        local nu_args=("nu" "$start_script")
+
         if [[ "$use_home" == true ]]; then
-            nu "$YAZELIX_DIR/nushell/scripts/core/start_yazelix.nu" "$HOME"
+            nu_args+=("$HOME")
         elif [[ -n "$custom_path" ]]; then
-            nu "$YAZELIX_DIR/nushell/scripts/core/start_yazelix.nu" "$custom_path"
+            nu_args+=("$custom_path")
+        fi
+
+        if [[ "$verbose_mode" == true ]]; then
+            nu_args+=("--verbose")
+            echo "🔍 yzx launch (--here): invoking start_yazelix.nu"
+            YAZELIX_VERBOSE=true "${nu_args[@]}"
         else
-            nu "$YAZELIX_DIR/nushell/scripts/core/start_yazelix.nu"
+            "${nu_args[@]}"
         fi
     else
         # Launch new terminal (original behavior)
@@ -258,7 +277,9 @@ launch_yazelix() {
         platform="$(uname -s)"
 
         # Try to launch via desktop entry first (Linux-only - uses Yazelix bundled terminals)
-        if [[ "$platform" == "Linux" ]] && command -v gtk-launch >/dev/null 2>&1 && [[ -f "$HOME/.local/share/applications/com.yazelix.Yazelix.desktop" ]]; then
+        if [[ -z "$terminal_override" && "$verbose_mode" == false && "$platform" == "Linux" ]] \
+            && command -v gtk-launch >/dev/null 2>&1 \
+            && [[ -f "$HOME/.local/share/applications/com.yazelix.Yazelix.desktop" ]]; then
             echo "🚀 Launching Yazelix via desktop entry (bundled terminals)..."
             # Pass launch directory via environment variable for desktop entry
             YAZELIX_LAUNCH_CWD="$launch_cwd" gtk-launch com.yazelix.Yazelix
@@ -269,7 +290,20 @@ launch_yazelix() {
                 echo "⚠️  Desktop entry not found, falling back to terminal detection..."
             fi
             # Pass launch directory as argument to nushell script
-            nu "$YAZELIX_DIR/nushell/scripts/core/launch_yazelix.nu" "$launch_cwd"
+            local launch_script="$YAZELIX_DIR/nushell/scripts/core/launch_yazelix.nu"
+            local nu_args=("nu" "$launch_script" "$launch_cwd")
+
+            if [[ -n "$terminal_override" ]]; then
+                nu_args+=("--terminal" "$terminal_override")
+            fi
+
+            if [[ "$verbose_mode" == true ]]; then
+                nu_args+=("--verbose")
+                echo "🔍 yzx launch: invoking launch_yazelix.nu (cwd: $launch_cwd)"
+                YAZELIX_VERBOSE=true "${nu_args[@]}"
+            else
+                "${nu_args[@]}"
+            fi
         else
             echo "❌ Neither desktop entry nor nushell found. Please install nushell or set up desktop integration."
             exit 1

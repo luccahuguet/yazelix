@@ -7,7 +7,7 @@ use ../utils/nix_detector.nu ensure_nix_available
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 
-export def main [cwd_override?: string] {
+export def main [cwd_override?: string, --verbose] {
     # Try to set up Nix environment automatically
     use ../utils/nix_env_helper.nu ensure_nix_in_environment
 
@@ -15,6 +15,12 @@ export def main [cwd_override?: string] {
     if not (ensure_nix_in_environment) {
         ensure_nix_available
     }
+
+    let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
+    if $verbose_mode {
+        print "🔍 start_yazelix: verbose mode enabled"
+    }
+
     # Resolve HOME using Nushell's built-in
     let home = $env.HOME
     if ($home | is-empty) or (not ($home | path exists)) {
@@ -39,7 +45,11 @@ export def main [cwd_override?: string] {
 
     # Generate merged Yazi configuration (doesn't need zellij)
     print "🔧 Preparing Yazi configuration..."
-    let merged_yazi_dir = generate_merged_yazi_config $yazelix_dir --quiet
+    let merged_yazi_dir = if $verbose_mode {
+        generate_merged_yazi_config $yazelix_dir
+    } else {
+        generate_merged_yazi_config $yazelix_dir --quiet
+    }
     
     # For Zellij config, create a placeholder for now - will be generated inside Nix environment
     let merged_zellij_dir = $"($env.HOME)/.local/share/yazelix/configs/zellij"
@@ -90,12 +100,28 @@ export def main [cwd_override?: string] {
         ] | str join " "
     }
 
+    if $verbose_mode {
+        print $"🔁 zellij command: ($cmd)"
+    }
+
     # Run nix develop with explicit HOME.
     # The default shell is dynamically read from yazelix.nix configuration
     # and passed directly to the zellij command.
     # Guard against recursive nix develop calls when already in a nix shell
     with-env {HOME: $home} {
-        if ($env.IN_NIX_SHELL? | is-not-empty) {
+        let in_nix_shell = ($env.IN_NIX_SHELL? | is-not-empty)
+        let in_yazelix_shell = ($env.IN_YAZELIX_SHELL? == "true")
+
+        if $verbose_mode {
+            print $"🔁 IN_NIX_SHELL? ($in_nix_shell) | IN_YAZELIX_SHELL? ($in_yazelix_shell)"
+            if ($in_nix_shell or $in_yazelix_shell) {
+                print "⚙️ Executing zellij command directly"
+            } else {
+                print "⚙️ Entering nix develop before running zellij command"
+            }
+        }
+
+        if ($in_nix_shell or $in_yazelix_shell) {
             # Already in nix shell, run command directly to avoid recursive nesting
             ^bash -c $cmd
         } else {

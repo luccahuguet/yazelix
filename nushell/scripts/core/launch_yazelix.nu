@@ -11,6 +11,7 @@ use ../utils/constants.nu [TERMINAL_METADATA]
 def main [
     launch_cwd?: string
     --terminal(-t): string  # Override terminal selection (for sweep testing)
+    --verbose               # Enable verbose logging
 ] {
     # Check if Nix is properly installed before proceeding
     ensure_nix_available
@@ -22,11 +23,17 @@ def main [
         exit 1
     }
 
-    print $"Resolved HOME=($home)"
+    let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
+    if $verbose_mode {
+        print "🔍 launch_yazelix: verbose mode enabled"
+        print $"Resolved HOME=($home)"
+    }
 
     # Use provided launch directory or fall back to current directory
     let working_dir = if ($launch_cwd | is-empty) { pwd } else { $launch_cwd }
-    print $"Launch directory: ($working_dir)"
+    if $verbose_mode {
+        print $"Launch directory: ($working_dir)"
+    }
 
     # Read config (for terminal_config_mode and fallback)
     let config = parse_yazelix_config
@@ -87,7 +94,9 @@ def main [
 
     # Get display name and print
     let display_name = get_terminal_display_name $terminal_info
-    print $"Using terminal: ($display_name)"
+    if $verbose_mode {
+        print $"Using terminal: ($display_name)"
+    }
 
     # Resolve config path (skip for wrappers which handle internally)
     let terminal_config = if $terminal_info.use_wrapper {
@@ -107,37 +116,49 @@ def main [
 
     # Print what we're running
     let terminal = $terminal_info.terminal
-    if $terminal_info.use_wrapper {
-        print $"Running: ($terminal_info.command) \(with nixGL auto-detection\)"
-    } else {
-        if $terminal == "wezterm" {
-            print $"Running: wezterm --config-file ($terminal_config) start --class=com.yazelix.Yazelix"
-        } else if $terminal == "ghostty" {
-            print $"Running: ghostty --config-file=($terminal_config)"
-        } else if $terminal == "kitty" {
-            print $"Running: kitty --config=($terminal_config) --class=com.yazelix.Yazelix"
-        } else if $terminal == "alacritty" {
-            print $"Running: alacritty --config-file=($terminal_config)"
-        } else if $terminal == "foot" {
-            print $"Running: foot --config ($terminal_config) --app-id com.yazelix.Yazelix"
+    if $verbose_mode {
+        if $terminal_info.use_wrapper {
+            print $"Running: ($terminal_info.command) \(with nixGL auto-detection\)"
+        } else {
+            if $terminal == "wezterm" {
+                print $"Running: wezterm --config-file ($terminal_config) start --class=com.yazelix.Yazelix"
+            } else if $terminal == "ghostty" {
+                print $"Running: ghostty --config-file=($terminal_config)"
+            } else if $terminal == "kitty" {
+                print $"Running: kitty --config=($terminal_config) --class=com.yazelix.Yazelix"
+            } else if $terminal == "alacritty" {
+                print $"Running: alacritty --config-file=($terminal_config)"
+            } else if $terminal == "foot" {
+                print $"Running: foot --config ($terminal_config) --app-id com.yazelix.Yazelix"
+            }
         }
     }
 
     # Launch terminal using bash to handle background processes properly
     # Pass YAZELIX_TERMINAL so verification scripts know which terminal launched
     if $terminal_info.use_wrapper {
-        with-env {
+        mut env_block = {
             YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode,
             YAZELIX_LAUNCH_CWD: $working_dir,
             YAZELIX_TERMINAL: $terminal_info.terminal
-        } {
+        }
+        if $verbose_mode {
+            $env_block = ($env_block | upsert YAZELIX_VERBOSE "true")
+            print $"Launching wrapper command: ($launch_cmd)"
+        }
+        with-env $env_block {
             ^bash -c $launch_cmd
         }
     } else {
-        with-env {
+        mut env_block = {
             YAZELIX_LAUNCH_CWD: $working_dir,
             YAZELIX_TERMINAL: $terminal_info.terminal
-        } {
+        }
+        if $verbose_mode {
+            $env_block = ($env_block | upsert YAZELIX_VERBOSE "true")
+            print $"Launching command: ($launch_cmd)"
+        }
+        with-env $env_block {
             ^bash -c $launch_cmd
         }
     }

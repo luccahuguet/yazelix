@@ -34,7 +34,7 @@ export def "yzx help" [] {
     print "  yzx why                        - Why Yazelix (elevator pitch)"
     print ""
     print "LAUNCHER:"
-    print "  yzx launch [--here] [--path DIR] [--home] - Launch yazelix (--here: current terminal, --path: specific dir, --home: home dir)"
+    print "  yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose] - Launch Yazelix"
     print "  yzx env [--no-shell] [--command CMD] - Load yazelix environment without UI (configured shell)"
     print "  yzx restart                    - Restart yazelix (preserves persistent sessions)"
     print ""
@@ -113,19 +113,37 @@ export def "yzx launch" [
     --path(-p): string # Start in specific directory
     --home             # Start in home directory
     --terminal(-t): string  # Override terminal selection (for sweep testing)
+    --verbose          # Enable verbose logging
 ] {
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
 
+    let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
+    if $verbose_mode {
+        print "🔍 yzx launch: verbose mode enabled"
+    }
+
     if $here {
         # Start in current terminal (like old yzx start)
         let start_script = ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
+        mut args = [$start_script]
+
         if $home {
-            ^nu $start_script $env.HOME
+            $args = ($args | append $env.HOME)
         } else if ($path | is-not-empty) {
-            ^nu $start_script $path
+            $args = ($args | append $path)
+        }
+
+        if $verbose_mode {
+            let cwd_display = if ($args | length) > 1 { $args | last } else { "(default)" }
+            $args = ($args | append "--verbose")
+            let run_args = $args
+            print $"⚙️ Executing start_yazelix.nu (cwd_override: ($cwd_display))"
+            with-env {YAZELIX_VERBOSE: "true"} {
+                ^nu ...$run_args
+            }
         } else {
-            ^nu $start_script
+            ^nu ...$args
         }
     } else {
         # Launch new terminal (original behavior)
@@ -144,17 +162,47 @@ export def "yzx launch" [
 
         if $in_yazelix_shell {
             # Already in Yazelix environment - run directly via bash
+            mut args = [$launch_script]
+            if ($launch_cwd | is-not-empty) {
+                $args = ($args | append $launch_cwd)
+            }
             if ($terminal | is-not-empty) {
-                ^bash -c $"nu '($launch_script)' '($launch_cwd)' --terminal '($terminal)'"
+                $args = ($args | append "--terminal")
+                $args = ($args | append $terminal)
+            }
+            if $verbose_mode {
+                $args = ($args | append "--verbose")
+                let run_args = $args
+                print $"⚙️ Executing launch_yazelix.nu inside Yazelix shell (cwd: ($launch_cwd))"
+                with-env {YAZELIX_VERBOSE: "true"} {
+                    ^nu ...$run_args
+                }
             } else {
-                ^bash -c $"nu '($launch_script)' '($launch_cwd)'"
+                ^nu ...$args
             }
         } else {
             # Not in Yazelix environment - wrap with nix develop
-            let launch_cmd = if ($terminal | is-not-empty) {
-                $"nu '($launch_script)' '($launch_cwd)' --terminal '($terminal)'"
-            } else {
-                $"nu '($launch_script)' '($launch_cwd)'"
+            let quote_single = {|text|
+                let escaped = ($text | str replace "'" "'\"'\"'")
+                $"'" + $escaped + "'"
+            }
+
+            mut segments = ["nu"]
+            $segments = ($segments | append (do $quote_single $launch_script))
+            if ($launch_cwd | is-not-empty) {
+                $segments = ($segments | append (do $quote_single $launch_cwd))
+            }
+            if ($terminal | is-not-empty) {
+                $segments = ($segments | append "--terminal")
+                $segments = ($segments | append (do $quote_single $terminal))
+            }
+            if $verbose_mode {
+                $segments = ($segments | append "--verbose")
+            }
+
+            let launch_cmd = ($segments | str join " ")
+            if $verbose_mode {
+                print $"⚙️ launch_yazelix command (via nix develop): ($launch_cmd)"
             }
 
             # Build environment variable exports for bash
@@ -164,9 +212,13 @@ export def "yzx launch" [
                 (if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) { $"export YAZELIX_SWEEP_TEST_ID='($env.YAZELIX_SWEEP_TEST_ID)'; " } else { "" })
                 (if ($env.YAZELIX_SKIP_WELCOME? | is-not-empty) { $"export YAZELIX_SKIP_WELCOME='($env.YAZELIX_SKIP_WELCOME)'; " } else { "" })
                 (if ($env.YAZELIX_TERMINAL? | is-not-empty) { $"export YAZELIX_TERMINAL='($env.YAZELIX_TERMINAL)'; " } else { "" })
+                (if $verbose_mode { "export YAZELIX_VERBOSE='true'; " } else { "" })
             ] | str join ""
 
             let full_cmd = $"($env_exports)($launch_cmd)"
+            if $verbose_mode {
+                print $"⚙️ nix develop command: ($full_cmd)"
+            }
             ^nix develop --impure ~/.config/yazelix --command bash -c $full_cmd
         }
     }

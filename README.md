@@ -241,6 +241,8 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx launch --here` - Start Yazelix in current terminal
 - `yzx launch --path DIR` - Launch in specific directory
 - `yzx launch --home` - Launch in home directory
+- `yzx launch --terminal ghostty` - Force a particular terminal for this launch
+- `yzx launch --verbose` - Print detailed launch diagnostics
 - `yzx info` - Show system information and current settings
 - `yzx versions` - Display all tool versions
 
