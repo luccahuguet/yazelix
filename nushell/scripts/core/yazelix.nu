@@ -140,6 +140,7 @@ export def "yzx launch" [
             $args = ($args | append "--verbose")
         }
 
+        let env_only_mode = ($env.YAZELIX_ENV_ONLY? == "true")
         let run_args = $args
 
         if $verbose_mode {
