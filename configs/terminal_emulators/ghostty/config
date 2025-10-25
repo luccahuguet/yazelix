@@ -68,3 +68,5 @@ custom-shader = ./shaders/cursor_smear.glsl
 # sunset (orange/pink): custom-shader = ./shaders/cursor_trail_sunset.glsl
 # neon (cyan/magenta): custom-shader = ./shaders/cursor_trail_neon.glsl
 # party (multi-hue): custom-shader = ./shaders/cursor_trail_party.glsl
+# prism (purple/magenta): custom-shader = ./shaders/cursor_trail_prism.glsl
+# orchid (tri-color gradient): custom-shader = ./shaders/cursor_trail_orchid.glsl
