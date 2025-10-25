@@ -93,7 +93,14 @@ export def main [cwd_override?: string] {
     # Run nix develop with explicit HOME.
     # The default shell is dynamically read from yazelix.nix configuration
     # and passed directly to the zellij command.
+    # Guard against recursive nix develop calls when already in a nix shell
     with-env {HOME: $home} {
-        ^nix develop --impure --command bash -c $cmd
+        if ($env.IN_NIX_SHELL? | is-not-empty) {
+            # Already in nix shell, run command directly to avoid recursive nesting
+            ^bash -c $cmd
+        } else {
+            # Not in nix shell, enter it first
+            ^nix develop --impure --command bash -c $cmd
+        }
     }
 }

@@ -305,11 +305,10 @@ export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
             $"alias yzx=\"($yzx_path)\""
         ] | str join "\n"
     } else {
-        # Nushell
+        # Nushell - always source, conditional is inside the config file itself
+        # This works because sourcing inside an if block doesn't export aliases properly
         [
-            "if ($env.IN_YAZELIX_SHELL? == \"true\") {"
-            $"  source \"($config_file)\""
-            "}"
+            $"source \"($config_file)\""
             "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *"
         ] | str join "\n"
     }
