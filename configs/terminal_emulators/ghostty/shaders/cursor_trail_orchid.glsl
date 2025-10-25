@@ -45,11 +45,8 @@ float antialising(float distance) {
 }
 
 float determineStartVertexFactor(vec2 c, vec2 p) {
-    // Conditions using step
-    float condition1 = step(p.x, c.x) * step(c.y, p.y); // c.x < p.x && c.y > p.y
-    float condition2 = step(c.x, p.x) * step(p.y, c.y); // c.x > p.x && c.y < p.y
-
-    // If neither condition is met, return 1 (else case)
+    float condition1 = step(p.x, c.x) * step(c.y, p.y);
+    float condition2 = step(c.x, p.x) * step(p.y, c.y);
     return 1.0 - max(condition1, condition2);
 }
 
@@ -61,15 +58,31 @@ float ease(float x) {
 }
 
 vec4 saturate(vec4 color, float factor) {
-    float gray = dot(color, vec4(0.299, 0.587, 0.114, 0.)); // luminance
+    float gray = dot(color, vec4(0.299, 0.587, 0.114, 0.));
     return mix(vec4(gray), color, factor);
 }
 
-// Orchid preset: tri-color gradient (royal purple → magenta → orchid violet)
-const vec4 TRAIL_COLOR_PRIMARY = vec4(0.227, 0.047, 0.639, 1.0);   // #3A0CA3
-const vec4 TRAIL_COLOR_SECONDARY = vec4(0.969, 0.145, 0.522, 1.0); // #F72585
-const vec4 TRAIL_COLOR_TERTIARY = vec4(0.706, 0.090, 0.620, 1.0);  // #B5179E
-const float DURATION = 0.3;
+vec4 triBlend(float segment, vec4 c0, vec4 c1, vec4 c2) {
+    float seg = mod(segment, 3.0);
+    float frac = fract(seg);
+    vec4 a = c0;
+    vec4 b = c1;
+    if (seg >= 1.0 && seg < 2.0) {
+        a = c1;
+        b = c2;
+    } else if (seg >= 2.0) {
+        a = c2;
+        b = c0;
+    }
+    float blend = smoothstep(0.0, 1.0, frac);
+    return mix(a, b, blend);
+}
+
+// Orchid preset: tri-color orbit (royal purple → magenta → orchid violet)
+const vec4 ORCHID_PURPLE = vec4(0.227, 0.047, 0.639, 1.0);   // #3A0CA3
+const vec4 ORCHID_MAGENTA = vec4(0.969, 0.145, 0.522, 1.0); // #F72585
+const vec4 ORCHID_VIOLET = vec4(0.706, 0.090, 0.620, 1.0);  // #B5179E
+const float DURATION = 0.28;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
@@ -103,21 +116,25 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 
     float progress = clamp((iTime - iTimeCursorChange) / DURATION, 0.0, 1.0);
     float easedProgress = ease(progress);
-    // Distance between cursors determine the total length of the parallelogram;
     float lineLength = distance(centerCC, centerCP);
 
-    float mod = .006;
-    vec4 gradientCore = mix(TRAIL_COLOR_PRIMARY, TRAIL_COLOR_TERTIARY, clamp(progress * 1.2, 0.0, 1.0));
-    vec4 gradientAccent = mix(TRAIL_COLOR_SECONDARY, TRAIL_COLOR_TERTIARY, smoothstep(0.0, 1.0, progress));
+    float mod = .005;
 
-    // Trail layering using tri-color gradient
-    vec4 trail = mix(saturate(gradientAccent, 1.5), fragColor, 1. - smoothstep(0., sdfTrail + mod, 0.007));
-    trail = mix(saturate(gradientCore, 1.6), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
-    trail = mix(trail, saturate(TRAIL_COLOR_PRIMARY, 1.4), step(sdfTrail + mod, 0.));
+    vec2 dir = normalize(vu - centerCC + 1e-6);
+    float angle = atan(dir.y, dir.x);
+    float normAngle = (angle + 3.14159265) / (6.2831853);
+    float segment = normAngle * 3.0;
+    float pulse = 0.05 * sin(iTime * 1.4);
 
-    // Cursor core blending with secondary and tertiary highlights
-    trail = mix(saturate(TRAIL_COLOR_SECONDARY, 1.6), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
-    trail = mix(saturate(TRAIL_COLOR_TERTIARY, 1.5), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
-    trail = mix(saturate(TRAIL_COLOR_PRIMARY, 1.4), trail, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
+    vec4 base = triBlend(segment, ORCHID_PURPLE, ORCHID_MAGENTA, ORCHID_VIOLET);
+    vec4 edge = triBlend(segment + 0.5 + pulse * 0.2, ORCHID_PURPLE, ORCHID_MAGENTA, ORCHID_VIOLET);
+
+    vec4 trail = fragColor;
+    trail = mix(saturate(base, 1.35), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
+    trail = mix(saturate(edge, 1.45), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
+    trail = mix(trail, saturate(base, 1.4), step(sdfTrail + mod, 0.));
+
+    trail = mix(saturate(edge, 1.5), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
+    trail = mix(saturate(base, 1.45), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }

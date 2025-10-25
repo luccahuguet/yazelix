@@ -45,11 +45,8 @@ float antialising(float distance) {
 }
 
 float determineStartVertexFactor(vec2 c, vec2 p) {
-    // Conditions using step
-    float condition1 = step(p.x, c.x) * step(c.y, p.y); // c.x < p.x && c.y > p.y
-    float condition2 = step(c.x, p.x) * step(p.y, c.y); // c.x > p.x && c.y < p.y
-
-    // If neither condition is met, return 1 (else case)
+    float condition1 = step(p.x, c.x) * step(c.y, p.y);
+    float condition2 = step(c.x, p.x) * step(p.y, c.y);
     return 1.0 - max(condition1, condition2);
 }
 
@@ -61,15 +58,31 @@ float ease(float x) {
 }
 
 vec4 saturate(vec4 color, float factor) {
-    float gray = dot(color, vec4(0.299, 0.587, 0.114, 0.)); // luminance
+    float gray = dot(color, vec4(0.299, 0.587, 0.114, 0.));
     return mix(vec4(gray), color, factor);
 }
 
-// Reef preset: tri-color aqua gradient (deep navy → bright aqua → seafoam cyan)
-const vec4 TRAIL_COLOR_PRIMARY = vec4(0.043, 0.075, 0.169, 1.0);  // #0B132B
-const vec4 TRAIL_COLOR_SECONDARY = vec4(0.435, 1.0, 0.914, 1.0);  // #6FFFE9
-const vec4 TRAIL_COLOR_TERTIARY = vec4(0.357, 0.753, 0.745, 1.0); // #5BC0BE
-const float DURATION = 0.32;
+vec4 triBlend(float segment, vec4 c0, vec4 c1, vec4 c2) {
+    float seg = mod(segment, 3.0);
+    float frac = fract(seg);
+    vec4 a = c0;
+    vec4 b = c1;
+    if (seg >= 1.0 && seg < 2.0) {
+        a = c1;
+        b = c2;
+    } else if (seg >= 2.0) {
+        a = c2;
+        b = c0;
+    }
+    float blend = smoothstep(0.0, 1.0, frac);
+    return mix(a, b, blend);
+}
+
+// Reef preset: tri-color orbit (deep navy → bright aqua → seafoam cyan)
+const vec4 REEF_NAVY = vec4(0.043, 0.075, 0.169, 1.0);  // #0B132B
+const vec4 REEF_AQUA = vec4(0.435, 1.0, 0.914, 1.0);    // #6FFFE9
+const vec4 REEF_SEAFOAM = vec4(0.357, 0.753, 0.745, 1.0); // #5BC0BE
+const float DURATION = 0.30;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
@@ -103,21 +116,25 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 
     float progress = clamp((iTime - iTimeCursorChange) / DURATION, 0.0, 1.0);
     float easedProgress = ease(progress);
-    // Distance between cursors determine the total length of the parallelogram;
     float lineLength = distance(centerCC, centerCP);
 
-    float mod = .006;
-    vec4 gradientCore = mix(TRAIL_COLOR_PRIMARY, TRAIL_COLOR_TERTIARY, clamp(progress * 1.1, 0.0, 1.0));
-    vec4 gradientAccent = mix(TRAIL_COLOR_SECONDARY, TRAIL_COLOR_TERTIARY, smoothstep(0.0, 1.0, progress));
+    float mod = .005;
 
-    // Trail layering using tri-color gradient
-    vec4 trail = mix(saturate(gradientAccent, 1.6), fragColor, 1. - smoothstep(0., sdfTrail + mod, 0.007));
-    trail = mix(saturate(gradientCore, 1.6), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
-    trail = mix(trail, saturate(TRAIL_COLOR_PRIMARY, 1.4), step(sdfTrail + mod, 0.));
+    vec2 dir = normalize(vu - centerCC + 1e-6);
+    float angle = atan(dir.y, dir.x);
+    float normAngle = (angle + 3.14159265) / (6.2831853);
+    float segment = normAngle * 3.0;
+    float pulse = 0.05 * sin(iTime * 1.5);
 
-    // Cursor core blending with secondary and tertiary highlights
-    trail = mix(saturate(TRAIL_COLOR_SECONDARY, 1.6), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
-    trail = mix(saturate(TRAIL_COLOR_TERTIARY, 1.5), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
-    trail = mix(saturate(TRAIL_COLOR_PRIMARY, 1.4), trail, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
+    vec4 base = triBlend(segment, REEF_NAVY, REEF_AQUA, REEF_SEAFOAM);
+    vec4 edge = triBlend(segment + 0.5 + pulse * 0.2, REEF_NAVY, REEF_AQUA, REEF_SEAFOAM);
+
+    vec4 trail = fragColor;
+    trail = mix(saturate(base, 1.35), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
+    trail = mix(saturate(edge, 1.45), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
+    trail = mix(trail, saturate(base, 1.4), step(sdfTrail + mod, 0.));
+
+    trail = mix(saturate(edge, 1.5), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
+    trail = mix(saturate(base, 1.45), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }
