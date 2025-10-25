@@ -62,27 +62,19 @@ vec4 saturate(vec4 color, float factor) {
     return mix(vec4(gray), color, factor);
 }
 
-vec4 triBlend(float segment, vec4 c0, vec4 c1, vec4 c2) {
-    float seg = mod(segment, 3.0);
+vec4 dualBlend(float segment, vec4 c0, vec4 c1) {
+    float seg = mod(segment, 2.0);
     float frac = fract(seg);
-    vec4 a = c0;
-    vec4 b = c1;
-    if (seg >= 1.0 && seg < 2.0) {
-        a = c1;
-        b = c2;
-    } else if (seg >= 2.0) {
-        a = c2;
-        b = c0;
-    }
+    vec4 a = (seg < 1.0) ? c0 : c1;
+    vec4 b = (seg < 1.0) ? c1 : c0;
     float blend = smoothstep(0.0, 1.0, frac);
     return mix(a, b, blend);
 }
 
-// Orchid preset: tri-color orbit (midnight blue → molten amber → cobalt flash)
-const vec4 ORCHID_MIDNIGHT = vec4(0.051, 0.106, 0.165, 1.0); // #0D1B2A
-const vec4 ORCHID_AMBER = vec4(1.0, 0.420, 0.0, 1.0);        // #FF6B00
-const vec4 ORCHID_COBALT = vec4(0.126, 0.427, 0.808, 1.0);   // #206DCE
-const float DURATION = 0.26;
+// Orchid preset: duo orbit (molten amber ↔ cobalt flash)
+const vec4 ORCHID_AMBER = vec4(1.0, 0.420, 0.0, 1.0);      // #FF6B00
+const vec4 ORCHID_COBALT = vec4(0.126, 0.427, 0.808, 1.0); // #206DCE
+const float DURATION = 0.25;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
@@ -123,11 +115,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     vec2 dir = normalize(vu - centerCC + 1e-6);
     float angle = atan(dir.y, dir.x);
     float normAngle = (angle + 3.14159265) / (6.2831853);
-    float segment = normAngle * 3.0;
+    float segment = normAngle * 2.0;
     float pulse = 0.05 * sin(iTime * 1.4);
 
-    vec4 base = triBlend(segment, ORCHID_MIDNIGHT, ORCHID_AMBER, ORCHID_COBALT);
-    vec4 edge = triBlend(segment + 0.5 + pulse * 0.2, ORCHID_MIDNIGHT, ORCHID_AMBER, ORCHID_COBALT);
+    vec4 base = dualBlend(segment, ORCHID_AMBER, ORCHID_COBALT);
+    vec4 edge = dualBlend(segment + 0.5 + pulse * 0.2, ORCHID_AMBER, ORCHID_COBALT);
 
     vec4 trail = fragColor;
     trail = mix(saturate(base, 1.5), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));

@@ -122,8 +122,8 @@ export const CURSOR_TRAIL_PRESETS_COMMENT = "# Alternative presets (uncomment to
 # party (multi-hue): custom-shader = ./shaders/cursor_trail_party.glsl
 # eclipse (indigo/gold): custom-shader = ./shaders/cursor_trail_eclipse.glsl
 # dusk (blue/coral): custom-shader = ./shaders/cursor_trail_dusk.glsl
-# orchid (tri-color gradient): custom-shader = ./shaders/cursor_trail_orchid.glsl
-# reef (aqua tri-color): custom-shader = ./shaders/cursor_trail_reef.glsl
+# orchid (amber/cobalt): custom-shader = ./shaders/cursor_trail_orchid.glsl
+# reef (cyan/green): custom-shader = ./shaders/cursor_trail_reef.glsl
 # random (pick on generate): custom-shader = ./shaders/cursor_trail_<random>.glsl"
 
 # Ghostty config header template
