@@ -124,6 +124,12 @@ export def "yzx launch" [
     }
 
     if $here {
+        let env_only_mode = ($env.YAZELIX_ENV_ONLY? == "true")
+        if $env_only_mode {
+            print "⚠️  yzx env is active in this shell. Exit that shell before running 'yzx launch --here'."
+            exit 1
+        }
+
         # Start in current terminal (like old yzx start)
         let start_script = ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
         mut args = [$start_script]
@@ -193,8 +199,8 @@ export def "yzx launch" [
                     ^nu ...$run_args
                 }
             } else {
-                ^nu ...$args
-            }
+            ^nu ...$args
+        }
         } else {
             # Not in Yazelix environment - wrap with nix develop
             let quote_single = {|text|
