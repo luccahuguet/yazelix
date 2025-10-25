@@ -32,7 +32,7 @@ export def validate_enum_values [user: record] {
         { key: "default_shell", allowed: ["nu", "bash", "fish", "zsh"] },
         { key: "helix_mode", allowed: ["release", "source"] },
         { key: "preferred_terminal", allowed: ["wezterm", "ghostty", "kitty", "alacritty", "foot"] },
-        { key: "cursor_trail", allowed: ["blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "prism", "orchid", "reef", "none"] },
+        { key: "cursor_trail", allowed: ["blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "prism", "orchid", "reef", "random", "none"] },
         { key: "ascii_art_mode", allowed: ["static", "animated"] }
     ]
     for enum in $enums {

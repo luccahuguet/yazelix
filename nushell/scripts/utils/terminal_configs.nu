@@ -9,6 +9,17 @@ def get_opacity_value [transparency: string] { $TRANSPARENCY_VALUES | get -o $tr
 def get_terminal_title [terminal: string] { $"Yazelix - ($TERMINAL_METADATA | get $terminal | get name)" }
 def get_cursor_trail_shader [cursor_trail: string] { $CURSOR_TRAIL_SHADERS | get -o $cursor_trail | default $CURSOR_TRAIL_SHADERS.blaze }
 
+def select_random_cursor_trail [] {
+    let pool = $CURSOR_TRAIL_RANDOM_POOL
+    if ($pool | is-empty) {
+        "blaze"
+    } else {
+        let max_index = (($pool | length) - 1)
+        let index = (random int 0..$max_index)
+        $pool | get $index
+    }
+}
+
 # Section builders
 def build_branding [terminal: string, format: string] {
     let title = get_terminal_title $terminal
@@ -29,8 +40,17 @@ def build_transparency [transparency: string, format: string, key: string] {
 }
 
 def build_cursor_trail [cursor_trail: string] {
-    let shader = get_cursor_trail_shader $cursor_trail
-    if $cursor_trail == "none" { "# custom-shader = ./shaders/cursor_smear.glsl" } else { $"custom-shader = ($shader)" }
+    if $cursor_trail == "none" {
+        "# custom-shader = ./shaders/cursor_smear.glsl"
+    } else if $cursor_trail == "random" {
+        let chosen = select_random_cursor_trail
+        let shader = get_cursor_trail_shader $chosen
+        print $"[yazelix] Random cursor trail -> ($chosen)"
+        $"# random preset: ($chosen)\ncustom-shader = ($shader)"
+    } else {
+        let shader = get_cursor_trail_shader $cursor_trail
+        $"custom-shader = ($shader)"
+    }
 }
 
 def build_kitty_cursor [cursor_trail: string] {

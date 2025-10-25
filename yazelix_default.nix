@@ -49,6 +49,7 @@
   # Monochrome: "none"
   # Duo-color: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "prism"
   # Tri / multi-color: "party", "orchid", "reef"
+  # Special: "random" (chooses any Ghostty preset except "none" and "party")
   # Supported by Ghostty and Kitty: "snow"
   # In short: only ghostty supports tri-color trails
   cursor_trail = "blaze";

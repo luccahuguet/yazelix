@@ -87,6 +87,20 @@ export const CURSOR_TRAIL_SHADERS = {
     none: ""
 }
 
+# Pool for random cursor trail selection (excludes "none" and "party")
+export const CURSOR_TRAIL_RANDOM_POOL = [
+    "blaze"
+    "snow"
+    "cosmic"
+    "ocean"
+    "forest"
+    "sunset"
+    "neon"
+    "prism"
+    "orchid"
+    "reef"
+]
+
 # Common config sections
 export const SHELL_ARGS_BASH = '["bash", "-l", "-c", "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]'
 export const SHELL_ARGS_STRING = '["-l", "-c", "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]'
@@ -106,7 +120,8 @@ export const CURSOR_TRAIL_PRESETS_COMMENT = "# Alternative presets (uncomment to
 # party (multi-hue): custom-shader = ./shaders/cursor_trail_party.glsl
 # prism (purple/magenta): custom-shader = ./shaders/cursor_trail_prism.glsl
 # orchid (tri-color gradient): custom-shader = ./shaders/cursor_trail_orchid.glsl
-# reef (aqua tri-color): custom-shader = ./shaders/cursor_trail_reef.glsl"
+# reef (aqua tri-color): custom-shader = ./shaders/cursor_trail_reef.glsl
+# random (pick on generate): custom-shader = ./shaders/cursor_trail_<random>.glsl"
 
 # Ghostty config header template
 export const GHOSTTY_CONFIG_HEADER = "# This is the configuration file for Ghostty.
