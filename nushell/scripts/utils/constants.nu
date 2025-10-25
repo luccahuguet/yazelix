@@ -83,6 +83,7 @@ export const CURSOR_TRAIL_SHADERS = {
     party: "./shaders/cursor_trail_party.glsl"
     prism: "./shaders/cursor_trail_prism.glsl"
     orchid: "./shaders/cursor_trail_orchid.glsl"
+    reef: "./shaders/cursor_trail_reef.glsl"
     none: ""
 }
 
@@ -104,7 +105,8 @@ export const CURSOR_TRAIL_PRESETS_COMMENT = "# Alternative presets (uncomment to
 # neon (cyan/magenta): custom-shader = ./shaders/cursor_trail_neon.glsl
 # party (multi-hue): custom-shader = ./shaders/cursor_trail_party.glsl
 # prism (purple/magenta): custom-shader = ./shaders/cursor_trail_prism.glsl
-# orchid (tri-color gradient): custom-shader = ./shaders/cursor_trail_orchid.glsl"
+# orchid (tri-color gradient): custom-shader = ./shaders/cursor_trail_orchid.glsl
+# reef (aqua tri-color): custom-shader = ./shaders/cursor_trail_reef.glsl"
 
 # Ghostty config header template
 export const GHOSTTY_CONFIG_HEADER = "# This is the configuration file for Ghostty.

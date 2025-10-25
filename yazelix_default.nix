@@ -46,10 +46,11 @@
   terminal_config_mode = "yazelix";
 
   # Cursor trail preset
-  # Supported by all terminal emulators: "none"
-  # Supported by Ghostty: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "prism", "orchid"
+  # Monochrome: "none"
+  # Duo-color: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "prism"
+  # Tri / multi-color: "party", "orchid", "reef"
   # Supported by Ghostty and Kitty: "snow"
-  # In Short: only ghostty supports all the cool cursor trails
+  # In short: only ghostty supports tri-color trails
   cursor_trail = "blaze";
 
   # Terminal transparency level (default: "low")
