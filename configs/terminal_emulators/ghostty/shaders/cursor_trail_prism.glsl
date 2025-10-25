@@ -65,10 +65,10 @@ vec4 saturate(vec4 color, float factor) {
     return mix(vec4(gray), color, factor);
 }
 
-// Prism preset: royal purple trail with magenta accent
-const vec4 TRAIL_COLOR = vec4(0.227, 0.047, 0.639, 1.0);      // #3A0CA3
-const vec4 TRAIL_COLOR_ACCENT = vec4(0.969, 0.145, 0.522, 1.0); // #F72585
-const float DURATION = 0.27;
+// Prism preset: royal purple + magenta duo similar to neon framework
+const vec4 PRISM_PURPLE = vec4(0.227, 0.047, 0.639, 1.0);   // #3A0CA3
+const vec4 PRISM_MAGENTA = vec4(0.969, 0.145, 0.522, 1.0);  // #F72585
+const float DURATION = 0.22;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
@@ -105,13 +105,24 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     // Distance between cursors determine the total length of the parallelogram;
     float lineLength = distance(centerCC, centerCP);
 
-    float mod = .006;
-    // Trail layering with accent edge and saturated core
-    vec4 trail = mix(saturate(TRAIL_COLOR_ACCENT, 1.4), fragColor, 1. - smoothstep(0., sdfTrail + mod, 0.007));
-    trail = mix(saturate(TRAIL_COLOR, 1.6), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
-    trail = mix(trail, saturate(TRAIL_COLOR, 1.4), step(sdfTrail + mod, 0.));
-    // Cursor core with accent halo
-    trail = mix(saturate(TRAIL_COLOR_ACCENT, 1.6), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
-    trail = mix(saturate(TRAIL_COLOR, 1.5), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
+    float mod = .005;
+
+    // Blend duo-tone colors along movement axis with subtle pulse (mirrors neon shader style)
+    vec2 axis = normalize(centerCC - centerCP + 1e-6);
+    float u = dot(vu - centerCP, axis);
+    float t = clamp(u / max(lineLength, 1e-4), 0.0, 1.0);
+    float pulse = 0.06 * sin(iTime * 1.4);
+
+    vec4 prismBlend = mix(PRISM_PURPLE, PRISM_MAGENTA, smoothstep(0.0, 1.0, t));
+    vec4 prismBase = mix(PRISM_PURPLE, prismBlend, 0.45 + pulse);
+    vec4 prismEdge = mix(prismBlend, PRISM_MAGENTA, 0.35 + pulse * 0.5);
+
+    vec4 trail = fragColor;
+    trail = mix(saturate(prismBase, 1.4), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
+    trail = mix(saturate(prismEdge, 1.5), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
+    trail = mix(trail, saturate(prismBase, 1.45), step(sdfTrail + mod, 0.));
+
+    trail = mix(saturate(prismEdge, 1.55), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
+    trail = mix(saturate(prismBase, 1.5), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }
