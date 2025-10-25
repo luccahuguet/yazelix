@@ -134,16 +134,31 @@ export def "yzx launch" [
             $args = ($args | append $path)
         }
 
+        let env_only_mode = ($env.YAZELIX_ENV_ONLY? == "true")
+        let cwd_display = if ($args | length) > 1 { $args | last } else { "default" }
+
         if $verbose_mode {
-            let cwd_display = if ($args | length) > 1 { $args | last } else { "default" }
             $args = ($args | append "--verbose")
-            let run_args = $args
+        }
+
+        let run_args = $args
+
+        if $verbose_mode {
             print $"⚙️ Executing start_yazelix.nu - cwd_override: ($cwd_display)"
-            with-env {YAZELIX_VERBOSE: "true"} {
+            let verbose_env = (if $env_only_mode {
+                {YAZELIX_VERBOSE: "true", YAZELIX_ENV_ONLY: "false"}
+            } else {
+                {YAZELIX_VERBOSE: "true"}
+            })
+            with-env $verbose_env {
+                ^nu ...$run_args
+            }
+        } else if $env_only_mode {
+            with-env {YAZELIX_ENV_ONLY: "false"} {
                 ^nu ...$run_args
             }
         } else {
-            ^nu ...$args
+            ^nu ...$run_args
         }
     } else {
         # Launch new terminal (original behavior)
