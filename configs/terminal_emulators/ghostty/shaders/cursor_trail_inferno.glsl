@@ -119,5 +119,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 
     trail = mix(saturate(edge, 1.7), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
     trail = mix(INFERNO_CRIMSON, trail, 1. - smoothstep(0., sdfCurrentCursor + .001, 0.003));
-    fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
+    float fade = 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength);
+    fragColor = mix(trail, fragColor, fade);
+    float coreMask = 1. - smoothstep(-0.0015, 0.0005, sdfCurrentCursor);
+    fragColor = mix(fragColor, INFERNO_CRIMSON, coreMask);
 }
