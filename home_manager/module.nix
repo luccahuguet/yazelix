@@ -75,12 +75,12 @@ in {
     };
 
     cursor_trail = mkOption {
-      type = types.enum [ "blaze" "snow" "cosmic" "ocean" "forest" "sunset" "neon" "party" "prism" "orchid" "reef" "random" "none" ];
+      type = types.enum [ "blaze" "snow" "cosmic" "ocean" "forest" "sunset" "neon" "party" "eclipse" "orchid" "reef" "random" "none" ];
       default = "random";
       description = ''
         Cursor trail preset.
         Supported by all terminal emulators: "none"
-        Supported by Ghostty: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "prism", "orchid", "reef", "random"
+        Supported by Ghostty: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "eclipse", "orchid", "reef", "random"
         Supported by Ghostty and Kitty: "snow"
         "random" chooses a different Ghostty trail each generation (excluding "none" and "party")
       '';

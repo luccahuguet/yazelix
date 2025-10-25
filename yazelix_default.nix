@@ -47,7 +47,7 @@
 
   # Cursor trail preset
   # Monochrome: "none"
-  # Duo-color: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "prism"
+  # Duo-color: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "eclipse"
   # Tri / multi-color: "party", "orchid", "reef"
   # Special: "random" (chooses any Ghostty preset except "none" and "party")
   # Supported by Ghostty and Kitty: "snow"
