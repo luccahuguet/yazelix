@@ -226,7 +226,12 @@ export def generate_all_terminal_configs [] {
     mkdir $ghostty_dir
     save_config_with_backup ($ghostty_dir | path join "config") (generate_ghostty_config)
     let shaders_src = $"($env.HOME)/.config/yazelix/configs/terminal_emulators/ghostty/shaders"
-    if ($shaders_src | path exists) { cp -r $shaders_src ($ghostty_dir | path join "shaders") }
+    let shaders_dest = ($ghostty_dir | path join "shaders")
+    if ($shaders_dest | path exists) { rm --permanent --recursive $shaders_dest }
+    mkdir $shaders_dest
+    if ($shaders_src | path exists) {
+        ls $shaders_src | get name | each {|file| cp -r $file $shaders_dest }
+    }
 
     # Alacritty (always bundled)
     let alacritty_dir = ($configs_dir | path join "alacritty")
