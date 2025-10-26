@@ -64,6 +64,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Sweep Testing Framework** - Matrix testing for all shell/terminal/feature combinations (`yzx sweep shells|terminals|all`)
 - **Terminal Detection** - Proper terminal identification via `YAZELIX_TERMINAL` environment variable
 - **Conditional Shell Hooks** - Shell hooks only load Yazelix tools when inside the environment, preventing errors in regular terminals
+- **Yazi Directory Sync** - When opening files from Yazi, the sidebar automatically navigates into the file's parent directory, keeping the view synchronized with the tab name and editor context
 
 Full version history: [Version History](./docs/history.md)
 
