@@ -105,13 +105,31 @@ def open_with_helix [file_path: path, yazi_id: string] {
         open_new_helix_pane $file_path $yazi_id
     }
 
+    # Navigate yazi into the directory containing the opened file
+    if not ($yazi_id | is-empty) {
+        let target_dir = if ($file_path | path type) == "dir" {
+            $file_path
+        } else {
+            $file_path | path dirname
+        }
+
+        try {
+            ya emit-to $yazi_id cd $target_dir
+            log_to_file "open_helix.log" $"Successfully navigated yazi to directory: ($target_dir)"
+        } catch {|err|
+            log_to_file "open_helix.log" $"Failed to navigate yazi: ($err.msg)"
+        }
+    } else {
+        log_to_file "open_helix.log" "YAZI_ID not set, skipping yazi navigation"
+    }
+
     # In no-sidebar mode, we leave the Yazi pane open - no need to close it
     # This eliminates any flicker issues entirely
     let sidebar_enabled = ($env.YAZELIX_ENABLE_SIDEBAR? | default "true") == "true"
     if (not $sidebar_enabled) {
         log_to_file "open_helix.log" "No-sidebar mode: leaving Yazi pane open, no close operation needed"
     }
-    
+
     log_to_file "open_helix.log" "open_with_helix function completed"
 }
 
@@ -136,6 +154,18 @@ def open_with_generic_editor [file_path: path, editor: string, yazi_id: string] 
         let error_msg = $"Failed to open file with ($editor): ($err.msg)"
         log_to_file "open_generic.log" $"ERROR: ($error_msg)"
         print $"Error: ($error_msg)"
+    }
+
+    # Navigate yazi into the directory containing the opened file
+    if not ($yazi_id | is-empty) {
+        try {
+            ya emit-to $yazi_id cd $file_dir
+            log_to_file "open_generic.log" $"Successfully navigated yazi to directory: ($file_dir)"
+        } catch {|err|
+            log_to_file "open_generic.log" $"Failed to navigate yazi: ($err.msg)"
+        }
+    } else {
+        log_to_file "open_generic.log" "YAZI_ID not set, skipping yazi navigation"
     }
 
     log_to_file "open_generic.log" "open_with_generic_editor function completed"
