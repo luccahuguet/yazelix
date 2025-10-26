@@ -11,6 +11,7 @@ def main [] {
     cd $env.YAZELIX_DIR
 
     # Call launch script directly within nix environment
-    ^nix develop --impure --command nu $"($env.YAZELIX_DIR)/nushell/scripts/core/launch_yazelix.nu"
+    # Pass home directory as launch_cwd so desktop entry opens in ~/ instead of yazelix directory
+    ^nix develop --impure --command nu $"($env.YAZELIX_DIR)/nushell/scripts/core/launch_yazelix.nu" $nu.home-path
 }
 
