@@ -447,6 +447,12 @@
             air # Live reload for Go development
             govulncheck # Official Go vulnerability scanner
           ];
+          kotlin = with pkgs; [
+            kotlin-language-server # Language server for IDE features and LSP support
+            ktlint # Linter and formatter with automatic code style fixing
+            detekt # Static code analysis tool for code quality
+            gradle # Build automation tool for Kotlin/JVM projects
+          ];
         };
 
         # Resolve packs to packages

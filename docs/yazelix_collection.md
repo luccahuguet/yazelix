@@ -72,7 +72,7 @@ Yazelix offers two ways to add packages:
 
 **Pack-based**: Enable entire technology stacks with one line:
 ```nix
-packs = ["python", "js_ts", "rust", "go", "config", "file-management", "git", "nix"];
+packs = ["python", "js_ts", "rust", "go", "kotlin", "config", "file-management", "git", "nix"];
 ```
 
 **Individual packages**: Add specific tools via `user_packages` in `yazelix.nix`:
@@ -106,6 +106,12 @@ Available packs organized by technology:
 - [delve](https://github.com/go-delve/delve) — Powerful debugger for Go with breakpoints, variable inspection, and more
 - [air](https://github.com/cosmtrek/air) — Live reload for Go development with hot reloading on file changes
 - [govulncheck](https://golang.org/x/vuln/cmd/govulncheck) — Official Go vulnerability scanner from the Go security team
+
+### Kotlin Pack (`kotlin`)
+- [kotlin-language-server](https://github.com/fwcd/kotlin-language-server) — Language server for IDE features and LSP support
+- [ktlint](https://github.com/pinterest/ktlint) — Linter and formatter with automatic code style fixing
+- [detekt](https://github.com/detekt/detekt) — Static code analysis tool for code quality and smell detection
+- [gradle](https://gradle.org/) — Build automation tool for Kotlin/JVM projects
 
 ### Configuration Pack (`config`)
 - [taplo](https://github.com/tamasfe/taplo) — TOML formatter and language server for configuration files
