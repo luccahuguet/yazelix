@@ -56,20 +56,22 @@ def benchmark_terminal [
             let end = (date now)
             let duration = ($end - $start) | into int
 
-            $successes = $successes + 1
             {success: true, duration: $duration}
         } catch {|err|
             let end = (date now)
             let duration = ($end - $start) | into int
 
-            $failures = $failures + 1
             print $"   ⚠️  Launch failed: ($err.msg)"
             {success: false, duration: $duration}
         }
 
+        # Update counters outside try-catch block
         if $result.success {
+            $successes = $successes + 1
             $times = ($times | append $result.duration)
             print $"   ✅ Completed in (format_time $result.duration)"
+        } else {
+            $failures = $failures + 1
         }
 
         # Cool down between runs
