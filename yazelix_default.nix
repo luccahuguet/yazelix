@@ -138,7 +138,8 @@
     # "rust"           # cargo-update (crate updater), cargo-binstall (binary installer)
     # "config"         # taplo (TOML), nixfmt-rfc-style (Nix), mpls (Markdown preview)
     # "file-management" # ouch (archives), erdtree (tree view), serpl (search/replace)
-    # "git"            # onefetch (repo summary), gh (GitHub CLI), delta (diff viewer), gitleaks (secret scanner), jj (Jujutsu VCS)
+    # "git"            # onefetch (repo summary), gh (GitHub CLI), delta (diff viewer), gitleaks (secret scanner), jj (Jujutsu VCS), prek (commit log viewer)
+    # "nix"            # nil (language server), nixd (advanced language server), nixfmt-rfc-style (formatter)
   ];
 
   # User packages - add individual packages here

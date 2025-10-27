@@ -428,6 +428,12 @@
             delta # Syntax-highlighting pager for git diffs
             gitleaks # Scan git repos for secrets and credentials
             jujutsu # Modern version control system with powerful conflict resolution
+            prek # Prettier git commit logs and history viewer
+          ];
+          nix = with pkgs; [
+            nil # Nix language server for IDE features
+            nixd # Alternative Nix language server with advanced features
+            nixfmt-rfc-style # Official Nix code formatter following RFC style guidelines
           ];
         };
 
