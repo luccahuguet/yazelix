@@ -33,8 +33,9 @@ There's much to be done yet. Infinite possibilities. But some rather closer than
 
 ## Major Version Descriptions
 
-- **v8**: Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!
+- **v10**: Launch interface consolidation, IDE integration, project-oriented workflow, and enhanced UX!
 - **v9**: zjstatus, yzx env, yzx doctor, no_sidebar mode, packs, new logo, desktop entry, and more
+- **v8**: Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!
 - **v7**: Nix installs and configures everything for you! ([announcement](#v7-nix-installs-and-configures-everything-for-you))
 - **v6**: Reveal, Integrate, Automate: Smarter sidebar, Git status, and seamless file opening.
 - **v5**: The POWER of yazi PLUGINS!
