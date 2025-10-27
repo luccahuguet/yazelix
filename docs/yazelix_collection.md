@@ -72,12 +72,12 @@ Yazelix offers two ways to add packages:
 
 **Pack-based**: Enable entire technology stacks with one line:
 ```nix
-packs = ["python", "js_ts", "config"];
+packs = ["python", "js_ts", "rust", "config", "file-management", "git", "nix"];
 ```
 
 **Individual packages**: Add specific tools via `user_packages` in `yazelix.nix`:
 ```nix
-user_packages = with pkgs; [ gh docker kubectl ];
+user_packages = with pkgs; [ docker kubectl ];
 ```
 
 Available packs organized by technology:
@@ -86,6 +86,7 @@ Available packs organized by technology:
 - [ruff](https://github.com/astral-sh/ruff) — Fast Python linter and code formatter
 - [uv](https://github.com/astral-sh/uv) — Ultra-fast Python package installer and resolver
 - [ty](https://github.com/astral-sh/ty) — Extremely fast Python type checker from Astral
+- [ipython](https://ipython.org/) — Enhanced interactive Python REPL with autocomplete, syntax highlighting, and magic commands
 
 ### JavaScript/TypeScript Pack (`js_ts`)
 - [biome](https://biomejs.dev/) — Formats JS, TS, JSON, CSS, and lints JS/TS
@@ -94,6 +95,10 @@ Available packs organized by technology:
 ### Rust Pack (`rust`)
 - [cargo-update](https://github.com/nabijaczleweli/cargo-update) — Updates Rust crates for project maintenance
 - [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) — Faster installation of Rust tools
+- [cargo-edit](https://github.com/killercup/cargo-edit) — Add, remove, and upgrade dependencies from the command line (`cargo add`, `cargo rm`)
+- [cargo-watch](https://github.com/watchexec/cargo-watch) — Auto-recompile and re-run on file changes
+- [cargo-audit](https://github.com/rustsec/rustsec/tree/main/cargo-audit) — Audit dependencies for security vulnerabilities
+- [cargo-nextest](https://github.com/nextest-rs/nextest) — Next-generation test runner with better output and parallelism
 
 ### Configuration Pack (`config`)
 - [taplo](https://github.com/tamasfe/taplo) — TOML formatter and language server for configuration files
@@ -104,6 +109,19 @@ Available packs organized by technology:
 - [ouch](https://github.com/ouch-org/ouch) — Compression tool for handling archives
 - [erdtree](https://github.com/solidiquis/erdtree) — Modern tree command with file size display
 - [serpl](https://github.com/serpl/serpl) — Command-line tool for search and replace operations
+
+### Git Pack (`git`)
+- [onefetch](https://github.com/o2sh/onefetch) — Git repository summary with statistics and language breakdown
+- [gh](https://cli.github.com/) — GitHub CLI for repository management and PR workflows
+- [delta](https://github.com/dandavison/delta) — Syntax-highlighting pager for git diffs with side-by-side view
+- [gitleaks](https://github.com/gitleaks/gitleaks) — Scan git repos for accidentally committed secrets and credentials
+- [jujutsu](https://github.com/martinvonz/jj) — Modern version control system with powerful conflict resolution (command: `jj`)
+- [prek](https://github.com/piotrek-szczygiel/prek) — Prettier git commit logs and history viewer
+
+### Nix Pack (`nix`)
+- [nil](https://github.com/oxalica/nil) — Nix language server for IDE features (LSP support for Helix, VSCode, etc.)
+- [nixd](https://github.com/nix-community/nixd) — Alternative Nix language server with advanced features and diagnostics
+- [nixfmt-rfc-style](https://github.com/NixOS/nixfmt) — Official Nix code formatter following RFC style guidelines
 
 **Usage**: Enable packs in `yazelix.nix` by uncommenting them in the `packs = [...]` array, or add individual tools via `user_packages` for fine-grained control.
 

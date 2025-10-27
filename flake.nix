@@ -403,6 +403,7 @@
             ruff # Fast Python linter and code formatter
             uv # Ultra-fast Python package installer and resolver
             ty # Extremely fast Python type checker from Astral
+            python3Packages.ipython # Enhanced interactive Python REPL with autocomplete and syntax highlighting
           ];
           js_ts = with pkgs; [
             biome # Formats JS, TS, JSON, CSS, and lints JS/TS
@@ -411,6 +412,10 @@
           rust = with pkgs; [
             cargo-update # Updates Rust crates for project maintenance
             cargo-binstall # Faster installation of Rust tools
+            cargo-edit # Add, remove, and upgrade dependencies from the command line (cargo add/rm)
+            cargo-watch # Auto-recompile on file changes
+            cargo-audit # Audit dependencies for security vulnerabilities
+            cargo-nextest # Next-generation test runner with better output and parallelism
           ];
           config = with pkgs; [
             taplo # TOML formatter and language server for configuration files
