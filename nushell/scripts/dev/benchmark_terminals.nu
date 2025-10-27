@@ -4,12 +4,16 @@
 
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [SUPPORTED_TERMINALS, TERMINAL_METADATA]
-use ../utils/config_parser.nu parse_yazelix_config
-use sweep/sweep_config_generator.nu [generate_sweep_config, cleanup_test_config]
+use sweep/sweep_process_manager.nu [get_terminal_pids, cleanup_visual_test]
 
-# Get all supported terminals (like yzx sweep terminals does)
-def get_all_terminals []: nothing -> list<string> {
-    $SUPPORTED_TERMINALS
+# Get terminals that are actually available in the current nix environment
+def get_available_terminals []: nothing -> list<string> {
+    $SUPPORTED_TERMINALS | where {|term|
+        let meta = $TERMINAL_METADATA | get $term
+        let wrapper = $meta.wrapper
+        let direct = $term
+        (command_exists $wrapper) or (command_exists $direct)
+    }
 }
 
 # Benchmark a single terminal launch
@@ -19,17 +23,8 @@ def benchmark_terminal [
 ]: nothing -> record {
     print $"📊 Benchmarking ($terminal)..."
 
-    let yazelix_dir = $"($env.HOME)/.config/yazelix"
     let test_id = $"bench_(date now | format date '%Y%m%d_%H%M%S')_($terminal)"
-
-    # Create temporary config with this terminal (like sweep does)
-    let config_path = generate_sweep_config "nu" $terminal {
-        helix_mode: "release",
-        enable_sidebar: false,
-        persistent_sessions: false,
-        recommended_deps: true,
-        yazi_extensions: true
-    } $test_id
+    let session_name = $"sweep_test_($test_id)"
 
     mut times = []
     mut successes = 0
@@ -38,28 +33,30 @@ def benchmark_terminal [
     for i in 1..$iterations {
         print $"   Run ($i)/($iterations)..."
 
+        # Get terminal process baseline before launch
+        let before_pids = get_terminal_pids $terminal
+
         let start = (date now)
 
-        # Launch terminal with Yazelix using config override, wait briefly, then kill
+        # Launch terminal with Yazelix, wait briefly, then kill
         let result = try {
-            # Set environment for test (using config override like sweep does)
+            # Set environment for test
             with-env {
-                YAZELIX_CONFIG_OVERRIDE: $config_path,
                 YAZELIX_SWEEP_TEST_ID: $test_id,
                 YAZELIX_SKIP_WELCOME: "true"
             } {
-                # Launch via yzx launch command
-                ^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx launch"
+                # Launch via yzx launch command with --terminal flag to force specific terminal
+                ^nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx launch --terminal ($terminal)"
             }
 
             # Give it time to fully start
             sleep 2sec
 
-            # Try to kill any zellij sessions from this test
-            ^zellij kill-session $"sweep_test_($test_id)" o+e>| ignore
-
             let end = (date now)
             let duration = ($end - $start) | into int
+
+            # Clean up terminal and session
+            cleanup_visual_test $session_name $terminal $before_pids 0sec
 
             {success: true, duration: $duration}
         } catch {|err|
@@ -67,6 +64,12 @@ def benchmark_terminal [
             let duration = ($end - $start) | into int
 
             print $"   ⚠️  Launch failed: ($err.msg)"
+
+            # Try cleanup even on failure
+            try {
+                cleanup_visual_test $session_name $terminal $before_pids 0sec
+            }
+
             {success: false, duration: $duration}
         }
 
@@ -84,9 +87,6 @@ def benchmark_terminal [
             sleep 1sec
         }
     }
-
-    # Clean up temporary config
-    cleanup_test_config $config_path
 
     # Calculate statistics
     if ($times | is-empty) {
@@ -140,25 +140,54 @@ export def main [
     print "========================================="
     print ""
 
-    # Determine which terminals to test (test ALL supported terminals like sweep does)
+    # Get available terminals from current environment
+    let available_terminals = get_available_terminals
+    let unavailable_terminals = ($SUPPORTED_TERMINALS | where {|term| $term not-in $available_terminals})
+
+    if ($available_terminals | is-empty) {
+        print "❌ No supported terminals found in your yazelix environment!"
+        print ""
+        print "💡 To add terminals, edit ~/.config/yazelix/yazelix.nix:"
+        print "   extra_terminals = [\"wezterm\" \"kitty\" \"alacritty\" \"foot\"];"
+        print ""
+        print "   Then reload: yzx launch --here"
+        exit 1
+    }
+
+    # Show availability status
+    if not ($unavailable_terminals | is-empty) {
+        print $"📋 Available terminals: (($available_terminals | str join ', '))"
+        print $"⚠️  Unavailable terminals: (($unavailable_terminals | str join ', '))"
+        print ""
+        print "💡 To benchmark more terminals, add them to ~/.config/yazelix/yazelix.nix:"
+        let quoted_terminals = ($unavailable_terminals | each {|t| $'"($t)"'} | str join ' ')
+        print $"   extra_terminals = [($quoted_terminals)];"
+        print "   Then reload: yzx launch --here"
+        print ""
+    }
+
+    # Determine which terminals to test
     let terminals_to_test = if ($terminal | is-not-empty) {
-        if $terminal in $SUPPORTED_TERMINALS {
+        if $terminal in $available_terminals {
             [$terminal]
+        } else if $terminal in $SUPPORTED_TERMINALS {
+            print $"❌ Terminal '($terminal)' is supported but not available in your environment"
+            print ""
+            print "💡 To add it, edit ~/.config/yazelix/yazelix.nix:"
+            print $"   extra_terminals = [\"($terminal)\"];"
+            print "   Then reload: yzx launch --here"
+            exit 1
         } else {
             print $"❌ Terminal '($terminal)' is not supported"
             print $"   Supported terminals: (($SUPPORTED_TERMINALS | str join ', '))"
             exit 1
         }
     } else {
-        get_all_terminals
+        $available_terminals
     }
 
-    print $"🔍 Testing terminals: (($terminals_to_test | str join ', '))"
+    print $"🔍 Benchmarking terminals: (($terminals_to_test | str join ', '))"
     print $"🔢 Iterations per terminal: ($iterations)"
-    print ""
-    print "💡 Note: This benchmarks ALL supported terminals using temporary configs,"
-    print "   similar to 'yzx sweep terminals'. Terminals will be launched even if"
-    print "   not currently in your yazelix.nix config."
     print ""
 
     # Run benchmarks

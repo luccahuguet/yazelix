@@ -129,7 +129,7 @@ export def run_demo_command [
 }
 
 # Launch Yazelix for visual testing with sweep layout
-export def launch_visual_test [config_path: string, test_id: string]: nothing -> record {
+export def launch_visual_test [config_path: string, test_id: string, terminal: string]: nothing -> record {
     let launch_output = (do {
         with-env {
             YAZELIX_CONFIG_OVERRIDE: $config_path,
@@ -137,7 +137,8 @@ export def launch_visual_test [config_path: string, test_id: string]: nothing ->
             ZELLIJ_DEFAULT_LAYOUT: "yzx_sweep_test",
             YAZELIX_SWEEP_TEST_ID: $test_id
         } {
-            nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx launch"
+            # Use --terminal flag to force specific terminal (prevents fallback to first available)
+            nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx launch --terminal ($terminal)"
         }
     } | complete)
 

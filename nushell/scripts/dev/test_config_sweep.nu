@@ -46,8 +46,8 @@ export def run_visual_sweep_test [
         # Get terminal process baseline before launch
         let before_pids = get_terminal_pids $terminal
 
-        # Launch Yazelix with the test config and test_id (terminal from config's preferred_terminal)
-        let launch_result = launch_visual_test $config_path $test_id
+        # Launch Yazelix with the test config and test_id (pass terminal explicitly)
+        let launch_result = launch_visual_test $config_path $test_id $terminal
 
         if $launch_result.exit_code != 0 {
             print $"❌ Failed to launch ($shell) + ($terminal): ($launch_result.stderr)"
