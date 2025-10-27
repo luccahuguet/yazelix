@@ -171,10 +171,16 @@ in {
       description = "Session name for persistent sessions";
     };
     
-    packs = mkOption {
-      type = types.listOf (types.enum [ "python" "ts" "rust" "go" "kotlin" "gleam" "config" "file-management" "git" "nix" ]);
+    language_packs = mkOption {
+      type = types.listOf (types.enum [ "python" "ts" "rust" "go" "kotlin" "gleam" "nix" ]);
       default = [];
-      description = "Package packs to enable entire technology stacks";
+      description = "Language packs - complete toolchains for programming languages";
+    };
+
+    tool_packs = mkOption {
+      type = types.listOf (types.enum [ "config" "file-management" "git" ]);
+      default = [];
+      description = "Tool packs - general-purpose development tools";
     };
 
     enable_atuin = mkOption {
@@ -252,10 +258,13 @@ in {
           # Session configuration
           persistent_sessions = ${if cfg.persistent_sessions then "true" else "false"};
           session_name = "${cfg.session_name}";
-          
-          # Package packs
-          packs = ${builtins.toJSON cfg.packs};
-          
+
+          # Language packs - complete toolchains for programming languages
+          language_packs = ${builtins.toJSON cfg.language_packs};
+
+          # Tool packs - general-purpose development tools
+          tool_packs = ${builtins.toJSON cfg.tool_packs};
+
           # User packages
           user_packages = with pkgs; ${nixPackagesToString cfg.user_packages};
         }

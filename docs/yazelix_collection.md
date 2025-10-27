@@ -70,9 +70,13 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 
 Yazelix offers two ways to add packages:
 
-**Pack-based**: Enable entire technology stacks with one line:
+**Pack-based**: Enable entire technology stacks organized by category:
 ```nix
-packs = ["python", "ts", "rust", "go", "kotlin", "gleam", "config", "file-management", "git", "nix"];
+# Language packs - complete toolchains for programming languages
+language_packs = ["python" "ts" "rust" "go" "kotlin" "gleam" "nix"];
+
+# Tool packs - general-purpose development tools
+tool_packs = ["config" "file-management" "git"];
 ```
 
 **Individual packages**: Add specific tools via `user_packages` in `yazelix.nix`:
@@ -80,7 +84,9 @@ packs = ["python", "ts", "rust", "go", "kotlin", "gleam", "config", "file-manage
 user_packages = with pkgs; [ docker kubectl ];
 ```
 
-Available packs organized by technology:
+## Language Packs
+
+Complete toolchains for programming languages:
 
 ### Python Pack (`python`)
 - [ruff](https://github.com/astral-sh/ruff) — Fast Python linter and code formatter
@@ -118,9 +124,17 @@ Available packs organized by technology:
 ### Gleam Pack (`gleam`)
 - [gleam](https://gleam.run/) — Gleam compiler with built-in LSP, formatter, and build tool - a friendly language for building type-safe systems on Erlang/JavaScript
 
+### Nix Pack (`nix`)
+- [nil](https://github.com/oxalica/nil) — Nix language server for IDE features (LSP support for Helix, VSCode, etc.)
+- [nixd](https://github.com/nix-community/nixd) — Alternative Nix language server with advanced features and diagnostics
+- [nixfmt-rfc-style](https://github.com/NixOS/nixfmt) — Official Nix code formatter following RFC style guidelines
+
+## Tool Packs
+
+General-purpose development tools:
+
 ### Configuration Pack (`config`)
 - [taplo](https://github.com/tamasfe/taplo) — TOML formatter and language server for configuration files
-- [nixfmt-rfc-style](https://github.com/NixOS/nixfmt) — Official Nix code formatter following RFC style guidelines
 - [mpls](https://github.com/mhersson/mpls) — Markdown Preview Language Server with live browser preview and Mermaid/PlantUML support
 
 ### File Management Pack (`file-management`)
@@ -136,12 +150,7 @@ Available packs organized by technology:
 - [jujutsu](https://github.com/martinvonz/jj) — Modern version control system with powerful conflict resolution (command: `jj`)
 - [prek](https://github.com/piotrek-szczygiel/prek) — Prettier git commit logs and history viewer
 
-### Nix Pack (`nix`)
-- [nil](https://github.com/oxalica/nil) — Nix language server for IDE features (LSP support for Helix, VSCode, etc.)
-- [nixd](https://github.com/nix-community/nixd) — Alternative Nix language server with advanced features and diagnostics
-- [nixfmt-rfc-style](https://github.com/NixOS/nixfmt) — Official Nix code formatter following RFC style guidelines
-
-**Usage**: Enable packs in `yazelix.nix` by uncommenting them in the `packs = [...]` array, or add individual tools via `user_packages` for fine-grained control.
+**Usage**: Enable packs in `yazelix.nix` by uncommenting them in the `language_packs = [...]` or `tool_packs = [...]` arrays, or add individual tools via `user_packages` for fine-grained control.
 
 ---
 

@@ -131,18 +131,22 @@
   # This name will be used when creating or attaching to persistent sessions
   session_name = "yazelix";
 
-  # Package packs - enable entire technology stacks
-  packs = [
+  # Language packs - complete toolchains for programming languages
+  language_packs = [
     # "python"         # ruff (formatter/linter), uv (package manager), ty (type checker), ipython (enhanced REPL)
     # "ts"             # typescript-language-server (LSP), biome (formatter/linter), oxlint (fast linter), bun (runtime/bundler)
     # "rust"           # cargo-update, cargo-binstall, cargo-edit (add/rm), cargo-watch, cargo-audit, cargo-nextest
     # "go"             # gopls (language server), golangci-lint (linter), delve (debugger), air (hot reload), govulncheck (vulnerability scanner)
     # "kotlin"         # kotlin-language-server (LSP), ktlint (linter/formatter), detekt (static analysis), gradle (build tool)
     # "gleam"          # gleam (compiler with built-in LSP, formatter, and build tool)
-    # "config"         # taplo (TOML), nixfmt-rfc-style (Nix), mpls (Markdown preview)
+    # "nix"            # nil (language server), nixd (advanced language server), nixfmt-rfc-style (formatter)
+  ];
+
+  # Tool packs - general-purpose development tools
+  tool_packs = [
+    # "config"         # taplo (TOML formatter/LSP), mpls (Markdown preview LSP)
     # "file-management" # ouch (archives), erdtree (tree view), serpl (search/replace)
     # "git"            # onefetch (repo summary), gh (GitHub CLI), delta (diff viewer), gitleaks (secret scanner), jj (Jujutsu VCS), prek (commit log viewer)
-    # "nix"            # nil (language server), nixd (advanced language server), nixfmt-rfc-style (formatter)
   ];
 
   # User packages - add individual packages here

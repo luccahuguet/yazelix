@@ -421,7 +421,6 @@
           ];
           config = with pkgs; [
             taplo # TOML formatter and language server for configuration files
-            nixfmt-rfc-style # Official Nix code formatter following RFC style guidelines
             mpls # Markdown Preview Language Server with live browser preview
           ];
           file-management = with pkgs; [
@@ -461,10 +460,12 @@
         };
 
         # Resolve packs to packages
-        selectedPacks = config.packs or [];
+        selectedLanguagePacks = config.language_packs or [];
+        selectedToolPacks = config.tool_packs or [];
+        selectedPacks = selectedLanguagePacks ++ selectedToolPacks;
         packPackages = builtins.concatLists (
-          map (packName: 
-            if builtins.hasAttr packName packDefinitions 
+          map (packName:
+            if builtins.hasAttr packName packDefinitions
             then packDefinitions.${packName}
             else throw "Unknown pack '${packName}'. Available packs: ${builtins.concatStringsSep ", " (builtins.attrNames packDefinitions)}"
           ) selectedPacks
