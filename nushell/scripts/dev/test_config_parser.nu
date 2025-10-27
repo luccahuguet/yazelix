@@ -47,7 +47,7 @@ def test_parse_config [] {
         ]
 
         for field in $required_fields {
-            if ($config | get -i $field | is-empty) {
+            if ($config | get -o $field | is-empty) {
                 print $"  ❌ Missing required field: ($field)"
                 return false
             }

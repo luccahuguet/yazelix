@@ -70,7 +70,7 @@ export def get_dynamic_yazelix_overrides [yazelix_dir: string] {
 
     # Add tips disable setting if enabled (handle both "true" and "true  # comment" formats)
     # Use default of "true" if field doesn't exist (backwards compatibility)
-    let disable_tips = ($config | get -i disable_zellij_tips | default "true")
+    let disable_tips = ($config | get -o disable_zellij_tips | default "true")
     if ($disable_tips | str starts-with "true") {
         $overrides = ($overrides | append "// Disable startup tips (set via disable_zellij_tips in yazelix.nix)")
         $overrides = ($overrides | append "show_startup_tips false")
@@ -79,7 +79,7 @@ export def get_dynamic_yazelix_overrides [yazelix_dir: string] {
 
     # Add rounded corners setting (handle both "true" and "true  # comment" formats)
     # Use default of "true" if field doesn't exist (backwards compatibility)
-    let rounded_corners = ($config | get -i zellij_rounded_corners | default "true")
+    let rounded_corners = ($config | get -o zellij_rounded_corners | default "true")
     if ($rounded_corners | str starts-with "true") {
         $overrides = ($overrides | append "// Enable rounded corners for pane frames (set via zellij_rounded_corners in yazelix.nix)")
         $overrides = ($overrides | append "ui {")

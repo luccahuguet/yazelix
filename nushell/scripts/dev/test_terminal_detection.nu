@@ -47,7 +47,7 @@ def test_terminal_metadata [] {
     print "🧪 Testing terminal metadata..."
 
     for term in $SUPPORTED_TERMINALS {
-        let meta = $TERMINAL_METADATA | get -i $term
+        let meta = $TERMINAL_METADATA | get -o $term
         if ($meta | is-empty) {
             print $"  ❌ Missing metadata for ($term)"
             return false
