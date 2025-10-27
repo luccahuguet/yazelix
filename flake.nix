@@ -405,8 +405,10 @@
             ty # Extremely fast Python type checker from Astral
             python3Packages.ipython # Enhanced interactive Python REPL with autocomplete and syntax highlighting
           ];
-          js_ts = with pkgs; [
+          ts = with pkgs; [
+            nodePackages.typescript-language-server # TypeScript language server for IDE features
             biome # Formats JS, TS, JSON, CSS, and lints JS/TS
+            oxlint # Extremely fast TypeScript/JavaScript linter from oxc
             bun # Fast all-in-one JavaScript runtime, bundler, test runner, and package manager
           ];
           rust = with pkgs; [
@@ -452,6 +454,9 @@
             ktlint # Linter and formatter with automatic code style fixing
             detekt # Static code analysis tool for code quality
             gradle # Build automation tool for Kotlin/JVM projects
+          ];
+          gleam = with pkgs; [
+            gleam # Gleam compiler with built-in LSP, formatter, and build tool
           ];
         };
 

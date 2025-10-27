@@ -172,7 +172,7 @@ in {
     };
     
     packs = mkOption {
-      type = types.listOf (types.enum [ "python" "js_ts" "rust" "go" "kotlin" "config" "file-management" "git" "nix" ]);
+      type = types.listOf (types.enum [ "python" "ts" "rust" "go" "kotlin" "gleam" "config" "file-management" "git" "nix" ]);
       default = [];
       description = "Package packs to enable entire technology stacks";
     };

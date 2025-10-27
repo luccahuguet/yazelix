@@ -134,10 +134,11 @@
   # Package packs - enable entire technology stacks
   packs = [
     # "python"         # ruff (formatter/linter), uv (package manager), ty (type checker), ipython (enhanced REPL)
-    # "js_ts"          # biome (formatter/linter), bun (runtime/bundler)
+    # "ts"             # typescript-language-server (LSP), biome (formatter/linter), oxlint (fast linter), bun (runtime/bundler)
     # "rust"           # cargo-update, cargo-binstall, cargo-edit (add/rm), cargo-watch, cargo-audit, cargo-nextest
     # "go"             # gopls (language server), golangci-lint (linter), delve (debugger), air (hot reload), govulncheck (vulnerability scanner)
     # "kotlin"         # kotlin-language-server (LSP), ktlint (linter/formatter), detekt (static analysis), gradle (build tool)
+    # "gleam"          # gleam (compiler with built-in LSP, formatter, and build tool)
     # "config"         # taplo (TOML), nixfmt-rfc-style (Nix), mpls (Markdown preview)
     # "file-management" # ouch (archives), erdtree (tree view), serpl (search/replace)
     # "git"            # onefetch (repo summary), gh (GitHub CLI), delta (diff viewer), gitleaks (secret scanner), jj (Jujutsu VCS), prek (commit log viewer)

@@ -72,7 +72,7 @@ Yazelix offers two ways to add packages:
 
 **Pack-based**: Enable entire technology stacks with one line:
 ```nix
-packs = ["python", "js_ts", "rust", "go", "kotlin", "config", "file-management", "git", "nix"];
+packs = ["python", "ts", "rust", "go", "kotlin", "gleam", "config", "file-management", "git", "nix"];
 ```
 
 **Individual packages**: Add specific tools via `user_packages` in `yazelix.nix`:
@@ -88,8 +88,10 @@ Available packs organized by technology:
 - [ty](https://github.com/astral-sh/ty) — Extremely fast Python type checker from Astral
 - [ipython](https://ipython.org/) — Enhanced interactive Python REPL with autocomplete, syntax highlighting, and magic commands
 
-### JavaScript/TypeScript Pack (`js_ts`)
+### TypeScript Pack (`ts`)
+- [typescript-language-server](https://github.com/typescript-language-server/typescript-language-server) — TypeScript language server for IDE features and LSP support
 - [biome](https://biomejs.dev/) — Formats JS, TS, JSON, CSS, and lints JS/TS
+- [oxlint](https://oxc-project.github.io/) — Extremely fast TypeScript/JavaScript linter from the oxc project
 - [bun](https://bun.sh/) — Fast all-in-one JavaScript runtime, bundler, test runner, and package manager
 
 ### Rust Pack (`rust`)
@@ -112,6 +114,9 @@ Available packs organized by technology:
 - [ktlint](https://github.com/pinterest/ktlint) — Linter and formatter with automatic code style fixing
 - [detekt](https://github.com/detekt/detekt) — Static code analysis tool for code quality and smell detection
 - [gradle](https://gradle.org/) — Build automation tool for Kotlin/JVM projects
+
+### Gleam Pack (`gleam`)
+- [gleam](https://gleam.run/) — Gleam compiler with built-in LSP, formatter, and build tool - a friendly language for building type-safe systems on Erlang/JavaScript
 
 ### Configuration Pack (`config`)
 - [taplo](https://github.com/tamasfe/taplo) — TOML formatter and language server for configuration files
