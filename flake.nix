@@ -440,6 +440,13 @@
             nixd # Alternative Nix language server with advanced features
             nixfmt-rfc-style # Official Nix code formatter following RFC style guidelines
           ];
+          go = with pkgs; [
+            gopls # Official Go language server for IDE features
+            golangci-lint # Fast, comprehensive Go linter aggregator
+            delve # Powerful debugger for Go
+            air # Live reload for Go development
+            govulncheck # Official Go vulnerability scanner
+          ];
         };
 
         # Resolve packs to packages

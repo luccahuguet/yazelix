@@ -72,7 +72,7 @@ Yazelix offers two ways to add packages:
 
 **Pack-based**: Enable entire technology stacks with one line:
 ```nix
-packs = ["python", "js_ts", "rust", "config", "file-management", "git", "nix"];
+packs = ["python", "js_ts", "rust", "go", "config", "file-management", "git", "nix"];
 ```
 
 **Individual packages**: Add specific tools via `user_packages` in `yazelix.nix`:
@@ -99,6 +99,13 @@ Available packs organized by technology:
 - [cargo-watch](https://github.com/watchexec/cargo-watch) — Auto-recompile and re-run on file changes
 - [cargo-audit](https://github.com/rustsec/rustsec/tree/main/cargo-audit) — Audit dependencies for security vulnerabilities
 - [cargo-nextest](https://github.com/nextest-rs/nextest) — Next-generation test runner with better output and parallelism
+
+### Go Pack (`go`)
+- [gopls](https://github.com/golang/tools/tree/master/gopls) — Official Go language server for IDE features and LSP support
+- [golangci-lint](https://github.com/golangci/golangci-lint) — Fast, comprehensive Go linter aggregator running multiple linters in parallel
+- [delve](https://github.com/go-delve/delve) — Powerful debugger for Go with breakpoints, variable inspection, and more
+- [air](https://github.com/cosmtrek/air) — Live reload for Go development with hot reloading on file changes
+- [govulncheck](https://golang.org/x/vuln/cmd/govulncheck) — Official Go vulnerability scanner from the Go security team
 
 ### Configuration Pack (`config`)
 - [taplo](https://github.com/tamasfe/taplo) — TOML formatter and language server for configuration files

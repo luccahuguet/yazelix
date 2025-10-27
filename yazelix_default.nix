@@ -140,6 +140,7 @@
     # "file-management" # ouch (archives), erdtree (tree view), serpl (search/replace)
     # "git"            # onefetch (repo summary), gh (GitHub CLI), delta (diff viewer), gitleaks (secret scanner), jj (Jujutsu VCS), prek (commit log viewer)
     # "nix"            # nil (language server), nixd (advanced language server), nixfmt-rfc-style (formatter)
+    # "go"             # gopls (language server), golangci-lint (linter), delve (debugger), air (hot reload), govulncheck (vulnerability scanner)
   ];
 
   # User packages - add individual packages here
