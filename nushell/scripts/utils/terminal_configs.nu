@@ -33,9 +33,21 @@ def build_branding [terminal: string, format: string] {
 def build_transparency [transparency: string, format: string, key: string] {
     let opacity = get_opacity_value $transparency
     if $transparency == "none" {
-        match $format { "ini" => $"# ($key) = 0.9", "lua" => "-- config.window_background_opacity = 0.9", "toml" => "# opacity = 0.9", _ => "" }
+        match $format {
+            "ini" => $"# ($key) = 0.9",
+            "ini-space" => $"# ($key) 0.9",
+            "lua" => "-- config.window_background_opacity = 0.9",
+            "toml" => "# opacity = 0.9",
+            _ => ""
+        }
     } else {
-        match $format { "ini" => $"($key) = ($opacity)", "lua" => $"config.window_background_opacity = ($opacity)", "toml" => $"opacity = ($opacity)", _ => "" }
+        match $format {
+            "ini" => $"($key) = ($opacity)",
+            "ini-space" => $"($key) ($opacity)",
+            "lua" => $"config.window_background_opacity = ($opacity)",
+            "toml" => $"opacity = ($opacity)",
+            _ => ""
+        }
     }
 }
 
@@ -122,7 +134,7 @@ x11_hide_window_decorations yes
 window_title (get_terminal_title "kitty")
 
 # Transparency \(configurable via yazelix.nix\)
-(build_transparency $config.transparency "ini" "background_opacity")
+(build_transparency $config.transparency "ini-space" "background_opacity")
 
 # Font settings
 font_family      ($FONT_FIRACODE)

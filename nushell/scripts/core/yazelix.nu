@@ -386,7 +386,7 @@ export def "yzx test" [
 
 # Benchmark terminal launch performance
 export def "yzx bench" [
-    --iterations(-n): int = 3  # Number of iterations per terminal
+    --iterations(-n): int = 1  # Number of iterations per terminal
     --terminal(-t): string     # Test only specific terminal
     --verbose(-v)              # Show detailed output
 ] {

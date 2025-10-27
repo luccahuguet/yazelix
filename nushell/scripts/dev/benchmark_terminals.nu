@@ -131,7 +131,7 @@ def format_time [ns: int] {
 
 # Main benchmark function
 export def main [
-    --iterations(-n): int = 3  # Number of iterations per terminal
+    --iterations(-n): int = 1  # Number of iterations per terminal
     --terminal(-t): string     # Test only specific terminal
     --verbose(-v)              # Show detailed output
 ] {
