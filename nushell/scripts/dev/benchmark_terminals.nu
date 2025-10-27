@@ -92,7 +92,6 @@ def benchmark_terminal [
     if ($times | is-empty) {
         {
             terminal: $terminal
-            success_rate: 0.0
             avg_time: null
             min_time: null
             max_time: null
@@ -103,7 +102,6 @@ def benchmark_terminal [
     } else {
         {
             terminal: $terminal
-            success_rate: ($successes / $iterations)
             avg_time: ($times | math avg | math round)
             min_time: ($times | math min)
             max_time: ($times | math max)
@@ -116,16 +114,22 @@ def benchmark_terminal [
 
 # Format time in nanoseconds to human-readable
 def format_time [ns: int] {
-    let ms = ($ns / 1_000_000)
-    let s = ($ms / 1000)
+    let ns_float = ($ns | into float)
 
-    if $s >= 1 {
-        $"($s)s"
-    } else if $ms >= 1 {
-        $"($ms)ms"
+    if $ns_float >= 1_000_000_000 {
+        let seconds = ($ns_float / 1_000_000_000)
+        let rounded = ($seconds | math round --precision 3)
+        $"($rounded)s"
+    } else if $ns_float >= 1_000_000 {
+        let milliseconds = ($ns_float / 1_000_000)
+        let rounded = ($milliseconds | math round --precision 1)
+        $"($rounded)ms"
+    } else if $ns_float >= 1_000 {
+        let microseconds = ($ns_float / 1_000)
+        let rounded = ($microseconds | math round --precision 1)
+        $"($rounded)μs"
     } else {
-        let us = ($ns / 1_000)
-        $"($us)μs"
+        $"($ns)ns"
     }
 }
 
@@ -214,8 +218,16 @@ export def main [
         exit 1
     }
 
-    # Print table
-    print ($sorted_results | select terminal success_rate avg_time min_time max_time | table)
+    # Print table with formatted durations
+    let display_results = ($sorted_results | each {|row|
+        {
+            terminal: $row.terminal
+            avg_time: (format_time $row.avg_time)
+            min_time: (format_time $row.min_time)
+            max_time: (format_time $row.max_time)
+        }
+    })
+    print ($display_results | table)
 
     print ""
     print "🏆 Winner:"
