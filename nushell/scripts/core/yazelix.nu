@@ -390,11 +390,9 @@ export def "yzx bench" [
     --terminal(-t): string     # Test only specific terminal
     --verbose(-v)              # Show detailed output
 ] {
-    use ../dev/benchmark_terminals.nu
-
     if ($terminal | is-not-empty) {
-        benchmark_terminals main --iterations $iterations --terminal $terminal --verbose=$verbose
+        nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/benchmark_terminals.nu" --iterations $iterations --terminal $terminal --verbose=$verbose
     } else {
-        benchmark_terminals main --iterations $iterations --verbose=$verbose
+        nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/benchmark_terminals.nu" --iterations $iterations --verbose=$verbose
     }
 }
