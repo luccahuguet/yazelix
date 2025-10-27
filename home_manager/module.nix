@@ -143,7 +143,7 @@ in {
     
     skip_welcome_screen = mkOption {
       type = types.bool;
-      default = false;
+      default = true;
       description = "Skip the welcome screen on startup";
     };
     

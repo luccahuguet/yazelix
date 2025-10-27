@@ -111,9 +111,9 @@
   # Enable verbose debug logging in the shellHook (default: false)
   debug_mode = false;
 
-  # Skip the welcome screen on startup (default: false)
+  # Skip the welcome screen on startup (default: true)
   # When true, welcome info is logged to the logs directory instead of displayed
-  skip_welcome_screen = false;
+  skip_welcome_screen = true;
 
   # ASCII art display mode (default: "static")
   # Options: "static" - Show static ASCII art, "animated" - Show animated ASCII art (opt-in for faster startup)

@@ -29,6 +29,48 @@ def main [
         print $"Resolved HOME=($home)"
     }
 
+    # Smart config change detection: compute hash of yazelix.nix
+    let config_file = $"($home)/.config/yazelix/yazelix.nix"
+    let cache_dir = $"($home)/.local/share/yazelix/state"
+    let cache_file = $"($cache_dir)/config_hash"
+
+    # Ensure cache directory exists
+    if not ($cache_dir | path exists) {
+        mkdir $cache_dir
+    }
+
+    # Compute current config hash
+    let current_hash = if ($config_file | path exists) {
+        open $config_file | hash sha256
+    } else {
+        # Config doesn't exist, use empty hash
+        ""
+    }
+
+    # Read cached hash (if exists)
+    let cached_hash = if ($cache_file | path exists) {
+        try {
+            open $cache_file | str trim
+        } catch {
+            "" # Cache corrupted or unreadable
+        }
+    } else {
+        "" # No cache yet
+    }
+
+    # Determine if we need to reload environment
+    let needs_reload = ($current_hash != $cached_hash)
+
+    if $verbose_mode {
+        print $"🔍 Config hash check:"
+        print $"   Current:  ($current_hash)"
+        print $"   Cached:   ($cached_hash)"
+        print $"   Reload:   ($needs_reload)"
+    }
+
+    # Update cache with current hash for next launch
+    $current_hash | save -f $cache_file
+
     # Use provided launch directory or fall back to current directory
     let working_dir = if ($launch_cwd | is-empty) { pwd } else { $launch_cwd }
     if $verbose_mode {
@@ -111,8 +153,8 @@ def main [
         exit 1
     }
 
-    # Build launch command
-    let launch_cmd = build_launch_command $terminal_info $terminal_config $terminal_config_mode
+    # Build launch command (pass needs_reload to control env var clearing)
+    let launch_cmd = build_launch_command $terminal_info $terminal_config $terminal_config_mode $needs_reload
 
     # Print what we're running
     let terminal = $terminal_info.terminal

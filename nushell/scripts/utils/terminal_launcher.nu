@@ -75,31 +75,41 @@ export def build_launch_command [
     terminal_info: record
     config_path
     terminal_config_mode: string
+    needs_reload: bool = true  # Whether to force environment reload
 ]: nothing -> string {
     let terminal = $terminal_info.terminal
     let command = $terminal_info.command
     let use_wrapper = $terminal_info.use_wrapper
 
+    # Smart environment reload: only unset vars if config changed
+    # This makes launches ~4s faster when config hasn't changed (uses inherited nix shell)
+    # When config changed, we clear vars to force fresh nix develop and pick up changes
+    let env_prefix = if $needs_reload {
+        "env -u IN_YAZELIX_SHELL -u IN_NIX_SHELL "
+    } else {
+        ""
+    }
+
     if $use_wrapper {
         # Wrappers handle config internally via environment variable
-        $"nohup ($command) >/dev/null 2>&1 &"
+        $"nohup ($env_prefix)($command) >/dev/null 2>&1 &"
     } else {
         # Direct terminal launch with config
         match $terminal {
             "ghostty" => {
-                $"nohup ghostty --config-file=($config_path) --title=\"Yazelix - Ghostty\" >/dev/null 2>&1 &"
+                $"nohup ($env_prefix)ghostty --config-file=($config_path) --title=\"Yazelix - Ghostty\" >/dev/null 2>&1 &"
             },
             "wezterm" => {
-                $"nohup wezterm --config-file ($config_path) start --class=com.yazelix.Yazelix >/dev/null 2>&1 &"
+                $"nohup ($env_prefix)wezterm --config-file ($config_path) start --class=com.yazelix.Yazelix >/dev/null 2>&1 &"
             },
             "kitty" => {
-                $"nohup kitty --config=($config_path) --class=com.yazelix.Yazelix --title=\"Yazelix - Kitty\" >/dev/null 2>&1 &"
+                $"nohup ($env_prefix)kitty --config=($config_path) --class=com.yazelix.Yazelix --title=\"Yazelix - Kitty\" >/dev/null 2>&1 &"
             },
             "alacritty" => {
-                $"nohup alacritty --config-file ($config_path) --title \"Yazelix - Alacritty\" >/dev/null 2>&1 &"
+                $"nohup ($env_prefix)alacritty --config-file ($config_path) --title \"Yazelix - Alacritty\" >/dev/null 2>&1 &"
             },
             "foot" => {
-                $"nohup foot --config ($config_path) --app-id com.yazelix.Yazelix >/dev/null 2>&1 &"
+                $"nohup ($env_prefix)foot --config ($config_path) --app-id com.yazelix.Yazelix >/dev/null 2>&1 &"
             },
             _ => {
                 error make {msg: $"Unknown terminal: ($terminal)"}
