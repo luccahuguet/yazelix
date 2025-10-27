@@ -90,7 +90,8 @@ export def parse_yazelix_config [] {
         transparency: (extract_config_value "transparency" "low" $config_content),
         default_shell: (extract_config_value "default_shell" "nu" $config_content),
         helix_mode: (extract_config_value "helix_mode" "release" $config_content),
-        disable_zellij_tips: (extract_config_value "disable_zellij_tips" "false" $config_content),
+        disable_zellij_tips: (extract_config_value "disable_zellij_tips" "true" $config_content),
+        zellij_rounded_corners: (extract_config_value "zellij_rounded_corners" "true" $config_content),
         config_file: $config_to_read
     }
 }
