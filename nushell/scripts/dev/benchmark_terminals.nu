@@ -134,10 +134,28 @@ export def main [
 
     # Determine which terminals to test
     let available_terminals = get_available_terminals
+    let unavailable_terminals = ($SUPPORTED_TERMINALS | where {|term| $term not-in $available_terminals})
 
     if ($available_terminals | is-empty) {
         print "❌ No supported terminals found!"
+        print ""
+        print "💡 Yazelix supports bundled terminals. To add more terminals:"
+        print "   1. Edit ~/.config/yazelix/yazelix.nix"
+        print "   2. Add terminals to: extra_terminals = [\"wezterm\", \"kitty\", \"alacritty\"]"
+        print "   3. Run: yzx launch --here"
+        print ""
+        print "   Supported terminals: ghostty, wezterm, kitty, alacritty, foot"
         exit 1
+    }
+
+    # Show availability status
+    if not ($unavailable_terminals | is-empty) {
+        print $"📋 Available: (($available_terminals | str join ', '))"
+        print $"⚠️  Unavailable: (($unavailable_terminals | str join ', '))"
+        print ""
+        print "💡 To benchmark unavailable terminals, add them to yazelix.nix:"
+        print $"   extra_terminals = [(($unavailable_terminals | each {|t| $'\"($t)\"'} | str join ', '))]"
+        print ""
     }
 
     let terminals_to_test = if ($terminal | is-not-empty) {
@@ -145,6 +163,12 @@ export def main [
             [$terminal]
         } else {
             print $"❌ Terminal '($terminal)' is not available or not supported"
+            if $terminal in $SUPPORTED_TERMINALS {
+                print ""
+                print "💡 To add this terminal, edit yazelix.nix:"
+                print $"   extra_terminals = [\"($terminal)\"]"
+                print "   Then run: yzx launch --here"
+            }
             exit 1
         }
     } else {
