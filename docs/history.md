@@ -33,6 +33,7 @@ There's much to be done yet. Infinite possibilities. But some rather closer than
 
 ## Major Version Descriptions
 
+- **v10.5**: Performance optimization, benchmarking, and enhanced UX!
 - **v10**: Launch interface consolidation, IDE integration, project-oriented workflow, and enhanced UX!
 - **v9**: zjstatus, yzx env, yzx doctor, no_sidebar mode, packs, new logo, desktop entry, and more
 - **v8**: Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!
@@ -43,6 +44,24 @@ There's much to be done yet. Infinite possibilities. But some rather closer than
 - **v3**: Helix with a File Tree! Now with helix-friendly keybindings, and monorepo! ([announcement](https://www.reddit.com/r/HelixEditor/comments/1doefzt/yazelix_v3_helix_with_a_file_tree_now_with/))
 - **v2**: Yazi-Helix File Tree v2, now with a Closeable Sidebar! (the name 'Yazelix' did not exist yet; [announcement](https://www.reddit.com/r/HelixEditor/comments/1d6nkxs/yazihelix_file_tree_v2_now_with_a_closeable/))
 - **v1**: My first Zellij/Yazi/Helix/Nushell setup, inspired by a Reddit interaction, with no integration and a lot of hacks ([announcement](https://www.reddit.com/r/HelixEditor/comments/1d59br3/file_tree_setup_using_yazi_zellij_helix_and/))
+
+## v10.5: Performance optimization, benchmarking, and enhanced UX!
+
+### Changes from v10 to v10.5
+- **Smart config detection**: Automatic hash-based detection of yazelix.nix changes (SHA256, ~0.1ms overhead). Launches are ~4s faster when config unchanged (inherits nix shell), while changes are always detected and applied correctly.
+- **Performance benchmarking**: New `yzx bench` command measures terminal launch performance with statistical analysis (min/max/avg times, success rate, rankings).
+- **Enhanced Zellij UI controls**: Two new configurable options in yazelix.nix:
+  - `disable_zellij_tips` (default: true) - Suppress startup tips dialog
+  - `zellij_rounded_corners` (default: true) - Enable rounded corners for pane frames
+- **Streamlined startup**: Welcome screen disabled by default for faster launches (info still logged to `~/.local/share/yazelix/logs/`)
+- **Sweep testing framework**: Matrix testing for all shell/terminal/feature combinations (`yzx sweep shells|terminals|all`)
+- **Terminal detection**: Proper terminal identification via `YAZELIX_TERMINAL` environment variable
+- **Conditional shell hooks**: Shell hooks only load Yazelix tools when inside the environment, preventing errors in regular terminals
+- **Yazi directory sync**: When opening files from Yazi, the sidebar automatically navigates into the file's parent directory
+- **Comprehensive pack system**: 10 curated technology packs organized into language_packs and tool_packs:
+  - Language Packs (7): Python, TypeScript, Rust, Go, Kotlin, Gleam, Nix
+  - Tool Packs (3): Git, Config, File Management
+  - Enhanced packs with expanded tools (Rust: 6 tools, TypeScript with oxlint, Python with ipython)
 
 ## v10: Launch interface consolidation, IDE integration, project-oriented workflow, and enhanced UX!
 

@@ -61,6 +61,10 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 ## Improvements of v10.5 over v10
 
+- **Smart Config Detection** - Automatic hash-based change detection makes launches ~4s faster when config unchanged, while ensuring changes are always picked up
+- **Performance Benchmarking** - New `yzx bench` command measures terminal launch performance with statistical analysis
+- **Enhanced UI Controls** - Configurable Zellij options: `disable_zellij_tips` (default: true), `zellij_rounded_corners` (default: true)
+- **Streamlined Startup** - Welcome screen disabled by default for faster launches (info still logged)
 - **Sweep Testing Framework** - Matrix testing for all shell/terminal/feature combinations (`yzx sweep shells|terminals|all`)
 - **Terminal Detection** - Proper terminal identification via `YAZELIX_TERMINAL` environment variable
 - **Conditional Shell Hooks** - Shell hooks only load Yazelix tools when inside the environment, preventing errors in regular terminals
