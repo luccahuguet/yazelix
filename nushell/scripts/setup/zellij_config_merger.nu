@@ -63,7 +63,7 @@ export def get_dynamic_yazelix_overrides [yazelix_dir: string] {
         parse_yazelix_config
     } catch {
         # If config parsing fails, use defaults
-        {disable_zellij_tips: "false"}
+        {disable_zellij_tips: "false", zellij_rounded_corners: "true"}
     })
 
     mut overrides = []
@@ -72,6 +72,25 @@ export def get_dynamic_yazelix_overrides [yazelix_dir: string] {
     if ($config.disable_zellij_tips | str starts-with "true") {
         $overrides = ($overrides | append "// Disable startup tips (set via disable_zellij_tips in yazelix.nix)")
         $overrides = ($overrides | append "show_startup_tips false")
+        $overrides = ($overrides | append "")
+    }
+
+    # Add rounded corners setting (handle both "true" and "true  # comment" formats)
+    if ($config.zellij_rounded_corners | str starts-with "true") {
+        $overrides = ($overrides | append "// Enable rounded corners for pane frames (set via zellij_rounded_corners in yazelix.nix)")
+        $overrides = ($overrides | append "ui {")
+        $overrides = ($overrides | append "    pane_frames {")
+        $overrides = ($overrides | append "        rounded_corners true")
+        $overrides = ($overrides | append "    }")
+        $overrides = ($overrides | append "}")
+        $overrides = ($overrides | append "")
+    } else if ($config.zellij_rounded_corners | str starts-with "false") {
+        $overrides = ($overrides | append "// Disable rounded corners for pane frames (set via zellij_rounded_corners in yazelix.nix)")
+        $overrides = ($overrides | append "ui {")
+        $overrides = ($overrides | append "    pane_frames {")
+        $overrides = ($overrides | append "        rounded_corners false")
+        $overrides = ($overrides | append "    }")
+        $overrides = ($overrides | append "}")
         $overrides = ($overrides | append "")
     }
 

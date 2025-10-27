@@ -103,9 +103,13 @@
   # You can access Yazi manually with `yazi` command or `Ctrl+y` in Helix
   enable_sidebar = true;
 
-  # Disable Zellij tips popup on startup (default: false)
+  # Disable Zellij tips popup on startup (default: true)
   # Set to true to suppress the tips dialog for cleaner launches
-  disable_zellij_tips = false;
+  disable_zellij_tips = true;
+
+  # Enable rounded corners for Zellij pane frames (default: true)
+  # Set to false for sharp corners
+  zellij_rounded_corners = true;
 
 
   # Enable verbose debug logging in the shellHook (default: false)

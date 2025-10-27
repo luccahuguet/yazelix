@@ -131,10 +131,16 @@ in {
 
     disable_zellij_tips = mkOption {
       type = types.bool;
-      default = false;
+      default = true;
       description = "Disable Zellij tips popup on startup for cleaner launches";
     };
-    
+
+    zellij_rounded_corners = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable rounded corners for Zellij pane frames";
+    };
+
     debug_mode = mkOption {
       type = types.bool;
       default = false;
@@ -248,6 +254,7 @@ in {
           # UI configuration
           enable_sidebar = ${if cfg.enable_sidebar then "true" else "false"};
           disable_zellij_tips = ${if cfg.disable_zellij_tips then "true" else "false"};
+          zellij_rounded_corners = ${if cfg.zellij_rounded_corners then "true" else "false"};
 
           # Debug and display options
           debug_mode = ${if cfg.debug_mode then "true" else "false"};
