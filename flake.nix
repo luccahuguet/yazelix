@@ -422,6 +422,13 @@
             erdtree # Modern tree command with file size display
             serpl # Command-line tool for search and replace operations
           ];
+          git = with pkgs; [
+            onefetch # Git repository summary with statistics and language breakdown
+            gh # GitHub CLI for repository management and PR workflows
+            delta # Syntax-highlighting pager for git diffs
+            gitleaks # Scan git repos for secrets and credentials
+            jujutsu # Modern version control system with powerful conflict resolution
+          ];
         };
 
         # Resolve packs to packages
