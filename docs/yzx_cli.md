@@ -15,6 +15,12 @@ Run Yazelix test suite
 - `--new-window`: Launch tests in a new Yazelix window (useful for debugging crashes)
 - `--all`: Include visual terminal sweep tests (launches actual terminal windows)
 
+### `yzx bench [-n ITERATIONS] [-t TERMINAL] [--verbose]`
+Benchmark terminal launch performance
+- `-n, --iterations`: Number of iterations per terminal (default: 3)
+- `-t, --terminal`: Test only specific terminal (e.g., ghostty, wezterm, kitty)
+- `--verbose`: Show detailed output
+
 ### `yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose]`
 Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
@@ -67,9 +73,15 @@ yzx info                      # System information
 yzx versions                  # Show all tool versions
 yzx config_status bash        # Check bash integration
 
-# Testing
+# Testing and benchmarking
 yzx test                      # Run all tests (non-visual)
 yzx test --verbose            # Run tests with detailed output
 yzx test --new-window         # Run tests in separate window (for debugging)
 yzx test --all                # Run all tests including visual terminal sweep
+
+# Benchmarking
+yzx bench                     # Benchmark all available terminals (3 iterations each)
+yzx bench -n 5                # Run 5 iterations per terminal
+yzx bench -t ghostty          # Benchmark only Ghostty
+yzx bench -t wezterm -n 10    # Benchmark WezTerm with 10 iterations
 ```

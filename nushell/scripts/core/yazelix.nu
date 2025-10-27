@@ -24,6 +24,7 @@ export def "yzx help" [] {
     print "  yzx doctor [--verbose] [--fix] - Run health checks and diagnostics"
     print "  yzx test [--verbose] [--new-window] [--all] - Run test suite (--all includes visual sweep)"
     print "  yzx sweep [--verbose] [--visual] - Test shell/terminal combinations"
+    print "  yzx bench [-n ITERATIONS] [-t TERMINAL] - Benchmark terminal launch performance"
     print ""
     print "CONFIGURATION MANAGEMENT:"
     print "  yzx config_status [shell]      - Show status of all shell configurations"
@@ -381,4 +382,19 @@ export def "yzx test" [
 ] {
     use ../utils/test_runner.nu run_all_tests
     run_all_tests --verbose=$verbose --new-window=$new_window --all=$all
+}
+
+# Benchmark terminal launch performance
+export def "yzx bench" [
+    --iterations(-n): int = 3  # Number of iterations per terminal
+    --terminal(-t): string     # Test only specific terminal
+    --verbose(-v)              # Show detailed output
+] {
+    use ../dev/benchmark_terminals.nu
+
+    if ($terminal | is-not-empty) {
+        benchmark_terminals main --iterations $iterations --terminal $terminal --verbose=$verbose
+    } else {
+        benchmark_terminals main --iterations $iterations --verbose=$verbose
+    }
 }

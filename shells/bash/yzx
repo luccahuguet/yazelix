@@ -37,6 +37,7 @@ show_help() {
     echo "DIAGNOSTICS:"
     echo "  yzx test [--verbose] [--new-window] [--all] - Run test suite (--all includes visual sweep)"
     echo "  yzx sweep <shells|terminals|all>               - Matrix testing (shells/terminals/features)"
+    echo "  yzx bench [-n ITERATIONS] [-t TERMINAL]        - Benchmark terminal launch performance"
     echo ""
     echo "CONFIGURATION MANAGEMENT:"
     echo "  yzx config_status [shell]      - Show status of all shell configurations"
@@ -440,6 +441,11 @@ PITCH
             # Pass through flags to nushell
             shift  # Remove 'sweep' from arguments
             nu -c "use $YAZELIX_DIR/nushell/scripts/core/yazelix.nu *; yzx sweep $*"
+            ;;
+        "bench")
+            # Pass through flags to nushell
+            shift  # Remove 'bench' from arguments
+            nu -c "use $YAZELIX_DIR/nushell/scripts/core/yazelix.nu *; yzx bench $*"
             ;;
         *)
             echo "❌ Unknown subcommand: $subcommand"
