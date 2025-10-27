@@ -53,7 +53,6 @@ Install once, get the same environment everywhere
 - Yazelix lets you say `I use Yazelix btw`
 - Boy, do we Nix
 - Integration, integration, integration
-- Follows the [Omakase](https://learn.omacom.io/3/omacom/76/omakase-computing) principle like [Omarchy](https://omarchy.org/)
 - Made with love.
 
 ## Acknowledgments
