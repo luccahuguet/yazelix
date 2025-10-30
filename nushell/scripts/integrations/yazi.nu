@@ -145,7 +145,11 @@ def open_with_generic_editor [file_path: path, editor: string, yazi_id: string] 
     log_to_file "open_generic.log" $"open_with_generic_editor called with file_path: '($file_path)', editor: '($editor)'"
 
     # Get the directory of the file for tab naming
-    let file_dir = ($file_path | path dirname)
+    let file_dir = if ($file_path | path exists) and ($file_path | path type) == "dir" {
+        $file_path
+    } else {
+        $file_path | path dirname
+    }
     let tab_name = (get_tab_name $file_dir)
 
     try {
