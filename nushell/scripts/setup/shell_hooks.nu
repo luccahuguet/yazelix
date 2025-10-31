@@ -47,18 +47,28 @@ export def setup_shell_hooks [
         }
     }
 
-    # Ensure shell config directory exists
-    mkdir ($shell_config | path dirname)
-
-    # Create shell config if it doesn't exist (for nushell)
+    # Check if shell config file exists
     if not ($shell_config | path exists) {
-        if $shell == "nushell" {
-            if not $quiet_mode {
-                print $"📝 Creating new Nushell config: ($shell_config)"
+        if $required {
+            # Required shells must have config files
+            let help_message = if $shell == "nushell" {
+                $"Run Nushell once to create config: nu"
+            } else if $shell == "bash" {
+                $"Create your bash config: touch ($shell_config)"
+            } else {
+                $"Create your ($shell) config file first"
             }
-            "# Nushell user configuration (created by Yazelix setup)" | save $shell_config
+
+            error make {
+                msg: $"❌ Required ($shell) config file not found: ($shell_config)\n   ($help_message)"
+                label: {
+                    text: $"($shell) config file is required for Yazelix"
+                    span: (metadata $shell).span
+                }
+            }
         } else {
-            touch $shell_config
+            # Optional shells skip silently
+            return
         }
     }
 
