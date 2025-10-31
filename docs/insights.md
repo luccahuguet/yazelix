@@ -8,7 +8,7 @@ This document captures important debugging insights, architectural lessons, and 
 
 ### Problem Description
 
-When calling `yzx launch --here` from within a `yzx env` shell, the command would:
+When calling `yzx launch --here` from within a `yzx env` shell (or even inside an existing Yazelix session), the command would:
 1. Hang indefinitely (no output, no progress)
 2. After multiple Ctrl+C interrupts, show random different errors each time:
    - "Argument list too long (os error 7)"
@@ -80,23 +80,12 @@ Simple, direct, no spawning, no environment passing.
 
 ### Implementation
 
-Brought back `yzx start` as a separate command (instead of `yzx launch --here`):
-
-```nushell
-export def "yzx start" [] {
-    use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
-    ensure_nix_available
-    $env.YAZELIX_ENV_ONLY = "false"
-    nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
-}
-```
-
-This runs the script directly in a fresh Nushell instance, avoiding the environment explosion.
+The first fix in 2024 reintroduced a standalone `yzx start` command that invoked `start_yazelix.nu` directly. In October 2025 we carried that idea forward: `yzx launch --here` now imports the shared `start_yazelix_session` helper and runs it inside the current Nushell engine. No external `^nu` spawn, no recursive `nix develop`, same fast path whether you enter from a vanilla shell or an active Yazelix session.
 
 ### Commands After Fix
 
-- **`yzx start`** - Start Yazelix in current terminal (direct call, no spawning)
-- **`yzx launch`** - Launch Yazelix in new terminal (removed `--here` flag)
+- **`yzx launch --here`** - Start Yazelix in current terminal (direct call, no spawning)
+- **`yzx launch`** - Launch Yazelix in a new terminal window
 - **`yzx env`** - Load tools without UI
 
 ### Lessons Learned
@@ -106,7 +95,7 @@ This runs the script directly in a fresh Nushell instance, avoiding the environm
 3. **Random errors = environment issue**: Different errors each run suggests data corruption/truncation
 4. **Kernel limits are real**: ARG_MAX isn't just theoretical, Nix environments hit it
 5. **Fail fast with clear errors**: Better than mysterious hangs and random behavior
-6. **Test in real conditions**: `yzx env` → `yzx start` workflow revealed the issue
+6. **Test in real conditions**: `yzx env` → `yzx launch --here` workflow revealed the issue
 
 ### Prevention
 
@@ -129,7 +118,9 @@ Verified with comprehensive sweep tests:
 
 - Kernel ARG_MAX limit: `getconf ARG_MAX` (typically 2097152 bytes on Linux)
 - Nix environment inspection: `env | wc -c` in `nix develop` shell
-- Related commit: `64e09a8` - "feat: bring back yzx start as separate command"
+- Related commits:
+  - `64e09a8` - "feat: bring back yzx start as separate command"
+  - `2f1a6d3` - "refactor: inline start_yazelix into yzx launch --here"
 
 ---
 

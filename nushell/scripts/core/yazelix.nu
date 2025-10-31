@@ -6,6 +6,7 @@ use ../utils/config_manager.nu *
 use ../utils/constants.nu *
 use ../utils/version_info.nu *
 use ../utils/config_parser.nu parse_yazelix_config
+use ./start_yazelix.nu [start_yazelix_session]
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
@@ -107,26 +108,27 @@ export def "yzx launch" [
     }
 
     if $here {
-        # Start in current terminal - run script directly (no spawning)
+        # Start in current terminal without spawning a new process
         $env.YAZELIX_ENV_ONLY = "false"
 
-        let script = ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
-        mut args = []
-
-        if $home {
-            $args = ($args | append $env.HOME)
-        } else if ($path | is-not-empty) {
-            $args = ($args | append $path)
-        }
-
-        if $verbose {
-            $args = ($args | append "--verbose")
-        }
-
-        if ($args | is-empty) {
-            nu $script
+        let cwd_override = if $home {
+            $env.HOME
+        } else if ($path != null) {
+            $path
         } else {
-            nu $script ...$args
+            null
+        }
+
+        if ($cwd_override != null) {
+            if $verbose {
+                start_yazelix_session $cwd_override --verbose
+            } else {
+                start_yazelix_session $cwd_override
+            }
+        } else if $verbose {
+            start_yazelix_session --verbose
+        } else {
+            start_yazelix_session
         }
         return
     }

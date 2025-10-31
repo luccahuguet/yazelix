@@ -7,7 +7,7 @@ use ../utils/nix_detector.nu ensure_nix_available
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 
-export def main [cwd_override?: string, --verbose] {
+def _start_yazelix_impl [cwd_override?: string, --verbose] {
     # Try to set up Nix environment automatically when outside Yazelix/nix shells
     use ../utils/nix_env_helper.nu ensure_nix_in_environment
 
@@ -135,5 +135,33 @@ export def main [cwd_override?: string, --verbose] {
             # Not in nix shell, enter it first
             ^nix develop --impure --command bash -c $cmd
         }
+    }
+}
+
+export def start_yazelix_session [cwd_override?: string, --verbose] {
+    if ($cwd_override | is-not-empty) {
+        if $verbose {
+            _start_yazelix_impl $cwd_override --verbose
+        } else {
+            _start_yazelix_impl $cwd_override
+        }
+    } else if $verbose {
+        _start_yazelix_impl --verbose
+    } else {
+        _start_yazelix_impl
+    }
+}
+
+export def main [cwd_override?: string, --verbose] {
+    if ($cwd_override | is-not-empty) {
+        if $verbose {
+            _start_yazelix_impl $cwd_override --verbose
+        } else {
+            _start_yazelix_impl $cwd_override
+        }
+    } else if $verbose {
+        _start_yazelix_impl --verbose
+    } else {
+        _start_yazelix_impl
     }
 }
