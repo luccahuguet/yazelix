@@ -10,22 +10,41 @@ export def setup_shell_hooks [
     shell: string
     yazelix_dir: string
     quiet_mode: bool = false
+    required: bool = false  # If true, error on missing config; if false, skip silently
 ]: nothing -> nothing {
     # Get shell-specific paths
     let shell_config = ($SHELL_CONFIGS | get $shell | str replace "~" $env.HOME)
+
+    # Map shell to correct file extension
+    let shell_ext = match $shell {
+        "bash" => "sh"
+        "zsh" => "zsh"
+        "fish" => "fish"
+        "nushell" => "nu"
+    }
+
     let yazelix_config = if $shell == "nushell" {
         $"($yazelix_dir)/nushell/config/config.nu"
     } else {
-        $"($yazelix_dir)/shells/($shell)/yazelix_($shell)_config.($shell)"
+        $"($yazelix_dir)/shells/($shell)/yazelix_($shell)_config.($shell_ext)"
     }
     let section_content = get_yazelix_section_content $shell $yazelix_dir
 
-    # Check if yazelix config file exists (skip for optional shells)
+    # Check if yazelix config file exists
     if not ($yazelix_config | path exists) {
-        if not $quiet_mode {
-            print $"⚠️  ($shell | str capitalize) config not found, skipping ($shell) setup"
+        if $required {
+            # Required shells (bash, nushell) must have config files
+            error make {
+                msg: $"❌ Required ($shell) config file not found: ($yazelix_config)"
+                label: {
+                    text: "This is a critical error - yazelix cannot function without bash and nushell configs"
+                    span: (metadata $shell).span
+                }
+            }
+        } else {
+            # Optional shells (fish, zsh) skip silently
+            return
         }
-        return
     }
 
     # Ensure shell config directory exists
@@ -45,7 +64,7 @@ export def setup_shell_hooks [
 
     let config_content = (open $shell_config)
 
-    # Check if v2 hooks already exist
+    # Check if v3 hooks already exist (current version)
     if ($config_content | str contains $YAZELIX_START_MARKER) {
         if not $quiet_mode {
             print $"✅ ($shell | str capitalize) config already sourced"
@@ -53,12 +72,12 @@ export def setup_shell_hooks [
         return
     }
 
-    # Check for v1 hooks and migrate
-    if ($config_content | str contains $YAZELIX_START_MARKER_V1) {
+    # Check for v2 hooks and migrate to v3
+    if ($config_content | str contains $YAZELIX_START_MARKER_V2) {
         let migration = migrate_shell_hooks $shell $shell_config $yazelix_dir
         if $migration.migrated {
             if not $quiet_mode {
-                print $"🔄 Migrated ($shell | str capitalize) hooks to v2 \(backup: ($migration.backup)\)"
+                print $"🔄 Migrated ($shell | str capitalize) hooks from v($migration.from_version) to v($migration.to_version) \(backup: ($migration.backup)\)"
             }
         } else if not $quiet_mode {
             print $"⚠️  Migration skipped: ($migration.reason)"
@@ -66,7 +85,20 @@ export def setup_shell_hooks [
         return
     }
 
-    # No existing hooks, add new v2 hooks
+    # Check for v1 hooks and migrate to v3
+    if ($config_content | str contains $YAZELIX_START_MARKER_V1) {
+        let migration = migrate_shell_hooks $shell $shell_config $yazelix_dir
+        if $migration.migrated {
+            if not $quiet_mode {
+                print $"🔄 Migrated ($shell | str capitalize) hooks from v($migration.from_version) to v($migration.to_version) \(backup: ($migration.backup)\)"
+            }
+        } else if not $quiet_mode {
+            print $"⚠️  Migration skipped: ($migration.reason)"
+        }
+        return
+    }
+
+    # No existing hooks, add new v3 hooks
     if not $quiet_mode {
         print $"🐚 Adding Yazelix ($shell | str capitalize) config to ($shell_config)"
     }

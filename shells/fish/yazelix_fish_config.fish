@@ -24,8 +24,9 @@ end
 
 # Yazelix aliases
 alias yazelix="nu $HOME/.config/yazelix/nushell/scripts/core/launch_yazelix.nu"
-alias yzx="$HOME/.config/yazelix/shells/bash/yzx"
 alias lg='lazygit'
+
+# Note: yzx command is defined in ~/.config/fish/config.fish (via v3 hooks) and is always available
 
 # Helix function (ensure runtime is set correctly)
 function hx --description "Helix editor with Yazelix mode support"

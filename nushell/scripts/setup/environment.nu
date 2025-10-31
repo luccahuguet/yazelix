@@ -112,15 +112,17 @@ def main [
     # Setup shell hooks for configured shells
     use ./shell_hooks.nu setup_shell_hooks
 
-    setup_shell_hooks "bash" $yazelix_dir $quiet_mode
-    setup_shell_hooks "nushell" $yazelix_dir $quiet_mode
+    # Bash and Nushell are REQUIRED - error if config missing
+    setup_shell_hooks "bash" $yazelix_dir $quiet_mode true
+    setup_shell_hooks "nushell" $yazelix_dir $quiet_mode true
 
+    # Fish and Zsh are optional - skip silently if not configured
     if ("fish" in $shells_to_configure) {
-        setup_shell_hooks "fish" $yazelix_dir $quiet_mode
+        setup_shell_hooks "fish" $yazelix_dir $quiet_mode false
     }
 
     if ("zsh" in $shells_to_configure) {
-        setup_shell_hooks "zsh" $yazelix_dir $quiet_mode
+        setup_shell_hooks "zsh" $yazelix_dir $quiet_mode false
     }
 
     # Editor setup is now handled in the shellHook

@@ -11,42 +11,18 @@ use ../utils/config_parser.nu parse_yazelix_config
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
 # =============================================================================
 
-# Main yzx command - default shows help
+# Yazelix Command Suite - Yazi + Zellij + Helix integrated terminal environment
+#
+# Manage yazelix sessions, run diagnostics, and configure your setup.
+# Supports: bash, nushell, fish, zsh
+#
+# Common commands:
+#   yzx launch    - Start a new yazelix session
+#   yzx doctor    - Run health checks
+#   yzx test      - Run test suite
+#   yzx versions  - Show tool versions
 export def yzx [] {
-    yzx help
-}
-
-# Help subcommand
-export def "yzx help" [] {
-    print "=== Yazelix Command Suite ==="
-    print ""
-    print "DIAGNOSTICS:"
-    print "  yzx doctor [--verbose] [--fix] - Run health checks and diagnostics"
-    print "  yzx test [--verbose] [--new-window] [--all] - Run test suite (--all includes visual sweep)"
-    print "  yzx sweep [--verbose] [--visual] - Test shell/terminal combinations"
-    print "  yzx bench [-n ITERATIONS] [-t TERMINAL] - Benchmark terminal launch performance"
-    print ""
-    print "CONFIGURATION MANAGEMENT:"
-    print "  yzx config_status [shell]      - Show status of all shell configurations"
-    print ""
-    print "VERSION AND SYSTEM:"
-    print "  yzx versions                   - Show version info for all tools"
-    print "  yzx info                       - Show yazelix system information"
-    print "  yzx why                        - Why Yazelix (elevator pitch)"
-    print ""
-    print "LAUNCHER:"
-    print "  yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose] - Launch Yazelix"
-    print "  yzx env [--no-shell] [--command CMD] - Load yazelix environment without UI"
-    print "  yzx restart                   - Restart yazelix (preserves persistent sessions)"
-    print ""
-    print "MAINTENANCE:"
-    print "  yzx update                     - Run 'nix flake update' for Yazelix"
-    print ""
-    print "HELP:"
-    print "  yzx help                       - Show this help message"
-    print ""
-    print "Supported shells: bash, nushell, fish, zsh"
-    print "=========================================="
+    help yzx
 }
 
 # Elevator pitch: Why Yazelix

@@ -36,8 +36,9 @@ fi
 
 # Yazelix Aliases for Bash
 alias yazelix="nu $HOME/.config/yazelix/nushell/scripts/core/launch_yazelix.nu"
-alias yzx="$HOME/.config/yazelix/shells/bash/yzx"
 alias lg='lazygit'
+
+# Note: yzx command is defined in ~/.bashrc (via v3 hooks) and is always available
 
 # Ensure this script doesn't produce output unless it's an error,
 # as it's sourced by .bashrc.

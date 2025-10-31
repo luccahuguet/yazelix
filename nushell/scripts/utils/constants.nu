@@ -6,9 +6,12 @@
 # v1 markers (for detecting old hooks)
 export const YAZELIX_START_MARKER_V1 = "# YAZELIX START - Yazelix managed configuration (do not modify this comment)"
 export const YAZELIX_END_MARKER_V1 = "# YAZELIX END - Yazelix managed configuration (do not modify this comment)"
-# v2 markers (current version with conditional loading)
-export const YAZELIX_START_MARKER = "# YAZELIX START v2 - Yazelix managed configuration (do not modify this comment)"
-export const YAZELIX_END_MARKER = "# YAZELIX END v2 - Yazelix managed configuration (do not modify this comment)"
+# v2 markers (for detecting old hooks with bash wrapper alias)
+export const YAZELIX_START_MARKER_V2 = "# YAZELIX START v2 - Yazelix managed configuration (do not modify this comment)"
+export const YAZELIX_END_MARKER_V2 = "# YAZELIX END v2 - Yazelix managed configuration (do not modify this comment)"
+# v3 markers (current version - yzx function in shell configs, no alias)
+export const YAZELIX_START_MARKER = "# YAZELIX START v3 - Yazelix managed configuration (do not modify this comment)"
+export const YAZELIX_END_MARKER = "# YAZELIX END v3 - Yazelix managed configuration (do not modify this comment)"
 export const YAZELIX_REGENERATE_COMMENT = "# delete this whole section to re-generate the config, if needed"
 
 # Version information
@@ -285,24 +288,28 @@ export def detect_environment [] {
 export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
     let config_file = $YAZELIX_CONFIG_FILES | get $shell
 
-    # Generate shell-specific conditional loading + yzx availability
+    # Generate shell-specific conditional loading + yzx function (always available)
     let section_body = if $shell == "bash" or $shell == "zsh" {
         let home_file = ($config_file | str replace "~" "$HOME")
-        let yzx_path = $"($yazelix_dir)/shells/bash/yzx"
         [
             $"if [ -n \"$IN_YAZELIX_SHELL\" ]; then"
             $"  source \"($home_file)\""
             "fi"
-            $"alias yzx=\"($yzx_path)\""
+            "# yzx command - always available for launching/managing yazelix"
+            "yzx() {"
+            "    nu -c \"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx $*\""
+            "}"
         ] | str join "\n"
     } else if $shell == "fish" {
         let home_file = ($config_file | str replace "~" "$HOME")
-        let yzx_path = $"($yazelix_dir)/shells/bash/yzx"
         [
             "if test -n \"$IN_YAZELIX_SHELL\""
             $"  source \"($home_file)\""
             "end"
-            $"alias yzx=\"($yzx_path)\""
+            "# yzx command - always available for launching/managing yazelix"
+            "function yzx --description \"Yazelix command suite\""
+            "    nu -c \"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx $argv\""
+            "end"
         ] | str join "\n"
     } else {
         # Nushell - always source, conditional is inside the config file itself
