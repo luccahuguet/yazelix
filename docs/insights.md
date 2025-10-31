@@ -80,7 +80,7 @@ Simple, direct, no spawning, no environment passing.
 
 ### Implementation
 
-The first fix in 2024 reintroduced a standalone `yzx start` command that invoked `start_yazelix.nu` directly. In October 2025 we carried that idea forward: `yzx launch --here` now imports the shared `start_yazelix_session` helper and runs it inside the current Nushell engine. No external `^nu` spawn, no recursive `nix develop`, same fast path whether you enter from a vanilla shell or an active Yazelix session.
+The first fix in 2024 reintroduced a standalone launcher command that invoked `start_yazelix.nu` directly. In October 2025 we carried that idea forward: `yzx launch --here` now imports the shared `start_yazelix_session` helper and runs it inside the current Nushell engine. No external `^nu` spawn, no recursive `nix develop`, same fast path whether you enter from a vanilla shell or an active Yazelix session.
 
 ### Commands After Fix
 
@@ -119,7 +119,7 @@ Verified with comprehensive sweep tests:
 - Kernel ARG_MAX limit: `getconf ARG_MAX` (typically 2097152 bytes on Linux)
 - Nix environment inspection: `env | wc -c` in `nix develop` shell
 - Related commits:
-  - `64e09a8` - "feat: bring back yzx start as separate command"
+  - `64e09a8` - Reintroduced the standalone launcher command
   - `2f1a6d3` - "refactor: inline start_yazelix into yzx launch --here"
 
 ---

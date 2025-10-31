@@ -264,7 +264,7 @@ export def "yzx restart" [] {
         print "yzx restart is disabled when persistent sessions are enabled."
         print "Your session will persist automatically - no restart needed."
         print ""
-        print "To start a new session, use: yzx start"
+        print "To start a new session, use: yzx launch --here"
         print $"To kill the current session, use: zellij kill-session ($config.session_name)"
     } else {
         print "Attempting to kill the current Zellij session..."

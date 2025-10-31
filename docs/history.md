@@ -68,7 +68,7 @@ There's much to be done yet. Infinite possibilities. But some rather closer than
 ### Changes from v9 to v10
 - zjstatus polish: swap layout widget (colored, hide‑if‑empty), colored shell/editor, smarter overlength hiding with tabs prioritized, improved inactive/active tab variants (fullscreen/sync/floating), and cleaner status without tab separators.
 - CLI: new `yzx why` command for a concise "elevator pitch".
-- **Launch interface consolidation**: Simplified `yzx start` and `yzx launch` into a single `yzx launch` command with intuitive flags:
+- **Launch interface consolidation**: Simplified the previous dual-command flow into a single `yzx launch` command with intuitive flags:
   - `yzx launch` (default): new terminal in current directory (project-oriented)
   - `yzx launch --here`: start in current terminal
   - `yzx launch --path DIR`: launch in specific directory
