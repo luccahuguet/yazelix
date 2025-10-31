@@ -21,7 +21,13 @@ use ../utils/config_parser.nu parse_yazelix_config
 #   yzx doctor    - Run health checks
 #   yzx test      - Run test suite
 #   yzx versions  - Show tool versions
-export def yzx [] {
+export def yzx [
+    --version (-V)  # Show version information
+] {
+    if $version {
+        print $"Yazelix ($YAZELIX_VERSION)"
+        return
+    }
     help yzx
 }
 
