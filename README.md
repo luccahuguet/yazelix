@@ -60,6 +60,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 ## Improvements of v10.5 over v10
 
+- **First-Class Neovim Support** - Neovim now has full integration features (reveal in sidebar, same-instance opening, pane detection) matching Helix capabilities
 - **Smart Config Detection** - Automatic hash-based change detection makes launches ~4s faster when config unchanged, while ensuring changes are always picked up
 - **Performance Benchmarking** - New `yzx bench` command measures terminal launch performance with statistical analysis
 - **Enhanced UI Controls** - Configurable Zellij options: `disable_zellij_tips` (default: true), `zellij_rounded_corners` (default: true)

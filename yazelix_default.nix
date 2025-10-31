@@ -71,16 +71,21 @@
   # • null (recommended): Use yazelix's Nix-provided Helix
   #   - Eliminates runtime conflicts with existing Helix installations
   #   - Binary and runtime are perfectly matched
-  #   - Full yazelix integration features (reveal in sidebar, same-instance opening, etc.)
+  #   - Full yazelix integration features (reveal in sidebar, same-instance opening, pane detection)
+  #
+  # • "nvim": Use Neovim (first-class support)
+  #   - Full yazelix integration features (reveal in sidebar, same-instance opening, pane detection)
+  #   - Requires keybinding setup - see docs/neovim_keybindings.md
+  #   - Works with your existing Neovim configuration
   #
   # • "hx": Use your system Helix from PATH
   #   - Requires setting helix_runtime_path to match your Helix version
   #   - Full yazelix integration if runtime matches
   #   - Use this if you have a custom Helix build you prefer
   #
-  # • Other editors: "vim", "nvim", "nano", "emacs", etc.
+  # • Other editors: "vim", "nano", "emacs", "kak", etc.
   #   - Basic integration only (new panes, tab naming)
-  #   - Loses advanced features (reveal in sidebar, same-instance opening)
+  #   - No advanced features (reveal in sidebar, same-instance opening)
   #   - Works reliably but with limited yazelix-specific functionality
   editor_command = null;
 

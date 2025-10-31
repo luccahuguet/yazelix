@@ -105,10 +105,11 @@ in {
       default = null;
       description = ''
         Editor command - yazelix will always set this as EDITOR.
-        
-        - null (default): Use yazelix's Nix-provided Helix to avoid runtime conflicts
+
+        - null (default): Use yazelix's Nix-provided Helix - full integration
+        - "nvim": Use Neovim - first-class support with full integration
         - "hx": Use system Helix from PATH (requires matching helix_runtime_path)
-        - Other editors: "vim", "nvim", "nano", etc. (loses Helix-specific features)
+        - Other editors: "vim", "nano", "emacs", etc. (basic integration only)
       '';
     };
     
