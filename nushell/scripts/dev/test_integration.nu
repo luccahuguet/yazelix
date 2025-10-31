@@ -2,7 +2,7 @@
 # Test integration of Nix detector with main scripts
 
 def test_with_nix [] {
-    print "🧪 Testing yzx start with Nix available..."
+    print "🧪 Testing yzx launch --here with Nix available..."
 
     # Test the ensure_nix_available function directly
     try {
@@ -15,7 +15,7 @@ def test_with_nix [] {
 }
 
 def test_without_nix [] {
-    print "🧪 Testing yzx start without Nix in PATH..."
+    print "🧪 Testing yzx launch --here without Nix in PATH..."
 
     # Test with modified PATH
     with-env {PATH: ($env.PATH | where $it !~ "nix")} {
