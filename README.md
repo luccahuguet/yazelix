@@ -278,16 +278,16 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 
 📖 **[Complete Troubleshooting Guide →](./docs/troubleshooting.md)** - Comprehensive solutions for common issues
 
-## VS Code and Cursor Integration
-Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) in your VS Code or Cursor integrated terminal? Now it's even easier with `yzx env`!
+## Editor Terminal Integration
+Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) inside your editor? Zed, VS Code, and Cursor all work seamlessly with `yzx env`.
 
 **Quick Setup:**
-1. Open VS Code/Cursor integrated terminal
+1. Open your editor's integrated terminal
 2. Run `yzx env` to load all Yazelix tools without the UI in your configured shell
-3. Enjoy full Yazelix environment in your editor
+3. Enjoy the full Yazelix environment in place
 Need to stay in your editor's existing shell? Run `yzx env --no-shell` instead.
 
-For more advanced integration options, see our [VS Code/Cursor integration guide](./docs/vscode_cursor_integration.md).
+For more advanced integration options, see our [Zed + VS Code terminal integration guide](./docs/editor_terminal_integration.md).
 
 ## Styling and Themes
 Yazelix includes transparency settings and theme configurations for a beautiful terminal experience. The terminal emulator configs include transparency settings you can comment/uncomment, and Helix comes with transparent theme options. See [docs/styling.md](./docs/styling.md) for customization details.
