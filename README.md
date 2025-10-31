@@ -12,22 +12,22 @@
 ![yazelix_v8_5_example](assets/screenshots/yazelix_v8_5_example.jpeg)
 
 ## Overview
-Yazelix integrates Yazi, Zellij, and Helix, hence the name, get it?
+Yazelix integrates Yazi, Zellij, and Helix (hence the name!), with first-class support for Neovim too.
 
 - **Use your preferred shell**: Bash, Fish, Zsh, or Nushell - Yazelix works with all of them
 - Zellij orchestrates everything, with Yazi as a sidebar and your chosen editor (Helix by default)
 - To hide the sidebar, make your pane fullscreen! (`Ctrl p + f` or `Alt Shift f`)
 - Every keybinding from Zellij that conflicts with Helix is remapped [see here](#keybindings)
 - When you hit Enter on a file/folder in the "sidebar":
-  - **With Helix**: If Helix is already open in the topmost pane of the stack, it opens that file/folder in a new buffer in Helix. If Helix isn't open, it launches Helix in a new pane for you. It always finds a running Helix instance if it exists and is in the top pane of the stacked group.
+  - **With Helix or Neovim**: Searches up to 4 panes for an existing editor instance. If found, moves it to the top and opens the file there. If not found, launches the editor in a new pane.
   - **With other editors**: Opens the file in a new pane with your configured editor
   - It automatically renames the Zellij tab to the file's underlying Git repo or directory name
 - Features include:
-  - "Reveal file in sidebar" (press `Alt y` in Helix to reveal the file in Yazi, `Alt y` in Yazi to focus Helix, see [Keybindings](#keybindings))
+  - "Reveal file in sidebar" (press `Alt y` in Helix/Neovim to reveal the file in Yazi, `Alt y` in Yazi to focus editor, see [Keybindings](#keybindings))
   - A Yazi plugin to enhance the status bar in the sidebar pane, making it uncluttered, colorful, and showing file permissions
   - A [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) showing file changes in the Yazi sidebar
   - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/luccahuguet/auto-layout.yazi), perfect for sidebar use
-  - **Modular editor support**: Use Helix for full integration features, or any other editor via the `editor_command` setting
+  - **Modular editor support**: Helix and Neovim have full integration features, or use any other editor via the `editor_command` setting
 - This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
 - See [boot sequence](./docs/boot_sequence.md) for details on how Yazelix starts up
 
@@ -36,7 +36,7 @@ Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix. It
 
 It already comes with cool zellij and yazi plugins, some of which I maintain myself
 
-It has features like `reveal in Yazi` (from Helix) and opening files from Yazi in your configured editor
+It has features like `reveal in Yazi` (from Helix or Neovim) and opening files from Yazi in your configured editor
 
 Supports top terminals (Ghostty, WezTerm, Kitty, Alacritty) and popular shells (Bash, Zsh, Fish, Nushell). Easy to configure via a single Nix file with sensible defaults
 
@@ -78,7 +78,7 @@ Full version history: [Version History](./docs/history.md)
 ## Compatibility
 - **Platform**: Works on Linux and macOS
 - **Terminal**: Ghostty (via Homebrew on macOS), Kitty, WezTerm, Alacritty; Foot on Linux only
-- **Editor**: Any editor, but Helix has first-class support (reveal in sidebar, open buffer in running instance, etc). Configure other editors via `editor_command` setting in `yazelix.nix`
+- **Editor**: Any editor works! Helix and Neovim have first-class support (reveal in sidebar, open buffer in running instance, pane detection). Configure via `editor_command` setting in `yazelix.nix`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
@@ -128,7 +128,22 @@ For Helix-Yazi integration, add this to your Helix config (`~/.config/helix/conf
 A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
 ```
 
-📖 **[Complete Helix Keybindings Guide →](./docs/keybindings.md)** - Recommended keybindings for enhanced editing experience (git blame!)
+📖 **[Complete Helix Keybindings Guide →](./docs/helix_keybindings.md)** - Recommended keybindings for enhanced editing experience
+
+### Neovim Integration
+For Neovim-Yazi integration, add this to your Neovim config (`~/.config/nvim/init.lua`):
+
+```lua
+-- Yazelix sidebar integration - reveal current file in Yazi sidebar
+vim.keymap.set('n', '<M-y>', function()
+  local buffer_path = vim.fn.expand('%:p')
+  if buffer_path ~= '' then
+    vim.fn.system('nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu "' .. buffer_path .. '"')
+  end
+end, { desc = 'Reveal in Yazi sidebar' })
+```
+
+📖 **[Complete Neovim Keybindings Guide →](./docs/neovim_keybindings.md)** - Setup instructions and workflow tips
 
 ## Version Check
 Check installed tool versions:
@@ -136,12 +151,13 @@ Check installed tool versions:
 nu nushell/scripts/utils/version_info.nu
 ```
 
-## Helix Pane Detection Logic
+## Editor Pane Detection Logic
 
 When opening files from Yazi, Yazelix will:
-- Check the topmost pane and the next two below for a zellij pane named `editor` (which will be the Helix pane).
-- If Helix is found, it is moved to the top and reused; if not, a new Helix pane is opened.
-- This is need because sometimes when opening a new zellij pane in the pane stack, or deleting one, the editor pane will move around. Most of the times it will move down twice! So the workaround works.
+- Check the topmost pane and up to 3 panes below for a Zellij pane named `editor` (works for both Helix and Neovim).
+- If your editor is found, it is moved to the top and reused; if not, a new editor pane is opened.
+- This is needed because when opening or closing Zellij panes in the stack, the editor pane can move around (often down by 2 positions).
+- Supports both Helix and Neovim with identical behavior - configure via `editor_command` in `yazelix.nix`.
 
 ## Version History & Changelog
 
@@ -171,9 +187,10 @@ Yazelix uses a **layered configuration system** that safely merges your personal
 📝 **[Editor Configuration Guide →](./docs/editor_configuration.md)** - Complete guide for configuring editors
 
 **Quick setup:**
-- **Default (recommended)**: `editor_command = null` - Uses yazelix's Helix, no conflicts
-- **System Helix**: `editor_command = "hx"` - Requires matching `helix_runtime_path` 
-- **Other editors**: `editor_command = "nvim"` - Basic integration, loses Helix features
+- **Default (recommended)**: `editor_command = null` - Uses yazelix's Helix, no conflicts, full integration
+- **Neovim**: `editor_command = "nvim"` - Full integration (reveal in sidebar, same-instance opening, pane detection)
+- **System Helix**: `editor_command = "hx"` - Requires matching `helix_runtime_path`, full integration
+- **Other editors**: `editor_command = "vim"` - Basic integration (file opening, tab naming only)
 
 ### Alternative: CLI-Only Mode
 To use Yazelix tools without starting the full interface (no sidebar, no Zellij), use:
