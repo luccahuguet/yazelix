@@ -57,7 +57,7 @@ Configure VS Code or Cursor to launch directly into the Yazelix environment.
   "terminal.integrated.profiles.linux": {
     "yazelix-env": {
       "path": "/usr/bin/bash",
-      "args": ["-c", "source ~/.nix-profile/etc/profile.d/nix.sh && yzx env"],
+      "args": ["-ic", "yzx env"],
       "icon": "terminal-bash"
     }
   },
@@ -71,12 +71,14 @@ Configure VS Code or Cursor to launch directly into the Yazelix environment.
   "terminal.integrated.profiles.osx": {
     "yazelix-env": {
       "path": "/bin/bash",
-      "args": ["-c", "source ~/.nix-profile/etc/profile.d/nix.sh && yzx env"]
+      "args": ["-ic", "yzx env"]
     }
   },
   "terminal.integrated.defaultProfile.osx": "yazelix-env"
 }
 ```
+
+If your shell init doesn't expose `yzx env` yet, swap back to the longer form that explicitly sources your Nix profile.
 
 You're done!
 
