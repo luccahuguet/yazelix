@@ -45,13 +45,22 @@ When creating new files or directories, always use underscores to maintain consi
 
 ## Nushell Development Notes
 
-**CRITICAL: Parentheses in String Interpolation** - Nushell interprets unescaped parentheses `()` in string interpolation as command substitution. This is a common source of errors. Always escape parentheses in display strings:
-- ✅ Correct: `$"Using terminal \(Ghostty with nixGL\)"`
-- ❌ Wrong: `$"Using terminal (Ghostty with nixGL)"` (tries to execute `Ghostty` command)
-- ✅ Correct: `"# Comment \(with parentheses\)"`
-- ❌ Wrong: `"# Comment (with parentheses)"` (tries to execute command inside parentheses)
+### 🚨 MOST CRITICAL RULE: Escaping Parentheses in String Interpolation
 
-**Always check for unescaped parentheses when debugging Nushell errors!**
+**Nushell interprets unescaped parentheses `()` in string interpolation as command substitution!**
+
+**The ONLY correct syntax is:** `\(` and `\)` (single backslash)
+- ❌ **NEVER use:** `\\(` and `\\)` (double backslash) - this will fail!
+- ❌ **NEVER use:** `()` (no backslash) - this executes commands!
+
+**Examples:**
+- ✅ Correct: `$"Checking pane \(editor\)"`
+- ❌ Wrong: `$"Checking pane \\(editor\\)"` → tries to execute command `editor\\`
+- ❌ Wrong: `$"Checking pane (editor)"` → tries to execute command `editor`
+- ✅ Correct: `log_to_file $log "Sent Escape \(27\) to enter normal mode"`
+- ❌ Wrong: `log_to_file $log "Sent Escape \\(27\\) to enter normal mode"` → fails
+
+**If you get "Command X not found" errors in string interpolation, check for incorrect parentheses escaping first!**
 
 ## Python Notes
 

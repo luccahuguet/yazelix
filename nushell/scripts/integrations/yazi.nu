@@ -114,7 +114,7 @@ def open_with_editor_integration [
     log_to_file $log_file $"open_with_($editor_name) called with file_path: '($file_path)'"
 
     # Always check the topmost and next three panes below for editor
-    log_to_file $log_file $"Checking up to 4 panes for ($editor_name) pane \\(editor\\)"
+    log_to_file $log_file $"Checking up to 4 panes for ($editor_name) pane \(editor\)"
     let editor_pane_name = "editor"
     let max_panes = 4
     mut found_index = -1

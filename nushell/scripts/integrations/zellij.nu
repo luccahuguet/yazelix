@@ -111,7 +111,7 @@ def open_in_existing_editor [
 
     try {
         zellij action write 27
-        log_to_file $log_file "Sent Escape \\(27\\) to enter normal mode"
+        log_to_file $log_file "Sent Escape \(27\) to enter normal mode"
 
         let cd_cmd = if $use_quotes {
             $"($cd_command) \"($working_dir)\""
@@ -121,7 +121,7 @@ def open_in_existing_editor [
         zellij action write-chars $cd_cmd
         log_to_file $log_file $"Sent cd command: ($cd_cmd)"
         zellij action write 13
-        log_to_file $log_file "Sent Enter \\(13\\) for cd command"
+        log_to_file $log_file "Sent Enter \(13\) for cd command"
 
         let file_cmd = if $use_quotes {
             $"($open_command) \"($file_path)\""
@@ -131,7 +131,7 @@ def open_in_existing_editor [
         zellij action write-chars $file_cmd
         log_to_file $log_file $"Sent open command: ($file_cmd)"
         zellij action write 13
-        log_to_file $log_file "Sent Enter \\(13\\) for open command"
+        log_to_file $log_file "Sent Enter \(13\) for open command"
 
         zellij action rename-tab $tab_name
         log_to_file $log_file $"Renamed tab to: ($tab_name)"
