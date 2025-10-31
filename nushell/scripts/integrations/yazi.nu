@@ -2,12 +2,18 @@
 # Yazi integration utilities for Yazelix
 
 use ../utils/logging.nu log_to_file
-use zellij.nu [get_running_command, is_hx_running, open_in_existing_helix, open_new_helix_pane, find_and_focus_helix_pane, move_focused_pane_to_top, get_focused_pane_name, get_tab_name]
+use zellij.nu [get_running_command, is_hx_running, is_nvim_running, open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, find_and_focus_helix_pane, move_focused_pane_to_top, get_focused_pane_name, get_tab_name]
 
 # Check if the editor command is Helix (supports both simple names and full paths)
 # This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
 def is_helix_editor [editor: string] {
     ($editor | str ends-with "/hx") or ($editor == "hx") or ($editor | str ends-with "/helix") or ($editor == "helix")
+}
+
+# Check if the editor command is Neovim (supports both simple names and full paths)
+# This allows yazelix to work with "nvim", "neovim", "/nix/store/.../bin/nvim", "/usr/bin/nvim", etc.
+def is_neovim_editor [editor: string] {
+    ($editor | str ends-with "/nvim") or ($editor == "nvim") or ($editor | str ends-with "/neovim") or ($editor == "neovim")
 }
 
 # Sync yazi's directory to match the opened file's location
@@ -95,20 +101,28 @@ export def reveal_in_yazi [buffer_name: string] {
 }
 
 
-# Open file with Helix (with full Yazelix integration)
-def open_with_helix [file_path: path, yazi_id: string] {
-    log_to_file "open_helix.log" $"open_with_helix called with file_path: '($file_path)'"
+# Generic function to find and open file with editor integration
+def open_with_editor_integration [
+    file_path: path
+    yazi_id: string
+    editor_name: string
+    log_file: string
+    is_editor_running: closure
+    open_in_existing: closure
+    open_new_pane: closure
+] {
+    log_to_file $log_file $"open_with_($editor_name) called with file_path: '($file_path)'"
 
-    # Always check the topmost and next three panes below for Helix
-    log_to_file "open_helix.log" "Checking up to 4 panes for Helix pane (editor)"
-    let helix_pane_name = "editor"
+    # Always check the topmost and next three panes below for editor
+    log_to_file $log_file $"Checking up to 4 panes for ($editor_name) pane \\(editor\\)"
+    let editor_pane_name = "editor"
     let max_panes = 4
     mut found_index = -1
     mut i = 0
     while ($i < $max_panes) {
         let running_command = (get_running_command)
         let pane_name = (get_focused_pane_name)
-        if (is_hx_running $running_command) or ($pane_name == $helix_pane_name) {
+        if (do $is_editor_running $running_command) or ($pane_name == $editor_pane_name) {
             $found_index = $i
             break
         }
@@ -117,27 +131,36 @@ def open_with_helix [file_path: path, yazi_id: string] {
     }
 
     if $found_index != -1 {
-        log_to_file "open_helix.log" "Helix pane found and focused, moving to top and opening in existing instance"
-        print "Helix pane found and focused, moving to top and opening in existing instance"
+        log_to_file $log_file $"($editor_name) pane found and focused, moving to top and opening in existing instance"
+        print $"($editor_name) pane found and focused, moving to top and opening in existing instance"
         move_focused_pane_to_top $found_index
-        open_in_existing_helix $file_path
+        do $open_in_existing $file_path
     } else {
-        log_to_file "open_helix.log" "Helix pane not found in top 4, opening new pane"
-        print "Helix pane not found in top 4, opening new pane"
-        open_new_helix_pane $file_path $yazi_id
+        log_to_file $log_file $"($editor_name) pane not found in top 4, opening new pane"
+        print $"($editor_name) pane not found in top 4, opening new pane"
+        do $open_new_pane $file_path $yazi_id
     }
 
     # Sync yazi's directory to match the opened file's location
-    sync_yazi_to_directory $file_path $yazi_id "open_helix.log"
+    sync_yazi_to_directory $file_path $yazi_id $log_file
 
     # In no-sidebar mode, we leave the Yazi pane open - no need to close it
-    # This eliminates any flicker issues entirely
     let sidebar_enabled = ($env.YAZELIX_ENABLE_SIDEBAR? | default "true") == "true"
     if (not $sidebar_enabled) {
-        log_to_file "open_helix.log" "No-sidebar mode: leaving Yazi pane open, no close operation needed"
+        log_to_file $log_file $"No-sidebar mode: leaving Yazi pane open, no close operation needed"
     }
 
-    log_to_file "open_helix.log" "open_with_helix function completed"
+    log_to_file $log_file $"open_with_($editor_name) function completed"
+}
+
+# Open file with Helix (with full Yazelix integration)
+def open_with_helix [file_path: path, yazi_id: string] {
+    open_with_editor_integration $file_path $yazi_id "Helix" "open_helix.log" {|cmd| is_hx_running $cmd} {|path| open_in_existing_helix $path} {|path, id| open_new_helix_pane $path $id}
+}
+
+# Open file with Neovim (with full Yazelix integration)
+def open_with_neovim [file_path: path, yazi_id: string] {
+    open_with_editor_integration $file_path $yazi_id "Neovim" "open_neovim.log" {|cmd| is_nvim_running $cmd} {|path| open_in_existing_neovim $path} {|path, id| open_new_neovim_pane $path $id}
 }
 
 # Open file with generic editor (basic Zellij integration)
@@ -212,12 +235,15 @@ export def open_file_with_editor [file_path: path] {
     }
 
     # For no-sidebar mode, we still use the multi-pane approach since we start with editor
-    # The native Helix-Yazi integration (Ctrl+y) handles the "open in same pane" workflow
+    # The native editor-Yazi integration (Ctrl+y) handles the "open in same pane" workflow
 
-    # Sidebar mode: use the existing multi-pane logic
+    # Dispatch to the appropriate editor handler
     if (is_helix_editor $editor) {
         log_to_file "open_editor.log" "Detected Helix editor, using Helix-specific logic"
         open_with_helix $file_path $yazi_id
+    } else if (is_neovim_editor $editor) {
+        log_to_file "open_editor.log" "Detected Neovim editor, using Neovim-specific logic"
+        open_with_neovim $file_path $yazi_id
     } else {
         log_to_file "open_editor.log" $"Using generic editor approach for: ($editor)"
         open_with_generic_editor $file_path $editor $yazi_id
