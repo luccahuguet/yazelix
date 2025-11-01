@@ -104,28 +104,25 @@ export def profile_launch [
 
     # Display results
     print "\n📊 Profile Results:\n"
-    print "╭─────────────────────────────────────────────┬──────────────╮"
-    print "│ Step                                        │ Duration (ms)│"
-    print "├─────────────────────────────────────────────┼──────────────┤"
 
     let total_ms = ($all_results | get duration_ms | math sum)
 
-    for $result in $all_results {
-        let step_padded = ($result.step | fill -a right -w 43)
-        let duration = ($result.duration_ms | into string | fill -a left -w 12)
-        print $"│ ($step_padded) │ ($duration) │"
-
-        if ($result.note? | is-not-empty) {
-            let note = ($result.note | fill -a right -w 43)
-            print $"│   ↳ ($note) │              │"
+    # Format results for display
+    let display_results = ($all_results | each {|result|
+        let duration = ($result.duration_ms | math round --precision 2)
+        {
+            step: $result.step
+            duration_ms: $duration
+            note: ($result.note? | default "")
         }
-    }
+    })
 
-    print "├─────────────────────────────────────────────┼──────────────┤"
-    let total_padded = ("TOTAL" | fill -a right -w 43)
-    let total_duration = ($total_ms | into string | fill -a left -w 12)
-    print $"│ ($total_padded) │ ($total_duration) │"
-    print "╰─────────────────────────────────────────────┴──────────────╯"
+    # Show table
+    $display_results | select step duration_ms | table -e
+
+    # Show total
+    let total_rounded = ($total_ms | math round --precision 2)
+    print $"\nTotal: ($total_rounded)ms"
 
     # Performance assessment
     print "\n💡 Performance Assessment:\n"
