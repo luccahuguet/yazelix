@@ -61,7 +61,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 ## Improvements of v10.5 over v10
 
 - **First-Class Neovim Support** - Neovim now has full integration features (reveal in sidebar, same-instance opening, pane detection) matching Helix capabilities
-- **Smart Config Detection** - Automatic hash-based change detection makes launches ~4s faster when config unchanged, while ensuring changes are always picked up
+- **Smart Config Detection** - Automatic hash-based change detection makes launches ~4s faster when config unchanged, if running from a already existing yazelix session, while ensuring changes are always picked up
 - **Performance Benchmarking** - New `yzx bench` command measures terminal launch performance with statistical analysis
 - **Enhanced UI Controls** - Configurable Zellij options: `disable_zellij_tips` (default: true), `zellij_rounded_corners` (default: true)
 - **Streamlined Startup** - Welcome screen disabled by default for faster launches (info still logged)
@@ -69,6 +69,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Terminal Detection** - Proper terminal identification via `YAZELIX_TERMINAL` environment variable
 - **Conditional Shell Hooks** - Shell hooks only load Yazelix tools when inside the environment, preventing errors in regular terminals
 - **Yazi Directory Sync** - When opening files from Yazi, the sidebar automatically navigates into the file's parent directory, keeping the view synchronized with the tab name and editor context
+- **Simplified Clipboard** - Replaced custom clipboard module with Nushell's standard library implementation, added `clp` command as shorthand for clipboard copy
 - **Comprehensive Pack System** - 10 curated technology packs organized into language_packs and tool_packs:
   - **Language Packs (7)**: Python, TypeScript, Rust, Go, Kotlin, Gleam, Nix - complete toolchains with LSP, formatters, linters, and dev tools
   - **Tool Packs (3)**: Git (onefetch, gh, delta, gitleaks, jj, prek), Config (taplo, mpls), File Management (ouch, erdtree, serpl)
