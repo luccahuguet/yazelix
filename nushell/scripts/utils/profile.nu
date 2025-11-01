@@ -107,18 +107,16 @@ export def profile_launch [
 
     let total_ms = ($all_results | get duration_ms | math sum)
 
-    # Format results for display
+    # Format and display results
     let display_results = ($all_results | each {|result|
         let duration = ($result.duration_ms | math round --precision 2)
         {
-            step: $result.step
-            duration_ms: $duration
-            note: ($result.note? | default "")
+            Step: $result.step
+            "Duration (ms)": $duration
         }
     })
 
-    # Show table
-    $display_results | select step duration_ms | table -e
+    print ($display_results | table)
 
     # Show total
     let total_rounded = ($total_ms | math round --precision 2)
