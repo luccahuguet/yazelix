@@ -71,8 +71,6 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Conditional Shell Hooks** - Shell hooks only load Yazelix tools when inside the environment, preventing errors in regular terminals
 - **Yazi Directory Sync** - When opening files from Yazi, the sidebar automatically navigates into the file's parent directory, keeping the view synchronized with the tab name and editor context
 - **Simplified Clipboard** - Replaced custom clipboard module with Nushell's standard library implementation, added `clp` command as shorthand for clipboard copy
-- **Automatic direnv Integration** - 40x faster launches via automatic direnv setup (hooks added to all shells, .envrc auto-allowed)
-- **Automatic v3→v4 Migration** - Existing users automatically upgraded to v4 hooks with direnv support on next launch
 - **Comprehensive Pack System** - 10 curated technology packs organized into language_packs and tool_packs:
   - **Language Packs (7)**: Python, TypeScript, Rust, Go, Kotlin, Gleam, Nix - complete toolchains with LSP, formatters, linters, and dev tools
   - **Tool Packs (3)**: Git (onefetch, gh, delta, gitleaks, jj, prek), Config (taplo, mpls), File Management (ouch, erdtree, serpl)

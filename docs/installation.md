@@ -270,30 +270,6 @@ If you followed step 3, you already have your `~/.config/yazelix/yazelix.nix` co
 
 For complete customization options, see the [Customization Guide](./customization.md).
 
-## Performance Optimization (Automatic)
-
-### 40x Faster Launches with direnv
-
-Yazelix automatically configures direnv to speed up launches from **~4 seconds to <100ms** (40x faster!).
-
-**What happens automatically:**
-- ✅ direnv and nix-direnv are installed (part of `recommended_deps`)
-- ✅ direnv hooks are added to your shell configs (bash, zsh, fish, nushell)
-- ✅ `.envrc` is allowed for the Yazelix directory
-- ✅ Environment auto-reloads when `flake.nix` or `flake.lock` changes
-
-**Performance impact:**
-- First launch: ~4s (initial Nix evaluation)
-- Subsequent launches: <100ms (40x faster!)
-
-**Verification:**
-After your first Yazelix session, restart your shell and run:
-```bash
-yzx doctor
-```
-
-This will confirm direnv is properly configured.
-
 ## Troubleshooting
 
 🔍 **Quick diagnosis:** `yzx doctor` - Automated health checks and fixes

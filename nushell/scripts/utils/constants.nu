@@ -9,17 +9,13 @@ export const YAZELIX_END_MARKER_V1 = "# YAZELIX END - Yazelix managed configurat
 # v2 markers (for detecting old hooks with bash wrapper alias)
 export const YAZELIX_START_MARKER_V2 = "# YAZELIX START v2 - Yazelix managed configuration (do not modify this comment)"
 export const YAZELIX_END_MARKER_V2 = "# YAZELIX END v2 - Yazelix managed configuration (do not modify this comment)"
-# v3 markers (yzx function in shell configs, no direnv)
+# v3 markers (yzx function in shell configs)
 export const YAZELIX_START_MARKER_V3 = "# YAZELIX START v3 - Yazelix managed configuration (do not modify this comment)"
 export const YAZELIX_END_MARKER_V3 = "# YAZELIX END v3 - Yazelix managed configuration (do not modify this comment)"
-# v4 markers (current version - yzx function + automatic direnv setup)
+# v4 markers (current version - same as v3, version bump for yzx profile)
 export const YAZELIX_START_MARKER = "# YAZELIX START v4 - Yazelix managed configuration (do not modify this comment)"
 export const YAZELIX_END_MARKER = "# YAZELIX END v4 - Yazelix managed configuration (do not modify this comment)"
 export const YAZELIX_REGENERATE_COMMENT = "# delete this whole section to re-generate the config, if needed"
-
-# direnv markers (for automatic direnv setup)
-export const DIRENV_START_MARKER = "# DIRENV START - Yazelix managed direnv hook (do not modify this comment)"
-export const DIRENV_END_MARKER = "# DIRENV END - Yazelix managed direnv hook (do not modify this comment)"
 
 # Version information
 export const YAZELIX_VERSION = "v10.5"
@@ -291,7 +287,7 @@ export def detect_environment [] {
     }
 }
 
-# Get the complete yazelix section content for a shell (includes direnv in v4)
+# Get the complete yazelix section content for a shell
 export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
     let config_file = $YAZELIX_CONFIG_FILES | get $shell
 
@@ -299,9 +295,6 @@ export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
     let section_body = if $shell == "bash" or $shell == "zsh" {
         let home_file = ($config_file | str replace "~" "$HOME")
         [
-            "# direnv integration for 40x faster launches"
-            'eval "$(direnv hook ' + $shell + ')"'
-            ""
             $"if [ -n \"$IN_YAZELIX_SHELL\" ]; then"
             $"  source \"($home_file)\""
             "fi"
@@ -313,9 +306,6 @@ export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
     } else if $shell == "fish" {
         let home_file = ($config_file | str replace "~" "$HOME")
         [
-            "# direnv integration for 40x faster launches"
-            "direnv hook fish | source"
-            ""
             "if test -n \"$IN_YAZELIX_SHELL\""
             $"  source \"($home_file)\""
             "end"
@@ -334,29 +324,4 @@ export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
     }
 
     (get_yazelix_start_comment) + "\n" + $section_body + "\n" + $YAZELIX_END_MARKER
-}
-
-# Get the direnv hook section content for a shell
-export def get_direnv_section_content [shell: string] {
-    let hook_content = if $shell == "bash" or $shell == "zsh" {
-        'eval "$(direnv hook ' + $shell + ')"'
-    } else if $shell == "fish" {
-        'direnv hook fish | source'
-    } else if $shell == "nu" or $shell == "nushell" {
-        [
-            '$env.config = ($env.config | upsert hooks.pre_prompt {'
-            '    |config|'
-            '    let old_hooks = ($config.hooks?.pre_prompt? | default [])'
-            '    let direnv_hook = {'
-            '        condition: {|| (which direnv | is-not-empty)}'
-            '        code: {|| direnv export json | from json | default {} | load-env}'
-            '    }'
-            '    $old_hooks | append $direnv_hook'
-            '})'
-        ] | str join "\n"
-    } else {
-        ""
-    }
-
-    $DIRENV_START_MARKER + "\n" + $hook_content + "\n" + $DIRENV_END_MARKER
 }

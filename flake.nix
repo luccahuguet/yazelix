@@ -380,8 +380,6 @@
           atuin # Shell history manager with sync and search capabilities
           carapace # Command-line completion tool for multiple shells
           markdown-oxide # Personal Knowledge Management System (PKMS) that works with text editors through LSP
-          direnv # Automatically loads environment variables when entering directories
-          nix-direnv # Fast, persistent nix-shell/nix develop integration for direnv
         ];
 
         # Yazi extension dependencies (enhance Yazi functionality, lightweight)
