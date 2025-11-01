@@ -8,6 +8,9 @@ shells/zsh/initializers
 # New XDG-compliant state directory (local machine state, not tracked)
 .local/
 
+# direnv cache directory
+.direnv/
+
 # User configuration
 yazelix.nix
 helix_custom/

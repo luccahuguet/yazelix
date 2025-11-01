@@ -342,27 +342,88 @@ export def fix_create_config [] {
     }
 }
 
+# Fix direnv setup by allowing .envrc
+export def fix_direnv_setup [] {
+    let yazelix_dir = "~/.config/yazelix" | path expand
+    let envrc_path = ($yazelix_dir | path join ".envrc")
+
+    try {
+        bash -c $"direnv allow ($envrc_path)"
+        print $"✅ Allowed .envrc for Yazelix directory"
+        return true
+    } catch {
+        print "❌ Failed to allow .envrc - make sure direnv is installed and in PATH"
+        return false
+    }
+}
+
+# Check direnv setup for faster launches
+export def check_direnv_setup [] {
+    # Check if direnv is available
+    let direnv_available = (which direnv | is-not-empty)
+
+    if not $direnv_available {
+        return {
+            status: "info"
+            message: "direnv not found - launches from regular shells will take ~4s"
+            details: "Install direnv and nix-direnv for <100ms launches. Run: direnv allow ~/.config/yazelix"
+            fix_available: false
+        }
+    }
+
+    # Check if .envrc is allowed
+    let yazelix_dir = "~/.config/yazelix" | path expand
+    let envrc_path = ($yazelix_dir | path join ".envrc")
+
+    # Try to check direnv status for the yazelix directory
+    let is_allowed = try {
+        cd $yazelix_dir
+        let output = (bash -c "direnv status 2>&1" | complete)
+        ($output.stdout | str contains "Found RC allowed true")
+    } catch { false }
+
+    if not $is_allowed {
+        return {
+            status: "warning"
+            message: "direnv is installed but .envrc not allowed"
+            details: $"Run: direnv allow ($envrc_path)"
+            fix_available: true
+            fix_command: $"direnv allow ($envrc_path)"
+        }
+    }
+
+    {
+        status: "ok"
+        message: "direnv is set up correctly - enjoy fast launches!"
+        details: "Launches from this directory will be <100ms instead of ~4s"
+        fix_available: false
+    }
+}
+
 # Main doctor function
 export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
     print "🔍 Running Yazelix Health Checks...\n"
     
     # Collect all checks
     mut all_results = []
-    
+
     # Runtime conflicts check
     $all_results = ($all_results | append (check_helix_runtime_conflicts))
-    
+
     # Environment variables
     $all_results = ($all_results | append (check_environment_variables))
-    
+
     # Configuration
     $all_results = ($all_results | append (check_configuration))
-    
-    # Shell integration  
+
+    # Shell integration
     $all_results = ($all_results | append (check_shell_integration))
-    
+
     # Log files
     $all_results = ($all_results | append (check_log_files))
+
+    # direnv setup
+    $all_results = ($all_results | append (check_direnv_setup))
     
     # Display results
     let errors = ($all_results | where status == "error")
@@ -436,7 +497,13 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
         if not ($config_issues | is-empty) {
             fix_create_config
         }
-        
+
+        # Fix direnv setup
+        let direnv_issues = ($all_results | where status == "warning" and message =~ "direnv")
+        if not ($direnv_issues | is-empty) {
+            fix_direnv_setup
+        }
+
         print "\n✅ Auto-fix completed. Run 'yzx doctor' again to verify."
     } else if (($all_results | where fix_available == true) | is-not-empty) {
         print "\n💡 Some issues can be auto-fixed. Run 'yzx doctor --fix' to resolve them."

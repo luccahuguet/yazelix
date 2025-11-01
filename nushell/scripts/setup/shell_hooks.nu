@@ -74,7 +74,7 @@ export def setup_shell_hooks [
 
     let config_content = (open $shell_config)
 
-    # Check if v3 hooks already exist (current version)
+    # Check if v4 hooks already exist (current version)
     if ($config_content | str contains $YAZELIX_START_MARKER) {
         if not $quiet_mode {
             print $"✅ ($shell | str capitalize) config already sourced"
@@ -82,7 +82,20 @@ export def setup_shell_hooks [
         return
     }
 
-    # Check for v2 hooks and migrate to v3
+    # Check for v3 hooks and migrate to v4 (adds direnv hooks)
+    if ($config_content | str contains $YAZELIX_START_MARKER_V3) {
+        let migration = migrate_shell_hooks $shell $shell_config $yazelix_dir
+        if $migration.migrated {
+            if not $quiet_mode {
+                print $"🔄 Migrated ($shell | str capitalize) hooks from v($migration.from_version) to v($migration.to_version) with direnv support \(backup: ($migration.backup)\)"
+            }
+        } else if not $quiet_mode {
+            print $"⚠️  Migration skipped: ($migration.reason)"
+        }
+        return
+    }
+
+    # Check for v2 hooks and migrate to v4
     if ($config_content | str contains $YAZELIX_START_MARKER_V2) {
         let migration = migrate_shell_hooks $shell $shell_config $yazelix_dir
         if $migration.migrated {
@@ -95,7 +108,7 @@ export def setup_shell_hooks [
         return
     }
 
-    # Check for v1 hooks and migrate to v3
+    # Check for v1 hooks and migrate to v4
     if ($config_content | str contains $YAZELIX_START_MARKER_V1) {
         let migration = migrate_shell_hooks $shell $shell_config $yazelix_dir
         if $migration.migrated {
@@ -108,9 +121,51 @@ export def setup_shell_hooks [
         return
     }
 
-    # No existing hooks, add new v3 hooks
+    # No existing hooks, add new v4 hooks
     if not $quiet_mode {
         print $"🐚 Adding Yazelix ($shell | str capitalize) config to ($shell_config)"
+    }
+    $"\n\n($section_content)" | save --append $shell_config
+}
+
+# Setup direnv hook for a specific shell
+export def setup_direnv_hook [
+    shell: string
+    quiet_mode: bool = false
+]: nothing -> nothing {
+    # Skip if direnv is not available
+    if (which direnv | is-empty) {
+        return
+    }
+
+    # Get shell-specific config path
+    let shell_config = ($SHELL_CONFIGS | get $shell | str replace "~" $env.HOME)
+
+    # Skip if shell config doesn't exist
+    if not ($shell_config | path exists) {
+        return
+    }
+
+    let config_content = (open $shell_config)
+
+    # Check if direnv hook already exists
+    if ($config_content | str contains $DIRENV_START_MARKER) {
+        return
+    }
+
+    # Check if direnv hook might already be manually configured
+    if ($shell == "bash" or $shell == "zsh") and ($config_content | str contains "direnv hook") {
+        return
+    } else if $shell == "fish" and ($config_content | str contains "direnv hook fish") {
+        return
+    } else if ($shell == "nu" or $shell == "nushell") and ($config_content | str contains "direnv export json") {
+        return
+    }
+
+    # Add direnv hook
+    let section_content = get_direnv_section_content $shell
+    if not $quiet_mode {
+        print $"⚡ Adding direnv hook to ($shell | str capitalize) config for 40x faster launches"
     }
     $"\n\n($section_content)" | save --append $shell_config
 }

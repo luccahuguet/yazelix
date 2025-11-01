@@ -110,7 +110,7 @@ def main [
     }
 
     # Setup shell hooks for configured shells
-    use ./shell_hooks.nu setup_shell_hooks
+    use ./shell_hooks.nu [setup_shell_hooks, setup_direnv_hook]
 
     # Bash and Nushell are REQUIRED - error if config missing
     setup_shell_hooks "bash" $yazelix_dir $quiet_mode true
@@ -123,6 +123,33 @@ def main [
 
     if ("zsh" in $shells_to_configure) {
         setup_shell_hooks "zsh" $yazelix_dir $quiet_mode false
+    }
+
+    # Setup direnv hooks for faster launches (40x speedup)
+    # Install for all shells that have configs
+    setup_direnv_hook "bash" $quiet_mode
+    setup_direnv_hook "nushell" $quiet_mode
+    if ("fish" in $shells_to_configure) {
+        setup_direnv_hook "fish" $quiet_mode
+    }
+    if ("zsh" in $shells_to_configure) {
+        setup_direnv_hook "zsh" $quiet_mode
+    }
+
+    # Auto-allow .envrc for direnv if available
+    if (which direnv | is-not-empty) {
+        let envrc_path = $"($yazelix_dir)/.envrc"
+        if ($envrc_path | path exists) {
+            try {
+                bash -c $"direnv allow ($envrc_path)"
+                if not $quiet_mode {
+                    print "⚡ Enabled direnv for Yazelix directory - enjoy 40x faster launches!"
+                }
+            } catch {
+                # Silent failure - not critical
+                log_to_file $log_file "Warning: Failed to auto-allow direnv"
+            }
+        }
     }
 
     # Editor setup is now handled in the shellHook

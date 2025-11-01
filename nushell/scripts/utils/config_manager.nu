@@ -23,9 +23,26 @@ export def extract_yazelix_section [config_file: string] {
         return { exists: false, content: "", start_line: -1, end_line: -1, full_content: ($content | str join "\n"), version: 0 }
     }
 
-    # Try v3 markers first (current version)
-    let start_line_v3 = try { ($content | enumerate | where item == $YAZELIX_START_MARKER | get index | first | default (-1)) } catch { -1 }
-    let end_line_v3 = try { ($content | enumerate | where item == $YAZELIX_END_MARKER | get index | first | default (-1)) } catch { -1 }
+    # Try v4 markers first (current version)
+    let start_line_v4 = try { ($content | enumerate | where item == $YAZELIX_START_MARKER | get index | first | default (-1)) } catch { -1 }
+    let end_line_v4 = try { ($content | enumerate | where item == $YAZELIX_END_MARKER | get index | first | default (-1)) } catch { -1 }
+
+    # If v4 found, return it
+    if ($start_line_v4 != -1) and ($end_line_v4 != -1) {
+        let section_content = ($content | slice ($start_line_v4 + 1)..($end_line_v4 - 1) | str join "\n")
+        return {
+            exists: true
+            content: $section_content
+            start_line: $start_line_v4
+            end_line: $end_line_v4
+            full_content: ($content | str join "\n")
+            version: 4
+        }
+    }
+
+    # Try v3 markers
+    let start_line_v3 = try { ($content | enumerate | where item == $YAZELIX_START_MARKER_V3 | get index | first | default (-1)) } catch { -1 }
+    let end_line_v3 = try { ($content | enumerate | where item == $YAZELIX_END_MARKER_V3 | get index | first | default (-1)) } catch { -1 }
 
     # If v3 found, return it
     if ($start_line_v3 != -1) and ($end_line_v3 != -1) {
@@ -145,13 +162,13 @@ export def migrate_shell_hooks [shell: string, config_file: string, yazelix_dir:
         return { migrated: false, reason: "no yazelix section found" }
     }
 
-    # Check if already on latest version (v3)
-    if $section.version == 3 {
-        return { migrated: false, reason: "already on v3" }
+    # Check if already on latest version (v4)
+    if $section.version == 4 {
+        return { migrated: false, reason: "already on v4" }
     }
 
-    # Only migrate v1 and v2
-    if $section.version not-in [1, 2] {
+    # Only migrate v1, v2, and v3
+    if $section.version not-in [1, 2, 3] {
         return { migrated: false, reason: "unknown version" }
     }
 
@@ -166,18 +183,39 @@ export def migrate_shell_hooks [shell: string, config_file: string, yazelix_dir:
         # Read file content as lines
         let content_lines = (open $config_file | lines)
 
-        # Generate new v3 section content
-        let new_section = get_yazelix_section_content $shell $yazelix_dir
+        # Generate new v4 section content
+        let new_yazelix_section = get_yazelix_section_content $shell $yazelix_dir
 
-        # Replace old section with new section
+        # For v3→v4 migration, also add direnv hooks
+        let direnv_section = if $section.version == 3 {
+            get_direnv_section_content $shell
+        } else {
+            ""
+        }
+
+        # Replace old section with new section(s)
         let before_section = ($content_lines | take ($section.start_line))
         let after_section = ($content_lines | skip ($section.end_line + 1))
-        let new_content = (
-            $before_section
-            | append ($new_section | lines)
-            | append $after_section
-            | str join "\n"
-        )
+
+        let new_content = if $section.version == 3 and ($direnv_section | str length) > 0 {
+            # v3→v4: Add direnv hooks before Yazelix section
+            (
+                $before_section
+                | append ($direnv_section | lines)
+                | append ""
+                | append ($new_yazelix_section | lines)
+                | append $after_section
+                | str join "\n"
+            )
+        } else {
+            # v1/v2→v4: Just replace Yazelix section
+            (
+                $before_section
+                | append ($new_yazelix_section | lines)
+                | append $after_section
+                | str join "\n"
+            )
+        }
 
         # Write new content
         $new_content | save -f $config_file
@@ -188,7 +226,7 @@ export def migrate_shell_hooks [shell: string, config_file: string, yazelix_dir:
             shell: $shell
             config: $config_file
             from_version: $section.version
-            to_version: 3
+            to_version: 4
         }
     } catch { |err|
         # If something went wrong and backup exists, try to restore
