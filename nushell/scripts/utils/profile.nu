@@ -90,16 +90,6 @@ export def profile_launch [
         print "⚠️  Already in Yazelix shell - measurements may not reflect cold start\n"
     }
 
-    # Check direnv status
-    let has_direnv = (which direnv | is-not-empty)
-    let direnv_status = if $has_direnv {
-        "✅ direnv available (expect <100ms on subsequent launches)"
-    } else {
-        "⚠️  direnv not available (expect ~4s on every launch)"
-    }
-
-    print $"direnv: ($direnv_status)\n"
-
     # Profile environment setup
     print "📋 Measuring environment setup components..."
     let env_results = (profile_environment_setup)
@@ -139,15 +129,6 @@ export def profile_launch [
 
     # Performance assessment
     print "\n💡 Performance Assessment:\n"
-
-    if $has_direnv {
-        print "✅ direnv is configured - subsequent launches should be <100ms"
-        print "   First launch or config changes: ~4000ms"
-    } else {
-        print "⚠️  direnv not configured - every launch takes ~4000ms"
-        print "   Run: yzx doctor --fix"
-        print "   Expected speedup: 40x faster (4000ms → 100ms)"
-    }
 
     if $total_ms < 200 {
         print "\n🚀 Excellent! Your setup is well-optimized."
