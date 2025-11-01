@@ -109,7 +109,7 @@ def main [
         nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir $recommended $enable_atuin ($shells_to_configure | str join ",")
     }
 
-    # Setup shell hooks for configured shells
+    # Setup shell hooks for configured shells (v4 includes direnv for bash/zsh/fish)
     use ./shell_hooks.nu [setup_shell_hooks, setup_direnv_hook]
 
     # Bash and Nushell are REQUIRED - error if config missing
@@ -125,16 +125,9 @@ def main [
         setup_shell_hooks "zsh" $yazelix_dir $quiet_mode false
     }
 
-    # Setup direnv hooks for faster launches (40x speedup)
-    # Install for all shells that have configs
-    setup_direnv_hook "bash" $quiet_mode
+    # Setup direnv hook for Nushell (separate section, at top of user config)
+    # bash/zsh/fish have direnv integrated into their v4 sections
     setup_direnv_hook "nushell" $quiet_mode
-    if ("fish" in $shells_to_configure) {
-        setup_direnv_hook "fish" $quiet_mode
-    }
-    if ("zsh" in $shells_to_configure) {
-        setup_direnv_hook "zsh" $quiet_mode
-    }
 
     # Auto-allow .envrc for direnv if available
     if (which direnv | is-not-empty) {

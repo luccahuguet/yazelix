@@ -20,6 +20,7 @@ use ./start_yazelix.nu [start_yazelix_session]
 # Common commands:
 #   yzx launch    - Start a new yazelix session
 #   yzx doctor    - Run health checks
+#   yzx profile   - Profile launch performance
 #   yzx test      - Run test suite
 #   yzx versions  - Show tool versions
 export def yzx [
@@ -385,4 +386,21 @@ export def "yzx bench" [
     }
 
     nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/benchmark_terminals.nu" ...$args
+}
+
+# Profile launch sequence and identify bottlenecks
+export def "yzx profile" [
+    --detailed(-d)  # Include detailed Nix evaluation profiling (~4s)
+    --history(-h)   # Show historical profile data
+    --component(-c): string  # Profile specific component: nix, env
+] {
+    use ../utils/profile.nu *
+
+    if $history {
+        profile_history
+    } else if ($component | is-not-empty) {
+        profile_component $component
+    } else {
+        profile_launch --detailed=$detailed
+    }
 }

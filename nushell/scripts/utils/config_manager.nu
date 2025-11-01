@@ -183,39 +183,19 @@ export def migrate_shell_hooks [shell: string, config_file: string, yazelix_dir:
         # Read file content as lines
         let content_lines = (open $config_file | lines)
 
-        # Generate new v4 section content
+        # Generate new v4 section content (includes direnv integration)
         let new_yazelix_section = get_yazelix_section_content $shell $yazelix_dir
 
-        # For v3→v4 migration, also add direnv hooks
-        let direnv_section = if $section.version == 3 {
-            get_direnv_section_content $shell
-        } else {
-            ""
-        }
-
-        # Replace old section with new section(s)
+        # Replace old section with new v4 section
         let before_section = ($content_lines | take ($section.start_line))
         let after_section = ($content_lines | skip ($section.end_line + 1))
 
-        let new_content = if $section.version == 3 and ($direnv_section | str length) > 0 {
-            # v3→v4: Add direnv hooks before Yazelix section
-            (
-                $before_section
-                | append ($direnv_section | lines)
-                | append ""
-                | append ($new_yazelix_section | lines)
-                | append $after_section
-                | str join "\n"
-            )
-        } else {
-            # v1/v2→v4: Just replace Yazelix section
-            (
-                $before_section
-                | append ($new_yazelix_section | lines)
-                | append $after_section
-                | str join "\n"
-            )
-        }
+        let new_content = (
+            $before_section
+            | append ($new_yazelix_section | lines)
+            | append $after_section
+            | str join "\n"
+        )
 
         # Write new content
         $new_content | save -f $config_file

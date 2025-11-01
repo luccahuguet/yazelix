@@ -21,6 +21,13 @@ Benchmark terminal launch performance
 - `-t, --terminal`: Test only specific terminal (e.g., ghostty, wezterm, kitty)
 - `--verbose`: Show detailed output
 
+### `yzx profile [--detailed] [--history] [--component COMP]`
+Profile launch sequence and identify performance bottlenecks
+- Default: Profile environment setup components with timing breakdown
+- `--detailed`: Include Nix evaluation profiling (~4s, measures cold start)
+- `--history`: Show historical profile data
+- `--component COMP`: Profile specific component (nix, env)
+
 ### `yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose]`
 Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
@@ -84,4 +91,10 @@ yzx bench                     # Benchmark all available terminals (3 iterations 
 yzx bench -n 5                # Run 5 iterations per terminal
 yzx bench -t ghostty          # Benchmark only Ghostty
 yzx bench -t wezterm -n 10    # Benchmark WezTerm with 10 iterations
+
+# Profiling
+yzx profile                   # Profile environment setup components
+yzx profile --detailed        # Include Nix evaluation profiling (~4s)
+yzx profile --history         # Show historical profile data
+yzx profile --component env   # Profile only environment setup
 ```

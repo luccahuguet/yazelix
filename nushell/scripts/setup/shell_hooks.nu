@@ -82,12 +82,12 @@ export def setup_shell_hooks [
         return
     }
 
-    # Check for v3 hooks and migrate to v4 (adds direnv hooks)
+    # Check for v3 hooks and migrate to v4 (v4 includes direnv)
     if ($config_content | str contains $YAZELIX_START_MARKER_V3) {
         let migration = migrate_shell_hooks $shell $shell_config $yazelix_dir
         if $migration.migrated {
             if not $quiet_mode {
-                print $"🔄 Migrated ($shell | str capitalize) hooks from v($migration.from_version) to v($migration.to_version) with direnv support \(backup: ($migration.backup)\)"
+                print $"🔄 Migrated ($shell | str capitalize) hooks from v($migration.from_version) to v($migration.to_version) \(now includes direnv, backup: ($migration.backup)\)"
             }
         } else if not $quiet_mode {
             print $"⚠️  Migration skipped: ($migration.reason)"
@@ -167,5 +167,14 @@ export def setup_direnv_hook [
     if not $quiet_mode {
         print $"⚡ Adding direnv hook to ($shell | str capitalize) config for 40x faster launches"
     }
-    $"\n\n($section_content)" | save --append $shell_config
+
+    # For nushell, prepend direnv hook at the top (before Yazelix section)
+    # For other shells, direnv is integrated into v4 section (this shouldn't be called)
+    if $shell == "nushell" or $shell == "nu" {
+        let existing_content = (open $shell_config)
+        $"($section_content)\n\n($existing_content)" | save -f $shell_config
+    } else {
+        # Fallback: append (though this shouldn't happen for v4)
+        $"\n\n($section_content)" | save --append $shell_config
+    }
 }

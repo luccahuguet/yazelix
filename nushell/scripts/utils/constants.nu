@@ -291,7 +291,7 @@ export def detect_environment [] {
     }
 }
 
-# Get the complete yazelix section content for a shell
+# Get the complete yazelix section content for a shell (includes direnv in v4)
 export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
     let config_file = $YAZELIX_CONFIG_FILES | get $shell
 
@@ -299,6 +299,9 @@ export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
     let section_body = if $shell == "bash" or $shell == "zsh" {
         let home_file = ($config_file | str replace "~" "$HOME")
         [
+            "# direnv integration for 40x faster launches"
+            'eval "$(direnv hook ' + $shell + ')"'
+            ""
             $"if [ -n \"$IN_YAZELIX_SHELL\" ]; then"
             $"  source \"($home_file)\""
             "fi"
@@ -310,6 +313,9 @@ export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
     } else if $shell == "fish" {
         let home_file = ($config_file | str replace "~" "$HOME")
         [
+            "# direnv integration for 40x faster launches"
+            "direnv hook fish | source"
+            ""
             "if test -n \"$IN_YAZELIX_SHELL\""
             $"  source \"($home_file)\""
             "end"
@@ -338,11 +344,14 @@ export def get_direnv_section_content [shell: string] {
         'direnv hook fish | source'
     } else if $shell == "nu" or $shell == "nushell" {
         [
-            '$env.config = \($env.config | upsert hooks {'
-            '    pre_prompt: [$env.config.hooks.pre_prompt? { ||'
-            '        if \(which direnv | is-empty\) { return }'
-            '        direnv export json | from json | default {} | load-env'
-            '    }]'
+            '$env.config = ($env.config | upsert hooks.pre_prompt {'
+            '    |config|'
+            '    let old_hooks = ($config.hooks?.pre_prompt? | default [])'
+            '    let direnv_hook = {'
+            '        condition: {|| (which direnv | is-not-empty)}'
+            '        code: {|| direnv export json | from json | default {} | load-env}'
+            '    }'
+            '    $old_hooks | append $direnv_hook'
             '})'
         ] | str join "\n"
     } else {

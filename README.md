@@ -63,6 +63,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **First-Class Neovim Support** - Neovim now has full integration features (reveal in sidebar, same-instance opening, pane detection) matching Helix capabilities
 - **Smart Config Detection** - Automatic hash-based change detection makes launches ~4s faster when config unchanged, if running from a already existing yazelix session, while ensuring changes are always picked up
 - **Performance Benchmarking** - New `yzx bench` command measures terminal launch performance with statistical analysis
+- **Launch Profiling** - New `yzx profile` command profiles environment setup and identifies bottlenecks
 - **Enhanced UI Controls** - Configurable Zellij options: `disable_zellij_tips` (default: true), `zellij_rounded_corners` (default: true)
 - **Streamlined Startup** - Welcome screen disabled by default for faster launches (info still logged)
 - **Sweep Testing Framework** - Matrix testing for all shell/terminal/feature combinations (`yzx sweep shells|terminals|all`)
@@ -272,6 +273,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx launch --verbose` - Print detailed launch diagnostics
 - `yzx env [--no-shell]` - Load Yazelix tools without UI and drop into your configured shell (`--no-shell` keeps your current shell)
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
+- `yzx profile [--detailed] [--history]` - Profile launch performance and identify bottlenecks
 - `yzx info` - Show system information and current settings
 - `yzx versions` - Display all tool versions
 
