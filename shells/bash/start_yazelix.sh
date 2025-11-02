@@ -38,7 +38,7 @@ fi
 # The YAZELIX_DEFAULT_SHELL variable will be set by the enterShell hook
 # and used by the inner zellij command.
 # We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after devenv sets it.
-HOME="$HOME" devenv shell$REFRESH_FLAG -- bash -c \
+HOME="$HOME" devenv shell --impure$REFRESH_FLAG -- bash -c \
   "zellij --config-dir \"$YAZELIX_DIR/configs/zellij\" options \
     --default-cwd \"$HOME\" \
     --default-layout \"\$ZELLIJ_DEFAULT_LAYOUT\" \

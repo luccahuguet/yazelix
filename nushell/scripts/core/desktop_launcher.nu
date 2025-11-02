@@ -26,7 +26,7 @@ def main [] {
     # Call launch script within devenv environment
     # Pass home directory as launch_cwd so desktop entry opens in ~/ instead of yazelix directory
     let refresh_flag = if $needs_refresh { " --refresh-eval-cache" } else { "" }
-    let devenv_cmd = $"cd ($yazelix_dir) && devenv shell($refresh_flag) -- nu ($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu ($nu.home-path)"
+    let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure($refresh_flag) -- nu ($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu ($nu.home-path)"
     ^bash -c $devenv_cmd
     if $needs_refresh {
         mark_config_state_applied $config_state

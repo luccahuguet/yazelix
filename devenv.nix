@@ -9,14 +9,15 @@ let
   nixglIntel = if nixglPackages != null && nixglPackages ? nixGLIntel then nixglPackages.nixGLIntel else null;
 
   # Import user configuration from TOML
-  # TOML files can be read with builtins.readFile even if untracked by Git!
-  # This solves the Nix flakes limitation with untracked .nix files
-
-  tomlConfigFile = ./yazelix.toml;
+  # IMPORTANT: yazelix.toml is gitignored, which makes it invisible to pure Nix evaluation
+  # We must use --impure mode and read from an absolute path via $HOME
+  # All devenv shell calls include --impure flag to enable this
+  homeDir = builtins.getEnv "HOME";
+  tomlConfigFile = if homeDir != "" then "${homeDir}/.config/yazelix/yazelix.toml" else "";
   defaultTomlConfigFile = ./yazelix_default.toml;
 
   rawConfig =
-    if builtins.pathExists tomlConfigFile then
+    if tomlConfigFile != "" && builtins.pathExists (builtins.toPath tomlConfigFile) then
       builtins.fromTOML (builtins.readFile tomlConfigFile)
     else
       builtins.fromTOML (builtins.readFile defaultTomlConfigFile);

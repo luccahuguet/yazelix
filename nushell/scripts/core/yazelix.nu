@@ -264,7 +264,7 @@ export def "yzx launch" [
             if $needs_refresh and $verbose_mode {
                 print "♻️  Config changed since last launch – refreshing devenv evaluation cache"
             }
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell($refresh_flag) -- bash -c '($full_cmd)'"
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure($refresh_flag) -- bash -c '($full_cmd)'"
             ^bash -c $devenv_cmd
             if $needs_refresh {
                 mark_config_state_applied $config_state
@@ -301,7 +301,7 @@ export def "yzx env" [
         # Run command in Yazelix environment (skip welcome screen for automation)
         with-env {YAZELIX_ENV_ONLY: "true", YAZELIX_SKIP_WELCOME: "true"} {
             let refresh_flag = if $needs_refresh { " --refresh-eval-cache" } else { "" }
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell($refresh_flag) -- bash -c '($command)'"
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure($refresh_flag) -- bash -c '($command)'"
             if $needs_refresh {
                 with-env {YAZELIX_FORCE_REFRESH: "true"} {
                     ^bash -c $devenv_cmd
@@ -316,7 +316,7 @@ export def "yzx env" [
     } else if $no_shell {
         with-env {YAZELIX_ENV_ONLY: "true"} {
             let refresh_flag = if $needs_refresh { " --refresh-eval-cache" } else { "" }
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell($refresh_flag)"
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure($refresh_flag)"
             if $needs_refresh {
                 with-env {YAZELIX_FORCE_REFRESH: "true"} {
                     ^bash -c $devenv_cmd
@@ -343,7 +343,7 @@ export def "yzx env" [
         with-env {YAZELIX_ENV_ONLY: "true", SHELL: $shell_exec} {
             try {
                 let refresh_flag = if $needs_refresh { " --refresh-eval-cache" } else { "" }
-                let devenv_cmd = $"cd ($yazelix_dir) && devenv shell($refresh_flag) -- bash -lc '($exec_command)'"
+                let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure($refresh_flag) -- bash -lc '($exec_command)'"
                 if $needs_refresh {
                     with-env {YAZELIX_FORCE_REFRESH: "true"} {
                         ^bash -c $devenv_cmd

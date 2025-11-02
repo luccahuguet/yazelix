@@ -147,7 +147,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
             } else {
                 ""
             }
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell($refresh_flag) -- bash -c '($cmd)'"
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure($refresh_flag) -- bash -c '($cmd)'"
             ^bash -c $devenv_cmd
         }
     }
