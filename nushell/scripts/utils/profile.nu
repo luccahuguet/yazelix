@@ -57,7 +57,7 @@ export def profile_environment_setup [] {
 
 # Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
 export def profile_cold_launch [
-    --clear_cache  # Modify config to trigger Nix re-evaluation (simulates config change)
+    --clear-cache  # Modify config to trigger Nix re-evaluation (simulates config change)
 ] {
     # Check if we're in a Yazelix shell
     if ($env.IN_YAZELIX_SHELL? | is-not-empty) {
