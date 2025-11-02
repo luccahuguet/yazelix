@@ -1,5 +1,5 @@
 # Yazelix Configuration (TOML format)
-# yazelix.toml will be automatically created from yazelix_default.toml if not found.
+# yazelix.toml will be automatically copied from yazelix_toml if not found during launch. But you can manually copy it to yazelix.toml too.
 # yazelix.toml is gitignored so you can pull updates without conflicts
 
 [core]
@@ -30,7 +30,6 @@ mode = "release"
 # If this path doesn't exist, your Helix may be incompatible
 # runtime_path = "/path/to/custom/helix/runtime"
 
-# Yazelix always sets this as your EDITOR environment variable
 [editor]
 # editor_command options:
 # • null (recommended): Use yazelix's Nix-provided Helix
