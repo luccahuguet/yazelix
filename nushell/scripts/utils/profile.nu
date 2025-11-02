@@ -127,7 +127,7 @@ export def profile_cold_launch [
         print "💡 Performance Assessment (config change simulation):\n"
         if $total_ms < 3000 {
             print "🚀 Excellent! Even after config changes, Nix re-evaluation is very fast."
-        } else if $total_ms < 7000 {
+        } else if $total_ms < 8000 {
             print "✅ Good. This is expected after config changes (Nix re-evaluation)."
         } else if $total_ms < 15000 {
             print "⚠️  Slower than expected. Check for:"

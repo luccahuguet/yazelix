@@ -100,5 +100,5 @@ yzx profile --cold --clear-cache  # Profile after config change (toggles option 
 # Performance scenarios explained:
 # 1. Warm start (~130ms): Already in Yazelix, launching tools/commands
 # 2. Cold cached (~300-500ms): Desktop entry or vanilla terminal launch, config unchanged
-# 3. Config change (~3-7s): After modifying yazelix.toml (full Nix re-evaluation)
+# 3. Config change (~3-8s): After clearing cache (full Nix re-evaluation)
 ```
