@@ -95,10 +95,10 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1761141169,
+        "lastModified": 1762101621,
         "owner": "helix-editor",
         "repo": "helix",
-        "rev": "d79cce4e4bfc24dd204f1b294c899ed73f7e9453",
+        "rev": "7895719e5c3299a408bac461437c5040849f430b",
         "type": "github"
       },
       "original": {
@@ -113,10 +113,10 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1752054764,
+        "lastModified": 1762090880,
         "owner": "guibou",
         "repo": "nixGL",
-        "rev": "a8e1ce7d49a149ed70df676785b07f63288f53c5",
+        "rev": "b6105297e6f0cd041670c3e8628394d4ee247ed5",
         "type": "github"
       },
       "original": {
@@ -127,24 +127,25 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1762052602,
+        "lastModified": 1761907660,
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "5dd7824e05739f0701ef79e5fa10393bd37b754e",
+        "rev": "2fb006b87f04c4d3bdf08cfdbc7fab9c13d94a15",
         "type": "github"
       },
       "original": {
         "owner": "nixos",
+        "ref": "nixos-unstable",
         "repo": "nixpkgs",
         "type": "github"
       }
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1762052602,
+        "lastModified": 1762122787,
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "5dd7824e05739f0701ef79e5fa10393bd37b754e",
+        "rev": "085c5355efbbe5905f1fab1ec7f380c216733757",
         "type": "github"
       },
       "original": {
@@ -188,10 +189,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1759631821,
+        "lastModified": 1762051177,
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "1d7cbdaad90f8a5255a89a6eddd8af24dc89cafe",
+        "rev": "08c33e87c4829bbdd42b5af247cf7a19e126369f",
         "type": "github"
       },
       "original": {
