@@ -55,6 +55,80 @@ export def profile_environment_setup [] {
     $results
 }
 
+# Profile full cold launch (must be run from outside Yazelix)
+export def profile_cold_launch [
+    --clear_cache  # Clear devenv cache to simulate config change
+] {
+    # Check if we're in a Yazelix shell
+    if ($env.IN_YAZELIX_SHELL? | is-not-empty) {
+        print "❌ Error: Cold launch profiling must be run from a vanilla terminal\n"
+        print "To profile cold launch:"
+        print "  1. Open a new terminal (NOT from Yazelix)"
+        print "  2. Run: nu -c 'use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx profile --cold'\n"
+        return
+    }
+
+    print "🚀 Profiling cold Yazelix launch...\n"
+
+    let yazelix_dir = "~/.config/yazelix" | path expand
+
+    # Clear cache if requested
+    if $clear_cache {
+        print "🗑️  Clearing devenv cache to simulate config change..."
+        rm -rf $"($yazelix_dir)/.devenv"
+        print "✅ Cache cleared\n"
+    }
+
+    # Profile full devenv shell launch
+    print "⏱️  Measuring devenv shell startup (this will take a few seconds)...\n"
+
+    let start = (date now)
+
+    # Launch devenv shell with a simple command
+    bash -c $"cd ($yazelix_dir) && devenv shell -- bash -c 'echo \"Yazelix shell ready\"'" | complete
+
+    let end = (date now)
+    let duration_ms = ((($end - $start) | into int) / 1000000)
+
+    print $"\n📊 Results:"
+    print $"  Cold launch time: ($duration_ms)ms\n"
+
+    # Performance assessment
+    if $clear_cache {
+        print "💡 Performance Assessment (with cache cleared):\n"
+        if $duration_ms < 2000 {
+            print "🚀 Excellent! Even with cache invalidation, launch is very fast."
+        } else if $duration_ms < 5000 {
+            print "✅ Good. This is expected after config changes (Nix re-evaluation)."
+        } else if $duration_ms < 10000 {
+            print "⚠️  Slower than expected. Check for:"
+            print "   - Slow disk I/O"
+            print "   - Large number of packages in yazelix.toml"
+        } else {
+            print "❌ Very slow. This may indicate a problem."
+        }
+    } else {
+        print "💡 Performance Assessment (with cache):\n"
+        if $duration_ms < 500 {
+            print "🚀 Excellent! SQLite cache is working perfectly."
+        } else if $duration_ms < 1500 {
+            print "✅ Good. Cached launch is efficient."
+        } else if $duration_ms < 3000 {
+            print "⚠️  Slower than expected for cached launch."
+        } else {
+            print "❌ Cache may not be working. Check .devenv/ directory."
+        }
+    }
+
+    # Save results
+    let log_file = "~/.local/share/yazelix/logs/profile.log" | path expand
+    let timestamp = (date now | format date "%Y-%m-%d %H:%M:%S")
+    let cache_status = if $clear_cache { "no-cache" } else { "cached" }
+
+    $"($timestamp) - Cold launch \(($cache_status)\): ($duration_ms)ms\n" | save --append $log_file
+    print $"\n📝 Results saved to: ($log_file)"
+}
+
 # Profile full launch sequence
 export def profile_launch [] {
     print "🚀 Profiling Yazelix launch sequence...\n"
@@ -63,7 +137,8 @@ export def profile_launch [] {
 
     # Check if we're in a Yazelix shell already
     if ($env.IN_YAZELIX_SHELL? | is-not-empty) {
-        print "⚠️  Already in Yazelix shell - measurements may not reflect cold start\n"
+        print "⚠️  Already in Yazelix shell - measurements reflect warm start\n"
+        print "💡 For cold start profiling, use: yzx profile --cold (from vanilla terminal)\n"
     }
 
     # Profile environment setup

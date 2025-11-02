@@ -407,12 +407,16 @@ export def "yzx bench" [
 
 # Profile launch sequence and identify bottlenecks
 export def "yzx profile" [
-    --history(-h)   # Show historical profile data
+    --cold(-c)        # Profile cold launch (run from vanilla terminal)
+    --clear_cache     # Clear devenv cache before profiling (simulates config change)
+    --history(-h)     # Show historical profile data
 ] {
     use ../utils/profile.nu *
 
     if $history {
         profile_history
+    } else if $cold {
+        profile_cold_launch --clear_cache=$clear_cache
     } else {
         profile_launch
     }

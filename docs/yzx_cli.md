@@ -93,6 +93,14 @@ yzx bench -t ghostty          # Benchmark only Ghostty
 yzx bench -t wezterm -n 10    # Benchmark WezTerm with 10 iterations
 
 # Profiling
-yzx profile                   # Profile environment setup components
+# Note: Different launch scenarios have different performance characteristics
+yzx profile                   # Profile warm start (from within Yazelix shell)
+yzx profile --cold            # Profile cold start with cache (run from vanilla terminal)
+yzx profile --cold --clear-cache  # Profile cold start after config change (clears cache)
 yzx profile --history         # Show historical profile data
+
+# Performance scenarios:
+# 1. Warm start (~130ms): Already in Yazelix, launching tools/commands
+# 2. Cold cached (~300-500ms): Desktop entry launch, config unchanged
+# 3. Cold no-cache (~2-5s): First launch or config changed
 ```
