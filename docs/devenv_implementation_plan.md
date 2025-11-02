@@ -12,12 +12,12 @@
 
 ### Setup
 
-**1. Create PoC branch**
+- [ ] **1. Create PoC branch**
 ```bash
 git checkout -b poc/devenv-caching
 ```
 
-**2. Add devenv to flake inputs**
+- [ ] **2. Add devenv to flake inputs**
 ```nix
 # flake.nix
 inputs = {
@@ -29,7 +29,7 @@ inputs = {
 };
 ```
 
-**3. Create minimal devenv.nix**
+- [ ] **3. Create minimal devenv.nix**
 ```nix
 # devenv.nix - minimal starting point
 { pkgs, lib, config, inputs, ... }:
@@ -53,7 +53,7 @@ inputs = {
 }
 ```
 
-**4. Update flake.nix outputs**
+- [ ] **4. Update flake.nix outputs**
 
 **During PoC:** Add devenv as alternate shell (doesn't affect existing behavior)
 ```nix
@@ -96,7 +96,7 @@ outputs = { self, nixpkgs, flake-utils, helix, nixgl, devenv, ... }:
   );
 ```
 
-**5. Test basic functionality**
+- [ ] **5. Test basic functionality**
 ```bash
 # Enter devenv shell (explicit target during PoC)
 nix develop .#devenv
@@ -118,7 +118,7 @@ time nix develop .#devenv --command echo "test"
 
 Run each test incrementally, verifying functionality at each step:
 
-#### Test 1: Basic Package Loading
+- [ ] #### Test 1: Basic Package Loading
 **Goal:** Verify devenv can load packages
 
 **Implementation:**
@@ -146,7 +146,7 @@ nix develop .#devenv --command hx --version
 
 ---
 
-#### Test 2: Conditional Package Selection
+- [ ] #### Test 2: Conditional Package Selection
 **Goal:** Verify devenv can handle our packs system
 
 **Implementation:**
@@ -211,7 +211,7 @@ nix develop .#devenv --command cargo --version
 
 ---
 
-#### Test 3: nixGL Wrappers
+- [ ] #### Test 3: nixGL Wrappers
 **Goal:** Verify devenv can handle custom package derivations
 
 **Implementation:**
@@ -249,7 +249,7 @@ nix develop .#devenv --command yazelix-ghostty --version
 
 ---
 
-#### Test 4: shellHook / enterShell Scripts
+- [ ] #### Test 4: shellHook / enterShell Scripts
 **Goal:** Verify devenv can run Nushell setup scripts
 
 **Implementation:**
@@ -288,7 +288,7 @@ ls ~/.local/share/yazelix/shells/
 
 ---
 
-#### Test 5: Cross-Platform Logic
+- [ ] #### Test 5: Cross-Platform Logic
 **Goal:** Verify Linux/macOS conditionals work
 
 **Implementation:**
@@ -328,7 +328,7 @@ nix develop .#devenv --command nu -c 'echo $env.GHOSTTY_AVAILABLE'
 
 ---
 
-#### Test 6: Cache Invalidation
+- [ ] #### Test 6: Cache Invalidation
 **Goal:** Verify cache invalidates on file changes
 
 **Implementation:**
@@ -367,7 +367,7 @@ time nix develop .#devenv --command echo "test"  # Should re-eval
 
 ---
 
-#### Test 7: Full Integration
+- [ ] #### Test 7: Full Integration
 **Goal:** Test complete Yazelix launch workflow
 
 **Implementation:**
