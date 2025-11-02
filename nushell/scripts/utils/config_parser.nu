@@ -18,7 +18,7 @@ export def parse_yazelix_config [] {
         } else if ($default_toml | path exists) {
             # Auto-create yazelix.toml from default (copy raw to preserve comments)
             print "📝 Creating yazelix.toml from yazelix_default.toml..."
-            open --raw $default_toml | save $toml_file
+            cp $default_toml $toml_file
             print "✅ yazelix.toml created\n"
             $toml_file
         } else {
