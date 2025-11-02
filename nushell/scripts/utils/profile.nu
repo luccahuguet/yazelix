@@ -57,7 +57,7 @@ export def profile_environment_setup [] {
 
 # Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
 export def profile_cold_launch [
-    --clear-cache  # Modify devenv.nix and clear cache to force full Nix re-evaluation (simulates config change)
+    --clear-cache  # Toggle yazelix.toml option and clear cache to force full Nix re-evaluation (simulates config change)
 ] {
     # Check if we're in a Yazelix shell
     if ($env.IN_YAZELIX_SHELL? | is-not-empty) {
@@ -83,17 +83,21 @@ export def profile_cold_launch [
 
     # Modify config and clear cache if requested to force Nix re-evaluation
     let original_content = if $clear_cache {
-        print "📝 Modifying devenv.nix and clearing cache to trigger full Nix re-evaluation..."
+        print "📝 Modifying yazelix.toml and clearing cache to trigger full Nix re-evaluation..."
 
-        # Save original config for restoration
-        let config_content = (open --raw $config_file)
+        # Save original config
+        let content = (open --raw $config_file)
 
-        # Read and modify devenv.nix to add a timestamp comment
-        let devenv_nix = $"($yazelix_dir)/devenv.nix"
-        let devenv_content = (open --raw $devenv_nix)
-        let timestamp = (date now | format date "%Y-%m-%d %H:%M:%S.%f")
-        let modified_devenv = $"# Profile benchmark: ($timestamp)\n($devenv_content)"
-        $modified_devenv | save -f $devenv_nix
+        # Toggle rounded_corners value in yazelix.toml
+        let modified = if ($content | str contains "rounded_corners = true") {
+            $content | str replace "rounded_corners = true" "rounded_corners = false"
+        } else if ($content | str contains "rounded_corners = false") {
+            $content | str replace "rounded_corners = false" "rounded_corners = true"
+        } else {
+            # Fallback: add rounded_corners if not present
+            $content | str replace "[zellij]" "[zellij]\nrounded_corners = false"
+        }
+        $modified | save -f $config_file
 
         # Delete .devenv cache to ensure fresh evaluation
         let devenv_cache = $"($yazelix_dir)/.devenv"
@@ -101,8 +105,8 @@ export def profile_cold_launch [
             rm -rf $devenv_cache
         }
 
-        print "✅ devenv.nix modified and cache cleared - Nix will perform full re-evaluation\n"
-        {config: $config_content, devenv: $devenv_content}
+        print "✅ yazelix.toml modified and cache cleared - Nix will perform full re-evaluation\n"
+        $content
     } else {
         null
     }
@@ -172,12 +176,11 @@ export def profile_cold_launch [
         }
     }
 
-    # Restore original files if they were modified
+    # Restore original config if it was modified
     if ($original_content != null) {
-        print "\n🔄 Restoring original devenv.nix..."
-        let devenv_nix = $"($yazelix_dir)/devenv.nix"
-        $original_content.devenv | save -f $devenv_nix
-        print "✅ devenv.nix restored"
+        print "\n🔄 Restoring original yazelix.toml..."
+        $original_content | save -f $config_file
+        print "✅ yazelix.toml restored"
     }
 }
 
