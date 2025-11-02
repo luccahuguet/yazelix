@@ -140,9 +140,8 @@ session_name = "yazelix"
 # - "animated": Show animated ASCII art (opt-in for faster startup)
 mode = "static"
 
-# Complete toolchains for programming languages and tools
 [packs]
-# Language packs - complete toolchains for programming languages
+# Language packs - helpful packages for each programming language
 # Uncomment the ones you need:
 language = [
     # "python",  # ruff (formatter/linter), uv (package manager), ty (type checker), ipython (enhanced REPL)
