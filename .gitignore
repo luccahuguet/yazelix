@@ -8,6 +8,10 @@ shells/zsh/initializers
 # New XDG-compliant state directory (local machine state, not tracked)
 .local/
 
+# devenv generated files and cache
+.devenv/
+.devenv.flake.nix
+
 # User configuration
 yazelix.nix
 yazelix.toml
