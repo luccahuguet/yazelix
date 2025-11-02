@@ -127,8 +127,7 @@ export def profile_cold_launch [
     # Profile devenv build (this is the main operation)
     let build_start = (date now)
     # Use --no-eval-cache flag to force fresh Nix evaluation
-    # Use 'true' command to avoid running the shell, just build the profile
-    bash -c $"cd ($yazelix_dir) && devenv shell --no-eval-cache true" | complete
+    bash -c $"cd ($yazelix_dir) && devenv build --no-eval-cache" | complete
     let build_end = (date now)
     let build_ms = ((($build_end - $build_start) | into int) / 1000000)
     $results = ($results | append {
