@@ -1,8 +1,60 @@
 #!/usr/bin/env nu
 # Sweep Testing - Configuration Generation Utilities
-# Generates temporary Yazelix configurations for testing different combinations
+# Generates temporary Yazelix configurations for testing different combinations (TOML format)
 
-# Generate temporary legacy yazelix.nix config for testing (deprecated)
+# Helper: build TOML config structure for sweep tests
+def build_sweep_config [
+    shell: string,
+    terminal: string,
+    features: record,
+    test_id: string
+] : nothing -> record {
+    {
+        core: {
+            recommended_deps: ($features.recommended_deps? | default true)
+            yazi_extensions: ($features.yazi_extensions? | default true)
+            yazi_media: false
+            debug_mode: false
+            skip_welcome_screen: true
+            show_macchina_on_welcome: false
+        }
+        helix: {
+            mode: ($features.helix_mode? | default "release")
+        }
+        editor: {
+            command: ""
+            enable_sidebar: ($features.enable_sidebar? | default true)
+        }
+        shell: {
+            default_shell: $shell
+            extra_shells: []
+            enable_atuin: false
+        }
+        terminal: {
+            preferred_terminal: $terminal
+            extra_terminals: ["ghostty" "wezterm" "kitty" "alacritty" "foot"]
+            config_mode: "yazelix"
+            cursor_trail: "none"
+            transparency: "none"
+        }
+        zellij: {
+            disable_tips: true
+            rounded_corners: true
+            persistent_sessions: ($features.persistent_sessions? | default false)
+            session_name: $"sweep_test_($test_id)"
+        }
+        ascii: {
+            mode: "static"
+        }
+        packs: {
+            language: []
+            tools: []
+            user_packages: []
+        }
+    }
+}
+
+# Generate temporary yazelix.toml config for testing
 export def generate_sweep_config [
     shell: string,
     terminal: string,
@@ -12,55 +64,10 @@ export def generate_sweep_config [
     let temp_dir = $"($env.HOME)/.local/share/yazelix/sweep_tests"
     mkdir $temp_dir
 
-    let config_path = $"($temp_dir)/yazelix_test_($test_id).nix"
+    let config_path = $"($temp_dir)/yazelix_test_($test_id).toml"
+    let config_content = (build_sweep_config $shell $terminal $features $test_id | to toml)
 
-    let config_content = $"{ pkgs }:
-{
-  # Sweep test configuration - ($test_id)
-  # Shell: ($shell), Terminal: ($terminal)
-
-  # Core settings
-  default_shell = \"($shell)\";
-  preferred_terminal = \"($terminal)\";
-  helix_mode = \"($features.helix_mode)\";
-
-  # Feature flags
-  enable_sidebar = ($features.enable_sidebar);
-  persistent_sessions = ($features.persistent_sessions);
-  recommended_deps = ($features.recommended_deps);
-  yazi_extensions = ($features.yazi_extensions);
-  yazi_media = false;  # Keep minimal for testing
-
-  # Disable features that might cause issues in testing
-  debug_mode = false;
-  skip_welcome_screen = true;  # Suppress output for clean testing
-  enable_atuin = false;
-  disable_zellij_tips = true;  # Prevent tips popup during visual testing
-
-  # Include all terminals for cross-terminal testing
-  extra_shells = [];
-  extra_terminals = [\"ghostty\" \"wezterm\" \"kitty\" \"alacritty\" \"foot\"];
-  packs = [];
-  user_packages = with pkgs; [];
-
-  # Terminal config mode
-  terminal_config_mode = \"yazelix\";
-
-  # Session settings
-  session_name = \"sweep_test_($test_id)\";
-
-  # Force sweep test layout - uses yzx_sweep_test for testing
-  zellij_layout_override = \"yzx_sweep_test\";
-
-  # Appearance \(minimal\)
-  cursor_trail = \"none\";
-  transparency = \"none\";
-  ascii_art_mode = \"static\";
-  show_macchina_on_welcome = false;
-}
-"
-
-    $config_content | save --force $config_path
+    $config_content | save --force --raw $config_path
     $config_path
 }
 
