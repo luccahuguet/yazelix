@@ -74,11 +74,11 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
     # Build the command that first generates the zellij config, then starts zellij
     let zellij_merger_cmd = $"nu ($yazelix_dir)/nushell/scripts/setup/zellij_config_merger.nu ($yazelix_dir)"
 
-    # Check for layout override (for testing)
+    # Check for layout override (for testing), default to yzx_side
     let layout = if ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
         $env.ZELLIJ_DEFAULT_LAYOUT
     } else {
-        "$ZELLIJ_DEFAULT_LAYOUT"  # Will be expanded by bash in nix shell
+        "yzx_side"  # Default layout
     }
 
     let cmd = if ($config.persistent_sessions == "true") {
