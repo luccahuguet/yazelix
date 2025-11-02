@@ -134,8 +134,14 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
         } else {
             # Not in managed shell, enter devenv first
             if (which devenv | is-empty) {
-                print "❌ devenv command not found - install devenv to launch Yazelix."
-                print "   See https://devenv.sh/getting-started/ for installation instructions."
+                print ""
+                print "❌ devenv command not found."
+                print "   Yazelix v10+ moved from flake-based `nix develop` shells to devenv."
+                print "   Install devenv with:"
+                print "     nix profile install github:cachix/devenv/latest"
+                print "   After installing, relaunch Yazelix (or run `devenv shell --impure`)."
+                print "   Old commands like `nix develop` are no longer supported."
+                print ""
                 exit 1
             }
             # Must run devenv from the directory containing devenv.nix

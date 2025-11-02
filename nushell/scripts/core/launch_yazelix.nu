@@ -39,7 +39,11 @@ def main [
 
     let legacy_nix_config = $"($home)/.config/yazelix/yazelix.nix"
     if ($legacy_nix_config | path exists) and ($legacy_nix_config != $active_config_file) {
-        print "⚠️  yazelix.nix detected but is no longer used. Update ~/.config/yazelix/yazelix.toml instead."
+        print ""
+        print "⚠️  Detected legacy config: ~/.config/yazelix/yazelix.nix"
+        print "   Yazelix now reads settings from ~/.config/yazelix/yazelix.toml."
+        print "   Copy your custom options into the TOML file (see docs/customization.md) and remove the old file once migrated."
+        print ""
     }
 
     if $verbose_mode {
