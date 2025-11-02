@@ -20,11 +20,21 @@ let
   defaultShell = userConfig.default_shell or "nu";
   extraShells = userConfig.extra_shells or [];
   helixMode = userConfig.helix_mode or "release";
-  
+  preferredTerminal = userConfig.preferred_terminal or "ghostty";
+  extraTerminals = userConfig.extra_terminals or [];
+
   # Determine which shells to include
   shellsToInclude = ["nu" "bash" defaultShell] ++ extraShells;
   includeFish = builtins.elem "fish" shellsToInclude;
   includeZsh = builtins.elem "zsh" shellsToInclude;
+
+  # Determine which terminals to include
+  # Ghostty is always included on Linux (like flake.nix)
+  # Other terminals are included based on preferred_terminal and extra_terminals
+  includeKitty = (preferredTerminal == "kitty") || (builtins.elem "kitty" extraTerminals);
+  includeWezterm = (preferredTerminal == "wezterm") || (builtins.elem "wezterm" extraTerminals);
+  includeAlacritty = (preferredTerminal == "alacritty") || (builtins.elem "alacritty" extraTerminals);
+  includeFoot = (preferredTerminal == "foot") || (builtins.elem "foot" extraTerminals);
   
 in {
   # Essential dependencies (always included)
@@ -67,7 +77,13 @@ in {
   ] else [])
   # Extra shells
   ++ (if includeFish then [fish] else [])
-  ++ (if includeZsh then [zsh] else []);
+  ++ (if includeZsh then [zsh] else [])
+  # Terminal emulators (Ghostty always on Linux, others conditional)
+  ++ [ghostty]  # Always include Ghostty on Linux (default terminal)
+  ++ (if includeKitty then [kitty] else [])
+  ++ (if includeWezterm then [wezterm] else [])
+  ++ (if includeAlacritty then [alacritty] else [])
+  ++ (if includeFoot then [foot] else []);
 
   # Environment variables
   env.YAZELIX_DIR = "$HOME/.config/yazelix";
