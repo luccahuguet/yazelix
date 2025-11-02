@@ -57,7 +57,7 @@ export def profile_environment_setup [] {
 
 # Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
 export def profile_cold_launch [
-    --clear-cache  # Clear devenv cache to force Nix re-evaluation (simulates config change)
+    --clear-cache  # Toggle rounded_corners to force Nix re-evaluation (simulates config change)
 ] {
     # Check if we're in a Yazelix shell
     if ($env.IN_YAZELIX_SHELL? | is-not-empty) {
@@ -81,16 +81,26 @@ export def profile_cold_launch [
         $"($yazelix_dir)/yazelix_default.toml"
     }
 
-    # Clear devenv cache if requested to force Nix re-evaluation
-    if $clear_cache {
-        print "🗑️  Clearing devenv cache to force Nix re-evaluation..."
-        let devenv_cache = $"($yazelix_dir)/.devenv"
-        if ($devenv_cache | path exists) {
-            rm -rf $devenv_cache
-            print "✅ Cache cleared - Nix will perform full re-evaluation\n"
+    # Modify config if requested to trigger Nix re-evaluation
+    let original_content = if $clear_cache {
+        print "📝 Modifying config to trigger Nix re-evaluation..."
+        let content = (open --raw $config_file)
+
+        # Toggle rounded_corners to force Nix re-evaluation (changes actual config value)
+        let modified = if ($content | str contains "rounded_corners = true") {
+            $content | str replace "rounded_corners = true" "rounded_corners = false"
+        } else if ($content | str contains "rounded_corners = false") {
+            $content | str replace "rounded_corners = false" "rounded_corners = true"
         } else {
-            print "ℹ️  No cache found (first run or already cleared)\n"
+            # Fallback: add rounded_corners if not present
+            $content | str replace "[zellij]" "[zellij]\nrounded_corners = false"
         }
+        $modified | save -f $config_file
+
+        print "✅ Config modified (toggled rounded_corners) - Nix will re-evaluate\n"
+        $content
+    } else {
+        null
     }
 
     mut results = []
@@ -134,11 +144,11 @@ export def profile_cold_launch [
     # Performance assessment
     if $clear_cache {
         print "💡 Performance Assessment (config change simulation):\n"
-        if $total_ms < 2000 {
+        if $total_ms < 3000 {
             print "🚀 Excellent! Even after config changes, Nix re-evaluation is very fast."
-        } else if $total_ms < 5000 {
+        } else if $total_ms < 7000 {
             print "✅ Good. This is expected after config changes (Nix re-evaluation)."
-        } else if $total_ms < 10000 {
+        } else if $total_ms < 15000 {
             print "⚠️  Slower than expected. Check for:"
             print "   - Slow disk I/O"
             print "   - Large number of packages in yazelix.toml"
@@ -156,6 +166,13 @@ export def profile_cold_launch [
         } else {
             print "❌ Cache may not be working. Check .devenv/ directory."
         }
+    }
+
+    # Restore original config if it was modified
+    if ($original_content != null) {
+        print "\n🔄 Restoring original config..."
+        $original_content | save -f $config_file
+        print "✅ Config restored"
     }
 
     # Save results
