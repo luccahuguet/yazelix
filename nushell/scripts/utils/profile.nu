@@ -55,20 +55,20 @@ export def profile_environment_setup [] {
     $results
 }
 
-# Profile full cold launch (must be run from outside Yazelix)
+# Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
 export def profile_cold_launch [
     --clear_cache  # Modify config to trigger Nix re-evaluation (simulates config change)
 ] {
     # Check if we're in a Yazelix shell
     if ($env.IN_YAZELIX_SHELL? | is-not-empty) {
         print "❌ Error: Cold launch profiling must be run from a vanilla terminal\n"
-        print "To profile cold launch:"
+        print "To profile cold launch (emulates desktop entry or fresh terminal):"
         print "  1. Open a new terminal (NOT from Yazelix)"
         print "  2. Run: nu -c 'use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx profile --cold'\n"
         return
     }
 
-    print "🚀 Profiling cold Yazelix launch...\n"
+    print "🚀 Profiling cold Yazelix launch (desktop entry / vanilla terminal)...\n"
 
     let yazelix_dir = "~/.config/yazelix" | path expand
 

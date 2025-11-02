@@ -407,7 +407,7 @@ export def "yzx bench" [
 
 # Profile launch sequence and identify bottlenecks
 export def "yzx profile" [
-    --cold(-c)        # Profile cold launch (run from vanilla terminal)
+    --cold(-c)        # Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
     --clear_cache     # Temporarily modify config to trigger Nix re-evaluation (simulates config change)
 ] {
     use ../utils/profile.nu *
