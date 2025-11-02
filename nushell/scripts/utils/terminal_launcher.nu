@@ -95,21 +95,24 @@ export def build_launch_command [
         $"nohup ($env_prefix)($command) >/dev/null 2>&1 &"
     } else {
         # Direct terminal launch with config
+        # Check if nixGLIntel is available for GPU acceleration
+        let nixgl_prefix = if (which nixGLIntel | is-not-empty) { "nixGLIntel " } else { "" }
+
         match $terminal {
             "ghostty" => {
-                $"nohup ($env_prefix)ghostty --config-file=($config_path) --title=\"Yazelix - Ghostty\" >/dev/null 2>&1 &"
+                $"nohup ($env_prefix)($nixgl_prefix)ghostty --config-file=($config_path) --title=\"Yazelix - Ghostty\" >/dev/null 2>&1 &"
             },
             "wezterm" => {
-                $"nohup ($env_prefix)wezterm --config-file ($config_path) start --class=com.yazelix.Yazelix >/dev/null 2>&1 &"
+                $"nohup ($env_prefix)($nixgl_prefix)wezterm --config-file ($config_path) start --class=com.yazelix.Yazelix >/dev/null 2>&1 &"
             },
             "kitty" => {
-                $"nohup ($env_prefix)kitty --config=($config_path) --class=com.yazelix.Yazelix --title=\"Yazelix - Kitty\" >/dev/null 2>&1 &"
+                $"nohup ($env_prefix)($nixgl_prefix)kitty --config=($config_path) --class=com.yazelix.Yazelix --title=\"Yazelix - Kitty\" >/dev/null 2>&1 &"
             },
             "alacritty" => {
-                $"nohup ($env_prefix)alacritty --config-file ($config_path) --title \"Yazelix - Alacritty\" >/dev/null 2>&1 &"
+                $"nohup ($env_prefix)($nixgl_prefix)alacritty --config-file ($config_path) --title \"Yazelix - Alacritty\" >/dev/null 2>&1 &"
             },
             "foot" => {
-                $"nohup ($env_prefix)foot --config ($config_path) --app-id com.yazelix.Yazelix >/dev/null 2>&1 &"
+                $"nohup ($env_prefix)($nixgl_prefix)foot --config ($config_path) --app-id com.yazelix.Yazelix >/dev/null 2>&1 &"
             },
             _ => {
                 error make {msg: $"Unknown terminal: ($terminal)"}
