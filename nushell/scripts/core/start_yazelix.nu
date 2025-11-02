@@ -112,7 +112,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
     }
 
     # Run devenv shell with explicit HOME.
-    # The default shell is dynamically read from yazelix.nix configuration
+    # The default shell is dynamically read from yazelix.toml configuration
     # and passed directly to the zellij command.
     # Guard against recursive environment initialization when already in a managed shell
     with-env {HOME: $home} {

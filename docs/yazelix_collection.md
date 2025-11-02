@@ -8,7 +8,7 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 
 **Pre-configured** (🔧 auto-configured): Tools with custom Yazelix configurations, shell initializers, or special setup.
 
-**Curated Recommendations**: High-quality tools included in `yazelix_default.nix` as optional packages. These can be easily enabled/disabled by uncommenting/commenting them in your config - **Yazelix doesn't have special integration with most of these projects**. They're just excellent tools we recommend!
+**Curated Recommendations**: High-quality tools included in `yazelix_default.toml` as optional packages. These can be easily enabled/disabled by updating your config - **Yazelix doesn't have special integration with most of these projects**. They're just excellent tools we recommend!
 
 ---
 
@@ -79,7 +79,7 @@ language_packs = ["python" "ts" "rust" "go" "kotlin" "gleam" "nix"];
 tool_packs = ["config" "file-management" "git"];
 ```
 
-**Individual packages**: Add specific tools via `user_packages` in `yazelix.nix`:
+**Individual packages**: Add specific tools via `user_packages` in `yazelix.toml`:
 ```nix
 user_packages = with pkgs; [ docker kubectl ];
 ```
@@ -150,7 +150,7 @@ General-purpose development tools:
 - [jujutsu](https://github.com/martinvonz/jj) — Modern version control system with powerful conflict resolution (command: `jj`)
 - [prek](https://github.com/piotrek-szczygiel/prek) — Prettier git commit logs and history viewer
 
-**Usage**: Enable packs in `yazelix.nix` by uncommenting them in the `language_packs = [...]` or `tool_packs = [...]` arrays, or add individual tools via `user_packages` for fine-grained control.
+**Usage**: Enable packs in `yazelix.toml` by updating the `[packs]` section (`language = [...]`, `tools = [...]`) or add individual tools via `user_packages` for fine-grained control.
 
 ---
 

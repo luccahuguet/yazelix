@@ -6,7 +6,7 @@
 
 **Nix-Powered Configuration System:**
 - **Flake-based dependency management** with pinned versions for stability (e.g., Nushell pinned to v0.105.1 for carapace compatibility)
-- **Smart fallback configuration** system: `yazelix.nix` (user) → `yazelix_default.nix` (template) → hardcoded defaults
+- **Smart fallback configuration** system: `yazelix.toml` (user) → `yazelix_default.toml` (template) → hardcoded defaults
 - **Pack-based installation** allowing technology stack bundles (`python`, `js_ts`, `rust`, `config`, `file-management`)
 - **Modular dependency control** with size awareness (~350MB recommended, ~125MB yazi extensions, ~1GB media tools)
 
@@ -102,11 +102,11 @@
 
 ### Configuration Flow
 ```
-flake.nix → yazelix.nix/yazelix_default.nix → Nushell environment setup → Terminal launch → Zellij + Yazi + Editor
+devenv.nix → yazelix.toml/yazelix_default.toml → Nushell environment setup → Terminal launch → Zellij + Yazi + Editor
 ```
 
 ### Key File Locations
-- **Core configs**: `yazelix.nix`, `yazelix_default.nix`, `flake.nix`
+- **Core configs**: `yazelix.toml`, `yazelix_default.toml`, `devenv.nix`
 - **Nushell scripts**: `nushell/scripts/{core,utils,integrations,setup}`
 - **Terminal configs**: `configs/terminal_emulators/{ghostty,wezterm,kitty,alacritty,foot}/`
 - **Yazi setup**: `configs/yazi/` with plugins in `plugins/`
@@ -176,7 +176,7 @@ This is an exceptionally well-architected system that demonstrates deep understa
 
 #### **Code Quality & Architecture**
 1. **Add comprehensive integration tests** - Beyond the current basic Nix detection
-2. **Implement configuration schema validation** - Prevent invalid yazelix.nix files
+2. **Implement configuration schema validation** - Prevent invalid yazelix.toml files
 3. **Create plugin API** - Allow third-party extensions to the Yazelix ecosystem
 4. **Improve error handling** - More graceful degradation when components fail
 

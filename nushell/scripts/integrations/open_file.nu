@@ -5,7 +5,7 @@
 # Ensure we have the Yazelix environment available
 # Source the nix shell environment if YAZELIX_HELIX_MODE is not set
 if ($env.YAZELIX_HELIX_MODE? | is-empty) {
-    print "Environment not loaded, loading from yazelix.nix configuration..."
+    print "Environment not loaded, loading from yazelix.toml configuration (legacy yazelix.nix fallback)..."
     use ../utils/helix_mode.nu set_helix_env
     set_helix_env
 }

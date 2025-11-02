@@ -15,7 +15,7 @@ decorations = "None"
 padding = { x = 0, y = 10 }
 class = { instance = "yazelix", general = "com.yazelix.Yazelix" }
 
-# Transparency (configurable via yazelix.nix)
+# Transparency (configurable via yazelix.toml)
 opacity = 0.95
 
 # Cursor trails: Not supported in Alacritty

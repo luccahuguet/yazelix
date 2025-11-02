@@ -2,7 +2,7 @@
 # Sweep Testing - Configuration Generation Utilities
 # Generates temporary Yazelix configurations for testing different combinations
 
-# Generate temporary yazelix.nix config for testing
+# Generate temporary legacy yazelix.nix config for testing (deprecated)
 export def generate_sweep_config [
     shell: string,
     terminal: string,

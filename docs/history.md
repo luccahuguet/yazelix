@@ -1,5 +1,7 @@
 # Yazelix Version History & Changelog
 
+> **Note:** Older entries reference the legacy `yazelix.nix` configuration. Yazelix now uses `yazelix.toml`, but historical notes retain the original terminology for accuracy.
+
 ## The start
 
 Kintsugi is the japanese art of repairing broken pottery by mending the areas of breakage with a paste dusted or mixed with powdered gold, silver, or platinum. It represents the embracing of the flawed or imperfect, highlighting cracks and repairs as events in the life of an object, rather than allowing its service to end at the time of its damage or breakage.

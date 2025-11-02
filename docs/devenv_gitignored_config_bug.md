@@ -1,5 +1,7 @@
 # devenv Gitignored Config Bug Investigation
 
+> **Legacy Note:** This investigation covers issues encountered with the legacy `yazelix.nix` workflow. Yazelix now defaults to `yazelix.toml` while keeping legacy fallback support.
+
 **Date:** 2025-11-02
 **Branch:** poc/devenv-caching
 **Status:** ✅ RESOLVED

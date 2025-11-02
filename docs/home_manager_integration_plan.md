@@ -1,5 +1,7 @@
 # Home Manager Integration Plan
 
+> **Legacy Note:** This plan assumes the legacy `yazelix.nix` configuration emitted by the current module. Adjust tasks when migrating to the `yazelix.toml` workflow.
+
 **Status**: Implementation Phase - Option A Selected  
 **Priority**: Medium  
 **Risk Level**: Low (configuration-only approach minimizes risks)

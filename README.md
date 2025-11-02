@@ -84,7 +84,7 @@ Full version history: [Version History](./docs/history.md)
 ## Compatibility
 - **Platform**: Works on Linux and macOS
 - **Terminal**: Ghostty (via Homebrew on macOS), Kitty, WezTerm, Alacritty; Foot on Linux only
-- **Editor**: Any editor works! Helix and Neovim have first-class support (reveal in sidebar, open buffer in running instance, pane detection). Configure via `editor_command` setting in `yazelix.nix`
+- **Editor**: Any editor works! Helix and Neovim have first-class support (reveal in sidebar, open buffer in running instance, pane detection). Configure via `editor_command` setting in `yazelix.toml`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
@@ -168,7 +168,7 @@ When opening files from Yazi, Yazelix will:
 - Check the topmost pane and up to 3 panes below for a Zellij pane named `editor` (works for both Helix and Neovim).
 - If your editor is found, it is moved to the top and reused; if not, a new editor pane is opened.
 - This is needed because when opening or closing Zellij panes in the stack, the editor pane can move around (often down by 2 positions).
-- Supports both Helix and Neovim with identical behavior - configure via `editor_command` in `yazelix.nix`.
+- Supports both Helix and Neovim with identical behavior - configure via `editor_command` in `yazelix.toml`.
 
 ## Version History & Changelog
 
@@ -186,7 +186,7 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
-- **Core settings**: Edit `~/.config/yazelix/yazelix.nix` for shell, editor, terminal, and package preferences
+- **Core settings**: Edit `~/.config/yazelix/yazelix.toml` for shell, editor, terminal, and package preferences
 - **Tool customization**: Add personal overrides in `configs/yazi/personal/` or `configs/zellij/personal/` directories 
 - **Your configs persist** across Yazelix updates without git conflicts
 - **Intelligent merging**: TOML sections merge properly, avoiding duplicate keys and conflicts
@@ -208,7 +208,7 @@ To use Yazelix tools without starting the full interface (no sidebar, no Zellij)
 ```bash
 yzx env
 ```
-This loads all tools (helix, yazi, lazygit, etc.) into your current shell, with Yazelix env vars set and clean messaging, and automatically launches the shell configured in your `yazelix.nix`. Prefer the legacy behavior? Run `yzx env --no-shell` to stay in your current shell.
+This loads all tools (helix, yazi, lazygit, etc.) into your current shell, with Yazelix env vars set and clean messaging, and automatically launches the shell configured in your `yazelix.toml`. Prefer the legacy behavior? Run `yzx env --no-shell` to stay in your current shell.
 
 If you prefer a raw environment shell without launching Yazelix, you can use:
 ```bash
@@ -228,7 +228,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), you already have your `~/.config/yazelix/yazelix.nix` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.nix](./yazelix_default.nix) for all available options and their descriptions.
+If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/yazelix.toml` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](./yazelix_default.toml) for all available options and their descriptions.
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default): Modern, fast terminal written in Zig with great performance
@@ -239,7 +239,7 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 - **Alacritty**: Fast, GPU-accelerated terminal written in Rust
 - **Foot**: Wayland-native terminal (Linux-only)
 - **Auto-detection**: If preferred terminal not found, fallback order is: ghostty → wezterm → kitty → alacritty → foot
-- Configure your preference in `yazelix.nix` with `preferred_terminal = "terminal_name"`
+- Configure your preference in `yazelix.toml` with `preferred_terminal = "terminal_name"`
 - **Bundled terminals**: On Linux, Yazelix provides GPU-accelerated wrappers (`yazelix-ghostty`, `yazelix-kitty`, etc.) via Nix. On macOS, install your preferred terminal via Homebrew or system package manager.
 
 [See the full Customization Guide here.](./docs/customization.md)

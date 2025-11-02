@@ -7,13 +7,16 @@ def test_config_exists [] {
     print "🧪 Testing config file detection..."
 
     let yazelix_dir = "~/.config/yazelix" | path expand
-    let config_file = ($yazelix_dir | path join "yazelix.nix")
-    let default_config = ($yazelix_dir | path join "yazelix_default.nix")
+    let config_file = ($yazelix_dir | path join "yazelix.toml")
+    let default_config = ($yazelix_dir | path join "yazelix_default.toml")
+    let legacy_config = ($yazelix_dir | path join "yazelix.nix")
 
     if ($config_file | path exists) {
-        print $"  ✅ yazelix.nix exists at ($config_file)"
+        print $"  ✅ yazelix.toml exists at ($config_file)"
     } else if ($default_config | path exists) {
-        print $"  ✅ yazelix_default.nix exists at ($default_config)"
+        print $"  ✅ yazelix_default.toml exists at ($default_config)"
+    } else if ($legacy_config | path exists) {
+        print $"  ⚠️  Legacy yazelix.nix exists at ($legacy_config)"
     } else {
         print "  ❌ No config file found"
         return false

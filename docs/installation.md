@@ -104,15 +104,15 @@ git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 
 ### Step 4: Configure Your Installation (Optional)
 
-**Before installing dependencies**, create and customize your configuration to control what gets downloaded (else, yazelix will create a config for you based on yazelix_default.nix):
+**Before installing dependencies**, create and customize your configuration to control what gets downloaded (else, Yazelix will create a config for you based on `yazelix_default.toml`):
 
 ```bash
 # Create your personal config from the template
-cp ~/.config/yazelix/yazelix_default.nix ~/.config/yazelix/yazelix.nix
+cp ~/.config/yazelix/yazelix_default.toml ~/.config/yazelix/yazelix.toml
 
 # Edit the configuration to suit your needs
 # Use your preferred editor (hx, vim, etc.)
-hx ~/.config/yazelix/yazelix.nix
+hx ~/.config/yazelix/yazelix.toml
 ```
 
 #### Dependency Groups & Size Estimates
@@ -154,16 +154,11 @@ home.packages = with pkgs; [
 ];
 ```
 
-**Fallback: Legacy nix-env (if modern methods don't work):**
-```bash
-nix-env -iA nixpkgs.nerd-fonts.fira-code nixpkgs.nerd-fonts.symbols-only
-```
-
 **Note**: WezTerm and Ghostty have better font fallback and don't require this step.
 
 ### Step 6: Set Up Yazelix to Auto-Launch in Your Terminal
 
-**Note for v9 users:** Terminal configs are now auto-generated - no more manual copying! See [troubleshooting](./troubleshooting.md#v95-migration-notes) for migration details.
+**Note for v9 (or higher) users:** Terminal configs are now auto-generated - no more manual copying! See [troubleshooting](./troubleshooting.md#v95-migration-notes) for migration details.
 
 #### Option A: Automatic Launch (Recommended for most users)
 
@@ -175,7 +170,7 @@ nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 
 **What this does**:
 - Automatically generates optimized terminal configs based on your yazelix settings
-- Configures cursor trails and transparency from your `yazelix.nix` preferences
+- Configures cursor trails and transparency from your `yazelix.toml` preferences
 - Launches your preferred terminal with yazelix pre-loaded
 - No manual copying required - everything is handled dynamically
 
@@ -282,7 +277,7 @@ Check installed tool versions: `nu nushell/scripts/utils/version_info.nu`
 Run diagnostics: `yzx doctor` - Automated health checks and fixes
 
 ### Customization
-If you followed step 3, you already have your `~/.config/yazelix/yazelix.nix` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.nix](../yazelix_default.nix) for all available options and their descriptions.
+If you followed step 4, you already have your `~/.config/yazelix/yazelix.toml` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](../yazelix_default.toml) for all available options and their descriptions.
 
 For complete customization options, see the [Customization Guide](./customization.md).
 

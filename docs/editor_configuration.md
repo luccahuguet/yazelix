@@ -26,10 +26,11 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
 
 ### Default (Recommended): Yazelix's Helix
 
-```nix
-# In yazelix.nix:
-editor_command = null;           # Use yazelix's Nix-provided Helix
-helix_runtime_path = null;       # Use matching runtime automatically
+```toml
+# In yazelix.toml:
+[editor]
+command = ""             # Use Yazelix's Helix (recommended)
+# helix_runtime_path = "/path/to/runtime"  # Optional override when using custom builds
 ```
 
 **Benefits:**
@@ -45,10 +46,11 @@ helix_runtime_path = null;       # Use matching runtime automatically
 
 ### Using Your Existing Helix
 
-```nix
-# In yazelix.nix:
-editor_command = "hx";                           # Use system Helix from PATH
-helix_runtime_path = "/home/user/helix/runtime"; # MUST match your Helix version
+```toml
+# In yazelix.toml:
+[editor]
+command = "hx"                           # Use system Helix from PATH
+helix_runtime_path = "/home/user/helix/runtime"  # MUST match your Helix version
 ```
 
 **Benefits:**
@@ -76,10 +78,11 @@ ls $HELIX_RUNTIME  # Should show: grammars/ languages.toml queries/ themes/
 
 ### Using Neovim
 
-```nix
-# In yazelix.nix:
-editor_command = "nvim";         # Use Neovim
-helix_runtime_path = null;       # Not needed for Neovim
+```toml
+# In yazelix.toml:
+[editor]
+command = "nvim"         # Use Neovim
+# helix_runtime_path = null  # Not required for Neovim
 ```
 
 **Benefits:**
@@ -97,10 +100,11 @@ helix_runtime_path = null;       # Not needed for Neovim
 
 ### Using Other Editors
 
-```nix
-# In yazelix.nix:
-editor_command = "vim";          # vim, nano, emacs, etc.
-helix_runtime_path = null;       # Not needed for non-Helix editors
+```toml
+# In yazelix.toml:
+[editor]
+command = "vim"          # "nano", "emacs", etc.
+# helix_runtime_path = null  # Not needed for non-Helix editors
 ```
 
 **Benefits:**
@@ -173,7 +177,7 @@ helix_runtime_path = null;       # Not needed for non-Helix editors
 
 **📋 [Complete Troubleshooting Guide →](./troubleshooting.md)** - Quick fixes for common issues
 
-**Quick reset:** Delete `yazelix.nix` and run `yzx launch` to regenerate defaults.
+**Quick reset:** Delete `yazelix.toml` and run `yzx launch` to regenerate defaults.
 
 ## Advanced Scenarios
 
@@ -230,55 +234,50 @@ See `home_manager/examples/example.nix` for complete configuration examples.
 ## Common Configuration Examples
 
 ### Most Users (Recommended)
-```nix
-# yazelix.nix
-{
-  editor_command = null;           # Use yazelix's Helix
-  helix_runtime_path = null;       # Use matching runtime
-  # ... other settings
-}
+```toml
+# yazelix.toml
+[editor]
+command = ""             # Use Yazelix's Helix
+# helix_runtime_path = null  # Use matching runtime
+# ... other settings
 ```
 
 ### Helix Developer
-```nix
-# yazelix.nix  
-{
-  editor_command = "/home/user/helix/target/release/hx";
-  helix_runtime_path = "/home/user/helix/runtime";
-  # ... other settings
-}
+```toml
+# yazelix.toml
+[editor]
+command = "/home/user/helix/target/release/hx"
+helix_runtime_path = "/home/user/helix/runtime"
+# ... other settings
 ```
 
 ### Neovim User
-```nix
-# yazelix.nix
-{
-  editor_command = "nvim";         # Use Neovim
-  helix_runtime_path = null;       # Not needed for Neovim
-  # ... other settings
-}
+```toml
+# yazelix.toml
+[editor]
+command = "nvim"         # Use Neovim
+# helix_runtime_path = null  # Not needed for Neovim
+# ... other settings
 ```
 
 **Remember:** Add Alt+y keybinding to your Neovim config - see [Neovim Keybindings](./neovim_keybindings.md)
 
 ### Vim/Other Editor User
-```nix
-# yazelix.nix
-{
-  editor_command = "vim";          # Or "nano", "emacs", etc.
-  helix_runtime_path = null;       # Not needed for non-Helix
-  # ... other settings
-}
+```toml
+# yazelix.toml
+[editor]
+command = "vim"          # Or "nano", "emacs", etc.
+# helix_runtime_path = null  # Not needed for non-Helix
+# ... other settings
 ```
 
 ### System Helix User (Advanced)
-```nix
-# yazelix.nix
-{
-  editor_command = "hx";                              # Use system Helix
-  helix_runtime_path = "/usr/share/helix/runtime";    # Match system runtime
-  # ... other settings
-}
+```toml
+# yazelix.toml
+[editor]
+command = "hx"                              # Use system Helix
+helix_runtime_path = "/usr/share/helix/runtime"    # Match system runtime
+# ... other settings
 ```
 
 ## Integration Feature Matrix

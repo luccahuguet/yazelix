@@ -13,7 +13,7 @@ yzx doctor --fix              # Auto-fix safe issues
 **What it checks:**
 - **Helix runtime conflicts** - Detects old `~/.config/helix/runtime` that breaks syntax highlighting
 - **Environment variables** - EDITOR, HELIX_RUNTIME, and other critical settings
-- **Configuration health** - yazelix.nix validation and shell integration
+- **Configuration health** - yazelix.toml validation and shell integration
 - **System status** - Log file sizes, file permissions, git repository state
 
 **Auto-fix capabilities:**
@@ -67,7 +67,7 @@ nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 
 ### Reset Configuration
 ```bash
-rm ~/.config/yazelix/yazelix.nix
+rm ~/.config/yazelix/yazelix.toml
 exit         # Exit current session
 yzx launch   # Start fresh in new window - regenerates defaults
 ```
@@ -93,7 +93,7 @@ ls $HELIX_RUNTIME               # Should show grammars/ themes/
 ```
 
 ### Wrong Editor Used
-Check `editor_command` in `yazelix.nix`:
+Check `editor_command` in `yazelix.toml`:
 - `null` = yazelix's Helix
 - `"hx"` = system Helix (needs `helix_runtime_path`)
 - `"vim"` = other editor
@@ -133,7 +133,7 @@ git stash pop                   # Restore changes
 ## Getting Help
 
 1. Check logs: `~/.config/yazelix/logs/`
-2. Test with defaults: delete `yazelix.nix`
+2. Test with defaults: delete `yazelix.toml`
 3. Report issues with:
    - OS and version
    - Yazelix version

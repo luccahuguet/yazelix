@@ -1,5 +1,7 @@
 # Yazelix Vertical Integration Plan: Single Package Implementation
 
+> **Legacy Note:** References to `yazelix.nix` describe the previous configuration pipeline. Updated designs should target `yazelix.toml`.
+
 ## Overview
 
 Transform Yazelix from a configuration system to a single integrated package while preserving its sophisticated dynamic configuration generation and multi-terminal support.

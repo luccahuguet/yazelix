@@ -22,7 +22,7 @@
    ```
 
 ## 3. **Nix Dependencies**: 
-   - Reads `~/.config/yazelix/yazelix.nix` configuration (creates from `yazelix_default.nix` if missing)
+   - Reads `~/.config/yazelix/yazelix.toml` configuration (creates from `yazelix_default.toml` if missing)
    - Installs dependencies based on config flags
    - Sets environment variables (`YAZELIX_DIR`, `YAZELIX_DEFAULT_SHELL`, etc.)
 

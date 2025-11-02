@@ -1,6 +1,6 @@
 # Package Sizes & Dependencies
 
-Control Yazelix's disk usage by enabling/disabling dependency groups in your `yazelix.nix` configuration.
+Control Yazelix's disk usage by enabling/disabling dependency groups in your `yazelix.toml` configuration.
 
 ## 📊 Dependency Groups
 
@@ -28,14 +28,13 @@ Control Yazelix's disk usage by enabling/disabling dependency groups in your `ya
 
 ## ⚙️ Configuration
 
-Edit `yazelix.nix` to control dependency groups:
+Edit `yazelix.toml` to control dependency groups:
 
-```nix
-{
-  recommended_deps = true;   # ~350MB
-  yazi_extensions = true;    # ~125MB  
-  yazi_media = true;         # ~1GB
-}
+```toml
+[core]
+recommended_deps = true   # ~350MB
+yazi_extensions = true    # ~125MB
+yazi_media = true         # ~1GB
 ```
 
 **Common configurations:**

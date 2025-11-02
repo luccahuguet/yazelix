@@ -124,7 +124,7 @@ Once you're in Yazelix, all subsequent `yzx launch` calls are instant:
 
 ### 3. Use Persistent Sessions (Optional)
 
-For guaranteed session persistence, enable in `yazelix.nix`:
+For guaranteed session persistence, enable in `yazelix.toml`:
 
 ```nix
 {

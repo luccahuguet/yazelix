@@ -89,10 +89,10 @@ theme = \"($YAZELIX_THEME)\"
 window-decoration = \"none\"
 window-padding-y = 10,0
 
-# Transparency \(configurable via yazelix.nix\)
+# Transparency \(configurable via yazelix.toml\)
 (build_transparency $config.transparency "ini" "background-opacity")
 
-# Cursor trail effect \(configurable via yazelix.nix\)
+# Cursor trail effect \(configurable via yazelix.toml\)
 (build_cursor_trail $config.cursor_trail)
 
 ($CURSOR_TRAIL_PRESETS_COMMENT)
@@ -113,7 +113,7 @@ config.color_scheme = '($YAZELIX_THEME)'
 -- Hide tab bar \(Zellij handles tabs\)
 config.enable_tab_bar = false
 
--- Transparency \(configurable via yazelix.nix\)
+-- Transparency \(configurable via yazelix.toml\)
 (build_transparency $config.transparency "lua" "")
 
 -- Cursor trails: Not supported in WezTerm
@@ -133,7 +133,7 @@ linux_display_server x11
 x11_hide_window_decorations yes
 window_title (get_terminal_title "kitty")
 
-# Transparency \(configurable via yazelix.nix\)
+# Transparency \(configurable via yazelix.toml\)
 (build_transparency $config.transparency "ini-space" "background_opacity")
 
 # Font settings
@@ -147,7 +147,7 @@ repaint_delay 10
 input_delay 3
 sync_to_monitor yes
 
-# Cursor trail effect \(configurable via yazelix.nix\)
+# Cursor trail effect \(configurable via yazelix.toml\)
 (build_kitty_cursor $config.cursor_trail)"
 }
 
@@ -170,7 +170,7 @@ decorations = \"None\"
 padding = { x = 0, y = 10 }
 (build_branding "alacritty" "toml")
 
-# Transparency \(configurable via yazelix.nix\)
+# Transparency \(configurable via yazelix.toml\)
 (build_transparency $config.transparency "toml" "")
 
 # Cursor trails: Not supported in Alacritty
@@ -193,7 +193,7 @@ export def generate_foot_config [] {
 shell=($YAZELIX_SHELL_COMMAND)
 
 [colors]
-# Transparency \(configurable via yazelix.nix)
+# Transparency \(configurable via yazelix.toml)
 (build_transparency $config.transparency "ini" "alpha")
 
 [main]

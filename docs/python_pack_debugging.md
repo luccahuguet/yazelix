@@ -1,5 +1,7 @@
 # Python Pack Debugging Investigation
 
+> **Legacy Note:** This investigation references the former `yazelix.nix` configuration workflow prior to the TOML migration. Current releases use `yazelix.toml` by default.
+
 **Date:** 2025-11-02
 **Issue:** Python pack is enabled in yazelix.nix but tools (uv, ruff, ty, ipython) are not available in the shell
 

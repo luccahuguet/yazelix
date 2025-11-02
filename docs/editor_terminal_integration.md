@@ -20,7 +20,7 @@ Zed launches shells directly, so point it at Bash and let `yzx env` take over:
 ```
 
 - `-i` makes Bash interactive, so it sources your `~/.bashrc` (where `yzx` is typically defined).
-- `yzx env` hands control to the shell configured in `yazelix.nix` (defaults to Nushell via `nushell/scripts/core/yazelix.nu:214`).
+- `yzx env` hands control to the shell configured in `yazelix.toml` (defaults to Nushell via `nushell/scripts/core/yazelix.nu:214`).
 - Prefer to stay in Zed's original shell? Swap the command for `yzx env --no-shell`.
 
 ## VS Code and Cursor Integrated Terminal
@@ -88,7 +88,7 @@ Both launchers rely on the same flow:
 
 1. **Bash is the bootstrapper** – either directly (`program: "bash"`) or via `/usr/bin/bash`
 2. **Editor startup scripts load `yzx`** – interactive Bash sessions run `~/.bashrc`, which typically defines your Nix profile and the `yzx` command
-3. **`yzx env` loads Yazelix tools** – it drops into the shell specified in `yazelix.nix` with all Yazelix binaries and environment variables ready to use (add `--no-shell` to keep the existing shell)
+3. **`yzx env` loads Yazelix tools** – it drops into the shell specified in `yazelix.toml` with all Yazelix binaries and environment variables ready to use (add `--no-shell` to keep the existing shell)
 
 ## What You Get
 

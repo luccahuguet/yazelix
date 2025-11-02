@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# Benchmark different approaches for detecting yazelix.nix changes
+# Benchmark different approaches for detecting yazelix.toml changes (legacy yazelix.nix fallback)
 
 def main [] {
     print "========================================="
@@ -8,13 +8,21 @@ def main [] {
     print ""
 
     let yazelix_dir = $"($env.HOME)/.config/yazelix"
-    let config_file = $"($yazelix_dir)/yazelix.nix"
+    let toml_config = $"($yazelix_dir)/yazelix.toml"
+    let legacy_config = $"($yazelix_dir)/yazelix.nix"
+    let config_file = if ($toml_config | path exists) {
+        $toml_config
+    } else {
+        $legacy_config
+    }
 
     # Check if config file exists
     if not ($config_file | path exists) {
         print $"❌ Error: Config file not found at ($config_file)"
         exit 1
     }
+
+    let config_basename = ($config_file | path basename)
 
     print $"📁 Config file: ($config_file)"
     print $"📏 File size: (ls $config_file | get 0.size | into string)"
@@ -24,7 +32,7 @@ def main [] {
 
     # Benchmark 1: Nushell hash
     print "1️⃣  Benchmarking: Nushell built-in hash"
-    print "   Command: open yazelix.nix | hash sha256"
+    print $"   Command: open ($config_basename) | hash sha256"
     let nushell_times = (seq 1 $iterations | each {|i|
         let start = (date now)
         let _ = (open $config_file | hash sha256)
@@ -43,7 +51,7 @@ def main [] {
 
     # Benchmark 2: Nix hash command
     print "2️⃣  Benchmarking: Nix hash command"
-    print "   Command: nix hash file yazelix.nix"
+    print $"   Command: nix hash file ($config_basename)"
 
     # Check if nix is available
     mut nix_times = []

@@ -24,23 +24,21 @@ This directory contains Zsh-specific configuration files for Yazelix.
 
 ## Usage
 
-To use zsh as your default shell in Yazelix, update your `~/.config/yazelix/yazelix.nix`:
+To use zsh as your default shell in Yazelix, update your `~/.config/yazelix/yazelix.toml`:
 
-```nix
-{
-  default_shell = "zsh";
-  # ... other configuration
-}
+```toml
+[shell]
+default_shell = "zsh"
+# ... other configuration
 ```
 
 Alternatively, if you want zsh available but not as the default shell, add it to `extra_shells`:
 
-```nix
-{
-  default_shell = "nu";  # or "bash"
-  extra_shells = ["zsh"];
-  # ... other configuration
-}
+```toml
+[shell]
+default_shell = "nu"  # or "bash"
+extra_shells = ["zsh"]
+# ... other configuration
 ```
 
 ## Notes

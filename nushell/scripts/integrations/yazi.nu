@@ -46,7 +46,7 @@ export def reveal_in_yazi [buffer_name: string] {
     let sidebar_enabled = ($env.YAZELIX_ENABLE_SIDEBAR? | default "true") == "true"
     if (not $sidebar_enabled) {
         let friendly_msg = "📂 Reveal in Yazi (Alt+y) only works in sidebar mode. You're currently using no-sidebar mode."
-        let tip_msg = "💡 Tip: Use Ctrl+y for file picking in no-sidebar mode, or enable sidebar mode in yazelix.nix"
+        let tip_msg = "💡 Tip: Use Ctrl+y for file picking in no-sidebar mode, or enable sidebar mode in yazelix.toml"
         print $"($friendly_msg)\n($tip_msg)"
         log_to_file "reveal_in_yazi.log" "Sidebar mode disabled - reveal_in_yazi not available"
         return
@@ -251,4 +251,3 @@ export def open_file_with_editor [file_path: path] {
 
     log_to_file "open_editor.log" "open_file_with_editor function completed"
 }
-

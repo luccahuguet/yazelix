@@ -183,30 +183,38 @@ export def check_environment_variables [] {
 
 # Check configuration files
 export def check_configuration [] {
-    let yazelix_config = "~/.config/yazelix/yazelix.nix"
-    let yazelix_default = "~/.config/yazelix/yazelix_default.nix"
+    let yazelix_config = "~/.config/yazelix/yazelix.toml"
+    let yazelix_legacy = "~/.config/yazelix/yazelix.nix"
+    let yazelix_default = "~/.config/yazelix/yazelix_default.toml"
     
     mut results = []
     
     if ($yazelix_config | path expand | path exists) {
         $results = ($results | append {
             status: "ok"
-            message: "Using custom yazelix.nix configuration"
+            message: "Using custom yazelix.toml configuration"
             details: ($yazelix_config | path expand)
+            fix_available: false
+        })
+    } else if ($yazelix_legacy | path expand | path exists) {
+        $results = ($results | append {
+            status: "warning"
+            message: "Legacy yazelix.nix configuration detected"
+            details: ($yazelix_legacy | path expand)
             fix_available: false
         })
     } else if ($yazelix_default | path expand | path exists) {
         $results = ($results | append {
             status: "info"
-            message: "Using default configuration (yazelix_default.nix)"
-            details: "Consider copying to yazelix.nix for customization"
+            message: "Using default configuration (yazelix_default.toml)"
+            details: "Consider copying to yazelix.toml for customization"
             fix_available: true
         })
     } else {
         $results = ($results | append {
             status: "error"
             message: "No configuration file found"
-            details: "Neither yazelix.nix nor yazelix_default.nix exists"
+            details: "Neither yazelix.toml nor yazelix_default.toml exists"
             fix_available: false
         })
     }
@@ -327,17 +335,17 @@ export def fix_large_logs [] {
     }
 }
 
-# Create yazelix.nix from default
+# Create yazelix.toml from default
 export def fix_create_config [] {
-    let yazelix_config = "~/.config/yazelix/yazelix.nix"
-    let yazelix_default = "~/.config/yazelix/yazelix_default.nix"
+    let yazelix_config = "~/.config/yazelix/yazelix.toml"
+    let yazelix_default = "~/.config/yazelix/yazelix_default.toml"
     
     try {
         cp ($yazelix_default | path expand) ($yazelix_config | path expand)
-        print $"✅ Created yazelix.nix from template"
+        print $"✅ Created yazelix.toml from template"
         return true
     } catch {
-        print "❌ Failed to create yazelix.nix"
+        print "❌ Failed to create yazelix.toml"
         return false
     }
 }

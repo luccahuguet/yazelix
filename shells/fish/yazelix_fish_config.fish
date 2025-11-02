@@ -52,31 +52,41 @@ function hx --description "Helix editor with Yazelix mode support"
     command hx $argv
 end
 
-# Function to detect Helix mode from yazelix.nix configuration
-function detect_helix_mode --description "Detect Helix mode from yazelix.nix configuration"
+# Function to detect Helix mode from yazelix.toml configuration (falls back to legacy yazelix.nix)
+function detect_helix_mode --description "Detect Helix mode from yazelix.toml configuration"
     # Only run if environment variables are not already set
     if test -z $YAZELIX_HELIX_MODE
-        set -l yazelix_config "$HOME/.config/yazelix/yazelix.nix"
-        set -l default_config "$HOME/.config/yazelix/yazelix_default.nix"
+        set -l toml_config "$HOME/.config/yazelix/yazelix.toml"
+        set -l legacy_config "$HOME/.config/yazelix/yazelix.nix"
+        set -l default_config "$HOME/.config/yazelix/yazelix_default.toml"
 
         set -l config_file
-        if test -f $yazelix_config
-            set config_file $yazelix_config
+        if test -f $toml_config
+            set config_file $toml_config
+        else if test -f $legacy_config
+            set config_file $legacy_config
         else
             set config_file $default_config
         end
 
         if test -f $config_file
-            # Extract helix_mode from the nix configuration file
-            set -l helix_mode_line (grep "helix_mode" $config_file | head -1)
-            if test -n $helix_mode_line
-                # Extract the mode value from the line
-                set -l mode (echo $helix_mode_line | sed 's/helix_mode = //' | sed 's/"//g' | sed 's/;//' | tr -d ' ')
-
-                # Set environment variables based on detected mode
-                set -gx YAZELIX_HELIX_MODE $mode
+            if string match -r '.*\.toml$' -- $config_file >/dev/null
+                set -l mode (nu -c "open --raw \"$config_file\" | from toml | get helix.mode" 2>/dev/null)
+                set mode (string trim -- $mode)
+                if test -n "$mode"
+                    set -gx YAZELIX_HELIX_MODE $mode
+                else
+                    set -gx YAZELIX_HELIX_MODE "default"
+                end
             else
-                set -gx YAZELIX_HELIX_MODE "default"
+                # Legacy yazelix.nix fallback
+                set -l helix_mode_line (grep "helix_mode" $config_file | head -1)
+                if test -n $helix_mode_line
+                    set -l mode (echo $helix_mode_line | sed 's/helix_mode = //' | sed 's/"//g' | sed 's/;//' | tr -d ' ')
+                    set -gx YAZELIX_HELIX_MODE $mode
+                else
+                    set -gx YAZELIX_HELIX_MODE "default"
+                end
             end
         else
             set -gx YAZELIX_HELIX_MODE "default"

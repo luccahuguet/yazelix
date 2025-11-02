@@ -1,5 +1,7 @@
 # Yazelix Home Manager Module Design
 
+> **Legacy Note:** This design references the existing module that emits `yazelix.nix`. A future iteration should target `yazelix.toml`.
+
 ## Architecture Decision: Configuration-Only Approach
 
 Based on research of existing Home Manager patterns and the safety requirements, we're implementing **Option A: Configuration-Only Module** from the plan.

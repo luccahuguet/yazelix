@@ -4,7 +4,7 @@ Yazelix includes several swap layouts that automatically organize your workspace
 
 ## Sidebar Toggle
 
-Yazelix supports running with or without the Yazi sidebar. Configure this in your `yazelix.nix`:
+Yazelix supports running with or without the Yazi sidebar. Configure this in your `yazelix.toml`:
 
 ```nix
 # Enable or disable the Yazi sidebar (default: false)

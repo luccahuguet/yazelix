@@ -1,5 +1,7 @@
 # Yazelix Rust Migration Plan
 
+> **Legacy Note:** Tasks in this plan reference the old `yazelix.nix` configuration system. Update items should be re-evaluated against the current `yazelix.toml` workflow.
+
 This document outlines the incremental migration of Yazelix from Nushell to Rust for core application logic, while keeping Nushell for shell integration and CLI dispatch.
 
 ## Goals

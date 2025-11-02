@@ -54,10 +54,10 @@ theme = "Abernathy"
 window-decoration = "none"
 window-padding-y = 10,0
 
-# Transparency (configurable via yazelix.nix)
+# Transparency (configurable via yazelix.toml)
 background-opacity = 0.95
 
-# Cursor trail effect (configurable via yazelix.nix)
+# Cursor trail effect (configurable via yazelix.toml)
 custom-shader = ./shaders/cursor_smear.glsl
 # Alternative presets (uncomment to try)
 # snow:  custom-shader = ./shaders/cursor_trail_white.glsl
@@ -73,4 +73,4 @@ custom-shader = ./shaders/cursor_smear.glsl
 # orchid (amber/cobalt): custom-shader = ./shaders/cursor_trail_orchid.glsl
 # reef (cyan/green): custom-shader = ./shaders/cursor_trail_reef.glsl
 # inferno (crimson/silver): custom-shader = ./shaders/cursor_trail_inferno.glsl
-# random (rotating preset): set cursor_trail = \"random\" in yazelix.nix
+# random (rotating preset): set cursor_trail = \"random\" in yazelix.toml

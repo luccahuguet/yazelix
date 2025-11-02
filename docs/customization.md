@@ -2,7 +2,7 @@
 
 Yazelix is highly customizable! Here are the main ways you can tailor your experience:
 
-- **Configuration File**: Edit `~/.config/yazelix/yazelix.nix` for all core options. See [yazelix_default.nix](../yazelix_default.nix) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, sidebar toggle, debug mode, etc).
+- **Configuration File**: Edit `~/.config/yazelix/yazelix.toml` for all core options. See [yazelix_default.toml](../yazelix_default.toml) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, sidebar toggle, debug mode, etc).
 - **Terminal Configurations**:
   - **Bundled terminals** (yazelix-ghostty, etc.): Configs generated dynamically from your yazelix settings
     - **Cursor trails** *(default: `random`)*: Set a single preset: `cursor_trail = "blaze" | "snow" | "cosmic" | "ocean" | "forest" | "sunset" | "neon" | "party" | "eclipse" | "dusk" | "orchid" | "reef" | "inferno" | "random" | "none"` (`random` rotates between colorful presets, excluding `none` and `party`)

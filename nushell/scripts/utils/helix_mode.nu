@@ -1,16 +1,21 @@
 #!/usr/bin/env nu
 # Helix mode detection utility for Yazelix
 
-# Get the current Helix mode from yazelix.nix configuration
+# Get the current Helix mode from yazelix.toml configuration (falls back to legacy yazelix.nix)
 export def get_helix_mode [] {
-    let yazelix_config = $"($env.HOME)/.config/yazelix/yazelix.nix"
-    let default_config = $"($env.HOME)/.config/yazelix/yazelix_default.nix"
+    let toml_config = $"($env.HOME)/.config/yazelix/yazelix.toml"
+    let legacy_config = $"($env.HOME)/.config/yazelix/yazelix.nix"
+    let default_toml = $"($env.HOME)/.config/yazelix/yazelix_default.toml"
 
-    let config_file = if ($yazelix_config | path exists) { $yazelix_config } else { $default_config }
-
-    if ($config_file | path exists) {
+    if ($toml_config | path exists) {
         try {
-            let config_content = (open $config_file)
+            open $toml_config | get helix.mode
+        } catch {
+            "release"
+        }
+    } else if ($legacy_config | path exists) {
+        try {
+            let config_content = (open $legacy_config)
             let helix_mode_line = ($config_content | lines | where $it | str contains "helix_mode")
 
             if not ($helix_mode_line | is-empty) {
@@ -18,6 +23,12 @@ export def get_helix_mode [] {
             } else {
                 "release"
             }
+        } catch {
+            "release"
+        }
+    } else if ($default_toml | path exists) {
+        try {
+            open $default_toml | get helix.mode
         } catch {
             "release"
         }

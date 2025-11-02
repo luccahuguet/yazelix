@@ -1,5 +1,7 @@
 # Yazelix Home Manager Module
 
+> **Legacy Note:** The current Home Manager module still generates the legacy `yazelix.nix` configuration file. Migration to `yazelix.toml` is planned but not yet implemented.
+
 A **configuration-only** Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that provides declarative configuration management while preserving the existing workflow.
 
 ## What This Module Does
