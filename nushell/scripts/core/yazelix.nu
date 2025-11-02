@@ -310,23 +310,51 @@ export def "yzx doctor" [
     run_doctor_checks $verbose $fix
 }
 
-# Update flake inputs for Yazelix
+# Update dependencies and inputs
 export def "yzx update" [] {
+    print "Yazelix update commands:"
+    print "  yzx update devenv  # Refresh devenv.lock using devenv update"
+    print "  yzx update nix     # Alias for devenv update (refresh Yazelix dependencies)"
+}
+
+export def "yzx update devenv" [
+    --verbose  # Show the underlying devenv command
+] {
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
-    let dir = $"($env.HOME)/.config/yazelix"
-    if not ($dir | path exists) {
-        print $"Error: Yazelix directory not found at ($dir)"
+
+    if (which devenv | is-empty) {
+        print "❌ devenv command not found - install devenv to manage Yazelix dependencies."
+        print "   See https://devenv.sh/getting-started/ for installation instructions."
         exit 1
     }
-    print "Running: nix flake update (this may take a while)"
-    cd $dir
+
+    let yazelix_dir = "~/.config/yazelix" | path expand
+    let command = $"cd ($yazelix_dir) && devenv update"
+
+    if $verbose {
+        print $"⚙️ Running: ($command)"
+    } else {
+        print "🔄 Updating devenv inputs (this may take a moment)..."
+    }
+
     try {
-        ^nix flake update
-        print "Done: flake inputs updated. Review and commit flake.lock changes."
+        ^bash -c $command
+        print "✅ devenv.lock updated. Review and commit the changes if everything looks good."
     } catch {|err|
-        print $"flake update failed: ($err.msg)"
+        print $"❌ devenv update failed: ($err.msg)"
+        print "   Check your network connection and devenv.yaml inputs, then try again."
         exit 1
+    }
+}
+
+export def "yzx update nix" [
+    --verbose  # Show the underlying devenv command
+] {
+    if $verbose {
+        yzx update devenv --verbose
+    } else {
+        yzx update devenv
     }
 }
 

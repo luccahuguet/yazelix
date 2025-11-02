@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 # Dynamic Yazelix Config Schema Validator
-# Uses yazelix_default.nix as the reference for validation
+# Uses yazelix_default.toml as the reference for validation
 
 # Helper: Compare two records (default vs user config), only at the top level
 # No recursion into nested configs
@@ -25,34 +25,47 @@ export def compare_configs [default: record, user: record] {
     $warnings
 }
 
+# Helper: Safely retrieve nested values from a record
+def get_nested_value [data: any, path: list<string>] {
+    mut current = $data
+    for segment in $path {
+        let current = (try {
+            $current | get $segment
+        } catch {
+            return null
+        })
+    }
+    $current
+}
+
 # Helper: Validate enum values for key fields
 export def validate_enum_values [user: record] {
     mut warnings = []
     let enums = [
-        { key: "default_shell", allowed: ["nu", "bash", "fish", "zsh"] },
-        { key: "helix_mode", allowed: ["release", "source"] },
-        { key: "preferred_terminal", allowed: ["wezterm", "ghostty", "kitty", "alacritty", "foot"] },
-        { key: "cursor_trail", allowed: ["blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "eclipse", "dusk", "orchid", "reef", "inferno", "random", "none"] },
-        { key: "ascii_art_mode", allowed: ["static", "animated"] }
+        { path: ["shell", "default_shell"], label: "shell.default_shell", allowed: ["nu", "bash", "fish", "zsh"] },
+        { path: ["helix", "mode"], label: "helix.mode", allowed: ["release", "source"] },
+        { path: ["terminal", "preferred_terminal"], label: "terminal.preferred_terminal", allowed: ["wezterm", "ghostty", "kitty", "alacritty", "foot"] },
+        { path: ["terminal", "cursor_trail"], label: "terminal.cursor_trail", allowed: ["blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "eclipse", "dusk", "orchid", "reef", "inferno", "random", "none"] },
+        { path: ["ascii", "mode"], label: "ascii.mode", allowed: ["static", "animated"] }
     ]
     for enum in $enums {
-        if not ($user | columns | any {|k| $k == $enum.key }) {
+        let value = (get_nested_value $user $enum.path)
+        if $value == null {
             continue
         }
-        let value = ($user | get $enum.key)
-        if ($enum.key == "cursor_trail") and (value | describe | str contains "list") {
+        if ($enum.label == "terminal.cursor_trail") and (value | describe | str contains "list") {
             # Validate each list entry
             for v in $value {
                 if not ($v in $enum.allowed) {
                     let allowed_str = ($enum.allowed | str join ", ")
-                    let msg = '⚠️  Invalid value for cursor_trail: ' + $v + ' (allowed: [' + $allowed_str + '])'
+                    let msg = '⚠️  Invalid value for terminal.cursor_trail: ' + $v + ' (allowed: [' + $allowed_str + '])'
                     $warnings = ($warnings | append $msg)
                 }
             }
         } else {
             if not ($value in $enum.allowed) {
                 let allowed_str = ($enum.allowed | str join ", ")
-                let msg = '⚠️  Invalid value for ' + $enum.key + ': ' + $value + ' (allowed: [' + $allowed_str + '])'
+                let msg = '⚠️  Invalid value for ' + $enum.label + ': ' + $value + ' (allowed: [' + $allowed_str + '])'
                 $warnings = ($warnings | append $msg)
             }
         }
@@ -60,34 +73,26 @@ export def validate_enum_values [user: record] {
     $warnings
 }
 
-# Helper: Evaluate a Nix config file to JSON using nix eval --json --impure --expr
-# Handles Nix function configs by passing a dummy pkgs argument
-export def eval_nix_config_to_json [path: string] {
-    let abs_path = ($path | path expand)
-    let expr = $'import "' + $abs_path + '" { pkgs = import <nixpkgs> {}; }'
-    (run-external "nix" "eval" "--json" "--impure" "--expr" $expr | from json)
-}
-
-# Main exported function: validate user config against yazelix_default.nix
+# Main exported function: validate user config against yazelix_default.toml
 export def validate_config_against_default [yazelix_dir: string] {
-    let default_path = ($yazelix_dir | path expand | path join "yazelix_default.nix")
-    let user_path = ($yazelix_dir | path expand | path join "yazelix.nix")
+    let default_path = ($yazelix_dir | path expand | path join "yazelix_default.toml")
+    let user_path = ($yazelix_dir | path expand | path join "yazelix.toml")
     if not ($default_path | path exists) {
-        print $"❌ yazelix_default.nix not found at ($default_path)"
+        print $"❌ yazelix_default.toml not found at ($default_path)"
         return
     }
     if not ($user_path | path exists) {
-        print $"❌ yazelix.nix not found at ($user_path)"
+        print $"⚠️  yazelix.toml not found at ($user_path) - using defaults only"
         return
     }
-    # Use helper to evaluate both configs
-    let default_config = eval_nix_config_to_json $default_path
-    let user_config = eval_nix_config_to_json $user_path
+    # Read TOML files directly
+    let default_config = open $default_path
+    let user_config = open $user_path
     let warnings = compare_configs $default_config $user_config
     let enum_warnings = validate_enum_values $user_config
     let all_warnings = ($warnings | append $enum_warnings)
     if ($all_warnings | is-empty) {
-        print "✅ User config matches yazelix_default.nix (all fields present, no unknowns, all values valid)"
+        print "✅ User config matches yazelix_default.toml (all sections present, no unknowns, all values valid)"
     } else {
         print "🔧 Yazelix Config Validation:"
         for warning in $all_warnings {

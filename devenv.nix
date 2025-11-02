@@ -439,11 +439,6 @@ in {
       echo "📝 Set EDITOR to: ${editorCommand}"
     fi
 
-    if [ ! -f "$YAZELIX_DIR/yazelix.nix" ] && [ -f "$YAZELIX_DIR/yazelix_default.nix" ]; then
-      cp "$YAZELIX_DIR/yazelix_default.nix" "$YAZELIX_DIR/yazelix.nix"
-      echo "Created yazelix.nix from template. Customize it for your needs!"
-    fi
-
     nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu" \
       "$YAZELIX_DIR" \
       "${boolToString recommendedDepsEnabled}" \

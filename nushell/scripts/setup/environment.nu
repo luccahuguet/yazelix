@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 # Main Yazelix environment setup script
-# Called from flake.nix shellHook to reduce complexity
+# Called from devenv.nix shellHook to reduce complexity
 
 use ../utils/config_parser.nu parse_yazelix_config
 
@@ -42,20 +42,7 @@ def main [
             print "   If using home-manager, see docs/home_manager_integration.md"
             print "   Some features may not work correctly."
         }
-        "standard" => {
-            # Auto-create yazelix.nix in standard environments (preserve existing behavior)
-            let user_config = $"($yazelix_dir)/yazelix.nix"
-            let default_config = $"($yazelix_dir)/yazelix_default.nix"
-
-            if not ($user_config | path exists) and ($default_config | path exists) {
-                try {
-                    cp $default_config $user_config
-                    print "📋 Created yazelix.nix from template. Customize it for your needs!"
-                } catch {|err|
-                    print $"⚠️  Could not create yazelix.nix: ($err.msg)"
-                }
-            }
-        }
+        "standard" => { }
     }
 
     # Validate user config against schema

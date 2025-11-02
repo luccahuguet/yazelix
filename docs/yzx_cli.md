@@ -48,6 +48,11 @@ Restart Yazelix (handles persistent sessions)
 ### `yzx info`
 Show system information and settings
 
+### `yzx update`
+Manage Yazelix dependency inputs
+- `yzx update devenv`: Run `devenv update` inside `~/.config/yazelix` and refresh `devenv.lock`
+- `yzx update nix`: Alias for `yzx update devenv`, clarifying that Yazelix dependencies are managed through devenv
+
 ### `yzx versions`
 Display all tool versions
 

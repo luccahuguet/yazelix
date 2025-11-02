@@ -14,6 +14,8 @@
 ## Overview
 Yazelix integrates Yazi, Zellij, and Helix (hence the name!), with first-class support for Neovim too.
 
+- ⚠️ Yazelix now uses the devenv-based shell (`devenv.nix`) and `yazelix.toml`. The legacy flake interface (`flake.nix`, `yazelix.nix`) has been removed.
+
 - **Use your preferred shell**: Bash, Fish, Zsh, or Nushell - Yazelix works with all of them
 - Zellij orchestrates everything, with Yazi as a sidebar and your chosen editor (Helix by default)
 - To hide the sidebar, make your pane fullscreen! (`Ctrl p + f` or `Alt Shift f`)

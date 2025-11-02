@@ -29,10 +29,16 @@ def main [
         print $"Resolved HOME=($home)"
     }
 
-    # Smart config change detection: compute hash of yazelix.nix
-    let config_file = $"($home)/.config/yazelix/yazelix.nix"
+    # Parse config once for reuse (also auto-creates yazelix.toml if missing)
+    let config = parse_yazelix_config
+    let active_config_file = $config.config_file
+    let legacy_nix_config = $"($home)/.config/yazelix/yazelix.nix"
     let cache_dir = $"($home)/.local/share/yazelix/state"
     let cache_file = $"($cache_dir)/config_hash"
+
+    if ($legacy_nix_config | path exists) and ($legacy_nix_config != $active_config_file) {
+        print "⚠️  yazelix.nix detected but is no longer used. Update ~/.config/yazelix/yazelix.toml instead."
+    }
 
     # Ensure cache directory exists
     if not ($cache_dir | path exists) {
@@ -40,11 +46,10 @@ def main [
     }
 
     # Compute current config hash
-    let current_hash = if ($config_file | path exists) {
-        open $config_file | hash sha256
-    } else {
-        # Config doesn't exist, use empty hash
+    let current_hash = if ($active_config_file | is-empty) or (not ($active_config_file | path exists)) {
         ""
+    } else {
+        open --raw $active_config_file | hash sha256
     }
 
     # Read cached hash (if exists)
@@ -77,8 +82,6 @@ def main [
         print $"Launch directory: ($working_dir)"
     }
 
-    # Read config (for terminal_config_mode and fallback)
-    let config = parse_yazelix_config
     let terminal_config_mode = $config.terminal_config_mode
 
     # Use terminal override if provided, otherwise use config preference
