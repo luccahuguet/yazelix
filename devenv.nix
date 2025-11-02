@@ -3,6 +3,9 @@
 { pkgs, lib, config, inputs, ... }:
 
 let
+  # Import nixgl for GPU acceleration on non-NixOS systems
+  nixgl = inputs.nixgl.packages.${pkgs.system};
+
   # Read yazelix.nix configuration (relative to this file)
   configFile = ./yazelix.nix;
   defaultConfigFile = ./yazelix_default.nix;
@@ -78,6 +81,8 @@ in {
   # Extra shells
   ++ (if includeFish then [fish] else [])
   ++ (if includeZsh then [zsh] else [])
+  # GPU acceleration for terminals on non-NixOS systems
+  ++ [nixgl.nixGLIntel]
   # Terminal emulators (Ghostty always on Linux, others conditional)
   ++ [ghostty]  # Always include Ghostty on Linux (default terminal)
   ++ (if includeKitty then [kitty] else [])

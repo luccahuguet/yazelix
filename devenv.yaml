@@ -1,0 +1,3 @@
+inputs:
+  nixgl:
+    url: github:guibou/nixGL
