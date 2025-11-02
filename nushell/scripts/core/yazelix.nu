@@ -205,9 +205,17 @@ export def "yzx launch" [
 
             let full_cmd = $"($env_exports)($launch_cmd)"
             if $verbose_mode {
-                print $"⚙️ nix develop command: ($full_cmd)"
+                print $"⚙️ nix shell command: ($full_cmd)"
             }
-            ^nix develop --impure ~/.config/yazelix --command bash -c $full_cmd
+
+            # Use devenv if available (13x faster), otherwise fall back to nix develop
+            let use_devenv = (which devenv | is-not-empty)
+            if $use_devenv {
+                let wrapped_cmd = $"bash -c '($full_cmd)'"
+                ^devenv shell $wrapped_cmd
+            } else {
+                ^nix develop --impure ~/.config/yazelix --command bash -c $full_cmd
+            }
         }
 }
 
@@ -218,14 +226,26 @@ export def "yzx env" [
 ] {
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
+    # Use devenv if available (13x faster), otherwise fall back to nix develop
+    let use_devenv = (which devenv | is-not-empty)
+
     if ($command | is-not-empty) {
         # Run command in Yazelix environment (skip welcome screen for automation)
         with-env {YAZELIX_ENV_ONLY: "true", YAZELIX_SKIP_WELCOME: "true"} {
-            ^nix develop --impure ~/.config/yazelix --command bash -c $command
+            if $use_devenv {
+                let wrapped_cmd = $"bash -c '($command)'"
+                ^devenv shell $wrapped_cmd
+            } else {
+                ^nix develop --impure ~/.config/yazelix --command bash -c $command
+            }
         }
     } else if $no_shell {
         with-env {YAZELIX_ENV_ONLY: "true"} {
-            ^nix develop --impure ~/.config/yazelix
+            if $use_devenv {
+                ^devenv shell
+            } else {
+                ^nix develop --impure ~/.config/yazelix
+            }
         }
     } else {
         let config = (try { parse_yazelix_config } catch {|err|
@@ -245,7 +265,12 @@ export def "yzx env" [
         let exec_command = $"exec ($command_str)"
         with-env {YAZELIX_ENV_ONLY: "true", SHELL: $shell_exec} {
             try {
-                ^nix develop --impure ~/.config/yazelix --command bash "-lc" $exec_command
+                if $use_devenv {
+                    let wrapped_cmd = $"bash -lc '($exec_command)'"
+                    ^devenv shell $wrapped_cmd
+                } else {
+                    ^nix develop --impure ~/.config/yazelix --command bash "-lc" $exec_command
+                }
             } catch {|err|
                 print $"❌ Failed to launch configured shell: ($err.msg)"
                 print "   Tip: rerun with 'yzx env --no-shell' to stay in your current shell."

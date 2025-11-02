@@ -133,7 +133,16 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
             ^bash -c $cmd
         } else {
             # Not in nix shell, enter it first
-            ^nix develop --impure --command bash -c $cmd
+            # Check if devenv is available (13x faster startup)
+            let use_devenv = (which devenv | is-not-empty)
+
+            if $use_devenv {
+                # Use devenv for instant shell startup (~0.3s)
+                ^devenv shell bash -c $cmd
+            } else {
+                # Fall back to nix develop (~4-5s)
+                ^nix develop --impure --command bash -c $cmd
+            }
         }
     }
 }

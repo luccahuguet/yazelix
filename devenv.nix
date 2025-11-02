@@ -1,23 +1,113 @@
-# devenv.nix - minimal starting point for PoC
+# devenv.nix - Production configuration for Yazelix
+# This provides 13x faster shell startup through evaluation caching
 { pkgs, lib, config, inputs, ... }:
 
-{
-  # Basic packages to test
+let
+  # Read yazelix.nix configuration (relative to this file)
+  configFile = ./yazelix.nix;
+  defaultConfigFile = ./yazelix_default.nix;
+  
+  userConfig = if builtins.pathExists configFile
+    then import configFile { inherit pkgs; }
+    else if builtins.pathExists defaultConfigFile
+    then import defaultConfigFile { inherit pkgs; }
+    else {};
+  
+  # Configuration with defaults
+  recommendedDepsEnabled = userConfig.recommended_deps or true;
+  yaziExtensionsEnabled = userConfig.yazi_extensions or true;
+  yaziMediaEnabled = userConfig.yazi_media or true;
+  defaultShell = userConfig.default_shell or "nu";
+  extraShells = userConfig.extra_shells or [];
+  helixMode = userConfig.helix_mode or "release";
+  
+  # Determine which shells to include
+  shellsToInclude = ["nu" "bash" defaultShell] ++ extraShells;
+  includeFish = builtins.elem "fish" shellsToInclude;
+  includeZsh = builtins.elem "zsh" shellsToInclude;
+  
+in {
+  # Essential dependencies (always included)
   packages = with pkgs; [
-    nushell
-    zellij
-    helix
-  ];
+    # Core Yazelix tools
+    zellij          # Terminal multiplexer
+    helix           # Text editor
+    yazi            # File manager
+    nushell         # Modern shell
+    fzf             # Fuzzy finder
+    zoxide          # Smart directory jumper
+    starship        # Shell prompt
+    bashInteractive # Interactive Bash
+    macchina        # System info
+    mise            # Tool version manager
+  ] 
+  # Recommended dependencies
+  ++ (if recommendedDepsEnabled then [
+    ripgrep       # Fast grep
+    fd            # Fast find
+    bat           # Cat with syntax highlighting
+    jq            # JSON processor
+    git           # Version control
+    curl          # HTTP client
+    wget          # File downloader
+    unzip         # Zip extractor
+    gnused        # Stream editor
+    findutils     # Find utilities
+    coreutils     # Core utilities
+    gnutar        # Tar archiver
+    gzip          # Gzip compression
+  ] else [])
+  # Yazi media support
+  ++ (if yaziMediaEnabled then [
+    ffmpeg        # Video/audio processing
+    imagemagick   # Image processing
+    p7zip         # 7z compression
+    unar          # Universal archiver
+    poppler_utils # PDF utilities
+  ] else [])
+  # Extra shells
+  ++ (if includeFish then [fish] else [])
+  ++ (if includeZsh then [zsh] else []);
 
-  # Test environment variables
+  # Environment variables
   env.YAZELIX_DIR = "$HOME/.config/yazelix";
   env.IN_YAZELIX_SHELL = "true";
+  env.NIX_CONFIG = "warn-dirty = false";
 
-  # Test shell hook execution
+  # Shell hook - runs environment setup
   enterShell = ''
-    echo "✅ devenv shell activated"
+    # Ensure HOME is set (devenv may not pass it through in pure mode)
+    # DEVENV_ROOT is ~/.config/yazelix, so we can derive HOME from it
+    if [ -z "$HOME" ]; then
+      # Extract home directory from DEVENV_ROOT (which is ~/.config/yazelix)
+      export HOME="$(dirname "$(dirname "$DEVENV_ROOT")")"
+    fi
+
+    # Set EDITOR
+    export EDITOR="hx"
+    if [ "$YAZELIX_ENV_ONLY" != "true" ]; then
+      echo "📝 Set EDITOR to: hx"
+    fi
+
+    # Auto-copy config file if it doesn't exist
+    if [ ! -f "$YAZELIX_DIR/yazelix.nix" ] && [ -f "$YAZELIX_DIR/yazelix_default.nix" ]; then
+      cp "$YAZELIX_DIR/yazelix_default.nix" "$YAZELIX_DIR/yazelix.nix"
+      echo "Created yazelix.nix from template. Customize it for your needs!"
+    fi
+
+    # Run main environment setup script
+    nu ~/.config/yazelix/nushell/scripts/setup/environment.nu \
+      ~/.config/yazelix \
+      "${if recommendedDepsEnabled then "true" else "false"}" \
+      "false" \
+      "false" \
+      "${defaultShell}" \
+      "false" \
+      "${if extraShells == [] then "NONE" else builtins.concatStringsSep "," extraShells}" \
+      "true" \
+      "${helixMode}" \
+      "static" \
+      "false"
   '';
 
-  # Required for flakes usage - set to yazelix directory
-  devenv.root = builtins.getEnv "HOME" + "/.config/yazelix";
 }
