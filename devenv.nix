@@ -51,7 +51,6 @@ let
     zellij_rounded_corners = rawConfig.zellij.rounded_corners or true;
     persistent_sessions = rawConfig.zellij.persistent_sessions or false;
     session_name = rawConfig.zellij.session_name or "yazelix";
-    zellij_layout_override = rawConfig.zellij.layout_override or "";
 
     ascii_art_mode = rawConfig.ascii.mode or "static";
 
@@ -107,15 +106,8 @@ let
   enableSidebar = userConfig.enable_sidebar or true;
   showMacchinaOnWelcome = userConfig.show_macchina_on_welcome or false;
 
-  zellijLayoutOverride =
-    if builtins.hasAttr "zellij_layout_override" userConfig then
-      userConfig.zellij_layout_override
-    else
-      "";
   yazelixLayoutName =
-    if zellijLayoutOverride != "" then
-      zellijLayoutOverride
-    else if enableSidebar then
+    if enableSidebar then
       "yzx_side"
     else
       "yzx_no_side";

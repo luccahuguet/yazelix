@@ -119,15 +119,13 @@ transparency = "low"
 
 [zellij]
 # Disable Zellij tips popup on startup (default: true)
-# Set to true to suppress the tips dialog for cleaner launches
+# It is recommended to set this to false, so you learn more about zellij
 disable_tips = true
 
 # Enable rounded corners for Zellij pane frames (default: true)
-# Set to false for sharp corners
 rounded_corners = true
 
 # Zellij persistent session configuration
-# Enable persistent sessions (default: false)
 # When true, Yazelix will use zellij attach with the specified session name
 # When false, Yazelix will create a new session each time
 persistent_sessions = false
@@ -136,12 +134,7 @@ persistent_sessions = false
 # This name will be used when creating or attaching to persistent sessions
 session_name = "yazelix"
 
-# Custom Zellij layout override (optional)
-# Uncomment to use a custom layout file instead of default yazelix layouts
-# layout_override = "custom_layout"
-
 [ascii]
-# ASCII art display mode (default: "static")
 # Options:
 # - "static":   Show static ASCII art
 # - "animated": Show animated ASCII art (opt-in for faster startup)
