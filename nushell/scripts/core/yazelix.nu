@@ -407,17 +407,13 @@ export def "yzx bench" [
 
 # Profile launch sequence and identify bottlenecks
 export def "yzx profile" [
-    --detailed(-d)  # Include detailed Nix evaluation profiling (~4s)
     --history(-h)   # Show historical profile data
-    --component(-c): string  # Profile specific component: nix, env
 ] {
     use ../utils/profile.nu *
 
     if $history {
         profile_history
-    } else if ($component | is-not-empty) {
-        profile_component $component
     } else {
-        profile_launch --detailed=$detailed
+        profile_launch
     }
 }

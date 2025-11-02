@@ -94,7 +94,5 @@ yzx bench -t wezterm -n 10    # Benchmark WezTerm with 10 iterations
 
 # Profiling
 yzx profile                   # Profile environment setup components
-yzx profile --detailed        # Include Nix evaluation profiling (~4s)
 yzx profile --history         # Show historical profile data
-yzx profile --component env   # Profile only environment setup
 ```

@@ -20,28 +20,6 @@ def profile_step [name: string, code: closure] {
     }
 }
 
-# Profile Nix environment evaluation
-export def profile_nix_eval [] {
-    print "📊 Profiling Nix evaluation..."
-
-    let yazelix_dir = "~/.config/yazelix" | path expand
-
-    # Profile devenv evaluation
-    let nix_profile = (profile_step "devenv evaluation" {
-        bash -c $"cd ($yazelix_dir) && time devenv shell -- bash -c 'echo ready' 2>&1"
-        | complete
-    })
-
-    # Parse the time output
-    let output = $nix_profile.duration_ms
-
-    {
-        step: "devenv shell"
-        duration_ms: $output
-        note: "First evaluation or config changed"
-    }
-}
-
 # Profile environment setup components
 export def profile_environment_setup [] {
     print "📊 Profiling environment setup components..."
@@ -78,9 +56,7 @@ export def profile_environment_setup [] {
 }
 
 # Profile full launch sequence
-export def profile_launch [
-    --detailed(-d)  # Show detailed breakdown
-] {
+export def profile_launch [] {
     print "🚀 Profiling Yazelix launch sequence...\n"
 
     mut all_results = []
@@ -94,13 +70,6 @@ export def profile_launch [
     print "📋 Measuring environment setup components..."
     let env_results = (profile_environment_setup)
     $all_results = ($all_results | append $env_results)
-
-    # Profile Nix evaluation (expensive, optional)
-    if $detailed {
-        print "\n⏱️  Measuring Nix evaluation (this will take ~4s)..."
-        let nix_result = (profile_nix_eval)
-        $all_results = ($all_results | append $nix_result)
-    }
 
     # Display results
     print "\n📊 Profile Results:\n"
@@ -145,24 +114,6 @@ export def profile_launch [
     $"($timestamp) - Total: ($total_ms)ms\n" | save --append $log_file
 
     print $"\n📝 Results saved to: ($log_file)"
-}
-
-# Profile a specific component
-export def profile_component [
-    component: string  # Component to profile: nix, env, init, hooks
-] {
-    match $component {
-        "nix" => { profile_nix_eval }
-        "env" => { profile_environment_setup }
-        _ => {
-            error make {
-                msg: $"Unknown component: ($component)"
-                label: {
-                    text: "Valid components: nix, env"
-                }
-            }
-        }
-    }
 }
 
 # Show historical profile data
