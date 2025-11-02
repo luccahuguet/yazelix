@@ -41,7 +41,7 @@ mode = "static"  # "static" or "animated"
 
 # Language packs - complete toolchains
 [packs]
-language = ["python"]  # python, ts, rust, go, kotlin, gleam, nix
+language = []  # python, ts, rust, go, kotlin, gleam, nix
 tools = []  # config, file-management, git
 
 # Individual packages (when you don't want full packs)

@@ -13,18 +13,16 @@ let
   # This solves the Nix flakes limitation with untracked .nix files
 
   tomlConfigFile = ./yazelix.toml;
-  nixConfigFile = ./yazelix.nix;  # Legacy support
+  defaultTomlConfigFile = ./yazelix_default.toml;
 
   rawConfig =
     if builtins.pathExists tomlConfigFile then
       builtins.fromTOML (builtins.readFile tomlConfigFile)
-    else if builtins.pathExists nixConfigFile then
-      import nixConfigFile { inherit pkgs; }
     else
-      import ./yazelix_default.nix { inherit pkgs; };
+      builtins.fromTOML (builtins.readFile defaultTomlConfigFile);
 
   # Parse TOML config into the format devenv.nix expects
-  userConfig = if builtins.pathExists tomlConfigFile then {
+  userConfig = {
     recommended_deps = rawConfig.core.recommended_deps or true;
     yazi_extensions = rawConfig.core.yazi_extensions or true;
     yazi_media = rawConfig.core.yazi_media or false;
@@ -59,7 +57,7 @@ let
     language_packs = rawConfig.packs.language or [];
     tool_packs = rawConfig.packs.tools or [];
     user_packages = map (name: pkgs.${name}) (rawConfig.packs.user_packages or []);
-  } else rawConfig;
+  };
 
   boolToString = value: if value then "true" else "false";
   filterNull = builtins.filter (x: x != null);
