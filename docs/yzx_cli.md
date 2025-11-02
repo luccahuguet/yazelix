@@ -25,7 +25,7 @@ Benchmark terminal launch performance
 Profile launch sequence and identify performance bottlenecks
 - Default: Profile warm start (environment setup components)
 - `--cold`: Profile cold start from vanilla terminal (measures real-world launch)
-- `--clear-cache`: Clear devenv cache before profiling (simulates config change)
+- `--clear-cache`: Temporarily modify config to trigger Nix re-evaluation (simulates config change)
 
 ### `yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose]`
 Launch Yazelix with directory and mode options
@@ -95,10 +95,10 @@ yzx bench -t wezterm -n 10    # Benchmark WezTerm with 10 iterations
 # Note: Different launch scenarios have different performance characteristics
 yzx profile                   # Profile warm start (from within Yazelix shell)
 yzx profile --cold            # Profile cold start with cache (run from vanilla terminal)
-yzx profile --cold --clear-cache  # Profile cold start after config change (clears cache)
+yzx profile --cold --clear-cache  # Profile cold start after config change (modifies config temporarily)
 
 # Performance scenarios:
 # 1. Warm start (~130ms): Already in Yazelix, launching tools/commands
 # 2. Cold cached (~300-500ms): Desktop entry launch, config unchanged
-# 3. Cold no-cache (~2-5s): First launch or config changed
+# 3. Config change (~2-5s): After modifying yazelix.toml (triggers Nix re-evaluation)
 ```

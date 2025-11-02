@@ -57,7 +57,7 @@ export def profile_environment_setup [] {
 
 # Profile full cold launch (must be run from outside Yazelix)
 export def profile_cold_launch [
-    --clear_cache  # Clear devenv cache to simulate config change
+    --clear_cache  # Modify config to trigger Nix re-evaluation (simulates config change)
 ] {
     # Check if we're in a Yazelix shell
     if ($env.IN_YAZELIX_SHELL? | is-not-empty) {
@@ -72,11 +72,28 @@ export def profile_cold_launch [
 
     let yazelix_dir = "~/.config/yazelix" | path expand
 
-    # Clear cache if requested
-    if $clear_cache {
-        print "🗑️  Clearing devenv cache to simulate config change..."
-        rm -rf $"($yazelix_dir)/.devenv"
-        print "✅ Cache cleared\n"
+    # Determine which config file to use
+    let config_file = if ($"($yazelix_dir)/yazelix.toml" | path exists) {
+        $"($yazelix_dir)/yazelix.toml"
+    } else if ($"($yazelix_dir)/yazelix.nix" | path exists) {
+        $"($yazelix_dir)/yazelix.nix"
+    } else {
+        $"($yazelix_dir)/yazelix_default.toml"
+    }
+
+    # Modify config if requested to trigger Nix re-evaluation
+    let original_content = if $clear_cache {
+        print "📝 Modifying config to trigger Nix re-evaluation..."
+        let content = (open $config_file)
+
+        # Add a temporary comment to the config
+        let modified = $"# Profile benchmark timestamp: (date now | format date '%Y-%m-%d %H:%M:%S')\n($content)"
+        $modified | save -f $config_file
+
+        print "✅ Config modified - Nix will re-evaluate\n"
+        $content
+    } else {
+        null
     }
 
     # Profile devenv build (builds profile without entering shell)
@@ -95,9 +112,9 @@ export def profile_cold_launch [
 
     # Performance assessment
     if $clear_cache {
-        print "💡 Performance Assessment (with cache cleared):\n"
+        print "💡 Performance Assessment (config change simulation):\n"
         if $duration_ms < 2000 {
-            print "🚀 Excellent! Even with cache invalidation, launch is very fast."
+            print "🚀 Excellent! Even after config changes, Nix re-evaluation is very fast."
         } else if $duration_ms < 5000 {
             print "✅ Good. This is expected after config changes (Nix re-evaluation)."
         } else if $duration_ms < 10000 {
@@ -108,9 +125,9 @@ export def profile_cold_launch [
             print "❌ Very slow. This may indicate a problem."
         }
     } else {
-        print "💡 Performance Assessment (with cache):\n"
+        print "💡 Performance Assessment (cached launch):\n"
         if $duration_ms < 500 {
-            print "🚀 Excellent! SQLite cache is working perfectly."
+            print "🚀 Excellent! devenv SQLite cache is working perfectly."
         } else if $duration_ms < 1500 {
             print "✅ Good. Cached launch is efficient."
         } else if $duration_ms < 3000 {
@@ -120,10 +137,17 @@ export def profile_cold_launch [
         }
     }
 
+    # Restore original config if it was modified
+    if ($original_content != null) {
+        print "\n🔄 Restoring original config..."
+        $original_content | save -f $config_file
+        print "✅ Config restored"
+    }
+
     # Save results
     let log_file = "~/.local/share/yazelix/logs/profile.log" | path expand
     let timestamp = (date now | format date "%Y-%m-%d %H:%M:%S")
-    let cache_status = if $clear_cache { "no-cache" } else { "cached" }
+    let cache_status = if $clear_cache { "config-change" } else { "cached" }
 
     $"($timestamp) - Cold launch \(($cache_status)\): ($duration_ms)ms\n" | save --append $log_file
     print $"\n📝 Results saved to: ($log_file)"
