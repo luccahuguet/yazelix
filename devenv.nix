@@ -53,7 +53,7 @@ in {
     bashInteractive # Interactive Bash
     macchina        # System info
     mise            # Tool version manager
-  ] 
+  ]
   # Recommended dependencies
   ++ (if recommendedDepsEnabled then [
     ripgrep       # Fast grep
@@ -69,6 +69,10 @@ in {
     coreutils     # Core utilities
     gnutar        # Tar archiver
     gzip          # Gzip compression
+    lazygit       # Terminal-based Git TUI
+    atuin         # Shell history manager
+    carapace      # Command-line completion
+    markdown-oxide # PKMS for text editors
   ] else [])
   # Yazi media support
   ++ (if yaziMediaEnabled then [
