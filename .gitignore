@@ -10,6 +10,7 @@ shells/zsh/initializers
 
 # User configuration
 yazelix.nix
+yazelix.toml
 helix_custom/
 configs/yazi/user/
 configs/yazi/personal/

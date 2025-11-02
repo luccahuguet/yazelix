@@ -26,9 +26,9 @@ export def profile_nix_eval [] {
 
     let yazelix_dir = "~/.config/yazelix" | path expand
 
-    # Profile nix develop evaluation
-    let nix_profile = (profile_step "Nix flake evaluation" {
-        bash -c $"cd ($yazelix_dir) && time nix develop --impure --command echo 'ready' 2>&1"
+    # Profile devenv evaluation
+    let nix_profile = (profile_step "devenv evaluation" {
+        bash -c $"cd ($yazelix_dir) && time devenv shell -- bash -c 'echo ready' 2>&1"
         | complete
     })
 
@@ -36,7 +36,7 @@ export def profile_nix_eval [] {
     let output = $nix_profile.duration_ms
 
     {
-        step: "Nix develop --impure"
+        step: "devenv shell"
         duration_ms: $output
         note: "First evaluation or config changed"
     }

@@ -6,14 +6,14 @@ A **configuration-only** Home Manager module for [Yazelix](https://github.com/lu
 
 - **Generates `yazelix.nix`** from Home Manager options
 - **Type-safe configuration** with validation
-- **Preserves existing workflow** - you still `git clone` and `nix develop`
+- **Preserves existing workflow** - you still `git clone` and use `devenv shell`
 - **Zero file conflicts** - only manages configuration file
 - **Easy migration** - simple enable/disable in Home Manager
 
 ## What This Module Does NOT Do
 
 - Does not manage the Yazelix repository (you still clone it manually)
-- Does not install packages directly (packages installed via `nix develop`)
+- Does not install packages directly (packages installed via `devenv shell`)
 - Does not modify terminal configurations
 - Does not replace existing Yazelix functionality
 
@@ -132,7 +132,7 @@ To work on this module:
 
 ```bash
 cd ~/.config/yazelix/home_manager
-nix develop  # Provides nixpkgs-fmt, statix, deadnix
+devenv shell  # Provides nixpkgs-fmt, statix, deadnix
 ```
 
 Format and check the code:

@@ -39,7 +39,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
     let yazelix_dir = $"($home)/.config/yazelix"
 
     # Navigate to Yazelix directory
-    # This is important for nix develop to find the flake.nix in the current directory
+    # This is important for devenv to find devenv.nix in the current directory
     if not ($yazelix_dir | path exists) {
         print $"Error: Cannot find Yazelix directory at ($yazelix_dir)"
         exit 1
@@ -111,10 +111,10 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
         print $"🔁 zellij command: ($cmd)"
     }
 
-    # Run nix develop with explicit HOME.
+    # Run devenv shell with explicit HOME.
     # The default shell is dynamically read from yazelix.nix configuration
     # and passed directly to the zellij command.
-    # Guard against recursive nix develop calls when already in a nix shell
+    # Guard against recursive environment initialization when already in a managed shell
     with-env {HOME: $home} {
         let in_nix_shell = ($env.IN_NIX_SHELL? | is-not-empty)
         let in_yazelix_shell = ($env.IN_YAZELIX_SHELL? == "true")
@@ -124,27 +124,23 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
             if ($in_nix_shell or $in_yazelix_shell) {
                 print "⚙️ Executing zellij command directly"
             } else {
-                print "⚙️ Entering nix develop before running zellij command"
+                print "⚙️ Entering devenv shell before running zellij command"
             }
         }
 
         if ($in_nix_shell or $in_yazelix_shell) {
-            # Already in nix shell, run command directly to avoid recursive nesting
+            # Already in a managed shell, run command directly to avoid recursive nesting
             ^bash -c $cmd
         } else {
-            # Not in nix shell, enter it first
-            # Check if devenv is available (13x faster startup)
-            let use_devenv = (which devenv | is-not-empty)
-
-            if $use_devenv {
-                # Use devenv for instant shell startup (~0.3s)
-                # Must run devenv from the directory containing devenv.nix
-                let devenv_cmd = $"cd ($yazelix_dir) && devenv shell bash -c '($cmd)'"
-                ^bash -c $devenv_cmd
-            } else {
-                # Fall back to nix develop (~4-5s)
-                ^nix develop --impure --command bash -c $cmd
+            # Not in managed shell, enter devenv first
+            if (which devenv | is-empty) {
+                print "❌ devenv command not found - install devenv to launch Yazelix."
+                print "   See https://devenv.sh/getting-started/ for installation instructions."
+                exit 1
             }
+            # Must run devenv from the directory containing devenv.nix
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell -- bash -c '($cmd)'"
+            ^bash -c $devenv_cmd
         }
     }
 }

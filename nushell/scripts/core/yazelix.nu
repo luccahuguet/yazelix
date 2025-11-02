@@ -145,7 +145,7 @@ export def "yzx launch" [
 
         let launch_script = $"($env.HOME)/.config/yazelix/nushell/scripts/core/launch_yazelix.nu"
 
-        # Check if already in Yazelix environment to skip redundant nix develop
+        # Check if already in Yazelix environment to skip redundant setup
         let in_yazelix_shell = ($env.IN_YAZELIX_SHELL? == "true")
 
         if $in_yazelix_shell {
@@ -169,7 +169,7 @@ export def "yzx launch" [
             ^nu ...$args
         }
         } else {
-            # Not in Yazelix environment - wrap with nix develop
+            # Not in Yazelix environment - wrap with devenv shell
             let quote_single = {|text|
                 let escaped = ($text | str replace "'" "'\"'\"'")
                 $"'" + $escaped + "'"
@@ -189,10 +189,6 @@ export def "yzx launch" [
             }
 
             let launch_cmd = ($segments | str join " ")
-            if $verbose_mode {
-                print $"⚙️ launch_yazelix command via nix develop: ($launch_cmd)"
-            }
-
             # Build environment variable exports for bash
             let env_exports = [
                 (if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) { $"export YAZELIX_CONFIG_OVERRIDE='($env.YAZELIX_CONFIG_OVERRIDE)'; " } else { "" })
@@ -204,20 +200,19 @@ export def "yzx launch" [
             ] | str join ""
 
             let full_cmd = $"($env_exports)($launch_cmd)"
+            if (which devenv | is-empty) {
+                print "❌ devenv command not found - install devenv to launch Yazelix."
+                print "   See https://devenv.sh/getting-started/ for installation instructions."
+                exit 1
+            }
             if $verbose_mode {
-                print $"⚙️ nix shell command: ($full_cmd)"
+                print $"⚙️ devenv shell command: ($full_cmd)"
             }
 
-            # Use devenv if available (13x faster), otherwise fall back to nix develop
-            let use_devenv = (which devenv | is-not-empty)
-            if $use_devenv {
-                # Must run devenv from the directory containing devenv.nix
-                let yazelix_dir = "~/.config/yazelix"
-                let devenv_cmd = $"cd ($yazelix_dir) && devenv shell \"bash -c '($full_cmd)'\""
-                ^bash -c $devenv_cmd
-            } else {
-                ^nix develop --impure ~/.config/yazelix --command bash -c $full_cmd
-            }
+            # Must run devenv from the directory containing devenv.nix
+            let yazelix_dir = "~/.config/yazelix"
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell -- bash -c '($full_cmd)'"
+            ^bash -c $devenv_cmd
         }
 }
 
@@ -228,30 +223,25 @@ export def "yzx env" [
 ] {
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
-    # Use devenv if available (13x faster), otherwise fall back to nix develop
-    let use_devenv = (which devenv | is-not-empty)
+
+    if (which devenv | is-empty) {
+        print "❌ devenv command not found - install devenv to load the Yazelix environment."
+        print "   See https://devenv.sh/getting-started/ for installation instructions."
+        exit 1
+    }
+
     let yazelix_dir = "~/.config/yazelix"
 
     if ($command | is-not-empty) {
         # Run command in Yazelix environment (skip welcome screen for automation)
         with-env {YAZELIX_ENV_ONLY: "true", YAZELIX_SKIP_WELCOME: "true"} {
-            if $use_devenv {
-                # Must run devenv from the directory containing devenv.nix
-                let devenv_cmd = $"cd ($yazelix_dir) && devenv shell \"bash -c '($command)'\""
-                ^bash -c $devenv_cmd
-            } else {
-                ^nix develop --impure ~/.config/yazelix --command bash -c $command
-            }
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell -- bash -c '($command)'"
+            ^bash -c $devenv_cmd
         }
     } else if $no_shell {
         with-env {YAZELIX_ENV_ONLY: "true"} {
-            if $use_devenv {
-                # Must run devenv from the directory containing devenv.nix
-                let devenv_cmd = $"cd ($yazelix_dir) && devenv shell"
-                ^bash -c $devenv_cmd
-            } else {
-                ^nix develop --impure ~/.config/yazelix
-            }
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell"
+            ^bash -c $devenv_cmd
         }
     } else {
         let config = (try { parse_yazelix_config } catch {|err|
@@ -271,13 +261,8 @@ export def "yzx env" [
         let exec_command = $"exec ($command_str)"
         with-env {YAZELIX_ENV_ONLY: "true", SHELL: $shell_exec} {
             try {
-                if $use_devenv {
-                    # Must run devenv from the directory containing devenv.nix
-                    let devenv_cmd = $"cd ($yazelix_dir) && devenv shell \"bash -lc '($exec_command)'\""
-                    ^bash -c $devenv_cmd
-                } else {
-                    ^nix develop --impure ~/.config/yazelix --command bash "-lc" $exec_command
-                }
+                let devenv_cmd = $"cd ($yazelix_dir) && devenv shell -- bash -lc '($exec_command)'"
+                ^bash -c $devenv_cmd
             } catch {|err|
                 print $"❌ Failed to launch configured shell: ($err.msg)"
                 print "   Tip: rerun with 'yzx env --no-shell' to stay in your current shell."

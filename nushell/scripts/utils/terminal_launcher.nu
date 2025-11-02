@@ -82,8 +82,8 @@ export def build_launch_command [
     let use_wrapper = $terminal_info.use_wrapper
 
     # Smart environment reload: only unset vars if config changed
-    # This makes launches ~4s faster when config hasn't changed (uses inherited nix shell)
-    # When config changed, we clear vars to force fresh nix develop and pick up changes
+    # This makes launches faster when config hasn't changed (uses inherited devenv shell)
+    # When config changed, we clear vars to force fresh devenv shell and pick up changes
     let env_prefix = if $needs_reload {
         "env -u IN_YAZELIX_SHELL -u IN_NIX_SHELL "
     } else {

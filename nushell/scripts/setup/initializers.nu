@@ -115,14 +115,14 @@ def main [yazelix_dir: string, recommended: bool, atuin_enabled: bool, shells_to
 
         # Determine inclusion order: required first, then optional successes
         let included = (
-            $tool_results 
-            | where status == "success" 
+            $tool_results
+            | where status == "success"
             | sort-by {|r| (if ($tools | where name == $r.tool | first).required { 0 } else { 1 }) }
         )
 
         let aggregate_content = (
-            $included 
-            | each {|r| open $r.file } 
+            $included
+            | each {|r| open $r.file }
             | str join "\n"
         )
 
@@ -132,7 +132,35 @@ def main [yazelix_dir: string, recommended: bool, atuin_enabled: bool, shells_to
             | str join ""
         )
 
-        ($header + $required_issues + $aggregate_content + "\n") | save --force $aggregate_file
+        # For Nushell: add PATH preservation to prevent devenv paths from being lost
+        let nushell_path_preservation = if ($shell.name == "nu") {
+            [
+                ""
+                "# Preserve devenv-provided PATH (includes packs like python, rust, etc.)"
+                "let initial_path = $env.PATH"
+                ""
+                "# --- Tool initializers below ---"
+                ""
+            ] | str join "\n"
+        } else {
+            ""
+        }
+
+        let nushell_path_restoration = if ($shell.name == "nu") {
+            [
+                ""
+                "# --- Tool initializers above ---"
+                ""
+                "# Restore devenv paths that may have been lost during initialization"
+                "# Merge initial_path with current PATH, preserving devenv store paths"
+                "$env.PATH = ($initial_path | append $env.PATH | uniq)"
+                ""
+            ] | str join "\n"
+        } else {
+            ""
+        }
+
+        ($header + $required_issues + $nushell_path_preservation + $aggregate_content + $nushell_path_restoration + "\n") | save --force $aggregate_file
 
         # Return both per-tool results and the aggregate file info
         $tool_results | append [{ status: "aggregate", shell: $shell.name, file: $aggregate_file }]

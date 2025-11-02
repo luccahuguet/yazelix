@@ -60,6 +60,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 ## Improvements of v10.5 over v10
 
+- **Lightning-Fast Launches via devenv** - 13.5x faster shell startup through SQLite-based evaluation caching (0.33s vs 4.5s). Automatic cache invalidation ensures config changes are always detected.
 - **First-Class Neovim Support** - Neovim now has full integration features (reveal in sidebar, same-instance opening, pane detection) matching Helix capabilities
 - **Smart Config Detection** - Automatic hash-based change detection makes launches ~4s faster when config unchanged, if running from a already existing yazelix session, while ensuring changes are always picked up
 - **Performance Benchmarking** - New `yzx bench` command measures terminal launch performance with statistical analysis
@@ -202,9 +203,9 @@ yzx env
 ```
 This loads all tools (helix, yazi, lazygit, etc.) into your current shell, with Yazelix env vars set and clean messaging, and automatically launches the shell configured in your `yazelix.nix`. Prefer the legacy behavior? Run `yzx env --no-shell` to stay in your current shell.
 
-If you prefer a raw Nix shell, you can use:
+If you prefer a raw environment shell without launching Yazelix, you can use:
 ```bash
-nix develop --impure ~/.config/yazelix
+devenv shell
 ```
 
 ### Packages & Customization
@@ -243,7 +244,7 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 Yazelix includes optional Home Manager support for declarative configuration management. See [home_manager/README.md](home_manager/README.md) for setup instructions.
 
 ## Notes
-- The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
+- `devenv shell` automatically passes through the HOME environment variable, so Yazelix can resolve user-specific paths without extra flags
 - Tweak configs to make them yours; this is just a starting point! 
 - For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html)
 - Add more swap layouts as needed using the KDL files in `configs/zellij/layouts`

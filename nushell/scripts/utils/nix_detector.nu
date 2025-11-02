@@ -37,22 +37,6 @@ export def check_nix_installation [] {
         }
     }
     
-    # Check if nix develop command works (basic functionality test)
-    let nix_develop_works = try {
-        let result = (^nix develop --help | complete)
-        $result.exit_code == 0
-    } catch {
-        false
-    }
-    
-    if not $nix_develop_works {
-        return {
-            installed: true
-            error: "nix_develop_unavailable"
-            message: "Nix is installed but 'nix develop' command is not available (flakes may not be enabled)"
-        }
-    }
-    
     # Check if flakes are enabled
     let flakes_enabled = try {
         let result = (^nix flake --help | complete)
@@ -66,6 +50,22 @@ export def check_nix_installation [] {
             installed: true
             error: "flakes_disabled"
             message: "Nix is installed but flakes are not enabled"
+        }
+    }
+
+    # Ensure devenv command is available
+    let devenv_available = try {
+        let result = (^devenv --help | complete)
+        $result.exit_code == 0
+    } catch {
+        false
+    }
+
+    if not $devenv_available {
+        return {
+            installed: true
+            error: "devenv_not_found"
+            message: "devenv command is not installed or not in PATH"
         }
     }
     
@@ -107,17 +107,6 @@ export def show_nix_installation_help [error_type: string] {
             print $"($colors.cyan)source ~/.nix-profile/etc/profile.d/nix.sh($colors.reset)"
         }
         
-        "nix_develop_unavailable" => {
-            print $"($colors.yellow)🔍 Problem:($colors.reset) Nix is installed but 'nix develop' is not available."
-            print ""
-            print $"($colors.blue)💡 Solution:($colors.reset) This usually means you have an older Nix installation."
-            print "Update Nix to a recent version that supports flakes:"
-            print $"($colors.cyan)nix upgrade-nix($colors.reset)"
-            print ""
-            print "Or reinstall with the modern installer:"
-            print $"($colors.cyan)curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install($colors.reset)"
-        }
-        
         "nix_not_in_path" => {
             print $"($colors.yellow)🔍 Problem:($colors.reset) Nix is installed but not available in your current shell's PATH."
             print ""
@@ -147,6 +136,15 @@ export def show_nix_installation_help [error_type: string] {
             print ""
             print "Or reinstall with the modern installer that enables flakes by default:"
             print $"($colors.cyan)curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install($colors.reset)"
+        }
+        
+        "devenv_not_found" => {
+            print $"($colors.yellow)🔍 Problem:($colors.reset) devenv CLI is not installed or not available in PATH."
+            print ""
+            print $"($colors.blue)💡 Solution:($colors.reset) Install devenv by following the official guide:"
+            print $"($colors.cyan)https://devenv.sh/getting-started/($colors.reset)"
+            print ""
+            print "If devenv is already installed, ensure your shell sources the appropriate profile or restart your terminal."
         }
     }
     

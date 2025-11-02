@@ -226,9 +226,9 @@ yzx env
 ```
 This loads all tools (helix, yazi, lazygit, etc.) into your configured shell with Yazelix environment variables set. Add `--no-shell` to keep using your current shell instead.
 
-If you prefer a raw Nix shell:
+If you prefer a raw environment shell:
 ```bash
-nix develop --impure ~/.config/yazelix
+devenv shell
 ```
 
 ### Home Manager Integration

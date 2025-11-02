@@ -1,0 +1,49 @@
+# Yazelix Configuration (TOML format)
+# This file can remain untracked in Git - devenv can read TOML files even if not in Git
+
+[core]
+recommended_deps = true
+yazi_extensions = true
+yazi_media = false
+debug_mode = false
+skip_welcome_screen = false
+show_macchina_on_welcome = true
+
+[helix]
+mode = "release"  # "release" or "source"
+# runtime_path = "/path/to/custom/helix/runtime"  # optional
+
+[editor]
+# command = "hx"  # null uses yazelix's helix, or specify: "nvim", "vim", etc.
+enable_sidebar = true
+
+[shell]
+default_shell = "nu"
+extra_shells = []
+enable_atuin = false
+
+[terminal]
+preferred_terminal = "ghostty"
+extra_terminals = []
+config_mode = "yazelix"  # "auto", "user", or "yazelix"
+cursor_trail = "random"
+transparency = "low"  # "none", "low", "medium", "high"
+
+[zellij]
+disable_tips = true
+rounded_corners = true
+persistent_sessions = false
+session_name = "yazelix"
+# layout_override = "custom_layout"  # optional
+
+[ascii]
+mode = "static"  # "static" or "animated"
+
+# Language packs - complete toolchains
+[packs]
+language = ["python"]  # python, ts, rust, go, kotlin, gleam, nix
+tools = []  # config, file-management, git
+
+# Individual packages (when you don't want full packs)
+# Format: ["package-name", "another-package"]
+user_packages = []

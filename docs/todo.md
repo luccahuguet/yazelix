@@ -1,6 +1,6 @@
 # Backlog (Ordered)
 
-- [ ] Add testing (#189): baseline tests for core flows (launch, layouts, keybindings, zjstatus).
+- [x] Add testing (#189): baseline tests for core flows (launch, layouts, keybindings, zjstatus).
 - [ ] Packaging: make yazelix a single package (#232): reduce complexity and drift.
 - [ ] Profile boot/initialization end-to-end (#257): instrument startup and log timings.
 - [ ] Faster boot with included Ghostty (nixGL) (#258): reduce cold/warm start time.

@@ -1,3 +1,5 @@
 inputs:
+  helix:
+    url: github:helix-editor/helix
   nixgl:
     url: github:guibou/nixGL

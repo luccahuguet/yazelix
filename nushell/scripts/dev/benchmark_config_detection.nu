@@ -68,30 +68,30 @@ def main [] {
         print ""
     }
 
-    # Benchmark 3: Cached nix develop
-    print "3️⃣  Benchmarking: Cached nix develop"
-    print "   Command: nix develop --impure ~/.config/yazelix --command true"
+    # Benchmark 3: Cached devenv shell
+    print "3️⃣  Benchmarking: Cached devenv shell"
+    print "   Command: devenv shell -- bash -c 'true'"
 
-    mut nix_develop_times = []
-    if (which nix | length) == 0 {
-        print "   ⚠️  Nix not found in PATH, skipping..."
+    mut devenv_times = []
+    if (which devenv | length) == 0 {
+        print "   ⚠️  devenv not found in PATH, skipping..."
         print ""
     } else {
         # First run to ensure cache is warm
         print "   Warming cache..."
-        ^nix develop --impure $yazelix_dir --command true
+        ^bash -c $"cd ($yazelix_dir) && devenv shell -- bash -c 'true'"
 
         print "   Running benchmark..."
-        $nix_develop_times = (seq 1 $iterations | each {|i|
+        $devenv_times = (seq 1 $iterations | each {|i|
             let start = (date now)
-            let _ = (^nix develop --impure $yazelix_dir --command true)
+            let _ = (^bash -c $"cd ($yazelix_dir) && devenv shell -- bash -c 'true'")
             let end = (date now)
             ($end - $start) | into int
         })
 
-        let dev_min = ($nix_develop_times | math min)
-        let dev_max = ($nix_develop_times | math max)
-        let dev_avg = ($nix_develop_times | math avg | math round)
+        let dev_min = ($devenv_times | math min)
+        let dev_max = ($devenv_times | math max)
+        let dev_avg = ($devenv_times | math avg | math round)
 
         print $"   Min: ($dev_min)ns = (format_time $dev_min)"
         print $"   Max: ($dev_max)ns = (format_time $dev_max)"
@@ -105,12 +105,12 @@ def main [] {
     print "========================================="
     print $"Nushell hash:     (format_time $nushell_avg) avg"
 
-    if (($nix_times | length) > 0) and (($nix_develop_times | length) > 0) {
+    if (($nix_times | length) > 0) and (($devenv_times | length) > 0) {
         let nix_avg = ($nix_times | math avg | math round)
-        let dev_avg = ($nix_develop_times | math avg | math round)
+        let dev_avg = ($devenv_times | math avg | math round)
 
         print $"Nix hash command: (format_time $nix_avg) avg"
-        print $"Cached nix develop: (format_time $dev_avg) avg"
+        print $"Cached devenv shell: (format_time $dev_avg) avg"
 
         print ""
         print "🏆 Winner:"
@@ -127,15 +127,15 @@ def main [] {
         print ""
         print "💡 Recommendation:"
         if $dev_avg < 500_000_000 {  # 500ms
-            print $"   Cached nix develop is fast enough \((format_time $dev_avg)\)!"
+            print $"   Cached devenv shell is fast enough \((format_time $dev_avg)\)!"
             print "   Consider skipping hash checking entirely and always reloading."
             print "   This is simpler and nix's cache handles it efficiently."
         } else {
-            print $"   Cached nix develop is slow \((format_time $dev_avg)\)."
+            print $"   Cached devenv shell is slow \((format_time $dev_avg)\)."
             print $"   Use hash checking with the fastest method: (if $fastest == $nushell_avg { 'Nushell hash' } else { 'Nix hash' })"
         }
     } else {
-        print "⚠️  Nix benchmarks skipped (nix not in PATH)"
+        print "⚠️  devenv benchmarks skipped (devenv not in PATH)"
     }
 
     print ""

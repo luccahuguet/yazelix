@@ -8,20 +8,14 @@ def main [] {
     let yazelix_dir = $"($nu.home-path)/.config/yazelix"
     $env.YAZELIX_DIR = $yazelix_dir
 
-    # Check if devenv is available (13x faster startup)
-    let use_devenv = (which devenv | is-not-empty)
-
-    # Call launch script within nix environment
-    # Pass home directory as launch_cwd so desktop entry opens in ~/ instead of yazelix directory
-    if $use_devenv {
-        # Use devenv for instant shell startup (~0.3s)
-        # Must run devenv from the directory containing devenv.nix
-        let devenv_cmd = $"cd ($yazelix_dir) && devenv shell nu ($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu ($nu.home-path)"
-        ^bash -c $devenv_cmd
-    } else {
-        # Fall back to nix develop (~4-5s)
-        cd $yazelix_dir
-        ^nix develop --impure --command nu $"($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu" $nu.home-path
+    if (which devenv | is-empty) {
+        print "❌ devenv command not found - install devenv to launch Yazelix."
+        print "   See https://devenv.sh/getting-started/ for installation instructions."
+        exit 1
     }
-}
 
+    # Call launch script within devenv environment
+    # Pass home directory as launch_cwd so desktop entry opens in ~/ instead of yazelix directory
+    let devenv_cmd = $"cd ($yazelix_dir) && devenv shell -- nu ($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu ($nu.home-path)"
+    ^bash -c $devenv_cmd
+}

@@ -14,14 +14,20 @@ echo "Resolved HOME=$HOME"
 YAZELIX_DIR="$HOME/.config/yazelix"
 
 # Navigate to Yazelix directory
-# This is important for nix develop to find the flake.nix in the current directory
+# This is important for devenv to find devenv.nix in the current directory
 cd "$YAZELIX_DIR" || { echo "Error: Cannot cd to $YAZELIX_DIR"; exit 1; }
 
-# Run nix develop with explicit HOME.
-# The YAZELIX_DEFAULT_SHELL variable will be set by the shellHook of the flake
+# Ensure devenv is available
+if ! command -v devenv >/dev/null 2>&1; then
+  echo "Error: 'devenv' command not found. Install devenv to launch Yazelix."
+  exit 1
+fi
+
+# Run devenv shell with explicit HOME.
+# The YAZELIX_DEFAULT_SHELL variable will be set by the enterShell hook
 # and used by the inner zellij command.
-# We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after nix develop sets it.
-HOME="$HOME" nix develop --impure --command bash -c \
+# We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after devenv sets it.
+HOME="$HOME" devenv shell -- bash -c \
   "zellij --config-dir \"$YAZELIX_DIR/configs/zellij\" options \
     --default-cwd \"$HOME\" \
     --default-layout \"\$ZELLIJ_DEFAULT_LAYOUT\" \
