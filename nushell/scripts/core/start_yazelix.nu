@@ -2,7 +2,7 @@
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZI_CONFIG_PATHS]
+use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZI_CONFIG_PATHS, DEFAULT_ENV_VARS]
 use ../utils/nix_detector.nu ensure_nix_available
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
@@ -74,11 +74,11 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
     # Build the command that first generates the zellij config, then starts zellij
     let zellij_merger_cmd = $"nu ($yazelix_dir)/nushell/scripts/setup/zellij_config_merger.nu ($yazelix_dir)"
 
-    # Check for layout override (for testing), default to yzx_side
+    # Check for layout override (for testing), default to constant
     let layout = if ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
         $env.ZELLIJ_DEFAULT_LAYOUT
     } else {
-        "yzx_side"  # Default layout
+        $DEFAULT_ENV_VARS.ZELLIJ_DEFAULT_LAYOUT
     }
 
     let cmd = if ($config.persistent_sessions == "true") {
