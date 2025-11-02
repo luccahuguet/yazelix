@@ -191,15 +191,3 @@ export def profile_launch [] {
     print $"\n📝 Results saved to: ($log_file)"
 }
 
-# Show historical profile data
-export def profile_history [] {
-    let log_file = "~/.local/share/yazelix/logs/profile.log" | path expand
-
-    if not ($log_file | path exists) {
-        print "No profile history found. Run 'yzx profile' first."
-        return
-    }
-
-    print "📊 Profile History:\n"
-    open $log_file | lines | last 10
-}

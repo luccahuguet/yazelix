@@ -21,12 +21,11 @@ Benchmark terminal launch performance
 - `-t, --terminal`: Test only specific terminal (e.g., ghostty, wezterm, kitty)
 - `--verbose`: Show detailed output
 
-### `yzx profile [--detailed] [--history] [--component COMP]`
+### `yzx profile [--cold] [--clear-cache]`
 Profile launch sequence and identify performance bottlenecks
-- Default: Profile environment setup components with timing breakdown
-- `--detailed`: Include Nix evaluation profiling (~4s, measures cold start)
-- `--history`: Show historical profile data
-- `--component COMP`: Profile specific component (nix, env)
+- Default: Profile warm start (environment setup components)
+- `--cold`: Profile cold start from vanilla terminal (measures real-world launch)
+- `--clear-cache`: Clear devenv cache before profiling (simulates config change)
 
 ### `yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose]`
 Launch Yazelix with directory and mode options
@@ -97,7 +96,6 @@ yzx bench -t wezterm -n 10    # Benchmark WezTerm with 10 iterations
 yzx profile                   # Profile warm start (from within Yazelix shell)
 yzx profile --cold            # Profile cold start with cache (run from vanilla terminal)
 yzx profile --cold --clear-cache  # Profile cold start after config change (clears cache)
-yzx profile --history         # Show historical profile data
 
 # Performance scenarios:
 # 1. Warm start (~130ms): Already in Yazelix, launching tools/commands

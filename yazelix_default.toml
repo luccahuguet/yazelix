@@ -1,9 +1,9 @@
 # Yazelix Configuration (TOML format)
-# Copy this file to yazelix.toml and customize as needed
+# yazelix.toml will be automatically copied from yazelix_toml if not found during launch. But you can manually copy it to yazelix.toml too.
 # yazelix.toml is gitignored so you can pull updates without conflicts
 
-# See docs/package_sizes.md for details
 [core]
+# See docs/package_sizes.md for details
 recommended_deps = true       # Productivity tools (~350MB): lazygit, atuin, carapace, markdown-oxide
 yazi_extensions = true        # File preview support (~125MB): p7zip, jq, fd, ripgrep, poppler
 yazi_media = false            # Media processing (~1GB): ffmpeg, imagemagick
