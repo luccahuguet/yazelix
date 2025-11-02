@@ -1,97 +1,48 @@
 #!/usr/bin/env nu
-# Configuration parser for yazelix.nix files
-
-# Extract a simple string value using line parsing (last assignment wins)
-def extract_config_value [key: string, default: string, config_content: string] {
-    # Find non-commented lines containing the key assignment
-    let matching_lines = ($config_content 
-        | lines 
-        | where not ($it | str trim | str starts-with "#")  # Exclude comments first
-        | where ($it | str contains $key)                   # Then check if line contains the key
-        | where ($it | str contains "="))                   # And has an assignment
-    
-    if ($matching_lines | is-empty) {
-        $default
-    } else {
-        # Take the last match (in case there are multiple, use the final one)
-        let line = ($matching_lines | last)
-        let value_part = ($line | split row '=' | get 1 | str trim)
-        
-        # Clean up the value (remove quotes, semicolons, etc.)
-        $value_part 
-        | str replace -a '"' '' 
-        | str replace -a "'" ''
-        | str replace ';' ''
-        | str trim
-    }
-}
-
-# Extract the first uncommented item from a list assignment like:
-# key = [
-#   "option1"
-#   # "option2"
-# ]
-def extract_first_list_value [key: string, default: string, config_content: string] {
-    let lines = ($config_content | lines)
-    # Find start of list for the key
-    let match_row = ($lines | enumerate | where {|it| ($it.item | str contains $key) and ($it.item | str contains "=") and ($it.item | str contains "[") })
-    if ($match_row | is-empty) {
-        $default
-    } else {
-        let start_idx = ($match_row | first | get index)
-        # From start line onward, scan until we parse the first quoted value
-        let tail = ($lines | skip ($start_idx))
-        for l in $tail {
-            let t = ($l | str trim)
-            if ($t | str starts-with "#") { continue }
-            # Try to capture the first quoted token anywhere in the line
-            let cap1 = ($t | parse '*"{val}"*' | get val? | default [])
-            if (not ($cap1 | is-empty)) {
-                return ($cap1 | first)
-            }
-            if ($t | str contains "]") { break }
-        }
-        $default
-    }
-}
+# Configuration parser for yazelix TOML files
 
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
+    let yazelix_dir = "~/.config/yazelix" | path expand
+
     # Check for config override first (for testing)
     let config_to_read = if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) {
         $env.YAZELIX_CONFIG_OVERRIDE
     } else {
-        # Read configuration directly from yazelix.nix file
-        let yazelix_dir = "~/.config/yazelix" | path expand
-        let config_file = ($yazelix_dir | path join "yazelix.nix")
-        let default_config_file = ($yazelix_dir | path join "yazelix_default.nix")
-
         # Determine which config file to use
-        if ($config_file | path exists) {
-            $config_file
-        } else if ($default_config_file | path exists) {
-            $default_config_file
+        let toml_file = ($yazelix_dir | path join "yazelix.toml")
+        let default_toml = ($yazelix_dir | path join "yazelix_default.toml")
+
+        if ($toml_file | path exists) {
+            $toml_file
+        } else if ($default_toml | path exists) {
+            # Auto-create yazelix.toml from default (copy raw to preserve comments)
+            print "📝 Creating yazelix.toml from yazelix_default.toml..."
+            open --raw $default_toml | save $toml_file
+            print "✅ yazelix.toml created\n"
+            $toml_file
         } else {
-            error make {msg: "No yazelix configuration file found"}
+            error make {msg: "No yazelix configuration file found (yazelix_default.toml is missing)"}
         }
     }
 
-    # Parse the configuration file
-    let config_content = (open $config_to_read)
+    # Parse TOML configuration (Nushell auto-parses TOML files)
+    let raw_config = open $config_to_read
 
+    # Extract and return values
     {
-        persistent_sessions: (extract_config_value "persistent_sessions" "false" $config_content),
-        session_name: (extract_config_value "session_name" "yazelix" $config_content),
-        preferred_terminal: (extract_config_value "preferred_terminal" "ghostty" $config_content),
-        extra_terminals: (extract_config_value "extra_terminals" "[]" $config_content),
-        enable_atuin: (extract_config_value "enable_atuin" "false" $config_content),
-        terminal_config_mode: (extract_config_value "terminal_config_mode" "yazelix" $config_content),
-        cursor_trail: (extract_config_value "cursor_trail" "random" $config_content),
-        transparency: (extract_config_value "transparency" "low" $config_content),
-        default_shell: (extract_config_value "default_shell" "nu" $config_content),
-        helix_mode: (extract_config_value "helix_mode" "release" $config_content),
-        disable_zellij_tips: (extract_config_value "disable_zellij_tips" "true" $config_content),
-        zellij_rounded_corners: (extract_config_value "zellij_rounded_corners" "true" $config_content),
+        persistent_sessions: ($raw_config.zellij?.persistent_sessions? | default false | into string),
+        session_name: ($raw_config.zellij?.session_name? | default "yazelix"),
+        preferred_terminal: ($raw_config.terminal?.preferred_terminal? | default "ghostty"),
+        extra_terminals: ($raw_config.terminal?.extra_terminals? | default [] | into string),
+        enable_atuin: ($raw_config.shell?.enable_atuin? | default false | into string),
+        terminal_config_mode: ($raw_config.terminal?.config_mode? | default "yazelix"),
+        cursor_trail: ($raw_config.terminal?.cursor_trail? | default "random"),
+        transparency: ($raw_config.terminal?.transparency? | default "low"),
+        default_shell: ($raw_config.shell?.default_shell? | default "nu"),
+        helix_mode: ($raw_config.helix?.mode? | default "release"),
+        disable_zellij_tips: ($raw_config.zellij?.disable_tips? | default true | into string),
+        zellij_rounded_corners: ($raw_config.zellij?.rounded_corners? | default true | into string),
         config_file: $config_to_read
     }
 }

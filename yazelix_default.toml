@@ -1,5 +1,5 @@
 # Yazelix Configuration (TOML format)
-# yazelix.toml will be automatically copied from yazelix_toml if not found during launch. But you can manually copy it to yazelix.toml too.
+# yazelix.toml will be automatically created from yazelix_default.toml if not found.
 # yazelix.toml is gitignored so you can pull updates without conflicts
 
 [core]
