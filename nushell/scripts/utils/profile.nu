@@ -57,7 +57,7 @@ export def profile_environment_setup [] {
 
 # Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
 export def profile_cold_launch [
-    --clear-cache  # Toggle rounded_corners to force Nix re-evaluation (simulates config change)
+    --clear-cache  # Toggle config and clear cache to force full Nix re-evaluation (simulates config change)
 ] {
     # Check if we're in a Yazelix shell
     if ($env.IN_YAZELIX_SHELL? | is-not-empty) {
@@ -81,9 +81,9 @@ export def profile_cold_launch [
         $"($yazelix_dir)/yazelix_default.toml"
     }
 
-    # Modify config if requested to trigger Nix re-evaluation
+    # Modify config and clear cache if requested to force Nix re-evaluation
     let original_content = if $clear_cache {
-        print "📝 Modifying config to trigger Nix re-evaluation..."
+        print "📝 Modifying config and clearing cache to trigger Nix re-evaluation..."
         let content = (open --raw $config_file)
 
         # Toggle rounded_corners to force Nix re-evaluation (changes actual config value)
@@ -97,7 +97,13 @@ export def profile_cold_launch [
         }
         $modified | save -f $config_file
 
-        print "✅ Config modified (toggled rounded_corners) - Nix will re-evaluate\n"
+        # Also delete .devenv cache to ensure full re-evaluation
+        let devenv_cache = $"($yazelix_dir)/.devenv"
+        if ($devenv_cache | path exists) {
+            rm -rf $devenv_cache
+        }
+
+        print "✅ Config modified and cache cleared - Nix will perform full re-evaluation\n"
         $content
     } else {
         null
@@ -174,14 +180,6 @@ export def profile_cold_launch [
         $original_content | save -f $config_file
         print "✅ Config restored"
     }
-
-    # Save results
-    let log_file = "~/.local/share/yazelix/logs/profile.log" | path expand
-    let timestamp = (date now | format date "%Y-%m-%d %H:%M:%S")
-    let cache_status = if $clear_cache { "config-change" } else { "cached" }
-
-    $"($timestamp) - Cold launch \(($cache_status)\): ($total_ms)ms\n" | save --append $log_file
-    print $"\n📝 Results saved to: ($log_file)"
 }
 
 # Profile full launch sequence
@@ -234,15 +232,7 @@ export def profile_launch [] {
         print "\n❌ Slow performance detected. This may indicate:"
         print "   - First launch after config change (expected)"
         print "   - Slow disk I/O"
-        print "   - Many extra packages in yazelix.nix"
+        print "   - Many extra packages in yazelix.toml"
     }
-
-    # Save results
-    let log_file = "~/.local/share/yazelix/logs/profile.log" | path expand
-    let timestamp = (date now | format date "%Y-%m-%d %H:%M:%S")
-
-    $"($timestamp) - Total: ($total_ms)ms\n" | save --append $log_file
-
-    print $"\n📝 Results saved to: ($log_file)"
 }
 
