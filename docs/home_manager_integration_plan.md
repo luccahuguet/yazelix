@@ -1,6 +1,6 @@
 # Home Manager Integration Plan
 
-> **Legacy Note:** This plan assumes the legacy `yazelix.nix` configuration emitted by the current module. Adjust tasks when migrating to the `yazelix.toml` workflow.
+> **Note:** The Home Manager module now outputs `yazelix.toml`; some tasks below still reference the older `yazelix.nix` flow and should be modernized.
 
 **Status**: Implementation Phase - Option A Selected  
 **Priority**: Medium  
@@ -40,11 +40,11 @@
 ```nix
 programs.yazelix = {
   enable = true;
-  # Only generates yazelix.nix config file
+  # Only generates yazelix.toml config file
   # User still runs: nix develop ~/.config/yazelix
 };
 ```
-- [ ] Module only creates/manages `yazelix.nix` configuration
+- [ ] Module only creates/manages `yazelix.toml` configuration
 - [ ] User manually clones Yazelix repo to `~/.config/yazelix`
 - [ ] Zero file conflicts, minimal risk
 
@@ -102,7 +102,7 @@ nixpkgs.overlays = [ yazelix.overlays.default ];
 yazelix-home-manager/           # Separate repository
 ├── flake.nix                   # HM module flake
 ├── modules/
-│   └── yazelix.nix            # Home Manager module
+│   └── yazelix.toml           # Home Manager module
 ├── examples/
 │   ├── basic.nix              # Simple configuration
 │   ├── advanced.nix           # Full features
@@ -128,7 +128,7 @@ yazelix-home-manager/           # Separate repository
 ### Phase 2: Core Module (Week 3-4)  
 - [ ] Implement configuration-only approach (safest)
 - [ ] Basic options: `recommended_deps`, `yazi_extensions`, etc.
-- [ ] Generate `yazelix.nix` from Home Manager options
+- [ ] Generate `yazelix.toml` from Home Manager options
 - [ ] Test with manual Yazelix installations
 
 ### Phase 3: Enhanced Features (Week 5-6)

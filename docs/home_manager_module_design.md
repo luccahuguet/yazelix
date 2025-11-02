@@ -1,6 +1,6 @@
 # Yazelix Home Manager Module Design
 
-> **Legacy Note:** This design references the existing module that emits `yazelix.nix`. A future iteration should target `yazelix.toml`.
+> **Note:** The Home Manager module now generates `yazelix.toml`. Much of the design below predates that migration and should be revisited, but it remains useful for historical context.
 
 ## Architecture Decision: Configuration-Only Approach
 

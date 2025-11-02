@@ -1,12 +1,10 @@
 # Yazelix Home Manager Module
 
-> **Legacy Note:** The current Home Manager module still generates the legacy `yazelix.nix` configuration file. Migration to `yazelix.toml` is planned but not yet implemented.
-
 A **configuration-only** Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that provides declarative configuration management while preserving the existing workflow.
 
 ## What This Module Does
 
-- **Generates `yazelix.nix`** from Home Manager options
+- **Generates `yazelix.toml`** from Home Manager options
 - **Type-safe configuration** with validation
 - **Preserves existing workflow** - you still `git clone` and use `devenv shell`
 - **Zero file conflicts** - only manages configuration file
@@ -79,7 +77,7 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
 
 1. **Backup your current configuration:**
    ```bash
-   cp ~/.config/yazelix/yazelix.nix ~/.config/yazelix/yazelix.nix.backup
+   cp ~/.config/yazelix/yazelix.toml ~/.config/yazelix/yazelix.toml.backup
    ```
 
 2. **Configure the Home Manager module** (see example.nix)
@@ -98,7 +96,7 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
    home-manager switch
    ```
 
-3. **Restore manual config:** `cp ~/.config/yazelix/yazelix_default.nix ~/.config/yazelix/yazelix.nix`
+3. **Restore manual config:** `cp ~/.config/yazelix/yazelix_default.toml ~/.config/yazelix/yazelix.toml`
 
 ## Safety Features
 
@@ -110,12 +108,12 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
 ## Troubleshooting
 
 ### Configuration not applied
-- Check that `~/.config/yazelix/yazelix.nix` was created
+- Check that `~/.config/yazelix/yazelix.toml` was created
 - Verify Home Manager configuration syntax
 - Run `home-manager switch` to apply changes
 
-### Conflicts with existing yazelix.nix
-- The module will overwrite existing `yazelix.nix`
+### Conflicts with existing yazelix.toml
+- The module will overwrite existing `yazelix.toml`
 - Backup your manual configuration before enabling the module
 - See example.nix to recreate your settings declaratively
 
@@ -146,9 +144,9 @@ deadnix .
 
 ## Contributing
 
-This module follows Yazelix's configuration structure defined in `yazelix_default.nix`. When adding new options:
+This module follows Yazelix's configuration structure defined in `yazelix_default.toml`. When adding new options:
 
-1. Add the option to both `yazelix_default.nix` and this module
+1. Add the option to both `yazelix_default.toml` and this module
 2. Update the examples and documentation
 3. Test with both new and existing Yazelix installations
 4. Ensure type safety and proper defaults
