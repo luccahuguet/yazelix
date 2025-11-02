@@ -2,9 +2,7 @@
 # Copy this file to yazelix.toml and customize as needed
 # yazelix.toml is gitignored so you can pull updates without conflicts
 
-# ==================== Dependency Groups ====================
 # See docs/package_sizes.md for details
-
 [core]
 recommended_deps = true       # Productivity tools (~350MB): lazygit, atuin, carapace, markdown-oxide
 yazi_extensions = true        # File preview support (~125MB): p7zip, jq, fd, ripgrep, poppler
@@ -12,8 +10,6 @@ yazi_media = false            # Media processing (~1GB): ffmpeg, imagemagick
 debug_mode = false            # Enable verbose debug logging in the shellHook
 skip_welcome_screen = false   # When true, welcome info is logged instead of displayed
 show_macchina_on_welcome = true  # Show system info on welcome screen (uses macchina)
-
-# ==================== Helix Configuration ====================
 
 [helix]
 # Helix build mode (choose ONE):
@@ -34,9 +30,7 @@ mode = "release"
 # If this path doesn't exist, your Helix may be incompatible
 # runtime_path = "/path/to/custom/helix/runtime"
 
-# ==================== Editor Configuration ====================
 # Yazelix always sets this as your EDITOR environment variable
-
 [editor]
 # editor_command options:
 # • null (recommended): Use yazelix's Nix-provided Helix
@@ -66,8 +60,6 @@ mode = "release"
 # You can access Yazi manually with `yazi` command or `Ctrl+y` in Helix
 enable_sidebar = true
 
-# ==================== Shell Configuration ====================
-
 [shell]
 # Default shell for Zellij: "nu", "bash", "fish", or "zsh" (default: "nu")
 # Note: fish and zsh are only installed if set as default_shell or included in extra_shells
@@ -81,8 +73,6 @@ extra_shells = []
 # Atuin shell history integration (default: false)
 # Provides smart shell history with sync capabilities
 enable_atuin = false
-
-# ==================== Terminal Configuration ====================
 
 [terminal]
 # Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
@@ -127,8 +117,6 @@ cursor_trail = "random"
 # - "high":   High transparency (opacity = 0.8)
 transparency = "low"
 
-# ==================== Zellij Configuration ====================
-
 [zellij]
 # Disable Zellij tips popup on startup (default: true)
 # Set to true to suppress the tips dialog for cleaner launches
@@ -152,8 +140,6 @@ session_name = "yazelix"
 # Uncomment to use a custom layout file instead of default yazelix layouts
 # layout_override = "custom_layout"
 
-# ==================== ASCII Art Configuration ====================
-
 [ascii]
 # ASCII art display mode (default: "static")
 # Options:
@@ -161,9 +147,7 @@ session_name = "yazelix"
 # - "animated": Show animated ASCII art (opt-in for faster startup)
 mode = "static"
 
-# ==================== Package Packs ====================
 # Complete toolchains for programming languages and tools
-
 [packs]
 # Language packs - complete toolchains for programming languages
 # Uncomment the ones you need:
@@ -185,7 +169,6 @@ tools = [
     # "git",             # onefetch (repo summary), gh (GitHub CLI), delta (diff viewer), gitleaks (secret scanner), jj (Jujutsu VCS), prek (commit log viewer)
 ]
 
-# ==================== Individual Packages ====================
 # Add individual packages here if you don't want entire packs
 # Tip: If you only need one tool from a pack, add it here instead
 #
