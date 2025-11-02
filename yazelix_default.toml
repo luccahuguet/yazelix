@@ -52,7 +52,7 @@ mode = "release"
 #   - Basic integration only (new panes, tab naming)
 #   - No advanced features (reveal in sidebar, same-instance opening)
 #   - Works reliably but with limited yazelix-specific functionality
-# command = null  # Uncomment and set to override (e.g., "nvim", "hx", "vim")
+command = ""  # Leave empty to use yazelix's helix (recommended), or set to "nvim", "hx", "vim", etc.
 
 # Enable or disable the Yazi sidebar (default: true)
 # When false, Yazelix uses clean, full-screen layouts with on-demand file picking

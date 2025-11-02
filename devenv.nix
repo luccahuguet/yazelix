@@ -33,7 +33,8 @@ let
     helix_mode = rawConfig.helix.mode or "release";
     helix_runtime_path = rawConfig.helix.runtime_path or null;
 
-    editor_command = rawConfig.editor.command or null;
+    # Treat empty string as null for editor_command
+    editor_command = let cmd = rawConfig.editor.command or null; in if cmd == "" then null else cmd;
     enable_sidebar = rawConfig.editor.enable_sidebar or true;
 
     default_shell = rawConfig.shell.default_shell or "nu";
