@@ -2,7 +2,7 @@
 # ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 # Nushell version of the Yazelix launcher
 
-use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/config_state.nu compute_config_state
 use ../utils/nix_detector.nu ensure_nix_available
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/terminal_launcher.nu *
@@ -29,42 +29,18 @@ def main [
         print $"Resolved HOME=($home)"
     }
 
-    # Parse config once for reuse (also auto-creates yazelix.toml if missing)
-    let config = parse_yazelix_config
-    let active_config_file = $config.config_file
-    let legacy_nix_config = $"($home)/.config/yazelix/yazelix.nix"
-    let cache_dir = $"($home)/.local/share/yazelix/state"
-    let cache_file = $"($cache_dir)/config_hash"
+    # Compute config state (auto-creates yazelix.toml if missing)
+    let config_state = compute_config_state
+    let config = $config_state.config
+    let active_config_file = $config_state.config_file
+    let current_hash = $config_state.current_hash
+    let cached_hash = $config_state.cached_hash
+    let needs_reload = $config_state.needs_refresh
 
+    let legacy_nix_config = $"($home)/.config/yazelix/yazelix.nix"
     if ($legacy_nix_config | path exists) and ($legacy_nix_config != $active_config_file) {
         print "⚠️  yazelix.nix detected but is no longer used. Update ~/.config/yazelix/yazelix.toml instead."
     }
-
-    # Ensure cache directory exists
-    if not ($cache_dir | path exists) {
-        mkdir $cache_dir
-    }
-
-    # Compute current config hash
-    let current_hash = if ($active_config_file | is-empty) or (not ($active_config_file | path exists)) {
-        ""
-    } else {
-        open --raw $active_config_file | hash sha256
-    }
-
-    # Read cached hash (if exists)
-    let cached_hash = if ($cache_file | path exists) {
-        try {
-            open $cache_file | str trim
-        } catch {
-            "" # Cache corrupted or unreadable
-        }
-    } else {
-        "" # No cache yet
-    }
-
-    # Determine if we need to reload environment
-    let needs_reload = ($current_hash != $cached_hash)
 
     if $verbose_mode {
         print $"🔍 Config hash check:"
@@ -72,9 +48,6 @@ def main [
         print $"   Cached:   ($cached_hash)"
         print $"   Reload:   ($needs_reload)"
     }
-
-    # Update cache with current hash for next launch
-    $current_hash | save -f $cache_file
 
     # Use provided launch directory or fall back to current directory
     let working_dir = if ($launch_cwd | is-empty) { pwd } else { $launch_cwd }

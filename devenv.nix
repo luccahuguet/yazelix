@@ -439,6 +439,8 @@ in {
       echo "📝 Set EDITOR to: ${editorCommand}"
     fi
 
+    echo "🔁 Yazelix shell config: default=${defaultShell}, extras=${extraShellsStr}, includeFish=${if includeFish then "true" else "false"}, includeZsh=${if includeZsh then "true" else "false"}"
+
     nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu" \
       "$YAZELIX_DIR" \
       "${boolToString recommendedDepsEnabled}" \

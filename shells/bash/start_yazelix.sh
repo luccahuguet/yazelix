@@ -23,12 +23,27 @@ if ! command -v devenv >/dev/null 2>&1; then
   exit 1
 fi
 
+# Detect configuration changes (requires Nushell)
+REFRESH_FLAG=""
+if command -v nu >/dev/null 2>&1; then
+  NEEDS_REFRESH=$(nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu compute_config_state; let state = compute_config_state; if $state.needs_refresh { "true" } else { "" }')
+  if [ "$NEEDS_REFRESH" = "true" ]; then
+    echo "Config changed since last launch - refreshing devenv evaluation cache"
+    export YAZELIX_FORCE_REFRESH="true"
+    REFRESH_FLAG=" --refresh-eval-cache"
+  fi
+fi
+
 # Run devenv shell with explicit HOME.
 # The YAZELIX_DEFAULT_SHELL variable will be set by the enterShell hook
 # and used by the inner zellij command.
 # We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after devenv sets it.
-HOME="$HOME" devenv shell -- bash -c \
+HOME="$HOME" devenv shell$REFRESH_FLAG -- bash -c \
   "zellij --config-dir \"$YAZELIX_DIR/configs/zellij\" options \
     --default-cwd \"$HOME\" \
     --default-layout \"\$ZELLIJ_DEFAULT_LAYOUT\" \
     --default-shell \"\$YAZELIX_DEFAULT_SHELL\""
+
+if [ "$NEEDS_REFRESH" = "true" ] && command -v nu >/dev/null 2>&1; then
+  nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu [compute_config_state mark_config_state_applied]; mark_config_state_applied (compute_config_state)'
+fi
