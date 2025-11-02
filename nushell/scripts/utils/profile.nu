@@ -124,10 +124,12 @@ export def profile_cold_launch [
         duration_ms: $hash_ms
     })
 
-    # Profile devenv build (this is the main operation)
+    # Profile devenv shell (this is the main operation that triggers full re-evaluation)
     let build_start = (date now)
     # Use --no-eval-cache flag to force fresh Nix evaluation
-    bash -c $"cd ($yazelix_dir) && devenv build --no-eval-cache" | complete
+    # Use 'sh -c exit' to exit immediately after building the environment
+    # Add timeout of 30 seconds as safety measure
+    bash -c $"cd ($yazelix_dir) && timeout 30 devenv shell --no-eval-cache sh -c exit" | complete
     let build_end = (date now)
     let build_ms = ((($build_end - $build_start) | into int) / 1000000)
     $results = ($results | append {
