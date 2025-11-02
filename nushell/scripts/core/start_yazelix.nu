@@ -139,15 +139,10 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
                 exit 1
             }
             # Must run devenv from the directory containing devenv.nix
-            let refresh_flag = if ($env.YAZELIX_FORCE_REFRESH? == "true") {
-                if $verbose_mode {
-                    print "♻️  Config changed – refreshing devenv evaluation cache"
-                }
-                " --refresh-eval-cache"
-            } else {
-                ""
+            if ($env.YAZELIX_FORCE_REFRESH? == "true") and $verbose_mode {
+                print "♻️  Config changed – rebuilding environment"
             }
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure($refresh_flag) -- bash -c '($cmd)'"
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure -- bash -c '($cmd)'"
             ^bash -c $devenv_cmd
         }
     }

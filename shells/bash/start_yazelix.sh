@@ -24,13 +24,11 @@ if ! command -v devenv >/dev/null 2>&1; then
 fi
 
 # Detect configuration changes (requires Nushell)
-REFRESH_FLAG=""
 if command -v nu >/dev/null 2>&1; then
   NEEDS_REFRESH=$(nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu compute_config_state; let state = compute_config_state; if $state.needs_refresh { "true" } else { "" }')
   if [ "$NEEDS_REFRESH" = "true" ]; then
-    echo "Config changed since last launch - refreshing devenv evaluation cache"
+    echo "♻️  Config changed since last launch – rebuilding environment"
     export YAZELIX_FORCE_REFRESH="true"
-    REFRESH_FLAG=" --refresh-eval-cache"
   fi
 fi
 
@@ -38,7 +36,7 @@ fi
 # The YAZELIX_DEFAULT_SHELL variable will be set by the enterShell hook
 # and used by the inner zellij command.
 # We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after devenv sets it.
-HOME="$HOME" devenv shell --impure$REFRESH_FLAG -- bash -c \
+HOME="$HOME" devenv shell --impure -- bash -c \
   "zellij --config-dir \"$YAZELIX_DIR/configs/zellij\" options \
     --default-cwd \"$HOME\" \
     --default-layout \"\$ZELLIJ_DEFAULT_LAYOUT\" \
