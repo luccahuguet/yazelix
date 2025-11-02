@@ -57,7 +57,7 @@ export def profile_environment_setup [] {
 
 # Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
 export def profile_cold_launch [
-    --clear-cache  # Modify config to trigger Nix re-evaluation (simulates config change)
+    --clear-cache  # Toggle debug_mode to trigger Nix re-evaluation (simulates config change)
 ] {
     # Check if we're in a Yazelix shell
     if ($env.IN_YAZELIX_SHELL? | is-not-empty) {
@@ -84,40 +84,71 @@ export def profile_cold_launch [
     # Modify config if requested to trigger Nix re-evaluation
     let original_content = if $clear_cache {
         print "📝 Modifying config to trigger Nix re-evaluation..."
-        let content = (open $config_file)
+        let content = (open --raw $config_file)
 
-        # Add a temporary comment to the config
-        let modified = $"# Profile benchmark timestamp: (date now | format date '%Y-%m-%d %H:%M:%S')\n($content)"
+        # Toggle debug_mode to force Nix re-evaluation (changes actual config value)
+        let modified = if ($content | str contains "debug_mode = false") {
+            $content | str replace "debug_mode = false" "debug_mode = true"
+        } else if ($content | str contains "debug_mode = true") {
+            $content | str replace "debug_mode = true" "debug_mode = false"
+        } else {
+            # Fallback: add debug_mode if not present
+            $content | str replace "[core]" "[core]\ndebug_mode = true"
+        }
         $modified | save -f $config_file
 
-        print "✅ Config modified - Nix will re-evaluate\n"
+        print "✅ Config modified (toggled debug_mode) - Nix will re-evaluate\n"
         $content
     } else {
         null
     }
 
-    # Profile devenv build (builds profile without entering shell)
-    print "⏱️  Measuring devenv profile build (this will take a few seconds)...\n"
+    mut results = []
 
-    let start = (date now)
+    # Profile config hash computation
+    print "⏱️  Measuring cold launch components...\n"
+    let hash_start = (date now)
+    open --raw $config_file | hash sha256 | ignore
+    let hash_end = (date now)
+    let hash_ms = ((($hash_end - $hash_start) | into int) / 1000000)
+    $results = ($results | append {
+        step: "Config file hash"
+        duration_ms: $hash_ms
+    })
 
-    # Build the devenv profile without entering the shell
+    # Profile devenv build (this is the main operation)
+    let build_start = (date now)
     bash -c $"cd ($yazelix_dir) && devenv build" | complete
+    let build_end = (date now)
+    let build_ms = ((($build_end - $build_start) | into int) / 1000000)
+    $results = ($results | append {
+        step: "devenv build (Nix evaluation + profile)"
+        duration_ms: $build_ms
+    })
 
-    let end = (date now)
-    let duration_ms = ((($end - $start) | into int) / 1000000)
+    # Calculate total
+    let total_ms = ($results | get duration_ms | math sum)
 
-    print $"\n📊 Results:"
-    print $"  Cold launch time: ($duration_ms)ms\n"
+    # Display breakdown
+    print "\n📊 Cold Launch Breakdown:\n"
+    let display_results = ($results | each {|result|
+        let duration = ($result.duration_ms | math round --precision 2)
+        {
+            Step: $result.step
+            "Duration (ms)": $duration
+        }
+    })
+    print ($display_results | table)
+    print $"\nTotal: ($total_ms | math round --precision 2)ms\n"
 
     # Performance assessment
     if $clear_cache {
         print "💡 Performance Assessment (config change simulation):\n"
-        if $duration_ms < 2000 {
+        if $total_ms < 2000 {
             print "🚀 Excellent! Even after config changes, Nix re-evaluation is very fast."
-        } else if $duration_ms < 5000 {
+        } else if $total_ms < 5000 {
             print "✅ Good. This is expected after config changes (Nix re-evaluation)."
-        } else if $duration_ms < 10000 {
+        } else if $total_ms < 10000 {
             print "⚠️  Slower than expected. Check for:"
             print "   - Slow disk I/O"
             print "   - Large number of packages in yazelix.toml"
@@ -126,11 +157,11 @@ export def profile_cold_launch [
         }
     } else {
         print "💡 Performance Assessment (cached launch):\n"
-        if $duration_ms < 500 {
+        if $total_ms < 500 {
             print "🚀 Excellent! devenv SQLite cache is working perfectly."
-        } else if $duration_ms < 1500 {
+        } else if $total_ms < 1500 {
             print "✅ Good. Cached launch is efficient."
-        } else if $duration_ms < 3000 {
+        } else if $total_ms < 3000 {
             print "⚠️  Slower than expected for cached launch."
         } else {
             print "❌ Cache may not be working. Check .devenv/ directory."
@@ -149,7 +180,7 @@ export def profile_cold_launch [
     let timestamp = (date now | format date "%Y-%m-%d %H:%M:%S")
     let cache_status = if $clear_cache { "config-change" } else { "cached" }
 
-    $"($timestamp) - Cold launch \(($cache_status)\): ($duration_ms)ms\n" | save --append $log_file
+    $"($timestamp) - Cold launch \(($cache_status)\): ($total_ms)ms\n" | save --append $log_file
     print $"\n📝 Results saved to: ($log_file)"
 }
 
