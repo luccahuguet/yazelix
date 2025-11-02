@@ -57,7 +57,7 @@ export def profile_environment_setup [] {
 
 # Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
 export def profile_cold_launch [
-    --clear-cache  # Toggle debug_mode to trigger Nix re-evaluation (simulates config change)
+    --clear-cache  # Clear devenv cache to force Nix re-evaluation (simulates config change)
 ] {
     # Check if we're in a Yazelix shell
     if ($env.IN_YAZELIX_SHELL? | is-not-empty) {
@@ -81,26 +81,16 @@ export def profile_cold_launch [
         $"($yazelix_dir)/yazelix_default.toml"
     }
 
-    # Modify config if requested to trigger Nix re-evaluation
-    let original_content = if $clear_cache {
-        print "📝 Modifying config to trigger Nix re-evaluation..."
-        let content = (open --raw $config_file)
-
-        # Toggle debug_mode to force Nix re-evaluation (changes actual config value)
-        let modified = if ($content | str contains "debug_mode = false") {
-            $content | str replace "debug_mode = false" "debug_mode = true"
-        } else if ($content | str contains "debug_mode = true") {
-            $content | str replace "debug_mode = true" "debug_mode = false"
+    # Clear devenv cache if requested to force Nix re-evaluation
+    if $clear_cache {
+        print "🗑️  Clearing devenv cache to force Nix re-evaluation..."
+        let devenv_cache = $"($yazelix_dir)/.devenv"
+        if ($devenv_cache | path exists) {
+            rm -rf $devenv_cache
+            print "✅ Cache cleared - Nix will perform full re-evaluation\n"
         } else {
-            # Fallback: add debug_mode if not present
-            $content | str replace "[core]" "[core]\ndebug_mode = true"
+            print "ℹ️  No cache found (first run or already cleared)\n"
         }
-        $modified | save -f $config_file
-
-        print "✅ Config modified (toggled debug_mode) - Nix will re-evaluate\n"
-        $content
-    } else {
-        null
     }
 
     mut results = []
@@ -166,13 +156,6 @@ export def profile_cold_launch [
         } else {
             print "❌ Cache may not be working. Check .devenv/ directory."
         }
-    }
-
-    # Restore original config if it was modified
-    if ($original_content != null) {
-        print "\n🔄 Restoring original config..."
-        $original_content | save -f $config_file
-        print "✅ Config restored"
     }
 
     # Save results
