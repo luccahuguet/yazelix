@@ -79,13 +79,13 @@ export def profile_cold_launch [
         print "✅ Cache cleared\n"
     }
 
-    # Profile full devenv shell launch
-    print "⏱️  Measuring devenv shell startup (this will take a few seconds)...\n"
+    # Profile devenv build (builds profile without entering shell)
+    print "⏱️  Measuring devenv profile build (this will take a few seconds)...\n"
 
     let start = (date now)
 
-    # Launch devenv shell with a simple command
-    bash -c $"cd ($yazelix_dir) && devenv shell -- bash -c 'echo \"Yazelix shell ready\"'" | complete
+    # Build the devenv profile without entering the shell
+    bash -c $"cd ($yazelix_dir) && devenv build" | complete
 
     let end = (date now)
     let duration_ms = ((($end - $start) | into int) / 1000000)
