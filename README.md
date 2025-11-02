@@ -101,26 +101,31 @@ Full version history: [Version History](./docs/history.md)
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-2. Install Nushell (required)
+2. Install devenv CLI
+```bash
+nix profile install github:cachix/devenv/latest
+```
+
+3. Install Nushell (required)
 ```bash
 nix profile add nixpkgs#nushell
 ```
 Other platforms: see https://www.nushell.sh/book/installation.html
 
-3. Clone Yazelix
+4. Clone Yazelix
 ```bash
 git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 ```
 
-4. Install fonts (for Kitty/Alacritty)
+5. Install fonts (for Kitty/Alacritty)
 ```bash
 nix profile add nixpkgs#nerd-fonts.fira-code nixpkgs#nerd-fonts.symbols-only
 ```
 
-5. Copy terminal config (optional)
-See [Step 5 in installation guide](./docs/installation.md#step-5-set-up-yazelix-to-auto-launch-in-your-terminal)
+6. Copy terminal config (optional because yazelix offers built-in version for all supported terminals)
+See [Step 6 in installation guide](./docs/installation.md#step-6-set-up-yazelix-to-auto-launch-in-your-terminal)
 
-6. Launch
+7. Launch
 ```bash
 nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 ```

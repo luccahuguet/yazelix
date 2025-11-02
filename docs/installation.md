@@ -79,14 +79,30 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 nix --version
 ```
 
-### Step 2: Download Yazelix
+### Step 2: Install devenv CLI
+
+Yazelix runs on the [`devenv`](https://devenv.sh) development environment. Install the CLI once so you can launch the Yazelix shell quickly:
+
+```bash
+nix profile install github:cachix/devenv/latest
+```
+
+**What this does:**
+- Installs the latest `devenv` CLI into your user profile
+- Provides the `devenv shell` command that Yazelix uses for fast, cached launches
+- Verify installation:
+```bash
+devenv --version
+```
+
+### Step 3: Clone Yazelix
 
 Clone the Yazelix repository to your system:
 ```bash
 git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 ```
 
-### Step 3: Configure Your Installation (Optional)
+### Step 4: Configure Your Installation (Optional)
 
 **Before installing dependencies**, create and customize your configuration to control what gets downloaded (else, yazelix will create a config for you based on yazelix_default.nix):
 
@@ -120,7 +136,7 @@ hx ~/.config/yazelix/yazelix.nix
 - **Terminal preference**: Set `preferred_terminal` (`"ghostty"`, `"wezterm"`, `"kitty"`, `"alacritty"`, `"foot"`)
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
-### Step 4: Install Fonts (Required for Kitty and Alacritty)
+### Step 5: Install Fonts (Required for Kitty and Alacritty)
 
 If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display using modern Nix commands:
 
@@ -145,7 +161,7 @@ nix-env -iA nixpkgs.nerd-fonts.fira-code nixpkgs.nerd-fonts.symbols-only
 
 **Note**: WezTerm and Ghostty have better font fallback and don't require this step.
 
-### Step 5: Set Up Yazelix to Auto-Launch in Your Terminal
+### Step 6: Set Up Yazelix to Auto-Launch in Your Terminal
 
 **Note for v9 users:** Terminal configs are now auto-generated - no more manual copying! See [troubleshooting](./troubleshooting.md#v95-migration-notes) for migration details.
 
@@ -190,7 +206,7 @@ Run this command from within your yazelix terminal session. After this, you can 
 
 For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 
-### Step 6: Using Yazelix
+### Step 7: Using Yazelix
 
 **Option A users**: Simply open your terminal! Yazelix will automatically launch with the full environment.
 **Option B users**: Use `yzx launch` or `yzx launch --here` to launch Yazelix when needed.
@@ -203,7 +219,7 @@ For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 - Use `yzx help` to see all available management commands
 - Use `Alt+Shift+f` to toggle fullscreen on the current pane
 
-### Step 7: Configure Helix Integration (Optional but Recommended)
+### Step 8: Configure Helix Integration (Optional but Recommended)
 
 To enable full Helix-Yazi integration, add the basic Yazelix keybinding to your Helix config (usually `~/.config/helix/config.toml`):
 
