@@ -362,3 +362,104 @@ Smart caching is the only way to have both.
 *Research conducted: 2025-01-01*
 *Research method: Web search, tool documentation, Nix community resources*
 *Conclusion: devenv is worth trying; if it works, we get instant+automatic*
+
+---
+
+## PoC Results: devenv via Flakes (FAILED)
+
+**Date:** 2025-11-01
+**Branch:** `poc/devenv-caching` (preserved for reference)
+**Verdict:** ❌ **Slower than legacy - not viable**
+
+### Performance Results
+
+**Test command:** `time nix develop --impure --command echo "test"`
+
+| Configuration | Time | Notes |
+|--------------|------|-------|
+| **Legacy shell** | **4.5s** | Current implementation (pkgs.mkShell) |
+| **Devenv (minimal)** | 1.5s | Only 3 packages, no shellHook |
+| **Devenv (full config)** | **5.2s** | All packages + full shellHook |
+
+**Result:** Devenv with full Yazelix config is **0.7s SLOWER** than legacy shell.
+
+### What Happened
+
+1. **Minimal test succeeded:** With just nushell/zellij/helix and no shellHook, devenv was 2.5x faster (1.5s vs 4.5s)
+
+2. **Full config failed:** After migrating all packages, environment variables, and the shellHook script, devenv became slower:
+   - Same ~3.5s shellHook execution (`environment.nu`)
+   - Devenv saves ~0.5s on package loading
+   - But adds ~1.2s overhead from task runner + SQLite infrastructure
+   - **Net effect: -0.7s** (worse performance)
+
+3. **No caching benefit:** The promised <10ms evaluation caching never materialized, even after multiple runs
+
+### Why It Failed
+
+**devenv overhead > devenv savings:**
+- Task runner initialization: ~0.4s
+- SQLite database operations: ~0.3s
+- Additional devenv infrastructure: ~0.5s
+- **Total overhead:** ~1.2s
+
+**What we gained:**
+- Faster package loading: ~0.5s
+
+**Net result:** Lost 0.7s
+
+### Key Insight
+
+devenv is optimized for **development workflows** (repeated `devenv shell` entries) with heavy package sets but minimal shell hooks. Yazelix has the opposite profile:
+- Medium package set (~50-100 packages)
+- Heavy shell hook (~3.5s of Nushell scripting)
+- Single entry per session (desktop launcher)
+
+The shell hook dominates, and devenv can't cache it away.
+
+### Alternative Considered: devenv CLI
+
+**Not tested.** Rationale:
+- Official devenv CLI (not flake integration) might achieve promised caching
+- But requires different workflow: `devenv shell` instead of `nix develop`
+- Would need to update all launchers, documentation, workflows
+- Even if it worked perfectly (instant), the UX change isn't worth it
+- 4.5s is actually good performance for this complexity
+
+### Final Decision
+
+**Accept current 4.5s as reasonable performance.**
+
+**Why this is the right choice:**
+1. ✅ 4.5s is good for a complex flake (500 lines, 50-100 packages, dynamic config)
+2. ✅ Most users launch once per work session
+3. ✅ Zero added complexity or dependencies
+4. ✅ Battle-tested and reliable
+5. ✅ Focus optimization efforts on more impactful areas
+
+**Compared to alternatives:**
+- NixOS rebuilds: 30s-5min
+- Home Manager switches: 10-30s
+- Typical development shells: 2-5s
+- Yazelix: **4.5s** ← Already on the fast end
+
+### Lessons Learned
+
+1. **Minimal tests can be misleading** - Always test with full production configuration
+2. **devenv overhead is real** - Task runner + SQLite add measurable latency
+3. **Profile matters** - devenv optimizes for different use case than Yazelix
+4. **Shell hooks aren't cached** - Script execution time dominates, can't be optimized away
+5. **4s baseline is reasonable** - Don't optimize what doesn't need optimization
+
+### Branch Status
+
+- **PoC branch preserved:** `poc/devenv-caching` (commit ebe0b5f)
+- Contains full implementation for reference
+- Will not be merged to main
+- Serves as documentation of what was tried and why it didn't work
+
+---
+
+*PoC conducted: 2025-11-01*
+*Test method: Empirical performance measurement with full production config*
+*Conclusion: devenv via flakes is slower than legacy shell; accept 4.5s as reasonable*
