@@ -54,6 +54,8 @@ inputs = {
 ```
 
 **4. Update flake.nix outputs**
+
+**During PoC:** Add devenv as alternate shell (doesn't affect existing behavior)
 ```nix
 outputs = { self, nixpkgs, flake-utils, helix, nixgl, devenv, ... }:
   flake-utils.lib.eachDefaultSystem (system:
@@ -61,10 +63,10 @@ outputs = { self, nixpkgs, flake-utils, helix, nixgl, devenv, ... }:
       # ... existing code ...
     in
     {
-      # Keep existing devShells.default for now (fallback)
+      # Keep existing devShells.default unchanged during PoC
       devShells.default = pkgs.mkShell { ... };
 
-      # Add devenv shell for testing
+      # Add devenv shell for testing (use with: nix develop .#devenv)
       devShells.devenv = devenv.lib.mkShell {
         inherit inputs pkgs;
         modules = [
@@ -75,9 +77,28 @@ outputs = { self, nixpkgs, flake-utils, helix, nixgl, devenv, ... }:
   );
 ```
 
+**After PoC succeeds:** Make devenv the default (Phase 2, Step 2)
+```nix
+outputs = { self, nixpkgs, flake-utils, helix, nixgl, devenv, ... }:
+  flake-utils.lib.eachDefaultSystem (system:
+    {
+      # devenv becomes the default shell
+      devShells.default = devenv.lib.mkShell {
+        inherit inputs pkgs;
+        modules = [
+          ./devenv.nix
+        ];
+      };
+
+      # Keep mkShell version as fallback during migration
+      devShells.legacy = pkgs.mkShell { ... };
+    }
+  );
+```
+
 **5. Test basic functionality**
 ```bash
-# Enter devenv shell
+# Enter devenv shell (explicit target during PoC)
 nix develop .#devenv
 
 # Measure performance
@@ -354,15 +375,17 @@ Convert full flake.nix logic to devenv.nix (see Phase 2 for details)
 
 **Test:**
 ```bash
-# Launch via yzx launch
+# During PoC: Use explicit .#devenv target
 nix develop .#devenv --command nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 # Measure performance
 time nix develop .#devenv --command nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
-# Run again
+# Run again (should be cached)
 time nix develop .#devenv --command nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 ```
+
+**Note:** During PoC we use `.#devenv` explicitly since `devShells.default` is still mkShell. After Phase 2 Step 2 (making devenv the default), all existing `nix develop` calls will automatically use devenv - no script changes needed!
 
 **Success criteria:**
 - Full Yazelix environment launches successfully
@@ -488,44 +511,85 @@ in
       echo "Created yazelix.nix from template"
     fi
 
-    # Run main environment setup
+    # Run main environment setup script
+    # Signature: environment.nu yazelix_dir recommended enable_atuin build_helix_from_source
+    #            default_shell debug_mode extra_shells_str skip_welcome_screen helix_mode
+    #            ascii_art_mode [show_macchina_on_welcome]
     nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu" \
       "$YAZELIX_DIR" \
       "${if userConfig.recommended_deps or true then "true" else "false"}" \
       "${if userConfig.enable_atuin or false then "true" else "false"}" \
-      "bash,zsh,fish,nu"
+      "${if buildHelixFromSource then "true" else "false"}" \
+      "${userConfig.default_shell or "nu"}" \
+      "${if userConfig.debug_mode or false then "true" else "false"}" \
+      "${if (userConfig.extra_shells or []) == [] then "NONE" else builtins.concatStringsSep "," userConfig.extra_shells}" \
+      "${if userConfig.skip_welcome_screen or false then "true" else "false"}" \
+      "${userConfig.helix_mode or "release"}" \
+      "${userConfig.ascii_art_mode or "static"}" \
+      "${if userConfig.show_macchina_on_welcome or false then "true" else "false"}"
   '';
 }
 ```
 
-**2. Update flake.nix to use devenv**
+**2. Make devenv the default shell**
+
+Update flake.nix to replace mkShell with devenv:
 
 ```nix
 # flake.nix
 outputs = { self, nixpkgs, flake-utils, helix, nixgl, devenv, ... }:
   flake-utils.lib.eachDefaultSystem (system:
     {
-      # Use devenv for devShells.default
+      # devenv is now the default - all `nix develop` calls use it
       devShells.default = devenv.lib.mkShell {
         inherit inputs pkgs;
         modules = [
           ./devenv.nix
         ];
       };
+
+      # Keep legacy mkShell as fallback (optional, can remove after testing)
+      devShells.legacy = pkgs.mkShell { ... };
     }
   );
 ```
 
-**3. Update launch scripts**
+**Key point:** Once `devShells.default` is changed to devenv, ALL existing callers automatically use it:
+- `nix develop` → uses devShells.default (now devenv)
+- `nix develop --impure` → uses devShells.default (now devenv)
+- `nix develop --impure ~/.config/yazelix` → uses devShells.default (now devenv)
 
-Scripts should already work since they use `nix develop`, but verify:
+**No script changes needed!** All existing call sites continue to work.
+
+**3. Verify all launch methods work**
+
+Test that existing callers now use devenv automatically:
 
 ```bash
-# Test all launch methods
-yzx launch
-yzx launch-desktop
+# Test direct launch
+nix develop --impure --command echo "test"  # Should use devenv now
+
+# Test yzx commands
+yzx launch        # nushell/scripts/core/yazelix.nu
+yzx launch-desktop # nushell/scripts/core/desktop_launcher.nu
+
+# Test manual launch
 nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
+
+# Verify performance gains
+time nix develop --impure --command echo "test"  # First run: ~4s
+time nix develop --impure --command echo "test"  # Second run: <100ms ✨
 ```
+
+**Existing call sites (no changes needed):**
+- `nushell/scripts/core/desktop_launcher.nu:15` - `nix develop --impure --command ...`
+- `nushell/scripts/core/start_yazelix.nu:136` - `nix develop --impure --command ...`
+- `nushell/scripts/core/yazelix.nu:210` - `nix develop --impure ~/.config/yazelix --command ...`
+- `nushell/scripts/core/yazelix.nu:224` - `nix develop --impure ~/.config/yazelix --command ...`
+- `nushell/scripts/core/yazelix.nu:228` - `nix develop --impure ~/.config/yazelix`
+- `nushell/scripts/core/yazelix.nu:248` - `nix develop --impure ~/.config/yazelix --command ...`
+
+All of these automatically use `devShells.default`, which is now devenv.
 
 **4. Update documentation**
 
