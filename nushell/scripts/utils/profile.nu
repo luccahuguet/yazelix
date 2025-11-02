@@ -81,59 +81,30 @@ export def profile_cold_launch [
         $"($yazelix_dir)/yazelix_default.toml"
     }
 
-    # Modify config and clear cache if requested to force Nix re-evaluation
-    let original_content = if $clear_cache {
-        print "📝 Modifying yazelix.toml and clearing cache to trigger full Nix re-evaluation..."
-
-        # Save original config
-        let content = (open --raw $config_file)
-
-        # Toggle rounded_corners value in yazelix.toml
-        let modified = if ($content | str contains "rounded_corners = true") {
-            $content | str replace "rounded_corners = true" "rounded_corners = false"
-        } else if ($content | str contains "rounded_corners = false") {
-            $content | str replace "rounded_corners = false" "rounded_corners = true"
-        } else {
-            # Fallback: add rounded_corners if not present
-            $content | str replace "[zellij]" "[zellij]\nrounded_corners = false"
-        }
-        $modified | save -f $config_file
-
-        # Delete .devenv cache to ensure fresh evaluation
+    # Clear cache if requested
+    if $clear_cache {
+        print "🗑️  Clearing .devenv cache...\n"
         let devenv_cache = $"($yazelix_dir)/.devenv"
         if ($devenv_cache | path exists) {
             rm -rf $devenv_cache
         }
-
-        print "✅ yazelix.toml modified and cache cleared - Nix will perform full re-evaluation\n"
-        $content
-    } else {
-        null
     }
 
     mut results = []
 
-    # Profile config hash computation
-    print "⏱️  Measuring cold launch components...\n"
-    let hash_start = (date now)
-    open --raw $config_file | hash sha256 | ignore
-    let hash_end = (date now)
-    let hash_ms = ((($hash_end - $hash_start) | into int) / 1000000)
-    $results = ($results | append {
-        step: "Config file hash"
-        duration_ms: $hash_ms
-    })
+    print "⏱️  Measuring cold launch (this will take a few seconds)...\n"
 
-    # Profile devenv build (this is the main operation that triggers full re-evaluation)
-    let build_start = (date now)
-    # Use --refresh-eval-cache flag to force refresh of Nix evaluation cache
-    # Use 'build' instead of 'shell' to avoid hanging
-    bash -c $"cd ($yazelix_dir) && devenv --refresh-eval-cache build" | complete
-    let build_end = (date now)
-    let build_ms = ((($build_end - $build_start) | into int) / 1000000)
+    # Profile the actual launch command that works
+    let launch_start = (date now)
+    # Simulate what happens during yzx launch - run devenv shell with immediate exit
+    # This is the only command that actually does the full 6s build
+    let result = bash -c $"cd ($yazelix_dir) && echo 'exit' | timeout 15 devenv shell" | complete
+    let launch_end = (date now)
+    let launch_ms = ((($launch_end - $launch_start) | into int) / 1000000)
+
     $results = ($results | append {
-        step: "devenv build (Nix evaluation + profile)"
-        duration_ms: $build_ms
+        step: "Full devenv shell build"
+        duration_ms: $launch_ms
     })
 
     # Calculate total
@@ -178,12 +149,6 @@ export def profile_cold_launch [
         }
     }
 
-    # Restore original config if it was modified
-    if ($original_content != null) {
-        print "\n🔄 Restoring original yazelix.toml..."
-        $original_content | save -f $config_file
-        print "✅ yazelix.toml restored"
-    }
 }
 
 # Profile full launch sequence
