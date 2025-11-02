@@ -362,3 +362,192 @@ Smart caching is the only way to have both.
 *Research conducted: 2025-01-01*
 *Research method: Web search, tool documentation, Nix community resources*
 *Conclusion: devenv is worth trying; if it works, we get instant+automatic*
+
+---
+
+## PoC Results: devenv via Flakes
+
+**Date:** 2025-11-01
+**Branch:** `poc/devenv-caching`
+**Test method:** Minimal devenv.nix with nushell, zellij, helix
+
+### Implementation Approach
+
+Used `devenv.lib.mkShell` in flake.nix:
+```nix
+devShells.devenv = devenv.lib.mkShell {
+  inherit pkgs;
+  inputs = {
+    inherit self nixpkgs devenv;
+  };
+  modules = [
+    ./devenv.nix
+  ];
+};
+```
+
+### Performance Results
+
+**Test command:** `time nix develop .#devenv --impure --command echo "test"`
+
+| Run | Time | Notes |
+|-----|------|-------|
+| First run | Several minutes | Downloaded/built ~200+ Rust crates (devenv infrastructure) |
+| Second run | 1.584s | All packages cached |
+| Third run | 1.581s | Consistent cached performance |
+
+**Baseline comparison:**
+- Current `nix develop` (default shell): ~4-5s
+- devenv via flakes: ~1.5s
+- **Improvement: 2.5-3x faster**
+
+**Expected based on research:**
+- devenv promise: <10ms (single-digit milliseconds)
+- **Actual: NOT achieved** ❌
+
+### Key Findings
+
+#### ✅ What Worked
+1. **devenv integration successful** - No blocking issues, all setup worked
+2. **Meaningful performance improvement** - 4-5s → 1.5s is real gain
+3. **Automatic behavior preserved** - Still evaluates on every run (detects changes)
+4. **Cache artifacts created** - `.devenv/tasks.db` SQLite database present
+
+#### ❌ What Didn't Work
+1. **Evaluation caching ineffective** - No <10ms performance as promised
+2. **Heavy initial overhead** - Built hundreds of Rust crates just for devenv tooling
+3. **No speedup on repeated runs** - Cached runs still take same ~1.5s
+
+### Analysis
+
+**Why caching didn't work:**
+
+The SQLite-based evaluation caching that devenv advertises appears to only work with the **devenv CLI**, not when using `devenv.lib.mkShell` via flakes. Evidence:
+
+1. Consistent ~1.5s performance (no improvement after caching)
+2. Web research finding: "devenv via flakes has performance limitations and reduced features"
+3. Official docs recommend `devenv` CLI + `devenv.nix`, not flake integration
+
+**The 1.5s improvement breakdown:**
+- Likely from devenv's optimization of package loading (~1.5s faster)
+- NOT from evaluation caching (would be <10ms if working)
+- Still performing full Nix evaluation each time
+
+**Initial build overhead:**
+
+First run downloaded/built extensive infrastructure:
+- Rust toolchain crates: tokio, hyper, axum, serde, clap, etc.
+- Build tools: bindgen, cmake, cc, pkg-config
+- devenv-specific: ~200+ dependencies
+
+This is a significant one-time cost, though amortized over time.
+
+### Verdict
+
+**devenv via flakes: ⚠️ Partial Success**
+
+**Pros:**
+- ✅ Works without blocking issues
+- ✅ 2.5x performance improvement (meaningful)
+- ✅ Preserves automatic behavior
+- ✅ Better than current state
+
+**Cons:**
+- ❌ Doesn't deliver promised <10ms caching
+- ❌ Heavy initial build overhead
+- ❌ Adds dependency on extensive Rust toolchain
+- ❌ Still "feels slow" at 1.5s (not instant)
+
+### Options Going Forward
+
+#### Option 1: Try devenv CLI (Not Flakes)
+**Approach:** Use `devenv` command directly instead of `devenv.lib.mkShell`
+- Requires users to install devenv CLI
+- Use `devenv shell` instead of `nix develop`
+- May get the promised <10ms caching
+
+**Pros:**
+- Might achieve promised performance
+- Official recommended approach
+
+**Cons:**
+- Different workflow (not `nix develop`)
+- Additional installation step
+- May not integrate well with current flake-based architecture
+
+#### Option 2: Accept 1.5s Improvement
+**Approach:** Keep devenv.lib.mkShell integration as-is
+- Users get 2.5x improvement automatically
+- Still using `nix develop` workflow
+- No workflow changes
+
+**Pros:**
+- Meaningful improvement (4-5s → 1.5s)
+- No breaking changes
+- Fully automatic
+
+**Cons:**
+- Not the "instant" experience we hoped for
+- Heavy dependency overhead for modest gain
+- Still feels slow
+
+#### Option 3: Accept Current 4s as Reasonable
+**Approach:** Remove devenv, keep current implementation
+- 4s is actually good for a complex flake
+- No added dependencies or complexity
+- Battle-tested and reliable
+
+**Pros:**
+- Proven reliability
+- No added complexity
+- 4s is reasonable for correctness
+
+**Cons:**
+- No performance improvement
+- Misses opportunity for optimization
+
+#### Option 4: Hybrid - Offer Both
+**Approach:** Keep both `devShells.default` and `devShells.devenv`
+- Advanced users can choose faster devenv shell
+- Default remains stable and proven
+- Document trade-offs
+
+**Pros:**
+- Choice for users
+- No breaking changes
+- Progressive adoption
+
+**Cons:**
+- Maintenance overhead (two shells)
+- Complexity in documentation
+- Potential confusion
+
+### Recommendation
+
+**Try Option 1 (devenv CLI) first, with Option 3 as fallback:**
+
+1. **Quick test:** Install devenv CLI and test with minimal devenv.nix
+   - Command: `devenv shell` instead of `nix develop`
+   - Measure first vs second run performance
+   - If <100ms on second run: we have our solution ✅
+   - If still slow: confirms flakes limitation ❌
+
+2. **If devenv CLI works:**
+   - Evaluate workflow impact (how would users invoke?)
+   - Consider if worth the different command
+   - Document transition path
+
+3. **If devenv CLI doesn't work:**
+   - Accept 4s as reasonable (Option 3)
+   - Document that 4s is good for this complexity
+   - Focus optimization efforts elsewhere
+
+**Time investment:** 30-60 minutes to test devenv CLI approach
+
+**Decision criteria:** Must achieve <100ms on cached runs to be worth the workflow change
+
+---
+
+*PoC conducted: 2025-11-01*
+*Test method: Empirical performance measurement*
+*Conclusion: devenv via flakes provides 2.5x improvement but not the promised <10ms caching*
