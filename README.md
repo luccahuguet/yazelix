@@ -60,7 +60,7 @@ Install once, get the same environment everywhere
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
-## Improvements of v10.5 over v10
+## Improvements of v11 over v10.5
 
 - **Devenv-Based Launch Workflow** – Yazelix now runs through `devenv shell --impure`; devenv’s SQLite cache automatically detects config changes so cold launches from a desktop entry or `yzx launch` drop from ~4s to ~0.5s, and you only pay a longer rebuild when you actually edit `yazelix.toml`. Yazelix is now Blazingly fast! 
 - **TOML Configuration Format** – `yazelix.toml` is the single source of truth (auto-created on first launch) with clear legacy warnings when an old `yazelix.nix` is detected.

@@ -35,6 +35,7 @@ There's much to be done yet. Infinite possibilities. But some rather closer than
 
 ## Major Version Descriptions
 
+- **v11**: Devenv launch workflow, TOML-first config, and faster cold starts
 - **v10.5**: Performance optimization, benchmarking, and enhanced UX!
 - **v10**: Launch interface consolidation, IDE integration, project-oriented workflow, and enhanced UX!
 - **v9**: zjstatus, yzx env, yzx doctor, no_sidebar mode, packs, new logo, desktop entry, and more
@@ -46,6 +47,13 @@ There's much to be done yet. Infinite possibilities. But some rather closer than
 - **v3**: Helix with a File Tree! Now with helix-friendly keybindings, and monorepo! ([announcement](https://www.reddit.com/r/HelixEditor/comments/1doefzt/yazelix_v3_helix_with_a_file_tree_now_with/))
 - **v2**: Yazi-Helix File Tree v2, now with a Closeable Sidebar! (the name 'Yazelix' did not exist yet; [announcement](https://www.reddit.com/r/HelixEditor/comments/1d6nkxs/yazihelix_file_tree_v2_now_with_a_closeable/))
 - **v1**: My first Zellij/Yazi/Helix/Nushell setup, inspired by a Reddit interaction, with no integration and a lot of hacks ([announcement](https://www.reddit.com/r/HelixEditor/comments/1d59br3/file_tree_setup_using_yazi_zellij_helix_and/))
+
+## v11: Devenv launch workflow, TOML-first config, and faster cold starts
+
+### Changes from v10.5 to v11
+- **Devenv-based launch workflow**: Yazelix now runs through `devenv shell --impure`. Devenv's SQLite caching auto-detects configuration changes, so cold launches from a desktop entry or `yzx launch` drop from ~4 seconds to roughly half a second. Full re-evaluation only happens after you edit `yazelix.toml`.
+- **TOML-only configuration**: `yazelix.toml` is created automatically on first launch and serves as the single source of truth. Legacy `yazelix.nix` files trigger explicit warnings instead of silently running, and the Home Manager module now emits TOML that mirrors `yazelix_default.toml`.
+- **Migration guardrails**: Yazelix prints actionable guidance when devenv is missing or when old configurations are detected, preventing confusing crashes and making upgrades painless.
 
 ## v10.5: Performance optimization, benchmarking, and enhanced UX!
 
