@@ -36,7 +36,6 @@ There's much to be done yet. Infinite possibilities. But some rather closer than
 ## Major Version Descriptions
 
 - **v11**: Devenv launch workflow, TOML-first config, and faster cold starts
-- **v10.5**: Performance optimization, benchmarking, and enhanced UX!
 - **v10**: Launch interface consolidation, IDE integration, project-oriented workflow, and enhanced UX!
 - **v9**: zjstatus, yzx env, yzx doctor, no_sidebar mode, packs, new logo, desktop entry, and more
 - **v8**: Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!
@@ -50,28 +49,16 @@ There's much to be done yet. Infinite possibilities. But some rather closer than
 
 ## v11: Devenv launch workflow, TOML-first config, and faster cold starts
 
-### Changes from v10.5 to v11
-- **Devenv-based launch workflow**: Yazelix now runs through `devenv shell --impure`. Devenv's SQLite caching auto-detects configuration changes, so cold launches from a desktop entry or `yzx launch` drop from ~4 seconds to roughly half a second. Full re-evaluation only happens after you edit `yazelix.toml`.
+### Changes from v10 to v11
+- **Devenv-based launch workflow**: Yazelix now runs through `devenv shell --impure`. Devenv's caching detects configuration changes automatically, dropping cold launches from ~4 seconds to roughly half a second and only performing full re-evaluation after you edit `yazelix.toml`.
 - **TOML-only configuration**: `yazelix.toml` is created automatically on first launch and serves as the single source of truth. Legacy `yazelix.nix` files trigger explicit warnings instead of silently running, and the Home Manager module now emits TOML that mirrors `yazelix_default.toml`.
-- **Migration guardrails**: Yazelix prints actionable guidance when devenv is missing or when old configurations are detected, preventing confusing crashes and making upgrades painless.
-
-## v10.5: Performance optimization, benchmarking, and enhanced UX!
-
-### Changes from v10 to v10.5
-- **Smart config detection**: Automatic hash-based detection of yazelix.nix changes (SHA256, ~0.1ms overhead). Launches are ~4s faster when config unchanged (inherits nix shell), while changes are always detected and applied correctly.
-- **Performance benchmarking**: New `yzx bench` command measures terminal launch performance with statistical analysis (min/max/avg times, success rate, rankings).
-- **Enhanced Zellij UI controls**: Two new configurable options in yazelix.nix:
-  - `disable_zellij_tips` (default: true) - Suppress startup tips dialog
-  - `zellij_rounded_corners` (default: true) - Enable rounded corners for pane frames
-- **Streamlined startup**: Welcome screen disabled by default for faster launches (info still logged to `~/.local/share/yazelix/logs/`)
-- **Sweep testing framework**: Matrix testing for all shell/terminal/feature combinations (`yzx sweep shells|terminals|all`)
-- **Terminal detection**: Proper terminal identification via `YAZELIX_TERMINAL` environment variable
-- **Conditional shell hooks**: Shell hooks only load Yazelix tools when inside the environment, preventing errors in regular terminals
-- **Yazi directory sync**: When opening files from Yazi, the sidebar automatically navigates into the file's parent directory
-- **Comprehensive pack system**: 10 curated technology packs organized into language_packs and tool_packs:
-  - Language Packs (7): Python, TypeScript, Rust, Go, Kotlin, Gleam, Nix
-  - Tool Packs (3): Git, Config, File Management
-  - Enhanced packs with expanded tools (Rust: 6 tools, TypeScript with oxlint, Python with ipython)
+- **Migration guardrails**: Yazelix prints actionable guidance when devenv is missing or when old configurations are detected, preventing confusing crashes.
+- **Performance tooling**: `yzx bench` and `yzx profile` provide launch-time benchmarking and environment profiling, while hash-based config detection keeps warm starts fast.
+- **Enhanced Zellij UI controls**: Options like `disable_zellij_tips` (default: true) and `zellij_rounded_corners` (default: true) give finer control over the terminal experience.
+- **Streamlined startup**: The welcome screen is disabled by default for faster launches (information remains logged to `~/.local/share/yazelix/logs/`).
+- **Sweep testing framework**: Matrix testing for all shell/terminal/feature combinations (`yzx sweep shells|terminals|all`) ensures compatibility across environments.
+- **Terminal detection & conditional hooks**: Proper terminal identification via `YAZELIX_TERMINAL` plus shell hooks that only activate inside managed shells to avoid surprises elsewhere.
+- **Yazi directory sync & packs**: Opening files from Yazi keeps the sidebar aligned with editor context, and the curated technology packs (language & tool packs) continue to expand with richer toolchains (e.g., Rust pack with six tools, TypeScript with oxlint, Python with ipython).
 
 ## v10: Launch interface consolidation, IDE integration, project-oriented workflow, and enhanced UX!
 
