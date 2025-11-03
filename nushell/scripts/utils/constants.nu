@@ -18,7 +18,7 @@ export const YAZELIX_END_MARKER = "# YAZELIX END v4 - Yazelix managed configurat
 export const YAZELIX_REGENERATE_COMMENT = "# delete this whole section to re-generate the config, if needed"
 
 # Version information
-export const YAZELIX_VERSION = "v10.5"
+export const YAZELIX_VERSION = "v11"
 export const YAZELIX_DESCRIPTION = "Yazi + Zellij + Helix integrated terminal environment"
 
 # Default configuration values

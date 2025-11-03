@@ -21,7 +21,7 @@ cd "$YAZELIX_DIR" || { echo "Error: Cannot cd to $YAZELIX_DIR"; exit 1; }
 if ! command -v devenv >/dev/null 2>&1; then
   echo ""
   echo "❌ 'devenv' command not found."
-  echo "   Yazelix v10+ moved from flake-based 'nix develop' shells to devenv."
+  echo "   Yazelix v11+ moved from flake-based 'nix develop' shells to devenv."
   echo "   Install devenv with:"
   echo "     nix profile install github:cachix/devenv/latest"
   echo "   After installing, relaunch Yazelix (or run 'devenv shell --impure')."

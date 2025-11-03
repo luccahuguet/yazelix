@@ -136,7 +136,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
             if (which devenv | is-empty) {
                 print ""
                 print "❌ devenv command not found."
-                print "   Yazelix v10+ moved from flake-based `nix develop` shells to devenv."
+                print "   Yazelix v11+ moved from flake-based `nix develop` shells to devenv."
                 print "   Install devenv with:"
                 print "     nix profile install github:cachix/devenv/latest"
                 print "   After installing, relaunch Yazelix (or run `devenv shell --impure`)."
