@@ -43,7 +43,12 @@ fi
 # The YAZELIX_DEFAULT_SHELL variable will be set by the enterShell hook
 # and used by the inner zellij command.
 # We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after devenv sets it.
-MAX_CORES=$(nproc)
+# Detect number of CPU cores (cross-platform)
+if command -v nproc >/dev/null 2>&1; then
+  MAX_CORES=$(nproc)  # Linux
+else
+  MAX_CORES=$(sysctl -n hw.ncpu)  # macOS
+fi
 HOME="$HOME" devenv --impure --cores "$MAX_CORES" shell -- bash -c \
   "zellij --config-dir \"$YAZELIX_DIR/configs/zellij\" options \
     --default-cwd \"$HOME\" \
