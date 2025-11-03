@@ -2,9 +2,28 @@
 
 # Utility functions for Yazelix
 
-# Get the maximum number of CPU cores available on the system
+# Get the number of CPU cores to use for builds based on configuration
 export def get_max_cores [] {
-    sys cpu | length
+    let total_cores = (sys cpu | length)
+
+    # Try to read from environment variable (set by devenv.nix)
+    let build_cores_config = ($env.YAZELIX_BUILD_CORES? | default "max_minus_one")
+
+    # Parse configuration
+    match $build_cores_config {
+        "max" => $total_cores,
+        "max_minus_one" => (if $total_cores > 1 { $total_cores - 1 } else { 1 }),
+        "half" => (($total_cores / 2) | math floor | into int),
+        _ => {
+            # Try to parse as a number
+            try {
+                $build_cores_config | into int
+            } catch {
+                # Fallback to max_minus_one if invalid
+                if $total_cores > 1 { $total_cores - 1 } else { 1 }
+            }
+        }
+    }
 }
 
 # Check if Helix (hx or helix) is running in a Zellij pane based on client output

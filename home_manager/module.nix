@@ -43,7 +43,15 @@ in {
       default = false;
       description = "Install Yazi media processing tools (~1GB)";
     };
-    
+
+    build_cores = mkOption {
+      type = types.str;
+      default = "max_minus_one";
+      description = ''
+        CPU cores for Nix builds: "max", "max_minus_one", "half", or custom number like "8"
+      '';
+    };
+
     helix_mode = mkOption {
       type = types.enum [ "release" "source" ];
       default = "release";
@@ -255,6 +263,7 @@ in {
           "debug_mode = ${boolToToml cfg.debug_mode}"
           "skip_welcome_screen = ${boolToToml cfg.skip_welcome_screen}"
           "show_macchina_on_welcome = ${boolToToml cfg.show_macchina_on_welcome}"
+          "build_cores = ${escapeString cfg.build_cores}"
           ""
           "[helix]"
           "mode = ${escapeString cfg.helix_mode}"

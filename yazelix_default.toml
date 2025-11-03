@@ -11,6 +11,15 @@ debug_mode = false            # Enable verbose debug logging in the shellHook
 skip_welcome_screen = false   # When true, welcome info is logged instead of displayed
 show_macchina_on_welcome = true  # Show system info on welcome screen (uses macchina)
 
+# Build cores configuration for Nix builds (default: "max_minus_one")
+# Controls how many CPU cores devenv uses for parallel builds
+# Options:
+# - "max":           Use all available CPU cores (fastest, may impact system responsiveness)
+# - "max_minus_one": Use all cores minus one (recommended - balances speed with system responsiveness)
+# - "half":          Use half of available cores (conservative, leaves plenty of headroom)
+# - Custom number:   Specify exact core count, e.g., "8" or "4"
+build_cores = "max_minus_one"
+
 [helix]
 # Helix build mode (choose ONE):
 # - "release": Use latest Helix release from nixpkgs (recommended for first-time users)

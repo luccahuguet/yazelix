@@ -30,6 +30,7 @@ let
     debug_mode = rawConfig.core.debug_mode or false;
     skip_welcome_screen = rawConfig.core.skip_welcome_screen or false;
     show_macchina_on_welcome = rawConfig.core.show_macchina_on_welcome or false;
+    build_cores = rawConfig.core.build_cores or "max_minus_one";
 
     helix_mode = rawConfig.helix.mode or "release";
     helix_runtime_path = rawConfig.helix.runtime_path or null;
@@ -404,6 +405,7 @@ in {
     IN_YAZELIX_SHELL = "true";
     NIX_CONFIG = "warn-dirty = false";
     YAZELIX_DEBUG_MODE = boolToString debugMode;
+    YAZELIX_BUILD_CORES = userConfig.build_cores;
     ZELLIJ_DEFAULT_LAYOUT = yazelixLayoutName;
     YAZELIX_DEFAULT_SHELL = defaultShell;
     YAZELIX_ENABLE_SIDEBAR = boolToString enableSidebar;
@@ -425,6 +427,7 @@ in {
     export IN_YAZELIX_SHELL="true"
     export NIX_CONFIG="warn-dirty = false"
     export YAZELIX_DEBUG_MODE="${boolToString debugMode}"
+    export YAZELIX_BUILD_CORES="${userConfig.build_cores}"
     export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
     export YAZELIX_DEFAULT_SHELL="${defaultShell}"
     export YAZELIX_ENABLE_SIDEBAR="${boolToString enableSidebar}"
