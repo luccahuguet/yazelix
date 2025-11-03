@@ -7,6 +7,7 @@ use ../utils/constants.nu *
 use ../utils/version_info.nu *
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
+use ../utils/common.nu [get_max_cores]
 use ./start_yazelix.nu [start_yazelix_session]
 
 # =============================================================================
@@ -263,7 +264,8 @@ export def "yzx launch" [
             if $needs_refresh and $verbose_mode {
                 print "♻️  Config changed since last launch – rebuilding environment"
             }
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure -- bash -c '($full_cmd)'"
+            let max_cores = get_max_cores
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv --impure --cores ($max_cores) shell -- bash -c '($full_cmd)'"
             ^bash -c $devenv_cmd
             if $needs_refresh {
                 mark_config_state_applied $config_state
@@ -299,7 +301,8 @@ export def "yzx env" [
     if ($command | is-not-empty) {
         # Run command in Yazelix environment (skip welcome screen for automation)
         with-env {YAZELIX_ENV_ONLY: "true", YAZELIX_SKIP_WELCOME: "true"} {
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure -- bash -c '($command)'"
+            let max_cores = get_max_cores
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv --impure --cores ($max_cores) shell -- bash -c '($command)'"
             if $needs_refresh {
                 with-env {YAZELIX_FORCE_REFRESH: "true"} {
                     ^bash -c $devenv_cmd
@@ -313,7 +316,8 @@ export def "yzx env" [
         }
     } else if $no_shell {
         with-env {YAZELIX_ENV_ONLY: "true"} {
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure"
+            let max_cores = get_max_cores
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv --impure --cores ($max_cores) shell"
             if $needs_refresh {
                 with-env {YAZELIX_FORCE_REFRESH: "true"} {
                     ^bash -c $devenv_cmd
@@ -339,7 +343,8 @@ export def "yzx env" [
         let exec_command = $"exec ($command_str)"
         with-env {YAZELIX_ENV_ONLY: "true", SHELL: $shell_exec} {
             try {
-                let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure -- bash -lc '($exec_command)'"
+                let max_cores = get_max_cores
+                let devenv_cmd = $"cd ($yazelix_dir) && devenv --impure --cores ($max_cores) shell -- bash -lc '($exec_command)'"
                 if $needs_refresh {
                     with-env {YAZELIX_FORCE_REFRESH: "true"} {
                         ^bash -c $devenv_cmd

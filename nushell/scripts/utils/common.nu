@@ -2,6 +2,11 @@
 
 # Utility functions for Yazelix
 
+# Get the maximum number of CPU cores available on the system
+export def get_max_cores [] {
+    sys cpu | length
+}
+
 # Check if Helix (hx or helix) is running in a Zellij pane based on client output
 export def is_hx_running [list_clients_output: string] {
     let cmd = $list_clients_output | str trim | str downcase

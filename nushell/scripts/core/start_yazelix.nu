@@ -4,6 +4,7 @@
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZI_CONFIG_PATHS, YAZELIX_ENV_VARS]
 use ../utils/nix_detector.nu ensure_nix_available
+use ../utils/common.nu [get_max_cores]
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 
@@ -148,7 +149,8 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
             if ($env.YAZELIX_FORCE_REFRESH? == "true") and $verbose_mode {
                 print "♻️  Config changed – rebuilding environment"
             }
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure -- bash -c '($cmd)'"
+            let max_cores = get_max_cores
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv --impure --cores ($max_cores) shell -- bash -c '($cmd)'"
             ^bash -c $devenv_cmd
         }
     }
