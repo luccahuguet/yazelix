@@ -49,8 +49,6 @@ There's much to be done yet. Infinite possibilities. But some rather closer than
 
 ## v11: Devenv launch workflow, TOML-first config, way faster cold starts, Neovim parity, a built-in performance toolkit, and richer pack presets
 
-### Changes from v10 to v11
-
 - **Devenv-Based Launch Workflow** – Yazelix now runs through `devenv shell --impure`; devenv’s SQLite cache automatically detects config changes so cold launches from a desktop entry or `yzx launch` drop from ~4s to ~0.5s, and you only pay a longer rebuild when you actually edit `yazelix.toml`. Yazelix is now Blazingly fast! 
 - **TOML Configuration Format** – `yazelix.toml` is the single source of truth (auto-created on first launch) with clear legacy warnings when an old `yazelix.nix` is detected.
 - **First-Class Neovim Support** – Neovim retains feature parity with Helix (reveal in sidebar, same-instance opening, pane detection).

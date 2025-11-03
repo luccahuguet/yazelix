@@ -62,10 +62,22 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 ## Improvements of v11 over v10
 
-- **Devenv launch workflow** – Yazelix now starts via `devenv shell --impure`; devenv’s SQLite cache auto-detects config changes so cold launches from desktop entries or `yzx launch` drop from ~4s to ~0.5s, and you only pay a longer rebuild after editing `yazelix.toml`.
-- **TOML-first configuration** – `yazelix.toml` is generated automatically and is the single source of truth; legacy `yazelix.nix` files trigger explicit guidance instead of silently running.
-- **Home Manager parity** – The bundled Home Manager module emits TOML that mirrors `yazelix_default.toml`, keeping HM setups and manual installs perfectly aligned.
-- **Performance toolkit** – `yzx bench` and `yzx profile` help measure launch times and pinpoint bottlenecks, while hash-based config detection keeps warm starts fast.
+- **Devenv-Based Launch Workflow** – Yazelix now runs through `devenv shell --impure`; devenv’s SQLite cache automatically detects config changes so cold launches from a desktop entry or `yzx launch` drop from ~4s to ~0.5s, and you only pay a longer rebuild when you actually edit `yazelix.toml`. Yazelix is now Blazingly fast! 
+- **TOML Configuration Format** – `yazelix.toml` is the single source of truth (auto-created on first launch) with clear legacy warnings when an old `yazelix.nix` is detected.
+- **First-Class Neovim Support** – Neovim retains feature parity with Helix (reveal in sidebar, same-instance opening, pane detection).
+- **Performance Benchmarking** – `yzx bench` measures terminal launch performance with statistical analysis.
+- **Launch Profiling** – `yzx profile` pinpoints environment setup bottlenecks and profiles cold vs warm startup paths.
+- **Enhanced UI Controls** – Configurable Zellij options: `disable_zellij_tips` (default: true), `zellij_rounded_corners` (default: true).
+- **Streamlined Startup** – Welcome screen disabled by default for faster launches (info still logged).
+- **Sweep Testing Framework** – Matrix testing for all shell/terminal/feature combinations (`yzx sweep shells|terminals|all`).
+- **Terminal Detection** – Proper terminal identification via `YAZELIX_TERMINAL` environment variable.
+- **Conditional Shell Hooks** – Shell hooks load Yazelix tooling only inside managed shells, preventing surprises in regular terminals.
+- **Yazi Directory Sync** – Opening files from Yazi moves the sidebar to the file’s parent directory so the view stays in sync with editor context.
+- **Simplified Clipboard** – Replaced the custom clipboard module with Nushell’s standard library implementation and added the `clp` helper command. `clp` just calls `clip copy`
+- **Comprehensive Pack System** – 10 curated technology packs organized into language_packs and tool_packs:
+  - **Language Packs (7)**: Python, TypeScript, Rust, Go, Kotlin, Gleam, Nix – complete toolchains with LSP, formatters, linters, and dev tools.
+  - **Tool Packs (3)**: Git (onefetch, gh, delta, gitleaks, jj, prek), Config (taplo, mpls), File Management (ouch, erdtree, serpl).
+  - **Enhanced Packs**: Expanded Rust pack (6 tools), improved TypeScript pack with oxlint and typescript-language-server, Python pack with ipython.
 
 Full version history: [Version History](./docs/history.md)
 
