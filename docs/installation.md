@@ -208,6 +208,8 @@ For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 
 **First Run**: The first time you launch Yazelix, it will install all dependencies (Zellij, Yazi, Helix, etc.). This may take several minutes, but subsequent launches will be instant.
 
+**Zellij Plugin Permissions**: When you first run yazelix, **zjstatus requires you to give it permission**. Navigate to the zjstatus pane (either by keyboard shortcuts or clicking on the pane) and type the letter `y` to approve permissions. This process must be repeated on zjstatus updates, since the file changes. See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
+
 #### Quick Start Tips
 - Use `alt hjkl` to switch between Zellij panes and tabs
 - Press `Enter` in Yazi to open files in your configured editor

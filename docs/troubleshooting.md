@@ -18,8 +18,30 @@ yzx doctor --fix              # Auto-fix safe issues
 
 **Auto-fix capabilities:**
 - Backup conflicting runtime directories
-- Clean oversized log files  
+- Clean oversized log files
 - Create missing configuration files
+
+## Configuration File Migration
+
+**Yazelix now uses `yazelix.toml` and `devenv.nix` instead of the old `yazelix.nix` and `flake.nix`.**
+
+If you have an older Yazelix setup:
+- Configuration is now in `~/.config/yazelix/yazelix.toml` (not `yazelix.nix`)
+- Development environment is defined in `devenv.nix` (not `flake.nix`)
+- The default template is `yazelix_default.toml`
+
+**Migration steps:**
+1. It's recommended that you go through the [Installation Guide](installation.md) to properly install devenv
+2. Your `yazelix.toml` will be auto-created from `yazelix_default.toml` on yazelix startup if not found
+3. Copy any custom settings from your old `yazelix.nix` to the new `yazelix.toml` format
+
+## First Run: Zellij Plugin Permissions
+
+When you first run yazelix, **zjstatus requires you to give it permission:**
+
+Zellij requires plugins to request permissions for different actions and information. These permissions must be granted by you before you start zjstatus. Permissions can be granted by navigating to the zjstatus pane either by keyboard shortcuts or clicking on the pane. Then simply type the letter `y` to approve permissions. This process must be repeated on zjstatus updates, since the file changes.
+
+See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
 
 ## Helix Syntax Highlighting Issues
 
@@ -42,26 +64,6 @@ mv ~/.config/helix/runtime ~/.config/helix/runtime.backup
 
 **Prevention:**
 Yazelix manages its own Helix runtime via `HELIX_RUNTIME` environment variable. Old `~/.config/helix/runtime` directories from previous installations can override this and cause conflicts.
-
-## v9.5 Migration Notes
-
-**If upgrading from v9:**
-- Terminal configs are now generated dynamically - no manual copying needed
-- Home Manager users: `include_terminal` option removed, replaced with `extra_terminals = []`
-- New options: `cursor_trail` and `transparency` automatically apply to all terminals
-- **Your existing configs are safe**: Backed up as `.yazelix-backup` before generation
-
-**Terminal config migration:**
-```bash
-# Old manual approach (no longer needed):
-# cp ~/.config/yazelix/configs/terminal_emulators/ghostty/config ~/.config/ghostty/config
-
-# New approach: configs auto-generated when launching yazelix (with backup)
-nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
-
-# Your customizations are preserved in backup files:
-# ~/.config/yazelix/configs/terminal_emulators/ghostty/config.yazelix-backup
-```
 
 ## Quick Fixes
 
@@ -92,50 +94,8 @@ echo $HELIX_RUNTIME
 ls $HELIX_RUNTIME               # Should show grammars/ themes/
 ```
 
-### Wrong Editor Used
-Check `editor_command` in `yazelix.toml`:
-- `null` = yazelix's Helix
-- `"hx"` = system Helix (needs `helix_runtime_path`)
-- `"vim"` = other editor
-
-## Performance Issues
-
-### Slow Startup
-```bash
-time $EDITOR --version
-```
-
-### Large Log Files
-Log files auto-trim but you can manually clean:
-```bash
-rm ~/.config/yazelix/logs/*.log
-```
-
-## Common Problems
-
-### "Command not found"
-- Check `which yazelix`
-- Ensure Nix environment is loaded
-
-### "Permission denied"
-- Check file permissions in `~/.config/yazelix/`
-- Ensure not running as root
-
-### Git Conflicts
-```bash
-cd ~/.config/yazelix
-git status                      # Check for conflicts
-git stash                       # Save local changes
-git pull                        # Update
-git stash pop                   # Restore changes
-```
-
 ## Getting Help
 
 1. Check logs: `~/.config/yazelix/logs/`
 2. Test with defaults: delete `yazelix.toml`
-3. Report issues with:
-   - OS and version
-   - Yazelix version
-   - Error messages
-   - Configuration file content
+3. Report issues
