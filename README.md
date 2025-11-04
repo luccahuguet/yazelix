@@ -101,7 +101,7 @@ Full version history: [Version History](./docs/history.md)
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 ```
 
-2. Install devenv CLI
+2. Install devenv CLI (~5GB with dependencies)
 ```bash
 nix profile install github:cachix/devenv/latest
 ```

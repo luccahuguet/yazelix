@@ -88,7 +88,7 @@ nix profile install github:cachix/devenv/latest
 ```
 
 **What this does:**
-- Installs the latest `devenv` CLI into your user profile
+- Installs the latest `devenv` CLI into your user profile (~5GB with all dependencies)
 - Provides the `devenv shell` command that Yazelix uses for fast, cached launches
 - Verify installation:
 ```bash
