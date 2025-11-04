@@ -119,15 +119,15 @@ hx ~/.config/yazelix/yazelix.toml
 
 | Group | Size | Default | Description |
 |-------|------|---------|-------------|
-| **✅ Essential Tools** | ~225MB | Always included | Core Yazelix functionality |
-| **🔧 Recommended Tools** | ~350MB | Enabled | Productivity enhancers |
+| **✅ Essential Tools** | ~1.7GB | Always included | Core Yazelix functionality (Yazi, Zellij, Helix, shells, built-in Ghostty, etc.) |
+| **🔧 Recommended Tools** | ~350MB | Enabled | Productivity enhancers (lazygit, atuin, etc.) |
 | **🗂️ Yazi Extensions** | ~125MB | Enabled | File preview & archive support |
 | **🎬 Yazi Media** | ~1GB | Disabled | Heavy media processing |
 
 #### Installation Options
-- **Minimal install**: ~225MB (essential only)
-- **Standard install**: ~700MB (default config)
-- **Full install**: ~1.7GB (all groups enabled)
+- **Minimal install**: ~1.7GB (essential only) + devenv (~5GB) = **~6.7GB total**
+- **Standard install**: ~2.2GB (default config) + devenv (~5GB) = **~7.2GB total**
+- **Full install**: ~3.2GB (all groups enabled) + devenv (~5GB) = **~8.2GB total**
 
 📋 For detailed package breakdowns and configuration strategies, see **[Package Sizes Documentation](./package_sizes.md)**
 

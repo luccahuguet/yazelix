@@ -94,6 +94,8 @@ Full version history: [Version History](./docs/history.md)
 
 **Quick Overview**: Yazelix uses Nix for reproducible, reliable installations that guarantee everyone gets the exact same tool versions. You don't need to learn Nix - just install it once and forget it exists!
 
+**Disk Space Requirements**: Default installation requires **~7.2GB** (devenv ~5GB + Yazelix packages ~2.2GB)
+
 ## Quick Setup
 
 1. Install Nix
@@ -224,7 +226,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 - **Recommended tools** (enabled by default): [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdx/mise), [cargo-update](https://github.com/nabijaczleweli/cargo-update), [ouch](https://github.com/ouch-org/ouch), etc
 - **Optional history**: [atuin](https://github.com/atuinsh/atuin) integration is now controlled by `enable_atuin` (disabled by default).
 - **Yazi extensions** (enabled by default): `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` (for archives, search, document previews)
-- **Yazi media extensions** (enabled by default): `ffmpeg`, `imagemagick` (for media previews - ~800MB-1.2GB)
+- **Yazi media extensions** (disabled by default): `ffmpeg`, `imagemagick` (for media previews - ~1GB)
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
