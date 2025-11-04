@@ -62,7 +62,7 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 
 ## Step-by-Step Installation
 
-### Step 1: Install Nix Package Manager
+### Step 1: Install Nix Package Manager (~2.5GB)
 
 We use the **Determinate Systems Nix Installer** - it's reliable, fast, and includes modern features out of the box:
 
@@ -71,7 +71,7 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 ```
 
 **What this does:**
-- Installs Nix with flakes: just follow the instructions
+- Installs Nix with flakes (~2.5GB including dependencies)
 - Sets up proper file permissions and system integration
 - Provides a reliable uninstaller if you ever want to remove Nix
 - Verify installation:
@@ -125,9 +125,12 @@ hx ~/.config/yazelix/yazelix.toml
 | **🎬 Yazi Media** | ~1GB | Disabled | Heavy media processing |
 
 #### Installation Options
-- **Minimal install**: ~1.7GB (essential only) + devenv (~5GB) = **~6.7GB total**
-- **Standard install**: ~2.2GB (default config) + devenv (~5GB) = **~7.2GB total**
-- **Full install**: ~3.2GB (all groups enabled) + devenv (~5GB) = **~8.2GB total**
+
+**Note**: All installations require Nix (~2.5GB) as a prerequisite.
+
+- **Minimal install**: Nix (~2.5GB) + devenv (~5GB) + essential tools (~1.7GB) = **~9.2GB total**
+- **Standard install**: Nix (~2.5GB) + devenv (~5GB) + default config (~2.2GB) = **~9.7GB total**
+- **Full install**: Nix (~2.5GB) + devenv (~5GB) + all groups (~3.2GB) = **~10.7GB total**
 
 📋 For detailed package breakdowns and configuration strategies, see **[Package Sizes Documentation](./package_sizes.md)**
 

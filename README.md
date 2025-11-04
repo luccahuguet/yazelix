@@ -94,7 +94,7 @@ Full version history: [Version History](./docs/history.md)
 
 **Quick Overview**: Yazelix uses Nix for reproducible, reliable installations that guarantee everyone gets the exact same tool versions. You don't need to learn Nix - just install it once and forget it exists!
 
-**Disk Space Requirements**: Default installation requires **~7.2GB** (devenv ~5GB + Yazelix packages ~2.2GB)
+**Disk Space Requirements**: Default installation requires **~9.7GB** (Nix ~2.5GB + devenv ~5GB + Yazelix packages ~2.2GB)
 
 ## Quick Setup
 
