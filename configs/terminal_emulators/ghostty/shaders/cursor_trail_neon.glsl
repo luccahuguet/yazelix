@@ -59,8 +59,8 @@ vec4 saturate(vec4 color, float factor) {
     return mix(vec4(gray), color, factor);
 }
 
-// Classic neon palette: cyan + magenta + subtle lime blend (reduced animation)
-const vec4 NEON_CYAN = vec4(0.00, 0.94, 1.00, 1.0);
+// Classic neon palette tweak: acid green + magenta + subtle lime blend (reduced animation)
+const vec4 NEON_CYAN = vec4(0.20, 1.00, 0.00, 1.0);
 const vec4 NEON_MAGENTA = vec4(1.00, 0.00, 1.00, 1.0);
 const vec4 NEON_LIME = vec4(0.67, 1.00, 0.20, 1.0);
 const float DURATION = 0.22;
