@@ -31,13 +31,16 @@ Other platforms and package managers: see official instructions:
 https://www.nushell.sh/book/installation.html
 
 ### Supported Terminal Emulators
-Choose your favorite:
+Yazelix provides 5 terminal emulators built-in via Nix - simply set your `preferred_terminal` in `yazelix.toml`:
+
+**Note**: On macOS, Ghostty uses the native Homebrew version (see below). All other terminals are provided via Nix.
 
 See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
 
 **WezTerm**
 - Modern, fast, written in Rust
-- Instructions here: https://wezfurlong.org/wezterm/installation.html
+- Provided by Yazelix via Nix (no installation needed)
+- Reference: https://wezfurlong.org/wezterm/installation.html
 
 **Ghostty** (Default)
 - Modern, fast, written in Zig, newer
@@ -50,15 +53,18 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 
 **Kitty**
 - Fast, feature-rich, GPU-accelerated terminal
-- Instructions here: https://sw.kovidgoyal.net/kitty/binary/
+- Provided by Yazelix via Nix (no installation needed)
+- Reference: https://sw.kovidgoyal.net/kitty/binary/
 
 **Alacritty**
 - Fast, GPU-accelerated terminal written in Rust
-- Instructions here: https://github.com/alacritty/alacritty/blob/master/INSTALL.md
+- Provided by Yazelix via Nix (no installation needed)
+- Reference: https://github.com/alacritty/alacritty/blob/master/INSTALL.md
 
 **Foot**
 - Fast, simple, written in C
-- Instructions here: https://codeberg.org/dnkl/foot/src/branch/master/INSTALL.md
+- Provided by Yazelix via Nix (no installation needed)
+- Reference: https://codeberg.org/dnkl/foot/src/branch/master/INSTALL.md
 
 ## Step-by-Step Installation
 
@@ -203,6 +209,16 @@ cp ~/.config/yazelix/assets/desktop/com.yazelix.Yazelix.desktop ~/.local/share/a
 Run this command from within your yazelix terminal session. After this, you can search for "Yazelix" in your application launcher and launch it directly.
 
 For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
+
+##### System Keybind for Launching Yazelix
+
+To bind a system keyboard shortcut (e.g., in GNOME, KDE, Hyprland, etc.) to launch Yazelix, use this command:
+
+```bash
+bash -l -c "$HOME/.config/yazelix/nushell/scripts/core/desktop_launcher.nu"
+```
+
+The `-l` flag ensures your shell profile is loaded, making Nix packages (like `nu` and `devenv`) available in the PATH. This works reliably across different desktop environments and window managers.
 
 ### Step 7: Using Yazelix
 
