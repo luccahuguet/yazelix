@@ -304,6 +304,7 @@ let
       bashInteractive
       macchina
       mise
+      taplo  # TOML toolkit for yazelix.toml configuration
     ]
     ++ lib.optionals isLinux [ libnotify ]
     ++ filterNull [ yazelixDesktopLauncher yazelixDesktopEntry ]
@@ -366,8 +367,7 @@ let
       cargo-nextest
     ];
     config = with pkgs; [
-      taplo
-      mpls
+      mpls  # taplo moved to essentialDeps (required for yazelix.toml)
     ];
     file-management = with pkgs; [
       ouch
