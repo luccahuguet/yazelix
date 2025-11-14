@@ -196,7 +196,13 @@ in {
       default = "yazelix";
       description = "Session name for persistent sessions";
     };
-    
+
+    prefer_icon_widgets = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Prefer Nerd Font icons in zjstatus bar (automatically falls back to ASCII for external terminals)";
+    };
+
     language_packs = mkOption {
       type = types.listOf (types.enum [ "python" "ts" "rust" "go" "kotlin" "gleam" "nix" ]);
       default = [];
@@ -290,6 +296,7 @@ in {
           "rounded_corners = ${boolToToml cfg.zellij_rounded_corners}"
           "persistent_sessions = ${boolToToml cfg.persistent_sessions}"
           "session_name = ${escapeString cfg.session_name}"
+          "prefer_icon_widgets = ${boolToToml cfg.prefer_icon_widgets}"
           ""
           "[ascii]"
           "mode = ${escapeString cfg.ascii_art_mode}"
