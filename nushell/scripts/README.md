@@ -35,9 +35,10 @@ Reusable utility functions and helpers:
 
 ### `dev/` - Development Tools
 Scripts for development, testing, and maintenance:
+- `validate_syntax.nu` - Validate syntax of all Nushell scripts using nu-check
 - `record_demo.nu` - VHS demo recording with font support
 - `test_fonts.nu` - Font testing for VHS recordings
- - `update_zjstatus.nu` - Safely update the bundled zjstatus.wasm (from local path, URL, or version)
+- `update_zjstatus.nu` - Safely update the bundled zjstatus.wasm (from local path, URL, or version)
 
 ## Usage
 
@@ -55,6 +56,14 @@ nu ~/.config/yazelix/nushell/scripts/core/yazelix.nu help
 
 ### Development Tools
 ```bash
+# Validate script syntax
+yzx lint                    # Run syntax validation
+yzx lint --verbose          # Show details for each file
+yzx test                    # Run tests (includes syntax validation)
+
+# Direct script usage
+nu ~/.config/yazelix/nushell/scripts/dev/validate_syntax.nu
+
 # Record demos
 nu ~/.config/yazelix/nushell/scripts/dev/record_demo.nu quick
 

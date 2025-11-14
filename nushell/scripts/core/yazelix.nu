@@ -24,6 +24,7 @@ use ./start_yazelix.nu [start_yazelix_session]
 #   yzx doctor    - Run health checks
 #   yzx profile   - Profile launch performance
 #   yzx test      - Run test suite
+#   yzx lint      - Validate script syntax
 #   yzx versions  - Show tool versions
 export def yzx [
     --version (-V)  # Show version information
@@ -529,6 +530,14 @@ export def "yzx test" [
 ] {
     use ../utils/test_runner.nu run_all_tests
     run_all_tests --verbose=$verbose --new-window=$new_window --all=$all
+}
+
+# Validate syntax of all Nushell scripts
+export def "yzx lint" [
+    --verbose(-v)  # Show detailed output for each file
+    --quiet(-q)    # Only show errors
+] {
+    nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/validate_syntax.nu" --verbose=$verbose --quiet=$quiet
 }
 
 # Benchmark terminal launch performance
