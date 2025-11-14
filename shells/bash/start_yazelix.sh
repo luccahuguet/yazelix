@@ -55,6 +55,4 @@ HOME="$HOME" devenv --impure --cores "$MAX_CORES" shell -- bash -c \
     --default-layout \"\$ZELLIJ_DEFAULT_LAYOUT\" \
     --default-shell \"\$YAZELIX_DEFAULT_SHELL\""
 
-if [ "$NEEDS_REFRESH" = "true" ] && command -v nu >/dev/null 2>&1; then
-  nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu [compute_config_state mark_config_state_applied]; mark_config_state_applied (compute_config_state)'
-fi
+# Hash is now saved during enterShell hook in devenv.nix

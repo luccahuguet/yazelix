@@ -484,5 +484,10 @@ in {
       "${helixMode}" \
       "${asciiArtMode}" \
       "${boolToString showMacchinaOnWelcome}"
+
+    # Save config hash after successful environment setup
+    if command -v nu >/dev/null 2>&1; then
+      nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu [compute_config_state mark_config_state_applied]; mark_config_state_applied (compute_config_state)' 2>/dev/null || true
+    fi
   '';
 }
