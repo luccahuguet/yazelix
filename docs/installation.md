@@ -33,7 +33,7 @@ https://www.nushell.sh/book/installation.html
 ### Supported Terminal Emulators
 Yazelix provides 5 terminal emulators built-in via Nix - simply set your `preferred_terminal` in `yazelix.toml`:
 
-**Note**: All terminals except Ghostty on macOS are automatically installed by Yazelix. Ghostty on macOS requires Homebrew installation (see below).
+**Note**: On macOS, Ghostty uses the native Homebrew version (see below). All other terminals are provided via Nix.
 
 See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
 
