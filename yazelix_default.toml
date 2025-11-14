@@ -142,12 +142,6 @@ persistent_sessions = false
 # This name will be used when creating or attaching to persistent sessions
 session_name = "yazelix"
 
-# Prefer icon widgets in status bar (default: true)
-# When true, uses Nerd Font icons (󰚂 CPU, 󰇾 RAM) in the zjstatus bar
-# When false, uses ASCII fallbacks ([CPU x%], [RAM y%])
-# Note: Automatically falls back to ASCII when using external terminals without Nerd Fonts
-prefer_icon_widgets = true
-
 [ascii]
 # Options:
 # - "static":   Show static ASCII art

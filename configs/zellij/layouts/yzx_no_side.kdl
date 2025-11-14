@@ -47,11 +47,11 @@ layout {
                command_term_interval "300"
                
                command_cpu_command "bash -c 'macchina -o processor-load 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
-               command_cpu_format "#[fg=#ff6600]󰚂{stdout}"
+               command_cpu_format "#[fg=#ff6600][cpu {stdout}]"
                command_cpu_interval "5"
                
                command_ram_command "bash -c 'macchina -o memory -m 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
-               command_ram_format "#[fg=#ff6600]󰇾{stdout}"
+               command_ram_format "#[fg=#ff6600][ram {stdout}]"
                command_ram_interval "5"
                
            }
@@ -110,11 +110,11 @@ layout {
                command_term_interval "300"
                
                command_cpu_command "bash -c 'macchina -o processor-load 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
-               command_cpu_format "#[fg=#ff6600]󰚂{stdout}"
+               command_cpu_format "#[fg=#ff6600][cpu {stdout}]"
                command_cpu_interval "5"
                
                command_ram_command "bash -c 'macchina -o memory -m 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
-               command_ram_format "#[fg=#ff6600]󰇾{stdout}"
+               command_ram_format "#[fg=#ff6600][ram {stdout}]"
                command_ram_interval "5"
                
            }

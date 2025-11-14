@@ -200,16 +200,13 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     # Ensure output directory exists
     ensure_dir $merged_config_path
     
-    # Generate layouts directory with icon or ASCII widgets based on config and terminal
+    # Copy layouts directory to merged config
     let source_layouts_dir = $"($yazelix_dir)/($ZELLIJ_CONFIG_PATHS.layouts_dir)"
     let target_layouts_dir = $"($merged_config_dir)/layouts"
     if ($source_layouts_dir | path exists) {
-        # Determine if we should use icons based on config and terminal capability
-        let use_icons = (nu ~/.config/yazelix/nushell/scripts/utils/icon_widget_detector.nu | $in == "icons")
-
-        # Generate layouts with appropriate widget style
+        # Copy layouts to merged config directory
         use ../utils/layout_generator.nu
-        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $use_icons
+        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir
     }
     
     # Generate merged configuration
