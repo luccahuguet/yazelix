@@ -120,8 +120,8 @@ let
     else builtins.concatStringsSep "," extraShells;
 
   # Terminal wrappers replicate the flake-based launchers
-  ghosttyWrapper = if isLinux then
-    pkgs.writeShellScriptBin "yazelix-ghostty" ''
+  ghosttyWrapper = pkgs.writeShellScriptBin "yazelix-ghostty" (
+    if isLinux then ''
       MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
       MODE="''${MODE:-auto}"
       USER_CONF="$HOME/.config/ghostty/config"
@@ -135,8 +135,34 @@ let
         --class="com.yazelix.Yazelix" \
         --x11-instance-name="yazelix" \
         --title="Yazelix - Ghostty" "$@"
+    '' else ''
+      # macOS: Detect Homebrew-installed Ghostty
+      MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
+      MODE="''${MODE:-auto}"
+      USER_CONF="$HOME/.config/ghostty/config"
+      YZ_CONF="$HOME/.local/share/yazelix/configs/terminal_emulators/ghostty/config"
+      CONF="$YZ_CONF"
+      if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
+        if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
+      fi
+
+      # Try to find Ghostty binary (Homebrew installation)
+      GHOSTTY_BIN=""
+      if [ -x "/Applications/Ghostty.app/Contents/MacOS/ghostty" ]; then
+        GHOSTTY_BIN="/Applications/Ghostty.app/Contents/MacOS/ghostty"
+      elif [ -x "$HOME/Applications/Ghostty.app/Contents/MacOS/ghostty" ]; then
+        GHOSTTY_BIN="$HOME/Applications/Ghostty.app/Contents/MacOS/ghostty"
+      else
+        echo "Error: Ghostty not found. Please install via Homebrew:"
+        echo "  brew install --cask ghostty"
+        exit 1
+      fi
+
+      exec "$GHOSTTY_BIN" \
+        --config-file="$CONF" \
+        --title="Yazelix - Ghostty" "$@"
     ''
-  else null;
+  );
 
   kittyWrapper =
     if preferredTerminal == "kitty" || lib.elem "kitty" extraTerminals then
@@ -234,7 +260,10 @@ let
       }
     else null;
 
-  ghosttyDeps = if isLinux then filterNull [ ghosttyWrapper pkgs.ghostty ] else [ ];
+  ghosttyDeps = filterNull (
+    [ ghosttyWrapper ]  # Wrapper available on both Linux and macOS
+    ++ lib.optionals isLinux [ pkgs.ghostty ]  # Package only on Linux
+  );
   kittyDeps =
     if preferredTerminal == "kitty" || lib.elem "kitty" extraTerminals then
       filterNull [ kittyWrapper ]

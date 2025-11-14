@@ -5,8 +5,9 @@
 // Use Yazelix's custom layouts (yzx_side.kdl or yzx_no_side.kdl)
 default_layout "yazelix"
 
-// Copy to Wayland clipboard - 
-copy_command "wl-copy"
+// Clipboard command is now set dynamically based on platform (pbcopy on macOS, wl-copy on Linux)
+// See nushell/scripts/setup/zellij_config_merger.nu for implementation
+// Override in configs/zellij/personal/user_config.kdl if needed
 
 // Use configured editor (via EDITOR env var) for viewing scrollback history when pressing Ctrl+Alt+s
 // scrollback_editor defaults to $EDITOR when not specified

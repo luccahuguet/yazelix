@@ -68,6 +68,17 @@ export def get_dynamic_yazelix_overrides [yazelix_dir: string] {
 
     mut overrides = []
 
+    # Platform-specific clipboard command
+    let os_type = (sys host | get name)
+    let clipboard_cmd = if ($os_type | str contains -i "darwin") or ($os_type | str contains -i "macos") {
+        "pbcopy"  # macOS
+    } else {
+        "wl-copy"  # Linux (Wayland)
+    }
+    $overrides = ($overrides | append $"// Platform-specific clipboard command \(detected: ($os_type)\)")
+    $overrides = ($overrides | append $"copy_command \"($clipboard_cmd)\"")
+    $overrides = ($overrides | append "")
+
     # Add tips disable setting if enabled (handle both "true" and "true  # comment" formats)
     # Use default of "true" if field doesn't exist (backwards compatibility)
     let disable_tips = ($config | get -o disable_zellij_tips | default "true")
