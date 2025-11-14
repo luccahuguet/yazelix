@@ -1,0 +1,18 @@
+#!/bin/bash
+# Yazelix macOS App Launcher
+# This script is executed when the Yazelix.app is launched from Spotlight/Finder
+
+# Source shell profile to get Nix and devenv in PATH
+if [ -f "$HOME/.bash_profile" ]; then
+    source "$HOME/.bash_profile"
+elif [ -f "$HOME/.profile" ]; then
+    source "$HOME/.profile"
+fi
+
+# Also source zsh profile if it exists (many macOS users use zsh)
+if [ -f "$HOME/.zprofile" ]; then
+    source "$HOME/.zprofile"
+fi
+
+# Execute the desktop launcher script
+exec "$HOME/.config/yazelix/nushell/scripts/core/desktop_launcher.nu"

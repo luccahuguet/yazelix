@@ -198,27 +198,50 @@ This will automatically configure your shell and then you can use:
 - `yzx launch --here` (starts Yazelix in current terminal)
 - `yzx help` (see all available commands)
 
-#### Optional: Desktop Application Entry
+#### Optional: Desktop/Application Launcher Integration
 
-To make Yazelix searchable from your desktop environment (GNOME, KDE, etc.), copy the desktop entry:
+##### Linux (GNOME, KDE, etc.)
+
+To make Yazelix searchable from your desktop environment, copy the desktop entry:
 
 ```bash
 cp ~/.config/yazelix/assets/desktop/com.yazelix.Yazelix.desktop ~/.local/share/applications/
 ```
 
-Run this command from within your yazelix terminal session. After this, you can search for "Yazelix" in your application launcher and launch it directly.
+After this, you can search for "Yazelix" in your application launcher and launch it directly.
 
 For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 
-##### System Keybind for Launching Yazelix
+**System Keybind for Launching Yazelix:**
 
-To bind a system keyboard shortcut (e.g., in GNOME, KDE, Hyprland, etc.) to launch Yazelix, use this command:
+To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.):
 
 ```bash
 bash -l -c "$HOME/.config/yazelix/nushell/scripts/core/desktop_launcher.nu"
 ```
 
-The `-l` flag ensures your shell profile is loaded, making Nix packages (like `nu` and `devenv`) available in the PATH. This works reliably across different desktop environments and window managers.
+The `-l` flag ensures your shell profile is loaded, making Nix packages (like `nu` and `devenv`) available in the PATH.
+
+##### macOS (Spotlight, Launchpad, Dock)
+
+To integrate Yazelix with macOS launchers:
+
+```bash
+# Copy the app bundle to Applications
+cp -r ~/.config/yazelix/assets/macos/Yazelix.app /Applications/
+
+# Optional: Create high-quality icon
+cd ~/.config/yazelix/assets/macos
+./create_icns.sh
+```
+
+After installation, you can:
+- Search for "Yazelix" in Spotlight (Cmd+Space)
+- Find it in Launchpad
+- Add it to your Dock
+- Set up global keyboard shortcuts in System Settings → Keyboard → Keyboard Shortcuts
+
+For detailed macOS setup and troubleshooting, see [assets/macos/README.md](../assets/macos/README.md).
 
 ### Step 7: Using Yazelix
 
