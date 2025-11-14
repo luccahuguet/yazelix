@@ -535,9 +535,12 @@ export def "yzx test" [
 # Validate syntax of all Nushell scripts
 export def "yzx lint" [
     --verbose(-v)  # Show detailed output for each file
-    --quiet(-q)    # Only show errors
 ] {
-    nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/validate_syntax.nu" --verbose=$verbose --quiet=$quiet
+    if $verbose {
+        nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/validate_syntax.nu" --verbose
+    } else {
+        nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/validate_syntax.nu"
+    }
 }
 
 # Benchmark terminal launch performance

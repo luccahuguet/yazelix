@@ -5,13 +5,12 @@
 # Validate syntax of all Nushell scripts in yazelix
 export def main [
     --verbose(-v)  # Show detailed output for each file
-    --quiet(-q)    # Only show errors
+    --quiet(-q)    # Only show errors (internal flag for test runner)
 ] {
     let yazelix_dir = $"($env.HOME)/.config/yazelix"
 
     if not $quiet {
         print "🔍 Validating Nushell script syntax..."
-        print ""
     }
 
     # Define script directories to check
@@ -43,11 +42,6 @@ export def main [
         return
     }
 
-    if $verbose and not $quiet {
-        print $"Found ($all_files | length) script\(s\) to validate"
-        print ""
-    }
-
     # Validate each file
     let results = $all_files | each { |file|
         let file_name = ($file | path relative-to $yazelix_dir)
@@ -69,9 +63,9 @@ export def main [
             }
         } else {
             if not $quiet {
-                print $"  ❌ Syntax error in ($file_name)"
+                print $"❌ Syntax error in ($file_name)"
                 if not ($result.stderr | is-empty) {
-                    print $"     ($result.stderr)"
+                    print $"   ($result.stderr)"
                 }
             }
             {
@@ -87,31 +81,27 @@ export def main [
     let passed = ($results | where valid == true | length)
     let failed = ($results | where valid == false | length)
 
-    if not $quiet {
-        print ""
-        print "=== Syntax Validation Summary ==="
-        print $"Total files: ($total)"
-        print $"Valid: ($passed)"
-        print $"Failed: ($failed)"
-        print ""
-    }
-
     if $failed > 0 {
         if not $quiet {
-            print "❌ Syntax validation failed"
             print ""
-            print "Failed files:"
-            $results | where valid == false | each { |f|
-                print $"  - ($f.file)"
-                if not ($f.error | is-empty) {
-                    print $"    ($f.error)"
+            if $verbose {
+                print "=== Syntax Validation Failed ==="
+                $results | where valid == false | each { |f|
+                    print $"❌ ($f.file)"
+                    if not ($f.error | is-empty) {
+                        print $"   ($f.error)"
+                    }
                 }
+                print ""
+                print $"Failed: ($failed)/($total) scripts"
+            } else {
+                print $"❌ Syntax validation failed: ($failed)/($total) scripts have errors"
             }
         }
         error make { msg: "Syntax validation failed" }
     } else {
         if not $quiet {
-            print $"✅ All ($total) scripts passed syntax validation!"
+            print $"✅ All ($total) scripts passed syntax validation"
         }
     }
 }
