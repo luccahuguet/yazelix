@@ -180,10 +180,11 @@ nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 **What this does**:
 - Automatically generates optimized terminal configs based on your yazelix settings
 - Configures cursor trails and transparency from your `yazelix.toml` preferences
+- Sets up the `yzx` command for launching Yazelix from anywhere
 - Launches your preferred terminal with yazelix pre-loaded
 - No manual copying required - everything is handled dynamically
 
-**Result**: Your terminal opens with yazelix ready to use, with your personalized settings applied.
+**Result**: Your terminal opens with yazelix ready to use, with your personalized settings applied, and the `yzx` command available for future launches.
 
 #### Option B: Manual Launch (For users who don't want to modify terminal configs)
 
