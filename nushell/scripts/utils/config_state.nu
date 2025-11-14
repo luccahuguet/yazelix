@@ -73,7 +73,7 @@ export def compute_config_state [] {
         ""
     } else {
         # Load full TOML, extract rebuild-required keys, normalize, and hash
-        let full_config = (open $config_file | from toml)
+        let full_config = (open $config_file)
         let rebuild_config = (extract_rebuild_config $full_config)
         let normalized = ($rebuild_config | to toml)
         $normalized | hash sha256
