@@ -31,13 +31,13 @@ in {
       default = true;
       description = "Install recommended productivity tools (~350MB)";
     };
-    
+
     yazi_extensions = mkOption {
       type = types.bool;
       default = true;
       description = "Install Yazi file preview extensions (~125MB)";
     };
-    
+
     yazi_media = mkOption {
       type = types.bool;
       default = false;
@@ -134,13 +134,13 @@ in {
         - Other editors: "vim", "nano", "emacs", etc. (basic integration only)
       '';
     };
-    
+
     helix_runtime_path = mkOption {
       type = types.nullOr types.str;
       default = null;
       description = ''
         Custom Helix runtime path - only set this if editor_command points to a custom Helix build.
-        
+
         IMPORTANT: The runtime MUST match your Helix binary version to avoid startup errors.
         Example: "/home/user/helix/runtime" for a custom Helix build in ~/helix
       '';
@@ -217,7 +217,7 @@ in {
       default = false;
       description = "Enable Atuin shell history integration (disabled by default).";
     };
-    
+
     user_packages = mkOption {
       type = types.listOf types.package;
       default = [];
