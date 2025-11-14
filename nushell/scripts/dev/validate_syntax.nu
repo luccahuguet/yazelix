@@ -50,9 +50,14 @@ export def main [
             print $"Checking ($file_name)..."
         }
 
-        let result = (do { nu-check $file } | complete)
+        let result = try {
+            nu-check $file
+            { success: true, error: null }
+        } catch { |err|
+            { success: false, error: ($err | get debug) }
+        }
 
-        if $result.exit_code == 0 {
+        if $result.success {
             if $verbose and not $quiet {
                 print $"  ✅ Valid"
             }
@@ -64,14 +69,14 @@ export def main [
         } else {
             if not $quiet {
                 print $"❌ Syntax error in ($file_name)"
-                if not ($result.stderr | is-empty) {
-                    print $"   ($result.stderr)"
+                if ($result.error != null) {
+                    print $"   ($result.error)"
                 }
             }
             {
                 file: $file_name
                 valid: false
-                error: $result.stderr
+                error: $result.error
             }
         }
     }

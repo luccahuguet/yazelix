@@ -21,9 +21,8 @@ export def build_cursor_trail_shaders [shader_dir: path] {
     # Read the common library
     let common_code = (open $common_file)
 
-    # Process each variant file
-    let variant_pattern = ($variants_dir | path join "*.glsl")
-    let variants = (ls $variant_pattern | get name)
+    # Process each variant file (use glob command for dynamic patterns)
+    let variants = (glob ($variants_dir | path join "*.glsl"))
 
     if ($variants | is-empty) {
         print $"⚠ No shader variants found in ($variants_dir)"

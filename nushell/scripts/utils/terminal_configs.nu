@@ -243,8 +243,8 @@ export def generate_all_terminal_configs [] {
     if ($shaders_src | path exists) {
         let build_script = ($shaders_src | path join "build_shaders.nu")
         if ($build_script | path exists) {
-            use ($build_script) build_cursor_trail_shaders
-            build_cursor_trail_shaders $shaders_src
+            # Call the exported function directly (use in 'nu -c' string works with interpolation)
+            nu -c $"use '($build_script)' build_cursor_trail_shaders; build_cursor_trail_shaders '($shaders_src)'"
         }
     }
 
