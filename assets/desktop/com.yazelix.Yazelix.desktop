@@ -5,6 +5,6 @@ Name=Yazelix
 Comment=Yazi + Zellij + Helix integrated terminal environment
 Icon=yazelix
 StartupWMClass=com.yazelix.Yazelix
-Exec=/home/lucca/.config/yazelix/nushell/scripts/core/desktop_launcher.nu
+Exec=bash -l -c "$HOME/.config/yazelix/nushell/scripts/core/desktop_launcher.nu"
 Categories=Development;
 
