@@ -204,6 +204,16 @@ Run this command from within your yazelix terminal session. After this, you can 
 
 For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 
+##### System Keybind for Launching Yazelix
+
+To bind a system keyboard shortcut (e.g., in GNOME, KDE, Hyprland, etc.) to launch Yazelix, use this command:
+
+```bash
+bash -l -c "$HOME/.config/yazelix/nushell/scripts/core/desktop_launcher.nu"
+```
+
+The `-l` flag ensures your shell profile is loaded, making Nix packages (like `nu` and `devenv`) available in the PATH. This works reliably across different desktop environments and window managers.
+
 ### Step 7: Using Yazelix
 
 **Option A users**: Simply open your terminal! Yazelix will automatically launch with the full environment.
