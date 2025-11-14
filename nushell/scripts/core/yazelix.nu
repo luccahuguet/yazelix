@@ -369,33 +369,53 @@ export def "yzx env" [
     }
 }
 
+# Helper: Kill the current Zellij session
+def kill_current_zellij_session [] {
+    try {
+        let current_session = (zellij list-sessions
+            | lines
+            | where $it =~ 'current'
+            | first
+            | split row " "
+            | first)
+
+        # Strip ANSI escape codes
+        let clean_session = ($current_session | str replace -ra '\u001b\[[0-9;]*[A-Za-z]' '')
+
+        if ($clean_session | is-empty) {
+            print "⚠️  No current Zellij session detected"
+            return null
+        }
+
+        print $"Killing Zellij session: ($clean_session)"
+        zellij kill-session $clean_session
+        return $clean_session
+    } catch {|err|
+        print $"❌ Failed to kill session: ($err.msg)"
+        return null
+    }
+}
+
 # Restart yazelix
 export def "yzx restart" [] {
-    # Parse configuration using the shared module
-    let config = parse_yazelix_config
+    # Detect if we're in a Yazelix-controlled terminal (launched via wrapper)
+    let is_yazelix_terminal = ($env.YAZELIX_TERMINAL_CONFIG_MODE? | is-not-empty)
 
-    if ($config.persistent_sessions == "true") {
-        print $"Persistent sessions are enabled \(session: ($config.session_name)\)"
-        print "yzx restart is disabled when persistent sessions are enabled."
-        print "Your session will persist automatically - no restart needed."
-        print ""
-        print "To start a new session, use: yzx launch --here"
-        print $"To kill the current session, use: zellij kill-session ($config.session_name)"
+    # Provide appropriate messaging
+    if $is_yazelix_terminal {
+        print "🔄 Restarting Yazelix..."
     } else {
-        print "Attempting to kill the current Zellij session..."
-        let current_session = (zellij list-sessions | lines | where $it =~ 'current' | first | split row " " | first)
-        let clean_session = ($current_session | str replace -ra '\u001b\[[0-9;]*[A-Za-z]' '')
-        print "Restarting Yazelix..."
-        yzx launch
-        print "Waiting for Zellij to shut down..."
-        sleep 1sec
-        if ($clean_session | is-empty) {
-            print "No current Zellij session detected. Skipping kill step."
-        } else {
-            print $"Killing Zellij session: ($clean_session)"
-            try { zellij kill-session $clean_session } catch { print $"Failed to kill session: ($clean_session)" }
-        }
+        print "🔄 Restarting Yazelix \(opening new window\)..."
     }
+
+    # Launch new terminal window
+    yzx launch
+
+    # Wait for new session to spawn
+    sleep 1sec
+
+    # Kill old session (Yazelix terminals will close, vanilla stays open)
+    kill_current_zellij_session
 }
 
 # Run health checks and diagnostics
