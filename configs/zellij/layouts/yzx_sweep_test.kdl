@@ -42,7 +42,7 @@ layout {
                command_shell_format "#[fg=#00ff88,bold]{stdout}"
                command_shell_interval "300"
 
-               command_term_command "bash -c 'echo ${YAZELIX_PREFERRED_TERMINAL:-unknown}'"
+               command_term_command "nu ~/.config/yazelix/nushell/scripts/utils/detect_terminal.nu"
                command_term_format "#[fg=#00ff88,bold]{stdout}"
                command_term_interval "300"
 
