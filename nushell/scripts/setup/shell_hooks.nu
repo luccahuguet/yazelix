@@ -2,7 +2,7 @@
 # Shell Hook Setup Module
 # Generic shell hook installation and migration for all supported shells
 
-use ../utils/constants.nu *
+use ../utils/constants_with_helpers.nu *
 use ../utils/config_manager.nu migrate_shell_hooks
 
 # Setup yazelix hooks for a specific shell with automatic v1->v2 migration

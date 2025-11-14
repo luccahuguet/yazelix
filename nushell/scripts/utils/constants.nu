@@ -1,33 +1,52 @@
 #!/usr/bin/env nu
 # Yazelix Constants
-# Centralized constants for yazelix configuration and management
+# Pure constant definitions with no imports or function dependencies
 
-# Configuration section markers
-# v1 markers (for detecting old hooks)
-export const YAZELIX_START_MARKER_V1 = "# YAZELIX START - Yazelix managed configuration (do not modify this comment)"
-export const YAZELIX_END_MARKER_V1 = "# YAZELIX END - Yazelix managed configuration (do not modify this comment)"
-# v2 markers (for detecting old hooks with bash wrapper alias)
-export const YAZELIX_START_MARKER_V2 = "# YAZELIX START v2 - Yazelix managed configuration (do not modify this comment)"
-export const YAZELIX_END_MARKER_V2 = "# YAZELIX END v2 - Yazelix managed configuration (do not modify this comment)"
-# v3 markers (yzx function in shell configs)
-export const YAZELIX_START_MARKER_V3 = "# YAZELIX START v3 - Yazelix managed configuration (do not modify this comment)"
-export const YAZELIX_END_MARKER_V3 = "# YAZELIX END v3 - Yazelix managed configuration (do not modify this comment)"
-# v4 markers (current version - same as v3, version bump for yzx profile)
-export const YAZELIX_START_MARKER = "# YAZELIX START v4 - Yazelix managed configuration (do not modify this comment)"
-export const YAZELIX_END_MARKER = "# YAZELIX END v4 - Yazelix managed configuration (do not modify this comment)"
-export const YAZELIX_REGENERATE_COMMENT = "# delete this whole section to re-generate the config, if needed"
+# ============================================================================
+# VERSION INFORMATION
+# ============================================================================
 
-# Version information
 export const YAZELIX_VERSION = "v11"
 export const YAZELIX_DESCRIPTION = "Yazi + Zellij + Helix integrated terminal environment"
 
-# Default configuration values
+# ============================================================================
+# CONFIGURATION SECTION MARKERS (Shell Hook Management)
+# ============================================================================
+# These markers are used to manage yazelix sections in user shell configs
+# Multiple versions exist to detect and migrate old configurations
+
+# v1 markers (for detecting old hooks)
+export const YAZELIX_START_MARKER_V1 = "# YAZELIX START - Yazelix managed configuration (do not modify this comment)"
+export const YAZELIX_END_MARKER_V1 = "# YAZELIX END - Yazelix managed configuration (do not modify this comment)"
+
+# v2 markers (for detecting old hooks with bash wrapper alias)
+export const YAZELIX_START_MARKER_V2 = "# YAZELIX START v2 - Yazelix managed configuration (do not modify this comment)"
+export const YAZELIX_END_MARKER_V2 = "# YAZELIX END v2 - Yazelix managed configuration (do not modify this comment)"
+
+# v3 markers (yzx function in shell configs)
+export const YAZELIX_START_MARKER_V3 = "# YAZELIX START v3 - Yazelix managed configuration (do not modify this comment)"
+export const YAZELIX_END_MARKER_V3 = "# YAZELIX END v3 - Yazelix managed configuration (do not modify this comment)"
+
+# v4 markers (current version - same as v3, version bump for yzx profile)
+export const YAZELIX_START_MARKER = "# YAZELIX START v4 - Yazelix managed configuration (do not modify this comment)"
+export const YAZELIX_END_MARKER = "# YAZELIX END v4 - Yazelix managed configuration (do not modify this comment)"
+
+export const YAZELIX_REGENERATE_COMMENT = "# delete this whole section to re-generate the config, if needed"
+
+# ============================================================================
+# CONFIGURATION DEFAULTS
+# ============================================================================
+
 export const DEFAULT_SHELL = "nu"
 export const DEFAULT_TERMINAL = "ghostty"
 export const DEFAULT_HELIX_MODE = "release"
 
 # Supported terminal emulators (fallback priority order)
 export const SUPPORTED_TERMINALS = ["ghostty", "wezterm", "kitty", "alacritty", "foot"]
+
+# ============================================================================
+# TERMINAL EMULATOR CONFIGURATION
+# ============================================================================
 
 # Terminal configuration paths
 export const TERMINAL_CONFIG_PATHS = {
@@ -68,6 +87,7 @@ export const YAZELIX_WINDOW_CLASS = "com.yazelix.Yazelix"
 export const YAZELIX_X11_INSTANCE = "yazelix"
 export const YAZELIX_SHELL_COMMAND = "bash -l -c 'nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu'"
 export const YAZELIX_THEME = "Abernathy"
+export const FONT_FIRACODE = "FiraCode Nerd Font"
 
 # Transparency opacity mapping
 export const TRANSPARENCY_VALUES = {
@@ -77,7 +97,16 @@ export const TRANSPARENCY_VALUES = {
     high: "0.8"
 }
 
-# Cursor trail shader paths for Ghostty
+# Shell argument templates for terminal configs
+export const SHELL_ARGS_BASH = '["bash", "-l", "-c", "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]'
+export const SHELL_ARGS_STRING = '["-l", "-c", "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]'
+
+# ============================================================================
+# CURSOR TRAIL CONFIGURATION (Ghostty)
+# ============================================================================
+
+# Cursor trail shader paths
+# Note: Use get_cursor_trail_random_pool() to get the pool for random selection
 export const CURSOR_TRAIL_SHADERS = {
     blaze: "./shaders/cursor_smear.glsl"
     snow: "./shaders/cursor_trail_white.glsl"
@@ -94,29 +123,6 @@ export const CURSOR_TRAIL_SHADERS = {
     inferno: "./shaders/cursor_trail_inferno.glsl"
     none: ""
 }
-
-# Pool for random cursor trail selection (excludes "none" and "party")
-export const CURSOR_TRAIL_RANDOM_POOL = [
-    "blaze"
-    "snow"
-    "cosmic"
-    "ocean"
-    "forest"
-    "sunset"
-    "neon"
-    "eclipse"
-    "dusk"
-    "orchid"
-    "reef"
-    "inferno"
-]
-
-# Common config sections
-export const SHELL_ARGS_BASH = '["bash", "-l", "-c", "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]'
-export const SHELL_ARGS_STRING = '["-l", "-c", "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]'
-
-# Font configurations
-export const FONT_FIRACODE = "FiraCode Nerd Font"
 
 # Cursor trail presets documentation
 export const CURSOR_TRAIL_PRESETS_COMMENT = "# Alternative presets (uncomment to try)
@@ -135,13 +141,96 @@ export const CURSOR_TRAIL_PRESETS_COMMENT = "# Alternative presets (uncomment to
 # inferno (crimson/silver): custom-shader = ./shaders/cursor_trail_inferno.glsl
 # random (pick on generate): custom-shader = ./shaders/cursor_trail_<random>.glsl"
 
+# ============================================================================
+# XDG-COMPLIANT DIRECTORIES
+# ============================================================================
+# Separation between static config (potentially managed by home-manager)
+# and runtime state (always writable, never managed by home-manager)
+
+# Static configuration (potentially managed by home-manager)
+export const YAZELIX_CONFIG_DIR = "~/.config/yazelix"
+
+# Runtime state (always writable, never managed by home-manager)
+export const YAZELIX_STATE_DIR = "~/.local/share/yazelix"
+export const YAZELIX_LOGS_DIR = "~/.local/share/yazelix/logs"
+export const YAZELIX_INITIALIZERS_DIR = "~/.local/share/yazelix/initializers"
+export const YAZELIX_CACHE_DIR = "~/.local/share/yazelix/cache"
+export const YAZELIX_GENERATED_CONFIGS_DIR = "~/.local/share/yazelix/configs"
+
+# ============================================================================
+# INTEGRATED TOOL CONFIGURATION PATHS
+# ============================================================================
+
+# Zellij configuration paths
+export const ZELLIJ_CONFIG_PATHS = {
+    # Source configuration files (in config dir, tracked by git)
+    yazelix_overrides: "configs/zellij/yazelix_overrides.kdl"
+    user_config: "configs/zellij/personal/user_config.kdl"
+    layouts_dir: "configs/zellij/layouts"
+
+    # Generated/merged configuration (in state dir, not tracked)
+    merged_config_dir: "~/.local/share/yazelix/configs/zellij"
+    merged_config: "~/.local/share/yazelix/configs/zellij/config.kdl"
+}
+
+# Yazi configuration paths
+export const YAZI_CONFIG_PATHS = {
+    # Generated/merged configuration (in state dir, not tracked)
+    merged_config_dir: "~/.local/share/yazelix/configs/yazi"
+}
+
+# ============================================================================
+# SHELL CONFIGURATION PATHS
+# ============================================================================
+
+# Shell-specific initializer directories (in state, not config)
+export const SHELL_INITIALIZER_DIRS = {
+    bash: "~/.local/share/yazelix/initializers/bash"
+    nushell: "~/.local/share/yazelix/initializers/nushell"
+    fish: "~/.local/share/yazelix/initializers/fish"
+    zsh: "~/.local/share/yazelix/initializers/zsh"
+}
+
+# User shell configuration files
+export const SHELL_CONFIGS = {
+    bash: "~/.bashrc"
+    nushell: "~/.config/nushell/config.nu"
+    fish: "~/.config/fish/config.fish"
+    zsh: "~/.zshrc"
+}
+
+# Yazelix shell configuration files
+export const YAZELIX_CONFIG_FILES = {
+    bash: "~/.config/yazelix/shells/bash/yazelix_bash_config.sh"
+    nushell: "~/.config/yazelix/nushell/config/config.nu"
+    fish: "~/.config/yazelix/shells/fish/yazelix_fish_config.fish"
+    zsh: "~/.config/yazelix/shells/zsh/yazelix_zsh_config.zsh"
+}
+
+# ============================================================================
+# ENVIRONMENT VARIABLES
+# ============================================================================
+
+export const YAZELIX_ENV_VARS = {
+    YAZELIX_DIR: "~/.config/yazelix"
+    YAZELIX_DEFAULT_SHELL: "nu"
+    YAZELIX_PREFERRED_TERMINAL: "wezterm"
+    YAZELIX_HELIX_MODE: "release"
+    YAZI_CONFIG_HOME: "~/.local/share/yazelix/configs/yazi"
+    ZELLIJ_DEFAULT_LAYOUT: "yzx_side"
+}
+
+# ============================================================================
+# TEMPLATE STRINGS
+# ============================================================================
+
 # Ghostty config header template
 export const GHOSTTY_CONFIG_HEADER = "# This is the configuration file for Ghostty.
 #
 # This template file has been automatically created at the following
 # path since Ghostty couldn't find any existing config files on your system:
 #
-#   /home/lucca/.config/ghostty/config
+#   <USER_CONFIG_PATH>
 #
 # The template does not set any default options, since Ghostty ships
 # with sensible defaults for all options. Users should only need to set
@@ -181,147 +270,13 @@ export const GHOSTTY_CONFIG_HEADER = "# This is the configuration file for Ghost
 # resize-overlay-duration = 4s 200ms
 "
 
-# File paths and directories - XDG-compliant separation
-# Static configuration (potentially managed by home-manager)
-export const YAZELIX_CONFIG_DIR = "~/.config/yazelix"
-# Runtime state (always writable, never managed by home-manager)
-export const YAZELIX_STATE_DIR = "~/.local/share/yazelix"
-export const YAZELIX_LOGS_DIR = "~/.local/share/yazelix/logs"
-export const YAZELIX_INITIALIZERS_DIR = "~/.local/share/yazelix/initializers"
-export const YAZELIX_CACHE_DIR = "~/.local/share/yazelix/cache"
-export const YAZELIX_GENERATED_CONFIGS_DIR = "~/.local/share/yazelix/configs"
-
-# Zellij configuration paths
-export const ZELLIJ_CONFIG_PATHS = {
-    # Source configuration files (in config dir, tracked by git)
-    yazelix_overrides: "configs/zellij/yazelix_overrides.kdl"
-    user_config: "configs/zellij/personal/user_config.kdl"
-    layouts_dir: "configs/zellij/layouts"
-    
-    # Generated/merged configuration (in state dir, not tracked)
-    merged_config_dir: "~/.local/share/yazelix/configs/zellij"
-    merged_config: "~/.local/share/yazelix/configs/zellij/config.kdl"
-}
-
-# Yazi configuration paths
-export const YAZI_CONFIG_PATHS = {
-    # Generated/merged configuration (in state dir, not tracked)
-    merged_config_dir: "~/.local/share/yazelix/configs/yazi"
-}
-
-# Shell-specific initializer directories (in state, not config)
-export const SHELL_INITIALIZER_DIRS = {
-    bash: "~/.local/share/yazelix/initializers/bash"
-    nushell: "~/.local/share/yazelix/initializers/nushell"
-    fish: "~/.local/share/yazelix/initializers/fish"
-    zsh: "~/.local/share/yazelix/initializers/zsh"
-}
-
-# Shell configuration files
-export const SHELL_CONFIGS = {
-    bash: "~/.bashrc"
-    nushell: "~/.config/nushell/config.nu"
-    fish: "~/.config/fish/config.fish"
-    zsh: "~/.zshrc"
-}
-
-# Yazelix configuration files
-export const YAZELIX_CONFIG_FILES = {
-    bash: "~/.config/yazelix/shells/bash/yazelix_bash_config.sh"
-    nushell: "~/.config/yazelix/nushell/config/config.nu"
-    fish: "~/.config/yazelix/shells/fish/yazelix_fish_config.fish"
-    zsh: "~/.config/yazelix/shells/zsh/yazelix_zsh_config.zsh"
-}
-
-# Environment variables
-export const YAZELIX_ENV_VARS = {
-    YAZELIX_DIR: "~/.config/yazelix"
-    YAZELIX_DEFAULT_SHELL: "nu"
-    YAZELIX_PREFERRED_TERMINAL: "wezterm"
-    YAZELIX_HELIX_MODE: "release"
-    YAZI_CONFIG_HOME: "~/.local/share/yazelix/configs/yazi"
-    ZELLIJ_DEFAULT_LAYOUT: "yzx_side"
-}
-
-# Get the full start comment with regeneration instruction
-export def get_yazelix_start_comment [] {
-    $YAZELIX_START_MARKER + "\n" + $YAZELIX_REGENERATE_COMMENT
-}
-
-# Environment detection functions
-export def is_read_only_config [] {
-    let config_dir = ($YAZELIX_CONFIG_DIR | str replace "~" $env.HOME)
-    try {
-        # Test write access by trying to create a temporary file
-        let test_file = $"($config_dir)/.yazelix_write_test"
-        touch $test_file
-        rm $test_file
-        false
-    } catch {
-        true
-    }
-}
-
-export def is_home_manager_environment [] {
-    # Check for common home-manager indicators
-    let home_manager_indicators = [
-        ($env.HOME + "/.local/state/nix/profiles/home-manager")
-        ($env.HOME + "/.nix-profile/etc/profile.d/hm-session-vars.sh")
-        $env.NIX_PROFILE?
-    ]
-    $home_manager_indicators | where ($it != null) | any { |path| $path | path exists }
-}
-
-export def detect_environment [] {
-    let is_readonly = (is_read_only_config)
-    let is_hm = (is_home_manager_environment)
-
-    {
-        read_only_config: $is_readonly
-        home_manager: $is_hm
-        environment_type: (
-            if $is_hm { "home-manager" }
-            else if $is_readonly { "read-only" }
-            else { "standard" }
-        )
-    }
-}
-
-# Get the complete yazelix section content for a shell
-export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
-    let config_file = $YAZELIX_CONFIG_FILES | get $shell
-
-    # Generate shell-specific conditional loading + yzx function (always available)
-    let section_body = if $shell == "bash" or $shell == "zsh" {
-        let home_file = ($config_file | str replace "~" "$HOME")
-        [
-            $"if [ -n \"$IN_YAZELIX_SHELL\" ]; then"
-            $"  source \"($home_file)\""
-            "fi"
-            "# yzx command - always available for launching/managing yazelix"
-            "yzx() {"
-            "    nu -c \"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx $*\""
-            "}"
-        ] | str join "\n"
-    } else if $shell == "fish" {
-        let home_file = ($config_file | str replace "~" "$HOME")
-        [
-            "if test -n \"$IN_YAZELIX_SHELL\""
-            $"  source \"($home_file)\""
-            "end"
-            "# yzx command - always available for launching/managing yazelix"
-            "function yzx --description \"Yazelix command suite\""
-            "    nu -c \"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx $argv\""
-            "end"
-        ] | str join "\n"
-    } else {
-        # Nushell - always source, conditional is inside the config file itself
-        # This works because sourcing inside an if block doesn't export aliases properly
-        [
-            $"source \"($config_file)\""
-            "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *"
-        ] | str join "\n"
-    }
-
-    (get_yazelix_start_comment) + "\n" + $section_body + "\n" + $YAZELIX_END_MARKER
-}
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+# Helper functions have been moved to dedicated modules:
+# - cursor_trail_helpers.nu - Cursor trail management
+# - environment_detection.nu - Environment detection
+# - shell_config_generation.nu - Shell configuration generation
+#
+# To use all constants AND helpers in one import, use:
+#   use constants_with_helpers.nu *

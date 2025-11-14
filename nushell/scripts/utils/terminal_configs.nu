@@ -2,7 +2,7 @@
 # Modular terminal configuration generator for yazelix
 
 use config_parser.nu parse_yazelix_config
-use ./constants.nu *
+use ./constants_with_helpers.nu *
 
 # Helpers
 def get_opacity_value [transparency: string] { $TRANSPARENCY_VALUES | get -o $transparency | default "1.0" }
@@ -10,7 +10,7 @@ def get_terminal_title [terminal: string] { $"Yazelix - ($TERMINAL_METADATA | ge
 def get_cursor_trail_shader [cursor_trail: string] { $CURSOR_TRAIL_SHADERS | get -o $cursor_trail | default $CURSOR_TRAIL_SHADERS.blaze }
 
 def select_random_cursor_trail [] {
-    let pool = $CURSOR_TRAIL_RANDOM_POOL
+    let pool = (get_cursor_trail_random_pool)
     if ($pool | is-empty) {
         "blaze"
     } else {

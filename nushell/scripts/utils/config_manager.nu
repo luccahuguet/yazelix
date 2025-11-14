@@ -4,7 +4,7 @@
 
 # Extract yazelix configuration section from a shell config file
 export def extract_yazelix_section [config_file: string] {
-    use ./constants.nu *
+    use ./constants_with_helpers.nu *
 
     if not ($config_file | path exists) {
         return { exists: false, content: "", start_line: -1, end_line: -1, full_content: "", version: 0 }
@@ -103,7 +103,7 @@ export def extract_yazelix_section [config_file: string] {
 
 # Check if yazelix configuration sections are up to date
 export def check_config_versions [yazelix_dir: string] {
-    use ./constants.nu *
+    use ./constants_with_helpers.nu *
 
     let configs = [
         { name: "bash", file: ($SHELL_CONFIGS.bash | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.bash) }
@@ -148,7 +148,7 @@ export def check_config_versions [yazelix_dir: string] {
 
 # Safely migrate hooks to latest version with backup
 export def migrate_shell_hooks [shell: string, config_file: string, yazelix_dir: string]: nothing -> record {
-    use ./constants.nu *
+    use ./constants_with_helpers.nu *
 
     if not ($config_file | path exists) {
         return { migrated: false, reason: "config file not found" }

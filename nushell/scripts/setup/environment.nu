@@ -17,8 +17,8 @@ def main [
     ascii_art_mode: string
     show_macchina_on_welcome: bool = false
 ] {
-    # Import constants and environment detection
-    use ../utils/constants.nu *
+    # Import constants and helper functions
+    use ../utils/constants_with_helpers.nu *
 
     # Detect quiet mode from environment
     let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
