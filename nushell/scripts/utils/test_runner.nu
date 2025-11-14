@@ -2,6 +2,39 @@
 # Yazelix Test Runner
 # Runs all tests in the dev/ directory and reports results
 
+# Run syntax validation before tests
+def run_syntax_validation [
+    verbose: bool
+    log_file: string
+] {
+    print "🔍 Phase 1: Syntax Validation"
+    print "─────────────────────────────────────"
+
+    let syntax_log = "=== Syntax Validation ===\n"
+    $syntax_log | save --append $log_file
+
+    # Run validate_syntax.nu quietly
+    let result = (do {
+        nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/validate_syntax.nu" --quiet
+    } | complete)
+
+    if $result.exit_code == 0 {
+        print "✅ All scripts passed syntax validation"
+        "✅ Syntax validation passed\n\n" | save --append $log_file
+        true
+    } else {
+        print "❌ Syntax validation failed"
+        if not ($result.stderr | is-empty) {
+            print $result.stderr
+        }
+        if not ($result.stdout | is-empty) {
+            print $result.stdout
+        }
+        $"❌ Syntax validation failed\n($result.stdout)\n($result.stderr)\n\n" | save --append $log_file
+        false
+    }
+}
+
 # Run all tests and report results
 export def run_all_tests [
     --verbose(-v)  # Show detailed output
@@ -68,6 +101,21 @@ export def run_all_tests [
 
     # Log to file
     $"($msg_header)\n($msg_count)\n\n" | save --append $log_file
+
+    # Run syntax validation first
+    let syntax_passed = run_syntax_validation $verbose $log_file
+    if not $syntax_passed {
+        print ""
+        print "❌ Test suite aborted due to syntax errors"
+        print "   Fix syntax errors and try again"
+        print $"📝 Full log: ($log_file)"
+        error make { msg: "Syntax validation failed" }
+    }
+
+    print ""
+    print "🧪 Phase 2: Functional Tests"
+    print "─────────────────────────────────────"
+    "=== Functional Tests ===\n" | save --append $log_file
 
     let results = $test_files | each { |test_file|
         let test_name = ($test_file | path basename | str replace ".nu" "")
