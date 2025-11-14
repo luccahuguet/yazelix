@@ -38,7 +38,7 @@ export def parse_yazelix_config [] {
         enable_atuin: ($raw_config.shell?.enable_atuin? | default false | into string),
         terminal_config_mode: ($raw_config.terminal?.config_mode? | default "yazelix"),
         cursor_trail: ($raw_config.terminal?.cursor_trail? | default "random"),
-        transparency: ($raw_config.terminal?.transparency? | default "low"),
+        transparency: ($raw_config.terminal?.transparency? | default "medium"),
         default_shell: ($raw_config.shell?.default_shell? | default "nu"),
         helix_mode: ($raw_config.helix?.mode? | default "release"),
         disable_zellij_tips: ($raw_config.zellij?.disable_tips? | default true | into string),

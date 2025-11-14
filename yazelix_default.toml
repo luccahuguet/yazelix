@@ -117,13 +117,16 @@ config_mode = "yazelix"
 # In short: pick ghostty for cool cursor trails
 cursor_trail = "random"
 
-# Terminal transparency level (default: "low")
-# Options: "none", "low", "medium", "high"
-# - "none":   No transparency (opacity = 1.0)
-# - "low":    Light transparency (opacity = 0.95)
-# - "medium": Medium transparency (opacity = 0.9)
-# - "high":   High transparency (opacity = 0.8)
-transparency = "low"
+# Terminal transparency level (default: "medium")
+# Options: "none", "very_low", "low", "medium", "high", "very_high", "super_high"
+# - "none":       No transparency (opacity = 1.0)
+# - "very_low":   Minimal transparency (opacity = 0.95)
+# - "low":        Light transparency (opacity = 0.90)
+# - "medium":     Medium transparency (opacity = 0.85)
+# - "high":       High transparency (opacity = 0.80)
+# - "very_high":  Very high transparency (opacity = 0.70)
+# - "super_high": Maximum transparency (opacity = 0.60)
+transparency = "medium"
 
 [zellij]
 # Disable Zellij tips popup on startup (default: true)

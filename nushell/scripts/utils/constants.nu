@@ -92,9 +92,12 @@ export const FONT_FIRACODE = "FiraCode Nerd Font"
 # Transparency opacity mapping
 export const TRANSPARENCY_VALUES = {
     none: "1.0"
-    low: "0.95"
-    medium: "0.9"
-    high: "0.8"
+    very_low: "0.95"
+    low: "0.90"
+    medium: "0.85"
+    high: "0.80"
+    very_high: "0.70"
+    super_high: "0.60"
 }
 
 # Shell argument templates for terminal configs

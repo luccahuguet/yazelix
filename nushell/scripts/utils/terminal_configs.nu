@@ -129,8 +129,6 @@ shell ($YAZELIX_SHELL_COMMAND)
 hide_window_decorations yes
 window_padding_width 2
 include ($YAZELIX_THEME).conf
-linux_display_server x11
-x11_hide_window_decorations yes
 window_title (get_terminal_title "kitty")
 
 # Transparency \(configurable via yazelix.toml\)

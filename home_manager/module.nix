@@ -106,15 +106,18 @@ in {
     };
 
     transparency = mkOption {
-      type = types.enum [ "none" "low" "medium" "high" ];
-      default = "low";
+      type = types.enum [ "none" "very_low" "low" "medium" "high" "very_high" "super_high" ];
+      default = "medium";
       description = ''
         Terminal transparency level for all terminals.
 
         - "none": No transparency (opacity = 1.0)
-        - "low": Light transparency (opacity = 0.95)
-        - "medium": Medium transparency (opacity = 0.9)
-        - "high": High transparency (opacity = 0.8)
+        - "very_low": Minimal transparency (opacity = 0.95)
+        - "low": Light transparency (opacity = 0.90)
+        - "medium": Medium transparency (opacity = 0.85)
+        - "high": High transparency (opacity = 0.80)
+        - "very_high": Very high transparency (opacity = 0.70)
+        - "super_high": Maximum transparency (opacity = 0.60)
       '';
     };
     
