@@ -9,8 +9,7 @@ This directory contains the Yazelix.app bundle for macOS integration with Spotli
 cp -r ~/.config/yazelix/assets/macos/Yazelix.app /Applications/
 
 # Optional: Create the .icns icon (requires macOS)
-cd ~/.config/yazelix/assets/macos
-./create_icns.sh
+nu ~/.config/yazelix/assets/macos/create_icns.nu
 ```
 
 After installation, you can:
@@ -47,16 +46,16 @@ The `MacOS/yazelix` script:
 
 ## Icon Creation (Optional)
 
-The `create_icns.sh` script converts the PNG icons into macOS .icns format:
+The `create_icns.nu` script converts the PNG icons into macOS .icns format:
 
 ```bash
-cd ~/.config/yazelix/assets/macos
-./create_icns.sh
+nu ~/.config/yazelix/assets/macos/create_icns.nu
 ```
 
 **Requirements:**
 - macOS system with `iconutil` command (built-in)
 - PNG icon files in `assets/icons/` directory
+- Nushell (already installed as part of yazelix)
 
 The app works without the icon, but having it provides a better visual experience.
 

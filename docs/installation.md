@@ -231,8 +231,7 @@ To integrate Yazelix with macOS launchers:
 cp -r ~/.config/yazelix/assets/macos/Yazelix.app /Applications/
 
 # Optional: Create high-quality icon
-cd ~/.config/yazelix/assets/macos
-./create_icns.sh
+nu ~/.config/yazelix/assets/macos/create_icns.nu
 ```
 
 After installation, you can:
