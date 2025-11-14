@@ -22,8 +22,7 @@ shaders/
 │   ├── reef.glsl
 │   ├── party.glsl
 │   └── inferno.glsl
-├── build_shaders.sh             # Build script (bash)
-├── build_shaders.nu             # Build script (nushell)
+├── build_shaders.nu             # Build script (nushell, runs automatically)
 └── cursor_trail_*.glsl          # Generated shaders (DO NOT EDIT)
 ```
 
@@ -43,38 +42,39 @@ shaders/
 ### To modify shared functions:
 
 1. Edit `cursor_trail_common.glsl`
-2. Run the build script: `./build_shaders.sh`
-3. All 12 shaders will be regenerated
+2. Shaders will be **automatically rebuilt** next time Yazelix starts or configs are regenerated
 
 ### To modify a specific shader variant:
 
 1. Edit the variant file in `variants/` directory (e.g., `variants/white.glsl`)
-2. Run the build script: `./build_shaders.sh`
-3. The corresponding shader will be regenerated
+2. Shaders will be **automatically rebuilt** next time Yazelix starts or configs are regenerated
 
 ### To create a new variant:
 
 1. Create a new file in `variants/` directory (e.g., `variants/new_variant.glsl`)
 2. Add your variant-specific code (constants, helper functions, mainImage)
-3. Run the build script: `./build_shaders.sh`
-4. A new `cursor_trail_new_variant.glsl` will be generated
+3. Update `nushell/scripts/utils/constants.nu` to add the new variant to `CURSOR_TRAIL_SHADERS`
+4. Shaders will be **automatically rebuilt** next time Yazelix starts or configs are regenerated
 
-## Build Script
-
-The build script combines `cursor_trail_common.glsl` with each variant file:
+### Manual build (for testing):
 
 ```bash
-./build_shaders.sh   # Bash version
-./build_shaders.nu   # Nushell version
+nu build_shaders.nu   # Manually trigger shader build
 ```
 
-Both scripts do the same thing - use whichever you prefer.
+## Build Process
+
+The build is **fully automatic**:
+- Runs during Yazelix startup when terminal configs are generated
+- Combines `cursor_trail_common.glsl` with each variant in `variants/`
+- Outputs complete shaders ready for Ghostty to use
+- No manual intervention needed!
 
 ## Important Notes
 
 - **DO NOT directly edit** the generated `cursor_trail_*.glsl` files - your changes will be overwritten
 - **ALWAYS edit** either `cursor_trail_common.glsl` or files in `variants/`
-- **ALWAYS run** the build script after making changes
+- Shaders are **automatically built** during Yazelix startup - no manual steps needed!
 - The generated shaders are git-tracked to ensure they work immediately for users
 
 ## Variant Categories

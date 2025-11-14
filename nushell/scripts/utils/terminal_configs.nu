@@ -237,7 +237,18 @@ export def generate_all_terminal_configs [] {
     let ghostty_dir = ($configs_dir | path join "ghostty")
     mkdir $ghostty_dir
     save_config_with_backup ($ghostty_dir | path join "config") (generate_ghostty_config)
+
+    # Build cursor trail shaders from modular sources
     let shaders_src = $"($env.HOME)/.config/yazelix/configs/terminal_emulators/ghostty/shaders"
+    if ($shaders_src | path exists) {
+        let build_script = ($shaders_src | path join "build_shaders.nu")
+        if ($build_script | path exists) {
+            use ($build_script) build_cursor_trail_shaders
+            build_cursor_trail_shaders $shaders_src
+        }
+    }
+
+    # Copy shaders to generated config directory
     let shaders_dest = ($ghostty_dir | path join "shaders")
     if ($shaders_dest | path exists) { rm --permanent --recursive $shaders_dest }
     mkdir $shaders_dest

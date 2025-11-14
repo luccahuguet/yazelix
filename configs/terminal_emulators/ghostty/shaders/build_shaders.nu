@@ -2,38 +2,57 @@
 # Build script to generate cursor trail shaders from common library + variants
 # This combines cursor_trail_common.glsl with each variant file to eliminate duplication
 
-const SHADER_DIR = ($env.PWD)
-const COMMON_FILE = ($SHADER_DIR | path join "cursor_trail_common.glsl")
-const VARIANTS_DIR = ($SHADER_DIR | path join "variants")
+# Build cursor trail shaders from common library + variants
+export def build_cursor_trail_shaders [shader_dir: path] {
+    let common_file = ($shader_dir | path join "cursor_trail_common.glsl")
+    let variants_dir = ($shader_dir | path join "variants")
 
-# Read the common library
-let common_code = (open $COMMON_FILE)
+    # Check if source files exist
+    if not ($common_file | path exists) {
+        print $"⚠ Shader common library not found: ($common_file)"
+        return
+    }
 
-print $"Building cursor trail shaders from variants..."
-print $"Common library: ($COMMON_FILE)"
-print $"Variants directory: ($VARIANTS_DIR)"
-print ""
+    if not ($variants_dir | path exists) {
+        print $"⚠ Shader variants directory not found: ($variants_dir)"
+        return
+    }
 
-# Process each variant file
-let variants = (ls ($VARIANTS_DIR | path join "*.glsl") | get name)
+    # Read the common library
+    let common_code = (open $common_file)
 
-for variant_file in $variants {
-    let variant_name = ($variant_file | path basename | str replace ".glsl" "")
-    let output_file = ($SHADER_DIR | path join $"cursor_trail_($variant_name).glsl")
+    # Process each variant file
+    let variant_pattern = ($variants_dir | path join "*.glsl")
+    let variants = (ls $variant_pattern | get name)
 
-    print $"Building ($variant_name)..."
+    if ($variants | is-empty) {
+        print $"⚠ No shader variants found in ($variants_dir)"
+        return
+    }
 
-    # Read variant code
-    let variant_code = (open $variant_file)
+    for variant_file in $variants {
+        let variant_name = ($variant_file | path basename | str replace ".glsl" "")
+        let output_file = ($shader_dir | path join $"cursor_trail_($variant_name).glsl")
 
-    # Combine common + variant
-    let combined = ($common_code + "\n" + $variant_code)
+        # Read variant code
+        let variant_code = (open $variant_file)
 
-    # Write to output file
-    $combined | save -f $output_file
+        # Combine common + variant
+        let combined = ($common_code + "\n" + $variant_code)
 
-    print $"  ✓ Generated: ($output_file)"
+        # Write to output file
+        $combined | save -f $output_file
+    }
+
+    print $"✓ Built ($variants | length) cursor trail shaders from modular sources"
 }
 
-print ""
-print $"✓ Build complete! Generated (length $variants) shader files."
+# Main entry point when run directly
+def main [] {
+    let shader_dir = ($env.PWD)
+    print $"Building cursor trail shaders..."
+    print $"Shader directory: ($shader_dir)"
+    print ""
+
+    build_cursor_trail_shaders $shader_dir
+}
