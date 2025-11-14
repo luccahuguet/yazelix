@@ -31,13 +31,16 @@ Other platforms and package managers: see official instructions:
 https://www.nushell.sh/book/installation.html
 
 ### Supported Terminal Emulators
-Choose your favorite:
+Yazelix provides 5 terminal emulators built-in via Nix - simply set your `preferred_terminal` in `yazelix.toml`:
+
+**Note**: All terminals except Ghostty on macOS are automatically installed by Yazelix. Ghostty on macOS requires Homebrew installation (see below).
 
 See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
 
 **WezTerm**
 - Modern, fast, written in Rust
-- Instructions here: https://wezfurlong.org/wezterm/installation.html
+- Provided by Yazelix via Nix (no installation needed)
+- Reference: https://wezfurlong.org/wezterm/installation.html
 
 **Ghostty** (Default)
 - Modern, fast, written in Zig, newer
@@ -50,15 +53,18 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 
 **Kitty**
 - Fast, feature-rich, GPU-accelerated terminal
-- Instructions here: https://sw.kovidgoyal.net/kitty/binary/
+- Provided by Yazelix via Nix (no installation needed)
+- Reference: https://sw.kovidgoyal.net/kitty/binary/
 
 **Alacritty**
 - Fast, GPU-accelerated terminal written in Rust
-- Instructions here: https://github.com/alacritty/alacritty/blob/master/INSTALL.md
+- Provided by Yazelix via Nix (no installation needed)
+- Reference: https://github.com/alacritty/alacritty/blob/master/INSTALL.md
 
 **Foot**
 - Fast, simple, written in C
-- Instructions here: https://codeberg.org/dnkl/foot/src/branch/master/INSTALL.md
+- Provided by Yazelix via Nix (no installation needed)
+- Reference: https://codeberg.org/dnkl/foot/src/branch/master/INSTALL.md
 
 ## Step-by-Step Installation
 
