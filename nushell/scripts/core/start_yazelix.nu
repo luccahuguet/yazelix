@@ -81,6 +81,12 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
     } else {
         $YAZELIX_ENV_VARS.ZELLIJ_DEFAULT_LAYOUT
     }
+    # Resolve layout to an absolute file path so it works even if user config overrides layout_dir
+    let layout_path = if ($layout | str contains "/") or ($layout | str ends-with ".kdl") {
+        $layout
+    } else {
+        $"($merged_zellij_dir)/layouts/($layout).kdl"
+    }
 
     let cmd = if ($config.persistent_sessions == "true") {
         # Use zellij attach with create flag for persistent sessions
@@ -92,18 +98,20 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
             "-c" $config.session_name
             "options"
             "--default-cwd" $working_dir
-            "--default-layout" $layout
+            "--default-layout" $layout_path
+            "--pane-frames" "false"
             "--default-shell" $config.default_shell
         ] | str join " "
     } else {
-        # Use zellij options for new sessions (original behavior)
+        # For new sessions, apply options explicitly
         [
             $zellij_merger_cmd "&&"
             "zellij"
             "--config-dir" $merged_zellij_dir
             "options"
             "--default-cwd" $working_dir
-            "--default-layout" $layout
+            "--default-layout" $layout_path
+            "--pane-frames" "false"
             "--default-shell" $config.default_shell
         ] | str join " "
     }

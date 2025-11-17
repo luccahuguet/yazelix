@@ -14,15 +14,16 @@ cp -r configs/zellij/user configs/zellij/personal
 
 ## How It Works
 
-The configuration system merges three layers in order of priority:
+The merger now prefers your **native Zellij config** when present, then forcibly layers Yazelix requirements on top:
 
-1. **Zellij defaults** - Base configuration from `zellij setup --dump-config`
-2. **Yazelix overrides** (`yazelix_overrides.kdl`) - Yazelix-specific settings (git tracked)
-3. **Your personal settings** (`personal/user_config.kdl`) - Your customizations (git ignored, highest priority)
+1. **User config**: `~/.config/zellij/config.kdl` (if it exists). If missing, Yazelix falls back to `zellij setup --dump-config`.
+2. **Dynamic Yazelix settings**: Generated from `yazelix.toml` (e.g., rounded corners) and appended after the user config so they win.
+3. **Enforced Yazelix settings**: Always appended last to guarantee required behavior:
+   - `pane_frames false` (needed for `zjstatus`)
+   - `default_layout` set to Yazelix’s layout file (absolute path)
+   - `layout_dir` set to Yazelix’s generated layouts directory
 
-When you start Yazelix, these layers merge automatically into `~/.local/share/yazelix/configs/zellij/config.kdl`. The system uses smart caching - configs only regenerate when source files change. Your personal configs persist across Yazelix updates without conflicts.
-
-**Important**: The merger uses simple concatenation - Zellij reads all three sections and uses the last occurrence of any setting. For simple settings this works perfectly, but be careful with nested blocks like `ui`, `keybinds`, or `themes` to avoid unintended duplicates.
+Layouts are copied into `~/.local/share/yazelix/configs/zellij/layouts`, and the merged config is written to `~/.local/share/yazelix/configs/zellij/config.kdl` on every launch. Yazelix also passes `--pane-frames false` and an absolute `--default-layout` at launch for extra safety.
 
 ## Common Customizations
 
@@ -61,7 +62,7 @@ scroll_buffer_size 50000
 ```kdl
 ui {
     pane_frames {
-        rounded_corners true
+        rounded_corners true  # Yazelix may override via yazelix.toml
     }
 }
 ```
