@@ -5,6 +5,9 @@
 let
   inherit (pkgs.stdenv) isLinux isDarwin;
 
+  # Access to unstable packages for newer tools
+  pkgs-unstable = if inputs ? nixpkgs-unstable then inputs.nixpkgs-unstable.legacyPackages.${pkgs.system} else pkgs;
+
   nixglPackages = if isLinux then inputs.nixgl.packages.${pkgs.system} else null;
   nixglIntel = if nixglPackages != null && nixglPackages ? nixGLIntel then nixglPackages.nixGLIntel else null;
 
@@ -58,7 +61,14 @@ let
 
     language_packs = rawConfig.packs.language or [];
     tool_packs = rawConfig.packs.tools or [];
-    user_packages = map (name: pkgs.${name}) (rawConfig.packs.user_packages or []);
+    user_packages = map (name:
+      if builtins.hasAttr name pkgs then
+        builtins.getAttr name pkgs
+      else if builtins.hasAttr name pkgs-unstable then
+        builtins.getAttr name pkgs-unstable
+      else
+        throw "Package '${name}' not found in nixpkgs stable or unstable"
+    ) (rawConfig.packs.user_packages or []);
   };
 
   boolToString = value: if value then "true" else "false";

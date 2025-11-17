@@ -1,4 +1,6 @@
 inputs:
+  nixpkgs-unstable:
+    url: github:NixOS/nixpkgs/nixos-unstable
   helix:
     url: github:helix-editor/helix
   nixgl:
