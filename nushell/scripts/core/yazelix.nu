@@ -126,7 +126,7 @@ export def "yzx launch" [
         } else if ($path != null) {
             $path
         } else {
-            null
+            pwd
         }
 
         if ($cwd_override != null) {
