@@ -121,29 +121,46 @@ export def "yzx launch" [
         # Start in current terminal without spawning a new process
         $env.YAZELIX_ENV_ONLY = "false"
 
+        # Determine directory override: explicit --home or --path, else let start_yazelix handle it
         let cwd_override = if $home {
             $env.HOME
         } else if ($path != null) {
             $path
         } else {
-            pwd
+            null
         }
 
         if $verbose {
             if $needs_refresh {
                 with-env {YAZELIX_FORCE_REFRESH: "true"} {
-                    start_yazelix_session $cwd_override --verbose
+                    if ($cwd_override != null) {
+                        start_yazelix_session $cwd_override --verbose
+                    } else {
+                        start_yazelix_session --verbose
+                    }
                 }
             } else {
-                start_yazelix_session $cwd_override --verbose
+                if ($cwd_override != null) {
+                    start_yazelix_session $cwd_override --verbose
+                } else {
+                    start_yazelix_session --verbose
+                }
             }
         } else {
             if $needs_refresh {
                 with-env {YAZELIX_FORCE_REFRESH: "true"} {
-                    start_yazelix_session $cwd_override
+                    if ($cwd_override != null) {
+                        start_yazelix_session $cwd_override
+                    } else {
+                        start_yazelix_session
+                    }
                 }
             } else {
-                start_yazelix_session $cwd_override
+                if ($cwd_override != null) {
+                    start_yazelix_session $cwd_override
+                } else {
+                    start_yazelix_session
+                }
             }
         }
         if $needs_refresh {
