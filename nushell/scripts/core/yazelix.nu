@@ -129,39 +129,21 @@ export def "yzx launch" [
             pwd
         }
 
-        if ($cwd_override != null) {
-            if $verbose {
-                if $needs_refresh {
-                    with-env {YAZELIX_FORCE_REFRESH: "true"} {
-                        start_yazelix_session $cwd_override --verbose
-                    }
-                } else {
+        if $verbose {
+            if $needs_refresh {
+                with-env {YAZELIX_FORCE_REFRESH: "true"} {
                     start_yazelix_session $cwd_override --verbose
                 }
             } else {
-                if $needs_refresh {
-                    with-env {YAZELIX_FORCE_REFRESH: "true"} {
-                        start_yazelix_session $cwd_override
-                    }
-                } else {
-                    start_yazelix_session $cwd_override
-                }
-            }
-        } else if $verbose {
-            if $needs_refresh {
-                with-env {YAZELIX_FORCE_REFRESH: "true"} {
-                    start_yazelix_session --verbose
-                }
-            } else {
-                start_yazelix_session --verbose
+                start_yazelix_session $cwd_override --verbose
             }
         } else {
             if $needs_refresh {
                 with-env {YAZELIX_FORCE_REFRESH: "true"} {
-                    start_yazelix_session
+                    start_yazelix_session $cwd_override
                 }
             } else {
-                start_yazelix_session
+                start_yazelix_session $cwd_override
             }
         }
         if $needs_refresh {
