@@ -9,6 +9,9 @@ use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 
 def _start_yazelix_impl [cwd_override?: string, --verbose] {
+    # Capture original directory before any cd commands
+    let original_dir = pwd
+
     # Try to set up Nix environment automatically when outside Yazelix/nix shells
     use ../utils/nix_env_helper.nu ensure_nix_in_environment
 
@@ -63,13 +66,13 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
     let merged_zellij_dir = $"($env.HOME)/.local/share/yazelix/configs/zellij"
 
     # Determine which directory to use as default CWD
-    # Priority: 1. cwd_override parameter 2. YAZELIX_LAUNCH_CWD env var 3. current directory 4. home
+    # Priority: 1. cwd_override parameter 2. YAZELIX_LAUNCH_CWD env var 3. original directory
     let working_dir = if ($cwd_override | is-not-empty) {
         $cwd_override
     } else if ($env.YAZELIX_LAUNCH_CWD? | is-not-empty) {
         $env.YAZELIX_LAUNCH_CWD
     } else {
-        pwd
+        $original_dir
     }
 
     # Build the command that first generates the zellij config, then starts zellij
