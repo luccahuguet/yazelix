@@ -46,7 +46,7 @@ layout {
                command_term_format "#[fg=#00ff88,bold]{stdout}"
                command_term_interval "300"
                
-               command_cpu_command "bash -c 'macchina -o processor-load 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
+               command_cpu_command "nu ~/.config/yazelix/configs/zellij/scripts/cpu_usage.nu"
                command_cpu_format "#[fg=#ff6600][cpu {stdout}]"
                command_cpu_interval "5"
                
@@ -109,7 +109,7 @@ layout {
                command_term_format "{stdout}"
                command_term_interval "300"
                
-               command_cpu_command "bash -c 'macchina -o processor-load 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
+               command_cpu_command "nu ~/.config/yazelix/configs/zellij/scripts/cpu_usage.nu"
                command_cpu_format "#[fg=#ff6600][cpu {stdout}]"
                command_cpu_interval "5"
                
