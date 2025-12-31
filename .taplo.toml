@@ -1,0 +1,26 @@
+# Taplo TOML formatter configuration
+# https://taplo.tamasfe.dev/configuration/formatter-options.html
+
+[formatting]
+# Always expand arrays to multiple lines (one element per line)
+array_auto_expand = true
+
+# Add trailing commas to arrays
+array_trailing_comma = true
+
+# Align entries in arrays
+align_entries = false
+
+# Set low column width to force array expansion
+# This ensures even short arrays like ["git"] expand to multiple lines
+# Must be lower than the width of compact arrays to trigger expansion
+column_width = 10
+
+# Disable compact arrays to prevent collapsing
+compact_arrays = false
+
+# Compact inline tables
+compact_inline_tables = false
+
+# Number of spaces for indentation
+indent_string = "  "
