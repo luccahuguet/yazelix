@@ -164,6 +164,24 @@ in {
       description = "Enable rounded corners for Zellij pane frames";
     };
 
+    yazi_plugins = mkOption {
+      type = types.listOf types.str;
+      default = [ "git" ];
+      description = "Yazi plugins to load (core plugins auto_layout and sidebar_status are always loaded)";
+    };
+
+    yazi_theme = mkOption {
+      type = types.str;
+      default = "default";
+      description = "Yazi color theme";
+    };
+
+    yazi_sort_by = mkOption {
+      type = types.enum [ "alphabetical" "natural" "modified" "created" "size" ];
+      default = "alphabetical";
+      description = "Default file sorting method";
+    };
+
     debug_mode = mkOption {
       type = types.bool;
       default = false;
@@ -293,6 +311,11 @@ in {
           "rounded_corners = ${boolToToml cfg.zellij_rounded_corners}"
           "persistent_sessions = ${boolToToml cfg.persistent_sessions}"
           "session_name = ${escapeString cfg.session_name}"
+          ""
+          "[yazi]"
+          "plugins = ${listToToml cfg.yazi_plugins}"
+          "theme = ${escapeString cfg.yazi_theme}"
+          "sort_by = ${escapeString cfg.yazi_sort_by}"
           ""
           "[ascii]"
           "mode = ${escapeString cfg.ascii_art_mode}"
