@@ -162,6 +162,8 @@ session_name = "yazelix"
 #   ya pkg add XYenon/clipboard.yazi    → plugins = ["git", "clipboard"]
 #   ya pkg add yazi-rs/plugins:session  → plugins = ["git", "session"]
 #
+# Browse available plugins: https://yazi-rs.github.io/docs/resources
+#
 # To disable git integration: plugins = []
 plugins = ["git"]
 
