@@ -166,7 +166,7 @@ in {
 
     yazi_plugins = mkOption {
       type = types.listOf types.str;
-      default = [ "git" "lazygit" ];
+      default = [ "git" ];
       description = "Yazi plugins to load (core plugins auto_layout and sidebar_status are always loaded)";
     };
 

@@ -157,22 +157,21 @@ session_name = "yazelix"
 #
 # Bundled plugins (shipped with yazelix, always available):
 #   - git: Git status integration (shows file changes in listings)
-#   - lazygit: Launch lazygit from yazi with a keybinding
+#   - lazygit: Launch lazygit from yazi (invoked via 'gl' keybinding, not loaded in init.lua)
 #
 # To add external plugins:
 #   1. Install with yazi's package manager: ya pkg add owner/repo
 #   2. Add plugin name to the list below (without .yazi extension)
 #
 # Examples:
-#   ya pkg add XYenon/clipboard.yazi    → plugins = ["git", "lazygit", "clipboard"]
-#   ya pkg add yazi-rs/plugins:session  → plugins = ["git", "lazygit", "session"]
+#   ya pkg add XYenon/clipboard.yazi    → plugins = ["git", "clipboard"]
+#   ya pkg add yazi-rs/plugins:session  → plugins = ["git", "session"]
 #
 # Browse available plugins: https://yazi-rs.github.io/docs/resources
 #
-# To disable bundled plugins: plugins = []
+# To disable git integration: plugins = []
 plugins = [
   "git",
-  "lazygit",
 ]
 
 # Theme (built-in themes)
