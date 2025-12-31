@@ -61,6 +61,7 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 ## Yazi Plugins & Extensions
 - [auto-layout.yazi](https://github.com/luccahuguet/auto-layout.yazi) — A Yazi plugin that dynamically adjusts the column layout for optimal sidebar usage. Core to the Yazelix sidebar experience. This is a maintained fork of Joseph Schmitt's [original implementation](https://github.com/josephschmitt/auto-layout.yazi) (unmaintained).
 - [git.yazi](https://github.com/yazi-rs/plugins/tree/main/git.yazi) — A plugin that shows git status and changes directly in the Yazi sidebar, improving project awareness.
+- [starship.yazi](https://github.com/Rolv-Apneseth/starship.yazi) — Displays the Starship prompt in Yazi's header, showing contextual information like git branch, virtual environments, and project details.
 - [lazygit.yazi](https://github.com/Lil-Dank/lazygit.yazi) — Launch lazygit directly from Yazi with a keybinding, providing seamless git workflow integration.
 - [sidebar_status.yazi](https://github.com/sxyazi/yazi-plugins) — Enhances the Yazi sidebar with additional status information and visual cues.
 
