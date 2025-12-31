@@ -85,6 +85,12 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Configurable Yazi Theme and Sorting** – Customize your Yazi experience directly in `yazelix.toml` with `theme` and `sort_by` options, with instant reload on restart.
 - **Simplified Yazi Configuration** – Removed complex TOML merging system in favor of simple config generation. For advanced customization beyond `yazelix.toml` options, edit the source configs directly in `~/.config/yazelix/configs/yazi/yazelix_*.toml` files.
 
+## Improvements in v11.2
+
+- **lazygit.yazi Integration** – Launch lazygit directly from Yazi with the `gl` keybinding. Seamlessly jump into git workflows without leaving the file manager.
+- **Starship Prompt in Yazi Header** – The starship.yazi plugin displays contextual information (git branch, virtual environments, project details) in Yazi's header, complementing git.yazi's file-level indicators.
+- **Consistent TOML Formatting** – Added taplo configuration for multi-line array formatting with trailing commas, improving git diffs and config readability.
+
 Full version history: [Version History](./docs/history.md)
 
 ## Compatibility
