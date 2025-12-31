@@ -12,3 +12,8 @@ desc = "Focus Helix pane"
 on = [ "<A-p>" ]
 run = "shell 'nu $HOME/.config/yazelix/nushell/scripts/integrations/open_dir_in_pane.nu \"$0\"'"
 desc = "Open directory in new pane"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "l" ]
+run = "plugin lazygit"
+desc = "Open lazygit"
