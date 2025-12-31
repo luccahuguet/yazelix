@@ -29,7 +29,7 @@ def copy_config_file [source_dir: string, merged_dir: string, file_name: string,
     }
 }
 
-# Copy plugins directory
+# Copy plugins directory (preserves user-installed plugins)
 def copy_plugins_directory [source_dir: string, merged_dir: string, --quiet] {
     let source_plugins = $"($source_dir)/plugins"
     let merged_plugins = $"($merged_dir)/plugins"
@@ -38,17 +38,29 @@ def copy_plugins_directory [source_dir: string, merged_dir: string, --quiet] {
         print "   📁 Copying plugins directory..."
     }
 
-    # Remove old plugins directory if it exists
-    if ($merged_plugins | path exists) {
-        rm -rf $merged_plugins
+    # Ensure plugins directory exists
+    if not ($merged_plugins | path exists) {
+        mkdir $merged_plugins
     }
 
-    # Copy yazelix bundled plugins
+    # Copy yazelix bundled plugins (overwrites if they exist)
+    # This preserves user-installed plugins that yazelix doesn't provide
     if ($source_plugins | path exists) {
-        cp -r $source_plugins $merged_plugins
+        let bundled_plugins = (ls $source_plugins | where type == dir | get name)
+
+        for plugin_path in $bundled_plugins {
+            let plugin_name = ($plugin_path | path basename)
+            let target = $"($merged_plugins)/($plugin_name)"
+
+            # Remove existing yazelix plugin and copy fresh version
+            if ($target | path exists) {
+                rm -rf $target
+            }
+            cp -r $plugin_path $target
+        }
 
         if not $quiet {
-            print "     ✅ Yazelix plugins copied"
+            print "     ✅ Yazelix plugins copied (user plugins preserved)"
         }
     }
 }
