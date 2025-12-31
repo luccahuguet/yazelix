@@ -102,7 +102,13 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     }
     
     # Generate configuration from user config or defaults
-    let base_config = get_base_config
+    let base_config_raw = get_base_config
+
+    # Remove any existing theme line from base config (our dynamic override takes precedence)
+    let base_config = ($base_config_raw | lines | where {|line|
+        not ($line | str trim | str starts-with "theme ")
+    } | str join "\n")
+
     let merged_config = [
         "// ========================================",
         "// GENERATED ZELLIJ CONFIG (YAZELIX)",
