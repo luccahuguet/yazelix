@@ -1,73 +1,135 @@
 # Yazi Configuration
 
-Yazelix provides a two-layer Yazi configuration system that separates Yazelix defaults from your personal customizations, preventing git conflicts when updating Yazelix.
+Yazelix provides a simple, streamlined Yazi configuration system that generates configs from yazelix defaults with dynamic settings from `yazelix.toml`.
 
 ## Quick Start
 
-To customize Yazi settings, copy the template directory once:
+Edit `yazelix.toml` to customize Yazi:
 
+```toml
+[yazi]
+plugins = ["git"]           # Plugins to load
+theme = "dracula"           # Color theme
+sort_by = "modified"        # Sort files by modification time
+```
+
+Restart yazelix and your changes take effect!
+
+## Configuration
+
+All yazi settings are in `yazelix.toml`:
+
+### Plugins
+
+```toml
+[yazi]
+# Core plugins (auto_layout, sidebar_status) are always loaded
+# Add additional plugins here
+plugins = ["git"]
+```
+
+**Bundled plugins:**
+- `git` - Git status integration (shows file changes)
+
+**Adding external plugins:**
 ```bash
-cp -r configs/yazi/user configs/yazi/personal
+# 1. Install the plugin
+ya pkg add XYenon/clipboard.yazi
+
+# 2. Add to yazelix.toml
+[yazi]
+plugins = ["git", "clipboard"]
 ```
 
-Then edit files in `configs/yazi/personal/` to customize your Yazi experience. Yazelix will automatically merge your settings with the defaults.
+### Theme
 
-## Configuration Layers
-
-1. **Yazelix defaults** (`yazelix_*.toml`) - Sensible defaults, git tracked
-2. **Your customizations** (`personal/*.toml`) - Your settings override defaults, git ignored
-
-## Files Structure
-
-```
-configs/yazi/
-├── user/           # Templates with documentation (git tracked)
-├── personal/       # Your customizations (git ignored)
-├── yazelix_*.toml  # Yazelix defaults (git tracked)
-└── plugins/        # Yazelix plugin defaults
+```toml
+[yazi]
+theme = "dracula"
 ```
 
-## Configuration Options
+For available themes, see: https://yazi-rs.github.io/docs/flavors/overview
 
-For comprehensive configuration options, see: https://yazi-rs.github.io/docs/configuration/yazi
+### Sorting
 
-## Features
+```toml
+[yazi]
+sort_by = "alphabetical"
+```
 
-- **Dynamic merging**: Your settings intelligently override Yazelix defaults
-- **No git conflicts**: Personal configs are git ignored  
-- **Smart caching**: Configs regenerate only when files change
-- **TOML validation**: Proper section merging prevents duplicate keys
-- **Plugin support**: Personal plugins override Yazelix plugins
-
-## Current Defaults
-
-- Layout ratio: `[1, 4, 3]` optimized for sidebar mode (20% terminal width)
-- Git integration: Shows git status in file listings
-- Editor integration: Opens files with configured editor in Zellij
-- Custom status bar: Enhanced readability (courtesy of Yazi's creator!)
+**Sort options:**
+- `alphabetical` - A-Z sorting
+- `natural` - Natural number ordering (file1, file2, file10)
+- `modified` - Most recently modified first
+- `created` - Most recently created first
+- `size` - Largest files first
 
 ## How It Works
 
-When Yazelix starts, it automatically:
+When yazelix starts:
 
-1. Checks if your personal configs have changed
-2. Merges Yazelix defaults with your personal settings
-3. Generates clean, validated TOML files
-4. Sets environment variables to use the merged configs
-5. Caches the result until files change again
+1. Reads settings from `yazelix.toml`
+2. Generates `yazi.toml` with your theme and sort_by settings
+3. Generates `init.lua` with your plugin list
+4. Copies bundled configs (keymap, theme)
+5. Copies bundled plugins to plugins directory
 
-This system ensures your customizations persist across Yazelix updates without conflicts.
+**No merging. No personal folders. Simple generation.**
+
+## Default Features
+
+- **Layout ratio**: `[1, 4, 3]` optimized for sidebar mode
+- **Git integration**: Shows git status in listings (via git plugin)
+- **Editor integration**: Opens files with yazelix's configured editor
+- **Auto layout**: Adjusts pane layout based on terminal width
+- **Custom status bar**: Enhanced readability for sidebar mode
+
+## Advanced Customization
+
+For deeper customization beyond `yazelix.toml` options:
+
+**Edit yazelix source configs:**
+```bash
+# These are regenerated on every start
+~/.config/yazelix/configs/yazi/yazelix_yazi.toml    # Main config
+~/.config/yazelix/configs/yazi/yazelix_keymap.toml  # Keybindings
+~/.config/yazelix/configs/yazi/yazelix_theme.toml   # Theme details
+```
+
+## Plugin Management
+
+For plugin management commands, see: https://yazi-rs.github.io/docs/cli
+
+After installing plugins via `ya pkg`, add them to `yazelix.toml`:
+
+```toml
+[yazi]
+plugins = ["git", "your-new-plugin"]
+```
 
 ## Troubleshooting
 
-**Config not updating?** 
-- Check file permissions in `~/.local/share/yazelix/configs/yazi/`
-- Manually regenerate: `nu nushell/scripts/setup/yazi_config_merger.nu .`
+**Config not updating?**
+```bash
+# Manually regenerate configs
+cd ~/.config/yazelix
+nu nushell/scripts/setup/yazi_config_merger.nu .
+```
 
-**TOML parsing errors?**
-- Validate your personal TOML files: `nu -c "open configs/yazi/personal/yazi.toml | from toml"`
-- Check for syntax errors in your customizations
+**Plugin not loading?**
+- Check plugin name in `yazelix.toml` matches installed plugin (without `.yazi` extension)
+- Verify plugin exists: `ls ~/.local/share/yazelix/configs/yazi/plugins/`
+- Check for warnings during yazelix startup
 
-**Want to reset?**
-- Delete your `configs/yazi/personal/` directory
-- Copy fresh templates: `cp -r configs/yazi/user configs/yazi/personal`
+**Want default settings?**
+```bash
+# Reset yazelix.toml to defaults
+cd ~/.config/yazelix
+cp yazelix_default.toml yazelix.toml
+```
+
+## Configuration Reference
+
+Full yazi configuration docs: https://yazi-rs.github.io/docs/configuration/yazi
+
+Yazelix exposes the most commonly changed settings via `yazelix.toml`. For advanced configuration, edit the source configs in `~/.config/yazelix/configs/yazi/`.

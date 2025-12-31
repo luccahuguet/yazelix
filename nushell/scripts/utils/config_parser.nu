@@ -43,6 +43,9 @@ export def parse_yazelix_config [] {
         helix_mode: ($raw_config.helix?.mode? | default "release"),
         disable_zellij_tips: ($raw_config.zellij?.disable_tips? | default true | into string),
         zellij_rounded_corners: ($raw_config.zellij?.rounded_corners? | default true | into string),
+        yazi_plugins: ($raw_config.yazi?.plugins? | default ["git"]),
+        yazi_theme: ($raw_config.yazi?.theme? | default "default"),
+        yazi_sort_by: ($raw_config.yazi?.sort_by? | default "alphabetical"),
         config_file: $config_to_read
     }
 }

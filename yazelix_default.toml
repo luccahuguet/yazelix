@@ -148,6 +148,32 @@ persistent_sessions = false
 # This name will be used when creating or attaching to persistent sessions
 session_name = "yazelix"
 
+[yazi]
+# Plugins to load (core plugins auto_layout and sidebar_status are always loaded)
+#
+# Bundled plugins (shipped with yazelix, always available):
+#   - git: Git status integration (enabled by default)
+#
+# To add external plugins:
+#   1. Install with yazi's package manager: ya pkg add owner/repo
+#   2. Add plugin name to the list below (without .yazi extension)
+#
+# Examples:
+#   ya pkg add XYenon/clipboard.yazi    → plugins = ["git", "clipboard"]
+#   ya pkg add yazi-rs/plugins:session  → plugins = ["git", "session"]
+#
+# To disable git integration: plugins = []
+plugins = ["git"]
+
+# Theme (built-in themes)
+# Options: "default", "dracula", "nord", "catppuccin-mocha", "catppuccin-macchiato",
+#          "catppuccin-frappe", "gruvbox-dark", "gruvbox-light", "tokyo-night"
+theme = "default"
+
+# Sort files by
+# Options: "alphabetical", "natural", "modified", "created", "size"
+sort_by = "alphabetical"
+
 [ascii]
 # Options:
 # - "static":   Show static ASCII art
