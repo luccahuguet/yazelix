@@ -54,7 +54,7 @@ def copy_plugins_directory [source_dir: string, merged_dir: string, --quiet] {
 }
 
 # Generate yazi.toml with dynamic settings from yazelix.toml
-def generate_yazi_toml [source_dir: string, merged_dir: string, theme: string, sort_by: string, --quiet] {
+def generate_yazi_toml [source_dir: string, merged_dir: string, theme: string, sort_by: string, user_plugins: list, --quiet] {
     let source_path = $"($source_dir)/yazelix_yazi.toml"
     let merged_path = $"($merged_dir)/yazi.toml"
 
@@ -65,8 +65,15 @@ def generate_yazi_toml [source_dir: string, merged_dir: string, theme: string, s
     # Read and parse base config
     let base_config = open $source_path
 
+    # Remove git fetchers if git plugin is not in the list
+    let config_without_git_fetchers = if ("git" not-in $user_plugins) {
+        $base_config | reject plugin?
+    } else {
+        $base_config
+    }
+
     # Add dynamic settings from yazelix.toml
-    let config_with_settings = ($base_config | upsert manager {
+    let config_with_settings = ($config_without_git_fetchers | upsert manager {
         sort_by: $sort_by
     })
 
@@ -186,7 +193,7 @@ export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
     ensure_dir $"($merged_config_dir)/yazi.toml"
 
     # Generate yazi.toml with dynamic settings from yazelix.toml
-    generate_yazi_toml $source_config_dir $merged_config_dir $theme $sort_by --quiet=$quiet
+    generate_yazi_toml $source_config_dir $merged_config_dir $theme $sort_by $user_plugins --quiet=$quiet
 
     # Copy other config files (simple copy, no merging)
     let config_files = ["keymap.toml", "theme.toml"]
