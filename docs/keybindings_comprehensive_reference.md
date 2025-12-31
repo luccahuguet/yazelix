@@ -159,7 +159,7 @@ When configuring Zellij keybindings for Yazelix:
 
 **Final Keybinding Scheme:**
 ```
-Ctrl+G = Locked Mode     ✅ No conflict (original Zellij)
+Ctrl+Alt+G = Locked Mode   ⚠️  Remapped (CLI conflict: Claude Code, gh use Ctrl+g for editor)
 Ctrl+P = Pane Mode       ✅ No conflict (original Zellij)  
 Ctrl+N = Resize Mode     ✅ No conflict (original Zellij)
 Ctrl+Alt+S = Scroll Mode ⚠️  Remapped (Helix conflict: save_selection)

@@ -17,7 +17,7 @@ Yazelix uses **selective remapping** - only conflicting Zellij keybindings are c
 ### Zellij Modes (Helix-Compatible)
 | Keybinding                | Action                        | Notes |
 |--------------------------|-------------------------------|-------|
-| Ctrl+g                   | Locked mode                   | ✅ Original (no conflict) |
+| **Ctrl+Alt+g**           | **Locked mode**               | ⚠️ Remapped (was Ctrl+g) |
 | Ctrl+p                   | Pane mode                     | ✅ Original (no conflict) |
 | Ctrl+n                   | Resize mode                   | ✅ Original (no conflict) |
 | Ctrl+t                   | Tab mode                      | ✅ Original (no conflict) |
@@ -49,7 +49,7 @@ If you find a conflict, please open an issue
   - `Alt+Shift+H` moves the current tab left
   - `Alt+Shift+L` moves the current tab right
   - `Alt+w/q` walks left/right (focus tabs)
-  - `Ctrl+Alt+s` scroll mode, `Ctrl+Alt+o` session mode
+  - `Ctrl+Alt+g` locked mode, `Ctrl+Alt+s` scroll mode, `Ctrl+Alt+o` session mode
 - **Helix**: See [Helix Custom Keybindings](#helix-custom-keybindings) section below
 
 ## Keybinding Tips

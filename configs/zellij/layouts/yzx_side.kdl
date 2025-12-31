@@ -191,11 +191,13 @@ keybinds {
         bind "Ctrl Alt Shift p" { ToggleGroupMarking; }
     }
 
-    // Remap all Zellij default Ctrl keybindings to Ctrl+Alt to avoid conflicts
     shared_except "locked" {
-        bind "Ctrl g" { SwitchToMode "Locked"; }
+        // Remap Ctrl+G from Locked mode to Ctrl+Alt+G to avoid conflict with Claude Code
+        // (Ctrl+G is used by many CLIs for editing the prompt with $EDITOR)
+        unbind "Ctrl g"
+        bind "Ctrl Alt g" { SwitchToMode "Locked"; }
     }
-    
+
     shared_except "pane" "locked" {
         bind "Ctrl p" { SwitchToMode "Pane"; }
     }
@@ -231,7 +233,7 @@ keybinds {
     }
 
     locked {
-        bind "Ctrl g" { SwitchToMode "Normal"; }
+        bind "Ctrl Alt g" { SwitchToMode "Normal"; }
     }
 
     pane {
