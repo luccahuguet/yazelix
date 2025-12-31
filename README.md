@@ -62,7 +62,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 ## Improvements of v11 over v10
 
-- **Devenv-Based Launch Workflow** – Yazelix now runs through `devenv shell --impure`; devenv’s SQLite cache automatically detects config changes so cold launches from a desktop entry or `yzx launch` drop from ~4s to ~0.5s, and you only pay a longer rebuild when you actually edit `yazelix.toml`. Yazelix is now Blazingly fast! 
+- **Devenv-Based Launch Workflow** – Yazelix now runs through `devenv shell --impure`; devenv's SQLite cache automatically detects config changes so cold launches from a desktop entry or `yzx launch` drop from ~4s to ~0.5s, and you only pay a longer rebuild when you actually edit `yazelix.toml`. Yazelix is now Blazingly fast!
 - **TOML Configuration Format** – `yazelix.toml` is the single source of truth (auto-created on first launch) with clear legacy warnings when an old `yazelix.nix` is detected.
 - **First-Class Neovim Support** – Neovim retains feature parity with Helix (reveal in sidebar, same-instance opening, pane detection).
 - **Performance Benchmarking** – `yzx bench` measures terminal launch performance with statistical analysis.
@@ -72,12 +72,18 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Sweep Testing Framework** – Matrix testing for all shell/terminal/feature combinations (`yzx sweep shells|terminals|all`).
 - **Terminal Detection** – Proper terminal identification via `YAZELIX_TERMINAL` environment variable.
 - **Conditional Shell Hooks** – Shell hooks load Yazelix tooling only inside managed shells, preventing surprises in regular terminals.
-- **Yazi Directory Sync** – Opening files from Yazi moves the sidebar to the file’s parent directory so the view stays in sync with editor context.
-- **Simplified Clipboard** – Replaced the custom clipboard module with Nushell’s standard library implementation and added the `clp` helper command. `clp` just calls `clip copy`
+- **Yazi Directory Sync** – Opening files from Yazi moves the sidebar to the file's parent directory so the view stays in sync with editor context.
+- **Simplified Clipboard** – Replaced the custom clipboard module with Nushell's standard library implementation and added the `clp` helper command. `clp` just calls `clip copy`
 - **Comprehensive Pack System** – 10 curated technology packs organized into language_packs and tool_packs:
   - **Language Packs (7)**: Python, TypeScript, Rust, Go, Kotlin, Gleam, Nix – complete toolchains with LSP, formatters, linters, and dev tools.
   - **Tool Packs (3)**: Git (onefetch, gh, delta, gitleaks, jj, prek), Config (taplo, mpls), File Management (ouch, erdtree, serpl).
   - **Enhanced Packs**: Expanded Rust pack (6 tools), improved TypeScript pack with oxlint and typescript-language-server, Python pack with ipython.
+
+## Improvements in v11.1
+
+- **Dynamic Yazi Plugin System** – Yazi plugins are now configured in `yazelix.toml` under the `[yazi]` section. Core plugins (auto_layout, sidebar_status) are always loaded, and user plugins can be added to the `plugins` list. External plugins installed via `ya pkg add` are preserved across config regenerations.
+- **Configurable Yazi Theme and Sorting** – Customize your Yazi experience directly in `yazelix.toml` with `theme` and `sort_by` options, with instant reload on restart.
+- **Simplified Yazi Configuration** – Removed complex TOML merging system in favor of simple config generation. For advanced customization beyond `yazelix.toml` options, edit the source configs directly in `~/.config/yazelix/configs/yazi/yazelix_*.toml` files.
 
 Full version history: [Version History](./docs/history.md)
 
@@ -189,7 +195,8 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
 - **Core settings**: Edit `~/.config/yazelix/yazelix.toml` for shell, editor, terminal, and package preferences
-- **Tool customization**: Add personal overrides in `configs/yazi/personal/` or `configs/zellij/personal/` directories 
+- **Yazi customization**: Configure plugins, theme, and sorting in `yazelix.toml` under the `[yazi]` section (see [Yazi Configuration](./docs/yazi-configuration.md))
+- **Zellij customization**: Add personal overrides in `configs/zellij/personal/` directory
 - **Your configs persist** across Yazelix updates without git conflicts
 - **Intelligent merging**: TOML sections merge properly, avoiding duplicate keys and conflicts
 
