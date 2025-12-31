@@ -49,7 +49,7 @@ def get_dynamic_overrides [] {
     let config = (try {
         parse_yazelix_config
     } catch {
-        {zellij_rounded_corners: "true"}
+        {zellij_rounded_corners: "true", zellij_theme: "default"}
     })
 
     let rounded = ($config | get -o zellij_rounded_corners | default "true")
@@ -59,8 +59,11 @@ def get_dynamic_overrides [] {
         "true"
     }
 
+    let theme = ($config | get -o zellij_theme | default "default")
+
     [
         "// === YAZELIX DYNAMIC SETTINGS (from yazelix.toml) ===",
+        $"theme \"($theme)\"",
         "ui {",
         "    pane_frames {",
         $"        rounded_corners ($rounded_value)",

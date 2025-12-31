@@ -33,6 +33,7 @@ export def parse_yazelix_config [] {
     {
         persistent_sessions: ($raw_config.zellij?.persistent_sessions? | default false | into string),
         session_name: ($raw_config.zellij?.session_name? | default "yazelix"),
+        zellij_theme: ($raw_config.zellij?.theme? | default "default"),
         preferred_terminal: ($raw_config.terminal?.preferred_terminal? | default "ghostty"),
         extra_terminals: ($raw_config.terminal?.extra_terminals? | default [] | into string),
         enable_atuin: ($raw_config.shell?.enable_atuin? | default false | into string),

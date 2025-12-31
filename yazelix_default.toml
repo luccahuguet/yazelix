@@ -143,6 +143,17 @@ disable_tips = true
 # Enable rounded corners for Zellij pane frames (default: true)
 rounded_corners = true
 
+# Zellij theme (default: "default")
+# Dark themes (28): ansi, ao, atelier-sulphurpool, ayu_mirage, ayu_dark, catppuccin-frappe,
+#   catppuccin-macchiato, cyber-noir, blade-runner, retro-wave, dracula, everforest-dark,
+#   gruvbox-dark, iceberg-dark, kanagawa, lucario, menace, molokai-dark, night-owl, nightfox,
+#   nord, one-half-dark, onedark, solarized-dark, tokyo-night-dark, tokyo-night-storm,
+#   tokyo-night, vesper
+# Light themes (9): ayu_light, catppuccin-latte, everforest-light, gruvbox-light,
+#   iceberg-light, dayfox, pencil-light, solarized-light, tokyo-night-light
+# See: https://zellij.dev/documentation/theme-list.html
+theme = "default"
+
 # Zellij persistent session configuration
 # When true, Yazelix will use zellij attach with the specified session name
 # When false, Yazelix will create a new session each time

@@ -164,6 +164,23 @@ in {
       description = "Enable rounded corners for Zellij pane frames";
     };
 
+    zellij_theme = mkOption {
+      type = types.str;
+      default = "default";
+      description = ''
+        Zellij color theme (37 built-in themes available).
+
+        Dark themes: ansi, ao, atelier-sulphurpool, ayu_mirage, ayu_dark, catppuccin-frappe,
+        catppuccin-macchiato, cyber-noir, blade-runner, retro-wave, dracula, everforest-dark,
+        gruvbox-dark, iceberg-dark, kanagawa, lucario, menace, molokai-dark, night-owl, nightfox,
+        nord, one-half-dark, onedark, solarized-dark, tokyo-night-dark, tokyo-night-storm,
+        tokyo-night, vesper
+
+        Light themes: ayu_light, catppuccin-latte, everforest-light, gruvbox-light,
+        iceberg-light, dayfox, pencil-light, solarized-light, tokyo-night-light
+      '';
+    };
+
     yazi_plugins = mkOption {
       type = types.listOf types.str;
       default = [ "git" "starship" ];
@@ -309,6 +326,7 @@ in {
           "[zellij]"
           "disable_tips = ${boolToToml cfg.disable_zellij_tips}"
           "rounded_corners = ${boolToToml cfg.zellij_rounded_corners}"
+          "theme = ${escapeString cfg.zellij_theme}"
           "persistent_sessions = ${boolToToml cfg.persistent_sessions}"
           "session_name = ${escapeString cfg.session_name}"
           ""
