@@ -49,7 +49,7 @@ def get_dynamic_overrides [] {
     let config = (try {
         parse_yazelix_config
     } catch {
-        {zellij_rounded_corners: "true", zellij_theme: "default"}
+        {zellij_rounded_corners: "true", zellij_theme: "default", disable_zellij_tips: "true"}
     })
 
     let rounded = ($config | get -o zellij_rounded_corners | default "true")
@@ -61,9 +61,18 @@ def get_dynamic_overrides [] {
 
     let theme = ($config | get -o zellij_theme | default "default")
 
+    # disable_tips in yazelix.toml → show_startup_tips in Zellij config (inverted logic)
+    let disable_tips = ($config | get -o disable_zellij_tips | default "true")
+    let show_tips_value = if ($disable_tips | str starts-with "false") {
+        "true"
+    } else {
+        "false"
+    }
+
     [
         "// === YAZELIX DYNAMIC SETTINGS (from yazelix.toml) ===",
         $"theme \"($theme)\"",
+        $"show_startup_tips ($show_tips_value)",
         "ui {",
         "    pane_frames {",
         $"        rounded_corners ($rounded_value)",
@@ -104,9 +113,18 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     # Generate configuration from user config or defaults
     let base_config_raw = get_base_config
 
-    # Remove any existing theme line from base config (our dynamic override takes precedence)
+    # Remove any settings we control from base config (yazelix.toml takes precedence)
+    # This prevents conflicts when multiple declarations of the same setting exist
     let base_config = ($base_config_raw | lines | where {|line|
-        not ($line | str trim | str starts-with "theme ")
+        let trimmed = ($line | str trim)
+        not (
+            ($trimmed | str starts-with "theme ") or
+            ($trimmed | str starts-with "pane_frames ") or
+            ($trimmed | str starts-with "default_layout ") or
+            ($trimmed | str starts-with "layout_dir ") or
+            ($trimmed | str starts-with "on_force_close ") or
+            ($trimmed | str starts-with "show_startup_tips ")
+        )
     } | str join "\n")
 
     let merged_config = [
