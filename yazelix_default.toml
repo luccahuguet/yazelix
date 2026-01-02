@@ -188,10 +188,19 @@ plugins = [
   "starship",
 ]
 
-# Theme (built-in themes)
+# Yazi theme (flavor) configuration
 # Special: "random" - picks a different random theme on every yazelix restart
-# Options: "default", "dracula", "nord", "catppuccin-mocha", "catppuccin-macchiato",
-#          "catppuccin-frappe", "gruvbox-dark", "gruvbox-light", "tokyo-night"
+# Available flavors (25 total):
+#   Core: "default"
+#   Catppuccin: "catppuccin-mocha", "catppuccin-latte", "catppuccin-frappe", "catppuccin-macchiato"
+#   Gruvbox: "gruvbox-dark"
+#   Tokyo Night: "tokyo-night"
+#   Kanagawa: "kanagawa", "kanagawa-dragon", "kanagawa-lotus"
+#   Rose Pine: "rose-pine", "rose-pine-moon", "rose-pine-dawn"
+#   Flexoki: "flexoki-dark", "flexoki-light"
+#   Bluloco: "bluloco-dark", "bluloco-light"
+#   Other: "dracula", "nord", "ayu-dark", "everforest-medium", "ashen", "neon", "synthwave84", "monokai"
+# Browse flavors: https://github.com/yazi-rs/flavors
 theme = "default"
 
 # Sort files by

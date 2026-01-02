@@ -190,7 +190,11 @@ in {
     yazi_theme = mkOption {
       type = types.str;
       default = "default";
-      description = "Yazi color theme";
+      description = ''
+        Yazi color theme (flavor). 25 built-in flavors available.
+        Use "random" to pick a different theme on each yazelix restart.
+        Browse flavors: https://github.com/yazi-rs/flavors
+      '';
     };
 
     yazi_sort_by = mkOption {

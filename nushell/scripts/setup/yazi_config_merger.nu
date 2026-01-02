@@ -250,10 +250,18 @@ export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
     let config = parse_yazelix_config
     let user_plugins = $config.yazi_plugins
 
-    # Yazi built-in themes (9 total)
+    # Yazi flavor themes (25 total)
+    # See: https://github.com/yazi-rs/flavors
     let yazi_themes = [
-        "default", "dracula", "nord", "catppuccin-mocha", "catppuccin-macchiato",
-        "catppuccin-frappe", "gruvbox-dark", "gruvbox-light", "tokyo-night"
+        "default",
+        "catppuccin-mocha", "catppuccin-latte", "catppuccin-frappe", "catppuccin-macchiato",
+        "gruvbox-dark",
+        "tokyo-night",
+        "kanagawa", "kanagawa-dragon", "kanagawa-lotus",
+        "rose-pine", "rose-pine-moon", "rose-pine-dawn",
+        "flexoki-dark", "flexoki-light",
+        "bluloco-dark", "bluloco-light",
+        "dracula", "nord", "ayu-dark", "everforest-medium", "ashen", "neon", "synthwave84", "monokai"
     ]
 
     let theme_config = $config.yazi_theme
