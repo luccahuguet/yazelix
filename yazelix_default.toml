@@ -143,6 +143,22 @@ disable_tips = true
 # Enable rounded corners for Zellij pane frames (default: true)
 rounded_corners = true
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CROSS-COMPATIBLE THEMES (Zellij + Yazi + Helix)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# These 9 themes work across all three programs (accounting for name variations):
+#
+#   catppuccin-frappe, catppuccin-latte, catppuccin-macchiato,
+#   dracula, gruvbox-dark, kanagawa, nord, ayu-dark, tokyo-night
+#
+# For consistent theming, set the same theme in:
+#   - [zellij] theme (below)
+#   - [yazi] theme (further down)
+#   - Helix: Add to ~/.config/helix/config.toml → theme = "dracula"
+#
+# Note: Helix uses underscores in theme names (e.g., catppuccin_frappe)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # Zellij theme (default: "default")
 # Special: "random" - picks a different random theme on every yazelix restart
 # Dark themes (28): ansi, ao, atelier-sulphurpool, ayu_mirage, ayu_dark, catppuccin-frappe,
