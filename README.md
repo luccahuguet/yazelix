@@ -91,6 +91,11 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Starship Prompt in Yazi Header** – The starship.yazi plugin displays contextual information (git branch, virtual environments, project details) in Yazi's header, complementing git.yazi's file-level indicators.
 - **Consistent TOML Formatting** – Added taplo configuration for multi-line array formatting with trailing commas, improving git diffs and config readability.
 
+## Improvements in v11.3
+
+- **Configurable Themes** – Choose from 37 Zellij themes and 9 Yazi themes, or use `theme = "random"` for variety on every restart.
+- **Bug Fixes** – Fixed `disable_tips` setting (was parsed but never applied since v11), improved config robustness by stripping all yazelix-controlled settings from base config.
+
 Full version history: [Version History](./docs/history.md)
 
 ## Compatibility
