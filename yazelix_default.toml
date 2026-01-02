@@ -144,6 +144,7 @@ disable_tips = true
 rounded_corners = true
 
 # Zellij theme (default: "default")
+# Special: "random" - picks a different random theme on every yazelix restart
 # Dark themes (28): ansi, ao, atelier-sulphurpool, ayu_mirage, ayu_dark, catppuccin-frappe,
 #   catppuccin-macchiato, cyber-noir, blade-runner, retro-wave, dracula, everforest-dark,
 #   gruvbox-dark, iceberg-dark, kanagawa, lucario, menace, molokai-dark, night-owl, nightfox,
@@ -188,6 +189,7 @@ plugins = [
 ]
 
 # Theme (built-in themes)
+# Special: "random" - picks a different random theme on every yazelix restart
 # Options: "default", "dracula", "nord", "catppuccin-mocha", "catppuccin-macchiato",
 #          "catppuccin-frappe", "gruvbox-dark", "gruvbox-light", "tokyo-night"
 theme = "default"

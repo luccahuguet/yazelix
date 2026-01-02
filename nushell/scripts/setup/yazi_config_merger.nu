@@ -189,7 +189,20 @@ export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
     # Parse yazelix config to get settings
     let config = parse_yazelix_config
     let user_plugins = $config.yazi_plugins
-    let theme = $config.yazi_theme
+
+    # Yazi built-in themes (9 total)
+    let yazi_themes = [
+        "default", "dracula", "nord", "catppuccin-mocha", "catppuccin-macchiato",
+        "catppuccin-frappe", "gruvbox-dark", "gruvbox-light", "tokyo-night"
+    ]
+
+    let theme_config = $config.yazi_theme
+    let theme = if $theme_config == "random" {
+        $yazi_themes | shuffle | first
+    } else {
+        $theme_config
+    }
+
     let sort_by = $config.yazi_sort_by
 
     # Define paths

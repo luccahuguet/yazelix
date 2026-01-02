@@ -59,7 +59,24 @@ def get_dynamic_overrides [] {
         "true"
     }
 
-    let theme = ($config | get -o zellij_theme | default "default")
+    # Zellij built-in themes (37 total: 28 dark + 9 light)
+    let zellij_themes = [
+        "ansi", "ao", "atelier-sulphurpool", "ayu_mirage", "ayu_dark",
+        "catppuccin-frappe", "catppuccin-macchiato", "cyber-noir", "blade-runner",
+        "retro-wave", "dracula", "everforest-dark", "gruvbox-dark", "iceberg-dark",
+        "kanagawa", "lucario", "menace", "molokai-dark", "night-owl", "nightfox",
+        "nord", "one-half-dark", "onedark", "solarized-dark", "tokyo-night-dark",
+        "tokyo-night-storm", "tokyo-night", "vesper",
+        "ayu_light", "catppuccin-latte", "everforest-light", "gruvbox-light",
+        "iceberg-light", "dayfox", "pencil-light", "solarized-light", "tokyo-night-light"
+    ]
+
+    let theme_config = ($config | get -o zellij_theme | default "default")
+    let theme = if $theme_config == "random" {
+        $zellij_themes | shuffle | first
+    } else {
+        $theme_config
+    }
 
     # disable_tips in yazelix.toml → show_startup_tips in Zellij config (inverted logic)
     let disable_tips = ($config | get -o disable_zellij_tips | default "true")
