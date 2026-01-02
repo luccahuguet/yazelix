@@ -1,0 +1,366 @@
+# Neon - A vibrant Yazi flavor inspired by Tokyo's neon-lit nights
+# Comprehensive file type support with stunning color palette
+
+[mgr]
+cwd = { fg = "#7aa2f7", bold = true }
+
+# Hovered items - high contrast for visibility
+hovered         = { fg = "#1a1b26", bg = "#7aa2f7" }
+preview_hovered = { underline = true }
+
+# Find highlighting
+find_keyword  = { fg = "#e0af68", bg = "#2d3f76", bold = true }
+find_position = { fg = "#bb9af7", italic = true }
+
+# Selection markers
+marker_selected = { fg = "#1a1b26", bg = "#9ece6a" }
+marker_copied   = { fg = "#1a1b26", bg = "#e0af68" }
+marker_cut      = { fg = "#1a1b26", bg = "#f7768e" }
+
+# Border
+border_symbol = "│"
+border_style  = { fg = "#3d59a1" }
+
+syntect_theme = ""
+
+[tabs]
+active    = { fg = "#1a1b26", bg = "#7aa2f7", bold = true }
+inactive  = { fg = "#787c99", bg = "#16161e" }
+
+[status]
+progress_label  = { fg = "#c0caf5", bold = true }
+progress_normal = { fg = "#7aa2f7", bg = "#16161e" }
+progress_error  = { fg = "#f7768e", bg = "#16161e" }
+perm_sep        = { fg = "#787c99" }
+perm_type       = { fg = "#9ece6a" }
+perm_read       = { fg = "#e0af68" }
+perm_write      = { fg = "#f7768e" }
+perm_exec       = { fg = "#7aa2f7" }
+
+[mode]
+normal_main = { fg = "#1a1b26", bg = "#7aa2f7", bold = true }
+select_main = { fg = "#1a1b26", bg = "#9ece6a", bold = true }
+unset_main  = { fg = "#1a1b26", bg = "#bb9af7", bold = true }
+
+[input]
+border   = { fg = "#7aa2f7" }
+title    = { fg = "#c0caf5" }
+value    = { fg = "#a9b1d6" }
+selected = { reversed = true }
+
+[pick]
+border   = { fg = "#7aa2f7" }
+active   = { fg = "#bb9af7", bold = true }
+inactive = { fg = "#787c99" }
+
+[tasks]
+border  = { fg = "#7aa2f7" }
+title   = { fg = "#c0caf5" }
+hovered = { bg = "#2d3f76", bold = true }
+
+[which]
+mask            = { bg = "#16161e" }
+cand            = { fg = "#7aa2f7" }
+rest            = { fg = "#787c99" }
+desc            = { fg = "#9d7cd8" }
+separator       = "  "
+separator_style = { fg = "#3d59a1" }
+
+[help]
+on      = { fg = "#bb9af7" }
+run     = { fg = "#7aa2f7" }
+desc    = { fg = "#787c99" }
+hovered = { bg = "#2d3f76", bold = true }
+footer  = { fg = "#1a1b26", bg = "#a9b1d6" }
+
+[filetype]
+rules = [
+	# ===== HIDDEN FILES (dotfiles) =====
+	{ name = ".*", fg = "#787c99", italic = true },
+
+	# ===== SYSTEM/SPECIAL DIRECTORIES =====
+	{ name = ".git/", fg = "#f7768e", bold = true },
+	{ name = ".github/", fg = "#787c99" },
+	{ name = ".vscode/", fg = "#7aa2f7" },
+	{ name = ".idea/", fg = "#bb9af7" },
+	{ name = "node_modules/", fg = "#9ece6a", dim = true },
+	{ name = ".cache/", fg = "#787c99", dim = true },
+	{ name = ".npm/", fg = "#f7768e", dim = true },
+	{ name = ".cargo/", fg = "#ff9e64", dim = true },
+	{ name = "dist/", fg = "#e0af68" },
+	{ name = "build/", fg = "#e0af68" },
+	{ name = "target/", fg = "#e0af68" },
+	{ name = "__pycache__/", fg = "#787c99", dim = true },
+	{ name = ".pytest_cache/", fg = "#787c99", dim = true },
+	{ name = "vendor/", fg = "#bb9af7", dim = true },
+
+	# ===== COMMON DIRECTORIES =====
+	{ name = "Downloads/", fg = "#7aa2f7", bold = true },
+	{ name = "Documents/", fg = "#7dcfff", bold = true },
+	{ name = "Desktop/", fg = "#bb9af7", bold = true },
+	{ name = "Pictures/", fg = "#2ac3de", bold = true },
+	{ name = "Music/", fg = "#ff9e64", bold = true },
+	{ name = "Videos/", fg = "#f7768e", bold = true },
+	{ name = "src/", fg = "#7aa2f7", bold = true },
+	{ name = "test/", fg = "#9ece6a" },
+	{ name = "tests/", fg = "#9ece6a" },
+	{ name = "docs/", fg = "#7dcfff" },
+
+	# ===== PROGRAMMING LANGUAGES =====
+	# Rust
+	{ name = "*.rs", fg = "#ff9e64" },
+	{ name = "Cargo.toml", fg = "#ff9e64", bold = true },
+	{ name = "Cargo.lock", fg = "#787c99" },
+
+	# JavaScript/TypeScript
+	{ name = "*.js", fg = "#e0af68" },
+	{ name = "*.jsx", fg = "#e0af68" },
+	{ name = "*.ts", fg = "#7aa2f7" },
+	{ name = "*.tsx", fg = "#7aa2f7" },
+	{ name = "*.mjs", fg = "#e0af68" },
+	{ name = "*.cjs", fg = "#e0af68" },
+	{ name = "package.json", fg = "#9ece6a", bold = true },
+	{ name = "package-lock.json", fg = "#787c99" },
+	{ name = "tsconfig.json", fg = "#7aa2f7" },
+
+	# Python
+	{ name = "*.py", fg = "#7aa2f7" },
+	{ name = "*.pyx", fg = "#7aa2f7" },
+	{ name = "*.pyd", fg = "#7aa2f7" },
+	{ name = "requirements.txt", fg = "#7aa2f7", bold = true },
+	{ name = "setup.py", fg = "#7aa2f7", bold = true },
+	{ name = "pyproject.toml", fg = "#7aa2f7", bold = true },
+
+	# Go
+	{ name = "*.go", fg = "#7dcfff" },
+	{ name = "go.mod", fg = "#7dcfff", bold = true },
+	{ name = "go.sum", fg = "#787c99" },
+
+	# Java/Kotlin
+	{ name = "*.java", fg = "#f7768e" },
+	{ name = "*.kt", fg = "#bb9af7" },
+	{ name = "*.gradle", fg = "#9ece6a" },
+	{ name = "pom.xml", fg = "#f7768e", bold = true },
+
+	# C/C++
+	{ name = "*.c", fg = "#7aa2f7" },
+	{ name = "*.h", fg = "#7dcfff" },
+	{ name = "*.cpp", fg = "#f7768e" },
+	{ name = "*.hpp", fg = "#ff9e64" },
+	{ name = "*.cc", fg = "#f7768e" },
+	{ name = "CMakeLists.txt", fg = "#9ece6a", bold = true },
+	{ name = "Makefile", fg = "#9ece6a", bold = true },
+
+	# Swift
+	{ name = "*.swift", fg = "#ff9e64" },
+
+	# Ruby
+	{ name = "*.rb", fg = "#f7768e" },
+	{ name = "Gemfile", fg = "#f7768e", bold = true },
+
+	# Shell scripts
+	{ name = "*.sh", fg = "#9ece6a" },
+	{ name = "*.bash", fg = "#9ece6a" },
+	{ name = "*.zsh", fg = "#9ece6a" },
+	{ name = "*.fish", fg = "#9ece6a" },
+
+	# ===== WEB DEVELOPMENT =====
+	{ name = "*.html", fg = "#f7768e" },
+	{ name = "*.htm", fg = "#f7768e" },
+	{ name = "*.css", fg = "#7aa2f7" },
+	{ name = "*.scss", fg = "#bb9af7" },
+	{ name = "*.sass", fg = "#bb9af7" },
+	{ name = "*.less", fg = "#bb9af7" },
+	{ name = "*.vue", fg = "#9ece6a" },
+	{ name = "*.svelte", fg = "#ff9e64" },
+
+	# ===== CONFIG FILES =====
+	{ name = "*.toml", fg = "#9d7cd8" },
+	{ name = "*.yaml", fg = "#9d7cd8" },
+	{ name = "*.yml", fg = "#9d7cd8" },
+	{ name = "*.json", fg = "#e0af68" },
+	{ name = "*.xml", fg = "#ff9e64" },
+	{ name = "*.ini", fg = "#787c99" },
+	{ name = "*.conf", fg = "#787c99" },
+	{ name = "*.cfg", fg = "#787c99" },
+	{ name = "*.env", fg = "#e0af68", bold = true },
+	{ name = ".env.*", fg = "#e0af68" },
+	{ name = "*.config", fg = "#9d7cd8" },
+	{ name = "Dockerfile", fg = "#7aa2f7", bold = true },
+	{ name = "docker-compose.yml", fg = "#7aa2f7", bold = true },
+
+	# ===== VERSION CONTROL =====
+	{ name = ".gitignore", fg = "#f7768e" },
+	{ name = ".gitattributes", fg = "#f7768e" },
+	{ name = ".gitmodules", fg = "#f7768e" },
+
+	# ===== DOCUMENTS =====
+	{ name = "*.pdf", fg = "#f7768e", bold = true },
+	{ name = "*.doc", fg = "#7aa2f7" },
+	{ name = "*.docx", fg = "#7aa2f7" },
+	{ name = "*.xls", fg = "#9ece6a" },
+	{ name = "*.xlsx", fg = "#9ece6a" },
+	{ name = "*.ppt", fg = "#ff9e64" },
+	{ name = "*.pptx", fg = "#ff9e64" },
+	{ name = "*.odt", fg = "#7aa2f7" },
+	{ name = "*.ods", fg = "#9ece6a" },
+
+	# ===== TEXT/MARKDOWN =====
+	{ name = "*.md", fg = "#7dcfff", bold = true },
+	{ name = "*.markdown", fg = "#7dcfff" },
+	{ name = "*.txt", fg = "#a9b1d6" },
+	{ name = "*.rst", fg = "#7dcfff" },
+	{ name = "README*", fg = "#e0af68", bold = true },
+	{ name = "LICENSE*", fg = "#e0af68", bold = true },
+	{ name = "CHANGELOG*", fg = "#7dcfff" },
+
+	# ===== IMAGES =====
+	{ name = "*.png", fg = "#bb9af7" },
+	{ name = "*.jpg", fg = "#bb9af7" },
+	{ name = "*.jpeg", fg = "#bb9af7" },
+	{ name = "*.gif", fg = "#bb9af7" },
+	{ name = "*.bmp", fg = "#bb9af7" },
+	{ name = "*.svg", fg = "#e0af68" },
+	{ name = "*.ico", fg = "#bb9af7" },
+	{ name = "*.webp", fg = "#bb9af7" },
+
+	# ===== VIDEOS =====
+	{ name = "*.mp4", fg = "#f7768e" },
+	{ name = "*.mkv", fg = "#f7768e" },
+	{ name = "*.avi", fg = "#f7768e" },
+	{ name = "*.mov", fg = "#f7768e" },
+	{ name = "*.webm", fg = "#f7768e" },
+	{ name = "*.flv", fg = "#f7768e" },
+
+	# ===== AUDIO =====
+	{ name = "*.mp3", fg = "#ff9e64" },
+	{ name = "*.flac", fg = "#ff9e64" },
+	{ name = "*.wav", fg = "#ff9e64" },
+	{ name = "*.ogg", fg = "#ff9e64" },
+	{ name = "*.m4a", fg = "#ff9e64" },
+	{ name = "*.opus", fg = "#ff9e64" },
+
+	# ===== ARCHIVES =====
+	{ name = "*.zip", fg = "#f7768e", bold = true },
+	{ name = "*.tar", fg = "#f7768e" },
+	{ name = "*.gz", fg = "#f7768e" },
+	{ name = "*.bz2", fg = "#f7768e" },
+	{ name = "*.xz", fg = "#f7768e" },
+	{ name = "*.7z", fg = "#f7768e" },
+	{ name = "*.rar", fg = "#f7768e" },
+	{ name = "*.tgz", fg = "#f7768e" },
+	{ name = "*.tar.gz", fg = "#f7768e" },
+	{ name = "*.tar.bz2", fg = "#f7768e" },
+
+	# ===== DATABASES =====
+	{ name = "*.db", fg = "#9ece6a" },
+	{ name = "*.sqlite", fg = "#9ece6a" },
+	{ name = "*.sqlite3", fg = "#9ece6a" },
+	{ name = "*.sql", fg = "#7aa2f7" },
+
+	# ===== FONTS =====
+	{ name = "*.ttf", fg = "#787c99" },
+	{ name = "*.otf", fg = "#787c99" },
+	{ name = "*.woff", fg = "#787c99" },
+	{ name = "*.woff2", fg = "#787c99" },
+
+	# ===== COMPILED/BINARY =====
+	{ name = "*.o", fg = "#787c99", dim = true },
+	{ name = "*.so", fg = "#787c99", dim = true },
+	{ name = "*.a", fg = "#787c99", dim = true },
+	{ name = "*.dll", fg = "#787c99", dim = true },
+	{ name = "*.exe", fg = "#9ece6a", bold = true },
+	{ name = "*.app", fg = "#9ece6a", bold = true },
+
+	# ===== LOGS =====
+	{ name = "*.log", fg = "#787c99", italic = true },
+
+	# ===== FALLBACK =====
+	{ name = "*", fg = "#a9b1d6" },
+	{ name = "*/", fg = "#7aa2f7", bold = true },
+]
+
+[icon]
+globs = [
+	# Directories get folder icon
+	{ name = "*/", text = "" },
+
+	# Special directories
+	{ name = ".git/", text = "" },
+	{ name = ".github/", text = "" },
+	{ name = "node_modules/", text = "" },
+	{ name = "src/", text = "" },
+	{ name = "test/", text = "󰙨" },
+	{ name = "tests/", text = "󰙨" },
+	{ name = "docs/", text = "" },
+	{ name = ".cargo/", text = "" },
+
+	# Common user directories
+	{ name = "Downloads/", text = "" },
+	{ name = "Documents/", text = "" },
+	{ name = "Desktop/", text = "" },
+	{ name = "Pictures/", text = "" },
+	{ name = "Music/", text = "" },
+	{ name = "Videos/", text = "" },
+
+	# Programming languages
+	{ name = "*.rs", text = "" },
+	{ name = "*.js", text = "" },
+	{ name = "*.ts", text = "" },
+	{ name = "*.jsx", text = "" },
+	{ name = "*.tsx", text = "" },
+	{ name = "*.py", text = "" },
+	{ name = "*.go", text = "" },
+	{ name = "*.java", text = "" },
+	{ name = "*.c", text = "" },
+	{ name = "*.cpp", text = "" },
+	{ name = "*.h", text = "" },
+	{ name = "*.swift", text = "" },
+	{ name = "*.rb", text = "" },
+	{ name = "*.php", text = "" },
+
+	# Web
+	{ name = "*.html", text = "" },
+	{ name = "*.css", text = "" },
+	{ name = "*.scss", text = "" },
+	{ name = "*.vue", text = "" },
+
+	# Config
+	{ name = "*.json", text = "" },
+	{ name = "*.toml", text = "" },
+	{ name = "*.yaml", text = "" },
+	{ name = "*.yml", text = "" },
+	{ name = "*.xml", text = "" },
+
+	# Documents
+	{ name = "*.md", text = "" },
+	{ name = "*.pdf", text = "" },
+	{ name = "*.txt", text = "" },
+
+	# Media
+	{ name = "*.png", text = "" },
+	{ name = "*.jpg", text = "" },
+	{ name = "*.jpeg", text = "" },
+	{ name = "*.gif", text = "" },
+	{ name = "*.svg", text = "" },
+	{ name = "*.mp4", text = "" },
+	{ name = "*.mp3", text = "" },
+
+	# Archives
+	{ name = "*.zip", text = "" },
+	{ name = "*.tar", text = "" },
+	{ name = "*.gz", text = "" },
+	{ name = "*.7z", text = "" },
+
+	# Special files
+	{ name = "Dockerfile", text = "" },
+	{ name = "package.json", text = "" },
+	{ name = "Cargo.toml", text = "" },
+	{ name = "Makefile", text = "" },
+	{ name = ".gitignore", text = "" },
+	{ name = "README*", text = "" },
+	{ name = "LICENSE*", text = "" },
+
+	# Default
+	{ name = "*", text = "" },
+]

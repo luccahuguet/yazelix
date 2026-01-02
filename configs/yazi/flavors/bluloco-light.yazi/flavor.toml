@@ -1,0 +1,212 @@
+# Schema
+"$schema" = "https://yazi-rs.github.io/schemas/theme.json"
+
+# Bluloco light flavour for Yazi
+[app]
+overall = { bg = "#F9F9F9" }
+
+[mgr]
+
+# Current working directory
+cwd = { fg = "#0099E1" }
+
+# Symlink
+symlink_target = { italic = true }
+
+# Marker
+marker_copied = { fg = "#C5A332", bg = "#C5A332" }
+marker_cut = { fg = "#D52652", bg = "#D52652" }
+marker_marked = { fg = "#823FF1", bg = "#823FF1" }
+marker_selected = { fg = "#275FE4", bg = "#275FE4" }
+
+# Count
+count_copied = { fg = "#F9F9F9", bg = "#C5A332" }
+count_cut = { fg = "#F9F9F9", bg = "#D52652" }
+count_selected = { fg = "#F9F9F9", bg = "#275FE4" }
+
+# Border
+border_symbol = "│"
+border_style = { fg = "#7A82DA" }
+
+# Find
+[mgr.find_keyword]
+fg = "#EA3971"
+bg = "#B1EACF"
+bold = true
+italic = true
+underline = true
+
+[mgr.find_position]
+fg = "#383A42"
+bg = "reset"
+bold = true
+italic = true
+
+
+# Indicator
+[indicator]
+parent = { reversed = true }
+current = { reversed = true }
+preview = { underline = true }
+padding = { open = "█", close = "█" }
+
+# Tabs
+[tabs]
+active = { fg = "#383A42", bg = "#F9F9F9" }
+inactive = { fg = "#A0A1A7", bg = "#DCDCDC" }
+
+# Separator
+sep_inner = { open = "", close = "" }
+sep_outer = { open = "", close = "" }
+
+
+# Colours for the modes in Yazi.
+#
+# The main styles are the styles for
+# sections at the ends of the status bar.
+#
+# The alternate styles (alt) are the
+# styles for the separators, which are
+# the sections in the status bar
+# that are right beside the sections
+# at the ends of the status bar.
+[mode]
+
+# Normal mode
+normal_main = { fg = "#F9F9F9", bg = "#0098DD" }
+normal_alt = { fg = "#6D7281", bg = "#DEE1E3" }
+
+# Select mode
+select_main = { fg = "#F9F9F9", bg = "#823FF1" }
+select_alt = { fg = "#823FF1", bg = "#DEE1E3" }
+
+# Unset mode
+unset_main = { fg = "#F9F9F9", bg = "#D52652" }
+unset_alt = { fg = "#D52652", bg = "#DEE1E3" }
+
+
+[status]
+overall = { fg = "#6D7281", bg = "#EDEDEE" }
+sep_left = { open = "", close = "" }
+sep_right = { open = "", close = "" }
+
+# Permissions
+perm_sep = { fg = "#B0B0B0" }
+perm_type = { fg = "#0098DD" }
+perm_read = { fg = "#823FF1" }
+perm_write = { fg = "#D52652" }
+perm_exec = { fg = "#23974A" }
+
+# Progress
+progress_label = { fg = "#F9F9F9", bold = true }
+progress_normal = { fg = "#823FF1", bg = "#A0A1A7" }
+progress_error = { fg = "#FCE4E4", bg = "#FF0000" }
+
+
+[which]
+cols = 3
+mask = { bg = "#ECEDEE" }
+cand = { fg = "#DE631B" }
+desc = { fg = "#0098DD" }
+separator = " ➜ "
+separator_style = { fg = "#7A82DA" }
+
+
+[confirm]
+border = { fg = "#7A82DA" }
+title = { fg = "#7A82DA" }
+body = {}
+list = {}
+btn_yes = { fg = "#23974A" }
+btn_no = { fg = "#D52652" }
+btn_labels = ["Yes", "No"]
+
+
+[spot]
+border = { fg = "#7A82DA" }
+title = { fg = "#7A82DA" }
+
+# Value of the items in the table
+tbl_col = { fg = "#0099E1" }
+
+# Hovered item in the spotter
+tbl_cell = { bg = "#D2ECFF" }
+
+
+[notify]
+title_info = { fg = "#0099E1" }
+title_warn = { fg = "#FF8F3A" }
+title_error = { fg = "#FF0000" }
+
+# Icons
+icon_info = ""
+icon_warn = ""
+icon_error = ""
+
+
+[pick]
+border = { fg = "#7A82DA" }
+active = { fg = "#C5A332", bold = true }
+inactive = {}
+
+
+[input]
+border = { fg = "#7A82DA" }
+title = { fg = "#7A82DA" }
+value = {}
+selected = { reversed = true }
+
+
+[cmp]
+border = { fg = "#7A82DA" }
+active = { bg = "#D2ECFF" }
+inactive = {}
+
+# Icons
+icon_file = ""
+icon_folder = ""
+icon_command = ""
+
+
+[tasks]
+border = { fg = "#7A82DA" }
+title = { fg = "#7A82DA" }
+hovered = { bg = "#D2ECFF", bold = true }
+
+
+[help]
+on = { fg = "#DF631C" }
+run = { fg = "#7A82DA" }
+desc = { fg = "#0098DD" }
+footer = { bg = "#F9F9F9", fg = "#383A42" }
+
+
+[filetype]
+rules = [
+	# Images
+	{ mime = "image/*", fg = "#CE33C0" },
+
+	# Videos
+	{ mime = "video/*", fg = "#823FF1" },
+
+	# Audio
+	{ mime = "audio/*", fg = "#40B8C5" },
+
+	# Archives
+	{ mime = "application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#DF631C" },
+
+	# Documents
+	{ mime = "application/{pdf,doc,rtf}", fg = "#047485" },
+
+	# Special files
+	{ url = "*", is = "orphan", fg = "#F9F9F9", bg = "#FF0000" },
+	{ url = "*", is = "exec", fg = "#3FC56B" },
+
+	# Dummy files
+	{ url = "*", is = "dummy", fg = "#F9F9F9", bg = "#FF0000" },
+	{ url = "*/", is = "dummy", fg = "#F9F9F9", bg = "#FF0000" },
+
+	# Fallback
+	{ url = "*", fg = "#383A42" },
+	{ url = "*/", fg = "#0098DD" },
+]

@@ -1,0 +1,130 @@
+## Color palette
+## Check https://github.com/rebelot/kanagawa.nvim for more details
+# lotusWhite0    "#d5cea3" dark bg
+# lotusWhite3    "#f2ecbc" bg
+# lotusWhite4    "#e7dba0"
+# lotusViolet1   "#a09cac"
+# lotusInk1      "#545464" fg
+# lotusInk2      "#43436c" dark fg
+# lotusGray3     "#8a8980"
+# lotusRed2      "#d7474b"
+# lotusRed       "#c84053"
+# lotusBlue4     "#4d699b"
+# lotusRed       "#c84053"
+# lotusYellow    "#77713f"
+# lotusGreen     "#6f894e"
+# lotusGreen2    "#6e915f"
+# lotusViolet4   "#624c83"
+# lotusAqua      "#597b75"
+# lotusOrange    "#cc6d00"
+# lotusAqua2     "#5e857a"
+
+[mgr]
+marker_copied = { fg = "#6f894e", bg = "#6f894e" }
+marker_cut = { fg = "#c84053", bg = "#c84053" }
+marker_marked = { fg = "#624c83", bg = "#624c83" }
+marker_selected = { fg = "#cc6d00", bg = "#cc6d00" }
+cwd = { fg = "#77713f" }
+hovered = { reversed = true }
+preview_hovered = { reversed = true }
+find_keyword = { fg = "#cc6d00", bg = "#f2ecbc" }
+find_position = {}
+count_copied = { fg = "#f2ecbc", bg = "#6f894e" }
+count_cut = { fg = "#f2ecbc", bg = "#c84053" }
+count_selected = { fg = "#f2ecbc", bg = "#77713f" }
+border_symbol = "│"
+border_style = { fg = "#545464" }
+
+[tabs]
+active = { fg = "#f2ecbc", bg = "#4d699b" }
+inactive = { fg = "#43436c", bg = "#e7dba0" }
+sep_inner = { open = "", close = "" }
+sep_outer = { open = "", close = "" }
+
+[mode]
+normal_main = { fg = "#f2ecbc", bg = "#4d699b" }
+normal_alt = { fg = "#4d699b", bg = "#e7dba0" }
+select_main = { fg = "#f2ecbc", bg = "#624c83" }
+select_alt = { fg = "#624c83", bg = "#e7dba0" }
+unset_main = { fg = "#f2ecbc", bg = "#77713f" }
+unset_alt = { fg = "#77713f", bg = "#e7dba0" }
+
+[status]
+sep_left = { open = "", close = "" }
+sep_right = { open = "", close = "" }
+overall = { fg = "#43436c", bg = "#d5cea3" }
+progress_label = { fg = "#4d699b", bg = "#e7dba0", bold = true }
+progress_normal = { fg = "#e7dba0", bg = "#f2ecbc" }
+progress_error = { fg = "#e7dba0", bg = "#f2ecbc" }
+perm_type = { fg = "#6f894e" }
+perm_read = { fg = "#77713f" }
+perm_write = { fg = "#d7474b" }
+perm_exec = { fg = "#5e857a" }
+perm_sep = { fg = "#624c83" }
+
+[which]
+cols = 2
+separator = " - "
+separator_style = { fg = "#8a8980" }
+mask = { bg = "#d5cea3" }
+rest = { fg = "#8a8980" }
+cand = { fg = "#4d699b" }
+desc = { fg = "#a09cac" }
+
+[pick]
+border = { fg = "#5a7785" }
+active = { fg = "#624c83", bold = true }
+inactive = {}
+
+[input]
+border = { fg = "#5a7785" }
+title = {}
+value = {}
+selected = { reversed = true }
+
+[cmp]
+border = { fg = "#5a7785" }
+active = { reversed = true }
+inactive = {}
+
+[tasks]
+border = { fg = "#5a7785" }
+title = {}
+hovered = { fg = "#624c83" }
+
+[help]
+on = { fg = "#5e857a" }
+run = { fg = "#624c83" }
+desc = {}
+hovered = { reversed = true, bold = true }
+footer = { fg = "#f2ecbc", bg = "#545464" }
+
+[notify]
+title_info = { fg = "#6f894e" }
+title_warn = { fg = "#77713f" }
+title_error = { fg = "#d7474b" }
+
+[filetype]
+rules = [
+    # images
+    { mime = "image/*", fg = "#77713f" },
+
+    # media
+    { mime = "{audio,video}/*", fg = "#624c83" },
+
+    # archives
+    { mime = "application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#c84053" },
+
+    # documents
+    { mime = "application/{pdf,doc,rtf,vnd.*}", fg = "#597b75" },
+
+    # broken links
+    { name = "*", is = "orphan", fg = "#d7474b" },
+
+    # executables
+    { name = "*", is = "exec", fg = "#6e915f" },
+
+    # fallback
+    { name = "*", fg = "#545464" },
+    { name = "*/", fg = "#4d699b" },
+]

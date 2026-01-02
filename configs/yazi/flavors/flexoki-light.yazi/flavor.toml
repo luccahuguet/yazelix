@@ -1,0 +1,167 @@
+# Сolor palette: https://stephango.com/flexoki
+# ---
+# paper       "#FFFCF0" bg
+# base-50     "#F2F0E5" bg-2
+# base-100    "#E6E4D9" ui
+# base-150    "#DAD8CE" ui-2
+# base-200    "#CECDC3" ui-3
+# base-300    "#B7B5AC" tx-3
+# base-600    "#6F6E69" tx-2
+# black       "#100F0F" tx
+# red-600     "#AF3029" re
+# orange-600  "#BC5215" or
+# yellow-600  "#AD8301" ye
+# yellow-400  "#D0A215" ye-2
+# green-600   "#66800B" gr
+# cyan-600    "#24837B" cy
+# cyan-400    "#3AA99F" cy-2
+# cyan-100    "#BFE8D9" cy-100
+# cyan-300    "#5ABDAC" cy-300
+# blue-600    "#205EA6" bl
+# purple-600  "#5E409D" pu
+# magenta-600 "#A02F6F" ma
+
+[mgr]
+cwd = { fg = "#100F0F", bold = true } # tx
+
+# Hovered
+hovered = { bg = "#F2F0E5" } # bg-2
+preview_hovered = { underline = true }
+
+# Find
+find_keyword = { fg = "#D0A215", reversed = true } # ye-2
+find_position = { fg = "#B7B5AC", bold = true, italic = true } # tx-3
+
+# Marker
+marker_copied = { fg = "#66800B", bg = "#66800B" } # gr, gr
+marker_cut = { fg = "#AF3029", bg = "#AF3029" } # re, re
+marker_marked = { fg = "#5ABDAC", bg = "#5ABDAC" } # cy-300, cy-300
+marker_selected = { fg = "#24837B", bg = "#24837B" } # cy, cy
+
+# Count
+count_copied = { fg = "#66800B", bold = true, reversed = true } # gr
+count_cut = { fg = "#AF3029", bold = true, reversed = true } # re
+count_selected = { fg = "#24837B", bold = true, reversed = true } # cy
+
+# Border
+border_symbol = "│"
+border_style = { fg = "#E6E4D9" } # ui
+
+[tabs]
+active = { fg = "#100F0F", bg = "#CECDC3", bold = true } # tx, ui-3
+inactive = { fg = "#6F6E69", bg = "#E6E4D9" } # tx-2, ui
+sep_inner = { open = "", close = "" }
+sep_outer = { open = "", close = "" }
+
+[mode]
+# Normal mode
+normal_main = { fg = "#100F0F", bg = "#CECDC3", bold = true } # tx, ui-3
+normal_alt = { fg = "#6F6E69", bg = "#E6E4D9" } # tx-2, ui
+
+# Select mode
+select_main = { fg = "#FFFCF0", bg = "#24837B", bold = true } # bg, cy
+select_alt = { fg = "#24837B", bg = "#BFE8D9" } # cy, cy-100
+
+# Unset mode
+unset_main = { fg = "#FFFCF0", bg = "#24837B", bold = true } # bg, cy
+unset_alt = { fg = "#24837B", bg = "#BFE8D9" } # cy, cy-100
+
+[status]
+overall = { fg = "#100F0F" } # tx
+
+# Permissions
+perm_type = { fg = "#205EA6" } # bl
+perm_read = { fg = "#AD8301" } # ye
+perm_write = { fg = "#AF3029" } # re
+perm_exec = { fg = "#66800B" } # gr
+perm_sep = { fg = "#6F6E69" } # tx-2
+
+# Progress
+progress_label = { fg = "#FFFCF0" } # bg
+progress_normal = { fg = "#24837B", bg = "#5ABDAC" } # cy, cy-300
+progress_error = { bg = "#AF3029" } # re
+
+[which]
+cols = 3
+mask = { bg = "#F2F0E5" } # bg-2
+cand = { fg = "#AD8301", bold = true } # ye
+rest = { fg = "#AD8301", italic = true } # ye
+desc = { fg = "#B7B5AC" } # tx-3
+separator = " "
+separator_style = { }
+
+[confirm]
+border = { fg = "#CECDC3" } # ui-3
+title = { fg = "#B7B5AC", bold = true } # tx-3
+content = { fg = "#100F0F", bold = true } # tx
+list = { fg = "#100F0F" } # tx
+btn_yes = { fg = "#100F0F", bg = "#CECDC3", bold = true } # tx, ui-3
+btn_no = { fg = "#6F6E69", bg = "#E6E4D9" } # tx-2, ui
+
+[spot]
+border = { fg = "#CECDC3" } # ui-3
+title = { fg = "#B7B5AC", bold = true } # tx-3
+tbl_col = { fg = "#6F6E69" } # tx-2
+tbl_cell = { bg = "#F2F0E5" } # bg-2
+
+[notify]
+# Notification title
+title_info = { fg = "#205EA6" } # bl
+title_warn = { fg = "#BC5215" } # or
+title_error = { fg = "#AF3029" } # re
+
+[pick]
+border = { fg = "#CECDC3", bold = true } # ui-3
+active = { fg = "#100F0F" } # tx
+inactive = { fg = "#6F6E69" } # tx-2
+
+[input]
+border = { fg = "#CECDC3" } # ui-3
+title = { fg = "#B7B5AC", bold = true } # tx-3
+value = { fg = "#100F0F" } # tx
+selected = { bg = "#F2F0E5" } # bg-2
+
+[cmp]
+border = { fg = "#CECDC3", bold = true } # ui-3
+active = { fg = "#6F6E69", bg = "#F2F0E5" } # tx-2, bg-2
+inactive = { fg = "#6F6E69" } # tx-2
+
+[tasks]
+border = { fg = "#CECDC3" } # ui-3
+title = { fg = "#B7B5AC", bold = true } # tx-3
+hovered = { bg = "#F2F0E5" } # bg-2
+
+[help]
+on = { fg = "#205EA6" } # bl
+run = { fg = "#24837B" } # cy
+desc = { fg = "#B7B5AC", italic = true } # tx-3
+hovered = { bg = "#F2F0E5" } # bg-2
+footer = { fg = "#100F0F", bg = "#E6E4D9", bold = true } # tx, ui
+
+[filetype]
+rules = [
+  # Images
+  { mime = "image/*", fg = "#5E409D" }, # pu
+
+  # Media
+  { mime = "video/*", fg = "#AD8301" }, # ye
+  { mime = "audio/*", fg = "#AD8301" }, # ye
+
+  # Broken symbolic link
+  { name = "*", is = "orphan", fg = "#B7B5AC", crossed = true }, # tx-3
+  { name = "*/", is = "orphan", fg = "#B7B5AC", crossed = true }, # tx-3
+
+  # Symbolic links
+  { name = "*", is = "link", fg = "#24837B" }, # cy
+  { name = "*/", is = "link", fg = "#24837B" }, # cy
+
+  # Executable
+  { name = "*", is = "exec", fg = "#66800B" }, # gr
+
+  # Empty files
+  { mime = "inode/empty", fg = "#B7B5AC" }, # tx-3
+
+  # Fallback
+  { name = "*", fg = "#6F6E69" }, # tx-2
+  { name = "*/", fg = "#100F0F" } # tx
+]

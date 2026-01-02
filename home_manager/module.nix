@@ -191,8 +191,8 @@ in {
       type = types.str;
       default = "default";
       description = ''
-        Yazi color theme (flavor). 25 built-in flavors available.
-        Use "random" to pick a different theme on each yazelix restart.
+        Yazi color theme (flavor). 25 built-in flavors available (19 dark + 5 light + default).
+        Use "random-dark" or "random-light" to pick a different theme on each yazelix restart.
         Browse flavors: https://github.com/yazi-rs/flavors
       '';
     };

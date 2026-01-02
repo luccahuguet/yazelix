@@ -1,0 +1,211 @@
+"$schema" = "https://yazi-rs.github.io/schemas/theme.json"
+
+# vim:fileencoding=utf-8:foldmethod=marker
+
+# : Manager {{{
+
+[mgr]
+cwd = { fg = "#D87C4A", bold = true }
+
+# Hovered
+hovered = { reversed = true, bold = true }
+preview_hovered = { underline = true }
+
+# Find
+find_keyword = { fg = "#4A8B8B", bold = true, italic = true, underline = true }
+find_position = { fg = "#4A8B8B", bg = "reset", bold = true, italic = true }
+
+# Marker
+marker_copied = { fg = "#629C7D", bg = "#629C7D" }
+marker_cut = { fg = "#C53030", bg = "#C53030" }
+marker_marked = { fg = "#E5A72A", bg = "#E5A72A" }
+marker_selected = { fg = "#C4693D", bg = "#C4693D" }
+
+# Count
+count_copied = { fg = "#121212", bg = "#629C7D" }
+count_cut = { fg = "#121212", bg = "#C53030" }
+count_selected = { fg = "#121212", bg = "#C4693D" }
+
+# Border
+border_symbol = "│"
+border_style = { fg = "#a7a7a7" }
+
+# : }}}
+
+
+# : Tabs {{{
+
+[tabs]
+active = { fg = "#121212", bg = "#b4b4b4", bold = true }
+inactive = { fg = "#b4b4b4", bg = "#212121" }
+
+# Separator
+sep_inner = { open = "", close = "" }
+sep_outer = { open = "", close = "" }
+
+# : }}}
+
+
+# : Mode {{{
+
+[mode]
+normal_main = { fg = "#121212", bg = "#b4b4b4", bold = true }
+normal_alt = { fg = "#b4b4b4", bg = "#212121" }
+
+# Select mode
+select_main = { fg = "#121212", bg = "#BD4C4C", bold = true }
+select_alt = { fg = "#BD4C4C", bg = "#212121" }
+
+# Unset mode
+unset_main = { fg = "#121212", bg = "#D87C4A", bold = true }
+unset_alt = { fg = "#D87C4A", bg = "#212121" }
+
+# : }}}
+
+
+# : Status bar {{{
+
+[status]
+sep_left = { open = "", close = "" }
+sep_right = { open = "", close = "" }
+
+# Progress
+progress_label = { fg = "#121212", bold = true }
+progress_normal = { fg = "#C4693D", bg = "#323232" }
+progress_error = { fg = "#C53030", bg = "#323232" }
+
+# Permissions
+perm_sep = { fg = "#949494", bold = true }
+perm_type = { fg = "#B14242" }
+perm_read = { fg = "#d5d5d5", bold = true }
+perm_write = { fg = "#C4693D", bold = true }
+perm_exec = { fg = "#B14242", bold = true }
+
+# : }}}
+
+
+# : Pick {{{
+
+[pick]
+border = { fg = "#C4693D" }
+active = { fg = "#DF6464", bold = true }
+inactive = {}
+
+# : }}}
+
+
+# : Input {{{
+
+[input]
+border = { fg = "#B14242" }
+title = {}
+value = {}
+selected = { reversed = true }
+
+# : }}}
+
+
+# : Completion {{{
+
+[cmp]
+border = { fg = "#B14242" }
+
+# : }}}
+
+
+# : Tasks {{{
+
+[tasks]
+border = { fg = "#C4693D" }
+title = {}
+hovered = { fg = "#d5d5d5", underline = true }
+
+# : }}}
+
+
+# : Which {{{
+
+[which]
+mask = { bg = "#212121" }
+cand = { fg = "#E49A44" }
+rest = { fg = "#b4b4b4" }
+# desc = { fg = "#DF6464", bold = true }
+desc = { fg = "#DF6464" }
+separator = "  "
+separator_style = { fg = "#B14242" }
+
+# : }}}
+
+
+# : Help {{{
+
+[help]
+on = { fg = "#D87C4A" }
+run = { fg = "#DF6464" }
+desc = { fg = "#d5d5d5" }
+hovered = { reversed = true, bold = true }
+footer = { fg = "#e5e5e5", bg = "#121212" }
+
+# : }}}
+
+
+# : Notify {{{
+
+[notify]
+title_info = { fg = "#d5d5d5" }
+title_warn = { fg = "#E5A72A" }
+title_error = { fg = "#C53030" }
+
+# : }}}
+
+
+# : Spotter {{{
+
+[spot]
+border = { fg = "#C4693D" }
+title  = {}
+
+# Table
+tbl_cell = { fg = "#d5d5d5", reversed = true }
+tbl_col  = {}
+
+# : }}}
+
+
+# : Confirmation {{{
+
+[confirm]
+border     = { fg = "#C4693D" }
+title      = {}
+
+list       = {}
+btn_yes    = { reversed = true }
+btn_no     = {}
+btn_labels = [ " [Y]es  ", "  (N)o  " ]
+
+# : }}}
+
+
+# : File-specific styles {{{
+
+[filetype]
+
+rules = [
+  # Images
+  { mime = "image/*", fg = "#E49A44" },
+
+  # Media
+  { mime = "{audio,video}/*", fg = "#D87C4A" },
+
+  # Archives
+  { mime = "application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#DF6464" },
+
+  # Documents
+  { mime = "application/{pdf,doc,rtf}", fg = "#C4693D" },
+
+  # Fallback
+  { name = "*", fg = "#d5d5d5" },
+  { name = "*/", fg = "#B14242" },
+]
+
+# : }}}

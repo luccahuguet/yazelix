@@ -65,6 +65,42 @@ def copy_plugins_directory [source_dir: string, merged_dir: string, --quiet] {
     }
 }
 
+# Copy bundled flavors (themes) directory
+def copy_flavors_directory [source_dir: string, merged_dir: string, --quiet] {
+    let source_flavors = $"($source_dir)/flavors"
+    let merged_flavors = $"($merged_dir)/flavors"
+
+    if not $quiet {
+        print "   🎨 Copying flavor themes..."
+    }
+
+    # Ensure flavors directory exists
+    if not ($merged_flavors | path exists) {
+        mkdir $merged_flavors
+    }
+
+    # Copy yazelix bundled flavors (overwrites if they exist)
+    # This preserves user-installed flavors that yazelix doesn't provide
+    if ($source_flavors | path exists) {
+        let bundled_flavors = (ls $source_flavors | where type == dir | get name)
+
+        for flavor_path in $bundled_flavors {
+            let flavor_name = ($flavor_path | path basename)
+            let target = $"($merged_flavors)/($flavor_name)"
+
+            # Remove existing yazelix flavor and copy fresh version
+            if ($target | path exists) {
+                rm -rf $target
+            }
+            cp -r $flavor_path $target
+        }
+
+        if not $quiet {
+            print $"     ✅ ($bundled_flavors | length) flavor themes copied (user flavors preserved)"
+        }
+    }
+}
+
 # Generate yazi.toml with dynamic settings from yazelix.toml
 def generate_yazi_toml [source_dir: string, merged_dir: string, theme: string, sort_by: string, user_plugins: list, --quiet] {
     let source_path = $"($source_dir)/yazelix_yazi.toml"
@@ -250,23 +286,29 @@ export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
     let config = parse_yazelix_config
     let user_plugins = $config.yazi_plugins
 
-    # Yazi flavor themes (25 total)
+    # Yazi flavor themes (25 total: 1 default + 19 dark + 5 light)
     # See: https://github.com/yazi-rs/flavors
-    let yazi_themes = [
-        "default",
-        "catppuccin-mocha", "catppuccin-latte", "catppuccin-frappe", "catppuccin-macchiato",
-        "gruvbox-dark",
-        "tokyo-night",
-        "kanagawa", "kanagawa-dragon", "kanagawa-lotus",
-        "rose-pine", "rose-pine-moon", "rose-pine-dawn",
-        "flexoki-dark", "flexoki-light",
-        "bluloco-dark", "bluloco-light",
-        "dracula", "nord", "ayu-dark", "everforest-medium", "ashen", "neon", "synthwave84", "monokai"
+    let yazi_themes_dark = [
+        "catppuccin-mocha", "catppuccin-frappe", "catppuccin-macchiato",
+        "dracula", "gruvbox-dark", "tokyo-night",
+        "kanagawa", "kanagawa-dragon",
+        "rose-pine", "rose-pine-moon",
+        "flexoki-dark", "bluloco-dark",
+        "ayu-dark", "everforest-medium", "ashen", "neon", "nord", "synthwave84", "monokai"
+    ]
+
+    let yazi_themes_light = [
+        "catppuccin-latte",
+        "kanagawa-lotus",
+        "rose-pine-dawn",
+        "flexoki-light", "bluloco-light"
     ]
 
     let theme_config = $config.yazi_theme
-    let theme = if $theme_config == "random" {
-        $yazi_themes | shuffle | first
+    let theme = if $theme_config == "random-dark" {
+        $yazi_themes_dark | shuffle | first
+    } else if $theme_config == "random-light" {
+        $yazi_themes_light | shuffle | first
     } else {
         $theme_config
     }
@@ -296,6 +338,9 @@ export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
 
     # Copy plugins directory
     copy_plugins_directory $source_config_dir $merged_config_dir --quiet=$quiet
+
+    # Copy flavors (themes) directory
+    copy_flavors_directory $source_config_dir $merged_config_dir --quiet=$quiet
 
     # Generate init.lua dynamically based on plugin configuration
     generate_init_lua $merged_config_dir $user_plugins --quiet=$quiet

@@ -1,0 +1,210 @@
+# vim:fileencoding=utf-8:foldmethod=marker
+
+# #262335
+# #848bbd
+# #fe4450
+# #ff8b39
+# #fede5d
+# #72f1b8
+# #36f9f6
+# #ff7edb
+
+# : Manager {{{
+
+[mgr]
+cwd = { fg = "#848bbd" }
+
+# Hovered
+hovered         = { reversed = true }
+preview_hovered = { underline = true }
+
+# Find
+find_keyword  = { fg = "#848bbd", bg = "#262335", bold = true, italic = true }
+find_position = { fg = "#848bbd", bg = "#262335", bold = true }
+
+# Marker
+marker_marked   = { fg = "#848bbd", bg = "#848bbd" }
+marker_selected = { fg = "#ff7edb", bg = "#ff7edb" }
+marker_copied   = { fg = "#72f1b8", bg = "#72f1b8" }
+marker_cut      = { fg = "#fe4450", bg = "#fe4450" }
+
+# Count
+count_selected = { fg = "#ff7edb", underline = true }
+count_copied   = { fg = "#72f1b8", underline = true }
+count_cut      = { fg = "#fe4450", underline = true }
+
+# Border
+border_symbol = "│"
+border_style  = { fg = "#848bbd" }
+
+# : }}}
+
+
+# : Tabs {{{
+
+[tabs]
+active   = { fg = "#262335", bg = "#848bbd", bold = true }
+inactive = { fg = "#848bbd", bg = "#262335" }
+
+# : }}}
+
+
+# : Mode {{{
+
+[mode]
+
+normal_main = { fg = "#262335", bg = "#848bbd", bold = true }
+normal_alt  = { fg = "#848bbd", bg = "#262335" }
+
+# Select mode
+select_main = { fg = "#262335", bg = "#ff7edb", bold = true }
+select_alt  = { fg = "#ff7edb", bg = "#262335" }
+
+# Unset mode
+unset_main = { fg = "#ff7edb", bg = "#262335", bold = true }
+unset_alt  = { fg = "#262335", bg = "#ff7edb" }
+
+# : }}}
+
+
+# : Status bar {{{
+
+[status]
+# Permissions
+perm_sep   = { fg = "#848bbd" }
+perm_type  = { fg = "#848bbd" }
+perm_read  = { fg = "#72f1b8" }
+perm_write = { fg = "#fede5d" }
+perm_exec  = { fg = "#fe4450" }
+
+# Progress
+progress_label  = { fg = "#262335", bold = true }
+progress_normal = { fg = "#72f1b8", bg = "#262335" }
+progress_error  = { fg = "#fe4450", bg = "#262335" }
+
+# : }}}
+
+
+# : Which {{{
+
+[which]
+mask            = { bg = "#262335" }
+cand            = { fg = "#36f9f6" }
+rest            = { fg = "#848bbd" }
+desc            = { fg = "#ff7edb" }
+separator       = "  "
+separator_style = { fg = "#848bbd" }
+
+# : }}}
+
+
+# : Confirm {{{
+
+[confirm]
+border     = { fg = "#848bbd" }
+title      = { fg = "#fe4450", underline = true }
+content    = { fg = "#848bbd" }
+list       = {}
+btn_yes    = { fg = "#ff7edb", underline = true }
+btn_no     = { fg = "#ff7edb", underline = true }
+# btn_labels = [" [Y]es ", " (N)o "]
+
+# : }}}
+
+
+# : Spotter {{{
+
+[spot]
+border   = { fg = "#848bbd" }
+title    = { fg = "#848bbd" }
+tbl_col  = { fg = "#36f9f6" }
+tbl_cell = { fg = "#ff7edb", underline = true }
+
+# : }}}
+
+
+# : Notification {{{
+
+[notify]
+title_info  = { fg = "#72f1b8" }
+title_warn  = { fg = "#fede5d" }
+title_error = { fg = "#fe4450" }
+
+# : }}}
+
+
+# : Pick {{{
+
+[pick]
+border   = { fg = "#848bbd" }
+active   = { fg = "#262335", bg = "#848bbd", bold = true }
+inactive = { fg = "#848bbd", bg = "#262335" }
+
+# : }}}
+
+
+# : Input {{{
+
+[input]
+border   = { fg = "#848bbd" }
+title    = { fg = "#848bbd" }
+value    = {}
+selected = { reversed = true }
+
+# : }}}
+
+
+# : Completion {{{
+
+[cmp]
+border = { fg = "#848bbd" }
+
+# : }}}
+
+
+# : Tasks {{{
+
+[tasks]
+border  = { fg = "#848bbd" }
+title   = { fg = "#848bbd"}
+hovered = { fg = "#848bbd", underline = true }
+
+# : }}}
+
+
+# : Help {{{
+
+[help]
+on      = { fg = "#ff7edb" }
+run     = { fg = "#36f9f6" }
+desc    = { fg = "#ff8b39" }
+hovered = { reversed = true, bold = true }
+footer  = { fg = "#848bbd" }
+
+# : }}}
+
+
+# : File-specific styles {{{
+
+[filetype]
+
+rules = [
+	# Image
+	{ mime = "image/*", fg = "#36f9f6" },
+	# Media
+	{ mime = "{audio,video}/*", fg = "#72f1b8" },
+	# Document
+	{ mime = "application/{pdf,doc,rtf}", fg = "#fede5d" },
+	{ name = "*.{txt,csv,*json*,toml,yml,yaml,xml,html,ini,cfg,conf,pdf,doc,docx,xls,xlsx,ppt,pptx}", fg = "#fede5d" },
+	# Archive
+	{ mime = "application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#ff7edb" },
+	{ name = "*.img", fg = "#ff7edb" },
+	# Fallback
+	{ url = "*" },
+	{ url = "*/", fg = "#848bbd" },
+	# TODO: remove
+	{ name = "*" },
+	{ name = "*/", fg = "#848bbd" }
+]
+
+# : }}}
