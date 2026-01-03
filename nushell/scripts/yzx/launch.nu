@@ -1,8 +1,9 @@
 #!/usr/bin/env nu
 # yzx launch command - Launch Yazelix in new or current terminal
 
-use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
+use ../utils/config_state.nu [mark_config_state_applied]
 use ../utils/common.nu [get_max_cores]
+use ../utils/environment_bootstrap.nu prepare_environment
 use ../core/start_yazelix.nu [start_yazelix_session]
 
 # Launch yazelix
@@ -21,10 +22,26 @@ export def "yzx launch" [
         print "🔍 yzx launch: verbose mode enabled"
     }
 
-    let config_state = compute_config_state
-    let needs_refresh = $config_state.needs_refresh
+    let env_prep = prepare_environment
+    let config = $env_prep.config
+    let config_state = $env_prep.config_state
+    mut needs_refresh = $env_prep.needs_refresh
+    let manage_terminals = ($config.manage_terminals? | default true)
     if $verbose_mode {
         print $"🔍 Config hash changed? ($needs_refresh)"
+    }
+
+    let force_reenter = ($env.YAZELIX_FORCE_REENTER? == "true")
+    mut in_yazelix_shell = ($env.IN_YAZELIX_SHELL? == "true")
+    if $manage_terminals and $needs_refresh and $in_yazelix_shell {
+        # Only print if not called from yzx restart (which already printed the message)
+        if not $force_reenter {
+            print "🔄 Configuration changed - rebuilding environment to install terminals..."
+        }
+        $in_yazelix_shell = false
+    }
+    if $force_reenter {
+        $in_yazelix_shell = false
     }
 
     if $here {
@@ -89,9 +106,6 @@ export def "yzx launch" [
         }
 
         let launch_script = $"($env.HOME)/.config/yazelix/nushell/scripts/core/launch_yazelix.nu"
-
-        # Check if already in Yazelix environment to skip redundant setup
-        let in_yazelix_shell = ($env.IN_YAZELIX_SHELL? == "true")
 
         if $in_yazelix_shell {
             # Already in Yazelix environment - run directly via bash

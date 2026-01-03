@@ -8,6 +8,7 @@ use ../utils/version_info.nu *
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 use ../utils/common.nu [get_max_cores]
+use ../utils/environment_bootstrap.nu prepare_environment
 use ./start_yazelix.nu [start_yazelix_session]
 
 # Import modularized commands (export use to properly re-export subcommands)
@@ -133,10 +134,18 @@ def kill_current_zellij_session [] {
 
 # Restart yazelix
 export def "yzx restart" [] {
+    let env_prep = prepare_environment
+    let config = $env_prep.config
+    let manage_terminals = ($config.manage_terminals? | default true)
+    let needs_refresh = $env_prep.needs_refresh
+
     # Detect if we're in a Yazelix-controlled terminal (launched via wrapper)
     let is_yazelix_terminal = ($env.YAZELIX_TERMINAL_CONFIG_MODE? | is-not-empty)
 
     # Provide appropriate messaging
+    if $manage_terminals and $needs_refresh {
+        print "🔄 Configuration changed - rebuilding environment to install terminals..."
+    }
     if $is_yazelix_terminal {
         print "🔄 Restarting Yazelix..."
     } else {
@@ -144,7 +153,13 @@ export def "yzx restart" [] {
     }
 
     # Launch new terminal window
-    yzx launch
+    if $manage_terminals and $needs_refresh {
+        with-env {YAZELIX_FORCE_REENTER: "true"} {
+            yzx launch
+        }
+    } else {
+        yzx launch
+    }
 
     # Wait for new session to spawn
     sleep 1sec
