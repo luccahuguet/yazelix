@@ -13,14 +13,14 @@ Score rubric (1–10):
 - Sixel support: +1 if Yes
 - Open source: +1 if Yes
 - Graphics protocol coverage: +1 if tmuxai lists Kitty graphics or “all image protocols”
-- Built-in multiplexing: +1 if tmuxai lists native tabs/splits or built-in multiplexer
 - Implementation: +1 if written in Rust or Zig
+- Ligature support: +1 if tmuxai strengths mention ligatures
 
 | Terminal | Platforms (TerminalTrove) | Language (TerminalTrove) | GPU accel | Image protocol | Sixel | Source | Score |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Ghostty | macOS, Linux | Zig | Yes | Yes | No | Open Source (MIT) | 8 |
-| WezTerm | Linux, macOS, Windows | Rust | Yes | Yes | Yes | Open Source (MIT) | 10 |
-| Kitty | Linux, macOS | Python | Yes | Yes | No | Open Source (GPL-3) | 6 |
+| Ghostty | macOS, Linux | Zig | Yes | Yes | No | Open Source (MIT) | 7 |
+| WezTerm | Linux, macOS, Windows | Rust | Yes | Yes | Yes | Open Source (MIT) | 9 |
+| Kitty | Linux, macOS | Python | Yes | Yes | No | Open Source (GPL-3) | 7 |
 | Alacritty | Linux, macOS, Windows | Rust | Yes | Yes | No | Open Source (Apache 2.0) | 7 |
 | Foot | Linux | C | No | Yes | Yes | Open Source (MIT) | 4 |
 
