@@ -3,33 +3,25 @@
 # Yazelix Desktop Launcher
 # Ensures we're in the yazelix environment and calls launch script directly
 
-use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
-use ../utils/common.nu [get_max_cores]
+use ../utils/environment_bootstrap.nu *
+use ../utils/config_state.nu [mark_config_state_applied]
 
 def main [] {
-    # Set environment
+    # Ensure Nix environment is available (shared with yzx commands)
+    ensure_environment_available
+
+    # Prepare environment and get config state (shared logic)
+    let env_prep = prepare_environment
+    let needs_refresh = $env_prep.needs_refresh
+
+    # Build launch command - open in home directory instead of yazelix directory
     let yazelix_dir = $"($nu.home-path)/.config/yazelix"
-    $env.YAZELIX_DIR = $yazelix_dir
+    let launch_command = $"nu ($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu ($nu.home-path)"
 
-    if (which devenv | is-empty) {
-        print "❌ devenv command not found - install devenv to launch Yazelix."
-        print "   See https://devenv.sh/getting-started/ for installation instructions."
-        exit 1
-    }
-
-    let config_state = compute_config_state
-    let needs_refresh = $config_state.needs_refresh
+    # Run launch script in devenv environment (shared devenv runner)
+    run_in_devenv_shell $launch_command --force-refresh=$needs_refresh
 
     if $needs_refresh {
-        $env.YAZELIX_FORCE_REFRESH = "true"
-    }
-
-    # Call launch script within devenv environment
-    # Pass home directory as launch_cwd so desktop entry opens in ~/ instead of yazelix directory
-    let max_cores = get_max_cores
-    let devenv_cmd = $"cd ($yazelix_dir) && devenv --impure --cores ($max_cores) shell -- nu ($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu ($nu.home-path)"
-    ^bash -c $devenv_cmd
-    if $needs_refresh {
-        mark_config_state_applied $config_state
+        mark_config_state_applied $env_prep.config_state
     }
 }
