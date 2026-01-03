@@ -1,33 +1,72 @@
-# Terminal Emulator Comparison
+# Terminal Emulator Compatibility
 
-Yazelix ships with multiple terminals so users can match platform needs and personal preferences. The table below summarizes how each option fits into the current stack and highlights what still needs work.
+Data summarized from:
+- https://tmuxai.dev/terminal-compatibility/
+- https://terminaltrove.com/terminals/
 
-> ⚠️ This comparison is a work in progress. Some details may be incomplete or become outdated as we add benchmarking data and bundle changes.
+## Summary Table
 
-| Category | **WezTerm** | **Ghostty** | **Kitty** | **Alacritty** | **foot** |
-| --- | --- | --- | --- | --- | --- |
-| Platforms | Linux, macOS, Windows 🏆 | macOS, Linux (Wayland & X11) **(default)** | Linux, macOS | Linux, macOS, Windows 🏆 | Linux (Wayland) |
-| yazi-image-preview | **Works properly** (current best inside Zellij) 🏆 | Blurry/unsupported in Zellij (no Sixel) | Blurry/unsupported in Zellij (needs Sixel) | N/A (no image protocol) | **Untested** (Sixel present; not validated) |
-| Graphics protocols | Kitty Graphics **and** Sixel 🏆 | Kitty Graphics only | Kitty Graphics | None (no Kitty Graphics/Sixel) | Sixel |
-| Ligature support | Full OpenType ligatures with fallback 🏆 | Full ligature shaping (Harfbuzz) | Full ligature shaping | No ligatures | Full ligature shaping (Harfbuzz) |
-| Cursor shaders (cursor trail) | No | **Yes** (shader-based trails, all 12 presets + random) 🏆 | **Yes** (`cursor_trail` presets, snow only) 🏆 | No | No |
-| Startup speed | Fast | Very fast 🏆 | Fast | Very fast 🏆 | Very fast 🏆 |
-| Render speed | very fast  | blazing 🏆 | very fast  | okay | very fast  |
-| 🏆 Score | 4 | 3 | 1 | 2 | 1 |
+Score rubric (1–10):
+- Platforms: +0 to +3 (one point each for Linux/macOS/Windows)
+- GPU acceleration: +1 if Yes
+- Image protocol support: +1 if Yes
+- Sixel support: +1 if Yes
+- Open source: +1 if Yes
+- Graphics protocol coverage: +1 if tmuxai lists Kitty graphics or “all image protocols”
+- Built-in multiplexing: +1 if tmuxai lists native tabs/splits or built-in multiplexer
+- Implementation: +1 if written in Rust or Zig
 
-## Qualitative deep dive
+| Terminal | Platforms (TerminalTrove) | Language (TerminalTrove) | GPU accel | Image protocol | Sixel | Source | Score |
+| --- | --- | --- | --- | --- | --- | --- |
+| Ghostty | macOS, Linux | Zig | Yes | Yes | No | Open Source (MIT) | 8 |
+| WezTerm | Linux, macOS, Windows | Rust | Yes | Yes | Yes | Open Source (MIT) | 10 |
+| Kitty | Linux, macOS | Python | Yes | Yes | No | Open Source (GPL-3) | 6 |
+| Alacritty | Linux, macOS, Windows | Rust | Yes | Yes | No | Open Source (Apache 2.0) | 7 |
+| Foot | Linux | C | No | Yes | Yes | Open Source (MIT) | 4 |
 
-| Category | **WezTerm** | **Ghostty** | **Kitty** | **Alacritty** | **foot** |
-| --- | --- | --- | --- | --- | --- |
-| SSH (latency/remote UX) | Excellent over SSH; smooth scrollback; resize stable | Very good; fast input echo; stable resize | Very good; solid remote feel | Good; minimal features but stable | Good; lightweight, snappy on weak links |
-| Nix size (bundled) | Medium-large | Medium | Medium | Small | **Tiny** |
-| nixGL / GPU | Reliable with nixGL (GPU accel) | Works with nixGL; shaders OK (Wayland/X11) | Works with nixGL (OpenGL) | Works with nixGL (OpenGL) | **No nixGL needed** (Wayland, very light deps) |
-| Unicode support (emoji/CJK/ligatures) | **Excellent** fallback & shaping | Very good | Very good | Good (fallback depends on fonts) | Good |
-| Extras | Lua-config automation; per-domain profiles | Quick Terminal (Wayland layer-shell); server-side decorations toggle | “Kitten” tools & remote-control API | Plain TOML, low deps, vi-mode selection | `foot`/`footclient` server-client model; fast built-in search |
+## Ghostty
+- Platforms: macOS, Linux (TerminalTrove)
+- Language: Zig (TerminalTrove)
+- Hardware acceleration: Yes (TerminalTrove)
+- Image protocol support: Yes; Sixel: No (TerminalTrove)
+- Source: Open Source (MIT) (TerminalTrove)
+- Summary: Fast, feature-rich GPU-accelerated terminal written in Zig with native platform integration. (tmuxai)
+- Strengths: Exceptional performance; native tabs/splits; Kitty graphics protocol; low latency. (tmuxai)
+- Gaps: No Windows support; no Sixel; newer project (less ecosystem). (tmuxai)
 
-## Foot evaluation notes
+## WezTerm
+- Platforms: Linux, macOS, Windows (TerminalTrove)
+- Language: Rust (TerminalTrove)
+- Hardware acceleration: Yes (TerminalTrove)
+- Image protocol support: Yes; Sixel: Yes (TerminalTrove)
+- Source: Open Source (MIT) (TerminalTrove)
+- Summary: GPU-accelerated terminal with built-in multiplexer and powerful Lua scripting configuration. (tmuxai)
+- Strengths: Supports all image protocols; Lua scripting config; built-in multiplexer; cross-platform. (tmuxai)
+- Gaps: Higher memory usage; steep config learning curve; larger binary size. (tmuxai)
 
-- **Platform**: Linux-only (Wayland native). Conditionally included only on Linux systems.
-- **Packaging**: Lightweight terminal with minimal dependencies, no nixGL required.
-- **Image previews**: Sixel support exists but untested with Zellij + Yazi.
-- **macOS**: Not available (Wayland requirement). Desktop integration features also Linux-only.
+## Kitty
+- Platforms: Linux, macOS (TerminalTrove)
+- Language: Python (TerminalTrove)
+- Hardware acceleration: Yes (TerminalTrove)
+- Image protocol support: Yes; Sixel: No (TerminalTrove)
+- Source: Open Source (GPL-3) (TerminalTrove)
+- Summary: Fast, feature-rich GPU-based terminal with its own superior graphics protocol. (tmuxai)
+- Strengths: Kitty graphics protocol (best for images); GPU-accelerated; extensible via kittens; full ligatures. (tmuxai)
+- Gaps: No Windows support; no Sixel (uses own protocol); learning curve for config. (tmuxai)
+
+## Alacritty
+- Platforms: Linux, macOS, Windows (TerminalTrove)
+- Language: Rust (TerminalTrove)
+- Hardware acceleration: Yes (TerminalTrove)
+- Image protocol support: Yes; Sixel: No (TerminalTrove)
+- Source: Open Source (Apache 2.0) (TerminalTrove)
+- Summary: Minimalist, blazing fast GPU-accelerated terminal emulator focused on performance and simplicity. (tmuxai)
+- Strengths: Fastest terminal emulator; minimal resource usage (~30MB); cross-platform; simple TOML config. (tmuxai)
+- Gaps: No ligatures (by design); no graphics protocols; no built-in tabs/splits. (tmuxai)
+
+## Foot
+- Platforms: Linux (TerminalTrove)
+- Language: C (TerminalTrove)
+- Hardware acceleration: No (TerminalTrove)
+- Image protocol support: Yes; Sixel: Yes (TerminalTrove)
+- Source: Open Source (MIT) (TerminalTrove)

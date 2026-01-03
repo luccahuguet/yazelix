@@ -29,6 +29,45 @@ def get_result_status [result: record, visual: bool]: nothing -> string {
     $result | get $field
 }
 
+def get_launch_error_details [stdout: string, stderr: string]: nothing -> string {
+    let combined = [$stderr, $stdout] | where ($it | is-not-empty) | str join "\n"
+    if ($combined | is-empty) {
+        return "No output captured"
+    }
+
+    let lines = ($combined | lines)
+    let lower = ($combined | str downcase)
+    let missing_terminal = (
+        ($lower | str contains "specified terminal")
+        or ($lower | str contains "none of the supported terminals")
+        or ($lower | str contains "terminal.terminals must include")
+    )
+
+    if $missing_terminal {
+        let hint = "Missing terminal. Install it, or set manage_terminals = true and run yzx restart."
+        let matched_line = (
+            $lines
+            | where {|line|
+                let lower_line = ($line | str downcase)
+                let matches = [
+                    ($lower_line | str contains "specified terminal")
+                    ($lower_line | str contains "none of the supported terminals")
+                    ($lower_line | str contains "terminal.terminals must include")
+                ]
+                $matches | any {|match| $match }
+            }
+            | first
+        )
+        if ($matched_line | is-empty) {
+            $hint
+        } else {
+            $"($hint) ($matched_line)"
+        }
+    } else {
+        $lines | first
+    }
+}
+
 # Run a visual sweep test by launching actual Yazelix
 export def run_visual_sweep_test [
     shell: string,
@@ -50,8 +89,9 @@ export def run_visual_sweep_test [
         let launch_result = launch_visual_test $config_path $test_id $terminal
 
         if $launch_result.exit_code != 0 {
-            print $"❌ Failed to launch ($shell) + ($terminal): ($launch_result.stderr)"
-            create_test_result $test_id $shell $terminal "fail" "Launch failed" $launch_result.stderr
+            let details = get_launch_error_details $launch_result.stdout $launch_result.stderr
+            print $"❌ Failed to launch ($shell) + ($terminal)"
+            create_test_result $test_id $shell $terminal "fail" "Launch failed" $details
         } else {
             print $"✅ Launched ($shell) + ($terminal) successfully"
 
