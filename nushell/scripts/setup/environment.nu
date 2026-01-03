@@ -6,19 +6,32 @@ use ../utils/config_parser.nu parse_yazelix_config
 
 def main [
     yazelix_dir: string
-    recommended: bool
-    enable_atuin: bool
-    build_helix_from_source: bool
+    recommended: string      # "true" or "false" from devenv.nix
+    enable_atuin: string     # "true" or "false" from devenv.nix
+    build_helix_from_source: string  # "true" or "false" from devenv.nix
     default_shell: string
-    debug_mode: bool
+    debug_mode: string       # "true" or "false" from devenv.nix
     extra_shells_str: string
-    skip_welcome_screen: bool
+    skip_welcome_screen: string  # "true" or "false" from devenv.nix
     helix_mode: string
     ascii_art_mode: string
-    show_macchina_on_welcome: bool = false
+    show_macchina_on_welcome: string = "false"  # "true" or "false" from devenv.nix
 ] {
+    # Convert string booleans to actual booleans
+    let recommended = ($recommended == "true")
+    let enable_atuin = ($enable_atuin == "true")
+    let build_helix_from_source = ($build_helix_from_source == "true")
+    let debug_mode = ($debug_mode == "true")
+    let skip_welcome_screen = ($skip_welcome_screen == "true")
+    let show_macchina_on_welcome = ($show_macchina_on_welcome == "true")
+
     # Import constants and helper functions
     use ../utils/constants_with_helpers.nu *
+
+    # DEBUG: Print skip_welcome_screen value
+    if $debug_mode {
+        print $"🔍 DEBUG: skip_welcome_screen parameter = ($skip_welcome_screen)"
+    }
 
     # Detect quiet mode from environment
     let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
