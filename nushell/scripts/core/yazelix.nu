@@ -10,9 +10,9 @@ use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 use ../utils/common.nu [get_max_cores]
 use ./start_yazelix.nu [start_yazelix_session]
 
-# Import modularized commands
-use ../yzx/launch.nu *
-use ../yzx/env.nu *
+# Import modularized commands (export use to properly re-export subcommands)
+export use ../yzx/launch.nu *
+export use ../yzx/env.nu *
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
