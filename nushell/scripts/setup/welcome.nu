@@ -3,6 +3,7 @@
 # Handles ASCII art display and welcome message generation
 
 use ../utils/ascii_art.nu *
+use ../utils/constants.nu YAZELIX_VERSION
 use ../utils/config_parser.nu parse_yazelix_config
 
 # Show ASCII art based on mode (animated or static)
@@ -108,7 +109,7 @@ export def build_welcome_message [
 
     [
         "",
-        $"($colors.purple)🎉 Welcome to Yazelix v9!($colors.reset)",
+        $"($colors.purple)🎉 Welcome to Yazelix ($YAZELIX_VERSION)!($colors.reset)",
         $"($colors.blue)Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!($colors.reset)",
         $flake_info,
         $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",
@@ -163,6 +164,7 @@ export def show_welcome [
         } catch {
             # Non-interactive shell, just continue
         }
+
         print $"($colors.purple)Launching Zellij...($colors.reset)"
     }
 }

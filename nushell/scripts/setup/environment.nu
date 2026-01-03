@@ -136,6 +136,8 @@ def main [] {
     # Build welcome message
     let welcome_message = build_welcome_message $yazelix_dir $helix_mode $colors
 
-    # Display welcome screen or log it
-    show_welcome $skip_welcome_screen $quiet_mode $ascii_art_mode $show_macchina_on_welcome $welcome_message $log_dir $colors
+    # Display welcome screen or log it (skip when start_yazelix handles it)
+    if ($env.YAZELIX_WELCOME_SOURCE? | default "") != "start" {
+        show_welcome $skip_welcome_screen $quiet_mode $ascii_art_mode $show_macchina_on_welcome $welcome_message $log_dir $colors
+    }
 }

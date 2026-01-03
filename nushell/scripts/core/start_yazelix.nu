@@ -1,10 +1,12 @@
 #!/usr/bin/env nu
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
-use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZI_CONFIG_PATHS, YAZELIX_ENV_VARS]
+use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZI_CONFIG_PATHS, YAZELIX_ENV_VARS, YAZELIX_LOGS_DIR]
 use ../utils/environment_bootstrap.nu *
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
+use ../setup/welcome.nu [show_welcome build_welcome_message]
+use ../utils/ascii_art.nu get_yazelix_colors
 
 def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     # Capture original directory before any cd commands
@@ -41,7 +43,6 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     let env_prep = prepare_environment --verbose=$verbose_mode
     let config = $env_prep.config
     let needs_refresh = $env_prep.needs_refresh
-
     # If setup-only mode, just run devenv shell to install hooks and exit
     if $setup_only {
         print "🔧 Setting up Yazelix environment (installing shell hooks and dependencies)..."
@@ -126,10 +127,18 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
         print $"🔁 zellij command: ($cmd)"
     }
 
+    # Display welcome content before launching Zellij (interactive terminal path)
+    let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
+    let log_dir = ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)
+    mkdir $log_dir
+    let colors = get_yazelix_colors
+    let welcome_message = build_welcome_message $yazelix_dir $config.helix_mode $colors
+    show_welcome $config.skip_welcome_screen $quiet_mode $config.ascii_art_mode $config.show_macchina_on_welcome $welcome_message $log_dir $colors
+
     # Run devenv shell with explicit HOME.
     # The default shell is dynamically read from yazelix.toml configuration
     # and passed directly to the zellij command.
-    with-env {HOME: $home} {
+    with-env {HOME: $home, YAZELIX_WELCOME_SOURCE: "start"} {
         if $verbose_mode and $needs_refresh {
             print "♻️  Config changed – rebuilding environment"
         }
