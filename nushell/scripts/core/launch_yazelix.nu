@@ -60,24 +60,29 @@ def main [
     }
 
     let terminal_config_mode = $config.terminal_config_mode
-    let terminals = ($config.terminals? | default ["ghostty"] | uniq)
+    let manage_terminals = ($config.manage_terminals? | default true)
+    mut terminals = ($config.terminals? | default ["ghostty"] | uniq)
     if ($terminals | is-empty) {
-        let available = (
-            $SUPPORTED_TERMINALS
-            | where {|t|
-                let meta = ($TERMINAL_METADATA | get $t)
-                (which $meta.wrapper | is-not-empty) or (which $t | is-not-empty)
+        if $manage_terminals {
+            let available = (
+                $SUPPORTED_TERMINALS
+                | where {|t|
+                    let meta = ($TERMINAL_METADATA | get $t)
+                    (which $meta.wrapper | is-not-empty) or (which $t | is-not-empty)
+                }
+            )
+            let available_str = if ($available | is-empty) {
+                "none detected"
+            } else {
+                $available | str join ", "
             }
-        )
-        let available_str = if ($available | is-empty) {
-            "none detected"
+            print "Error: terminal.terminals must include at least one terminal"
+            print $"Detected terminals: ($available_str)"
+            print "Set [terminal].terminals in ~/.config/yazelix/yazelix.toml"
+            exit 1
         } else {
-            $available | str join ", "
+            $terminals = $SUPPORTED_TERMINALS
         }
-        print "Error: terminal.terminals must include at least one terminal"
-        print $"Detected terminals: ($available_str)"
-        print "Set [terminal].terminals in ~/.config/yazelix/yazelix.toml"
-        exit 1
     }
 
     # Generate all terminal configurations for safety and consistency

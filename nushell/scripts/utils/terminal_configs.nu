@@ -3,6 +3,7 @@
 
 use config_parser.nu parse_yazelix_config
 use ./constants_with_helpers.nu *
+use ./constants.nu SUPPORTED_TERMINALS
 
 # Helpers
 def get_opacity_value [transparency: string] { $TRANSPARENCY_VALUES | get -o $transparency | default "1.0" }
@@ -222,9 +223,14 @@ def save_config_with_backup [file_path: string, content: string] {
 
 export def generate_all_terminal_configs [] {
     let config = parse_yazelix_config
-    let terminals = ($config.terminals? | default ["ghostty"])
+    let manage_terminals = ($config.manage_terminals? | default true)
+    mut terminals = ($config.terminals? | default ["ghostty"])
     if ($terminals | is-empty) {
-        error make {msg: "terminal.terminals must include at least one terminal"}
+        if $manage_terminals {
+            error make {msg: "terminal.terminals must include at least one terminal"}
+        } else {
+            $terminals = $SUPPORTED_TERMINALS
+        }
     }
     let should_generate_ghostty = ($terminals | any {|t| $t == "ghostty" })
     let should_generate_foot = ($terminals | any {|t| $t == "foot" })
