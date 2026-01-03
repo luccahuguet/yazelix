@@ -1,31 +1,17 @@
 #!/usr/bin/env nu
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
-use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZI_CONFIG_PATHS, YAZELIX_ENV_VARS]
-use ../utils/nix_detector.nu ensure_nix_available
-use ../utils/common.nu [get_max_cores]
+use ../utils/environment_bootstrap.nu *
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 
-def _start_yazelix_impl [cwd_override?: string, --verbose] {
+def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     # Capture original directory before any cd commands
     let original_dir = pwd
 
-    # Try to set up Nix environment automatically when outside Yazelix/nix shells
-    use ../utils/nix_env_helper.nu ensure_nix_in_environment
-
-    let already_in_env = (
-        ($env.IN_YAZELIX_SHELL? == "true")
-        or ($env.IN_NIX_SHELL? | is-not-empty)
-    )
-
-    if not $already_in_env {
-        # If automatic setup fails, fall back to the detector with user interaction
-        if not (ensure_nix_in_environment) {
-            ensure_nix_available
-        }
-    }
+    # Ensure environment is available (shared with yzx env)
+    ensure_environment_available
 
     let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
     if $verbose_mode {
@@ -52,7 +38,24 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
     cd $yazelix_dir
 
     # Parse configuration using the shared module
-    let config = parse_yazelix_config
+    let env_prep = prepare_environment --verbose=$verbose_mode
+    let config = $env_prep.config
+    let needs_refresh = $env_prep.needs_refresh
+
+    # If setup-only mode, just run devenv shell to install hooks and exit
+    if $setup_only {
+        print "🔧 Setting up Yazelix environment (installing shell hooks and dependencies)..."
+        print "   This may take several minutes on first run."
+
+        run_in_devenv_shell "echo '✅ Setup complete! Shell hooks installed.'" --verbose=$verbose_mode --force-refresh=$needs_refresh
+
+        print ""
+        print "📝 Next steps:"
+        print "   1. Restart your shell (or source your shell config)"
+        print "   2. Run 'yzx launch' to start Yazelix"
+        print ""
+        return
+    }
 
     # Generate merged Yazi configuration (doesn't need zellij)
     print "🔧 Preparing Yazi configuration..."
@@ -126,53 +129,34 @@ def _start_yazelix_impl [cwd_override?: string, --verbose] {
     # Run devenv shell with explicit HOME.
     # The default shell is dynamically read from yazelix.toml configuration
     # and passed directly to the zellij command.
-    # Guard against recursive environment initialization when already in a managed shell
     with-env {HOME: $home} {
-        let in_nix_shell = ($env.IN_NIX_SHELL? | is-not-empty)
-        let in_yazelix_shell = ($env.IN_YAZELIX_SHELL? == "true")
-
-        if $verbose_mode {
-            print $"🔁 IN_NIX_SHELL? ($in_nix_shell) | IN_YAZELIX_SHELL? ($in_yazelix_shell)"
-            if ($in_nix_shell or $in_yazelix_shell) {
-                print "⚙️ Executing zellij command directly"
-            } else {
-                print "⚙️ Entering devenv shell before running zellij command"
-            }
+        if $verbose_mode and $needs_refresh {
+            print "♻️  Config changed – rebuilding environment"
         }
 
-        if ($in_nix_shell or $in_yazelix_shell) {
-            # Already in a managed shell, run command directly to avoid recursive nesting
-            ^bash -c $cmd
-        } else {
-            # Not in managed shell, enter devenv first
-            if (which devenv | is-empty) {
-                print ""
-                print "❌ devenv command not found."
-                print "   Yazelix v11+ moved from flake-based `nix develop` shells to devenv."
-                print "   Install devenv with:"
-                print "     nix profile install github:cachix/devenv/latest"
-                print "   After installing, relaunch Yazelix (or run `devenv shell --impure`)."
-                print "   Old commands like `nix develop` are no longer supported."
-                print ""
-                exit 1
-            }
-            # Must run devenv from the directory containing devenv.nix
-            if ($env.YAZELIX_FORCE_REFRESH? == "true") and $verbose_mode {
-                print "♻️  Config changed – rebuilding environment"
-            }
-            let max_cores = get_max_cores
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv --impure --cores ($max_cores) shell -- bash -c '($cmd)'"
-            ^bash -c $devenv_cmd
-        }
+        # Use shared devenv runner (consolidates with yzx env)
+        run_in_devenv_shell $cmd --verbose=$verbose_mode --force-refresh=$needs_refresh
     }
 }
 
-export def start_yazelix_session [cwd_override?: string, --verbose] {
+export def start_yazelix_session [cwd_override?: string, --verbose, --setup-only] {
     if ($cwd_override | is-not-empty) {
-        if $verbose {
+        if $setup_only {
+            if $verbose {
+                _start_yazelix_impl $cwd_override --verbose --setup-only
+            } else {
+                _start_yazelix_impl $cwd_override --setup-only
+            }
+        } else if $verbose {
             _start_yazelix_impl $cwd_override --verbose
         } else {
             _start_yazelix_impl $cwd_override
+        }
+    } else if $setup_only {
+        if $verbose {
+            _start_yazelix_impl --verbose --setup-only
+        } else {
+            _start_yazelix_impl --setup-only
         }
     } else if $verbose {
         _start_yazelix_impl --verbose
@@ -181,12 +165,24 @@ export def start_yazelix_session [cwd_override?: string, --verbose] {
     }
 }
 
-export def main [cwd_override?: string, --verbose] {
+export def main [cwd_override?: string, --verbose, --setup-only] {
     if ($cwd_override | is-not-empty) {
-        if $verbose {
+        if $setup_only {
+            if $verbose {
+                _start_yazelix_impl $cwd_override --verbose --setup-only
+            } else {
+                _start_yazelix_impl $cwd_override --setup-only
+            }
+        } else if $verbose {
             _start_yazelix_impl $cwd_override --verbose
         } else {
             _start_yazelix_impl $cwd_override
+        }
+    } else if $setup_only {
+        if $verbose {
+            _start_yazelix_impl --verbose --setup-only
+        } else {
+            _start_yazelix_impl --setup-only
         }
     } else if $verbose {
         _start_yazelix_impl --verbose

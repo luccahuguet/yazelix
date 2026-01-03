@@ -278,62 +278,38 @@ export def "yzx env" [
     --no-shell(-n)  # Keep current shell instead of launching configured shell
     --command(-c): string  # Run a command in the Yazelix environment
 ] {
+    use ~/.config/yazelix/nushell/scripts/utils/environment_bootstrap.nu *
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
 
-    if (which devenv | is-empty) {
-        print "❌ devenv command not found - install devenv to load the Yazelix environment."
-        print "   See https://devenv.sh/getting-started/ for installation instructions."
-        exit 1
-    }
+    # Prepare environment (shared with start_yazelix.nu)
+    let env_prep = prepare_environment
+    let config = $env_prep.config
+    let needs_refresh = $env_prep.needs_refresh
 
-    let config_state = (try {
-        compute_config_state
-    } catch {|err|
-        print $"❌ Failed to evaluate Yazelix config: ($err.msg)"
-        exit 1
-    })
-    let needs_refresh = $config_state.needs_refresh
-    let config = $config_state.config
-
-    let yazelix_dir = "~/.config/yazelix"
     let original_dir = (pwd)
 
     if ($command | is-not-empty) {
         # Run command in Yazelix environment (skip welcome screen for automation)
         # Wrap command to cd back to original directory first
         let wrapped_command = $"cd '($original_dir)' && ($command)"
-        with-env {YAZELIX_ENV_ONLY: "true", YAZELIX_SKIP_WELCOME: "true"} {
-            let max_cores = get_max_cores
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv --quiet --impure --cores ($max_cores) shell -- bash -c '($wrapped_command)'"
-            if $needs_refresh {
-                with-env {YAZELIX_FORCE_REFRESH: "true"} {
-                    ^bash -c $devenv_cmd
-                }
-            } else {
-                ^bash -c $devenv_cmd
-            }
-        }
+
+        run_in_devenv_shell $wrapped_command --env-only --skip-welcome --quiet --force-refresh=$needs_refresh
+
         if $needs_refresh {
-            mark_config_state_applied $config_state
+            mark_config_state_applied $env_prep.config_state
         }
     } else if $no_shell {
         # For --no-shell, we need to cd back after devenv loads
-        with-env {YAZELIX_ENV_ONLY: "true"} {
-            let max_cores = get_max_cores
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv --quiet --impure --cores ($max_cores) shell -- bash -c 'cd \"($original_dir)\" && exec bash'"
-            if $needs_refresh {
-                with-env {YAZELIX_FORCE_REFRESH: "true"} {
-                    ^bash -c $devenv_cmd
-                }
-            } else {
-                ^bash -c $devenv_cmd
-            }
-        }
+        let stay_bash_command = $"cd '($original_dir)' && exec bash"
+
+        run_in_devenv_shell $stay_bash_command --env-only --quiet --force-refresh=$needs_refresh
+
         if $needs_refresh {
-            mark_config_state_applied $config_state
+            mark_config_state_applied $env_prep.config_state
         }
     } else {
+        # Launch configured shell
         let shell_name = ($config.default_shell? | default "nu" | str downcase)
         let shell_command = match $shell_name {
             "nu" => ["nu" "--login"]
@@ -346,25 +322,19 @@ export def "yzx env" [
         let command_str = ($shell_command | str join " ")
         # Change directory back to original location before exec'ing the shell
         let exec_command = $"cd '($original_dir)' && exec ($command_str)"
-        with-env {YAZELIX_ENV_ONLY: "true", SHELL: $shell_exec} {
-            try {
-                let max_cores = get_max_cores
-                let devenv_cmd = $"cd ($yazelix_dir) && devenv --quiet --impure --cores ($max_cores) shell -- bash -lc '($exec_command)'"
-                if $needs_refresh {
-                    with-env {YAZELIX_FORCE_REFRESH: "true"} {
-                        ^bash -c $devenv_cmd
-                    }
-                } else {
-                    ^bash -c $devenv_cmd
-                }
-            } catch {|err|
-                print $"❌ Failed to launch configured shell: ($err.msg)"
-                print "   Tip: rerun with 'yzx env --no-shell' to stay in your current shell."
-                exit 1
+
+        try {
+            with-env {SHELL: $shell_exec} {
+                run_in_devenv_shell $exec_command --env-only --quiet --force-refresh=$needs_refresh
             }
-        }
-        if $needs_refresh {
-            mark_config_state_applied $config_state
+
+            if $needs_refresh {
+                mark_config_state_applied $env_prep.config_state
+            }
+        } catch {|err|
+            print $"❌ Failed to launch configured shell: ($err.msg)"
+            print "   Tip: rerun with 'yzx env --no-shell' to stay in your current shell."
+            exit 1
         }
     }
 }

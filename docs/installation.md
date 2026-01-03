@@ -171,24 +171,27 @@ home.packages = with pkgs; [
 
 ### Step 7: Set Up Yazelix to Auto-Launch in Your Terminal
 
-**Note for v9 (or higher) users:** Terminal configs are now auto-generated - no more manual copying! See [troubleshooting](./troubleshooting.md#v95-migration-notes) for migration details.
-
 #### Option A: Automatic Launch (Recommended for most users)
 
-Use the yazelix launcher to automatically configure your terminal and start yazelix:
+For the **first launch**, run the setup script to install all dependencies and shell hooks:
 
 ```bash
-nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
+nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu --setup-only
 ```
 
 **What this does**:
-- Automatically generates optimized terminal configs based on your yazelix settings
-- Configures cursor trails and transparency from your `yazelix.toml` preferences
-- Sets up the `yzx` command for launching Yazelix from anywhere
-- Launches your preferred terminal with yazelix pre-loaded
-- No manual copying required - everything is handled dynamically
+- Bootstraps the devenv environment and installs all Yazelix packages (~2.2GB)
+- Sets up shell hooks (makes the `yzx` command available)
+- Does NOT launch the UI (avoids terminal compatibility issues)
 
-**Result**: Your terminal opens with yazelix ready to use, with your personalized settings applied, and the `yzx` command available for future launches.
+**First run note**: The first launch will take several minutes to download and install all dependencies. Subsequent launches will be instant thanks to devenv's caching.
+
+**After setup completes**:
+1. Restart your shell (or source your shell config)
+2. Use `yzx launch` to start Yazelix in a new terminal window:
+```bash
+yzx launch  # Opens in new terminal in current directory
+```
 
 #### Option B: Manual Launch (For users who don't want to modify terminal configs)
 
