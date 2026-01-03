@@ -124,11 +124,6 @@ let
     else
       "yzx_no_side";
 
-  extraShellsStr =
-    if extraShells == [ ]
-    then "NONE"
-    else builtins.concatStringsSep "," extraShells;
-
   # Terminal wrappers replicate the flake-based launchers
   ghosttyWrapper = pkgs.writeShellScriptBin "yazelix-ghostty" (
     if isLinux then ''
@@ -482,18 +477,8 @@ in {
       echo "📝 Set EDITOR to: ${editorCommand}"
     fi
 
-    nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu" \
-      "$YAZELIX_DIR" \
-      "${boolToString recommendedDepsEnabled}" \
-      "${boolToString atuinEnabled}" \
-      "${boolToString buildHelixFromSource}" \
-      "${defaultShell}" \
-      "${boolToString debugMode}" \
-      "${extraShellsStr}" \
-      "${boolToString skipWelcomeScreen}" \
-      "${helixMode}" \
-      "${asciiArtMode}" \
-      "${boolToString showMacchinaOnWelcome}"
+    # Environment setup now reads directly from yazelix.toml (single source of truth)
+    nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu"
 
     # Save config hash after successful environment setup
     if command -v nu >/dev/null 2>&1; then
