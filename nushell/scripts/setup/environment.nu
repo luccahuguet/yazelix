@@ -4,33 +4,30 @@
 
 use ../utils/config_parser.nu parse_yazelix_config
 
-def main [
-    yazelix_dir: string
-    recommended: string      # "true" or "false" from devenv.nix
-    enable_atuin: string     # "true" or "false" from devenv.nix
-    build_helix_from_source: string  # "true" or "false" from devenv.nix
-    default_shell: string
-    debug_mode: string       # "true" or "false" from devenv.nix
-    extra_shells_str: string
-    skip_welcome_screen: string  # "true" or "false" from devenv.nix
-    helix_mode: string
-    ascii_art_mode: string
-    show_macchina_on_welcome: string = "false"  # "true" or "false" from devenv.nix
-] {
-    # Convert string booleans to actual booleans
-    let recommended = ($recommended == "true")
-    let enable_atuin = ($enable_atuin == "true")
-    let build_helix_from_source = ($build_helix_from_source == "true")
-    let debug_mode = ($debug_mode == "true")
-    let skip_welcome_screen = ($skip_welcome_screen == "true")
-    let show_macchina_on_welcome = ($show_macchina_on_welcome == "true")
+def main [] {
+    # Read configuration directly from TOML - single source of truth!
+    let config = parse_yazelix_config
+
+    # Extract values from config (all properly typed from TOML)
+    let yazelix_dir = ($env.YAZELIX_DIR? | default ($env.HOME | path join ".config" "yazelix"))
+    let recommended = ($config.recommended_deps? | default true)
+    let enable_atuin = ($config.enable_atuin? | default false)
+    let default_shell = ($config.default_shell? | default "nu")
+    let debug_mode = ($config.debug_mode? | default false)
+    let skip_welcome_screen = ($config.skip_welcome_screen? | default false)
+    let helix_mode = ($config.helix_mode? | default "release")
+    let ascii_art_mode = ($config.ascii_art_mode? | default "static")
+    let show_macchina_on_welcome = ($config.show_macchina_on_welcome? | default false)
+
+    # Parse extra shells from config
+    let extra_shells = ($config.extra_shells? | default [])
 
     # Import constants and helper functions
     use ../utils/constants_with_helpers.nu *
 
     # DEBUG: Print skip_welcome_screen value
     if $debug_mode {
-        print $"🔍 DEBUG: skip_welcome_screen parameter = ($skip_welcome_screen)"
+        print $"🔍 DEBUG: skip_welcome_screen from config = ($skip_welcome_screen)"
     }
 
     # Detect quiet mode from environment
@@ -60,13 +57,6 @@ def main [
 
     # Validate user config against schema
     use ../utils/config_schema.nu validate_config_against_default
-
-    # Parse extra shells from comma-separated string
-    let extra_shells = if ($extra_shells_str | is-empty) or ($extra_shells_str == "NONE") {
-        []
-    } else {
-        $extra_shells_str | split row "," | where $it != ""
-    }
 
     # Determine which shells to configure (always nu/bash, plus default_shell and extra_shells)
     let shells_to_configure = (["nu", "bash"] ++ [$default_shell] ++ $extra_shells) | uniq

@@ -31,16 +31,22 @@ export def parse_yazelix_config [] {
 
     # Extract and return values
     {
+        recommended_deps: ($raw_config.core?.recommended_deps? | default true),
+        debug_mode: ($raw_config.core?.debug_mode? | default false),
+        skip_welcome_screen: ($raw_config.core?.skip_welcome_screen? | default false),
+        show_macchina_on_welcome: ($raw_config.core?.show_macchina_on_welcome? | default true),
+        ascii_art_mode: ($raw_config.ascii?.mode? | default "static"),
         persistent_sessions: ($raw_config.zellij?.persistent_sessions? | default false | into string),
         session_name: ($raw_config.zellij?.session_name? | default "yazelix"),
         zellij_theme: ($raw_config.zellij?.theme? | default "default"),
         preferred_terminal: ($raw_config.terminal?.preferred_terminal? | default "ghostty"),
         extra_terminals: ($raw_config.terminal?.extra_terminals? | default [] | into string),
-        enable_atuin: ($raw_config.shell?.enable_atuin? | default false | into string),
         terminal_config_mode: ($raw_config.terminal?.config_mode? | default "yazelix"),
         cursor_trail: ($raw_config.terminal?.cursor_trail? | default "random"),
         transparency: ($raw_config.terminal?.transparency? | default "medium"),
         default_shell: ($raw_config.shell?.default_shell? | default "nu"),
+        extra_shells: ($raw_config.shell?.extra_shells? | default []),
+        enable_atuin: ($raw_config.shell?.enable_atuin? | default false),
         helix_mode: ($raw_config.helix?.mode? | default "release"),
         disable_zellij_tips: ($raw_config.zellij?.disable_tips? | default true | into string),
         zellij_rounded_corners: ($raw_config.zellij?.rounded_corners? | default true | into string),
