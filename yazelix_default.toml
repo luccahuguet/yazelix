@@ -81,6 +81,7 @@ default_shell = "nu"
 # Only install additional shells if you plan to use them
 extra_shells = [
   # "fish",
+  # "zsh",
 ]
 
 # Atuin shell history integration (default: false)
@@ -105,6 +106,9 @@ preferred_terminal = "ghostty"
 # Only install additional terminals if you plan to use them
 extra_terminals = [
   # "wezterm",
+  # "kitty",
+  # "alacritty",
+  # "foot",
 ]
 
 # Terminal config mode (how Yazelix handles terminal emulator configs)

@@ -1,12 +1,8 @@
 #!/usr/bin/env nu
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
-use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZI_CONFIG_PATHS, YAZELIX_ENV_VARS, YAZELIX_LOGS_DIR]
+use ../utils/constants.nu YAZELIX_ENV_VARS
 use ../utils/environment_bootstrap.nu *
-use ../setup/zellij_config_merger.nu generate_merged_zellij_config
-use ../setup/yazi_config_merger.nu generate_merged_yazi_config
-use ../setup/welcome.nu [show_welcome build_welcome_message]
-use ../utils/ascii_art.nu get_yazelix_colors
 
 def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     # Capture original directory before any cd commands
@@ -58,14 +54,6 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
         return
     }
 
-    # Generate merged Yazi configuration (doesn't need zellij)
-    print "🔧 Preparing Yazi configuration..."
-    let merged_yazi_dir = if $verbose_mode {
-        generate_merged_yazi_config $yazelix_dir
-    } else {
-        generate_merged_yazi_config $yazelix_dir --quiet
-    }
-    
     # For Zellij config, create a placeholder for now - will be generated inside Nix environment
     let merged_zellij_dir = $"($env.HOME)/.local/share/yazelix/configs/zellij"
 
@@ -78,9 +66,6 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     } else {
         $original_dir
     }
-
-    # Build the command that first generates the zellij config, then starts zellij
-    let zellij_merger_cmd = $"nu ($yazelix_dir)/nushell/scripts/setup/zellij_config_merger.nu ($yazelix_dir)"
 
     # Check for layout override (for testing), default to constant
     let layout = if ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
@@ -95,45 +80,12 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
         $"($merged_zellij_dir)/layouts/($layout).kdl"
     }
 
-    let cmd = if ($config.persistent_sessions == "true") {
-        # Use zellij attach with create flag for persistent sessions
-        [
-            $zellij_merger_cmd "&&"
-            "zellij"
-            "--config-dir" $merged_zellij_dir
-            "attach"
-            "-c" $config.session_name
-            "options"
-            "--default-cwd" $working_dir
-            "--default-layout" $layout_path
-            "--pane-frames" "false"
-            "--default-shell" $config.default_shell
-        ] | str join " "
+    let inner_script = $"($yazelix_dir)/nushell/scripts/core/start_yazelix_inner.nu"
+    let cmd = if ($working_dir | is-not-empty) {
+        $"nu -i \"($inner_script)\" \"($working_dir)\" \"($layout_path)\""
     } else {
-        # For new sessions, apply options explicitly
-        [
-            $zellij_merger_cmd "&&"
-            "zellij"
-            "--config-dir" $merged_zellij_dir
-            "options"
-            "--default-cwd" $working_dir
-            "--default-layout" $layout_path
-            "--pane-frames" "false"
-            "--default-shell" $config.default_shell
-        ] | str join " "
+        $"nu -i \"($inner_script)\" \"\" \"($layout_path)\""
     }
-
-    if $verbose_mode {
-        print $"🔁 zellij command: ($cmd)"
-    }
-
-    # Display welcome content before launching Zellij (interactive terminal path)
-    let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
-    let log_dir = ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)
-    mkdir $log_dir
-    let colors = get_yazelix_colors
-    let welcome_message = build_welcome_message $yazelix_dir $config.helix_mode $colors
-    show_welcome $config.skip_welcome_screen $quiet_mode $config.ascii_art_mode $config.show_macchina_on_welcome $welcome_message $log_dir $colors
 
     # Run devenv shell with explicit HOME.
     # The default shell is dynamically read from yazelix.toml configuration
