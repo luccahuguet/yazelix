@@ -43,7 +43,7 @@
                 extra_shells = [ "fish" ];
                 
                 # Terminal preference
-                preferred_terminal = "ghostty";
+                terminals = [ "ghostty" ];
                 
                 # Editor configuration (flat structure)
                 set_editor = true;

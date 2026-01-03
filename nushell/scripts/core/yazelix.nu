@@ -90,7 +90,12 @@ export def "yzx info" [] {
     print $"Directory: ($YAZELIX_CONFIG_DIR | str replace "~" $env.HOME)"
     print $"Logs: ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)"
     print $"Default Shell: ($config.default_shell)"
-    print $"Preferred Terminal: ($config.preferred_terminal)"
+    let terminals = ($config.terminals? | default ["ghostty"])
+    if ($terminals | is-empty) {
+        print "Terminals: none"
+    } else {
+        print $"Terminals: (($terminals | str join ', '))"
+    }
     print $"Helix Mode: ($config.helix_mode)"
     print $"Persistent Sessions: ($config.persistent_sessions)"
     if ($config.persistent_sessions == "true") {

@@ -152,7 +152,7 @@ export def main [
         print "❌ No supported terminals found in your yazelix environment!"
         print ""
         print "💡 To add terminals, edit ~/.config/yazelix/yazelix.toml:"
-        print "   extra_terminals = [\"wezterm\" \"kitty\" \"alacritty\" \"foot\"];"
+        print "   terminals = [\"ghostty\" \"wezterm\" \"kitty\" \"alacritty\" \"foot\"];"
         print ""
         print "   Then reload: yzx launch --here"
         exit 1
@@ -165,7 +165,7 @@ export def main [
         print ""
         print "💡 To benchmark more terminals, add them to ~/.config/yazelix/yazelix.toml:"
         let quoted_terminals = ($unavailable_terminals | each {|t| $'"($t)"'} | str join ' ')
-        print $"   extra_terminals = [($quoted_terminals)];"
+        print $"   terminals = [($quoted_terminals)];"
         print "   Then reload: yzx launch --here"
         print ""
     }
@@ -178,7 +178,7 @@ export def main [
             print $"❌ Terminal '($terminal)' is supported but not available in your environment"
             print ""
             print "💡 To add it, edit ~/.config/yazelix/yazelix.toml:"
-            print $"   extra_terminals = [\"($terminal)\"];"
+            print $"   terminals = [\"($terminal)\"];"
             print "   Then reload: yzx launch --here"
             exit 1
         } else {

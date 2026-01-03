@@ -43,7 +43,7 @@ def test_parse_config [] {
         let required_fields = [
             "persistent_sessions",
             "session_name",
-            "preferred_terminal",
+            "terminals",
             "default_shell",
             "helix_mode",
             "config_file"
@@ -79,10 +79,15 @@ def test_config_values [] {
         }
 
         let valid_terminals = ["ghostty", "wezterm", "kitty", "alacritty", "foot"]
-        if not ($config.preferred_terminal in $valid_terminals) {
-            print $"  ⚠️  Unusual terminal: ($config.preferred_terminal)"
+        let terminals = ($config.terminals? | default [])
+        if ($terminals | is-empty) {
+            print "  ❌ terminals is empty"
+            return false
+        }
+        if (not ($terminals | all {|t| $t in $valid_terminals })) {
+            print $"  ⚠️  Unusual terminals: (($terminals | str join \", \"))"
         } else {
-            print $"  ✅ Valid preferred_terminal: ($config.preferred_terminal)"
+            print $"  ✅ Valid terminals: (($terminals | str join \", \"))"
         }
 
         let valid_helix_modes = ["release", "source"]

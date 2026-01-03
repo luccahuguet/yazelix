@@ -100,7 +100,8 @@ def run_sweep_test [
                 }
             })
 
-            if ($parsed.default_shell == $shell) and ($parsed.preferred_terminal == $terminal) {
+            let parsed_terminal = ($parsed.terminals? | default [] | first)
+            if ($parsed.default_shell == $shell) and ($parsed_terminal == $terminal) {
                 {status: "pass", message: "Config parsing successful"}
             } else {
                 {status: "fail", message: "Config parsing mismatch"}

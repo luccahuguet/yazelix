@@ -89,7 +89,8 @@ extra_shells = [
 enable_atuin = false
 
 [terminal]
-# Preferred terminal emulator for launch_yazelix.nu (default: "ghostty")
+# Terminal emulator preference + install list (ordered)
+# The first entry is the primary terminal used for launch; the rest are fallbacks.
 # Options: "ghostty", "wezterm", "kitty", "alacritty", "foot" (Linux-only)
 #
 # Ghostty installation:
@@ -97,14 +98,10 @@ enable_atuin = false
 # - macOS: Install via Homebrew: `brew install --cask ghostty`
 #   (Nix package doesn't support macOS due to app bundle limitations)
 #
-# Auto-detection fallback order: ghostty → wezterm → kitty → alacritty → foot
+# Auto-detection fallback order matches this list.
 # WezTerm is the recommended fallback (works on both platforms, best image preview)
-preferred_terminal = "ghostty"
-
-# Extra terminal emulators to install beyond Ghostty (default: [])
-# Options: ["wezterm", "kitty", "alacritty", "foot"] (foot is Linux-only)
-# Only install additional terminals if you plan to use them
-extra_terminals = [
+terminals = [
+  "ghostty",
   # "wezterm",
   # "kitty",
   # "alacritty",

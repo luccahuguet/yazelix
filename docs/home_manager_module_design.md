@@ -56,7 +56,7 @@ programs.yazelix = {
     description = "Additional shells to install beyond nu/bash";
   };
   
-  preferred_terminal = mkOption {
+  terminals = mkOption {
     type = types.enum [ "wezterm" "ghostty" "kitty" "alacritty" "foot" ];
     default = "ghostty";
     description = "Preferred terminal emulator for launch commands";
@@ -171,7 +171,7 @@ xdg.configFile."yazelix/yazelix.nix" = mkIf cfg.enable {
       extra_shells = ${builtins.toJSON cfg.extra_shells};
       
       # Terminal configuration
-      preferred_terminal = "${cfg.preferred_terminal}";
+      terminals = "${cfg.terminals}";
       
       # Editor configuration
       ${if cfg.editor_config.set_editor then ''

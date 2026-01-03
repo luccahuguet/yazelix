@@ -156,7 +156,7 @@ There's much to be done yet. Infinite possibilities. But some rather closer than
 - **Seamless Yazelix restart**: `yzx restart` launches a new Yazelix instance before killing the old one, providing a smooth and reliable restart experience.
 - **Yazelix Collection page**: Yazelix now includes a dedicated collection page (`docs/yazelix_collection.md`) listing all integrated tools and inspirations.
 - **Added macchina to welcome screen**: Added a system info summary using macchina (neofetch alternative) to the welcome screen. It can be disabled in the config.
-- **Dynamic Config Validation**: Yazelix now uses a dynamic config validator that checks your config against yazelix_default.nix every time Yazelix starts. It warns about unknown fields, missing fields, and invalid values for key options (like default_shell, helix_mode, preferred_terminal, ascii_art_mode). No more silent config errors!
+- **Dynamic Config Validation**: Yazelix now uses a dynamic config validator that checks your config against yazelix_default.nix every time Yazelix starts. It warns about unknown fields, missing fields, and invalid values for key options (like default_shell, helix_mode, terminals, ascii_art_mode). No more silent config errors!
 - **Improved Helix Pane Detection**: Yazelix now checks the topmost pane and the next two below for a Zellij pane named `editor` (the Helix pane) when opening files from Yazi, reusing it if found, or opening a new one if not. See [Helix Pane Detection Logic](../README.md#helix-pane-detection-logic) for details.
 - **Ergonomic Tab Navigation**: Added browser-like tab navigation in Zellij:
   - `Alt+number` to jump directly to tabs 1-9

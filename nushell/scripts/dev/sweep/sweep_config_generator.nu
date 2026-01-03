@@ -31,8 +31,7 @@ def build_sweep_config [
             enable_atuin: false
         }
         terminal: {
-            preferred_terminal: $terminal
-            extra_terminals: ["ghostty" "wezterm" "kitty" "alacritty" "foot"]
+            terminals: ([$terminal "ghostty" "wezterm" "kitty" "alacritty" "foot"] | uniq)
             config_mode: "yazelix"
             cursor_trail: "none"
             transparency: "none"

@@ -84,7 +84,9 @@ export def get_terminal_info [colors: record]: nothing -> string {
         if ($config.include_terminal == "true") and ((which yazelix-ghostty | length) > 0) {
             $"($colors.green)🖥️  Using yazelix included terminal \(Ghostty with GPU acceleration\)($colors.reset)"
         } else {
-            $"($colors.cyan)🖥️  Using external terminal: ($config.preferred_terminal)($colors.reset)"
+            let terminals = ($config.terminals? | default ["ghostty"])
+            let preferred = if ($terminals | is-empty) { "unknown" } else { $terminals | first }
+            $"($colors.cyan)🖥️  Using external terminal: ($preferred)($colors.reset)"
         }
     } catch {
         # Fallback: check if we have yazelix-ghostty but no config

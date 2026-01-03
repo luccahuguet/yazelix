@@ -70,10 +70,10 @@ in {
       description = "Additional shells to install beyond nu/bash";
     };
 
-    preferred_terminal = mkOption {
-      type = types.enum [ "wezterm" "ghostty" "kitty" "alacritty" "foot" ];
-      default = "ghostty";
-      description = "Preferred terminal emulator for launch commands";
+    terminals = mkOption {
+      type = types.listOf (types.enum [ "wezterm" "ghostty" "kitty" "alacritty" "foot" ]);
+      default = [ "ghostty" ];
+      description = "Ordered terminal emulator list (first is primary, rest are fallbacks)";
     };
 
     terminal_config_mode = mkOption {
@@ -85,12 +85,6 @@ in {
         - "auto": prefer user configs if present, otherwise Yazelix configs
         - "user": always use user configs (e.g., ~/.config/ghostty/config)
       '';
-    };
-
-    extra_terminals = mkOption {
-      type = types.listOf (types.enum [ "wezterm" "kitty" "alacritty" "foot" ]);
-      default = [];
-      description = "Additional terminal emulators to install beyond Ghostty";
     };
 
     cursor_trail = mkOption {
@@ -321,8 +315,7 @@ in {
           "enable_atuin = ${boolToToml cfg.enable_atuin}"
           ""
           "[terminal]"
-          "preferred_terminal = ${escapeString cfg.preferred_terminal}"
-          "extra_terminals = ${listToToml cfg.extra_terminals}"
+          "terminals = ${listToToml cfg.terminals}"
           "config_mode = ${escapeString cfg.terminal_config_mode}"
           "cursor_trail = ${escapeString cfg.cursor_trail}"
           "transparency = ${escapeString cfg.transparency}"

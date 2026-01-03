@@ -222,44 +222,54 @@ def save_config_with_backup [file_path: string, content: string] {
 
 export def generate_all_terminal_configs [] {
     let config = parse_yazelix_config
-    let extra_terminals = ($config.extra_terminals | str replace -a '["\] ' '' | split row ' ' | where {|t| ($t | str length) > 0 })
-    let should_generate_foot = ($config.preferred_terminal == "foot") or ($extra_terminals | any {|t| $t == "foot" })
-    let should_generate_wezterm = ($config.preferred_terminal == "wezterm") or ($extra_terminals | any {|t| $t == "wezterm" })
-    let should_generate_kitty = ($config.preferred_terminal == "kitty") or ($extra_terminals | any {|t| $t == "kitty" })
+    let terminals = ($config.terminals? | default ["ghostty"])
+    if ($terminals | is-empty) {
+        error make {msg: "terminal.terminals must include at least one terminal"}
+    }
+    let should_generate_ghostty = ($terminals | any {|t| $t == "ghostty" })
+    let should_generate_foot = ($terminals | any {|t| $t == "foot" })
+    let should_generate_wezterm = ($terminals | any {|t| $t == "wezterm" })
+    let should_generate_kitty = ($terminals | any {|t| $t == "kitty" })
     let generated_dir = ($YAZELIX_GENERATED_CONFIGS_DIR | str replace "~" $env.HOME)
     let configs_dir = ($generated_dir | path join "terminal_emulators")
 
     print "Generating bundled terminal configurations..."
 
-    # Ghostty (always bundled)
-    let ghostty_dir = ($configs_dir | path join "ghostty")
-    mkdir $ghostty_dir
-    save_config_with_backup ($ghostty_dir | path join "config") (generate_ghostty_config)
+    # Ghostty (optional)
+    if $should_generate_ghostty {
+        let ghostty_dir = ($configs_dir | path join "ghostty")
+        mkdir $ghostty_dir
+        save_config_with_backup ($ghostty_dir | path join "config") (generate_ghostty_config)
 
-    # Build cursor trail shaders from modular sources
-    let shaders_src = $"($env.HOME)/.config/yazelix/configs/terminal_emulators/ghostty/shaders"
-    if ($shaders_src | path exists) {
-        let build_script = ($shaders_src | path join "build_shaders.nu")
-        if ($build_script | path exists) {
-            # Call the exported function directly (use in 'nu -c' string works with interpolation)
-            nu -c $"use '($build_script)' build_cursor_trail_shaders; build_cursor_trail_shaders '($shaders_src)'"
+        # Build cursor trail shaders from modular sources
+        let shaders_src = $"($env.HOME)/.config/yazelix/configs/terminal_emulators/ghostty/shaders"
+        if ($shaders_src | path exists) {
+            let build_script = ($shaders_src | path join "build_shaders.nu")
+            if ($build_script | path exists) {
+                # Call the exported function directly (use in 'nu -c' string works with interpolation)
+                nu -c $"use '($build_script)' build_cursor_trail_shaders; build_cursor_trail_shaders '($shaders_src)'"
+            }
+        }
+
+        # Copy shaders to generated config directory
+        let shaders_dest = ($ghostty_dir | path join "shaders")
+        if ($shaders_dest | path exists) { rm --permanent --recursive $shaders_dest }
+        mkdir $shaders_dest
+        if ($shaders_src | path exists) {
+            ls $shaders_src | get name | each {|file| cp -r $file $shaders_dest }
         }
     }
 
-    # Copy shaders to generated config directory
-    let shaders_dest = ($ghostty_dir | path join "shaders")
-    if ($shaders_dest | path exists) { rm --permanent --recursive $shaders_dest }
-    mkdir $shaders_dest
-    if ($shaders_src | path exists) {
-        ls $shaders_src | get name | each {|file| cp -r $file $shaders_dest }
+    # Alacritty (conditional)
+    if ($terminals | any {|t| $t == "alacritty" }) {
+        let alacritty_dir = ($configs_dir | path join "alacritty")
+        mkdir $alacritty_dir
+        save_config_with_backup ($alacritty_dir | path join "alacritty.toml") (generate_alacritty_config)
     }
 
-    # Alacritty (always bundled)
-    let alacritty_dir = ($configs_dir | path join "alacritty")
-    mkdir $alacritty_dir
-    save_config_with_backup ($alacritty_dir | path join "alacritty.toml") (generate_alacritty_config)
-
-    mut generated = ["Ghostty", "Alacritty"]
+    mut generated = []
+    if $should_generate_ghostty { $generated = ($generated | append "Ghostty") }
+    if ($terminals | any {|t| $t == "alacritty" }) { $generated = ($generated | append "Alacritty") }
 
     # WezTerm (conditional)
     if $should_generate_wezterm {

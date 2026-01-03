@@ -26,7 +26,7 @@
     extra_shells = [ "fish" "zsh" ];  # Install additional shells
     
     # Terminal preference
-    preferred_terminal = "wezterm";  # Better for media previews
+    terminals = [ "wezterm" "ghostty" ];  # Better for media previews
     
     # Editor configuration  
     # editor_command = null;       # Default: Use yazelix's Helix (recommended)

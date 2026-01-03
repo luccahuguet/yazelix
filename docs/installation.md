@@ -17,7 +17,7 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix! Nix just installs the tools and yazelix uses nushell internally, and you can use your preferred shell (bash, fish, zsh, or nushell) for your daily work. You can install nix and nushell once, and forget they ever existed.
 
 ## Supported Terminal Emulators
-Yazelix provides 5 terminal emulators built-in via Nix - simply set your `preferred_terminal` in `yazelix.toml`:
+Yazelix provides 5 terminal emulators built-in via Nix - set your `terminals` list in `yazelix.toml`:
 
 **Note**: On macOS, Ghostty uses the native Homebrew version (see below). All other terminals are provided via Nix.
 
@@ -146,7 +146,7 @@ hx ~/.config/yazelix/yazelix.toml
 
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
-- **Terminal preference**: Set `preferred_terminal` (`"ghostty"`, `"wezterm"`, `"kitty"`, `"alacritty"`, `"foot"`)
+- **Terminal preference**: Set `terminals` (`["ghostty", "wezterm", "kitty", "alacritty", "foot"]`, ordered)
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
 ### Step 6: Install Fonts (Required for Kitty and Alacritty)

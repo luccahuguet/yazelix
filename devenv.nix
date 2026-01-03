@@ -46,8 +46,7 @@ let
     extra_shells = rawConfig.shell.extra_shells or [];
     enable_atuin = rawConfig.shell.enable_atuin or false;
 
-    preferred_terminal = rawConfig.terminal.preferred_terminal or "ghostty";
-    extra_terminals = rawConfig.terminal.extra_terminals or [];
+    terminals = rawConfig.terminal.terminals or [ "ghostty" ];
     terminal_config_mode = rawConfig.terminal.config_mode or "yazelix";
     cursor_trail = rawConfig.terminal.cursor_trail or "random";
     transparency = rawConfig.terminal.transparency or "low";
@@ -108,8 +107,13 @@ let
     then "${helixPackage}/bin/hx"
     else userConfig.editor_command;
 
-  preferredTerminal = userConfig.preferred_terminal or "ghostty";
-  extraTerminals = userConfig.extra_terminals or [ ];
+  terminalList =
+    let terminals = userConfig.terminals or [ ];
+    in if terminals == [ ] then
+      throw "terminal.terminals must contain at least one terminal"
+    else
+      lib.unique terminals;
+  preferredTerminal = builtins.elemAt terminalList 0;
   terminalConfigMode = userConfig.terminal_config_mode or "yazelix";
 
   debugMode = userConfig.debug_mode or false;
@@ -170,7 +174,7 @@ let
   );
 
   kittyWrapper =
-    if preferredTerminal == "kitty" || lib.elem "kitty" extraTerminals then
+    if lib.elem "kitty" terminalList then
       pkgs.writeShellScriptBin "yazelix-kitty" ''
         MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
         MODE="''${MODE:-auto}"
@@ -188,7 +192,7 @@ let
     else null;
 
   weztermWrapper =
-    if preferredTerminal == "wezterm" || lib.elem "wezterm" extraTerminals then
+    if lib.elem "wezterm" terminalList then
       pkgs.writeShellScriptBin "yazelix-wezterm" ''
         MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
         MODE="''${MODE:-auto}"
@@ -209,7 +213,7 @@ let
     else null;
 
   alacrittyWrapper =
-    if preferredTerminal == "alacritty" || lib.elem "alacritty" extraTerminals then
+    if lib.elem "alacritty" terminalList then
       pkgs.writeShellScriptBin "yazelix-alacritty" ''
         MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
         MODE="''${MODE:-auto}"
@@ -227,7 +231,7 @@ let
     else null;
 
   footWrapper =
-    if isLinux && (preferredTerminal == "foot" || lib.elem "foot" extraTerminals) then
+    if isLinux && (lib.elem "foot" terminalList) then
       pkgs.writeShellScriptBin "yazelix-foot" ''
         MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
         MODE="''${MODE:-auto}"
@@ -265,12 +269,15 @@ let
       }
     else null;
 
-  ghosttyDeps = filterNull (
-    [ ghosttyWrapper ]  # Wrapper available on both Linux and macOS
-    ++ lib.optionals isLinux [ pkgs.ghostty ]  # Package only on Linux
-  );
+  ghosttyDeps =
+    if lib.elem "ghostty" terminalList then
+      filterNull (
+        [ ghosttyWrapper ]  # Wrapper available on both Linux and macOS
+        ++ lib.optionals isLinux [ pkgs.ghostty ]  # Package only on Linux
+      )
+    else [ ];
   kittyDeps =
-    if preferredTerminal == "kitty" || lib.elem "kitty" extraTerminals then
+    if lib.elem "kitty" terminalList then
       filterNull [ kittyWrapper ]
       ++ [
         pkgs.kitty
@@ -279,11 +286,11 @@ let
       ]
     else [ ];
   weztermDeps =
-    if preferredTerminal == "wezterm" || lib.elem "wezterm" extraTerminals then
+    if lib.elem "wezterm" terminalList then
       filterNull [ weztermWrapper ] ++ [ pkgs.wezterm ]
     else [ ];
   alacrittyDeps =
-    if preferredTerminal == "alacritty" || lib.elem "alacritty" extraTerminals then
+    if lib.elem "alacritty" terminalList then
       filterNull [ alacrittyWrapper ]
       ++ [
         pkgs.alacritty
@@ -292,7 +299,7 @@ let
       ]
     else [ ];
   footDeps =
-    if isLinux && (preferredTerminal == "foot" || lib.elem "foot" extraTerminals) then
+    if isLinux && (lib.elem "foot" terminalList) then
       filterNull [ footWrapper ] ++ [ pkgs.foot ]
     else [ ];
 

@@ -33,10 +33,17 @@ export def resolve_terminal_config [terminal: string, mode: string]: nothing -> 
 }
 
 # Detect available terminal (wrapper or direct)
-export def detect_terminal [preferred: string, prefer_wrappers: bool = true] {
-    # Build list of terminals to check: preferred first, then others
-    let other_terminals = $SUPPORTED_TERMINALS | where $it != $preferred
-    let ordered_terminals = ([$preferred] | append $other_terminals)
+export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
+    # Build list of terminals to check: use list order if provided, otherwise preferred first
+    let ordered_terminals = if ($preferred | describe | str contains "list") {
+        $preferred | where $it in $SUPPORTED_TERMINALS
+    } else {
+        let other_terminals = $SUPPORTED_TERMINALS | where $it != $preferred
+        ([$preferred] | append $other_terminals)
+    }
+    if ($ordered_terminals | is-empty) {
+        return null
+    }
 
     let terminals_to_check = if $prefer_wrappers {
         # Check wrappers first, then direct

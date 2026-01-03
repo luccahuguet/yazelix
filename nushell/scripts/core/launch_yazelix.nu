@@ -60,12 +60,10 @@ def main [
     }
 
     let terminal_config_mode = $config.terminal_config_mode
-
-    # Use terminal override if provided, otherwise use config preference
-    let preferred_terminal = if ($terminal | is-not-empty) {
-        $terminal
-    } else {
-        $config.preferred_terminal
+    let terminals = ($config.terminals? | default ["ghostty"] | uniq)
+    if ($terminals | is-empty) {
+        print "Error: terminal.terminals must include at least one terminal"
+        exit 1
     }
 
     # Generate all terminal configurations for safety and consistency
@@ -101,7 +99,7 @@ def main [
         }
     } else {
         # Normal mode: use detect_terminal with fallbacks
-        detect_terminal $preferred_terminal true
+        detect_terminal $terminals true
     }
 
     if $terminal_info == null {

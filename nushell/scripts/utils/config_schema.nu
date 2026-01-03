@@ -44,7 +44,7 @@ export def validate_enum_values [user: record] {
     let enums = [
         { path: ["shell", "default_shell"], label: "shell.default_shell", allowed: ["nu", "bash", "fish", "zsh"] },
         { path: ["helix", "mode"], label: "helix.mode", allowed: ["release", "source"] },
-        { path: ["terminal", "preferred_terminal"], label: "terminal.preferred_terminal", allowed: ["wezterm", "ghostty", "kitty", "alacritty", "foot"] },
+        { path: ["terminal", "terminals"], label: "terminal.terminals", allowed: ["wezterm", "ghostty", "kitty", "alacritty", "foot"] },
         { path: ["terminal", "cursor_trail"], label: "terminal.cursor_trail", allowed: ["blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "eclipse", "dusk", "orchid", "reef", "inferno", "random", "none"] },
         { path: ["ascii", "mode"], label: "ascii.mode", allowed: ["static", "animated"] }
     ]
@@ -59,6 +59,14 @@ export def validate_enum_values [user: record] {
                 if not ($v in $enum.allowed) {
                     let allowed_str = ($enum.allowed | str join ", ")
                     let msg = '⚠️  Invalid value for terminal.cursor_trail: ' + $v + ' (allowed: [' + $allowed_str + '])'
+                    $warnings = ($warnings | append $msg)
+                }
+            }
+        } else if ($enum.label == "terminal.terminals") and (value | describe | str contains "list") {
+            for v in $value {
+                if not ($v in $enum.allowed) {
+                    let allowed_str = ($enum.allowed | str join ", ")
+                    let msg = '⚠️  Invalid value for terminal.terminals: ' + $v + ' (allowed: [' + $allowed_str + '])'
                     $warnings = ($warnings | append $msg)
                 }
             }
