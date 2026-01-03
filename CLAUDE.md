@@ -97,6 +97,11 @@ Example: When deciding whether `yzx doctor --fix` should auto-fix user runtime c
 - **No patch versions** - only major and minor releases exist
 - Example: v9 → v9.5 → v10 → v10.5 (never v9.1, v9.2, v9.4, etc.)
 
+**Versioning Philosophy:**
+- Tag versions **incrementally** as features complete, rather than batching multiple features into one release
+- Each version should represent a cohesive unit of work (single feature or related bug fixes)
+- This keeps version history clean and makes rollbacks easier
+
 When referencing versions in documentation or migration notes, only use actual version numbers that exist.
 
 ## Documentation and User Guidance Principles

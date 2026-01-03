@@ -85,9 +85,9 @@ def test_config_values [] {
             return false
         }
         if (not ($terminals | all {|t| $t in $valid_terminals })) {
-            print $"  ⚠️  Unusual terminals: (($terminals | str join \", \"))"
+            print $"  ⚠️  Unusual terminals: (($terminals | str join ', '))"
         } else {
-            print $"  ✅ Valid terminals: (($terminals | str join \", \"))"
+            print $"  ✅ Valid terminals: (($terminals | str join ', '))"
         }
 
         let valid_helix_modes = ["release", "source"]

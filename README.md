@@ -97,6 +97,24 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Cross-Compatible Theme Guide** – Documented 9 themes that work across Zellij (37 total), Yazi (25 total), and Helix (199 total) for consistent theming.
 - **Bug Fixes** – Fixed `disable_tips` setting (was parsed but never applied since v11), improved config robustness by stripping all yazelix-controlled settings from base config.
 
+## Improvements in v11.4
+
+- **Code Modularization** – Split core command suite into focused modules (`yzx/launch.nu`, `yzx/env.nu`), reducing `yazelix.nu` from 546 to 306 lines for better maintainability.
+- **DRY Consolidation** – Created shared `environment_bootstrap.nu` module to eliminate duplicate initialization logic across entry points.
+- **Improved First-Time Setup** – Added `--setup-only` flag for clean bootstrap experience and fixed installation guide ordering (Nix before Nushell).
+
+## Improvements in v11.5
+
+- **Streamlined Environment Setup** – Refactored architecture to read `yazelix.toml` directly instead of passing 11 parameters through Bash, eliminating type conversion complexity.
+- **Single Source of Truth** – Environment configuration now reads TOML once, consistently, with properly typed values throughout.
+- **Bug Fixes** – Fixed welcome screen duplication, bool/string parameter mismatches, and interactive launch sequence.
+
+## Improvements in v11.6
+
+- **Simplified Terminal Configuration** – Terminal selection now uses a single ordered list (`terminals = ["ghostty", "kitty"]`) instead of separate `preferred_terminal` and `extra_terminals` fields.
+- **Advanced Terminal Control** – Added `manage_terminals` option to disable Yazelix-managed terminal packages for users with system-installed terminals.
+- **Smart Autodetection** – Gracefully handles empty terminal list with automatic detection fallback.
+
 Full version history: [Version History](./docs/history.md)
 
 ## Compatibility
