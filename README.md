@@ -93,7 +93,8 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 ## Improvements in v11.3
 
-- **Configurable Themes** – Choose from 37 Zellij themes and 9 Yazi themes, or use `theme = "random"` for variety on every restart.
+- **Expanded Yazi Theme Support** – Bundled 24 community Yazi flavors (25 total with default), the first cross-platform solution to include all flavors out-of-the-box. Use `random-dark` (19 themes) or `random-light` (5 themes) for variety on each restart.
+- **Cross-Compatible Theme Guide** – Documented 9 themes that work across Zellij (37 total), Yazi (25 total), and Helix (199 total) for consistent theming.
 - **Bug Fixes** – Fixed `disable_tips` setting (was parsed but never applied since v11), improved config robustness by stripping all yazelix-controlled settings from base config.
 
 Full version history: [Version History](./docs/history.md)
@@ -108,46 +109,6 @@ Full version history: [Version History](./docs/history.md)
 ## Installation
 
 📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions
-
-**Quick Overview**: Yazelix uses Nix for reproducible, reliable installations that guarantee everyone gets the exact same tool versions. You don't need to learn Nix - just install it once and forget it exists!
-
-**Disk Space Requirements**: Default installation requires **~9.7GB** (Nix ~2.5GB + devenv ~5GB + Yazelix packages ~2.2GB)
-
-## Quick Setup
-
-1. Install Nix
-```bash
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
-```
-
-2. Install devenv CLI (~5GB with dependencies)
-```bash
-nix profile install github:cachix/devenv/latest
-```
-
-3. Install Nushell (required)
-```bash
-nix profile add nixpkgs#nushell
-```
-Other platforms: see https://www.nushell.sh/book/installation.html
-
-4. Clone Yazelix
-```bash
-git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
-```
-
-5. Install fonts (for Kitty/Alacritty)
-```bash
-nix profile add nixpkgs#nerd-fonts.fira-code nixpkgs#nerd-fonts.symbols-only
-```
-
-6. Copy terminal config (optional because yazelix offers built-in version for all supported terminals)
-See [Step 6 in installation guide](./docs/installation.md#step-6-set-up-yazelix-to-auto-launch-in-your-terminal)
-
-7. Launch
-```bash
-nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
-```
 
 ### Helix Integration
 For Helix-Yazi integration, add this to your Helix config (`~/.config/helix/config.toml`):

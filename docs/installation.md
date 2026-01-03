@@ -16,21 +16,7 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 
 **Important**: You don't need to learn Nix or Nushell to use Yazelix! Nix just installs the tools and yazelix uses nushell internally, and you can use your preferred shell (bash, fish, zsh, or nushell) for your daily work. You can install nix and nushell once, and forget they ever existed.
 
-## Prerequisites
-
-### Nushell
-Required to run yazelix, used internally (but you can use any of our supported shells)
-
-For Nix users, install Nushell with modern profile commands:
-
-```bash
-nix profile add nixpkgs#nushell
-```
-
-Other platforms and package managers: see official instructions:
-https://www.nushell.sh/book/installation.html
-
-### Supported Terminal Emulators
+## Supported Terminal Emulators
 Yazelix provides 5 terminal emulators built-in via Nix - simply set your `preferred_terminal` in `yazelix.toml`:
 
 **Note**: On macOS, Ghostty uses the native Homebrew version (see below). All other terminals are provided via Nix.
@@ -85,7 +71,25 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 nix --version
 ```
 
-### Step 2: Install devenv CLI
+### Step 2: Install Nushell
+
+Nushell is required to run Yazelix (used internally). You can use your preferred shell (bash, fish, zsh, or nushell) for daily work:
+
+```bash
+nix profile add nixpkgs#nushell
+```
+
+**What this does:**
+- Installs Nushell, which Yazelix uses for its internal scripts
+- You don't need to learn Nushell - it runs behind the scenes
+- Verify installation:
+```bash
+nu --version
+```
+
+**Other platforms**: See https://www.nushell.sh/book/installation.html
+
+### Step 3: Install devenv CLI
 
 Yazelix runs on the [`devenv`](https://devenv.sh) development environment. Install the CLI once so you can launch the Yazelix shell quickly:
 
@@ -101,14 +105,14 @@ nix profile install github:cachix/devenv/latest
 devenv --version
 ```
 
-### Step 3: Clone Yazelix
+### Step 4: Clone Yazelix
 
 Clone the Yazelix repository to your system:
 ```bash
 git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 ```
 
-### Step 4: Configure Your Installation (Optional)
+### Step 5: Configure Your Installation (Optional)
 
 **Before installing dependencies**, create and customize your configuration to control what gets downloaded (else, Yazelix will create a config for you based on `yazelix_default.toml`):
 
@@ -145,7 +149,7 @@ hx ~/.config/yazelix/yazelix.toml
 - **Terminal preference**: Set `preferred_terminal` (`"ghostty"`, `"wezterm"`, `"kitty"`, `"alacritty"`, `"foot"`)
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
-### Step 5: Install Fonts (Required for Kitty and Alacritty)
+### Step 6: Install Fonts (Required for Kitty and Alacritty)
 
 If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display using modern Nix commands:
 
@@ -165,7 +169,7 @@ home.packages = with pkgs; [
 
 **Note**: WezTerm and Ghostty have better font fallback and don't require this step.
 
-### Step 6: Set Up Yazelix to Auto-Launch in Your Terminal
+### Step 7: Set Up Yazelix to Auto-Launch in Your Terminal
 
 **Note for v9 (or higher) users:** Terminal configs are now auto-generated - no more manual copying! See [troubleshooting](./troubleshooting.md#v95-migration-notes) for migration details.
 
@@ -243,7 +247,7 @@ After installation, you can:
 
 For detailed macOS setup and troubleshooting, see [assets/macos/README.md](../assets/macos/README.md).
 
-### Step 7: Using Yazelix
+### Step 8: Using Yazelix
 
 **Option A users**: Simply open your terminal! Yazelix will automatically launch with the full environment.
 **Option B users**: Use `yzx launch` or `yzx launch --here` to launch Yazelix when needed.
@@ -258,7 +262,7 @@ For detailed macOS setup and troubleshooting, see [assets/macos/README.md](../as
 - Use `yzx help` to see all available management commands
 - Use `Alt+Shift+f` to toggle fullscreen on the current pane
 
-### Step 8: Configure Helix Integration (Optional but Recommended)
+### Step 9: Configure Helix Integration (Optional but Recommended)
 
 To enable full Helix-Yazi integration, add the basic Yazelix keybinding to your Helix config (usually `~/.config/helix/config.toml`):
 
@@ -321,7 +325,7 @@ Check installed tool versions: `nu nushell/scripts/utils/version_info.nu`
 Run diagnostics: `yzx doctor` - Automated health checks and fixes
 
 ### Customization
-If you followed step 4, you already have your `~/.config/yazelix/yazelix.toml` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](../yazelix_default.toml) for all available options and their descriptions.
+If you followed step 5, you already have your `~/.config/yazelix/yazelix.toml` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](../yazelix_default.toml) for all available options and their descriptions.
 
 For complete customization options, see the [Customization Guide](./customization.md).
 
