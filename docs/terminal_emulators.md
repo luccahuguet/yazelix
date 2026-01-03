@@ -17,7 +17,7 @@ Score rubric (1–10):
 - Implementation: +1 if written in Rust or Zig
 
 | Terminal | Platforms (TerminalTrove) | Language (TerminalTrove) | GPU accel | Image protocol | Sixel | Source | Score |
-| --- | --- | --- | --- | --- | --- | --- |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 | Ghostty | macOS, Linux | Zig | Yes | Yes | No | Open Source (MIT) | 8 |
 | WezTerm | Linux, macOS, Windows | Rust | Yes | Yes | Yes | Open Source (MIT) | 10 |
 | Kitty | Linux, macOS | Python | Yes | Yes | No | Open Source (GPL-3) | 6 |
