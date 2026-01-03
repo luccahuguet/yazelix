@@ -77,7 +77,6 @@ enable_sidebar = true
 default_shell = "nu"
 
 # Extra shells to install beyond nu/bash (default: [])
-# Options: ["fish", "zsh"]
 # Only install additional shells if you plan to use them
 extra_shells = [
   # "fish",
@@ -107,6 +106,11 @@ terminals = [
   # "alacritty",
   # "foot",
 ]
+
+# Manage terminals via Nix (default: true)
+# - true: Yazelix installs and wraps terminals listed above
+# - false: Yazelix does not install terminals; it only uses the list as preference
+manage_terminals = true
 
 # Terminal config mode (how Yazelix handles terminal emulator configs)
 # Options:

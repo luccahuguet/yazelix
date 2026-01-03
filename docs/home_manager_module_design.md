@@ -172,6 +172,7 @@ xdg.configFile."yazelix/yazelix.nix" = mkIf cfg.enable {
       
       # Terminal configuration
       terminals = "${cfg.terminals}";
+      manage_terminals = "${cfg.manage_terminals}";
       
       # Editor configuration
       ${if cfg.editor_config.set_editor then ''

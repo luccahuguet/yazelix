@@ -47,6 +47,7 @@ let
     enable_atuin = rawConfig.shell.enable_atuin or false;
 
     terminals = rawConfig.terminal.terminals or [ "ghostty" ];
+    manage_terminals = rawConfig.terminal.manage_terminals or true;
     terminal_config_mode = rawConfig.terminal.config_mode or "yazelix";
     cursor_trail = rawConfig.terminal.cursor_trail or "random";
     transparency = rawConfig.terminal.transparency or "low";
@@ -107,13 +108,13 @@ let
     then "${helixPackage}/bin/hx"
     else userConfig.editor_command;
 
-  terminalList =
-    let terminals = userConfig.terminals or [ ];
-    in if terminals == [ ] then
-      throw "terminal.terminals must contain at least one terminal"
+  terminalList = lib.unique (userConfig.terminals or [ ]);
+  manageTerminals = userConfig.manage_terminals or true;
+  preferredTerminal =
+    if terminalList == [ ] then
+      "unknown"
     else
-      lib.unique terminals;
-  preferredTerminal = builtins.elemAt terminalList 0;
+      builtins.elemAt terminalList 0;
   terminalConfigMode = userConfig.terminal_config_mode or "yazelix";
 
   debugMode = userConfig.debug_mode or false;
@@ -270,14 +271,14 @@ let
     else null;
 
   ghosttyDeps =
-    if lib.elem "ghostty" terminalList then
+    if manageTerminals && (lib.elem "ghostty" terminalList) then
       filterNull (
         [ ghosttyWrapper ]  # Wrapper available on both Linux and macOS
         ++ lib.optionals isLinux [ pkgs.ghostty ]  # Package only on Linux
       )
     else [ ];
   kittyDeps =
-    if lib.elem "kitty" terminalList then
+    if manageTerminals && (lib.elem "kitty" terminalList) then
       filterNull [ kittyWrapper ]
       ++ [
         pkgs.kitty
@@ -286,11 +287,11 @@ let
       ]
     else [ ];
   weztermDeps =
-    if lib.elem "wezterm" terminalList then
+    if manageTerminals && (lib.elem "wezterm" terminalList) then
       filterNull [ weztermWrapper ] ++ [ pkgs.wezterm ]
     else [ ];
   alacrittyDeps =
-    if lib.elem "alacritty" terminalList then
+    if manageTerminals && (lib.elem "alacritty" terminalList) then
       filterNull [ alacrittyWrapper ]
       ++ [
         pkgs.alacritty
@@ -299,7 +300,7 @@ let
       ]
     else [ ];
   footDeps =
-    if isLinux && (lib.elem "foot" terminalList) then
+    if isLinux && manageTerminals && (lib.elem "foot" terminalList) then
       filterNull [ footWrapper ] ++ [ pkgs.foot ]
     else [ ];
 

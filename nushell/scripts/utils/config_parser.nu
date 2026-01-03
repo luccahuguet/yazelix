@@ -40,6 +40,7 @@ export def parse_yazelix_config [] {
         session_name: ($raw_config.zellij?.session_name? | default "yazelix"),
         zellij_theme: ($raw_config.zellij?.theme? | default "default"),
         terminals: ($raw_config.terminal?.terminals? | default ["ghostty"]),
+        manage_terminals: ($raw_config.terminal?.manage_terminals? | default true),
         terminal_config_mode: ($raw_config.terminal?.config_mode? | default "yazelix"),
         cursor_trail: ($raw_config.terminal?.cursor_trail? | default "random"),
         transparency: ($raw_config.terminal?.transparency? | default "medium"),

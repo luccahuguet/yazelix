@@ -76,6 +76,12 @@ in {
       description = "Ordered terminal emulator list (first is primary, rest are fallbacks)";
     };
 
+    manage_terminals = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Manage terminal emulators via Nix (disable to use system-installed terminals only)";
+    };
+
     terminal_config_mode = mkOption {
       type = types.enum [ "auto" "user" "yazelix" ];
       default = "yazelix";
@@ -316,6 +322,7 @@ in {
           ""
           "[terminal]"
           "terminals = ${listToToml cfg.terminals}"
+          "manage_terminals = ${boolToToml cfg.manage_terminals}"
           "config_mode = ${escapeString cfg.terminal_config_mode}"
           "cursor_trail = ${escapeString cfg.cursor_trail}"
           "transparency = ${escapeString cfg.transparency}"

@@ -221,7 +221,7 @@ If you followed [step 4 in the installation guide](./docs/installation.md#step-4
 - **Foot**: Wayland-native terminal (Linux-only)
 - **Auto-detection**: Fallback order follows your configured terminal list
 - Configure your preference in `yazelix.toml` with `terminals = ["ghostty", "wezterm", ...]` (first item is primary)
-- **Bundled terminals**: On Linux, Yazelix provides GPU-accelerated wrappers (`yazelix-ghostty`, `yazelix-kitty`, etc.) via Nix. On macOS, install your preferred terminal via Homebrew or system package manager.
+- **Managed terminals**: Set `manage_terminals = true` to install wrappers and terminal packages via Nix. Set it to false to use system-installed terminals only.
 
 [See the full Customization Guide here.](./docs/customization.md)
 

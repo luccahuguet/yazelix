@@ -147,6 +147,7 @@ hx ~/.config/yazelix/yazelix.toml
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
 - **Terminal preference**: Set `terminals` (`["ghostty", "wezterm", "kitty", "alacritty", "foot"]`, ordered)
+- **Managed terminals**: Set `manage_terminals = true` to install via Nix, or false to use system-installed terminals only
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
 ### Step 6: Install Fonts (Required for Kitty and Alacritty)

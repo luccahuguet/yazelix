@@ -6,7 +6,7 @@ use ../utils/config_state.nu compute_config_state
 use ../utils/nix_detector.nu ensure_nix_available
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/terminal_launcher.nu *
-use ../utils/constants.nu [TERMINAL_METADATA]
+use ../utils/constants.nu [SUPPORTED_TERMINALS, TERMINAL_METADATA]
 
 def main [
     launch_cwd?: string
@@ -62,7 +62,21 @@ def main [
     let terminal_config_mode = $config.terminal_config_mode
     let terminals = ($config.terminals? | default ["ghostty"] | uniq)
     if ($terminals | is-empty) {
+        let available = (
+            $SUPPORTED_TERMINALS
+            | where {|t|
+                let meta = ($TERMINAL_METADATA | get $t)
+                (which $meta.wrapper | is-not-empty) or (which $t | is-not-empty)
+            }
+        )
+        let available_str = if ($available | is-empty) {
+            "none detected"
+        } else {
+            $available | str join ", "
+        }
         print "Error: terminal.terminals must include at least one terminal"
+        print $"Detected terminals: ($available_str)"
+        print "Set [terminal].terminals in ~/.config/yazelix/yazelix.toml"
         exit 1
     }
 

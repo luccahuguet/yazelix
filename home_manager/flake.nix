@@ -44,6 +44,7 @@
                 
                 # Terminal preference
                 terminals = [ "ghostty" ];
+                manage_terminals = true;
                 
                 # Editor configuration (flat structure)
                 set_editor = true;

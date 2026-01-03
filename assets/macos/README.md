@@ -93,6 +93,7 @@ fi
 ### Want to use different terminal/shell
 Edit your `~/.config/yazelix/yazelix.toml` configuration:
 - `terminals` - Choose terminal emulator order
+- `manage_terminals` - Use Nix-managed terminals (or rely on system installs)
 - `default_shell` - Choose shell environment
 
 ## Notes

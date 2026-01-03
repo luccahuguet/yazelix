@@ -27,6 +27,7 @@
     
     # Terminal preference
     terminals = [ "wezterm" "ghostty" ];  # Better for media previews
+    manage_terminals = true;
     
     # Editor configuration  
     # editor_command = null;       # Default: Use yazelix's Helix (recommended)
