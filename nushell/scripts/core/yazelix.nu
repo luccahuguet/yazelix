@@ -251,11 +251,23 @@ export def "yzx update devenv" [
 
 export def "yzx update lock" [
     --verbose  # Show the underlying devenv command
+    --yes      # Skip confirmation prompt
 ] {
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
 
     let yazelix_dir = "~/.config/yazelix" | path expand
+
+    if not $yes {
+        print "⚠️  This updates Yazelix inputs (devenv.lock) to latest upstream versions."
+        print "   If upstream changes are broken, you may hit bugs before fixes land."
+        print "   Prefer a safer path? The Yazelix maintainer updates the project at least once a month."
+        let confirm = (input "Continue? [y/N]: " | str downcase)
+        if $confirm not-in ["y", "yes"] {
+            print "Aborted."
+            exit 0
+        }
+    }
 
     if $verbose {
         print $"⚙️ Running: devenv update \(cwd: ($yazelix_dir)\)"
@@ -294,7 +306,7 @@ export def "yzx update zjstatus" [] {
 # Run all available update commands
 export def "yzx update all" [] {
     yzx update devenv
-    yzx update lock
+    yzx update lock --yes
     yzx update zjstatus
 }
 
@@ -319,8 +331,16 @@ export def "yzx update repo" [
     }
 
     let is_dirty = ($status.stdout | str trim | is-not-empty)
+    let dirty_files = ($status.stdout | lines | each { |line| $line | str trim | split row " " | last })
+    let only_lock_dirty = ($dirty_files | length) == 1 and ($dirty_files | first) == "devenv.lock"
 
     if $is_dirty and (not $stash) {
+        if $only_lock_dirty {
+            print "❌ Local devenv.lock changes detected."
+            print "   If you want upstream updates, delete it and rerun 'yzx update repo':"
+            print "   rm ~/.config/yazelix/devenv.lock"
+            exit 1
+        }
         print "❌ Working tree is dirty. Please commit or stash changes first."
         print "   Tip: rerun with 'yzx update repo --stash' to stash automatically."
         exit 1
