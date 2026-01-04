@@ -3,6 +3,8 @@
 # Handles individual test execution and validation
 
 use ../../utils/config_parser.nu parse_yazelix_config
+use ../../utils/constants.nu TERMINAL_METADATA
+use ../../utils/terminal_launcher.nu command_exists
 
 # Validate that environment setup works for a given config
 export def validate_environment [config_path: string]: nothing -> record {
@@ -128,8 +130,22 @@ export def run_demo_command [
     }
 }
 
+def terminal_available [terminal: string]: nothing -> bool {
+    let term_meta = $TERMINAL_METADATA | get $terminal
+    let wrapper_cmd = $term_meta.wrapper
+    (command_exists $wrapper_cmd) or (command_exists $terminal)
+}
+
 # Launch Yazelix for visual testing with sweep layout
 export def launch_visual_test [config_path: string, test_id: string, terminal: string]: nothing -> record {
+    if not (terminal_available $terminal) {
+        return {
+            exit_code: 99
+            stdout: ""
+            stderr: $"Terminal not installed: ($terminal)"
+        }
+    }
+
     let launch_output = (do {
         with-env {
             YAZELIX_CONFIG_OVERRIDE: $config_path,

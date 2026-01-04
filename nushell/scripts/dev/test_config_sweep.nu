@@ -88,7 +88,10 @@ export def run_visual_sweep_test [
         # Launch Yazelix with the test config and test_id (pass terminal explicitly)
         let launch_result = launch_visual_test $config_path $test_id $terminal
 
-        if $launch_result.exit_code != 0 {
+        if $launch_result.exit_code == 99 {
+            print $"⏭️  Skipped ($shell) + ($terminal) - terminal not installed"
+            create_test_result $test_id $shell $terminal "skip" "Terminal not installed"
+        } else if $launch_result.exit_code != 0 {
             let details = get_launch_error_details $launch_result.stdout $launch_result.stderr
             print $"❌ Failed to launch ($shell) + ($terminal)"
             create_test_result $test_id $shell $terminal "fail" "Launch failed" $details
@@ -239,7 +242,7 @@ export def run_all_sweep_tests [
     let failed = count_results_by_status $results $visual "fail"
     let errors = count_results_by_status $results $visual "error"
     let skipped = if $visual {
-        0  # Visual tests don't have skip status
+        count_results_by_status $results $visual "skip"
     } else {
         ($results | where env_status == "skip" | length)
     }
@@ -250,7 +253,8 @@ export def run_all_sweep_tests [
         let status_icon = match $status {
             "pass" => "✅",
             "fail" => "❌",
-            "error" => "💥"
+            "error" => "💥",
+            "skip" => "⏭️"
         }
 
         if $visual {
