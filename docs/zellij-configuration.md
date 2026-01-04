@@ -42,6 +42,20 @@ mouse_mode false
 simplified_ui true
 ```
 
+**Zjstatus widget tray (yazelix.toml):**
+```toml
+[zellij]
+widget_tray = [
+  "layout",  # Swap layout widget
+  "editor",  # Active editor
+  "shell",   # Active shell
+  "term",    # Terminal emulator
+  "cpu",     # CPU usage
+  "ram",     # RAM usage
+]
+```
+Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
+
 **Session behavior:**
 ```kdl
 // Show startup tips (Yazelix disables by default)
