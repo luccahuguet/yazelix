@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 # Update zjstatus plugin (Zellij status bar) for Yazelix
-# Fetches the latest GitHub release wasm and installs it to
+# Syncs the Nix-provided zjstatus wasm to
 # ~/.config/yazelix/configs/zellij/zjstatus.wasm (no backup).
 
 export def main [] {
@@ -13,29 +13,21 @@ export def main [] {
   let target_dir = $"($home)/.config/yazelix/configs/zellij"
   let target_path = $"($target_dir)/zjstatus.wasm"
 
-  # Determine latest release asset URL from GitHub API using Nushell's HTTP client
-  let api = "https://api.github.com/repos/dj95/zjstatus/releases/latest"
-  let release = (try { http get $api } catch {|err|
-    print $"Error fetching latest release info: ($err.msg)"
+  # Resolve wasm from Nix (exported by devenv.nix)
+  let store_path = ($env.YAZELIX_ZJSTATUS_WASM? | default "")
+  if ($store_path | is-empty) {
+    print "Error: YAZELIX_ZJSTATUS_WASM is not set"
     exit 2
-  })
-  let asset_url = ($release.assets | where name == "zjstatus.wasm" | get browser_download_url | first)
-  if ($asset_url | is-empty) {
-    print "Error: Could not find zjstatus.wasm in latest release assets"
+  }
+  if not ($store_path | path exists) {
+    print $"Error: zjstatus wasm not found at: ($store_path)"
     exit 3
   }
 
-  # Download the wasm using Nushell's HTTP client
-  print $"Downloading: ($asset_url)"
-  let data = (try { http get --raw $asset_url } catch {|err|
-    print $"Error downloading zjstatus.wasm: ($err.msg)"
-    exit 3
-  })
-
   # Minimal validation: check file size and extension hint
-  let byte_len = ($data | bytes length)
+  let byte_len = (open --raw $store_path | length)
   if $byte_len < 1024 {
-    print $"Error: Downloaded/provided file is too small to be a valid wasm (size=($byte_len) bytes)"
+    print $"Error: Nix-provided wasm is too small to be valid \(size=($byte_len) bytes\)"
     exit 5
   }
 
@@ -46,10 +38,10 @@ export def main [] {
 
   # Atomic write: temp then move
   let tmp_path = $"($target_path).tmp"
-  try { $data | save --force $tmp_path } catch {|err|
+  try { cp --force $store_path $tmp_path } catch {|err|
     print $"Error writing temporary file: ($err.msg)"
     exit 6
   }
-  mv -f $tmp_path $target_path
-  print $"Updated zjstatus at: ($target_path) (size=($byte_len) bytes)"
+  mv --force $tmp_path $target_path
+  print $"Updated zjstatus at: ($target_path) \(size=($byte_len) bytes\)"
 }

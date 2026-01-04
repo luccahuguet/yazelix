@@ -100,6 +100,15 @@ let
     else
       pkgs.helix;
 
+  zjstatusPkg =
+    if inputs ? zjstatus then
+      inputs.zjstatus.packages.${pkgs.system}.default
+    else
+      throw ''
+        zjstatus input missing.
+        Add it to devenv.yaml and update devenv.lock.
+      '';
+
   helixRuntimePath = userConfig.helix_runtime_path or null;
   helixRuntime = if helixRuntimePath != null then helixRuntimePath else "${helixPackage}/lib/runtime";
 
@@ -456,6 +465,7 @@ in {
     YAZELIX_PREFERRED_TERMINAL = preferredTerminal;
     YAZELIX_TERMINAL_CONFIG_MODE = terminalConfigMode;
     YAZELIX_ASCII_ART_MODE = asciiArtMode;
+    YAZELIX_ZJSTATUS_WASM = "${zjstatusPkg}/bin/zjstatus.wasm";
     EDITOR = editorCommand;
     HELIX_RUNTIME = helixRuntime;
   };
@@ -478,6 +488,7 @@ in {
     export YAZELIX_PREFERRED_TERMINAL="${preferredTerminal}"
     export YAZELIX_TERMINAL_CONFIG_MODE="${terminalConfigMode}"
     export YAZELIX_ASCII_ART_MODE="${asciiArtMode}"
+    export YAZELIX_ZJSTATUS_WASM="${zjstatusPkg}/bin/zjstatus.wasm"
     export EDITOR="${editorCommand}"
     export HELIX_RUNTIME="${helixRuntime}"
 

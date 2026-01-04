@@ -182,6 +182,7 @@ export def "yzx update" [] {
     print "Yazelix update commands:"
     print "  yzx update devenv  # Refresh devenv.lock using devenv update"
     print "  yzx update nix     # Alias for devenv update (refresh Yazelix dependencies)"
+    print "  yzx update zjstatus  # Update bundled zjstatus.wasm plugin"
 }
 
 export def "yzx update devenv" [
@@ -223,6 +224,11 @@ export def "yzx update nix" [
     } else {
         yzx update devenv
     }
+}
+
+# Update zjstatus plugin
+export def "yzx update zjstatus" [] {
+    nu ~/.config/yazelix/nushell/scripts/dev/update_zjstatus.nu
 }
 
 # Run configuration sweep tests across shell/terminal combinations
