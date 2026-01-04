@@ -126,6 +126,12 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Documentation** – Added widget tray guidance in Zellij configuration docs.
 - **Seamless Terminal Installation** – When `manage_terminals = true`, switching terminals in `yazelix.toml` no longer requires manual rebuild - just run `yzx restart` or `yzx launch`.
 
+## Improvements in v11.9
+
+- **Smarter Updates** – `yzx update` now separates CLI updates from lockfile updates, adds `yzx update repo` for pulling upstream changes, and supports `yzx update all` for a full refresh.
+- **Safer Lockfile Refresh** – `yzx update lock` prompts before updating to upstream inputs, with a clear note about maintainer cadence.
+- **Cleaner Sweeps** – Terminal sweeps skip missing terminals instead of failing, keeping test output focused.
+
 Full version history: [Version History](./docs/history.md)
 
 ## Compatibility
