@@ -103,6 +103,12 @@ export def compute_config_state [] {
 
 # Mark the current config hash as applied
 export def mark_config_state_applied [state: record] {
+    let config_file = ($state.config_file? | default "")
+    let default_config = "~/.config/yazelix/yazelix.toml" | path expand
+    if ($config_file | is-not-empty) and ($config_file | path expand) != $default_config {
+        return
+    }
+
     let cache_file = ($state.cache_file? | default null)
     if ($cache_file == null) {
         return
