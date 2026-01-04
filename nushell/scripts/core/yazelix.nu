@@ -184,6 +184,7 @@ export def "yzx update" [] {
     print "  yzx update lock    # Refresh devenv.lock using devenv update"
     print "  yzx update nix     # Alias for yzx update lock"
     print "  yzx update zjstatus  # Update bundled zjstatus.wasm plugin"
+    print "  yzx update repo    # Pull latest Yazelix updates"
     print "  yzx update all     # Run every update command"
 }
 
@@ -295,6 +296,81 @@ export def "yzx update all" [] {
     yzx update devenv
     yzx update lock
     yzx update zjstatus
+}
+
+export def "yzx update repo" [
+    --stash  # Stash local changes, pull updates, then re-apply the stash
+    --verbose  # Show git commands
+] {
+    if (which git | is-empty) {
+        print "❌ git not found in PATH."
+        exit 1
+    }
+
+    let yazelix_dir = "~/.config/yazelix" | path expand
+    let status = (do {
+        cd $yazelix_dir
+        ^git status --porcelain
+    } | complete)
+
+    if $status.exit_code != 0 {
+        print $"❌ Failed to check git status: ($status.stderr | str trim)"
+        exit 1
+    }
+
+    let is_dirty = ($status.stdout | str trim | is-not-empty)
+
+    if $is_dirty and (not $stash) {
+        print "❌ Working tree is dirty. Please commit or stash changes first."
+        print "   Tip: rerun with 'yzx update repo --stash' to stash automatically."
+        exit 1
+    }
+
+    if $verbose {
+        print "⚙️ Running: git pull --rebase"
+    } else {
+        print "🔄 Updating Yazelix repository..."
+    }
+
+    if $stash {
+        let stash_result = (do {
+            cd $yazelix_dir
+            ^git stash push -u -m "yzx update repo"
+        } | complete)
+
+        if $stash_result.exit_code != 0 {
+            print $"❌ git stash failed: ($stash_result.stderr | str trim)"
+            exit 1
+        }
+    }
+
+    let pull_result = (do {
+        cd $yazelix_dir
+        ^git pull --rebase
+    } | complete)
+
+    if $pull_result.exit_code != 0 {
+        print $"❌ git pull failed: ($pull_result.stderr | str trim)"
+        if $stash {
+            print "   Your stash is still available. Run 'git stash list' to recover."
+        }
+        exit 1
+    }
+
+    if $stash {
+        let pop_result = (do {
+            cd $yazelix_dir
+            ^git stash pop
+        } | complete)
+
+        if $pop_result.exit_code != 0 {
+            print $"⚠️ git stash pop reported conflicts: ($pop_result.stderr | str trim)"
+            print "   Resolve conflicts and run 'git status' to verify."
+            exit 1
+        }
+    }
+
+    print "✅ Yazelix repository updated."
 }
 
 # Run configuration sweep tests across shell/terminal combinations
