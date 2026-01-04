@@ -118,6 +118,12 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 ## Improvements in v11.7
 
 - **Automatic Environment Rebuild** – Fixed chicken-egg problem when changing terminal configuration. Yazelix now auto-detects config changes and rebuilds the environment to install newly configured terminals.
+
+## Improvements in v11.8
+
+- **Nix-Pinned zjstatus** – zjstatus is now sourced from a Nix input and synced on shell entry, making updates reproducible.
+- **Configurable Widget Tray** – Control zjstatus widgets with `zellij.widget_tray` in `yazelix.toml`, with easy per-item toggles.
+- **Documentation** – Added widget tray guidance in Zellij configuration docs.
 - **Seamless Terminal Installation** – When `manage_terminals = true`, switching terminals in `yazelix.toml` no longer requires manual rebuild - just run `yzx restart` or `yzx launch`.
 
 Full version history: [Version History](./docs/history.md)
