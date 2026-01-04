@@ -112,6 +112,8 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     let merged_config_dir = ($ZELLIJ_CONFIG_PATHS.merged_config_dir | path expand)
     let merged_config_path = ($ZELLIJ_CONFIG_PATHS.merged_config | path expand)
     let yazelix_layout_dir = $"($merged_config_dir)/layouts"
+    let config = parse_yazelix_config
+    let widget_tray = ($config.zellij_widget_tray? | default ["layout", "editor", "shell", "term", "cpu", "ram"])
     
     print "🔄 Regenerating Zellij configuration..."
     
@@ -124,7 +126,7 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     if ($source_layouts_dir | path exists) {
         # Copy layouts to merged config directory
         use ../utils/layout_generator.nu
-        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir
+        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray
     }
     
     # Generate configuration from user config or defaults

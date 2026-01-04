@@ -181,6 +181,12 @@ in {
       '';
     };
 
+    zellij_widget_tray = mkOption {
+      type = types.listOf types.str;
+      default = [ "layout" "editor" "shell" "term" "cpu" "ram" ];
+      description = "Zjstatus widget tray order (layout/editor/shell/term/cpu/ram)";
+    };
+
     yazi_plugins = mkOption {
       type = types.listOf types.str;
       default = [ "git" "starship" ];
@@ -331,6 +337,7 @@ in {
           "disable_tips = ${boolToToml cfg.disable_zellij_tips}"
           "rounded_corners = ${boolToToml cfg.zellij_rounded_corners}"
           "theme = ${escapeString cfg.zellij_theme}"
+          "widget_tray = ${listToToml cfg.zellij_widget_tray}"
           "persistent_sessions = ${boolToToml cfg.persistent_sessions}"
           "session_name = ${escapeString cfg.session_name}"
           ""

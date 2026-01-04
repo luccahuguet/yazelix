@@ -39,6 +39,7 @@ export def parse_yazelix_config [] {
         persistent_sessions: ($raw_config.zellij?.persistent_sessions? | default false | into string),
         session_name: ($raw_config.zellij?.session_name? | default "yazelix"),
         zellij_theme: ($raw_config.zellij?.theme? | default "default"),
+        zellij_widget_tray: ($raw_config.zellij?.widget_tray? | default ["layout", "editor", "shell", "term", "cpu", "ram"]),
         terminals: ($raw_config.terminal?.terminals? | default ["ghostty"]),
         manage_terminals: ($raw_config.terminal?.manage_terminals? | default true),
         terminal_config_mode: ($raw_config.terminal?.config_mode? | default "yazelix"),

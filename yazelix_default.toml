@@ -176,6 +176,18 @@ rounded_corners = true
 # See: https://zellij.dev/documentation/theme-list.html
 theme = "default"
 
+# Zjstatus widget tray (right side of status bar)
+# Available widgets: "layout", "editor", "shell", "term", "cpu", "ram"
+# Comment out any line to hide that widget
+widget_tray = [
+  "layout",  # Swap layout widget
+  "editor",  # Active editor
+  "shell",   # Active shell
+  "term",    # Terminal emulator
+  "cpu",     # CPU usage
+  "ram",     # RAM usage
+]
+
 # Zellij persistent session configuration
 # When true, Yazelix will use zellij attach with the specified session name
 # When false, Yazelix will create a new session each time
