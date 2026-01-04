@@ -2,7 +2,9 @@
 # Nix installation detector and graceful failure handler
 
 # Check if Nix is installed and properly configured
-export def check_nix_installation [] {
+export def check_nix_installation [
+    --skip-devenv  # Skip devenv CLI check (for installing/updating devenv itself)
+] {
     # Check if nix command is available in PATH
     let nix_available = (which nix | is-not-empty)
     
@@ -53,19 +55,21 @@ export def check_nix_installation [] {
         }
     }
 
-    # Ensure devenv command is available
-    let devenv_available = try {
-        let result = (^devenv --help | complete)
-        $result.exit_code == 0
-    } catch {
-        false
-    }
+    if not $skip_devenv {
+        # Ensure devenv command is available
+        let devenv_available = try {
+            let result = (^devenv --help | complete)
+            $result.exit_code == 0
+        } catch {
+            false
+        }
 
-    if not $devenv_available {
-        return {
-            installed: true
-            error: "devenv_not_found"
-            message: "devenv command is not installed or not in PATH"
+        if not $devenv_available {
+            return {
+                installed: true
+                error: "devenv_not_found"
+                message: "devenv command is not installed or not in PATH"
+            }
         }
     }
     
@@ -161,6 +165,7 @@ export def show_nix_installation_help [error_type: string] {
 # Main function to check Nix and fail gracefully if not available
 export def ensure_nix_available [
     --non-interactive  # Skip interactive prompts (for testing)
+    --skip-devenv      # Skip devenv CLI check (for installing/updating devenv itself)
 ] {
     let colors = {
         red: $"\u{1b}[31m"
@@ -171,7 +176,11 @@ export def ensure_nix_available [
         reset: $"\u{1b}[0m"
     }
 
-    let nix_status = check_nix_installation
+    let nix_status = if $skip_devenv {
+        check_nix_installation --skip-devenv
+    } else {
+        check_nix_installation
+    }
 
     if not $nix_status.installed or ($nix_status.error | is-not-empty) {
         show_nix_installation_help $nix_status.error

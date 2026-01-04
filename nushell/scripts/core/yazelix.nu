@@ -180,34 +180,93 @@ export def "yzx doctor" [
 # Update dependencies and inputs
 export def "yzx update" [] {
     print "Yazelix update commands:"
-    print "  yzx update devenv  # Refresh devenv.lock using devenv update"
-    print "  yzx update nix     # Alias for devenv update (refresh Yazelix dependencies)"
+    print "  yzx update devenv  # Update the devenv CLI in your Nix profile"
+    print "  yzx update lock    # Refresh devenv.lock using devenv update"
+    print "  yzx update nix     # Alias for yzx update lock"
     print "  yzx update zjstatus  # Update bundled zjstatus.wasm plugin"
+    print "  yzx update all     # Run every update command"
 }
 
 export def "yzx update devenv" [
     --verbose  # Show the underlying devenv command
 ] {
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
-    ensure_nix_available
-
-    if (which devenv | is-empty) {
-        print "❌ devenv command not found - install devenv to manage Yazelix dependencies."
-        print "   See https://devenv.sh/getting-started/ for installation instructions."
-        exit 1
-    }
-
-    let yazelix_dir = "~/.config/yazelix" | path expand
-    let command = $"cd ($yazelix_dir) && devenv update"
+    ensure_nix_available --skip-devenv
 
     if $verbose {
-        print $"⚙️ Running: ($command)"
+        print "⚙️ Running: nix profile install github:cachix/devenv/latest"
+        print "⚙️ Running: nix profile upgrade devenv"
+    }
+
+    let profile = try { ^nix profile list --json | from json } catch { null }
+    let profile_entries = if $profile == null { [] } else { $profile.elements | columns }
+    let profile_has_devenv = ($profile_entries | any { |name| $name == "devenv" })
+
+    if not $profile_has_devenv {
+        if (which devenv | is-not-empty) {
+            print "ℹ️ devenv found in PATH but not managed by your Nix profile."
+            print "   Installing into the profile so it can be updated with `yzx update devenv`."
+        }
+
+        print "🔄 Installing devenv CLI..."
+
+        try {
+            let result = (^nix profile install "github:cachix/devenv/latest" | complete)
+            if $result.exit_code != 0 {
+                print $"❌ devenv install failed: ($result.stderr | str trim)"
+                print "   Check your Nix setup and try again."
+                exit 1
+            }
+            print "✅ devenv CLI installed."
+        } catch {|err|
+            print $"❌ devenv install failed: ($err.msg)"
+            print "   Check your Nix setup and try again."
+            exit 1
+        }
     } else {
-        print "🔄 Updating devenv inputs (this may take a moment)..."
+        print "🔄 Updating devenv CLI..."
+
+        try {
+            let result = (^nix profile upgrade "devenv" | complete)
+            if $result.exit_code != 0 {
+                print $"❌ devenv update failed: ($result.stderr | str trim)"
+                print "   Try: nix profile install github:cachix/devenv/latest"
+                exit 1
+            }
+
+            let stderr = ($result.stderr | str trim)
+            if ($stderr | str contains "No packages to upgrade") or ($stderr | str contains "does not match") {
+                print "ℹ️ devenv CLI is already up to date."
+            } else {
+                print "✅ devenv CLI updated."
+            }
+        } catch {|err|
+            print $"❌ devenv update failed: ($err.msg)"
+            print "   Try: nix profile install github:cachix/devenv/latest"
+            exit 1
+        }
+    }
+}
+
+export def "yzx update lock" [
+    --verbose  # Show the underlying devenv command
+] {
+    use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
+    ensure_nix_available
+
+    let yazelix_dir = "~/.config/yazelix" | path expand
+
+    if $verbose {
+        print $"⚙️ Running: devenv update \(cwd: ($yazelix_dir)\)"
+    } else {
+        print "🔄 Updating Yazelix inputs (devenv.lock)..."
     }
 
     try {
-        ^bash -c $command
+        do {
+            cd $yazelix_dir
+            ^devenv update
+        }
         print "✅ devenv.lock updated. Review and commit the changes if everything looks good."
     } catch {|err|
         print $"❌ devenv update failed: ($err.msg)"
@@ -220,15 +279,22 @@ export def "yzx update nix" [
     --verbose  # Show the underlying devenv command
 ] {
     if $verbose {
-        yzx update devenv --verbose
+        yzx update lock --verbose
     } else {
-        yzx update devenv
+        yzx update lock
     }
 }
 
 # Update zjstatus plugin
 export def "yzx update zjstatus" [] {
     nu ~/.config/yazelix/nushell/scripts/dev/update_zjstatus.nu
+}
+
+# Run all available update commands
+export def "yzx update all" [] {
+    yzx update devenv
+    yzx update lock
+    yzx update zjstatus
 }
 
 # Run configuration sweep tests across shell/terminal combinations
