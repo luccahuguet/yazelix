@@ -2,10 +2,10 @@
   "nodes": {
     "crane": {
       "locked": {
-        "lastModified": 1767461147,
+        "lastModified": 1767744144,
         "owner": "ipetkov",
         "repo": "crane",
-        "rev": "7d59256814085fd9666a2ae3e774dc5ee216b630",
+        "rev": "2fb033290bf6b23f226d4c8b32f7f7a16b043d7e",
         "type": "github"
       },
       "original": {
@@ -17,10 +17,10 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1767561815,
+        "lastModified": 1768133288,
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "06b370166a3eca029f664710fcc49bf44365778a",
+        "rev": "b3d5f5d2fe88b78341ea30fec4fd5ae1a3a3c214",
         "type": "github"
       },
       "original": {
@@ -126,10 +126,10 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1767104824,
+        "lastModified": 1767943678,
         "owner": "helix-editor",
         "repo": "helix",
-        "rev": "496f0e1b41e6735873c1376ac10a6a722767f328",
+        "rev": "10f07d7eb089430930e6d3547a98b440b927d025",
         "type": "github"
       },
       "original": {
@@ -158,10 +158,10 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1767379071,
+        "lastModified": 1767892417,
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "fb7944c166a3b630f177938e478f0378e64ce108",
+        "rev": "3497aa5c9457a9d88d71fa93a4a8368816fbeeba",
         "type": "github"
       },
       "original": {
@@ -173,10 +173,10 @@
     },
     "nixpkgs-unstable": {
       "locked": {
-        "lastModified": 1767379071,
+        "lastModified": 1767892417,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "fb7944c166a3b630f177938e478f0378e64ce108",
+        "rev": "3497aa5c9457a9d88d71fa93a4a8368816fbeeba",
         "type": "github"
       },
       "original": {
@@ -188,10 +188,10 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1767562140,
+        "lastModified": 1768135384,
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "6a0a06e99090c6dcd34f196849cbc2648756e54d",
+        "rev": "d14a6b85f0def4855a36caf63f65a96dfcc71a27",
         "type": "github"
       },
       "original": {
@@ -217,10 +217,10 @@
     },
     "nixpkgs_4": {
       "locked": {
-        "lastModified": 1767364772,
+        "lastModified": 1768032153,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "16c7794d0a28b5a37904d55bcca36003b9109aaa",
+        "rev": "3146c6aa9995e7351a398e17470e15305e6e18ff",
         "type": "github"
       },
       "original": {
@@ -252,10 +252,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1767495280,
+        "lastModified": 1768100056,
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "cb24c5cc207ba8e9a4ce245eedd2d37c3a988bc1",
+        "rev": "71a69fd633552550de7cb05cc149e4a99ff6f3b6",
         "type": "github"
       },
       "original": {
@@ -272,10 +272,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1767495280,
+        "lastModified": 1768100056,
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "cb24c5cc207ba8e9a4ce245eedd2d37c3a988bc1",
+        "rev": "71a69fd633552550de7cb05cc149e4a99ff6f3b6",
         "type": "github"
       },
       "original": {

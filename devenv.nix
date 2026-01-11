@@ -150,7 +150,7 @@ let
       if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
         if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
       fi
-      exec ${lib.optionalString (nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "}${pkgs.ghostty}/bin/ghostty \
+      exec ${lib.optionalString (nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "}${pkgs-unstable.ghostty}/bin/ghostty \
         --config-file="$CONF" \
         --class="com.yazelix.Yazelix" \
         --x11-instance-name="yazelix" \
@@ -284,7 +284,7 @@ let
     if manageTerminals && (lib.elem "ghostty" terminalList) then
       filterNull (
         [ ghosttyWrapper ]  # Wrapper available on both Linux and macOS
-        ++ lib.optionals isLinux [ pkgs.ghostty ]  # Package only on Linux
+        ++ lib.optionals isLinux [ pkgs-unstable.ghostty ]  # Package only on Linux
       )
     else [ ];
   kittyDeps =
