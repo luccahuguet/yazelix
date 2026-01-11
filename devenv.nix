@@ -4,11 +4,12 @@
 
 let
   inherit (pkgs.stdenv) isLinux isDarwin;
+  system = pkgs.stdenv.hostPlatform.system;
 
   # Access to unstable packages for newer tools
-  pkgs-unstable = if inputs ? nixpkgs-unstable then inputs.nixpkgs-unstable.legacyPackages.${pkgs.system} else pkgs;
+  pkgs-unstable = if inputs ? nixpkgs-unstable then inputs.nixpkgs-unstable.legacyPackages.${system} else pkgs;
 
-  nixglPackages = if isLinux then inputs.nixgl.packages.${pkgs.system} else null;
+  nixglPackages = if isLinux then inputs.nixgl.packages.${system} else null;
   nixglIntel = if nixglPackages != null && nixglPackages ? nixGLIntel then nixglPackages.nixGLIntel else null;
 
   # Import user configuration from TOML
@@ -91,7 +92,7 @@ let
   helixPackage =
     if buildHelixFromSource then
       if inputs ? helix then
-        inputs.helix.packages.${pkgs.system}.default
+        inputs.helix.packages.${system}.default
       else
         throw ''
           helix_mode = "source" requires the helix input.
@@ -102,7 +103,7 @@ let
 
   zjstatusPkg =
     if inputs ? zjstatus then
-      inputs.zjstatus.packages.${pkgs.system}.default
+      inputs.zjstatus.packages.${system}.default
     else
       throw ''
         zjstatus input missing.
