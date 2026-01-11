@@ -114,6 +114,8 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     let yazelix_layout_dir = $"($merged_config_dir)/layouts"
     let config = parse_yazelix_config
     let widget_tray = ($config.zellij_widget_tray? | default ["layout", "editor", "shell", "term", "cpu", "ram"])
+    let kitty_protocol = ($config | get -o support_kitty_keyboard_protocol | default "true")
+    let kitty_protocol_value = if ($kitty_protocol | str starts-with "false") { "false" } else { "true" }
     
     print "🔄 Regenerating Zellij configuration..."
     
@@ -164,7 +166,7 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
         "",
         "// === YAZELIX ENFORCED SETTINGS ===",
         "pane_frames false",
-        "support_kitty_keyboard_protocol true",
+        $"support_kitty_keyboard_protocol ($kitty_protocol_value)",
         $"default_layout \"($yazelix_layout_dir)/yzx_side.kdl\"",
         $"layout_dir \"($yazelix_layout_dir)\""
     ] | str join "\n"

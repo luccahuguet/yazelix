@@ -20,6 +20,7 @@ The merger now prefers your **native Zellij config** when present, then forcibly
 2. **Dynamic Yazelix settings**: Generated from `yazelix.toml` (e.g., rounded corners) and appended after the user config so they win.
 3. **Enforced Yazelix settings**: Always appended last to guarantee required behavior:
    - `pane_frames false` (needed for `zjstatus`)
+   - `support_kitty_keyboard_protocol` set from `yazelix.toml` (default: false)
    - `default_layout` set to Yazelix’s layout file (absolute path)
    - `layout_dir` set to Yazelix’s generated layouts directory
 

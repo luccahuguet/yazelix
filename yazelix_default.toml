@@ -148,6 +148,10 @@ disable_tips = true
 # Enable rounded corners for Zellij pane frames (default: true)
 rounded_corners = true
 
+# Enable Kitty keyboard protocol in Zellij (default: false)
+# Disable if dead keys stop working in your terminal (e.g. Ghostty)
+support_kitty_keyboard_protocol = false
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # CROSS-COMPATIBLE THEMES (Zellij + Yazi + Helix)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

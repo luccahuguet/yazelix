@@ -164,6 +164,12 @@ in {
       description = "Enable rounded corners for Zellij pane frames";
     };
 
+    support_kitty_keyboard_protocol = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Enable Kitty keyboard protocol in Zellij (disable if dead keys stop working)";
+    };
+
     zellij_theme = mkOption {
       type = types.str;
       default = "default";
@@ -336,6 +342,7 @@ in {
           "[zellij]"
           "disable_tips = ${boolToToml cfg.disable_zellij_tips}"
           "rounded_corners = ${boolToToml cfg.zellij_rounded_corners}"
+          "support_kitty_keyboard_protocol = ${boolToToml cfg.support_kitty_keyboard_protocol}"
           "theme = ${escapeString cfg.zellij_theme}"
           "widget_tray = ${listToToml cfg.zellij_widget_tray}"
           "persistent_sessions = ${boolToToml cfg.persistent_sessions}"
