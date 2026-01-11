@@ -139,6 +139,7 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
         not (
             ($trimmed | str starts-with "theme ") or
             ($trimmed | str starts-with "pane_frames ") or
+            ($trimmed | str starts-with "support_kitty_keyboard_protocol ") or
             ($trimmed | str starts-with "default_layout ") or
             ($trimmed | str starts-with "layout_dir ") or
             ($trimmed | str starts-with "on_force_close ") or
@@ -163,6 +164,7 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
         "",
         "// === YAZELIX ENFORCED SETTINGS ===",
         "pane_frames false",
+        "support_kitty_keyboard_protocol true",
         $"default_layout \"($yazelix_layout_dir)/yzx_side.kdl\"",
         $"layout_dir \"($yazelix_layout_dir)\""
     ] | str join "\n"
