@@ -96,7 +96,7 @@ def copy_flavors_directory [source_dir: string, merged_dir: string, --quiet] {
         }
 
         if not $quiet {
-            print $"     ✅ ($bundled_flavors | length) flavor themes copied (user flavors preserved)"
+            print $"     ✅ ($bundled_flavors | length) flavor themes copied \(user flavors preserved\)"
         }
     }
 }

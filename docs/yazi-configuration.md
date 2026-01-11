@@ -24,6 +24,7 @@ All yazi settings are in `yazelix.toml`:
 ```toml
 [yazi]
 # Core plugins (auto_layout, sidebar_status) are always loaded
+# sidebar_status removes a space-hungry status item so Yazi fits cleanly as a sidebar
 # Add additional plugins here
 plugins = ["git"]
 ```
@@ -97,6 +98,8 @@ For deeper customization beyond `yazelix.toml` options:
 ```
 
 ## Plugin Management
+
+Plugin catalog: https://github.com/yazi-rs/plugins
 
 For plugin management commands, see: https://yazi-rs.github.io/docs/cli
 
