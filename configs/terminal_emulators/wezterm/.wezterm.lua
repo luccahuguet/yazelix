@@ -10,7 +10,7 @@ local config = wezterm.config_builder
 config.default_prog = { 'bash', '-l', '-c', 'nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu' }
 
 -- Window styling to match Ghostty
-config.window_decorations = "NONE"
+config.window_decorations = "RESIZE"
 config.window_padding = {
   left = 0,
   right = 0,
