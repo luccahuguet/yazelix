@@ -52,7 +52,6 @@ Show system information and settings
 Manage Yazelix updates
 - `yzx update devenv`: Update the devenv CLI in your Nix profile
 - `yzx update lock`: Run `devenv update` inside `~/.config/yazelix` and refresh `devenv.lock` (prompts by default; use `--yes` to skip)
-- `yzx update nix`: Alias for `yzx update lock`
 - `yzx update zjstatus`: Update bundled zjstatus.wasm plugin
 - `yzx update repo`: Pull latest Yazelix updates (use `--stash` if you have local changes)
 - `yzx update all`: Run all update commands

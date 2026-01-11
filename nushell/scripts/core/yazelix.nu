@@ -182,7 +182,6 @@ export def "yzx update" [] {
     print "Yazelix update commands:"
     print "  yzx update devenv  # Update the devenv CLI in your Nix profile"
     print "  yzx update lock    # Refresh devenv.lock using devenv update"
-    print "  yzx update nix     # Alias for yzx update lock"
     print "  yzx update zjstatus  # Update bundled zjstatus.wasm plugin"
     print "  yzx update repo    # Pull latest Yazelix updates"
     print "  yzx update all     # Run every update command"
@@ -285,16 +284,6 @@ export def "yzx update lock" [
         print $"❌ devenv update failed: ($err.msg)"
         print "   Check your network connection and devenv.yaml inputs, then try again."
         exit 1
-    }
-}
-
-export def "yzx update nix" [
-    --verbose  # Show the underlying devenv command
-] {
-    if $verbose {
-        yzx update lock --verbose
-    } else {
-        yzx update lock
     }
 }
 
