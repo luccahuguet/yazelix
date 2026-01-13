@@ -53,6 +53,17 @@ def main [cwd_override?: string, layout_override?: string] {
     }
 
     if ($config.persistent_sessions == "true") {
+        # Warn if --path is used with an existing persistent session
+        if ($cwd_override | is-not-empty) {
+            let existing_sessions = (do { ^zellij list-sessions } | complete)
+            if $existing_sessions.exit_code == 0 {
+                let sessions = ($existing_sessions.stdout | lines | where {|s| $s | str contains $config.session_name})
+                if ($sessions | is-not-empty) {
+                    print $"⚠️  Session '($config.session_name)' already exists - --path ignored."
+                    print $"   To start in a new directory, first run: zellij kill-session ($config.session_name)"
+                }
+            }
+        }
         ^zellij --config-dir $merged_zellij_dir attach -c $config.session_name options --default-cwd $working_dir --default-layout $layout_path --pane-frames false --default-shell $config.default_shell
     } else {
         ^zellij --config-dir $merged_zellij_dir options --default-cwd $working_dir --default-layout $layout_path --pane-frames false --default-shell $config.default_shell
