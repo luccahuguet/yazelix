@@ -110,6 +110,30 @@ require("yamb"):setup({
 
 This file is gitignored, so your customizations persist across updates.
 
+### Custom Keybindings
+
+Add custom keybindings without editing the base keymap:
+
+```bash
+~/.config/yazelix/configs/yazi/user/keymap.toml
+```
+
+Your keybindings are merged with yazelix defaults. Example for yamb bookmarks:
+
+```toml
+[[mgr.append_keymap]]
+on = ["b", "a"]
+run = "plugin yamb save"
+desc = "Add bookmark"
+
+[[mgr.append_keymap]]
+on = ["b", "g"]
+run = "plugin yamb jump"
+desc = "Jump to bookmark"
+```
+
+This file is gitignored, so your keybindings persist across updates.
+
 ### Edit Source Configs
 
 For structural changes to the base configuration:
