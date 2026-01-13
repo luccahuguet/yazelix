@@ -217,7 +217,7 @@ def generate_theme_toml [source_dir: string, merged_dir: string, theme: string, 
 }
 
 # Generate init.lua dynamically based on plugin configuration
-def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
+def generate_init_lua [merged_dir: string, source_dir: string, user_plugins: list, --quiet] {
     let plugins_dir = $"($merged_dir)/plugins"
 
     # Core plugins - always loaded, cannot be disabled
@@ -264,6 +264,9 @@ def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
         "--   ~/.config/yazelix/yazelix.toml"
         "--   [yazi] plugins = [...]"
         "--"
+        "-- For custom Lua code, create:"
+        "--   ~/.config/yazelix/configs/yazi/user/init.lua"
+        "--"
         $"-- Generated: ($timestamp)"
         "-- ========================================"
         ""
@@ -271,12 +274,32 @@ def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
 
     let init_content = $"($header)($requires)\n"
 
+    # Check for user custom init.lua and append if exists
+    let user_init_path = $"($source_dir)/user/init.lua"
+    let final_content = if ($user_init_path | path exists) {
+        let user_init = open $user_init_path --raw
+        let user_section = [
+            ""
+            "-- ========================================"
+            "-- USER CUSTOM CODE"
+            "-- ========================================"
+            "-- From: ~/.config/yazelix/configs/yazi/user/init.lua"
+            "-- ========================================"
+            ""
+            $user_init
+        ] | str join "\n"
+        $"($init_content)($user_section)"
+    } else {
+        $init_content
+    }
+
     # Write init.lua
     let init_path = $"($merged_dir)/init.lua"
-    $init_content | save -f $init_path
+    $final_content | save -f $init_path
 
     if not $quiet {
-        print $"   ✅ Generated init.lua with ($valid_plugins | length) plugins"
+        let user_msg = if ($user_init_path | path exists) { " \(+user init.lua\)" } else { "" }
+        print $"   ✅ Generated init.lua with ($valid_plugins | length) plugins($user_msg)"
     }
 }
 
@@ -343,7 +366,7 @@ export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
     copy_flavors_directory $source_config_dir $merged_config_dir --quiet=$quiet
 
     # Generate init.lua dynamically based on plugin configuration
-    generate_init_lua $merged_config_dir $user_plugins --quiet=$quiet
+    generate_init_lua $merged_config_dir $source_config_dir $user_plugins --quiet=$quiet
 
     if not $quiet {
         print $"✅ Yazi configuration generated successfully!"

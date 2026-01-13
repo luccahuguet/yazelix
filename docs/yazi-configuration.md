@@ -89,9 +89,33 @@ When yazelix starts:
 
 For deeper customization beyond `yazelix.toml` options:
 
-**Edit yazelix source configs:**
+### Custom init.lua Code
+
+Some plugins (like `yamb` for bookmarks) require custom Lua code beyond a simple `require().setup()`. Create your own init.lua:
+
 ```bash
-# These are regenerated on every start
+~/.config/yazelix/configs/yazi/user/init.lua
+```
+
+Your code is appended after the auto-generated plugin requires. Example:
+
+```lua
+-- Custom yamb setup
+require("yamb"):setup({
+    jump_notify = true,
+})
+
+-- Custom keybindings or other Lua code
+```
+
+This file is gitignored, so your customizations persist across updates.
+
+### Edit Source Configs
+
+For structural changes to the base configuration:
+
+```bash
+# These are the source templates (your changes persist)
 ~/.config/yazelix/configs/yazi/yazelix_yazi.toml    # Main config
 ~/.config/yazelix/configs/yazi/yazelix_keymap.toml  # Keybindings
 ~/.config/yazelix/configs/yazi/yazelix_theme.toml   # Theme details

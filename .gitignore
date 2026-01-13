@@ -16,7 +16,8 @@ shells/zsh/initializers
 yazelix.nix
 yazelix.toml
 helix_custom/
-configs/yazi/user/
+configs/yazi/user/*
+!configs/yazi/user/README.md
 configs/yazi/personal/
 configs/zellij/personal/*
 !configs/zellij/personal/README.md
