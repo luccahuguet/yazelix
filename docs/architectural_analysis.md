@@ -31,7 +31,7 @@
 ## **File Management Integration**
 
 **Yazi Plugin Ecosystem:**
-- **Auto-layout plugin** with intelligent column adjustment based on terminal width at `configs/yazi/plugins/auto_layout.yazi/main.lua:93-115`
+- **Auto-layout plugin** with intelligent column adjustment based on terminal width at `configs/yazi/plugins/auto-layout.yazi/main.lua:93-115`
 - **Advanced Git integration** with status visualization and file change tracking
 - **Sidebar status customization** for cleaner UI presentation
 - **Smart file opening** integration with editor detection and same-instance Helix support

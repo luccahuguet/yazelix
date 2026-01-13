@@ -202,7 +202,7 @@ persistent_sessions = false
 session_name = "yazelix"
 
 [yazi]
-# Plugins to load (core plugins auto_layout and sidebar_status are always loaded)
+# Plugins to load (core plugins auto-layout and sidebar-status are always loaded)
 #
 # Bundled plugins (shipped with yazelix, always available):
 #   - git: Git status integration (shows file changes in listings)

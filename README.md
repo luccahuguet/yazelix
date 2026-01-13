@@ -81,7 +81,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 ## Improvements in v11.1
 
-- **Dynamic Yazi Plugin System** – Yazi plugins are now configured in `yazelix.toml` under the `[yazi]` section. Core plugins (auto_layout, sidebar_status) are always loaded, and user plugins can be added to the `plugins` list. External plugins installed via `ya pkg add` are preserved across config regenerations.
+- **Dynamic Yazi Plugin System** – Yazi plugins are now configured in `yazelix.toml` under the `[yazi]` section. Core plugins (auto-layout, sidebar-status) are always loaded, and user plugins can be added to the `plugins` list. External plugins installed via `ya pkg add` are preserved across config regenerations.
 - **Configurable Yazi Theme and Sorting** – Customize your Yazi experience directly in `yazelix.toml` with `theme` and `sort_by` options, with instant reload on restart.
 - **Simplified Yazi Configuration** – Removed complex TOML merging system in favor of simple config generation. For advanced customization beyond `yazelix.toml` options, edit the source configs directly in `~/.config/yazelix/configs/yazi/yazelix_*.toml` files.
 

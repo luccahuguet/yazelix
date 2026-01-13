@@ -23,8 +23,8 @@ All yazi settings are in `yazelix.toml`:
 
 ```toml
 [yazi]
-# Core plugins (auto_layout, sidebar_status) are always loaded
-# sidebar_status removes a space-hungry status item so Yazi fits cleanly as a sidebar
+# Core plugins (auto-layout, sidebar-status) are always loaded
+# sidebar-status removes a space-hungry status item so Yazi fits cleanly as a sidebar
 # Add additional plugins here
 plugins = ["git"]
 ```
