@@ -145,7 +145,8 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
             ($trimmed | str starts-with "default_layout ") or
             ($trimmed | str starts-with "layout_dir ") or
             ($trimmed | str starts-with "on_force_close ") or
-            ($trimmed | str starts-with "show_startup_tips ")
+            ($trimmed | str starts-with "show_startup_tips ") or
+            ($trimmed | str starts-with "default_shell ")
         )
     } | str join "\n")
 
