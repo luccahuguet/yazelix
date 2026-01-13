@@ -6,9 +6,6 @@ let
   inherit (pkgs.stdenv) isLinux isDarwin;
   system = pkgs.stdenv.hostPlatform.system;
 
-  # Access to unstable packages for newer tools
-  pkgs-unstable = if inputs ? nixpkgs-unstable then inputs.nixpkgs-unstable.legacyPackages.${system} else pkgs;
-
   nixglPackages = if isLinux then inputs.nixgl.packages.${system} else null;
   nixglIntel = if nixglPackages != null && nixglPackages ? nixGLIntel then nixglPackages.nixGLIntel else null;
 
@@ -65,10 +62,8 @@ let
     user_packages = map (name:
       if builtins.hasAttr name pkgs then
         builtins.getAttr name pkgs
-      else if builtins.hasAttr name pkgs-unstable then
-        builtins.getAttr name pkgs-unstable
       else
-        throw "Package '${name}' not found in nixpkgs stable or unstable"
+        throw "Package '${name}' not found in nixpkgs"
     ) (rawConfig.packs.user_packages or []);
   };
 
@@ -150,7 +145,7 @@ let
       if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
         if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
       fi
-      exec ${lib.optionalString (nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "}${pkgs-unstable.ghostty}/bin/ghostty \
+      exec ${lib.optionalString (nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "}${pkgs.ghostty}/bin/ghostty \
         --config-file="$CONF" \
         --class="com.yazelix.Yazelix" \
         --x11-instance-name="yazelix" \
@@ -284,7 +279,7 @@ let
     if manageTerminals && (lib.elem "ghostty" terminalList) then
       filterNull (
         [ ghosttyWrapper ]  # Wrapper available on both Linux and macOS
-        ++ lib.optionals isLinux [ pkgs-unstable.ghostty ]  # Package only on Linux
+        ++ lib.optionals isLinux [ pkgs.ghostty ]  # Package only on Linux
       )
     else [ ];
   kittyDeps =
