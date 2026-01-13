@@ -1,0 +1,131 @@
+# ========================================
+# YAZELIX STARSHIP CONFIG FOR YAZI SIDEBAR
+# ========================================
+# Compact starship prompt optimized for narrow sidebar display.
+# Icons only, no versions - keeps it tight for the sidebar.
+#
+# Example: "yazelix[main][!?]🐍☕"
+# ========================================
+
+format = """
+$directory\
+$git_branch\
+$git_status\
+$package\
+$python\
+$nodejs\
+$rust\
+$golang\
+$java\
+$lua\
+$ruby\
+$php\
+$kotlin\
+$swift\
+$zig\
+$gleam\
+$nix_shell\
+"""
+
+# Directory - show only current folder name
+[directory]
+truncation_length = 1
+truncate_to_repo = false
+format = "[$path]($style)"
+
+# Git branch - bracket format
+[git_branch]
+format = "[\\[$branch\\]]($style)"
+symbol = ""
+
+# Git status - bracket format
+[git_status]
+format = "([\\[$all_status$ahead_behind\\]]($style))"
+conflicted = "="
+ahead = ">"
+behind = "<"
+diverged = "<>"
+up_to_date = ""
+untracked = "?"
+stashed = "$"
+modified = "!"
+staged = "+"
+renamed = "r"
+deleted = "x"
+
+# Package - icon only
+[package]
+format = "[$symbol]($style)"
+symbol = "📦"
+
+# Python - icon only
+[python]
+format = "[$symbol]($style)"
+symbol = "🐍"
+
+# Node.js - icon only
+[nodejs]
+format = "[$symbol]($style)"
+symbol = ""
+
+# Rust - icon only
+[rust]
+format = "[$symbol]($style)"
+symbol = "🦀"
+
+# Go - icon only
+[golang]
+format = "[$symbol]($style)"
+symbol = ""
+
+# Java - icon only
+[java]
+format = "[$symbol]($style)"
+symbol = "☕"
+
+# Lua - icon only
+[lua]
+format = "[$symbol]($style)"
+symbol = "🌙"
+
+# Ruby - icon only
+[ruby]
+format = "[$symbol]($style)"
+symbol = "💎"
+
+# PHP - icon only
+[php]
+format = "[$symbol]($style)"
+symbol = "🐘"
+
+# Kotlin - icon only
+[kotlin]
+format = "[$symbol]($style)"
+symbol = "K"
+
+# Swift - icon only
+[swift]
+format = "[$symbol]($style)"
+symbol = "🐦"
+
+# Zig - icon only
+[zig]
+format = "[$symbol]($style)"
+symbol = "⚡"
+
+# Gleam - icon only
+[gleam]
+format = "[$symbol]($style)"
+symbol = "⭐"
+
+# Nix shell - icon only, no "impure" text
+[nix_shell]
+format = "[$symbol]($style)"
+symbol = "❄️"
+
+# Disable time-based modules
+[cmd_duration]
+disabled = true
+
+[time]
+disabled = true
