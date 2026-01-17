@@ -60,25 +60,6 @@ Install once, get the same environment everywhere
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
-## Improvements of v11 over v10
-
-- **Devenv-Based Launch Workflow** – Yazelix now runs through `devenv shell --impure`; devenv's SQLite cache automatically detects config changes so cold launches from a desktop entry or `yzx launch` drop from ~4s to ~0.5s, and you only pay a longer rebuild when you actually edit `yazelix.toml`. Yazelix is now Blazingly fast!
-- **TOML Configuration Format** – `yazelix.toml` is the single source of truth (auto-created on first launch) with clear legacy warnings when an old `yazelix.nix` is detected.
-- **First-Class Neovim Support** – Neovim retains feature parity with Helix (reveal in sidebar, same-instance opening, pane detection).
-- **Performance Benchmarking** – `yzx bench` measures terminal launch performance with statistical analysis.
-- **Launch Profiling** – `yzx profile` pinpoints environment setup bottlenecks and profiles cold vs warm startup paths.
-- **Enhanced UI Controls** – Configurable Zellij options: `disable_zellij_tips` (default: true), `zellij_rounded_corners` (default: true).
-- **Streamlined Startup** – Welcome screen disabled by default for faster launches (info still logged).
-- **Sweep Testing Framework** – Matrix testing for all shell/terminal/feature combinations (`yzx sweep shells|terminals|all`).
-- **Terminal Detection** – Proper terminal identification via `YAZELIX_TERMINAL` environment variable.
-- **Conditional Shell Hooks** – Shell hooks load Yazelix tooling only inside managed shells, preventing surprises in regular terminals.
-- **Yazi Directory Sync** – Opening files from Yazi moves the sidebar to the file's parent directory so the view stays in sync with editor context.
-- **Simplified Clipboard** – Replaced the custom clipboard module with Nushell's standard library implementation and added the `clp` helper command. `clp` just calls `clip copy`
-- **Comprehensive Pack System** – 10 curated technology packs organized into language_packs and tool_packs:
-  - **Language Packs (7)**: Python, TypeScript, Rust, Go, Kotlin, Gleam, Nix – complete toolchains with LSP, formatters, linters, and dev tools.
-  - **Tool Packs (3)**: Git (onefetch, gh, delta, gitleaks, jj, prek), Config (taplo, mpls), File Management (ouch, erdtree, serpl).
-  - **Enhanced Packs**: Expanded Rust pack (6 tools), improved TypeScript pack with oxlint and typescript-language-server, Python pack with ipython.
-
 ## Improvements in v11.1
 
 - **Dynamic Yazi Plugin System** – Yazi plugins are now configured in `yazelix.toml` under the `[yazi]` section. Core plugins (auto-layout, sidebar-status) are always loaded, and user plugins can be added to the `plugins` list. External plugins installed via `ya pkg add` are preserved across config regenerations.
@@ -147,6 +128,12 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Zellij Config Respect** – Filters `default_shell` from user Zellij config to honor `yazelix.toml`.
 - **Session UX** – Warns when `--path` is ignored with an existing persistent session.
 - **Nixpkgs Unstable** – Uses unstable for all packages.
+
+## Improvements in v11.12
+
+- **Desktop Launcher Shell** – Uses POSIX `sh` with explicit Nix paths for the desktop launcher.
+- **Yazi Flavor Compatibility** – Updates flavor files to use `url` instead of the deprecated `name` field.
+- **Docs** – Adds v11.10 and v11.11 changelog notes to the README.
 
 Full version history: [Version History](./docs/history.md)
 
