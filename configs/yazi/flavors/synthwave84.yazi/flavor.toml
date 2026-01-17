@@ -195,16 +195,16 @@ rules = [
 	{ mime = "{audio,video}/*", fg = "#72f1b8" },
 	# Document
 	{ mime = "application/{pdf,doc,rtf}", fg = "#fede5d" },
-	{ name = "*.{txt,csv,*json*,toml,yml,yaml,xml,html,ini,cfg,conf,pdf,doc,docx,xls,xlsx,ppt,pptx}", fg = "#fede5d" },
+	{ url = "*.{txt,csv,*json*,toml,yml,yaml,xml,html,ini,cfg,conf,pdf,doc,docx,xls,xlsx,ppt,pptx}", fg = "#fede5d" },
 	# Archive
 	{ mime = "application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#ff7edb" },
-	{ name = "*.img", fg = "#ff7edb" },
+	{ url = "*.img", fg = "#ff7edb" },
 	# Fallback
 	{ url = "*" },
 	{ url = "*/", fg = "#848bbd" },
 	# TODO: remove
-	{ name = "*" },
-	{ name = "*/", fg = "#848bbd" }
+	{ url = "*" },
+	{ url = "*/", fg = "#848bbd" }
 ]
 
 # : }}}

@@ -148,20 +148,20 @@ rules = [
   { mime = "audio/*", fg = "#AD8301" }, # ye
 
   # Broken symbolic link
-  { name = "*", is = "orphan", fg = "#B7B5AC", crossed = true }, # tx-3
-  { name = "*/", is = "orphan", fg = "#B7B5AC", crossed = true }, # tx-3
+  { url = "*", is = "orphan", fg = "#B7B5AC", crossed = true }, # tx-3
+  { url = "*/", is = "orphan", fg = "#B7B5AC", crossed = true }, # tx-3
 
   # Symbolic links
-  { name = "*", is = "link", fg = "#24837B" }, # cy
-  { name = "*/", is = "link", fg = "#24837B" }, # cy
+  { url = "*", is = "link", fg = "#24837B" }, # cy
+  { url = "*/", is = "link", fg = "#24837B" }, # cy
 
   # Executable
-  { name = "*", is = "exec", fg = "#66800B" }, # gr
+  { url = "*", is = "exec", fg = "#66800B" }, # gr
 
   # Empty files
   { mime = "inode/empty", fg = "#B7B5AC" }, # tx-3
 
   # Fallback
-  { name = "*", fg = "#6F6E69" }, # tx-2
-  { name = "*/", fg = "#100F0F" } # tx
+  { url = "*", fg = "#6F6E69" }, # tx-2
+  { url = "*/", fg = "#100F0F" } # tx
 ]

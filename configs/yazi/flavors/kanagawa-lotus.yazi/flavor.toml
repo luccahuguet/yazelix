@@ -119,12 +119,12 @@ rules = [
     { mime = "application/{pdf,doc,rtf,vnd.*}", fg = "#597b75" },
 
     # broken links
-    { name = "*", is = "orphan", fg = "#d7474b" },
+    { url = "*", is = "orphan", fg = "#d7474b" },
 
     # executables
-    { name = "*", is = "exec", fg = "#6e915f" },
+    { url = "*", is = "exec", fg = "#6e915f" },
 
     # fallback
-    { name = "*", fg = "#545464" },
-    { name = "*/", fg = "#4d699b" },
+    { url = "*", fg = "#545464" },
+    { url = "*/", fg = "#4d699b" },
 ]

@@ -180,8 +180,8 @@ rules = [
 	{ url = "*", fg = "#c6d0f5" },
 	{ url = "*/", fg = "#8caaee" },
 	# TODO: remove
-	{ name = "*", fg = "#c6d0f5" },
-	{ name = "*/", fg = "#8caaee" }
+	{ url = "*", fg = "#c6d0f5" },
+	{ url = "*/", fg = "#8caaee" }
 ]
 
 # : }}}

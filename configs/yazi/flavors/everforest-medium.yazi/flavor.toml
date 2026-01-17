@@ -222,8 +222,8 @@ rules = [
 	{ mime = "application/{pdf,doc,rtf,vnd.*}", fg = "#7fbbb3" },
 
 	# Fallback
-	{ name = "*", fg = "#83c092" },
-	{ name = "*/", fg = "#a7c080" }
+	{ url = "*", fg = "#83c092" },
+	{ url = "*/", fg = "#a7c080" }
 ]
 
 # : }}}

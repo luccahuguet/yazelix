@@ -205,10 +205,10 @@ rules = [
   { mime = "application/{pdf,doc,rtf,odt,docx,xlsx,pptx}", fg = "#A3BE8C" }, # nord14
 
   # Fallback file - Default Snow Storm text color
-  { name = "*", fg = "#D8DEE9" }, # nord4
+  { url = "*", fg = "#D8DEE9" }, # nord4
 
   # Fallback directory - Frost Blue
-  { name = "*/", fg = "#81A1C1", bold = true }, # nord9
+  { url = "*/", fg = "#81A1C1", bold = true }, # nord9
 ]
 
 # : }}}
