@@ -33,14 +33,14 @@ truncation_length = 1
 truncate_to_repo = false
 format = "[$path]($style)"
 
-# Git branch - bracket format
+# Git branch - space separated
 [git_branch]
-format = "[\\[$branch\\]]($style)"
+format = "[ $branch]($style)"
 symbol = ""
 
-# Git status - bracket format
+# Git status - space separated
 [git_status]
-format = "([\\[$all_status$ahead_behind\\]]($style))"
+format = "([ $all_status$ahead_behind]($style))"
 conflicted = "="
 ahead = ">"
 behind = "<"
