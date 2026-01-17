@@ -321,15 +321,18 @@ def generate_init_lua [merged_dir: string, source_dir: string, user_plugins: lis
         ($"($plugins_dir)/($p).yazi" | path exists)
     })
 
-    # Generate require\(\) statements
+    # Generate require\(\) statements with safe setup\(\) check
+    # Some plugins don't have a setup\(\) function, so we check before calling
     let requires = ($valid_plugins | each {|name|
         if ($name in $core_plugins) {
+            # Core plugins - we know they have setup\(\)
             $"-- Core plugin \(always loaded\)\nrequire\(\"($name)\"\):setup\(\)"
         } else if ($name == "starship") {
             # Starship plugin with custom sidebar-optimized config
             $"-- User plugin \(from yazelix.toml\)\nrequire\(\"starship\"\):setup\({\n    config_file = \"~/.config/yazelix/configs/yazi/yazelix_starship.toml\"\n}\)"
         } else {
-            $"-- User plugin \(from yazelix.toml\)\nrequire\(\"($name)\"\):setup\(\)"
+            # User plugins - check if setup\(\) exists before calling
+            $"-- User plugin \(from yazelix.toml\)\nlocal _($name | str replace -a '-' '_') = require\(\"($name)\"\)\nif type\(_($name | str replace -a '-' '_').setup\) == \"function\" then _($name | str replace -a '-' '_'):setup\(\) end"
         }
     } | str join "\n\n")
 
