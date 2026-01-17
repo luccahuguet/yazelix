@@ -42,6 +42,8 @@ ya pkg add XYenon/clipboard.yazi
 plugins = ["git", "clipboard"]
 ```
 
+**Note:** Plugins in this list get auto-generated `require("plugin"):setup()` calls. If you need custom configuration options, don't add the plugin here - configure it manually in `user/init.lua` instead.
+
 ### Theme
 
 ```toml

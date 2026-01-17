@@ -33,13 +33,15 @@ Create `init.lua` to add custom Lua code to Yazi's initialization.
 
 Your code is appended after the plugin `require()` statements.
 
-### Example: yamb setup
+### Example: yamb setup with custom options
 
 ```lua
 require("yamb"):setup({
     jump_notify = true,
 })
 ```
+
+**Tip:** Plugins in `yazelix.toml` get auto-generated `setup()` calls. If you need custom options, configure the plugin here instead of adding it to `yazelix.toml`.
 
 ## Notes
 
