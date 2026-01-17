@@ -3,7 +3,7 @@
 # yazelix.toml is gitignored so you can pull updates without conflicts
 #
 # Note: All configuration changes require restarting Yazelix to take effect.
-# Package changes (like adding language packs) will automatically trigger a rebuild when detected.
+# Package changes (like enabling packs) will automatically trigger a rebuild when detected.
 
 [core]
 # See docs/package_sizes.md for details
@@ -249,24 +249,20 @@ sort_by = "alphabetical"
 mode = "static"
 
 [packs]
-# Language packs - helpful packages for each programming language
-# Uncomment the ones you need:
-language = [
-    # "python",  # ruff (formatter/linter), uv (package manager), ty (type checker), ipython (enhanced REPL)
-    # "ts",      # typescript-language-server (LSP), biome (formatter/linter), oxlint (fast linter), bun (runtime/bundler)
-    # "rust",    # cargo-update, cargo-binstall, cargo-edit (add/rm), cargo-watch, cargo-audit, cargo-nextest
-    # "go",      # gopls (language server), golangci-lint (linter), delve (debugger), air (hot reload), govulncheck (vulnerability scanner)
-    # "kotlin",  # kotlin-language-server (LSP), ktlint (linter/formatter), detekt (static analysis), gradle (build tool)
-    # "gleam",   # gleam (compiler with built-in LSP, formatter, and build tool)
-    # "nix",     # nil (language server), nixd (advanced language server), nixfmt-rfc-style (formatter)
-]
-
-# Tool packs - general-purpose development tools
-# Uncomment the ones you need:
-tools = [
-    # "config",          # taplo (TOML formatter/LSP), mpls (Markdown preview LSP)
-    # "file-management", # ouch (archives), erdtree (tree view), serpl (search/replace)
-    # "git",             # onefetch (repo summary), gh (GitHub CLI), delta (diff viewer), gitleaks (secret scanner), jj (Jujutsu VCS), prek (commit log viewer)
+# Enable packs by name (see packs.declarations below)
+enabled = [
+  # "python",
+  # "ts",
+  # "rust",
+  # "rust_extra",
+  # "go",
+  # "go_extra",
+  # "kotlin",
+  # "nix",
+  # "config",
+  # "file-management",
+  # "git",
+  # "jj",
 ]
 
 # Add individual packages here if you don't want entire packs
@@ -276,4 +272,82 @@ tools = [
 # Search packages at: https://search.nixos.org/packages
 user_packages = [
   # "gh",
+]
+
+[packs.declarations]
+# Pack declarations are lists of nixpkgs package names (supports dotted paths).
+# Pack packages always resolve against the configured nixpkgs input (currently unstable).
+# Uncomment entries below to build your own packs.
+
+python = [
+  "ruff", # Fast Python linter/formatter
+  "uv", # Ultra-fast Python package manager
+  "ty", # Fast Python type checker
+  "python3Packages.ipython", # Enhanced Python REPL
+]
+
+ts = [
+  "nodePackages.typescript-language-server", # TypeScript language server (LSP)
+  "biome", # JS/TS formatter and linter
+  "oxlint", # Fast JS/TS linter
+  "bun", # JS runtime, bundler, and test runner
+]
+
+rust = [
+  "cargo-edit", # Add/remove/upgrade Rust deps
+  "cargo-watch", # Rebuild on file changes
+  "cargo-audit", # Security audit for Rust deps
+]
+
+rust_extra = [
+  "cargo-update", # Update installed cargo binaries
+  "cargo-binstall", # Faster install of Rust tools
+  "cargo-nextest", # Next-gen Rust test runner
+]
+
+go = [
+  "gopls", # Go language server (LSP)
+  "golangci-lint", # Fast Go linter aggregator
+]
+
+go_extra = [
+  "delve", # Go debugger
+  "air", # Live reload for Go
+  "govulncheck", # Go vulnerability scanner
+]
+
+kotlin = [
+  "kotlin-language-server", # Kotlin language server (LSP)
+  "ktlint", # Kotlin linter/formatter
+  "detekt", # Kotlin static analysis
+  "gradle", # Build tool for Kotlin/JVM
+]
+
+nix = [
+  "nil", # Nix language server
+  "nixd", # Nix language server with diagnostics
+  "nixfmt", # Nix formatter
+]
+
+config = [
+  "mpls", # Markdown Preview LSP
+  "yaml-language-server", # YAML language server
+]
+
+file-management = [
+  "ouch", # Archive handling
+  "erdtree", # Tree view with file sizes
+  "serpl", # Search/replace CLI
+]
+
+git = [
+  "onefetch", # Repo summary and stats
+  "gh", # GitHub CLI
+  "prek", # Prettier git commit logs
+]
+
+jj = [
+  "jujutsu", # Jujutsu VCS (jj)
+  "lazyjj", # LazyGit-style TUI for jj
+  "jjui", # TUI for Jujutsu VCS
 ]

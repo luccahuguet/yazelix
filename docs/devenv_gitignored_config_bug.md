@@ -10,7 +10,7 @@
 
 Yazelix's migration to TOML-based configuration with devenv caching revealed a critical bug: **gitignored files are invisible to pure Nix evaluation**, causing `yazelix.toml` configuration to be silently ignored in favor of defaults.
 
-**Impact:** User configuration changes (like enabling `extra_shells = ["fish", "zsh"]` or `language_packs = ["python"]`) were not applied, resulting in missing packages (fish, zsh, uv, ruff, etc.) in the devenv environment.
+**Impact:** User configuration changes (like enabling `extra_shells = ["fish", "zsh"]` or `packs.enabled = ["python"]`) were not applied, resulting in missing packages (fish, zsh, uv, ruff, etc.) in the devenv environment.
 
 ## Problem Description
 
@@ -30,7 +30,10 @@ Yazelix's migration to TOML-based configuration with devenv caching revealed a c
 extra_shells = ["fish", "zsh"]
 
 [packs]
-language = ["python"]  # Includes uv, ruff, ty, ipython
+enabled = ["python"]
+
+[packs.declarations]
+python = ["ruff", "uv", "ty", "python3Packages.ipython"]
 ```
 
 ```bash
@@ -113,7 +116,7 @@ Fresh build still showed wrong config! ❌ Not a cache issue.
 $ nix eval --impure --expr 'let toml = builtins.fromTOML (builtins.readFile ./yazelix.toml); in toml.shell.extra_shells'
 [ "fish" "zsh" ]  # ✅ Nix CAN read it with --impure
 
-$ nix eval --impure --expr 'let toml = builtins.fromTOML (builtins.readFile ./yazelix.toml); in toml.packs.language'
+$ nix eval --impure --expr 'let toml = builtins.fromTOML (builtins.readFile ./yazelix.toml); in toml.packs.enabled'
 [ "python" ]  # ✅ Config is valid
 ```
 
@@ -517,7 +520,7 @@ For users who want pure evaluation, recommend Home Manager integration which gen
 programs.yazelix = {
   enable = true;
   extraShells = [ "fish" "zsh" ];
-  packs.language = [ "python" ];
+  packs.enabled = [ "python" ];
 };
 ```
 

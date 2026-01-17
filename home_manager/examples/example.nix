@@ -64,9 +64,12 @@
     persistent_sessions = true;
     session_name = "main-dev";
 
-    # Language/tool packs (optional curated bundles)
-    language_packs = [];
-    tool_packs = [];
+    # Packs (optional bundles defined in pack_declarations)
+    pack_names = [ "python" "git" ];
+    pack_declarations = {
+      python = [ "ruff" "uv" "ty" "python3Packages.ipython" ];
+      git = [ "onefetch" "gh" "delta" "gitleaks" "jujutsu" "prek" ];
+    };
     enable_atuin = true;
     
     # Additional tools for development workflow

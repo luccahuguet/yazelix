@@ -73,23 +73,38 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 
 Yazelix offers two ways to add packages:
 
-**Pack-based**: Enable entire technology stacks organized by category:
-```nix
-# Language packs - complete toolchains for programming languages
-language_packs = ["python" "ts" "rust" "go" "kotlin" "gleam" "nix"];
+**Pack declarations**: Define packs in `[packs.declarations]` and enable them via `packs.enabled`:
+```toml
+[packs]
+enabled = ["python", "git"]
+user_packages = ["docker", "kubectl", "gleam"]
 
-# Tool packs - general-purpose development tools
-tool_packs = ["config" "file-management" "git"];
+[packs.declarations]
+python = [
+  "ruff",
+  "uv",
+  "ty",
+  "python3Packages.ipython",
+]
+git = [
+  "onefetch",
+  "gh",
+  "delta",
+  "gitleaks",
+  "jujutsu",
+  "prek",
+]
 ```
 
 **Individual packages**: Add specific tools via `user_packages` in `yazelix.toml`:
-```nix
-user_packages = with pkgs; [ docker kubectl ];
+```toml
+[packs]
+user_packages = ["docker", "kubectl", "gleam"]
 ```
 
-## Language Packs
+## Example Pack Declarations
 
-Complete toolchains for programming languages:
+Complete toolchains you can declare:
 
 ### Python Pack (`python`)
 - [ruff](https://github.com/astral-sh/ruff) — Fast Python linter and code formatter
@@ -104,16 +119,20 @@ Complete toolchains for programming languages:
 - [bun](https://bun.sh/) — Fast all-in-one JavaScript runtime, bundler, test runner, and package manager
 
 ### Rust Pack (`rust`)
-- [cargo-update](https://github.com/nabijaczleweli/cargo-update) — Updates Rust crates for project maintenance
-- [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) — Faster installation of Rust tools
 - [cargo-edit](https://github.com/killercup/cargo-edit) — Add, remove, and upgrade dependencies from the command line (`cargo add`, `cargo rm`)
 - [cargo-watch](https://github.com/watchexec/cargo-watch) — Auto-recompile and re-run on file changes
 - [cargo-audit](https://github.com/rustsec/rustsec/tree/main/cargo-audit) — Audit dependencies for security vulnerabilities
+
+### Rust Extra Pack (`rust_extra`)
+- [cargo-update](https://github.com/nabijaczleweli/cargo-update) — Updates Rust crates for project maintenance
+- [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) — Faster installation of Rust tools
 - [cargo-nextest](https://github.com/nextest-rs/nextest) — Next-generation test runner with better output and parallelism
 
 ### Go Pack (`go`)
 - [gopls](https://github.com/golang/tools/tree/master/gopls) — Official Go language server for IDE features and LSP support
 - [golangci-lint](https://github.com/golangci/golangci-lint) — Fast, comprehensive Go linter aggregator running multiple linters in parallel
+
+### Go Extra Pack (`go_extra`)
 - [delve](https://github.com/go-delve/delve) — Powerful debugger for Go with breakpoints, variable inspection, and more
 - [air](https://github.com/cosmtrek/air) — Live reload for Go development with hot reloading on file changes
 - [govulncheck](https://golang.org/x/vuln/cmd/govulncheck) — Official Go vulnerability scanner from the Go security team
@@ -124,21 +143,19 @@ Complete toolchains for programming languages:
 - [detekt](https://github.com/detekt/detekt) — Static code analysis tool for code quality and smell detection
 - [gradle](https://gradle.org/) — Build automation tool for Kotlin/JVM projects
 
-### Gleam Pack (`gleam`)
-- [gleam](https://gleam.run/) — Gleam compiler with built-in LSP, formatter, and build tool - a friendly language for building type-safe systems on Erlang/JavaScript
-
 ### Nix Pack (`nix`)
 - [nil](https://github.com/oxalica/nil) — Nix language server for IDE features (LSP support for Helix, VSCode, etc.)
 - [nixd](https://github.com/nix-community/nixd) — Alternative Nix language server with advanced features and diagnostics
-- [nixfmt-rfc-style](https://github.com/NixOS/nixfmt) — Official Nix code formatter following RFC style guidelines
+- [nixfmt](https://github.com/NixOS/nixfmt) — Official Nix code formatter
 
 ## Tool Packs
 
 General-purpose development tools:
 
 ### Configuration Pack (`config`)
-- [taplo](https://github.com/tamasfe/taplo) — TOML formatter and language server for configuration files
+- [taplo](https://github.com/tamasfe/taplo) — TOML formatter and language server for configuration files (included by default)
 - [mpls](https://github.com/mhersson/mpls) — Markdown Preview Language Server with live browser preview and Mermaid/PlantUML support
+- [yaml-language-server](https://github.com/redhat-developer/yaml-language-server) — Language Server for YAML files
 
 ### File Management Pack (`file-management`)
 - [ouch](https://github.com/ouch-org/ouch) — Compression tool for handling archives
@@ -148,12 +165,14 @@ General-purpose development tools:
 ### Git Pack (`git`)
 - [onefetch](https://github.com/o2sh/onefetch) — Git repository summary with statistics and language breakdown
 - [gh](https://cli.github.com/) — GitHub CLI for repository management and PR workflows
-- [delta](https://github.com/dandavison/delta) — Syntax-highlighting pager for git diffs with side-by-side view
-- [gitleaks](https://github.com/gitleaks/gitleaks) — Scan git repos for accidentally committed secrets and credentials
-- [jujutsu](https://github.com/martinvonz/jj) — Modern version control system with powerful conflict resolution (command: `jj`)
 - [prek](https://github.com/piotrek-szczygiel/prek) — Prettier git commit logs and history viewer
 
-**Usage**: Enable packs in `yazelix.toml` by updating the `[packs]` section (`language = [...]`, `tools = [...]`) or add individual tools via `user_packages` for fine-grained control.
+### Jujutsu Pack (`jj`)
+- [jujutsu](https://github.com/martinvonz/jj) — Modern version control system with powerful conflict resolution (command: `jj`)
+- [lazyjj](https://github.com/Cretezy/lazyjj) — LazyGit-style TUI for jj
+- [jjui](https://github.com/idursun/jjui) — TUI for Jujutsu VCS
+
+**Usage**: Enable packs in `yazelix.toml` by listing them in `packs.enabled` and defining them in `packs.declarations`, or add individual tools via `user_packages` for fine-grained control.
 
 ---
 

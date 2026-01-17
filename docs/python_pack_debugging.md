@@ -1,13 +1,13 @@
 # Python Pack Debugging Investigation
 
-> **Legacy Note:** This investigation references the former `yazelix.nix` configuration workflow prior to the TOML migration. Current releases use `yazelix.toml` by default.
+> **Note:** This investigation uses the current `yazelix.toml` pack declarations format.
 
 **Date:** 2025-11-02
-**Issue:** Python pack is enabled in yazelix.nix but tools (uv, ruff, ty, ipython) are not available in the shell
+**Issue:** Python pack is enabled in yazelix.toml but tools (uv, ruff, ty, ipython) are not available in the shell
 
 ## Problem Statement
 
-User has `language_packs = ["python"]` in yazelix.nix, but when entering a Yazelix shell or Zellij pane:
+User has `packs.enabled = ["python"]` in yazelix.toml, but when entering a Yazelix shell or Zellij pane:
 ```bash
 $ uv
 Error: nu::shell::external_command
@@ -20,33 +20,26 @@ This worked in the old flake-based version of Yazelix (v10) but broke after swit
 
 ### 1. Initial Configuration Verification
 
-**yazelix.nix (User Config):**
-```nix
-language_packs = [
-  "python"  # ruff, uv, ty, ipython
-];
+**yazelix.toml (User Config):**
+```toml
+[packs]
+enabled = ["python"]
+
+[packs.declarations]
+python = ["ruff", "uv", "ty", "python3Packages.ipython"]
 ```
 ✅ Python pack is enabled
 
 **devenv.nix (Pack Definitions):**
 ```nix
-packDefinitions = {
-  python = with pkgs; [
-    ruff
-    uv
-    ty
-    python3Packages.ipython
-  ];
-  # ... other packs
-};
+packDefinitions =
+  lib.mapAttrs (_name: pkgNames: map resolvePkg pkgNames) packDeclarations;
 ```
 ✅ Python pack definition exists and looks correct
 
 **Pack Selection Logic:**
 ```nix
-selectedLanguagePacks = userConfig.language_packs or [ ];
-selectedToolPacks = userConfig.tool_packs or [ ];
-selectedPacks = selectedLanguagePacks ++ selectedToolPacks;
+selectedPacks = userConfig.pack_names or [ ];
 packPackages = builtins.concatLists (
   map (packName:
     if builtins.hasAttr packName packDefinitions then
@@ -198,7 +191,7 @@ devenv uses Nix flakes internally, and **flakes only see Git-tracked files**. Si
 
 This explains why:
 1. `userConfig` has all attribute keys but with empty values
-2. `language_packs` is an empty list instead of `["python"]`
+2. `packs.enabled` is an empty list instead of `["python"]`
 3. `user_packages` is an empty list instead of the 4 Python packages
 4. packPackages is computed correctly in standalone Nix evaluation (which doesn't use flakes) but is empty in devenv context
 
@@ -211,7 +204,7 @@ $ nix eval --impure --json --expr '...'
 
 # devenv eval fails (uses flakes):
 $ devenv shell
-language_packs count: 0  # ❌ Empty!
+packs.enabled count: 0  # ❌ Empty!
 user_packages count: 0   # ❌ Empty!
 ```
 

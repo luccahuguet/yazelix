@@ -24,9 +24,9 @@ export const REBUILD_REQUIRED_KEYS = [
     # Terminal packages
     "terminal.terminals",
 
-    # Language and tool packs
-    "packs.language",
-    "packs.tools",
+    # Packs
+    "packs.enabled",
+    "packs.declarations",
     "packs.user_packages"
 ]
 

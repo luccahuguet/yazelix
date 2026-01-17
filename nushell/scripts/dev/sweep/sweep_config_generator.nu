@@ -46,8 +46,8 @@ def build_sweep_config [
             mode: "static"
         }
         packs: {
-            language: []
-            tools: []
+            enabled: []
+            declarations: {}
             user_packages: []
         }
     }

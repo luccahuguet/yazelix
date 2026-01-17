@@ -21,6 +21,11 @@ let
       names = map (pkg: pkg.pname or pkg.name or "unknown") packages;
     in listToToml names;
 
+  packDeclarationsToToml = declarations:
+    let
+      names = sort lessThan (attrNames declarations);
+    in map (name: "${escapeString name} = ${listToToml declarations.${name}}") names;
+
 in {
   options.programs.yazelix = {
     enable = mkEnableOption "Yazelix terminal environment";
@@ -251,16 +256,16 @@ in {
       description = "Session name for persistent sessions";
     };
 
-    language_packs = mkOption {
-      type = types.listOf (types.enum [ "python" "ts" "rust" "go" "kotlin" "gleam" "nix" ]);
+    pack_names = mkOption {
+      type = types.listOf types.str;
       default = [];
-      description = "Language packs - complete toolchains for programming languages";
+      description = "Packs to enable (must match pack_declarations keys)";
     };
 
-    tool_packs = mkOption {
-      type = types.listOf (types.enum [ "config" "file-management" "git" ]);
-      default = [];
-      description = "Tool packs - general-purpose development tools";
+    pack_declarations = mkOption {
+      type = types.attrsOf (types.listOf types.str);
+      default = {};
+      description = "Pack declarations mapping names to nixpkgs package strings (supports dotted paths)";
     };
 
     enable_atuin = mkOption {
@@ -357,9 +362,12 @@ in {
           "mode = ${escapeString cfg.ascii_art_mode}"
           ""
           "[packs]"
-          "language = ${listToToml cfg.language_packs}"
-          "tools = ${listToToml cfg.tool_packs}"
+          "enabled = ${listToToml cfg.pack_names}"
           "user_packages = ${packagesToToml cfg.user_packages}"
+          ""
+          "[packs.declarations]"
+          ""
+        ] ++ packDeclarationsToToml cfg.pack_declarations ++ [
           ""
         ]
       ) + "\n";

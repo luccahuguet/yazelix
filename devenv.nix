@@ -23,6 +23,16 @@ let
     else
       builtins.fromTOML (builtins.readFile defaultTomlConfigFile);
 
+  rawPacks = rawConfig.packs or {};
+  _ =
+    if rawPacks ? language || rawPacks ? tools then
+      throw ''
+        packs.language and packs.tools are deprecated.
+        Use packs.enabled and packs.declarations instead.
+      ''
+    else
+      null;
+
   # Parse TOML config into the format devenv.nix expects
   userConfig = {
     recommended_deps = rawConfig.core.recommended_deps or true;
@@ -57,14 +67,14 @@ let
 
     ascii_art_mode = rawConfig.ascii.mode or "static";
 
-    language_packs = rawConfig.packs.language or [];
-    tool_packs = rawConfig.packs.tools or [];
+    pack_names = rawPacks.enabled or [];
+    pack_declarations = rawPacks.declarations or {};
     user_packages = map (name:
       if builtins.hasAttr name pkgs then
         builtins.getAttr name pkgs
       else
         throw "Package '${name}' not found in nixpkgs"
-    ) (rawConfig.packs.user_packages or []);
+    ) (rawPacks.user_packages or []);
   };
 
   boolToString = value: if value then "true" else "false";
@@ -363,75 +373,37 @@ let
       imagemagick
     ];
 
-  packDefinitions = {
-    python = with pkgs; [
-      ruff
-      uv
-      ty
-      python3Packages.ipython
-    ];
-    ts = with pkgs; [
-      nodePackages.typescript-language-server
-      biome
-      oxlint
-      bun
-    ];
-    rust = with pkgs; [
-      cargo-update
-      cargo-binstall
-      cargo-edit
-      cargo-watch
-      cargo-audit
-      cargo-nextest
-    ];
-    config = with pkgs; [
-      mpls  # taplo moved to essentialDeps (required for yazelix.toml)
-    ];
-    file-management = with pkgs; [
-      ouch
-      erdtree
-      serpl
-    ];
-    git = with pkgs; [
-      onefetch
-      gh
-      delta
-      gitleaks
-      jujutsu
-      prek
-    ];
-    nix = with pkgs; [
-      nil
-      nixd
-      nixfmt-rfc-style
-    ];
-    go = with pkgs; [
-      gopls
-      golangci-lint
-      delve
-      air
-      govulncheck
-    ];
-    kotlin = with pkgs; [
-      kotlin-language-server
-      ktlint
-      detekt
-      gradle
-    ];
-    gleam = with pkgs; [
-      gleam
-    ];
-  };
+  resolvePkg = name:
+    let
+      path = lib.splitString "." name;
+      value = lib.attrByPath path null pkgs;
+    in
+    if value == null then
+      throw "Package '${name}' not found in nixpkgs"
+    else
+      value;
 
-  selectedLanguagePacks = userConfig.language_packs or [ ];
-  selectedToolPacks = userConfig.tool_packs or [ ];
-  selectedPacks = selectedLanguagePacks ++ selectedToolPacks;
+  packDeclarations =
+    if builtins.isAttrs (userConfig.pack_declarations or {}) then
+      userConfig.pack_declarations
+    else
+      throw "packs.declarations must be a table of pack definitions";
+
+  packDefinitions =
+    lib.mapAttrs (packName: pkgNames:
+      if builtins.isList pkgNames then
+        map resolvePkg pkgNames
+      else
+        throw "Pack '${packName}' must be a list of package names"
+    ) packDeclarations;
+
+  selectedPacks = userConfig.pack_names or [ ];
   packPackages = builtins.concatLists (
     map (packName:
       if builtins.hasAttr packName packDefinitions then
         packDefinitions.${packName}
       else
-        throw "Unknown pack '${packName}'. Available packs: ${builtins.concatStringsSep ", " (builtins.attrNames packDefinitions)}"
+        throw "Unknown pack '${packName}'. Declare it under packs.declarations. Available packs: ${builtins.concatStringsSep ", " (builtins.attrNames packDefinitions)}"
     ) selectedPacks
   );
 
