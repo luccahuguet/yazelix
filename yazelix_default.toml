@@ -251,18 +251,18 @@ mode = "static"
 [packs]
 # Enable packs by name (see packs.declarations below)
 enabled = [
-  # "python",
-  # "ts",
-  # "rust",
-  # "rust_extra",
-  # "go",
-  # "go_extra",
-  # "kotlin",
-  # "nix",
   # "config",
   # "file-management",
   # "git",
   # "jj",
+  # "python",
+  # "rust",
+  # "rust_extra",
+  # "nix",
+  # "ts",
+  # "go",
+  # "go_extra",
+  # "kotlin",
 ]
 
 # Add individual packages here if you don't want entire packs
@@ -271,7 +271,7 @@ enabled = [
 # Note: Package names must exist in nixpkgs
 # Search packages at: https://search.nixos.org/packages
 user_packages = [
-  # "gh",
+  # "gleam",
 ]
 
 [packs.declarations]
@@ -279,56 +279,7 @@ user_packages = [
 # Pack packages always resolve against the configured nixpkgs input (currently unstable).
 # Uncomment entries below to build your own packs.
 
-python = [
-  "ruff", # Fast Python linter/formatter
-  "uv", # Ultra-fast Python package manager
-  "ty", # Fast Python type checker
-  "python3Packages.ipython", # Enhanced Python REPL
-]
-
-ts = [
-  "nodePackages.typescript-language-server", # TypeScript language server (LSP)
-  "biome", # JS/TS formatter and linter
-  "oxlint", # Fast JS/TS linter
-  "bun", # JS runtime, bundler, and test runner
-]
-
-rust = [
-  "cargo-edit", # Add/remove/upgrade Rust deps
-  "cargo-watch", # Rebuild on file changes
-  "cargo-audit", # Security audit for Rust deps
-]
-
-rust_extra = [
-  "cargo-update", # Update installed cargo binaries
-  "cargo-binstall", # Faster install of Rust tools
-  "cargo-nextest", # Next-gen Rust test runner
-]
-
-go = [
-  "gopls", # Go language server (LSP)
-  "golangci-lint", # Fast Go linter aggregator
-]
-
-go_extra = [
-  "delve", # Go debugger
-  "air", # Live reload for Go
-  "govulncheck", # Go vulnerability scanner
-]
-
-kotlin = [
-  "kotlin-language-server", # Kotlin language server (LSP)
-  "ktlint", # Kotlin linter/formatter
-  "detekt", # Kotlin static analysis
-  "gradle", # Build tool for Kotlin/JVM
-]
-
-nix = [
-  "nil", # Nix language server
-  "nixd", # Nix language server with diagnostics
-  "nixfmt", # Nix formatter
-]
-
+# Tool packs
 config = [
   "mpls", # Markdown Preview LSP
   "yaml-language-server", # YAML language server
@@ -350,4 +301,55 @@ jj = [
   "jujutsu", # Jujutsu VCS (jj)
   "lazyjj", # LazyGit-style TUI for jj
   "jjui", # TUI for Jujutsu VCS
+]
+
+# Language packs
+python = [
+  "ruff", # Fast Python linter/formatter
+  "uv", # Ultra-fast Python package manager
+  "ty", # Fast Python type checker
+  "python3Packages.ipython", # Enhanced Python REPL
+]
+
+rust = [
+  "cargo-edit", # Add/remove/upgrade Rust deps
+  "cargo-watch", # Rebuild on file changes
+  "cargo-audit", # Security audit for Rust deps
+]
+
+rust_extra = [
+  "cargo-update", # Update installed cargo binaries
+  "cargo-binstall", # Faster install of Rust tools
+  "cargo-nextest", # Next-gen Rust test runner
+]
+
+nix = [
+  "nil", # Nix language server
+  "nixd", # Nix language server with diagnostics
+  "nixfmt", # Nix formatter
+]
+
+ts = [
+  "nodePackages.typescript-language-server", # TypeScript language server (LSP)
+  "biome", # JS/TS formatter and linter
+  "oxlint", # Fast JS/TS linter
+  "bun", # JS runtime, bundler, and test runner
+]
+
+go = [
+  "gopls", # Go language server (LSP)
+  "golangci-lint", # Fast Go linter aggregator
+]
+
+go_extra = [
+  "delve", # Go debugger
+  "air", # Live reload for Go
+  "govulncheck", # Go vulnerability scanner
+]
+
+kotlin = [
+  "kotlin-language-server", # Kotlin language server (LSP)
+  "ktlint", # Kotlin linter/formatter
+  "detekt", # Kotlin static analysis
+  "gradle", # Build tool for Kotlin/JVM
 ]
