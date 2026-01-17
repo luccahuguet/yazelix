@@ -50,11 +50,11 @@ Show system information and settings
 
 ### `yzx update`
 Manage Yazelix updates
-- `yzx update devenv`: Update the devenv CLI in your Nix profile
-- `yzx update lock`: Run `devenv update` inside `~/.config/yazelix` and refresh `devenv.lock` (prompts by default; use `--yes` to skip)
+- `yzx update devenv`: Update the devenv CLI in your Nix profile (`--verbose` shows underlying commands)
+- `yzx update lock`: Refresh `devenv.lock` via `devenv update` (`--yes` skips prompt, `--verbose` shows command)
 - `yzx update zjstatus`: Update bundled zjstatus.wasm plugin
-- `yzx update repo`: Pull latest Yazelix updates (use `--stash` if you have local changes)
-- `yzx update all`: Run all update commands
+- `yzx update repo`: Pull latest Yazelix updates (`--stash` auto-stashes changes, `--verbose` shows git commands)
+- `yzx update all`: Run `devenv`, `lock --yes`, and `zjstatus` updates
 
 ### `yzx versions`
 Display all tool versions
@@ -86,6 +86,11 @@ yzx doctor --fix              # Health check with auto-fix
 yzx info                      # System information
 yzx versions                  # Show all tool versions
 yzx config_status bash        # Check bash integration
+
+# Updates
+yzx update devenv             # Update devenv CLI
+yzx update lock --yes          # Refresh devenv.lock without prompt
+yzx update repo --stash        # Pull repo updates and reapply local changes
 
 # Testing and benchmarking
 yzx test                      # Run all tests (non-visual)

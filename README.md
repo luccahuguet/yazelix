@@ -60,80 +60,15 @@ Install once, get the same environment everywhere
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
-## Improvements in v11.1
+## Improvements in v12
 
-- **Dynamic Yazi Plugin System** – Yazi plugins are now configured in `yazelix.toml` under the `[yazi]` section. Core plugins (auto-layout, sidebar-status) are always loaded, and user plugins can be added to the `plugins` list. External plugins installed via `ya pkg add` are preserved across config regenerations.
-- **Configurable Yazi Theme and Sorting** – Customize your Yazi experience directly in `yazelix.toml` with `theme` and `sort_by` options, with instant reload on restart.
-- **Simplified Yazi Configuration** – Removed complex TOML merging system in favor of simple config generation. For advanced customization beyond `yazelix.toml` options, edit the source configs directly in `~/.config/yazelix/configs/yazi/yazelix_*.toml` files.
-
-## Improvements in v11.2
-
-- **lazygit.yazi Integration** – Launch lazygit directly from Yazi with the `gl` keybinding. Seamlessly jump into git workflows without leaving the file manager.
-- **Starship Prompt in Yazi Header** – The starship.yazi plugin displays contextual information (git branch, virtual environments, project details) in Yazi's header, complementing git.yazi's file-level indicators.
-- **Consistent TOML Formatting** – Added taplo configuration for multi-line array formatting with trailing commas, improving git diffs and config readability.
-
-## Improvements in v11.3
-
-- **Expanded Yazi Theme Support** – Bundled 24 community Yazi flavors (25 total with default), the first cross-platform solution to include all flavors out-of-the-box. Use `random-dark` (19 themes) or `random-light` (5 themes) for variety on each restart.
-- **Cross-Compatible Theme Guide** – Documented 9 themes that work across Zellij (37 total), Yazi (25 total), and Helix (199 total) for consistent theming.
-- **Bug Fixes** – Fixed `disable_tips` setting (was parsed but never applied since v11), improved config robustness by stripping all yazelix-controlled settings from base config.
-
-## Improvements in v11.4
-
-- **Code Modularization** – Split core command suite into focused modules (`yzx/launch.nu`, `yzx/env.nu`), reducing `yazelix.nu` from 546 to 306 lines for better maintainability.
-- **DRY Consolidation** – Created shared `environment_bootstrap.nu` module to eliminate duplicate initialization logic across entry points.
-- **Improved First-Time Setup** – Added `--setup-only` flag for clean bootstrap experience and fixed installation guide ordering (Nix before Nushell).
-
-## Improvements in v11.5
-
-- **Streamlined Environment Setup** – Refactored architecture to read `yazelix.toml` directly instead of passing 11 parameters through Bash, eliminating type conversion complexity.
-- **Single Source of Truth** – Environment configuration now reads TOML once, consistently, with properly typed values throughout.
-- **Bug Fixes** – Fixed welcome screen duplication, bool/string parameter mismatches, and interactive launch sequence.
-
-## Improvements in v11.6
-
-- **Simplified Terminal Configuration** – Terminal selection now uses a single ordered list (`terminals = ["ghostty", "kitty"]`) instead of separate `preferred_terminal` and `extra_terminals` fields.
-- **Advanced Terminal Control** – Added `manage_terminals` option to disable Yazelix-managed terminal packages for users with system-installed terminals.
-- **Smart Autodetection** – Gracefully handles empty terminal list with automatic detection fallback.
-
-## Improvements in v11.7
-
-- **Automatic Environment Rebuild** – Fixed chicken-egg problem when changing terminal configuration. Yazelix now auto-detects config changes and rebuilds the environment to install newly configured terminals.
-
-## Improvements in v11.8
-
-- **Nix-Pinned zjstatus** – zjstatus is now sourced from a Nix input and synced on shell entry, making updates reproducible.
-- **Configurable Widget Tray** – Control zjstatus widgets with `zellij.widget_tray` in `yazelix.toml`, with easy per-item toggles.
-- **Documentation** – Added widget tray guidance in Zellij configuration docs.
-- **Seamless Terminal Installation** – When `manage_terminals = true`, switching terminals in `yazelix.toml` no longer requires manual rebuild - just run `yzx restart` or `yzx launch`.
-
-## Improvements in v11.9
-
-- **Smarter Updates** – `yzx update` now separates CLI updates from lockfile updates, adds `yzx update repo` for pulling upstream changes, and supports `yzx update all` for a full refresh.
-- **Safer Lockfile Refresh** – `yzx update lock` prompts before updating to upstream inputs, with a clear note about maintainer cadence.
-- **Cleaner Sweeps** – Terminal sweeps skip missing terminals instead of failing, keeping test output focused.
-
-## Improvements in v11.10
-
-- **Ghostty Update** – Ghostty now comes from unstable Nixpkgs with an updated lockfile and corrected config.
-- **Kitty Keyboard Protocol Toggle** – Added a toggle for Kitty's keyboard protocol and removed duplicate config entries.
-- **Cleaner Update Commands** – Dropped the `yzx update nix` alias in favor of clearer update flows.
-- **Documentation and Warnings** – Clarified sidebar_status behavior, fixed Nushell interpolation in docs, and removed a noisy warning.
-
-## Improvements in v11.11
-
-- **User Yazi Customization** – Added support for user `init.lua` and `keymap.toml` merging for custom Yazi configuration.
-- **Yazi Plugin Compatibility** – Renamed plugins to kebab-case for Yazi 26.x and safely check for `setup()` before calling user plugins; docs clarify auto-generation behavior.
-- **Starship Sidebar Profile** – Added a compact Starship config for the Yazi sidebar and updated formatting to use space separators.
-- **Zellij Config Respect** – Filters `default_shell` from user Zellij config to honor `yazelix.toml`.
-- **Session UX** – Warns when `--path` is ignored with an existing persistent session.
+- **User-Declared Packs** – Packs are defined in `packs.declarations` and enabled via `packs.enabled`, with refreshed presets (Rust/Go split, `jj` pack, simpler git, YAML support).
+- **Yazi Upgrades** – Plugin system + theme/sorting controls, `init.lua`/`keymap.toml` merging, lazygit/starship integrations, bundled Yazi themes, and a documented cross-theme set shared by Zellij/Helix/Yazi.
+- **Terminal** – Ordered terminal list, added `manage_terminals` option to disable Yazelix-managed terminal packages for system-installed terminals, automatic environment rebuilds before launch/restart on terminal config changes.
+- **Zellij** – Pinned zjstatus with configurable widget tray (`zellij.widget_tray`) and per-item toggles.
+- **Launch & Config** – Direct TOML config parsing, setup-only bootstrap option, modularized core commands, POSIX `sh` desktop launcher.
 - **Nixpkgs Unstable** – Uses unstable for all packages.
-
-## Improvements in v11.12
-
-- **Desktop Launcher Shell** – Uses POSIX `sh` with explicit Nix paths for the desktop launcher.
-- **Yazi Flavor Compatibility** – Updates flavor files to use `url` instead of the deprecated `name` field.
-- **Docs** – Adds v11.10 and v11.11 changelog notes to the README.
+- **Updates & UX** – Smarter update suite: `yzx update devenv|lock|zjstatus|repo|all`, cleaner lock refresh, sweep robustness, extensive bug fixes, and better warnings/compat fixes.
 
 Full version history: [Version History](./docs/history.md)
 
