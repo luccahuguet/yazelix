@@ -132,6 +132,22 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Safer Lockfile Refresh** – `yzx update lock` prompts before updating to upstream inputs, with a clear note about maintainer cadence.
 - **Cleaner Sweeps** – Terminal sweeps skip missing terminals instead of failing, keeping test output focused.
 
+## Improvements in v11.10
+
+- **Ghostty Update** – Ghostty now comes from unstable Nixpkgs with an updated lockfile and corrected config.
+- **Kitty Keyboard Protocol Toggle** – Added a toggle for Kitty's keyboard protocol and removed duplicate config entries.
+- **Cleaner Update Commands** – Dropped the `yzx update nix` alias in favor of clearer update flows.
+- **Documentation and Warnings** – Clarified sidebar_status behavior, fixed Nushell interpolation in docs, and removed a noisy warning.
+
+## Improvements in v11.11
+
+- **User Yazi Customization** – Added support for user `init.lua` and `keymap.toml` merging for custom Yazi configuration.
+- **Yazi Plugin Compatibility** – Renamed plugins to kebab-case for Yazi 26.x and safely check for `setup()` before calling user plugins; docs clarify auto-generation behavior.
+- **Starship Sidebar Profile** – Added a compact Starship config for the Yazi sidebar and updated formatting to use space separators.
+- **Zellij Config Respect** – Filters `default_shell` from user Zellij config to honor `yazelix.toml`.
+- **Session UX** – Warns when `--path` is ignored with an existing persistent session.
+- **Nixpkgs Unstable** – Uses unstable for all packages.
+
 Full version history: [Version History](./docs/history.md)
 
 ## Compatibility
