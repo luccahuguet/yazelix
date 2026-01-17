@@ -226,10 +226,10 @@ For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.):
 
 ```bash
-bash -l -c "$HOME/.config/yazelix/nushell/scripts/core/desktop_launcher.nu"
+sh -c 'PATH="$HOME/.local/state/nix/profile/bin:$HOME/.nix-profile/bin:$PATH" exec nu "$HOME/.config/yazelix/nushell/scripts/core/desktop_launcher.nu"'
 ```
 
-The `-l` flag ensures your shell profile is loaded, making Nix packages (like `nu` and `devenv`) available in the PATH.
+This uses POSIX `sh` with explicit Nix paths, avoiding shell profile issues across different user configurations.
 
 ##### macOS (Spotlight, Launchpad, Dock)
 
