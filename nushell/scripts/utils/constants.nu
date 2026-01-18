@@ -85,7 +85,7 @@ export const TERMINAL_METADATA = {
 # Common terminal configuration values
 export const YAZELIX_WINDOW_CLASS = "com.yazelix.Yazelix"
 export const YAZELIX_X11_INSTANCE = "yazelix"
-export const YAZELIX_SHELL_COMMAND = "sh -c 'PATH=\"$HOME/.local/state/nix/profile/bin:$HOME/.nix-profile/bin:$PATH\" exec nu \"$HOME/.config/yazelix/nushell/scripts/core/start_yazelix.nu\"'"
+export const YAZELIX_SHELL_COMMAND = "sh -c 'exec \"$HOME/.config/yazelix/shells/posix/start_yazelix.sh\"'"
 export const YAZELIX_THEME = "Abernathy"
 export const FONT_FIRACODE = "FiraCode Nerd Font"
 
@@ -101,8 +101,8 @@ export const TRANSPARENCY_VALUES = {
 }
 
 # Shell argument templates for terminal configs
-export const SHELL_ARGS_BASH = '["bash", "-l", "-c", "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]'
-export const SHELL_ARGS_STRING = '["-l", "-c", "nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu"]'
+export const SHELL_ARGS_BASH = '["-c", "exec \\"$HOME/.config/yazelix/shells/posix/start_yazelix.sh\\""]'
+export const SHELL_ARGS_STRING = '["-c", "exec \\"$HOME/.config/yazelix/shells/posix/start_yazelix.sh\\""]'
 
 # ============================================================================
 # CURSOR TRAIL CONFIGURATION (Ghostty)

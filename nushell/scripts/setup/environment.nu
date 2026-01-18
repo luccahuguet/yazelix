@@ -119,6 +119,8 @@ def main [] {
 
     # Set permissions
     chmod +x $"($yazelix_dir)/shells/bash/start_yazelix.sh"
+    chmod +x $"($yazelix_dir)/shells/posix/start_yazelix.sh"
+    chmod +x $"($yazelix_dir)/shells/posix/desktop_launcher.sh"
     chmod +x $"($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu"
     chmod +x $"($yazelix_dir)/nushell/scripts/core/start_yazelix.nu"
 

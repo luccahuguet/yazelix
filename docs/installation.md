@@ -226,10 +226,10 @@ For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.):
 
 ```bash
-sh -c 'PATH="$HOME/.local/state/nix/profile/bin:$HOME/.nix-profile/bin:$PATH" exec nu "$HOME/.config/yazelix/nushell/scripts/core/desktop_launcher.nu"'
+sh -c 'exec "$HOME/.config/yazelix/shells/posix/desktop_launcher.sh"'
 ```
 
-This uses POSIX `sh` with explicit Nix paths, avoiding shell profile issues across different user configurations.
+This uses a POSIX launcher script to avoid shell profile issues across different user configurations.
 
 ##### macOS (Spotlight, Launchpad, Dock)
 

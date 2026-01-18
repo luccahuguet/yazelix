@@ -43,7 +43,8 @@
 # resize-overlay-duration = 4s 200ms
 
 # Start Yazelix with explicit Nix paths (avoids shell profile issues)
-initial-command = "sh -c 'PATH=\"$HOME/.local/state/nix/profile/bin:$HOME/.nix-profile/bin:$PATH\" exec nu \"$HOME/.config/yazelix/nushell/scripts/core/start_yazelix.nu\"'"
+command = "sh -c 'exec \"$HOME/.config/yazelix/shells/posix/start_yazelix.sh\"'"
+initial-command = "sh -c 'exec \"$HOME/.config/yazelix/shells/posix/start_yazelix.sh\"'"
 
 # Yazelix branding for desktop environment recognition
 class = com.yazelix.Yazelix

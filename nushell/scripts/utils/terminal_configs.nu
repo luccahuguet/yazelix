@@ -79,7 +79,8 @@ export def generate_ghostty_config [] {
     let config = parse_yazelix_config
     $"($GHOSTTY_CONFIG_HEADER)
 
-# Start Yazelix via login shell to ensure Nix environment is loaded
+# Start Yazelix via launcher to ensure Nix environment is loaded
+command = \"($YAZELIX_SHELL_COMMAND)\"
 initial-command = \"($YAZELIX_SHELL_COMMAND)\"
 
 # Yazelix branding for desktop environment recognition
@@ -106,7 +107,7 @@ export def generate_wezterm_config [] {
 local wezterm = require 'wezterm'
 local config = wezterm.config_builder\(\)
 
-config.default_prog = {\"bash\", \"-l\", \"-c\", \"nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu\"}
+config.default_prog = {'sh', '-c', 'exec "$HOME/.config/yazelix/shells/posix/start_yazelix.sh"'}
 config.window_decorations = \"NONE\"
 config.window_padding = { left = 0, right = 0, top = 10, bottom = 0 }
 config.color_scheme = '($YAZELIX_THEME)'
@@ -154,14 +155,13 @@ export def generate_alacritty_config [] {
     let config = parse_yazelix_config
     $"# Alacritty configuration for Yazelix
 
-[general]
 import = []
 
 [env]
 TERM = \"xterm-256color\"
 
-[terminal.shell]
-program = \"bash\"
+[shell]
+program = \"sh\"
 args = ($SHELL_ARGS_STRING)
 
 [window]
@@ -200,7 +200,7 @@ app-id=($YAZELIX_WINDOW_CLASS)
 title=(get_terminal_title "foot")
 locked-title=yes
 font=($FONT_FIRACODE):size=12
-pad=6x6 center-when-maximized-and-fullscreen
+pad=6x6 center
 
 [csd]
 preferred=client
