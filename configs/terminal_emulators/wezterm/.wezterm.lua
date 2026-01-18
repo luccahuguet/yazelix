@@ -7,7 +7,7 @@ local wezterm = require 'wezterm'
 local config = wezterm.config_builder
 
 -- Basic Yazelix setup
-config.default_prog = { 'sh', '-c', 'exec "$HOME/.config/yazelix/shells/posix/start_yazelix.sh"' }
+config.default_prog = { 'sh', '-c', 'exec $HOME/.config/yazelix/shells/posix/start_yazelix.sh' }
 
 -- Window styling to match Ghostty
 config.window_decorations = "RESIZE"

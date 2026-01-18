@@ -107,7 +107,7 @@ export def generate_wezterm_config [] {
 local wezterm = require 'wezterm'
 local config = wezterm.config_builder\(\)
 
-config.default_prog = {'sh', '-c', 'exec "$HOME/.config/yazelix/shells/posix/start_yazelix.sh"'}
+config.default_prog = {'sh', '-c', 'exec $HOME/.config/yazelix/shells/posix/start_yazelix.sh'}
 config.window_decorations = \"NONE\"
 config.window_padding = { left = 0, right = 0, top = 10, bottom = 0 }
 config.color_scheme = '($YAZELIX_THEME)'
