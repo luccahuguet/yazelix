@@ -1,4 +1,4 @@
-# Yazelix v11
+# Yazelix v12
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
@@ -65,8 +65,8 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **User-Declared Packs** – Packs are defined in `packs.declarations` and enabled via `packs.enabled`, with refreshed presets (Rust/Go split, `jj` pack, simpler git, YAML support).
 - **Yazi Plugin System** – Declaratively enable/disable plugins via `[yazi] plugins = ["git", "starship"]` in `yazelix.toml`. Bundled plugins (git, starship, lazygit) can be disabled or replaced with your own installed via `ya pkg add`.
 - **Yazi User Configs** – Full merging support for `yazi.toml`, `keymap.toml`, and `init.lua` from `configs/yazi/user/`. User settings override defaults while preserving Yazelix's editor integration.
-- **Yazi Themes** – Theme/sorting controls, bundled flavor themes, and a documented cross-theme set shared by Zellij/Helix/Yazi.
-- **Terminal** – Ordered terminal list that sets the primary launch target and fallback order for auto-detection, added `manage_terminals` option to disable Yazelix-managed terminal packages for system-installed terminals, automatic environment rebuilds before launch/restart on terminal config changes.
+- **Zellij & Yazi Themes** – Theme/sorting controls, bundled Yazi flavor themes, and a documented cross-theme set shared by Zellij/Helix/Yazi.
+- **Terminal** – Ordered terminal list that defines primary launch target and fallback order for auto-detection, `manage_terminals` to disable Yazelix-managed terminal packages for system-installed terminals, and automatic environment rebuilds before launch/restart on terminal config changes.
 - **Zellij** – Pinned zjstatus with configurable widget tray (`zellij.widget_tray`) and per-item toggles.
 - **Launch & Config** – Direct TOML config parsing, setup-only bootstrap option, modularized core commands, POSIX `sh` desktop launcher.
 - **Nixpkgs Unstable** – Uses unstable for all packages.
