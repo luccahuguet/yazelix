@@ -220,7 +220,7 @@ let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure($refresh_flag) -- 
 
 **nushell/scripts/core/desktop_launcher.nu**:
 ```nu
-let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure($refresh_flag) -- nu ($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu ($nu.home-path)"
+let devenv_cmd = $"cd ($yazelix_dir) && devenv shell --impure($refresh_flag) -- nu ($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu ($env.HOME)"
 ```
 
 **shells/bash/start_yazelix.sh**:

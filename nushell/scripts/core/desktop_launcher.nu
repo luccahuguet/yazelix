@@ -15,8 +15,8 @@ def main [] {
     let needs_refresh = $env_prep.needs_refresh
 
     # Build launch command - open in home directory instead of yazelix directory
-    let yazelix_dir = $"($nu.home-path)/.config/yazelix"
-    let launch_command = $"nu ($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu ($nu.home-path)"
+    let yazelix_dir = $"($env.HOME)/.config/yazelix"
+    let launch_command = $"nu ($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu ($env.HOME)"
 
     # Run launch script in devenv environment (shared devenv runner)
     run_in_devenv_shell $launch_command --force-refresh=$needs_refresh

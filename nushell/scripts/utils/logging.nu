@@ -4,7 +4,7 @@
 # Logging utility module
 
 export def log_to_file [log_name: string, message: string] {
-    let log_dir = ($nu.home-path | path join ".config/yazelix/logs" | path expand)
+    let log_dir = ($env.HOME | path join ".config/yazelix/logs" | path expand)
     let log_file = ($log_dir | path join $log_name)
     
     # Line-based trimming for different log types
