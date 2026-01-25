@@ -57,6 +57,12 @@ in {
       '';
     };
 
+    environment_mode = mkOption {
+      type = types.enum [ "nix" "system" ];
+      default = "nix";
+      description = "Execution mode: nix (default) or system (no Nix/devenv)";
+    };
+
     helix_mode = mkOption {
       type = types.enum [ "release" "source" ];
       default = "release";
@@ -323,6 +329,9 @@ in {
           "skip_welcome_screen = ${boolToToml cfg.skip_welcome_screen}"
           "show_macchina_on_welcome = ${boolToToml cfg.show_macchina_on_welcome}"
           "build_cores = ${escapeString cfg.build_cores}"
+          ""
+          "[environment]"
+          "mode = ${escapeString cfg.environment_mode}"
           ""
           "[helix]"
           "mode = ${escapeString cfg.helix_mode}"

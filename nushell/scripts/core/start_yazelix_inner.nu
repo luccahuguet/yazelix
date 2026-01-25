@@ -4,12 +4,28 @@
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_ENV_VARS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
+use ../utils/system_mode.nu [assert_no_packs require_command]
 use ../setup/welcome.nu [show_welcome build_welcome_message]
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
 def main [cwd_override?: string, layout_override?: string] {
     let config = parse_yazelix_config
+    let env_mode = ($config.environment_mode? | default "nix")
+    if $env_mode == "system" {
+        assert_no_packs $config
+        require_command "zellij" "zellij"
+        require_command "yazi" "yazi"
+        require_command ($config.default_shell? | default "nu") "shell.default_shell"
+
+        let editor_cmd = ($config.editor_command? | default "")
+        if ($editor_cmd | is-empty) {
+            print "Error: environment.mode = \"system\" requires editor.command"
+            print "Set [editor].command to a system editor (e.g., \"hx\" or \"nvim\")."
+            exit 1
+        }
+        require_command $editor_cmd "editor.command"
+    }
     let yazelix_dir = ($env.HOME | path join ".config" "yazelix")
     let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
 

@@ -24,6 +24,12 @@ export def check_environment_status [] {
 
 # Ensure Nix environment is available
 export def ensure_environment_available [] {
+    let config = parse_yazelix_config
+    let env_mode = ($config.environment_mode? | default "nix")
+    if $env_mode == "system" {
+        return
+    }
+
     let env_status = check_environment_status
 
     if not $env_status.already_in_env {
@@ -43,6 +49,13 @@ export def run_in_devenv_shell [
     --skip-welcome      # Set YAZELIX_SKIP_WELCOME=true
     --force-refresh     # Force environment refresh
 ] {
+    let config = parse_yazelix_config
+    let env_mode = ($config.environment_mode? | default "nix")
+    if $env_mode == "system" {
+        print "Error: environment.mode = \"system\" disables devenv execution"
+        exit 1
+    }
+
     let env_status = check_environment_status
     let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
 
@@ -121,6 +134,13 @@ export def run_in_devenv_shell_command [
     --skip-welcome     # Set YAZELIX_SKIP_WELCOME=true
     --force-refresh    # Force environment refresh
 ] {
+    let config = parse_yazelix_config
+    let env_mode = ($config.environment_mode? | default "nix")
+    if $env_mode == "system" {
+        print "Error: environment.mode = \"system\" disables devenv execution"
+        exit 1
+    }
+
     let env_status = check_environment_status
     let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
 

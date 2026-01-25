@@ -3,22 +3,45 @@
 
 use ../utils/environment_bootstrap.nu *
 use ../utils/config_state.nu [mark_config_state_applied]
+use ../utils/system_mode.nu [assert_no_packs require_command]
 
 # Load yazelix environment without UI
 export def "yzx env" [
     --no-shell(-n)  # Keep current shell instead of launching configured shell
 ] {
-    use ../utils/nix_detector.nu ensure_nix_available
-    ensure_nix_available
-
     # Prepare environment (shared with start_yazelix.nu)
     let env_prep = prepare_environment
     let config = $env_prep.config
     let needs_refresh = $env_prep.needs_refresh
+    let env_mode = ($config.environment_mode? | default "nix")
+
+    if $env_mode == "system" {
+        assert_no_packs $config
+    } else {
+        use ../utils/nix_detector.nu ensure_nix_available
+        ensure_nix_available
+    }
 
     let original_dir = (pwd)
 
-    if $no_shell {
+    if $env_mode == "system" and $no_shell {
+        return
+    } else if $env_mode == "system" {
+        # Launch configured shell without Nix/devenv
+        let shell_name = ($config.default_shell? | default "nu" | str downcase)
+        let shell_command = match $shell_name {
+            "nu" => ["nu" "--login"]
+            "bash" => ["bash" "--login"]
+            "fish" => ["fish" "-l"]
+            "zsh" => ["zsh" "-l"]
+            _ => [$shell_name]
+        }
+        let shell_exec = ($shell_command | first)
+        let shell_args = ($shell_command | skip 1)
+        require_command $shell_exec "shell"
+        ^$shell_exec ...$shell_args
+        return
+    } else if $no_shell {
         # For --no-shell, we need to cd back after devenv loads
         let stay_bash_command = $"cd '($original_dir)' && exec bash"
 

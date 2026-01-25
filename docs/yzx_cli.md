@@ -4,6 +4,16 @@ Shell-agnostic CLI for Yazelix management. Works across bash, fish, zsh, and nus
 
 ## Commands
 
+### System Mode
+Configure nixless operation in `yazelix.toml`:
+
+```toml
+[environment]
+mode = "system"
+```
+
+System mode skips Nix/devenv and uses system-installed tools. You must install `zellij`, `yazi`, your editor, a terminal from `terminal.terminals`, and your configured shell. `terminal.manage_terminals` is forced to `false`, and `packs.enabled`/`packs.user_packages` are not supported.
+
 ### `yzx doctor [--verbose] [--fix]`
 Health checks and diagnostics
 - `--verbose`: Detailed output

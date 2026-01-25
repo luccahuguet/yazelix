@@ -13,9 +13,6 @@ def main [
     --terminal(-t): string  # Override terminal selection (for sweep testing)
     --verbose               # Enable verbose logging
 ] {
-    # Check if Nix is properly installed before proceeding
-    ensure_nix_available
-
     # Resolve HOME using shell expansion
     let home = $env.HOME
     if ($home | is-empty) or (not ($home | path exists)) {
@@ -35,7 +32,15 @@ def main [
     let active_config_file = $config_state.config_file
     let current_hash = $config_state.current_hash
     let cached_hash = $config_state.cached_hash
-    let needs_reload = $config_state.needs_refresh
+    mut needs_reload = $config_state.needs_refresh
+    let env_mode = ($config.environment_mode? | default "nix")
+
+    if $env_mode != "system" {
+        # Check if Nix is properly installed before proceeding
+        ensure_nix_available
+    } else {
+        $needs_reload = false
+    }
 
     let legacy_nix_config = $"($home)/.config/yazelix/yazelix.nix"
     if ($legacy_nix_config | path exists) and ($legacy_nix_config != $active_config_file) {
@@ -88,7 +93,7 @@ def main [
     # Generate all terminal configurations for safety and consistency
     generate_all_terminal_configs
 
-    # Detect available terminal (wrappers preferred)
+    # Detect available terminal (wrappers preferred when manage_terminals=true)
     # If terminal was explicitly specified via --terminal flag, force that specific terminal only
     let terminal_info = if ($terminal | is-not-empty) {
         # Strict mode: only try the specified terminal, no fallbacks
@@ -96,8 +101,8 @@ def main [
         let term_meta = $TERMINAL_METADATA | get $specified_terminal
         let wrapper_cmd = $term_meta.wrapper
 
-        # Try wrapper first, then direct
-        if (command_exists $wrapper_cmd) {
+        # Try wrapper first if manage_terminals=true, otherwise direct only
+        if $manage_terminals and (command_exists $wrapper_cmd) {
             {
                 terminal: $specified_terminal
                 name: $term_meta.name
@@ -118,7 +123,7 @@ def main [
         }
     } else {
         # Normal mode: use detect_terminal with fallbacks
-        detect_terminal $terminals true
+        detect_terminal $terminals $manage_terminals
     }
 
     if $terminal_info == null {

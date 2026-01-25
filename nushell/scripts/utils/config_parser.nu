@@ -29,12 +29,20 @@ export def parse_yazelix_config [] {
     # Parse TOML configuration (Nushell auto-parses TOML files)
     let raw_config = open $config_to_read
 
+    let environment_mode = ($raw_config.environment?.mode? | default "nix")
+    let manage_terminals = if $environment_mode == "system" {
+        false
+    } else {
+        ($raw_config.terminal?.manage_terminals? | default true)
+    }
+
     # Extract and return values
     {
         recommended_deps: ($raw_config.core?.recommended_deps? | default true),
         debug_mode: ($raw_config.core?.debug_mode? | default false),
         skip_welcome_screen: ($raw_config.core?.skip_welcome_screen? | default false),
         show_macchina_on_welcome: ($raw_config.core?.show_macchina_on_welcome? | default true),
+        environment_mode: $environment_mode,
         ascii_art_mode: ($raw_config.ascii?.mode? | default "static"),
         persistent_sessions: ($raw_config.zellij?.persistent_sessions? | default false | into string),
         session_name: ($raw_config.zellij?.session_name? | default "yazelix"),
@@ -42,7 +50,7 @@ export def parse_yazelix_config [] {
         zellij_widget_tray: ($raw_config.zellij?.widget_tray? | default ["layout", "editor", "shell", "term", "cpu", "ram"]),
         support_kitty_keyboard_protocol: ($raw_config.zellij?.support_kitty_keyboard_protocol? | default false | into string),
         terminals: ($raw_config.terminal?.terminals? | default ["ghostty"]),
-        manage_terminals: ($raw_config.terminal?.manage_terminals? | default true),
+        manage_terminals: $manage_terminals,
         terminal_config_mode: ($raw_config.terminal?.config_mode? | default "yazelix"),
         cursor_trail: ($raw_config.terminal?.cursor_trail? | default "random"),
         transparency: ($raw_config.terminal?.transparency? | default "medium"),
@@ -50,11 +58,17 @@ export def parse_yazelix_config [] {
         extra_shells: ($raw_config.shell?.extra_shells? | default []),
         enable_atuin: ($raw_config.shell?.enable_atuin? | default false),
         helix_mode: ($raw_config.helix?.mode? | default "release"),
+        helix_runtime_path: ($raw_config.helix?.runtime_path? | default ""),
+        editor_command: ($raw_config.editor?.command? | default ""),
+        enable_sidebar: ($raw_config.editor?.enable_sidebar? | default true),
         disable_zellij_tips: ($raw_config.zellij?.disable_tips? | default true | into string),
         zellij_rounded_corners: ($raw_config.zellij?.rounded_corners? | default true | into string),
         yazi_plugins: ($raw_config.yazi?.plugins? | default ["git"]),
         yazi_theme: ($raw_config.yazi?.theme? | default "default"),
         yazi_sort_by: ($raw_config.yazi?.sort_by? | default "alphabetical"),
+        packs_enabled: ($raw_config.packs?.enabled? | default []),
+        packs_declarations: ($raw_config.packs?.declarations? | default {}),
+        packs_user_packages: ($raw_config.packs?.user_packages? | default []),
         config_file: $config_to_read
     }
 }

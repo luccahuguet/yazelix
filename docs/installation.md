@@ -16,6 +16,27 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 
 **Important**: You don't need to learn Nix or Nushell to use Yazelix! Nix just installs the tools and yazelix uses nushell internally, and you can use your preferred shell (bash, fish, zsh, or nushell) for your daily work. You can install nix and nushell once, and forget they ever existed.
 
+## Nixless (System) Mode
+
+If you already have the tools installed or cannot install Nix, you can run Yazelix in system mode:
+
+```toml
+[environment]
+mode = "system"
+
+[editor]
+command = "hx" # or "nvim", "vim", etc.
+```
+
+System mode skips Nix/devenv entirely and uses your system packages. You must install these yourself:
+- `zellij`
+- `yazi`
+- your editor (set in `editor.command`)
+- a terminal from `terminal.terminals`
+- your configured shell
+
+`terminal.manage_terminals` is forced to `false`, and `packs.enabled`/`packs.user_packages` are not supported in system mode.
+
 ## Supported Terminal Emulators
 Yazelix provides 5 terminal emulators built-in via Nix - set your `terminals` list in `yazelix.toml`:
 
