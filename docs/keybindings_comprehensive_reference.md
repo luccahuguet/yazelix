@@ -194,40 +194,39 @@ Add these keybindings to your Helix `config.toml` for improved navigation:
 
 ```toml
 [keys.normal]
+# Navigation and movement
 "{" = "goto_prev_paragraph"
 "}" = "goto_next_paragraph"
+g.e = "goto_file_end"
+A-ret = ["move_line_down", "goto_first_nonwhitespace"]
+
+# Selection and editing
 X = "extend_line_up"
-# Print the current line's git blame information to the statusline
-space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
-# Reload config and buffer
-A-r = [":config-reload", ":reload"]
-# Toggle hidden files in file picker
-space.H = ":toggle-option file-picker.hidden"
-# Yank diagnostic information
-C-y = ":yank-diagnostic"
-# Move line up with Ctrl+k
 C-k = [
   "extend_to_line_bounds",
   "delete_selection",
   "move_line_up",
   "paste_before",
 ]
-# Move line down with Ctrl+j
 C-j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
-# Navigate down and go to first non-whitespace
-ret = ["move_line_down", "goto_first_nonwhitespace"]
-# Navigate up and go to first non-whitespace
-A-ret = ["move_line_up", "goto_first_nonwhitespace"]
-# Open languages.toml config
-tab.l = ":o ~/.config/helix/languages.toml"
-# Open Helix config
-tab.c = ":config-open"
 
-[keys.select]
-"g" = { "e" = "goto_file_end" }
+# System integration
+A-r = [":config-reload", ":reload"]
+
+# Git integration
+A-g.b = ":sh git blame -L %{cursor_line},+1 %{buffer_name}"
+A-g.s = ":sh git status --porcelain"
+A-g.l = ":sh git log --oneline -10 %{buffer_name}"
+
+# Utility shortcuts (ret prefix)
+ret.d = ":yank-diagnostic"
+ret.h = ":toggle-option file-picker.hidden"
+ret.i = ":toggle-option file-picker.git-ignore"
+ret.l = ":o ~/.config/helix/languages.toml"
+ret.c = ":config-open"
 ```
 
-This provides vim-like paragraph navigation using `{` and `}` instead of the default `[p` and `]p`, plus `X` for extending selection upward by line, and `Space+B` for git blame on the current line.
+This provides vim-like paragraph navigation using `{` and `}` instead of the default `[p` and `]p`, plus `X` for extending selection upward by line, and a `ret` prefix for utility shortcuts.
 
 ## Yazelix Integration Keybindings
 
