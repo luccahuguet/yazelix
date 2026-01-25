@@ -80,6 +80,10 @@ Full version history: [Version History](./docs/history.md)
 - **Env-only cleanup** – Removed `yzx env -c` and switched internal uses to `yzx run`.
 - **Safer execution** – Commands run via `devenv shell -- <cmd> <args>` without shell interpolation.
 
+## Experiments
+
+- **Nixless (System) Mode** – Experimental work lives on the `nixless-system-mode` branch and might never land in `main`.
+
 ## Compatibility
 - **Platform**: Works on Linux and macOS
 - **Terminal**: Ghostty (via Homebrew on macOS), Kitty, WezTerm, Alacritty; Foot on Linux only
