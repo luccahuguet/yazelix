@@ -106,7 +106,7 @@ export def profile_cold_launch [
     # Simulate what happens during yzx launch - run devenv shell with immediate exit
     # This is the only command that actually does the full 6s build
     let max_cores = get_max_cores
-    let result = bash -c $"cd ($yazelix_dir) && echo 'exit' | timeout 15 devenv --cores ($max_cores) shell" | complete
+    let result = sh -c $"cd ($yazelix_dir) && echo 'exit' | timeout 15 devenv --cores ($max_cores) shell" | complete
     let launch_end = (date now)
     let launch_ms = ((($launch_end - $launch_start) | into int) / 1000000)
 

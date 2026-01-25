@@ -189,8 +189,8 @@ export def "yzx launch" [
                 print "♻️  Config changed since last launch – rebuilding environment"
             }
             let max_cores = get_max_cores
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv --impure --cores ($max_cores) shell -- bash -c '($full_cmd)'"
-            ^bash -c $devenv_cmd
+            let devenv_cmd = $"cd ($yazelix_dir) && devenv --impure --cores ($max_cores) shell -- sh -c '($full_cmd)'"
+            ^sh -c $devenv_cmd
             if $needs_refresh {
                 mark_config_state_applied $config_state
             }

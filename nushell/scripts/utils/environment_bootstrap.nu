@@ -55,7 +55,7 @@ export def run_in_devenv_shell [
         if $verbose_mode {
             print "⚙️ Executing command directly in existing environment"
         }
-        ^bash -c $command
+        ^sh -c $command
     } else {
         # Not in managed shell, enter devenv first
         if (which devenv | is-empty) {
@@ -83,7 +83,7 @@ export def run_in_devenv_shell [
         }
 
         let devenv_flags_str = ($devenv_flags | str join " ")
-        let devenv_cmd = $"cd ($yazelix_dir) && devenv ($devenv_flags_str) shell -- bash -c '($command)'"
+        let devenv_cmd = $"cd ($yazelix_dir) && devenv ($devenv_flags_str) shell -- sh -c '($command)'"
 
         # Build environment variables
         mut env_vars = {}
@@ -101,10 +101,10 @@ export def run_in_devenv_shell [
         }
 
         if ($env_vars | is-empty) {
-            ^bash -c $devenv_cmd
+            ^sh -c $devenv_cmd
         } else {
             with-env $env_vars {
-                ^bash -c $devenv_cmd
+                ^sh -c $devenv_cmd
             }
         }
     }
