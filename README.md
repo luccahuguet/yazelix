@@ -88,6 +88,8 @@ Full version history: [Version History](./docs/history.md)
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
 ## Nixless (System) Mode
+System mode is experimental and currently lives on the `nixless-system-mode` branch.
+
 If you already have the tools installed or cannot install Nix, set:
 
 ```toml
