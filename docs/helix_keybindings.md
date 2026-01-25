@@ -38,7 +38,6 @@ C-k = [
 C-j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
 
 # System integration
-C-y = ":yank-diagnostic"
 A-r = [":config-reload", ":reload"]
 
 # Git integration
@@ -46,20 +45,12 @@ A-g.b = ":sh git blame -L %{cursor_line},+1 %{buffer_name}"
 A-g.s = ":sh git status --porcelain"
 A-g.l = ":sh git log --oneline -10 %{buffer_name}"
 
-# Execute selections in shells
-tab.x = ":sh $YAZELIX_DEFAULT_SHELL -c '%{selection}'"
-tab.b = ":sh bash -c '%{selection}'"
-tab.B = ":sh bash -c 'source ~/.bashrc && %{selection}'"
-tab.n = ":sh nu -c '%{selection}'"
-tab.N = ":sh nu -c 'source ~/.config/nushell/config.nu; %{selection}'"
-
-# File picker toggles
-tab.h = ":toggle-option file-picker.hidden"
-tab.i = ":toggle-option file-picker.git-ignore"
-
-# Configuration shortcuts
-tab.l = ":o ~/.config/helix/languages.toml"
-tab.c = ":config-open"
+# Utility shortcuts (C-y prefix)
+C-y.d = ":yank-diagnostic"
+C-y.h = ":toggle-option file-picker.hidden"
+C-y.i = ":toggle-option file-picker.git-ignore"
+C-y.l = ":o ~/.config/helix/languages.toml"
+C-y.c = ":config-open"
 ```
 
 ## Keybinding Categories
@@ -75,7 +66,6 @@ tab.c = ":config-open"
 - `C-j`: Cut current line and paste below
 
 ### System Integration
-- `C-y`: Yank diagnostic messages
 - `A-r`: Reload configuration and current file
 - `A-y`: **Yazelix integration** - Reveal current file in Yazi sidebar
 
@@ -84,37 +74,26 @@ tab.c = ":config-open"
 - `A-g.s`: Show git status (porcelain format)
 - `A-g.l`: Show recent git log for current file
 
-### Shell Execution
-Execute selected text in different shells:
-- `tab.x`: Execute in your default Yazelix shell
-- `tab.b`: Execute in bash
-- `tab.B`: Execute in bash with sourced bashrc
-- `tab.n`: Execute in Nushell
-- `tab.N`: Execute in Nushell with config
-
-### File Picker Toggles
-- `tab.h`: Toggle hidden files in file picker
-- `tab.i`: Toggle git-ignore filtering in file picker
-
-### Configuration Shortcuts
-- `tab.l`: Open Helix languages.toml
-- `tab.c`: Open main Helix configuration
+### Utility Shortcuts (C-y prefix)
+- `C-y.d`: Yank diagnostic messages
+- `C-y.h`: Toggle hidden files in file picker
+- `C-y.i`: Toggle git-ignore filtering in file picker
+- `C-y.l`: Open Helix languages.toml
+- `C-y.c`: Open main Helix configuration
 
 ## Usage Tips
 
-1. **Shell Execution**: Select any text and use the `tab.x` bindings to execute it in your preferred shell. Great for testing code snippets or running commands.
+1. **Git Integration**: The git keybindings help you stay in context while coding. `A-g.b` is particularly useful for understanding code history.
 
-2. **Git Integration**: The git keybindings help you stay in context while coding. `A-g.b` is particularly useful for understanding code history.
+2. **File Picker Toggles**: Use `C-y.h` and `C-y.i` to quickly adjust what files are visible when using Helix's file picker.
 
-3. **File Picker Toggles**: Use `tab.h` and `tab.i` to quickly adjust what files are visible when using Helix's file picker.
-
-4. **Yazelix Integration**: The `A-y` keybinding creates a seamless workflow between Helix and Yazi - you can quickly reveal any file you're editing in the sidebar.
+3. **Yazelix Integration**: The `A-y` keybinding creates a seamless workflow between Helix and Yazi - you can quickly reveal any file you're editing in the sidebar.
 
 ## Customization
 
 Feel free to modify these keybindings to match your workflow. The key principles are:
 - Use `Alt` (A-) for Yazelix-specific integrations
-- Use `tab.` for utility functions that don't interfere with normal editing
+- Use `C-y.` for utility functions that don't interfere with normal editing
 - Keep git operations grouped under `A-g.`
 
 For more Helix configuration options, see the [Helix documentation](https://docs.helix-editor.com/configuration.html).
