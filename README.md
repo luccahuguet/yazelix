@@ -88,7 +88,7 @@ Full version history: [Version History](./docs/history.md)
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
 ## Nixless (System) Mode
-System mode is experimental and currently lives on the `nixless-system-mode` branch.
+System mode is experimental, lives on the `nixless-system-mode` branch, and might never land in `main`.
 
 If you already have the tools installed or cannot install Nix, set:
 
