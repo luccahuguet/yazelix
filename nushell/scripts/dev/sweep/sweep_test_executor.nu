@@ -9,11 +9,11 @@ use ../../utils/terminal_launcher.nu command_exists
 # Validate that environment setup works for a given config
 export def validate_environment [config_path: string]: nothing -> record {
     try {
-        # Test 1: Tool availability check using yzx env --command
-        let tools_cmd = "echo 'TOOLS_START' && which zellij && which yazi && which hx && echo 'TOOLS_END'"
+        # Test 1: Tool availability check using yzx run
+        let tools_cmd = "echo \"TOOLS_START\" && which zellij && which yazi && which hx && echo \"TOOLS_END\""
         let tools_output = (do {
             with-env {YAZELIX_CONFIG_OVERRIDE: $config_path} {
-                nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx env --command '($tools_cmd)'"
+                nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx run bash \"-lc\" '($tools_cmd)'"
             }
         } | complete)
 
@@ -26,11 +26,11 @@ export def validate_environment [config_path: string]: nothing -> record {
             return {status: "fail", message: "Tool availability incomplete", details: $stdout}
         }
 
-        # Test 2: Version commands using yzx env --command
-        let version_cmd = "echo 'VERSION_START' && zellij --version && yazi --version && hx --version && echo 'VERSION_END'"
+        # Test 2: Version commands using yzx run
+        let version_cmd = "echo \"VERSION_START\" && zellij --version && yazi --version && hx --version && echo \"VERSION_END\""
         let version_output = (do {
             with-env {YAZELIX_CONFIG_OVERRIDE: $config_path} {
-                nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx env --command '($version_cmd)'"
+                nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx run bash \"-lc\" '($version_cmd)'"
             }
         } | complete)
 

@@ -74,6 +74,13 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 Full version history: [Version History](./docs/history.md)
 
+## Improvements of v12.1
+
+- **yzx run** – New one-shot command runner: `yzx run <command> [args...]`.
+- **Env-only cleanup** – Removed `yzx env -c` and switched internal uses to `yzx run`.
+- **Safer execution** – Commands run via `devenv shell -- <cmd> <args>` without shell interpolation.
+- **Quieter output** – `yzx run` no longer prints the env-only welcome message.
+
 ## Compatibility
 - **Platform**: Works on Linux and macOS
 - **Terminal**: Ghostty (via Homebrew on macOS), Kitty, WezTerm, Alacritty; Foot on Linux only
@@ -234,6 +241,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx launch --terminal ghostty` - Force a particular terminal for this launch
 - `yzx launch --verbose` - Print detailed launch diagnostics
 - `yzx env [--no-shell]` - Load Yazelix tools without UI and drop into your configured shell (`--no-shell` keeps your current shell)
+- `yzx run <command> [args...]` - Run a single command inside the Yazelix environment
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
 - `yzx profile [--detailed] [--history]` - Profile launch performance and identify bottlenecks
 - `yzx info` - Show system information and current settings

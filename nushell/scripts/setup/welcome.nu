@@ -145,7 +145,10 @@ export def show_welcome [
     # Show welcome or log it
     if $should_skip_welcome {
         if $env_only_mode {
-            print $"($colors.cyan)🔧 Yazelix environment loaded! Launch the full interface in a separate terminal with 'yzx launch' or here with 'yzx launch --here'.($colors.reset)"
+            # Suppress env-only notice when a one-shot command requests skip-welcome.
+            if not $test_mode {
+                print $"($colors.cyan)🔧 Yazelix environment loaded! Launch the full interface in a separate terminal with 'yzx launch' or here with 'yzx launch --here'.($colors.reset)"
+            }
         } else if $test_mode {
             print $"($colors.cyan)🧪 Yazelix test mode - Welcome screen skipped($colors.reset)"
         } else {

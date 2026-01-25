@@ -14,6 +14,7 @@ use ./start_yazelix.nu [start_yazelix_session]
 # Import modularized commands (export use to properly re-export subcommands)
 export use ../yzx/launch.nu *
 export use ../yzx/env.nu *
+export use ../yzx/run.nu *
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
@@ -26,6 +27,7 @@ export use ../yzx/env.nu *
 #
 # Common commands:
 #   yzx launch    - Start a new yazelix session
+#   yzx run       - Run a command inside the Yazelix environment
 #   yzx doctor    - Run health checks
 #   yzx profile   - Profile launch performance
 #   yzx test      - Run test suite

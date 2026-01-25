@@ -110,6 +110,104 @@ export def run_in_devenv_shell [
     }
 }
 
+# Run a command with args inside devenv shell (no string interpolation)
+export def run_in_devenv_shell_command [
+    command: string
+    ...args: string
+    --cwd: string      # Run command in this directory
+    --env-only         # Set YAZELIX_ENV_ONLY=true
+    --verbose          # Enable verbose output
+    --quiet            # Run devenv with --quiet flag
+    --skip-welcome     # Set YAZELIX_SKIP_WELCOME=true
+    --force-refresh    # Force environment refresh
+] {
+    let env_status = check_environment_status
+    let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
+
+    if ($command | is-empty) {
+        print "Error: No command provided"
+        exit 1
+    }
+
+    if (which env | is-empty) {
+        print "Error: env command not found - cannot run command in devenv shell"
+        exit 1
+    }
+
+    let exec_cmd = if ($cwd | is-not-empty) {
+        ["env", "-C", $cwd] | append $command | append $args
+    } else {
+        [$command] | append $args
+    }
+    let exec_bin = ($exec_cmd | first)
+    let exec_args = ($exec_cmd | skip 1)
+
+    if $env_status.already_in_env {
+        if $verbose_mode {
+            print "⚙️ Executing command directly in existing environment"
+        }
+        ^$exec_bin ...$exec_args
+        return
+    }
+
+    if (which devenv | is-empty) {
+        print ""
+        print "❌ devenv command not found."
+        print "   Yazelix v11+ moved from flake-based `nix develop` shells to devenv."
+        print "   Install devenv with:"
+        print "     nix profile install github:cachix/devenv/latest"
+        print "   After installing, relaunch Yazelix (or run `devenv shell --impure`)."
+        print ""
+        exit 1
+    }
+
+    if $verbose_mode {
+        print "⚙️ Entering devenv shell before running command"
+    }
+
+    let home = $env.HOME
+    if ($home | is-empty) or (not ($home | path exists)) {
+        print "Error: Cannot resolve HOME directory"
+        exit 1
+    }
+    let yazelix_dir = $"($home)/.config/yazelix"
+    if not ($yazelix_dir | path exists) {
+        print $"Error: Cannot find Yazelix directory at ($yazelix_dir)"
+        exit 1
+    }
+    let max_cores = get_max_cores
+
+    mut devenv_flags = ["--impure", "--cores", $max_cores]
+    if $quiet {
+        $devenv_flags = ($devenv_flags | prepend "--quiet")
+    }
+    let devenv_cmd = (["env", "-C", $yazelix_dir, "devenv"] | append $devenv_flags | append ["shell", "--"] | append $exec_cmd)
+    let devenv_bin = ($devenv_cmd | first)
+    let devenv_args = ($devenv_cmd | skip 1)
+
+    mut env_vars = {}
+    if $env_only {
+        $env_vars = ($env_vars | insert YAZELIX_ENV_ONLY "true")
+    }
+    if $skip_welcome {
+        $env_vars = ($env_vars | insert YAZELIX_SKIP_WELCOME "true")
+    }
+    if $force_refresh {
+        $env_vars = ($env_vars | insert YAZELIX_FORCE_REFRESH "true")
+    }
+    if $verbose_mode {
+        $env_vars = ($env_vars | insert YAZELIX_VERBOSE "true")
+    }
+
+    if ($env_vars | is-empty) {
+        ^$devenv_bin ...$devenv_args
+    } else {
+        with-env $env_vars {
+            ^$devenv_bin ...$devenv_args
+        }
+    }
+}
+
 # Prepare environment (parse config, check state)
 export def prepare_environment [--verbose] {
     let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")

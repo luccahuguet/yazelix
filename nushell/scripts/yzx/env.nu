@@ -7,7 +7,6 @@ use ../utils/config_state.nu [mark_config_state_applied]
 # Load yazelix environment without UI
 export def "yzx env" [
     --no-shell(-n)  # Keep current shell instead of launching configured shell
-    --command(-c): string  # Run a command in the Yazelix environment
 ] {
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
@@ -19,17 +18,7 @@ export def "yzx env" [
 
     let original_dir = (pwd)
 
-    if ($command | is-not-empty) {
-        # Run command in Yazelix environment (skip welcome screen for automation)
-        # Wrap command to cd back to original directory first
-        let wrapped_command = $"cd '($original_dir)' && ($command)"
-
-        run_in_devenv_shell $wrapped_command --env-only --skip-welcome --quiet --force-refresh=$needs_refresh
-
-        if $needs_refresh {
-            mark_config_state_applied $env_prep.config_state
-        }
-    } else if $no_shell {
+    if $no_shell {
         # For --no-shell, we need to cd back after devenv loads
         let stay_bash_command = $"cd '($original_dir)' && exec bash"
 

@@ -36,11 +36,14 @@ Launch Yazelix with directory and mode options
 - `--terminal TERM`: Override terminal selection (e.g., ghostty, wezterm, kitty)
 - `--verbose`: Print detailed launch diagnostics
 
-### `yzx env [--no-shell] [--command CMD]`
+### `yzx env [--no-shell]`
 Load Yazelix environment without UI
 - Default: Drop into your configured shell with all Yazelix tools available
 - `--no-shell`: Stay in current shell (doesn't switch shells)
-- `--command CMD`: Run a single command in Yazelix environment and exit
+
+### `yzx run <command> [args...]`
+Run a single command in the Yazelix environment and exit
+- Quote args that start with `-` to avoid flag parsing (e.g., `"-lc"`)
 
 ### `yzx restart`
 Restart Yazelix (handles persistent sessions)
@@ -79,7 +82,8 @@ yzx launch --verbose          # Detailed launch diagnostics
 # Environment-only mode (no UI)
 yzx env                       # Drop into configured shell with Yazelix tools
 yzx env --no-shell            # Load tools but stay in current shell
-yzx env --command "lazygit"   # Run single command and exit
+yzx run lazygit               # Run single command and exit
+yzx run bash "-lc" "lazygit"  # Run through a shell
 
 # Diagnostics and info
 yzx doctor --fix              # Health check with auto-fix
