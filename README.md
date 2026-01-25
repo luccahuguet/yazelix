@@ -79,7 +79,6 @@ Full version history: [Version History](./docs/history.md)
 - **yzx run** – New one-shot command runner: `yzx run <command> [args...]`.
 - **Env-only cleanup** – Removed `yzx env -c` and switched internal uses to `yzx run`.
 - **Safer execution** – Commands run via `devenv shell -- <cmd> <args>` without shell interpolation.
-- **Quieter output** – `yzx run` no longer prints the env-only welcome message.
 
 ## Compatibility
 - **Platform**: Works on Linux and macOS
