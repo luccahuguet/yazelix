@@ -3,7 +3,6 @@
 
 use ../utils/constants.nu YAZELIX_ENV_VARS
 use ../utils/environment_bootstrap.nu *
-use ../utils/system_mode.nu [assert_no_packs require_command]
 
 def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     # Capture original directory before any cd commands
@@ -40,29 +39,8 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     let env_prep = prepare_environment --verbose=$verbose_mode
     let config = $env_prep.config
     let needs_refresh = $env_prep.needs_refresh
-    let env_mode = ($config.environment_mode? | default "nix")
-
-    if $env_mode == "system" {
-        assert_no_packs $config
-        require_command "zellij" "zellij"
-        require_command "yazi" "yazi"
-        require_command ($config.default_shell? | default "nu") "shell.default_shell"
-
-        let editor_cmd = ($config.editor_command? | default "")
-        if ($editor_cmd | is-empty) {
-            print "Error: environment.mode = \"system\" requires editor.command"
-            print "Set [editor].command to a system editor (e.g., \"hx\" or \"nvim\")."
-            exit 1
-        }
-        require_command $editor_cmd "editor.command"
-    }
-
     # If setup-only mode, just run devenv shell to install hooks and exit
     if $setup_only {
-        if $env_mode == "system" {
-            print "Error: --setup-only is not available in system mode"
-            exit 1
-        }
         print "🔧 Setting up Yazelix environment (installing shell hooks and dependencies)..."
         print "   This may take several minutes on first run."
 
@@ -103,12 +81,11 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     }
 
     let inner_script = $"($yazelix_dir)/nushell/scripts/core/start_yazelix_inner.nu"
-    let inner_args = if ($working_dir | is-not-empty) {
-        [$inner_script, $working_dir, $layout_path]
+    let cmd = if ($working_dir | is-not-empty) {
+        $"nu -i \"($inner_script)\" \"($working_dir)\" \"($layout_path)\""
     } else {
-        [$inner_script, "", $layout_path]
+        $"nu -i \"($inner_script)\" \"\" \"($layout_path)\""
     }
-    let cmd = $"nu -i \"($inner_args | get 0)\" \"($inner_args | get 1)\" \"($inner_args | get 2)\""
 
     # Run devenv shell with explicit HOME.
     # The default shell is dynamically read from yazelix.toml configuration
@@ -118,15 +95,8 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
             print "♻️  Config changed – rebuilding environment"
         }
 
-        if $env_mode == "system" {
-            if $verbose_mode and $needs_refresh {
-                print "♻️  Config changed – rebuild skipped in system mode"
-            }
-            ^nu -i ($inner_args | get 0) ($inner_args | get 1) ($inner_args | get 2)
-        } else {
-            # Use shared devenv runner (consolidates with yzx env)
-            run_in_devenv_shell $cmd --verbose=$verbose_mode --force-refresh=$needs_refresh
-        }
+        # Use shared devenv runner (consolidates with yzx env)
+        run_in_devenv_shell $cmd --verbose=$verbose_mode --force-refresh=$needs_refresh
     }
 }
 

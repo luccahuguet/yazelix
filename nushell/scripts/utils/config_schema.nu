@@ -42,7 +42,6 @@ def get_nested_value [data: any, path: list<string>] {
 export def validate_enum_values [user: record] {
     mut warnings = []
     let enums = [
-        { path: ["environment", "mode"], label: "environment.mode", allowed: ["nix", "system"] },
         { path: ["shell", "default_shell"], label: "shell.default_shell", allowed: ["nu", "bash", "fish", "zsh"] },
         { path: ["helix", "mode"], label: "helix.mode", allowed: ["release", "source"] },
         { path: ["terminal", "terminals"], label: "terminal.terminals", allowed: ["wezterm", "ghostty", "kitty", "alacritty", "foot"] },

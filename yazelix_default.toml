@@ -23,14 +23,6 @@ show_macchina_on_welcome = true  # Show system info on welcome screen (uses macc
 # - Custom number:   Specify exact core count, e.g., "8" or "4"
 build_cores = "max_minus_one"
 
-[environment]
-# Launch mode:
-# - "nix": Yazelix manages packages via devenv/Nix (default)
-# - "system": Use system-installed tools and skip Nix/devenv entirely
-# Note: In system mode, terminal.manage_terminals is forced to false.
-#       You must install required tools yourself (zellij, yazi, editor, terminal).
-mode = "nix"
-
 [helix]
 # Helix build mode (choose ONE):
 # - "release": Use latest Helix release from nixpkgs (recommended for first-time users)
@@ -71,7 +63,6 @@ mode = "release"
 #   - Basic integration only (new panes, tab naming)
 #   - No advanced features (reveal in sidebar, same-instance opening)
 #   - Works reliably but with limited yazelix-specific functionality
-# Note: If environment.mode = "system", editor.command must be set.
 command = ""  # Leave empty to use yazelix's helix (recommended), or set to "nvim", "hx", "vim", etc.
 
 # Enable or disable the Yazi sidebar (default: true)

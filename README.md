@@ -87,26 +87,6 @@ Full version history: [Version History](./docs/history.md)
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
-## Nixless (System) Mode
-If you already have the tools installed or cannot install Nix, set:
-
-```toml
-[environment]
-mode = "system"
-
-[editor]
-command = "hx" # or "nvim", "vim", etc.
-```
-
-System mode skips Nix/devenv entirely and uses your system packages. You must install these yourself:
-- `zellij`
-- `yazi`
-- your editor (set in `editor.command`)
-- a terminal from `terminal.terminals`
-- your configured shell
-
-`terminal.manage_terminals` is forced to `false`, and `packs.enabled`/`packs.user_packages` are not supported in system mode.
-
 ## Installation
 
 📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions

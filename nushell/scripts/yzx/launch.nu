@@ -4,8 +4,6 @@
 use ../utils/config_state.nu [mark_config_state_applied]
 use ../utils/common.nu [get_max_cores]
 use ../utils/environment_bootstrap.nu prepare_environment
-use ../utils/system_mode.nu [assert_no_packs require_command]
-use ../utils/terminal_launcher.nu detect_terminal
 use ../core/start_yazelix.nu [start_yazelix_session]
 
 # Launch yazelix
@@ -16,6 +14,9 @@ export def "yzx launch" [
     --terminal(-t): string  # Override terminal selection (for sweep testing)
     --verbose          # Enable verbose logging
 ] {
+    use ../utils/nix_detector.nu ensure_nix_available
+    ensure_nix_available
+
     let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
     if $verbose_mode {
         print "🔍 yzx launch: verbose mode enabled"
@@ -25,43 +26,7 @@ export def "yzx launch" [
     let config = $env_prep.config
     let config_state = $env_prep.config_state
     mut needs_refresh = $env_prep.needs_refresh
-    let env_mode = ($config.environment_mode? | default "nix")
     let manage_terminals = ($config.manage_terminals? | default true)
-
-    if $env_mode == "system" {
-        assert_no_packs $config
-        $needs_refresh = false
-    } else {
-        use ../utils/nix_detector.nu ensure_nix_available
-        ensure_nix_available
-    }
-
-    if $env_mode == "system" {
-        require_command "zellij" "zellij"
-        require_command "yazi" "yazi"
-        require_command ($config.default_shell? | default "nu") "shell.default_shell"
-
-        let editor_cmd = ($config.editor_command? | default "")
-        if ($editor_cmd | is-empty) {
-            print "Error: environment.mode = \"system\" requires editor.command"
-            print "Set [editor].command to a system editor (e.g., \"hx\" or \"nvim\")."
-            exit 1
-        }
-        require_command $editor_cmd "editor.command"
-
-        if not $here {
-            if ($terminal | is-not-empty) {
-                require_command $terminal "terminal"
-            } else {
-                let detected = detect_terminal ($config.terminals? | default []) false
-                if $detected == null {
-                    print "Error: No supported terminal found in PATH"
-                    print "Install a terminal or set [terminal].terminals to one that exists."
-                    exit 1
-                }
-            }
-        }
-    }
     if $verbose_mode {
         print $"🔍 Config hash changed? ($needs_refresh)"
     }
@@ -141,47 +106,6 @@ export def "yzx launch" [
         }
 
         let launch_script = $"($env.HOME)/.config/yazelix/nushell/scripts/core/launch_yazelix.nu"
-
-        if $env_mode == "system" {
-            let base_args = [$launch_script]
-            let mut_args = if ($launch_cwd | is-not-empty) {
-                $base_args | append $launch_cwd
-            } else {
-                $base_args
-            }
-            let mut_args = if ($terminal | is-not-empty) {
-                $mut_args | append "--terminal" | append $terminal
-            } else {
-                $mut_args
-            }
-            let mut env_block = {}
-            if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) {
-                $env_block = ($env_block | upsert YAZELIX_CONFIG_OVERRIDE $env.YAZELIX_CONFIG_OVERRIDE)
-            }
-            if ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
-                $env_block = ($env_block | upsert ZELLIJ_DEFAULT_LAYOUT $env.ZELLIJ_DEFAULT_LAYOUT)
-            }
-            if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) {
-                $env_block = ($env_block | upsert YAZELIX_SWEEP_TEST_ID $env.YAZELIX_SWEEP_TEST_ID)
-            }
-            if ($env.YAZELIX_SKIP_WELCOME? | is-not-empty) {
-                $env_block = ($env_block | upsert YAZELIX_SKIP_WELCOME $env.YAZELIX_SKIP_WELCOME)
-            }
-            if ($env.YAZELIX_TERMINAL? | is-not-empty) {
-                $env_block = ($env_block | upsert YAZELIX_TERMINAL $env.YAZELIX_TERMINAL)
-            }
-            if $verbose_mode {
-                $env_block = ($env_block | upsert YAZELIX_VERBOSE "true")
-            }
-            if ($env_block | is-empty) {
-                ^nu ...$mut_args
-            } else {
-                with-env $env_block {
-                    ^nu ...$mut_args
-                }
-            }
-            return
-        }
 
         if $in_yazelix_shell {
             # Already in Yazelix environment - run directly via bash
