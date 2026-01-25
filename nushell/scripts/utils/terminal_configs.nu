@@ -68,7 +68,7 @@ def build_cursor_trail [cursor_trail: string] {
 
 def build_kitty_cursor [cursor_trail: string] {
     match $cursor_trail {
-        "snow" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
+        "snow" | "random" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
         "none" => "# cursor_trail 0",
         _ => "# cursor_trail 0  # Custom effects \(blaze/ocean/forest/sunset/neon/cosmic\) not supported"
     }
