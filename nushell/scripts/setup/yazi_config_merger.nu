@@ -13,7 +13,7 @@ def ensure_dir [path: string] {
     }
 }
 
-# Deep merge two TOML records (user values override base)
+# Deep merge two TOML records (user values override base, arrays are concatenated)
 def deep_merge [base: record, user: record] {
     let base_keys = ($base | columns)
     let user_keys = ($user | columns)
@@ -26,10 +26,16 @@ def deep_merge [base: record, user: record] {
         let value = if $in_base and $in_user {
             let base_val = ($base | get $key)
             let user_val = ($user | get $key)
-            # If both are records, merge recursively; otherwise user wins
-            if ($base_val | describe | str starts-with "record") and ($user_val | describe | str starts-with "record") {
+            let base_type = ($base_val | describe)
+            let user_type = ($user_val | describe)
+            # If both are records, merge recursively
+            if ($base_type | str starts-with "record") and ($user_type | str starts-with "record") {
                 deep_merge $base_val $user_val
+            } else if ($base_type | str starts-with "list") and ($user_type | str starts-with "list") {
+                # Concatenate arrays (base first, then user)
+                $base_val | append $user_val
             } else {
+                # For other types, user wins
                 $user_val
             }
         } else if $in_user {
