@@ -16,6 +16,7 @@ export use ../yzx/launch.nu *
 export use ../yzx/env.nu *
 export use ../yzx/run.nu *
 export use ../yzx/packs.nu *
+export use ../yzx/gc.nu *
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
