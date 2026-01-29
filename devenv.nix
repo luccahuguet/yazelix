@@ -450,9 +450,7 @@ let
 
 in
 {
-  nixpkgs = {
-    allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) unfreePackageNames;
-  };
+  devenv.nixpkgs.permittedUnfreePackages = unfreePackageNames;
 
   packages = allDeps;
 
