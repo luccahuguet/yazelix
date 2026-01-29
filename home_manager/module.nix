@@ -347,9 +347,11 @@ in
       default = {
         ai = [
           "gemini-cli"
-          "claude-code"
           "codex"
           "opencode"
+        ];
+        unfree = [
+          "claude-code"
         ];
         config = [
           "mpls"

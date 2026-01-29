@@ -283,9 +283,12 @@ user_packages = [
 # Tool packs
 ai = [
   "gemini-cli", # Gemini CLI
-  "claude-code", # Claude Code CLI
   "codex", # Codex CLI
   "opencode", # OpenCode CLI
+]
+
+unfree = [
+  "claude-code", # Claude Code CLI
 ]
 
 config = [

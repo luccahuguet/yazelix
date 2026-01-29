@@ -172,6 +172,14 @@ General-purpose development tools:
 - [lazyjj](https://github.com/Cretezy/lazyjj) — LazyGit-style TUI for jj
 - [jjui](https://github.com/idursun/jjui) — TUI for Jujutsu VCS
 
+### AI Pack (`ai`)
+- [gemini-cli](https://github.com/google-gemini/gemini-cli) — Gemini CLI for chat and automation
+- [codex](https://github.com/openai/codex) — Codex CLI for agentic coding workflows
+- [opencode](https://github.com/opencode-ai/opencode) — OpenCode CLI for code assistance
+
+### Unfree Pack (`unfree`)
+- [claude-code](https://github.com/anthropics/claude-code) — Claude Code CLI (unfree; enabled via the `unfree` pack)
+
 **Usage**: Enable packs in `yazelix.toml` by listing them in `packs.enabled` and defining them in `packs.declarations`, or add individual tools via `user_packages` for fine-grained control.
 
 ---
