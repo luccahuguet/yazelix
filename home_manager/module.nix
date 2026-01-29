@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
@@ -7,29 +12,36 @@ let
 
   boolToToml = value: if value then "true" else "false";
 
-  escapeString = value:
+  escapeString =
+    value:
     let
       safe = lib.replaceStrings [ "\"" "\\" ] [ "\\\"" "\\\\" ] value;
-    in "\"${safe}\"";
+    in
+    "\"${safe}\"";
 
-  listToToml = values:
-    if values == [] then "[]"
-    else "[ " + (concatStringsSep ", " (map escapeString values)) + " ]";
+  listToToml =
+    values:
+    if values == [ ] then "[]" else "[ " + (concatStringsSep ", " (map escapeString values)) + " ]";
 
-  packagesToToml = packages:
+  packagesToToml =
+    packages:
     let
       names = map (pkg: pkg.pname or pkg.name or "unknown") packages;
-    in listToToml names;
+    in
+    listToToml names;
 
-  packDeclarationsToToml = declarations:
+  packDeclarationsToToml =
+    declarations:
     let
       names = sort lessThan (attrNames declarations);
-    in map (name: "${escapeString name} = ${listToToml declarations.${name}}") names;
+    in
+    map (name: "${escapeString name} = ${listToToml declarations.${name}}") names;
 
-in {
+in
+{
   options.programs.yazelix = {
     enable = mkEnableOption "Yazelix terminal environment";
-    
+
     # Configuration options (mirrors yazelix_default.toml structure)
     recommended_deps = mkOption {
       type = types.bool;
@@ -58,25 +70,46 @@ in {
     };
 
     helix_mode = mkOption {
-      type = types.enum [ "release" "source" ];
+      type = types.enum [
+        "release"
+        "source"
+      ];
       default = "release";
       description = "Helix build mode: release (nixpkgs) or source (flake)";
     };
-    
+
     default_shell = mkOption {
-      type = types.enum [ "nu" "bash" "fish" "zsh" ];
+      type = types.enum [
+        "nu"
+        "bash"
+        "fish"
+        "zsh"
+      ];
       default = "nu";
       description = "Default shell for Zellij sessions";
     };
-    
+
     extra_shells = mkOption {
-      type = types.listOf (types.enum [ "fish" "zsh" ]);
-      default = [];
+      type = types.listOf (
+        types.enum [
+          "fish"
+          "zsh"
+        ]
+      );
+      default = [ ];
       description = "Additional shells to install beyond nu/bash";
     };
 
     terminals = mkOption {
-      type = types.listOf (types.enum [ "wezterm" "ghostty" "kitty" "alacritty" "foot" ]);
+      type = types.listOf (
+        types.enum [
+          "wezterm"
+          "ghostty"
+          "kitty"
+          "alacritty"
+          "foot"
+        ]
+      );
       default = [ "ghostty" ];
       description = "Ordered terminal emulator list (first is primary, rest are fallbacks)";
     };
@@ -88,7 +121,11 @@ in {
     };
 
     terminal_config_mode = mkOption {
-      type = types.enum [ "auto" "user" "yazelix" ];
+      type = types.enum [
+        "auto"
+        "user"
+        "yazelix"
+      ];
       default = "yazelix";
       description = ''
         How Yazelix selects terminal configs:
@@ -99,7 +136,23 @@ in {
     };
 
     cursor_trail = mkOption {
-      type = types.enum [ "blaze" "snow" "cosmic" "ocean" "forest" "sunset" "neon" "party" "eclipse" "dusk" "orchid" "reef" "inferno" "random" "none" ];
+      type = types.enum [
+        "blaze"
+        "snow"
+        "cosmic"
+        "ocean"
+        "forest"
+        "sunset"
+        "neon"
+        "party"
+        "eclipse"
+        "dusk"
+        "orchid"
+        "reef"
+        "inferno"
+        "random"
+        "none"
+      ];
       default = "random";
       description = ''
         Cursor trail preset.
@@ -111,7 +164,15 @@ in {
     };
 
     transparency = mkOption {
-      type = types.enum [ "none" "very_low" "low" "medium" "high" "very_high" "super_high" ];
+      type = types.enum [
+        "none"
+        "very_low"
+        "low"
+        "medium"
+        "high"
+        "very_high"
+        "super_high"
+      ];
       default = "medium";
       description = ''
         Terminal transparency level for all terminals.
@@ -125,7 +186,7 @@ in {
         - "super_high": Maximum transparency (opacity = 0.60)
       '';
     };
-    
+
     # Editor configuration
     editor_command = mkOption {
       type = types.nullOr types.str;
@@ -150,7 +211,7 @@ in {
         Example: "/home/user/helix/runtime" for a custom Helix build in ~/helix
       '';
     };
-    
+
     enable_sidebar = mkOption {
       type = types.bool;
       default = true;
@@ -194,13 +255,23 @@ in {
 
     zellij_widget_tray = mkOption {
       type = types.listOf types.str;
-      default = [ "layout" "editor" "shell" "term" "cpu" "ram" ];
+      default = [
+        "layout"
+        "editor"
+        "shell"
+        "term"
+        "cpu"
+        "ram"
+      ];
       description = "Zjstatus widget tray order (layout/editor/shell/term/cpu/ram)";
     };
 
     yazi_plugins = mkOption {
       type = types.listOf types.str;
-      default = [ "git" "starship" ];
+      default = [
+        "git"
+        "starship"
+      ];
       description = "Yazi plugins to load (core plugins auto_layout and sidebar_status are always loaded)";
     };
 
@@ -215,7 +286,13 @@ in {
     };
 
     yazi_sort_by = mkOption {
-      type = types.enum [ "alphabetical" "natural" "modified" "created" "size" ];
+      type = types.enum [
+        "alphabetical"
+        "natural"
+        "modified"
+        "created"
+        "size"
+      ];
       default = "alphabetical";
       description = "Default file sorting method";
     };
@@ -225,31 +302,34 @@ in {
       default = false;
       description = "Enable verbose debug logging";
     };
-    
+
     skip_welcome_screen = mkOption {
       type = types.bool;
       default = true;
       description = "Skip the welcome screen on startup";
     };
-    
+
     ascii_art_mode = mkOption {
-      type = types.enum [ "static" "animated" ];
+      type = types.enum [
+        "static"
+        "animated"
+      ];
       default = "static";
       description = "ASCII art display mode";
     };
-    
+
     show_macchina_on_welcome = mkOption {
       type = types.bool;
       default = true;
       description = "Show macchina system info on welcome screen";
     };
-    
+
     persistent_sessions = mkOption {
       type = types.bool;
       default = false;
       description = "Enable persistent Zellij sessions";
     };
-    
+
     session_name = mkOption {
       type = types.str;
       default = "yazelix";
@@ -258,13 +338,81 @@ in {
 
     pack_names = mkOption {
       type = types.listOf types.str;
-      default = [];
+      default = [ ];
       description = "Packs to enable (must match pack_declarations keys)";
     };
 
     pack_declarations = mkOption {
       type = types.attrsOf (types.listOf types.str);
-      default = {};
+      default = {
+        ai = [
+          "gemini-cli"
+          "claude-code"
+          "codex"
+          "opencode"
+        ];
+        config = [
+          "mpls"
+          "yaml-language-server"
+        ];
+        file-management = [
+          "ouch"
+          "erdtree"
+          "serpl"
+        ];
+        git = [
+          "onefetch"
+          "gh"
+          "prek"
+        ];
+        jj = [
+          "jujutsu"
+          "lazyjj"
+          "jjui"
+        ];
+        python = [
+          "ruff"
+          "uv"
+          "ty"
+          "python3Packages.ipython"
+        ];
+        rust = [
+          "cargo-edit"
+          "cargo-watch"
+          "cargo-audit"
+        ];
+        rust_extra = [
+          "cargo-update"
+          "cargo-binstall"
+          "cargo-nextest"
+        ];
+        nix = [
+          "nil"
+          "nixd"
+          "nixfmt"
+        ];
+        ts = [
+          "nodePackages.typescript-language-server"
+          "biome"
+          "oxlint"
+          "bun"
+        ];
+        go = [
+          "gopls"
+          "golangci-lint"
+        ];
+        go_extra = [
+          "delve"
+          "air"
+          "govulncheck"
+        ];
+        kotlin = [
+          "kotlin-language-server"
+          "ktlint"
+          "detekt"
+          "gradle"
+        ];
+      };
       description = "Pack declarations mapping names to nixpkgs package strings (supports dotted paths)";
     };
 
@@ -276,7 +424,7 @@ in {
 
     user_packages = mkOption {
       type = types.listOf types.package;
-      default = [];
+      default = [ ];
       description = "Additional packages to install in Yazelix environment";
     };
   };
@@ -286,8 +434,10 @@ in {
     xdg.configFile."yazelix/assets/logo.png".source = ../assets/logo.png;
     xdg.configFile."yazelix/assets/icons/48x48/yazelix.png".source = ../assets/icons/48x48/yazelix.png;
     xdg.configFile."yazelix/assets/icons/64x64/yazelix.png".source = ../assets/icons/64x64/yazelix.png;
-    xdg.configFile."yazelix/assets/icons/128x128/yazelix.png".source = ../assets/icons/128x128/yazelix.png;
-    xdg.configFile."yazelix/assets/icons/256x256/yazelix.png".source = ../assets/icons/256x256/yazelix.png;
+    xdg.configFile."yazelix/assets/icons/128x128/yazelix.png".source =
+      ../assets/icons/128x128/yazelix.png;
+    xdg.configFile."yazelix/assets/icons/256x256/yazelix.png".source =
+      ../assets/icons/256x256/yazelix.png;
     xdg.configFile."yazelix/docs/desktop_icon_setup.md".source = ../docs/desktop_icon_setup.md;
 
     # Desktop entry for application launcher
@@ -303,74 +453,81 @@ in {
 
     # Generate yazelix.toml configuration file
     xdg.configFile."yazelix/yazelix.toml" = {
-      text = let
-        editorCommand = if cfg.editor_command != null then cfg.editor_command else "";
-        helixRuntimeLine =
-          if cfg.helix_runtime_path != null then
-            [ "runtime_path = ${escapeString cfg.helix_runtime_path}" ]
-          else
-            [];
-      in lib.concatStringsSep "\n" (
-        [
-          "# Generated by the Yazelix Home Manager module."
-          "# Edit your Home Manager configuration instead of this file."
-          ""
-          "[core]"
-          "recommended_deps = ${boolToToml cfg.recommended_deps}"
-          "yazi_extensions = ${boolToToml cfg.yazi_extensions}"
-          "yazi_media = ${boolToToml cfg.yazi_media}"
-          "debug_mode = ${boolToToml cfg.debug_mode}"
-          "skip_welcome_screen = ${boolToToml cfg.skip_welcome_screen}"
-          "show_macchina_on_welcome = ${boolToToml cfg.show_macchina_on_welcome}"
-          "build_cores = ${escapeString cfg.build_cores}"
-          ""
-          "[helix]"
-          "mode = ${escapeString cfg.helix_mode}"
-        ] ++ helixRuntimeLine ++ [
-          ""
-          "[editor]"
-          "command = ${escapeString editorCommand}"
-          "enable_sidebar = ${boolToToml cfg.enable_sidebar}"
-          ""
-          "[shell]"
-          "default_shell = ${escapeString cfg.default_shell}"
-          "extra_shells = ${listToToml cfg.extra_shells}"
-          "enable_atuin = ${boolToToml cfg.enable_atuin}"
-          ""
-          "[terminal]"
-          "terminals = ${listToToml cfg.terminals}"
-          "manage_terminals = ${boolToToml cfg.manage_terminals}"
-          "config_mode = ${escapeString cfg.terminal_config_mode}"
-          "cursor_trail = ${escapeString cfg.cursor_trail}"
-          "transparency = ${escapeString cfg.transparency}"
-          ""
-          "[zellij]"
-          "disable_tips = ${boolToToml cfg.disable_zellij_tips}"
-          "rounded_corners = ${boolToToml cfg.zellij_rounded_corners}"
-          "support_kitty_keyboard_protocol = ${boolToToml cfg.support_kitty_keyboard_protocol}"
-          "theme = ${escapeString cfg.zellij_theme}"
-          "widget_tray = ${listToToml cfg.zellij_widget_tray}"
-          "persistent_sessions = ${boolToToml cfg.persistent_sessions}"
-          "session_name = ${escapeString cfg.session_name}"
-          ""
-          "[yazi]"
-          "plugins = ${listToToml cfg.yazi_plugins}"
-          "theme = ${escapeString cfg.yazi_theme}"
-          "sort_by = ${escapeString cfg.yazi_sort_by}"
-          ""
-          "[ascii]"
-          "mode = ${escapeString cfg.ascii_art_mode}"
-          ""
-          "[packs]"
-          "enabled = ${listToToml cfg.pack_names}"
-          "user_packages = ${packagesToToml cfg.user_packages}"
-          ""
-          "[packs.declarations]"
-          ""
-        ] ++ packDeclarationsToToml cfg.pack_declarations ++ [
-          ""
-        ]
-      ) + "\n";
+      text =
+        let
+          editorCommand = if cfg.editor_command != null then cfg.editor_command else "";
+          helixRuntimeLine =
+            if cfg.helix_runtime_path != null then
+              [ "runtime_path = ${escapeString cfg.helix_runtime_path}" ]
+            else
+              [ ];
+        in
+        lib.concatStringsSep "\n" (
+          [
+            "# Generated by the Yazelix Home Manager module."
+            "# Edit your Home Manager configuration instead of this file."
+            ""
+            "[core]"
+            "recommended_deps = ${boolToToml cfg.recommended_deps}"
+            "yazi_extensions = ${boolToToml cfg.yazi_extensions}"
+            "yazi_media = ${boolToToml cfg.yazi_media}"
+            "debug_mode = ${boolToToml cfg.debug_mode}"
+            "skip_welcome_screen = ${boolToToml cfg.skip_welcome_screen}"
+            "show_macchina_on_welcome = ${boolToToml cfg.show_macchina_on_welcome}"
+            "build_cores = ${escapeString cfg.build_cores}"
+            ""
+            "[helix]"
+            "mode = ${escapeString cfg.helix_mode}"
+          ]
+          ++ helixRuntimeLine
+          ++ [
+            ""
+            "[editor]"
+            "command = ${escapeString editorCommand}"
+            "enable_sidebar = ${boolToToml cfg.enable_sidebar}"
+            ""
+            "[shell]"
+            "default_shell = ${escapeString cfg.default_shell}"
+            "extra_shells = ${listToToml cfg.extra_shells}"
+            "enable_atuin = ${boolToToml cfg.enable_atuin}"
+            ""
+            "[terminal]"
+            "terminals = ${listToToml cfg.terminals}"
+            "manage_terminals = ${boolToToml cfg.manage_terminals}"
+            "config_mode = ${escapeString cfg.terminal_config_mode}"
+            "cursor_trail = ${escapeString cfg.cursor_trail}"
+            "transparency = ${escapeString cfg.transparency}"
+            ""
+            "[zellij]"
+            "disable_tips = ${boolToToml cfg.disable_zellij_tips}"
+            "rounded_corners = ${boolToToml cfg.zellij_rounded_corners}"
+            "support_kitty_keyboard_protocol = ${boolToToml cfg.support_kitty_keyboard_protocol}"
+            "theme = ${escapeString cfg.zellij_theme}"
+            "widget_tray = ${listToToml cfg.zellij_widget_tray}"
+            "persistent_sessions = ${boolToToml cfg.persistent_sessions}"
+            "session_name = ${escapeString cfg.session_name}"
+            ""
+            "[yazi]"
+            "plugins = ${listToToml cfg.yazi_plugins}"
+            "theme = ${escapeString cfg.yazi_theme}"
+            "sort_by = ${escapeString cfg.yazi_sort_by}"
+            ""
+            "[ascii]"
+            "mode = ${escapeString cfg.ascii_art_mode}"
+            ""
+            "[packs]"
+            "enabled = ${listToToml cfg.pack_names}"
+            "user_packages = ${packagesToToml cfg.user_packages}"
+            ""
+            "[packs.declarations]"
+            ""
+          ]
+          ++ packDeclarationsToToml cfg.pack_declarations
+          ++ [
+            ""
+          ]
+        )
+        + "\n";
     };
   };
 }

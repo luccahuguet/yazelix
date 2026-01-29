@@ -251,6 +251,7 @@ mode = "static"
 [packs]
 # Enable packs by name (see packs.declarations below)
 enabled = [
+  # "ai",
   # "config",
   # "file-management",
   # "git",
@@ -280,6 +281,13 @@ user_packages = [
 # Uncomment entries below to build your own packs.
 
 # Tool packs
+ai = [
+  "gemini-cli", # Gemini CLI
+  "claude-code", # Claude Code CLI
+  "codex", # Codex CLI
+  "opencode", # OpenCode CLI
+]
+
 config = [
   "mpls", # Markdown Preview LSP
   "yaml-language-server", # YAML language server
