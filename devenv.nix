@@ -484,6 +484,13 @@ let
 
 in
 {
+  # Pull binaries from caches to speed up builds
+  cachix.pull = [
+    "numtide"        # llm-agents.nix AI tools
+    "helix"          # Helix editor builds
+    "nix-community"  # General community packages
+  ];
+
   packages = allDeps;
 
   env = {
