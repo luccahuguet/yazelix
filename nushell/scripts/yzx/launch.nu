@@ -6,6 +6,17 @@ use ../utils/common.nu [get_max_cores]
 use ../utils/environment_bootstrap.nu prepare_environment
 use ../core/start_yazelix.nu [start_yazelix_session]
 
+# Check if unfree pack is enabled in yazelix.toml
+def is_unfree_enabled [] {
+    let yazelix_dir = "~/.config/yazelix" | path expand
+    let toml_file = ($yazelix_dir | path join "yazelix.toml")
+    let default_toml = ($yazelix_dir | path join "yazelix_default.toml")
+    let config_file = if ($toml_file | path exists) { $toml_file } else { $default_toml }
+    let raw_config = open $config_file
+    let pack_names = ($raw_config.packs?.enabled? | default [])
+    $pack_names | any { |name| $name == "unfree" }
+}
+
 # Launch yazelix
 export def "yzx launch" [
     --here             # Start in current terminal instead of launching new terminal
@@ -189,7 +200,8 @@ export def "yzx launch" [
                 print "♻️  Config changed since last launch – rebuilding environment"
             }
             let max_cores = get_max_cores
-            let devenv_cmd = $"cd ($yazelix_dir) && devenv --impure --cores ($max_cores) shell -- sh -c '($full_cmd)'"
+            let unfree_prefix = if (is_unfree_enabled) { "NIXPKGS_ALLOW_UNFREE=1 " } else { "" }
+            let devenv_cmd = $"cd ($yazelix_dir) && ($unfree_prefix)devenv --impure --cores ($max_cores) shell -- sh -c '($full_cmd)'"
             ^sh -c $devenv_cmd
             if $needs_refresh {
                 mark_config_state_applied $config_state

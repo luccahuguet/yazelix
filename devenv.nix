@@ -427,8 +427,6 @@ let
   ) packDeclarations;
 
   selectedPacks = userConfig.pack_names or [ ];
-  unfreeEnabled = lib.elem "unfree" selectedPacks;
-  unfreePackageNames = if unfreeEnabled then [ "claude-code" ] else [ ];
   packPackages = builtins.concatLists (
     map (
       packName:
@@ -450,8 +448,6 @@ let
 
 in
 {
-  devenv.allowUnfree = unfreeEnabled;
-
   packages = allDeps;
 
   env = {

@@ -8,6 +8,17 @@ use nix_env_helper.nu ensure_nix_in_environment
 use common.nu [get_max_cores]
 use config_state.nu [compute_config_state mark_config_state_applied]
 
+# Check if unfree pack is enabled in yazelix.toml
+def is_unfree_enabled [] {
+    let yazelix_dir = "~/.config/yazelix" | path expand
+    let toml_file = ($yazelix_dir | path join "yazelix.toml")
+    let default_toml = ($yazelix_dir | path join "yazelix_default.toml")
+    let config_file = if ($toml_file | path exists) { $toml_file } else { $default_toml }
+    let raw_config = open $config_file
+    let pack_names = ($raw_config.packs?.enabled? | default [])
+    $pack_names | any { |name| $name == "unfree" }
+}
+
 # Check if already in Yazelix or Nix environment
 export def check_environment_status [] {
     let already_in_env = (
@@ -83,7 +94,8 @@ export def run_in_devenv_shell [
         }
 
         let devenv_flags_str = ($devenv_flags | str join " ")
-        let devenv_cmd = $"cd ($yazelix_dir) && devenv ($devenv_flags_str) shell -- sh -c '($command)'"
+        let unfree_prefix = if (is_unfree_enabled) { "NIXPKGS_ALLOW_UNFREE=1 " } else { "" }
+        let devenv_cmd = $"cd ($yazelix_dir) && ($unfree_prefix)devenv ($devenv_flags_str) shell -- sh -c '($command)'"
 
         # Build environment variables
         mut env_vars = {}
@@ -197,6 +209,9 @@ export def run_in_devenv_shell_command [
     }
     if $verbose_mode {
         $env_vars = ($env_vars | insert YAZELIX_VERBOSE "true")
+    }
+    if (is_unfree_enabled) {
+        $env_vars = ($env_vars | insert NIXPKGS_ALLOW_UNFREE "1")
     }
 
     if ($env_vars | is-empty) {
