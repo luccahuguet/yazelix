@@ -59,6 +59,18 @@ Manage Yazelix updates
 - `yzx update repo`: Pull latest Yazelix updates (`--stash` auto-stashes changes, `--verbose` shows git commands)
 - `yzx update all`: Run `devenv`, `lock --yes`, and `zjstatus` updates
 
+### `yzx gc [deep [PERIOD] | deeper]`
+Garbage collection for Nix store
+- `yzx gc`: Clean devenv generations + remove unreferenced paths
+- `yzx gc deep`: Also delete generations older than 30 days
+- `yzx gc deep 7d`: Delete generations older than 7 days (configurable period)
+- `yzx gc deeper`: Delete ALL old generations (most aggressive)
+
+### `yzx packs [--expand] [--all]`
+Show enabled packs and their sizes
+- `--expand`: Show individual packages within each pack
+- `--all`: Show all declared packs (even disabled ones)
+
 ### `yzx versions`
 Display all tool versions
 
@@ -95,6 +107,17 @@ yzx config_status bash        # Check bash integration
 yzx update devenv             # Update devenv CLI
 yzx update lock --yes          # Refresh devenv.lock without prompt
 yzx update repo --stash        # Pull repo updates and reapply local changes
+
+# Garbage collection
+yzx gc                        # Safe: clean devenv + remove unreferenced paths
+yzx gc deep                   # Medium: also delete generations older than 30d
+yzx gc deep 7d                # Medium: delete generations older than 7 days
+yzx gc deeper                 # Aggressive: delete ALL old generations
+
+# Packs
+yzx packs                     # Show enabled packs summary with sizes
+yzx packs --expand            # Show packages within each pack
+yzx packs --all               # Show all declared packs (even disabled)
 
 # Testing and benchmarking
 yzx test                      # Run all tests (non-visual)
