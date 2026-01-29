@@ -7,3 +7,5 @@ inputs:
     url: github:guibou/nixGL
   zjstatus:
     url: github:dj95/zjstatus
+  llm-agents:
+    url: github:numtide/llm-agents.nix

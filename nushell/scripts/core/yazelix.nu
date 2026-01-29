@@ -15,6 +15,7 @@ use ./start_yazelix.nu [start_yazelix_session]
 export use ../yzx/launch.nu *
 export use ../yzx/env.nu *
 export use ../yzx/run.nu *
+export use ../yzx/packs.nu *
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT

@@ -55,6 +55,8 @@ export def parse_yazelix_config [] {
         yazi_plugins: ($raw_config.yazi?.plugins? | default ["git"]),
         yazi_theme: ($raw_config.yazi?.theme? | default "default"),
         yazi_sort_by: ($raw_config.yazi?.sort_by? | default "alphabetical"),
+        pack_names: ($raw_config.packs?.enabled? | default []),
+        pack_declarations: ($raw_config.packs?.declarations? | default {}),
         config_file: $config_to_read
     }
 }

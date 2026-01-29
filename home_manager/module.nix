@@ -345,14 +345,27 @@ in
     pack_declarations = mkOption {
       type = types.attrsOf (types.listOf types.str);
       default = {
-        ai = [
-          "gemini-cli"
-          "codex"
-          "opencode"
-        ];
-        unfree = [
+        # AI coding agents (from llm-agents.nix)
+        ai_agents = [
           "claude-code"
+          "codex"
+          "gemini-cli"
+          "opencode"
+          "amp"
+          "cursor-agent"
+          "goose-cli"
         ];
+        # AI support tools (from llm-agents.nix)
+        ai_tools = [
+          "coderabbit-cli"
+          "ccusage"
+          "ccusage-amp"
+          "ccusage-codex"
+          "ccusage-opencode"
+          "beads"
+          "moltbot"
+        ];
+        # unfree = []; # For unfree nixpkgs packages
         config = [
           "mpls"
           "yaml-language-server"

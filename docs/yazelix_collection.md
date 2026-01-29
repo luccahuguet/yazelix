@@ -172,13 +172,25 @@ General-purpose development tools:
 - [lazyjj](https://github.com/Cretezy/lazyjj) — LazyGit-style TUI for jj
 - [jjui](https://github.com/idursun/jjui) — TUI for Jujutsu VCS
 
-### AI Pack (`ai`)
-- [gemini-cli](https://github.com/google-gemini/gemini-cli) — Gemini CLI for chat and automation
-- [codex](https://github.com/openai/codex) — Codex CLI for agentic coding workflows
-- [opencode](https://github.com/opencode-ai/opencode) — OpenCode CLI for code assistance
+### AI Agents Pack (`ai_agents`)
+AI coding agents sourced from [llm-agents.nix](https://github.com/numtide/llm-agents.nix) with daily updates.
 
-### Unfree Pack (`unfree`)
-- [claude-code](https://github.com/anthropics/claude-code) — Claude Code CLI (unfree; enabled via the `unfree` pack)
+- [claude-code](https://github.com/anthropics/claude-code) — Claude Code CLI (Anthropic)
+- [codex](https://github.com/openai/codex) — Codex CLI for agentic coding (OpenAI)
+- [gemini-cli](https://github.com/google-gemini/gemini-cli) — Gemini CLI (Google)
+- [opencode](https://github.com/opencode-ai/opencode) — OpenCode CLI
+- [amp](https://github.com/sourcegraph/amp) — Amp coding agent
+- [cursor-agent](https://github.com/getcursor/cursor) — Cursor agent
+- [goose-cli](https://github.com/block/goose) — Goose CLI (Block)
+
+### AI Tools Pack (`ai_tools`)
+AI support tools: analytics, code review, and utilities (from llm-agents.nix).
+
+- [coderabbit-cli](https://github.com/coderabbitai/coderabbit-cli) — AI code review
+- [ccusage](https://github.com/ryoppippi/ccusage) — Claude Code usage tracker
+- ccusage-amp, ccusage-codex, ccusage-opencode — Usage trackers for other agents
+- [beads](https://github.com/lemonmade/beads) — Conversation bead manager
+- [moltbot](https://github.com/moltbot/moltbot) — Moltbot (formerly clawdbot)
 
 **Usage**: Enable packs in `yazelix.toml` by listing them in `packs.enabled` and defining them in `packs.declarations`, or add individual tools via `user_packages` for fine-grained control.
 

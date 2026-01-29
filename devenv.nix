@@ -12,6 +12,31 @@ let
   system = pkgs.stdenv.hostPlatform.system;
 
   nixglPackages = if isLinux then inputs.nixgl.packages.${system} else null;
+
+  # LLM agents packages from numtide/llm-agents.nix (daily updates)
+  llmAgentsPkgs =
+    if inputs ? llm-agents then
+      inputs.llm-agents.packages.${system}
+    else
+      { };
+
+  # Packages to resolve from llm-agents instead of nixpkgs
+  llmAgentsPackageNames = [
+    "amp"
+    "beads"
+    "ccusage"
+    "ccusage-amp"
+    "ccusage-codex"
+    "ccusage-opencode"
+    "claude-code"
+    "coderabbit-cli"
+    "codex"
+    "cursor-agent"
+    "gemini-cli"
+    "goose-cli"
+    "moltbot"
+    "opencode"
+  ];
   nixglIntel =
     if nixglPackages != null && nixglPackages ? nixGLIntel then nixglPackages.nixGLIntel else null;
 
@@ -407,10 +432,21 @@ let
   resolvePkg =
     name:
     let
+      # Check if this package should come from llm-agents
+      isLlmAgentsPkg = builtins.elem name llmAgentsPackageNames;
+      llmAgentsValue = if isLlmAgentsPkg then llmAgentsPkgs.${name} or null else null;
+      # Fall back to nixpkgs (supports nested paths like "python3Packages.foo")
       path = lib.splitString "." name;
-      value = lib.attrByPath path null pkgs;
+      nixpkgsValue = lib.attrByPath path null pkgs;
     in
-    if value == null then throw "Package '${name}' not found in nixpkgs" else value;
+    if llmAgentsValue != null then
+      llmAgentsValue
+    else if nixpkgsValue != null then
+      nixpkgsValue
+    else if isLlmAgentsPkg then
+      throw "Package '${name}' not found in llm-agents.nix (is the input added to devenv.yaml?)"
+    else
+      throw "Package '${name}' not found in nixpkgs";
 
   packDeclarations =
     if builtins.isAttrs (userConfig.pack_declarations or { }) then

@@ -276,20 +276,38 @@ user_packages = [
 ]
 
 [packs.declarations]
-# Pack declarations are lists of nixpkgs package names (supports dotted paths).
-# Pack packages always resolve against the configured nixpkgs input (currently unstable).
+# Pack declarations are lists of package names.
+# AI tools resolve from llm-agents.nix (daily updates), others from nixpkgs.
 # Uncomment entries below to build your own packs.
 
-# Tool packs
-ai = [
-  "gemini-cli", # Gemini CLI
-  "codex", # Codex CLI
-  "opencode", # OpenCode CLI
+# AI coding agents (from llm-agents.nix)
+ai_agents = [
+  "claude-code",    # Claude Code CLI (Anthropic)
+  "codex",          # Codex CLI (OpenAI)
+  "gemini-cli",     # Gemini CLI (Google)
+  "opencode",       # OpenCode CLI
+  "amp",            # Amp coding agent
+  "cursor-agent",   # Cursor agent
+  "goose-cli",      # Goose CLI (Block)
 ]
 
-unfree = [
-  "claude-code", # Claude Code CLI
+# AI support tools: analytics, review, utilities (from llm-agents.nix)
+ai_tools = [
+  # Code review
+  "coderabbit-cli", # AI code review
+  # Usage analytics
+  "ccusage",        # Claude Code usage tracker
+  "ccusage-amp",    # Amp usage tracker
+  "ccusage-codex",  # Codex usage tracker
+  "ccusage-opencode", # OpenCode usage tracker
+  # Utilities
+  "beads",          # Conversation bead manager
+  "moltbot",        # Moltbot (formerly clawdbot)
 ]
+
+# Unfree packages from nixpkgs (enables NIXPKGS_ALLOW_UNFREE=1)
+# Add unfree nixpkgs packages here if needed
+# unfree = []
 
 config = [
   "mpls", # Markdown Preview LSP
