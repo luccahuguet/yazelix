@@ -450,7 +450,7 @@ let
 
 in
 {
-  devenv.nixpkgs.permittedUnfreePackages = unfreePackageNames;
+  devenv.allowUnfree = unfreeEnabled;
 
   packages = allDeps;
 
