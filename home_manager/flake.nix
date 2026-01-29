@@ -9,9 +9,19 @@
     };
   };
 
-  outputs = { self, nixpkgs, home-manager }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      home-manager,
+    }:
     let
-      systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
     in
     {
@@ -20,7 +30,8 @@
       homeManagerModules.yazelix = import ./module.nix;
 
       # Example configurations for testing
-      packages = forAllSystems (system:
+      packages = forAllSystems (
+        system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
         in
@@ -65,7 +76,8 @@
       );
 
       # Development shells for testing
-      devShells = forAllSystems (system:
+      devShells = forAllSystems (
+        system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
         in
@@ -76,7 +88,7 @@
               statix
               deadnix
             ];
-            
+
             shellHook = ''
               echo "Yazelix Home Manager Module Development Shell"
               echo "Available commands:"
