@@ -4,70 +4,74 @@ layout {
            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
                format_left   "{mode} {tabs}"
                format_center ""
-               format_right  "#[fg=#ff0088,bold]{session} __YAZELIX_WIDGET_TRAY__ #[fg=#00ccff,bold]YAZELIX " // {datetime}
-               format_hide_on_overlength "true"
-               format_precedence "lrc"
-               swap_layout_format "#[fg=#00ff88,bold][layout: {name}]"
-               swap_layout_hide_if_empty "true"
-               format_space  ""
+                format_right  "#[fg=#ff0088,bold]{session} __YAZELIX_WIDGET_TRAY__ #[fg=#00ccff,bold]YAZELIX {command_version} " // {datetime}
+                format_hide_on_overlength "true"
+                format_precedence "lrc"
+                swap_layout_format "#[fg=#00ff88,bold][layout: {name}]"
+                swap_layout_hide_if_empty "true"
+                format_space  ""
 
-               border_enabled  "false"
-               hide_frame_for_single_pane "true"
+                border_enabled  "false"
+                hide_frame_for_single_pane "true"
 
-               mode_normal  "#[bg=#00ff88,fg=#000000,bold] NORMAL "
-               mode_tmux    "#[bg=#ffff00,fg=#000000,bold] TMUX "
-               mode_session "#[bg=#ff6600,fg=#000000,bold] SESSION "
-               mode_scroll  "#[bg=#ff0088,fg=#ffffff,bold] SCROLL "
+                mode_normal  "#[bg=#00ff88,fg=#000000,bold] NORMAL "
+                mode_tmux    "#[bg=#ffff00,fg=#000000,bold] TMUX "
+                mode_session "#[bg=#ff6600,fg=#000000,bold] SESSION "
+                mode_scroll  "#[bg=#ff0088,fg=#ffffff,bold] SCROLL "
 
-               tab_normal   "#[fg=#ffff00] [{index}] {name} "
-               tab_normal_fullscreen "#[fg=#ffff00] [{index}] {name} [] "
-               tab_normal_sync       "#[fg=#ffff00] [{index}] {name} <> "
-               tab_active   "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {floating_indicator}"
-               tab_active_fullscreen "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {fullscreen_indicator}"
-               tab_active_sync       "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {sync_indicator}"
-               tab_separator ""
-               tab_rename    "#[bg=#ff6600,fg=#000000,bold] {index} {name} {floating_indicator} "
-               tab_sync_indicator       "<> "
-               tab_fullscreen_indicator "[] "
-               tab_floating_indicator   "⬚ "
+                tab_normal   "#[fg=#ffff00] [{index}] {name} "
+                tab_normal_fullscreen "#[fg=#ffff00] [{index}] {name} [] "
+                tab_normal_sync       "#[fg=#ffff00] [{index}] {name} <> "
+                tab_active   "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {floating_indicator}"
+                tab_active_fullscreen "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {fullscreen_indicator}"
+                tab_active_sync       "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {sync_indicator}"
+                tab_separator ""
+                tab_rename    "#[bg=#ff6600,fg=#000000,bold] {index} {name} {floating_indicator} "
+                tab_sync_indicator       "<> "
+                tab_fullscreen_indicator "[] "
+                tab_floating_indicator   "⬚ "
 
-               datetime        "#[fg=#bb88ff,bold] {format} "
-               datetime_format "%H:%M %d/%m"
+                datetime        "#[fg=#bb88ff,bold] {format} "
+                datetime_format "%H:%M %d/%m"
 
-               command_shell_command "bash -c 'echo ${YAZELIX_DEFAULT_SHELL:-$(basename $SHELL)}'"
+                command_shell_command "bash -c 'echo ${YAZELIX_DEFAULT_SHELL:-$(basename $SHELL)}'"
 
-               command_editor_command "bash -c 'basename $EDITOR'"
-               command_editor_format "#[fg=#00ff88,bold]{stdout}"
-               command_editor_interval "300"
-               command_shell_format "#[fg=#00ff88,bold]{stdout}"
-               command_shell_interval "300"
+                command_editor_command "bash -c 'basename $EDITOR'"
+                command_editor_format "#[fg=#00ff88,bold]{stdout}"
+                command_editor_interval "300"
+                command_shell_format "#[fg=#00ff88,bold]{stdout}"
+                command_shell_interval "300"
 
-               command_term_command "nu ~/.config/yazelix/nushell/scripts/utils/detect_terminal.nu"
-               command_term_format "#[fg=#00ff88,bold]{stdout}"
-               command_term_interval "300"
+                command_term_command "nu ~/.config/yazelix/nushell/scripts/utils/detect_terminal.nu"
+                command_term_format "#[fg=#00ff88,bold]{stdout}"
+                command_term_interval "300"
 
-               command_cpu_command "nu ~/.config/yazelix/configs/zellij/scripts/cpu_usage.nu"
-               command_cpu_format "#[fg=#ff6600][cpu {stdout}]"
-               command_cpu_interval "5"
+                command_cpu_command "nu ~/.config/yazelix/configs/zellij/scripts/cpu_usage.nu"
+                command_cpu_format "#[fg=#ff6600][cpu {stdout}]"
+                command_cpu_interval "5"
 
-               command_ram_command "bash -c 'macchina -o memory -m 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
-               command_ram_format "#[fg=#ff6600][ram {stdout}]"
-               command_ram_interval "5"
+                command_ram_command "bash -c 'macchina -o memory -m 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
+                command_ram_format "#[fg=#ff6600][ram {stdout}]"
+                command_ram_interval "5"
 
-           }
-        }
-        children
-        pane size=1 borderless=true {
-           plugin location="zellij:status-bar"
-        }
-    }
+                command_version_command "nu -c 'use ~/.config/yazelix/nushell/scripts/utils/constants.nu YAZELIX_VERSION; $YAZELIX_VERSION'"
+                command_version_format "{stdout}"
+                command_version_interval "3600"
 
-    default_tab_template {
-        pane size=1 borderless=true {
-           plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
-               format_left   "{mode} {tabs}"
-               format_center ""
-               format_right  "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold][SWEEP TEST] #[fg=#ffff00,bold][term: {command_terminal}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX "
+            }
+         }
+         children
+         pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+         }
+     }
+
+     default_tab_template {
+         pane size=1 borderless=true {
+            plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
+                format_left   "{mode} {tabs}"
+                format_center ""
+                format_right  "#[fg=#ff0088,bold]{session} #[fg=#00ff88,bold][SWEEP TEST] #[fg=#ffff00,bold][term: {command_terminal}] {command_cpu} {command_ram} #[fg=#00ccff,bold]YAZELIX {command_version} "
                format_hide_on_overlength "true"
                format_precedence "lrc"
                format_space  ""
@@ -100,12 +104,16 @@ layout {
                command_cpu_format "#[fg=#ff6600][cpu {stdout}]"
                command_cpu_interval "5"
 
-               command_ram_command "bash -c 'macchina -o memory -m 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
-               command_ram_format "#[fg=#ff6600][ram {stdout}]"
-               command_ram_interval "5"
-           }
-        }
-        // Single pane that runs verification script then exits
+                command_ram_command "bash -c 'macchina -o memory -m 2>/dev/null | grep -o \"[0-9]\\+%\" | head -1'"
+                command_ram_format "#[fg=#ff6600][ram {stdout}]"
+                command_ram_interval "5"
+
+                command_version_command "nu -c 'use ~/.config/yazelix/nushell/scripts/utils/constants.nu YAZELIX_VERSION; $YAZELIX_VERSION'"
+                command_version_format "{stdout}"
+                command_version_interval "3600"
+            }
+         }
+         // Single pane that runs verification script then exits
         pane {
             command "bash"
             args "-c" "nu ~/.config/yazelix/nushell/scripts/dev/sweep_verify.nu && sleep 3"

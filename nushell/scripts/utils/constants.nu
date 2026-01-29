@@ -6,7 +6,7 @@
 # VERSION INFORMATION
 # ============================================================================
 
-export const YAZELIX_VERSION = "v12"
+export const YAZELIX_VERSION = "v12.4"
 export const YAZELIX_DESCRIPTION = "Yazi + Zellij + Helix integrated terminal environment"
 
 # ============================================================================
