@@ -251,7 +251,8 @@ mode = "static"
 [packs]
 # Enable packs by name (see packs.declarations below)
 enabled = [
-  # "ai",
+  # "ai_agents",
+  # "ai_tools",
   # "config",
   # "file-management",
   # "git",
