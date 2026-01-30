@@ -71,6 +71,21 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 nix --version
 ```
 
+### Optional: Enable Parallel Evaluation (Determinate Nix)
+
+Determinate Nix supports parallel evaluation, which can speed up operations like
+`nix search`, `nix flake check`, and `nix eval --json`.
+
+To enable it, add this line to your Determinate config:
+
+`/etc/nix/nix.custom.conf`
+
+```conf
+eval-cores = 0
+```
+
+Set `eval-cores` to 0 to use all cores, or 1 to disable.
+
 ### Step 2: Install Nushell
 
 Nushell is required to run Yazelix (used internally). You can use your preferred shell (bash, fish, zsh, or nushell) for daily work:
