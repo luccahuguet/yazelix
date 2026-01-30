@@ -187,6 +187,7 @@ export def "yzx update" [] {
     print "  yzx update devenv  # Update the devenv CLI in your Nix profile"
     print "  yzx update lock    # Refresh devenv.lock using devenv update"
     print "  yzx update zjstatus  # Update bundled zjstatus.wasm plugin"
+    print "  yzx update nix     # Upgrade Determinate Nix via determinate-nixd (sudo required)"
     print "  yzx update repo    # Pull latest Yazelix updates"
     print "  yzx update all     # Run every update command"
 }
@@ -294,6 +295,45 @@ export def "yzx update lock" [
 # Update zjstatus plugin
 export def "yzx update zjstatus" [] {
     nu ~/.config/yazelix/nushell/scripts/dev/update_zjstatus.nu
+}
+
+export def "yzx update nix" [
+    --yes      # Skip confirmation prompt
+    --verbose  # Show the underlying command
+] {
+    if (which determinate-nixd | is-empty) {
+        print "❌ determinate-nixd not found in PATH."
+        print "   Install Determinate Nix or check your PATH, then try again."
+        exit 1
+    }
+
+    if not $yes {
+        print "⚠️  This upgrades Determinate Nix using determinate-nixd."
+        print "   It requires sudo and may prompt for your password."
+        let confirm = (input "Continue? [y/N]: " | str downcase)
+        if $confirm not-in ["y", "yes"] {
+            print "Aborted."
+            exit 0
+        }
+    }
+
+    if $verbose {
+        print "⚙️ Running: sudo determinate-nixd upgrade"
+    } else {
+        print "🔄 Upgrading Determinate Nix..."
+    }
+
+    try {
+        let result = (^sudo determinate-nixd upgrade | complete)
+        if $result.exit_code != 0 {
+            print $"❌ Determinate Nix upgrade failed: ($result.stderr | str trim)"
+            exit 1
+        }
+        print "✅ Determinate Nix upgraded."
+    } catch {|err|
+        print $"❌ Determinate Nix upgrade failed: ($err.msg)"
+        exit 1
+    }
 }
 
 # Run all available update commands

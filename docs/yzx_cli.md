@@ -56,6 +56,7 @@ Manage Yazelix updates
 - `yzx update devenv`: Update the devenv CLI in your Nix profile (`--verbose` shows underlying commands)
 - `yzx update lock`: Refresh `devenv.lock` via `devenv update` (`--yes` skips prompt, `--verbose` shows command)
 - `yzx update zjstatus`: Update bundled zjstatus.wasm plugin
+- `yzx update nix`: Upgrade Determinate Nix via `determinate-nixd` (`--yes` skips prompt, `--verbose` shows command; sudo required)
 - `yzx update repo`: Pull latest Yazelix updates (`--stash` auto-stashes changes, `--verbose` shows git commands)
 - `yzx update all`: Run `devenv`, `lock --yes`, and `zjstatus` updates
 
@@ -106,6 +107,7 @@ yzx config_status bash        # Check bash integration
 # Updates
 yzx update devenv             # Update devenv CLI
 yzx update lock --yes          # Refresh devenv.lock without prompt
+yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
 yzx update repo --stash        # Pull repo updates and reapply local changes
 
 # Garbage collection
