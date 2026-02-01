@@ -56,7 +56,7 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 
 ### Step 1: Install Nix Package Manager (~2.5GB)
 
-We use the **Determinate Systems Nix Installer** - it's reliable, fast, and includes modern features out of the box:
+Yazelix requires Nix with flakes enabled. We recommend the **Determinate Systems Nix Installer** because it's reliable, fast, and includes modern features out of the box, but any Nix installation with flakes enabled will work.
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install

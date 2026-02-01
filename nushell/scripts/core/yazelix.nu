@@ -309,6 +309,7 @@ export def "yzx update nix" [
 
     if not $yes {
         print "⚠️  This upgrades Determinate Nix using determinate-nixd."
+        print "   If your Nix install is not based on Determinate Nix, this will not work."
         print "   It requires sudo and may prompt for your password."
         let confirm = (input "Continue? [y/N]: " | str downcase)
         if $confirm not-in ["y", "yes"] {
