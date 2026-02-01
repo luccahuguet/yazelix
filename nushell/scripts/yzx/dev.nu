@@ -97,10 +97,12 @@ export def "yzx dev update_lock" [
         print "⚠️  This updates Yazelix inputs (devenv.lock) to latest upstream versions."
         print "   If upstream changes are broken, you may hit bugs before fixes land."
         print "   Prefer a safer path? The Yazelix maintainer updates the project at least once a month."
-        let confirm = (input "Continue? [y/N]: " | str downcase)
+        let confirm = try {
+            (input "Continue? [y/N]: " | str downcase)
+        } catch { "n" }
         if $confirm not-in ["y", "yes"] {
             print "Aborted."
-            exit 0
+            return
         }
     }
 
@@ -137,10 +139,12 @@ export def "yzx dev update_nix" [
         print "⚠️  This upgrades Determinate Nix using determinate-nixd."
         print "   If your Nix install is not based on Determinate Nix, this will not work."
         print "   It requires sudo and may prompt for your password."
-        let confirm = (input "Continue? [y/N]: " | str downcase)
+        let confirm = try {
+            (input "Continue? [y/N]: " | str downcase)
+        } catch { "n" }
         if $confirm not-in ["y", "yes"] {
             print "Aborted."
-            exit 0
+            return
         }
     }
 
