@@ -9,7 +9,7 @@ def update_constant_value [contents: string, key: string, new_value: string] {
 }
 
 def extract_version [value: string] {
-    $value | parse --regex '(\d+\.\d+\.\d+)' | get capture0 | first? | default ""
+    $value | parse --regex '(\d+\.\d+\.\d+)' | get capture0 | last | default ""
 }
 
 def get_latest_tag [] {

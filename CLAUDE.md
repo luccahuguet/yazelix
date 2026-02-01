@@ -89,6 +89,11 @@ When creating new files or directories, always use underscores to maintain consi
 
 Example: When deciding whether `yzx doctor --fix` should auto-fix user runtime conflicts, reason through user intent (explicit `--fix` flag), safety (backup approach), and the nature of the problem (system debris vs. user data).
 
+## Verification Requirements
+
+- **Always test the exact functions or commands you change** before committing.
+- If a command cannot be executed in this environment, explain why and provide the nearest safe alternative.
+
 ## Yazelix Versioning
 
 **Yazelix versioning:**
