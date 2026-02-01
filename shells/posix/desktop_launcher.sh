@@ -3,6 +3,10 @@
 
 PATH="$HOME/.local/state/nix/profile/bin:$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
 
+# Prevent non-interactive shells from sourcing interactive-only scripts (e.g., bind in .bashrc)
+unset BASH_ENV
+unset ENV
+
 # Load Nix profile if available (mirrors login shell behavior)
 for nix_profile in "$HOME/.nix-profile/etc/profile.d/nix.sh" "/nix/var/nix/profiles/default/etc/profile.d/nix.sh"; do
   if [ -f "$nix_profile" ]; then
