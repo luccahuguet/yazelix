@@ -5,6 +5,7 @@
 use ../utils/config_manager.nu *
 use ../utils/constants.nu *
 use ../utils/version_info.nu *
+use ../utils/ascii_art.nu [get_yazelix_colors]
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 use ../utils/common.nu [get_max_cores]
@@ -17,6 +18,7 @@ export use ../yzx/env.nu *
 export use ../yzx/run.nu *
 export use ../yzx/packs.nu *
 export use ../yzx/gc.nu *
+export use ../yzx/dev.nu *
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
@@ -35,11 +37,96 @@ export use ../yzx/gc.nu *
 #   yzx test      - Run test suite
 #   yzx lint      - Validate script syntax
 #   yzx versions  - Show tool versions
+def compare_versions [left: string, right: string] {
+    let left_parts = ($left | split row "." | each { |part| $part | into int })
+    let right_parts = ($right | split row "." | each { |part| $part | into int })
+
+    for idx in 0..2 {
+        let left_value = ($left_parts | get -o $idx | default 0)
+        let right_value = ($right_parts | get -o $idx | default 0)
+        if $left_value > $right_value {
+            return 1
+        }
+        if $left_value < $right_value {
+            return (-1)
+        }
+    }
+
+    return (0)
+}
+
+def parse_semver [value: string] {
+    $value | parse --regex '(\d+\.\d+\.\d+)' | get capture0 | last | default ""
+}
+
+def build_version_warning [tool: string, installed_raw: string, pinned: string] {
+    if $installed_raw in ["not installed", "error"] {
+        return null
+    }
+
+    let installed = (parse_semver $installed_raw)
+    if ($installed | is-empty) or $installed == $pinned {
+        return null
+    }
+
+    let status = if (compare_versions $installed $pinned) == 1 { "ahead" } else { "stale" }
+    $"($tool) ($installed) is ($status) vs pinned ($pinned)"
+}
+
 export def yzx [
     --version (-V)  # Show version information
+    --version-short (-v)  # Show version information
 ] {
-    if $version {
+    if $version or $version_short {
         print $"Yazelix ($YAZELIX_VERSION)"
+
+        let devenv_version = if (which devenv | is-empty) {
+            "not installed"
+        } else {
+            try { (devenv --version | lines | first) } catch { "error" }
+        }
+
+        let nix_version = if (which nix | is-empty) {
+            "not installed"
+        } else {
+            try { (nix --version | lines | first) } catch { "error" }
+        }
+
+        let determinate_version = if (which determinate-nixd | is-empty) {
+            "not installed"
+        } else {
+            try {
+                let result = (^determinate-nixd version | complete)
+                if $result.exit_code == 0 {
+                    $result.stdout | lines | first
+                } else {
+                    "error"
+                }
+            } catch { "error" }
+        }
+
+        let warnings = ([
+            (build_version_warning "devenv" $devenv_version $PINNED_DEVENV_VERSION)
+            (build_version_warning "nix" $nix_version $PINNED_NIX_VERSION)
+        ] | where ($it | is-not-empty))
+
+        let colors = get_yazelix_colors
+        let key_color = $colors.cyan
+        let value_color = $colors.purple
+        let warn_color = $colors.yellow
+        let success_color = $colors.green
+        let reset_color = $colors.reset
+
+        print $"($key_color)devenv:($reset_color) ($value_color)($devenv_version)($reset_color)"
+        print $"($key_color)nix:($reset_color) ($value_color)($nix_version)($reset_color)"
+        print $"($key_color)determinate-nixd:($reset_color) ($value_color)($determinate_version)($reset_color)"
+
+        if ($warnings | length) > 0 {
+            print $"($warn_color)⚠️  Version drift detected:($reset_color)"
+            $warnings | each { |warning| print $"   - ($warning)" }
+        } else {
+            print $"($success_color)✅ Versions match Yazelix pinned values.($reset_color)"
+        }
         return
     }
     help yzx
