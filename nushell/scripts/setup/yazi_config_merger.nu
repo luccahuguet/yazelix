@@ -28,10 +28,12 @@ def deep_merge [base: record, user: record] {
             let user_val = ($user | get $key)
             let base_type = ($base_val | describe)
             let user_type = ($user_val | describe)
+            let base_is_array = ($base_type | str starts-with "list") or ($base_type | str starts-with "table")
+            let user_is_array = ($user_type | str starts-with "list") or ($user_type | str starts-with "table")
             # If both are records, merge recursively
             if ($base_type | str starts-with "record") and ($user_type | str starts-with "record") {
                 deep_merge $base_val $user_val
-            } else if ($base_type | str starts-with "list") and ($user_type | str starts-with "list") {
+            } else if $base_is_array and $user_is_array {
                 # Concatenate arrays (base first, then user)
                 $base_val | append $user_val
             } else {
@@ -178,7 +180,7 @@ def generate_yazi_toml [source_dir: string, merged_dir: string, theme: string, s
         $config_with_opener
     }
 
-    # Add dynamic settings from yazelix.toml
+    # Add dynamic settings from yazelix.toml (yazelix.toml is the source of truth)
     let final_config = ($config_without_git_fetchers | upsert manager {
         sort_by: $sort_by
     })

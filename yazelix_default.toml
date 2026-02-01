@@ -240,6 +240,7 @@ theme = "default"
 
 # Sort files by
 # Options: "alphabetical", "natural", "modified", "created", "size"
+# This value is the source of truth and overrides any sort_by in configs/yazi/user/yazi.toml
 sort_by = "alphabetical"
 
 [ascii]
