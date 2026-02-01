@@ -54,11 +54,13 @@ Show system information and settings
 ### `yzx update`
 Manage Yazelix updates
 - `yzx update devenv`: Update the devenv CLI in your Nix profile (`--verbose` shows underlying commands)
-- `yzx update lock`: Refresh `devenv.lock` via `devenv update` (`--yes` skips prompt, `--verbose` shows command)
 - `yzx update zjstatus`: Update bundled zjstatus.wasm plugin
-- `yzx update nix`: Upgrade Determinate Nix via `determinate-nixd` (`--yes` skips prompt, `--verbose` shows command; sudo required; only works if Determinate Nix is installed)
 - `yzx update repo`: Pull latest Yazelix updates (`--stash` auto-stashes changes, `--verbose` shows git commands)
-- `yzx update all`: Run `devenv`, `lock --yes`, and `zjstatus` updates
+- `yzx update all`: Run safe updates (`devenv` + `zjstatus`)
+
+Maintainer-only updates:
+- `yzx dev update_lock`: Refresh `devenv.lock` via `devenv update` (`--yes` skips prompt, `--verbose` shows command)
+- `yzx dev update_nix`: Upgrade Determinate Nix via `determinate-nixd` (`--yes` skips prompt, `--verbose` shows command; sudo required; only works if Determinate Nix is installed)
 
 ### `yzx gc [deep [PERIOD] | deeper]`
 Garbage collection for Nix store

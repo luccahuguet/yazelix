@@ -83,3 +83,82 @@ export def "yzx dev sync_pins" [] {
     $updated | save $constants_path --force
     print $"✅ Updated pins: yazelix ($latest_tag), nix ($nix_version), devenv ($devenv_version)"
 }
+
+export def "yzx dev update_lock" [
+    --verbose  # Show the underlying devenv command
+    --yes      # Skip confirmation prompt
+] {
+    use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
+    ensure_nix_available
+
+    let yazelix_dir = "~/.config/yazelix" | path expand
+
+    if not $yes {
+        print "⚠️  This updates Yazelix inputs (devenv.lock) to latest upstream versions."
+        print "   If upstream changes are broken, you may hit bugs before fixes land."
+        print "   Prefer a safer path? The Yazelix maintainer updates the project at least once a month."
+        let confirm = (input "Continue? [y/N]: " | str downcase)
+        if $confirm not-in ["y", "yes"] {
+            print "Aborted."
+            exit 0
+        }
+    }
+
+    if $verbose {
+        print $"⚙️ Running: devenv update \(cwd: ($yazelix_dir)\)"
+    } else {
+        print "🔄 Updating Yazelix inputs (devenv.lock)..."
+    }
+
+    try {
+        do {
+            cd $yazelix_dir
+            ^devenv update
+        }
+        print "✅ devenv.lock updated. Review and commit the changes if everything looks good."
+    } catch {|err|
+        print $"❌ devenv update failed: ($err.msg)"
+        print "   Check your network connection and devenv.yaml inputs, then try again."
+        exit 1
+    }
+}
+
+export def "yzx dev update_nix" [
+    --yes      # Skip confirmation prompt
+    --verbose  # Show the underlying command
+] {
+    if (which determinate-nixd | is-empty) {
+        print "❌ determinate-nixd not found in PATH."
+        print "   Install Determinate Nix or check your PATH, then try again."
+        exit 1
+    }
+
+    if not $yes {
+        print "⚠️  This upgrades Determinate Nix using determinate-nixd."
+        print "   If your Nix install is not based on Determinate Nix, this will not work."
+        print "   It requires sudo and may prompt for your password."
+        let confirm = (input "Continue? [y/N]: " | str downcase)
+        if $confirm not-in ["y", "yes"] {
+            print "Aborted."
+            exit 0
+        }
+    }
+
+    if $verbose {
+        print "⚙️ Running: sudo determinate-nixd upgrade"
+    } else {
+        print "🔄 Upgrading Determinate Nix..."
+    }
+
+    try {
+        let result = (^sudo determinate-nixd upgrade | complete)
+        if $result.exit_code != 0 {
+            print $"❌ Determinate Nix upgrade failed: ($result.stderr | str trim)"
+            exit 1
+        }
+        print "✅ Determinate Nix upgraded."
+    } catch {|err|
+        print $"❌ Determinate Nix upgrade failed: ($err.msg)"
+        exit 1
+    }
+}
