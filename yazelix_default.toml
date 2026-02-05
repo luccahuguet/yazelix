@@ -304,7 +304,7 @@ ai_tools = [
   "ccusage-opencode", # OpenCode usage tracker
   # Utilities
   "beads",          # Conversation bead manager
-  "moltbot",        # Moltbot (formerly clawdbot)
+  "openclaw",       # OpenClaw (formerly moltbot/clawdbot)
 ]
 
 # Unfree packages from nixpkgs (enables NIXPKGS_ALLOW_UNFREE=1)

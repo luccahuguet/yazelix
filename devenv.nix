@@ -34,7 +34,7 @@ let
     "cursor-agent"
     "gemini-cli"
     "goose-cli"
-    "moltbot"
+    "openclaw"
     "opencode"
   ];
   nixglIntel =

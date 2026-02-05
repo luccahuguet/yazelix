@@ -363,7 +363,7 @@ in
           "ccusage-codex"
           "ccusage-opencode"
           "beads"
-          "moltbot"
+          "openclaw"
         ];
         # unfree = []; # For unfree nixpkgs packages
         config = [
