@@ -33,7 +33,7 @@ def main [
     let config_state = compute_config_state
     let config = $config_state.config
     let active_config_file = $config_state.config_file
-    let current_hash = $config_state.current_hash
+    let current_hash = $config_state.combined_hash
     let cached_hash = $config_state.cached_hash
     let needs_reload = $config_state.needs_refresh
 

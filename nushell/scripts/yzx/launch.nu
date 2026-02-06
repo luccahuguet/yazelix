@@ -197,7 +197,8 @@ export def "yzx launch" [
             # Must run devenv from the directory containing devenv.nix
             let yazelix_dir = "~/.config/yazelix"
             if $needs_refresh and $verbose_mode {
-                print "♻️  Config changed since last launch – rebuilding environment"
+                let reason = ($config_state.refresh_reason? | default "config or devenv inputs changed since last launch")
+                print $"♻️  ($reason) – rebuilding environment"
             }
             let max_cores = get_max_cores
             let unfree_prefix = if (is_unfree_enabled) { "NIXPKGS_ALLOW_UNFREE=1 " } else { "" }

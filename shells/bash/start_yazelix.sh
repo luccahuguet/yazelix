@@ -34,7 +34,8 @@ fi
 if command -v nu >/dev/null 2>&1; then
   NEEDS_REFRESH=$(nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu compute_config_state; let state = compute_config_state; if $state.needs_refresh { "true" } else { "" }')
   if [ "$NEEDS_REFRESH" = "true" ]; then
-    echo "♻️  Config changed since last launch – rebuilding environment"
+    REFRESH_REASON=$(nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu compute_config_state; let state = compute_config_state; if ($state.refresh_reason? | is-not-empty) { $state.refresh_reason } else { "config or devenv inputs changed since last launch" }')
+    echo "♻️  ${REFRESH_REASON} – rebuilding environment"
     export YAZELIX_FORCE_REFRESH="true"
   fi
 fi
