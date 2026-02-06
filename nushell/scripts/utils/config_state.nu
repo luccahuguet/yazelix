@@ -76,7 +76,33 @@ export def compute_config_state [] {
         let full_config = (open $config_file)
         let rebuild_config = (extract_rebuild_config $full_config)
         let normalized = ($rebuild_config | to toml)
-        $normalized | hash sha256
+        let config_hash = ($normalized | hash sha256)
+
+        # Include devenv inputs so updates trigger refresh on restart
+        let yazelix_dir = "~/.config/yazelix" | path expand
+        let lock_path = ($yazelix_dir | path join "devenv.lock")
+        let devenv_nix_path = ($yazelix_dir | path join "devenv.nix")
+        let devenv_yaml_path = ($yazelix_dir | path join "devenv.yaml")
+
+        let lock_hash = if ($lock_path | path exists) {
+            open --raw $lock_path | hash sha256
+        } else {
+            ""
+        }
+        let devenv_nix_hash = if ($devenv_nix_path | path exists) {
+            open --raw $devenv_nix_path | hash sha256
+        } else {
+            ""
+        }
+        let devenv_yaml_hash = if ($devenv_yaml_path | path exists) {
+            open --raw $devenv_yaml_path | hash sha256
+        } else {
+            ""
+        }
+
+        [$config_hash, $lock_hash, $devenv_nix_hash, $devenv_yaml_hash]
+            | str join ":"
+            | hash sha256
     }
 
     let cached_hash = if ($cache_file | path exists) {
