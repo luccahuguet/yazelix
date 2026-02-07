@@ -220,5 +220,6 @@ def main [] {
         print $"✅ All terminal detection tests passed \(($passed)/($total)\)"
     } else {
         print $"❌ Some tests failed \(($passed)/($total)\)"
+        error make { msg: "terminal detection tests failed" }
     }
 }

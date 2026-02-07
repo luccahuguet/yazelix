@@ -178,5 +178,6 @@ def main [] {
         print $"✅ All yzx command tests passed \(($passed)/($total)\)"
     } else {
         print $"❌ Some tests failed \(($passed)/($total)\)"
+        error make { msg: "yzx command tests failed" }
     }
 }
