@@ -167,8 +167,14 @@ export def "yzx config_status" [shell?: string] {
 }
 
 # List available versions
-export def "yzx versions" [] {
-    nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu
+export def "yzx versions" [
+    --md(-m)
+] {
+    if $md {
+        nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu --md
+    } else {
+        nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu
+    }
 }
 
 # Show system info

@@ -176,7 +176,9 @@ def get_locked_version [tool: string, lockfile: record] {
 }
 
 # Main function - markdown table output
-export def main [--save(-s)] {
+export def main [
+    --md(-m)
+] {
     let tools = [
         "yazi"
         "zellij"
@@ -204,32 +206,35 @@ export def main [--save(-s)] {
         {tool: $tool, locked: $locked, runtime: $runtime}
     })
 
-    let header = [
-        "# Yazelix Tool Versions"
-        ""
-        $"Generated: (date now | format date '%Y-%m-%d %H:%M:%S')"
-        ""
-    ]
+    if $md {
+        let header = [
+            "# Yazelix Tool Versions"
+            ""
+            $"Generated: (date now | format date '%Y-%m-%d %H:%M:%S')"
+            ""
+        ]
 
-    let table_md = ($tool_data | to md --pretty)
+        let table_md = ($tool_data | to md --pretty)
 
-    let notes = [
-        ""
-        "## Usage"
-        ""
-        "- **Regenerate**: `nu nushell/scripts/utils/version_info.nu --save`"
-        "- **View only**: `nu nushell/scripts/utils/version_info.nu`"
-        "- **Locked**: Flake input revisions when available (nix uses nixpkgs)"
-        "- **Runtime**: Versions resolved from current PATH"
-    ]
+        let notes = [
+            ""
+            "## Usage"
+            ""
+            "- **Regenerate**: `nu nushell/scripts/utils/version_info.nu --md`"
+            "- **Locked**: Flake input revisions when available (nix uses nixpkgs)"
+            "- **Runtime**: Versions resolved from current PATH"
+        ]
 
-    let full_output = ([$header [$table_md] $notes] | flatten | str join "\n")
+        let full_output = ([$header [$table_md] $notes] | flatten | str join "\n")
 
-    if $save {
         let file_path = "docs/version_table.md"
         $full_output | save $file_path --force
         print $"✅ Version table saved to ($file_path)"
     } else {
-        print $full_output
+        print "Yazelix Tool Versions"
+        print $"Generated: (date now | format date '%Y-%m-%d %H:%M:%S')"
+        print ($tool_data | table)
+        print ""
+        print "Run with --md to save Markdown output."
     }
 }

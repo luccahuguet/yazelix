@@ -1,21 +1,28 @@
 # Yazelix Tool Versions
 
-Generated: 2025-06-27 16:16:44
+Generated: 2026-02-07 17:17:32
 
-| tool     | version                    |
-| -------- | -------------------------- |
-| yazi     | [25.5.31]                  |
-| zellij   | 0.42.2                     |
-| helix    | [25.01.1]                  |
-| nushell  | 0.104.1                    |
-| zoxide   | [0.9.8]                    |
-| starship | [1.23.0]                   |
-| lazygit  | 0.52.0                     |
-| fzf      | [0.62.0]                   |
-| wezterm  | [20240203-110809-5046fc22] |
-| nix      | [2.28.3]                   |
+| tool      | locked                               | runtime       |
+| --------- | ------------------------------------ | ------------- |
+| yazi      | nixos/nixpkgs@nixos-unstable@00c21e4 | 26.1.22       |
+| zellij    | nixos/nixpkgs@nixos-unstable@00c21e4 | 0.43.1        |
+| helix     | helix-editor/helix@74075bb           | 25.07.1       |
+| nushell   | nixos/nixpkgs@nixos-unstable@00c21e4 | 0.110.0       |
+| zoxide    | nixos/nixpkgs@nixos-unstable@00c21e4 | 0.9.9         |
+| starship  | nixos/nixpkgs@nixos-unstable@00c21e4 | 1.24.2        |
+| lazygit   | nixos/nixpkgs@nixos-unstable@00c21e4 | 0.58.1        |
+| fzf       | nixos/nixpkgs@nixos-unstable@00c21e4 | 0.67.0        |
+| wezterm   | nixos/nixpkgs@nixos-unstable@00c21e4 | not installed |
+| ghostty   | nixos/nixpkgs@nixos-unstable@00c21e4 | 1.2.3         |
+| nix       | nixos/nixpkgs@nixos-unstable@00c21e4 | 2.33.1        |
+| devenv    | cachix/devenv@435d827                | 1.11.2        |
+| kitty     | nixos/nixpkgs@nixos-unstable@00c21e4 | 0.45.0        |
+| foot      | nixos/nixpkgs@nixos-unstable@00c21e4 | 1.16.2        |
+| alacritty | nixos/nixpkgs@nixos-unstable@00c21e4 | 0.13.2        |
+| macchina  | nixos/nixpkgs@nixos-unstable@00c21e4 | 6.4.0         |
 
 ## Usage
 
-- **Regenerate**: `nu nushell/scripts/utils/version_info.nu --save`
-- **View only**: `nu nushell/scripts/utils/version_info.nu`
+- **Regenerate**: `nu nushell/scripts/utils/version_info.nu --md`
+- **Locked**: Flake input revisions when available (nix uses nixpkgs)
+- **Runtime**: Versions resolved from current PATH
