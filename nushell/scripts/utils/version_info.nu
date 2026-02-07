@@ -165,11 +165,13 @@ def get_locked_version [tool: string, lockfile: record] {
         return "not locked"
     }
 
+    let nixpkgs_locked = (format_locked_entry ($nodes | get -o nixpkgs))
+
     match $tool {
         "devenv" => (format_locked_entry ($nodes | get -o devenv))
         "helix" => (format_locked_entry ($nodes | get -o helix))
-        "nix" => (format_locked_entry ($nodes | get -o nixpkgs))
-        _ => "not locked"
+        "nix" => $nixpkgs_locked
+        _ => $nixpkgs_locked
     }
 }
 
