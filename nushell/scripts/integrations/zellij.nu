@@ -2,6 +2,7 @@
 # Zellij integration utilities for Yazelix
 
 use ../utils/logging.nu *
+export use ../utils/common.nu [is_hx_running]
 
 # Get the tab name based on Git repo or working directory
 export def get_tab_name [working_dir: path] {
@@ -36,11 +37,6 @@ export def get_running_command [] {
     } catch {
         ""
     }
-}
-
-# Check if Helix is running (simplified version for zellij integration)
-export def is_hx_running [command: string] {
-    ($command | str contains "hx") or ($command | str contains "helix")
 }
 
 # Cycle through up to max_panes, looking for a Helix pane by name or running command
@@ -193,7 +189,14 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
 
 # Check if Neovim is running
 export def is_nvim_running [command: string] {
-    ($command | str contains "nvim") or ($command | str contains "neovim")
+    let cmd = $command | str trim | str downcase
+    let parts = $cmd | split row " "
+    let has_nvim_paths = ($parts | any {|part| $part | str ends-with "/nvim"})
+    let has_neovim_paths = ($parts | any {|part| $part | str ends-with "/neovim"})
+    let is_nvim_cmd = ($parts | any {|part| $part == "nvim"})
+    let is_neovim_cmd = ($parts | any {|part| $part == "neovim"})
+
+    $has_nvim_paths or $has_neovim_paths or $is_nvim_cmd or $is_neovim_cmd
 }
 
 # Open a file in an existing Neovim pane and rename tab
