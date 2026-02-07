@@ -1,27 +1,88 @@
 #!/usr/bin/env nu
 # Simple version information for Yazelix tools
 
+def extract_first_semver [] {
+    let matches = ($in | parse --regex '(\d+\.\d+\.\d+)' | get -o capture0)
+    if ($matches | is-empty) {
+        "unknown"
+    } else {
+        $matches | first
+    }
+}
+
+def extract_last_semver [] {
+    let matches = ($in | parse --regex '(\d+\.\d+\.\d+)' | get -o capture0)
+    if ($matches | is-empty) {
+        "unknown"
+    } else {
+        $matches | last
+    }
+}
+
+def short_rev [rev: string] {
+    if ($rev | is-empty) {
+        "unknown"
+    } else {
+        $rev | str substring 0..6
+    }
+}
+
+def format_locked_entry [node: record] {
+    if ($node | is-empty) {
+        return "not locked"
+    }
+
+    let locked = ($node | get -o locked)
+    if ($locked | is-empty) {
+        return "not locked"
+    }
+
+    let owner = ($locked | get -o owner | default "unknown")
+    let repo = ($locked | get -o repo | default "unknown")
+    let rev = (short_rev ($locked | get -o rev | default ""))
+    let ref = ($node | get -o original | get -o ref | default "")
+
+    if ($ref | is-empty) {
+        $"($owner)/($repo)@($rev)"
+    } else {
+        $"($owner)/($repo)@($ref)@($rev)"
+    }
+}
+
+def load_lockfile [] {
+    let lock_path = $"($env.HOME)/.config/yazelix/devenv.lock"
+    if not ($lock_path | path exists) {
+        return null
+    }
+
+    try {
+        open --raw $lock_path | from json
+    } catch {
+        null
+    }
+}
+
 # Get version for a tool with simple fallback
 def get_version [tool: string] {
     try {
         match $tool {
             "yazi" => {
                 if (which yazi | is-empty) { return "not installed" }
-                try { (yazi --version | lines | first | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
+                try { (yazi --version | lines | first | extract_first_semver) } catch { "error" }
             }
             "zellij" => {
                 if (which zellij | is-empty) { return "not installed" }
-                try { (zellij --version | str replace "zellij " "") } catch { "error" }
+                try { (zellij --version | lines | first | extract_first_semver) } catch { "error" }
             }
             "helix" => {
                 # Check if EDITOR is actually Helix before using it
                 let editor = $env.EDITOR
                 let is_helix = ($editor | str ends-with "/hx") or ($editor == "hx") or ($editor | str ends-with "/helix") or ($editor == "helix")
                 if $is_helix {
-                    try { (^$editor --version | lines | first | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
+                    try { (^$editor --version | lines | first | extract_first_semver) } catch { "error" }
                 } else {
                     # Fallback to 'hx' for non-Helix editors
-                    try { (hx --version | lines | first | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "not available" }
+                    try { (hx --version | lines | first | extract_first_semver) } catch { "not available" }
                 }
             }
             "nushell" => {
@@ -30,11 +91,11 @@ def get_version [tool: string] {
             }
             "zoxide" => {
                 if (which zoxide | is-empty) { return "not installed" }
-                try { (zoxide --version | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
+                try { (zoxide --version | lines | first | extract_first_semver) } catch { "error" }
             }
             "starship" => {
                 if (which starship | is-empty) { return "not installed" }
-                try { (starship --version | lines | first | split column " " | get column2 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
+                try { (starship --version | lines | first | extract_first_semver) } catch { "error" }
             }
             "lazygit" => {
                 if (which lazygit | is-empty) { return "not installed" }
@@ -45,7 +106,7 @@ def get_version [tool: string] {
             }
             "fzf" => {
                 if (which fzf | is-empty) { return "not installed" }
-                try { (fzf --version | split column " " | get column1 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
+                try { (fzf --version | lines | first | extract_first_semver) } catch { "error" }
             }
             "wezterm" => {
                 if (which wezterm | is-empty) { return "not installed" }
@@ -53,28 +114,32 @@ def get_version [tool: string] {
             }
             "ghostty" => {
                 if (which ghostty | is-empty) { return "not installed" }
-                try { (ghostty --version | lines | first | split column " " | get column2) } catch { "error" }
+                try { (ghostty --version | lines | first | extract_first_semver) } catch { "error" }
             }
             "nix" => {
                 if (which nix | is-empty) { return "not installed" }
-                try { (nix --version | split column " " | get column3 | str replace --all '[' '' | str replace --all ']' '') } catch { "error" }
+                try { (nix --version | lines | first | extract_last_semver) } catch { "error" }
+            }
+            "devenv" => {
+                if (which devenv | is-empty) { return "not installed" }
+                try { (devenv --version | lines | first | extract_first_semver) } catch { "error" }
             }
             "kitty" => {
                 if (which kitty | is-empty) { return "not installed" }
-                try { (kitty --version | split column " " | get column2) } catch { "error" }
+                try { (kitty --version | lines | first | extract_first_semver) } catch { "error" }
             }
             "foot" => {
                 if (which foot | is-empty) { return "not installed" }
-                try { (foot --version | split column " " | get column2?) } catch { "error" }
+                try { (foot --version | lines | first | extract_first_semver) } catch { "error" }
             }
             "alacritty" => {
                 if (which alacritty | is-empty) { return "not installed" }
-                try { (alacritty --version | split column " " | get column2) } catch { "error" }
+                try { (alacritty --version | lines | first | extract_first_semver) } catch { "error" }
             }
             "macchina" => {
                 if (which macchina | is-empty) { return "not installed" }
                 try {
-                    (macchina -v | lines | first | split row ' ' | where $it != '' | get 1)
+                    (macchina -v | lines | first | extract_first_semver)
                 } catch { "error" }
             }
             _ => {
@@ -87,6 +152,24 @@ def get_version [tool: string] {
         }
     } catch {
         "not available"
+    }
+}
+
+def get_locked_version [tool: string, lockfile: record] {
+    if ($lockfile | is-empty) {
+        return "not locked"
+    }
+
+    let nodes = ($lockfile | get -o nodes)
+    if ($nodes | is-empty) {
+        return "not locked"
+    }
+
+    match $tool {
+        "devenv" => (format_locked_entry ($nodes | get -o devenv))
+        "helix" => (format_locked_entry ($nodes | get -o helix))
+        "nix" => (format_locked_entry ($nodes | get -o nixpkgs))
+        _ => "not locked"
     }
 }
 
@@ -104,6 +187,7 @@ export def main [--save(-s)] {
         "wezterm"
         "ghostty"
         "nix"
+        "devenv"
         "kitty"
         "foot"
         "alacritty"
@@ -111,9 +195,11 @@ export def main [--save(-s)] {
     ]
 
     # Collect tool information
+    let lockfile = load_lockfile
     let tool_data = ($tools | each { |tool|
-        let version = get_version $tool
-        {tool: $tool, version: $version}
+        let locked = get_locked_version $tool $lockfile
+        let runtime = get_version $tool
+        {tool: $tool, locked: $locked, runtime: $runtime}
     })
 
     let header = [
@@ -131,6 +217,8 @@ export def main [--save(-s)] {
         ""
         "- **Regenerate**: `nu nushell/scripts/utils/version_info.nu --save`"
         "- **View only**: `nu nushell/scripts/utils/version_info.nu`"
+        "- **Locked**: Flake input revisions when available (nix uses nixpkgs)"
+        "- **Runtime**: Versions resolved from current PATH"
     ]
 
     let full_output = ([$header [$table_md] $notes] | flatten | str join "\n")
