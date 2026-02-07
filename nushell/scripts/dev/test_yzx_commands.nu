@@ -11,7 +11,7 @@ def test_yzx_help [] {
 
         # Check for key elements in auto-generated help output
         let required_elements = [
-            "Yazelix Command Suite",
+            "Usage:",
             "Subcommands:",
             "yzx doctor",
             "yzx launch",

@@ -181,17 +181,17 @@ def test_display_name [] {
     let name_wrapper = get_terminal_display_name $terminal_info_wrapper
     let name_direct = get_terminal_display_name $terminal_info_direct
 
-    if ($name_wrapper | str contains "nixGL") {
+    if ($name_wrapper | str contains "GPU acceleration") {
         print $"  ✅ Wrapper display name: ($name_wrapper)"
     } else {
-        print $"  ❌ Wrapper display name missing nixGL mention: ($name_wrapper)"
+        print $"  ❌ Wrapper display name missing GPU acceleration hint: ($name_wrapper)"
         return false
     }
 
-    if not ($name_direct | str contains "nixGL") {
+    if not ($name_direct | str contains "GPU acceleration") {
         print $"  ✅ Direct display name: ($name_direct)"
     } else {
-        print $"  ❌ Direct display name incorrectly mentions nixGL: ($name_direct)"
+        print $"  ❌ Direct display name incorrectly mentions GPU acceleration: ($name_direct)"
         return false
     }
 
