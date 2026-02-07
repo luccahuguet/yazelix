@@ -1,6 +1,6 @@
 # Yazelix Tool Versions
 
-Generated: 2026-02-07 17:17:32
+Generated: 2026-02-07 17:21:22
 
 | tool      | locked                               | runtime       |
 | --------- | ------------------------------------ | ------------- |
@@ -23,6 +23,6 @@ Generated: 2026-02-07 17:17:32
 
 ## Usage
 
-- **Regenerate**: `nu nushell/scripts/utils/version_info.nu --md`
+- **Regenerate**: `nu nushell/scripts/utils/version_info.nu --save`
 - **Locked**: Flake input revisions when available (nix uses nixpkgs)
 - **Runtime**: Versions resolved from current PATH

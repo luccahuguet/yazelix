@@ -168,10 +168,10 @@ export def "yzx config_status" [shell?: string] {
 
 # List available versions
 export def "yzx versions" [
-    --md(-m)
+    --save(-s)
 ] {
-    if $md {
-        nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu --md
+    if $save {
+        nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu --save
     } else {
         nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu
     }

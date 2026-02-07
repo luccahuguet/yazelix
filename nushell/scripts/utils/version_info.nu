@@ -177,7 +177,7 @@ def get_locked_version [tool: string, lockfile: record] {
 
 # Main function - markdown table output
 export def main [
-    --md(-m)
+    --save(-s)
 ] {
     let tools = [
         "yazi"
@@ -206,7 +206,7 @@ export def main [
         {tool: $tool, locked: $locked, runtime: $runtime}
     })
 
-    if $md {
+    if $save {
         let header = [
             "# Yazelix Tool Versions"
             ""
@@ -220,7 +220,7 @@ export def main [
             ""
             "## Usage"
             ""
-            "- **Regenerate**: `nu nushell/scripts/utils/version_info.nu --md`"
+            "- **Regenerate**: `nu nushell/scripts/utils/version_info.nu --save`"
             "- **Locked**: Flake input revisions when available (nix uses nixpkgs)"
             "- **Runtime**: Versions resolved from current PATH"
         ]
@@ -235,6 +235,6 @@ export def main [
         print $"Generated: (date now | format date '%Y-%m-%d %H:%M:%S')"
         print ($tool_data | table)
         print ""
-        print "Run with --md to save Markdown output."
+        print "Run with --save to write Markdown output."
     }
 }
