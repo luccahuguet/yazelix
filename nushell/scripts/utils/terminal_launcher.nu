@@ -77,6 +77,29 @@ export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
     null
 }
 
+# Build a detached launch prefix for new terminal windows.
+# This avoids inheriting the current Zellij client context during restart flows.
+def build_detached_launch_prefix [needs_reload: bool]: nothing -> string {
+    mut unset_vars = [
+        "ZELLIJ"
+        "ZELLIJ_SESSION_NAME"
+        "ZELLIJ_PANE_ID"
+        "ZELLIJ_TAB_NAME"
+        "ZELLIJ_TAB_POSITION"
+    ]
+    if $needs_reload {
+        $unset_vars = ($unset_vars | append "IN_YAZELIX_SHELL" | append "IN_NIX_SHELL")
+    }
+
+    let unset_flags = ($unset_vars | each {|name| $"-u ($name)"} | str join " ")
+    let setsid_prefix = if (which setsid | is-not-empty) { "setsid " } else { "" }
+    $"env ($unset_flags) ($setsid_prefix)"
+}
+
+def build_detached_background_command [prefix: string, command: string]: nothing -> string {
+    $"nohup ($prefix)($command) >/dev/null 2>&1 < /dev/null &"
+}
+
 # Build launch command for a terminal
 export def build_launch_command [
     terminal_info: record
@@ -87,44 +110,37 @@ export def build_launch_command [
     let terminal = $terminal_info.terminal
     let command = $terminal_info.command
     let use_wrapper = $terminal_info.use_wrapper
-
-    # Smart environment reload: only unset vars if config changed
-    # This makes launches faster when config hasn't changed (uses inherited devenv shell)
-    # When config changed, we clear vars to force fresh devenv shell and pick up changes
-    let env_prefix = if $needs_reload {
-        "env -u IN_YAZELIX_SHELL -u IN_NIX_SHELL "
-    } else {
-        ""
-    }
+    let launch_prefix = build_detached_launch_prefix $needs_reload
 
     if $use_wrapper {
         # Wrappers handle config internally via environment variable
-        $"nohup ($env_prefix)($command) >/dev/null 2>&1 &"
+        build_detached_background_command $launch_prefix $command
     } else {
         # Direct terminal launch with config
         # Check if nixGLIntel is available for GPU acceleration
         let nixgl_prefix = if (which nixGLIntel | is-not-empty) { "nixGLIntel " } else { "" }
-
-        match $terminal {
+        let terminal_cmd = match $terminal {
             "ghostty" => {
-                $"nohup ($env_prefix)($nixgl_prefix)ghostty --config-file=($config_path) --title=\"Yazelix - Ghostty\" >/dev/null 2>&1 &"
+                $"($nixgl_prefix)ghostty --config-file=($config_path) --title=\"Yazelix - Ghostty\""
             },
             "wezterm" => {
-                $"nohup ($env_prefix)($nixgl_prefix)wezterm --config-file ($config_path) start --class=com.yazelix.Yazelix >/dev/null 2>&1 &"
+                $"($nixgl_prefix)wezterm --config-file ($config_path) start --class=com.yazelix.Yazelix"
             },
             "kitty" => {
-                $"nohup ($env_prefix)($nixgl_prefix)kitty --config=($config_path) --class=com.yazelix.Yazelix --title=\"Yazelix - Kitty\" >/dev/null 2>&1 &"
+                $"($nixgl_prefix)kitty --config=($config_path) --class=com.yazelix.Yazelix --title=\"Yazelix - Kitty\""
             },
             "alacritty" => {
-                $"nohup ($env_prefix)($nixgl_prefix)alacritty --config-file ($config_path) --title \"Yazelix - Alacritty\" >/dev/null 2>&1 &"
+                $"($nixgl_prefix)alacritty --config-file ($config_path) --title \"Yazelix - Alacritty\""
             },
             "foot" => {
-                $"nohup ($env_prefix)($nixgl_prefix)foot --config ($config_path) --app-id com.yazelix.Yazelix >/dev/null 2>&1 &"
+                $"($nixgl_prefix)foot --config ($config_path) --app-id com.yazelix.Yazelix"
             },
             _ => {
                 error make {msg: $"Unknown terminal: ($terminal)"}
             }
         }
+
+        build_detached_background_command $launch_prefix $terminal_cmd
     }
 }
 

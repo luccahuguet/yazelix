@@ -17,6 +17,7 @@ Yazelix uses **selective remapping** - only conflicting Zellij keybindings are c
 ### Zellij Modes (Helix-Compatible)
 | Keybinding                | Action                        | Notes |
 |--------------------------|-------------------------------|-------|
+| **Alt+Shift+m**          | **Yazelix menu**              | opens yzx command palette popup |
 | **Ctrl+Alt+g**           | **Locked mode**               | ⚠️ Remapped (was Ctrl+g) |
 | Ctrl+p                   | Pane mode                     | ✅ Original (no conflict) |
 | Ctrl+n                   | Resize mode                   | ✅ Original (no conflict) |

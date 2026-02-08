@@ -77,6 +77,21 @@ Show enabled packs and their sizes
 ### `yzx versions`
 Display all tool versions
 
+### `yzx menu [--popup]`
+Interactive command palette (fuzzy search)
+- Default: inline mode in current terminal
+- `--popup`: open in a Zellij floating pane (errors if not in Zellij)
+- Lists most `yzx` commands while hiding maintenance-heavy or low-signal entries (`yzx dev*`, `yzx sweep*`, `yzx env`, `yzx bench`, `yzx config_status`, `yzx lint`, `yzx profile`, `yzx test`, `yzx run`)
+- Cancel with `Esc`
+- In popup mode after running a command: `Backspace` returns to menu, `Enter`/`Esc` closes popup
+- Keybind: `Alt Shift m` opens the popup menu in Zellij
+- Popup pane is named `yzx_menu` to avoid duplicate menu instances
+
+### `yzx config open [--print]`
+Open the active Yazelix configuration file in your editor
+- Uses `$EDITOR` (set by Yazelix from `[editor] command` in yazelix.toml)
+- `--print`: print the resolved config path without opening
+
 ### `yzx config_status [shell]`
 Check shell configuration status
 

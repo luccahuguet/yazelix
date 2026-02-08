@@ -161,6 +161,55 @@ def test_launch_command_building [] {
     }
 }
 
+def test_launch_command_detachment [] {
+    print "🧪 Testing launch command detachment..."
+
+    let terminal_info = {
+        terminal: "ghostty",
+        name: "Ghostty",
+        command: "ghostty",
+        use_wrapper: false
+    }
+
+    let cold_cmd = build_launch_command $terminal_info "/tmp/test.conf" "yazelix" true
+    let warm_cmd = build_launch_command $terminal_info "/tmp/test.conf" "yazelix" false
+
+    let required_segments = [
+        "nohup "
+        "env -u ZELLIJ"
+        "-u ZELLIJ_SESSION_NAME"
+        "-u ZELLIJ_PANE_ID"
+        "-u ZELLIJ_TAB_NAME"
+        "-u ZELLIJ_TAB_POSITION"
+        "< /dev/null &"
+    ]
+
+    for segment in $required_segments {
+        if not ($cold_cmd | str contains $segment) {
+            print $"  ❌ Missing required detachment segment: ($segment)"
+            return false
+        }
+    }
+
+    if (which setsid | is-not-empty) and not ($cold_cmd | str contains "setsid ") {
+        print "  ❌ setsid expected but missing from launch command"
+        return false
+    }
+
+    if not ($cold_cmd | str contains "-u IN_YAZELIX_SHELL") or not ($cold_cmd | str contains "-u IN_NIX_SHELL") {
+        print "  ❌ Cold launch should unset IN_YAZELIX_SHELL and IN_NIX_SHELL"
+        return false
+    }
+
+    if ($warm_cmd | str contains "-u IN_YAZELIX_SHELL") or ($warm_cmd | str contains "-u IN_NIX_SHELL") {
+        print "  ❌ Warm launch should not unset IN_YAZELIX_SHELL/IN_NIX_SHELL"
+        return false
+    }
+
+    print "  ✅ Launch command detachment rules verified"
+    true
+}
+
 def test_display_name [] {
     print "🧪 Testing display name generation..."
 
@@ -209,6 +258,7 @@ def main [] {
         (test_terminal_detection),
         (test_config_path_resolution),
         (test_launch_command_building),
+        (test_launch_command_detachment),
         (test_display_name)
     ]
 

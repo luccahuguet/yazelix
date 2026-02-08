@@ -195,6 +195,19 @@ keybinds {
         unbind "Alt Shift p"
         bind "Ctrl Alt p" { TogglePaneInGroup; }
         bind "Ctrl Alt Shift p" { ToggleGroupMarking; }
+
+        // Yazelix command palette (yzx menu) in a floating pane
+        bind "Alt Shift m" {
+            Run "nu" "~/.config/yazelix/configs/zellij/scripts/yzx_menu_popup.nu" {
+                name "yzx_menu"
+                floating true
+                close_on_exit true
+                x "5%"
+                y "5%"
+                width "90%"
+                height "90%"
+            }
+        }
     }
 
     shared_except "locked" {

@@ -285,6 +285,10 @@ export def check_log_files [] {
     }
 }
 
+def is_devenv_installed [] {
+    (which devenv | is-not-empty)
+}
+
 # Check devenv installation for performance boost
 export def check_devenv_installation [] {
     if (is_devenv_installed) {

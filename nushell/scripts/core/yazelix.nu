@@ -19,6 +19,7 @@ export use ../yzx/run.nu *
 export use ../yzx/packs.nu *
 export use ../yzx/gc.nu *
 export use ../yzx/dev.nu *
+export use ../yzx/menu.nu *
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
@@ -202,27 +203,53 @@ export def "yzx info" [] {
     print "=========================="
 }
 
-# Helper: Kill the current Zellij session
-def kill_current_zellij_session [] {
+# Helper: Resolve the current Zellij session from environment or CLI.
+def get_current_zellij_session [] {
+    if ($env.ZELLIJ_SESSION_NAME? | is-not-empty) {
+        return $env.ZELLIJ_SESSION_NAME
+    }
+
     try {
-        let current_session = (zellij list-sessions
+        let current_line = (
+            zellij list-sessions
             | lines
-            | where $it =~ 'current'
+            | where {|line| ($line =~ '\bcurrent\b')}
             | first
-            | split row " "
-            | first)
+        )
 
-        # Strip ANSI escape codes
-        let clean_session = ($current_session | str replace -ra '\u001b\[[0-9;]*[A-Za-z]' '')
+        let clean_line = (
+            $current_line
+            | str replace -ra '\u001b\[[0-9;]*[A-Za-z]' ''
+            | str replace -r '^>\s*' ''
+            | str trim
+        )
 
-        if ($clean_session | is-empty) {
-            print "⚠️  No current Zellij session detected"
+        if ($clean_line | is-empty) {
             return null
         }
 
-        print $"Killing Zellij session: ($clean_session)"
-        zellij kill-session $clean_session
-        return $clean_session
+        return (
+            $clean_line
+            | split row " "
+            | where {|token| $token != ""}
+            | first
+        )
+    } catch {
+        return null
+    }
+}
+
+# Helper: Kill a specific Zellij session
+def kill_zellij_session [session_name?: string] {
+    try {
+        if ($session_name | is-empty) {
+            print "⚠️  No Zellij session detected to close"
+            return null
+        }
+
+        print $"Killing Zellij session: ($session_name)"
+        zellij kill-session $session_name
+        return $session_name
     } catch {|err|
         print $"❌ Failed to kill session: ($err.msg)"
         return null
@@ -235,6 +262,7 @@ export def "yzx restart" [] {
     let config = $env_prep.config
     let manage_terminals = ($config.manage_terminals? | default true)
     let needs_refresh = $env_prep.needs_refresh
+    let session_to_kill = get_current_zellij_session
 
     # Detect if we're in a Yazelix-controlled terminal (launched via wrapper)
     let is_yazelix_terminal = ($env.YAZELIX_TERMINAL_CONFIG_MODE? | is-not-empty)
@@ -261,8 +289,9 @@ export def "yzx restart" [] {
     # Wait for new session to spawn
     sleep 1sec
 
-    # Kill old session (Yazelix terminals will close, vanilla stays open)
-    kill_current_zellij_session
+    # Kill the originating session after launching the new window.
+    # yzx launch clears inherited Zellij context vars so the new window starts independently.
+    kill_zellij_session $session_to_kill
 }
 
 # Run health checks and diagnostics
