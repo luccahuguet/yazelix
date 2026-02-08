@@ -18,7 +18,7 @@ export def "yzx env" [
 
     let original_dir = (pwd)
 
-    let shell_supervisor = "child=''; trap 'test -n \"$child\" && kill \"$child\" 2>/dev/null' HUP TERM; \"$@\" & child=$!; wait \"$child\""
+    let shell_supervisor = "if command -v setpriv >/dev/null 2>&1; then exec setpriv --pdeathsig TERM -- \"$@\"; else trap 'kill 0' HUP TERM; exec \"$@\"; fi"
 
     if $no_shell {
         # For --no-shell, preserve current behavior and launch bash in devenv.
@@ -38,8 +38,9 @@ export def "yzx env" [
             _ => [$shell_name]
         }
         let shell_exec = ($shell_command | first)
-        # Launch configured shell through a small sh supervisor:
-        # trap HUP/TERM, kill only child shell PID, and wait for shell exit.
+        # Launch configured shell through a small sh supervisor.
+        # Prefer Linux parent-death signaling (setpriv --pdeathsig TERM) for
+        # force-close paths; fall back to HUP/TERM trap when unavailable.
 
         try {
             with-env {SHELL: $shell_exec} {
