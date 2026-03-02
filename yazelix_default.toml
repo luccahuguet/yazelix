@@ -285,7 +285,7 @@ user_packages = [
 ai_agents = [
   "claude-code",    # Claude Code CLI (Anthropic)
   "codex",          # Codex CLI (OpenAI)
-  "gemini-cli",     # Gemini CLI (Google)
+  # "gemini-cli",   # Blocked: it was crashing and causing unstable setups
   "opencode",       # OpenCode CLI
   "amp",            # Amp coding agent
   "cursor-agent",   # Cursor agent

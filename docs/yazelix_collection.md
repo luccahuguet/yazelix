@@ -181,7 +181,6 @@ AI coding agents sourced from [llm-agents.nix](https://github.com/numtide/llm-ag
 
 - [claude-code](https://github.com/anthropics/claude-code) — Claude Code CLI (Anthropic)
 - [codex](https://github.com/openai/codex) — Codex CLI for agentic coding (OpenAI)
-- [gemini-cli](https://github.com/google-gemini/gemini-cli) — Gemini CLI (Google)
 - [opencode](https://github.com/opencode-ai/opencode) — OpenCode CLI
 - [amp](https://github.com/sourcegraph/amp) — Amp coding agent
 - [cursor-agent](https://github.com/getcursor/cursor) — Cursor agent

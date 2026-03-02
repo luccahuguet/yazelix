@@ -349,7 +349,6 @@ in
         ai_agents = [
           "claude-code"
           "codex"
-          "gemini-cli"
           "opencode"
           "amp"
           "cursor-agent"

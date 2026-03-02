@@ -32,12 +32,17 @@ let
     "coderabbit-cli"
     "codex"
     "cursor-agent"
-    "gemini-cli"
     "goose-cli"
     "openclaw"
     "picoclaw"
     "opencode"
     "zeroclaw"
+  ];
+
+  # Packages explicitly blocked in Yazelix packs/user_packages.
+  # gemini-cli is blocked because it was crashing and causing unstable setups.
+  blockedPackageNames = [
+    "gemini-cli"
   ];
   nixglIntel =
     if nixglPackages != null && nixglPackages ? nixGLIntel then nixglPackages.nixGLIntel else null;
@@ -107,7 +112,9 @@ let
     pack_declarations = rawPacks.declarations or { };
     user_packages = map (
       name:
-      if builtins.hasAttr name pkgs then
+      if builtins.elem name blockedPackageNames then
+        throw "Package '${name}' is blocked in Yazelix. Remove it from packs/user_packages."
+      else if builtins.hasAttr name pkgs then
         builtins.getAttr name pkgs
       else
         throw "Package '${name}' not found in nixpkgs"
@@ -464,7 +471,9 @@ let
       path = lib.splitString "." name;
       nixpkgsValue = lib.attrByPath path null pkgs;
     in
-    if llmAgentsValue != null then
+    if builtins.elem name blockedPackageNames then
+      throw "Package '${name}' is blocked in Yazelix. Remove it from packs/user_packages."
+    else if llmAgentsValue != null then
       llmAgentsValue
     else if nixpkgsValue != null then
       nixpkgsValue
