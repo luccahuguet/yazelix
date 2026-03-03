@@ -41,6 +41,13 @@ Load Yazelix environment without UI
 - Default: Drop into your configured shell with all Yazelix tools available
 - `--no-shell`: Stay in current shell (doesn't switch shells)
 
+### `yzx refresh [--force] [--verbose]`
+Refresh Yazelix `devenv` evaluation cache/environment without launching UI
+- Default: Refresh only when config or devenv inputs changed
+- `--force`: Refresh even if no changes are detected
+- `--verbose`: Show detailed refresh diagnostics
+- Note: Refresh does not hot-replace your current shell environment. Use `yzx restart` or open a new Zellij pane to consume updated env vars/tools immediately.
+
 ### `yzx run <command> [args...]`
 Run a single command in the Yazelix environment and exit
 - Quote args that start with `-` to avoid flag parsing (e.g., `"-lc"`)
@@ -117,6 +124,8 @@ yzx launch --verbose          # Detailed launch diagnostics
 # Environment-only mode (no UI)
 yzx env                       # Drop into configured shell with Yazelix tools
 yzx env --no-shell            # Load tools but stay in current shell
+yzx refresh                   # Refresh devenv cache if changes were detected
+yzx refresh --force           # Force refresh even when up to date
 yzx run lazygit               # Run single command and exit
 yzx run bash "-lc" "lazygit"  # Run through a shell
 

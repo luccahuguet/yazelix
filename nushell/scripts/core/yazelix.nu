@@ -15,6 +15,7 @@ use ./start_yazelix.nu [start_yazelix_session]
 # Import modularized commands (export use to properly re-export subcommands)
 export use ../yzx/launch.nu *
 export use ../yzx/env.nu *
+export use ../yzx/refresh.nu *
 export use ../yzx/run.nu *
 export use ../yzx/packs.nu *
 export use ../yzx/gc.nu *

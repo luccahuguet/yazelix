@@ -249,6 +249,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx launch --terminal ghostty` - Force a particular terminal for this launch
 - `yzx launch --verbose` - Print detailed launch diagnostics
 - `yzx env [--no-shell]` - Load Yazelix tools without UI and drop into your configured shell (`--no-shell` keeps your current shell)
+- `yzx refresh [--force]` - Refresh devenv cache/environment without launching UI (`--force` refreshes even when up to date)
 - `yzx run <command> [args...]` - Run a single command inside the Yazelix environment
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
 - `yzx profile [--detailed] [--history]` - Profile launch performance and identify bottlenecks
