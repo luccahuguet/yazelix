@@ -32,6 +32,8 @@ export def parse_yazelix_config [] {
     # Extract and return values
     {
         recommended_deps: ($raw_config.core?.recommended_deps? | default true),
+        yazi_extensions: ($raw_config.core?.yazi_extensions? | default true),
+        yazi_media: ($raw_config.core?.yazi_media? | default false),
         debug_mode: ($raw_config.core?.debug_mode? | default false),
         skip_welcome_screen: ($raw_config.core?.skip_welcome_screen? | default false),
         show_macchina_on_welcome: ($raw_config.core?.show_macchina_on_welcome? | default true),
@@ -57,6 +59,7 @@ export def parse_yazelix_config [] {
         yazi_sort_by: ($raw_config.yazi?.sort_by? | default "alphabetical"),
         pack_names: ($raw_config.packs?.enabled? | default []),
         pack_declarations: ($raw_config.packs?.declarations? | default {}),
+        user_packages: ($raw_config.packs?.user_packages? | default []),
         config_file: $config_to_read
     }
 }
