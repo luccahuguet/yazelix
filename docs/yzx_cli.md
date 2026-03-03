@@ -47,7 +47,7 @@ Load Yazelix environment without UI
 Refresh Yazelix `devenv` evaluation cache/environment without launching UI
 - Default: Refresh only when config or devenv inputs changed
 - `--force`: Refresh even if no changes are detected
-- `--verbose`: Show detailed refresh diagnostics
+- `--verbose`: Show detailed refresh diagnostics and stream Nix package build logs
 - Note: Refresh does not hot-replace your current shell environment. Use `yzx restart` or open a new Zellij pane to consume updated env vars/tools immediately.
 
 ### `yzx run <command> [args...]`
@@ -131,6 +131,7 @@ yzx env --no-shell            # Load tools but stay in current shell
 yzx env -s                    # Load env while skipping explicit refresh trigger
 yzx refresh                   # Refresh devenv cache if changes were detected
 yzx refresh --force           # Force refresh even when up to date
+yzx refresh -v                # Refresh and stream diagnostics/build logs
 yzx run lazygit               # Run single command and exit
 yzx run bash "-lc" "lazygit"  # Run through a shell
 

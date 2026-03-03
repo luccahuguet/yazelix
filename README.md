@@ -250,7 +250,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx launch --verbose` - Print detailed launch diagnostics
 - `yzx launch --skip-refresh` - Launch while skipping explicit refresh trigger (may use stale env)
 - `yzx env [--no-shell] [--skip-refresh]` - Load Yazelix tools without UI (`--no-shell` keeps your current shell, `--skip-refresh` may use stale env)
-- `yzx refresh [--force]` - Refresh devenv cache/environment without launching UI (`--force` refreshes even when up to date)
+- `yzx refresh [--force] [--verbose]` - Refresh devenv cache/environment without launching UI (`--force` refreshes even when up to date, `--verbose` streams diagnostics and package build output)
 - `yzx run <command> [args...]` - Run a single command inside the Yazelix environment
 - `yzx restart --skip-refresh` - Restart while skipping explicit refresh trigger (may use stale env)
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
