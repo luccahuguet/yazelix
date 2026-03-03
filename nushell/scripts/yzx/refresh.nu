@@ -1,9 +1,8 @@
 #!/usr/bin/env nu
 # yzx refresh command - Refresh Yazelix devenv cache/environment without launching UI
 
-use ../utils/environment_bootstrap.nu prepare_environment
+use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled]
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
-use ../utils/common.nu [get_max_cores]
 
 # Refresh devenv evaluation cache without launching Yazelix UI
 export def "yzx refresh" [
@@ -14,7 +13,6 @@ export def "yzx refresh" [
     ensure_nix_available
 
     let env_prep = prepare_environment --verbose=$verbose
-    let config = $env_prep.config
     let config_state = $env_prep.config_state
     let needs_refresh = $config_state.needs_refresh
 
@@ -32,30 +30,9 @@ export def "yzx refresh" [
 
     print $"♻️  Refreshing Yazelix environment \(($refresh_reason)\)..."
 
-    let yazelix_dir = "~/.config/yazelix" | path expand
-    if not ($yazelix_dir | path exists) {
-        print $"❌ Yazelix directory not found: ($yazelix_dir)"
-        exit 1
-    }
-
-    let max_cores = get_max_cores
-    let allow_unfree = (($config.pack_names? | default []) | any { |name| $name == "unfree" })
-
-    mut devenv_cmd = [
-        "env"
-        "-C"
-        $yazelix_dir
-        "devenv"
-        "--impure"
-        "--cores"
-        ($max_cores | into string)
-    ]
-
-    if not $verbose {
-        $devenv_cmd = ($devenv_cmd | append "--quiet")
-    }
-
-    $devenv_cmd = ($devenv_cmd | append "--refresh-eval-cache" | append "shell" | append "--" | append "true")
+    let allow_unfree = is_unfree_enabled
+    let devenv_base = get_devenv_base_command --quiet=(not $verbose) --refresh-eval-cache
+    let devenv_cmd = ($devenv_base | append ["shell", "--", "true"])
 
     let cmd_bin = ($devenv_cmd | first)
     let cmd_args = ($devenv_cmd | skip 1)

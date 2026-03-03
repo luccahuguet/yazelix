@@ -9,7 +9,7 @@ use common.nu [get_max_cores]
 use config_state.nu [compute_config_state mark_config_state_applied]
 
 # Check if unfree pack is enabled in yazelix.toml
-def is_unfree_enabled [] {
+export def is_unfree_enabled [] {
     let yazelix_dir = "~/.config/yazelix" | path expand
     let toml_file = ($yazelix_dir | path join "yazelix.toml")
     let default_toml = ($yazelix_dir | path join "yazelix_default.toml")
@@ -17,6 +17,49 @@ def is_unfree_enabled [] {
     let raw_config = open $config_file
     let pack_names = ($raw_config.packs?.enabled? | default [])
     $pack_names | any { |name| $name == "unfree" }
+}
+
+# Resolve absolute Yazelix directory from HOME
+def resolve_yazelix_dir [] {
+    let home = $env.HOME
+    if ($home | is-empty) or (not ($home | path exists)) {
+        print "Error: Cannot resolve HOME directory"
+        exit 1
+    }
+    let yazelix_dir = $"($home)/.config/yazelix"
+    if not ($yazelix_dir | path exists) {
+        print $"Error: Cannot find Yazelix directory at ($yazelix_dir)"
+        exit 1
+    }
+    $yazelix_dir
+}
+
+# Build a base devenv command from the canonical Yazelix directory
+export def get_devenv_base_command [
+    --quiet             # Include --quiet in devenv arguments
+    --refresh-eval-cache  # Include --refresh-eval-cache in devenv arguments
+] {
+    let yazelix_dir = resolve_yazelix_dir
+    let max_cores = get_max_cores
+
+    mut cmd = [
+        "env"
+        "-C"
+        $yazelix_dir
+        "devenv"
+        "--impure"
+        "--cores"
+        ($max_cores | into string)
+    ]
+
+    if $quiet {
+        $cmd = ($cmd | append "--quiet")
+    }
+    if $refresh_eval_cache {
+        $cmd = ($cmd | append "--refresh-eval-cache")
+    }
+
+    $cmd
 }
 
 # Check if already in Yazelix or Nix environment
@@ -177,23 +220,8 @@ export def run_in_devenv_shell_command [
         print "⚙️ Entering devenv shell before running command"
     }
 
-    let home = $env.HOME
-    if ($home | is-empty) or (not ($home | path exists)) {
-        print "Error: Cannot resolve HOME directory"
-        exit 1
-    }
-    let yazelix_dir = $"($home)/.config/yazelix"
-    if not ($yazelix_dir | path exists) {
-        print $"Error: Cannot find Yazelix directory at ($yazelix_dir)"
-        exit 1
-    }
-    let max_cores = get_max_cores
-
-    mut devenv_flags = ["--impure", "--cores", $max_cores]
-    if $quiet {
-        $devenv_flags = ($devenv_flags | prepend "--quiet")
-    }
-    let devenv_cmd = (["env", "-C", $yazelix_dir, "devenv"] | append $devenv_flags | append ["shell", "--"] | append $exec_cmd)
+    let devenv_base = get_devenv_base_command --quiet=$quiet
+    let devenv_cmd = ($devenv_base | append ["shell", "--"] | append $exec_cmd)
     let devenv_bin = ($devenv_cmd | first)
     let devenv_args = ($devenv_cmd | skip 1)
 
