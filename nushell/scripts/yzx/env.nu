@@ -4,6 +4,30 @@
 use ../utils/environment_bootstrap.nu *
 use ../utils/config_state.nu [mark_config_state_applied]
 
+# Build shell command from shell name.
+# --login keeps existing behavior for default yzx env mode.
+def resolve_shell_command [shell_name: string, --login] {
+    let normalized = ($shell_name | str downcase)
+
+    if $login {
+        match $normalized {
+            "nu" => ["nu" "--login"]
+            "bash" => ["bash" "--login"]
+            "fish" => ["fish" "-l"]
+            "zsh" => ["zsh" "-l"]
+            _ => [$normalized]
+        }
+    } else {
+        match $normalized {
+            "nu" => ["nu"]
+            "bash" => ["bash"]
+            "fish" => ["fish"]
+            "zsh" => ["zsh"]
+            _ => [$normalized]
+        }
+    }
+}
+
 # Load yazelix environment without UI
 export def "yzx env" [
     --no-shell(-n)  # Keep current shell instead of launching configured shell
@@ -20,14 +44,23 @@ export def "yzx env" [
 
     let has_setpriv = (which setpriv | is-not-empty)
     let trap_supervisor = "trap 'kill 0' HUP TERM; exec \"$@\""
+    let configured_shell_name = ($config.default_shell? | default "nu" | str downcase)
+    let invoking_shell_name = (
+        if ($env.SHELL? | is-not-empty) {
+            $env.SHELL | path basename | str downcase
+        } else {
+            $configured_shell_name
+        }
+    )
 
     if $no_shell {
-        # For --no-shell, preserve current behavior and launch bash in devenv.
+        # For --no-shell, preserve the invoking shell when possible.
+        let shell_command = (resolve_shell_command $invoking_shell_name)
         if $has_setpriv {
-            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" "bash" --cwd $original_dir --env-only --quiet --force-refresh=$needs_refresh
+            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --cwd $original_dir --env-only --quiet --force-refresh=$needs_refresh
         } else {
             # macOS and other systems without setpriv use POSIX trap fallback.
-            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" "bash" --cwd $original_dir --env-only --quiet --force-refresh=$needs_refresh
+            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir --env-only --quiet --force-refresh=$needs_refresh
         }
 
         if $needs_refresh {
@@ -35,14 +68,7 @@ export def "yzx env" [
         }
     } else {
         # Launch configured shell
-        let shell_name = ($config.default_shell? | default "nu" | str downcase)
-        let shell_command = match $shell_name {
-            "nu" => ["nu" "--login"]
-            "bash" => ["bash" "--login"]
-            "fish" => ["fish" "-l"]
-            "zsh" => ["zsh" "-l"]
-            _ => [$shell_name]
-        }
+        let shell_command = (resolve_shell_command $configured_shell_name --login)
         let shell_exec = ($shell_command | first)
         # Prefer Linux parent-death signaling for force-close paths.
         # Fall back to POSIX trap on systems without setpriv (for example macOS).
