@@ -259,18 +259,24 @@ def kill_zellij_session [session_name?: string] {
 }
 
 # Restart yazelix
-export def "yzx restart" [] {
+export def "yzx restart" [
+    --skip-refresh(-s) # Skip explicit refresh trigger and allow potentially stale environment
+] {
     let env_prep = prepare_environment
     let config = $env_prep.config
     let manage_terminals = ($config.manage_terminals? | default true)
     let needs_refresh = $env_prep.needs_refresh
+    let should_refresh = ($needs_refresh and (not $skip_refresh))
     let session_to_kill = get_current_zellij_session
 
     # Detect if we're in a Yazelix-controlled terminal (launched via wrapper)
     let is_yazelix_terminal = ($env.YAZELIX_TERMINAL_CONFIG_MODE? | is-not-empty)
 
     # Provide appropriate messaging
-    if $manage_terminals and $needs_refresh {
+    if $skip_refresh and $needs_refresh {
+        print "⚠️  Skipping explicit refresh trigger; environment may be stale."
+        print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
+    } else if $manage_terminals and $should_refresh {
         print "🔄 Configuration changed - rebuilding environment to install terminals..."
     }
     if $is_yazelix_terminal {
@@ -280,10 +286,12 @@ export def "yzx restart" [] {
     }
 
     # Launch new terminal window
-    if $manage_terminals and $needs_refresh {
+    if $manage_terminals and $should_refresh {
         with-env {YAZELIX_FORCE_REENTER: "true"} {
             yzx launch
         }
+    } else if $skip_refresh {
+        yzx launch --skip-refresh
     } else {
         yzx launch
     }

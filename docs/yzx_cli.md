@@ -27,7 +27,7 @@ Profile launch sequence and identify performance bottlenecks
 - `--cold`: Profile cold start from vanilla terminal (emulates desktop entry or fresh terminal launch)
 - `--clear-cache`: Toggle yazelix.toml option and clear cache to force full Nix re-evaluation (simulates config change)
 
-### `yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose]`
+### `yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose] [--skip-refresh]`
 Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
 - `--here`: Start in current terminal (instead of new terminal)
@@ -35,11 +35,13 @@ Launch Yazelix with directory and mode options
 - `--home`: Start in home directory
 - `--terminal TERM`: Override terminal selection (e.g., ghostty, wezterm, kitty)
 - `--verbose`: Print detailed launch diagnostics
+- `--skip-refresh, -s`: Skip explicit refresh trigger and allow potentially stale environment
 
-### `yzx env [--no-shell]`
+### `yzx env [--no-shell] [--skip-refresh]`
 Load Yazelix environment without UI
 - Default: Drop into your configured shell with all Yazelix tools available
 - `--no-shell`: Stay in current shell (doesn't switch shells)
+- `--skip-refresh, -s`: Skip explicit refresh trigger and allow potentially stale environment
 
 ### `yzx refresh [--force] [--verbose]`
 Refresh Yazelix `devenv` evaluation cache/environment without launching UI
@@ -56,8 +58,9 @@ Run a single command in the Yazelix environment and exit
 Print a terminal emulator config generated from `yazelix_default.toml`
 - Example: `yzx gen_config alacritty`
 
-### `yzx restart`
+### `yzx restart [--skip-refresh]`
 Restart Yazelix (handles persistent sessions)
+- `--skip-refresh, -s`: Skip explicit refresh trigger and allow potentially stale environment
 
 ### `yzx info`
 Show system information and settings
@@ -120,10 +123,12 @@ yzx launch --home             # New terminal in home directory
 yzx launch --here --path ~/project  # Current terminal, specific directory
 yzx launch --terminal wezterm # Force WezTerm for this launch
 yzx launch --verbose          # Detailed launch diagnostics
+yzx launch -s                 # Launch while skipping explicit refresh trigger
 
 # Environment-only mode (no UI)
 yzx env                       # Drop into configured shell with Yazelix tools
 yzx env --no-shell            # Load tools but stay in current shell
+yzx env -s                    # Load env while skipping explicit refresh trigger
 yzx refresh                   # Refresh devenv cache if changes were detected
 yzx refresh --force           # Force refresh even when up to date
 yzx run lazygit               # Run single command and exit

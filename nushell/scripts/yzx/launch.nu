@@ -13,6 +13,7 @@ export def "yzx launch" [
     --home             # Start in home directory
     --terminal(-t): string  # Override terminal selection (for sweep testing)
     --verbose          # Enable verbose logging
+    --skip-refresh(-s) # Skip explicit refresh trigger and allow potentially stale environment
 ] {
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
@@ -26,14 +27,19 @@ export def "yzx launch" [
     let config = $env_prep.config
     let config_state = $env_prep.config_state
     mut needs_refresh = $env_prep.needs_refresh
+    let should_refresh = ($needs_refresh and (not $skip_refresh))
     let manage_terminals = ($config.manage_terminals? | default true)
     if $verbose_mode {
         print $"🔍 Config hash changed? ($needs_refresh)"
     }
+    if $skip_refresh and $needs_refresh {
+        print "⚠️  Skipping explicit refresh trigger; environment may be stale."
+        print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
+    }
 
     let force_reenter = ($env.YAZELIX_FORCE_REENTER? == "true")
     mut in_yazelix_shell = ($env.IN_YAZELIX_SHELL? == "true")
-    if $manage_terminals and $needs_refresh and $in_yazelix_shell {
+    if $manage_terminals and $should_refresh and $in_yazelix_shell {
         # Only print if not called from yzx restart (which already printed the message)
         if not $force_reenter {
             print "🔄 Configuration changed - rebuilding environment to install terminals..."
@@ -58,7 +64,7 @@ export def "yzx launch" [
         }
 
         if $verbose {
-            if $needs_refresh {
+            if $should_refresh {
                 with-env {YAZELIX_FORCE_REFRESH: "true"} {
                     if ($cwd_override != null) {
                         start_yazelix_session $cwd_override --verbose
@@ -74,7 +80,7 @@ export def "yzx launch" [
                 }
             }
         } else {
-            if $needs_refresh {
+            if $should_refresh {
                 with-env {YAZELIX_FORCE_REFRESH: "true"} {
                     if ($cwd_override != null) {
                         start_yazelix_session $cwd_override
@@ -90,7 +96,7 @@ export def "yzx launch" [
                 }
             }
         }
-        if $needs_refresh {
+        if $should_refresh {
             mark_config_state_applied $config_state
         }
         return
@@ -123,7 +129,7 @@ export def "yzx launch" [
             if $verbose_mode {
                 let run_args = ($mut_args | append "--verbose")
                 print $"⚙️ Executing launch_yazelix.nu inside Yazelix shell - cwd: ($launch_cwd)"
-                let env_record = if $needs_refresh {
+                let env_record = if $should_refresh {
                     {YAZELIX_VERBOSE: "true", YAZELIX_FORCE_REFRESH: "true"}
                 } else {
                     {YAZELIX_VERBOSE: "true"}
@@ -133,7 +139,7 @@ export def "yzx launch" [
                 }
             } else {
                 let final_args = $mut_args
-                if $needs_refresh {
+                if $should_refresh {
                     with-env {YAZELIX_FORCE_REFRESH: "true"} {
                         ^nu ...$final_args
                     }
@@ -169,7 +175,7 @@ export def "yzx launch" [
                 (if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) { $"export YAZELIX_SWEEP_TEST_ID='($env.YAZELIX_SWEEP_TEST_ID)'; " } else { "" })
                 (if ($env.YAZELIX_SKIP_WELCOME? | is-not-empty) { $"export YAZELIX_SKIP_WELCOME='($env.YAZELIX_SKIP_WELCOME)'; " } else { "" })
                 (if ($env.YAZELIX_TERMINAL? | is-not-empty) { $"export YAZELIX_TERMINAL='($env.YAZELIX_TERMINAL)'; " } else { "" })
-                (if $needs_refresh { "export YAZELIX_FORCE_REFRESH='true'; " } else { "" })
+                (if $should_refresh { "export YAZELIX_FORCE_REFRESH='true'; " } else { "" })
                 (if $verbose_mode { "export YAZELIX_VERBOSE='true'; " } else { "" })
             ] | str join ""
 
@@ -185,7 +191,7 @@ export def "yzx launch" [
 
             # Must run devenv from the directory containing devenv.nix
             let yazelix_dir = "~/.config/yazelix"
-            if $needs_refresh and $verbose_mode {
+            if $should_refresh and $verbose_mode {
                 let reason = ($config_state.refresh_reason? | default "config or devenv inputs changed since last launch")
                 print $"♻️  ($reason) – rebuilding environment"
             }
@@ -193,7 +199,7 @@ export def "yzx launch" [
             let unfree_prefix = if (is_unfree_enabled) { "NIXPKGS_ALLOW_UNFREE=1 " } else { "" }
             let devenv_cmd = $"cd ($yazelix_dir) && ($unfree_prefix)devenv --impure --cores ($max_cores) shell -- sh -c '($full_cmd)'"
             ^sh -c $devenv_cmd
-            if $needs_refresh {
+            if $should_refresh {
                 mark_config_state_applied $config_state
             }
         }
