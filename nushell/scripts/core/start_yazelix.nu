@@ -2,13 +2,11 @@
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 use ../utils/environment_bootstrap.nu *
+use ../utils/launch_state.nu [activate_launch_state get_matching_launch_state]
 
 def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     # Capture original directory before any cd commands
     let original_dir = pwd
-
-    # Ensure environment is available (shared with yzx env)
-    ensure_environment_available
 
     let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
     if $verbose_mode {
@@ -32,12 +30,31 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
         exit 1
     }
 
-    cd $yazelix_dir
-
-    # Parse configuration using the shared module
     let env_prep = prepare_environment --verbose=$verbose_mode
     let config = $env_prep.config
     let needs_refresh = $env_prep.needs_refresh
+    let env_status = check_environment_status
+    mut activated_launch_state = false
+
+    if (not $env_status.already_in_env) and (not $needs_refresh) {
+        let profile_override = ($env.YAZELIX_PROFILE_PATH? | default "")
+        let launch_state = (get_matching_launch_state $env_prep.config_state $profile_override)
+        if $launch_state != null {
+            if $verbose_mode {
+                print $"⚡ Activating primed Yazelix profile: ($launch_state.profile_path)"
+            }
+            activate_launch_state $launch_state
+            $activated_launch_state = true
+        }
+    }
+
+    # Ensure environment is available when direct activation is not possible.
+    if not $activated_launch_state {
+        ensure_environment_available
+    }
+
+    cd $yazelix_dir
+
     # If setup-only mode, just run devenv shell to install hooks and exit
     if $setup_only {
         print "🔧 Setting up Yazelix environment (installing shell hooks and dependencies)..."
@@ -90,7 +107,16 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     # Run devenv shell with explicit HOME.
     # The default shell is dynamically read from yazelix.toml configuration
     # and passed directly to the zellij command.
+    let use_primed_launch_state = $activated_launch_state
+
     with-env {HOME: $home, YAZELIX_WELCOME_SOURCE: "start"} {
+        if $use_primed_launch_state {
+            if $verbose_mode {
+                print "⚡ Reusing primed launch state without entering devenv shell"
+            }
+            nu $"($yazelix_dir)/nushell/scripts/setup/environment.nu"
+        }
+
         if $verbose_mode and $needs_refresh {
             print "♻️  Config changed – rebuilding environment"
         }

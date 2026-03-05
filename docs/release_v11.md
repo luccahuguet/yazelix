@@ -1,7 +1,7 @@
 # Yazelix v11 Release Notes
 
 ## Highlights
-- **Devenv-powered launches**: Yazelix now starts via `devenv shell --impure`. Thanks to devenv’s SQLite cache, cold launches from desktop entries or `yzx launch` fall from ~4 seconds to about half a second, while full re-evaluation only happens after editing `yazelix.toml`.
+- **Devenv-powered launches**: Yazelix now starts via `devenv shell`. Thanks to devenv’s SQLite cache, cold launches from desktop entries or `yzx launch` fall from ~4 seconds to about half a second, while full re-evaluation only happens after editing `yazelix.toml`.
 - **TOML-first configuration**: `yazelix.toml` is auto-generated on first launch and is the single source of truth. Legacy `yazelix.nix` configs trigger friendly migration guidance, and the Home Manager module produces matching TOML.
 - **Performance toolkit**: `yzx bench` and `yzx profile` help measure launch times and diagnose bottlenecks, and hash-based config detection keeps warm starts fast.
 

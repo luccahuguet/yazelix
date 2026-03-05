@@ -3,6 +3,7 @@
 # Nushell version of the Yazelix launcher
 
 use ../utils/config_state.nu compute_config_state
+use ../utils/launch_state.nu get_matching_launch_state
 use ../utils/nix_detector.nu ensure_nix_available
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/terminal_launcher.nu *
@@ -36,6 +37,12 @@ def main [
     let current_hash = $config_state.combined_hash
     let cached_hash = $config_state.cached_hash
     let needs_reload = $config_state.needs_refresh
+    let launch_state = (get_matching_launch_state $config_state)
+    let profile_path = if $launch_state == null {
+        ""
+    } else {
+        $launch_state.profile_path
+    }
 
     let legacy_nix_config = $"($home)/.config/yazelix/yazelix.nix"
     if ($legacy_nix_config | path exists) and ($legacy_nix_config != $active_config_file) {
@@ -181,6 +188,9 @@ def main [
             YAZELIX_LAUNCH_CWD: $working_dir,
             YAZELIX_TERMINAL: $terminal_info.terminal
         }
+        if ($profile_path | is-not-empty) {
+            $env_block = ($env_block | upsert YAZELIX_PROFILE_PATH $profile_path)
+        }
         if $verbose_mode {
             $env_block = ($env_block | upsert YAZELIX_VERBOSE "true")
             print $"Launching wrapper command: ($launch_cmd)"
@@ -192,6 +202,9 @@ def main [
         mut env_block = {
             YAZELIX_LAUNCH_CWD: $working_dir,
             YAZELIX_TERMINAL: $terminal_info.terminal
+        }
+        if ($profile_path | is-not-empty) {
+            $env_block = ($env_block | upsert YAZELIX_PROFILE_PATH $profile_path)
         }
         if $verbose_mode {
             $env_block = ($env_block | upsert YAZELIX_VERBOSE "true")

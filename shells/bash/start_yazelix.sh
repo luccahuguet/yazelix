@@ -24,7 +24,7 @@ if ! command -v devenv >/dev/null 2>&1; then
   echo "   Yazelix v11+ moved from flake-based 'nix develop' shells to devenv."
   echo "   Install devenv with:"
   echo "     nix profile install github:cachix/devenv/latest"
-  echo "   After installing, relaunch Yazelix (or run 'devenv shell --impure')."
+  echo "   After installing, relaunch Yazelix (or run 'devenv shell')."
   echo "   Old commands like 'nix develop' are no longer supported."
   echo ""
   exit 1
@@ -50,7 +50,7 @@ if command -v nproc >/dev/null 2>&1; then
 else
   MAX_CORES=$(sysctl -n hw.ncpu)  # macOS
 fi
-HOME="$HOME" devenv --impure --cores "$MAX_CORES" shell -- bash -c \
+HOME="$HOME" devenv --cores "$MAX_CORES" shell -- bash -c \
   "zellij --config-dir \"$YAZELIX_DIR/configs/zellij\" options \
     --default-cwd \"$HOME\" \
     --default-layout \"\$ZELLIJ_DEFAULT_LAYOUT\" \

@@ -48,9 +48,8 @@ let
     if nixglPackages != null && nixglPackages ? nixGLIntel then nixglPackages.nixGLIntel else null;
 
   # Import user configuration from TOML
-  # IMPORTANT: yazelix.toml is gitignored, which makes it invisible to pure Nix evaluation
-  # We must use --impure mode and read from an absolute path via $HOME
-  # All devenv shell calls include --impure flag to enable this
+  # IMPORTANT: yazelix.toml is gitignored, so Yazelix reads it via an absolute path under $HOME.
+  # Current devenv releases expose that path to evaluation without requiring a separate --impure flag.
   homeDir = builtins.getEnv "HOME";
   tomlConfigFile = if homeDir != "" then "${homeDir}/.config/yazelix/yazelix.toml" else "";
   defaultTomlConfigFile = ./yazelix_default.toml;
@@ -575,9 +574,9 @@ in
     # Environment setup now reads directly from yazelix.toml (single source of truth)
     nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu"
 
-    # Save config hash after successful environment setup
+    # Save config hash and primed launch state after successful environment setup
     if command -v nu >/dev/null 2>&1; then
-      nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu [compute_config_state mark_config_state_applied]; mark_config_state_applied (compute_config_state)' 2>/dev/null || true
+      nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu [compute_config_state mark_config_state_applied]; use ~/.config/yazelix/nushell/scripts/utils/launch_state.nu write_launch_state_from_env; let state = compute_config_state; mark_config_state_applied $state; write_launch_state_from_env $state' 2>/dev/null || true
     fi
   '';
 }

@@ -49,7 +49,7 @@ Refresh Yazelix `devenv` evaluation cache/environment without launching UI
 - `--force`: Refresh even if no changes are detected
 - `--verbose, -v`: Show configured top-level package scope and concise build progress
 - `--very-verbose, -V`: Show full refresh internals and debug-level build output (`-vv` equivalent)
-- Note: Refresh does not hot-replace your current shell environment. Use `yzx restart` or open a new Zellij pane to consume updated env vars/tools immediately.
+- Note: Refresh does not hot-replace your current Yazelix session. Use `yzx restart` to switch the current window to the refreshed profile, or `yzx launch` to open a separate Yazelix window on the refreshed profile.
 
 ### `yzx run <command> [args...]`
 Run a single command in the Yazelix environment and exit

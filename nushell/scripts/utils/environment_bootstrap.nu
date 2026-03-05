@@ -47,7 +47,6 @@ export def get_devenv_base_command [
         "-C"
         $yazelix_dir
         "devenv"
-        "--impure"
         "--cores"
         ($max_cores | into string)
     ]
@@ -118,7 +117,7 @@ export def run_in_devenv_shell [
             print "   Yazelix v11+ moved from flake-based `nix develop` shells to devenv."
             print "   Install devenv with:"
             print "     nix profile install github:cachix/devenv/latest"
-            print "   After installing, relaunch Yazelix (or run `devenv shell --impure`)."
+            print "   After installing, relaunch Yazelix (or run `devenv shell`)."
             print ""
             exit 1
         }
@@ -131,7 +130,7 @@ export def run_in_devenv_shell [
         let max_cores = get_max_cores
 
         # Build devenv command with optional flags
-        mut devenv_flags = ["--impure", "--cores", $max_cores]
+        mut devenv_flags = ["--cores", $max_cores]
         if $quiet {
             $devenv_flags = ($devenv_flags | prepend "--quiet")
         }
@@ -211,7 +210,7 @@ export def run_in_devenv_shell_command [
         print "   Yazelix v11+ moved from flake-based `nix develop` shells to devenv."
         print "   Install devenv with:"
         print "     nix profile install github:cachix/devenv/latest"
-        print "   After installing, relaunch Yazelix (or run `devenv shell --impure`)."
+        print "   After installing, relaunch Yazelix (or run `devenv shell`)."
         print ""
         exit 1
     }
