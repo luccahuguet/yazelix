@@ -4,7 +4,7 @@
 
 use ../utils/config_parser.nu parse_yazelix_config
 
-def main [] {
+def main [--welcome-source: string] {
     # Read configuration directly from TOML - single source of truth!
     let config = parse_yazelix_config
 
@@ -161,7 +161,7 @@ def main [] {
     let welcome_message = build_welcome_message $yazelix_dir $helix_mode $colors
 
     # Display welcome screen or log it (skip when start_yazelix handles it)
-    if ($env.YAZELIX_WELCOME_SOURCE? | default "") != "start" {
+    if $welcome_source != "start" {
         show_welcome $skip_welcome_screen $quiet_mode $ascii_art_mode $show_macchina_on_welcome $welcome_message $log_dir $colors
     }
 }

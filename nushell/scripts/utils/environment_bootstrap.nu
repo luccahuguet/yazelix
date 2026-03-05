@@ -97,7 +97,7 @@ export def run_in_devenv_shell [
     --force-refresh     # Force environment refresh
 ] {
     let env_status = check_environment_status
-    let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
+    let verbose_mode = $verbose
 
     if $verbose_mode {
         print $"🔁 IN_NIX_SHELL? ($env_status.in_nix_shell) | IN_YAZELIX_SHELL? ($env_status.in_yazelix_shell)"
@@ -139,9 +139,6 @@ export def run_in_devenv_shell [
         if $skip_welcome {
             $env_vars = ($env_vars | insert YAZELIX_SKIP_WELCOME "true")
         }
-        if $verbose_mode {
-            $env_vars = ($env_vars | insert YAZELIX_VERBOSE "true")
-        }
         if (is_unfree_enabled) {
             $env_vars = ($env_vars | insert NIXPKGS_ALLOW_UNFREE "1")
         }
@@ -168,7 +165,7 @@ export def run_in_devenv_shell_command [
     --force-refresh    # Force environment refresh
 ] {
     let env_status = check_environment_status
-    let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
+    let verbose_mode = $verbose
 
     if ($command | is-empty) {
         print "Error: No command provided"
@@ -224,9 +221,6 @@ export def run_in_devenv_shell_command [
     if $skip_welcome {
         $env_vars = ($env_vars | insert YAZELIX_SKIP_WELCOME "true")
     }
-    if $verbose_mode {
-        $env_vars = ($env_vars | insert YAZELIX_VERBOSE "true")
-    }
     if (is_unfree_enabled) {
         $env_vars = ($env_vars | insert NIXPKGS_ALLOW_UNFREE "1")
     }
@@ -242,7 +236,7 @@ export def run_in_devenv_shell_command [
 
 # Prepare environment (parse config, check state)
 export def prepare_environment [--verbose] {
-    let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
+    let verbose_mode = $verbose
 
     # Parse configuration
     let config = parse_yazelix_config

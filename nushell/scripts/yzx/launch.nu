@@ -14,11 +14,12 @@ export def "yzx launch" [
     --terminal(-t): string  # Override terminal selection (for sweep testing)
     --verbose          # Enable verbose logging
     --skip-refresh(-s) # Skip explicit refresh trigger and allow potentially stale environment
+    --force-reenter    # Force re-entering devenv before launch
 ] {
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
 
-    let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
+    let verbose_mode = $verbose
     if $verbose_mode {
         print "🔍 yzx launch: verbose mode enabled"
     }
@@ -42,7 +43,7 @@ export def "yzx launch" [
         print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
     }
 
-    let force_reenter = ($env.YAZELIX_FORCE_REENTER? == "true")
+    let force_reenter = $force_reenter
     mut in_yazelix_shell = ($env.IN_YAZELIX_SHELL? == "true")
     if $manage_terminals and $should_refresh and $in_yazelix_shell {
         # Only print if not called from yzx restart (which already printed the message)
@@ -130,9 +131,7 @@ export def "yzx launch" [
             if $verbose_mode {
                 let run_args = ($mut_args | append "--verbose")
                 print $"⚙️ Executing launch_yazelix.nu inside Yazelix shell - cwd: ($launch_cwd)"
-                with-env {YAZELIX_VERBOSE: "true"} {
-                    ^nu ...$run_args
-                }
+                ^nu ...$run_args
             } else {
                 let final_args = $mut_args
                 ^nu ...$final_args
@@ -200,10 +199,6 @@ export def "yzx launch" [
             if ($env.YAZELIX_TERMINAL? | is-not-empty) {
                 $env_block = ($env_block | upsert YAZELIX_TERMINAL $env.YAZELIX_TERMINAL)
             }
-            if $verbose_mode {
-                $env_block = ($env_block | upsert YAZELIX_VERBOSE "true")
-            }
-
             with-env $env_block {
                 run_in_devenv_shell_command "nu" ...$final_launch_args --cwd $yazelix_dir --force-refresh=$should_refresh --verbose=$verbose_mode
             }

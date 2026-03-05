@@ -44,20 +44,13 @@ export def resolve_built_profile [] {
     ""
 }
 
-export def get_launch_profile [
-    config_state: record
-    profile_override?: string
-] {
+export def get_launch_profile [config_state: record] {
     if ($config_state.needs_refresh? | default false) {
         return null
     }
 
     let profile_path = resolve_built_profile
     if ($profile_path | is-empty) or (not ($profile_path | path exists)) {
-        return null
-    }
-
-    if ($profile_override | is-not-empty) and ($profile_override != $profile_path) {
         return null
     }
 

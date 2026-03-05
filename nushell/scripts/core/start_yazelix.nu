@@ -8,7 +8,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     # Capture original directory before any cd commands
     let original_dir = pwd
 
-    let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
+    let verbose_mode = $verbose
     if $verbose_mode {
         print "🔍 start_yazelix: verbose mode enabled"
     }
@@ -37,8 +37,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     mut activated_profile = false
 
     if (not $env_status.already_in_env) and (not $needs_refresh) {
-        let profile_override = ($env.YAZELIX_PROFILE_PATH? | default "")
-        let profile_path = (get_launch_profile $env_prep.config_state $profile_override)
+        let profile_path = (get_launch_profile $env_prep.config_state)
         if $profile_path != null {
             if $verbose_mode {
                 print $"⚡ Activating Yazelix profile: ($profile_path)"
@@ -74,11 +73,9 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     let merged_zellij_dir = $"($env.HOME)/.local/share/yazelix/configs/zellij"
 
     # Determine which directory to use as default CWD
-    # Priority: 1. cwd_override parameter 2. YAZELIX_LAUNCH_CWD env var 3. original directory
+    # Priority: 1. cwd_override parameter 2. original directory
     let working_dir = if ($cwd_override | is-not-empty) {
         $cwd_override
-    } else if ($env.YAZELIX_LAUNCH_CWD? | is-not-empty) {
-        $env.YAZELIX_LAUNCH_CWD
     } else {
         $original_dir
     }
@@ -98,8 +95,12 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     }
 
     let inner_script = $"($yazelix_dir)/nushell/scripts/core/start_yazelix_inner.nu"
-    let cmd = if ($working_dir | is-not-empty) {
+    let cmd = if ($working_dir | is-not-empty) and $verbose_mode {
+        $"nu -i \"($inner_script)\" \"($working_dir)\" \"($layout_path)\" --verbose"
+    } else if ($working_dir | is-not-empty) {
         $"nu -i \"($inner_script)\" \"($working_dir)\" \"($layout_path)\""
+    } else if $verbose_mode {
+        $"nu -i \"($inner_script)\" \"\" \"($layout_path)\" --verbose"
     } else {
         $"nu -i \"($inner_script)\" \"\" \"($layout_path)\""
     }
@@ -109,12 +110,12 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     # and passed directly to the zellij command.
     let use_activated_profile = $activated_profile
 
-    with-env {HOME: $home, YAZELIX_WELCOME_SOURCE: "start"} {
+    with-env {HOME: $home} {
         if $use_activated_profile {
             if $verbose_mode {
                 print "⚡ Reusing activated profile without entering devenv shell"
             }
-            nu $"($yazelix_dir)/nushell/scripts/setup/environment.nu"
+            nu $"($yazelix_dir)/nushell/scripts/setup/environment.nu" --welcome-source start
         }
 
         if $verbose_mode and $needs_refresh {

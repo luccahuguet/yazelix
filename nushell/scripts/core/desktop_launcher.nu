@@ -6,9 +6,5 @@
 use ../yzx/launch.nu *
 
 def main [] {
-    if ($env.YAZELIX_VERBOSE? | default "") == "true" {
-        yzx launch --home --verbose
-    } else {
-        yzx launch --home
-    }
+    yzx launch --home
 }

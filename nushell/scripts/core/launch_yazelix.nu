@@ -3,7 +3,6 @@
 # Nushell version of the Yazelix launcher
 
 use ../utils/config_state.nu compute_config_state
-use ../utils/launch_state.nu get_launch_profile
 use ../utils/nix_detector.nu ensure_nix_available
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/terminal_launcher.nu *
@@ -24,7 +23,7 @@ def main [
         exit 1
     }
 
-    let verbose_mode = $verbose or ($env.YAZELIX_VERBOSE? == "true")
+    let verbose_mode = $verbose
     if $verbose_mode {
         print "🔍 launch_yazelix: verbose mode enabled"
         print $"Resolved HOME=($home)"
@@ -37,8 +36,6 @@ def main [
     let current_hash = $config_state.combined_hash
     let cached_hash = $config_state.cached_hash
     let needs_reload = $config_state.needs_refresh
-    let profile_path = (get_launch_profile $config_state | default "")
-
     let legacy_nix_config = $"($home)/.config/yazelix/yazelix.nix"
     if ($legacy_nix_config | path exists) and ($legacy_nix_config != $active_config_file) {
         print ""
@@ -158,7 +155,7 @@ def main [
     }
 
     # Build launch command (pass needs_reload to control env var clearing)
-    let launch_cmd = build_launch_command $terminal_info $terminal_config $terminal_config_mode $needs_reload
+    let launch_cmd = build_launch_command $terminal_info $terminal_config $working_dir $needs_reload
 
     # Print what we're running
     let terminal = $terminal_info.terminal
@@ -185,14 +182,9 @@ def main [
     if $terminal_info.use_wrapper {
         mut env_block = {
             YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode,
-            YAZELIX_LAUNCH_CWD: $working_dir,
             YAZELIX_TERMINAL: $terminal_info.terminal
         }
-        if ($profile_path | is-not-empty) {
-            $env_block = ($env_block | upsert YAZELIX_PROFILE_PATH $profile_path)
-        }
         if $verbose_mode {
-            $env_block = ($env_block | upsert YAZELIX_VERBOSE "true")
             print $"Launching wrapper command: ($launch_cmd)"
         }
         with-env $env_block {
@@ -200,14 +192,9 @@ def main [
         }
     } else {
         mut env_block = {
-            YAZELIX_LAUNCH_CWD: $working_dir,
             YAZELIX_TERMINAL: $terminal_info.terminal
         }
-        if ($profile_path | is-not-empty) {
-            $env_block = ($env_block | upsert YAZELIX_PROFILE_PATH $profile_path)
-        }
         if $verbose_mode {
-            $env_block = ($env_block | upsert YAZELIX_VERBOSE "true")
             print $"Launching command: ($launch_cmd)"
         }
         with-env $env_block {

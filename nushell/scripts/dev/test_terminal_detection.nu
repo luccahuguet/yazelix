@@ -134,9 +134,10 @@ def test_launch_command_building [] {
     }
 
     let config_path = "/tmp/test.conf"
+    let working_dir = "/tmp"
 
     try {
-        let launch_cmd = build_launch_command $terminal_info $config_path "yazelix"
+        let launch_cmd = build_launch_command $terminal_info $config_path $working_dir
 
         if ($launch_cmd | is-empty) {
             print "  ❌ Empty launch command"
@@ -150,6 +151,11 @@ def test_launch_command_building [] {
 
         if not ($launch_cmd | str contains $config_path) {
             print "  ❌ Launch command doesn't contain config path"
+            return false
+        }
+
+        if not ($launch_cmd | str contains $working_dir) {
+            print "  ❌ Launch command doesn't contain working directory"
             return false
         }
 
@@ -171,8 +177,8 @@ def test_launch_command_detachment [] {
         use_wrapper: false
     }
 
-    let cold_cmd = build_launch_command $terminal_info "/tmp/test.conf" "yazelix" true
-    let warm_cmd = build_launch_command $terminal_info "/tmp/test.conf" "yazelix" false
+    let cold_cmd = build_launch_command $terminal_info "/tmp/test.conf" "/tmp" true
+    let warm_cmd = build_launch_command $terminal_info "/tmp/test.conf" "/tmp" false
 
     let required_segments = [
         "nohup "

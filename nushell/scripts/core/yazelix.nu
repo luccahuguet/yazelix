@@ -287,9 +287,7 @@ export def "yzx restart" [
 
     # Launch new terminal window
     if $manage_terminals and $should_refresh {
-        with-env {YAZELIX_FORCE_REENTER: "true"} {
-            yzx launch
-        }
+        yzx launch --force-reenter
     } else if $skip_refresh {
         yzx launch --skip-refresh
     } else {

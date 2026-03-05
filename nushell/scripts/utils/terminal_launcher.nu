@@ -100,40 +100,56 @@ def build_detached_background_command [prefix: string, command: string]: nothing
     $"nohup ($prefix)($command) >/dev/null 2>&1 < /dev/null &"
 }
 
+def get_working_dir_arg [terminal: string, working_dir: string]: nothing -> string {
+    if ($working_dir | is-empty) {
+        return ""
+    }
+
+    match $terminal {
+        "ghostty" => $" --working-directory=\"($working_dir)\"",
+        "wezterm" => $" --cwd \"($working_dir)\"",
+        "kitty" => $" --directory=\"($working_dir)\"",
+        "alacritty" => $" --working-directory \"($working_dir)\"",
+        "foot" => $" --working-directory=\"($working_dir)\"",
+        _ => ""
+    }
+}
+
 # Build launch command for a terminal
 export def build_launch_command [
     terminal_info: record
     config_path
-    terminal_config_mode: string
+    working_dir: string
     needs_reload: bool = true  # Whether to force environment reload
 ]: nothing -> string {
     let terminal = $terminal_info.terminal
     let command = $terminal_info.command
     let use_wrapper = $terminal_info.use_wrapper
     let launch_prefix = build_detached_launch_prefix $needs_reload
+    let working_dir_arg = (get_working_dir_arg $terminal $working_dir)
 
     if $use_wrapper {
         # Wrappers handle config internally via environment variable
-        build_detached_background_command $launch_prefix $command
+        build_detached_background_command $launch_prefix $"($command)($working_dir_arg)"
     } else {
         # Direct terminal launch with config
         # Check if nixGLIntel is available for GPU acceleration
         let nixgl_prefix = if (which nixGLIntel | is-not-empty) { "nixGLIntel " } else { "" }
         let terminal_cmd = match $terminal {
             "ghostty" => {
-                $"($nixgl_prefix)ghostty --config-file=($config_path) --gtk-single-instance=false --title=\"Yazelix - Ghostty\""
+                $"($nixgl_prefix)ghostty --config-file=($config_path) --gtk-single-instance=false --title=\"Yazelix - Ghostty\"($working_dir_arg)"
             },
             "wezterm" => {
-                $"($nixgl_prefix)wezterm --config-file ($config_path) start --class=com.yazelix.Yazelix"
+                $"($nixgl_prefix)wezterm --config-file ($config_path) start($working_dir_arg) --class=com.yazelix.Yazelix"
             },
             "kitty" => {
-                $"($nixgl_prefix)kitty --config=($config_path) --class=com.yazelix.Yazelix --title=\"Yazelix - Kitty\""
+                $"($nixgl_prefix)kitty --config=($config_path) --class=com.yazelix.Yazelix --title=\"Yazelix - Kitty\"($working_dir_arg)"
             },
             "alacritty" => {
-                $"($nixgl_prefix)alacritty --config-file ($config_path) --title \"Yazelix - Alacritty\""
+                $"($nixgl_prefix)alacritty --config-file ($config_path) --title \"Yazelix - Alacritty\"($working_dir_arg)"
             },
             "foot" => {
-                $"($nixgl_prefix)foot --config ($config_path) --app-id com.yazelix.Yazelix"
+                $"($nixgl_prefix)foot --config ($config_path) --app-id com.yazelix.Yazelix($working_dir_arg)"
             },
             _ => {
                 error make {msg: $"Unknown terminal: ($terminal)"}

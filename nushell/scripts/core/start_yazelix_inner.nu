@@ -8,7 +8,7 @@ use ../setup/welcome.nu [show_welcome build_welcome_message]
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
-def main [cwd_override?: string, layout_override?: string] {
+def main [cwd_override?: string, layout_override?: string, --verbose] {
     let config = parse_yazelix_config
     let sidebar_enabled = ($config.enable_sidebar? | default true)
     let configured_layout = if $sidebar_enabled { "yzx_side" } else { "yzx_no_side" }
@@ -22,7 +22,7 @@ def main [cwd_override?: string, layout_override?: string] {
     show_welcome $config.skip_welcome_screen $quiet_mode $config.ascii_art_mode $config.show_macchina_on_welcome $welcome_message $log_dir $colors
 
     print "🔧 Preparing Yazi configuration..."
-    if ($env.YAZELIX_VERBOSE? == "true") {
+    if $verbose {
         generate_merged_yazi_config $yazelix_dir | ignore
     } else {
         generate_merged_yazi_config $yazelix_dir --quiet | ignore
@@ -33,8 +33,6 @@ def main [cwd_override?: string, layout_override?: string] {
 
     let working_dir = if ($cwd_override | is-not-empty) {
         $cwd_override
-    } else if ($env.YAZELIX_LAUNCH_CWD? | is-not-empty) {
-        $env.YAZELIX_LAUNCH_CWD
     } else {
         $env.HOME
     }
