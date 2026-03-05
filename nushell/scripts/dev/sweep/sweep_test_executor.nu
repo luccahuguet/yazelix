@@ -9,44 +9,31 @@ use ../../utils/terminal_launcher.nu command_exists
 # Validate that environment setup works for a given config
 export def validate_environment [config_path: string]: nothing -> record {
     try {
-        # Test 1: Tool availability check using yzx run
-        let tools_cmd = "echo \"TOOLS_START\" && which zellij && which yazi && which hx && echo \"TOOLS_END\""
-        let tools_output = (do {
+        # Run one Yazelix command per config to keep the sweep cheap.
+        let validation_cmd = "echo \"TOOLS_START\" && which zellij && which yazi && which hx && echo \"TOOLS_END\" && echo \"VERSION_START\" && zellij --version && yazi --version && hx --version && echo \"VERSION_END\""
+        let validation_output = (do {
             with-env {YAZELIX_CONFIG_OVERRIDE: $config_path} {
-                nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx run bash \"-lc\" '($tools_cmd)'"
+                nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx run bash \"-lc\" '($validation_cmd)'"
             }
         } | complete)
 
-        if $tools_output.exit_code != 0 {
-            return {status: "fail", message: "Tool availability check failed", details: $tools_output.stderr}
+        if $validation_output.exit_code != 0 {
+            return {status: "fail", message: "Environment validation failed", details: $validation_output.stderr}
         }
 
-        let stdout = $tools_output.stdout
+        let stdout = $validation_output.stdout
         if not ($stdout | str contains "TOOLS_START") or not ($stdout | str contains "TOOLS_END") {
             return {status: "fail", message: "Tool availability incomplete", details: $stdout}
         }
 
-        # Test 2: Version commands using yzx run
-        let version_cmd = "echo \"VERSION_START\" && zellij --version && yazi --version && hx --version && echo \"VERSION_END\""
-        let version_output = (do {
-            with-env {YAZELIX_CONFIG_OVERRIDE: $config_path} {
-                nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx run bash \"-lc\" '($version_cmd)'"
-            }
-        } | complete)
-
-        if $version_output.exit_code != 0 {
-            return {status: "fail", message: "Version commands failed", details: $version_output.stderr}
-        }
-
-        let version_stdout = $version_output.stdout
-        if not ($version_stdout | str contains "VERSION_START") or not ($version_stdout | str contains "VERSION_END") {
-            return {status: "fail", message: "Version check incomplete", details: $version_stdout}
+        if not ($stdout | str contains "VERSION_START") or not ($stdout | str contains "VERSION_END") {
+            return {status: "fail", message: "Version check incomplete", details: $stdout}
         }
 
         # Verify expected tools are mentioned in version output (case insensitive)
-        let stdout_lower = ($version_stdout | str downcase)
+        let stdout_lower = ($stdout | str downcase)
         if not ($stdout_lower | str contains "zellij") or not ($stdout_lower | str contains "yazi") or not ($stdout_lower | str contains "helix") {
-            return {status: "fail", message: "Missing expected tool versions", details: $version_stdout}
+            return {status: "fail", message: "Missing expected tool versions", details: $stdout}
         }
 
         {status: "pass", message: "All environment tests passed", details: null}
