@@ -8,6 +8,13 @@ use sweep/sweep_process_manager.nu *
 use sweep/sweep_test_executor.nu *
 use sweep/sweep_test_combinations.nu *
 
+def append_progress [line: string]: nothing -> nothing {
+    let progress_file = ($env.YAZELIX_SWEEP_PROGRESS_FILE? | default "")
+    if ($progress_file | is-not-empty) {
+        $"($line)\n" | save --append $progress_file
+    }
+}
+
 # Helper: Get the status field name based on test mode
 def get_status_field [visual: bool]: nothing -> string {
     if $visual { "status" } else { "overall" }
@@ -217,6 +224,13 @@ export def run_all_sweep_tests [
 
     for $combo in $combinations {
         let test_id = $"($combo.type)_($combo.shell)_($combo.terminal)"
+        let completed = ($results | length)
+
+        if not $verbose and not $visual {
+            let start_line = $"  Starting (($completed + 1))/($total_tests): ($combo.shell)+($combo.terminal)"
+            print $start_line
+            append_progress $start_line
+        }
 
         let result = if $visual {
             run_visual_sweep_test $combo.shell $combo.terminal $combo.features $test_id $visual_delay
@@ -229,7 +243,9 @@ export def run_all_sweep_tests [
         if not $verbose and not $visual {
             let completed = ($results | length)
             let status = get_result_status $result $visual
-            print $"  Progress: ($completed)/($total_tests) - ($status | str upcase) ($combo.shell)+($combo.terminal)"
+            let progress_line = $"  Progress: ($completed)/($total_tests) - ($status | str upcase) ($combo.shell)+($combo.terminal)"
+            print $progress_line
+            append_progress $progress_line
         }
     }
 

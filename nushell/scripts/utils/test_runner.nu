@@ -35,6 +35,71 @@ def run_syntax_validation [
     }
 }
 
+def run_passthrough_test [test_file: string, log_file: string] {
+    let status_file = (^mktemp | str trim)
+    let stdout_file = (^mktemp | str trim)
+    let stderr_file = (^mktemp | str trim)
+    let progress_file = (^mktemp | str trim)
+    "" | save --force $progress_file
+    let runner_script = '
+set +e
+
+progress_file="$1"
+test_file="$2"
+stdout_file="$3"
+stderr_file="$4"
+status_file="$5"
+
+: > "$progress_file"
+
+YAZELIX_SWEEP_PROGRESS_FILE="$progress_file" \
+  nu "$test_file" >"$stdout_file" 2>"$stderr_file" &
+test_pid=$!
+
+tail -n +1 -f "$progress_file" &
+tail_pid=$!
+
+wait "$test_pid"
+test_status=$?
+
+kill "$tail_pid" 2>/dev/null || true
+wait "$tail_pid" 2>/dev/null || true
+
+printf "%s" "$test_status" > "$status_file"
+exit 0
+'
+    ^bash -lc $runner_script bash $progress_file $test_file $stdout_file $stderr_file $status_file
+
+    let exit_code = try {
+        open --raw $status_file | str trim | into int
+    } catch {
+        1
+    }
+    let stdout = try {
+        open --raw $stdout_file
+    } catch {
+        ""
+    }
+    let stderr = try {
+        open --raw $stderr_file
+    } catch {
+        ""
+    }
+    rm -f $status_file $stdout_file $stderr_file $progress_file
+
+    $"Test: (($test_file | path basename | str replace '.nu' ''))\nExit code: ($exit_code)\nStdout:\n($stdout)\n" | save --append $log_file
+    if not ($stderr | is-empty) {
+        $"Stderr:\n($stderr)\n" | save --append $log_file
+    }
+    $"---\n" | save --append $log_file
+
+    {
+        exit_code: $exit_code
+        stdout: $stdout
+        stderr: $stderr
+    }
+}
+
 # Run all tests and report results
 export def run_all_tests [
     --verbose(-v)  # Show detailed output
@@ -148,14 +213,20 @@ export def run_all_tests [
                     {status: "❌ FAIL", test: $test_name, error: $"Exit code: ($output.exit_code)\nStderr: ($output.stderr)"}
                 }
             } else {
-                let output = (do { nu $test_file } | complete)
+                let output = if $test_name == "test_config_sweep" {
+                    run_passthrough_test $test_file $log_file
+                } else {
+                    (do { nu $test_file } | complete)
+                }
 
                 # Log output
-                $"Test: ($test_name)\nExit code: ($output.exit_code)\nStdout:\n($output.stdout)\n" | save --append $log_file
-                if not ($output.stderr | is-empty) {
-                    $"Stderr:\n($output.stderr)\n" | save --append $log_file
+                if $test_name != "test_config_sweep" {
+                    $"Test: ($test_name)\nExit code: ($output.exit_code)\nStdout:\n($output.stdout)\n" | save --append $log_file
+                    if not ($output.stderr | is-empty) {
+                        $"Stderr:\n($output.stderr)\n" | save --append $log_file
+                    }
+                    $"---\n" | save --append $log_file
                 }
-                $"---\n" | save --append $log_file
 
                 if $output.exit_code == 0 {
                     {status: "✅ PASS", test: $test_name, error: null}
