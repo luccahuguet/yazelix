@@ -103,7 +103,7 @@ export def run_in_devenv_shell [
         print $"🔁 IN_NIX_SHELL? ($env_status.in_nix_shell) | IN_YAZELIX_SHELL? ($env_status.in_yazelix_shell)"
     }
 
-    if $env_status.already_in_env {
+    if $env_status.already_in_env and (not $force_refresh) {
         # Already in a managed shell, run command directly to avoid recursive nesting
         if $verbose_mode {
             print "⚙️ Executing command directly in existing environment"
@@ -183,15 +183,16 @@ export def run_in_devenv_shell_command [
         exit 1
     }
 
-    let exec_cmd = if ($cwd | is-not-empty) {
-        ["env", "-C", $cwd] | append $command | append $args
+    let resolved_cwd = if ($cwd | is-not-empty) { $cwd | path expand } else { "" }
+    let exec_cmd = if ($resolved_cwd | is-not-empty) {
+        ["env", "-C", $resolved_cwd] | append $command | append $args
     } else {
         [$command] | append $args
     }
     let exec_bin = ($exec_cmd | first)
     let exec_args = ($exec_cmd | skip 1)
 
-    if $env_status.already_in_env {
+    if $env_status.already_in_env and (not $force_refresh) {
         if $verbose_mode {
             print "⚙️ Executing command directly in existing environment"
         }

@@ -2,8 +2,7 @@
 # yzx launch command - Launch Yazelix in new or current terminal
 
 use ../utils/config_state.nu [mark_config_state_applied]
-use ../utils/common.nu [get_max_cores]
-use ../utils/environment_bootstrap.nu [prepare_environment is_unfree_enabled]
+use ../utils/environment_bootstrap.nu [prepare_environment run_in_devenv_shell_command]
 use ../utils/launch_state.nu [get_launch_env get_launch_profile]
 use ../core/start_yazelix.nu [start_yazelix_session]
 
@@ -182,56 +181,50 @@ export def "yzx launch" [
                 return
             }
 
-            let quote_single = {|text|
-                let escaped = ($text | str replace "'" "'\"'\"'")
-                $"'" + $escaped + "'"
-            }
-
-            mut segments = ["nu"]
-            $segments = ($segments | append (do $quote_single $launch_script))
-            if ($launch_cwd | is-not-empty) {
-                $segments = ($segments | append (do $quote_single $launch_cwd))
-            }
-            if ($terminal | is-not-empty) {
-                $segments = ($segments | append "--terminal")
-                $segments = ($segments | append (do $quote_single $terminal))
-            }
-            if $verbose_mode {
-                $segments = ($segments | append "--verbose")
-            }
-
-            let launch_cmd = ($segments | str join " ")
-            # Build environment variable exports for bash
-            let env_exports = [
-                (if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) { $"export YAZELIX_CONFIG_OVERRIDE='($env.YAZELIX_CONFIG_OVERRIDE)'; " } else { "" })
-                (if (($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) and ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty)) { $"export ZELLIJ_DEFAULT_LAYOUT='($env.ZELLIJ_DEFAULT_LAYOUT)'; " } else { "" })
-                (if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) { $"export YAZELIX_SWEEP_TEST_ID='($env.YAZELIX_SWEEP_TEST_ID)'; " } else { "" })
-                (if ($env.YAZELIX_SKIP_WELCOME? | is-not-empty) { $"export YAZELIX_SKIP_WELCOME='($env.YAZELIX_SKIP_WELCOME)'; " } else { "" })
-                (if ($env.YAZELIX_TERMINAL? | is-not-empty) { $"export YAZELIX_TERMINAL='($env.YAZELIX_TERMINAL)'; " } else { "" })
-                (if $should_refresh { "export YAZELIX_FORCE_REFRESH='true'; " } else { "" })
-                (if $verbose_mode { "export YAZELIX_VERBOSE='true'; " } else { "" })
-            ] | str join ""
-
-            let full_cmd = $"($env_exports)($launch_cmd)"
-            if (which devenv | is-empty) {
-                print "❌ devenv command not found - install devenv to launch Yazelix."
-                print "   See https://devenv.sh/getting-started/ for installation instructions."
-                exit 1
-            }
-            if $verbose_mode {
-                print $"⚙️ devenv shell command: ($full_cmd)"
-            }
-
-            # Must run devenv from the directory containing devenv.nix
-            let yazelix_dir = "~/.config/yazelix"
+            let yazelix_dir = ("~/.config/yazelix" | path expand)
             if $should_refresh and $verbose_mode {
                 let reason = ($config_state.refresh_reason? | default "config or devenv inputs changed since last launch")
                 print $"♻️  ($reason) – rebuilding environment"
             }
-            let max_cores = get_max_cores
-            let unfree_prefix = if (is_unfree_enabled) { "NIXPKGS_ALLOW_UNFREE=1 " } else { "" }
-            let devenv_cmd = $"cd ($yazelix_dir) && ($unfree_prefix)devenv --cores ($max_cores) shell -- sh -c (do $quote_single $full_cmd)"
-            ^sh -c $devenv_cmd
+
+            mut launch_args = [$launch_script]
+            if ($launch_cwd | is-not-empty) {
+                $launch_args = ($launch_args | append $launch_cwd)
+            }
+            if ($terminal | is-not-empty) {
+                $launch_args = ($launch_args | append "--terminal" | append $terminal)
+            }
+            if $verbose_mode {
+                $launch_args = ($launch_args | append "--verbose")
+            }
+            let final_launch_args = $launch_args
+
+            mut env_block = {}
+            if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) {
+                $env_block = ($env_block | upsert YAZELIX_CONFIG_OVERRIDE $env.YAZELIX_CONFIG_OVERRIDE)
+            }
+            if (($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) and ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty)) {
+                $env_block = ($env_block | upsert ZELLIJ_DEFAULT_LAYOUT $env.ZELLIJ_DEFAULT_LAYOUT)
+            }
+            if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) {
+                $env_block = ($env_block | upsert YAZELIX_SWEEP_TEST_ID $env.YAZELIX_SWEEP_TEST_ID)
+            }
+            if ($env.YAZELIX_SKIP_WELCOME? | is-not-empty) {
+                $env_block = ($env_block | upsert YAZELIX_SKIP_WELCOME $env.YAZELIX_SKIP_WELCOME)
+            }
+            if ($env.YAZELIX_TERMINAL? | is-not-empty) {
+                $env_block = ($env_block | upsert YAZELIX_TERMINAL $env.YAZELIX_TERMINAL)
+            }
+            if $should_refresh {
+                $env_block = ($env_block | upsert YAZELIX_FORCE_REFRESH "true")
+            }
+            if $verbose_mode {
+                $env_block = ($env_block | upsert YAZELIX_VERBOSE "true")
+            }
+
+            with-env $env_block {
+                run_in_devenv_shell_command "nu" ...$final_launch_args --cwd $yazelix_dir --force-refresh=$should_refresh --verbose=$verbose_mode
+            }
             if $should_refresh {
                 mark_config_state_applied $config_state
             }
