@@ -139,9 +139,6 @@ export def run_in_devenv_shell [
         if $skip_welcome {
             $env_vars = ($env_vars | insert YAZELIX_SKIP_WELCOME "true")
         }
-        if $force_refresh {
-            $env_vars = ($env_vars | insert YAZELIX_FORCE_REFRESH "true")
-        }
         if $verbose_mode {
             $env_vars = ($env_vars | insert YAZELIX_VERBOSE "true")
         }
@@ -226,9 +223,6 @@ export def run_in_devenv_shell_command [
     }
     if $skip_welcome {
         $env_vars = ($env_vars | insert YAZELIX_SKIP_WELCOME "true")
-    }
-    if $force_refresh {
-        $env_vars = ($env_vars | insert YAZELIX_FORCE_REFRESH "true")
     }
     if $verbose_mode {
         $env_vars = ($env_vars | insert YAZELIX_VERBOSE "true")

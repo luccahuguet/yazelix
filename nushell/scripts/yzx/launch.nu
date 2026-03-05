@@ -70,12 +70,10 @@ export def "yzx launch" [
 
         if $verbose_mode {
             if $should_refresh {
-                with-env {YAZELIX_FORCE_REFRESH: "true"} {
-                    if ($cwd_override != null) {
-                        start_yazelix_session $cwd_override --verbose
-                    } else {
-                        start_yazelix_session --verbose
-                    }
+                if ($cwd_override != null) {
+                    start_yazelix_session $cwd_override --verbose
+                } else {
+                    start_yazelix_session --verbose
                 }
             } else {
                 if ($cwd_override != null) {
@@ -86,12 +84,10 @@ export def "yzx launch" [
             }
         } else {
             if $should_refresh {
-                with-env {YAZELIX_FORCE_REFRESH: "true"} {
-                    if ($cwd_override != null) {
-                        start_yazelix_session $cwd_override
-                    } else {
-                        start_yazelix_session
-                    }
+                if ($cwd_override != null) {
+                    start_yazelix_session $cwd_override
+                } else {
+                    start_yazelix_session
                 }
             } else {
                 if ($cwd_override != null) {
@@ -134,23 +130,12 @@ export def "yzx launch" [
             if $verbose_mode {
                 let run_args = ($mut_args | append "--verbose")
                 print $"⚙️ Executing launch_yazelix.nu inside Yazelix shell - cwd: ($launch_cwd)"
-                let env_record = if $should_refresh {
-                    {YAZELIX_VERBOSE: "true", YAZELIX_FORCE_REFRESH: "true"}
-                } else {
-                    {YAZELIX_VERBOSE: "true"}
-                }
-                with-env $env_record {
+                with-env {YAZELIX_VERBOSE: "true"} {
                     ^nu ...$run_args
                 }
             } else {
                 let final_args = $mut_args
-                if $should_refresh {
-                    with-env {YAZELIX_FORCE_REFRESH: "true"} {
-                        ^nu ...$final_args
-                    }
-                } else {
-                    ^nu ...$final_args
-                }
+                ^nu ...$final_args
             }
         } else {
             # Not in Yazelix environment - wrap with devenv shell
@@ -214,9 +199,6 @@ export def "yzx launch" [
             }
             if ($env.YAZELIX_TERMINAL? | is-not-empty) {
                 $env_block = ($env_block | upsert YAZELIX_TERMINAL $env.YAZELIX_TERMINAL)
-            }
-            if $should_refresh {
-                $env_block = ($env_block | upsert YAZELIX_FORCE_REFRESH "true")
             }
             if $verbose_mode {
                 $env_block = ($env_block | upsert YAZELIX_VERBOSE "true")
