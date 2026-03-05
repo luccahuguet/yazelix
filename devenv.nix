@@ -229,6 +229,7 @@ let
           lib.optionalString (nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "
         }${pkgs.ghostty}/bin/ghostty \
           --config-file="$CONF" \
+          --gtk-single-instance=false \
           --class="com.yazelix.Yazelix" \
           --x11-instance-name="yazelix" \
           --title="Yazelix - Ghostty" "$@"

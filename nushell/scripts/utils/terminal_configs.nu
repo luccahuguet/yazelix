@@ -52,13 +52,22 @@ def build_transparency [transparency: string, format: string, key: string] {
     }
 }
 
+def build_ghostty_transparency [transparency: string] {
+    let opacity_line = (build_transparency $transparency "ini" "background-opacity")
+    if $transparency == "none" {
+        $opacity_line
+    } else {
+        $"($opacity_line)
+background-opacity-cells = true"
+    }
+}
+
 def build_cursor_trail [cursor_trail: string] {
     if $cursor_trail == "none" {
         "# custom-shader = ./shaders/cursor_smear.glsl"
     } else if $cursor_trail == "random" {
         let chosen = select_random_cursor_trail
         let shader = get_cursor_trail_shader $chosen
-        print $"[yazelix] Random cursor trail -> ($chosen)"
         $"# random preset: ($chosen)\ncustom-shader = ($shader)"
     } else {
         let shader = get_cursor_trail_shader $cursor_trail
@@ -92,7 +101,7 @@ window-decoration = \"none\"
 window-padding-y = 10,0
 
 # Transparency \(configurable via yazelix.toml\)
-(build_transparency $config.transparency "ini" "background-opacity")
+(build_ghostty_transparency $config.transparency)
 
 # Cursor trail effect \(configurable via yazelix.toml\)
 (build_cursor_trail $config.cursor_trail)

@@ -121,7 +121,7 @@ export def build_launch_command [
         let nixgl_prefix = if (which nixGLIntel | is-not-empty) { "nixGLIntel " } else { "" }
         let terminal_cmd = match $terminal {
             "ghostty" => {
-                $"($nixgl_prefix)ghostty --config-file=($config_path) --title=\"Yazelix - Ghostty\""
+                $"($nixgl_prefix)ghostty --config-file=($config_path) --gtk-single-instance=false --title=\"Yazelix - Ghostty\""
             },
             "wezterm" => {
                 $"($nixgl_prefix)wezterm --config-file ($config_path) start --class=com.yazelix.Yazelix"
