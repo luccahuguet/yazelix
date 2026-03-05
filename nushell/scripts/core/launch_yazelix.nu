@@ -3,7 +3,7 @@
 # Nushell version of the Yazelix launcher
 
 use ../utils/config_state.nu compute_config_state
-use ../utils/launch_state.nu get_matching_launch_state
+use ../utils/launch_state.nu get_launch_profile
 use ../utils/nix_detector.nu ensure_nix_available
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/terminal_launcher.nu *
@@ -37,12 +37,7 @@ def main [
     let current_hash = $config_state.combined_hash
     let cached_hash = $config_state.cached_hash
     let needs_reload = $config_state.needs_refresh
-    let launch_state = (get_matching_launch_state $config_state)
-    let profile_path = if $launch_state == null {
-        ""
-    } else {
-        $launch_state.profile_path
-    }
+    let profile_path = (get_launch_profile $config_state | default "")
 
     let legacy_nix_config = $"($home)/.config/yazelix/yazelix.nix"
     if ($legacy_nix_config | path exists) and ($legacy_nix_config != $active_config_file) {
@@ -100,7 +95,12 @@ def main [
     let terminal_info = if ($terminal | is-not-empty) {
         # Strict mode: only try the specified terminal, no fallbacks
         let specified_terminal = $terminal  # Use the --terminal flag value
-        let term_meta = $TERMINAL_METADATA | get $specified_terminal
+        let term_meta = ($TERMINAL_METADATA | get -o $specified_terminal)
+        if $term_meta == null {
+            print $"Error: Unsupported terminal '($specified_terminal)'"
+            print $"Supported terminals: ($SUPPORTED_TERMINALS | str join ', ')"
+            exit 1
+        }
         let wrapper_cmd = $term_meta.wrapper
 
         # Try wrapper first, then direct

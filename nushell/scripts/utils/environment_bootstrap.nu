@@ -126,18 +126,10 @@ export def run_in_devenv_shell [
             print "⚙️ Entering devenv shell before running command"
         }
 
-        let yazelix_dir = "~/.config/yazelix"
-        let max_cores = get_max_cores
-
-        # Build devenv command with optional flags
-        mut devenv_flags = ["--cores", $max_cores]
-        if $quiet {
-            $devenv_flags = ($devenv_flags | prepend "--quiet")
-        }
-
-        let devenv_flags_str = ($devenv_flags | str join " ")
-        let unfree_prefix = if (is_unfree_enabled) { "NIXPKGS_ALLOW_UNFREE=1 " } else { "" }
-        let devenv_cmd = $"cd ($yazelix_dir) && ($unfree_prefix)devenv ($devenv_flags_str) shell -- sh -c '($command)'"
+        let devenv_base = get_devenv_base_command --quiet=$quiet
+        let devenv_cmd = ($devenv_base | append ["shell", "--", "sh", "-c", $command])
+        let devenv_bin = ($devenv_cmd | first)
+        let devenv_args = ($devenv_cmd | skip 1)
 
         # Build environment variables
         mut env_vars = {}
@@ -153,12 +145,15 @@ export def run_in_devenv_shell [
         if $verbose_mode {
             $env_vars = ($env_vars | insert YAZELIX_VERBOSE "true")
         }
+        if (is_unfree_enabled) {
+            $env_vars = ($env_vars | insert NIXPKGS_ALLOW_UNFREE "1")
+        }
 
         if ($env_vars | is-empty) {
-            ^sh -c $devenv_cmd
+            ^$devenv_bin ...$devenv_args
         } else {
             with-env $env_vars {
-                ^sh -c $devenv_cmd
+                ^$devenv_bin ...$devenv_args
             }
         }
     }

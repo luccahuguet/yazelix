@@ -2,7 +2,7 @@
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 use ../utils/environment_bootstrap.nu *
-use ../utils/launch_state.nu [activate_launch_state get_matching_launch_state]
+use ../utils/launch_state.nu [activate_launch_profile get_launch_profile]
 
 def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     # Capture original directory before any cd commands
@@ -34,22 +34,22 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     let config = $env_prep.config
     let needs_refresh = $env_prep.needs_refresh
     let env_status = check_environment_status
-    mut activated_launch_state = false
+    mut activated_profile = false
 
     if (not $env_status.already_in_env) and (not $needs_refresh) {
         let profile_override = ($env.YAZELIX_PROFILE_PATH? | default "")
-        let launch_state = (get_matching_launch_state $env_prep.config_state $profile_override)
-        if $launch_state != null {
+        let profile_path = (get_launch_profile $env_prep.config_state $profile_override)
+        if $profile_path != null {
             if $verbose_mode {
-                print $"⚡ Activating primed Yazelix profile: ($launch_state.profile_path)"
+                print $"⚡ Activating Yazelix profile: ($profile_path)"
             }
-            activate_launch_state $launch_state
-            $activated_launch_state = true
+            activate_launch_profile $config $profile_path
+            $activated_profile = true
         }
     }
 
     # Ensure environment is available when direct activation is not possible.
-    if not $activated_launch_state {
+    if not $activated_profile {
         ensure_environment_available
     }
 
@@ -107,12 +107,12 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     # Run devenv shell with explicit HOME.
     # The default shell is dynamically read from yazelix.toml configuration
     # and passed directly to the zellij command.
-    let use_primed_launch_state = $activated_launch_state
+    let use_activated_profile = $activated_profile
 
     with-env {HOME: $home, YAZELIX_WELCOME_SOURCE: "start"} {
-        if $use_primed_launch_state {
+        if $use_activated_profile {
             if $verbose_mode {
-                print "⚡ Reusing primed launch state without entering devenv shell"
+                print "⚡ Reusing activated profile without entering devenv shell"
             }
             nu $"($yazelix_dir)/nushell/scripts/setup/environment.nu"
         }

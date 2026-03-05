@@ -4,7 +4,7 @@
 use ../utils/config_state.nu [mark_config_state_applied]
 use ../utils/common.nu [get_max_cores]
 use ../utils/environment_bootstrap.nu [prepare_environment is_unfree_enabled]
-use ../utils/launch_state.nu [activate_launch_state get_matching_launch_state]
+use ../utils/launch_state.nu [get_launch_env get_launch_profile]
 use ../core/start_yazelix.nu [start_yazelix_session]
 
 # Launch yazelix
@@ -29,10 +29,10 @@ export def "yzx launch" [
     let config_state = $env_prep.config_state
     mut needs_refresh = $env_prep.needs_refresh
     let should_refresh = ($needs_refresh and (not $skip_refresh))
-    let launch_state = if $should_refresh {
+    let launch_profile = if $should_refresh {
         null
     } else {
-        get_matching_launch_state $config_state
+        get_launch_profile $config_state
     }
     let manage_terminals = ($config.manage_terminals? | default true)
     if $verbose_mode {
@@ -69,7 +69,7 @@ export def "yzx launch" [
             null
         }
 
-        if $verbose {
+        if $verbose_mode {
             if $should_refresh {
                 with-env {YAZELIX_FORCE_REFRESH: "true"} {
                     if ($cwd_override != null) {
@@ -155,7 +155,7 @@ export def "yzx launch" [
             }
         } else {
             # Not in Yazelix environment - wrap with devenv shell
-            if $launch_state != null {
+            if $launch_profile != null {
                 let base_args = [$launch_script]
                 let launch_args = if ($launch_cwd | is-not-empty) {
                     $base_args | append $launch_cwd
@@ -174,10 +174,11 @@ export def "yzx launch" [
                 }
 
                 if $verbose_mode {
-                    print $"⚡ Using primed Yazelix profile: ($launch_state.profile_path)"
+                    print $"⚡ Using activated Yazelix profile: ($launch_profile)"
                 }
-                activate_launch_state $launch_state
-                ^nu ...$launch_args
+                with-env (get_launch_env $config $launch_profile) {
+                    ^nu ...$launch_args
+                }
                 return
             }
 
@@ -229,7 +230,7 @@ export def "yzx launch" [
             }
             let max_cores = get_max_cores
             let unfree_prefix = if (is_unfree_enabled) { "NIXPKGS_ALLOW_UNFREE=1 " } else { "" }
-            let devenv_cmd = $"cd ($yazelix_dir) && ($unfree_prefix)devenv --cores ($max_cores) shell -- sh -c '($full_cmd)'"
+            let devenv_cmd = $"cd ($yazelix_dir) && ($unfree_prefix)devenv --cores ($max_cores) shell -- sh -c (do $quote_single $full_cmd)"
             ^sh -c $devenv_cmd
             if $should_refresh {
                 mark_config_state_applied $config_state

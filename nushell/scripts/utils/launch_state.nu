@@ -1,19 +1,8 @@
 #!/usr/bin/env nu
-# Persisted launch state for fast Yazelix restarts outside devenv shell.
+# Profile activation helpers for fast Yazelix launch/restart paths.
 
-def get_state_dir [] {
-    "~/.local/share/yazelix/state" | path expand
-}
-
-export def get_launch_state_path [] {
-    (get_state_dir | path join "launch_state.json")
-}
-
-def ensure_state_dir [] {
-    let state_dir = get_state_dir
-    if not ($state_dir | path exists) {
-        mkdir $state_dir
-    }
+def bool_to_string [value] {
+    if $value { "true" } else { "false" }
 }
 
 def resolve_profile_candidate [candidate: string] {
@@ -34,11 +23,6 @@ def resolve_profile_candidate [candidate: string] {
 }
 
 export def resolve_built_profile [] {
-    let env_profile = ($env.DEVENV_PROFILE? | default "")
-    if ($env_profile | is-not-empty) and ($env_profile | path exists) {
-        return $env_profile
-    }
-
     let yazelix_dir = "~/.config/yazelix" | path expand
     let candidates = [
         ($yazelix_dir | path join ".devenv/profile")
@@ -52,74 +36,23 @@ export def resolve_built_profile [] {
         }
     }
 
+    let env_profile = ($env.DEVENV_PROFILE? | default "")
+    if ($env_profile | is-not-empty) and ($env_profile | path exists) {
+        return $env_profile
+    }
+
     ""
 }
 
-def collect_runtime_env [] {
-    let env_keys = [
-        "DEVENV_PROFILE"
-        "YAZELIX_DIR"
-        "IN_YAZELIX_SHELL"
-        "IN_NIX_SHELL"
-        "NIX_CONFIG"
-        "YAZELIX_DEBUG_MODE"
-        "YAZELIX_BUILD_CORES"
-        "ZELLIJ_DEFAULT_LAYOUT"
-        "YAZELIX_DEFAULT_SHELL"
-        "YAZELIX_ENABLE_SIDEBAR"
-        "YAZI_CONFIG_HOME"
-        "YAZELIX_HELIX_MODE"
-        "YAZELIX_PREFERRED_TERMINAL"
-        "YAZELIX_TERMINAL_CONFIG_MODE"
-        "YAZELIX_ASCII_ART_MODE"
-        "YAZELIX_ZJSTATUS_WASM"
-        "EDITOR"
-        "HELIX_RUNTIME"
-    ]
-
-    mut runtime_env = {}
-    for key in $env_keys {
-        let value = ($env | get -o $key)
-        if $value != null {
-            $runtime_env = ($runtime_env | upsert $key ($value | into string))
-        }
-    }
-
-    $runtime_env
-}
-
-export def read_launch_state [] {
-    let state_path = get_launch_state_path
-    if not ($state_path | path exists) {
-        return null
-    }
-
-    try {
-        open --raw $state_path | from json
-    } catch {
-        null
-    }
-}
-
-export def get_matching_launch_state [
+export def get_launch_profile [
     config_state: record
     profile_override?: string
 ] {
-    let state = read_launch_state
-    if $state == null {
+    if ($config_state.needs_refresh? | default false) {
         return null
     }
 
-    if not (($state | describe) | str starts-with "record") {
-        return null
-    }
-
-    let combined_hash = ($state | get -o combined_hash | default "")
-    if $combined_hash != ($config_state.combined_hash? | default "") {
-        return null
-    }
-
-    let profile_path = ($state | get -o profile_path | default "")
+    let profile_path = resolve_built_profile
     if ($profile_path | is-empty) or (not ($profile_path | path exists)) {
         return null
     }
@@ -128,60 +61,122 @@ export def get_matching_launch_state [
         return null
     }
 
-    let runtime_env = ($state | get -o runtime_env | default null)
-    if not (($runtime_env | describe) | str starts-with "record") {
+    let yazelix_dir = "~/.config/yazelix" | path expand
+    let synced_zjstatus = ($yazelix_dir | path join "configs" "zellij" "zjstatus.wasm")
+    if not ($synced_zjstatus | path exists) {
         return null
     }
 
-    {
-        combined_hash: $combined_hash
-        profile_path: $profile_path
-        runtime_env: $runtime_env
-    }
+    $profile_path
 }
 
-export def write_launch_state_from_env [config_state: record] {
-    let profile_path = resolve_built_profile
-    if ($profile_path | is-empty) or (not ($profile_path | path exists)) {
-        return
-    }
-
-    let runtime_env = (
-        collect_runtime_env
-        | upsert DEVENV_PROFILE $profile_path
-        | upsert IN_YAZELIX_SHELL "true"
-        | upsert IN_NIX_SHELL (($env.IN_NIX_SHELL? | default "impure"))
-    )
-
-    ensure_state_dir
-
-    let state = {
-        combined_hash: ($config_state.combined_hash? | default "")
-        profile_path: $profile_path
-        runtime_env: $runtime_env
-    }
-
-    let state_path = get_launch_state_path
-    let temp_path = $"($state_path).tmp"
-    $state | to json | save --force $temp_path
-    mv --force $temp_path $state_path
-}
-
-export def --env activate_launch_state [state: record] {
-    let runtime_env = ($state.runtime_env? | default {})
-    load-env $runtime_env
-
-    let profile_path = ($state.profile_path? | default "")
-    if ($profile_path | is-not-empty) and ($profile_path | path exists) {
-        $env.DEVENV_PROFILE = $profile_path
-        let profile_bin = ($profile_path | path join "bin")
-        if ($profile_bin | path exists) {
-            $env.PATH = ([$profile_bin] | append $env.PATH | uniq)
+def resolve_editor_command [config: record, profile_path: string] {
+    let configured_editor = ($config.editor_command? | default null)
+    if $configured_editor != null {
+        let editor_text = ($configured_editor | into string)
+        if ($editor_text | is-not-empty) {
+            return $editor_text
         }
     }
 
-    $env.IN_YAZELIX_SHELL = "true"
-    if ($env.IN_NIX_SHELL? | is-empty) {
-        $env.IN_NIX_SHELL = "impure"
+    let profile_hx = ($profile_path | path join "bin" "hx")
+    if ($profile_hx | path exists) {
+        return $profile_hx
+    } else {
+        return "hx"
     }
+}
+
+def resolve_helix_runtime [config: record, profile_path: string, editor_command: string] {
+    let configured_runtime = ($config.helix_runtime_path? | default null)
+    if $configured_runtime != null {
+        let runtime_text = ($configured_runtime | into string)
+        if ($runtime_text | is-not-empty) {
+            return $runtime_text
+        }
+    }
+
+    let editor_candidate = if ($editor_command | path exists) {
+        $editor_command
+    } else {
+        let profile_hx = ($profile_path | path join "bin" "hx")
+        if ($profile_hx | path exists) { $profile_hx } else { "" }
+    }
+
+    if ($editor_candidate | is-empty) {
+        return ""
+    }
+
+    let resolved_editor = (resolve_profile_candidate $editor_candidate)
+    if ($resolved_editor | is-empty) {
+        return ""
+    }
+
+    let editor_root = ($resolved_editor | path dirname | path dirname)
+    let runtime_candidates = [
+        ($editor_root | path join "lib" "runtime")
+        ($editor_root | path join "share" "helix" "runtime")
+    ]
+
+    for candidate in $runtime_candidates {
+        if ($candidate | path exists) {
+            return $candidate
+        }
+    }
+
+    ""
+}
+
+def resolve_zjstatus_path [yazelix_dir: string] {
+    let synced_path = ($yazelix_dir | path join "configs" "zellij" "zjstatus.wasm")
+    if ($synced_path | path exists) {
+        $synced_path
+    } else {
+        ""
+    }
+}
+
+export def get_launch_env [config: record, profile_path: string] {
+    let yazelix_dir = ($env.HOME | path join ".config" "yazelix")
+    let profile_bin = ($profile_path | path join "bin")
+    let enable_sidebar = ($config.enable_sidebar? | default true)
+    let terminals = ($config.terminals? | default ["ghostty"])
+    let preferred_terminal = if ($terminals | is-empty) { "unknown" } else { ($terminals | first | into string) }
+    let editor_command = (resolve_editor_command $config $profile_path)
+    let helix_runtime = (resolve_helix_runtime $config $profile_path $editor_command)
+    let zjstatus_path = (resolve_zjstatus_path $yazelix_dir)
+
+    mut launch_env = {
+        DEVENV_PROFILE: $profile_path
+        PATH: (([$profile_bin] | append $env.PATH | uniq))
+        YAZELIX_DIR: $yazelix_dir
+        IN_YAZELIX_SHELL: "true"
+        IN_NIX_SHELL: "impure"
+        NIX_CONFIG: "warn-dirty = false"
+        YAZELIX_DEBUG_MODE: (bool_to_string ($config.debug_mode? | default false))
+        YAZELIX_BUILD_CORES: ($config.build_cores? | default "max_minus_one" | into string)
+        ZELLIJ_DEFAULT_LAYOUT: (if $enable_sidebar { "yzx_side" } else { "yzx_no_side" })
+        YAZELIX_DEFAULT_SHELL: ($config.default_shell? | default "nu" | into string)
+        YAZELIX_ENABLE_SIDEBAR: (bool_to_string $enable_sidebar)
+        YAZI_CONFIG_HOME: ($env.HOME | path join ".local" "share" "yazelix" "configs" "yazi")
+        YAZELIX_HELIX_MODE: ($config.helix_mode? | default "release" | into string)
+        YAZELIX_PREFERRED_TERMINAL: $preferred_terminal
+        YAZELIX_TERMINAL_CONFIG_MODE: ($config.terminal_config_mode? | default "yazelix" | into string)
+        YAZELIX_ASCII_ART_MODE: ($config.ascii_art_mode? | default "static" | into string)
+        EDITOR: $editor_command
+    }
+
+    if ($helix_runtime | is-not-empty) {
+        $launch_env = ($launch_env | upsert HELIX_RUNTIME $helix_runtime)
+    }
+
+    if ($zjstatus_path | is-not-empty) {
+        $launch_env = ($launch_env | upsert YAZELIX_ZJSTATUS_WASM $zjstatus_path)
+    }
+
+    $launch_env
+}
+
+export def --env activate_launch_profile [config: record, profile_path: string] {
+    load-env (get_launch_env $config $profile_path)
 }

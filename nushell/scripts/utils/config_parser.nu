@@ -29,6 +29,9 @@ export def parse_yazelix_config [] {
     # Parse TOML configuration (Nushell auto-parses TOML files)
     let raw_config = open $config_to_read
 
+    let editor_cmd = ($raw_config.editor?.command? | default "" | into string)
+    let editor_command = if ($editor_cmd | is-empty) { null } else { $editor_cmd }
+
     # Extract and return values
     {
         recommended_deps: ($raw_config.core?.recommended_deps? | default true),
@@ -37,6 +40,7 @@ export def parse_yazelix_config [] {
         debug_mode: ($raw_config.core?.debug_mode? | default false),
         skip_welcome_screen: ($raw_config.core?.skip_welcome_screen? | default false),
         show_macchina_on_welcome: ($raw_config.core?.show_macchina_on_welcome? | default true),
+        build_cores: ($raw_config.core?.build_cores? | default "max_minus_one"),
         ascii_art_mode: ($raw_config.ascii?.mode? | default "static"),
         persistent_sessions: ($raw_config.zellij?.persistent_sessions? | default false | into string),
         session_name: ($raw_config.zellij?.session_name? | default "yazelix"),
@@ -51,6 +55,8 @@ export def parse_yazelix_config [] {
         default_shell: ($raw_config.shell?.default_shell? | default "nu"),
         extra_shells: ($raw_config.shell?.extra_shells? | default []),
         helix_mode: ($raw_config.helix?.mode? | default "release"),
+        helix_runtime_path: ($raw_config.helix?.runtime_path? | default null),
+        editor_command: $editor_command,
         enable_sidebar: ($raw_config.editor?.enable_sidebar? | default true),
         disable_zellij_tips: ($raw_config.zellij?.disable_tips? | default true | into string),
         zellij_rounded_corners: ($raw_config.zellij?.rounded_corners? | default true | into string),

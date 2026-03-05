@@ -3,7 +3,6 @@
 
 use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled]
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
-use ../utils/launch_state.nu get_matching_launch_state
 
 def summarize_values [values max_items: int] {
     let normalized = ($values | each { |value| $value | into string })
@@ -74,44 +73,6 @@ def run_refresh_command [devenv_cmd allow_unfree --stream-output] {
     }
 }
 
-def prime_launch_state [allow_unfree --stream-output] {
-    let devenv_cmd = (
-        get_devenv_base_command --quiet=(not $stream_output)
-        | append ["shell", "--", "sh", "-c", "true"]
-    )
-    let cmd_bin = ($devenv_cmd | first)
-    let cmd_args = ($devenv_cmd | skip 1)
-
-    let env_vars = {
-        YAZELIX_ENV_ONLY: "true"
-        YAZELIX_WELCOME_SOURCE: "start"
-    }
-
-    if $stream_output {
-        with-env $env_vars {
-            if $allow_unfree {
-                with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
-                    ^$cmd_bin ...$cmd_args
-                    ($env.LAST_EXIT_CODE? | default 0)
-                }
-            } else {
-                ^$cmd_bin ...$cmd_args
-                ($env.LAST_EXIT_CODE? | default 0)
-            }
-        }
-    } else {
-        with-env $env_vars {
-            if $allow_unfree {
-                with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
-                    (^$cmd_bin ...$cmd_args | complete).exit_code
-                }
-            } else {
-                (^$cmd_bin ...$cmd_args | complete).exit_code
-            }
-        }
-    }
-}
-
 # Refresh devenv evaluation cache without launching Yazelix UI
 export def "yzx refresh" [
     --force(-f)    # Force refresh even when no config/input changes are detected
@@ -127,9 +88,8 @@ export def "yzx refresh" [
     let config = $env_prep.config
     let config_state = $env_prep.config_state
     let needs_refresh = $config_state.needs_refresh
-    let launch_state = (get_matching_launch_state $config_state)
 
-    if (not $force) and (not $needs_refresh) and ($launch_state != null) {
+    if (not $force) and (not $needs_refresh) {
         print "✅ Yazelix environment is already up to date."
         print "   Nothing to refresh."
         return
@@ -137,8 +97,6 @@ export def "yzx refresh" [
 
     let refresh_reason = if $force {
         "manual refresh requested"
-    } else if not $needs_refresh {
-        "launch state missing - priming refreshed profile"
     } else {
         $config_state.refresh_reason? | default "config or devenv inputs changed since last launch"
     }
@@ -178,17 +136,7 @@ export def "yzx refresh" [
             }
             exit 1
         }
-    } else {
-        print "✅ Yazelix environment is already up to date."
-        print "⚙️ Priming launch state for direct restart/launch..."
     }
-
-    let prime_exit_code = prime_launch_state $allow_unfree --stream-output=$show_progress
-    if $prime_exit_code != 0 {
-        print "⚠️  Refresh completed, but Yazelix could not prime the direct launch state."
-        print "   Restart will still work, but it may fall back to entering devenv shell."
-    }
-
     mark_config_state_applied (compute_config_state)
 
     print "✅ Refresh completed."

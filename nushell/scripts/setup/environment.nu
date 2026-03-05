@@ -123,25 +123,27 @@ def main [] {
     chmod +x $"($yazelix_dir)/nushell/scripts/core/start_yazelix.nu"
 
     # Sync zjstatus wasm from Nix store into Yazelix config path
-    let zjstatus_store = ($env.YAZELIX_ZJSTATUS_WASM? | default "")
-    if ($zjstatus_store | is-empty) {
-        print "❌ Error: YAZELIX_ZJSTATUS_WASM is not set"
-        exit 1
-    }
-    if not ($zjstatus_store | path exists) {
-        print $"❌ Error: zjstatus wasm not found at: ($zjstatus_store)"
-        exit 1
-    }
     let zjstatus_target = $"($yazelix_dir)/configs/zellij/zjstatus.wasm"
     let zjstatus_dir = ($zjstatus_target | path dirname)
     if not ($zjstatus_dir | path exists) {
         mkdir $zjstatus_dir
     }
-    let zjstatus_tmp = $"($zjstatus_target).tmp"
-    cp --force $zjstatus_store $zjstatus_tmp
-    mv --force $zjstatus_tmp $zjstatus_target
-    if $debug_mode {
-        print $"🔍 Synced zjstatus wasm to: ($zjstatus_target)"
+
+    let zjstatus_store = ($env.YAZELIX_ZJSTATUS_WASM? | default "")
+    if ($zjstatus_store | is-not-empty) and ($zjstatus_store | path exists) and ($zjstatus_store != $zjstatus_target) {
+        let zjstatus_tmp = $"($zjstatus_target).tmp"
+        cp --force $zjstatus_store $zjstatus_tmp
+        mv --force $zjstatus_tmp $zjstatus_target
+        if $debug_mode {
+            print $"🔍 Synced zjstatus wasm to: ($zjstatus_target)"
+        }
+    } else if not ($zjstatus_target | path exists) {
+        if ($zjstatus_store | is-empty) {
+            print "❌ Error: YAZELIX_ZJSTATUS_WASM is not set and no synced zjstatus.wasm exists"
+        } else {
+            print $"❌ Error: zjstatus wasm not found at: ($zjstatus_store)"
+        }
+        exit 1
     }
 
     if not $quiet_mode {

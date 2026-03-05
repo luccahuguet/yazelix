@@ -352,9 +352,7 @@ let
   yazelixDesktopLauncher =
     if isLinux then
       pkgs.writeShellScriptBin "yazelix-desktop-launcher" ''
-        cd ~/.config/yazelix
-        export YAZELIX_DIR="$HOME/.config/yazelix"
-        exec devenv shell nu "$YAZELIX_DIR/nushell/scripts/core/launch_yazelix.nu"
+        exec "$HOME/.config/yazelix/shells/posix/desktop_launcher.sh"
       ''
     else
       null;
@@ -574,9 +572,9 @@ in
     # Environment setup now reads directly from yazelix.toml (single source of truth)
     nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu"
 
-    # Save config hash and primed launch state after successful environment setup
+    # Save config hash after successful environment setup
     if command -v nu >/dev/null 2>&1; then
-      nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu [compute_config_state mark_config_state_applied]; use ~/.config/yazelix/nushell/scripts/utils/launch_state.nu write_launch_state_from_env; let state = compute_config_state; mark_config_state_applied $state; write_launch_state_from_env $state' 2>/dev/null || true
+      nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu [compute_config_state mark_config_state_applied]; let state = compute_config_state; mark_config_state_applied $state' 2>/dev/null || true
     fi
   '';
 }
