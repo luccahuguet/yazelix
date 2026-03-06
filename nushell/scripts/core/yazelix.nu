@@ -9,7 +9,7 @@ use ../utils/ascii_art.nu [get_yazelix_colors]
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 use ../utils/common.nu [get_max_cores]
-use ../utils/environment_bootstrap.nu prepare_environment
+use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment]
 use ./start_yazelix.nu [start_yazelix_session]
 
 # Import modularized commands (export use to properly re-export subcommands)
@@ -277,7 +277,7 @@ export def "yzx restart" [
         print "⚠️  Skipping explicit refresh trigger; environment may be stale."
         print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
     } else if $manage_terminals and $should_refresh {
-        print "🔄 Configuration changed - rebuilding environment to install terminals..."
+        print "🔄 Configuration changed - rebuilding environment..."
     }
     if $is_yazelix_terminal {
         print "🔄 Restarting Yazelix..."
@@ -287,6 +287,7 @@ export def "yzx restart" [
 
     # Launch new terminal window
     if $manage_terminals and $should_refresh {
+        rebuild_yazelix_environment --refresh-eval-cache
         yzx launch --force-reenter
     } else if $skip_refresh {
         yzx launch --skip-refresh

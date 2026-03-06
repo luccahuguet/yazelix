@@ -61,6 +61,32 @@ export def get_devenv_base_command [
     $cmd
 }
 
+export def rebuild_yazelix_environment [
+    --refresh-eval-cache  # Refresh devenv eval cache before rebuilding
+] {
+    let devenv_base = get_devenv_base_command --refresh-eval-cache=$refresh_eval_cache
+    let devenv_cmd = ($devenv_base | append ["build", "shell"])
+    let cmd_bin = ($devenv_cmd | first)
+    let cmd_args = ($devenv_cmd | skip 1)
+
+    let exit_code = if (is_unfree_enabled) {
+        with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
+            ^$cmd_bin ...$cmd_args
+            ($env.LAST_EXIT_CODE? | default 0)
+        }
+    } else {
+        ^$cmd_bin ...$cmd_args
+        ($env.LAST_EXIT_CODE? | default 0)
+    }
+
+    if $exit_code != 0 {
+        print $"❌ Environment rebuild failed \(exit code: ($exit_code)\)"
+        exit $exit_code
+    }
+
+    mark_config_state_applied (compute_config_state)
+}
+
 # Check if already in Yazelix or Nix environment
 export def check_environment_status [] {
     let already_in_env = (
@@ -127,7 +153,7 @@ export def run_in_devenv_shell [
         }
 
         let devenv_base = get_devenv_base_command --quiet=$quiet
-        let devenv_cmd = ($devenv_base | append ["shell", "--", "sh", "-c", $command])
+        let devenv_cmd = ($devenv_base | append ["shell", "--no-tui", "--no-reload", "--", "sh", "-c", $command])
         let devenv_bin = ($devenv_cmd | first)
         let devenv_args = ($devenv_cmd | skip 1)
 
@@ -210,7 +236,7 @@ export def run_in_devenv_shell_command [
     }
 
     let devenv_base = get_devenv_base_command --quiet=$quiet
-    let devenv_cmd = ($devenv_base | append ["shell", "--"] | append $exec_cmd)
+    let devenv_cmd = ($devenv_base | append ["shell", "--no-tui", "--no-reload", "--"] | append $exec_cmd)
     let devenv_bin = ($devenv_cmd | first)
     let devenv_args = ($devenv_cmd | skip 1)
 

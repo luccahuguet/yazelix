@@ -1,8 +1,8 @@
 #!/usr/bin/env nu
 # yzx launch command - Launch Yazelix in new or current terminal
 
-use ../utils/config_state.nu [mark_config_state_applied]
-use ../utils/environment_bootstrap.nu [prepare_environment run_in_devenv_shell_command]
+use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
+use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment run_in_devenv_shell_command]
 use ../utils/launch_state.nu [get_launch_env get_launch_profile]
 use ../core/start_yazelix.nu [start_yazelix_session]
 
@@ -48,7 +48,7 @@ export def "yzx launch" [
     if $manage_terminals and $should_refresh and $in_yazelix_shell {
         # Only print if not called from yzx restart (which already printed the message)
         if not $force_reenter {
-            print "🔄 Configuration changed - rebuilding environment to install terminals..."
+            print "🔄 Configuration changed - rebuilding environment..."
         }
         $in_yazelix_shell = false
     }
@@ -138,7 +138,19 @@ export def "yzx launch" [
             }
         } else {
             # Not in Yazelix environment - wrap with devenv shell
-            if $launch_profile != null {
+            if $should_refresh {
+                rebuild_yazelix_environment --refresh-eval-cache
+                $needs_refresh = false
+            }
+
+            let fresh_state = if $should_refresh {
+                compute_config_state
+            } else {
+                $config_state
+            }
+            let fresh_launch_profile = get_launch_profile $fresh_state
+
+            if $fresh_launch_profile != null {
                 let base_args = [$launch_script]
                 let launch_args = if ($launch_cwd | is-not-empty) {
                     $base_args | append $launch_cwd
@@ -157,9 +169,9 @@ export def "yzx launch" [
                 }
 
                 if $verbose_mode {
-                    print $"⚡ Using activated Yazelix profile: ($launch_profile)"
+                    print $"⚡ Using activated Yazelix profile: ($fresh_launch_profile)"
                 }
-                with-env (get_launch_env $config $launch_profile) {
+                with-env (get_launch_env $config $fresh_launch_profile) {
                     ^nu ...$launch_args
                 }
                 return
@@ -203,7 +215,7 @@ export def "yzx launch" [
                 run_in_devenv_shell_command "nu" ...$final_launch_args --cwd $yazelix_dir --force-refresh=$should_refresh --verbose=$verbose_mode
             }
             if $should_refresh {
-                mark_config_state_applied $config_state
+                mark_config_state_applied $fresh_state
             }
         }
 }
