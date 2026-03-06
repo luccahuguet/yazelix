@@ -73,7 +73,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 Full version history: [Version History](./docs/history.md)
 
-## Improvements of v12.9 over v12
+## Improvements of v12.x over v12
 
 - **v12.1** – Added `yzx run <command> [args...]` and removed the old `yzx env -c` path.
 - **v12.2** – Introduced two AI packs, `ai_agents` and `ai_tools`, both declared and enabled in `yazelix.toml` under `[packs.declarations]` and `[packs.enabled]` (fully configurable like all other packs), and documented experiments/system-mode direction.
@@ -84,6 +84,8 @@ Full version history: [Version History](./docs/history.md)
 - **v12.7** – Hardened `yzx env` process supervision, improved refresh diagnostics, and tightened CLI/version workflows.
 - **v12.8** – Added command palette (`yzx menu`, bound to `Alt+Shift+m` in Zellij) and improved restart launch robustness.
 - **v12.9** – Fixed Ghostty dead keys on Wayland (IM fallback), improved sidebar/layout config resolution, and deduplicated Zellij layout/zjstatus fragments (net `-260` lines in dedupe commits, `-76` lines overall for `v12.9`).
+- **v12.10** – Added `yzx refresh`, improved refresh output tiers and package-scope visibility, and shared the core devenv refresh helpers.
+- **v12.11** – Updated Yazelix for devenv 2.0, simplified launch activation and env handoff, restored TUI-backed rebuilds for `yzx launch`/`yzx restart`, improved desktop-launch consistency, fixed Ghostty transparency on restart, and streamlined sweep-test execution/progress.
 
 ## Experiments
 
