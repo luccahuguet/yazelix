@@ -63,8 +63,12 @@ Print a terminal emulator config generated from `yazelix_default.toml`
 Restart Yazelix (handles persistent sessions)
 - `--skip-refresh, -s`: Skip explicit refresh trigger and allow potentially stale environment
 
-### `yzx info`
-Show system information and settings
+### `yzx status [--versions] [--verbose] [--save]`
+Show current Yazelix status
+- Default: show active config, refresh state, shell hook summary, and key runtime settings
+- `--versions, -V`: include the full tool version matrix
+- `--verbose, -v`: include detailed shell hook status table
+- `--save`: write the version matrix to `docs/version_table.md` (implies `--versions`)
 
 ### `yzx update`
 Manage Yazelix updates
@@ -90,14 +94,11 @@ Show enabled packs and their sizes
 - `--expand`: Show individual packages within each pack
 - `--all`: Show all declared packs (even disabled ones)
 
-### `yzx versions`
-Display all tool versions
-
 ### `yzx menu [--popup]`
 Interactive command palette (fuzzy search)
 - Default: inline mode in current terminal
 - `--popup`: open in a Zellij floating pane (errors if not in Zellij)
-- Lists most `yzx` commands while hiding maintenance-heavy or low-signal entries (`yzx dev*`, `yzx sweep*`, `yzx env`, `yzx bench`, `yzx config_status`, `yzx lint`, `yzx profile`, `yzx test`, `yzx run`)
+- Lists most `yzx` commands while hiding maintenance-heavy or low-signal entries (`yzx dev*`, `yzx sweep*`, `yzx env`, `yzx bench`, `yzx lint`, `yzx profile`, `yzx test`, `yzx run`)
 - Cancel with `Esc`
 - In popup mode after running a command: `Backspace` returns to menu, `Enter`/`Esc` closes popup
 - Keybind: `Alt Shift m` opens the popup menu in Zellij
@@ -107,9 +108,6 @@ Interactive command palette (fuzzy search)
 Open the active Yazelix configuration file in your editor
 - Uses `$EDITOR` (set by Yazelix from `[editor] command` in yazelix.toml)
 - `--print`: print the resolved config path without opening
-
-### `yzx config_status [shell]`
-Check shell configuration status
 
 ### `yzx help`
 Show command reference
@@ -139,9 +137,9 @@ yzx run bash "-lc" "lazygit"  # Run through a shell
 
 # Diagnostics and info
 yzx doctor --fix              # Health check with auto-fix
-yzx info                      # System information
-yzx versions                  # Show all tool versions
-yzx config_status bash        # Check bash integration
+yzx status                    # System information
+yzx status --versions         # Show all tool versions
+yzx status --verbose          # Show detailed shell hook status
 
 # Updates
 yzx update devenv             # Update devenv CLI

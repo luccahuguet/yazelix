@@ -257,8 +257,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx restart --skip-refresh` - Restart while skipping explicit refresh trigger (may use stale env)
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
 - `yzx profile [--detailed] [--history]` - Profile launch performance and identify bottlenecks
-- `yzx info` - Show system information and current settings
-- `yzx versions` - Display all tool versions
+- `yzx status [--versions] [--verbose]` - Show current Yazelix status, tool versions, and shell hook details
 
 ## Troubleshooting
 

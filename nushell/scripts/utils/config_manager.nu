@@ -223,23 +223,3 @@ export def migrate_shell_hooks [shell: string, config_file: string, yazelix_dir:
     }
 }
 
-# Show configuration status for all shells
-export def show_config_status [yazelix_dir: string] {
-    let status = check_config_versions $yazelix_dir
-
-    print "=== Yazelix Configuration Status ==="
-
-    for $result in $status {
-        if $result.status == "missing" {
-            print $"ℹ️  ($result.shell): Not configured \(optional\)"
-        } else if $result.status == "current" {
-            print $"✅ ($result.shell): Configuration is current"
-        } else if $result.status == "outdated" {
-            print $"⚠️  ($result.shell): Configuration may be outdated in ($result.file)"
-        }
-    }
-
-    print "==================================="
-    $status
-}
-

@@ -33,14 +33,12 @@ def test_yzx_help [] {
     }
 }
 
-def test_yzx_info [] {
-    print "🧪 Testing yzx info..."
+def test_yzx_status [] {
+    print "🧪 Testing yzx status..."
 
     try {
-        # Just verify the command runs without error
-        # (yzx info uses print, which doesn't produce pipeline output)
-        yzx info | ignore
-        print "  ✅ yzx info runs successfully"
+        yzx status | ignore
+        print "  ✅ yzx status runs successfully"
         true
     } catch { |err|
         print $"  ❌ Exception: ($err.msg)"
@@ -48,11 +46,13 @@ def test_yzx_info [] {
     }
 }
 
-def test_yzx_versions [] {
-    print "🧪 Testing yzx versions..."
+def test_yzx_status_versions [] {
+    print "🧪 Testing yzx status --versions..."
 
     try {
-        let output = (yzx versions | str join "\n")
+        let output = (
+            ^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx status --versions" | complete
+        ).stdout
 
         # Check for core tools
         let expected_tools = [
@@ -92,12 +92,13 @@ def test_yzx_why [] {
     }
 }
 
-def test_yzx_config_status [] {
-    print "🧪 Testing yzx config_status..."
+def test_yzx_status_verbose [] {
+    print "🧪 Testing yzx status --verbose..."
 
     try {
-        # Test without arguments (shows all shells)
-        let output = (yzx config_status | str join "\n")
+        let output = (
+            ^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx status --verbose" | complete
+        ).stdout
 
         # Check for shell entries
         let shells = ["bash", "nushell", "fish", "zsh"]
@@ -108,7 +109,7 @@ def test_yzx_config_status [] {
             }
         }
 
-        print "  ✅ Config status output generated"
+        print "  ✅ Status verbose output generated"
         true
     } catch { |err|
         print $"  ❌ Exception: ($err.msg)"
@@ -200,10 +201,10 @@ def main [] {
 
     let results = [
         (test_yzx_help),
-        (test_yzx_info),
-        (test_yzx_versions),
+        (test_yzx_status),
+        (test_yzx_status_versions),
         (test_yzx_why),
-        (test_yzx_config_status),
+        (test_yzx_status_verbose),
         (test_yzx_test_exists),
         (test_yzx_doctor_exists),
         (test_yzx_menu_exists),

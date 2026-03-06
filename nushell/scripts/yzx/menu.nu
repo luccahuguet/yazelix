@@ -10,7 +10,7 @@ def classify_menu_command [cmd: string] {
         {tag: "config", color: (ansi cyan)}
     } else if ($cmd | str starts-with "yzx update") or ($cmd | str starts-with "yzx gc") or ($cmd | str starts-with "yzx packs") or ($cmd == "yzx doctor") {
         {tag: "system", color: (ansi yellow)}
-    } else if ($cmd == "yzx help") or ($cmd == "yzx why") or ($cmd == "yzx info") or ($cmd == "yzx versions") {
+    } else if ($cmd == "yzx help") or ($cmd == "yzx why") or ($cmd == "yzx status") {
         {tag: "help", color: (ansi blue)}
     } else {
         {tag: "other", color: (ansi purple)}
@@ -27,7 +27,6 @@ def get_menu_items [] {
     | where not ($it.name | str starts-with "yzx dev")
     | where $it.name != "yzx env"
     | where $it.name != "yzx bench"
-    | where $it.name != "yzx config_status"
     # TODO: Move `yzx lint` under `yzx dev` and remove the top-level command.
     | where $it.name != "yzx lint"
     | where $it.name != "yzx profile"

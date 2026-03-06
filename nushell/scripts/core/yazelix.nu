@@ -4,11 +4,6 @@
 
 use ../utils/config_manager.nu *
 use ../utils/constants.nu *
-use ../utils/version_info.nu *
-use ../utils/ascii_art.nu [get_yazelix_colors]
-use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
-use ../utils/common.nu [get_max_cores]
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment]
 use ./start_yazelix.nu [start_yazelix_session]
 
@@ -35,101 +30,25 @@ export use ../yzx/gen_config.nu *
 # Common commands:
 #   yzx launch    - Start a new yazelix session
 #   yzx run       - Run a command inside the Yazelix environment
+#   yzx status    - Show current Yazelix status
 #   yzx doctor    - Run health checks
 #   yzx profile   - Profile launch performance
 #   yzx test      - Run test suite
 #   yzx lint      - Validate script syntax
-#   yzx versions  - Show tool versions
-def compare_versions [left: string, right: string] {
-    let left_parts = ($left | split row "." | each { |part| $part | into int })
-    let right_parts = ($right | split row "." | each { |part| $part | into int })
 
-    for idx in 0..2 {
-        let left_value = ($left_parts | get -o $idx | default 0)
-        let right_value = ($right_parts | get -o $idx | default 0)
-        if $left_value > $right_value {
-            return 1
-        }
-        if $left_value < $right_value {
-            return (-1)
-        }
-    }
-
-    return (0)
-}
-
-def parse_semver [value: string] {
-    $value | parse --regex '(\d+\.\d+\.\d+)' | get capture0 | last | default ""
-}
-
-def build_version_warning [tool: string, installed_raw: string, pinned: string] {
-    if $installed_raw in ["not installed", "error"] {
-        return null
-    }
-
-    let installed = (parse_semver $installed_raw)
-    if ($installed | is-empty) or $installed == $pinned {
-        return null
-    }
-
-    let status = if (compare_versions $installed $pinned) == 1 { "ahead" } else { "stale" }
-    $"($tool) ($installed) is ($status) vs pinned ($pinned)"
+def format_shell_hook_summary [shell_status] {
+    let current = ($shell_status | where status == "current" | length)
+    let outdated = ($shell_status | where status == "outdated" | length)
+    let missing = ($shell_status | where status == "missing" | length)
+    $"($current) current, ($outdated) outdated, ($missing) missing"
 }
 
 export def yzx [
-    --version (-V)  # Show version information
-    --version-short (-v)  # Show version information
+    --version (-V)  # Show Yazelix version
+    --version-short (-v)  # Show Yazelix version
 ] {
     if $version or $version_short {
         print $"Yazelix ($YAZELIX_VERSION)"
-
-        let devenv_version = if (which devenv | is-empty) {
-            "not installed"
-        } else {
-            try { (devenv --version | lines | first) } catch { "error" }
-        }
-
-        let nix_version = if (which nix | is-empty) {
-            "not installed"
-        } else {
-            try { (nix --version | lines | first) } catch { "error" }
-        }
-
-        let determinate_version = if (which determinate-nixd | is-empty) {
-            "not installed"
-        } else {
-            try {
-                let result = (^determinate-nixd version | complete)
-                if $result.exit_code == 0 {
-                    $result.stdout | lines | first
-                } else {
-                    "error"
-                }
-            } catch { "error" }
-        }
-
-        let warnings = ([
-            (build_version_warning "devenv" $devenv_version $PINNED_DEVENV_VERSION)
-            (build_version_warning "nix" $nix_version $PINNED_NIX_VERSION)
-        ] | where ($it | is-not-empty))
-
-        let colors = get_yazelix_colors
-        let key_color = $colors.cyan
-        let value_color = $colors.purple
-        let warn_color = $colors.yellow
-        let success_color = $colors.green
-        let reset_color = $colors.reset
-
-        print $"($key_color)devenv:($reset_color) ($value_color)($devenv_version)($reset_color)"
-        print $"($key_color)nix:($reset_color) ($value_color)($nix_version)($reset_color)"
-        print $"($key_color)determinate-nixd:($reset_color) ($value_color)($determinate_version)($reset_color)"
-
-        if ($warnings | length) > 0 {
-            print $"($warn_color)⚠️  Version drift detected:($reset_color)"
-            $warnings | each { |warning| print $"   - ($warning)" }
-        } else {
-            print $"($success_color)✅ Versions match Yazelix pinned values.($reset_color)"
-        }
         return
     }
     help yzx
@@ -147,49 +66,25 @@ export def "yzx why" [] {
     print "Install once, get the same environment everywhere."
 }
 
-# Show configuration status (canonical, no aliases)
-export def "yzx config_status" [shell?: string] {
-    if ($shell | is-empty) {
-        show_config_status ~/.config/yazelix
-    } else {
-        let config_file = ($SHELL_CONFIGS | get $shell | str replace "~" $env.HOME)
-        if not ($config_file | path exists) {
-            print $"❌ Config file not found: ($config_file)"
-            return
-        }
-        let section = extract_yazelix_section $config_file
-        if $section.exists {
-            print $"=== Yazelix Section in ($shell) ==="
-            print $section.content
-            print "=================================="
-        } else {
-            print $"❌ No yazelix section found in ($config_file)"
-        }
-        $section
-    }
-}
-
-# List available versions
-export def "yzx versions" [
-    --save(-s)
+# Canonical inspection command
+export def "yzx status" [
+    --versions(-V)  # Include tool version matrix
+    --verbose(-v)   # Include detailed shell hook status
+    --save          # Save version matrix to docs/version_table.md (implies --versions)
 ] {
-    if $save {
-        nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu --save
-    } else {
-        nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu
-    }
-}
+    let env_prep = prepare_environment
+    let config = $env_prep.config
+    let config_state = $env_prep.config_state
+    let shell_status = check_config_versions ~/.config/yazelix
 
-# Show system info
-export def "yzx info" [] {
-    # Parse configuration using the shared module
-    let config = parse_yazelix_config
-
-    print "=== Yazelix Information ==="
+    print "=== Yazelix Status ==="
     print $"Version: ($YAZELIX_VERSION)"
     print $"Description: ($YAZELIX_DESCRIPTION)"
+    print $"Config File: ($config_state.config_file)"
     print $"Directory: ($YAZELIX_CONFIG_DIR | str replace "~" $env.HOME)"
     print $"Logs: ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)"
+    print $"Environment Refresh Needed: ($config_state.needs_refresh)"
+    print $"Shell Hooks: (format_shell_hook_summary $shell_status)"
     print $"Default Shell: ($config.default_shell)"
     let terminals = ($config.terminals? | default ["ghostty"])
     if ($terminals | is-empty) {
@@ -201,6 +96,19 @@ export def "yzx info" [] {
     print $"Persistent Sessions: ($config.persistent_sessions)"
     if ($config.persistent_sessions == "true") {
         print $"Session Name: ($config.session_name)"
+    }
+    if $verbose {
+        print ""
+        print "Shell Hook Details:"
+        print ($shell_status | table)
+    }
+    if $versions or $save {
+        print ""
+        if $save {
+            nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu --save
+        } else {
+            nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu
+        }
     }
     print "=========================="
 }

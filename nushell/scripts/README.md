@@ -8,7 +8,7 @@ This directory contains all Nushell scripts for the Yazelix project, organized b
 Essential scripts that provide the main Yazelix functionality:
 - `start_yazelix.nu` - Main launcher that starts Zellij with Yazelix layout
 - `launch_yazelix.nu` - Terminal launcher that opens your preferred terminal emulator
-- `yazelix.nu` - Command suite with subcommands (`yzx help`, `yzx versions`, etc.)
+- `yazelix.nu` - Command suite with subcommands (`yzx help`, `yzx status`, etc.)
 
 ### `integrations/` - Tool Integration Scripts
 Scripts that handle integration between Yazi, Zellij, and Helix:
