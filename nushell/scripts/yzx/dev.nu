@@ -126,48 +126,6 @@ export def "yzx dev update_lock" [
     }
 }
 
-export def "yzx dev update_nix" [
-    --yes      # Skip confirmation prompt
-    --verbose  # Show the underlying command
-] {
-    if (which determinate-nixd | is-empty) {
-        print "❌ determinate-nixd not found in PATH."
-        print "   Install Determinate Nix or check your PATH, then try again."
-        exit 1
-    }
-
-    if not $yes {
-        print "⚠️  This upgrades Determinate Nix using determinate-nixd."
-        print "   If your Nix install is not based on Determinate Nix, this will not work."
-        print "   It requires sudo and may prompt for your password."
-        let confirm = try {
-            (input "Continue? [y/N]: " | str downcase)
-        } catch { "n" }
-        if $confirm not-in ["y", "yes"] {
-            print "Aborted."
-            return
-        }
-    }
-
-    if $verbose {
-        print "⚙️ Running: sudo determinate-nixd upgrade"
-    } else {
-        print "🔄 Upgrading Determinate Nix..."
-    }
-
-    try {
-        let result = (^sudo determinate-nixd upgrade | complete)
-        if $result.exit_code != 0 {
-            print $"❌ Determinate Nix upgrade failed: ($result.stderr | str trim)"
-            exit 1
-        }
-        print "✅ Determinate Nix upgraded."
-    } catch {|err|
-        print $"❌ Determinate Nix upgrade failed: ($err.msg)"
-        exit 1
-    }
-}
-
 export def "yzx dev sync_terminal_configs" [] {
     let yazelix_dir = "~/.config/yazelix" | path expand
     let config_root = ($yazelix_dir | path join "configs/terminal_emulators")
