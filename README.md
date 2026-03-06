@@ -85,7 +85,7 @@ Full version history: [Version History](./docs/history.md)
 - **v12.8** – Added command palette (`yzx menu`, bound to `Alt+Shift+m` in Zellij) and improved restart launch robustness.
 - **v12.9** – Fixed Ghostty dead keys on Wayland (IM fallback), improved sidebar/layout config resolution, and deduplicated Zellij layout/zjstatus fragments (net `-260` lines in dedupe commits, `-76` lines overall for `v12.9`).
 - **v12.10** – Added `yzx refresh`, improved refresh output tiers and package-scope visibility, and shared the core devenv refresh helpers.
-- **v12.11** – Updated Yazelix for devenv 2.0, simplified launch activation and env handoff, restored TUI-backed rebuilds for `yzx launch`/`yzx restart`, improved desktop-launch consistency, fixed Ghostty transparency on restart, and streamlined sweep-test execution/progress.
+- **v12.11** – Updated Yazelix for devenv 2.0, simplified launch activation and env handoff, improved desktop-launch consistency, fixed Ghostty transparency on restart, and streamlined sweep-test execution/progress.
 
 ## Experiments
 
