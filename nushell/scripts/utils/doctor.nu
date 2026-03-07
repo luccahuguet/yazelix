@@ -9,11 +9,16 @@ def extract_first_semver [text: string] {
     if ($matches | is-empty) { "unknown" } else { $matches | first }
 }
 
+def extract_last_semver [text: string] {
+    let matches = ($text | parse --regex '(\d+\.\d+\.\d+)' | get -o capture0)
+    if ($matches | is-empty) { "unknown" } else { $matches | last }
+}
+
 def get_runtime_tool_version [tool: string] {
     match $tool {
         "nix" => {
             if (which nix | is-empty) { "not installed" } else {
-                try { extract_first_semver (nix --version | lines | first) } catch { "error" }
+                try { extract_last_semver (nix --version | lines | first) } catch { "error" }
             }
         }
         "devenv" => {
