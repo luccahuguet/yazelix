@@ -150,7 +150,15 @@ export def "yzx launch" [
             } else {
                 $config_state
             }
-            let fresh_launch_profile = get_launch_profile $fresh_state
+            # After a forced re-enter (used by restart after rebuild), prefer a
+            # fresh devenv shell over the cached fast-launch profile. The cached
+            # profile can lag behind the rebuilt shell and miss newly selected
+            # terminal packages such as Kitty.
+            let fresh_launch_profile = if $force_reenter {
+                null
+            } else {
+                get_launch_profile $fresh_state
+            }
 
             if $fresh_launch_profile != null {
                 let base_args = [$launch_script]
@@ -214,7 +222,7 @@ export def "yzx launch" [
                 $env_block = ($env_block | upsert YAZELIX_TERMINAL $env.YAZELIX_TERMINAL)
             }
             with-env $env_block {
-                run_in_devenv_shell_command "nu" ...$final_launch_args --cwd $yazelix_dir --skip-welcome --force-refresh=$should_refresh --verbose=$verbose_mode
+                run_in_devenv_shell_command "nu" ...$final_launch_args --cwd $yazelix_dir --skip-welcome --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode
             }
             if $should_refresh {
                 mark_config_state_applied $fresh_state
