@@ -189,24 +189,14 @@ export def "yzx dev sync_terminal_configs" [] {
 export def "yzx dev test" [
     --verbose(-v)  # Show detailed test output
     --new-window(-n)  # Run tests in a new Yazelix window
+    --lint-only  # Run only syntax validation
     --sweep  # Run only the non-visual configuration sweep
     --visual  # Run only the visual terminal sweep
     --all(-a)  # Run the full suite plus the visual terminal sweep
     --delay: int = 3  # Delay between visual terminal launches in seconds
 ] {
     use ../utils/test_runner.nu run_all_tests
-    run_all_tests --verbose=$verbose --new-window=$new_window --sweep=$sweep --visual=$visual --all=$all --delay $delay
-}
-
-# Validate syntax of all Nushell scripts
-export def "yzx dev lint" [
-    --verbose(-v)  # Show detailed output for each file
-] {
-    if $verbose {
-        nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/validate_syntax.nu" --verbose
-    } else {
-        nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/validate_syntax.nu"
-    }
+    run_all_tests --verbose=$verbose --new-window=$new_window --lint-only=$lint_only --sweep=$sweep --visual=$visual --all=$all --delay $delay
 }
 
 # Benchmark terminal launch performance

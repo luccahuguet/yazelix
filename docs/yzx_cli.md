@@ -9,10 +9,11 @@ Health checks and diagnostics
 - `--verbose`: Detailed output
 - `--fix`: Auto-fix safe issues
 
-### `yzx dev test [--verbose] [--new-window] [--sweep] [--visual] [--all] [--delay SECONDS]`
+### `yzx dev test [--verbose] [--new-window] [--lint-only] [--sweep] [--visual] [--all] [--delay SECONDS]`
 Run Yazelix test suite
 - `--verbose`: Show detailed test output
 - `--new-window`: Launch tests in a new Yazelix window (useful for debugging crashes)
+- `--lint-only`: Run only syntax validation
 - `--sweep`: Run only the non-visual configuration sweep
 - `--visual`: Run only the visual terminal sweep (launches actual terminal windows)
 - `--all`: Run the full suite plus the visual terminal sweep
@@ -167,6 +168,7 @@ yzx packs --all               # Show all declared packs (even disabled)
 yzx dev test                  # Run the default test suite
 yzx dev test --verbose        # Run tests with detailed output
 yzx dev test --new-window     # Run tests in separate window (for debugging)
+yzx dev test --lint-only      # Run only syntax validation
 yzx dev test --sweep          # Run only the non-visual config/shell sweep
 yzx dev test --visual         # Run only the visual terminal sweep
 yzx dev test --all            # Run full suite plus visual terminal sweep

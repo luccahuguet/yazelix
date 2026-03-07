@@ -104,6 +104,7 @@ exit 0
 export def run_all_tests [
     --verbose(-v)  # Show detailed output
     --new-window(-n)  # Run tests in a new Yazelix window
+    --lint-only  # Run only syntax validation
     --sweep  # Run only the non-visual configuration sweep
     --visual  # Run only the visual terminal sweep
     --all(-a)  # Run the full suite plus the visual terminal sweep
@@ -122,6 +123,7 @@ export def run_all_tests [
         # Build the command to run in the new window
         mut test_args = ["yzx", "dev", "test"]
         if $verbose { $test_args = ($test_args | append "--verbose") }
+        if $lint_only { $test_args = ($test_args | append "--lint-only") }
         if $sweep { $test_args = ($test_args | append "--sweep") }
         if $visual { $test_args = ($test_args | append "--visual") }
         if $all { $test_args = ($test_args | append "--all") }
@@ -139,6 +141,24 @@ export def run_all_tests [
             nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
         }
 
+        return
+    }
+
+    if $lint_only {
+        let log_dir = $"($env.HOME)/.config/yazelix/logs"
+        mkdir $log_dir
+        let timestamp = (date now | into int)
+        let log_file = $"($log_dir)/test_run_($timestamp).log"
+        let header = $"=== Yazelix Test Run ===\nDate: (date now)\nVerbose: ($verbose)\nMode: lint-only\n\n"
+        $header | save $log_file
+
+        let syntax_passed = run_syntax_validation $verbose $log_file
+        if $syntax_passed {
+            print $"📝 Full log: ($log_file)"
+        } else {
+            print $"📝 Full log: ($log_file)"
+            error make { msg: "Syntax validation failed" }
+        }
         return
     }
 
