@@ -63,6 +63,29 @@ export def "yzx why" [] {
     print "Install once, get the same environment everywhere."
 }
 
+export def "yzx sponsor" [] {
+    let sponsor_url = "https://github.com/sponsors/luccahuguet"
+
+    if (which xdg-open | is-not-empty) {
+        let result = (^xdg-open $sponsor_url | complete)
+        if $result.exit_code == 0 {
+            print "Opened sponsor page."
+            return
+        }
+    }
+
+    if (which open | is-not-empty) {
+        let result = (^open $sponsor_url | complete)
+        if $result.exit_code == 0 {
+            print "Opened sponsor page."
+            return
+        }
+    }
+
+    print "Support Yazelix:"
+    print $sponsor_url
+}
+
 # Canonical inspection command
 export def "yzx status" [
     --versions(-V)  # Include tool version matrix

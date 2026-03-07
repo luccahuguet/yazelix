@@ -176,6 +176,44 @@ def test_yzx_menu_exists [] {
     }
 }
 
+def test_yzx_sponsor_exists [] {
+    print "🧪 Testing yzx sponsor command exists..."
+
+    try {
+        let output = (yzx | str join "\n")
+
+        if ($output | str contains "yzx sponsor") {
+            print "  ✅ yzx sponsor command is documented in help"
+            true
+        } else {
+            print "  ❌ yzx sponsor command not found in help"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_yzx_sponsor_runs [] {
+    print "🧪 Testing yzx sponsor..."
+
+    try {
+        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx sponsor" | complete).stdout | str trim
+
+        if ($output | str contains "Opened sponsor page.") or ($output | str contains "https://github.com/sponsors/luccahuguet") {
+            print "  ✅ yzx sponsor runs successfully"
+            true
+        } else {
+            print $"  ❌ Unexpected output: ($output)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_yzx_config_open_print [] {
     print "🧪 Testing yzx config open --print..."
 
@@ -250,6 +288,8 @@ def main [] {
         (test_yzx_dev_exists),
         (test_yzx_doctor_exists),
         (test_yzx_menu_exists),
+        (test_yzx_sponsor_exists),
+        (test_yzx_sponsor_runs),
         (test_yzx_config_view),
         (test_yzx_config_sections),
         (test_yzx_config_open_print)

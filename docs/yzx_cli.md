@@ -74,6 +74,11 @@ Show current Yazelix status
 - `--verbose, -v`: include detailed shell hook status table
 - `--save`: write the version matrix to `docs/version_table.md` (implies `--versions`)
 
+### `yzx sponsor`
+Open the Yazelix GitHub Sponsors page
+- Opens `https://github.com/sponsors/luccahuguet` when possible
+- Falls back to printing the URL if no opener is available
+
 ### `yzx update [--verbose]`
 Run the safe default update set
 - Default: updates the devenv CLI and bundled `zjstatus.wasm`
@@ -160,6 +165,7 @@ yzx config zellij             # Show the Zellij section only
 yzx status                    # System information
 yzx status --versions         # Show all tool versions
 yzx status --verbose          # Show detailed shell hook status
+yzx sponsor                   # Open the Yazelix sponsor page
 
 # Updates
 yzx update                    # Safe default updates (devenv + zjstatus)
