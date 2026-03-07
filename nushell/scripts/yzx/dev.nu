@@ -123,7 +123,10 @@ export def "yzx dev update_lock" [
             cd $yazelix_dir
             ^devenv update
         }
-        print "✅ devenv.lock updated. Review and commit the changes if everything looks good."
+        print "✅ devenv.lock updated."
+        print "🔄 Syncing pinned Yazelix version expectations..."
+        yzx dev sync_pins
+        print "✅ Inputs and pins are in sync. Review and commit the changes if everything looks good."
     } catch {|err|
         print $"❌ devenv update failed: ($err.msg)"
         print "   Check your network connection and devenv.yaml inputs, then try again."

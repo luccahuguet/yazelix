@@ -4,6 +4,7 @@
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment run_in_devenv_shell_command]
 use ../utils/launch_state.nu [get_launch_env get_launch_profile]
+use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../core/start_yazelix.nu [start_yazelix_session]
 
 # Launch yazelix
@@ -18,6 +19,7 @@ export def "yzx launch" [
 ] {
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
+    print_runtime_version_drift_warning
 
     let verbose_mode = $verbose
     if $verbose_mode {

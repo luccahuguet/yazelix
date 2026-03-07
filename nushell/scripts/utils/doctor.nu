@@ -2,6 +2,88 @@
 # Yazelix Doctor - Health check utilities
 
 use logging.nu log_to_file
+use constants.nu [PINNED_NIX_VERSION PINNED_DEVENV_VERSION]
+
+def extract_first_semver [text: string] {
+    let matches = ($text | parse --regex '(\d+\.\d+\.\d+)' | get -o capture0)
+    if ($matches | is-empty) { "unknown" } else { $matches | first }
+}
+
+def get_runtime_tool_version [tool: string] {
+    match $tool {
+        "nix" => {
+            if (which nix | is-empty) { "not installed" } else {
+                try { extract_first_semver (nix --version | lines | first) } catch { "error" }
+            }
+        }
+        "devenv" => {
+            if (which devenv | is-empty) { "not installed" } else {
+                try { extract_first_semver (devenv --version | lines | first) } catch { "error" }
+            }
+        }
+        _ => "unknown"
+    }
+}
+
+def build_version_drift_result [tool: string, pinned: string, runtime: string] {
+    if $runtime == "not installed" {
+        {
+            status: "warning"
+            message: $"($tool) not installed"
+            details: $"Yazelix expects ($tool) ($pinned)"
+            fix_available: false
+        }
+    } else if $runtime == "error" or $runtime == "unknown" {
+        {
+            status: "warning"
+            message: $"Could not determine ($tool) runtime version"
+            details: $"Yazelix expects ($tool) ($pinned)"
+            fix_available: false
+        }
+    } else if $runtime != $pinned {
+        {
+            status: "warning"
+            message: $"($tool) version drift: runtime ($runtime), Yazelix expects ($pinned)"
+            details: "Version drift can cause breakage after upstream CLI or evaluation changes"
+            fix_available: false
+        }
+    } else {
+        {
+            status: "ok"
+            message: $"($tool) version matches Yazelix expectation: ($runtime)"
+            details: null
+            fix_available: false
+        }
+    }
+}
+
+export def get_version_drift_results [] {
+    let nix_runtime = get_runtime_tool_version "nix"
+    let devenv_runtime = get_runtime_tool_version "devenv"
+
+    [
+        (build_version_drift_result "nix" $PINNED_NIX_VERSION $nix_runtime)
+        (build_version_drift_result "devenv" $PINNED_DEVENV_VERSION $devenv_runtime)
+    ]
+}
+
+export def print_runtime_version_drift_warning [] {
+    let drift_results = (get_version_drift_results | where status == "warning")
+    if ($drift_results | is-empty) {
+        return
+    }
+
+    let devenv_drift = ($drift_results | where message =~ '^devenv version drift' | get -o 0)
+    let nix_drift = ($drift_results | where message =~ '^nix version drift' | get -o 0)
+
+    if ($devenv_drift != null) {
+        print $"⚠️  ($devenv_drift.message)"
+        print "   Yazelix may still work, but upstream devenv changes can break launch/rebuild flows."
+    }
+    if ($nix_drift != null) {
+        print $"⚠️  ($nix_drift.message)"
+    }
+}
 
 # Check for conflicting Helix runtime directories based on Helix's search priority
 export def check_helix_runtime_conflicts [] {
@@ -399,6 +481,9 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
 
     # devenv installation (performance optimization)
     $all_results = ($all_results | append (check_devenv_installation))
+
+    # Runtime drift against Yazelix pinned expectations
+    $all_results = ($all_results | append (get_version_drift_results))
 
     # Display results
     let errors = ($all_results | where status == "error")

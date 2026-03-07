@@ -2,6 +2,7 @@
 # yzx env command - Load Yazelix environment without UI
 
 use ../utils/environment_bootstrap.nu *
+use ../utils/doctor.nu print_runtime_version_drift_warning
 
 # Build shell command from shell name.
 # --login keeps existing behavior for default yzx env mode.
@@ -34,6 +35,7 @@ export def "yzx env" [
 ] {
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
+    print_runtime_version_drift_warning
 
     # Prepare environment (shared with start_yazelix.nu)
     let env_prep = prepare_environment
