@@ -10,7 +10,7 @@
 format = """
 $directory\
 $git_branch\
-$git_status\
+$git_status \
 $package\
 $python\
 $nodejs\
@@ -42,9 +42,9 @@ symbol = ""
 [git_status]
 format = "([ $all_status$ahead_behind]($style))"
 conflicted = "="
-ahead = ">"
-behind = "<"
-diverged = "<>"
+ahead = "⇡"
+behind = "⇣"
+diverged = "⇕"
 up_to_date = ""
 untracked = "?"
 stashed = "$"
