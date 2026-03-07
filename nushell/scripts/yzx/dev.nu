@@ -4,6 +4,11 @@
 use ../utils/constants.nu [PINNED_NIX_VERSION PINNED_DEVENV_VERSION YAZELIX_VERSION]
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 
+# Development and maintainer commands
+export def "yzx dev" [] {
+    print "Run 'yzx dev --help' to see available maintainer subcommands"
+}
+
 def update_constant_value [contents: string, key: string, new_value: string] {
     let pattern = $"export const ($key) = \"[^\"]+\""
     $contents | str replace -ra $pattern $"export const ($key) = \"($new_value)\""
@@ -177,5 +182,62 @@ export def "yzx dev sync_terminal_configs" [] {
         let final_content = $"($header)($content)"
         $final_content | save $dest_path --force
         print $"✅ Synced ($entry.terminal) → ($dest_path)"
+    }
+}
+
+# Run Yazelix test suite
+export def "yzx dev test" [
+    --verbose(-v)  # Show detailed test output
+    --new-window(-n)  # Run tests in a new Yazelix window
+    --sweep  # Run only the non-visual configuration sweep
+    --visual  # Run only the visual terminal sweep
+    --all(-a)  # Run the full suite plus the visual terminal sweep
+    --delay: int = 3  # Delay between visual terminal launches in seconds
+] {
+    use ../utils/test_runner.nu run_all_tests
+    run_all_tests --verbose=$verbose --new-window=$new_window --sweep=$sweep --visual=$visual --all=$all --delay $delay
+}
+
+# Validate syntax of all Nushell scripts
+export def "yzx dev lint" [
+    --verbose(-v)  # Show detailed output for each file
+] {
+    if $verbose {
+        nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/validate_syntax.nu" --verbose
+    } else {
+        nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/validate_syntax.nu"
+    }
+}
+
+# Benchmark terminal launch performance
+export def "yzx dev bench" [
+    --iterations(-n): int = 1  # Number of iterations per terminal
+    --terminal(-t): string     # Test only specific terminal
+    --verbose(-v)              # Show detailed output
+] {
+    mut args = ["--iterations", $iterations]
+
+    if ($terminal | is-not-empty) {
+        $args = ($args | append ["--terminal", $terminal])
+    }
+
+    if $verbose {
+        $args = ($args | append "--verbose")
+    }
+
+    nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/benchmark_terminals.nu" ...$args
+}
+
+# Profile launch sequence and identify bottlenecks
+export def "yzx dev profile" [
+    --cold(-c)        # Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
+    --clear-cache     # Toggle yazelix.toml option and clear cache to force full Nix re-evaluation (simulates config change)
+] {
+    use ../utils/profile.nu *
+
+    if $cold {
+        profile_cold_launch --clear-cache=$clear_cache
+    } else {
+        profile_launch
     }
 }

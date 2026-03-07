@@ -171,5 +171,11 @@ export def get_launch_env [config: record, profile_path: string] {
 }
 
 export def --env activate_launch_profile [config: record, profile_path: string] {
-    load-env (get_launch_env $config $profile_path)
+    mut launch_env = (get_launch_env $config $profile_path)
+
+    if ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
+        $launch_env = ($launch_env | upsert ZELLIJ_DEFAULT_LAYOUT $env.ZELLIJ_DEFAULT_LAYOUT)
+    }
+
+    load-env $launch_env
 }

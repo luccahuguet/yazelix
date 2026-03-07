@@ -137,7 +137,7 @@ export def launch_visual_test [config_path: string, test_id: string, terminal: s
         with-env {
             YAZELIX_CONFIG_OVERRIDE: $config_path,
             YAZELIX_SKIP_WELCOME: "true",
-            ZELLIJ_DEFAULT_LAYOUT: "yzx_sweep_test",
+            YAZELIX_LAYOUT_OVERRIDE: "yzx_sweep_test",
             YAZELIX_SWEEP_TEST_ID: $test_id
         } {
             # Use --terminal flag to force specific terminal (prevents fallback to first available)

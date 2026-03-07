@@ -80,9 +80,11 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
         $original_dir
     }
 
-    # Resolve layout from yazelix.toml; only honor env override for sweep tests.
+    # Resolve layout from yazelix.toml; explicit override wins for sweep/test flows.
     let configured_layout = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
-    let layout = if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) and ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
+    let layout = if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
+        $env.YAZELIX_LAYOUT_OVERRIDE
+    } else if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) and ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
         $env.ZELLIJ_DEFAULT_LAYOUT
     } else {
         $configured_layout

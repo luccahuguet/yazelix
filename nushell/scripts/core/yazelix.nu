@@ -32,9 +32,6 @@ export use ../yzx/gen_config.nu *
 #   yzx run       - Run a command inside the Yazelix environment
 #   yzx status    - Show current Yazelix status
 #   yzx doctor    - Run health checks
-#   yzx profile   - Profile launch performance
-#   yzx test      - Run test suite
-#   yzx lint      - Validate script syntax
 
 def format_shell_hook_summary [shell_status] {
     let current = ($shell_status | where status == "current" | length)
@@ -418,104 +415,4 @@ export def "yzx update repo" [
     }
 
     print "✅ Yazelix repository updated."
-}
-
-# Run configuration sweep tests across shell/terminal combinations
-export def "yzx sweep" [] {
-    print "Run 'yzx sweep --help' to see available subcommands"
-}
-
-# Test all shell combinations
-export def "yzx sweep shells" [
-    --verbose(-v)  # Show detailed output
-] {
-    use ../dev/test_config_sweep.nu run_all_sweep_tests
-
-    if $verbose {
-        run_all_sweep_tests --verbose
-    } else {
-        run_all_sweep_tests
-    }
-}
-
-# Test all terminal launches
-export def "yzx sweep terminals" [
-    --verbose(-v)       # Show detailed output
-    --delay: int = 3    # Delay between terminal launches in seconds
-] {
-    use ../dev/test_config_sweep.nu run_all_sweep_tests
-
-    run_all_sweep_tests --visual --verbose=$verbose --visual-delay $delay
-}
-
-# Run all sweep tests (shells + terminals)
-export def "yzx sweep all" [
-    --verbose(-v)       # Show detailed output
-    --delay: int = 3    # Delay between terminal launches in seconds
-] {
-    print "=== Running All Sweep Tests ==="
-    print "Phase 1: Shell combinations (fast)"
-    print ""
-
-    yzx sweep shells --verbose=$verbose
-
-    print ""
-    print "=== Phase 2: Terminal launches (slow) ==="
-    print ""
-
-    yzx sweep terminals --verbose=$verbose --delay $delay
-}
-
-# Run Yazelix test suite
-export def "yzx test" [
-    --verbose(-v)  # Show detailed test output
-    --new-window(-n)  # Run tests in a new Yazelix window
-    --all(-a)  # Include visual terminal sweep tests
-] {
-    use ../utils/test_runner.nu run_all_tests
-    run_all_tests --verbose=$verbose --new-window=$new_window --all=$all
-}
-
-# Validate syntax of all Nushell scripts
-export def "yzx lint" [
-    --verbose(-v)  # Show detailed output for each file
-] {
-    if $verbose {
-        nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/validate_syntax.nu" --verbose
-    } else {
-        nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/validate_syntax.nu"
-    }
-}
-
-# Benchmark terminal launch performance
-export def "yzx bench" [
-    --iterations(-n): int = 1  # Number of iterations per terminal
-    --terminal(-t): string     # Test only specific terminal
-    --verbose(-v)              # Show detailed output
-] {
-    mut args = ["--iterations", $iterations]
-
-    if ($terminal | is-not-empty) {
-        $args = ($args | append ["--terminal", $terminal])
-    }
-
-    if $verbose {
-        $args = ($args | append "--verbose")
-    }
-
-    nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/benchmark_terminals.nu" ...$args
-}
-
-# Profile launch sequence and identify bottlenecks
-export def "yzx profile" [
-    --cold(-c)        # Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
-    --clear-cache     # Toggle yazelix.toml option and clear cache to force full Nix re-evaluation (simulates config change)
-] {
-    use ../utils/profile.nu *
-
-    if $cold {
-        profile_cold_launch --clear-cache=$clear_cache
-    } else {
-        profile_launch
-    }
 }

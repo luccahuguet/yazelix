@@ -83,6 +83,24 @@ def build_kitty_cursor [cursor_trail: string] {
     }
 }
 
+def alacritty_supports_terminal_table [] {
+    if (which alacritty | is-empty) {
+        return true
+    }
+
+    let version_output = (do { ^alacritty --version } | complete | get stdout | str trim)
+    let version_text = ($version_output | parse --regex '(\d+)\.(\d+)\.(\d+)' | first)
+
+    if ($version_text | is-empty) {
+        return true
+    }
+
+    let major = ($version_text.capture0 | into int)
+    let minor = ($version_text.capture1 | into int)
+
+    ($major > 0) or ($minor >= 14)
+}
+
 # Config generators
 export def generate_ghostty_config [] {
     let config = parse_yazelix_config
@@ -162,16 +180,27 @@ sync_to_monitor yes
 
 export def generate_alacritty_config [] {
     let config = parse_yazelix_config
+    let shell_section = if (alacritty_supports_terminal_table) {
+        $"[terminal]
+shell = { program = \"sh\", args = ($SHELL_ARGS_STRING) }"
+    } else {
+        $"[shell]
+program = \"sh\"
+args = ($SHELL_ARGS_STRING)"
+    }
+    let import_section = if (alacritty_supports_terminal_table) {
+        "[general]\nimport = []"
+    } else {
+        "import = []"
+    }
     $"# Alacritty configuration for Yazelix
 
-[general]
-import = []
+($import_section)
 
 [env]
 TERM = \"xterm-256color\"
 
-[terminal]
-shell = { program = \"sh\", args = ($SHELL_ARGS_STRING) }
+($shell_section)
 
 [window]
 decorations = \"None\"

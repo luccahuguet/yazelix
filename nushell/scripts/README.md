@@ -57,9 +57,11 @@ nu ~/.config/yazelix/nushell/scripts/core/yazelix.nu help
 ### Development Tools
 ```bash
 # Validate script syntax
-yzx lint              # Run syntax validation (shows summary)
-yzx lint --verbose    # Show details for each file
-yzx test              # Run tests (includes syntax validation)
+yzx dev lint           # Run syntax validation (shows summary)
+yzx dev lint --verbose # Show details for each file
+yzx dev test           # Run tests (includes syntax validation)
+yzx dev test --sweep   # Run only the config/shell sweep
+yzx dev test --visual  # Run only the visual terminal sweep
 
 # Record demos
 nu ~/.config/yazelix/nushell/scripts/dev/record_demo.nu quick

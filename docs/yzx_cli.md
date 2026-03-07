@@ -9,19 +9,22 @@ Health checks and diagnostics
 - `--verbose`: Detailed output
 - `--fix`: Auto-fix safe issues
 
-### `yzx test [--verbose] [--new-window] [--all]`
+### `yzx dev test [--verbose] [--new-window] [--sweep] [--visual] [--all] [--delay SECONDS]`
 Run Yazelix test suite
 - `--verbose`: Show detailed test output
 - `--new-window`: Launch tests in a new Yazelix window (useful for debugging crashes)
-- `--all`: Include visual terminal sweep tests (launches actual terminal windows)
+- `--sweep`: Run only the non-visual configuration sweep
+- `--visual`: Run only the visual terminal sweep (launches actual terminal windows)
+- `--all`: Run the full suite plus the visual terminal sweep
+- `--delay`: Delay between visual terminal launches in seconds (default: 3)
 
-### `yzx bench [-n ITERATIONS] [-t TERMINAL] [--verbose]`
+### `yzx dev bench [-n ITERATIONS] [-t TERMINAL] [--verbose]`
 Benchmark terminal launch performance
 - `-n, --iterations`: Number of iterations per terminal (default: 3)
 - `-t, --terminal`: Test only specific terminal (e.g., ghostty, wezterm, kitty)
 - `--verbose`: Show detailed output
 
-### `yzx profile [--cold] [--clear-cache]`
+### `yzx dev profile [--cold] [--clear-cache]`
 Profile launch sequence and identify performance bottlenecks
 - Default: Profile warm start (environment setup components from within Yazelix)
 - `--cold`: Profile cold start from vanilla terminal (emulates desktop entry or fresh terminal launch)
@@ -99,7 +102,7 @@ Show enabled packs and their sizes
 Interactive command palette (fuzzy search)
 - Default: inline mode in current terminal
 - `--popup`: open in a Zellij floating pane (errors if not in Zellij)
-- Lists most `yzx` commands while hiding maintenance-heavy or low-signal entries (`yzx dev*`, `yzx sweep*`, `yzx env`, `yzx bench`, `yzx lint`, `yzx profile`, `yzx test`, `yzx run`)
+- Lists most `yzx` commands while hiding maintenance-heavy or low-signal entries (`yzx dev*`, `yzx env`, `yzx run`)
 - Cancel with `Esc`
 - In popup mode after running a command: `Backspace` returns to menu, `Enter`/`Esc` closes popup
 - Keybind: `Alt Shift m` opens the popup menu in Zellij
@@ -160,23 +163,25 @@ yzx packs                     # Show enabled packs summary with sizes
 yzx packs --expand            # Show packages within each pack
 yzx packs --all               # Show all declared packs (even disabled)
 
-# Testing and benchmarking
-yzx test                      # Run all tests (non-visual)
-yzx test --verbose            # Run tests with detailed output
-yzx test --new-window         # Run tests in separate window (for debugging)
-yzx test --all                # Run all tests including visual terminal sweep
+# Development verification
+yzx dev test                  # Run the default test suite
+yzx dev test --verbose        # Run tests with detailed output
+yzx dev test --new-window     # Run tests in separate window (for debugging)
+yzx dev test --sweep          # Run only the non-visual config/shell sweep
+yzx dev test --visual         # Run only the visual terminal sweep
+yzx dev test --all            # Run full suite plus visual terminal sweep
 
 # Benchmarking
-yzx bench                     # Benchmark all available terminals (3 iterations each)
-yzx bench -n 5                # Run 5 iterations per terminal
-yzx bench -t ghostty          # Benchmark only Ghostty
-yzx bench -t wezterm -n 10    # Benchmark WezTerm with 10 iterations
+yzx dev bench                 # Benchmark all available terminals (3 iterations each)
+yzx dev bench -n 5            # Run 5 iterations per terminal
+yzx dev bench -t ghostty      # Benchmark only Ghostty
+yzx dev bench -t wezterm -n 10 # Benchmark WezTerm with 10 iterations
 
 # Profiling
 # Note: Different launch scenarios have different performance characteristics
-yzx profile                   # Profile warm start (from within Yazelix shell)
-yzx profile --cold            # Profile cold start (emulates desktop entry or vanilla terminal launch)
-yzx profile --cold --clear-cache  # Profile after config change (toggles option and clears cache)
+yzx dev profile               # Profile warm start (from within Yazelix shell)
+yzx dev profile --cold        # Profile cold start (emulates desktop entry or vanilla terminal launch)
+yzx dev profile --cold --clear-cache  # Profile after config change (toggles option and clears cache)
 
 # Performance scenarios explained:
 # 1. Warm start (~130ms): Already in Yazelix, launching tools/commands

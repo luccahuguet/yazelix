@@ -178,12 +178,23 @@ def main [
     }
 
     # Launch terminal using bash to handle background processes properly
-    # Pass YAZELIX_TERMINAL so verification scripts know which terminal launched
+    # Preserve sweep/test env vars when present so the launched session can select
+    # the test layout and write verification results.
+    mut propagated_env = {
+        YAZELIX_TERMINAL: $terminal_info.terminal
+    }
+    if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) {
+        $propagated_env = ($propagated_env | upsert YAZELIX_SWEEP_TEST_ID $env.YAZELIX_SWEEP_TEST_ID)
+    }
+    if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
+        $propagated_env = ($propagated_env | upsert YAZELIX_LAYOUT_OVERRIDE $env.YAZELIX_LAYOUT_OVERRIDE)
+    }
+    if ($env.YAZELIX_SKIP_WELCOME? | is-not-empty) {
+        $propagated_env = ($propagated_env | upsert YAZELIX_SKIP_WELCOME $env.YAZELIX_SKIP_WELCOME)
+    }
+
     if $terminal_info.use_wrapper {
-        mut env_block = {
-            YAZELIX_TERMINAL_CONFIG_MODE: $terminal_config_mode,
-            YAZELIX_TERMINAL: $terminal_info.terminal
-        }
+        let env_block = ($propagated_env | upsert YAZELIX_TERMINAL_CONFIG_MODE $terminal_config_mode)
         if $verbose_mode {
             print $"Launching wrapper command: ($launch_cmd)"
         }
@@ -191,13 +202,10 @@ def main [
             ^bash -c $launch_cmd
         }
     } else {
-        mut env_block = {
-            YAZELIX_TERMINAL: $terminal_info.terminal
-        }
         if $verbose_mode {
             print $"Launching command: ($launch_cmd)"
         }
-        with-env $env_block {
+        with-env $propagated_env {
             ^bash -c $launch_cmd
         }
     }

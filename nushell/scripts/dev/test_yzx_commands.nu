@@ -15,7 +15,7 @@ def test_yzx_help [] {
             "Subcommands:",
             "yzx doctor",
             "yzx launch",
-            "yzx test"
+            "yzx dev"
         ]
 
         for element in $required_elements {
@@ -117,18 +117,18 @@ def test_yzx_status_verbose [] {
     }
 }
 
-def test_yzx_test_exists [] {
-    print "🧪 Testing yzx test command exists..."
+def test_yzx_dev_exists [] {
+    print "🧪 Testing yzx dev command exists..."
 
     try {
-        # Just check that help mentions the test command
+        # Just check that help mentions the dev command surface
         let output = (yzx | str join "\n")
 
-        if ($output | str contains "yzx test") {
-            print "  ✅ yzx test command is documented in help"
+        if ($output | str contains "yzx dev") {
+            print "  ✅ yzx dev command is documented in help"
             true
         } else {
-            print "  ❌ yzx test command not found in help"
+            print "  ❌ yzx dev command not found in help"
             false
         }
     } catch { |err|
@@ -205,7 +205,7 @@ def main [] {
         (test_yzx_status_versions),
         (test_yzx_why),
         (test_yzx_status_verbose),
-        (test_yzx_test_exists),
+        (test_yzx_dev_exists),
         (test_yzx_doctor_exists),
         (test_yzx_menu_exists),
         (test_yzx_config_open_print)

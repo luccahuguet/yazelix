@@ -40,7 +40,9 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     let layout_path = if ($layout_override | is-not-empty) {
         $layout_override
     } else {
-        let layout = if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) and ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
+        let layout = if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
+            $env.YAZELIX_LAYOUT_OVERRIDE
+        } else if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) and ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
             $env.ZELLIJ_DEFAULT_LAYOUT
         } else {
             $configured_layout

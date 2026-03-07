@@ -104,8 +104,15 @@ exit 0
 export def run_all_tests [
     --verbose(-v)  # Show detailed output
     --new-window(-n)  # Run tests in a new Yazelix window
-    --all(-a)  # Include visual terminal sweep tests
+    --sweep  # Run only the non-visual configuration sweep
+    --visual  # Run only the visual terminal sweep
+    --all(-a)  # Run the full suite plus the visual terminal sweep
+    --delay: int = 3  # Delay between visual terminal launches in seconds
 ] {
+    let visual_delay = ($delay | default 3)
+    let run_only_sweep = ($sweep and not $visual and not $all)
+    let run_only_visual = ($visual and not $sweep and not $all)
+    let run_both_sweeps = ($sweep and $visual and not $all)
 
     # If --new-window flag is set, launch tests in a new Yazelix instance
     if $new_window {
@@ -113,11 +120,15 @@ export def run_all_tests [
         print ""
 
         # Build the command to run in the new window
-        let test_cmd = if $verbose {
-            "yzx test --verbose"
-        } else {
-            "yzx test"
+        mut test_args = ["yzx", "dev", "test"]
+        if $verbose { $test_args = ($test_args | append "--verbose") }
+        if $sweep { $test_args = ($test_args | append "--sweep") }
+        if $visual { $test_args = ($test_args | append "--visual") }
+        if $all { $test_args = ($test_args | append "--all") }
+        if $visual or $all {
+            $test_args = ($test_args | append ["--delay", ($visual_delay | into string)])
         }
+        let test_cmd = ($test_args | str join " ")
 
         # Launch Yazelix with skip welcome screen
         print $"💡 In the new window, run: ($test_cmd)"
@@ -130,6 +141,12 @@ export def run_all_tests [
 
         return
     }
+
+    if $run_only_visual {
+        run_visual_sweep_tests $verbose $visual_delay
+        return
+    }
+
     let test_dir = $"($env.HOME)/.config/yazelix/nushell/scripts/dev"
     let log_dir = $"($env.HOME)/.config/yazelix/logs"
 
@@ -137,7 +154,7 @@ export def run_all_tests [
     mkdir $log_dir
 
     # Create timestamped log file
-    let timestamp = (date now | format date "%Y-%m-%d_%H-%M-%S")
+    let timestamp = (date now | into int)
     let log_file = $"($log_dir)/test_run_($timestamp).log"
 
     # Log header
@@ -145,10 +162,14 @@ export def run_all_tests [
     $header | save $log_file
 
     # Find all test_*.nu files (excluding test_fonts.nu which is for manual testing)
-    let test_files = try {
+    mut test_files = try {
         glob $"($test_dir)/test_*.nu" | where $it !~ "test_fonts"
     } catch {
         []
+    }
+
+    if $run_only_sweep or $run_both_sweeps {
+        $test_files = ($test_files | where ($it | path basename) == "test_config_sweep.nu")
     }
 
     if ($test_files | is-empty) {
@@ -295,18 +316,17 @@ export def run_all_tests [
         print ""
 
         # Run visual terminal sweep tests if --all flag is set
-        if $all {
-            print ""
-            print "=== Running Visual Terminal Sweep Tests (--all) ==="
-            print ""
-
-            let yazelix_dir = $"($env.HOME)/.config/yazelix"
-
-            if $verbose {
-                nu -c $"use ($yazelix_dir)/nushell/scripts/core/yazelix.nu *; yzx sweep terminals --verbose"
-            } else {
-                nu -c $"use ($yazelix_dir)/nushell/scripts/core/yazelix.nu *; yzx sweep terminals"
-            }
+        if $all or $run_both_sweeps {
+            run_visual_sweep_tests $verbose $visual_delay
         }
     }
+}
+
+def run_visual_sweep_tests [verbose: bool, delay: int] {
+    print ""
+    print "=== Running Visual Terminal Sweep Tests ==="
+    print ""
+
+    let verbose_arg = if $verbose { " --verbose" } else { "" }
+    nu -c $"use ~/.config/yazelix/nushell/scripts/dev/test_config_sweep.nu run_all_sweep_tests; run_all_sweep_tests --visual --visual-delay ($delay)($verbose_arg)"
 }

@@ -23,14 +23,8 @@ def get_menu_items [] {
     | where name != "yzx"
     | where name != "yzx menu"
     | where name != "yzx menu --popup"
-    | where not ($it.name | str starts-with "yzx sweep")
     | where not ($it.name | str starts-with "yzx dev")
     | where $it.name != "yzx env"
-    | where $it.name != "yzx bench"
-    # TODO: Move `yzx lint` under `yzx dev` and remove the top-level command.
-    | where $it.name != "yzx lint"
-    | where $it.name != "yzx profile"
-    | where $it.name != "yzx test"
     | where $it.name != "yzx run"
     | sort-by name
     | each {|row|

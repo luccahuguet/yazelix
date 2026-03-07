@@ -199,8 +199,8 @@ export def "yzx launch" [
             if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) {
                 $env_block = ($env_block | upsert YAZELIX_CONFIG_OVERRIDE $env.YAZELIX_CONFIG_OVERRIDE)
             }
-            if (($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) and ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty)) {
-                $env_block = ($env_block | upsert ZELLIJ_DEFAULT_LAYOUT $env.ZELLIJ_DEFAULT_LAYOUT)
+            if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
+                $env_block = ($env_block | upsert YAZELIX_LAYOUT_OVERRIDE $env.YAZELIX_LAYOUT_OVERRIDE)
             }
             if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) {
                 $env_block = ($env_block | upsert YAZELIX_SWEEP_TEST_ID $env.YAZELIX_SWEEP_TEST_ID)
