@@ -2,7 +2,6 @@
 # yzx env command - Load Yazelix environment without UI
 
 use ../utils/environment_bootstrap.nu *
-use ../utils/config_state.nu [mark_config_state_applied]
 
 # Build shell command from shell name.
 # --login keeps existing behavior for default yzx env mode.
@@ -60,7 +59,8 @@ export def "yzx env" [
         print "⚠️  Skipping explicit refresh trigger; environment may be stale."
         print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
     } else if $needs_refresh {
-        print $"♻️  ($refresh_reason) – rebuilding environment"
+        print "🔄 Configuration changed - rebuilding environment..."
+        rebuild_yazelix_environment --refresh-eval-cache
     }
 
     if $no_shell {
@@ -73,9 +73,6 @@ export def "yzx env" [
             run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
         }
 
-        if $should_refresh {
-            mark_config_state_applied $env_prep.config_state
-        }
     } else {
         # Launch configured shell
         let shell_command = (resolve_shell_command $configured_shell_name --login)
@@ -90,10 +87,6 @@ export def "yzx env" [
                 } else {
                     run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
                 }
-            }
-
-            if $should_refresh {
-                mark_config_state_applied $env_prep.config_state
             }
         } catch {|err|
             print $"❌ Failed to launch configured shell: ($err.msg)"
