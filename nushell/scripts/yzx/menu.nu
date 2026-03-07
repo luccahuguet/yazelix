@@ -117,6 +117,22 @@ export def "yzx menu" [
     }
 }
 
+# Show the active Yazelix configuration
+export def "yzx config" [
+    --full   # Include the packs section
+    --path   # Print the resolved config path
+] {
+    let config = parse_yazelix_config
+    let config_path = $config.config_file
+
+    if $path {
+        $config_path
+    } else {
+        let raw_config = (open $config_path)
+        if $full { $raw_config } else { $raw_config | reject packs }
+    }
+}
+
 # Open the active Yazelix configuration file in your editor
 export def "yzx config open" [
     --print  # Print the config path without opening

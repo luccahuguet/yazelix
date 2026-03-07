@@ -195,6 +195,27 @@ def test_yzx_config_open_print [] {
     }
 }
 
+def test_yzx_config_view [] {
+    print "🧪 Testing yzx config..."
+
+    try {
+        let output = (
+            ^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config | columns | str join ','" | complete
+        ).stdout | str trim
+
+        if ($output | str contains "core") and ($output | str contains "terminal") and not ($output | str contains "packs") {
+            print "  ✅ yzx config hides packs by default"
+            true
+        } else {
+            print $"  ❌ Unexpected output: ($output)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def main [] {
     print "=== Testing yzx Commands ==="
     print ""
@@ -208,6 +229,7 @@ def main [] {
         (test_yzx_dev_exists),
         (test_yzx_doctor_exists),
         (test_yzx_menu_exists),
+        (test_yzx_config_view),
         (test_yzx_config_open_print)
     ]
 

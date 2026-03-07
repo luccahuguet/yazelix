@@ -109,6 +109,12 @@ Interactive command palette (fuzzy search)
 - Keybind: `Alt Shift m` opens the popup menu in Zellij
 - Popup pane is named `yzx_menu` to avoid duplicate menu instances
 
+### `yzx config [--full] [--path]`
+Show the active Yazelix configuration via Nushell `open`
+- Default: print the active config with `packs` hidden to reduce noise
+- `--full`: include the `packs` section
+- `--path`: print the resolved config path
+
 ### `yzx config open [--print]`
 Open the active Yazelix configuration file in your editor
 - Uses `$EDITOR` (set by Yazelix from `[editor] command` in yazelix.toml)
@@ -142,6 +148,9 @@ yzx run bash "-lc" "lazygit"  # Run through a shell
 
 # Diagnostics and info
 yzx doctor --fix              # Health check with auto-fix
+yzx config                    # Show active config without the packs section
+yzx config --full             # Show the full config including packs
+yzx config --path             # Print the active config path
 yzx status                    # System information
 yzx status --versions         # Show all tool versions
 yzx status --verbose          # Show detailed shell hook status
