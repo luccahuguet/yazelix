@@ -59,7 +59,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
         print "🔧 Setting up Yazelix environment (installing shell hooks and dependencies)..."
         print "   This may take several minutes on first run."
 
-        run_in_devenv_shell "echo '✅ Setup complete! Shell hooks installed.'" --verbose=$verbose_mode --force-refresh=$needs_refresh
+        run_in_devenv_shell "echo '✅ Setup complete! Shell hooks installed.'" --skip-welcome --verbose=$verbose_mode --force-refresh=$needs_refresh
 
         print ""
         print "📝 Next steps:"
@@ -125,7 +125,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
         }
 
         # Use shared devenv runner (consolidates with yzx env)
-        run_in_devenv_shell $cmd --verbose=$verbose_mode --force-refresh=$needs_refresh
+        run_in_devenv_shell $cmd --skip-welcome --verbose=$verbose_mode --force-refresh=$needs_refresh
     }
 }
 

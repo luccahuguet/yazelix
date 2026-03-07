@@ -212,7 +212,7 @@ export def "yzx launch" [
                 $env_block = ($env_block | upsert YAZELIX_TERMINAL $env.YAZELIX_TERMINAL)
             }
             with-env $env_block {
-                run_in_devenv_shell_command "nu" ...$final_launch_args --cwd $yazelix_dir --force-refresh=$should_refresh --verbose=$verbose_mode
+                run_in_devenv_shell_command "nu" ...$final_launch_args --cwd $yazelix_dir --skip-welcome --force-refresh=$should_refresh --verbose=$verbose_mode
             }
             if $should_refresh {
                 mark_config_state_applied $fresh_state
