@@ -216,6 +216,27 @@ def test_yzx_config_view [] {
     }
 }
 
+def test_yzx_config_sections [] {
+    print "🧪 Testing yzx config section views..."
+
+    try {
+        let hx_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config hx | columns | str join ','" | complete).stdout | str trim
+        let yazi_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config yazi | columns | str join ','" | complete).stdout | str trim
+        let zellij_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config zellij | columns | str join ','" | complete).stdout | str trim
+
+        if ($hx_output | str contains "mode") and ($yazi_output | str contains "plugins") and ($zellij_output | str contains "session_name") {
+            print "  ✅ yzx config section commands return focused sections"
+            true
+        } else {
+            print $"  ❌ Unexpected section output: hx=($hx_output) yazi=($yazi_output) zellij=($zellij_output)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def main [] {
     print "=== Testing yzx Commands ==="
     print ""
@@ -230,6 +251,7 @@ def main [] {
         (test_yzx_doctor_exists),
         (test_yzx_menu_exists),
         (test_yzx_config_view),
+        (test_yzx_config_sections),
         (test_yzx_config_open_print)
     ]
 

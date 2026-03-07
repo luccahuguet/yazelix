@@ -133,6 +133,30 @@ export def "yzx config" [
     }
 }
 
+def show_config_section [section: string] {
+    let config_path = (parse_yazelix_config).config_file
+    let raw_config = (open $config_path)
+
+    match $section {
+        "hx" => ($raw_config | get helix)
+        "yazi" => ($raw_config | get yazi)
+        "zellij" => ($raw_config | get zellij)
+        _ => (error make {msg: $"Unknown config section: ($section)"})
+    }
+}
+
+export def "yzx config hx" [] {
+    show_config_section "hx"
+}
+
+export def "yzx config yazi" [] {
+    show_config_section "yazi"
+}
+
+export def "yzx config zellij" [] {
+    show_config_section "zellij"
+}
+
 # Open the active Yazelix configuration file in your editor
 export def "yzx config open" [
     --print  # Print the config path without opening

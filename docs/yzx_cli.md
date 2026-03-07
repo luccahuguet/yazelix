@@ -114,6 +114,9 @@ Show the active Yazelix configuration via Nushell `open`
 - Default: print the active config with `packs` hidden to reduce noise
 - `--full`: include the `packs` section
 - `--path`: print the resolved config path
+- `yzx config hx`: show the `[helix]` section
+- `yzx config yazi`: show the `[yazi]` section
+- `yzx config zellij`: show the `[zellij]` section
 
 ### `yzx config open [--print]`
 Open the active Yazelix configuration file in your editor
@@ -151,6 +154,9 @@ yzx doctor --fix              # Health check with auto-fix
 yzx config                    # Show active config without the packs section
 yzx config --full             # Show the full config including packs
 yzx config --path             # Print the active config path
+yzx config hx                 # Show the Helix section only
+yzx config yazi               # Show the Yazi section only
+yzx config zellij             # Show the Zellij section only
 yzx status                    # System information
 yzx status --versions         # Show all tool versions
 yzx status --verbose          # Show detailed shell hook status
