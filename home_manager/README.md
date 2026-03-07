@@ -28,7 +28,7 @@ Add this to your `flake.nix` inputs:
   inputs = {
     # ... your existing inputs
     yazelix-hm = {
-      url = "path:/home/user/.config/yazelix/home_manager";  # Adjust path as needed
+      url = "github:luccahuguet/yazelix?dir=home_manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -43,6 +43,9 @@ Add this to your `flake.nix` inputs:
   };
 }
 ```
+
+This example assumes you use Home Manager with flakes.
+It pins the Home Manager module as a normal flake input instead of referencing a user-specific checkout path.
 
 ### 2. Configure Yazelix in Your Home Manager Configuration
 
@@ -123,7 +126,7 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
 - This is required even though Yazelix installs its own nushell via Nix
 
 ### Module not found
-- Check that the flake path is correct in your `flake.nix`
+- If you use Home Manager with flakes, check that the `yazelix-hm` input reference is correct in your own `flake.nix`
 - Ensure the module is properly imported in your Home Manager configuration
 
 ## Development
