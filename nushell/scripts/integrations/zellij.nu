@@ -2,7 +2,60 @@
 # Zellij integration utilities for Yazelix
 
 use ../utils/logging.nu *
-export use ../utils/common.nu [is_hx_running]
+use ../setup/zellij_plugin_paths.nu get_pane_orchestrator_wasm_path
+
+def get_pane_orchestrator_plugin_url [] {
+    let wasm_path = (get_pane_orchestrator_wasm_path)
+    if not ($wasm_path | path exists) {
+        error make {msg: $"Yazelix pane orchestrator plugin not found at: ($wasm_path)"}
+    }
+
+    $"file:($wasm_path)"
+}
+
+def run_pane_orchestrator_command [command_name: string, log_file: string, payload: string = ""] {
+    let plugin_url = (get_pane_orchestrator_plugin_url)
+    let pipe_result = (^zellij action pipe --plugin $plugin_url --name $command_name -- $payload | complete)
+
+    if $pipe_result.exit_code != 0 {
+        let stderr = ($pipe_result.stderr | str trim)
+        log_to_file $log_file $"Pane orchestrator pipe failed for '($command_name)': ($stderr)"
+        error make {msg: $"Pane orchestrator pipe failed for '($command_name)': ($stderr)"}
+    }
+
+    let response = ($pipe_result.stdout | str trim)
+    log_to_file $log_file $"Pane orchestrator response for '($command_name)': ($response)"
+    $response
+}
+
+export def focus_managed_pane [pane_name: string, log_file: string = "zellij_plugin.log"] {
+    let command_name = match $pane_name {
+        "editor" => "focus_editor"
+        "sidebar" => "focus_sidebar"
+        _ => {
+            error make {msg: $"Unsupported managed pane name: ($pane_name)"}
+        }
+    }
+
+    try {
+        let response = (run_pane_orchestrator_command $command_name $log_file)
+        parse_pane_orchestrator_response $response
+    } catch {|err|
+        {status: "error", reason: $err.msg}
+    }
+}
+
+def parse_pane_orchestrator_response [response: string] {
+    match $response {
+        "ok" => {status: "ok"}
+        "missing" => {status: "missing"}
+        "not_ready" => {status: "not_ready"}
+        "permissions_denied" => {status: "permissions_denied"}
+        "invalid_payload" => {status: "invalid_payload"}
+        "unsupported_editor" => {status: "unsupported_editor"}
+        _ => {status: "error", reason: $response}
+    }
+}
 
 # Get the tab name based on Git repo or working directory
 export def get_tab_name [working_dir: path] {
@@ -25,123 +78,31 @@ export def get_tab_name [working_dir: path] {
     }
 }
 
-# Get the running command from the second Zellij client
-export def get_running_command [] {
-    try {
-        let list_clients_output = (zellij action list-clients | lines | get 1)
-
-        $list_clients_output
-            | parse --regex '\w+\s+\w+\s+(?<rest>.*)'
-            | get rest
-            | to text
-    } catch {
-        ""
-    }
-}
-
-# Cycle through up to max_panes, looking for a Helix pane by name or running command
-export def find_and_focus_helix_pane [max_panes: int = 3, helix_pane_name: string = "editor"] {
-    mut i = 0
-    while ($i < $max_panes) {
-        let running_command = (get_running_command)
-        let pane_name = (get_focused_pane_name)
-        if (is_hx_running $running_command) or ($pane_name == $helix_pane_name) {
-            return true
-        }
-        zellij action focus-next-pane
-        $i = $i + 1
-    }
-    return false
-}
-
-# Helper to get the name of the currently focused pane (best effort)
-export def get_focused_pane_name [] {
-    try {
-        let output = (zellij action list-clients | lines | get 1)
-        # Example output: CLIENT_ID ZELLIJ_PANE_ID RUNNING_COMMAND
-        # We try to parse the pane name from the ZELLIJ_PANE_ID if possible
-        $output | split row " " | get 1 | to text
-    } catch {
-        ""
-    }
-}
-
-# Move the currently focused pane to the top of the stack by moving up 'steps' times
-export def move_focused_pane_to_top [steps: int] {
-    mut i = 0
-    while ($i < $steps) {
-        zellij action move-pane up
-        $i = $i + 1
-    }
-}
-
-# Generic function to open file in existing editor instance
-def open_in_existing_editor [
-    file_path: path
-    cd_command: string
-    open_command: string
-    use_quotes: bool
-    log_file: string
-    editor_name: string
-] {
-    log_to_file $log_file $"Starting open_in_existing_($editor_name) with file_path: '($file_path)'"
-
+def open_file_in_managed_editor [editor_kind: string, file_path: path, log_file: string] {
+    let expanded_file_path = ($file_path | path expand)
     let working_dir = if ($file_path | path exists) and ($file_path | path type) == "dir" {
-        $file_path
+        $expanded_file_path
     } else {
-        $file_path | path dirname
+        $expanded_file_path | path dirname
     }
 
-    log_to_file $log_file $"Calculated working_dir: ($working_dir)"
-
-    if not ($file_path | path exists) {
-        log_to_file $log_file $"Error: File path ($file_path) does not exist"
-        print $"Error: File path ($file_path) does not exist"
-        return
-    }
-
-    log_to_file $log_file $"File path validated as existing"
-
-    let tab_name = get_tab_name $working_dir
-    log_to_file $log_file $"Calculated tab_name: ($tab_name)"
+    let payload = {
+        editor: $editor_kind
+        file_path: $expanded_file_path
+        working_dir: $working_dir
+    } | to json -r
 
     try {
-        zellij action write 27
-        log_to_file $log_file "Sent Escape \(27\) to enter normal mode"
-
-        let cd_cmd = if $use_quotes {
-            $"($cd_command) \"($working_dir)\""
-        } else {
-            $"($cd_command) ($working_dir)"
-        }
-        zellij action write-chars $cd_cmd
-        log_to_file $log_file $"Sent cd command: ($cd_cmd)"
-        zellij action write 13
-        log_to_file $log_file "Sent Enter \(13\) for cd command"
-
-        let file_cmd = if $use_quotes {
-            $"($open_command) \"($file_path)\""
-        } else {
-            $"($open_command) ($file_path)"
-        }
-        zellij action write-chars $file_cmd
-        log_to_file $log_file $"Sent open command: ($file_cmd)"
-        zellij action write 13
-        log_to_file $log_file "Sent Enter \(13\) for open command"
-
-        zellij action rename-tab $tab_name
-        log_to_file $log_file $"Renamed tab to: ($tab_name)"
-
-        log_to_file $log_file "Commands executed successfully"
+        let response = (run_pane_orchestrator_command "open_file" $log_file $payload)
+        parse_pane_orchestrator_response $response
     } catch {|err|
-        log_to_file $log_file $"Error executing commands: ($err.msg)"
-        print $"Error executing commands: ($err.msg)"
+        {status: "error", reason: $err.msg}
     }
 }
 
-# Open a file in an existing Helix pane and rename tab
+# Open a file in an existing managed Helix pane through the pane orchestrator
 export def open_in_existing_helix [file_path: path] {
-    open_in_existing_editor $file_path ":cd" ":open" true "open_helix.log" "helix"
+    open_file_in_managed_editor "helix" $file_path "open_helix.log"
 }
 
 # Generic function to open a new editor pane with Yazi integration
@@ -163,18 +124,10 @@ def open_new_editor_pane [file_path: path, yazi_id: string, log_file: string] {
 
     log_to_file $log_file $"Full command to execute: ($cmd)"
 
-    # Try to use 'editor' as the pane name, fallback to 'yazelix_editor' if needed
     let pane_name = "editor"
-    try {
-        log_to_file $log_file $"Preparing command: nu -c \"($cmd)\" with pane name: ($pane_name)"
-        zellij run --name $pane_name --cwd $working_dir -- nu -c $cmd
-        log_to_file $log_file $"Command executed successfully: nu -c \"($cmd)\" with pane name: ($pane_name)"
-    } catch {|err|
-        let fallback_pane_name = "yazelix_editor"
-        log_to_file $log_file $"Failed to use pane name 'editor', falling back to: ($fallback_pane_name)"
-        zellij run --name $fallback_pane_name --cwd $working_dir -- nu -c $cmd
-        log_to_file $log_file $"Command executed successfully: nu -c \"($cmd)\" with pane name: ($fallback_pane_name)"
-    }
+    log_to_file $log_file $"Preparing command: nu -c \"($cmd)\" with pane name: ($pane_name)"
+    zellij run --name $pane_name --cwd $working_dir -- nu -c $cmd
+    log_to_file $log_file $"Command executed successfully: nu -c \"($cmd)\" with pane name: ($pane_name)"
 
     zellij action rename-tab $tab_name
     log_to_file $log_file $"Renamed tab to: ($tab_name)"
@@ -185,23 +138,9 @@ export def open_new_helix_pane [file_path: path, yazi_id: string] {
     open_new_editor_pane $file_path $yazi_id "open_helix.log"
 }
 
-# Neovim integration functions
-
-# Check if Neovim is running
-export def is_nvim_running [command: string] {
-    let cmd = $command | str trim | str downcase
-    let parts = $cmd | split row " "
-    let has_nvim_paths = ($parts | any {|part| $part | str ends-with "/nvim"})
-    let has_neovim_paths = ($parts | any {|part| $part | str ends-with "/neovim"})
-    let is_nvim_cmd = ($parts | any {|part| $part == "nvim"})
-    let is_neovim_cmd = ($parts | any {|part| $part == "neovim"})
-
-    $has_nvim_paths or $has_neovim_paths or $is_nvim_cmd or $is_neovim_cmd
-}
-
-# Open a file in an existing Neovim pane and rename tab
+# Open a file in an existing managed Neovim pane through the pane orchestrator
 export def open_in_existing_neovim [file_path: path] {
-    open_in_existing_editor $file_path ":cd" ":edit" false "open_neovim.log" "neovim"
+    open_file_in_managed_editor "neovim" $file_path "open_neovim.log"
 }
 
 # Open a new pane and set up Neovim with Yazi integration, renaming tab

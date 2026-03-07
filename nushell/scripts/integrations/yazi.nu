@@ -3,7 +3,7 @@
 
 use ../utils/logging.nu log_to_file
 use ../utils/config_parser.nu parse_yazelix_config
-use zellij.nu [get_running_command, is_hx_running, is_nvim_running, open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, find_and_focus_helix_pane, move_focused_pane_to_top, get_focused_pane_name, get_tab_name]
+use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_tab_name, focus_managed_pane]
 
 # Check if the editor command is Helix (supports both simple names and full paths)
 # This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
@@ -97,8 +97,14 @@ export def reveal_in_yazi [buffer_name: string] {
         ya emit-to $env.YAZI_ID reveal $full_path
         log_to_file "reveal_in_yazi.log" $"Successfully sent 'reveal ($full_path)' command to yazi instance ($env.YAZI_ID)"
 
-        zellij action move-focus left
-        log_to_file "reveal_in_yazi.log" "Successfully moved focus left to yazi pane"
+        let focus_result = (focus_managed_pane "sidebar" "reveal_in_yazi.log")
+        if $focus_result.status == "ok" {
+            log_to_file "reveal_in_yazi.log" "Successfully focused managed sidebar pane"
+        } else {
+            let error_msg = $"Managed sidebar pane focus failed \(status=($focus_result.status)\). Ensure the Yazelix pane orchestrator plugin is loaded and the sidebar pane title is 'sidebar'."
+            log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
+            print $"Error: ($error_msg)"
+        }
     } catch {|err|
         let error_msg = $"Failed to execute yazi/zellij commands: ($err.msg)"
         log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
@@ -113,39 +119,35 @@ def open_with_editor_integration [
     yazi_id: string
     editor_name: string
     log_file: string
-    is_editor_running: closure
     open_in_existing: closure
     open_new_pane: closure
 ] {
     log_to_file $log_file $"open_with_($editor_name) called with file_path: '($file_path)'"
 
-    # Always check the topmost and next three panes below for editor
-    log_to_file $log_file $"Checking up to 4 panes for ($editor_name) pane \(editor\)"
-    let editor_pane_name = "editor"
-    let max_panes = 4
-    mut found_index = -1
-    mut i = 0
-    while ($i < $max_panes) {
-        let running_command = (get_running_command)
-        let pane_name = (get_focused_pane_name)
-        if (do $is_editor_running $running_command) or ($pane_name == $editor_pane_name) {
-            $found_index = $i
-            break
-        }
-        zellij action focus-next-pane
-        $i = $i + 1
+    let open_result = (do $open_in_existing $file_path)
+
+    if $open_result.status == "ok" {
+        log_to_file $log_file $"Managed editor pane found for ($editor_name), opening in existing instance through pane orchestrator"
+        print $"($editor_name) pane found, opening in existing instance"
+    } else if $open_result.status == "missing" {
+        log_to_file $log_file $"Managed editor pane missing for ($editor_name), opening new pane"
+        print $"($editor_name) pane not found, opening new pane"
+        do $open_new_pane $file_path $yazi_id
+    } else {
+        let error_msg = $"Managed editor open failed for ($editor_name) \(status=($open_result.status)\). Ensure the Yazelix pane orchestrator plugin is loaded and the editor pane title is 'editor'."
+        log_to_file $log_file $"ERROR: ($error_msg)"
+        print $"Error: ($error_msg)"
+        return
     }
 
-    if $found_index != -1 {
-        log_to_file $log_file $"($editor_name) pane found and focused, moving to top and opening in existing instance"
-        print $"($editor_name) pane found and focused, moving to top and opening in existing instance"
-        move_focused_pane_to_top $found_index
-        do $open_in_existing $file_path
+    let working_dir = if ($file_path | path exists) and ($file_path | path type) == "dir" {
+        $file_path
     } else {
-        log_to_file $log_file $"($editor_name) pane not found in top 4, opening new pane"
-        print $"($editor_name) pane not found in top 4, opening new pane"
-        do $open_new_pane $file_path $yazi_id
+        $file_path | path dirname
     }
+    let tab_name = (get_tab_name $working_dir)
+    zellij action rename-tab $tab_name
+    log_to_file $log_file $"Renamed tab to: ($tab_name)"
 
     # Sync yazi's directory to match the opened file's location
     sync_yazi_to_directory $file_path $yazi_id $log_file
@@ -161,12 +163,12 @@ def open_with_editor_integration [
 
 # Open file with Helix (with full Yazelix integration)
 def open_with_helix [file_path: path, yazi_id: string] {
-    open_with_editor_integration $file_path $yazi_id "Helix" "open_helix.log" {|cmd| is_hx_running $cmd} {|path| open_in_existing_helix $path} {|path, id| open_new_helix_pane $path $id}
+    open_with_editor_integration $file_path $yazi_id "Helix" "open_helix.log" {|path| open_in_existing_helix $path} {|path, id| open_new_helix_pane $path $id}
 }
 
 # Open file with Neovim (with full Yazelix integration)
 def open_with_neovim [file_path: path, yazi_id: string] {
-    open_with_editor_integration $file_path $yazi_id "Neovim" "open_neovim.log" {|cmd| is_nvim_running $cmd} {|path| open_in_existing_neovim $path} {|path, id| open_new_neovim_pane $path $id}
+    open_with_editor_integration $file_path $yazi_id "Neovim" "open_neovim.log" {|path| open_in_existing_neovim $path} {|path, id| open_new_neovim_pane $path $id}
 }
 
 # Open file with generic editor (basic Zellij integration)

@@ -4,6 +4,7 @@
 
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
 use ../utils/config_parser.nu parse_yazelix_config
+use ./zellij_plugin_paths.nu get_pane_orchestrator_wasm_path
 
 # Fetch Zellij default configuration
 def get_zellij_defaults [] {
@@ -106,6 +107,61 @@ def ensure_dir [path: string] {
     }
 }
 
+def split_load_plugins_block [config_content: string] {
+    mut stripped_lines = []
+    mut load_plugin_lines = []
+    mut in_load_plugins_block = false
+    mut brace_depth = 0
+
+    for line in ($config_content | lines) {
+        let trimmed = ($line | str trim)
+        let open_braces = (($line | split chars | where {|char| $char == "{"}) | length)
+        let close_braces = (($line | split chars | where {|char| $char == "}"}) | length)
+
+        if not $in_load_plugins_block {
+            if ($trimmed | str starts-with "load_plugins") {
+                $in_load_plugins_block = true
+                $brace_depth = ($open_braces - $close_braces)
+            } else {
+                $stripped_lines = ($stripped_lines | append $line)
+            }
+        } else {
+            $brace_depth = ($brace_depth + $open_braces - $close_braces)
+            if $brace_depth > 0 {
+                $load_plugin_lines = ($load_plugin_lines | append $line)
+            } else {
+                $in_load_plugins_block = false
+            }
+        }
+    }
+
+    {
+        config_without_load_plugins: ($stripped_lines | str join "\n")
+        load_plugin_lines: $load_plugin_lines
+    }
+}
+
+def build_yazelix_load_plugins_block [
+    existing_load_plugin_lines: list<string>
+    pane_orchestrator_wasm_path: string
+] {
+    let pane_orchestrator_entry = $"  \"file:($pane_orchestrator_wasm_path)\""
+    let merged_plugin_lines = if ($existing_load_plugin_lines | any {|line| $line | str contains $pane_orchestrator_wasm_path}) {
+        $existing_load_plugin_lines
+    } else {
+        $existing_load_plugin_lines | append $pane_orchestrator_entry
+    }
+
+    (
+        [
+            "load_plugins {"
+            ...$merged_plugin_lines
+            "}"
+        ]
+        | str join "\n"
+    )
+}
+
 # Main function: Generate merged Zellij configuration
 export def generate_merged_zellij_config [yazelix_dir: string] {
     # Define paths using constants
@@ -135,10 +191,16 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     
     # Generate configuration from user config or defaults
     let base_config_raw = get_base_config
+    let extracted_load_plugins = (split_load_plugins_block $base_config_raw)
+    let pane_orchestrator_wasm_path = (get_pane_orchestrator_wasm_path $yazelix_dir)
+
+    if not ($pane_orchestrator_wasm_path | path exists) {
+        error make {msg: $"Tracked pane orchestrator wasm not found at: ($pane_orchestrator_wasm_path)"}
+    }
 
     # Remove any settings we control from base config (yazelix.toml takes precedence)
     # This prevents conflicts when multiple declarations of the same setting exist
-    let base_config = ($base_config_raw | lines | where {|line|
+    let base_config = ($extracted_load_plugins.config_without_load_plugins | lines | where {|line|
         let trimmed = ($line | str trim)
         not (
             ($trimmed | str starts-with "theme ") or
@@ -172,7 +234,10 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
         $"support_kitty_keyboard_protocol ($kitty_protocol_value)",
         $"default_shell \"($default_shell)\"",
         $"default_layout \"($yazelix_layout_dir)/($default_layout_name).kdl\"",
-        $"layout_dir \"($yazelix_layout_dir)\""
+        $"layout_dir \"($yazelix_layout_dir)\"",
+        "",
+        "// === YAZELIX BACKGROUND PLUGINS ===",
+        (build_yazelix_load_plugins_block $extracted_load_plugins.load_plugin_lines $pane_orchestrator_wasm_path)
     ] | str join "\n"
     
     # Write atomically (write to temp file, then move)

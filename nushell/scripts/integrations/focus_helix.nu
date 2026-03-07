@@ -3,7 +3,7 @@
 
 use ../utils/logging.nu log_to_file
 use ../utils/config_parser.nu parse_yazelix_config
-use zellij.nu [get_running_command, is_hx_running, get_focused_pane_name, move_focused_pane_to_top]
+use zellij.nu [focus_managed_pane]
 
 export def main [] {
     log_to_file "focus_helix.log" "focus_helix called from Yazi"
@@ -17,30 +17,12 @@ export def main [] {
     }
 
     try {
-        # Look for the Helix pane (named "editor" or running "hx") 
-        # Use the same logic as open_with_helix for consistency
-        log_to_file "focus_helix.log" "Checking up to 4 panes for Helix pane (editor)"
-        let helix_pane_name = "editor"
-        let max_panes = 4
-        mut found_index = -1
-        mut i = 0
-        while ($i < $max_panes) {
-            let running_command = (get_running_command)
-            let pane_name = (get_focused_pane_name)
-            if (is_hx_running $running_command) or ($pane_name == $helix_pane_name) {
-                $found_index = $i
-                break
-            }
-            zellij action focus-next-pane
-            $i = $i + 1
-        }
-
-        if $found_index != -1 {
-            log_to_file "focus_helix.log" "Helix pane found and focused, moving to top"
-            move_focused_pane_to_top $found_index
-            log_to_file "focus_helix.log" "Successfully focused and moved Helix pane to top"
+        let managed_focus_result = (focus_managed_pane "editor" "focus_helix.log")
+        if $managed_focus_result.status == "ok" {
+            log_to_file "focus_helix.log" "Focused managed Helix pane through pane orchestrator"
         } else {
-            log_to_file "focus_helix.log" "No Helix pane found to focus"
+            let error_msg = $"Managed Helix focus failed \(status=($managed_focus_result.status)\). Ensure the Yazelix pane orchestrator plugin is loaded and the editor pane title is 'editor'."
+            log_to_file "focus_helix.log" $"ERROR: ($error_msg)"
         }
     } catch {|err|
         let error_msg = $"Failed to focus Helix pane: ($err.msg)"
