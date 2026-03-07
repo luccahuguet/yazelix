@@ -24,7 +24,8 @@ Add these keybindings to your Helix config for an enhanced editing experience:
 "{" = "goto_prev_paragraph"
 "}" = "goto_next_paragraph"
 g.e = "goto_file_end"
-A-ret = ["move_line_down", "goto_first_nonwhitespace"]
+ret = ["move_line_down", "goto_first_nonwhitespace"]
+A-ret = ["move_line_up", "goto_first_nonwhitespace"]
 
 # Selection and editing
 X = "extend_line_up"
@@ -44,12 +45,12 @@ A-g.b = ":sh git blame -L %{cursor_line},+1 %{buffer_name}"
 A-g.s = ":sh git status --porcelain"
 A-g.l = ":sh git log --oneline -10 %{buffer_name}"
 
-# Utility shortcuts (ret prefix)
-ret.d = ":yank-diagnostic"
-ret.h = ":toggle-option file-picker.hidden"
-ret.i = ":toggle-option file-picker.git-ignore"
-ret.l = ":o ~/.config/helix/languages.toml"
-ret.c = ":config-open"
+# Utility shortcuts (backspace prefix)
+backspace.d = ":yank-diagnostic"
+backspace.h = ":toggle-option file-picker.hidden"
+backspace.i = ":toggle-option file-picker.git-ignore"
+backspace.l = ":o ~/.config/helix/languages.toml"
+backspace.c = ":config-open"
 ```
 
 ## Keybinding Categories
@@ -57,7 +58,8 @@ ret.c = ":config-open"
 ### Navigation and Movement
 - `{` / `}`: Navigate between paragraphs
 - `g.e`: Go to end of file
-- `A-ret`: Move line down and go to first non-whitespace
+- `ret`: Move line down and go to first non-whitespace
+- `A-ret`: Move line up and go to first non-whitespace
 
 ### Selection and Editing
 - `X`: Extend selection line up
@@ -73,18 +75,18 @@ ret.c = ":config-open"
 - `A-g.s`: Show git status (porcelain format)
 - `A-g.l`: Show recent git log for current file
 
-### Utility Shortcuts (ret prefix)
-- `ret.d`: Yank diagnostic messages
-- `ret.h`: Toggle hidden files in file picker
-- `ret.i`: Toggle git-ignore filtering in file picker
-- `ret.l`: Open Helix languages.toml
-- `ret.c`: Open main Helix configuration
+### Utility Shortcuts (backspace prefix)
+- `backspace.d`: Yank diagnostic messages
+- `backspace.h`: Toggle hidden files in file picker
+- `backspace.i`: Toggle git-ignore filtering in file picker
+- `backspace.l`: Open Helix languages.toml
+- `backspace.c`: Open main Helix configuration
 
 ## Usage Tips
 
 1. **Git Integration**: The git keybindings help you stay in context while coding. `A-g.b` is particularly useful for understanding code history.
 
-2. **File Picker Toggles**: Use `ret.h` and `ret.i` to quickly adjust what files are visible when using Helix's file picker.
+2. **File Picker Toggles**: Use `backspace.h` and `backspace.i` to quickly adjust what files are visible when using Helix's file picker.
 
 3. **Yazelix Integration**: The `A-y` keybinding creates a seamless workflow between Helix and Yazi - you can quickly reveal any file you're editing in the sidebar.
 
@@ -92,7 +94,7 @@ ret.c = ":config-open"
 
 Feel free to modify these keybindings to match your workflow. The key principles are:
 - Use `Alt` (A-) for Yazelix-specific integrations
-- Use `ret.` for utility functions that don't interfere with normal editing
+- Use `backspace.` for utility functions that don't interfere with normal editing
 - Keep git operations grouped under `A-g.`
 
 For more Helix configuration options, see the [Helix documentation](https://docs.helix-editor.com/configuration.html).
