@@ -12,7 +12,7 @@
 ![yazelix_v8_5_example](assets/screenshots/yazelix_v8_5_example.jpeg)
 
 ## Overview
-Yazelix integrates Yazi, Zellij, and Helix (hence the name!), with first-class support for Neovim too.
+Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://github.com/zellij-org/zellij), and [Helix](https://helix-editor.com) (hence the name!), with first-class support for [Neovim](https://neovim.io) too.
 
 - Yazelix now uses the devenv-based shell (`devenv.nix`) and `yazelix.toml`. The legacy flake interface (`flake.nix`, `yazelix.nix`) has been removed.
 
