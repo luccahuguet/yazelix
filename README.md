@@ -21,7 +21,7 @@ Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://gith
 - To hide the sidebar, make your pane fullscreen! (`Ctrl p + f` or `Alt Shift f`)
 - Every keybinding from Zellij that conflicts with Helix is remapped [see here](#keybindings)
 - When you hit Enter on a file/folder in the "sidebar":
-  - **With Helix or Neovim**: Searches up to 4 panes for an existing editor instance. If found, moves it to the top and opens the file there. If not found, launches the editor in a new pane.
+  - **With Helix or Neovim**: Targets the managed `editor` pane through the Yazelix Zellij plugin. If that pane exists in the current tab, the file opens there. If not, Yazelix launches a new editor pane titled `editor`.
   - **With other editors**: Opens the file in a new pane with your configured editor
   - It automatically renames the Zellij tab to the file's underlying Git repo or directory name
 - Features include:
@@ -39,7 +39,7 @@ It already comes with cool zellij and yazi plugins, some of which I maintain mys
 
 It has features like `reveal in Yazi` (from Helix or Neovim) and opening files from Yazi in your configured editor
 
-Supports top terminals (Ghostty, WezTerm, Kitty, Alacritty) and popular shells (Bash, Zsh, Fish, Nushell). Easy to configure via a single Nix file with sensible defaults
+Supports top terminals (Ghostty, WezTerm, Kitty, Alacritty) and popular shells (Bash, Zsh, Fish, Nushell). Easy to configure via `yazelix.toml`, with `devenv.nix` providing the environment
 
 Get everything running in less than 10 minutes. No extra dependencies, only Nix
 
@@ -94,7 +94,7 @@ Full version history: [Version History](./docs/history.md)
 ## Compatibility
 - **Platform**: Works on Linux and macOS
 - **Terminal**: Ghostty (via Homebrew on macOS), Kitty, WezTerm, Alacritty; Foot on Linux only
-- **Editor**: Any editor works! Helix and Neovim have first-class support (reveal in sidebar, open buffer in running instance, pane detection). Configure via `editor_command` setting in `yazelix.toml`
+- **Editor**: Any editor works. Helix and Neovim have first-class support (reveal in sidebar, open buffer in a running instance, managed editor-pane targeting). Configure via `editor_command` in `yazelix.toml`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 - See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
@@ -134,13 +134,13 @@ Check installed tool versions:
 nu nushell/scripts/utils/version_info.nu
 ```
 
-## Editor Pane Detection Logic
+## Editor Pane Orchestration
 
 When opening files from Yazi, Yazelix will:
-- Check the topmost pane and up to 3 panes below for a Zellij pane named `editor` (works for both Helix and Neovim).
-- If your editor is found, it is moved to the top and reused; if not, a new editor pane is opened.
-- This is needed because when opening or closing Zellij panes in the stack, the editor pane can move around (often down by 2 positions).
-- Supports both Helix and Neovim with identical behavior - configure via `editor_command` in `yazelix.toml`.
+- Ask the Yazelix pane orchestrator plugin for the managed `editor` pane in the current tab.
+- Reuse that pane directly when it exists, instead of scanning nearby panes or depending on stack position.
+- Create a new pane titled `editor` when no managed editor pane exists yet.
+- Use the same managed-pane flow for both Helix and Neovim; configure the editor via `editor_command` in `yazelix.toml`.
 
 ## Version History & Changelog
 
@@ -152,7 +152,7 @@ Yazelix respects XDG directories for config, data, state, and cache. See POSIX/X
 
 ## SSH / Remote
 
-Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly without any GUI, giving you a fully configured, consistent “superterminal” on barebones hosts (for example, an AWS EC2 instance). The flake delivers the same tools, keybindings, and layouts you use locally, minimizing drift on ephemeral servers.
+Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly without any GUI, giving you a fully configured, consistent “superterminal” on barebones hosts (for example, an AWS EC2 instance). The Yazelix environment delivers the same tools, keybindings, and layouts you use locally, minimizing drift on ephemeral servers.
 
 ## Customization & Configuration
 
@@ -172,7 +172,7 @@ Yazelix uses a **layered configuration system** that safely merges your personal
 
 **Quick setup:**
 - **Default (recommended)**: `editor_command = null` - Uses yazelix's Helix, no conflicts, full integration
-- **Neovim**: `editor_command = "nvim"` - Full integration (reveal in sidebar, same-instance opening, pane detection)
+- **Neovim**: `editor_command = "nvim"` - Full integration (reveal in sidebar, same-instance opening, managed editor-pane targeting)
 - **System Helix**: `editor_command = "hx"` - Requires matching `helix_runtime_path`, full integration
 - **Other editors**: `editor_command = "vim"` - Basic integration (file opening, tab naming only)
 
@@ -235,7 +235,7 @@ Yazelix includes optional Home Manager support for declarative configuration man
 - If you suffer from a severe case of nix-allergy
 
 ## Initializer Scripts
-Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Carapace for your configured default shell, regenerated every startup. See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details.
+Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Carapace for your configured shell set during environment setup and refresh. See [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details.
 
 ## yzx Command Line Interface
 
