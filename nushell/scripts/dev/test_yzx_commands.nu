@@ -222,9 +222,9 @@ def test_yzx_config_sections [] {
     try {
         let hx_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config hx | columns | str join ','" | complete).stdout | str trim
         let yazi_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config yazi | columns | str join ','" | complete).stdout | str trim
-        let zellij_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config zellij | columns | str join ','" | complete).stdout | str trim
+        let zellij_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config zellij" | complete).stdout | str trim
 
-        if ($hx_output | str contains "mode") and ($yazi_output | str contains "plugins") and ($zellij_output | str contains "session_name") {
+        if ($hx_output | str contains "config_path") and ($yazi_output | str contains "manager") and ($zellij_output | str contains "default_layout") {
             print "  ✅ yzx config section commands return focused sections"
             true
         } else {

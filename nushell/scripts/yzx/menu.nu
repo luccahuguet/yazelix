@@ -134,13 +134,32 @@ export def "yzx config" [
 }
 
 def show_config_section [section: string] {
-    let config_path = (parse_yazelix_config).config_file
-    let raw_config = (open $config_path)
+    let yazi_config_path = ("~/.local/share/yazelix/configs/yazi/yazi.toml" | path expand)
+    let zellij_config_path = ("~/.local/share/yazelix/configs/zellij/config.kdl" | path expand)
+    let helix_config_path = ("~/.config/helix/config.toml" | path expand)
+    let helix_languages_path = ("~/.config/helix/languages.toml" | path expand)
 
     match $section {
-        "hx" => ($raw_config | get helix)
-        "yazi" => ($raw_config | get yazi)
-        "zellij" => ($raw_config | get zellij)
+        "hx" => {
+            {
+                config_path: $helix_config_path
+                config: (if ($helix_config_path | path exists) { open $helix_config_path } else { null })
+                languages_path: $helix_languages_path
+                languages: (if ($helix_languages_path | path exists) { open $helix_languages_path } else { null })
+            }
+        }
+        "yazi" => {
+            if not ($yazi_config_path | path exists) {
+                error make {msg: $"Yazi config not found at ($yazi_config_path). Launch Yazelix once to generate it."}
+            }
+            open $yazi_config_path
+        }
+        "zellij" => {
+            if not ($zellij_config_path | path exists) {
+                error make {msg: $"Zellij config not found at ($zellij_config_path). Launch Yazelix once to generate it."}
+            }
+            open --raw $zellij_config_path
+        }
         _ => (error make {msg: $"Unknown config section: ($section)"})
     }
 }
