@@ -28,6 +28,10 @@ def run_pane_orchestrator_command [command_name: string, log_file: string, paylo
     $response
 }
 
+export def run_pane_orchestrator_command_raw [command_name: string, payload: string = "", log_file: string = "zellij_plugin_debug.log"] {
+    run_pane_orchestrator_command $command_name $log_file $payload
+}
+
 export def focus_managed_pane [pane_name: string, log_file: string = "zellij_plugin.log"] {
     let command_name = match $pane_name {
         "editor" => "focus_editor"
@@ -85,7 +89,6 @@ def open_file_in_managed_editor [editor_kind: string, file_path: path, log_file:
     } else {
         $expanded_file_path | path dirname
     }
-
     let payload = {
         editor: $editor_kind
         file_path: $expanded_file_path
@@ -98,6 +101,43 @@ def open_file_in_managed_editor [editor_kind: string, file_path: path, log_file:
     } catch {|err|
         {status: "error", reason: $err.msg}
     }
+}
+
+export def debug_editor_state [] {
+    let response = (run_pane_orchestrator_command_raw "debug_editor_state")
+    try {
+        $response | from json
+    } catch {
+        {raw: $response}
+    }
+}
+
+export def debug_write_literal [text: string = "__YZX__"] {
+    let response = (run_pane_orchestrator_command_raw "debug_write_literal" $text)
+    parse_pane_orchestrator_response $response
+}
+
+export def debug_send_escape [] {
+    let response = (run_pane_orchestrator_command_raw "debug_send_escape")
+    parse_pane_orchestrator_response $response
+}
+
+export def debug_open_file_via_plugin [editor_kind: string, file_path: path] {
+    let expanded_file_path = ($file_path | path expand)
+    let working_dir = if ($file_path | path exists) and ($file_path | path type) == "dir" {
+        $expanded_file_path
+    } else {
+        $expanded_file_path | path dirname
+    }
+
+    let payload = {
+        editor: $editor_kind
+        file_path: $expanded_file_path
+        working_dir: $working_dir
+    } | to json -r
+
+    let response = (run_pane_orchestrator_command_raw "open_file" $payload)
+    parse_pane_orchestrator_response $response
 }
 
 # Open a file in an existing managed Helix pane through the pane orchestrator

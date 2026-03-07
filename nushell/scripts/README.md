@@ -39,6 +39,7 @@ Scripts for development, testing, and maintenance:
 - `record_demo.nu` - VHS demo recording with font support
 - `test_fonts.nu` - Font testing for VHS recordings
 - `update_zjstatus.nu` - Sync the bundled zjstatus.wasm from the Nix store
+- `update_zellij_pane_orchestrator.nu` - Sync the locally built pane orchestrator wasm into the repo and runtime plugin paths
 
 ## Usage
 

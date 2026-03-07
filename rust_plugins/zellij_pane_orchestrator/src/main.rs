@@ -1,6 +1,9 @@
 use std::collections::{BTreeMap, HashMap};
+use std::thread::sleep;
+use std::time::Duration;
 
 use serde::Deserialize;
+use serde::Serialize;
 use zellij_tile::prelude::*;
 
 const EDITOR_TITLE: &str = "editor";
@@ -11,6 +14,7 @@ const RESULT_NOT_READY: &str = "not_ready";
 const RESULT_DENIED: &str = "permissions_denied";
 const RESULT_INVALID_PAYLOAD: &str = "invalid_payload";
 const RESULT_UNSUPPORTED_EDITOR: &str = "unsupported_editor";
+const COMMAND_STEP_DELAY_MS: u64 = 35;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 struct ManagedTabPanes {
@@ -33,6 +37,7 @@ impl ZellijPlugin for State {
         request_permission(&[
             PermissionType::ReadApplicationState,
             PermissionType::ChangeApplicationState,
+            PermissionType::WriteToStdin,
             PermissionType::ReadCliPipes,
         ]);
         subscribe(&[
@@ -70,6 +75,18 @@ impl ZellijPlugin for State {
             },
             "open_file" => {
                 self.open_file_in_managed_editor(&pipe_message);
+                false
+            },
+            "debug_editor_state" => {
+                self.debug_editor_state(&pipe_message);
+                false
+            },
+            "debug_write_literal" => {
+                self.debug_write_literal(&pipe_message);
+                false
+            },
+            "debug_send_escape" => {
+                self.debug_send_escape(&pipe_message);
                 false
             },
             _ => false,
@@ -116,10 +133,15 @@ impl State {
         };
 
         focus_pane_with_id(pane_id, false);
+        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_to_pane_id(vec![27], pane_id);
+        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_chars_to_pane_id(&command_sequence.change_directory_command, pane_id);
+        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_to_pane_id(vec![13], pane_id);
+        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_chars_to_pane_id(&command_sequence.open_file_command, pane_id);
+        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_to_pane_id(vec![13], pane_id);
 
         self.respond(pipe_message, RESULT_OK);
@@ -162,6 +184,56 @@ impl State {
             cli_pipe_output(pipe_id, result);
         }
     }
+
+    fn debug_editor_state(&self, pipe_message: &PipeMessage) {
+        let editor_pane_id = self
+            .active_tab_position
+            .and_then(|active_tab_position| self.managed_panes_by_tab.get(&active_tab_position))
+            .and_then(|managed_tab_panes| managed_tab_panes.editor);
+        let sidebar_pane_id = self
+            .active_tab_position
+            .and_then(|active_tab_position| self.managed_panes_by_tab.get(&active_tab_position))
+            .and_then(|managed_tab_panes| managed_tab_panes.sidebar);
+
+        let state = DebugEditorState {
+            permissions_granted: self.permissions_granted,
+            active_tab_position: self.active_tab_position,
+            editor_pane_id: pane_id_to_string(editor_pane_id),
+            sidebar_pane_id: pane_id_to_string(sidebar_pane_id),
+        };
+
+        match serde_json::to_string(&state) {
+            Ok(serialized_state) => self.respond(pipe_message, &serialized_state),
+            Err(_) => self.respond(pipe_message, RESULT_INVALID_PAYLOAD),
+        }
+    }
+
+    fn debug_write_literal(&self, pipe_message: &PipeMessage) {
+        let Some(pane_id) = self.get_managed_pane_id(pipe_message, ManagedPaneKind::Editor) else {
+            return;
+        };
+
+        let Some(payload) = pipe_message.payload.as_deref() else {
+            self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+            return;
+        };
+
+        focus_pane_with_id(pane_id, false);
+        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
+        write_chars_to_pane_id(payload, pane_id);
+        self.respond(pipe_message, RESULT_OK);
+    }
+
+    fn debug_send_escape(&self, pipe_message: &PipeMessage) {
+        let Some(pane_id) = self.get_managed_pane_id(pipe_message, ManagedPaneKind::Editor) else {
+            return;
+        };
+
+        focus_pane_with_id(pane_id, false);
+        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
+        write_to_pane_id(vec![27], pane_id);
+        self.respond(pipe_message, RESULT_OK);
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -180,6 +252,14 @@ struct OpenFileRequest {
 struct EditorCommandSequence {
     change_directory_command: String,
     open_file_command: String,
+}
+
+#[derive(Serialize)]
+struct DebugEditorState {
+    permissions_granted: bool,
+    active_tab_position: Option<usize>,
+    editor_pane_id: Option<String>,
+    sidebar_pane_id: Option<String>,
 }
 
 impl EditorCommandSequence {
@@ -250,4 +330,12 @@ fn escape_helix_path(path: &str) -> String {
 
 fn escape_vim_single_quoted_string(path: &str) -> String {
     path.replace('\'', "''")
+}
+
+fn pane_id_to_string(pane_id: Option<PaneId>) -> Option<String> {
+    match pane_id {
+        Some(PaneId::Terminal(id)) => Some(format!("terminal:{id}")),
+        Some(PaneId::Plugin(id)) => Some(format!("plugin:{id}")),
+        None => None,
+    }
 }
