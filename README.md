@@ -1,4 +1,4 @@
-# Yazelix v12
+# Yazelix v13
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
@@ -59,33 +59,17 @@ Install once, get the same environment everywhere
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
-## Improvements in v12
+## Improvements in v13
 
-- **User-Declared Packs** – Packs are defined in `packs.declarations` and enabled via `packs.enabled`, with refreshed presets (Rust/Go split, `jj` pack, simpler git, YAML support).
-- **Yazi Plugin System** – Declaratively enable/disable plugins via `[yazi] plugins = ["git", "starship"]` in `yazelix.toml`. Bundled plugins (git, starship, lazygit) can be disabled or replaced with your own installed via `ya pkg add`.
-- **Yazi User Configs** – Full merging support for `yazi.toml`, `keymap.toml`, and `init.lua` from `configs/yazi/user/`. User settings override defaults while preserving Yazelix's editor integration.
-- **Zellij & Yazi Themes** – Theme/sorting controls, bundled Yazi flavor themes, and a documented cross-theme set shared by Zellij/Helix/Yazi.
-- **Terminal** – Ordered terminal list that defines primary launch target and fallback order for auto-detection, `manage_terminals` to disable Yazelix-managed terminal packages for system-installed terminals, and automatic environment rebuilds before launch/restart on terminal config changes.
-- **Zellij** – Pinned zjstatus with configurable widget tray (`zellij.widget_tray`) and per-item toggles.
-- **Launch & Config** – Direct TOML config parsing, setup-only bootstrap option, modularized core commands, POSIX `sh` desktop launcher.
-- **Nixpkgs Unstable** – Uses unstable for all packages.
-- **Updates & UX** – Smarter update suite: `yzx update devenv|lock|zjstatus|repo|all`, cleaner lock refresh, sweep robustness, extensive bug fixes, and better warnings/compat fixes.
+- **Plugin-Managed Pane Orchestration** – Yazelix now targets managed `editor` and `sidebar` panes through a dedicated Zellij plugin instead of pane-scanning heuristics.
+- **Deterministic Sidebar Controls** – Sidebar open/close and layout-family changes are now explicit plugin-driven actions with stable keybindings: `Alt+y`, `Ctrl+y`, `Alt+[`, and `Alt+]`.
+- **Cleaner Keybinding Model** – Editor/sidebar navigation is unified, editor-local reveal bindings are documented explicitly, and the temporary wrapper-pane transport was replaced with direct plugin messages.
+- **Runtime Plugin Reliability** – The pane orchestrator now ships through a content-hashed runtime wasm path, avoiding stale-plugin cache confusion during development and restart flows.
+- **Editor Reuse Reliability** – Opening files from Yazi now reuses the managed `editor` pane deterministically for Helix and Neovim, with plugin-owned targeting and command dispatch.
+- **Launch Robustness** – `yzx restart` now forces a fresh `devenv` entry path instead of reusing stale terminal state.
+- **Command Palette and UX Polish** – Yazelix continues to build on the `yzx menu`, `yzx refresh`, and `yzx dev` tooling introduced late in the v12 cycle, while the Zellij/Yazi integration model is now materially cleaner.
 
 Full version history: [Version History](./docs/history.md)
-
-## Improvements of v12.x over v12
-
-- **v12.1** – Added `yzx run <command> [args...]` and removed the old `yzx env -c` path.
-- **v12.2** – Introduced two AI packs, `ai_agents` and `ai_tools`, both declared and enabled in `yazelix.toml` under `[packs.declarations]` and `[packs.enabled]` (fully configurable like all other packs), and documented experiments/system-mode direction.
-- **v12.3** – Added `llm-agents.nix`, `yzx packs`, binary cache improvements, and unfree-pack handling fixes.
-- **v12.4** – Exposed dynamic Yazelix version in `zjstatus` from shared constants.
-- **v12.5** – Added `yzx gc` and improved pack-management reliability/docs.
-- **v12.6** – Introduced the `yzx dev` namespace (starting with `yzx dev sync_pins`), added `yzx update nix`, pinned-version checks, and launcher hardening.
-- **v12.7** – Hardened `yzx env` process supervision, improved refresh diagnostics, and tightened CLI/version workflows.
-- **v12.8** – Added command palette (`yzx menu`, bound to `Alt+Shift+m` in Zellij) and improved restart launch robustness.
-- **v12.9** – Fixed Ghostty dead keys on Wayland (IM fallback), improved sidebar/layout config resolution, and deduplicated Zellij layout/zjstatus fragments (net `-260` lines in dedupe commits, `-76` lines overall for `v12.9`).
-- **v12.10** – Added `yzx refresh`, improved refresh output tiers and package-scope visibility, and shared the core devenv refresh helpers.
-- **v12.11** – Updated Yazelix for devenv 2.0, simplified launch activation and env handoff, improved desktop-launch consistency, fixed Ghostty transparency on restart, and streamlined sweep-test execution/progress.
 
 ## Experiments
 

@@ -9,6 +9,7 @@ See the origin story in `docs/the_start.md`.
 
 ## Major Version Descriptions
 
+- **v13**: Plugin-managed editor/sidebar orchestration, deterministic sidebar controls, and cleaner Zellij workspace navigation
 - **v12**: User-declared packs, Nixpkgs unstable, declarative themes, and tighter terminal/Zellij/Yazi integration
 - **v11**: Blazingly fast launches, instant config reloads, Home Manager parity, and zero friction
 - **v10**: Launch interface consolidation, IDE integration, project-oriented workflow, and enhanced UX!
@@ -21,6 +22,16 @@ See the origin story in `docs/the_start.md`.
 - **v3**: Helix with a File Tree! Now with helix-friendly keybindings, and monorepo! ([announcement](https://www.reddit.com/r/HelixEditor/comments/1doefzt/yazelix_v3_helix_with_a_file_tree_now_with/))
 - **v2**: Yazi-Helix File Tree v2, now with a Closeable Sidebar! (the name 'Yazelix' did not exist yet; [announcement](https://www.reddit.com/r/HelixEditor/comments/1d6nkxs/yazihelix_file_tree_v2_now_with_a_closeable/))
 - **v1**: My first Zellij/Yazi/Helix/Nushell setup, inspired by a Reddit interaction, with no integration and a lot of hacks ([announcement](https://www.reddit.com/r/HelixEditor/comments/1d59br3/file_tree_setup_using_yazi_zellij_helix_and/))
+
+## v13: Plugin-managed editor/sidebar orchestration, deterministic sidebar controls, and cleaner Zellij workspace navigation
+
+- **Plugin-Managed Pane Orchestration** – Yazelix now targets managed `editor` and `sidebar` panes through a dedicated Zellij plugin instead of pane-scanning heuristics.
+- **Deterministic Sidebar Controls** – Sidebar open/close and layout-family changes are explicit plugin-driven actions, with `Alt+y` toggling editor/sidebar focus and `Ctrl+y` toggling sidebar visibility.
+- **Direct Plugin Keybind Transport** – Layout and navigation keybinds now dispatch directly to the background pane orchestrator plugin, eliminating temporary helper-pane title churn and focus interference.
+- **Runtime Plugin Cache Busting** – The pane orchestrator is loaded from a content-hashed runtime wasm path, preventing stale plugin code from surviving rebuilds and restarts.
+- **Editor Reuse Reliability** – Opening files from Yazi now reuses the managed `editor` pane deterministically for Helix and Neovim through plugin-owned targeting and command dispatch.
+- **Launch Robustness** – `yzx restart` forces a fresh `devenv` entry path, avoiding stale terminal-state failures during restart.
+- **Late-v12 UX Work Consolidated** – The command palette, refresh/dev tooling, and launch hardening from the late `v12.x` cycle now sit under a cleaner workspace model that justifies the major-version bump.
 
 ## v12: User-declared packs, Nixpkgs unstable, declarative themes, and tighter terminal/Zellij/Yazi integration
 
