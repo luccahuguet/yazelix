@@ -8,8 +8,8 @@
 **v8:**
 ![yazelix_v8_demo](assets/demos/yazelix_v8_demo.gif)
 
-**v8.5 with zjstatus:**
-![yazelix_v8_5_example](assets/screenshots/yazelix_v8_5_example.jpeg)
+**v13:**
+![yazelix_v13_example](assets/screenshots/yazelix_v13_example.png)
 
 ## Overview
 Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://github.com/zellij-org/zellij), and [Helix](https://helix-editor.com) (hence the name!), with first-class support for [Neovim](https://neovim.io) too.
