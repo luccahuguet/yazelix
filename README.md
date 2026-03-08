@@ -61,13 +61,18 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 ## Improvements in v13
 
-- **Plugin-Managed Pane Orchestration** – Yazelix now targets managed `editor` and `sidebar` panes through a dedicated Zellij plugin instead of pane-scanning heuristics.
-- **Deterministic Sidebar Controls** – Sidebar open/close and layout-family changes are now explicit plugin-driven actions with stable keybindings: `Alt+y`, `Ctrl+y`, `Alt+[`, and `Alt+]`.
-- **Cleaner Keybinding Model** – Editor/sidebar navigation is unified, editor-local reveal bindings are documented explicitly, and the temporary wrapper-pane transport was replaced with direct plugin messages.
-- **Runtime Plugin Reliability** – The pane orchestrator now ships through a content-hashed runtime wasm path, avoiding stale-plugin cache confusion during development and restart flows.
-- **Editor Reuse Reliability** – Opening files from Yazi now reuses the managed `editor` pane deterministically for Helix and Neovim, with plugin-owned targeting and command dispatch.
-- **Launch Robustness** – `yzx restart` now forces a fresh `devenv` entry path instead of reusing stale terminal state.
-- **Command Palette and UX Polish** – Yazelix continues to build on the `yzx menu`, `yzx refresh`, and `yzx dev` tooling introduced late in the v12 cycle, while the Zellij/Yazi integration model is now materially cleaner.
+- **The Biggest Pain Points Are Fixed** – v13 replaces fragile pane-scanning flows with a real Zellij plugin that tracks the managed `editor` and `sidebar` panes and routes workspace actions directly instead of relying on shell heuristics
+- **The Sidebar Can Always Find the Editor** – The sidebar can now always find the managed `editor` pane and open files in it reliably, and it is much faster because Yazelix no longer has to walk through panes or rely on pane-scanning heuristics
+- **Sidebar and Layout Controls Are Finally Separate** – Sidebar open/close now has its own `Ctrl+y` binding instead of being entangled with layout-family switching on `Alt+[` and `Alt+]`
+- **Deterministic Workspace Navigation** – `Alt+y` toggles focus between the managed editor and sidebar, while `Alt+[` and `Alt+]` switch predictably between the `single`, `vertical split`, and `bottom terminal` layouts
+- **Cleaner Keybinding Model** – Editor/sidebar navigation is unified, editor-local reveal bindings are documented explicitly, and the temporary wrapper-pane transport was replaced with direct plugin messages
+- **Runtime Plugin Reliability** – The pane orchestrator now ships through a content-hashed runtime wasm path, avoiding stale-plugin cache confusion during development and restart flows
+- **Launch Robustness** – `yzx restart` now forces a fresh `devenv` entry path instead of reusing stale terminal state
+- **Better Config Inspection** – `yzx config` is much more useful now, with focused section views for `hx`, `yazi`, and `zellij`, plus `yzx config open`
+- **Simpler Update and Testing Commands** – `yzx update` and `yzx dev test` were simplified into clearer defaults that are easier to remember and safer to use
+- **Clearer Refresh and Environment Feedback** – `yzx env` now shows rebuild activity more clearly, launch paths skip noisy shell-hook welcomes, and Yazelix warns when runtime versions drift
+- **Command Palette** – `yzx menu` gives you a searchable command palette for the main Yazelix actions, including a popup mode inside Zellij on `Alt+Shift+m`
+- **Refresh Workflow** – `yzx refresh` makes it easier to rebuild the Yazelix environment without launching the UI, while `yzx restart` cleanly switches the current window onto the refreshed profile
 
 Full version history: [Version History](./docs/history.md)
 
