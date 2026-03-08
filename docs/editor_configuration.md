@@ -88,10 +88,10 @@ command = "nvim"         # Use Neovim
 **Benefits:**
 - ✅ **Full integration** - All yazelix features work (reveal in sidebar, open in same instance, etc.)
 - ✅ **Smart instance management** - Files open in existing Neovim instance when possible
-- ✅ **Pane detection** - Yazelix finds and reuses your Neovim panes intelligently
+- ✅ **Managed pane targeting** - Yazelix finds and reuses your managed Neovim pane deterministically
 
 **Setup Required:**
-- ⚠️ **Add keybinding** - See [Neovim Keybindings](./neovim_keybindings.md) for Alt+y setup
+- ⚠️ **Add keybinding** - See [Neovim Keybindings](./neovim_keybindings.md) for a recommended reveal binding
 
 **Popular Neovim commands:**
 - `"nvim"` - Neovim from PATH
@@ -113,7 +113,7 @@ command = "vim"          # "nano", "emacs", etc.
 
 **Limitations:**
 - ❌ **Limited features** - No advanced integration (reveal in sidebar, same-instance opening)
-- ❌ **No editor-specific shortcuts** - Alt+y (reveal in Yazi) won't work
+- ❌ **No editor-specific shortcuts** - reveal in Yazi won't work without custom integration
 
 **Popular editor commands:**
 - `"vim"` - Vi/Vim
@@ -126,14 +126,14 @@ command = "vim"          # "nano", "emacs", etc.
 
 ### Helix-Specific Features (when using Helix)
 
-**Reveal in Yazi (Alt+y):**
+**Reveal in Yazi (custom binding):**
 - Jump from Helix buffer to the same file in Yazi sidebar
 - Only works in sidebar mode with Helix
 - Setup: [Helix Keybindings](./helix_keybindings.md)
 
-**File Picker (Ctrl+y):**
+**File Picker:**
 - Native Helix file picker integration
-- Works in both sidebar and no-sidebar modes
+- Choose a Helix-local binding that does not conflict with your Yazelix workspace shortcuts
 
 **Smart Instance Management:**
 - Opening files from Yazi reuses existing Helix instance when possible
@@ -144,19 +144,18 @@ command = "vim"          # "nano", "emacs", etc.
 
 ### Neovim-Specific Features (when using Neovim)
 
-**Reveal in Yazi (Alt+y):**
+**Reveal in Yazi (custom binding):**
 - Jump from Neovim buffer to the same file in Yazi sidebar
 - Only works in sidebar mode with Neovim
 - Setup: [Neovim Keybindings](./neovim_keybindings.md)
 
 **Smart Instance Management:**
-- Opening files from Yazi reuses existing Neovim instance when possible
-- Checks up to 4 panes to find existing Neovim instances
+- Opening files from Yazi reuses the managed Neovim pane when possible
 - New panes created intelligently based on layout
 
-**Pane Detection:**
-- Yazelix automatically detects running Neovim instances
-- Moves found instances to top of pane stack for focus
+**Managed Pane Targeting:**
+- Yazelix targets the managed `editor` pane through the pane orchestrator plugin
+- New editor panes are titled `editor` so later opens can reuse them deterministically
 
 **Command Integration:**
 - Files opened via `:edit` command in existing instances
@@ -260,7 +259,7 @@ command = "nvim"         # Use Neovim
 # ... other settings
 ```
 
-**Remember:** Add Alt+y keybinding to your Neovim config - see [Neovim Keybindings](./neovim_keybindings.md)
+**Remember:** Add a custom reveal binding to your Neovim config - see [Neovim Keybindings](./neovim_keybindings.md)
 
 ### Vim/Other Editor User
 ```toml
@@ -284,20 +283,20 @@ helix_runtime_path = "/usr/share/helix/runtime"    # Match system runtime
 
 | Editor Type | File Opening | Reveal in Sidebar | Same Instance | File Picker | Tab Naming |
 |-------------|--------------|-------------------|---------------|-------------|------------|
-| Yazelix Helix (null) | ✅ | ✅ | ✅ | ✅ (Ctrl+y) | ✅ |
-| System Helix ("hx") | ✅ | ✅ | ✅ | ✅ (Ctrl+y) | ✅ |
-| Custom Helix (path) | ✅ | ✅ | ✅ | ✅ (Ctrl+y) | ✅ |
+| Yazelix Helix (null) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| System Helix ("hx") | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Custom Helix (path) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Neovim ("nvim") | ✅ | ✅ (with setup) | ✅ | ✅ (Telescope) | ✅ |
 | Vim | ✅ | ❌ | ❌ | ❌ | ✅ |
 | Other Editors | ✅ | ❌ | ❌ | ❌ | ✅ |
 
 **Legend:**
 - **File Opening**: Click files in Yazi to open in editor
-- **Reveal in Sidebar**: Alt+y from editor jumps to file in Yazi
+- **Reveal in Sidebar**: your editor-local reveal binding jumps to the file in Yazi
 - **Same Instance**: Files open in existing editor instance when possible
-- **File Picker**: Native file picking integration (Helix: Ctrl+y, Neovim: Telescope/fzf-lua)
+- **File Picker**: Native file picking integration (Helix: custom binding, Neovim: Telescope/fzf-lua)
 - **Tab Naming**: Zellij tabs named after project/directory
 
 **Notes:**
-- Neovim requires [keybinding setup](./neovim_keybindings.md) for reveal in sidebar (Alt+y)
+- Neovim requires [keybinding setup](./neovim_keybindings.md) for reveal in sidebar
 - File picker in Neovim works with your existing plugins (Telescope, fzf-lua, etc.)

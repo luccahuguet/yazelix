@@ -4,12 +4,12 @@ This guide covers recommended Helix keybindings that enhance your editing experi
 
 ## Basic Yazelix Integration
 
-The essential keybinding for Yazelix integration should be added to your Helix config (usually `~/.config/helix/config.toml`):
+The essential keybinding for Yazelix integration should be added to your Helix config (usually `~/.config/helix/config.toml`). Use any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `Space y`:
 
 ```toml
-[keys.normal]
+[keys.normal.space]
 # Yazelix sidebar integration - reveal current file in Yazi sidebar
-A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
+y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
 ```
 
 **Note:** Only works for Helix instances opened from Yazi.
@@ -68,7 +68,7 @@ backspace.c = ":config-open"
 
 ### System Integration
 - `A-r`: Reload configuration and current file
-- `A-y`: **Yazelix integration** - Reveal current file in Yazi sidebar
+- `Space y`: **Yazelix integration** - Reveal current file in Yazi sidebar
 
 ### Git Integration
 - `A-g.b`: Show git blame for current line
@@ -88,12 +88,12 @@ backspace.c = ":config-open"
 
 2. **File Picker Toggles**: Use `backspace.h` and `backspace.i` to quickly adjust what files are visible when using Helix's file picker.
 
-3. **Yazelix Integration**: The `A-y` keybinding creates a seamless workflow between Helix and Yazi - you can quickly reveal any file you're editing in the sidebar.
+3. **Yazelix Integration**: A dedicated editor-local reveal binding creates a seamless workflow between Helix and Yazi - you can quickly reveal any file you're editing in the sidebar.
 
 ## Customization
 
 Feel free to modify these keybindings to match your workflow. The key principles are:
-- Use `Alt` (A-) for Yazelix-specific integrations
+- Prefer editor-local bindings that do not conflict with Zellij workspace shortcuts
 - Use `backspace.` for utility functions that don't interfere with normal editing
 - Keep git operations grouped under `A-g.`
 

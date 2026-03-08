@@ -18,14 +18,14 @@ Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://gith
 
 - **Use your preferred shell**: Bash, Fish, Zsh, or Nushell - Yazelix works with all of them
 - Zellij orchestrates everything, with Yazi as a sidebar and your chosen editor (Helix by default)
-- Toggle the sidebar without changing layout family with `Alt Shift s`
+- Toggle focus between the sidebar and editor with `Alt y`, and toggle the sidebar itself with `Ctrl y`
 - Every keybinding from Zellij that conflicts with Helix is remapped [see here](#keybindings)
 - When you hit Enter on a file/folder in the "sidebar":
   - **With Helix or Neovim**: Targets the managed `editor` pane through the Yazelix Zellij plugin. If that pane exists in the current tab, the file opens there. If not, Yazelix launches a new editor pane titled `editor`.
   - **With other editors**: Opens the file in a new pane with your configured editor
   - It automatically renames the Zellij tab to the file's underlying Git repo or directory name
 - Features include:
-  - "Reveal file in sidebar" (press `Alt y` in Helix/Neovim to reveal the file in Yazi, `Alt y` in Yazi to focus editor, see [Keybindings](#keybindings))
+  - "Reveal file in sidebar" (bind `reveal_in_yazi.nu` to any editor-local shortcut you prefer in Helix/Neovim, and use `Alt y` to jump between the editor and sidebar, see [Keybindings](#keybindings))
   - A Yazi plugin to enhance the status bar in the sidebar pane, making it uncluttered, colorful, and showing file permissions
   - A [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) showing file changes in the Yazi sidebar
   - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/luccahuguet/auto-layout.yazi), perfect for sidebar use
@@ -103,22 +103,22 @@ Full version history: [Version History](./docs/history.md)
 📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions
 
 ### Helix Integration
-For Helix-Yazi integration, add this to your Helix config (`~/.config/helix/config.toml`):
+For Helix-Yazi integration, bind `reveal_in_yazi.nu` to any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `Space y`:
 
 ```toml
-[keys.normal]
+[keys.normal.space]
 # Yazelix sidebar integration - reveal current file in Yazi sidebar
-A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
+y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
 ```
 
 📖 **[Complete Helix Keybindings Guide →](./docs/helix_keybindings.md)** - Recommended keybindings for enhanced editing experience
 
 ### Neovim Integration
-For Neovim-Yazi integration, add this to your Neovim config (`~/.config/nvim/init.lua`):
+For Neovim-Yazi integration, bind `reveal_in_yazi.nu` to any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `<leader>y`:
 
 ```lua
 -- Yazelix sidebar integration - reveal current file in Yazi sidebar
-vim.keymap.set('n', '<M-y>', function()
+vim.keymap.set('n', '<leader>y', function()
   local buffer_path = vim.fn.expand('%:p')
   if buffer_path ~= '' then
     vim.fn.system('nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu "' .. buffer_path .. '"')

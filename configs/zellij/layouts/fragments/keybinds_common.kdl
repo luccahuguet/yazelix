@@ -77,8 +77,17 @@ keybinds {
         unbind "Ctrl g"
         bind "Ctrl Alt g" { SwitchToMode "Locked"; }
 
+        // Toggle focus between the managed sidebar and the managed editor.
+        bind "Alt y" {
+            Run "nu" "~/.config/yazelix/configs/zellij/scripts/toggle_editor_sidebar_focus.nu" {
+                name "yzx_toggle_editor_sidebar_focus"
+                close_on_exit true
+                in_place true
+            }
+        }
+
         // Toggle the managed sidebar by switching between the paired open/closed swap layouts.
-        bind "Alt Shift s" {
+        bind "Ctrl y" {
             Run "nu" "~/.config/yazelix/configs/zellij/scripts/toggle_sidebar_layout.nu" {
                 name "yzx_toggle_sidebar_layout"
                 close_on_exit true

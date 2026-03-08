@@ -50,6 +50,8 @@ If you find a conflict, please open an issue
   - `Alt+Shift+H` moves the current tab left
   - `Alt+Shift+L` moves the current tab right
   - `Alt+w/q` walks left/right (focus tabs)
+  - `Alt+y` toggles focus between the managed sidebar and editor
+  - `Ctrl+y` toggles the sidebar open/closed
   - `Ctrl+Alt+g` locked mode, `Ctrl+Alt+s` scroll mode, `Ctrl+Alt+o` session mode
 - **Helix**: See [Helix Custom Keybindings](#helix-custom-keybindings) section below
 
@@ -62,7 +64,7 @@ If you find a conflict, please open an issue
   - `y`: Yank (copy); `Y`: Unyank (cancel copy)
   - `x`: Cut; `X`: Uncut (cancel cut)
   - `a`: Add a file (`filename.ext`) or folder (`foldername/`)
-  - `Alt+y`: Focus Helix pane (bidirectional navigation)
+  - `Alt+y`: Toggle focus between the editor and sidebar
   - `Alt+p`: Open directory in new Zellij pane
 - **Nushell**:
   - `Ctrl r`: interactive history search
@@ -82,12 +84,12 @@ Yazelix provides two ways to integrate Helix with Yazi:
 
 #### Setup
 
-Add the following to your `~/.config/helix/config.toml`:
+Bind `reveal_in_yazi.nu` to any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `Space y`:
 
 ```toml
-[keys.normal]
+[keys.normal.space]
 # Yazelix sidebar integration - reveal current file in Yazi sidebar
-A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
+y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
 
 
 ```
@@ -96,7 +98,7 @@ A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \
 
 | Keybinding | Action |
 |------------|--------|
-| `Alt+y` | Reveal current file in Yazelix sidebar |
+| `Space y` | Reveal current file in Yazelix sidebar |
 
 **Workflow**:
 1. Press the desired keybinding in Helix normal mode

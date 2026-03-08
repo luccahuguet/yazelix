@@ -1,14 +1,4 @@
 [[mgr.append_keymap]]
-on = [ "<C-y>" ]
-run = "quit"
-desc = "Quit Yazi (toggle with Helix)"
-
-[[mgr.append_keymap]]
-on = [ "<A-y>" ] 
-run = "shell 'nu $HOME/.config/yazelix/nushell/scripts/integrations/focus_helix.nu'"
-desc = "Focus Helix pane"
-
-[[mgr.append_keymap]]
 on = [ "<A-p>" ]
 run = "shell 'nu $HOME/.config/yazelix/nushell/scripts/integrations/open_dir_in_pane.nu \"$0\"'"
 desc = "Open directory in new pane"

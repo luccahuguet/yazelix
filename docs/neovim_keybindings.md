@@ -4,11 +4,11 @@ This document describes the recommended Neovim keybindings for full Yazelix inte
 
 ## Essential Keybinding: Reveal in Yazi
 
-The essential keybinding for Yazelix integration should be added to your Neovim config (usually `~/.config/nvim/init.lua`):
+The essential keybinding for Yazelix integration should be added to your Neovim config (usually `~/.config/nvim/init.lua`). Use any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `<leader>y`:
 
 ```lua
 -- Yazelix sidebar integration - reveal current file in Yazi sidebar
-vim.keymap.set('n', '<M-y>', function()
+vim.keymap.set('n', '<leader>y', function()
   local buffer_path = vim.fn.expand('%:p')
   if buffer_path ~= '' then
     vim.fn.system('nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu "' .. buffer_path .. '"')
@@ -24,7 +24,7 @@ If you use `init.vim` instead of `init.lua`:
 
 ```vim
 " Yazelix sidebar integration - reveal current file in Yazi sidebar
-nnoremap <M-y> :call system('nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu "' . expand('%:p') . '"')<CR>
+nnoremap <leader>y :call system('nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu "' . expand('%:p') . '"')<CR>
 ```
 
 ## Additional Recommended Keybindings
@@ -53,7 +53,7 @@ vim.keymap.set('n', '<leader>b', ':Telescope buffers<CR>', { desc = 'List buffer
 
 With Neovim configured for Yazelix, you get:
 
-- **Alt+y**: Reveal current buffer in Yazi sidebar (jumps focus to Yazi and selects the file)
+- **`<leader>y`**: Reveal current buffer in Yazi sidebar (jumps focus to Yazi and selects the file)
 - **Smart Instance Management**: Opening files from Yazi reuses existing Neovim instance
 - **Tab Naming**: Zellij tabs automatically named after your project/directory
 - **Yazi Sync**: Yazi directory view stays synchronized with opened files
@@ -63,12 +63,12 @@ With Neovim configured for Yazelix, you get:
 1. Start Yazelix with Neovim: `yzx launch` (with `editor_command = "nvim"` in `yazelix.toml`)
 2. Navigate files in Yazi sidebar (left pane)
 3. Press `e` on a file to edit in Neovim
-4. While editing, press `Alt+y` to reveal the current file in Yazi
+4. While editing, press your reveal binding to reveal the current file in Yazi
 5. Navigate to a different file in Yazi and press `e` - it opens in the same Neovim instance
 
 ## Troubleshooting
 
-### Alt+y doesn't work
+### Reveal binding doesn't work
 
 1. **Check if you're in sidebar mode:**
    - Reveal in Yazi only works with `sidebar_enabled = true` (default)
@@ -85,7 +85,7 @@ With Neovim configured for Yazelix, you get:
 
 ### Neovim opens in new instance instead of reusing existing
 
-1. **Check pane detection:**
+1. **Check managed pane reuse:**
    ```bash
    tail ~/.config/yazelix/logs/open_neovim.log
    ```
@@ -98,9 +98,9 @@ With Neovim configured for Yazelix, you get:
 
 | Feature | Helix | Neovim |
 |---------|-------|--------|
-| Reveal in Yazi (Alt+y) | ✅ | ✅ |
+| Reveal in Yazi (custom binding) | ✅ | ✅ |
 | Same instance opening | ✅ | ✅ |
-| Pane detection | ✅ | ✅ |
+| Managed pane targeting | ✅ | ✅ |
 | Tab naming | ✅ | ✅ |
 | Yazi sync | ✅ | ✅ |
 

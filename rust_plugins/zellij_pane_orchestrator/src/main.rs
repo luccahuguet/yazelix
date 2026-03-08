@@ -48,6 +48,7 @@ struct ManagedTabPanes {
 struct State {
     active_tab_position: Option<usize>,
     active_swap_layout_name_by_tab: HashMap<usize, Option<String>>,
+    focus_context_by_tab: HashMap<usize, FocusContext>,
     managed_panes_by_tab: HashMap<usize, ManagedTabPanes>,
     permissions_granted: bool,
 }
@@ -82,6 +83,8 @@ impl ZellijPlugin for State {
             }
             Event::PaneUpdate(pane_manifest) => {
                 self.managed_panes_by_tab = build_managed_panes_by_tab(&pane_manifest);
+                self.focus_context_by_tab =
+                    build_focus_context_by_tab(&pane_manifest, &self.focus_context_by_tab);
             }
             Event::PermissionRequestResult(status) => {
                 self.permissions_granted = status == PermissionStatus::Granted;
@@ -99,6 +102,10 @@ impl ZellijPlugin for State {
             }
             "focus_sidebar" => {
                 self.focus_managed_pane(&pipe_message, ManagedPaneKind::Sidebar);
+                false
+            }
+            "toggle_editor_sidebar_focus" => {
+                self.toggle_editor_sidebar_focus(&pipe_message);
                 false
             }
             "open_file" => {
@@ -184,6 +191,37 @@ impl State {
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_to_pane_id(vec![13], editor_pane.pane_id);
 
+        self.respond(pipe_message, RESULT_OK);
+    }
+
+    fn toggle_editor_sidebar_focus(&self, pipe_message: &PipeMessage) {
+        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
+            return;
+        };
+
+        let Some(managed_tab_panes) = self.managed_panes_by_tab.get(&active_tab_position) else {
+            self.respond(pipe_message, RESULT_MISSING);
+            return;
+        };
+
+        let target_pane = if self
+            .focus_context_by_tab
+            .get(&active_tab_position)
+            .copied()
+            .unwrap_or(FocusContext::Other)
+            == FocusContext::Sidebar
+        {
+            managed_tab_panes.editor
+        } else {
+            managed_tab_panes.sidebar
+        };
+
+        let Some(target_pane) = target_pane else {
+            self.respond(pipe_message, RESULT_MISSING);
+            return;
+        };
+
+        focus_pane_with_id(target_pane.pane_id, false);
         self.respond(pipe_message, RESULT_OK);
     }
 
@@ -375,6 +413,13 @@ enum ManagedPaneKind {
     Sidebar,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum FocusContext {
+    Editor,
+    Sidebar,
+    Other,
+}
+
 #[derive(Clone, Copy, Debug)]
 enum FamilyDirection {
     Next,
@@ -504,6 +549,29 @@ fn build_managed_panes_by_tab(pane_manifest: &PaneManifest) -> HashMap<usize, Ma
     }
 
     managed_panes_by_tab
+}
+
+fn build_focus_context_by_tab(
+    pane_manifest: &PaneManifest,
+    previous_focus_context_by_tab: &HashMap<usize, FocusContext>,
+) -> HashMap<usize, FocusContext> {
+    let mut focus_context_by_tab = HashMap::new();
+
+    for (tab_position, panes) in &pane_manifest.panes {
+        let focused_pane = panes.iter().find(|pane| pane.is_focused && !pane.is_plugin);
+        let focus_context = match focused_pane.map(|pane| pane.title.trim()) {
+            Some(EDITOR_TITLE) => FocusContext::Editor,
+            Some(SIDEBAR_TITLE) => FocusContext::Sidebar,
+            Some(title) if title.starts_with("yzx_") => previous_focus_context_by_tab
+                .get(tab_position)
+                .copied()
+                .unwrap_or(FocusContext::Other),
+            Some(_) | None => FocusContext::Other,
+        };
+        focus_context_by_tab.insert(*tab_position, focus_context);
+    }
+
+    focus_context_by_tab
 }
 
 fn select_managed_terminal_pane(

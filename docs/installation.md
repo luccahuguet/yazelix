@@ -283,12 +283,12 @@ For detailed macOS setup and troubleshooting, see [assets/macos/README.md](../as
 
 ### Step 9: Configure Helix Integration (Optional but Recommended)
 
-To enable full Helix-Yazi integration, add the basic Yazelix keybinding to your Helix config (usually `~/.config/helix/config.toml`):
+To enable full Helix-Yazi integration, bind `reveal_in_yazi.nu` to any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `Space y`:
 
 ```toml
-[keys.normal]
+[keys.normal.space]
 # Yazelix sidebar integration - reveal current file in Yazi sidebar
-A-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
+y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
 ```
 
 **Note:** Only works for Helix instances opened from Yazi.

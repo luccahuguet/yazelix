@@ -49,6 +49,15 @@ export def focus_managed_pane [pane_name: string, log_file: string = "zellij_plu
     }
 }
 
+export def toggle_editor_sidebar_focus [log_file: string = "zellij_plugin.log"] {
+    try {
+        let response = (run_pane_orchestrator_command "toggle_editor_sidebar_focus" $log_file)
+        parse_pane_orchestrator_response $response
+    } catch {|err|
+        {status: "error", reason: $err.msg}
+    }
+}
+
 def parse_pane_orchestrator_response [response: string] {
     match $response {
         "ok" => {status: "ok"}
