@@ -181,6 +181,7 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     ensure_dir $merged_config_path
     
     let pane_orchestrator_wasm_path = (get_pane_orchestrator_wasm_path $yazelix_dir)
+    let pane_orchestrator_plugin_url = $"file:($pane_orchestrator_wasm_path)"
 
     if not ($pane_orchestrator_wasm_path | path exists) {
         error make {msg: $"Pane orchestrator runtime wasm not found at: ($pane_orchestrator_wasm_path)"}
@@ -192,7 +193,7 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     if ($source_layouts_dir | path exists) {
         # Copy layouts to merged config directory
         use ../utils/layout_generator.nu
-        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray
+        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $pane_orchestrator_plugin_url
     }
     
     # Generate configuration from user config or defaults

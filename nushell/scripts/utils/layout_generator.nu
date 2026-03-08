@@ -2,6 +2,7 @@
 # Copy Zellij layouts to merged config directory
 
 const widget_tray_placeholder = "__YAZELIX_WIDGET_TRAY__"
+const pane_orchestrator_plugin_url_placeholder = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__"
 const static_fragment_specs = [
     {placeholder: "__YAZELIX_ZJSTATUS_TAB_TEMPLATE__", file: "fragments/zjstatus_tab_template.kdl"}
     {placeholder: "__YAZELIX_KEYBINDS_COMMON__", file: "fragments/keybinds_common.kdl"}
@@ -84,6 +85,7 @@ export def generate_layout [
     target_layout: string
     widget_tray: list<string>
     static_fragments: list<record>
+    pane_orchestrator_plugin_url: string
 ]: nothing -> nothing {
     let content = (open ($source_layout | path expand))
     mut updated = apply_static_fragments $content $static_fragments
@@ -91,6 +93,10 @@ export def generate_layout [
     if ($updated | str contains $widget_tray_placeholder) {
         let tray = build_widget_tray $widget_tray
         $updated = ($updated | str replace -a $widget_tray_placeholder $tray)
+    }
+
+    if ($updated | str contains $pane_orchestrator_plugin_url_placeholder) {
+        $updated = ($updated | str replace -a $pane_orchestrator_plugin_url_placeholder $pane_orchestrator_plugin_url)
     }
 
     if ($updated | str contains "zjstatus.wasm") and not ($updated | str contains "{swap_layout}") {
@@ -106,6 +112,7 @@ export def generate_all_layouts [
     layouts_source_dir: string
     layouts_target_dir: string
     widget_tray: list<string>
+    pane_orchestrator_plugin_url: string
 ]: nothing -> nothing {
     let source_root = ($layouts_source_dir | path expand)
     # Ensure target directory exists
@@ -127,7 +134,7 @@ export def generate_all_layouts [
         let target = ($layouts_target_dir | path join $file)
 
         if ($source | path exists) {
-            generate_layout $source $target $widget_tray $static_fragments
+            generate_layout $source $target $widget_tray $static_fragments $pane_orchestrator_plugin_url
             print $"Generated layout: ($target)"
         }
     }

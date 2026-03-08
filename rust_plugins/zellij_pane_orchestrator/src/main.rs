@@ -50,6 +50,7 @@ struct State {
     active_swap_layout_name_by_tab: HashMap<usize, Option<String>>,
     focus_context_by_tab: HashMap<usize, FocusContext>,
     managed_panes_by_tab: HashMap<usize, ManagedTabPanes>,
+    user_pane_count_by_tab: HashMap<usize, usize>,
     permissions_granted: bool,
 }
 
@@ -85,6 +86,7 @@ impl ZellijPlugin for State {
                 self.managed_panes_by_tab = build_managed_panes_by_tab(&pane_manifest);
                 self.focus_context_by_tab =
                     build_focus_context_by_tab(&pane_manifest, &self.focus_context_by_tab);
+                self.user_pane_count_by_tab = build_user_pane_count_by_tab(&pane_manifest);
             }
             Event::PermissionRequestResult(status) => {
                 self.permissions_granted = status == PermissionStatus::Granted;
@@ -230,6 +232,11 @@ impl State {
             return;
         };
 
+        if !self.can_switch_layout_family(active_tab_position) {
+            self.respond(pipe_message, RESULT_OK);
+            return;
+        }
+
         if is_no_sidebar_mode(self.managed_panes_by_tab.get(&active_tab_position)) {
             match direction {
                 FamilyDirection::Next => self.run_next_swap_layout_steps(1),
@@ -273,6 +280,20 @@ impl State {
         }
 
         self.respond(pipe_message, RESULT_OK);
+    }
+
+    fn can_switch_layout_family(&self, active_tab_position: usize) -> bool {
+        let user_pane_count = self
+            .user_pane_count_by_tab
+            .get(&active_tab_position)
+            .copied()
+            .unwrap_or(0);
+
+        if is_no_sidebar_mode(self.managed_panes_by_tab.get(&active_tab_position)) {
+            user_pane_count >= 2
+        } else {
+            user_pane_count >= 3
+        }
     }
 
     fn ensure_action_ready(&self, pipe_message: &PipeMessage) -> Option<usize> {
@@ -549,6 +570,21 @@ fn build_managed_panes_by_tab(pane_manifest: &PaneManifest) -> HashMap<usize, Ma
     }
 
     managed_panes_by_tab
+}
+
+fn build_user_pane_count_by_tab(pane_manifest: &PaneManifest) -> HashMap<usize, usize> {
+    pane_manifest
+        .panes
+        .iter()
+        .map(|(tab_position, panes)| {
+            let user_pane_count = panes
+                .iter()
+                .filter(|pane| !pane.is_plugin)
+                .filter(|pane| !pane.exited)
+                .count();
+            (*tab_position, user_pane_count)
+        })
+        .collect()
 }
 
 fn build_focus_context_by_tab(

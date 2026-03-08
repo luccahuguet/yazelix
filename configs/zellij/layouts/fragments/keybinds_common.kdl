@@ -79,35 +79,27 @@ keybinds {
 
         // Toggle focus between the managed sidebar and the managed editor.
         bind "Alt y" {
-            Run "nu" "~/.config/yazelix/configs/zellij/scripts/toggle_editor_sidebar_focus.nu" {
-                name "yzx_toggle_editor_sidebar_focus"
-                close_on_exit true
-                in_place true
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_editor_sidebar_focus"
             }
         }
 
         // Toggle the managed sidebar by switching between the paired open/closed swap layouts.
         bind "Ctrl y" {
-            Run "nu" "~/.config/yazelix/configs/zellij/scripts/toggle_sidebar_layout.nu" {
-                name "yzx_toggle_sidebar_layout"
-                close_on_exit true
-                in_place true
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_sidebar"
             }
         }
 
         // Override raw swap-layout cycling with Yazelix family-aware switching.
         bind "Alt [" {
-            Run "nu" "~/.config/yazelix/configs/zellij/scripts/previous_layout_family.nu" {
-                name "yzx_previous_layout_family"
-                close_on_exit true
-                in_place true
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "previous_family"
             }
         }
         bind "Alt ]" {
-            Run "nu" "~/.config/yazelix/configs/zellij/scripts/next_layout_family.nu" {
-                name "yzx_next_layout_family"
-                close_on_exit true
-                in_place true
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "next_family"
             }
         }
     }
