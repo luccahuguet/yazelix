@@ -180,6 +180,12 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     # Ensure output directory exists
     ensure_dir $merged_config_path
     
+    let pane_orchestrator_wasm_path = (get_pane_orchestrator_wasm_path $yazelix_dir)
+
+    if not ($pane_orchestrator_wasm_path | path exists) {
+        error make {msg: $"Pane orchestrator runtime wasm not found at: ($pane_orchestrator_wasm_path)"}
+    }
+
     # Copy layouts directory to merged config
     let source_layouts_dir = $"($yazelix_dir)/($ZELLIJ_CONFIG_PATHS.layouts_dir)"
     let target_layouts_dir = $"($merged_config_dir)/layouts"
@@ -192,12 +198,6 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     # Generate configuration from user config or defaults
     let base_config_raw = get_base_config
     let extracted_load_plugins = (split_load_plugins_block $base_config_raw)
-    let pane_orchestrator_wasm_path = (get_pane_orchestrator_wasm_path $yazelix_dir)
-
-    if not ($pane_orchestrator_wasm_path | path exists) {
-        error make {msg: $"Tracked pane orchestrator wasm not found at: ($pane_orchestrator_wasm_path)"}
-    }
-
     # Remove any settings we control from base config (yazelix.toml takes precedence)
     # This prevents conflicts when multiple declarations of the same setting exist
     let base_config = ($extracted_load_plugins.config_without_load_plugins | lines | where {|line|

@@ -1,69 +1,96 @@
 // Sidebar pane blocks are injected by nushell/scripts/utils/layout_generator.nu
 // from configs/zellij/layouts/fragments/swap_sidebar_*.kdl.
-swap_tiled_layout name="basic" {
-    ui exact_panes=4 {
-        pane split_direction="vertical" {
-            __YAZELIX_SWAP_SIDEBAR_OPEN__
-            pane 
-        }
-    }
-}
+//
+// Layout order matters:
+// - adjacent open/closed pairs make sidebar toggle a one-step swap
+// - family switching preserves sidebar state by moving two steps
 
-swap_tiled_layout name="stacked" {
-    ui min_panes=5 {
+swap_tiled_layout name="single_open" {
+    ui min_panes=4 {
         pane split_direction="vertical" {
             __YAZELIX_SWAP_SIDEBAR_OPEN__
-            pane stacked=true { children; }
-        }
-    }
-}
-
-swap_tiled_layout name="three_column" {
-    ui min_panes=5 {
-        pane split_direction="vertical" {
-            __YAZELIX_SWAP_SIDEBAR_OPEN__
-            pane stacked=true { 
-                children; 
-                size "40%"
-            }
-            pane split_direction="vertical" {
-                size "40%"
+            pane stacked=true {
+                children;
+                size "80%"
             }
         }
     }
 }
 
-swap_tiled_layout name="sidebar_closed" {
-    ui min_panes=5 {
+swap_tiled_layout name="single_closed" {
+    ui min_panes=4 {
         pane split_direction="vertical" {
             __YAZELIX_SWAP_SIDEBAR_CLOSED__
-            pane stacked=true { 
-                children; 
-                size "50%"
-            }
-            pane split_direction="vertical" {
-                size "50%"
+            pane stacked=true {
+                children;
+                size "80%"
             }
         }
     }
 }
 
-// swap_tiled_layout name="bottom_terminal" {
-//     ui min_panes=5 {
-//         pane split_direction="vertical" {
-//             pane name="sidebar" {
-//                 command "yazi"
-//                 size "20%"
-//             }
-//             pane split_direction="horizontal" {
-//                 pane stacked=true { 
-//                     children; 
-//                     size "70%"
-//                 }
-//                 pane name="terminal" {
-//                     size "30%"
-//                 }
-//             }
-//         }
-//     }
-// }
+swap_tiled_layout name="vertical_split_open" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_OPEN__
+            pane stacked=true {
+                children;
+                size "48%"
+            }
+            pane {
+                size "32%"
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="vertical_split_closed" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_CLOSED__
+            pane stacked=true {
+                children;
+                size "48%"
+            }
+            pane {
+                size "32%"
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="bottom_terminal_open" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_OPEN__
+            pane split_direction="horizontal" {
+                size "80%"
+                pane stacked=true {
+                    children;
+                    size "70%"
+                }
+                pane {
+                    size "30%"
+                }
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="bottom_terminal_closed" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_CLOSED__
+            pane split_direction="horizontal" {
+                size "80%"
+                pane stacked=true {
+                    children;
+                    size "70%"
+                }
+                pane {
+                    size "30%"
+                }
+            }
+        }
+    }
+}

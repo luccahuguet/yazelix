@@ -56,6 +56,7 @@ def parse_pane_orchestrator_response [response: string] {
         "not_ready" => {status: "not_ready"}
         "permissions_denied" => {status: "permissions_denied"}
         "invalid_payload" => {status: "invalid_payload"}
+        "unknown_layout" => {status: "unknown_layout"}
         "unsupported_editor" => {status: "unsupported_editor"}
         _ => {status: "error", reason: $response}
     }
@@ -137,6 +138,21 @@ export def debug_open_file_via_plugin [editor_kind: string, file_path: path] {
     } | to json -r
 
     let response = (run_pane_orchestrator_command_raw "open_file" $payload)
+    parse_pane_orchestrator_response $response
+}
+
+export def next_layout_family [] {
+    let response = (run_pane_orchestrator_command_raw "next_family")
+    parse_pane_orchestrator_response $response
+}
+
+export def previous_layout_family [] {
+    let response = (run_pane_orchestrator_command_raw "previous_family")
+    parse_pane_orchestrator_response $response
+}
+
+export def toggle_sidebar_layout [] {
+    let response = (run_pane_orchestrator_command_raw "toggle_sidebar")
     parse_pane_orchestrator_response $response
 }
 

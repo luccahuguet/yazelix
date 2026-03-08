@@ -76,6 +76,31 @@ keybinds {
         // (Ctrl+G is used by many CLIs for editing the prompt with $EDITOR)
         unbind "Ctrl g"
         bind "Ctrl Alt g" { SwitchToMode "Locked"; }
+
+        // Toggle the managed sidebar by switching between the paired open/closed swap layouts.
+        bind "Alt Shift s" {
+            Run "nu" "~/.config/yazelix/configs/zellij/scripts/toggle_sidebar_layout.nu" {
+                name "yzx_toggle_sidebar_layout"
+                close_on_exit true
+                in_place true
+            }
+        }
+
+        // Override raw swap-layout cycling with Yazelix family-aware switching.
+        bind "Alt [" {
+            Run "nu" "~/.config/yazelix/configs/zellij/scripts/previous_layout_family.nu" {
+                name "yzx_previous_layout_family"
+                close_on_exit true
+                in_place true
+            }
+        }
+        bind "Alt ]" {
+            Run "nu" "~/.config/yazelix/configs/zellij/scripts/next_layout_family.nu" {
+                name "yzx_next_layout_family"
+                close_on_exit true
+                in_place true
+            }
+        }
     }
 
     shared_except "pane" "locked" {

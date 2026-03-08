@@ -1,28 +1,19 @@
 #!/usr/bin/env nu
 # Sync the locally built pane orchestrator wasm into the tracked repo path
-# and the runtime plugin path used by active Yazelix sessions.
+# and the content-hashed runtime plugin path used by active Yazelix sessions.
 
-use ../setup/zellij_plugin_paths.nu get_pane_orchestrator_wasm_path
+use ../setup/zellij_plugin_paths.nu [
+  get_tracked_pane_orchestrator_wasm_path
+  sync_pane_orchestrator_runtime_wasm
+]
+use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
-const plugin_name = "yazelix_pane_orchestrator.wasm"
 const built_plugin_relative_path = "rust_plugins/zellij_pane_orchestrator/target/wasm32-wasip1/release/yazelix_pane_orchestrator.wasm"
-
-def atomic_copy [source_path: string, target_path: string] {
-  let target_dir = ($target_path | path dirname)
-  if not ($target_dir | path exists) {
-    mkdir $target_dir
-  }
-
-  let tmp_path = $"($target_path).tmp"
-  cp --force $source_path $tmp_path
-  mv --force $tmp_path $target_path
-}
 
 export def main [] {
   let yazelix_dir = ($env.HOME | path join ".config" "yazelix")
   let source_path = ($yazelix_dir | path join $built_plugin_relative_path)
-  let repo_target_path = (get_pane_orchestrator_wasm_path $yazelix_dir)
-  let runtime_target_path = ($env.HOME | path join ".local" "share" "yazelix" "configs" "zellij" "plugins" $plugin_name)
+  let repo_target_path = (get_tracked_pane_orchestrator_wasm_path $yazelix_dir)
 
   if not ($source_path | path exists) {
     print $"Error: built pane orchestrator wasm not found at: ($source_path)"
@@ -36,13 +27,15 @@ export def main [] {
     exit 3
   }
 
-  atomic_copy $source_path $repo_target_path
-  atomic_copy $source_path $runtime_target_path
+  cp --force $source_path $repo_target_path
+  let runtime_target_path = (sync_pane_orchestrator_runtime_wasm $yazelix_dir)
+  let merged_config_path = (generate_merged_zellij_config $yazelix_dir)
 
   print $"Updated pane orchestrator repo wasm: ($repo_target_path)"
   print $"Updated pane orchestrator runtime wasm: ($runtime_target_path)"
+  print $"Updated merged Zellij config: ($merged_config_path)"
   print $"Size: ($byte_len) bytes"
   print ""
   print "Reload the plugin in the current Zellij session with:"
-  print $"zellij action start-or-reload-plugin file:($repo_target_path)"
+  print $"zellij action start-or-reload-plugin file:($runtime_target_path)"
 }

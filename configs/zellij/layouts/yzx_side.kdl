@@ -18,7 +18,7 @@ layout {
          pane split_direction="vertical" {
              pane name="sidebar" {
                  command "yazi"
-             	size "100%"
+                 size "100%"
              }
          }
          pane size=1 borderless=true {
