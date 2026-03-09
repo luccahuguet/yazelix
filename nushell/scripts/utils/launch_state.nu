@@ -55,7 +55,7 @@ export def get_launch_profile [config_state: record] {
     }
 
     let yazelix_dir = "~/.config/yazelix" | path expand
-    let synced_zjstatus = ($yazelix_dir | path join "configs" "zellij" "zjstatus.wasm")
+    let synced_zjstatus = ($yazelix_dir | path join "configs" "zellij" "plugins" "zjstatus.wasm")
     if not ($synced_zjstatus | path exists) {
         return null
     }
@@ -120,15 +120,6 @@ def resolve_helix_runtime [config: record, profile_path: string, editor_command:
     ""
 }
 
-def resolve_zjstatus_path [yazelix_dir: string] {
-    let synced_path = ($yazelix_dir | path join "configs" "zellij" "zjstatus.wasm")
-    if ($synced_path | path exists) {
-        $synced_path
-    } else {
-        ""
-    }
-}
-
 export def get_launch_env [config: record, profile_path: string] {
     let yazelix_dir = ($env.HOME | path join ".config" "yazelix")
     let profile_bin = ($profile_path | path join "bin")
@@ -137,8 +128,6 @@ export def get_launch_env [config: record, profile_path: string] {
     let preferred_terminal = if ($terminals | is-empty) { "unknown" } else { ($terminals | first | into string) }
     let editor_command = (resolve_editor_command $config $profile_path)
     let helix_runtime = (resolve_helix_runtime $config $profile_path $editor_command)
-    let zjstatus_path = (resolve_zjstatus_path $yazelix_dir)
-
     mut launch_env = {
         DEVENV_PROFILE: $profile_path
         PATH: (([$profile_bin] | append $env.PATH | uniq))
@@ -160,10 +149,6 @@ export def get_launch_env [config: record, profile_path: string] {
 
     if ($helix_runtime | is-not-empty) {
         $launch_env = ($launch_env | upsert HELIX_RUNTIME $helix_runtime)
-    }
-
-    if ($zjstatus_path | is-not-empty) {
-        $launch_env = ($launch_env | upsert YAZELIX_ZJSTATUS_WASM $zjstatus_path)
     }
 
     $launch_env

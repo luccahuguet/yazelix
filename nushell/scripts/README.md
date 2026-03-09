@@ -38,7 +38,7 @@ Scripts for development, testing, and maintenance:
 - `validate_syntax.nu` - Validate syntax of all Nushell scripts using nu-check
 - `record_demo.nu` - VHS demo recording with font support
 - `test_fonts.nu` - Font testing for VHS recordings
-- `update_zjstatus.nu` - Sync the bundled zjstatus.wasm from the Nix store
+- `update_zjstatus.nu` - Maintainer helper to refresh the vendored zjstatus.wasm from the Nix store
 - `update_zellij_pane_orchestrator.nu` - Sync the locally built pane orchestrator wasm into the repo and runtime plugin paths
 
 ## Usage

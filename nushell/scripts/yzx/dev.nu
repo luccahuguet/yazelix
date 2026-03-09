@@ -73,6 +73,22 @@ def sync_runtime_pins [] {
     print $"✅ Updated runtime pins: nix ($runtime_pins.nix_version), devenv ($runtime_pins.devenv_version)"
 }
 
+def sync_vendored_zjstatus [] {
+    let update_script = ("~/.config/yazelix/nushell/scripts/dev/update_zjstatus.nu" | path expand)
+    if not ($update_script | path exists) {
+        print $"❌ zjstatus refresh helper not found: ($update_script)"
+        exit 1
+    }
+
+    print "🔄 Refreshing vendored zjstatus.wasm..."
+    try {
+        ^nu $update_script
+    } catch {|err|
+        print $"❌ Failed to refresh vendored zjstatus.wasm: ($err.msg)"
+        exit 1
+    }
+}
+
 export def "yzx dev update" [
     --verbose  # Show the underlying devenv command
     --yes      # Skip confirmation prompt
@@ -109,7 +125,8 @@ export def "yzx dev update" [
         print "✅ devenv.lock updated."
         print "🔄 Syncing pinned runtime expectations..."
         sync_runtime_pins
-        print "✅ Inputs and runtime pins are in sync. Review and commit the changes if everything looks good."
+        sync_vendored_zjstatus
+        print "✅ Inputs, runtime pins, and vendored zjstatus are in sync. Review and commit the changes if everything looks good."
     } catch {|err|
         print $"❌ devenv update failed: ($err.msg)"
         print "   Check your network connection and devenv.yaml inputs, then try again."

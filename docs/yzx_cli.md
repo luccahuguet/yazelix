@@ -81,15 +81,14 @@ Open the Yazelix GitHub Sponsors page
 
 ### `yzx update [--verbose]`
 Run the safe default update set
-- Default: updates the devenv CLI and bundled `zjstatus.wasm`
+- Default: updates the devenv CLI
 - `--verbose`: show verbose output for the default updates
 - `yzx update devenv`: Update the devenv CLI in your Nix profile (`--verbose` shows underlying commands)
 - `yzx update nix`: Upgrade Determinate Nix via `determinate-nixd` (`--yes` skips prompt, `--verbose` shows command; sudo required; only works if Determinate Nix is installed)
-- `yzx update zjstatus`: Update bundled zjstatus.wasm plugin
 - `yzx update repo`: Pull latest Yazelix updates (`--stash` auto-stashes changes, `--verbose` shows git commands)
 
 Maintainer-only updates:
-- `yzx dev update`: Refresh `devenv.lock` via `devenv update`, then sync pinned runtime `nix`/`devenv` versions (`--yes` skips prompt, `--verbose` shows command)
+- `yzx dev update`: Refresh `devenv.lock` via `devenv update`, then sync pinned runtime `nix`/`devenv` versions and refresh the vendored `configs/zellij/plugins/zjstatus.wasm` (`--yes` skips prompt, `--verbose` shows command)
 - `yzx dev sync_terminal_configs`: Regenerate terminal configs and sync snapshots into `configs/terminal_emulators/`
 
 ### `yzx gc [deep [PERIOD] | deeper]`
@@ -168,11 +167,11 @@ yzx status --verbose          # Show detailed shell hook status
 yzx sponsor                   # Open the Yazelix sponsor page
 
 # Updates
-yzx update                    # Safe default updates (devenv + zjstatus)
+yzx update                    # Safe default updates (devenv)
 yzx update devenv             # Update devenv CLI
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
 yzx update repo --stash       # Pull repo updates and reapply local changes
-yzx dev update --yes          # Refresh devenv.lock and sync pins without prompt
+yzx dev update --yes          # Refresh devenv.lock, sync pins, and refresh vendored zjstatus
 
 # Garbage collection
 yzx gc                        # Safe: clean devenv + remove unreferenced paths

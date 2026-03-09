@@ -1,4 +1,4 @@
-plugin location="file:~/.config/yazelix/configs/zellij/zjstatus.wasm" {
+plugin location="file:~/.config/yazelix/configs/zellij/plugins/zjstatus.wasm" {
     format_left   "{mode} {tabs}"
     format_center ""
     format_right  "#[fg=#ff0088,bold]{session} __YAZELIX_WIDGET_TRAY__ #[fg=#00ccff,bold]YAZELIX {command_version} " // {datetime}

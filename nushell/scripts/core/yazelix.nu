@@ -250,7 +250,6 @@ export def "yzx update" [
     --verbose  # Show verbose output for default updates
 ] {
     yzx update devenv --verbose=$verbose
-    yzx update zjstatus
 }
 
 export def "yzx update devenv" [
@@ -312,12 +311,6 @@ export def "yzx update devenv" [
             exit 1
         }
     }
-}
-
-
-# Update zjstatus plugin
-export def "yzx update zjstatus" [] {
-    nu ~/.config/yazelix/nushell/scripts/dev/update_zjstatus.nu
 }
 
 export def "yzx update nix" [
