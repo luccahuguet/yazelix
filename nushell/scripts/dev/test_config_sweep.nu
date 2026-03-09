@@ -157,11 +157,11 @@ def run_sweep_test [
                 {status: "fail", message: "Config parsing mismatch"}
             }
         } catch { |err|
-            {status: "error", message: $"Config parsing failed: ($err.msg)"}
+            {status: "error", message: $"Config parsing failed: ($err.msg)", details: $err.msg}
         }
 
         if $config_test.status != "pass" {
-            return (create_env_test_result $test_id $shell $terminal $features $config_test.status $config_test.message "skipped" "Skipped due to config failure" "fail")
+            return (create_env_test_result $test_id $shell $terminal $features $config_test.status $config_test.message ($config_test.details? | default null) "skipped" "Skipped due to config failure" null "fail")
         }
 
         # Validate environment setup (only on Linux for foot, skip others on unsupported platforms)
@@ -177,9 +177,9 @@ def run_sweep_test [
             "fail"
         }
 
-        create_env_test_result $test_id $shell $terminal $features $config_test.status $config_test.message $env_result.status $env_result.message $overall_status
+        create_env_test_result $test_id $shell $terminal $features $config_test.status $config_test.message ($config_test.details? | default null) $env_result.status $env_result.message ($env_result.details? | default null) $overall_status
     } catch { |err|
-        create_env_test_result $test_id $shell $terminal $features "error" $"Test failed: ($err.msg)" "error" "Test execution error" "error"
+        create_env_test_result $test_id $shell $terminal $features "error" $"Test failed: ($err.msg)" $err.msg "error" "Test execution error" null "error"
     }
 
     cleanup_test_config $config_path
@@ -288,7 +288,15 @@ export def run_all_sweep_tests [
             print $"($status_icon) ($result.test_id): ($result.shell) + ($result.terminal)"
             if $verbose or ($status != "pass") {
                 print $"   Config: ($result.config_status) - ($result.config_message)"
+                let config_details = ($result.config_details? | default null)
+                if ($config_details != null) and (($config_details | into string | str trim) | is-not-empty) {
+                    print $"   Config details: ($config_details)"
+                }
                 print $"   Environment: ($result.env_status) - ($result.env_message)"
+                let env_details = ($result.env_details? | default null)
+                if ($env_details != null) and (($env_details | into string | str trim) | is-not-empty) {
+                    print $"   Environment details: ($env_details)"
+                }
                 if ($status != "pass") {
                     print ""
                 }

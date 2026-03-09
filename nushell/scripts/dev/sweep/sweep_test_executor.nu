@@ -179,8 +179,10 @@ export def create_env_test_result [
     features: record,
     config_status: string,
     config_message: string,
+    config_details: any,
     env_status: string,
     env_message: string,
+    env_details: any,
     overall: string
 ]: nothing -> record {
     {
@@ -190,8 +192,10 @@ export def create_env_test_result [
         features: $features,
         config_status: $config_status,
         config_message: $config_message,
+        config_details: ($config_details | default null),
         env_status: $env_status,
         env_message: $env_message,
+        env_details: ($env_details | default null),
         overall: $overall
     }
 }
