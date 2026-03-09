@@ -80,11 +80,26 @@ Open the Yazelix GitHub Sponsors page
 - Falls back to printing the URL if no opener is available
 
 ### `yzx update [--verbose]`
-Run the safe default update set
-- Default: updates the devenv CLI
-- `--verbose`: show verbose output for the default updates
+Show available update targets
+- `--verbose`: accepted for consistency with subcommands
+- Bare `yzx update` prints the available user-facing and maintainer update commands
+
+### `yzx update all [--stash] [--verbose]`
+Run the user-facing update set
+- Updates the devenv CLI and then pulls the latest Yazelix repo changes
+- `--stash`: stash local changes before the repo update and re-apply them afterwards
+- `--verbose`: show verbose output for both update steps
+
+### `yzx update devenv [--verbose]`
+Update the devenv CLI in your Nix profile
 - `yzx update devenv`: Update the devenv CLI in your Nix profile (`--verbose` shows underlying commands)
+
+### `yzx update nix [--yes] [--verbose]`
+Upgrade Determinate Nix
 - `yzx update nix`: Upgrade Determinate Nix via `determinate-nixd` (`--yes` skips prompt, `--verbose` shows command; sudo required; only works if Determinate Nix is installed)
+
+### `yzx update repo [--stash] [--verbose]`
+Pull latest Yazelix updates from git
 - `yzx update repo`: Pull latest Yazelix updates (`--stash` auto-stashes changes, `--verbose` shows git commands)
 
 Maintainer-only updates:
@@ -167,7 +182,8 @@ yzx status --verbose          # Show detailed shell hook status
 yzx sponsor                   # Open the Yazelix sponsor page
 
 # Updates
-yzx update                    # Safe default updates (devenv)
+yzx update                    # Show update targets
+yzx update all               # Update devenv CLI + pull Yazelix repo
 yzx update devenv             # Update devenv CLI
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
 yzx update repo --stash       # Pull repo updates and reapply local changes

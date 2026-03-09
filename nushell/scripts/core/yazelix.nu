@@ -247,9 +247,24 @@ export def "yzx doctor" [
 
 # Update dependencies and inputs
 export def "yzx update" [
-    --verbose  # Show verbose output for default updates
+    --verbose  # Show verbose output for update commands
+] {
+    print "User-facing updates:"
+    print "  yzx update all        Update both the devenv CLI and the Yazelix repo"
+    print "  yzx update devenv     Update the devenv CLI in your Nix profile"
+    print "  yzx update repo       Pull latest Yazelix repo changes"
+    print "  yzx update nix        Upgrade Determinate Nix \(if installed\)"
+    print ""
+    print "Maintainer update:"
+    print "  yzx dev update        Refresh devenv.lock, sync pins, and refresh vendored zjstatus"
+}
+
+export def "yzx update all" [
+    --stash  # Stash local changes when updating the repo
+    --verbose  # Show verbose output for update commands
 ] {
     yzx update devenv --verbose=$verbose
+    yzx update repo --stash=$stash --verbose=$verbose
 }
 
 export def "yzx update devenv" [
