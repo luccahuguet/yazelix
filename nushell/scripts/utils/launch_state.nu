@@ -44,8 +44,8 @@ export def resolve_built_profile [] {
     ""
 }
 
-export def get_launch_profile [config_state: record] {
-    if ($config_state.needs_refresh? | default false) {
+export def get_launch_profile [config_state: record, --allow-stale] {
+    if (($config_state.needs_refresh? | default false) and (not $allow_stale)) {
         return null
     }
 
@@ -58,6 +58,15 @@ export def get_launch_profile [config_state: record] {
     let synced_zjstatus = ($yazelix_dir | path join "configs" "zellij" "plugins" "zjstatus.wasm")
     if not ($synced_zjstatus | path exists) {
         return null
+    }
+
+    $profile_path
+}
+
+export def require_reused_launch_profile [config_state: record, command_name: string] {
+    let profile_path = (get_launch_profile $config_state --allow-stale)
+    if $profile_path == null {
+        error make {msg: $"No cached Yazelix profile is available for '($command_name)'. Run 'yzx refresh' or rerun without --reuse."}
     }
 
     $profile_path

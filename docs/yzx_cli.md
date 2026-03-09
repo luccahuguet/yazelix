@@ -31,7 +31,7 @@ Profile launch sequence and identify performance bottlenecks
 - `--cold`: Profile cold start from vanilla terminal (emulates desktop entry or fresh terminal launch)
 - `--clear-cache`: Toggle yazelix.toml option and clear cache to force full Nix re-evaluation (simulates config change)
 
-### `yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose] [--skip-refresh]`
+### `yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose] [--reuse] [--skip-refresh]`
 Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
 - `--here`: Start in current terminal (instead of new terminal)
@@ -39,12 +39,14 @@ Launch Yazelix with directory and mode options
 - `--home`: Start in home directory
 - `--terminal TERM`: Override terminal selection (e.g., ghostty, wezterm, kitty)
 - `--verbose`: Print detailed launch diagnostics
+- `--reuse`: Reuse the last built Yazelix profile without rebuilding (errors if no cached profile exists)
 - `--skip-refresh, -s`: Skip explicit refresh trigger and allow potentially stale environment
 
-### `yzx env [--no-shell] [--skip-refresh]`
+### `yzx env [--no-shell] [--reuse] [--skip-refresh]`
 Load Yazelix environment without UI
 - Default: Drop into your configured shell with all Yazelix tools available
 - `--no-shell`: Stay in current shell (doesn't switch shells)
+- `--reuse`: Reuse the last built Yazelix profile without rebuilding (errors if no cached profile exists)
 - `--skip-refresh, -s`: Skip explicit refresh trigger and allow potentially stale environment
 
 ### `yzx refresh [--force] [--verbose] [--very-verbose]`
@@ -63,8 +65,9 @@ Run a single command in the Yazelix environment and exit
 Print a terminal emulator config generated from `yazelix_default.toml`
 - Example: `yzx gen_config alacritty`
 
-### `yzx restart [--skip-refresh]`
+### `yzx restart [--reuse] [--skip-refresh]`
 Restart Yazelix (handles persistent sessions)
+- `--reuse`: Reopen Yazelix from the last built profile without rebuilding (errors if no cached profile exists)
 - `--skip-refresh, -s`: Skip explicit refresh trigger and allow potentially stale environment
 
 ### `yzx status [--versions] [--verbose] [--save]`
@@ -155,11 +158,13 @@ yzx launch --home             # New terminal in home directory
 yzx launch --here --path ~/project  # Current terminal, specific directory
 yzx launch --terminal wezterm # Force WezTerm for this launch
 yzx launch --verbose          # Detailed launch diagnostics
+yzx launch --reuse            # Reuse the last built profile without rebuilding
 yzx launch -s                 # Launch while skipping explicit refresh trigger
 
 # Environment-only mode (no UI)
 yzx env                       # Drop into configured shell with Yazelix tools
 yzx env --no-shell            # Load tools but stay in current shell
+yzx env --reuse               # Reuse the last built profile without rebuilding
 yzx env -s                    # Load env while skipping explicit refresh trigger
 yzx refresh                   # Refresh devenv cache if changes were detected
 yzx refresh --force           # Force refresh even when up to date
@@ -167,6 +172,7 @@ yzx refresh -v                # Refresh with high-level progress
 yzx refresh -V                # Refresh with full build logs (-vv equivalent)
 yzx run lazygit               # Run single command and exit
 yzx run bash "-lc" "lazygit"  # Run through a shell
+yzx restart --reuse           # Reopen from the last built profile without rebuilding
 
 # Diagnostics and info
 yzx doctor --fix              # Health check with auto-fix

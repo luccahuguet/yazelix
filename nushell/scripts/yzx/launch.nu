@@ -3,7 +3,7 @@
 
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment run_in_devenv_shell_command get_refresh_output_mode]
-use ../utils/launch_state.nu [get_launch_env get_launch_profile]
+use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../core/start_yazelix.nu [start_yazelix_session]
 use ../utils/common.nu [describe_build_parallelism]
@@ -15,6 +15,7 @@ export def "yzx launch" [
     --home             # Start in home directory
     --terminal(-t): string  # Override terminal selection (for sweep testing)
     --verbose          # Enable verbose logging
+    --reuse            # Reuse the last built profile without rebuilding
     --skip-refresh(-s) # Skip explicit refresh trigger and allow potentially stale environment
     --force-reenter    # Force re-entering devenv before launch
 ] {
@@ -31,23 +32,22 @@ export def "yzx launch" [
     let config = $env_prep.config
     let config_state = $env_prep.config_state
     mut needs_refresh = $env_prep.needs_refresh
-    let should_refresh = ($needs_refresh and (not $skip_refresh))
+    let reuse_mode = $reuse
+    let should_refresh = ($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
     let refresh_output = get_refresh_output_mode $config
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)
     let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let show_refresh_notice = ($refresh_output != "quiet")
-    let launch_profile = if $should_refresh {
-        null
-    } else {
-        get_launch_profile $config_state
-    }
     let manage_terminals = ($config.manage_terminals? | default true)
     mut printed_refresh_notice = false
     if $verbose_mode {
         print $"🔍 Config hash changed? ($needs_refresh)"
     }
-    if $skip_refresh and $needs_refresh {
+    if $reuse_mode and $needs_refresh {
+        print "⚡ Reuse mode enabled - using the last built Yazelix profile without rebuild."
+        print "   Local config/input changes since the last refresh are not applied."
+    } else if $skip_refresh and $needs_refresh {
         print "⚠️  Skipping explicit refresh trigger; environment may be stale."
         print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
     }
@@ -82,29 +82,29 @@ export def "yzx launch" [
         if $verbose_mode {
             if $should_refresh {
                 if ($cwd_override != null) {
-                    start_yazelix_session $cwd_override --verbose
+                    start_yazelix_session $cwd_override --verbose --reuse=$reuse_mode
                 } else {
-                    start_yazelix_session --verbose
+                    start_yazelix_session --verbose --reuse=$reuse_mode
                 }
             } else {
                 if ($cwd_override != null) {
-                    start_yazelix_session $cwd_override --verbose
+                    start_yazelix_session $cwd_override --verbose --reuse=$reuse_mode
                 } else {
-                    start_yazelix_session --verbose
+                    start_yazelix_session --verbose --reuse=$reuse_mode
                 }
             }
         } else {
             if $should_refresh {
                 if ($cwd_override != null) {
-                    start_yazelix_session $cwd_override
+                    start_yazelix_session $cwd_override --reuse=$reuse_mode
                 } else {
-                    start_yazelix_session
+                    start_yazelix_session --reuse=$reuse_mode
                 }
             } else {
                 if ($cwd_override != null) {
-                    start_yazelix_session $cwd_override
+                    start_yazelix_session $cwd_override --reuse=$reuse_mode
                 } else {
-                    start_yazelix_session
+                    start_yazelix_session --reuse=$reuse_mode
                 }
             }
         }
@@ -148,6 +148,12 @@ export def "yzx launch" [
             }
         } else {
             # Not in Yazelix environment - wrap with devenv shell
+            let reused_launch_profile = if $reuse_mode {
+                require_reused_launch_profile $config_state "yzx launch --reuse"
+            } else {
+                null
+            }
+
             if $should_refresh {
                 if $show_refresh_notice and (not $printed_refresh_notice) {
                     print $"🔄 Configuration changed - rebuilding environment using ($build_parallelism_description)..."
@@ -168,6 +174,8 @@ export def "yzx launch" [
             # terminal packages such as Kitty.
             let fresh_launch_profile = if $force_reenter {
                 null
+            } else if $reuse_mode {
+                $reused_launch_profile
             } else {
                 get_launch_profile $fresh_state
             }

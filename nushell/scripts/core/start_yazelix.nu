@@ -2,10 +2,10 @@
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 use ../utils/environment_bootstrap.nu *
-use ../utils/launch_state.nu [activate_launch_profile get_launch_profile]
+use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile]
 use ../utils/common.nu [describe_build_parallelism]
 
-def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
+def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse] {
     # Capture original directory before any cd commands
     let original_dir = pwd
 
@@ -39,10 +39,20 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     let build_cores = ($config.build_cores? | default "2" | into string)
     let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let env_status = check_environment_status
+    let reuse_mode = $reuse
     mut activated_profile = false
 
-    if (not $env_status.already_in_env) and (not $needs_refresh) {
-        let profile_path = (get_launch_profile $env_prep.config_state)
+    if $reuse_mode and $needs_refresh {
+        print "⚡ Reuse mode enabled - using the last built Yazelix profile without rebuild."
+        print "   Local config/input changes since the last refresh are not applied."
+    }
+
+    if (not $env_status.already_in_env) and ((not $needs_refresh) or $reuse_mode) {
+        let profile_path = if $reuse_mode {
+            require_reused_launch_profile $env_prep.config_state "yzx launch --here --reuse"
+        } else {
+            get_launch_profile $env_prep.config_state
+        }
         if $profile_path != null {
             if $verbose_mode {
                 print $"⚡ Activating Yazelix profile: ($profile_path)"
@@ -134,58 +144,58 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
         }
 
         # Use shared devenv runner (consolidates with yzx env)
-        run_in_devenv_shell $cmd --max-jobs $max_jobs --build-cores $build_cores --skip-welcome --verbose=$verbose_mode --force-refresh=$needs_refresh --refresh-output-mode $refresh_output
+        run_in_devenv_shell $cmd --max-jobs $max_jobs --build-cores $build_cores --skip-welcome --verbose=$verbose_mode --force-refresh=($needs_refresh and (not $reuse_mode)) --refresh-output-mode $refresh_output
     }
 }
 
-export def start_yazelix_session [cwd_override?: string, --verbose, --setup-only] {
+export def start_yazelix_session [cwd_override?: string, --verbose, --setup-only, --reuse] {
     if ($cwd_override | is-not-empty) {
         if $setup_only {
             if $verbose {
-                _start_yazelix_impl $cwd_override --verbose --setup-only
+                _start_yazelix_impl $cwd_override --verbose --setup-only --reuse=$reuse
             } else {
-                _start_yazelix_impl $cwd_override --setup-only
+                _start_yazelix_impl $cwd_override --setup-only --reuse=$reuse
             }
         } else if $verbose {
-            _start_yazelix_impl $cwd_override --verbose
+            _start_yazelix_impl $cwd_override --verbose --reuse=$reuse
         } else {
-            _start_yazelix_impl $cwd_override
+            _start_yazelix_impl $cwd_override --reuse=$reuse
         }
     } else if $setup_only {
         if $verbose {
-            _start_yazelix_impl --verbose --setup-only
+            _start_yazelix_impl --verbose --setup-only --reuse=$reuse
         } else {
-            _start_yazelix_impl --setup-only
+            _start_yazelix_impl --setup-only --reuse=$reuse
         }
     } else if $verbose {
-        _start_yazelix_impl --verbose
+        _start_yazelix_impl --verbose --reuse=$reuse
     } else {
-        _start_yazelix_impl
+        _start_yazelix_impl --reuse=$reuse
     }
 }
 
-export def main [cwd_override?: string, --verbose, --setup-only] {
+export def main [cwd_override?: string, --verbose, --setup-only, --reuse] {
     if ($cwd_override | is-not-empty) {
         if $setup_only {
             if $verbose {
-                _start_yazelix_impl $cwd_override --verbose --setup-only
+                _start_yazelix_impl $cwd_override --verbose --setup-only --reuse=$reuse
             } else {
-                _start_yazelix_impl $cwd_override --setup-only
+                _start_yazelix_impl $cwd_override --setup-only --reuse=$reuse
             }
         } else if $verbose {
-            _start_yazelix_impl $cwd_override --verbose
+            _start_yazelix_impl $cwd_override --verbose --reuse=$reuse
         } else {
-            _start_yazelix_impl $cwd_override
+            _start_yazelix_impl $cwd_override --reuse=$reuse
         }
     } else if $setup_only {
         if $verbose {
-            _start_yazelix_impl --verbose --setup-only
+            _start_yazelix_impl --verbose --setup-only --reuse=$reuse
         } else {
-            _start_yazelix_impl --setup-only
+            _start_yazelix_impl --setup-only --reuse=$reuse
         }
     } else if $verbose {
-        _start_yazelix_impl --verbose
+        _start_yazelix_impl --verbose --reuse=$reuse
     } else {
-        _start_yazelix_impl
+        _start_yazelix_impl --reuse=$reuse
     }
 }

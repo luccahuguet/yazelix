@@ -189,13 +189,15 @@ def kill_zellij_session [session_name?: string] {
 
 # Restart yazelix
 export def "yzx restart" [
+    --reuse         # Reuse the last built profile without rebuilding
     --skip-refresh(-s) # Skip explicit refresh trigger and allow potentially stale environment
 ] {
     let env_prep = prepare_environment
     let config = $env_prep.config
     let manage_terminals = ($config.manage_terminals? | default true)
     let needs_refresh = $env_prep.needs_refresh
-    let should_refresh = ($needs_refresh and (not $skip_refresh))
+    let reuse_mode = $reuse
+    let should_refresh = ($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
     let refresh_output = get_refresh_output_mode $config
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)
@@ -206,7 +208,10 @@ export def "yzx restart" [
     let is_yazelix_terminal = ($env.YAZELIX_TERMINAL_CONFIG_MODE? | is-not-empty)
 
     # Provide appropriate messaging
-    if $skip_refresh and $needs_refresh {
+    if $reuse_mode and $needs_refresh {
+        print "⚡ Reuse mode enabled - using the last built Yazelix profile without rebuild."
+        print "   Local config/input changes since the last refresh are not applied."
+    } else if $skip_refresh and $needs_refresh {
         print "⚠️  Skipping explicit refresh trigger; environment may be stale."
         print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
     } else if $manage_terminals and $should_refresh and ($refresh_output != "quiet") {
@@ -222,6 +227,8 @@ export def "yzx restart" [
     if $manage_terminals and $should_refresh {
         rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
         yzx launch --force-reenter
+    } else if $reuse_mode {
+        yzx launch --reuse
     } else if $skip_refresh {
         yzx launch --skip-refresh
     } else {
