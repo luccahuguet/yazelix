@@ -32,6 +32,7 @@ export def "yzx launch" [
     mut needs_refresh = $env_prep.needs_refresh
     let should_refresh = ($needs_refresh and (not $skip_refresh))
     let refresh_output = get_refresh_output_mode $config
+    let build_cores = ($config.build_cores? | default "max_minus_one" | into string)
     let show_refresh_notice = ($refresh_output != "quiet")
     let launch_profile = if $should_refresh {
         null
@@ -149,7 +150,7 @@ export def "yzx launch" [
                     print "🔄 Configuration changed - rebuilding environment..."
                     $printed_refresh_notice = true
                 }
-                rebuild_yazelix_environment --refresh-eval-cache --output-mode $refresh_output
+                rebuild_yazelix_environment --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
                 $needs_refresh = false
             }
 
@@ -230,7 +231,7 @@ export def "yzx launch" [
                 $env_block = ($env_block | upsert YAZELIX_TERMINAL $env.YAZELIX_TERMINAL)
             }
             with-env $env_block {
-                run_in_devenv_shell_command "nu" ...$final_launch_args --cwd $yazelix_dir --skip-welcome --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode --refresh-output-mode $refresh_output
+                run_in_devenv_shell_command "nu" ...$final_launch_args --build-cores $build_cores --cwd $yazelix_dir --skip-welcome --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode --refresh-output-mode $refresh_output
             }
             if $should_refresh {
                 mark_config_state_applied $fresh_state

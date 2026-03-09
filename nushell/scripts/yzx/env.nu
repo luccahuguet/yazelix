@@ -43,6 +43,7 @@ export def "yzx env" [
     let needs_refresh = $env_prep.needs_refresh
     let should_refresh = ($needs_refresh and (not $skip_refresh))
     let refresh_reason = ($env_prep.config_state.refresh_reason? | default "config or devenv inputs changed since last launch")
+    let build_cores = ($config.build_cores? | default "max_minus_one" | into string)
 
     let original_dir = (pwd)
 
@@ -62,17 +63,17 @@ export def "yzx env" [
         print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
     } else if $needs_refresh {
         print "🔄 Configuration changed - rebuilding environment..."
-        rebuild_yazelix_environment --refresh-eval-cache
+        rebuild_yazelix_environment --build-cores $build_cores --refresh-eval-cache
     }
 
     if $no_shell {
         # For --no-shell, preserve the invoking shell when possible.
         let shell_command = (resolve_shell_command $invoking_shell_name)
         if $has_setpriv {
-            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
+            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
         } else {
             # macOS and other systems without setpriv use POSIX trap fallback.
-            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
+            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
         }
 
     } else {
@@ -85,9 +86,9 @@ export def "yzx env" [
         try {
             with-env {SHELL: $shell_exec} {
                 if $has_setpriv {
-                    run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
+                    run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
                 } else {
-                    run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
+                    run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
                 }
             }
         } catch {|err|

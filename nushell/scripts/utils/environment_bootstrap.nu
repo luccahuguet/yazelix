@@ -52,12 +52,17 @@ export def get_refresh_output_mode [config] {
 
 # Build a base devenv command from the canonical Yazelix directory
 export def get_devenv_base_command [
+    --build-cores: string  # Build core strategy or explicit count from yazelix config
     --quiet             # Include --quiet in devenv arguments
     --devenv-verbose    # Include --verbose in devenv arguments
     --refresh-eval-cache  # Include --refresh-eval-cache in devenv arguments
 ] {
     let yazelix_dir = resolve_yazelix_dir
-    let max_cores = get_max_cores
+    let max_cores = if ($build_cores | is-not-empty) {
+        get_max_cores $build_cores
+    } else {
+        get_max_cores
+    }
 
     mut cmd = [
         "env"
@@ -82,11 +87,12 @@ export def get_devenv_base_command [
 }
 
 export def rebuild_yazelix_environment [
+    --build-cores: string  # Build core strategy or explicit count from yazelix config
     --refresh-eval-cache  # Refresh devenv eval cache before rebuilding
     --output-mode: string = "normal"  # quiet | normal | full
 ] {
     let refresh_output = resolve_refresh_output_mode $output_mode
-    let devenv_base = get_devenv_base_command --refresh-eval-cache=$refresh_eval_cache --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full")
+    let devenv_base = get_devenv_base_command --build-cores $build_cores --refresh-eval-cache=$refresh_eval_cache --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full")
     let devenv_cmd = ($devenv_base | append ["build", "shell"])
     let cmd_bin = ($devenv_cmd | first)
     let cmd_args = ($devenv_cmd | skip 1)
@@ -138,6 +144,7 @@ export def ensure_environment_available [] {
 # Run a command inside devenv shell
 export def run_in_devenv_shell [
     command: string
+    --build-cores: string  # Build core strategy or explicit count from yazelix config
     --env-only          # Set YAZELIX_ENV_ONLY=true
     --verbose           # Enable verbose output
     --quiet             # Run devenv with --quiet flag
@@ -182,7 +189,7 @@ export def run_in_devenv_shell [
             $quiet
         }
         let devenv_verbose = $force_refresh and ($refresh_output == "full") and (not $quiet_devenv)
-        let devenv_base = get_devenv_base_command --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose
+        let devenv_base = get_devenv_base_command --build-cores $build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose
         let devenv_cmd = ($devenv_base | append ["shell", "--no-tui", "--no-reload", "--", "sh", "-c", $command])
         let devenv_bin = ($devenv_cmd | first)
         let devenv_args = ($devenv_cmd | skip 1)
@@ -213,6 +220,7 @@ export def run_in_devenv_shell [
 export def run_in_devenv_shell_command [
     command: string
     ...args: string
+    --build-cores: string  # Build core strategy or explicit count from yazelix config
     --cwd: string      # Run command in this directory
     --env-only         # Set YAZELIX_ENV_ONLY=true
     --verbose          # Enable verbose output
@@ -273,7 +281,7 @@ export def run_in_devenv_shell_command [
         $quiet
     }
     let devenv_verbose = $force_refresh and ($refresh_output == "full") and (not $quiet_devenv)
-    let devenv_base = get_devenv_base_command --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose
+    let devenv_base = get_devenv_base_command --build-cores $build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose
     let devenv_cmd = ($devenv_base | append ["shell", "--no-tui", "--no-reload", "--"] | append $exec_cmd)
     let devenv_bin = ($devenv_cmd | first)
     let devenv_args = ($devenv_cmd | skip 1)

@@ -147,7 +147,6 @@ export def get_launch_env [config: record, profile_path: string] {
         IN_NIX_SHELL: "impure"
         NIX_CONFIG: "warn-dirty = false"
         YAZELIX_DEBUG_MODE: (bool_to_string ($config.debug_mode? | default false))
-        YAZELIX_BUILD_CORES: ($config.build_cores? | default "max_minus_one" | into string)
         ZELLIJ_DEFAULT_LAYOUT: (if $enable_sidebar { "yzx_side" } else { "yzx_no_side" })
         YAZELIX_DEFAULT_SHELL: ($config.default_shell? | default "nu" | into string)
         YAZELIX_ENABLE_SIDEBAR: (bool_to_string $enable_sidebar)

@@ -3,21 +3,24 @@
 # Utility functions for Yazelix
 
 # Get the number of CPU cores to use for builds based on configuration
-export def get_max_cores [] {
+export def get_max_cores [build_cores_config?: string] {
     let total_cores = (sys cpu | length)
 
-    # Try to read from environment variable (set by devenv.nix)
-    let build_cores_config = ($env.YAZELIX_BUILD_CORES? | default "max_minus_one")
+    let resolved_build_cores = if ($build_cores_config | is-not-empty) {
+        $build_cores_config
+    } else {
+        "max_minus_one"
+    }
 
     # Parse configuration
-    match $build_cores_config {
+    match $resolved_build_cores {
         "max" => $total_cores,
         "max_minus_one" => (if $total_cores > 1 { $total_cores - 1 } else { 1 }),
         "half" => (($total_cores / 2) | math floor | into int),
         _ => {
             # Try to parse as a number
             try {
-                $build_cores_config | into int
+                $resolved_build_cores | into int
             } catch {
                 # Fallback to max_minus_one if invalid
                 if $total_cores > 1 { $total_cores - 1 } else { 1 }

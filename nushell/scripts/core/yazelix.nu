@@ -196,6 +196,7 @@ export def "yzx restart" [
     let needs_refresh = $env_prep.needs_refresh
     let should_refresh = ($needs_refresh and (not $skip_refresh))
     let refresh_output = get_refresh_output_mode $config
+    let build_cores = ($config.build_cores? | default "max_minus_one" | into string)
     let session_to_kill = get_current_zellij_session
 
     # Detect if we're in a Yazelix-controlled terminal (launched via wrapper)
@@ -216,7 +217,7 @@ export def "yzx restart" [
 
     # Launch new terminal window
     if $manage_terminals and $should_refresh {
-        rebuild_yazelix_environment --refresh-eval-cache --output-mode $refresh_output
+        rebuild_yazelix_environment --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
         yzx launch --force-reenter
     } else if $skip_refresh {
         yzx launch --skip-refresh

@@ -86,6 +86,7 @@ export def "yzx refresh" [
     let config = $env_prep.config
     let config_state = $env_prep.config_state
     let needs_refresh = $config_state.needs_refresh
+    let build_cores = ($config.build_cores? | default "max_minus_one" | into string)
     let refresh_output = if $very_verbose {
         "full"
     } else if $verbose {
@@ -123,7 +124,7 @@ export def "yzx refresh" [
     if $needs_refresh or $force {
         print $"♻️  Refreshing Yazelix environment \(($refresh_reason)\)..."
 
-        let devenv_base = (get_devenv_base_command --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full") --refresh-eval-cache)
+        let devenv_base = (get_devenv_base_command --build-cores $build_cores --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full") --refresh-eval-cache)
         let devenv_cmd = ($devenv_base | append ["build", "shell"])
 
         if $show_progress {

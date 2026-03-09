@@ -525,7 +525,6 @@ in
     IN_YAZELIX_SHELL = "true";
     NIX_CONFIG = "warn-dirty = false";
     YAZELIX_DEBUG_MODE = boolToString debugMode;
-    YAZELIX_BUILD_CORES = userConfig.build_cores;
     ZELLIJ_DEFAULT_LAYOUT = yazelixLayoutName;
     YAZELIX_DEFAULT_SHELL = defaultShell;
     YAZELIX_ENABLE_SIDEBAR = boolToString enableSidebar;
@@ -548,7 +547,6 @@ in
     export IN_YAZELIX_SHELL="true"
     export NIX_CONFIG="warn-dirty = false"
     export YAZELIX_DEBUG_MODE="${boolToString debugMode}"
-    export YAZELIX_BUILD_CORES="${userConfig.build_cores}"
     export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
     export YAZELIX_DEFAULT_SHELL="${defaultShell}"
     export YAZELIX_ENABLE_SIDEBAR="${boolToString enableSidebar}"
