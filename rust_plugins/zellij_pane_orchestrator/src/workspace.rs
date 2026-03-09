@@ -1,10 +1,14 @@
 use std::collections::HashSet;
 use std::path::Path;
+use std::thread::sleep;
+use std::time::Duration;
 
 use serde::Deserialize;
 use zellij_tile::prelude::*;
 
-use crate::{State, RESULT_INVALID_PAYLOAD, RESULT_MISSING_WORKSPACE, RESULT_OK};
+use crate::{
+    State, COMMAND_STEP_DELAY_MS, RESULT_INVALID_PAYLOAD, RESULT_MISSING_WORKSPACE, RESULT_OK,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct WorkspaceState {
@@ -86,6 +90,46 @@ impl State {
         self.respond(pipe_message, RESULT_OK);
     }
 
+    pub(crate) fn set_workspace_root_and_cd_focused_pane(
+        &mut self,
+        pipe_message: &PipeMessage,
+    ) {
+        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
+            return;
+        };
+
+        let Some(payload) = pipe_message.payload.as_deref() else {
+            self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+            return;
+        };
+
+        let workspace_root_request: WorkspaceRootRequest = match serde_json::from_str(payload) {
+            Ok(request) => request,
+            Err(_) => {
+                self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+                return;
+            }
+        };
+
+        let Some(focused_pane_id) = self.get_focused_terminal_pane(pipe_message) else {
+            return;
+        };
+
+        let workspace_state = WorkspaceState::from_root(workspace_root_request.workspace_root);
+        rename_tab(
+            tab_index_from_position(active_tab_position),
+            &tab_name_from_workspace_root(&workspace_state.root),
+        );
+        self.workspace_state_by_tab
+            .insert(active_tab_position, workspace_state.clone());
+
+        write_chars_to_pane_id(&change_directory_command(&workspace_state.root), focused_pane_id);
+        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
+        write_to_pane_id(vec![13], focused_pane_id);
+
+        self.respond(pipe_message, RESULT_OK);
+    }
+
     pub(crate) fn open_workspace_terminal(&self, pipe_message: &PipeMessage) {
         let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
             return;
@@ -141,4 +185,15 @@ pub(crate) fn tab_name_from_workspace_root(workspace_root: &str) -> String {
 fn tab_index_from_position(tab_position: usize) -> u32 {
     // Zellij reports tabs to plugins by 0-based position, but rename_tab targets the 1-based tab index.
     u32::try_from(tab_position + 1).expect("tab position should fit in u32")
+}
+
+fn change_directory_command(path: &str) -> String {
+    format!("cd \"{}\"", escape_double_quoted_path(path))
+}
+
+fn escape_double_quoted_path(path: &str) -> String {
+    path.replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('$', "\\$")
+        .replace('`', "\\`")
 }

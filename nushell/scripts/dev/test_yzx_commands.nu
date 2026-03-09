@@ -215,6 +215,26 @@ def test_yzx_cwd_requires_zellij [] {
     }
 }
 
+def test_yzx_cwd_resolves_zoxide_query [] {
+    print "🧪 Testing yzx cwd zoxide resolution..."
+
+    try {
+        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; resolve_yzx_cwd_target yazelix" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == "/home/lucca/.config/yazelix") {
+            print "  ✅ yzx cwd resolves zoxide queries before updating the tab directory"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_yzx_sponsor_exists [] {
     print "🧪 Testing yzx sponsor command exists..."
 
@@ -329,6 +349,7 @@ def main [] {
         (test_yzx_menu_exists),
         (test_yzx_cwd_exists),
         (test_yzx_cwd_requires_zellij),
+        (test_yzx_cwd_resolves_zoxide_query),
         (test_yzx_sponsor_exists),
         (test_yzx_sponsor_runs),
         (test_yzx_config_view),

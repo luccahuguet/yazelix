@@ -120,7 +120,38 @@ def get_workspace_context [target_path: path, log_file: string] {
     }
 }
 
-export def set_tab_cwd [target_path: path, log_file: string = "zellij_plugin.log"] {
+export def resolve_tab_cwd_target [
+    target?: string  # Directory path or zoxide query for the current tab (defaults to the current directory)
+] {
+    let requested_target = if ($target | is-not-empty) {
+        $target
+    } else {
+        pwd
+    }
+
+    if ($requested_target == (pwd)) {
+        return $requested_target
+    }
+
+    if (which zoxide | is-not-empty) {
+        let zoxide_result = (^zoxide query -- $requested_target | complete)
+        if $zoxide_result.exit_code == 0 {
+            return ($zoxide_result.stdout | str trim)
+        }
+    }
+
+    if ($requested_target | path exists) {
+        return $requested_target
+    }
+
+    if (which zoxide | is-not-empty) {
+        error make {msg: $"Could not resolve '($requested_target)' with zoxide or as an existing path."}
+    } else {
+        error make {msg: $"zoxide is not available and '($requested_target)' is not an existing path."}
+    }
+}
+
+def update_tab_workspace [command_name: string, target_path: path, log_file: string] {
     let expanded_target_path = ($target_path | path expand)
     if not ($expanded_target_path | path exists) {
         error make {msg: $"Path does not exist: ($expanded_target_path)"}
@@ -138,7 +169,7 @@ export def set_tab_cwd [target_path: path, log_file: string = "zellij_plugin.log
     log_to_file $log_file $"Setting tab cwd to: ($target_dir)"
 
     try {
-        let response = (run_pane_orchestrator_command "set_workspace_root" $log_file $payload)
+        let response = (run_pane_orchestrator_command $command_name $log_file $payload)
         {
             workspace_root: $target_dir
             tab_name: (get_tab_name $target_dir)
@@ -151,6 +182,14 @@ export def set_tab_cwd [target_path: path, log_file: string = "zellij_plugin.log
             reason: $err.msg
         }
     }
+}
+
+export def set_tab_cwd [target_path: path, log_file: string = "zellij_plugin.log"] {
+    update_tab_workspace "set_workspace_root_and_cd_focused_pane" $target_path $log_file
+}
+
+export def set_tab_workspace_root [target_path: path, log_file: string = "zellij_plugin.log"] {
+    update_tab_workspace "set_workspace_root" $target_path $log_file
 }
 
 export def set_workspace_for_path [target_path: path, log_file: string = "zellij_plugin.log"] {

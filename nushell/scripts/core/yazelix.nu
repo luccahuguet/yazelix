@@ -7,7 +7,7 @@ use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
 use ../utils/common.nu [describe_build_parallelism]
 use ./start_yazelix.nu [start_yazelix_session]
-use ../integrations/zellij.nu [set_tab_cwd]
+use ../integrations/zellij.nu [set_tab_cwd resolve_tab_cwd_target]
 
 # Import modularized commands (export use to properly re-export subcommands)
 export use ../yzx/launch.nu *
@@ -88,8 +88,14 @@ export def "yzx sponsor" [] {
     print $sponsor_url
 }
 
+export def resolve_yzx_cwd_target [
+    target?: string  # Directory path or zoxide query for the current tab (defaults to the current directory)
+] {
+    resolve_tab_cwd_target $target
+}
+
 export def "yzx cwd" [
-    target_dir?: string  # Directory to use for the current tab (defaults to the current directory)
+    target?: string  # Directory path or zoxide query for the current tab (defaults to the current directory)
 ] {
     if ($env.ZELLIJ? | is-empty) {
         print "❌ yzx cwd only works inside Zellij."
@@ -97,14 +103,15 @@ export def "yzx cwd" [
         exit 1
     }
 
-    let requested_dir = if ($target_dir | is-not-empty) {
-        $target_dir
-    } else {
-        pwd
+    let resolved_dir = try {
+        resolve_yzx_cwd_target $target
+    } catch {|err|
+        print $"❌ ($err.msg)"
+        exit 1
     }
 
     let result = try {
-        set_tab_cwd $requested_dir "yzx_tab_cwd.log"
+        set_tab_cwd $resolved_dir "yzx_cwd.log"
     } catch {|err|
         {
             status: "error"
@@ -116,7 +123,8 @@ export def "yzx cwd" [
         "ok" => {
             print $"✅ Updated current tab workspace directory to: ($result.workspace_root)"
             print $"   Tab renamed to: ($result.tab_name)"
-            print "   Existing panes keep their current working directories."
+            print "   The current pane will switch after this command returns."
+            print "   Other existing panes keep their current working directories."
             print "   New managed actions will use the updated tab directory."
         }
         "not_ready" => {

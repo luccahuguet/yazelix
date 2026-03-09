@@ -102,6 +102,21 @@ pub(crate) fn build_focus_context_by_tab(
     focus_context_by_tab
 }
 
+pub(crate) fn build_focused_terminal_pane_by_tab(
+    pane_manifest: &PaneManifest,
+) -> HashMap<usize, PaneId> {
+    pane_manifest
+        .panes
+        .iter()
+        .filter_map(|(tab_position, panes)| {
+            panes
+                .iter()
+                .find(|pane| pane.is_focused && !pane.is_plugin && !pane.exited)
+                .map(|pane| (*tab_position, PaneId::Terminal(pane.id)))
+        })
+        .collect()
+}
+
 impl State {
     pub(crate) fn focus_managed_pane(
         &self,
@@ -198,6 +213,23 @@ impl State {
 
         match managed_pane {
             Some(managed_pane) => Some(managed_pane),
+            None => {
+                self.respond(pipe_message, RESULT_MISSING);
+                None
+            }
+        }
+    }
+
+    pub(crate) fn get_focused_terminal_pane(
+        &self,
+        pipe_message: &PipeMessage,
+    ) -> Option<PaneId> {
+        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
+            return None;
+        };
+
+        match self.focused_terminal_pane_by_tab.get(&active_tab_position).copied() {
+            Some(pane_id) => Some(pane_id),
             None => {
                 self.respond(pipe_message, RESULT_MISSING);
                 None

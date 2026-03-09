@@ -64,8 +64,10 @@ Run a single command in the Yazelix environment and exit
 ### `yzx cwd [DIR]`
 Set the current tab workspace directory inside Zellij
 - Default: use the current directory when `DIR` is omitted
+- When `DIR` is not an existing path, Yazelix resolves it with `zoxide query`
 - Updates the current tab's Yazelix workspace directory and renames the tab
-- Existing panes keep their current working directories; new managed actions use the updated tab directory
+- Also applies the directory change to the current pane after the command returns
+- Other existing panes keep their current working directories; new managed actions use the updated tab directory
 - Errors when run outside Zellij
 
 ### `yzx gen_config <terminal>`
@@ -181,6 +183,7 @@ yzx run lazygit               # Run single command and exit
 yzx run bash "-lc" "lazygit"  # Run through a shell
 yzx cwd                       # Set the current tab directory to $PWD
 yzx cwd ~/project             # Set the current tab directory explicitly
+yzx cwd yazelix               # Resolve a project via zoxide, then retarget the current tab
 yzx restart --reuse           # Reopen from the last built profile without rebuilding
 
 # Diagnostics and info

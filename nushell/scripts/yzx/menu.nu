@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 # yzx menu - Interactive command palette and config opener
 
+use ../integrations/zellij.nu [resolve_tab_cwd_target set_tab_workspace_root]
 use ../utils/config_parser.nu parse_yazelix_config
 
 def classify_menu_command [cmd: string] {
@@ -67,7 +68,50 @@ def popup_post_action_decision [] {
     }
 }
 
+def prompt_for_cwd_target [] {
+    let target = (input "yzx cwd (path or zoxide query, blank=current dir)> " | str trim)
+    if ($target | is-empty) { pwd } else { $target }
+}
+
+def run_menu_cwd_action [] {
+    if ($env.ZELLIJ? | is-empty) {
+        error make {msg: "yzx cwd only works inside Zellij. Start Yazelix first, then run it from the tab you want to update."}
+    }
+
+    let resolved_dir = try {
+        resolve_tab_cwd_target (prompt_for_cwd_target)
+    } catch {|err|
+        error make {msg: $err.msg}
+    }
+
+    let result = (set_tab_workspace_root $resolved_dir "yzx_menu_cwd.log")
+
+    match $result.status {
+        "ok" => {
+            print $"✅ Updated current tab workspace directory to: ($result.workspace_root)"
+            print $"   Tab renamed to: ($result.tab_name)"
+            print "   Existing panes keep their current working directories."
+            print "   New managed actions will use the updated tab directory."
+        }
+        "not_ready" => {
+            error make {msg: "Yazelix tab state is not ready yet. Wait a moment for the pane orchestrator plugin to finish loading, then try again."}
+        }
+        "permissions_denied" => {
+            error make {msg: "The Yazelix pane orchestrator plugin is missing required Zellij permissions. Reload the Yazelix session and try again."}
+        }
+        _ => {
+            let reason = ($result.reason? | default "unknown error")
+            error make {msg: $"Failed to update the current tab workspace directory: ($reason)"}
+        }
+    }
+}
+
 def run_menu_action [cmd: string] {
+    if $cmd == "yzx cwd" {
+        run_menu_cwd_action
+        return
+    }
+
     let yazelix_module = $"($env.HOME)/.config/yazelix/nushell/scripts/core/yazelix.nu"
     ^nu -c $"use ($yazelix_module) *; ($cmd)"
 }
