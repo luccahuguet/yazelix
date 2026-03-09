@@ -1,7 +1,6 @@
 #!/usr/bin/env nu
 # Development helper commands for maintainers
 
-use ../utils/constants.nu [PINNED_NIX_VERSION PINNED_DEVENV_VERSION YAZELIX_VERSION]
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 
 # Development and maintainer commands
@@ -18,28 +17,7 @@ def extract_version [value: string] {
     $value | parse --regex '(\d+\.\d+\.\d+)' | get capture0 | last | default ""
 }
 
-def get_latest_tag [] {
-    if (which git | is-empty) {
-        print "❌ git not found in PATH."
-        exit 1
-    }
-
-    let result = (^git describe --tags --abbrev=0 | complete)
-    if $result.exit_code != 0 {
-        print $"❌ Failed to read git tag: ($result.stderr | str trim)"
-        exit 1
-    }
-
-    let tag = ($result.stdout | str trim)
-    if ($tag | is-empty) {
-        print "❌ No git tags found."
-        exit 1
-    }
-
-    $tag
-}
-
-export def "yzx dev sync_pins" [] {
+def get_runtime_pin_versions [] {
     if (which nix | is-empty) {
         print "❌ nix not found in PATH."
         exit 1
@@ -65,32 +43,37 @@ export def "yzx dev sync_pins" [] {
         exit 1
     }
 
+    {
+        nix_version: $nix_version
+        devenv_version: $devenv_version
+    }
+}
+
+def sync_runtime_pins [] {
     let constants_path = "~/.config/yazelix/nushell/scripts/utils/constants.nu" | path expand
     if not ($constants_path | path exists) {
         print $"❌ Constants file not found: ($constants_path)"
         exit 1
     }
 
-    let latest_tag = (get_latest_tag)
+    let runtime_pins = get_runtime_pin_versions
     let contents = (open $constants_path)
     let updated = (
         update_constant_value (
-            update_constant_value (
-                update_constant_value $contents "YAZELIX_VERSION" $latest_tag
-            ) "PINNED_NIX_VERSION" $nix_version
-        ) "PINNED_DEVENV_VERSION" $devenv_version
+            update_constant_value $contents "PINNED_NIX_VERSION" $runtime_pins.nix_version
+        ) "PINNED_DEVENV_VERSION" $runtime_pins.devenv_version
     )
 
     if $updated == $contents {
-        print $"✅ Pins unchanged: yazelix ($YAZELIX_VERSION), nix ($PINNED_NIX_VERSION), devenv ($PINNED_DEVENV_VERSION)"
+        print $"✅ Runtime pins unchanged: nix ($runtime_pins.nix_version), devenv ($runtime_pins.devenv_version)"
         return
     }
 
     $updated | save $constants_path --force
-    print $"✅ Updated pins: yazelix ($latest_tag), nix ($nix_version), devenv ($devenv_version)"
+    print $"✅ Updated runtime pins: nix ($runtime_pins.nix_version), devenv ($runtime_pins.devenv_version)"
 }
 
-export def "yzx dev update_lock" [
+export def "yzx dev update" [
     --verbose  # Show the underlying devenv command
     --yes      # Skip confirmation prompt
 ] {
@@ -100,7 +83,7 @@ export def "yzx dev update_lock" [
     let yazelix_dir = "~/.config/yazelix" | path expand
 
     if not $yes {
-        print "⚠️  This updates Yazelix inputs (devenv.lock) to latest upstream versions."
+        print "⚠️  This updates Yazelix maintainer inputs to latest upstream versions."
         print "   If upstream changes are broken, you may hit bugs before fixes land."
         print "   Prefer a safer path? The Yazelix maintainer updates the project at least once a month."
         let confirm = try {
@@ -115,7 +98,7 @@ export def "yzx dev update_lock" [
     if $verbose {
         print $"⚙️ Running: devenv update \(cwd: ($yazelix_dir)\)"
     } else {
-        print "🔄 Updating Yazelix inputs (devenv.lock)..."
+        print "🔄 Updating Yazelix inputs and runtime pins..."
     }
 
     try {
@@ -124,9 +107,9 @@ export def "yzx dev update_lock" [
             ^devenv update
         }
         print "✅ devenv.lock updated."
-        print "🔄 Syncing pinned Yazelix version expectations..."
-        yzx dev sync_pins
-        print "✅ Inputs and pins are in sync. Review and commit the changes if everything looks good."
+        print "🔄 Syncing pinned runtime expectations..."
+        sync_runtime_pins
+        print "✅ Inputs and runtime pins are in sync. Review and commit the changes if everything looks good."
     } catch {|err|
         print $"❌ devenv update failed: ($err.msg)"
         print "   Check your network connection and devenv.yaml inputs, then try again."

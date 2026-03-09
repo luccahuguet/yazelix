@@ -89,7 +89,7 @@ Run the safe default update set
 - `yzx update repo`: Pull latest Yazelix updates (`--stash` auto-stashes changes, `--verbose` shows git commands)
 
 Maintainer-only updates:
-- `yzx dev update_lock`: Refresh `devenv.lock` via `devenv update` (`--yes` skips prompt, `--verbose` shows command)
+- `yzx dev update`: Refresh `devenv.lock` via `devenv update`, then sync pinned runtime `nix`/`devenv` versions (`--yes` skips prompt, `--verbose` shows command)
 - `yzx dev sync_terminal_configs`: Regenerate terminal configs and sync snapshots into `configs/terminal_emulators/`
 
 ### `yzx gc [deep [PERIOD] | deeper]`
@@ -172,7 +172,7 @@ yzx update                    # Safe default updates (devenv + zjstatus)
 yzx update devenv             # Update devenv CLI
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
 yzx update repo --stash       # Pull repo updates and reapply local changes
-yzx dev update_lock --yes     # Refresh devenv.lock without prompt
+yzx dev update --yes          # Refresh devenv.lock and sync pins without prompt
 
 # Garbage collection
 yzx gc                        # Safe: clean devenv + remove unreferenced paths
