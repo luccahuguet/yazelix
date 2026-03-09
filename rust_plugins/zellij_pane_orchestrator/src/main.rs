@@ -1,56 +1,24 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::path::Path;
-use std::thread::sleep;
-use std::time::Duration;
+mod editor;
+mod layout;
+mod panes;
+mod workspace;
 
-use serde::Deserialize;
-use serde::Serialize;
+use std::collections::{BTreeMap, HashMap, HashSet};
+
+use panes::{FocusContext, ManagedTabPanes};
+use workspace::WorkspaceState;
 use zellij_tile::prelude::*;
 
-const EDITOR_TITLE: &str = "editor";
-const SIDEBAR_TITLE: &str = "sidebar";
-const RESULT_OK: &str = "ok";
-const RESULT_MISSING: &str = "missing";
-const RESULT_NOT_READY: &str = "not_ready";
-const RESULT_DENIED: &str = "permissions_denied";
-const RESULT_INVALID_PAYLOAD: &str = "invalid_payload";
-const RESULT_MISSING_WORKSPACE: &str = "missing_workspace";
-const RESULT_UNKNOWN_LAYOUT: &str = "unknown_layout";
-const RESULT_UNSUPPORTED_EDITOR: &str = "unsupported_editor";
-const COMMAND_STEP_DELAY_MS: u64 = 35;
-const SWAP_LAYOUT_STEP_DELAY_MS: u64 = 1;
-const SINGLE_OPEN_LAYOUT_NAME: &str = "single_open";
-const SINGLE_CLOSED_LAYOUT_NAME: &str = "single_closed";
-const VERTICAL_SPLIT_OPEN_LAYOUT_NAME: &str = "vertical_split_open";
-const VERTICAL_SPLIT_CLOSED_LAYOUT_NAME: &str = "vertical_split_closed";
-const BOTTOM_TERMINAL_OPEN_LAYOUT_NAME: &str = "bottom_terminal_open";
-const BOTTOM_TERMINAL_CLOSED_LAYOUT_NAME: &str = "bottom_terminal_closed";
-const LEGACY_BASIC_LAYOUT_NAME: &str = "basic";
-const LEGACY_STACKED_LAYOUT_NAME: &str = "stacked";
-const LEGACY_THREE_COLUMN_LAYOUT_NAME: &str = "three_column";
-const LEGACY_SIDEBAR_CLOSED_LAYOUT_NAME: &str = "sidebar_closed";
-const LEGACY_SINGLE_LAYOUT_NAME: &str = "single";
-const LEGACY_VERTICAL_SPLIT_LAYOUT_NAME: &str = "vertical_split";
-const LEGACY_BOTTOM_TERMINAL_LAYOUT_NAME: &str = "bottom_terminal";
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct ManagedTerminalPane {
-    pane_id: PaneId,
-    is_suppressed: bool,
-    pane_columns: usize,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-struct ManagedTabPanes {
-    editor: Option<ManagedTerminalPane>,
-    sidebar: Option<ManagedTerminalPane>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct WorkspaceState {
-    root: String,
-    tab_name: String,
-}
+pub(crate) const RESULT_OK: &str = "ok";
+pub(crate) const RESULT_MISSING: &str = "missing";
+pub(crate) const RESULT_NOT_READY: &str = "not_ready";
+pub(crate) const RESULT_DENIED: &str = "permissions_denied";
+pub(crate) const RESULT_INVALID_PAYLOAD: &str = "invalid_payload";
+pub(crate) const RESULT_MISSING_WORKSPACE: &str = "missing_workspace";
+pub(crate) const RESULT_UNKNOWN_LAYOUT: &str = "unknown_layout";
+pub(crate) const RESULT_UNSUPPORTED_EDITOR: &str = "unsupported_editor";
+pub(crate) const COMMAND_STEP_DELAY_MS: u64 = 35;
+pub(crate) const SWAP_LAYOUT_STEP_DELAY_MS: u64 = 1;
 
 #[derive(Default)]
 struct State {
@@ -101,10 +69,10 @@ impl ZellijPlugin for State {
                     .collect();
             }
             Event::PaneUpdate(pane_manifest) => {
-                self.managed_panes_by_tab = build_managed_panes_by_tab(&pane_manifest);
+                self.managed_panes_by_tab = panes::build_managed_panes_by_tab(&pane_manifest);
                 self.focus_context_by_tab =
-                    build_focus_context_by_tab(&pane_manifest, &self.focus_context_by_tab);
-                self.user_pane_count_by_tab = build_user_pane_count_by_tab(&pane_manifest);
+                    panes::build_focus_context_by_tab(&pane_manifest, &self.focus_context_by_tab);
+                self.user_pane_count_by_tab = panes::build_user_pane_count_by_tab(&pane_manifest);
             }
             Event::PermissionRequestResult(status) => {
                 self.permissions_granted = status == PermissionStatus::Granted;
@@ -117,11 +85,11 @@ impl ZellijPlugin for State {
     fn pipe(&mut self, pipe_message: PipeMessage) -> bool {
         match pipe_message.name.as_str() {
             "focus_editor" => {
-                self.focus_managed_pane(&pipe_message, ManagedPaneKind::Editor);
+                self.focus_managed_pane(&pipe_message, panes::ManagedPaneKind::Editor);
                 false
             }
             "focus_sidebar" => {
-                self.focus_managed_pane(&pipe_message, ManagedPaneKind::Sidebar);
+                self.focus_managed_pane(&pipe_message, panes::ManagedPaneKind::Sidebar);
                 false
             }
             "toggle_editor_sidebar_focus" => {
@@ -133,11 +101,11 @@ impl ZellijPlugin for State {
                 false
             }
             "next_family" => {
-                self.switch_layout_family(&pipe_message, FamilyDirection::Next);
+                self.switch_layout_family(&pipe_message, layout::FamilyDirection::Next);
                 false
             }
             "previous_family" => {
-                self.switch_layout_family(&pipe_message, FamilyDirection::Previous);
+                self.switch_layout_family(&pipe_message, layout::FamilyDirection::Previous);
                 false
             }
             "toggle_sidebar" => {
@@ -172,252 +140,7 @@ impl ZellijPlugin for State {
 }
 
 impl State {
-    fn reconcile_workspace_state(
-        &mut self,
-        previous_active_tab_position: Option<usize>,
-        tabs: &[TabInfo],
-    ) {
-        let current_tab_positions: HashSet<usize> = tabs.iter().map(|tab| tab.position).collect();
-        self.workspace_state_by_tab
-            .retain(|tab_position, _| current_tab_positions.contains(tab_position));
-        self.seen_tab_positions
-            .retain(|tab_position| current_tab_positions.contains(tab_position));
-
-        let active_tab_position = tabs.iter().find(|tab| tab.active).map(|tab| tab.position);
-
-        if let Some(active_tab_position) = active_tab_position {
-            let is_new_tab = !self.seen_tab_positions.contains(&active_tab_position);
-            if !self
-                .workspace_state_by_tab
-                .contains_key(&active_tab_position)
-            {
-                let inherited_workspace_state = if is_new_tab {
-                    previous_active_tab_position
-                        .and_then(|previous_active| {
-                            self.workspace_state_by_tab.get(&previous_active).cloned()
-                        })
-                        .or_else(|| self.initial_workspace_state.clone())
-                } else if self.workspace_state_by_tab.is_empty() {
-                    self.initial_workspace_state.clone()
-                } else {
-                    None
-                };
-
-                if let Some(workspace_state) = inherited_workspace_state {
-                    self.workspace_state_by_tab
-                        .insert(active_tab_position, workspace_state);
-                }
-            }
-        }
-
-        self.seen_tab_positions = current_tab_positions;
-    }
-
-    fn focus_managed_pane(&self, pipe_message: &PipeMessage, pane_kind: ManagedPaneKind) {
-        let Some(managed_pane) = self.get_managed_pane(pipe_message, pane_kind) else {
-            return;
-        };
-
-        focus_pane_with_id(managed_pane.pane_id, false);
-        self.respond(pipe_message, RESULT_OK);
-    }
-
-    fn open_file_in_managed_editor(&self, pipe_message: &PipeMessage) {
-        let Some(editor_pane) = self.get_managed_pane(pipe_message, ManagedPaneKind::Editor) else {
-            return;
-        };
-
-        let Some(payload) = pipe_message.payload.as_deref() else {
-            self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
-            return;
-        };
-
-        let open_file_request: OpenFileRequest = match serde_json::from_str(payload) {
-            Ok(request) => request,
-            Err(_) => {
-                self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
-                return;
-            }
-        };
-
-        let command_sequence = match EditorCommandSequence::new(&open_file_request) {
-            Some(command_sequence) => command_sequence,
-            None => {
-                self.respond(pipe_message, RESULT_UNSUPPORTED_EDITOR);
-                return;
-            }
-        };
-
-        focus_pane_with_id(editor_pane.pane_id, false);
-        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
-        write_to_pane_id(vec![27], editor_pane.pane_id);
-        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
-        write_chars_to_pane_id(
-            &command_sequence.change_directory_command,
-            editor_pane.pane_id,
-        );
-        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
-        write_to_pane_id(vec![13], editor_pane.pane_id);
-        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
-        write_chars_to_pane_id(&command_sequence.open_file_command, editor_pane.pane_id);
-        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
-        write_to_pane_id(vec![13], editor_pane.pane_id);
-
-        self.respond(pipe_message, RESULT_OK);
-    }
-
-    fn toggle_editor_sidebar_focus(&self, pipe_message: &PipeMessage) {
-        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
-            return;
-        };
-
-        let Some(managed_tab_panes) = self.managed_panes_by_tab.get(&active_tab_position) else {
-            self.respond(pipe_message, RESULT_MISSING);
-            return;
-        };
-
-        let target_pane = if self
-            .focus_context_by_tab
-            .get(&active_tab_position)
-            .copied()
-            .unwrap_or(FocusContext::Other)
-            == FocusContext::Sidebar
-        {
-            managed_tab_panes.editor
-        } else {
-            managed_tab_panes.sidebar
-        };
-
-        let Some(target_pane) = target_pane else {
-            self.respond(pipe_message, RESULT_MISSING);
-            return;
-        };
-
-        focus_pane_with_id(target_pane.pane_id, false);
-        self.respond(pipe_message, RESULT_OK);
-    }
-
-    fn switch_layout_family(&self, pipe_message: &PipeMessage, direction: FamilyDirection) {
-        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
-            return;
-        };
-
-        if !self.can_switch_layout_family(active_tab_position) {
-            self.respond(pipe_message, RESULT_OK);
-            return;
-        }
-
-        if is_no_sidebar_mode(self.managed_panes_by_tab.get(&active_tab_position)) {
-            match direction {
-                FamilyDirection::Next => self.run_next_swap_layout_steps(1),
-                FamilyDirection::Previous => self.run_previous_swap_layout_steps(1),
-            }
-            self.respond(pipe_message, RESULT_OK);
-            return;
-        }
-
-        let Some(_layout_variant) = self.get_active_layout_variant(active_tab_position) else {
-            self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
-            return;
-        };
-
-        match direction {
-            FamilyDirection::Next => self.run_next_swap_layout_steps(2),
-            FamilyDirection::Previous => self.run_previous_swap_layout_steps(2),
-        }
-
-        self.respond(pipe_message, RESULT_OK);
-    }
-
-    fn toggle_sidebar(&self, pipe_message: &PipeMessage) {
-        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
-            return;
-        };
-
-        if is_no_sidebar_mode(self.managed_panes_by_tab.get(&active_tab_position)) {
-            self.respond(pipe_message, RESULT_MISSING);
-            return;
-        }
-
-        let Some(layout_variant) = self.get_active_layout_variant(active_tab_position) else {
-            self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
-            return;
-        };
-
-        match layout_variant.sidebar_state {
-            SidebarState::Open => self.run_next_swap_layout_steps(1),
-            SidebarState::Closed => self.run_previous_swap_layout_steps(1),
-        }
-
-        self.respond(pipe_message, RESULT_OK);
-    }
-
-    fn set_workspace_root(&mut self, pipe_message: &PipeMessage) {
-        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
-            return;
-        };
-
-        let Some(payload) = pipe_message.payload.as_deref() else {
-            self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
-            return;
-        };
-
-        let workspace_root_request: WorkspaceRootRequest = match serde_json::from_str(payload) {
-            Ok(request) => request,
-            Err(_) => {
-                self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
-                return;
-            }
-        };
-
-        let workspace_state = WorkspaceState::from_root(workspace_root_request.workspace_root);
-        rename_tab(active_tab_position as u32, &workspace_state.tab_name);
-        self.workspace_state_by_tab
-            .insert(active_tab_position, workspace_state);
-        self.respond(pipe_message, RESULT_OK);
-    }
-
-    fn open_workspace_terminal(&self, pipe_message: &PipeMessage) {
-        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
-            return;
-        };
-
-        let Some(workspace_state) = self
-            .workspace_state_by_tab
-            .get(&active_tab_position)
-            .cloned()
-            .or_else(|| {
-                if self.seen_tab_positions.len() <= 1 {
-                    self.initial_workspace_state.clone()
-                } else {
-                    None
-                }
-            })
-        else {
-            self.respond(pipe_message, RESULT_MISSING_WORKSPACE);
-            return;
-        };
-
-        open_terminal(&workspace_state.root);
-        rename_tab(active_tab_position as u32, &workspace_state.tab_name);
-        self.respond(pipe_message, RESULT_OK);
-    }
-
-    fn can_switch_layout_family(&self, active_tab_position: usize) -> bool {
-        let user_pane_count = self
-            .user_pane_count_by_tab
-            .get(&active_tab_position)
-            .copied()
-            .unwrap_or(0);
-
-        if is_no_sidebar_mode(self.managed_panes_by_tab.get(&active_tab_position)) {
-            user_pane_count >= 2
-        } else {
-            user_pane_count >= 3
-        }
-    }
-
-    fn ensure_action_ready(&self, pipe_message: &PipeMessage) -> Option<usize> {
+    pub(crate) fn ensure_action_ready(&self, pipe_message: &PipeMessage) -> Option<usize> {
         if !self.permissions_granted {
             self.respond(pipe_message, RESULT_DENIED);
             return None;
@@ -431,382 +154,9 @@ impl State {
         Some(active_tab_position)
     }
 
-    fn get_managed_pane(
-        &self,
-        pipe_message: &PipeMessage,
-        pane_kind: ManagedPaneKind,
-    ) -> Option<ManagedTerminalPane> {
-        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
-            return None;
-        };
-
-        let managed_pane = self
-            .managed_panes_by_tab
-            .get(&active_tab_position)
-            .and_then(|managed_tab_panes| match pane_kind {
-                ManagedPaneKind::Editor => managed_tab_panes.editor,
-                ManagedPaneKind::Sidebar => managed_tab_panes.sidebar,
-            });
-
-        match managed_pane {
-            Some(managed_pane) => Some(managed_pane),
-            None => {
-                self.respond(pipe_message, RESULT_MISSING);
-                None
-            }
-        }
-    }
-
-    fn respond(&self, pipe_message: &PipeMessage, result: &str) {
+    pub(crate) fn respond(&self, pipe_message: &PipeMessage, result: &str) {
         if let PipeSource::Cli(pipe_id) = &pipe_message.source {
             cli_pipe_output(pipe_id, result);
         }
     }
-
-    fn get_active_layout_variant(&self, active_tab_position: usize) -> Option<LayoutVariant> {
-        let active_swap_layout_name = self
-            .active_swap_layout_name_by_tab
-            .get(&active_tab_position)
-            .cloned()
-            .flatten();
-
-        active_swap_layout_name
-            .as_deref()
-            .and_then(LayoutVariant::from_layout_name)
-    }
-
-    fn run_next_swap_layout_steps(&self, steps: usize) {
-        for _ in 0..steps {
-            next_swap_layout();
-            sleep(Duration::from_millis(SWAP_LAYOUT_STEP_DELAY_MS));
-        }
-    }
-
-    fn run_previous_swap_layout_steps(&self, steps: usize) {
-        for _ in 0..steps {
-            previous_swap_layout();
-            sleep(Duration::from_millis(SWAP_LAYOUT_STEP_DELAY_MS));
-        }
-    }
-
-    fn debug_editor_state(&self, pipe_message: &PipeMessage) {
-        let active_tab_position = self.active_tab_position;
-        let active_swap_layout_name = active_tab_position
-            .and_then(|tab_position| self.active_swap_layout_name_by_tab.get(&tab_position))
-            .cloned()
-            .flatten();
-        let layout_variant = active_tab_position
-            .and_then(|tab_position| self.get_active_layout_variant(tab_position));
-        let editor_pane = active_tab_position
-            .and_then(|tab_position| self.managed_panes_by_tab.get(&tab_position))
-            .and_then(|managed_tab_panes| managed_tab_panes.editor);
-        let sidebar_pane = active_tab_position
-            .and_then(|tab_position| self.managed_panes_by_tab.get(&tab_position))
-            .and_then(|managed_tab_panes| managed_tab_panes.sidebar);
-
-        let state = DebugEditorState {
-            permissions_granted: self.permissions_granted,
-            active_tab_position,
-            active_swap_layout_name,
-            editor_pane_id: pane_id_to_string(editor_pane.map(|pane| pane.pane_id)),
-            sidebar_pane_id: pane_id_to_string(sidebar_pane.map(|pane| pane.pane_id)),
-            sidebar_is_suppressed: sidebar_pane.map(|pane| pane.is_suppressed),
-            sidebar_pane_columns: sidebar_pane.map(|pane| pane.pane_columns),
-            sidebar_is_collapsed: layout_variant
-                .map(|variant| variant.sidebar_state == SidebarState::Closed),
-        };
-
-        match serde_json::to_string(&state) {
-            Ok(serialized_state) => self.respond(pipe_message, &serialized_state),
-            Err(_) => self.respond(pipe_message, RESULT_INVALID_PAYLOAD),
-        }
-    }
-
-    fn debug_write_literal(&self, pipe_message: &PipeMessage) {
-        let Some(editor_pane) = self.get_managed_pane(pipe_message, ManagedPaneKind::Editor) else {
-            return;
-        };
-
-        let Some(payload) = pipe_message.payload.as_deref() else {
-            self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
-            return;
-        };
-
-        focus_pane_with_id(editor_pane.pane_id, false);
-        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
-        write_chars_to_pane_id(payload, editor_pane.pane_id);
-        self.respond(pipe_message, RESULT_OK);
-    }
-
-    fn debug_send_escape(&self, pipe_message: &PipeMessage) {
-        let Some(editor_pane) = self.get_managed_pane(pipe_message, ManagedPaneKind::Editor) else {
-            return;
-        };
-
-        focus_pane_with_id(editor_pane.pane_id, false);
-        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
-        write_to_pane_id(vec![27], editor_pane.pane_id);
-        self.respond(pipe_message, RESULT_OK);
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-enum ManagedPaneKind {
-    Editor,
-    Sidebar,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum FocusContext {
-    Editor,
-    Sidebar,
-    Other,
-}
-
-#[derive(Clone, Copy, Debug)]
-enum FamilyDirection {
-    Next,
-    Previous,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum LayoutFamily {
-    Single,
-    VerticalSplit,
-    BottomTerminal,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum SidebarState {
-    Open,
-    Closed,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct LayoutVariant {
-    family: LayoutFamily,
-    sidebar_state: SidebarState,
-}
-
-#[derive(Deserialize)]
-struct OpenFileRequest {
-    editor: String,
-    file_path: String,
-    working_dir: String,
-}
-
-#[derive(Deserialize)]
-struct WorkspaceRootRequest {
-    workspace_root: String,
-}
-
-struct EditorCommandSequence {
-    change_directory_command: String,
-    open_file_command: String,
-}
-
-#[derive(Serialize)]
-struct DebugEditorState {
-    permissions_granted: bool,
-    active_tab_position: Option<usize>,
-    active_swap_layout_name: Option<String>,
-    editor_pane_id: Option<String>,
-    sidebar_pane_id: Option<String>,
-    sidebar_is_suppressed: Option<bool>,
-    sidebar_pane_columns: Option<usize>,
-    sidebar_is_collapsed: Option<bool>,
-}
-
-impl EditorCommandSequence {
-    fn new(open_file_request: &OpenFileRequest) -> Option<Self> {
-        match open_file_request.editor.as_str() {
-            "helix" => Some(Self {
-                change_directory_command: format!(
-                    ":cd \"{}\"",
-                    escape_helix_path(&open_file_request.working_dir)
-                ),
-                open_file_command: format!(
-                    ":open \"{}\"",
-                    escape_helix_path(&open_file_request.file_path)
-                ),
-            }),
-            "neovim" => Some(Self {
-                change_directory_command: format!(
-                    ":execute 'cd ' . fnameescape('{}')",
-                    escape_vim_single_quoted_string(&open_file_request.working_dir)
-                ),
-                open_file_command: format!(
-                    ":execute 'edit ' . fnameescape('{}')",
-                    escape_vim_single_quoted_string(&open_file_request.file_path)
-                ),
-            }),
-            _ => None,
-        }
-    }
-}
-
-impl LayoutVariant {
-    fn from_layout_name(layout_name: &str) -> Option<Self> {
-        match layout_name {
-            SINGLE_OPEN_LAYOUT_NAME
-            | LEGACY_BASIC_LAYOUT_NAME
-            | LEGACY_STACKED_LAYOUT_NAME
-            | LEGACY_SINGLE_LAYOUT_NAME => Some(Self {
-                family: LayoutFamily::Single,
-                sidebar_state: SidebarState::Open,
-            }),
-            SINGLE_CLOSED_LAYOUT_NAME => Some(Self {
-                family: LayoutFamily::Single,
-                sidebar_state: SidebarState::Closed,
-            }),
-            VERTICAL_SPLIT_OPEN_LAYOUT_NAME
-            | LEGACY_THREE_COLUMN_LAYOUT_NAME
-            | LEGACY_VERTICAL_SPLIT_LAYOUT_NAME => Some(Self {
-                family: LayoutFamily::VerticalSplit,
-                sidebar_state: SidebarState::Open,
-            }),
-            VERTICAL_SPLIT_CLOSED_LAYOUT_NAME | LEGACY_SIDEBAR_CLOSED_LAYOUT_NAME => Some(Self {
-                family: LayoutFamily::VerticalSplit,
-                sidebar_state: SidebarState::Closed,
-            }),
-            BOTTOM_TERMINAL_OPEN_LAYOUT_NAME | LEGACY_BOTTOM_TERMINAL_LAYOUT_NAME => Some(Self {
-                family: LayoutFamily::BottomTerminal,
-                sidebar_state: SidebarState::Open,
-            }),
-            BOTTOM_TERMINAL_CLOSED_LAYOUT_NAME => Some(Self {
-                family: LayoutFamily::BottomTerminal,
-                sidebar_state: SidebarState::Closed,
-            }),
-            _ => None,
-        }
-    }
-}
-
-impl WorkspaceState {
-    fn from_root(root: String) -> Self {
-        Self {
-            tab_name: tab_name_from_workspace_root(&root),
-            root,
-        }
-    }
-}
-
-fn build_managed_panes_by_tab(pane_manifest: &PaneManifest) -> HashMap<usize, ManagedTabPanes> {
-    let mut managed_panes_by_tab = HashMap::new();
-
-    for (tab_position, panes) in &pane_manifest.panes {
-        managed_panes_by_tab.insert(
-            *tab_position,
-            ManagedTabPanes {
-                editor: select_managed_terminal_pane(panes, EDITOR_TITLE),
-                sidebar: select_managed_terminal_pane(panes, SIDEBAR_TITLE),
-            },
-        );
-    }
-
-    managed_panes_by_tab
-}
-
-fn build_user_pane_count_by_tab(pane_manifest: &PaneManifest) -> HashMap<usize, usize> {
-    pane_manifest
-        .panes
-        .iter()
-        .map(|(tab_position, panes)| {
-            let user_pane_count = panes
-                .iter()
-                .filter(|pane| !pane.is_plugin)
-                .filter(|pane| !pane.exited)
-                .count();
-            (*tab_position, user_pane_count)
-        })
-        .collect()
-}
-
-fn build_focus_context_by_tab(
-    pane_manifest: &PaneManifest,
-    previous_focus_context_by_tab: &HashMap<usize, FocusContext>,
-) -> HashMap<usize, FocusContext> {
-    let mut focus_context_by_tab = HashMap::new();
-
-    for (tab_position, panes) in &pane_manifest.panes {
-        let focused_pane = panes.iter().find(|pane| pane.is_focused && !pane.is_plugin);
-        let focus_context = match focused_pane.map(|pane| pane.title.trim()) {
-            Some(EDITOR_TITLE) => FocusContext::Editor,
-            Some(SIDEBAR_TITLE) => FocusContext::Sidebar,
-            Some(title) if title.starts_with("yzx_") => previous_focus_context_by_tab
-                .get(tab_position)
-                .copied()
-                .unwrap_or(FocusContext::Other),
-            Some(_) | None => FocusContext::Other,
-        };
-        focus_context_by_tab.insert(*tab_position, focus_context);
-    }
-
-    focus_context_by_tab
-}
-
-fn select_managed_terminal_pane(
-    panes: &[PaneInfo],
-    expected_title: &str,
-) -> Option<ManagedTerminalPane> {
-    let matching_panes: Vec<&PaneInfo> = panes
-        .iter()
-        .filter(|pane| !pane.is_plugin)
-        .filter(|pane| !pane.exited)
-        .filter(|pane| pane.title.trim() == expected_title)
-        .collect();
-
-    let selected_pane = matching_panes
-        .iter()
-        .copied()
-        .find(|pane| pane.is_focused)
-        .or_else(|| {
-            matching_panes
-                .iter()
-                .copied()
-                .find(|pane| !pane.is_suppressed)
-        })
-        .or_else(|| matching_panes.first().copied());
-
-    selected_pane.map(|pane| ManagedTerminalPane {
-        pane_id: PaneId::Terminal(pane.id),
-        is_suppressed: pane.is_suppressed,
-        pane_columns: pane.pane_columns,
-    })
-}
-
-fn escape_helix_path(path: &str) -> String {
-    path.replace('\\', "\\\\").replace('"', "\\\"")
-}
-
-fn escape_vim_single_quoted_string(path: &str) -> String {
-    path.replace('\'', "''")
-}
-
-fn pane_id_to_string(pane_id: Option<PaneId>) -> Option<String> {
-    match pane_id {
-        Some(PaneId::Terminal(id)) => Some(format!("terminal:{id}")),
-        Some(PaneId::Plugin(id)) => Some(format!("plugin:{id}")),
-        None => None,
-    }
-}
-
-fn is_no_sidebar_mode(managed_tab_panes: Option<&ManagedTabPanes>) -> bool {
-    managed_tab_panes.and_then(|tab| tab.sidebar).is_none()
-}
-
-fn tab_name_from_workspace_root(workspace_root: &str) -> String {
-    let trimmed = workspace_root.trim_end_matches(std::path::MAIN_SEPARATOR);
-    let candidate = if trimmed.is_empty() {
-        workspace_root
-    } else {
-        trimmed
-    };
-
-    Path::new(candidate)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .filter(|name| !name.is_empty())
-        .unwrap_or("unnamed")
-        .to_string()
 }
