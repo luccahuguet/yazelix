@@ -178,6 +178,11 @@ let
   asciiArtMode = userConfig.ascii_art_mode or "static";
   enableSidebar = userConfig.enable_sidebar or true;
   showMacchinaOnWelcome = userConfig.show_macchina_on_welcome or false;
+  yazelixNixConfig = ''
+    warn-dirty = false
+    extra-substituters = https://cache.numtide.com
+    extra-trusted-public-keys = niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
+  '';
 
   yazelixLayoutName = if enableSidebar then "yzx_side" else "yzx_no_side";
 
@@ -523,7 +528,7 @@ in
   env = {
     YAZELIX_DIR = "$HOME/.config/yazelix";
     IN_YAZELIX_SHELL = "true";
-    NIX_CONFIG = "warn-dirty = false";
+    NIX_CONFIG = yazelixNixConfig;
     YAZELIX_DEBUG_MODE = boolToString debugMode;
     ZELLIJ_DEFAULT_LAYOUT = yazelixLayoutName;
     YAZELIX_DEFAULT_SHELL = defaultShell;
@@ -544,7 +549,7 @@ in
 
     export YAZELIX_DIR="$HOME/.config/yazelix"
     export IN_YAZELIX_SHELL="true"
-    export NIX_CONFIG="warn-dirty = false"
+    export NIX_CONFIG='${yazelixNixConfig}'
     export YAZELIX_DEBUG_MODE="${boolToString debugMode}"
     export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
     export YAZELIX_DEFAULT_SHELL="${defaultShell}"

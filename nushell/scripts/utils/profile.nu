@@ -3,7 +3,7 @@
 # Profiles launch sequence and environment setup to identify bottlenecks
 
 use logging.nu log_to_file
-use common.nu [get_max_cores get_max_jobs]
+use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config]
 use config_parser.nu [parse_yazelix_config]
 
 # Profile a single step with timing
@@ -109,7 +109,10 @@ export def profile_cold_launch [
     let config = parse_yazelix_config
     let max_jobs = get_max_jobs ($config.max_jobs? | default "half" | into string)
     let max_cores = get_max_cores ($config.build_cores? | default "2" | into string)
-    let result = sh -c $"cd ($yazelix_dir) && echo 'exit' | timeout 15 devenv --max-jobs ($max_jobs) --cores ($max_cores) shell" | complete
+    let nix_config = get_yazelix_nix_config
+    let result = with-env {NIX_CONFIG: $nix_config} {
+        sh -c $"cd ($yazelix_dir) && echo 'exit' | timeout 15 devenv --max-jobs ($max_jobs) --cores ($max_cores) shell" | complete
+    }
     let launch_end = (date now)
     let launch_ms = ((($launch_end - $launch_start) | into int) / 1000000)
 

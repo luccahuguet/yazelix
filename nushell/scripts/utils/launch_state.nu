@@ -1,6 +1,8 @@
 #!/usr/bin/env nu
 # Profile activation helpers for fast Yazelix launch/restart paths.
 
+use ./common.nu [get_yazelix_nix_config]
+
 def bool_to_string [value] {
     if $value { "true" } else { "false" }
 }
@@ -132,6 +134,7 @@ def resolve_helix_runtime [config: record, profile_path: string, editor_command:
 export def get_launch_env [config: record, profile_path: string] {
     let yazelix_dir = ($env.HOME | path join ".config" "yazelix")
     let profile_bin = ($profile_path | path join "bin")
+    let nix_config = get_yazelix_nix_config
     let enable_sidebar = ($config.enable_sidebar? | default true)
     let terminals = ($config.terminals? | default ["ghostty"])
     let preferred_terminal = if ($terminals | is-empty) { "unknown" } else { ($terminals | first | into string) }
@@ -143,7 +146,7 @@ export def get_launch_env [config: record, profile_path: string] {
         YAZELIX_DIR: $yazelix_dir
         IN_YAZELIX_SHELL: "true"
         IN_NIX_SHELL: "impure"
-        NIX_CONFIG: "warn-dirty = false"
+        NIX_CONFIG: $nix_config
         YAZELIX_DEBUG_MODE: (bool_to_string ($config.debug_mode? | default false))
         ZELLIJ_DEFAULT_LAYOUT: (if $enable_sidebar { "yzx_side" } else { "yzx_no_side" })
         YAZELIX_DEFAULT_SHELL: ($config.default_shell? | default "nu" | into string)

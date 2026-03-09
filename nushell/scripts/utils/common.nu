@@ -7,6 +7,14 @@ def get_total_cores [] {
     if $total_cores > 0 { $total_cores } else { 1 }
 }
 
+export def get_yazelix_nix_config [] {
+    [
+        "warn-dirty = false"
+        "extra-substituters = https://cache.numtide.com"
+        "extra-trusted-public-keys = niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
+    ] | str join "\n"
+}
+
 def parse_parallelism_setting [setting_value: string, default_value: string, kind: string] {
     let total_cores = get_total_cores
     let resolved_value = if ($setting_value | is-not-empty) {

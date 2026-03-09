@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Regression tests for build parallelism propagation into devenv command construction.
 
-use ../utils/common.nu [get_max_cores get_max_jobs describe_build_parallelism]
+use ../utils/common.nu [get_max_cores get_max_jobs describe_build_parallelism get_yazelix_nix_config]
 use ../utils/environment_bootstrap.nu [get_devenv_base_command]
 
 def assert [condition: bool, message: string] {
@@ -54,6 +54,19 @@ def test_build_parallelism_description [] {
     true
 }
 
+def test_devenv_command_includes_numtide_cache [] {
+    print "🧪 Testing numtide cache injection into devenv command..."
+
+    let cmd = (get_devenv_base_command --max-jobs "2" --build-cores "1")
+    let nix_config_arg = ($cmd | where {|item| ($item | into string) | str starts-with "NIX_CONFIG=" } | first)
+    let expected_nix_config = (get_yazelix_nix_config)
+
+    assert (($nix_config_arg | into string) | str contains "https://cache.numtide.com") $"Expected NIX_CONFIG to include cache.numtide.com, got ($nix_config_arg)"
+    assert (($nix_config_arg | str replace "NIX_CONFIG=" "") == $expected_nix_config) "Expected devenv command to propagate the canonical Yazelix Nix config"
+    print "  ✅ devenv command includes numtide cache settings"
+    true
+}
+
 def main [] {
     print "=== Testing Build Parallelism Propagation ==="
     print ""
@@ -61,7 +74,8 @@ def main [] {
     let results = [
         (test_explicit_numeric_build_cores),
         (test_symbolic_build_cores),
-        (test_build_parallelism_description)
+        (test_build_parallelism_description),
+        (test_devenv_command_includes_numtide_cache)
     ]
 
     let passed = ($results | where $it == true | length)
