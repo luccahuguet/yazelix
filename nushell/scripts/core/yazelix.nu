@@ -43,6 +43,10 @@ def format_shell_hook_summary [shell_status] {
     $"($current) current, ($outdated) outdated, ($missing) missing"
 }
 
+def has_external_command [command_name: string] {
+    (which $command_name | where type == "external" | is-not-empty)
+}
+
 export def yzx [
     --version (-V)  # Show Yazelix version
     --version-short (-v)  # Show Yazelix version
@@ -69,7 +73,7 @@ export def "yzx why" [] {
 export def "yzx sponsor" [] {
     let sponsor_url = "https://github.com/sponsors/luccahuguet"
 
-    if (which xdg-open | is-not-empty) {
+    if (has_external_command "xdg-open") {
         let result = (^xdg-open $sponsor_url | complete)
         if $result.exit_code == 0 {
             print "Opened sponsor page."
@@ -77,7 +81,7 @@ export def "yzx sponsor" [] {
         }
     }
 
-    if (which open | is-not-empty) {
+    if (has_external_command "open") {
         let result = (^open $sponsor_url | complete)
         if $result.exit_code == 0 {
             print "Opened sponsor page."

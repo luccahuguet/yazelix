@@ -55,11 +55,19 @@ def get_current_zellij_session_name [] {
             $current_line
             | str replace -ra '\u001b\[[0-9;]*[A-Za-z]' ''
             | str replace -r '^>\s*' ''
-            | str replace -r '\s+\(current\)\s*$' ''
             | str trim
         )
 
-        if ($clean_line | is-empty) { null } else { $clean_line }
+        if ($clean_line | is-empty) {
+            null
+        } else {
+            (
+                $clean_line
+                | split row " "
+                | where {|token| $token != ""}
+                | first
+            )
+        }
     } catch {
         null
     }
@@ -72,7 +80,11 @@ export def get_sidebar_yazi_state_path [session_name: string, pane_id: string] {
 }
 
 def read_active_sidebar_yazi_id [] {
-    let sidebar_pane_id = (get_active_sidebar_pane_id)
+    let sidebar_pane_id = try {
+        get_active_sidebar_pane_id
+    } catch {
+        null
+    }
     if ($sidebar_pane_id | is-empty) {
         return null
     }
@@ -98,6 +110,10 @@ def read_active_sidebar_yazi_id [] {
 export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: string = "yazi_sync.log"] {
     if not (is_sidebar_enabled) {
         return {status: "skipped", reason: "sidebar_disabled"}
+    }
+
+    if ($env.ZELLIJ? | is-empty) {
+        return {status: "skipped", reason: "outside_zellij"}
     }
 
     if (which ya | is-empty) {

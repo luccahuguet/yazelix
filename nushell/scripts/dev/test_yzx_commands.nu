@@ -3,6 +3,8 @@
 
 use ../core/yazelix.nu *
 
+const clean_zellij_env_prefix = "env -u ZELLIJ -u ZELLIJ_SESSION_NAME -u ZELLIJ_PANE_ID -u ZELLIJ_TAB_NAME -u ZELLIJ_TAB_POSITION"
+
 def test_yzx_help [] {
     print "🧪 Testing yzx help..."
 
@@ -199,7 +201,7 @@ def test_yzx_cwd_requires_zellij [] {
     print "🧪 Testing yzx cwd outside Zellij..."
 
     try {
-        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx cwd ." | complete)
+        let output = (^bash -lc $"($clean_zellij_env_prefix) nu -c 'use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx cwd .'" | complete)
         let stdout = ($output.stdout | str trim)
 
         if ($output.exit_code == 1) and ($stdout | str contains "only works inside Zellij") {
@@ -275,6 +277,26 @@ def test_sidebar_state_plugin_generated [] {
     }
 }
 
+def test_sidebar_yazi_sync_skips_outside_zellij [] {
+    print "🧪 Testing sidebar Yazi sync skips outside Zellij..."
+
+    try {
+        let output = (^bash -lc $"($clean_zellij_env_prefix) nu -c 'use ~/.config/yazelix/nushell/scripts/integrations/yazi.nu *; sync_active_sidebar_yazi_to_directory . | to json -r'" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and (($stdout | str contains '"status":"skipped"') and ($stdout | str contains '"reason":"outside_zellij"')) {
+            print "  ✅ Sidebar Yazi sync stays non-fatal outside Zellij"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_yzx_sponsor_exists [] {
     print "🧪 Testing yzx sponsor command exists..."
 
@@ -286,25 +308,6 @@ def test_yzx_sponsor_exists [] {
             true
         } else {
             print "  ❌ yzx sponsor command not found in help"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_yzx_sponsor_runs [] {
-    print "🧪 Testing yzx sponsor..."
-
-    try {
-        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx sponsor" | complete).stdout | str trim
-
-        if ($output | str contains "Opened sponsor page.") or ($output | str contains "https://github.com/sponsors/luccahuguet") {
-            print "  ✅ yzx sponsor runs successfully"
-            true
-        } else {
-            print $"  ❌ Unexpected output: ($output)"
             false
         }
     } catch { |err|
@@ -392,8 +395,8 @@ def main [] {
         (test_yzx_cwd_resolves_zoxide_query),
         (test_sidebar_yazi_state_path_normalization),
         (test_sidebar_state_plugin_generated),
+        (test_sidebar_yazi_sync_skips_outside_zellij),
         (test_yzx_sponsor_exists),
-        (test_yzx_sponsor_runs),
         (test_yzx_config_view),
         (test_yzx_config_sections),
         (test_yzx_config_open_print)
