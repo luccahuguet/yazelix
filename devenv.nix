@@ -25,6 +25,7 @@ let
     "amp"
     "beads"
     "beads-rust"
+    "beads-viewer"
     "ccusage"
     "ccusage-amp"
     "ccusage-codex"

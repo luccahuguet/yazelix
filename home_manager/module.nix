@@ -69,6 +69,21 @@ in
       '';
     };
 
+    refresh_output = mkOption {
+      type = types.enum [
+        "quiet"
+        "normal"
+        "full"
+      ];
+      default = "normal";
+      description = ''
+        Refresh output level for launch/restart/refresh flows.
+        - "quiet": suppress routine rebuild output
+        - "normal": show standard devenv build output
+        - "full": show full verbose devenv logs
+      '';
+    };
+
     helix_mode = mkOption {
       type = types.enum [
         "release"
@@ -363,6 +378,7 @@ in
           "ccusage-opencode"
           "beads"
           "beads-rust"
+          "beads-viewer"
           "openclaw"
           "picoclaw"
           "zeroclaw"
@@ -491,6 +507,7 @@ in
             "debug_mode = ${boolToToml cfg.debug_mode}"
             "skip_welcome_screen = ${boolToToml cfg.skip_welcome_screen}"
             "show_macchina_on_welcome = ${boolToToml cfg.show_macchina_on_welcome}"
+            "refresh_output = ${escapeString cfg.refresh_output}"
             "build_cores = ${escapeString cfg.build_cores}"
             ""
             "[helix]"

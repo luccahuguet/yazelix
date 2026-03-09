@@ -13,6 +13,7 @@ yazi_media = false            # Media processing (~1GB): ffmpeg, imagemagick
 debug_mode = false            # Enable verbose debug logging in the shellHook
 skip_welcome_screen = false   # When true, welcome info is logged instead of displayed
 show_macchina_on_welcome = true  # Show system info on welcome screen (uses macchina)
+refresh_output = "normal"     # Rebuild output for launch/restart/refresh: "quiet", "normal", or "full"
 
 # Build cores configuration for Nix builds (default: "max_minus_one")
 # Controls how many CPU cores devenv uses for parallel builds
@@ -304,6 +305,7 @@ ai_tools = [
   # Utilities
   "beads",          # Conversation bead manager
   "beads-rust",     # Rust implementation of beads
+  "beads-viewer",   # Terminal UI for browsing and replaying beads sessions
   "openclaw",       # OpenClaw (formerly moltbot/clawdbot)
   "picoclaw",       # PicoClaw
   "zeroclaw",      # ZeroClaw

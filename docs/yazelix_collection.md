@@ -194,6 +194,7 @@ AI support tools: analytics, code review, and utilities (from llm-agents.nix).
 - ccusage-amp, ccusage-codex, ccusage-opencode — Usage trackers for other agents
 - [beads](https://github.com/lemonmade/beads) — Conversation bead manager
 - [beads-rust](https://github.com/lemonmade/beads) — Rust implementation of beads
+- [beads-viewer](https://github.com/lemonmade/beads) — Terminal UI for browsing and replaying beads sessions
 - [openclaw](https://github.com/openclaw/openclaw) — OpenClaw (formerly moltbot/clawdbot)
 - [picoclaw](https://github.com/picoclaw/picoclaw) — PicoClaw
 - [zeroclaw](https://github.com/zeroclaw-labs/zeroclaw) — ZeroClaw
