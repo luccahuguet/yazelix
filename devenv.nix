@@ -24,6 +24,7 @@ let
   llmAgentsPackageNames = [
     "amp"
     "beads"
+    "beads-rust"
     "ccusage"
     "ccusage-amp"
     "ccusage-codex"
@@ -44,6 +45,7 @@ let
   blockedPackageNames = [
     "gemini-cli"
   ];
+
   nixglIntel =
     if nixglPackages != null && nixglPackages ? nixGLIntel then nixglPackages.nixGLIntel else null;
 
@@ -109,15 +111,7 @@ let
 
     pack_names = rawPacks.enabled or [ ];
     pack_declarations = rawPacks.declarations or { };
-    user_packages = map (
-      name:
-      if builtins.elem name blockedPackageNames then
-        throw "Package '${name}' is blocked in Yazelix. Remove it from packs/user_packages."
-      else if builtins.hasAttr name pkgs then
-        builtins.getAttr name pkgs
-      else
-        throw "Package '${name}' not found in nixpkgs"
-    ) (rawPacks.user_packages or [ ]);
+    user_packages = map resolvePkg (rawPacks.user_packages or [ ]);
   };
 
   boolToString = value: if value then "true" else "false";

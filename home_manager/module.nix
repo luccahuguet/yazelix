@@ -362,6 +362,7 @@ in
           "ccusage-codex"
           "ccusage-opencode"
           "beads"
+          "beads-rust"
           "openclaw"
           "picoclaw"
           "zeroclaw"

@@ -303,6 +303,7 @@ ai_tools = [
   "ccusage-opencode", # OpenCode usage tracker
   # Utilities
   "beads",          # Conversation bead manager
+  "beads-rust",     # Rust implementation of beads
   "openclaw",       # OpenClaw (formerly moltbot/clawdbot)
   "picoclaw",       # PicoClaw
   "zeroclaw",      # ZeroClaw
