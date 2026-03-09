@@ -3,7 +3,7 @@
 
 use ../utils/logging.nu log_to_file
 use ../utils/config_parser.nu parse_yazelix_config
-use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_tab_name, focus_managed_pane]
+use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, set_workspace_for_path, focus_managed_pane]
 
 # Check if the editor command is Helix (supports both simple names and full paths)
 # This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
@@ -140,14 +140,12 @@ def open_with_editor_integration [
         return
     }
 
-    let working_dir = if ($file_path | path exists) and ($file_path | path type) == "dir" {
-        $file_path
+    let workspace_result = (set_workspace_for_path $file_path $log_file)
+    if $workspace_result.status == "ok" {
+        log_to_file $log_file $"Updated workspace root to: ($workspace_result.workspace_root)"
     } else {
-        $file_path | path dirname
+        log_to_file $log_file $"WARNING: Failed to update workspace root \(status=($workspace_result.status)\)"
     }
-    let tab_name = (get_tab_name $working_dir)
-    zellij action rename-tab $tab_name
-    log_to_file $log_file $"Renamed tab to: ($tab_name)"
 
     # Sync yazi's directory to match the opened file's location
     sync_yazi_to_directory $file_path $yazi_id $log_file
@@ -175,23 +173,22 @@ def open_with_neovim [file_path: path, yazi_id: string] {
 def open_with_generic_editor [file_path: path, editor: string, yazi_id: string] {
     log_to_file "open_generic.log" $"open_with_generic_editor called with file_path: '($file_path)', editor: '($editor)'"
 
-    # Get the directory of the file for tab naming
-    let file_dir = if ($file_path | path exists) and ($file_path | path type) == "dir" {
-        $file_path
-    } else {
-        $file_path | path dirname
-    }
-    let tab_name = (get_tab_name $file_dir)
+    let workspace_root = (get_workspace_root $file_path)
+    log_to_file "open_generic.log" $"Using workspace root: ($workspace_root)"
 
     try {
         # Create a new pane with the editor
-        zellij action new-pane --cwd $file_dir -- $editor $file_path
-
-        # Rename the tab
-        zellij action rename-tab $tab_name
+        zellij action new-pane --cwd $workspace_root -- $editor $file_path
 
         log_to_file "open_generic.log" $"Successfully opened ($file_path) with ($editor) in new pane"
         print $"Opened ($file_path) with ($editor) in new pane"
+
+        let workspace_result = (set_workspace_for_path $file_path "open_generic.log")
+        if $workspace_result.status == "ok" {
+            log_to_file "open_generic.log" $"Updated workspace root to: ($workspace_result.workspace_root)"
+        } else {
+            log_to_file "open_generic.log" $"WARNING: Failed to update workspace root \(status=($workspace_result.status)\)"
+        }
     } catch {|err|
         let error_msg = $"Failed to open file with ($editor): ($err.msg)"
         log_to_file "open_generic.log" $"ERROR: ($error_msg)"

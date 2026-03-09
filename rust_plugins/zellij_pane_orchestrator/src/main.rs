@@ -1,4 +1,5 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -13,6 +14,7 @@ const RESULT_MISSING: &str = "missing";
 const RESULT_NOT_READY: &str = "not_ready";
 const RESULT_DENIED: &str = "permissions_denied";
 const RESULT_INVALID_PAYLOAD: &str = "invalid_payload";
+const RESULT_MISSING_WORKSPACE: &str = "missing_workspace";
 const RESULT_UNKNOWN_LAYOUT: &str = "unknown_layout";
 const RESULT_UNSUPPORTED_EDITOR: &str = "unsupported_editor";
 const COMMAND_STEP_DELAY_MS: u64 = 35;
@@ -44,6 +46,12 @@ struct ManagedTabPanes {
     sidebar: Option<ManagedTerminalPane>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct WorkspaceState {
+    root: String,
+    tab_name: String,
+}
+
 #[derive(Default)]
 struct State {
     active_tab_position: Option<usize>,
@@ -51,6 +59,9 @@ struct State {
     focus_context_by_tab: HashMap<usize, FocusContext>,
     managed_panes_by_tab: HashMap<usize, ManagedTabPanes>,
     user_pane_count_by_tab: HashMap<usize, usize>,
+    workspace_state_by_tab: HashMap<usize, WorkspaceState>,
+    seen_tab_positions: HashSet<usize>,
+    initial_workspace_state: Option<WorkspaceState>,
     permissions_granted: bool,
 }
 
@@ -59,9 +70,14 @@ register_plugin!(State);
 impl ZellijPlugin for State {
     fn load(&mut self, _configuration: BTreeMap<String, String>) {
         set_selectable(false);
+        let plugin_ids = get_plugin_ids();
+        self.initial_workspace_state = Some(WorkspaceState::from_root(
+            plugin_ids.initial_cwd.display().to_string(),
+        ));
         request_permission(&[
             PermissionType::ReadApplicationState,
             PermissionType::ChangeApplicationState,
+            PermissionType::OpenTerminalsOrPlugins,
             PermissionType::WriteToStdin,
             PermissionType::ReadCliPipes,
         ]);
@@ -75,8 +91,10 @@ impl ZellijPlugin for State {
     fn update(&mut self, event: Event) -> bool {
         match event {
             Event::TabUpdate(tabs) => {
+                let previous_active_tab_position = self.active_tab_position;
                 self.active_tab_position =
                     tabs.iter().find(|tab| tab.active).map(|tab| tab.position);
+                self.reconcile_workspace_state(previous_active_tab_position, &tabs);
                 self.active_swap_layout_name_by_tab = tabs
                     .into_iter()
                     .map(|tab| (tab.position, tab.active_swap_layout_name))
@@ -126,6 +144,14 @@ impl ZellijPlugin for State {
                 self.toggle_sidebar(&pipe_message);
                 false
             }
+            "set_workspace_root" => {
+                self.set_workspace_root(&pipe_message);
+                false
+            }
+            "open_workspace_terminal" => {
+                self.open_workspace_terminal(&pipe_message);
+                false
+            }
             "debug_editor_state" => {
                 self.debug_editor_state(&pipe_message);
                 false
@@ -146,6 +172,47 @@ impl ZellijPlugin for State {
 }
 
 impl State {
+    fn reconcile_workspace_state(
+        &mut self,
+        previous_active_tab_position: Option<usize>,
+        tabs: &[TabInfo],
+    ) {
+        let current_tab_positions: HashSet<usize> = tabs.iter().map(|tab| tab.position).collect();
+        self.workspace_state_by_tab
+            .retain(|tab_position, _| current_tab_positions.contains(tab_position));
+        self.seen_tab_positions
+            .retain(|tab_position| current_tab_positions.contains(tab_position));
+
+        let active_tab_position = tabs.iter().find(|tab| tab.active).map(|tab| tab.position);
+
+        if let Some(active_tab_position) = active_tab_position {
+            let is_new_tab = !self.seen_tab_positions.contains(&active_tab_position);
+            if !self
+                .workspace_state_by_tab
+                .contains_key(&active_tab_position)
+            {
+                let inherited_workspace_state = if is_new_tab {
+                    previous_active_tab_position
+                        .and_then(|previous_active| {
+                            self.workspace_state_by_tab.get(&previous_active).cloned()
+                        })
+                        .or_else(|| self.initial_workspace_state.clone())
+                } else if self.workspace_state_by_tab.is_empty() {
+                    self.initial_workspace_state.clone()
+                } else {
+                    None
+                };
+
+                if let Some(workspace_state) = inherited_workspace_state {
+                    self.workspace_state_by_tab
+                        .insert(active_tab_position, workspace_state);
+                }
+            }
+        }
+
+        self.seen_tab_positions = current_tab_positions;
+    }
+
     fn focus_managed_pane(&self, pipe_message: &PipeMessage, pane_kind: ManagedPaneKind) {
         let Some(managed_pane) = self.get_managed_pane(pipe_message, pane_kind) else {
             return;
@@ -185,7 +252,10 @@ impl State {
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_to_pane_id(vec![27], editor_pane.pane_id);
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
-        write_chars_to_pane_id(&command_sequence.change_directory_command, editor_pane.pane_id);
+        write_chars_to_pane_id(
+            &command_sequence.change_directory_command,
+            editor_pane.pane_id,
+        );
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_to_pane_id(vec![13], editor_pane.pane_id);
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
@@ -279,6 +349,57 @@ impl State {
             SidebarState::Closed => self.run_previous_swap_layout_steps(1),
         }
 
+        self.respond(pipe_message, RESULT_OK);
+    }
+
+    fn set_workspace_root(&mut self, pipe_message: &PipeMessage) {
+        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
+            return;
+        };
+
+        let Some(payload) = pipe_message.payload.as_deref() else {
+            self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+            return;
+        };
+
+        let workspace_root_request: WorkspaceRootRequest = match serde_json::from_str(payload) {
+            Ok(request) => request,
+            Err(_) => {
+                self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+                return;
+            }
+        };
+
+        let workspace_state = WorkspaceState::from_root(workspace_root_request.workspace_root);
+        rename_tab(active_tab_position as u32, &workspace_state.tab_name);
+        self.workspace_state_by_tab
+            .insert(active_tab_position, workspace_state);
+        self.respond(pipe_message, RESULT_OK);
+    }
+
+    fn open_workspace_terminal(&self, pipe_message: &PipeMessage) {
+        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
+            return;
+        };
+
+        let Some(workspace_state) = self
+            .workspace_state_by_tab
+            .get(&active_tab_position)
+            .cloned()
+            .or_else(|| {
+                if self.seen_tab_positions.len() <= 1 {
+                    self.initial_workspace_state.clone()
+                } else {
+                    None
+                }
+            })
+        else {
+            self.respond(pipe_message, RESULT_MISSING_WORKSPACE);
+            return;
+        };
+
+        open_terminal(&workspace_state.root);
+        rename_tab(active_tab_position as u32, &workspace_state.tab_name);
         self.respond(pipe_message, RESULT_OK);
     }
 
@@ -391,7 +512,8 @@ impl State {
             sidebar_pane_id: pane_id_to_string(sidebar_pane.map(|pane| pane.pane_id)),
             sidebar_is_suppressed: sidebar_pane.map(|pane| pane.is_suppressed),
             sidebar_pane_columns: sidebar_pane.map(|pane| pane.pane_columns),
-            sidebar_is_collapsed: layout_variant.map(|variant| variant.sidebar_state == SidebarState::Closed),
+            sidebar_is_collapsed: layout_variant
+                .map(|variant| variant.sidebar_state == SidebarState::Closed),
         };
 
         match serde_json::to_string(&state) {
@@ -473,6 +595,11 @@ struct OpenFileRequest {
     working_dir: String,
 }
 
+#[derive(Deserialize)]
+struct WorkspaceRootRequest {
+    workspace_root: String,
+}
+
 struct EditorCommandSequence {
     change_directory_command: String,
     open_file_command: String,
@@ -538,8 +665,7 @@ impl LayoutVariant {
                 family: LayoutFamily::VerticalSplit,
                 sidebar_state: SidebarState::Open,
             }),
-            VERTICAL_SPLIT_CLOSED_LAYOUT_NAME
-            | LEGACY_SIDEBAR_CLOSED_LAYOUT_NAME => Some(Self {
+            VERTICAL_SPLIT_CLOSED_LAYOUT_NAME | LEGACY_SIDEBAR_CLOSED_LAYOUT_NAME => Some(Self {
                 family: LayoutFamily::VerticalSplit,
                 sidebar_state: SidebarState::Closed,
             }),
@@ -552,6 +678,15 @@ impl LayoutVariant {
                 sidebar_state: SidebarState::Closed,
             }),
             _ => None,
+        }
+    }
+}
+
+impl WorkspaceState {
+    fn from_root(root: String) -> Self {
+        Self {
+            tab_name: tab_name_from_workspace_root(&root),
+            root,
         }
     }
 }
@@ -625,7 +760,12 @@ fn select_managed_terminal_pane(
         .iter()
         .copied()
         .find(|pane| pane.is_focused)
-        .or_else(|| matching_panes.iter().copied().find(|pane| !pane.is_suppressed))
+        .or_else(|| {
+            matching_panes
+                .iter()
+                .copied()
+                .find(|pane| !pane.is_suppressed)
+        })
         .or_else(|| matching_panes.first().copied());
 
     selected_pane.map(|pane| ManagedTerminalPane {
@@ -653,4 +793,20 @@ fn pane_id_to_string(pane_id: Option<PaneId>) -> Option<String> {
 
 fn is_no_sidebar_mode(managed_tab_panes: Option<&ManagedTabPanes>) -> bool {
     managed_tab_panes.and_then(|tab| tab.sidebar).is_none()
+}
+
+fn tab_name_from_workspace_root(workspace_root: &str) -> String {
+    let trimmed = workspace_root.trim_end_matches(std::path::MAIN_SEPARATOR);
+    let candidate = if trimmed.is_empty() {
+        workspace_root
+    } else {
+        trimmed
+    };
+
+    Path::new(candidate)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.is_empty())
+        .unwrap_or("unnamed")
+        .to_string()
 }

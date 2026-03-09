@@ -21,7 +21,11 @@ keybinds {
         bind "Alt Shift L" { MoveTab "Right"; }
 
         // Previously: Alt + n (in helix: select_next_sibling)
-        bind "Alt m" { NewPane; }
+        bind "Alt m" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "open_workspace_terminal"
+            }
+        }
         unbind "Alt n"
 
         // Previously: Ctrl + b (in helix: move_page_up)
