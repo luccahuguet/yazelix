@@ -176,6 +176,45 @@ def test_yzx_menu_exists [] {
     }
 }
 
+def test_yzx_cwd_exists [] {
+    print "🧪 Testing yzx cwd command exists..."
+
+    try {
+        let output = (yzx | str join "\n")
+
+        if ($output | str contains "yzx cwd") {
+            print "  ✅ yzx cwd command is documented in help"
+            true
+        } else {
+            print "  ❌ yzx cwd command not found in help"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_yzx_cwd_requires_zellij [] {
+    print "🧪 Testing yzx cwd outside Zellij..."
+
+    try {
+        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx cwd ." | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 1) and ($stdout | str contains "only works inside Zellij") {
+            print "  ✅ yzx cwd fails clearly outside Zellij"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_yzx_sponsor_exists [] {
     print "🧪 Testing yzx sponsor command exists..."
 
@@ -288,6 +327,8 @@ def main [] {
         (test_yzx_dev_exists),
         (test_yzx_doctor_exists),
         (test_yzx_menu_exists),
+        (test_yzx_cwd_exists),
+        (test_yzx_cwd_requires_zellij),
         (test_yzx_sponsor_exists),
         (test_yzx_sponsor_runs),
         (test_yzx_config_view),

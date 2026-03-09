@@ -120,6 +120,39 @@ def get_workspace_context [target_path: path, log_file: string] {
     }
 }
 
+export def set_tab_cwd [target_path: path, log_file: string = "zellij_plugin.log"] {
+    let expanded_target_path = ($target_path | path expand)
+    if not ($expanded_target_path | path exists) {
+        error make {msg: $"Path does not exist: ($expanded_target_path)"}
+    }
+
+    let target_dir = if (($expanded_target_path | path type) == "dir") {
+        $expanded_target_path
+    } else {
+        $expanded_target_path | path dirname
+    }
+    let payload = {
+        workspace_root: $target_dir
+    } | to json -r
+
+    log_to_file $log_file $"Setting tab cwd to: ($target_dir)"
+
+    try {
+        let response = (run_pane_orchestrator_command "set_workspace_root" $log_file $payload)
+        {
+            workspace_root: $target_dir
+            tab_name: (get_tab_name $target_dir)
+        } | merge (parse_pane_orchestrator_response $response)
+    } catch {|err|
+        {
+            workspace_root: $target_dir
+            tab_name: (get_tab_name $target_dir)
+            status: "error"
+            reason: $err.msg
+        }
+    }
+}
+
 export def set_workspace_for_path [target_path: path, log_file: string = "zellij_plugin.log"] {
     let workspace = (get_workspace_context $target_path $log_file)
     let payload = {

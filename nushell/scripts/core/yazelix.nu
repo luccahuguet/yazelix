@@ -7,6 +7,7 @@ use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
 use ../utils/common.nu [describe_build_parallelism]
 use ./start_yazelix.nu [start_yazelix_session]
+use ../integrations/zellij.nu [set_tab_cwd]
 
 # Import modularized commands (export use to properly re-export subcommands)
 export use ../yzx/launch.nu *
@@ -85,6 +86,55 @@ export def "yzx sponsor" [] {
 
     print "Support Yazelix:"
     print $sponsor_url
+}
+
+export def "yzx cwd" [
+    target_dir?: string  # Directory to use for the current tab (defaults to the current directory)
+] {
+    if ($env.ZELLIJ? | is-empty) {
+        print "❌ yzx cwd only works inside Zellij."
+        print "   Start Yazelix first, then run this command from the tab you want to update."
+        exit 1
+    }
+
+    let requested_dir = if ($target_dir | is-not-empty) {
+        $target_dir
+    } else {
+        pwd
+    }
+
+    let result = try {
+        set_tab_cwd $requested_dir "yzx_tab_cwd.log"
+    } catch {|err|
+        {
+            status: "error"
+            reason: $err.msg
+        }
+    }
+
+    match $result.status {
+        "ok" => {
+            print $"✅ Updated current tab workspace directory to: ($result.workspace_root)"
+            print $"   Tab renamed to: ($result.tab_name)"
+            print "   Existing panes keep their current working directories."
+            print "   New managed actions will use the updated tab directory."
+        }
+        "not_ready" => {
+            print "❌ Yazelix tab state is not ready yet."
+            print "   Wait a moment for the pane orchestrator plugin to finish loading, then try again."
+            exit 1
+        }
+        "permissions_denied" => {
+            print "❌ The Yazelix pane orchestrator plugin is missing required Zellij permissions."
+            print "   Reload the Yazelix session and try again."
+            exit 1
+        }
+        _ => {
+            let reason = ($result.reason? | default "unknown error")
+            print $"❌ Failed to update the current tab workspace directory: ($reason)"
+            exit 1
+        }
+    }
 }
 
 # Canonical inspection command

@@ -61,6 +61,13 @@ Refresh Yazelix `devenv` evaluation cache/environment without launching UI
 Run a single command in the Yazelix environment and exit
 - Quote args that start with `-` to avoid flag parsing (e.g., `"-lc"`)
 
+### `yzx cwd [DIR]`
+Set the current tab workspace directory inside Zellij
+- Default: use the current directory when `DIR` is omitted
+- Updates the current tab's Yazelix workspace directory and renames the tab
+- Existing panes keep their current working directories; new managed actions use the updated tab directory
+- Errors when run outside Zellij
+
 ### `yzx gen_config <terminal>`
 Print a terminal emulator config generated from `yazelix_default.toml`
 - Example: `yzx gen_config alacritty`
@@ -172,6 +179,8 @@ yzx refresh -v                # Refresh with high-level progress
 yzx refresh -V                # Refresh with full build logs (-vv equivalent)
 yzx run lazygit               # Run single command and exit
 yzx run bash "-lc" "lazygit"  # Run through a shell
+yzx cwd                       # Set the current tab directory to $PWD
+yzx cwd ~/project             # Set the current tab directory explicitly
 yzx restart --reuse           # Reopen from the last built profile without rebuilding
 
 # Diagnostics and info
