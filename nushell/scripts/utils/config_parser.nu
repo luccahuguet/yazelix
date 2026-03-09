@@ -1,6 +1,18 @@
 #!/usr/bin/env nu
 # Configuration parser for yazelix TOML files
 
+def parse_refresh_output [raw_config: record] {
+    let refresh_output = ($raw_config.core?.refresh_output? | default "normal" | into string | str downcase)
+    let allowed = ["quiet", "normal", "full"]
+
+    if not ($refresh_output in $allowed) {
+        let allowed_text = ($allowed | str join ", ")
+        error make {msg: $"Invalid core.refresh_output value '($refresh_output)'. Expected one of: ($allowed_text)"}
+    }
+
+    $refresh_output
+}
+
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
     let yazelix_dir = "~/.config/yazelix" | path expand
@@ -40,6 +52,7 @@ export def parse_yazelix_config [] {
         debug_mode: ($raw_config.core?.debug_mode? | default false),
         skip_welcome_screen: ($raw_config.core?.skip_welcome_screen? | default false),
         show_macchina_on_welcome: ($raw_config.core?.show_macchina_on_welcome? | default true),
+        refresh_output: (parse_refresh_output $raw_config),
         build_cores: ($raw_config.core?.build_cores? | default "max_minus_one"),
         ascii_art_mode: ($raw_config.ascii?.mode? | default "static"),
         persistent_sessions: ($raw_config.zellij?.persistent_sessions? | default false | into string),

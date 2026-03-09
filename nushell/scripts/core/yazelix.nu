@@ -4,7 +4,7 @@
 
 use ../utils/config_manager.nu *
 use ../utils/constants.nu *
-use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment]
+use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
 use ./start_yazelix.nu [start_yazelix_session]
 
 # Import modularized commands (export use to properly re-export subcommands)
@@ -195,6 +195,7 @@ export def "yzx restart" [
     let manage_terminals = ($config.manage_terminals? | default true)
     let needs_refresh = $env_prep.needs_refresh
     let should_refresh = ($needs_refresh and (not $skip_refresh))
+    let refresh_output = get_refresh_output_mode $config
     let session_to_kill = get_current_zellij_session
 
     # Detect if we're in a Yazelix-controlled terminal (launched via wrapper)
@@ -204,7 +205,7 @@ export def "yzx restart" [
     if $skip_refresh and $needs_refresh {
         print "⚠️  Skipping explicit refresh trigger; environment may be stale."
         print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
-    } else if $manage_terminals and $should_refresh {
+    } else if $manage_terminals and $should_refresh and ($refresh_output != "quiet") {
         print "🔄 Configuration changed - rebuilding environment..."
     }
     if $is_yazelix_terminal {
@@ -215,7 +216,7 @@ export def "yzx restart" [
 
     # Launch new terminal window
     if $manage_terminals and $should_refresh {
-        rebuild_yazelix_environment --refresh-eval-cache
+        rebuild_yazelix_environment --refresh-eval-cache --output-mode $refresh_output
         yzx launch --force-reenter
     } else if $skip_refresh {
         yzx launch --skip-refresh

@@ -33,6 +33,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     let env_prep = prepare_environment --verbose=$verbose_mode
     let config = $env_prep.config
     let needs_refresh = $env_prep.needs_refresh
+    let refresh_output = get_refresh_output_mode $config
     let env_status = check_environment_status
     mut activated_profile = false
 
@@ -120,12 +121,16 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
             nu $"($yazelix_dir)/nushell/scripts/setup/environment.nu" --welcome-source start
         }
 
-        if $verbose_mode and $needs_refresh {
-            print "♻️  Config changed – rebuilding environment"
+        if $needs_refresh {
+            if $verbose_mode {
+                print "♻️  Config changed - rebuilding environment"
+            } else if $refresh_output != "quiet" {
+                print "♻️  Config changed - rebuilding environment"
+            }
         }
 
         # Use shared devenv runner (consolidates with yzx env)
-        run_in_devenv_shell $cmd --skip-welcome --verbose=$verbose_mode --force-refresh=$needs_refresh
+        run_in_devenv_shell $cmd --skip-welcome --verbose=$verbose_mode --force-refresh=$needs_refresh --refresh-output-mode $refresh_output
     }
 }
 

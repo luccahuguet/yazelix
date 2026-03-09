@@ -2,6 +2,7 @@
 # Interactive launch sequence (runs inside devenv shell)
 
 use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
 use ../setup/welcome.nu [show_welcome build_welcome_message]
@@ -53,6 +54,10 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
             $"($merged_zellij_dir)/layouts/($layout).kdl"
         }
     }
+
+    # Record that the current config/input state has been successfully applied
+    # once we are inside the prepared Yazelix runtime.
+    mark_config_state_applied (compute_config_state)
 
     if ($config.persistent_sessions == "true") {
         # Check if session already exists

@@ -2,7 +2,7 @@
 # yzx launch command - Launch Yazelix in new or current terminal
 
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
-use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment run_in_devenv_shell_command]
+use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment run_in_devenv_shell_command get_refresh_output_mode]
 use ../utils/launch_state.nu [get_launch_env get_launch_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../core/start_yazelix.nu [start_yazelix_session]
@@ -31,12 +31,15 @@ export def "yzx launch" [
     let config_state = $env_prep.config_state
     mut needs_refresh = $env_prep.needs_refresh
     let should_refresh = ($needs_refresh and (not $skip_refresh))
+    let refresh_output = get_refresh_output_mode $config
+    let show_refresh_notice = ($refresh_output != "quiet")
     let launch_profile = if $should_refresh {
         null
     } else {
         get_launch_profile $config_state
     }
     let manage_terminals = ($config.manage_terminals? | default true)
+    mut printed_refresh_notice = false
     if $verbose_mode {
         print $"🔍 Config hash changed? ($needs_refresh)"
     }
@@ -49,8 +52,9 @@ export def "yzx launch" [
     mut in_yazelix_shell = ($env.IN_YAZELIX_SHELL? == "true")
     if $manage_terminals and $should_refresh and $in_yazelix_shell {
         # Only print if not called from yzx restart (which already printed the message)
-        if not $force_reenter {
+        if (not $force_reenter) and $show_refresh_notice {
             print "🔄 Configuration changed - rebuilding environment..."
+            $printed_refresh_notice = true
         }
         $in_yazelix_shell = false
     }
@@ -141,7 +145,11 @@ export def "yzx launch" [
         } else {
             # Not in Yazelix environment - wrap with devenv shell
             if $should_refresh {
-                rebuild_yazelix_environment --refresh-eval-cache
+                if $show_refresh_notice and (not $printed_refresh_notice) {
+                    print "🔄 Configuration changed - rebuilding environment..."
+                    $printed_refresh_notice = true
+                }
+                rebuild_yazelix_environment --refresh-eval-cache --output-mode $refresh_output
                 $needs_refresh = false
             }
 
@@ -190,7 +198,7 @@ export def "yzx launch" [
             let yazelix_dir = ("~/.config/yazelix" | path expand)
             if $should_refresh and $verbose_mode {
                 let reason = ($config_state.refresh_reason? | default "config or devenv inputs changed since last launch")
-                print $"♻️  ($reason) – rebuilding environment"
+                print $"♻️  Re-entering Yazelix after rebuild \(($reason)\)"
             }
 
             mut launch_args = [$launch_script]
@@ -222,7 +230,7 @@ export def "yzx launch" [
                 $env_block = ($env_block | upsert YAZELIX_TERMINAL $env.YAZELIX_TERMINAL)
             }
             with-env $env_block {
-                run_in_devenv_shell_command "nu" ...$final_launch_args --cwd $yazelix_dir --skip-welcome --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode
+                run_in_devenv_shell_command "nu" ...$final_launch_args --cwd $yazelix_dir --skip-welcome --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode --refresh-output-mode $refresh_output
             }
             if $should_refresh {
                 mark_config_state_applied $fresh_state

@@ -44,6 +44,7 @@ export def validate_enum_values [user: record] {
     let enums = [
         { path: ["shell", "default_shell"], label: "shell.default_shell", allowed: ["nu", "bash", "fish", "zsh"] },
         { path: ["helix", "mode"], label: "helix.mode", allowed: ["release", "source"] },
+        { path: ["core", "refresh_output"], label: "core.refresh_output", allowed: ["quiet", "normal", "full"] },
         { path: ["terminal", "terminals"], label: "terminal.terminals", allowed: ["wezterm", "ghostty", "kitty", "alacritty", "foot"] },
         { path: ["terminal", "cursor_trail"], label: "terminal.cursor_trail", allowed: ["blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "eclipse", "dusk", "orchid", "reef", "inferno", "random", "none"] },
         { path: ["ascii", "mode"], label: "ascii.mode", allowed: ["static", "animated"] },

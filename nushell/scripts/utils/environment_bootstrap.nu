@@ -34,9 +34,26 @@ def resolve_yazelix_dir [] {
     $yazelix_dir
 }
 
+def resolve_refresh_output_mode [mode: string] {
+    let refresh_output = ($mode | into string | str downcase)
+    let allowed = ["quiet", "normal", "full"]
+
+    if not ($refresh_output in $allowed) {
+        let allowed_text = ($allowed | str join ", ")
+        error make {msg: $"Invalid refresh output mode '($refresh_output)'. Expected one of: ($allowed_text)"}
+    }
+
+    $refresh_output
+}
+
+export def get_refresh_output_mode [config] {
+    resolve_refresh_output_mode ($config.refresh_output? | default "normal")
+}
+
 # Build a base devenv command from the canonical Yazelix directory
 export def get_devenv_base_command [
     --quiet             # Include --quiet in devenv arguments
+    --devenv-verbose    # Include --verbose in devenv arguments
     --refresh-eval-cache  # Include --refresh-eval-cache in devenv arguments
 ] {
     let yazelix_dir = resolve_yazelix_dir
@@ -54,6 +71,9 @@ export def get_devenv_base_command [
     if $quiet {
         $cmd = ($cmd | append "--quiet")
     }
+    if $devenv_verbose {
+        $cmd = ($cmd | append "--verbose")
+    }
     if $refresh_eval_cache {
         $cmd = ($cmd | append "--refresh-eval-cache")
     }
@@ -63,8 +83,10 @@ export def get_devenv_base_command [
 
 export def rebuild_yazelix_environment [
     --refresh-eval-cache  # Refresh devenv eval cache before rebuilding
+    --output-mode: string = "normal"  # quiet | normal | full
 ] {
-    let devenv_base = get_devenv_base_command --refresh-eval-cache=$refresh_eval_cache
+    let refresh_output = resolve_refresh_output_mode $output_mode
+    let devenv_base = get_devenv_base_command --refresh-eval-cache=$refresh_eval_cache --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full")
     let devenv_cmd = ($devenv_base | append ["build", "shell"])
     let cmd_bin = ($devenv_cmd | first)
     let cmd_args = ($devenv_cmd | skip 1)
@@ -121,9 +143,11 @@ export def run_in_devenv_shell [
     --quiet             # Run devenv with --quiet flag
     --skip-welcome      # Set YAZELIX_SKIP_WELCOME=true
     --force-refresh     # Force environment refresh
+    --refresh-output-mode: string = "normal"  # quiet | normal | full when forcing refresh
 ] {
     let env_status = check_environment_status
     let verbose_mode = $verbose
+    let refresh_output = resolve_refresh_output_mode $refresh_output_mode
 
     if $verbose_mode {
         print $"🔁 IN_NIX_SHELL? ($env_status.in_nix_shell) | IN_YAZELIX_SHELL? ($env_status.in_yazelix_shell)"
@@ -152,7 +176,13 @@ export def run_in_devenv_shell [
             print "⚙️ Entering devenv shell before running command"
         }
 
-        let devenv_base = get_devenv_base_command --quiet=$quiet
+        let quiet_devenv = if $force_refresh {
+            $quiet or ($refresh_output == "quiet")
+        } else {
+            $quiet
+        }
+        let devenv_verbose = $force_refresh and ($refresh_output == "full") and (not $quiet_devenv)
+        let devenv_base = get_devenv_base_command --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose
         let devenv_cmd = ($devenv_base | append ["shell", "--no-tui", "--no-reload", "--", "sh", "-c", $command])
         let devenv_bin = ($devenv_cmd | first)
         let devenv_args = ($devenv_cmd | skip 1)
@@ -189,9 +219,11 @@ export def run_in_devenv_shell_command [
     --quiet            # Run devenv with --quiet flag
     --skip-welcome     # Set YAZELIX_SKIP_WELCOME=true
     --force-refresh    # Force environment refresh
+    --refresh-output-mode: string = "normal"  # quiet | normal | full when forcing refresh
 ] {
     let env_status = check_environment_status
     let verbose_mode = $verbose
+    let refresh_output = resolve_refresh_output_mode $refresh_output_mode
 
     if ($command | is-empty) {
         print "Error: No command provided"
@@ -235,7 +267,13 @@ export def run_in_devenv_shell_command [
         print "⚙️ Entering devenv shell before running command"
     }
 
-    let devenv_base = get_devenv_base_command --quiet=$quiet
+    let quiet_devenv = if $force_refresh {
+        $quiet or ($refresh_output == "quiet")
+    } else {
+        $quiet
+    }
+    let devenv_verbose = $force_refresh and ($refresh_output == "full") and (not $quiet_devenv)
+    let devenv_base = get_devenv_base_command --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose
     let devenv_cmd = ($devenv_base | append ["shell", "--no-tui", "--no-reload", "--"] | append $exec_cmd)
     let devenv_bin = ($devenv_cmd | first)
     let devenv_args = ($devenv_cmd | skip 1)

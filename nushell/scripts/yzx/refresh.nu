@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # yzx refresh command - Refresh Yazelix devenv cache/environment without launching UI
 
-use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled]
+use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled get_refresh_output_mode]
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 
 def summarize_values [values max_items: int] {
@@ -82,12 +82,18 @@ export def "yzx refresh" [
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
 
-    let show_progress = ($verbose or $very_verbose)
-    let full_logs = $very_verbose
     let env_prep = prepare_environment
     let config = $env_prep.config
     let config_state = $env_prep.config_state
     let needs_refresh = $config_state.needs_refresh
+    let refresh_output = if $very_verbose {
+        "full"
+    } else if $verbose {
+        "normal"
+    } else {
+        get_refresh_output_mode $config
+    }
+    let show_progress = ($refresh_output != "quiet")
 
     if (not $force) and (not $needs_refresh) {
         print "✅ Yazelix environment is already up to date."
@@ -117,10 +123,7 @@ export def "yzx refresh" [
     if $needs_refresh or $force {
         print $"♻️  Refreshing Yazelix environment \(($refresh_reason)\)..."
 
-        mut devenv_base = (get_devenv_base_command --quiet=(not $show_progress) --refresh-eval-cache)
-        if $full_logs {
-            $devenv_base = ($devenv_base | append "--verbose")
-        }
+        let devenv_base = (get_devenv_base_command --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full") --refresh-eval-cache)
         let devenv_cmd = ($devenv_base | append ["build", "shell"])
 
         if $show_progress {
