@@ -16,7 +16,8 @@ export def "yzx run" [
     let env_prep = prepare_environment
     let config = $env_prep.config
     let needs_refresh = $env_prep.needs_refresh
-    let build_cores = ($config.build_cores? | default "max_minus_one" | into string)
+    let max_jobs = ($config.max_jobs? | default "half" | into string)
+    let build_cores = ($config.build_cores? | default "2" | into string)
     let original_dir = (pwd)
 
     if ($command | is-empty) {
@@ -26,9 +27,9 @@ export def "yzx run" [
     }
 
     if $verbose {
-        run_in_devenv_shell_command $command ...$args --build-cores $build_cores --cwd $original_dir --env-only --skip-welcome --verbose --force-refresh=$needs_refresh
+        run_in_devenv_shell_command $command ...$args --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --skip-welcome --verbose --force-refresh=$needs_refresh
     } else {
-        run_in_devenv_shell_command $command ...$args --build-cores $build_cores --cwd $original_dir --env-only --skip-welcome --quiet --force-refresh=$needs_refresh
+        run_in_devenv_shell_command $command ...$args --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --skip-welcome --quiet --force-refresh=$needs_refresh
     }
 
     if $needs_refresh {

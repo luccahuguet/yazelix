@@ -6,6 +6,7 @@ use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_envir
 use ../utils/launch_state.nu [get_launch_env get_launch_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../core/start_yazelix.nu [start_yazelix_session]
+use ../utils/common.nu [describe_build_parallelism]
 
 # Launch yazelix
 export def "yzx launch" [
@@ -32,7 +33,9 @@ export def "yzx launch" [
     mut needs_refresh = $env_prep.needs_refresh
     let should_refresh = ($needs_refresh and (not $skip_refresh))
     let refresh_output = get_refresh_output_mode $config
-    let build_cores = ($config.build_cores? | default "max_minus_one" | into string)
+    let max_jobs = ($config.max_jobs? | default "half" | into string)
+    let build_cores = ($config.build_cores? | default "2" | into string)
+    let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let show_refresh_notice = ($refresh_output != "quiet")
     let launch_profile = if $should_refresh {
         null
@@ -54,7 +57,7 @@ export def "yzx launch" [
     if $manage_terminals and $should_refresh and $in_yazelix_shell {
         # Only print if not called from yzx restart (which already printed the message)
         if (not $force_reenter) and $show_refresh_notice {
-            print "🔄 Configuration changed - rebuilding environment..."
+            print $"🔄 Configuration changed - rebuilding environment using ($build_parallelism_description)..."
             $printed_refresh_notice = true
         }
         $in_yazelix_shell = false
@@ -147,10 +150,10 @@ export def "yzx launch" [
             # Not in Yazelix environment - wrap with devenv shell
             if $should_refresh {
                 if $show_refresh_notice and (not $printed_refresh_notice) {
-                    print "🔄 Configuration changed - rebuilding environment..."
+                    print $"🔄 Configuration changed - rebuilding environment using ($build_parallelism_description)..."
                     $printed_refresh_notice = true
                 }
-                rebuild_yazelix_environment --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
+                rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
                 $needs_refresh = false
             }
 
@@ -199,7 +202,7 @@ export def "yzx launch" [
             let yazelix_dir = ("~/.config/yazelix" | path expand)
             if $should_refresh and $verbose_mode {
                 let reason = ($config_state.refresh_reason? | default "config or devenv inputs changed since last launch")
-                print $"♻️  Re-entering Yazelix after rebuild \(($reason)\)"
+                print $"♻️  Re-entering Yazelix after rebuild \(($reason), ($build_parallelism_description)\)"
             }
 
             mut launch_args = [$launch_script]
@@ -231,7 +234,7 @@ export def "yzx launch" [
                 $env_block = ($env_block | upsert YAZELIX_TERMINAL $env.YAZELIX_TERMINAL)
             }
             with-env $env_block {
-                run_in_devenv_shell_command "nu" ...$final_launch_args --build-cores $build_cores --cwd $yazelix_dir --skip-welcome --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode --refresh-output-mode $refresh_output
+                run_in_devenv_shell_command "nu" ...$final_launch_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --skip-welcome --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode --refresh-output-mode $refresh_output
             }
             if $should_refresh {
                 mark_config_state_applied $fresh_state

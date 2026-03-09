@@ -5,6 +5,7 @@
 use ../utils/config_manager.nu *
 use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
+use ../utils/common.nu [describe_build_parallelism]
 use ./start_yazelix.nu [start_yazelix_session]
 
 # Import modularized commands (export use to properly re-export subcommands)
@@ -196,7 +197,9 @@ export def "yzx restart" [
     let needs_refresh = $env_prep.needs_refresh
     let should_refresh = ($needs_refresh and (not $skip_refresh))
     let refresh_output = get_refresh_output_mode $config
-    let build_cores = ($config.build_cores? | default "max_minus_one" | into string)
+    let max_jobs = ($config.max_jobs? | default "half" | into string)
+    let build_cores = ($config.build_cores? | default "2" | into string)
+    let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let session_to_kill = get_current_zellij_session
 
     # Detect if we're in a Yazelix-controlled terminal (launched via wrapper)
@@ -207,7 +210,7 @@ export def "yzx restart" [
         print "⚠️  Skipping explicit refresh trigger; environment may be stale."
         print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
     } else if $manage_terminals and $should_refresh and ($refresh_output != "quiet") {
-        print "🔄 Configuration changed - rebuilding environment..."
+        print $"🔄 Configuration changed - rebuilding environment using ($build_parallelism_description)..."
     }
     if $is_yazelix_terminal {
         print "🔄 Restarting Yazelix..."
@@ -217,7 +220,7 @@ export def "yzx restart" [
 
     # Launch new terminal window
     if $manage_terminals and $should_refresh {
-        rebuild_yazelix_environment --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
+        rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
         yzx launch --force-reenter
     } else if $skip_refresh {
         yzx launch --skip-refresh

@@ -3,6 +3,7 @@
 
 use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled get_refresh_output_mode]
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
+use ../utils/common.nu [describe_build_parallelism]
 
 def summarize_values [values max_items: int] {
     let normalized = ($values | each { |value| $value | into string })
@@ -86,7 +87,9 @@ export def "yzx refresh" [
     let config = $env_prep.config
     let config_state = $env_prep.config_state
     let needs_refresh = $config_state.needs_refresh
-    let build_cores = ($config.build_cores? | default "max_minus_one" | into string)
+    let max_jobs = ($config.max_jobs? | default "half" | into string)
+    let build_cores = ($config.build_cores? | default "2" | into string)
+    let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let refresh_output = if $very_verbose {
         "full"
     } else if $verbose {
@@ -122,9 +125,9 @@ export def "yzx refresh" [
 
     let allow_unfree = is_unfree_enabled
     if $needs_refresh or $force {
-        print $"♻️  Refreshing Yazelix environment \(($refresh_reason)\)..."
+        print $"♻️  Refreshing Yazelix environment \(($refresh_reason), using ($build_parallelism_description)\)..."
 
-        let devenv_base = (get_devenv_base_command --build-cores $build_cores --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full") --refresh-eval-cache)
+        let devenv_base = (get_devenv_base_command --max-jobs $max_jobs --build-cores $build_cores --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full") --refresh-eval-cache)
         let devenv_cmd = ($devenv_base | append ["build", "shell"])
 
         if $show_progress {

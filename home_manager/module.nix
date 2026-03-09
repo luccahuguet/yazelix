@@ -63,9 +63,17 @@ in
 
     build_cores = mkOption {
       type = types.str;
-      default = "max_minus_one";
+      default = "2";
       description = ''
-        CPU cores for Nix builds: "max", "max_minus_one", "half", or custom number like "8"
+        CPU cores per Nix build: "max", "max_minus_one", "half", "quarter", or a custom number like "2"
+      '';
+    };
+
+    max_jobs = mkOption {
+      type = types.str;
+      default = "half";
+      description = ''
+        Concurrent Nix build jobs: "auto", "max", "max_minus_one", "half", "quarter", or a custom number like "8"
       '';
     };
 
@@ -508,6 +516,7 @@ in
             "skip_welcome_screen = ${boolToToml cfg.skip_welcome_screen}"
             "show_macchina_on_welcome = ${boolToToml cfg.show_macchina_on_welcome}"
             "refresh_output = ${escapeString cfg.refresh_output}"
+            "max_jobs = ${escapeString cfg.max_jobs}"
             "build_cores = ${escapeString cfg.build_cores}"
             ""
             "[helix]"

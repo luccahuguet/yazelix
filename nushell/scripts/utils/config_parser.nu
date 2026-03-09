@@ -13,6 +13,24 @@ def parse_refresh_output [raw_config: record] {
     $refresh_output
 }
 
+def parse_positive_parallel_setting [value: any, label: string, allowed_symbols: list<string>, default_value: string] {
+    let normalized = ($value | default $default_value | into string | str downcase)
+
+    if $normalized in $allowed_symbols {
+        return $normalized
+    }
+
+    let parsed = (try { $normalized | into int } catch { null })
+    if $parsed == null {
+        let allowed_text = ($allowed_symbols | str join ", ")
+        error make {msg: $"Invalid ($label) value '($normalized)'. Expected one of: ($allowed_text), or a positive integer."}
+    }
+    if $parsed < 1 {
+        error make {msg: $"Invalid ($label) value '($normalized)'. Expected a positive integer."}
+    }
+    $normalized
+}
+
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
     let yazelix_dir = "~/.config/yazelix" | path expand
@@ -53,7 +71,8 @@ export def parse_yazelix_config [] {
         skip_welcome_screen: ($raw_config.core?.skip_welcome_screen? | default false),
         show_macchina_on_welcome: ($raw_config.core?.show_macchina_on_welcome? | default true),
         refresh_output: (parse_refresh_output $raw_config),
-        build_cores: ($raw_config.core?.build_cores? | default "max_minus_one"),
+        max_jobs: (parse_positive_parallel_setting $raw_config.core?.max_jobs? "core.max_jobs" ["auto", "max", "max_minus_one", "half", "quarter"] "half"),
+        build_cores: (parse_positive_parallel_setting $raw_config.core?.build_cores? "core.build_cores" ["max", "max_minus_one", "half", "quarter"] "2"),
         ascii_art_mode: ($raw_config.ascii?.mode? | default "static"),
         persistent_sessions: ($raw_config.zellij?.persistent_sessions? | default false | into string),
         session_name: ($raw_config.zellij?.session_name? | default "yazelix"),

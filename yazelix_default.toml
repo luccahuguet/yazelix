@@ -15,14 +15,29 @@ skip_welcome_screen = false   # When true, welcome info is logged instead of dis
 show_macchina_on_welcome = true  # Show system info on welcome screen (uses macchina)
 refresh_output = "normal"     # Rebuild output for launch/restart/refresh: "quiet", "normal", or "full"
 
-# Build cores configuration for Nix builds (default: "max_minus_one")
-# Controls how many CPU cores devenv uses for parallel builds
+# Concurrent Nix jobs configuration (default: "half")
+# Controls how many derivations devenv/Nix may build at the same time.
 # Options:
-# - "max":           Use all available CPU cores (fastest, may impact system responsiveness)
-# - "max_minus_one": Use all cores minus one (recommended - balances speed with system responsiveness)
-# - "half":          Use half of available cores (conservative, leaves plenty of headroom)
+# - "auto":          Match devenv/Nix default behavior (roughly quarter of cores)
+# - "max":           Use all available CPU cores as concurrent jobs
+# - "max_minus_one": Use all cores minus one
+# - "half":          Use half of available CPU cores (recommended default)
+# - "quarter":       Use a quarter of available CPU cores
+# - Custom number:   Specify exact job count, e.g., "8" or "4"
+max_jobs = "half"
+
+# Build cores per Nix job (default: "2")
+# Combined with max_jobs, this determines the overall CPU budget.
+# Recommended default:
+# - max_jobs = "half"
+# - build_cores = "2"
+# Options:
+# - "max":           Use all available CPU cores per build
+# - "max_minus_one": Use all cores minus one per build
+# - "half":          Use half of available cores per build
+# - "quarter":       Use a quarter of available cores per build
 # - Custom number:   Specify exact core count, e.g., "8" or "4"
-build_cores = "max_minus_one"
+build_cores = "2"
 
 [helix]
 # Helix build mode (choose ONE):

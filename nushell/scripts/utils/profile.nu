@@ -3,7 +3,7 @@
 # Profiles launch sequence and environment setup to identify bottlenecks
 
 use logging.nu log_to_file
-use common.nu [get_max_cores]
+use common.nu [get_max_cores get_max_jobs]
 use config_parser.nu [parse_yazelix_config]
 
 # Profile a single step with timing
@@ -107,8 +107,9 @@ export def profile_cold_launch [
     # Simulate what happens during yzx launch - run devenv shell with immediate exit
     # This is the only command that actually does the full 6s build
     let config = parse_yazelix_config
-    let max_cores = get_max_cores ($config.build_cores? | default "max_minus_one" | into string)
-    let result = sh -c $"cd ($yazelix_dir) && echo 'exit' | timeout 15 devenv --cores ($max_cores) shell" | complete
+    let max_jobs = get_max_jobs ($config.max_jobs? | default "half" | into string)
+    let max_cores = get_max_cores ($config.build_cores? | default "2" | into string)
+    let result = sh -c $"cd ($yazelix_dir) && echo 'exit' | timeout 15 devenv --max-jobs ($max_jobs) --cores ($max_cores) shell" | complete
     let launch_end = (date now)
     let launch_ms = ((($launch_end - $launch_start) | into int) / 1000000)
 

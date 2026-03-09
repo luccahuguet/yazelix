@@ -21,7 +21,8 @@
     recommended_deps = true; # Productivity tools like lazygit, atuin
     yazi_extensions = true; # File preview support
     yazi_media = true; # Enable heavy media processing (~1GB)
-    build_cores = "max_minus_one"; # Optional: "max", "max_minus_one", "half", or "8"
+    max_jobs = "half"; # Optional: "auto", "max", "max_minus_one", "half", "quarter", or "8"
+    build_cores = "2"; # Optional: "max", "max_minus_one", "half", "quarter", or "2"
 
     # Build Helix from source for latest features
     helix_mode = "source";

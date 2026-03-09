@@ -3,6 +3,7 @@
 
 use ../utils/environment_bootstrap.nu *
 use ../utils/launch_state.nu [activate_launch_profile get_launch_profile]
+use ../utils/common.nu [describe_build_parallelism]
 
 def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     # Capture original directory before any cd commands
@@ -34,7 +35,9 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     let config = $env_prep.config
     let needs_refresh = $env_prep.needs_refresh
     let refresh_output = get_refresh_output_mode $config
-    let build_cores = ($config.build_cores? | default "max_minus_one" | into string)
+    let max_jobs = ($config.max_jobs? | default "half" | into string)
+    let build_cores = ($config.build_cores? | default "2" | into string)
+    let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let env_status = check_environment_status
     mut activated_profile = false
 
@@ -61,7 +64,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
         print "🔧 Setting up Yazelix environment (installing shell hooks and dependencies)..."
         print "   This may take several minutes on first run."
 
-        run_in_devenv_shell "echo '✅ Setup complete! Shell hooks installed.'" --build-cores $build_cores --skip-welcome --verbose=$verbose_mode --force-refresh=$needs_refresh
+        run_in_devenv_shell "echo '✅ Setup complete! Shell hooks installed.'" --max-jobs $max_jobs --build-cores $build_cores --skip-welcome --verbose=$verbose_mode --force-refresh=$needs_refresh
 
         print ""
         print "📝 Next steps:"
@@ -124,14 +127,14 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
 
         if $needs_refresh {
             if $verbose_mode {
-                print "♻️  Config changed - rebuilding environment"
+                print $"♻️  Config changed - rebuilding environment using ($build_parallelism_description)"
             } else if $refresh_output != "quiet" {
-                print "♻️  Config changed - rebuilding environment"
+                print $"♻️  Config changed - rebuilding environment using ($build_parallelism_description)"
             }
         }
 
         # Use shared devenv runner (consolidates with yzx env)
-        run_in_devenv_shell $cmd --build-cores $build_cores --skip-welcome --verbose=$verbose_mode --force-refresh=$needs_refresh --refresh-output-mode $refresh_output
+        run_in_devenv_shell $cmd --max-jobs $max_jobs --build-cores $build_cores --skip-welcome --verbose=$verbose_mode --force-refresh=$needs_refresh --refresh-output-mode $refresh_output
     }
 }
 

@@ -3,6 +3,7 @@
 
 use ../utils/environment_bootstrap.nu *
 use ../utils/doctor.nu print_runtime_version_drift_warning
+use ../utils/common.nu [describe_build_parallelism]
 
 # Build shell command from shell name.
 # --login keeps existing behavior for default yzx env mode.
@@ -43,7 +44,9 @@ export def "yzx env" [
     let needs_refresh = $env_prep.needs_refresh
     let should_refresh = ($needs_refresh and (not $skip_refresh))
     let refresh_reason = ($env_prep.config_state.refresh_reason? | default "config or devenv inputs changed since last launch")
-    let build_cores = ($config.build_cores? | default "max_minus_one" | into string)
+    let max_jobs = ($config.max_jobs? | default "half" | into string)
+    let build_cores = ($config.build_cores? | default "2" | into string)
+    let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
 
     let original_dir = (pwd)
 
@@ -62,18 +65,18 @@ export def "yzx env" [
         print "⚠️  Skipping explicit refresh trigger; environment may be stale."
         print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
     } else if $needs_refresh {
-        print "🔄 Configuration changed - rebuilding environment..."
-        rebuild_yazelix_environment --build-cores $build_cores --refresh-eval-cache
+        print $"🔄 Configuration changed - rebuilding environment using ($build_parallelism_description)..."
+        rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache
     }
 
     if $no_shell {
         # For --no-shell, preserve the invoking shell when possible.
         let shell_command = (resolve_shell_command $invoking_shell_name)
         if $has_setpriv {
-            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
+            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
         } else {
             # macOS and other systems without setpriv use POSIX trap fallback.
-            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
+            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
         }
 
     } else {
@@ -86,9 +89,9 @@ export def "yzx env" [
         try {
             with-env {SHELL: $shell_exec} {
                 if $has_setpriv {
-                    run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
+                    run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
                 } else {
-                    run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
+                    run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
                 }
             }
         } catch {|err|

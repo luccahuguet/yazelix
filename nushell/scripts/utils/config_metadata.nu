@@ -8,6 +8,7 @@ export const REBUILD_REQUIRED_KEYS = [
     "core.recommended_deps",
     "core.yazi_extensions",
     "core.yazi_media",
+    "core.max_jobs",
     "core.build_cores",
 
     # Helix editor build configuration
