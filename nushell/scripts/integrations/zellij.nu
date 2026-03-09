@@ -232,6 +232,11 @@ export def debug_editor_state [] {
     }
 }
 
+export def get_active_sidebar_pane_id [] {
+    let state = (debug_editor_state)
+    $state.sidebar_pane_id?
+}
+
 export def debug_write_literal [text: string = "__YZX__"] {
     let response = (run_pane_orchestrator_command_raw "debug_write_literal" $text)
     parse_pane_orchestrator_response $response

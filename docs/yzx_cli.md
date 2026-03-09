@@ -67,6 +67,7 @@ Set the current tab workspace directory inside Zellij
 - When `DIR` is not an existing path, Yazelix resolves it with `zoxide query`
 - Updates the current tab's Yazelix workspace directory and renames the tab
 - Also applies the directory change to the current pane after the command returns
+- When sidebar mode is enabled, the managed Yazi sidebar also follows the updated directory
 - Other existing panes keep their current working directories; new managed actions use the updated tab directory
 - Errors when run outside Zellij
 

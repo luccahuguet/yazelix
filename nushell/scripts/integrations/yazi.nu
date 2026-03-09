@@ -3,7 +3,7 @@
 
 use ../utils/logging.nu log_to_file
 use ../utils/config_parser.nu parse_yazelix_config
-use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, set_workspace_for_path, focus_managed_pane]
+use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, set_workspace_for_path, focus_managed_pane, get_active_sidebar_pane_id]
 
 # Check if the editor command is Helix (supports both simple names and full paths)
 # This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
@@ -20,6 +20,110 @@ def is_neovim_editor [editor: string] {
 def is_sidebar_enabled [] {
     let config = parse_yazelix_config
     ($config.enable_sidebar? | default true)
+}
+
+def get_sidebar_yazi_state_dir [] {
+    $env.HOME | path join ".local" "share" "yazelix" "state" "yazi" "sidebar"
+}
+
+def sanitize_sidebar_state_component [value: string] {
+    $value | str replace -ra '[^A-Za-z0-9._-]' '_'
+}
+
+def normalize_sidebar_pane_id [pane_id: string] {
+    if ($pane_id | str contains ":") {
+        $pane_id
+    } else {
+        $"terminal:($pane_id)"
+    }
+}
+
+def get_current_zellij_session_name [] {
+    if ($env.ZELLIJ_SESSION_NAME? | is-not-empty) {
+        return $env.ZELLIJ_SESSION_NAME
+    }
+
+    try {
+        let current_line = (
+            zellij list-sessions
+            | lines
+            | where {|line| ($line =~ '\bcurrent\b')}
+            | first
+        )
+
+        let clean_line = (
+            $current_line
+            | str replace -ra '\u001b\[[0-9;]*[A-Za-z]' ''
+            | str replace -r '^>\s*' ''
+            | str replace -r '\s+\(current\)\s*$' ''
+            | str trim
+        )
+
+        if ($clean_line | is-empty) { null } else { $clean_line }
+    } catch {
+        null
+    }
+}
+
+export def get_sidebar_yazi_state_path [session_name: string, pane_id: string] {
+    let sanitized_session = (sanitize_sidebar_state_component $session_name)
+    let sanitized_pane = (sanitize_sidebar_state_component (normalize_sidebar_pane_id $pane_id))
+    (get_sidebar_yazi_state_dir | path join $"($sanitized_session)__($sanitized_pane).txt")
+}
+
+def read_active_sidebar_yazi_id [] {
+    let sidebar_pane_id = (get_active_sidebar_pane_id)
+    if ($sidebar_pane_id | is-empty) {
+        return null
+    }
+
+    let session_name = (get_current_zellij_session_name)
+    if ($session_name | is-empty) {
+        return null
+    }
+
+    let state_path = (get_sidebar_yazi_state_path $session_name $sidebar_pane_id)
+    if not ($state_path | path exists) {
+        return null
+    }
+
+    let yazi_id = (open --raw $state_path | str trim)
+    if ($yazi_id | is-empty) {
+        null
+    } else {
+        $yazi_id
+    }
+}
+
+export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: string = "yazi_sync.log"] {
+    if not (is_sidebar_enabled) {
+        return {status: "skipped", reason: "sidebar_disabled"}
+    }
+
+    if (which ya | is-empty) {
+        return {status: "skipped", reason: "ya_missing"}
+    }
+
+    let sidebar_yazi_id = (read_active_sidebar_yazi_id)
+    if ($sidebar_yazi_id | is-empty) {
+        return {status: "skipped", reason: "sidebar_yazi_missing"}
+    }
+
+    let expanded_target_path = ($target_path | path expand)
+    let target_dir = if (($expanded_target_path | path type) == "dir") {
+        $expanded_target_path
+    } else {
+        $expanded_target_path | path dirname
+    }
+
+    try {
+        ya emit-to $sidebar_yazi_id cd $target_dir
+        log_to_file $log_file $"Synced active sidebar Yazi to directory: ($target_dir)"
+        {status: "ok", target_dir: $target_dir}
+    } catch {|err|
+        log_to_file $log_file $"Failed to sync active sidebar Yazi to directory '($target_dir)': ($err.msg)"
+        {status: "error", reason: $err.msg, target_dir: $target_dir}
+    }
 }
 
 # Sync yazi's directory to match the opened file's location

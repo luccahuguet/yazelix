@@ -2,6 +2,7 @@
 # yzx menu - Interactive command palette and config opener
 
 use ../integrations/zellij.nu [resolve_tab_cwd_target set_tab_workspace_root]
+use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory]
 use ../utils/config_parser.nu parse_yazelix_config
 
 def classify_menu_command [cmd: string] {
@@ -88,10 +89,14 @@ def run_menu_cwd_action [] {
 
     match $result.status {
         "ok" => {
+            let sidebar_sync_result = (sync_active_sidebar_yazi_to_directory $result.workspace_root "yzx_menu_cwd.log")
             print $"✅ Updated current tab workspace directory to: ($result.workspace_root)"
             print $"   Tab renamed to: ($result.tab_name)"
             print "   Existing panes keep their current working directories."
             print "   New managed actions will use the updated tab directory."
+            if $sidebar_sync_result.status == "ok" {
+                print "   Sidebar Yazi synced to the updated directory."
+            }
         }
         "not_ready" => {
             error make {msg: "Yazelix tab state is not ready yet. Wait a moment for the pane orchestrator plugin to finish loading, then try again."}

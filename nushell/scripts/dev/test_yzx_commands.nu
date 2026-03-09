@@ -235,6 +235,46 @@ def test_yzx_cwd_resolves_zoxide_query [] {
     }
 }
 
+def test_sidebar_yazi_state_path_normalization [] {
+    print "🧪 Testing sidebar Yazi state path normalization..."
+
+    try {
+        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/integrations/yazi.nu *; get_sidebar_yazi_state_path main 2" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str ends-with "main__terminal_2.txt") {
+            print "  ✅ Sidebar Yazi state paths normalize pane ids consistently"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_sidebar_state_plugin_generated [] {
+    print "🧪 Testing generated Yazi init includes sidebar-state..."
+
+    try {
+        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/setup/yazi_config_merger.nu *; let root = ($env.HOME | path join '.config' 'yazelix'); generate_merged_yazi_config $root --quiet; open --raw ($env.HOME | path join '.local' 'share' 'yazelix' 'configs' 'yazi' 'init.lua')" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains 'require("sidebar-state"):setup()') {
+            print "  ✅ Generated Yazi init loads the sidebar-state core plugin"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_yzx_sponsor_exists [] {
     print "🧪 Testing yzx sponsor command exists..."
 
@@ -350,6 +390,8 @@ def main [] {
         (test_yzx_cwd_exists),
         (test_yzx_cwd_requires_zellij),
         (test_yzx_cwd_resolves_zoxide_query),
+        (test_sidebar_yazi_state_path_normalization),
+        (test_sidebar_state_plugin_generated),
         (test_yzx_sponsor_exists),
         (test_yzx_sponsor_runs),
         (test_yzx_config_view),

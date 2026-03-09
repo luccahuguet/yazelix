@@ -362,7 +362,7 @@ def generate_init_lua [merged_dir: string, source_dir: string, user_plugins: lis
     let plugins_dir = $"($merged_dir)/plugins"
 
     # Core plugins - always loaded, cannot be disabled
-    let core_plugins = ["sidebar-status", "auto-layout"]
+    let core_plugins = ["sidebar-status", "auto-layout", "sidebar-state"]
 
     # Combine core + user plugins
     let all_plugins = ($core_plugins | append $user_plugins | uniq)
