@@ -159,6 +159,26 @@ def test_yzx_doctor_exists [] {
     }
 }
 
+def test_yzx_doctor_reports_zellij_plugin_context [] {
+    print "🧪 Testing yzx doctor reports Zellij plugin context..."
+
+    try {
+        let output = (^bash -lc $"($clean_zellij_env_prefix) nu -c 'use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx doctor --verbose'" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "Zellij plugin health check skipped \(not inside Zellij\)") {
+            print "  ✅ yzx doctor explains when Zellij-local plugin checks are skipped"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_yzx_menu_exists [] {
     print "🧪 Testing yzx menu command exists..."
 
@@ -429,6 +449,7 @@ def main [] {
         (test_yzx_status_verbose),
         (test_yzx_dev_exists),
         (test_yzx_doctor_exists),
+        (test_yzx_doctor_reports_zellij_plugin_context),
         (test_yzx_menu_exists),
         (test_yzx_cwd_exists),
         (test_yzx_cwd_requires_zellij),

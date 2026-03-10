@@ -3,6 +3,8 @@
 
 use logging.nu log_to_file
 use constants.nu [PINNED_NIX_VERSION PINNED_DEVENV_VERSION]
+use config_parser.nu parse_yazelix_config
+use ../integrations/zellij.nu debug_editor_state
 
 def extract_first_semver [text: string] {
     let matches = ($text | parse --regex '(\d+\.\d+\.\d+)' | get -o capture0)
@@ -396,6 +398,103 @@ export def check_devenv_installation [] {
     }
 }
 
+export def check_zellij_plugin_health [] {
+    if ($env.ZELLIJ? | is-empty) {
+        return [{
+            status: "info"
+            message: "Zellij plugin health check skipped (not inside Zellij)"
+            details: "Run `yzx doctor` from inside the affected Yazelix session to verify Yazelix orchestrator permissions and managed pane detection."
+            fix_available: false
+        }]
+    }
+
+    let plugin_state = try {
+        debug_editor_state
+    } catch {|err|
+        return [{
+            status: "warning"
+            message: "Could not contact the Yazelix pane-orchestrator plugin"
+            details: $"Run this from inside the affected Yazelix session after fully restarting it. Underlying error: ($err.msg)"
+            fix_available: false
+        }]
+    }
+
+    if ($plugin_state.raw? | is-not-empty) {
+        return [{
+            status: "warning"
+            message: "Yazelix pane-orchestrator returned an unexpected response"
+            details: $"Unexpected payload: ($plugin_state.raw)"
+            fix_available: false
+        }]
+    }
+
+    let config = parse_yazelix_config
+    let sidebar_enabled = ($config.enable_sidebar? | default true)
+    mut results = []
+
+    if not ($plugin_state.permissions_granted? | default false) {
+        $results = ($results | append {
+            status: "error"
+            message: "Yazelix pane-orchestrator plugin permissions not granted"
+            details: "Grant permissions for both Zellij plugins: focus the top zjstatus bar and press `y`, and also answer yes to the Yazelix orchestrator permission popup. `Alt+y` and `Ctrl+y` depend on the Yazelix orchestrator."
+            fix_available: false
+        })
+    } else {
+        $results = ($results | append {
+            status: "ok"
+            message: "Yazelix pane-orchestrator permissions granted"
+            details: "The orchestrator plugin can handle Yazelix tab and pane actions in this Zellij session."
+            fix_available: false
+        })
+    }
+
+    if ($plugin_state.active_tab_position? | default null) == null {
+        $results = ($results | append {
+            status: "warning"
+            message: "Yazelix pane-orchestrator does not see an active tab yet"
+            details: "The plugin may still be initializing. Wait a moment and rerun `yzx doctor` inside this Yazelix session."
+            fix_available: false
+        })
+        return $results
+    }
+
+    if $sidebar_enabled {
+        if ($plugin_state.sidebar_pane_id? | is-empty) {
+            $results = ($results | append {
+                status: "warning"
+                message: "Managed sidebar pane not detected in the current tab"
+                details: "If sidebar mode is enabled, `Alt+y` and `Ctrl+y` may not work until the current tab uses a Yazelix sidebar layout."
+                fix_available: false
+            })
+        } else {
+            $results = ($results | append {
+                status: "ok"
+                message: $"Managed sidebar pane detected: ($plugin_state.sidebar_pane_id)"
+                details: $"Layout state: ($plugin_state.active_swap_layout_name? | default 'unknown')"
+                fix_available: false
+            })
+        }
+    }
+
+    if ($plugin_state.editor_pane_id? | is-empty) {
+        $results = ($results | append {
+            status: "info"
+            message: "Managed editor pane not detected in the current tab"
+            details: "This is normal until you open a managed Helix or Neovim editor pane in the current tab."
+            fix_available: false
+        })
+    } else {
+        $results = ($results | append {
+            status: "ok"
+            message: $"Managed editor pane detected: ($plugin_state.editor_pane_id)"
+            details: null
+            fix_available: false
+        })
+    }
+
+    $results
+}
+
 # Fix conflicting Helix runtime
 export def fix_helix_runtime_conflicts [conflicts: list] {
     mut success = true
@@ -490,6 +589,9 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
     # Runtime drift against Yazelix pinned expectations
     $all_results = ($all_results | append (get_version_drift_results))
 
+    # Zellij session-local plugin health
+    $all_results = ($all_results | append (check_zellij_plugin_health))
+
     # Display results
     let errors = ($all_results | where status == "error")
     let warnings = ($all_results | where status == "warning") 
@@ -560,12 +662,6 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
         # Fix missing config
         let config_issues = ($all_results | where status == "info" and message =~ "default")
         if not ($config_issues | is-empty) {
-            fix_create_config
-        }
-
-        # Install devenv for performance boost
-        let devenv_issues = ($all_results | where status == "warning" and message =~ "devenv")
-        if not ($devenv_issues | is-empty) {
             fix_create_config
         }
 
