@@ -219,7 +219,7 @@ in
 
         - null (default): Use yazelix's Nix-provided Helix - full integration
         - "nvim": Use Neovim - first-class support with full integration
-        - "hx": Use system Helix from PATH (requires matching helix_runtime_path)
+        - "hx": Use system Helix from PATH (set helix_runtime_path only when your runtime lives outside Helix's normal discovery paths)
         - Other editors: "vim", "nano", "emacs", etc. (basic integration only)
       '';
     };

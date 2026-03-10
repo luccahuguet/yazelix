@@ -160,13 +160,6 @@ let
       '';
 
   helixRuntimePath = userConfig.helix_runtime_path or null;
-  helixRuntime =
-    if helixRuntimePath != null then
-      helixRuntimePath
-    else if builtins.hasAttr "runtime" helixPackage then
-      "${helixPackage.runtime}"
-    else
-      "${helixPackage}/lib/runtime";
 
   editorCommand =
     if (userConfig.editor_command or null) == null then
@@ -545,7 +538,8 @@ in
     YAZELIX_TERMINAL_CONFIG_MODE = terminalConfigMode;
     YAZELIX_ASCII_ART_MODE = asciiArtMode;
     EDITOR = editorCommand;
-    HELIX_RUNTIME = helixRuntime;
+  } // lib.optionalAttrs (helixRuntimePath != null) {
+    HELIX_RUNTIME = helixRuntimePath;
   };
 
   enterShell = ''
@@ -566,7 +560,9 @@ in
     export YAZELIX_TERMINAL_CONFIG_MODE="${terminalConfigMode}"
     export YAZELIX_ASCII_ART_MODE="${asciiArtMode}"
     export EDITOR="${editorCommand}"
-    export HELIX_RUNTIME="${helixRuntime}"
+    ${lib.optionalString (helixRuntimePath != null) ''
+      export HELIX_RUNTIME="${helixRuntimePath}"
+    ''}
 
     if [ "$YAZELIX_ENV_ONLY" != "true" ]; then
       echo "📝 Set EDITOR to: ${editorCommand}"

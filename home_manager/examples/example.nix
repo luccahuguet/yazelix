@@ -46,9 +46,9 @@
 
     # Editor configuration
     # editor_command = null;       # Optional: Use Yazelix's Helix (recommended)
-    editor_command = "hx"; # Optional: Use system Helix (requires helix_runtime_path)
+    editor_command = "hx"; # Optional: Use system Helix from PATH
     # editor_command = "nvim";     # Optional: Use other editor (loses Helix features)
-    # helix_runtime_path = "/home/user/helix/runtime";  # Optional: match custom Helix build
+    # helix_runtime_path = "/home/user/helix/runtime";  # Optional: only for custom/nonstandard Helix runtimes
 
     # Development-friendly settings
     debug_mode = true; # Enable verbose logging

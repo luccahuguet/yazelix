@@ -49,15 +49,18 @@ command = ""             # Use Yazelix's Helix (recommended)
 ```toml
 # In yazelix.toml:
 [editor]
-command = "hx"                           # Use system Helix from PATH
-helix_runtime_path = "/home/user/helix/runtime"  # MUST match your Helix version
+command = "hx"  # Use system Helix from PATH
+# helix_runtime_path = "/home/user/helix/runtime"  # Only for custom/nonstandard Helix runtimes
 ```
 
 **Benefits:**
 - ✅ **Full integration** - All yazelix features work if runtime matches
 - ✅ **Use your custom build** - Great for Helix developers
 
-**Requirements:**
+**Notes:**
+- Standard packaged Helix installs usually do not need `helix_runtime_path`
+- Set `helix_runtime_path` only when your Helix runtime lives outside Helix's normal discovery paths
+- If you set it, it MUST match your Helix binary version
 - ⚠️ **Requires matching runtime** - Version mismatch causes startup errors
 - ⚠️ **Manual configuration** - You must specify the correct runtime path
 

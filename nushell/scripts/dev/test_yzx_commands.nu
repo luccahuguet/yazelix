@@ -179,6 +179,46 @@ def test_yzx_doctor_reports_zellij_plugin_context [] {
     }
 }
 
+def test_launch_env_omits_default_helix_runtime [] {
+    print "🧪 Testing launch env omits HELIX_RUNTIME by default..."
+
+    try {
+        let output = (^nu -c 'use ~/.config/yazelix/nushell/scripts/utils/launch_state.nu *; let cfg = { editor_command: "hx", helix_runtime_path: null, terminals: ["ghostty"], default_shell: "nu", debug_mode: false, enable_sidebar: true, ascii_art_mode: "static", terminal_config_mode: "yazelix" }; let env_map = (get_launch_env $cfg "/tmp/yazelix-profile"); print ($env_map | get -o HELIX_RUNTIME | default "")' | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == "") {
+            print "  ✅ HELIX_RUNTIME is omitted unless explicitly configured"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_launch_env_keeps_custom_helix_runtime_override [] {
+    print "🧪 Testing launch env preserves custom Helix runtime override..."
+
+    try {
+        let output = (^nu -c 'use ~/.config/yazelix/nushell/scripts/utils/launch_state.nu *; let cfg = { editor_command: "hx", helix_runtime_path: "/tmp/custom-helix-runtime", terminals: ["ghostty"], default_shell: "nu", debug_mode: false, enable_sidebar: true, ascii_art_mode: "static", terminal_config_mode: "yazelix" }; let env_map = (get_launch_env $cfg "/tmp/yazelix-profile"); print ($env_map | get HELIX_RUNTIME)' | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == "/tmp/custom-helix-runtime") {
+            print "  ✅ Custom helix_runtime_path is still exported"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_yzx_menu_exists [] {
     print "🧪 Testing yzx menu command exists..."
 
@@ -450,6 +490,8 @@ def main [] {
         (test_yzx_dev_exists),
         (test_yzx_doctor_exists),
         (test_yzx_doctor_reports_zellij_plugin_context),
+        (test_launch_env_omits_default_helix_runtime),
+        (test_launch_env_keeps_custom_helix_runtime_override),
         (test_yzx_menu_exists),
         (test_yzx_cwd_exists),
         (test_yzx_cwd_requires_zellij),

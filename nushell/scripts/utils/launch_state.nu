@@ -91,40 +91,12 @@ def resolve_editor_command [config: record, profile_path: string] {
     }
 }
 
-def resolve_helix_runtime [config: record, profile_path: string, editor_command: string] {
+def resolve_helix_runtime [config: record] {
     let configured_runtime = ($config.helix_runtime_path? | default null)
     if $configured_runtime != null {
         let runtime_text = ($configured_runtime | into string)
         if ($runtime_text | is-not-empty) {
             return $runtime_text
-        }
-    }
-
-    let editor_candidate = if ($editor_command | path exists) {
-        $editor_command
-    } else {
-        let profile_hx = ($profile_path | path join "bin" "hx")
-        if ($profile_hx | path exists) { $profile_hx } else { "" }
-    }
-
-    if ($editor_candidate | is-empty) {
-        return ""
-    }
-
-    let resolved_editor = (resolve_profile_candidate $editor_candidate)
-    if ($resolved_editor | is-empty) {
-        return ""
-    }
-
-    let editor_root = ($resolved_editor | path dirname | path dirname)
-    let runtime_candidates = [
-        ($editor_root | path join "lib" "runtime")
-        ($editor_root | path join "share" "helix" "runtime")
-    ]
-
-    for candidate in $runtime_candidates {
-        if ($candidate | path exists) {
-            return $candidate
         }
     }
 
@@ -139,7 +111,7 @@ export def get_launch_env [config: record, profile_path: string] {
     let terminals = ($config.terminals? | default ["ghostty"])
     let preferred_terminal = if ($terminals | is-empty) { "unknown" } else { ($terminals | first | into string) }
     let editor_command = (resolve_editor_command $config $profile_path)
-    let helix_runtime = (resolve_helix_runtime $config $profile_path $editor_command)
+    let helix_runtime = (resolve_helix_runtime $config)
     mut launch_env = {
         DEVENV_PROFILE: $profile_path
         PATH: (([$profile_bin] | append $env.PATH | uniq))
