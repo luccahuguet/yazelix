@@ -16,12 +16,52 @@ struct OpenFileRequest {
     working_dir: String,
 }
 
+#[derive(Deserialize)]
+struct EditorCwdRequest {
+    editor: String,
+    working_dir: String,
+}
+
 struct EditorCommandSequence {
     change_directory_command: String,
     open_file_command: String,
 }
 
 impl State {
+    pub(crate) fn set_managed_editor_cwd(&self, pipe_message: &PipeMessage) {
+        let Some(editor_pane) = self.get_managed_pane(pipe_message, ManagedPaneKind::Editor) else {
+            return;
+        };
+
+        let Some(payload) = pipe_message.payload.as_deref() else {
+            self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+            return;
+        };
+
+        let editor_cwd_request: EditorCwdRequest = match serde_json::from_str(payload) {
+            Ok(request) => request,
+            Err(_) => {
+                self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+                return;
+            }
+        };
+
+        let Some(change_directory_command) =
+            build_editor_change_directory_command(&editor_cwd_request.editor, &editor_cwd_request.working_dir)
+        else {
+            self.respond(pipe_message, RESULT_UNSUPPORTED_EDITOR);
+            return;
+        };
+
+        write_to_pane_id(vec![27], editor_pane.pane_id);
+        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
+        write_chars_to_pane_id(&change_directory_command, editor_pane.pane_id);
+        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
+        write_to_pane_id(vec![13], editor_pane.pane_id);
+
+        self.respond(pipe_message, RESULT_OK);
+    }
+
     pub(crate) fn open_file_in_managed_editor(&self, pipe_message: &PipeMessage) {
         let Some(editor_pane) = self.get_managed_pane(pipe_message, ManagedPaneKind::Editor) else {
             return;
@@ -96,22 +136,19 @@ impl State {
 
 impl EditorCommandSequence {
     fn new(open_file_request: &OpenFileRequest) -> Option<Self> {
+        let change_directory_command =
+            build_editor_change_directory_command(&open_file_request.editor, &open_file_request.working_dir)?;
+
         match open_file_request.editor.as_str() {
             "helix" => Some(Self {
-                change_directory_command: format!(
-                    ":cd \"{}\"",
-                    escape_helix_path(&open_file_request.working_dir)
-                ),
+                change_directory_command,
                 open_file_command: format!(
                     ":open \"{}\"",
                     escape_helix_path(&open_file_request.file_path)
                 ),
             }),
             "neovim" => Some(Self {
-                change_directory_command: format!(
-                    ":execute 'cd ' . fnameescape('{}')",
-                    escape_vim_single_quoted_string(&open_file_request.working_dir)
-                ),
+                change_directory_command,
                 open_file_command: format!(
                     ":execute 'edit ' . fnameescape('{}')",
                     escape_vim_single_quoted_string(&open_file_request.file_path)
@@ -119,6 +156,20 @@ impl EditorCommandSequence {
             }),
             _ => None,
         }
+    }
+}
+
+fn build_editor_change_directory_command(editor: &str, working_dir: &str) -> Option<String> {
+    match editor {
+        "helix" => Some(format!(
+            ":cd \"{}\"",
+            escape_helix_path(working_dir)
+        )),
+        "neovim" => Some(format!(
+            ":execute 'cd ' . fnameescape('{}')",
+            escape_vim_single_quoted_string(working_dir)
+        )),
+        _ => None,
     }
 }
 

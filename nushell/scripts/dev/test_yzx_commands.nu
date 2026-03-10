@@ -297,6 +297,26 @@ def test_sidebar_yazi_sync_skips_outside_zellij [] {
     }
 }
 
+def test_managed_editor_sync_skips_outside_zellij [] {
+    print "🧪 Testing managed editor cwd sync skips outside Zellij..."
+
+    try {
+        let output = (^bash -lc $"($clean_zellij_env_prefix) nu -c 'use ~/.config/yazelix/nushell/scripts/integrations/yazi.nu *; sync_managed_editor_cwd . | to json -r'" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and (($stdout | str contains '"status":"skipped"') and ($stdout | str contains '"reason":"outside_zellij"')) {
+            print "  ✅ Managed editor cwd sync stays non-fatal outside Zellij"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_yzx_sponsor_exists [] {
     print "🧪 Testing yzx sponsor command exists..."
 
@@ -396,6 +416,7 @@ def main [] {
         (test_sidebar_yazi_state_path_normalization),
         (test_sidebar_state_plugin_generated),
         (test_sidebar_yazi_sync_skips_outside_zellij),
+        (test_managed_editor_sync_skips_outside_zellij),
         (test_yzx_sponsor_exists),
         (test_yzx_config_view),
         (test_yzx_config_sections),

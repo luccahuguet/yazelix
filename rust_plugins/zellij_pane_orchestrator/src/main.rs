@@ -103,6 +103,10 @@ impl ZellijPlugin for State {
                 self.open_file_in_managed_editor(&pipe_message);
                 false
             }
+            "set_managed_editor_cwd" => {
+                self.set_managed_editor_cwd(&pipe_message);
+                false
+            }
             "next_family" => {
                 self.switch_layout_family(&pipe_message, layout::FamilyDirection::Next);
                 false

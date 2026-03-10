@@ -3,7 +3,7 @@
 
 use ../utils/logging.nu log_to_file
 use ../utils/config_parser.nu parse_yazelix_config
-use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, set_workspace_for_path, focus_managed_pane, get_active_sidebar_pane_id]
+use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, set_workspace_for_path, focus_managed_pane, get_active_sidebar_pane_id, set_managed_editor_cwd]
 
 # Check if the editor command is Helix (supports both simple names and full paths)
 # This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
@@ -15,6 +15,24 @@ def is_helix_editor [editor: string] {
 # This allows yazelix to work with "nvim", "neovim", "/nix/store/.../bin/nvim", "/usr/bin/nvim", etc.
 def is_neovim_editor [editor: string] {
     ($editor | str ends-with "/nvim") or ($editor == "nvim") or ($editor | str ends-with "/neovim") or ($editor == "neovim")
+}
+
+export def get_managed_editor_kind [] {
+    let config = parse_yazelix_config
+    let configured_editor = ($config.editor_command? | default null)
+    let editor = if ($configured_editor != null) and (($configured_editor | into string | str trim) | is-not-empty) {
+        $configured_editor | into string
+    } else {
+        $env.EDITOR? | default ""
+    }
+
+    if (is_helix_editor $editor) {
+        "helix"
+    } else if (is_neovim_editor $editor) {
+        "neovim"
+    } else {
+        null
+    }
 }
 
 def is_sidebar_enabled [] {
@@ -139,6 +157,32 @@ export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: s
     } catch {|err|
         log_to_file $log_file $"Failed to sync active sidebar Yazi to directory '($target_dir)': ($err.msg)"
         {status: "error", reason: $err.msg, target_dir: $target_dir}
+    }
+}
+
+export def sync_managed_editor_cwd [target_path: path, log_file: string = "editor_sync.log"] {
+    if ($env.ZELLIJ? | is-empty) {
+        return {status: "skipped", reason: "outside_zellij"}
+    }
+
+    let editor_kind = (get_managed_editor_kind)
+    if ($editor_kind | is-empty) {
+        return {status: "skipped", reason: "unsupported_editor"}
+    }
+
+    let result = (set_managed_editor_cwd $editor_kind $target_path $log_file)
+    match $result.status {
+        "ok" => {
+            log_to_file $log_file $"Synced managed editor cwd to: ($result.working_dir)"
+            $result
+        }
+        "missing" => {
+            {status: "skipped", reason: "editor_missing", editor: $editor_kind}
+        }
+        "unsupported_editor" => {
+            {status: "skipped", reason: "unsupported_editor", editor: $editor_kind}
+        }
+        _ => $result
     }
 }
 

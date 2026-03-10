@@ -2,7 +2,7 @@
 # yzx menu - Interactive command palette and config opener
 
 use ../integrations/zellij.nu [resolve_tab_cwd_target set_tab_workspace_root]
-use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory]
+use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ../utils/config_parser.nu parse_yazelix_config
 
 def classify_menu_command [cmd: string] {
@@ -89,11 +89,15 @@ def run_menu_cwd_action [] {
 
     match $result.status {
         "ok" => {
+            let editor_sync_result = (sync_managed_editor_cwd $result.workspace_root "yzx_menu_cwd.log")
             let sidebar_sync_result = (sync_active_sidebar_yazi_to_directory $result.workspace_root "yzx_menu_cwd.log")
             print $"✅ Updated current tab workspace directory to: ($result.workspace_root)"
             print $"   Tab renamed to: ($result.tab_name)"
             print "   Existing panes keep their current working directories."
             print "   New managed actions will use the updated tab directory."
+            if $editor_sync_result.status == "ok" {
+                print "   Managed editor cwd synced to the updated directory."
+            }
             if $sidebar_sync_result.status == "ok" {
                 print "   Sidebar Yazi synced to the updated directory."
             }

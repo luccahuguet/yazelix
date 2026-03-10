@@ -237,6 +237,38 @@ export def get_active_sidebar_pane_id [] {
     $state.sidebar_pane_id?
 }
 
+export def set_managed_editor_cwd [editor_kind: string, target_path: path, log_file: string = "zellij_plugin.log"] {
+    let expanded_target_path = ($target_path | path expand)
+    if not ($expanded_target_path | path exists) {
+        error make {msg: $"Path does not exist: ($expanded_target_path)"}
+    }
+
+    let target_dir = if (($expanded_target_path | path type) == "dir") {
+        $expanded_target_path
+    } else {
+        $expanded_target_path | path dirname
+    }
+    let payload = {
+        editor: $editor_kind
+        working_dir: $target_dir
+    } | to json -r
+
+    try {
+        let response = (run_pane_orchestrator_command "set_managed_editor_cwd" $log_file $payload)
+        {
+            working_dir: $target_dir
+            editor: $editor_kind
+        } | merge (parse_pane_orchestrator_response $response)
+    } catch {|err|
+        {
+            working_dir: $target_dir
+            editor: $editor_kind
+            status: "error"
+            reason: $err.msg
+        }
+    }
+}
+
 export def debug_write_literal [text: string = "__YZX__"] {
     let response = (run_pane_orchestrator_command_raw "debug_write_literal" $text)
     parse_pane_orchestrator_response $response

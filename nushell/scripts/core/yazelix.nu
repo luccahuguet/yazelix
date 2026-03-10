@@ -6,7 +6,7 @@ use ../utils/config_manager.nu *
 use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
 use ../utils/common.nu [describe_build_parallelism]
-use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory]
+use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ./start_yazelix.nu [start_yazelix_session]
 use ../integrations/zellij.nu [set_tab_cwd resolve_tab_cwd_target]
 
@@ -126,12 +126,16 @@ export def "yzx cwd" [
 
     match $result.status {
         "ok" => {
+            let editor_sync_result = (sync_managed_editor_cwd $result.workspace_root "yzx_cwd.log")
             let sidebar_sync_result = (sync_active_sidebar_yazi_to_directory $result.workspace_root "yzx_cwd.log")
             print $"✅ Updated current tab workspace directory to: ($result.workspace_root)"
             print $"   Tab renamed to: ($result.tab_name)"
             print "   The current pane will switch after this command returns."
             print "   Other existing panes keep their current working directories."
             print "   New managed actions will use the updated tab directory."
+            if $editor_sync_result.status == "ok" {
+                print "   Managed editor cwd synced to the updated directory."
+            }
             if $sidebar_sync_result.status == "ok" {
                 print "   Sidebar Yazi synced to the updated directory."
             }
