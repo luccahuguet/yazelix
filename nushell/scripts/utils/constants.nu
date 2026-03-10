@@ -218,7 +218,6 @@ export const YAZELIX_CONFIG_FILES = {
 
 export const YAZELIX_ENV_VARS = {
     YAZELIX_DIR: "~/.config/yazelix"
-    YAZELIX_DEFAULT_SHELL: "nu"
     YAZELIX_PREFERRED_TERMINAL: "ghostty"
     YAZELIX_HELIX_MODE: "release"
     YAZI_CONFIG_HOME: "~/.local/share/yazelix/configs/yazi"

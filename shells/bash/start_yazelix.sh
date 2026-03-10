@@ -39,20 +39,15 @@ if command -v nu >/dev/null 2>&1; then
   fi
 fi
 
-# Run devenv shell with explicit HOME.
-# The YAZELIX_DEFAULT_SHELL variable will be set by the enterShell hook
-# and used by the inner zellij command.
-# We use bash -c '...' to ensure $YAZELIX_DEFAULT_SHELL is expanded after devenv sets it.
+# Run devenv shell with explicit HOME and let the Nushell launcher read the
+# current config directly before starting Zellij.
 # Detect number of CPU cores (cross-platform)
 if command -v nproc >/dev/null 2>&1; then
   MAX_CORES=$(nproc)  # Linux
 else
   MAX_CORES=$(sysctl -n hw.ncpu)  # macOS
 fi
-HOME="$HOME" devenv --cores "$MAX_CORES" shell -- bash -c \
-  "zellij --config-dir \"$YAZELIX_DIR/configs/zellij\" options \
-    --default-cwd \"$HOME\" \
-    --default-layout \"\$ZELLIJ_DEFAULT_LAYOUT\" \
-    --default-shell \"\$YAZELIX_DEFAULT_SHELL\""
+HOME="$HOME" devenv --cores "$MAX_CORES" shell -- \
+  nu "$YAZELIX_DIR/nushell/scripts/core/start_yazelix_inner.nu"
 
 # Hash is now saved during enterShell hook in devenv.nix

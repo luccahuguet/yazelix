@@ -530,7 +530,6 @@ in
     NIX_CONFIG = yazelixNixConfig;
     YAZELIX_DEBUG_MODE = boolToString debugMode;
     ZELLIJ_DEFAULT_LAYOUT = yazelixLayoutName;
-    YAZELIX_DEFAULT_SHELL = defaultShell;
     YAZELIX_ENABLE_SIDEBAR = boolToString enableSidebar;
     YAZI_CONFIG_HOME = "$HOME/.local/share/yazelix/configs/yazi";
     YAZELIX_HELIX_MODE = helixMode;
@@ -552,7 +551,6 @@ in
     export NIX_CONFIG='${yazelixNixConfig}'
     export YAZELIX_DEBUG_MODE="${boolToString debugMode}"
     export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
-    export YAZELIX_DEFAULT_SHELL="${defaultShell}"
     export YAZELIX_ENABLE_SIDEBAR="${boolToString enableSidebar}"
     export YAZI_CONFIG_HOME="$HOME/.local/share/yazelix/configs/yazi"
     export YAZELIX_HELIX_MODE="${helixMode}"
