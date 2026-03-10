@@ -12,7 +12,7 @@ yzx doctor --fix              # Auto-fix safe issues
 
 **What it checks:**
 - **Helix runtime conflicts** - Detects old `~/.config/helix/runtime` that breaks syntax highlighting
-- **Environment variables** - EDITOR, HELIX_RUNTIME, and other critical settings
+- **Environment variables** - EDITOR and other critical session settings
 - **Configuration health** - yazelix.toml validation and shell integration
 - **System status** - Log file sizes, file permissions, git repository state
 
@@ -68,7 +68,7 @@ mv ~/.config/helix/runtime ~/.config/helix/runtime.backup
 ```
 
 **Prevention:**
-Yazelix manages its own Helix runtime via `HELIX_RUNTIME` environment variable. Old `~/.config/helix/runtime` directories from previous installations can override this and cause conflicts.
+Yazelix aligns Helix with the selected runtime automatically. Old `~/.config/helix/runtime` directories from previous installations can still override that and cause conflicts.
 
 ## Quick Fixes
 
@@ -121,8 +121,7 @@ tail ~/.config/yazelix/logs/open_editor.log
 
 ### Runtime Errors
 ```bash
-echo $HELIX_RUNTIME
-ls $HELIX_RUNTIME               # Should show grammars/ themes/
+hx --health | head -n 8
 ```
 
 ## Getting Help

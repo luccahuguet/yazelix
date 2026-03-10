@@ -36,8 +36,8 @@ function hx --description "Helix editor with Yazelix mode support"
         mkdir -p $helix_config_dir
     end
 
-    # Set runtime based on mode - both modes need HELIX_RUNTIME set
-    # The runtime path is already set by the Nix environment, but ensure it's available
+    # Best-effort HELIX_RUNTIME export for environments that still expect it.
+    # Helix can usually resolve its runtime on its own, so this is only a fallback.
     if test -z $HELIX_RUNTIME
         # Fallback: try to find runtime from helix binary
         set -l helix_path (which hx 2>/dev/null)

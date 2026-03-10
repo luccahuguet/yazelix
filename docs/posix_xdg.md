@@ -32,7 +32,6 @@ Set by the dev shell (flake `shellHook`) to wire integrations:
 - `YAZELIX_DIR` – points to `~/.config/yazelix` (root for config and bundled scripts)
 - `ZELLIJ_DEFAULT_LAYOUT` – chosen layout name (`yzx_side` or `yzx_no_side`)
 - `YAZI_CONFIG_HOME` – `~/.local/share/yazelix/configs/yazi` for consistent Yazi behavior
-- `HELIX_RUNTIME` – Helix runtime path matching the selected Helix
 - `EDITOR` – your configured editor command or Yazelix Helix
 
 Notes:

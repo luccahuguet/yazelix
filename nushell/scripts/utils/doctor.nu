@@ -97,8 +97,8 @@ export def check_helix_runtime_conflicts [] {
     # Helix runtime search order (highest to lowest priority):
     # 1. runtime/ sibling to $CARGO_MANIFEST_DIR (dev only - skip)
     # 2. ~/.config/helix/runtime (user config directory)  
-    # 3. $HELIX_RUNTIME (yazelix sets this)
-    # 4. Distribution fallback (compile-time)
+    # 3. Explicitly configured runtime (when present)
+    # 4. Package/distribution fallback runtime
     # 5. runtime/ sibling to helix executable
     
     mut conflicts = []
@@ -118,9 +118,10 @@ export def check_helix_runtime_conflicts [] {
     
     # Check executable sibling runtime (lower priority but still problematic)
     let helix_exe = try { (which hx | get path.0) } catch { null }
+    let effective_runtime = (detect_effective_helix_runtime)
     if ($helix_exe | is-not-empty) {
         let exe_runtime = ($helix_exe | path dirname | path join "runtime")
-        if ($exe_runtime | path exists) and ($exe_runtime != ($env.HELIX_RUNTIME? | default "")) {
+        if ($exe_runtime | path exists) and ($exe_runtime != ($effective_runtime | default "")) {
             $conflicts = ($conflicts | append {
                 path: $exe_runtime
                 priority: 5
@@ -134,7 +135,7 @@ export def check_helix_runtime_conflicts [] {
         return {
             status: "ok"
             message: "No conflicting Helix runtime directories found"
-            details: "HELIX_RUNTIME will be used as intended"
+            details: "Helix runtime search order will behave as intended"
             fix_available: false
             conflicts: []
         }
@@ -148,7 +149,7 @@ export def check_helix_runtime_conflicts [] {
     } | str join ", ")
     
     let message = if $has_high_priority_conflict {
-        "HIGH PRIORITY: ~/.config/helix/runtime will override HELIX_RUNTIME"
+        "HIGH PRIORITY: ~/.config/helix/runtime will override the intended Helix runtime"
     } else {
         "Lower priority runtime directories found"
     }
@@ -172,7 +173,7 @@ export def check_helix_runtime_conflicts [] {
     }
 }
 
-# Check HELIX_RUNTIME health
+# Check effective Helix runtime health
 def detect_effective_helix_runtime [] {
     if (which hx | is-empty) {
         return null
@@ -230,7 +231,7 @@ export def check_helix_runtime_health [] {
         return {
             status: "error"
             message: $"Missing required directories: ($missing_dirs | str join ', ')"
-            details: $"HELIX_RUNTIME at ($runtime_path) is incomplete"
+            details: $"The effective Helix runtime at ($runtime_path) is incomplete"
             fix_available: false
         }
     }
@@ -290,7 +291,7 @@ export def check_environment_variables [] {
         })
     }
     
-    # Check if using Helix and verify HELIX_RUNTIME
+    # Check if using Helix and verify its effective runtime
     if ($env.EDITOR? | default "" | str contains "hx") {
         $results = ($results | append (check_helix_runtime_health))
     }

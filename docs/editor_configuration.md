@@ -72,8 +72,8 @@ which hx  # e.g., /usr/bin/hx → runtime at /usr/share/helix/runtime
 # For custom builds:
 ls ~/helix/runtime  # Should contain themes/, grammars/, queries/ directories
 
-# Verify runtime is valid:
-ls $HELIX_RUNTIME  # Should show: grammars/ languages.toml queries/ themes/
+# Verify Helix can resolve a valid runtime:
+hx --health | head -n 5
 ```
 
 ### Using Neovim
