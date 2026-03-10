@@ -98,10 +98,9 @@ export def get_workspace_root [target_path: path] {
     }
 }
 
-# Get the tab name based on the stable workspace root.
+# Get the tab name based on an already-resolved workspace root.
 export def get_tab_name [target_path: path] {
-    let workspace_root = (get_workspace_root $target_path)
-    let basename = ($workspace_root | str trim | path basename)
+    let basename = ($target_path | path expand | str trim | path basename)
     if ($basename | is-empty) {
         "unnamed"
     } else {

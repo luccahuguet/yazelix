@@ -237,6 +237,26 @@ def test_yzx_cwd_resolves_zoxide_query [] {
     }
 }
 
+def test_get_tab_name_uses_exact_directory [] {
+    print "🧪 Testing tab naming uses the exact yzx cwd directory..."
+
+    try {
+        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/integrations/zellij.nu *; get_tab_name ~/.config/yazelix/nushell" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == "nushell") {
+            print "  ✅ yzx cwd tab naming matches the exact retargeted directory"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_sidebar_yazi_state_path_normalization [] {
     print "🧪 Testing sidebar Yazi state path normalization..."
 
@@ -413,6 +433,7 @@ def main [] {
         (test_yzx_cwd_exists),
         (test_yzx_cwd_requires_zellij),
         (test_yzx_cwd_resolves_zoxide_query),
+        (test_get_tab_name_uses_exact_directory),
         (test_sidebar_yazi_state_path_normalization),
         (test_sidebar_state_plugin_generated),
         (test_sidebar_yazi_sync_skips_outside_zellij),
