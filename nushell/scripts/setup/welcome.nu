@@ -118,6 +118,7 @@ export def build_welcome_message [
         $helix_info,
         $session_info,
         $terminal_info,
+        $"($colors.yellow)⚠️  First run: grant permissions for both plugins. Focus the top zjstatus bar and press 'y', and also say yes to the Yazelix orchestrator permission popup.($colors.reset)",
         $"($colors.cyan)💡 Quick tips: Use 'alt hjkl' to navigate, 'Alt y' to jump between the editor and sidebar, 'Ctrl y' to toggle the sidebar, and 'Alt [' or 'Alt ]' to change layout family($colors.reset)"
     ] | where $it != ""
 }

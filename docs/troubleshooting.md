@@ -37,9 +37,14 @@ If you have an older Yazelix setup:
 
 ## First Run: Zellij Plugin Permissions (is the top bar looking funny/weird/broken?)
 
-When you first run yazelix, **zjstatus requires you to give it permission:**
+When you first run yazelix, **you need to grant permissions for two separate Zellij plugins:**
 
-Zellij requires plugins to request permissions for different actions and information. These permissions must be granted by you before you start zjstatus. Permissions can be granted by navigating to the zjstatus pane either by keyboard shortcuts (alt h/j/k/l) or clicking on the (top) pane. Then simply type the letter `y` to approve permissions. This process must be repeated on zjstatus updates, since the file changes.
+- **zjstatus**: its permission prompt can look like an "invisible pane" at the very top where the status bar should be. Navigate to that top bar area either by keyboard shortcuts (`alt h/j/k/l`) or by clicking it, then press `y`.
+- **Yazelix pane-orchestrator plugin**: Yazelix should also open a popup asking for permission for its own orchestrator plugin. You need to answer **yes** to that popup too.
+
+`Alt+y` and `Ctrl+y` depend on the Yazelix pane-orchestrator plugin, not just `zjstatus`.
+
+The `zjstatus` permission step must be repeated on `zjstatus` updates, since the file changes.
 
 See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
 
