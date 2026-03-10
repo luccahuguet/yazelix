@@ -160,7 +160,13 @@ let
       '';
 
   helixRuntimePath = userConfig.helix_runtime_path or null;
-  helixRuntime = if helixRuntimePath != null then helixRuntimePath else "${helixPackage}/lib/runtime";
+  helixRuntime =
+    if helixRuntimePath != null then
+      helixRuntimePath
+    else if builtins.hasAttr "runtime" helixPackage then
+      "${helixPackage.runtime}"
+    else
+      "${helixPackage}/lib/runtime";
 
   editorCommand =
     if (userConfig.editor_command or null) == null then

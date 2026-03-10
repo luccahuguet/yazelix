@@ -173,27 +173,55 @@ export def check_helix_runtime_conflicts [] {
 }
 
 # Check HELIX_RUNTIME health
+def detect_effective_helix_runtime [] {
+    if (which hx | is-empty) {
+        return null
+    }
+
+    try {
+        let runtime_line = (
+            hx --health
+            | lines
+            | where {|line| $line | str starts-with "Runtime directories:"}
+            | first
+        )
+        let runtime_candidates = (
+            $runtime_line
+            | str replace "Runtime directories: " ""
+            | split row ";"
+            | each {|entry| $entry | str trim}
+            | where {|entry| $entry != ""}
+        )
+
+        let detected_runtime = (
+            $runtime_candidates
+            | where {|candidate| $candidate | path exists}
+            | get -o 0
+        )
+
+        if ($detected_runtime | is-empty) {
+            null
+        } else {
+            $detected_runtime
+        }
+    } catch {
+        null
+    }
+}
+
 export def check_helix_runtime_health [] {
-    if ($env.HELIX_RUNTIME? | is-empty) {
+    let detected_runtime = (detect_effective_helix_runtime)
+    let runtime_path = $detected_runtime
+
+    if ($runtime_path | is-empty) {
         return {
             status: "error"
-            message: "HELIX_RUNTIME environment variable not set"
-            details: "This is required for Helix to find grammars and themes"
+            message: "Helix runtime could not be resolved"
+            details: "Helix did not report any valid runtime directory in `hx --health`"
             fix_available: false
         }
     }
-    
-    let runtime_path = $env.HELIX_RUNTIME
-    
-    if not ($runtime_path | path exists) {
-        return {
-            status: "error" 
-            message: $"HELIX_RUNTIME path does not exist: ($runtime_path)"
-            details: "Helix will not work properly without a valid runtime directory"
-            fix_available: false
-        }
-    }
-    
+
     # Check for essential directories
     let required_dirs = ["grammars", "queries", "themes"]
     let missing_dirs = ($required_dirs | where not ($"($runtime_path)/($it)" | path exists))
@@ -206,7 +234,7 @@ export def check_helix_runtime_health [] {
             fix_available: false
         }
     }
-    
+
     # Count grammars
     let grammar_count = try {
         (ls $"($runtime_path)/grammars" | length)
@@ -222,7 +250,7 @@ export def check_helix_runtime_health [] {
             fix_available: false
         }
     }
-    
+
     # Check tutor file
     if not ($"($runtime_path)/tutor" | path exists) {
         return {
@@ -232,11 +260,11 @@ export def check_helix_runtime_health [] {
             fix_available: false
         }
     }
-    
+
     {
         status: "ok"
-        message: $"HELIX_RUNTIME healthy with ($grammar_count) grammars"
-        details: $"Runtime directory: ($runtime_path)"
+        message: $"Helix runtime healthy with ($grammar_count) grammars"
+        details: $"Effective runtime directory: ($runtime_path)"
         fix_available: false
     }
 }
