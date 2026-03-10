@@ -50,7 +50,7 @@ def get_dynamic_overrides [] {
     let config = (try {
         parse_yazelix_config
     } catch {
-        {zellij_rounded_corners: "true", zellij_theme: "default", disable_zellij_tips: "true"}
+        {zellij_rounded_corners: "true", zellij_theme: "default", disable_zellij_tips: "true", zellij_default_mode: "normal"}
     })
 
     let rounded = ($config | get -o zellij_rounded_corners | default "true")
@@ -173,6 +173,7 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
     let kitty_protocol = ($config | get -o support_kitty_keyboard_protocol | default "true")
     let kitty_protocol_value = if ($kitty_protocol | str starts-with "false") { "false" } else { "true" }
     let default_shell = ($config.default_shell? | default "nu")
+    let default_mode = ($config.zellij_default_mode? | default "normal")
     let default_layout_name = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
     
     print "🔄 Regenerating Zellij configuration..."
@@ -207,6 +208,7 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
             ($trimmed | str starts-with "theme ") or
             ($trimmed | str starts-with "pane_frames ") or
             ($trimmed | str starts-with "support_kitty_keyboard_protocol ") or
+            ($trimmed | str starts-with "default_mode ") or
             ($trimmed | str starts-with "default_layout ") or
             ($trimmed | str starts-with "layout_dir ") or
             ($trimmed | str starts-with "on_force_close ") or
@@ -233,6 +235,7 @@ export def generate_merged_zellij_config [yazelix_dir: string] {
         "// === YAZELIX ENFORCED SETTINGS ===",
         "pane_frames false",
         $"support_kitty_keyboard_protocol ($kitty_protocol_value)",
+        $"default_mode \"($default_mode)\"",
         $"default_shell \"($default_shell)\"",
         $"default_layout \"($yazelix_layout_dir)/($default_layout_name).kdl\"",
         $"layout_dir \"($yazelix_layout_dir)\"",

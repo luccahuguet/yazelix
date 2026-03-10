@@ -214,6 +214,12 @@ persistent_sessions = false
 # This name will be used when creating or attaching to persistent sessions
 session_name = "yazelix"
 
+# Startup mode for new Zellij sessions (default: "normal")
+# Keep "normal" for the standard Yazelix experience.
+# Use "locked" only if you explicitly want Zellij to start locked for other TUIs.
+# Options: "normal", "locked"
+default_mode = "normal"
+
 [yazi]
 # Plugins to load (core plugins auto-layout and sidebar-status are always loaded)
 #

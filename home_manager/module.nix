@@ -359,6 +359,19 @@ in
       description = "Session name for persistent sessions";
     };
 
+    zellij_default_mode = mkOption {
+      type = types.enum [
+        "normal"
+        "locked"
+      ];
+      default = "normal";
+      description = ''
+        Startup mode for new Zellij sessions.
+        - "normal": Yazelix default, starts unlocked
+        - "locked": start in Zellij locked mode for compatibility with other TUIs
+      '';
+    };
+
     pack_names = mkOption {
       type = types.listOf types.str;
       default = [ ];
@@ -548,6 +561,7 @@ in
             "widget_tray = ${listToToml cfg.zellij_widget_tray}"
             "persistent_sessions = ${boolToToml cfg.persistent_sessions}"
             "session_name = ${escapeString cfg.session_name}"
+            "default_mode = ${escapeString cfg.zellij_default_mode}"
             ""
             "[yazi]"
             "plugins = ${listToToml cfg.yazi_plugins}"

@@ -43,6 +43,7 @@ def test_parse_config [] {
         let required_fields = [
             "persistent_sessions",
             "session_name",
+            "zellij_default_mode",
             "terminals",
             "default_shell",
             "helix_mode",
@@ -103,6 +104,14 @@ def test_config_values [] {
             return false
         } else {
             print $"  ✅ Valid persistent_sessions: ($config.persistent_sessions)"
+        }
+
+        let valid_zellij_modes = ["normal", "locked"]
+        if not ($config.zellij_default_mode in $valid_zellij_modes) {
+            print $"  ❌ Invalid zellij_default_mode: ($config.zellij_default_mode)"
+            return false
+        } else {
+            print $"  ✅ Valid zellij_default_mode: ($config.zellij_default_mode)"
         }
 
         true

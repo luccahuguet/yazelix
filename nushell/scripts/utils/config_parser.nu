@@ -13,6 +13,18 @@ def parse_refresh_output [raw_config: record] {
     $refresh_output
 }
 
+def parse_zellij_default_mode [raw_config: record] {
+    let default_mode = ($raw_config.zellij?.default_mode? | default "normal" | into string | str downcase)
+    let allowed = ["normal", "locked"]
+
+    if not ($default_mode in $allowed) {
+        let allowed_text = ($allowed | str join ", ")
+        error make {msg: $"Invalid zellij.default_mode value '($default_mode)'. Expected one of: ($allowed_text)"}
+    }
+
+    $default_mode
+}
+
 def parse_positive_parallel_setting [value: any, label: string, allowed_symbols: list<string>, default_value: string] {
     let normalized = ($value | default $default_value | into string | str downcase)
 
@@ -76,6 +88,7 @@ export def parse_yazelix_config [] {
         ascii_art_mode: ($raw_config.ascii?.mode? | default "static"),
         persistent_sessions: ($raw_config.zellij?.persistent_sessions? | default false | into string),
         session_name: ($raw_config.zellij?.session_name? | default "yazelix"),
+        zellij_default_mode: (parse_zellij_default_mode $raw_config),
         zellij_theme: ($raw_config.zellij?.theme? | default "default"),
         zellij_widget_tray: ($raw_config.zellij?.widget_tray? | default ["layout", "editor", "shell", "term", "cpu", "ram"]),
         support_kitty_keyboard_protocol: ($raw_config.zellij?.support_kitty_keyboard_protocol? | default false | into string),

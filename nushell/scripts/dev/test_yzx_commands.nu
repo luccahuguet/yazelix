@@ -425,6 +425,30 @@ def test_sidebar_state_plugin_generated [] {
     }
 }
 
+def test_zellij_default_mode_is_enforced_in_merged_config [] {
+    print "🧪 Testing merged Zellij config enforces default_mode..."
+
+    try {
+        let output = (^bash -lc 'tmpdir=$(mktemp -d); trap "rm -rf \"$tmpdir\"" EXIT; cat > "$tmpdir/yazelix.toml" <<'"'"'EOF'"'"'
+[zellij]
+default_mode = "locked"
+EOF
+YAZELIX_CONFIG_OVERRIDE="$tmpdir/yazelix.toml" nu -c "use ~/.config/yazelix/nushell/scripts/setup/zellij_config_merger.nu *; let root = (\$env.HOME | path join \".config\" \"yazelix\"); generate_merged_zellij_config \$root | ignore; open --raw (\$env.HOME | path join \".local\" \"share\" \"yazelix\" \"configs\" \"zellij\" \"config.kdl\")"' | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains 'default_mode "locked"') {
+            print "  ✅ Generated Zellij config enforces the configured default_mode"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_sidebar_yazi_sync_skips_outside_zellij [] {
     print "🧪 Testing sidebar Yazi sync skips outside Zellij..."
 
@@ -570,6 +594,7 @@ def main [] {
         (test_get_tab_name_uses_exact_directory),
         (test_sidebar_yazi_state_path_normalization),
         (test_sidebar_state_plugin_generated),
+        (test_zellij_default_mode_is_enforced_in_merged_config),
         (test_sidebar_yazi_sync_skips_outside_zellij),
         (test_managed_editor_sync_skips_outside_zellij),
         (test_yzx_sponsor_exists),
