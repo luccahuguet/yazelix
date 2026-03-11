@@ -288,17 +288,11 @@ The `zjstatus` permission step must be repeated on `zjstatus` updates, since the
 - Use `yzx help` to see all available management commands
 - Use `Alt+Shift+f` to toggle fullscreen on the current pane
 
-### Step 9: Configure Helix Integration (Optional but Recommended)
+### Step 9: Configure Helix Integration (Optional)
 
-To enable full Helix-Yazi integration, bind `reveal_in_yazi.nu` to any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `Space y`:
+If you want a Helix-local reveal action, bind `reveal_in_yazi.nu` to any editor-local shortcut that fits your setup. Yazelix does not ship a default Helix key for this; `Ctrl+y` and `Alt+y` are reserved for workspace navigation in Zellij.
 
-```toml
-[keys.normal.space]
-# Yazelix sidebar integration - reveal current file in Yazi sidebar
-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
-```
-
-**Note:** Only works for Helix instances opened from Yazi.
+**Note:** `reveal_in_yazi.nu` only works for Helix instances opened from Yazi.
 
 For additional recommended Helix keybindings that enhance your editing experience with Yazelix, see [Helix Keybindings Configuration](./helix_keybindings.md).
 

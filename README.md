@@ -18,14 +18,14 @@ Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://gith
 
 - **Use your preferred shell**: Bash, Fish, Zsh, or Nushell - Yazelix works with all of them
 - Zellij orchestrates everything, with Yazi as a sidebar and your chosen editor (Helix by default)
-- Toggle focus between the sidebar and editor with `Alt y`, and toggle the sidebar itself with `Ctrl y`
+- Toggle focus between the sidebar and editor with `Ctrl y`, and toggle the sidebar itself with `Alt y`
 - Every keybinding from Zellij that conflicts with Helix is remapped [see here](#keybindings)
 - When you hit Enter on a file/folder in the "sidebar":
   - **With Helix or Neovim**: Targets the managed `editor` pane through the Yazelix Zellij plugin. If that pane exists in the current tab, the file opens there. If not, Yazelix launches a new editor pane titled `editor`.
   - **With other editors**: Opens the file in a new pane with your configured editor
   - It automatically renames the Zellij tab to the file's underlying Git repo or directory name
 - Features include:
-  - "Reveal file in sidebar" (bind `reveal_in_yazi.nu` to any editor-local shortcut you prefer in Helix/Neovim, and use `Alt y` to jump between the editor and sidebar, see [Keybindings](#keybindings))
+  - "Reveal file in sidebar" (bind `reveal_in_yazi.nu` to any editor-local shortcut you prefer in Helix/Neovim, and use `Ctrl y` to jump between the editor and sidebar, see [Keybindings](#keybindings))
   - A Yazi plugin to enhance the status bar in the sidebar pane, making it uncluttered, colorful, and showing file permissions
   - A [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) showing file changes in the Yazi sidebar
   - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/luccahuguet/auto-layout.yazi), perfect for sidebar use
@@ -63,8 +63,8 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 - **The Biggest Pain Points Are Fixed** – v13 replaces fragile pane-scanning flows with a real Zellij plugin that tracks the managed `editor` and `sidebar` panes and routes workspace actions directly instead of relying on shell heuristics
 - **The Sidebar Can Always Find the Editor** – The sidebar can now always find the managed `editor` pane and open files in it reliably, and it is much faster because Yazelix no longer has to walk through panes or rely on pane-scanning heuristics
-- **Sidebar and Layout Controls Are Finally Separate** – Sidebar open/close now has its own `Ctrl+y` binding instead of being entangled with layout-family switching on `Alt+[` and `Alt+]`
-- **Deterministic Workspace Navigation** – `Alt+y` toggles focus between the managed editor and sidebar, while `Alt+[` and `Alt+]` switch predictably between the `single`, `vertical split`, and `bottom terminal` layouts
+- **Sidebar and Layout Controls Are Finally Separate** – Sidebar open/close now has its own `Alt+y` binding instead of being entangled with layout-family switching on `Alt+[` and `Alt+]`
+- **Deterministic Workspace Navigation** – `Ctrl+y` toggles focus between the managed editor and sidebar, while `Alt+[` and `Alt+]` switch predictably between the `single`, `vertical split`, and `bottom terminal` layouts
 - **Cleaner Keybinding Model** – Editor/sidebar navigation is unified, editor-local reveal bindings are documented explicitly, and the temporary wrapper-pane transport was replaced with direct plugin messages
 - **Runtime Plugin Reliability** – The pane orchestrator now ships through a content-hashed runtime wasm path, avoiding stale-plugin cache confusion during development and restart flows
 - **Launch Robustness** – `yzx restart` now forces a fresh `devenv` entry path instead of reusing stale terminal state
@@ -92,13 +92,7 @@ Full version history: [Version History](./docs/history.md)
 📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions
 
 ### Helix Integration
-For Helix-Yazi integration, bind `reveal_in_yazi.nu` to any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `Space y`:
-
-```toml
-[keys.normal.space]
-# Yazelix sidebar integration - reveal current file in Yazi sidebar
-y = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
-```
+Helix supports optional `reveal_in_yazi.nu` integration through any editor-local shortcut you choose. Yazelix does not ship a default Helix binding for this; `Ctrl+y` and `Alt+y` are reserved for workspace navigation at the Zellij layer.
 
 📖 **[Complete Helix Keybindings Guide →](./docs/helix_keybindings.md)** - Recommended keybindings for enhanced editing experience
 

@@ -82,14 +82,14 @@ keybinds {
         bind "Ctrl Alt g" { SwitchToMode "Locked"; }
 
         // Toggle focus between the managed sidebar and the managed editor.
-        bind "Alt y" {
+        bind "Ctrl y" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
                 name "toggle_editor_sidebar_focus"
             }
         }
 
         // Toggle the managed sidebar by switching between the paired open/closed swap layouts.
-        bind "Ctrl y" {
+        bind "Alt y" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
                 name "toggle_sidebar"
             }

@@ -27,8 +27,8 @@ See the origin story in `docs/the_start.md`.
 
 - **The Biggest Pain Points Are Fixed** – v13 replaces fragile pane-scanning flows with a real Zellij plugin (written in rust!) that tracks the managed `editor` and `sidebar` panes and routes workspace actions directly instead of relying on shell heuristics
 - **The Sidebar Can Always Find the Editor** – The sidebar can now always find the managed `editor` pane and open files in it reliably, and it is much faster because Yazelix no longer has to walk through panes or rely on pane-scanning heuristics
-- **Sidebar and Layout Controls Are Finally Separate** – Sidebar open/close now has its own `Ctrl+y` binding instead of being entangled with layout-family switching on `Alt+[` and `Alt+]`
-- **Deterministic Workspace Navigation** – `Alt+y` toggles focus between the managed editor and sidebar, while `Alt+[` and `Alt+]` switch predictably between the `single`, `vertical split`, and `bottom terminal` layouts
+- **Sidebar and Layout Controls Are Finally Separate** – Sidebar open/close now has its own `Alt+y` binding instead of being entangled with layout-family switching on `Alt+[` and `Alt+]`
+- **Deterministic Workspace Navigation** – `Ctrl+y` toggles focus between the managed editor and sidebar, while `Alt+[` and `Alt+]` switch predictably between the `single`, `vertical split`, and `bottom terminal` layouts
 - **Better Config Inspection** – `yzx config` now supports focused section views for `hx`, `yazi`, and `zellij`, plus `yzx config open`
 - **Simpler Update and Testing Commands** – `yzx update` and `yzx dev test` were simplified into clearer defaults that are easier to remember and safer to use
 - **Clearer Refresh and Environment Feedback** – `yzx env` now shows rebuild activity more clearly, launch paths skip noisy shell-hook welcomes, and Yazelix warns when runtime versions drift
