@@ -72,6 +72,17 @@ Set the current tab workspace directory inside Zellij
 - Other existing panes keep their current working directories; new managed actions use the updated tab directory
 - Errors when run outside Zellij
 
+### `yzx keys`
+Show Yazelix-owned keybindings and remaps
+- Default: print the small set of workspace-critical Yazelix bindings
+- Ends with pointers to tool-specific discoverability helpers
+- `yzx keys yzx`: alias for the default Yazelix view
+- `yzx keys yazi`: explain how to view Yazi's built-in keybindings from inside Yazi
+- `yzx keys hx`: explain how to discover Helix bindings and commands
+- `yzx keys helix`: alias for `yzx keys hx`
+- `yzx keys nu`: show a small curated subset of useful Nushell keybindings
+- `yzx keys nushell`: alias for `yzx keys nu`
+
 ### `yzx gen_config <terminal>`
 Print a terminal emulator config generated from `yazelix_default.toml`
 - Example: `yzx gen_config alacritty`
@@ -188,6 +199,10 @@ yzx run bv "--robot-triage"   # Outside-shell fallback for Beads Viewer robot mo
 yzx cwd                       # Set the current tab directory to $PWD
 yzx cwd ~/project             # Set the current tab directory explicitly
 yzx cwd yazelix               # Resolve a project via zoxide, then retarget the current tab
+yzx keys                      # Show Yazelix-owned bindings and remaps
+yzx keys yazi                 # How to view Yazi's own bindings
+yzx keys hx                   # How to discover Helix bindings
+yzx keys nu                   # Small curated Nushell keybinding subset
 yzx restart --reuse           # Reopen from the last built profile without rebuilding
 
 # Diagnostics and info

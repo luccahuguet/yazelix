@@ -12,7 +12,7 @@ def classify_menu_command [cmd: string] {
         {tag: "config", color: (ansi cyan)}
     } else if ($cmd | str starts-with "yzx update") or ($cmd | str starts-with "yzx gc") or ($cmd | str starts-with "yzx packs") or ($cmd == "yzx doctor") {
         {tag: "system", color: (ansi yellow)}
-    } else if ($cmd == "yzx help") or ($cmd == "yzx why") or ($cmd == "yzx status") or ($cmd == "yzx sponsor") {
+    } else if ($cmd == "yzx help") or ($cmd == "yzx why") or ($cmd == "yzx status") or ($cmd == "yzx sponsor") or ($cmd | str starts-with "yzx keys") {
         {tag: "help", color: (ansi blue)}
     } else {
         {tag: "other", color: (ansi purple)}

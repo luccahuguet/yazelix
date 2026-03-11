@@ -34,6 +34,7 @@ Yazelix uses **selective remapping** - only conflicting Zellij keybindings are c
 If you find a conflict, please open an issue
 
 ## Discoverability of Keybindings
+- **Yazelix**: Run `yzx keys` for Yazelix-owned bindings; use `yzx keys yazi`, `yzx keys hx`, or `yzx keys nu` for tool-specific discoverability hints
 - **Zellij**: Shows all keybindings visually in the status bar—works out of the box
 - **Helix**: Similar to Zellij, key bindings are easy to discover
 - **Yazi**: Press `~` to see all keybindings and commands (use `Alt Shift f` to fullscreen the pane for a better view)
@@ -54,6 +55,8 @@ If you find a conflict, please open an issue
   - `Alt+y` toggles the sidebar open/closed
   - `Ctrl+Alt+g` locked mode, `Ctrl+Alt+s` scroll mode, `Ctrl+Alt+o` session mode
 - **Helix**: See [Helix Custom Keybindings](#helix-custom-keybindings) section below
+
+You can also print these Yazelix-owned bindings directly with `yzx keys`.
 
 ## Keybinding Tips
 - **Zellij**: `Alt+number` for tab, `Alt+w/q` for tab walk, `Alt+Shift+H/L` for tab move
