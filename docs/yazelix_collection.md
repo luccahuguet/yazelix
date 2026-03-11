@@ -192,12 +192,20 @@ AI support tools: analytics, code review, and utilities (from llm-agents.nix).
 - [coderabbit-cli](https://github.com/coderabbitai/coderabbit-cli) — AI code review
 - [ccusage](https://github.com/ryoppippi/ccusage) — Claude Code usage tracker
 - ccusage-amp, ccusage-codex, ccusage-opencode — Usage trackers for other agents
-- [beads](https://github.com/lemonmade/beads) — Conversation bead manager
-- [beads-rust](https://github.com/lemonmade/beads) — Rust implementation of beads
-- [beads-viewer](https://github.com/lemonmade/beads) — Terminal UI for browsing and replaying beads sessions
+- [beads](https://github.com/steveyegge/beads) — Original Beads tracker (`bd`)
+- [beads-rust](https://github.com/Dicklesworthstone/beads_rust) — Rust port of classic Beads (`br`), recommended primary CLI
+- [beads-viewer](https://github.com/Dicklesworthstone/beads_viewer) — Graph-aware TUI and robot triage sidecar (`bv`)
 - [openclaw](https://github.com/openclaw/openclaw) — OpenClaw (formerly moltbot/clawdbot)
 - [picoclaw](https://github.com/picoclaw/picoclaw) — PicoClaw
 - [zeroclaw](https://github.com/zeroclaw-labs/zeroclaw) — ZeroClaw
+
+**Recommended Beads workflow in Yazelix**
+- `br init` — initialize a `br` workspace in the current repo
+- `br create "Title"` — create issues with the Rust CLI
+- `bv` — open the Beads Viewer TUI
+- `bv --robot-triage` — use the non-interactive agent interface
+- `bd --help` — access the original upstream Beads CLI when needed
+- Outside a Yazelix shell, use `yzx run br ...` / `yzx run bv ...` as a fallback
 
 **Usage**: Enable packs in `yazelix.toml` by listing them in `packs.enabled` and defining them in `packs.declarations`, or add individual tools via `user_packages` for fine-grained control.
 

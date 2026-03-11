@@ -183,6 +183,8 @@ yzx refresh -v                # Refresh with high-level progress
 yzx refresh -V                # Refresh with full build logs (-vv equivalent)
 yzx run lazygit               # Run single command and exit
 yzx run bash "-lc" "lazygit"  # Run through a shell
+yzx run br init               # Outside-shell fallback for Beads Rust
+yzx run bv "--robot-triage"   # Outside-shell fallback for Beads Viewer robot mode
 yzx cwd                       # Set the current tab directory to $PWD
 yzx cwd ~/project             # Set the current tab directory explicitly
 yzx cwd yazelix               # Resolve a project via zoxide, then retarget the current tab

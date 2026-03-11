@@ -324,9 +324,9 @@ ai_tools = [
   "ccusage-codex",  # Codex usage tracker
   "ccusage-opencode", # OpenCode usage tracker
   # Utilities
-  "beads",          # Conversation bead manager
-  "beads-rust",     # Rust implementation of beads
-  "beads-viewer",   # Terminal UI for browsing and replaying beads sessions
+  "beads",          # Original Beads tracker (bd)
+  "beads-rust",     # Rust Beads tracker (br) - recommended Beads CLI
+  "beads-viewer",   # Beads Viewer (bv) - graph-aware TUI and robot triage
   "openclaw",       # OpenClaw (formerly moltbot/clawdbot)
   "picoclaw",       # PicoClaw
   "zeroclaw",      # ZeroClaw
