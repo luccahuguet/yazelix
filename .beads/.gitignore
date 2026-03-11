@@ -1,0 +1,15 @@
+# Database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Lock files
+*.lock
+
+# Temporary
+last-touched
+*.tmp
+
+# Export history
+.br_history/

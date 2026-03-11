@@ -89,6 +89,16 @@ When creating new files or directories, always use underscores to maintain consi
   python3 script.py
   ```
 
+## GitHub Workflow
+
+- Prefer the GitHub CLI (`gh`) for inspecting issues, PRs, comments, and repo metadata instead of scraping GitHub pages manually.
+- Use `gh` first when interacting with GitHub state from this repository unless the task specifically requires browser-only behavior.
+
+## Tool Invocation Workflow
+
+- Prefer `yzx run ...` for project-scoped tool invocations instead of raw `devenv shell ...` when running tools provided by the Yazelix environment.
+- Use raw `devenv shell ...` only when `yzx run ...` is not a clean fit for the task, such as larger multi-command shell scripts or environment debugging.
+
 ## Planning and Decision Making
 
 **ALWAYS PLAN FIRST** - Before taking significant actions (like git commits, major changes, or file operations), explicitly discuss the approach and get user approval. This includes:
@@ -115,4 +125,3 @@ When creating new files or directories, always use underscores to maintain consi
 - Follow the current project versioning scheme used in tags/releases
 - When referencing versions in documentation or migration notes, only use actual version numbers that exist
 - **Keep `YAZELIX_VERSION` in sync with git tags**: When creating a new git tag, update `nushell/scripts/utils/constants.nu` to match (e.g., `export const YAZELIX_VERSION = "v12.3"`). This version is displayed in the zjstatus bar.
-
