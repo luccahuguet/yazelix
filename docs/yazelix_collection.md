@@ -183,7 +183,6 @@ AI coding agents sourced from [llm-agents.nix](https://github.com/numtide/llm-ag
 - [codex](https://github.com/openai/codex) — Codex CLI for agentic coding (OpenAI)
 - [justcode](https://github.com/just-every/code) — just-every/code CLI (installed as `code`)
 - [pi](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent) — Pi coding agent CLI (Mario Zechner)
-- [pi_rust](https://github.com/Dicklesworthstone/pi_agent_rust) — Rust port of Pi (installed as `pi_agent_rust` to avoid colliding with `pi`)
 - [opencode](https://github.com/opencode-ai/opencode) — OpenCode CLI
 - [amp](https://github.com/sourcegraph/amp) — Amp coding agent
 - [cursor-agent](https://github.com/getcursor/cursor) — Cursor agent

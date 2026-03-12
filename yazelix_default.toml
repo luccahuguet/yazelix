@@ -310,7 +310,6 @@ ai_agents = [
   "justcode",       # just-every/code (installed as `code`)
   # "gemini-cli",   # Blocked: it was crashing and causing unstable setups
   "pi",             # Pi coding agent (Mario Zechner)
-  "pi_rust",        # Rust port of Pi (installed as `pi_agent_rust`)
   "opencode",       # OpenCode CLI
   "amp",            # Amp coding agent
   "cursor-agent",   # Cursor agent

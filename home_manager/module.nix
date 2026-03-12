@@ -387,7 +387,6 @@ in
           "codex"
           "justcode"
           "pi"
-          "pi_rust"
           "opencode"
           "amp"
           "cursor-agent"
