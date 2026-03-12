@@ -128,7 +128,7 @@ Pull latest Yazelix updates from git
 - `yzx update repo`: Pull latest Yazelix updates (`--stash` auto-stashes changes, `--verbose` shows git commands)
 
 Maintainer-only updates:
-- `yzx dev update`: Refresh `devenv.lock` via `devenv update`, then sync pinned runtime `nix`/`devenv` versions and refresh the vendored `configs/zellij/plugins/zjstatus.wasm` (`--yes` skips prompt, `--verbose` shows command)
+- `yzx dev update`: Refresh `devenv.lock` via `devenv update`, run canary refresh/build checks (`default`, `ai-heavy`, `maximal`), then sync pinned runtime `nix`/`devenv` versions and refresh the vendored `configs/zellij/plugins/zjstatus.wasm` (`--yes` skips prompt, `--verbose` shows commands, `--no-canary` skips the gate, `--canary-only` runs the gate without updating)
 - `yzx dev sync_terminal_configs`: Regenerate terminal configs and sync snapshots into `configs/terminal_emulators/`
 
 ### `yzx gc [deep [PERIOD] | deeper]`
@@ -224,7 +224,8 @@ yzx update all               # Update devenv CLI + pull Yazelix repo
 yzx update devenv             # Update devenv CLI
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
 yzx update repo --stash       # Pull repo updates and reapply local changes
-yzx dev update --yes          # Refresh devenv.lock, sync pins, and refresh vendored zjstatus
+yzx dev update --yes          # Refresh devenv.lock, run canaries, sync pins, and refresh vendored zjstatus
+yzx dev update --canary-only --canaries [default]  # Run only the default canary
 
 # Garbage collection
 yzx gc                        # Safe: clean devenv + remove unreferenced paths
