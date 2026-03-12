@@ -385,6 +385,9 @@ in
         ai_agents = [
           "claude-code"
           "codex"
+          "justcode"
+          "pi"
+          "pi_rust"
           "opencode"
           "amp"
           "cursor-agent"

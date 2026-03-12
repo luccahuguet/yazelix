@@ -20,6 +20,39 @@ let
     else
       { };
 
+  customPackages = rec {
+    pi_agent_rust =
+      let
+        src = pkgs.fetchFromGitHub {
+          owner = "Dicklesworthstone";
+          repo = "pi_agent_rust";
+          rev = "v0.1.8";
+          hash = "sha256-q0Lapv9s2BhLfSINWtvLCGmfunQ9olsx5aeLvv8uKjQ=";
+        };
+      in
+      pkgs.rustPlatform.buildRustPackage {
+        pname = "pi_agent_rust";
+        version = "0.1.8";
+        inherit src;
+
+        cargoLock = {
+          lockFile = "${src}/Cargo.lock";
+        };
+
+        # pi_agent_rust upstream installs the binary as `pi`, which would collide
+        # with badlogic's Pi from llm-agents.nix when both are enabled.
+        postInstall = ''
+          mv "$out/bin/pi" "$out/bin/pi_agent_rust"
+        '';
+
+        meta = with lib; {
+          description = "Rust port of the Pi coding agent CLI";
+          homepage = "https://github.com/Dicklesworthstone/pi_agent_rust";
+          mainProgram = "pi_agent_rust";
+        };
+      };
+  };
+
   # Packages to resolve from llm-agents instead of nixpkgs
   llmAgentsPackageNames = [
     "amp"
@@ -32,14 +65,21 @@ let
     "ccusage-opencode"
     "claude-code"
     "coderabbit-cli"
+    "code"
     "codex"
     "cursor-agent"
     "goose-cli"
     "openclaw"
+    "pi"
     "picoclaw"
     "opencode"
     "zeroclaw"
   ];
+
+  llmAgentsPackageAliases = {
+    justcode = "code";
+    pi_rust = "pi_agent_rust";
+  };
 
   # Packages explicitly blocked in Yazelix packs/user_packages.
   # gemini-cli is blocked because it was crashing and causing unstable setups.
@@ -461,21 +501,25 @@ let
   resolvePkg =
     name:
     let
+      canonicalName = llmAgentsPackageAliases.${name} or name;
       # Check if this package should come from llm-agents
-      isLlmAgentsPkg = builtins.elem name llmAgentsPackageNames;
-      llmAgentsValue = if isLlmAgentsPkg then llmAgentsPkgs.${name} or null else null;
+      isLlmAgentsPkg = builtins.elem canonicalName llmAgentsPackageNames;
+      llmAgentsValue = if isLlmAgentsPkg then llmAgentsPkgs.${canonicalName} or null else null;
+      customValue = customPackages.${canonicalName} or null;
       # Fall back to nixpkgs (supports nested paths like "python3Packages.foo")
-      path = lib.splitString "." name;
+      path = lib.splitString "." canonicalName;
       nixpkgsValue = lib.attrByPath path null pkgs;
     in
     if builtins.elem name blockedPackageNames then
       throw "Package '${name}' is blocked in Yazelix. Remove it from packs/user_packages."
+    else if customValue != null then
+      customValue
     else if llmAgentsValue != null then
       llmAgentsValue
     else if nixpkgsValue != null then
       nixpkgsValue
     else if isLlmAgentsPkg then
-      throw "Package '${name}' not found in llm-agents.nix (is the input added to devenv.yaml?)"
+      throw "Package '${name}' resolves to '${canonicalName}', but it was not found in llm-agents.nix (is the input added to devenv.yaml?)"
     else
       throw "Package '${name}' not found in nixpkgs";
 
