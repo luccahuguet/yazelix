@@ -28,12 +28,14 @@ let
           repo = "pi_agent_rust";
           rev = "v0.1.8";
           hash = "sha256-q0Lapv9s2BhLfSINWtvLCGmfunQ9olsx5aeLvv8uKjQ=";
+          fetchSubmodules = true;
         };
       in
       pkgs.rustPlatform.buildRustPackage {
         pname = "pi_agent_rust";
         version = "0.1.8";
         inherit src;
+        RUSTC_BOOTSTRAP = 1;
 
         cargoLock = {
           lockFile = "${src}/Cargo.lock";
