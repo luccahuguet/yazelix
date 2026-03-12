@@ -41,6 +41,19 @@ let
           lockFile = "${src}/Cargo.lock";
         };
 
+        postPatch = ''
+          # Upstream references a gitlink at legacy_pi_mono_code/pi-mono without
+          # a .gitmodules mapping, so GitHub source archives omit the generated
+          # TypeScript catalog. Provide an explicit empty catalog so the build
+          # succeeds and runtime falls back to the bundled provider snapshot.
+          if [ ! -f legacy_pi_mono_code/pi-mono/packages/ai/src/models.generated.ts ]; then
+            mkdir -p legacy_pi_mono_code/pi-mono/packages/ai/src
+            cat > legacy_pi_mono_code/pi-mono/packages/ai/src/models.generated.ts <<'EOF'
+          export const MODELS = {} as const;
+          EOF
+          fi
+        '';
+
         # pi_agent_rust upstream installs the binary as `pi`, which would collide
         # with badlogic's Pi from llm-agents.nix when both are enabled.
         postInstall = ''
