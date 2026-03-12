@@ -46,9 +46,10 @@ impl State {
             }
         };
 
-        let Some(change_directory_command) =
-            build_editor_change_directory_command(&editor_cwd_request.editor, &editor_cwd_request.working_dir)
-        else {
+        let Some(change_directory_command) = build_editor_change_directory_command(
+            &editor_cwd_request.editor,
+            &editor_cwd_request.working_dir,
+        ) else {
             self.respond(pipe_message, RESULT_UNSUPPORTED_EDITOR);
             return;
         };
@@ -136,8 +137,10 @@ impl State {
 
 impl EditorCommandSequence {
     fn new(open_file_request: &OpenFileRequest) -> Option<Self> {
-        let change_directory_command =
-            build_editor_change_directory_command(&open_file_request.editor, &open_file_request.working_dir)?;
+        let change_directory_command = build_editor_change_directory_command(
+            &open_file_request.editor,
+            &open_file_request.working_dir,
+        )?;
 
         match open_file_request.editor.as_str() {
             "helix" => Some(Self {
@@ -161,10 +164,7 @@ impl EditorCommandSequence {
 
 fn build_editor_change_directory_command(editor: &str, working_dir: &str) -> Option<String> {
     match editor {
-        "helix" => Some(format!(
-            ":cd \"{}\"",
-            escape_helix_path(working_dir)
-        )),
+        "helix" => Some(format!(":cd \"{}\"", escape_helix_path(working_dir))),
         "neovim" => Some(format!(
             ":execute 'cd ' . fnameescape('{}')",
             escape_vim_single_quoted_string(working_dir)

@@ -43,10 +43,6 @@ let
     "zeroclaw"
   ];
 
-  llmAgentsPackageAliases = {
-    justcode = "code";
-  };
-
   # Packages explicitly blocked in Yazelix packs/user_packages.
   # gemini-cli is blocked because it was crashing and causing unstable setups.
   blockedPackageNames = [
@@ -464,10 +460,18 @@ let
     imagemagick
   ];
 
+  justcodePkg =
+    if llmAgentsPkgs ? code then
+      pkgs.writeShellScriptBin "justcode" ''
+        exec ${llmAgentsPkgs.code}/bin/code "$@"
+      ''
+    else
+      null;
+
   resolvePkg =
     name:
     let
-      canonicalName = llmAgentsPackageAliases.${name} or name;
+      canonicalName = name;
       # Check if this package should come from llm-agents
       isLlmAgentsPkg = builtins.elem canonicalName llmAgentsPackageNames;
       llmAgentsValue = if isLlmAgentsPkg then llmAgentsPkgs.${canonicalName} or null else null;
@@ -477,6 +481,11 @@ let
     in
     if builtins.elem name blockedPackageNames then
       throw "Package '${name}' is blocked in Yazelix. Remove it from packs/user_packages."
+    else if name == "justcode" then
+      if justcodePkg != null then
+        justcodePkg
+      else
+        throw "Package 'justcode' requires llm-agents.nix package 'code', but it was not found"
     else if llmAgentsValue != null then
       llmAgentsValue
     else if nixpkgsValue != null then
