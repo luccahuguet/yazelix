@@ -6,9 +6,7 @@ use std::time::Duration;
 use serde::Deserialize;
 use zellij_tile::prelude::*;
 
-use crate::{
-    State, COMMAND_STEP_DELAY_MS, RESULT_INVALID_PAYLOAD, RESULT_MISSING_WORKSPACE, RESULT_OK,
-};
+use crate::{State, COMMAND_STEP_DELAY_MS, RESULT_INVALID_PAYLOAD, RESULT_OK};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct WorkspaceState {
@@ -132,35 +130,6 @@ impl State {
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_to_pane_id(vec![13], focused_pane_id);
 
-        self.respond(pipe_message, RESULT_OK);
-    }
-
-    pub(crate) fn open_workspace_terminal(&self, pipe_message: &PipeMessage) {
-        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
-            return;
-        };
-
-        let Some(workspace_state) = self
-            .workspace_state_by_tab
-            .get(&active_tab_position)
-            .cloned()
-            .or_else(|| {
-                if self.seen_tab_positions.len() <= 1 {
-                    self.initial_workspace_state.clone()
-                } else {
-                    None
-                }
-            })
-        else {
-            self.respond(pipe_message, RESULT_MISSING_WORKSPACE);
-            return;
-        };
-
-        open_terminal(&workspace_state.root);
-        rename_tab(
-            tab_index_from_position(active_tab_position),
-            &tab_name_from_workspace_root(&workspace_state.root),
-        );
         self.respond(pipe_message, RESULT_OK);
     }
 

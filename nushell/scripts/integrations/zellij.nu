@@ -250,11 +250,6 @@ export def get_current_tab_workspace_root [] {
     }
 }
 
-export def get_active_sidebar_pane_id [] {
-    let state = (debug_editor_state)
-    $state.sidebar_pane_id?
-}
-
 export def set_managed_editor_cwd [editor_kind: string, target_path: path, log_file: string = "zellij_plugin.log"] {
     let expanded_target_path = ($target_path | path expand)
     if not ($expanded_target_path | path exists) {

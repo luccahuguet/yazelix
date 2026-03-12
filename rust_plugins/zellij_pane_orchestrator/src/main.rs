@@ -14,7 +14,6 @@ pub(crate) const RESULT_MISSING: &str = "missing";
 pub(crate) const RESULT_NOT_READY: &str = "not_ready";
 pub(crate) const RESULT_DENIED: &str = "permissions_denied";
 pub(crate) const RESULT_INVALID_PAYLOAD: &str = "invalid_payload";
-pub(crate) const RESULT_MISSING_WORKSPACE: &str = "missing_workspace";
 pub(crate) const RESULT_UNKNOWN_LAYOUT: &str = "unknown_layout";
 pub(crate) const RESULT_UNSUPPORTED_EDITOR: &str = "unsupported_editor";
 pub(crate) const COMMAND_STEP_DELAY_MS: u64 = 35;
@@ -125,10 +124,6 @@ impl ZellijPlugin for State {
             }
             "set_workspace_root_and_cd_focused_pane" => {
                 self.set_workspace_root_and_cd_focused_pane(&pipe_message);
-                false
-            }
-            "open_workspace_terminal" => {
-                self.open_workspace_terminal(&pipe_message);
                 false
             }
             "open_terminal_in_cwd" => {
