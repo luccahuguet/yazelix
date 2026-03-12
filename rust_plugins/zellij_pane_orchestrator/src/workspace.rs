@@ -20,6 +20,11 @@ struct WorkspaceRootRequest {
     workspace_root: String,
 }
 
+#[derive(Deserialize)]
+struct OpenTerminalRequest {
+    cwd: String,
+}
+
 impl State {
     pub(crate) fn reconcile_workspace_state(
         &mut self,
@@ -90,10 +95,7 @@ impl State {
         self.respond(pipe_message, RESULT_OK);
     }
 
-    pub(crate) fn set_workspace_root_and_cd_focused_pane(
-        &mut self,
-        pipe_message: &PipeMessage,
-    ) {
+    pub(crate) fn set_workspace_root_and_cd_focused_pane(&mut self, pipe_message: &PipeMessage) {
         let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
             return;
         };
@@ -123,7 +125,10 @@ impl State {
         self.workspace_state_by_tab
             .insert(active_tab_position, workspace_state.clone());
 
-        write_chars_to_pane_id(&change_directory_command(&workspace_state.root), focused_pane_id);
+        write_chars_to_pane_id(
+            &change_directory_command(&workspace_state.root),
+            focused_pane_id,
+        );
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_to_pane_id(vec![13], focused_pane_id);
 
@@ -156,6 +161,24 @@ impl State {
             tab_index_from_position(active_tab_position),
             &tab_name_from_workspace_root(&workspace_state.root),
         );
+        self.respond(pipe_message, RESULT_OK);
+    }
+
+    pub(crate) fn open_terminal_in_cwd(&self, pipe_message: &PipeMessage) {
+        let Some(payload) = pipe_message.payload.as_deref() else {
+            self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+            return;
+        };
+
+        let open_terminal_request: OpenTerminalRequest = match serde_json::from_str(payload) {
+            Ok(request) => request,
+            Err(_) => {
+                self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+                return;
+            }
+        };
+
+        open_terminal(&open_terminal_request.cwd);
         self.respond(pipe_message, RESULT_OK);
     }
 }

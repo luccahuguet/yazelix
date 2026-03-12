@@ -131,6 +131,10 @@ impl ZellijPlugin for State {
                 self.open_workspace_terminal(&pipe_message);
                 false
             }
+            "open_terminal_in_cwd" => {
+                self.open_terminal_in_cwd(&pipe_message);
+                false
+            }
             "debug_editor_state" => {
                 self.debug_editor_state(&pipe_message);
                 false

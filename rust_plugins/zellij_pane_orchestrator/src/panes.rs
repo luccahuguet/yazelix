@@ -39,6 +39,7 @@ struct DebugEditorState {
     permissions_granted: bool,
     active_tab_position: Option<usize>,
     active_swap_layout_name: Option<String>,
+    workspace_root: Option<String>,
     editor_pane_id: Option<String>,
     sidebar_pane_id: Option<String>,
     sidebar_is_suppressed: Option<bool>,
@@ -170,6 +171,10 @@ impl State {
             .flatten();
         let layout_variant = active_tab_position
             .and_then(|tab_position| self.get_active_layout_variant(tab_position));
+        let workspace_root = active_tab_position
+            .and_then(|tab_position| self.workspace_state_by_tab.get(&tab_position))
+            .map(|workspace_state| workspace_state.root.clone())
+            .or_else(|| self.initial_workspace_state.clone().map(|state| state.root));
         let editor_pane = active_tab_position
             .and_then(|tab_position| self.managed_panes_by_tab.get(&tab_position))
             .and_then(|managed_tab_panes| managed_tab_panes.editor);
@@ -181,6 +186,7 @@ impl State {
             permissions_granted: self.permissions_granted,
             active_tab_position,
             active_swap_layout_name,
+            workspace_root,
             editor_pane_id: pane_id_to_string(editor_pane.map(|pane| pane.pane_id)),
             sidebar_pane_id: pane_id_to_string(sidebar_pane.map(|pane| pane.pane_id)),
             sidebar_is_suppressed: sidebar_pane.map(|pane| pane.is_suppressed),
@@ -220,15 +226,16 @@ impl State {
         }
     }
 
-    pub(crate) fn get_focused_terminal_pane(
-        &self,
-        pipe_message: &PipeMessage,
-    ) -> Option<PaneId> {
+    pub(crate) fn get_focused_terminal_pane(&self, pipe_message: &PipeMessage) -> Option<PaneId> {
         let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
             return None;
         };
 
-        match self.focused_terminal_pane_by_tab.get(&active_tab_position).copied() {
+        match self
+            .focused_terminal_pane_by_tab
+            .get(&active_tab_position)
+            .copied()
+        {
             Some(pane_id) => Some(pane_id),
             None => {
                 self.respond(pipe_message, RESULT_MISSING);

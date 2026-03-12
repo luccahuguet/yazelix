@@ -22,8 +22,9 @@ keybinds {
 
         // Previously: Alt + n (in helix: select_next_sibling)
         bind "Alt m" {
-            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+            Run "nu" "~/.config/yazelix/configs/zellij/scripts/open_workspace_terminal.nu" {
                 name "open_workspace_terminal"
+                close_on_exit true
             }
         }
         unbind "Alt n"

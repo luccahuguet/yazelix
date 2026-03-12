@@ -3,7 +3,7 @@
 
 use ../utils/logging.nu log_to_file
 use ../utils/config_parser.nu parse_yazelix_config
-use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, set_workspace_for_path, focus_managed_pane, get_active_sidebar_pane_id, set_managed_editor_cwd]
+use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, set_workspace_for_path, focus_managed_pane, set_managed_editor_cwd]
 
 # Check if the editor command is Helix (supports both simple names and full paths)
 # This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
@@ -56,6 +56,12 @@ def normalize_sidebar_pane_id [pane_id: string] {
     }
 }
 
+export def get_sidebar_yazi_state_path [session_name: string, pane_id: string] {
+    let sanitized_session = (sanitize_sidebar_state_component $session_name)
+    let sanitized_pane = (sanitize_sidebar_state_component (normalize_sidebar_pane_id $pane_id))
+    (get_sidebar_yazi_state_dir | path join $"($sanitized_session)__($sanitized_pane).txt")
+}
+
 def get_current_zellij_session_name [] {
     if ($env.ZELLIJ_SESSION_NAME? | is-not-empty) {
         return $env.ZELLIJ_SESSION_NAME
@@ -77,51 +83,78 @@ def get_current_zellij_session_name [] {
         )
 
         if ($clean_line | is-empty) {
-            null
-        } else {
-            (
-                $clean_line
-                | split row " "
-                | where {|token| $token != ""}
-                | first
-            )
+            return null
         }
+
+        return (
+            $clean_line
+            | split row " "
+            | where {|token| $token != ""}
+            | first
+        )
     } catch {
-        null
+        return null
     }
 }
 
-export def get_sidebar_yazi_state_path [session_name: string, pane_id: string] {
-    let sanitized_session = (sanitize_sidebar_state_component $session_name)
-    let sanitized_pane = (sanitize_sidebar_state_component (normalize_sidebar_pane_id $pane_id))
-    (get_sidebar_yazi_state_dir | path join $"($sanitized_session)__($sanitized_pane).txt")
-}
-
-def read_active_sidebar_yazi_id [] {
-    let sidebar_pane_id = try {
-        get_active_sidebar_pane_id
-    } catch {
-        null
-    }
-    if ($sidebar_pane_id | is-empty) {
+def read_sidebar_state_file [state_path: string] {
+    if not ($state_path | path exists) {
         return null
     }
 
+    let state_lines = (open --raw $state_path | lines)
+    let yazi_id = ($state_lines | get -o 0 | default "" | str trim)
+    if ($yazi_id | is-empty) {
+        null
+    } else {
+        {
+            yazi_id: $yazi_id
+            cwd: ($state_lines | get -o 1 | default "" | str trim)
+        }
+    }
+}
+
+def read_active_sidebar_state [] {
     let session_name = (get_current_zellij_session_name)
     if ($session_name | is-empty) {
         return null
     }
 
-    let state_path = (get_sidebar_yazi_state_path $session_name $sidebar_pane_id)
-    if not ($state_path | path exists) {
+    let state_dir = (get_sidebar_yazi_state_dir)
+    if not ($state_dir | path exists) {
         return null
     }
 
-    let yazi_id = (open --raw $state_path | str trim)
-    if ($yazi_id | is-empty) {
+    let sanitized_session = (sanitize_sidebar_state_component $session_name)
+    let matching_files = (
+        ls $state_dir
+        | where type == file
+        | where name =~ $"/($sanitized_session)__.*\\.txt$"
+        | sort-by modified --reverse
+        | get name
+    )
+
+    for state_path in $matching_files {
+        let state = (read_sidebar_state_file $state_path)
+        if ($state | is-not-empty) {
+            return $state
+        }
+    }
+
+    null
+}
+
+export def get_active_sidebar_cwd [] {
+    let sidebar_state = (read_active_sidebar_state)
+    if ($sidebar_state | is-empty) {
         null
     } else {
-        $yazi_id
+        let cwd = ($sidebar_state.cwd? | default "" | str trim)
+        if ($cwd | is-empty) {
+            null
+        } else {
+            $cwd
+        }
     }
 }
 
@@ -138,8 +171,8 @@ export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: s
         return {status: "skipped", reason: "ya_missing"}
     }
 
-    let sidebar_yazi_id = (read_active_sidebar_yazi_id)
-    if ($sidebar_yazi_id | is-empty) {
+    let sidebar_state = (read_active_sidebar_state)
+    if ($sidebar_state | is-empty) {
         return {status: "skipped", reason: "sidebar_yazi_missing"}
     }
 
@@ -151,7 +184,7 @@ export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: s
     }
 
     try {
-        ya emit-to $sidebar_yazi_id cd $target_dir
+        ya emit-to $sidebar_state.yazi_id cd $target_dir
         log_to_file $log_file $"Synced active sidebar Yazi to directory: ($target_dir)"
         {status: "ok", target_dir: $target_dir}
     } catch {|err|

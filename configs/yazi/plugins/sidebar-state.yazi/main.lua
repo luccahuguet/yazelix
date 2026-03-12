@@ -20,13 +20,27 @@ local function normalize_pane_id(value)
 	return "terminal:" .. value
 end
 
+local function current_cwd()
+	if not cx or not cx.active or not cx.active.current then
+		return nil
+	end
+
+	local cwd = cx.active and cx.active.current and cx.active.current.cwd
+	if not cwd then
+		return nil
+	end
+
+	return tostring(cwd)
+end
+
 local function write_sidebar_state()
 	local home = os.getenv("HOME")
 	local session_name = sanitize_component(os.getenv("ZELLIJ_SESSION_NAME"))
 	local pane_id = sanitize_component(normalize_pane_id(os.getenv("ZELLIJ_PANE_ID")))
 	local yazi_id = os.getenv("YAZI_ID")
+	local cwd = current_cwd()
 
-	if not home or not session_name or not pane_id or not yazi_id or yazi_id == "" then
+	if not home or not session_name or not pane_id or not yazi_id or yazi_id == "" or not cwd or cwd == "" then
 		return
 	end
 
@@ -41,11 +55,16 @@ local function write_sidebar_state()
 
 	file:write(yazi_id)
 	file:write("\n")
+	file:write(cwd)
+	file:write("\n")
 	file:close()
 end
 
 function M.setup()
 	write_sidebar_state()
+	ps.sub("cd", write_sidebar_state)
+	ps.sub("tab", write_sidebar_state)
+	ps.sub("hover", write_sidebar_state)
 end
 
 return M

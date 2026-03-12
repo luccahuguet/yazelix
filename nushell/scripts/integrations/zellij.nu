@@ -231,6 +231,25 @@ export def debug_editor_state [] {
     }
 }
 
+export def get_current_tab_workspace_root [] {
+    let state = try {
+        debug_editor_state
+    } catch {
+        null
+    }
+
+    if ($state | is-empty) {
+        null
+    } else {
+        let workspace_root = ($state.workspace_root? | default "" | into string | str trim)
+        if ($workspace_root | is-empty) {
+            null
+        } else {
+            $workspace_root
+        }
+    }
+}
+
 export def get_active_sidebar_pane_id [] {
     let state = (debug_editor_state)
     $state.sidebar_pane_id?
