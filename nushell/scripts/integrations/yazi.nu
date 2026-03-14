@@ -3,7 +3,7 @@
 
 use ../utils/logging.nu log_to_file
 use ../utils/config_parser.nu parse_yazelix_config
-use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, set_workspace_for_path, focus_managed_pane, set_managed_editor_cwd]
+use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, set_workspace_for_path, focus_managed_pane, set_managed_editor_cwd, debug_editor_state]
 
 # Check if the editor command is Helix (supports both simple names and full paths)
 # This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
@@ -120,28 +120,20 @@ def read_active_sidebar_state [] {
         return null
     }
 
-    let state_dir = (get_sidebar_yazi_state_dir)
-    if not ($state_dir | path exists) {
+    let sidebar_pane_id = (
+        try {
+            let state = (debug_editor_state)
+            let pane_id = ($state.sidebar_pane_id? | default "" | into string | str trim)
+            if ($pane_id | is-empty) { null } else { $pane_id }
+        } catch {
+            null
+        }
+    )
+    if ($sidebar_pane_id | is-empty) {
         return null
     }
 
-    let sanitized_session = (sanitize_sidebar_state_component $session_name)
-    let matching_files = (
-        ls $state_dir
-        | where type == file
-        | where name =~ $"/($sanitized_session)__.*\\.txt$"
-        | sort-by modified --reverse
-        | get name
-    )
-
-    for state_path in $matching_files {
-        let state = (read_sidebar_state_file $state_path)
-        if ($state | is-not-empty) {
-            return $state
-        }
-    }
-
-    null
+    read_sidebar_state_file (get_sidebar_yazi_state_path $session_name $sidebar_pane_id)
 }
 
 export def get_active_sidebar_cwd [] {
