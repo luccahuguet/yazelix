@@ -5,7 +5,7 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
 - **Configuration File**: Edit `~/.config/yazelix/yazelix.toml` for all core options. See [yazelix_default.toml](../yazelix_default.toml) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, sidebar toggle, debug mode, etc).
 - **Terminal Configurations**:
   - **Bundled terminals** (yazelix-ghostty, etc.): Configs generated dynamically from your yazelix settings
-    - **Cursor trails** *(default: `random`)*: Set a single preset: `cursor_trail = "blaze" | "snow" | "cosmic" | "ocean" | "forest" | "sunset" | "neon" | "party" | "eclipse" | "dusk" | "orchid" | "reef" | "inferno" | "random" | "none"` (`random` rotates between colorful presets, excluding `none` and `party`)
+    - **Ghostty cursor shaders**: Use `cursor_trail` for the color palette plus `ghostty_cursor_effects_random` / `ghostty_cursor_effects` for vendored Ghostty-only effect stacking. `cursor_trail = "random"` still rotates between colorful palettes (excluding `none` and `party`).
     - **Transparency**: Configure `transparency = "none"`, `"low"`, `"medium"`, or `"high"`
     - **No manual copying required** - auto-generated when launching yazelix
   - **Reference configs** (generated snapshot): `configs/terminal_emulators/`

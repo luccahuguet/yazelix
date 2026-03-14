@@ -41,7 +41,9 @@
     ]; # Better for media previews
     manage_terminals = true;
     terminal_config_mode = "yazelix"; # Optional: "auto", "user", or "yazelix"
-    cursor_trail = "random"; # Optional: "random" or a preset (ghostty/kitty)
+    cursor_trail = "random"; # Optional: Ghostty color palette + Kitty fallback
+    ghostty_cursor_effects_random = true;
+    # ghostty_cursor_effects = [ "warp" "ripple" ]; # Used only if random=false
     transparency = "medium"; # Optional: "none".."super_high"
 
     # Editor configuration

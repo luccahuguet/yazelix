@@ -129,6 +129,43 @@ export const CURSOR_TRAIL_SHADERS = {
     none: ""
 }
 
+export const CURSOR_TRAIL_COLOR_LITERALS = {
+    blaze: "vec4(1.0, 0.725, 0.161, 1.0)"
+    snow: "vec4(1.0, 1.0, 1.0, 1.0)"
+    cosmic: "vec4(0.78, 0.38, 0.96, 1.0)"
+    ocean: "vec4(0.37, 0.66, 1.00, 1.0)"
+    forest: "vec4(0.23, 0.82, 0.48, 1.0)"
+    sunset: "vec4(1.00, 0.48, 0.35, 1.0)"
+    neon: "vec4(1.00, 0.00, 1.00, 1.0)"
+    party: "vec4(1.00, 0.00, 1.00, 1.0)"
+    eclipse: "vec4(1.000, 0.831, 0.000, 1.0)"
+    dusk: "vec4(0.914, 0.271, 0.376, 1.0)"
+    orchid: "vec4(1.0, 0.420, 0.0, 1.0)"
+    reef: "vec4(0.0, 0.902, 1.0, 1.0)"
+    inferno: "vec4(1.0, 0.086, 0.0, 1.0)"
+}
+
+export const GHOSTTY_CURSOR_EFFECTS = [
+    "tail"
+    "warp"
+    "sweep"
+    "ripple"
+    "sonic_boom"
+    "rectangle_boom"
+    "ripple_rectangle"
+    "none"
+]
+
+export const GHOSTTY_CURSOR_EFFECT_TEMPLATE_FILES = {
+    tail: "cursor_tail.glsl"
+    warp: "cursor_warp.glsl"
+    sweep: "cursor_sweep.glsl"
+    ripple: "ripple_cursor.glsl"
+    sonic_boom: "sonic_boom_cursor.glsl"
+    rectangle_boom: "rectangle_boom_cursor.glsl"
+    ripple_rectangle: "ripple_rectangle_cursor.glsl"
+}
+
 # Cursor trail presets documentation
 export const CURSOR_TRAIL_PRESETS_COMMENT = "# Alternative presets (uncomment to try)
 # snow:  custom-shader = ./shaders/cursor_trail_white.glsl

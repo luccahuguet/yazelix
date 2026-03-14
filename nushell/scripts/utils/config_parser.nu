@@ -96,6 +96,8 @@ export def parse_yazelix_config [] {
         manage_terminals: ($raw_config.terminal?.manage_terminals? | default true),
         terminal_config_mode: ($raw_config.terminal?.config_mode? | default "yazelix"),
         cursor_trail: ($raw_config.terminal?.cursor_trail? | default "random"),
+        ghostty_cursor_effects_random: ($raw_config.terminal?.ghostty_cursor_effects_random? | default true),
+        ghostty_cursor_effects: ($raw_config.terminal?.ghostty_cursor_effects? | default []),
         transparency: ($raw_config.terminal?.transparency? | default "medium"),
         default_shell: ($raw_config.shell?.default_shell? | default "nu"),
         extra_shells: ($raw_config.shell?.extra_shells? | default []),

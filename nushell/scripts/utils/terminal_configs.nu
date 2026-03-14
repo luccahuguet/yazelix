@@ -21,6 +21,30 @@ def select_random_cursor_trail [] {
     }
 }
 
+def resolve_ghostty_cursor_color [cursor_trail: string] {
+    match $cursor_trail {
+        "none" => null,
+        "random" => (select_random_cursor_trail),
+        _ => $cursor_trail
+    }
+}
+
+def resolve_ghostty_cursor_effects [effects_random: bool, effects: list<string>] {
+    if $effects_random {
+        select_random_ghostty_cursor_effects
+    } else if ($effects | is-empty) {
+        error make {msg: "terminal.ghostty_cursor_effects_random is false, but terminal.ghostty_cursor_effects is empty"}
+    } else if (($effects | any {|effect| $effect == "none"}) and (($effects | length) > 1)) {
+        error make {msg: "terminal.ghostty_cursor_effects cannot combine \"none\" with other Ghostty cursor effects"}
+    } else {
+        $effects
+    }
+}
+
+def get_ghostty_cursor_effect_shader_path [effect: string, color: string] {
+    $"./shaders/generated_effects/($effect)_($color).glsl"
+}
+
 # Section builders
 def build_branding [terminal: string, format: string] {
     let title = get_terminal_title $terminal
@@ -62,16 +86,29 @@ background-opacity-cells = true"
     }
 }
 
-def build_cursor_trail [cursor_trail: string] {
-    if $cursor_trail == "none" {
-        "# custom-shader = ./shaders/cursor_smear.glsl"
-    } else if $cursor_trail == "random" {
-        let chosen = select_random_cursor_trail
-        let shader = get_cursor_trail_shader $chosen
-        $"# random preset: ($chosen)\ncustom-shader = ($shader)"
+def build_ghostty_cursor_effects [cursor_trail: string, effects_random: bool, effects: list<string>] {
+    let selected_color = (resolve_ghostty_cursor_color $cursor_trail)
+    if $selected_color == null {
+        "# custom-shader = ./shaders/generated_effects/tail_blaze.glsl"
     } else {
-        let shader = get_cursor_trail_shader $cursor_trail
-        $"custom-shader = ($shader)"
+        let selected_effects = (resolve_ghostty_cursor_effects $effects_random $effects)
+        if ($selected_effects | any {|effect| $effect == "none"}) {
+            "# custom-shader = ./shaders/generated_effects/tail_blaze.glsl"
+        } else {
+            let header_lines = [
+                $"# Cursor color palette: ($selected_color)"
+                $"# Cursor effects: (($selected_effects | str join ', '))"
+            ]
+            let animation_lines = if (ghostty_cursor_effects_require_always_animation $selected_effects) {
+                ["custom-shader-animation = always"]
+            } else {
+                []
+            }
+            let shader_lines = ($selected_effects | each {|effect|
+                $"custom-shader = (get_ghostty_cursor_effect_shader_path $effect $selected_color)"
+            })
+            ($header_lines | append $animation_lines | append $shader_lines | str join "\n")
+        }
     }
 }
 
@@ -103,10 +140,8 @@ window-padding-y = 10,0
 # Transparency \(configurable via yazelix.toml\)
 (build_ghostty_transparency $config.transparency)
 
-# Cursor trail effect \(configurable via yazelix.toml\)
-(build_cursor_trail $config.cursor_trail)
-
-($CURSOR_TRAIL_PRESETS_COMMENT)
+# Ghostty cursor effects \(configurable via yazelix.toml\)
+(build_ghostty_cursor_effects $config.cursor_trail $config.ghostty_cursor_effects_random $config.ghostty_cursor_effects)
 "
 }
 
@@ -256,22 +291,18 @@ export def generate_all_terminal_configs [] {
         mkdir $ghostty_dir
         save_config_with_backup ($ghostty_dir | path join "config") (generate_ghostty_config)
 
-        # Build cursor trail shaders from modular sources
         let shaders_src = $"($env.HOME)/.config/yazelix/configs/terminal_emulators/ghostty/shaders"
-        if ($shaders_src | path exists) {
-            let build_script = ($shaders_src | path join "build_shaders.nu")
-            if ($build_script | path exists) {
-                # Call the exported function directly (use in 'nu -c' string works with interpolation)
-                nu -c $"use '($build_script)' build_cursor_trail_shaders; build_cursor_trail_shaders '($shaders_src)'"
-            }
-        }
-
-        # Copy shaders to generated config directory
         let shaders_dest = ($ghostty_dir | path join "shaders")
         if ($shaders_dest | path exists) { rm --permanent --recursive $shaders_dest }
         mkdir $shaders_dest
         if ($shaders_src | path exists) {
             ls $shaders_src | get name | each {|file| cp -r $file $shaders_dest }
+        }
+
+        # Build cursor shader variants inside the generated config tree
+        let build_script = ($shaders_src | path join "build_shaders.nu")
+        if ($build_script | path exists) {
+            nu -c $"use '($build_script)' [build_cursor_trail_shaders build_ghostty_cursor_effect_shaders]; build_cursor_trail_shaders '($shaders_dest)'; build_ghostty_cursor_effect_shaders '($shaders_dest)'"
         }
     }
 

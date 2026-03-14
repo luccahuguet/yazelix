@@ -132,15 +132,32 @@ manage_terminals = true
 # - "yazelix": Always use Yazelix-provided configs under ~/.config/yazelix/configs/terminal_emulators
 config_mode = "yazelix"
 
-# Cursor trail preset
+# Cursor color palette for Ghostty shaders, plus Kitty's simple cursor-trail fallback
 # None: "none"
 # Mono-color: "blaze", "snow", "cosmic", "ocean", "forest", "sunset"
 # Duo-color: "neon", "eclipse", "dusk", "orchid", "reef"
 # Extreme: "party"
-# Special: "random" (chooses any Ghostty preset except "none" and "party")
+# Special: "random" (chooses any Ghostty color palette except "none" and "party")
 # Supported by Ghostty and Kitty: "snow"
 # In short: pick ghostty for cool cursor trails
 cursor_trail = "random"
+
+# Randomize the Ghostty cursor effect stack on each generate (default: true)
+# When true, Yazelix ignores ghostty_cursor_effects and picks a random non-empty set
+# from the effects below, excluding "none".
+ghostty_cursor_effects_random = true
+
+# Explicit Ghostty cursor effects (used only when ghostty_cursor_effects_random = false)
+# ghostty_cursor_effects = [
+#   "tail",             # Kitty-like comet trail
+#   "warp",             # Neovide-like warp trail
+#   "sweep",            # Shrinking sweep trail
+#   "ripple",           # Circular ring pulse on mode change
+#   "sonic_boom",       # Filled circular boom on mode change
+#   "rectangle_boom",   # Rectangular boom on mode change
+#   "ripple_rectangle", # Rectangular ripple on mode change
+#   "none",             # Disable Ghostty cursor shaders
+# ]
 
 # Terminal transparency level (default: "medium")
 # Options: "none", "very_low", "low", "medium", "high", "very_high", "super_high"

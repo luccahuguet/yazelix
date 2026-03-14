@@ -47,6 +47,7 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 ## Terminal Emulators
 - [WezTerm](https://wezfurlong.org/wezterm/) — A GPU-accelerated terminal emulator and multiplexer written in Rust. Yazelix supports WezTerm for its advanced features, performance, and modern design.
 - [Ghostty](https://ghostty.org/) — A fast, modern terminal emulator written in Zig. Yazelix supports Ghostty as an equally excellent choice, offering speed and a modern feature set.
+- [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Vendored and adapted inside Yazelix to power Ghostty cursor trails and mode-change effects through generated config and Yazelix-managed palette/effect selection. 🔧 auto-configured
 - [Kitty](https://sw.kovidgoyal.net/kitty/) — A fast, feature-rich, GPU-accelerated terminal emulator. Yazelix supports Kitty for its performance, modern features, and excellent font rendering.
 - [Alacritty](https://github.com/alacritty/alacritty) — A fast, GPU-accelerated terminal emulator written in Rust. Yazelix supports Alacritty for its simplicity, speed, and cross-platform support.
 - [foot](https://codeberg.org/dnkl/foot) — A minimalist Wayland terminal that stays lightweight while still supporting modern features like ligatures and Sixel graphics. Under evaluation for Yazelix once profiling confirms the benefits.

@@ -178,11 +178,40 @@ in
       ];
       default = "random";
       description = ''
-        Cursor trail preset.
+        Ghostty cursor color palette and Kitty cursor-trail fallback preset.
         Supported by all terminal emulators: "none"
         Supported by Ghostty: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "eclipse", "dusk", "orchid", "reef", "inferno", "random"
         Supported by Ghostty and Kitty: "snow"
-        "random" chooses a different Ghostty trail each generation (excluding "none" and "party")
+        "random" chooses a different Ghostty color palette each generation (excluding "none" and "party")
+      '';
+    };
+
+    ghostty_cursor_effects_random = mkOption {
+      type = types.bool;
+      default = true;
+      description = ''
+        Randomize the Ghostty cursor effect stack on each generate.
+        When true, Yazelix ignores ghostty_cursor_effects and picks a random non-empty set
+        from the supported Ghostty cursor effects, excluding "none".
+      '';
+    };
+
+    ghostty_cursor_effects = mkOption {
+      type = types.listOf (types.enum [
+        "tail"
+        "warp"
+        "sweep"
+        "ripple"
+        "sonic_boom"
+        "rectangle_boom"
+        "ripple_rectangle"
+        "none"
+      ]);
+      default = [ ];
+      description = ''
+        Explicit Ghostty cursor effect stack.
+        Used only when ghostty_cursor_effects_random is false.
+        Valid values: "tail", "warp", "sweep", "ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "none"
       '';
     };
 
@@ -553,6 +582,8 @@ in
             "manage_terminals = ${boolToToml cfg.manage_terminals}"
             "config_mode = ${escapeString cfg.terminal_config_mode}"
             "cursor_trail = ${escapeString cfg.cursor_trail}"
+            "ghostty_cursor_effects_random = ${boolToToml cfg.ghostty_cursor_effects_random}"
+            "ghostty_cursor_effects = ${listToToml cfg.ghostty_cursor_effects}"
             "transparency = ${escapeString cfg.transparency}"
             ""
             "[zellij]"
