@@ -145,6 +145,22 @@ export const CURSOR_TRAIL_COLOR_LITERALS = {
     inferno: "vec4(1.0, 0.086, 0.0, 1.0)"
 }
 
+export const CURSOR_TRAIL_COLOR_HEX = {
+    blaze: "#ffb929"
+    snow: "#ffffff"
+    cosmic: "#c761f5"
+    ocean: "#5ea8ff"
+    forest: "#3bd17a"
+    sunset: "#ff7a59"
+    neon: "#ff00ff"
+    party: "#ff00ff"
+    eclipse: "#ffd400"
+    dusk: "#e94560"
+    orchid: "#ff6b00"
+    reef: "#00e6ff"
+    inferno: "#ff1600"
+}
+
 export const GHOSTTY_CURSOR_EFFECTS = [
     "tail"
     "warp"

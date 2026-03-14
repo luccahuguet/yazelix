@@ -3,12 +3,11 @@
 
 use config_parser.nu parse_yazelix_config
 use ./constants_with_helpers.nu *
-use ./constants.nu SUPPORTED_TERMINALS
+use ./constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_COLOR_HEX]
 
 # Helpers
 def get_opacity_value [transparency: string] { $TRANSPARENCY_VALUES | get -o $transparency | default "1.0" }
 def get_terminal_title [terminal: string] { $"Yazelix - ($TERMINAL_METADATA | get $terminal | get name)" }
-def get_cursor_trail_shader [cursor_trail: string] { $CURSOR_TRAIL_SHADERS | get -o $cursor_trail | default $CURSOR_TRAIL_SHADERS.blaze }
 
 def select_random_cursor_trail [] {
     let pool = (get_cursor_trail_random_pool)
@@ -29,6 +28,10 @@ def resolve_ghostty_cursor_color [cursor_trail: string] {
     }
 }
 
+def get_ghostty_cursor_color_hex [selected_color: string] {
+    $CURSOR_TRAIL_COLOR_HEX | get -o $selected_color | default $CURSOR_TRAIL_COLOR_HEX.blaze
+}
+
 def resolve_ghostty_cursor_effects [effects_random: bool, effects: list<string>] {
     if $effects_random {
         select_random_ghostty_cursor_effects
@@ -41,8 +44,8 @@ def resolve_ghostty_cursor_effects [effects_random: bool, effects: list<string>]
     }
 }
 
-def get_ghostty_cursor_effect_shader_path [effect: string, color: string] {
-    $"./shaders/generated_effects/($effect)_($color).glsl"
+def get_ghostty_cursor_effect_shader_path [effect: string] {
+    $"./shaders/generated_effects/($effect).glsl"
 }
 
 # Section builders
@@ -86,29 +89,34 @@ background-opacity-cells = true"
     }
 }
 
-def build_ghostty_cursor_effects [cursor_trail: string, effects_random: bool, effects: list<string>] {
-    let selected_color = (resolve_ghostty_cursor_color $cursor_trail)
+def build_ghostty_cursor_palette [selected_color: string] {
     if $selected_color == null {
-        "# custom-shader = ./shaders/generated_effects/tail_blaze.glsl"
+        "# cursor-color = #ffb929"
     } else {
-        let selected_effects = (resolve_ghostty_cursor_effects $effects_random $effects)
-        if ($selected_effects | any {|effect| $effect == "none"}) {
-            "# custom-shader = ./shaders/generated_effects/tail_blaze.glsl"
+        let cursor_hex = (get_ghostty_cursor_color_hex $selected_color)
+        [
+            $"# Cursor color palette: ($selected_color)"
+            $"cursor-color = ($cursor_hex)"
+        ] | str join "\n"
+    }
+}
+
+def build_ghostty_cursor_effects [selected_color: string, selected_effects: list<string>] {
+    if $selected_color == null or ($selected_effects | any {|effect| $effect == "none"}) {
+        "# custom-shader = ./shaders/generated_effects/tail.glsl"
+    } else {
+        let header_lines = [
+            $"# Cursor effects: (($selected_effects | str join ', '))"
+        ]
+        let animation_lines = if (ghostty_cursor_effects_require_always_animation $selected_effects) {
+            ["custom-shader-animation = always"]
         } else {
-            let header_lines = [
-                $"# Cursor color palette: ($selected_color)"
-                $"# Cursor effects: (($selected_effects | str join ', '))"
-            ]
-            let animation_lines = if (ghostty_cursor_effects_require_always_animation $selected_effects) {
-                ["custom-shader-animation = always"]
-            } else {
-                []
-            }
-            let shader_lines = ($selected_effects | each {|effect|
-                $"custom-shader = (get_ghostty_cursor_effect_shader_path $effect $selected_color)"
-            })
-            ($header_lines | append $animation_lines | append $shader_lines | str join "\n")
+            []
         }
+        let shader_lines = ($selected_effects | each {|effect|
+            $"custom-shader = (get_ghostty_cursor_effect_shader_path $effect)"
+        })
+        ($header_lines | append $animation_lines | append $shader_lines | str join "\n")
     }
 }
 
@@ -123,6 +131,12 @@ def build_kitty_cursor [cursor_trail: string] {
 # Config generators
 export def generate_ghostty_config [] {
     let config = parse_yazelix_config
+    let selected_color = (resolve_ghostty_cursor_color $config.cursor_trail)
+    let selected_effects = if $selected_color == null {
+        ["none"]
+    } else {
+        resolve_ghostty_cursor_effects $config.ghostty_cursor_effects_random $config.ghostty_cursor_effects
+    }
     $"($GHOSTTY_CONFIG_HEADER)
 
 # Start Yazelix via launcher to ensure Nix environment is loaded
@@ -140,8 +154,9 @@ window-padding-y = 10,0
 # Transparency \(configurable via yazelix.toml\)
 (build_ghostty_transparency $config.transparency)
 
-# Ghostty cursor effects \(configurable via yazelix.toml\)
-(build_ghostty_cursor_effects $config.cursor_trail $config.ghostty_cursor_effects_random $config.ghostty_cursor_effects)
+# Ghostty cursor color + effects \(configurable via yazelix.toml\)
+(build_ghostty_cursor_palette $selected_color)
+(build_ghostty_cursor_effects $selected_color $selected_effects)
 "
 }
 
