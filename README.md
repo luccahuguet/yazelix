@@ -1,4 +1,4 @@
-# Yazelix v13
+# Yazelix v13.1
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
@@ -58,6 +58,13 @@ Install once, get the same environment everywhere
 
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
+
+## Improvements in v13.1
+
+- **Cross-Tab Yazi Cwd Isolation** - `yzx cwd` and related sidebar sync flows now resolve the current tab's managed Yazi pane instead of guessing from session-global state, fixing the cross-tab cwd leak that could show up when every tab starts with Yazi
+- **Stronger Workspace Cwd Routing** - The `yzx cwd` flow now has better tab retargeting, managed-editor cwd sync, cleaner tab naming, and tighter Yazi workspace keybinding alignment
+- **Better Workspace Diagnostics and Controls** - `yzx doctor` can diagnose Zellij plugin health, `yzx keys` exposes the current keymap surface more clearly, and Zellij default mode handling is now configurable
+- **Agent and Update Flow Polish** - Yazelix now ships the `justcode` command, added pi-agent support before later removing the unstable local `pi_rust` packaging, and further hardened the canary/update path
 
 ## Improvements in v13
 

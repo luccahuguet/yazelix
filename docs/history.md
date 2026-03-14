@@ -9,6 +9,7 @@ See the origin story in `docs/the_start.md`.
 
 ## Major Version Descriptions
 
+- **v13.1**: Safer multi-tab cwd routing, stronger `yzx cwd` workspace sync, and better Zellij diagnostics
 - **v13**: Plugin-managed editor/sidebar orchestration, deterministic sidebar controls, and cleaner Zellij workspace navigation
 - **v12**: User-declared packs, Nixpkgs unstable, declarative themes, and tighter terminal/Zellij/Yazi integration
 - **v11**: Blazingly fast launches, instant config reloads, Home Manager parity, and zero friction
@@ -22,6 +23,14 @@ See the origin story in `docs/the_start.md`.
 - **v3**: Helix with a File Tree! Now with helix-friendly keybindings, and monorepo! ([announcement](https://www.reddit.com/r/HelixEditor/comments/1doefzt/yazelix_v3_helix_with_a_file_tree_now_with/))
 - **v2**: Yazi-Helix File Tree v2, now with a Closeable Sidebar! (the name 'Yazelix' did not exist yet; [announcement](https://www.reddit.com/r/HelixEditor/comments/1d6nkxs/yazihelix_file_tree_v2_now_with_a_closeable/))
 - **v1**: My first Zellij/Yazi/Helix/Nushell setup, inspired by a Reddit interaction, with no integration and a lot of hacks ([announcement](https://www.reddit.com/r/HelixEditor/comments/1d59br3/file_tree_setup_using_yazi_zellij_helix_and/))
+
+## v13.1: Safer multi-tab cwd routing, stronger `yzx cwd` workspace sync, and better Zellij diagnostics
+
+- **Cross-Tab Yazi Cwd Isolation** - `yzx cwd` and related sidebar sync flows now target the current tab's managed Yazi pane instead of whichever sidebar state file was updated most recently in the session
+- **Stronger Workspace Cwd Routing** - The `yzx cwd` flow gained better tab retargeting, managed-editor cwd sync, sidebar sync, and cleaner tab naming, making directory changes behave more like a first-class workspace action
+- **Zellij and Workspace Diagnostics** - `yzx doctor` now checks Zellij plugin health directly, and Yazelix documents the plugin permission flow more clearly when diagnosing broken workspace behavior
+- **Workspace UX Polish** - Added `yzx keys`, aligned Yazi workspace keybindings, made Zellij default mode configurable, and cleaned up `Alt+Shift+m` pane handling
+- **Agent and Update Flow Follow-Through** - Added `justcode`, experimented with pi-agent support, then removed the unstable local `pi_rust` packaging path while tightening the canary/update flow
 
 ## v13: Plugin-managed editor/sidebar orchestration, deterministic sidebar controls, and cleaner Zellij workspace navigation
 
