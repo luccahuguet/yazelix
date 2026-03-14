@@ -102,7 +102,7 @@ let
     terminals = rawConfig.terminal.terminals or [ "ghostty" ];
     manage_terminals = rawConfig.terminal.manage_terminals or true;
     terminal_config_mode = rawConfig.terminal.config_mode or "yazelix";
-    cursor_trail = rawConfig.terminal.cursor_trail or "random";
+    ghostty_trail_color = rawConfig.terminal.ghostty_trail_color or "random";
     transparency = rawConfig.terminal.transparency or "low";
 
     disable_zellij_tips = rawConfig.zellij.disable_tips or true;
@@ -163,11 +163,21 @@ let
 
   helixRuntimePath = userConfig.helix_runtime_path or null;
 
+  configuredEditor = userConfig.editor_command or null;
+  isNamedNeovimEditor =
+    configuredEditor != null
+    && (
+      configuredEditor == "nvim"
+      || configuredEditor == "neovim"
+    );
+
   editorCommand =
-    if (userConfig.editor_command or null) == null then
+    if configuredEditor == null then
       "${helixPackage}/bin/hx"
+    else if isNamedNeovimEditor then
+      "${pkgs.neovim}/bin/nvim"
     else
-      userConfig.editor_command;
+      configuredEditor;
 
   terminalList = lib.unique (userConfig.terminals or [ ]);
   manageTerminals = userConfig.manage_terminals or true;
@@ -427,6 +437,7 @@ let
       mise
       taplo # TOML toolkit for yazelix.toml configuration
     ]
+    ++ lib.optionals isNamedNeovimEditor [ neovim ]
     ++ lib.optionals isLinux [ libnotify ]
     ++ filterNull [
       yazelixDesktopLauncher

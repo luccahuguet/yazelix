@@ -2,7 +2,7 @@
 # Dynamic Yazelix Config Schema Validator
 # Uses yazelix_default.toml as the reference for validation
 
-use constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_SHADERS, GHOSTTY_CURSOR_EFFECTS]
+use constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_SHADERS, GHOSTTY_TRAIL_EFFECTS, GHOSTTY_MODE_EFFECTS]
 
 # Helper: Compare two records (default vs user config), only at the top level
 # No recursion into nested configs
@@ -43,14 +43,17 @@ def get_nested_value [data: any, path: list<string>] {
 # Helper: Validate enum values for key fields
 export def validate_enum_values [user: record] {
     mut warnings = []
-    let cursor_trail_allowed = (($CURSOR_TRAIL_SHADERS | columns | where $it != "none") | append ["random" "none"])
+    let ghostty_trail_color_allowed = (($CURSOR_TRAIL_SHADERS | columns | where $it != "none") | append ["random"])
+    let ghostty_trail_effect_allowed = ($GHOSTTY_TRAIL_EFFECTS | append ["random"])
+    let ghostty_mode_effect_allowed = ($GHOSTTY_MODE_EFFECTS | append ["random"])
     let enums = [
         { path: ["shell", "default_shell"], label: "shell.default_shell", allowed: ["nu", "bash", "fish", "zsh"] },
         { path: ["helix", "mode"], label: "helix.mode", allowed: ["release", "source"] },
         { path: ["core", "refresh_output"], label: "core.refresh_output", allowed: ["quiet", "normal", "full"] },
         { path: ["terminal", "terminals"], label: "terminal.terminals", allowed: $SUPPORTED_TERMINALS },
-        { path: ["terminal", "cursor_trail"], label: "terminal.cursor_trail", allowed: $cursor_trail_allowed },
-        { path: ["terminal", "ghostty_cursor_effects"], label: "terminal.ghostty_cursor_effects", allowed: $GHOSTTY_CURSOR_EFFECTS },
+        { path: ["terminal", "ghostty_trail_color"], label: "terminal.ghostty_trail_color", allowed: $ghostty_trail_color_allowed },
+        { path: ["terminal", "ghostty_trail_effect"], label: "terminal.ghostty_trail_effect", allowed: $ghostty_trail_effect_allowed },
+        { path: ["terminal", "ghostty_mode_effect"], label: "terminal.ghostty_mode_effect", allowed: $ghostty_mode_effect_allowed },
         { path: ["ascii", "mode"], label: "ascii.mode", allowed: ["static", "animated"] },
         { path: ["zellij", "widget_tray"], label: "zellij.widget_tray", allowed: ["layout", "editor", "shell", "term", "cpu", "ram"] }
     ]
@@ -59,16 +62,7 @@ export def validate_enum_values [user: record] {
         if $value == null {
             continue
         }
-        if (($enum.label == "terminal.cursor_trail") or ($enum.label == "terminal.ghostty_cursor_effects")) and (value | describe | str contains "list") {
-            # Validate each list entry
-            for v in $value {
-                if not ($v in $enum.allowed) {
-                    let allowed_str = ($enum.allowed | str join ", ")
-                    let msg = '⚠️  Invalid value for ' + $enum.label + ': ' + $v + ' (allowed: [' + $allowed_str + '])'
-                    $warnings = ($warnings | append $msg)
-                }
-            }
-        } else if ($enum.label == "terminal.terminals") and (value | describe | str contains "list") {
+        if ($enum.label == "terminal.terminals") and (value | describe | str contains "list") {
             for v in $value {
                 if not ($v in $enum.allowed) {
                     let allowed_str = ($enum.allowed | str join ", ")

@@ -32,9 +32,9 @@ def build_sweep_config [
         terminal: {
             terminals: ([$terminal "ghostty" "wezterm" "kitty" "alacritty" "foot"] | uniq)
             config_mode: "yazelix"
-            cursor_trail: "none"
-            ghostty_cursor_effects_random: false
-            ghostty_cursor_effects: ["none"]
+            ghostty_trail_color: null
+            ghostty_trail_effect: null
+            ghostty_mode_effect: null
             transparency: "none"
         }
         zellij: {

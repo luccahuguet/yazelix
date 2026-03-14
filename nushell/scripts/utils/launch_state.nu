@@ -79,6 +79,12 @@ def resolve_editor_command [config: record, profile_path: string] {
     if $configured_editor != null {
         let editor_text = ($configured_editor | into string)
         if ($editor_text | is-not-empty) {
+            if ($editor_text == "nvim") or ($editor_text == "neovim") {
+                let profile_nvim = ($profile_path | path join "bin" "nvim")
+                if ($profile_nvim | path exists) {
+                    return $profile_nvim
+                }
+            }
             return $editor_text
         }
     }

@@ -158,7 +158,7 @@ in
       '';
     };
 
-    cursor_trail = mkOption {
+    ghostty_trail_color = mkOption {
       type = types.enum [
         "blaze"
         "snow"
@@ -174,44 +174,45 @@ in
         "reef"
         "inferno"
         "random"
-        "none"
       ];
       default = "random";
       description = ''
         Ghostty cursor color palette and Kitty cursor-trail fallback preset.
-        Supported by all terminal emulators: "none"
         Supported by Ghostty: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "eclipse", "dusk", "orchid", "reef", "inferno", "random"
         Supported by Ghostty and Kitty: "snow"
-        "random" chooses a different Ghostty color palette each generation (excluding "none" and "party")
+        "random" chooses a different Ghostty color palette each generation (excluding "party")
       '';
     };
 
-    ghostty_cursor_effects_random = mkOption {
-      type = types.bool;
-      default = true;
-      description = ''
-        Randomize the Ghostty cursor effect stack on each generate.
-        When true, Yazelix ignores ghostty_cursor_effects and picks a random non-empty set
-        from the supported Ghostty cursor effects, excluding "none".
-      '';
-    };
-
-    ghostty_cursor_effects = mkOption {
-      type = types.listOf (types.enum [
+    ghostty_trail_effect = mkOption {
+      type = types.nullOr (types.enum [
         "tail"
         "warp"
         "sweep"
+        "random"
+      ]);
+      default = "random";
+      description = ''
+        Ghostty trail effect for cursor movement.
+        Set to null to disable extra tail effects.
+        Valid values: "tail", "warp", "sweep", "random"
+      '';
+    };
+
+    ghostty_mode_effect = mkOption {
+      type = types.nullOr (types.enum [
         "ripple"
         "sonic_boom"
         "rectangle_boom"
         "ripple_rectangle"
-        "none"
+        "random"
       ]);
-      default = [ ];
+      default = "random";
       description = ''
-        Explicit Ghostty cursor effect stack.
-        Used only when ghostty_cursor_effects_random is false.
-        Valid values: "tail", "warp", "sweep", "ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "none"
+        Ghostty mode-change effect, triggered when the editor changes cursor mode
+        such as Neovim switching between normal and insert.
+        Set to null to disable mode-change effects.
+        Valid values: "ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "random"
       '';
     };
 
@@ -541,6 +542,16 @@ in
       text =
         let
           editorCommand = if cfg.editor_command != null then cfg.editor_command else "";
+          ghosttyTrailEffectLine =
+            if cfg.ghostty_trail_effect != null then
+              [ "ghostty_trail_effect = ${escapeString cfg.ghostty_trail_effect}" ]
+            else
+              [ ];
+          ghosttyModeEffectLine =
+            if cfg.ghostty_mode_effect != null then
+              [ "ghostty_mode_effect = ${escapeString cfg.ghostty_mode_effect}" ]
+            else
+              [ ];
           helixRuntimeLine =
             if cfg.helix_runtime_path != null then
               [ "runtime_path = ${escapeString cfg.helix_runtime_path}" ]
@@ -581,9 +592,11 @@ in
             "terminals = ${listToToml cfg.terminals}"
             "manage_terminals = ${boolToToml cfg.manage_terminals}"
             "config_mode = ${escapeString cfg.terminal_config_mode}"
-            "cursor_trail = ${escapeString cfg.cursor_trail}"
-            "ghostty_cursor_effects_random = ${boolToToml cfg.ghostty_cursor_effects_random}"
-            "ghostty_cursor_effects = ${listToToml cfg.ghostty_cursor_effects}"
+            "ghostty_trail_color = ${escapeString cfg.ghostty_trail_color}"
+          ]
+          ++ ghosttyTrailEffectLine
+          ++ ghosttyModeEffectLine
+          ++ [
             "transparency = ${escapeString cfg.transparency}"
             ""
             "[zellij]"

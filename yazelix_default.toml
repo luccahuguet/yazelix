@@ -133,31 +133,23 @@ manage_terminals = true
 config_mode = "yazelix"
 
 # Cursor color palette for Ghostty shaders, plus Kitty's simple cursor-trail fallback
-# None: "none"
 # Mono-color: "blaze", "snow", "cosmic", "ocean", "forest", "sunset"
 # Duo-color: "neon", "eclipse", "dusk", "orchid", "reef"
 # Extreme: "party"
-# Special: "random" (chooses any Ghostty color palette except "none" and "party")
+# Special: "random" (chooses any Ghostty color palette except "party")
 # Supported by Ghostty and Kitty: "snow"
 # In short: pick ghostty for cool cursor trails
-cursor_trail = "random"
+ghostty_trail_color = "random"
 
-# Randomize the Ghostty cursor effect stack on each generate (default: true)
-# When true, Yazelix ignores ghostty_cursor_effects and picks a random non-empty set
-# from the effects below, excluding "none".
-ghostty_cursor_effects_random = true
+# Tail effect for Ghostty cursor movement
+# Note: Helix does not support all Ghostty trail effects yet. Neovim currently has the best support.
+# Options: "tail", "warp", "sweep", "random"
+ghostty_trail_effect = "random"
 
-# Explicit Ghostty cursor effects (used only when ghostty_cursor_effects_random = false)
-# ghostty_cursor_effects = [
-#   "tail",             # Kitty-like comet trail
-#   "warp",             # Neovide-like warp trail
-#   "sweep",            # Shrinking sweep trail
-#   "ripple",           # Circular ring pulse on mode change
-#   "sonic_boom",       # Filled circular boom on mode change
-#   "rectangle_boom",   # Rectangular boom on mode change
-#   "ripple_rectangle", # Rectangular ripple on mode change
-#   "none",             # Disable Ghostty cursor shaders
-# ]
+# Mode-change effect for Ghostty. This is triggered when the editor changes cursor mode,
+# such as Neovim switching between normal and insert.
+# Options: "ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "random"
+ghostty_mode_effect = "random"
 
 # Terminal transparency level (default: "medium")
 # Options: "none", "very_low", "low", "medium", "high", "very_high", "super_high"

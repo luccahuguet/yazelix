@@ -161,15 +161,17 @@ export const CURSOR_TRAIL_COLOR_HEX = {
     inferno: "#ff1600"
 }
 
-export const GHOSTTY_CURSOR_EFFECTS = [
+export const GHOSTTY_TRAIL_EFFECTS = [
     "tail"
     "warp"
     "sweep"
+]
+
+export const GHOSTTY_MODE_EFFECTS = [
     "ripple"
     "sonic_boom"
     "rectangle_boom"
     "ripple_rectangle"
-    "none"
 ]
 
 export const GHOSTTY_CURSOR_EFFECT_TEMPLATE_FILES = {

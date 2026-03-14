@@ -8,11 +8,12 @@ use ./constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_COLOR_HEX]
 # Helpers
 def get_opacity_value [transparency: string] { $TRANSPARENCY_VALUES | get -o $transparency | default "1.0" }
 def get_terminal_title [terminal: string] { $"Yazelix - ($TERMINAL_METADATA | get $terminal | get name)" }
+def get_cursor_trail_shader [color: string] { $CURSOR_TRAIL_SHADERS | get -o $color | default $CURSOR_TRAIL_SHADERS.blaze }
 
-def select_random_cursor_trail [] {
+def select_random_ghostty_trail_color [] {
     let pool = (get_cursor_trail_random_pool)
     if ($pool | is-empty) {
-        "blaze"
+        null
     } else {
         let max_index = (($pool | length) - 1)
         let index = (random int 0..$max_index)
@@ -20,11 +21,14 @@ def select_random_cursor_trail [] {
     }
 }
 
-def resolve_ghostty_cursor_color [cursor_trail: string] {
-    match $cursor_trail {
-        "none" => null,
-        "random" => (select_random_cursor_trail),
-        _ => $cursor_trail
+def resolve_ghostty_trail_color [color] {
+    if ($color | is-empty) {
+        null
+    } else {
+        match $color {
+            "random" => (select_random_ghostty_trail_color),
+            _ => $color
+        }
     }
 }
 
@@ -32,15 +36,25 @@ def get_ghostty_cursor_color_hex [selected_color: string] {
     $CURSOR_TRAIL_COLOR_HEX | get -o $selected_color | default $CURSOR_TRAIL_COLOR_HEX.blaze
 }
 
-def resolve_ghostty_cursor_effects [effects_random: bool, effects: list<string>] {
-    if $effects_random {
-        select_random_ghostty_cursor_effects
-    } else if ($effects | is-empty) {
-        error make {msg: "terminal.ghostty_cursor_effects_random is false, but terminal.ghostty_cursor_effects is empty"}
-    } else if (($effects | any {|effect| $effect == "none"}) and (($effects | length) > 1)) {
-        error make {msg: "terminal.ghostty_cursor_effects cannot combine \"none\" with other Ghostty cursor effects"}
+def resolve_ghostty_trail_effect [effect] {
+    if ($effect | is-empty) {
+        null
     } else {
-        $effects
+        match $effect {
+            "random" => (select_random_ghostty_trail_effect),
+            _ => $effect
+        }
+    }
+}
+
+def resolve_ghostty_mode_effect [effect] {
+    if ($effect | is-empty) {
+        null
+    } else {
+        match $effect {
+            "random" => (select_random_ghostty_mode_effect),
+            _ => $effect
+        }
     }
 }
 
@@ -97,18 +111,23 @@ def build_ghostty_cursor_palette [selected_color: string] {
         [
             $"# Cursor color palette: ($selected_color)"
             $"cursor-color = ($cursor_hex)"
+            $"custom-shader = (get_cursor_trail_shader $selected_color)"
         ] | str join "\n"
     }
 }
 
-def build_ghostty_cursor_effects [selected_color: string, selected_effects: list<string>] {
-    if $selected_color == null or ($selected_effects | any {|effect| $effect == "none"}) {
+def build_ghostty_cursor_effects [trail_effect, mode_effect] {
+    let selected_effects = (
+        [$trail_effect, $mode_effect]
+        | where {|effect| $effect != null and ($effect | str trim | is-not-empty)}
+    )
+    if ($selected_effects | is-empty) {
         "# custom-shader = ./shaders/generated_effects/tail.glsl"
     } else {
         let header_lines = [
             $"# Cursor effects: (($selected_effects | str join ', '))"
         ]
-        let animation_lines = if (ghostty_cursor_effects_require_always_animation $selected_effects) {
+        let animation_lines = if ($mode_effect != null) and (ghostty_effect_requires_always_animation $mode_effect) {
             ["custom-shader-animation = always"]
         } else {
             []
@@ -120,10 +139,10 @@ def build_ghostty_cursor_effects [selected_color: string, selected_effects: list
     }
 }
 
-def build_kitty_cursor [cursor_trail: string] {
-    match $cursor_trail {
+def build_kitty_cursor [ghostty_trail_color] {
+    match $ghostty_trail_color {
         "snow" | "random" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
-        "none" => "# cursor_trail 0",
+        null => "# cursor_trail 0",
         _ => "# cursor_trail 0  # Custom effects \(blaze/ocean/forest/sunset/neon/cosmic\) not supported"
     }
 }
@@ -131,12 +150,9 @@ def build_kitty_cursor [cursor_trail: string] {
 # Config generators
 export def generate_ghostty_config [] {
     let config = parse_yazelix_config
-    let selected_color = (resolve_ghostty_cursor_color $config.cursor_trail)
-    let selected_effects = if $selected_color == null {
-        ["none"]
-    } else {
-        resolve_ghostty_cursor_effects $config.ghostty_cursor_effects_random $config.ghostty_cursor_effects
-    }
+    let selected_color = (resolve_ghostty_trail_color $config.ghostty_trail_color)
+    let selected_trail_effect = (resolve_ghostty_trail_effect $config.ghostty_trail_effect)
+    let selected_mode_effect = (resolve_ghostty_mode_effect $config.ghostty_mode_effect)
     $"($GHOSTTY_CONFIG_HEADER)
 
 # Start Yazelix via launcher to ensure Nix environment is loaded
@@ -156,7 +172,7 @@ window-padding-y = 10,0
 
 # Ghostty cursor color + effects \(configurable via yazelix.toml\)
 (build_ghostty_cursor_palette $selected_color)
-(build_ghostty_cursor_effects $selected_color $selected_effects)
+(build_ghostty_cursor_effects $selected_trail_effect $selected_mode_effect)
 "
 }
 
@@ -207,7 +223,7 @@ input_delay 3
 sync_to_monitor yes
 
 # Cursor trail effect \(configurable via yazelix.toml\)
-(build_kitty_cursor $config.cursor_trail)"
+(build_kitty_cursor $config.ghostty_trail_color)"
 }
 
 export def generate_alacritty_config [] {
