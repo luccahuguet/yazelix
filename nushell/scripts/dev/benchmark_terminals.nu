@@ -43,7 +43,7 @@ def benchmark_terminal [
             # Set environment for test
             with-env {
                 YAZELIX_SWEEP_TEST_ID: $test_id,
-                YAZELIX_SKIP_WELCOME: "true"
+                YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
             } {
                 # Launch via yzx launch command with --terminal flag to force specific terminal
                 ^nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx launch --terminal ($terminal)"

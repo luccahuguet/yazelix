@@ -132,11 +132,11 @@ export def show_welcome [
     welcome_message: list<string>
     log_dir: string
     colors: record
+    bootstrap_skip_welcome: bool = false
 ]: nothing -> nothing {
     # Check modes
     let env_only_mode = ($env.YAZELIX_ENV_ONLY? == "true")
-    let test_mode = ($env.YAZELIX_SKIP_WELCOME? == "true")
-    let should_skip_welcome = $skip_welcome_screen or $env_only_mode or $test_mode
+    let should_skip_welcome = $skip_welcome_screen or $env_only_mode or $bootstrap_skip_welcome
 
     # Show ASCII art first (if not skipping)
     if (not $should_skip_welcome) and (not $quiet_mode) {
@@ -146,12 +146,9 @@ export def show_welcome [
     # Show welcome or log it
     if $should_skip_welcome {
         if $env_only_mode {
-            # Suppress env-only notice when a one-shot command requests skip-welcome.
-            if not $test_mode {
-                print $"($colors.cyan)🔧 Yazelix environment loaded! Launch the full interface in a separate terminal with 'yzx launch' or here with 'yzx launch --here'.($colors.reset)"
-            }
-        } else if $test_mode {
-            print $"($colors.cyan)🧪 Yazelix test mode - Welcome screen skipped($colors.reset)"
+            print $"($colors.cyan)🔧 Yazelix environment loaded! Launch the full interface in a separate terminal with 'yzx launch' or here with 'yzx launch --here'.($colors.reset)"
+        } else if $bootstrap_skip_welcome {
+            return
         } else {
             # Log welcome info
             let welcome_log_file = $"($log_dir)/welcome_(date now | format date '%Y%m%d_%H%M%S').log"

@@ -583,7 +583,12 @@ in
     fi
 
     # Environment setup now reads directly from yazelix.toml (single source of truth)
-    nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu"
+    if [ "$YAZELIX_SHELLHOOK_SKIP_WELCOME" = "true" ]; then
+      nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu" --skip-welcome
+      unset YAZELIX_SHELLHOOK_SKIP_WELCOME
+    else
+      nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu"
+    fi
 
     # Save config hash after successful environment setup
     if command -v nu >/dev/null 2>&1; then

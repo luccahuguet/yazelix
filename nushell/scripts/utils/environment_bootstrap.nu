@@ -160,7 +160,7 @@ export def run_in_devenv_shell [
     --env-only          # Set YAZELIX_ENV_ONLY=true
     --verbose           # Enable verbose output
     --quiet             # Run devenv with --quiet flag
-    --skip-welcome      # Set YAZELIX_SKIP_WELCOME=true
+    --skip-welcome      # Set shellhook-only welcome suppression for bootstrap entry
     --force-refresh     # Force environment refresh
     --refresh-output-mode: string = "normal"  # quiet | normal | full when forcing refresh
 ] {
@@ -212,7 +212,7 @@ export def run_in_devenv_shell [
             $env_vars = ($env_vars | insert YAZELIX_ENV_ONLY "true")
         }
         if $skip_welcome {
-            $env_vars = ($env_vars | insert YAZELIX_SKIP_WELCOME "true")
+            $env_vars = ($env_vars | insert YAZELIX_SHELLHOOK_SKIP_WELCOME "true")
         }
         if (is_unfree_enabled) {
             $env_vars = ($env_vars | insert NIXPKGS_ALLOW_UNFREE "1")
@@ -238,7 +238,7 @@ export def run_in_devenv_shell_command [
     --env-only         # Set YAZELIX_ENV_ONLY=true
     --verbose          # Enable verbose output
     --quiet            # Run devenv with --quiet flag
-    --skip-welcome     # Set YAZELIX_SKIP_WELCOME=true
+    --skip-welcome     # Set shellhook-only welcome suppression for bootstrap entry
     --force-refresh    # Force environment refresh
     --refresh-output-mode: string = "normal"  # quiet | normal | full when forcing refresh
 ] {
@@ -304,7 +304,7 @@ export def run_in_devenv_shell_command [
         $env_vars = ($env_vars | insert YAZELIX_ENV_ONLY "true")
     }
     if $skip_welcome {
-        $env_vars = ($env_vars | insert YAZELIX_SKIP_WELCOME "true")
+        $env_vars = ($env_vars | insert YAZELIX_SHELLHOOK_SKIP_WELCOME "true")
     }
     if (is_unfree_enabled) {
         $env_vars = ($env_vars | insert NIXPKGS_ALLOW_UNFREE "1")

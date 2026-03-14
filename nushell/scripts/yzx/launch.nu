@@ -235,9 +235,6 @@ export def "yzx launch" [
             if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) {
                 $env_block = ($env_block | upsert YAZELIX_SWEEP_TEST_ID $env.YAZELIX_SWEEP_TEST_ID)
             }
-            if ($env.YAZELIX_SKIP_WELCOME? | is-not-empty) {
-                $env_block = ($env_block | upsert YAZELIX_SKIP_WELCOME $env.YAZELIX_SKIP_WELCOME)
-            }
             if ($env.YAZELIX_TERMINAL? | is-not-empty) {
                 $env_block = ($env_block | upsert YAZELIX_TERMINAL $env.YAZELIX_TERMINAL)
             }

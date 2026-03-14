@@ -136,7 +136,7 @@ export def launch_visual_test [config_path: string, test_id: string, terminal: s
     let launch_output = (do {
         with-env {
             YAZELIX_CONFIG_OVERRIDE: $config_path,
-            YAZELIX_SKIP_WELCOME: "true",
+            YAZELIX_SHELLHOOK_SKIP_WELCOME: "true",
             YAZELIX_LAYOUT_OVERRIDE: "yzx_sweep_test",
             YAZELIX_SWEEP_TEST_ID: $test_id
         } {

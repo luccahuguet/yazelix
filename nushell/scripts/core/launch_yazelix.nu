@@ -189,10 +189,6 @@ def main [
     if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
         $propagated_env = ($propagated_env | upsert YAZELIX_LAYOUT_OVERRIDE $env.YAZELIX_LAYOUT_OVERRIDE)
     }
-    if ($env.YAZELIX_SKIP_WELCOME? | is-not-empty) {
-        $propagated_env = ($propagated_env | upsert YAZELIX_SKIP_WELCOME $env.YAZELIX_SKIP_WELCOME)
-    }
-
     if $terminal_info.use_wrapper {
         let env_block = ($propagated_env | upsert YAZELIX_TERMINAL_CONFIG_MODE $terminal_config_mode)
         if $verbose_mode {

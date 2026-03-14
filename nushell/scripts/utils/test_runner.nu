@@ -137,7 +137,7 @@ export def run_all_tests [
         print "📝 Test logs will be saved to: ~/.config/yazelix/logs/"
         print ""
 
-        with-env {YAZELIX_SKIP_WELCOME: "true"} {
+        with-env {YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"} {
             nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
         }
 
