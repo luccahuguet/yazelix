@@ -4,6 +4,7 @@
 use logging.nu log_to_file
 use constants.nu [PINNED_NIX_VERSION PINNED_DEVENV_VERSION]
 use config_parser.nu parse_yazelix_config
+use config_schema.nu get_config_validation_findings
 use ../integrations/zellij.nu debug_editor_state
 
 def extract_first_semver [text: string] {
@@ -314,6 +315,42 @@ export def check_configuration [] {
             details: ($yazelix_config | path expand)
             fix_available: false
         })
+
+        let validation_result = (try {
+            {
+                findings: (get_config_validation_findings "~/.config/yazelix")
+                error: null
+            }
+        } catch {|err|
+            {
+                findings: []
+                error: $err.msg
+            }
+        })
+
+        if ($validation_result.error | is-not-empty) {
+            $results = ($results | append {
+                status: "error"
+                message: "Could not validate yazelix.toml against the current schema"
+                details: $validation_result.error
+                fix_available: false
+            })
+        } else if not ($validation_result.findings | is-empty) {
+            let validation_findings = $validation_result.findings
+            let issue_count = ($validation_findings | length)
+            let detail_lines = ($validation_findings | each {|finding| $" - ($finding.message)" })
+            $results = ($results | append {
+                status: "warning"
+                message: $"Stale or invalid yazelix.toml fields detected \(($issue_count) issues\)"
+                details: (
+                    [
+                        "Compare your config against yazelix_default.toml."
+                        ...$detail_lines
+                    ] | str join "\n"
+                )
+                fix_available: false
+            })
+        }
     } else if ($yazelix_legacy | path expand | path exists) {
         $results = ($results | append {
             status: "warning"

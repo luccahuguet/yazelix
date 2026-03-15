@@ -442,6 +442,53 @@ def test_yzx_doctor_reports_zellij_plugin_context [] {
     }
 }
 
+def test_yzx_doctor_warns_on_stale_config_fields [] {
+    print "🧪 Testing yzx doctor warns about stale config fields..."
+
+    let repo_root = ("~/.config/yazelix" | path expand)
+    let tmp_home = (mktemp -d | str trim)
+    let temp_yazelix_dir = ($tmp_home | path join ".config" "yazelix")
+
+    mkdir $temp_yazelix_dir
+
+    let result = (try {
+        ^ln -s ($repo_root | path join "nushell") ($temp_yazelix_dir | path join "nushell")
+        cp ($repo_root | path join "yazelix_default.toml") ($temp_yazelix_dir | path join "yazelix_default.toml")
+
+        let stale_config = (
+            open ($repo_root | path join "yazelix_default.toml")
+            | upsert core.stale_field true
+            | upsert packs.declarations.custom_pack ["hello"]
+            | upsert packs.enabled ["custom_pack"]
+        )
+        $stale_config | to toml | save ($temp_yazelix_dir | path join "yazelix.toml")
+
+        let output = with-env { HOME: $tmp_home } {
+            ^nu -c 'use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx doctor --verbose' | complete
+        }
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Stale or invalid yazelix.toml fields detected")
+            and ($stdout | str contains "Unknown config field: core.stale_field")
+            and not ($stdout | str contains "packs.declarations.custom_pack")
+        ) {
+            print "  ✅ yzx doctor reports stale config fields without flagging custom pack declarations"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_launch_env_omits_default_helix_runtime [] {
     print "🧪 Testing launch env omits HELIX_RUNTIME by default..."
 
@@ -908,6 +955,7 @@ def main [] {
         (test_layout_generator_discovers_custom_top_level_layouts),
         (test_yzx_doctor_exists),
         (test_yzx_doctor_reports_zellij_plugin_context),
+        (test_yzx_doctor_warns_on_stale_config_fields),
         (test_launch_env_omits_default_helix_runtime),
         (test_launch_env_keeps_custom_helix_runtime_override),
         (test_launch_env_omits_yazelix_default_shell),

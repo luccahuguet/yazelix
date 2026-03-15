@@ -8,6 +8,7 @@ Shell-agnostic CLI for Yazelix management. Works across bash, fish, zsh, and nus
 Health checks and diagnostics
 - `--verbose`: Detailed output
 - `--fix`: Auto-fix safe issues
+- Warns when `yazelix.toml` has stale, removed, or invalid fields relative to `yazelix_default.toml`
 
 ### `yzx dev test [--verbose] [--new-window] [--lint-only] [--sweep] [--visual] [--all] [--delay SECONDS]`
 Run Yazelix test suite
