@@ -231,7 +231,7 @@ export def debug_editor_state [] {
     }
 }
 
-export def get_current_tab_workspace_root [] {
+def read_current_tab_workspace_root [--include-bootstrap] {
     let state = try {
         debug_editor_state
     } catch {
@@ -242,7 +242,7 @@ export def get_current_tab_workspace_root [] {
         null
     } else {
         let workspace_root_source = ($state.workspace_root_source? | default "" | into string | str trim)
-        if $workspace_root_source == "bootstrap" {
+        if ((not $include_bootstrap) and ($workspace_root_source == "bootstrap")) {
             return null
         }
 
@@ -253,6 +253,14 @@ export def get_current_tab_workspace_root [] {
             $workspace_root
         }
     }
+}
+
+export def get_current_tab_workspace_root [] {
+    read_current_tab_workspace_root
+}
+
+export def get_current_tab_workspace_root_including_bootstrap [] {
+    read_current_tab_workspace_root --include-bootstrap
 }
 
 export def set_managed_editor_cwd [editor_kind: string, target_path: path, log_file: string = "zellij_plugin.log"] {

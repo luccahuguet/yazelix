@@ -25,6 +25,21 @@ layout {
             plugin location="zellij:status-bar"
          }
      }
+
+     new_tab_template cwd="__YAZELIX_HOME_DIR__" {
+         pane size=1 borderless=true {
+            __YAZELIX_ZJSTATUS_TAB_TEMPLATE__
+         }
+         pane split_direction="vertical" {
+             pane name="filemanager" {
+                 command "yazi"
+                size "100%"
+             }
+         }
+         pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+         }
+     }
 }
 
 

@@ -6,7 +6,7 @@ use std::time::Duration;
 use serde::Deserialize;
 use zellij_tile::prelude::*;
 
-use crate::{State, COMMAND_STEP_DELAY_MS, RESULT_INVALID_PAYLOAD, RESULT_OK};
+use crate::{State, COMMAND_STEP_DELAY_MS, RESULT_INVALID_PAYLOAD, RESULT_MISSING, RESULT_OK};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct WorkspaceState {
@@ -31,11 +31,7 @@ struct OpenTerminalRequest {
 }
 
 impl State {
-    pub(crate) fn reconcile_workspace_state(
-        &mut self,
-        previous_active_tab_position: Option<usize>,
-        tabs: &[TabInfo],
-    ) {
+    pub(crate) fn reconcile_workspace_state(&mut self, tabs: &[TabInfo]) {
         let current_tab_positions: HashSet<usize> = tabs.iter().map(|tab| tab.position).collect();
         self.workspace_state_by_tab
             .retain(|tab_position, _| current_tab_positions.contains(tab_position));
@@ -51,16 +47,7 @@ impl State {
                 .contains_key(&active_tab_position)
             {
                 let inherited_workspace_state = if is_new_tab {
-                    previous_active_tab_position
-                        .and_then(|previous_active| {
-                            self.workspace_state_by_tab
-                                .get(&previous_active)
-                                .filter(|workspace_state| {
-                                    workspace_state.source == WorkspaceStateSource::Explicit
-                                })
-                                .cloned()
-                        })
-                        .or_else(|| self.initial_workspace_state.clone())
+                    self.initial_workspace_state.clone()
                 } else if self.workspace_state_by_tab.is_empty() {
                     self.initial_workspace_state.clone()
                 } else {
@@ -164,6 +151,25 @@ impl State {
         };
 
         open_terminal(&open_terminal_request.cwd);
+        self.respond(pipe_message, RESULT_OK);
+    }
+
+    pub(crate) fn open_workspace_terminal(&self, pipe_message: &PipeMessage) {
+        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
+            return;
+        };
+
+        let Some(workspace_state) = self
+            .workspace_state_by_tab
+            .get(&active_tab_position)
+            .cloned()
+            .or_else(|| self.initial_workspace_state.clone())
+        else {
+            self.respond(pipe_message, RESULT_MISSING);
+            return;
+        };
+
+        open_terminal(&workspace_state.root);
         self.respond(pipe_message, RESULT_OK);
     }
 

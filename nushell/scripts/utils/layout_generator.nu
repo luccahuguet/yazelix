@@ -3,6 +3,7 @@
 
 const widget_tray_placeholder = "__YAZELIX_WIDGET_TRAY__"
 const pane_orchestrator_plugin_url_placeholder = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__"
+const home_dir_placeholder = "__YAZELIX_HOME_DIR__"
 const static_fragment_specs = [
     {placeholder: "__YAZELIX_ZJSTATUS_TAB_TEMPLATE__", file: "fragments/zjstatus_tab_template.kdl"}
     {placeholder: "__YAZELIX_KEYBINDS_COMMON__", file: "fragments/keybinds_common.kdl"}
@@ -89,10 +90,21 @@ export def generate_layout [
 ]: nothing -> nothing {
     let content = (open ($source_layout | path expand))
     mut updated = apply_static_fragments $content $static_fragments
+    let home_dir = (
+        if (($env.HOME? | default "") | is-not-empty) {
+            $env.HOME | path expand
+        } else {
+            "~" | path expand
+        }
+    )
 
     if ($updated | str contains $widget_tray_placeholder) {
         let tray = build_widget_tray $widget_tray
         $updated = ($updated | str replace -a $widget_tray_placeholder $tray)
+    }
+
+    if ($updated | str contains $home_dir_placeholder) {
+        $updated = ($updated | str replace -a $home_dir_placeholder $home_dir)
     }
 
     if ($updated | str contains $pane_orchestrator_plugin_url_placeholder) {

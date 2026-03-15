@@ -1,8 +1,8 @@
 #!/usr/bin/env nu
 
-use ~/.config/yazelix/nushell/scripts/integrations/zellij.nu [get_current_tab_workspace_root run_pane_orchestrator_command_raw]
+use ~/.config/yazelix/nushell/scripts/integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap run_pane_orchestrator_command_raw]
 
-let workspace_root = (get_current_tab_workspace_root)
+let workspace_root = (get_current_tab_workspace_root_including_bootstrap)
 let target_dir = if ($workspace_root | is-not-empty) {
     $workspace_root
 } else {

@@ -4,6 +4,7 @@ mod panes;
 mod workspace;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::env;
 
 use panes::{FocusContext, ManagedTabPanes};
 use workspace::WorkspaceState;
@@ -39,8 +40,12 @@ impl ZellijPlugin for State {
     fn load(&mut self, _configuration: BTreeMap<String, String>) {
         set_selectable(false);
         let plugin_ids = get_plugin_ids();
+        let bootstrap_root = env::var("HOME")
+            .ok()
+            .filter(|home| !home.trim().is_empty())
+            .unwrap_or_else(|| plugin_ids.initial_cwd.display().to_string());
         self.initial_workspace_state = Some(WorkspaceState::from_bootstrap_root(
-            plugin_ids.initial_cwd.display().to_string(),
+            bootstrap_root,
         ));
         request_permission(&[
             PermissionType::ReadApplicationState,
@@ -59,10 +64,9 @@ impl ZellijPlugin for State {
     fn update(&mut self, event: Event) -> bool {
         match event {
             Event::TabUpdate(tabs) => {
-                let previous_active_tab_position = self.active_tab_position;
                 self.active_tab_position =
                     tabs.iter().find(|tab| tab.active).map(|tab| tab.position);
-                self.reconcile_workspace_state(previous_active_tab_position, &tabs);
+                self.reconcile_workspace_state(&tabs);
                 self.active_swap_layout_name_by_tab = tabs
                     .into_iter()
                     .map(|tab| (tab.position, tab.active_swap_layout_name))
@@ -132,6 +136,10 @@ impl ZellijPlugin for State {
             }
             "open_terminal_in_cwd" => {
                 self.open_terminal_in_cwd(&pipe_message);
+                false
+            }
+            "open_workspace_terminal" => {
+                self.open_workspace_terminal(&pipe_message);
                 false
             }
             "debug_editor_state" => {
