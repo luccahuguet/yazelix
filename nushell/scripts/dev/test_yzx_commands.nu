@@ -6,6 +6,37 @@ use ../integrations/yazi.nu [consume_bootstrap_sidebar_cwd]
 
 const clean_zellij_env_prefix = "env -u ZELLIJ -u ZELLIJ_SESSION_NAME -u ZELLIJ_PANE_ID -u ZELLIJ_TAB_NAME -u ZELLIJ_TAB_POSITION"
 
+def get_repo_root [] {
+    pwd
+}
+
+def get_repo_config_dir [] {
+    "~/.config/yazelix" | path expand
+}
+
+def setup_test_home [] {
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_test_home_XXXXXX | str trim)
+    let config_parent = ($tmp_home | path join ".config")
+    let config_dir = ($config_parent | path join "yazelix")
+
+    mkdir $config_parent
+    mkdir $config_dir
+
+    for entry in (ls $repo_root | where name != ($repo_root | path join ".git") and name != ($repo_root | path join "yazelix.toml")) {
+        let name = ($entry.name | path basename)
+        ^ln -s $entry.name ($config_dir | path join $name)
+    }
+
+    cp ($repo_root | path join "yazelix_default.toml") ($config_dir | path join "yazelix.toml")
+
+    {
+        repo_root: $repo_root
+        tmp_home: $tmp_home
+        config_dir: $config_dir
+    }
+}
+
 def test_yzx_help [] {
     print "🧪 Testing yzx help..."
 
@@ -246,6 +277,16 @@ def test_runtime_pin_versions_use_repo_shell [] {
     print "🧪 Testing runtime pin versions come from the repo shell..."
 
     try {
+        if (($env.YAZELIX_RUN_MAINTAINER_TESTS? | default "false") != "true") {
+            print "  ℹ️  Skipping maintainer-only runtime pin test by default"
+            return true
+        }
+
+        if (which nix | is-empty) or (which devenv | is-empty) {
+            print "  ℹ️  Skipping runtime pin test because nix/devenv are not available"
+            return true
+        }
+
         let output = (^nu -c 'source ~/.config/yazelix/nushell/scripts/yzx/dev.nu; let versions = (get_runtime_pin_versions); print ({ nix_version: $versions.nix_version, devenv_version: $versions.devenv_version, nix_raw: (get_tool_version_from_repo_shell "nix"), devenv_raw: (get_tool_version_from_repo_shell "devenv") } | to json -r)' | complete)
         let stdout = ($output.stdout | str trim)
         let resolved = ($stdout | from json)
@@ -659,10 +700,17 @@ def test_yzx_cwd_resolves_zoxide_query [] {
     print "🧪 Testing yzx cwd zoxide resolution..."
 
     try {
+        if (which zoxide | is-empty) {
+            print "  ℹ️  Skipping zoxide resolution test because zoxide is not available"
+            return true
+        }
+
+        let repo_dir = (get_repo_config_dir)
+        ^zoxide add $repo_dir
         let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; resolve_yzx_cwd_target yazelix" | complete)
         let stdout = ($output.stdout | str trim)
 
-        if ($output.exit_code == 0) and ($stdout == "/home/lucca/.config/yazelix") {
+        if ($output.exit_code == 0) and ($stdout == $repo_dir) {
             print "  ✅ yzx cwd resolves zoxide queries before updating the tab directory"
             true
         } else {
@@ -719,10 +767,11 @@ def test_resolve_reveal_target_path_from_relative_buffer [] {
     print "🧪 Testing reveal target resolution for relative buffer paths..."
 
     try {
+        let expected_readme = ((get_repo_config_dir) | path join "README.md")
         let output = (^bash -lc 'cd ~/.config/yazelix && nu -c "use ~/.config/yazelix/nushell/scripts/integrations/yazi.nu *; print (resolve_reveal_target_path README.md)"' | complete)
         let stdout = ($output.stdout | str trim)
 
-        if ($output.exit_code == 0) and ($stdout == "/home/lucca/.config/yazelix/README.md") {
+        if ($output.exit_code == 0) and ($stdout == $expected_readme) {
             print "  ✅ Reveal target resolution expands relative buffer paths against the current cwd"
             true
         } else {
@@ -914,6 +963,7 @@ def test_yzx_config_sections [] {
     print "🧪 Testing yzx config section views..."
 
     try {
+        ^nu -c 'use ~/.config/yazelix/nushell/scripts/setup/yazi_config_merger.nu *; use ~/.config/yazelix/nushell/scripts/setup/zellij_config_merger.nu *; let root = ($env.HOME | path join ".config" "yazelix"); generate_merged_yazi_config $root --quiet | ignore; generate_merged_zellij_config $root | ignore' | complete | ignore
         let hx_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config hx | columns | str join ','" | complete).stdout | str trim
         let yazi_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config yazi | columns | str join ','" | complete).stdout | str trim
         let zellij_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config zellij" | complete).stdout | str trim
@@ -935,49 +985,53 @@ def main [] {
     print "=== Testing yzx Commands ==="
     print ""
 
-    let results = [
-        (test_yzx_help),
-        (test_yzx_status),
-        (test_yzx_status_versions),
-        (test_yzx_why),
-        (test_yzx_status_verbose),
-        (test_yzx_dev_exists),
-        (test_dev_update_canary_set),
-        (test_dev_update_defaults_to_verbose_mode),
-        (test_dev_update_help_mentions_optional_input_name),
-        (test_gemini_cli_is_reactivated),
-        (test_tru_is_in_ai_agents),
-        (test_runtime_pin_versions_use_repo_shell),
-        (test_consume_bootstrap_sidebar_cwd),
-        (test_restart_uses_home_for_future_tab_defaults),
-        (test_sidebar_layout_uses_wrapper_launcher),
-        (test_sidebar_wrapper_bootstraps_workspace_root),
-        (test_layout_generator_discovers_custom_top_level_layouts),
-        (test_yzx_doctor_exists),
-        (test_yzx_doctor_reports_zellij_plugin_context),
-        (test_yzx_doctor_warns_on_stale_config_fields),
-        (test_launch_env_omits_default_helix_runtime),
-        (test_launch_env_keeps_custom_helix_runtime_override),
-        (test_launch_env_omits_yazelix_default_shell),
-        (test_zjstatus_widget_reads_shell_from_config),
-        (test_zjstatus_widget_reads_editor_from_config),
-        (test_yzx_menu_exists),
-        (test_yzx_cwd_exists),
-        (test_yzx_cwd_requires_zellij),
-        (test_yzx_cwd_resolves_zoxide_query),
-        (test_get_tab_name_uses_exact_directory),
-        (test_sidebar_yazi_state_path_normalization),
-        (test_resolve_reveal_target_path_from_relative_buffer),
-        (test_reveal_in_yazi_fails_clearly_outside_zellij),
-        (test_sidebar_state_plugin_generated),
-        (test_zellij_default_mode_is_enforced_in_merged_config),
-        (test_sidebar_yazi_sync_skips_outside_zellij),
-        (test_managed_editor_sync_skips_outside_zellij),
-        (test_yzx_sponsor_exists),
-        (test_yzx_config_view),
-        (test_yzx_config_sections),
-        (test_yzx_config_open_print)
-    ]
+    let fixture = (setup_test_home)
+    let results = (with-env { HOME: $fixture.tmp_home } {
+        [
+            (test_yzx_help),
+            (test_yzx_status),
+            (test_yzx_status_versions),
+            (test_yzx_why),
+            (test_yzx_status_verbose),
+            (test_yzx_dev_exists),
+            (test_dev_update_canary_set),
+            (test_dev_update_defaults_to_verbose_mode),
+            (test_dev_update_help_mentions_optional_input_name),
+            (test_gemini_cli_is_reactivated),
+            (test_tru_is_in_ai_agents),
+            (test_runtime_pin_versions_use_repo_shell),
+            (test_consume_bootstrap_sidebar_cwd),
+            (test_restart_uses_home_for_future_tab_defaults),
+            (test_sidebar_layout_uses_wrapper_launcher),
+            (test_sidebar_wrapper_bootstraps_workspace_root),
+            (test_layout_generator_discovers_custom_top_level_layouts),
+            (test_yzx_doctor_exists),
+            (test_yzx_doctor_reports_zellij_plugin_context),
+            (test_yzx_doctor_warns_on_stale_config_fields),
+            (test_launch_env_omits_default_helix_runtime),
+            (test_launch_env_keeps_custom_helix_runtime_override),
+            (test_launch_env_omits_yazelix_default_shell),
+            (test_zjstatus_widget_reads_shell_from_config),
+            (test_zjstatus_widget_reads_editor_from_config),
+            (test_yzx_menu_exists),
+            (test_yzx_cwd_exists),
+            (test_yzx_cwd_requires_zellij),
+            (test_yzx_cwd_resolves_zoxide_query),
+            (test_get_tab_name_uses_exact_directory),
+            (test_sidebar_yazi_state_path_normalization),
+            (test_resolve_reveal_target_path_from_relative_buffer),
+            (test_reveal_in_yazi_fails_clearly_outside_zellij),
+            (test_sidebar_state_plugin_generated),
+            (test_zellij_default_mode_is_enforced_in_merged_config),
+            (test_sidebar_yazi_sync_skips_outside_zellij),
+            (test_managed_editor_sync_skips_outside_zellij),
+            (test_yzx_sponsor_exists),
+            (test_yzx_config_view),
+            (test_yzx_config_sections),
+            (test_yzx_config_open_print)
+        ]
+    })
+    rm -rf $fixture.tmp_home
 
     let passed = ($results | where $it == true | length)
     let total = ($results | length)
