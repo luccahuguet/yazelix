@@ -1,0 +1,98 @@
+#!/usr/bin/env nu
+
+use ../core/yazelix.nu *
+use ./test_yzx_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX]
+
+def test_yzx_doctor_exists [] {
+    print "🧪 Testing yzx doctor command exists..."
+
+    try {
+        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx" | complete).stdout | str trim
+
+        if ($output | str contains "yzx doctor") {
+            print "  ✅ yzx doctor command is documented in help"
+            true
+        } else {
+            print "  ❌ yzx doctor command not found in help"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_yzx_doctor_reports_zellij_plugin_context [] {
+    print "🧪 Testing yzx doctor reports Zellij plugin context..."
+
+    try {
+        let output = (^bash -lc $"($CLEAN_ZELLIJ_ENV_PREFIX) nu -c 'use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx doctor --verbose'" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "Zellij plugin health check skipped \(not inside Zellij\)") {
+            print "  ✅ yzx doctor explains when Zellij-local plugin checks are skipped"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_yzx_doctor_warns_on_stale_config_fields [] {
+    print "🧪 Testing yzx doctor warns about stale config fields..."
+
+    let repo_root = ("~/.config/yazelix" | path expand)
+    let tmp_home = (mktemp -d | str trim)
+    let temp_yazelix_dir = ($tmp_home | path join ".config" "yazelix")
+
+    mkdir $temp_yazelix_dir
+
+    let result = (try {
+        ^ln -s ($repo_root | path join "nushell") ($temp_yazelix_dir | path join "nushell")
+        cp ($repo_root | path join "yazelix_default.toml") ($temp_yazelix_dir | path join "yazelix_default.toml")
+
+        let stale_config = (
+            open ($repo_root | path join "yazelix_default.toml")
+            | upsert core.stale_field true
+            | upsert packs.declarations.custom_pack ["hello"]
+            | upsert packs.enabled ["custom_pack"]
+        )
+        $stale_config | to toml | save ($temp_yazelix_dir | path join "yazelix.toml")
+
+        let output = with-env { HOME: $tmp_home } {
+            ^nu -c 'use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx doctor --verbose' | complete
+        }
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Stale or invalid yazelix.toml fields detected")
+            and ($stdout | str contains "Unknown config field: core.stale_field")
+            and not ($stdout | str contains "packs.declarations.custom_pack")
+        ) {
+            print "  ✅ yzx doctor reports stale config fields without flagging custom pack declarations"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+export def run_doctor_tests [] {
+    [
+        (test_yzx_doctor_exists)
+        (test_yzx_doctor_reports_zellij_plugin_context)
+        (test_yzx_doctor_warns_on_stale_config_fields)
+    ]
+}
