@@ -22,7 +22,7 @@ def test_runtime_pin_versions_use_repo_shell [] {
             ^nu -c $command | complete
         }
         let stdout = ($output.stdout | str trim)
-        let resolved = ($stdout | from json)
+        let resolved = ($stdout | lines | last | from json)
 
         if ($output.exit_code == 0) and ($resolved.nix_raw | str contains $resolved.nix_version) and ($resolved.devenv_raw | str contains $resolved.devenv_version) {
             print "  ✅ Runtime pins are derived from the repo shell versions"

@@ -17,15 +17,20 @@ def extract_version [value: string] {
     $value | parse --regex '(\d+\.\d+\.\d+)' | get capture0 | last | default ""
 }
 
-def get_tool_version_from_repo_shell [tool: string] {
+def get_runtime_version_lines_from_repo_shell [] {
     let version_result = (do {
         cd ("~/.config/yazelix" | path expand)
-        ^devenv shell --no-tui -- $tool --version | complete
+        with-env {
+            YAZELIX_ENV_ONLY: "true"
+            YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
+        } {
+            ^devenv shell --no-tui -- sh -c 'printf "__YZX_NIX__\n"; nix --version; printf "__YZX_DEVENV__\n"; devenv --version' | complete
+        }
     })
 
     if $version_result.exit_code != 0 {
         let stderr = ($version_result.stderr | str trim)
-        print $"❌ Failed to resolve ($tool) version from the repo shell: ($stderr)"
+        print $"❌ Failed to resolve runtime versions from the repo shell: ($stderr)"
         exit 1
     }
 
@@ -38,13 +43,45 @@ def get_tool_version_from_repo_shell [tool: string] {
         }
     )
 
-    let version_line = ($lines | last | str trim)
-    if ($version_line | is-empty) {
-        print $"❌ Failed to capture ($tool) version from the repo shell."
+    mut current_tool = ""
+    mut nix_version_raw = ""
+    mut devenv_version_raw = ""
+
+    for line in $lines {
+        let trimmed = ($line | str trim)
+        if $trimmed == "__YZX_NIX__" {
+            $current_tool = "nix"
+        } else if $trimmed == "__YZX_DEVENV__" {
+            $current_tool = "devenv"
+        } else if ($current_tool == "nix") and ($nix_version_raw | is-empty) {
+            $nix_version_raw = $trimmed
+        } else if ($current_tool == "devenv") and ($devenv_version_raw | is-empty) {
+            $devenv_version_raw = $trimmed
+        }
+    }
+
+    if ($nix_version_raw | is-empty) or ($devenv_version_raw | is-empty) {
+        print "❌ Failed to capture runtime versions from the repo shell."
         exit 1
     }
 
-    $version_line
+    {
+        nix_raw: $nix_version_raw
+        devenv_raw: $devenv_version_raw
+    }
+}
+
+def get_tool_version_from_repo_shell [tool: string] {
+    let runtime_versions = get_runtime_version_lines_from_repo_shell
+
+    match $tool {
+        "nix" => $runtime_versions.nix_raw
+        "devenv" => $runtime_versions.devenv_raw
+        _ => {
+            print $"❌ Unsupported runtime version request: ($tool)"
+            exit 1
+        }
+    }
 }
 
 def get_runtime_pin_versions [] {
@@ -58,10 +95,10 @@ def get_runtime_pin_versions [] {
         exit 1
     }
 
-    print "   Resolving nix version from the repo shell..."
-    let nix_version_raw = (get_tool_version_from_repo_shell "nix")
-    print "   Resolving devenv version from the repo shell..."
-    let devenv_version_raw = (get_tool_version_from_repo_shell "devenv")
+    print "   Resolving nix and devenv versions from the repo shell..."
+    let runtime_versions = (get_runtime_version_lines_from_repo_shell)
+    let nix_version_raw = $runtime_versions.nix_raw
+    let devenv_version_raw = $runtime_versions.devenv_raw
     let nix_version = (extract_version $nix_version_raw)
     let devenv_version = (extract_version $devenv_version_raw)
 
