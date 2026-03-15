@@ -292,6 +292,54 @@ def test_sidebar_wrapper_bootstraps_workspace_root [] {
     }
 }
 
+def test_layout_generator_discovers_custom_top_level_layouts [] {
+    print "🧪 Testing layout generator discovers custom top-level layouts..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_layout_generator_XXXXXX | str trim)
+
+    let result = (try {
+        let source_dir = ($tmpdir | path join "source")
+        let target_dir = ($tmpdir | path join "target")
+        let fragments_dir = ($source_dir | path join "fragments")
+        let repo_fragments_dir = ($env.HOME | path join ".config" "yazelix" "configs" "zellij" "layouts" "fragments")
+
+        mkdir $source_dir
+        mkdir $fragments_dir
+
+        for fragment in [
+            "zjstatus_tab_template.kdl"
+            "keybinds_common.kdl"
+            "swap_sidebar_open.kdl"
+            "swap_sidebar_closed.kdl"
+        ] {
+            ^cp ($repo_fragments_dir | path join $fragment) ($fragments_dir | path join $fragment)
+        }
+
+        let custom_layout_path = ($source_dir | path join "custom_layout.kdl")
+        'layout { pane }' | save --force --raw $custom_layout_path
+
+        use ~/.config/yazelix/nushell/scripts/utils/layout_generator.nu *
+        generate_all_layouts $source_dir $target_dir ["layout", "editor"] "file:/tmp/yazelix_pane_orchestrator.wasm"
+
+        let generated_layout_path = ($target_dir | path join "custom_layout.kdl")
+        let generated_fragments_dir = ($target_dir | path join "fragments")
+
+        if ($generated_layout_path | path exists) and not ($generated_fragments_dir | path exists) {
+            print "  ✅ Layout generator copies custom top-level layouts without copying fragments"
+            true
+        } else {
+            print $"  ❌ Unexpected result: custom_exists=(($generated_layout_path | path exists)) fragments_copied=(($generated_fragments_dir | path exists))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def test_yzx_doctor_exists [] {
     print "🧪 Testing yzx doctor command exists..."
 
@@ -780,6 +828,7 @@ def main [] {
         (test_restart_uses_home_for_future_tab_defaults),
         (test_sidebar_layout_uses_wrapper_launcher),
         (test_sidebar_wrapper_bootstraps_workspace_root),
+        (test_layout_generator_discovers_custom_top_level_layouts),
         (test_yzx_doctor_exists),
         (test_yzx_doctor_reports_zellij_plugin_context),
         (test_launch_env_omits_default_helix_runtime),

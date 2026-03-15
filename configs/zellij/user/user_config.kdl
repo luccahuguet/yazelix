@@ -73,8 +73,8 @@ theme "dracula"
 
 // === CUSTOM KEYBINDINGS ===
 // RECOMMENDED: For small keybinding changes, edit the layout files directly:
-//   - configs/zellij/layouts/yazelix.kdl
-//   - configs/zellij/layouts/yazelix_no_sidebar.kdl
+//   - configs/zellij/layouts/yzx_side.kdl
+//   - configs/zellij/layouts/yzx_no_side.kdl
 //
 // Only use this section if you want to completely replace all keybindings:
 

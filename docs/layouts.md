@@ -1,121 +1,44 @@
 # Zellij Layouts
 
-Yazelix includes several swap layouts that automatically organize your workspace based on the number of panes. These layouts are defined in `configs/zellij/layouts/yazelix.swap.kdl`.
+Yazelix ships two startup layouts and two swap-layout files:
 
-## Sidebar Toggle
+- `configs/zellij/layouts/yzx_side.kdl` for sidebar mode
+- `configs/zellij/layouts/yzx_no_side.kdl` for no-sidebar mode
+- `configs/zellij/layouts/yzx_side.swap.kdl` for sidebar swap layouts
+- `configs/zellij/layouts/yzx_no_side.swap.kdl` for no-sidebar swap layouts
 
-Yazelix supports running with or without the Yazi sidebar. Configure this in your `yazelix.toml`:
+Set the startup mode in `yazelix.toml`:
 
-```nix
-# Enable or disable the Yazi sidebar (default: false)
-enable_sidebar = true;   # Set to true to enable persistent sidebar
-enable_sidebar = false;  # Default: clean, full-screen layouts
+```toml
+enable_sidebar = true   # Uses yzx_side.kdl
+enable_sidebar = false  # Uses yzx_no_side.kdl
 ```
 
-**Default behavior** (`enable_sidebar = false`): Starts with your editor for immediate coding. Use `yazi` or your custom editor reveal binding for file management.
+## Supported Customization
 
-**Sidebar mode** (`enable_sidebar = true`): Persistent Yazi sidebar for IDE-like file navigation.
+Yazelix now copies every top-level `.kdl` file in `configs/zellij/layouts/` into the generated runtime layout directory on launch. That means adding a new top-level layout file is supported without updating a hardcoded copy list.
 
-**Note on Pane Counting**: Zellij internally counts the tab bar and status bar as "panes", but for user clarity, we refer to "user panes" (sidebar, editor, terminal, etc.) since those are what you actually interact with. So when we say "2 user panes", Zellij sees 4 total panes including its UI elements.
+The supported customization paths are:
 
-## Available Layouts
+- Edit `yzx_side.kdl` or `yzx_no_side.kdl` to change startup panes or keybinds
+- Edit `yzx_side.swap.kdl` or `yzx_no_side.swap.kdl` to tweak built-in swap layouts
+- Add a new top-level `.kdl` file in `configs/zellij/layouts/` if you want another launchable layout file
+- Add custom no-sidebar swap layouts inside `yzx_no_side.swap.kdl`
 
-### Without Sidebar (`enable_sidebar = false`) - Default
+## Important Boundary
 
-When the sidebar is disabled, Yazelix uses layouts optimized for full-screen editor workflows:
+Custom sidebar layout families are not fully first-class yet.
 
+The sidebar-aware controls `Alt+y`, `Alt+[`, and `Alt+]` still understand only the built-in sidebar open/closed families defined by Yazelix. If you add a brand-new sidebar family, Zellij can still parse the layout file, but Yazelix family-aware switching and sidebar toggling will not automatically learn it.
 
-#### `basic` (1 user pane)
-- **Structure**: Single main pane (100% width)
-- **Best for**: Focused editing without distractions
-- **Use cases**: Writing, deep focus coding, single-file editing
+So the current rule is:
 
-#### `stacked` (2+ user panes)
-- **Structure**: Stacked panes (100% width)
-- **Best for**: Multiple editors or editor + terminal
-- **Use cases**: Comparing files, editor + terminal workflow
-
-#### `two_column` (2+ user panes)
-- **Structure**: Stacked panes (50%) + vertical split (50%)
-- **Best for**: Side-by-side workflows
-- **Use cases**: Code review, documentation + code, split editing
-
-#### `bottom_terminal` (2+ user panes)
-- **Structure**: Stacked panes (70%) + bottom terminal (30%)
-- **Best for**: IDE-like experience with persistent terminal
-- **Use cases**: Development with quick command access, monitoring logs
-
-### With Sidebar (`enable_sidebar = true`)
-
-For users who prefer persistent file navigation:
-
-#### `basic` / `stacked` (2+ user panes)
-- **Structure**: Sidebar (20%) + main area (80%)
-- **Behavior**: 
-  - **2 user panes exactly**: Single main pane (`basic` layout)
-  - **3+ user panes**: Main area becomes stacked automatically (`stacked` layout)
-- **Best for**: General workflow with file navigation
-- **Use cases**: Writing code, editing documents, comparing files, keeping multiple editors open
-- **Note**: These are essentially the same layout - Zellij automatically stacks panes when you have more than 4
-
-#### `three_column` (3+ user panes)
-- **Structure**: Sidebar (20%) + stacked panes (40%) + vertical split (40%)
-- **Best for**: Advanced workflows requiring multiple simultaneous views
-- **Use cases**: 
-  - **Claude Code**: Run AI assistant in the right pane while coding in the center
-  - **Code review**: Compare files side-by-side with navigation in sidebar
-  - **Development**: Editor in center, terminal/output in right pane
-
-#### `bottom_terminal` (3+ user panes)
-- **Structure**: Sidebar (20%) + horizontal split with stacked panes (70%) + bottom terminal (30%)
-- **Best for**: IDE-like experience with persistent terminal access
-- **Use cases**:
-  - **Quick commands**: Run git, build, test commands without switching panes
-  - **lazygit**: Keep git UI always visible in bottom pane
-  - **Monitoring**: Watch logs or system status in dedicated terminal
-  - **Development**: Code in top, immediate command access below
-
-## Layout Switching
-
-Layouts switch automatically based on user pane count (excluding tab bar and status bar):
-- **2 user panes**: `basic` layout activates
-- **3+ user panes**: Other layouts become available through Zellij's swap functionality
-
-Use Zellij's built-in keybindings to cycle through available layouts when you have 3+ user panes.
-
-## Customization
-
-### Commenting Out Layouts
-To disable a layout, comment out its entire block in `yazelix.swap.kdl`:
-```kdl
-// swap_tiled_layout name="bottom_terminal" {
-//     ui min_panes=5 {
-//         // ... layout definition
-//     }
-// }
-```
-
-### Adding Custom Layouts
-Create new layouts by copying an existing one and modifying:
-```kdl
-swap_tiled_layout name="my_custom_layout" {
-    ui min_panes=6 {
-        pane split_direction="vertical" {
-            // Your custom layout here
-        }
-    }
-}
-```
-
-### Tweaking Existing Layouts
-Modify pane sizes, split directions, or minimum pane requirements:
-- Change `size "20%"` to adjust pane proportions
-- Modify `min_panes=5` to change activation threshold (remember: this includes tab bar + status bar, so 5 = 3 user panes)
-- Switch `split_direction="vertical"` to `"horizontal"` for different splits
+- top-level custom layouts: supported
+- custom no-sidebar swap layouts: supported
+- brand-new sidebar swap families: not yet first-class
 
 ## Tips
 
-- **Use `Alt+Shift+f`** to toggle pane fullscreen and hide the layout temporarily
-- **Experiment** with different layouts by opening more panes and tools
-- **Customize** layouts to match your specific workflow needs
-- **Consider pane count** when planning your workspace - layouts adapt automatically
+- Use `Alt+Shift+f` to toggle pane fullscreen temporarily
+- Keep custom launch layouts as top-level `.kdl` files under `configs/zellij/layouts/`
+- Keep sidebar-family changes inside the built-in families unless you are also updating the pane orchestrator

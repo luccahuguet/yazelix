@@ -130,14 +130,14 @@ export def generate_all_layouts [
     # Ensure target directory exists
     mkdir $layouts_target_dir
 
-    # List of layout files to process
-    let layout_files = [
-        "yzx_side.kdl"
-        "yzx_no_side.kdl"
-        "yzx_side.swap.kdl"
-        "yzx_no_side.swap.kdl"
-        "yzx_sweep_test.kdl"
-    ]
+    let layout_files = (
+        ls $source_root
+        | where type == file
+        | get name
+        | where { |file| ($file | path parse | get extension | default "") == "kdl" }
+        | each { |file| $file | path basename }
+        | sort
+    )
     let static_fragments = load_static_fragments $source_root
 
     # Copy each layout file

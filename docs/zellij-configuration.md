@@ -83,15 +83,15 @@ ui {
 ```
 
 **For keybindings**, edit the layout files directly:
-- `configs/zellij/layouts/yazelix.kdl` (sidebar mode)
-- `configs/zellij/layouts/yazelix_no_sidebar.kdl` (no-sidebar mode)
+- `configs/zellij/layouts/yzx_side.kdl` (sidebar mode)
+- `configs/zellij/layouts/yzx_no_side.kdl` (no-sidebar mode)
 - Only define keybinds in personal config if you want to replace ALL bindings
 
 **Simple settings** (like `theme`, `copy_command`) work perfectly - your value always wins.
 
 ## Current Yazelix Defaults
 
-- Default layout: `yazelix` (sidebar) or `yazelix_no_sidebar`
+- Default layout: `yzx_side` (sidebar) or `yzx_no_side`
 - Copy command: `wl-copy` (Wayland clipboard)
 - Scrollback editor: `hx` (Helix)
 - Session serialization: enabled for persistence
