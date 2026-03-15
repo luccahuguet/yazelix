@@ -53,7 +53,7 @@ If you find a conflict, please open an issue
   - `Alt+w/q` walks left/right (focus tabs)
   - `Ctrl+y` toggles focus between the managed sidebar and editor
   - `Alt+y` toggles the sidebar open/closed
-  - `Alt+m` opens a new terminal in the active Yazi directory, falling back to the current tab workspace root
+  - `Alt+m` opens a new terminal in the current tab workspace root
   - `Alt+r` is the smart reveal key: in the editor it forwards `Alt+r` into the editor, and outside the editor it falls back to the editor/sidebar focus flow
   - `Ctrl+Alt+g` locked mode, `Ctrl+Alt+s` scroll mode, `Ctrl+Alt+o` session mode
 - **Helix**: See [Helix Custom Keybindings](#helix-custom-keybindings) section below
@@ -70,7 +70,7 @@ You can also print these Yazelix-owned bindings directly with `yzx keys`.
   - `x`: Cut; `X`: Uncut (cancel cut)
   - `a`: Add a file (`filename.ext`) or folder (`foldername/`)
   - `Ctrl+y`: Toggle focus between the editor and sidebar
-  - `Alt+p`: Open directory in new Zellij pane
+  - `Alt+p`: Open the selected directory in a new Zellij pane
 - **Nushell**:
   - `Ctrl r`: interactive history search
   - `Ctrl o`: open a temporary buffer
