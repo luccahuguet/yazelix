@@ -128,7 +128,7 @@ Pull latest Yazelix updates from git
 - `yzx update repo`: Pull latest Yazelix updates (`--stash` auto-stashes changes, `--verbose` shows git commands)
 
 Maintainer-only updates:
-- `yzx dev update`: Refresh `devenv.lock` via `devenv update`, run canary refresh/build checks (`default`, `maximal`), then sync pinned runtime `nix`/`devenv` versions and refresh the vendored `configs/zellij/plugins/zjstatus.wasm` (verbose by default; `--quiet` restores the low-noise path, `--yes` skips prompt, `--no-canary` skips the gate, `--canary-only` runs the gate without updating)
+- `yzx dev update [input]`: Refresh `devenv.lock` via `devenv update` (or `devenv update <input>` for a targeted input such as `devenv`), run canary refresh/build checks (`default`, `maximal`), then sync pinned runtime `nix`/`devenv` versions from the repo shell and refresh the vendored `configs/zellij/plugins/zjstatus.wasm` (verbose by default; `--quiet` restores the low-noise path, `--yes` skips prompt, `--no-canary` skips the gate, `--canary-only` runs the gate without updating)
 - `yzx dev sync_terminal_configs`: Regenerate terminal configs and sync snapshots into `configs/terminal_emulators/`
 - `yzx dev build_pane_orchestrator [--sync]`: Build the Zellij pane orchestrator wasm for `wasm32-wasip1`; `--sync` also updates the tracked/runtime plugin paths after a successful build. If the toolchain is missing, enable the `rust_wasi` pack.
 
@@ -225,7 +225,8 @@ yzx update all               # Update devenv CLI + pull Yazelix repo
 yzx update devenv             # Update devenv CLI
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
 yzx update repo --stash       # Pull repo updates and reapply local changes
-yzx dev update --yes          # Refresh devenv.lock, run canaries, sync pins, and refresh vendored zjstatus
+yzx dev update --yes          # Refresh all inputs, run canaries, sync pins, and refresh vendored zjstatus
+yzx dev update devenv --yes   # Refresh only the devenv input, then sync the pinned devenv version
 yzx dev update --canary-only --canaries [default]  # Run only the default canary
 yzx dev build_pane_orchestrator --sync  # Build and sync the pane orchestrator wasm (enable rust_wasi first)
 

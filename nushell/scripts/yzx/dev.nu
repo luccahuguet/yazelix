@@ -17,6 +17,36 @@ def extract_version [value: string] {
     $value | parse --regex '(\d+\.\d+\.\d+)' | get capture0 | last | default ""
 }
 
+def get_tool_version_from_repo_shell [tool: string] {
+    let version_result = (do {
+        cd ("~/.config/yazelix" | path expand)
+        ^devenv shell --no-tui -- $tool --version | complete
+    })
+
+    if $version_result.exit_code != 0 {
+        let stderr = ($version_result.stderr | str trim)
+        print $"❌ Failed to resolve ($tool) version from the repo shell: ($stderr)"
+        exit 1
+    }
+
+    let lines = (
+        $version_result.stdout
+        | lines
+        | where { |line|
+            let trimmed = ($line | str trim)
+            ($trimmed | is-not-empty) and not ($trimmed | str starts-with "Configuring shell") and not ($trimmed | str starts-with "Loading tasks") and not ($trimmed | str starts-with "Running tasks") and not ($trimmed | str starts-with "Running           ") and not ($trimmed | str starts-with "Succeeded         ") and not ($trimmed | str starts-with "No command") and not ($trimmed | str contains "Yazelix environment loaded!")
+        }
+    )
+
+    let version_line = ($lines | last | str trim)
+    if ($version_line | is-empty) {
+        print $"❌ Failed to capture ($tool) version from the repo shell."
+        exit 1
+    }
+
+    $version_line
+}
+
 def get_runtime_pin_versions [] {
     if (which nix | is-empty) {
         print "❌ nix not found in PATH."
@@ -28,8 +58,8 @@ def get_runtime_pin_versions [] {
         exit 1
     }
 
-    let nix_version_raw = (nix --version | lines | first)
-    let devenv_version_raw = (devenv --version | lines | first)
+    let nix_version_raw = (get_tool_version_from_repo_shell "nix")
+    let devenv_version_raw = (get_tool_version_from_repo_shell "devenv")
     let nix_version = (extract_version $nix_version_raw)
     let devenv_version = (extract_version $devenv_version_raw)
 
@@ -280,6 +310,7 @@ def print_update_canary_failure_details [results: list] {
 }
 
 export def "yzx dev update" [
+    input_name?: string  # Optional input name to pass through to `devenv update` (for example: devenv)
     --verbose  # Deprecated compatibility flag; maintainer update output is verbose by default
     --quiet  # Capture canary output and reduce update progress noise
     --yes      # Skip confirmation prompt
@@ -315,7 +346,12 @@ export def "yzx dev update" [
     if $canary_only {
         print $"🧪 Running update canaries only: ($selected_canaries | str join ', ')"
     } else if $verbose_mode {
-        print $"⚙️ Running: devenv update \(cwd: ($yazelix_dir)\)"
+        let command_label = if ($input_name | is-not-empty) {
+            $"devenv update ($input_name)"
+        } else {
+            "devenv update"
+        }
+        print $"⚙️ Running: ($command_label) \(cwd: ($yazelix_dir)\)"
     } else {
         print "🔄 Updating Yazelix inputs..."
     }
@@ -324,7 +360,11 @@ export def "yzx dev update" [
         try {
             do {
                 cd $yazelix_dir
-                ^devenv update
+                if ($input_name | is-not-empty) {
+                    ^devenv update $input_name
+                } else {
+                    ^devenv update
+                }
             }
         } catch {|err|
             print $"❌ devenv update failed: ($err.msg)"

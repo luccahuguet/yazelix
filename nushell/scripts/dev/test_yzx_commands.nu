@@ -180,6 +180,26 @@ def test_dev_update_defaults_to_verbose_mode [] {
     }
 }
 
+def test_dev_update_help_mentions_optional_input_name [] {
+    print "🧪 Testing yzx dev update documents the optional input name..."
+
+    try {
+        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; help 'yzx dev update'" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "input_name <string>") and ($stdout | str contains "devenv update") {
+            print "  ✅ yzx dev update documents the optional input passthrough"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_gemini_cli_is_reactivated [] {
     print "🧪 Testing Gemini CLI is reactivated in default and Home Manager configs..."
 
@@ -193,6 +213,27 @@ def test_gemini_cli_is_reactivated [] {
             true
         } else {
             print "  ❌ Gemini CLI is missing from the default config or Home Manager module"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_runtime_pin_versions_use_repo_shell [] {
+    print "🧪 Testing runtime pin versions come from the repo shell..."
+
+    try {
+        let output = (^nu -c 'source ~/.config/yazelix/nushell/scripts/yzx/dev.nu; let versions = (get_runtime_pin_versions); print ({ nix_version: $versions.nix_version, devenv_version: $versions.devenv_version, nix_raw: (get_tool_version_from_repo_shell "nix"), devenv_raw: (get_tool_version_from_repo_shell "devenv") } | to json -r)' | complete)
+        let stdout = ($output.stdout | str trim)
+        let resolved = ($stdout | from json)
+
+        if ($output.exit_code == 0) and ($resolved.nix_raw | str contains $resolved.nix_version) and ($resolved.devenv_raw | str contains $resolved.devenv_version) {
+            print "  ✅ Runtime pins are derived from the repo shell versions"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) resolved=($stdout)"
             false
         }
     } catch { |err|
@@ -823,7 +864,9 @@ def main [] {
         (test_yzx_dev_exists),
         (test_dev_update_canary_set),
         (test_dev_update_defaults_to_verbose_mode),
+        (test_dev_update_help_mentions_optional_input_name),
         (test_gemini_cli_is_reactivated),
+        (test_runtime_pin_versions_use_repo_shell),
         (test_consume_bootstrap_sidebar_cwd),
         (test_restart_uses_home_for_future_tab_defaults),
         (test_sidebar_layout_uses_wrapper_launcher),
