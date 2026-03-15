@@ -22,6 +22,35 @@ def validate_launch_working_dir [working_dir: string] {
     $resolved
 }
 
+def run_detached_terminal_launch [launch_cmd: string, terminal_name: string, --verbose] {
+    if (which bash | is-empty) {
+        error make {msg: $"Cannot launch ($terminal_name): bash is not available in PATH.\nYazelix uses bash to detach new terminal windows."}
+    }
+
+    let output = (^bash -c $launch_cmd | complete)
+    if $output.exit_code != 0 {
+        let stderr_tail = (
+            $output.stderr
+            | default ""
+            | lines
+            | last 5
+            | str join "\n"
+            | str trim
+        )
+        let details = if ($stderr_tail | is-empty) {
+            "No stderr output was captured."
+        } else {
+            $stderr_tail
+        }
+
+        error make {msg: $"Failed to launch ($terminal_name) \(exit code: ($output.exit_code)\)\n($details)"}
+    }
+
+    if $verbose {
+        print $"✅ Launch request sent to ($terminal_name)"
+    }
+}
+
 def main [
     launch_cwd?: string
     --terminal(-t): string  # Override terminal selection (for sweep testing)
@@ -210,14 +239,14 @@ def main [
             print $"Launching wrapper command: ($launch_cmd)"
         }
         with-env $env_block {
-            ^bash -c $launch_cmd
+            run_detached_terminal_launch $launch_cmd $display_name --verbose=$verbose_mode
         }
     } else {
         if $verbose_mode {
             print $"Launching command: ($launch_cmd)"
         }
         with-env $propagated_env {
-            ^bash -c $launch_cmd
+            run_detached_terminal_launch $launch_cmd $display_name --verbose=$verbose_mode
         }
     }
 }

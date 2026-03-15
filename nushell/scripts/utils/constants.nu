@@ -9,7 +9,7 @@
 export const YAZELIX_VERSION = "v13.3"
 export const YAZELIX_DESCRIPTION = "Yazi + Zellij + Helix integrated terminal environment"
 export const PINNED_NIX_VERSION = "2.33.3"
-export const PINNED_DEVENV_VERSION = "2.0.3"
+export const PINNED_DEVENV_VERSION = "2.0.4"
 
 # ============================================================================
 # CONFIGURATION SECTION MARKERS (Shell Hook Management)

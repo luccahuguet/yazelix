@@ -103,6 +103,57 @@ def test_launch_rejects_file_working_dir [] {
     $result
 }
 
+def test_terminal_launch_requires_bash [] {
+    print "🧪 Testing terminal launch reports missing bash..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_launch_bash_test_XXXXXX | str trim)
+
+    let result = (try {
+        let nu_bin = (which nu | get 0.path)
+        let isolated_path = ($tmpdir | path join "bin")
+        mkdir $isolated_path
+        ^ln -s $nu_bin ($isolated_path | path join "nu")
+        let output = (with-env {PATH: $isolated_path} {
+            ^$nu_bin -c 'source ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu; try { run_detached_terminal_launch "exit 0" "Test Terminal" } catch {|err| print $err.msg }' | complete
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "bash is not available in PATH") {
+            print "  ✅ Terminal launch fails clearly when bash is unavailable"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_terminal_launch_reports_immediate_failure [] {
+    print "🧪 Testing terminal launch reports immediate command failures..."
+
+    try {
+        let output = (^nu -c 'source ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu; try { run_detached_terminal_launch "echo launch-broke >&2; exit 23" "Test Terminal" } catch {|err| print $err.msg }' | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "Failed to launch Test Terminal") and ($stdout | str contains "exit code: 23") and ($stdout | str contains "launch-broke") {
+            print "  ✅ Terminal launch failures include exit code and stderr context"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_startup_requires_generated_layout_path [] {
     print "🧪 Testing startup requires an existing Zellij layout..."
 
@@ -237,6 +288,8 @@ export def run_workspace_tests [] {
         (test_restart_uses_home_for_future_tab_defaults)
         (test_startup_rejects_missing_working_dir)
         (test_launch_rejects_file_working_dir)
+        (test_terminal_launch_requires_bash)
+        (test_terminal_launch_reports_immediate_failure)
         (test_startup_requires_generated_layout_path)
         (test_sidebar_layout_uses_wrapper_launcher)
         (test_sidebar_wrapper_bootstraps_workspace_root)
