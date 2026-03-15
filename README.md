@@ -1,4 +1,4 @@
-# Yazelix v13.1
+# Yazelix v13.2
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
@@ -58,6 +58,12 @@ Install once, get the same environment everywhere
 
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
+
+## Improvements in v13.2
+
+- **Workspace Hardening** - New-tab workspace defaults, tab-local workspace routing, and the `Alt+m` / `Alt+p` workspace flows were tightened so Yazelix behaves more predictably across tabs
+- **Zellij Integration Hardening** - The pane orchestrator and layout/config generation were further hardened to reduce stale state, helper-pane traps, and workspace drift
+- **Keybinding Model Polish** - `yzx keys` and the README/docs now describe the current workspace actions more clearly, especially around `Alt+m`, `Alt+p`, and editor/sidebar movement
 
 ## Improvements in v13.1
 
