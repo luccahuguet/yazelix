@@ -33,7 +33,7 @@ def print_yazelix_keys [] {
         {keybinding: (accent_key "Ctrl+y"), action: "Toggle focus between the managed editor and sidebar"}
         {keybinding: (accent_key "Alt+y"), action: "Toggle the sidebar open/closed"}
         {keybinding: (accent_key "Alt+m"), action: "Open a new terminal in the current tab workspace root"}
-        {keybinding: (accent_key "Alt+p"), action: "In Yazi, open the selected directory in a new pane"}
+        {keybinding: (accent_key "Alt+p"), action: "In Yazi, open the selected directory in a new pane and make it the tab workspace root"}
     ]
     heading "Command and mode access"
     print_table [

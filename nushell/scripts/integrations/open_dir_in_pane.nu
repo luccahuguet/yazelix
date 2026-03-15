@@ -3,7 +3,7 @@
 # Takes the file/directory path as argument
 
 use ../utils/logging.nu log_to_file
-use ./zellij.nu [run_pane_orchestrator_command_raw]
+use ./zellij.nu [run_pane_orchestrator_command_raw, set_workspace_for_path]
 
 export def main [file_path: string] {
     log_to_file "open_dir_in_pane.log" $"open_dir_in_pane called with file_path: '($file_path)'"
@@ -36,6 +36,13 @@ export def main [file_path: string] {
         }
 
         log_to_file "open_dir_in_pane.log" $"Successfully opened new pane in directory: ($target_dir)"
+
+        let workspace_result = (set_workspace_for_path $target_dir "open_dir_in_pane.log")
+        if $workspace_result.status == "ok" {
+            log_to_file "open_dir_in_pane.log" $"Updated workspace root to: ($workspace_result.workspace_root)"
+        } else {
+            log_to_file "open_dir_in_pane.log" $"WARNING: Failed to update workspace root \(status=($workspace_result.status)\)"
+        }
     } catch {|err|
         let error_msg = $"Failed to open new pane: ($err.msg)"
         log_to_file "open_dir_in_pane.log" $"ERROR: ($error_msg)"

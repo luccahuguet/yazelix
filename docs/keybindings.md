@@ -70,7 +70,7 @@ You can also print these Yazelix-owned bindings directly with `yzx keys`.
   - `x`: Cut; `X`: Uncut (cancel cut)
   - `a`: Add a file (`filename.ext`) or folder (`foldername/`)
   - `Ctrl+y`: Toggle focus between the editor and sidebar
-  - `Alt+p`: Open the selected directory in a new Zellij pane
+  - `Alt+p`: Open the selected directory in a new Zellij pane and make it the tab workspace root
 - **Nushell**:
   - `Ctrl r`: interactive history search
   - `Ctrl o`: open a temporary buffer
