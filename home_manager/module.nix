@@ -358,7 +358,7 @@ in
 
     skip_welcome_screen = mkOption {
       type = types.bool;
-      default = true;
+      default = false;
       description = "Skip the welcome screen on startup";
     };
 
@@ -367,7 +367,7 @@ in
         "static"
         "animated"
       ];
-      default = "static";
+      default = "animated";
       description = "ASCII art display mode";
     };
 
@@ -422,6 +422,7 @@ in
           "amp"
           "cursor-agent"
           "goose-cli"
+          "tru"
         ];
         # AI support tools (from llm-agents.nix)
         ai_tools = [

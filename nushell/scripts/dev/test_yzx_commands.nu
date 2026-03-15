@@ -221,6 +221,27 @@ def test_gemini_cli_is_reactivated [] {
     }
 }
 
+def test_tru_is_in_ai_agents [] {
+    print "🧪 Testing tru is included in ai_agents..."
+
+    try {
+        let default_config = (open ~/.config/yazelix/yazelix_default.toml)
+        let default_agents = ($default_config.packs.declarations.ai_agents | default [])
+        let hm_module = (open --raw ~/.config/yazelix/home_manager/module.nix)
+
+        if ("tru" in $default_agents) and ($hm_module | str contains '"tru"') {
+            print "  ✅ tru is present in both ai_agents configuration paths"
+            true
+        } else {
+            print "  ❌ tru is missing from the default config or Home Manager module"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_runtime_pin_versions_use_repo_shell [] {
     print "🧪 Testing runtime pin versions come from the repo shell..."
 
@@ -878,6 +899,7 @@ def main [] {
         (test_dev_update_defaults_to_verbose_mode),
         (test_dev_update_help_mentions_optional_input_name),
         (test_gemini_cli_is_reactivated),
+        (test_tru_is_in_ai_agents),
         (test_runtime_pin_versions_use_repo_shell),
         (test_consume_bootstrap_sidebar_cwd),
         (test_restart_uses_home_for_future_tab_defaults),

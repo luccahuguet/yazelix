@@ -274,8 +274,8 @@ sort_by = "alphabetical"
 [ascii]
 # Options:
 # - "static":   Show static ASCII art
-# - "animated": Show animated ASCII art (opt-in for faster startup)
-mode = "static"
+# - "animated": Show animated ASCII art
+mode = "animated"
 
 [packs]
 # Enable packs by name (see packs.declarations below)
@@ -323,6 +323,7 @@ ai_agents = [
   "amp",            # Amp coding agent
   "cursor-agent",   # Cursor agent
   "goose-cli",      # Goose CLI (Block)
+  "tru",            # TOON CLI for compact Beads/agent structured output
 ]
 
 # AI support tools: analytics, review, utilities (from llm-agents.nix)

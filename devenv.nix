@@ -501,6 +501,31 @@ let
     else
       null;
 
+  truPkg = pkgs.rustPlatform.buildRustPackage rec {
+    pname = "tru";
+    version = "0.2.1";
+
+    src = pkgs.fetchFromGitHub {
+      owner = "Dicklesworthstone";
+      repo = "toon_rust";
+      rev = "v${version}";
+      hash = "sha256-rvqCkf14zC1PldutoO/u2cdxZGi7VDrlWErILjmA3Jo=";
+    };
+
+    cargoHash = "sha256-kNgpOdkxCBjW8I2WcYIyFL0kd3e/Hb9cj51RghSwuFw=";
+
+    postInstall = ''
+      ln -s $out/bin/toon $out/bin/tru
+    '';
+
+    meta = with lib; {
+      description = "TOON reference implementation in Rust (JSON <-> TOON)";
+      homepage = "https://github.com/Dicklesworthstone/toon_rust";
+      license = licenses.mit;
+      mainProgram = "tru";
+    };
+  };
+
   resolvePkg =
     name:
     let
@@ -529,6 +554,8 @@ let
         rustToolchain
       else
         throw "Package 'rust_toolchain' requires the fenix input, but it was not found in devenv.yaml"
+    else if name == "tru" then
+      truPkg
     else if llmAgentsValue != null then
       llmAgentsValue
     else if nixpkgsValue != null then
