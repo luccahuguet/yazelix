@@ -28,7 +28,7 @@ def print_table [rows: list] {
 def print_yazelix_keys [] {
     heading "Yazelix keybindings"
     print ""
-    heading "Workspace navigation"
+    heading "Workspace actions"
     print_table [
         {keybinding: (accent_key "Ctrl+y"), action: "Toggle focus between the managed editor and sidebar"}
         {keybinding: (accent_key "Alt+y"), action: "Toggle the sidebar open/closed"}
