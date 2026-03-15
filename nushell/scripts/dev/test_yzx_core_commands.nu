@@ -40,9 +40,18 @@ def test_yzx_config_sections [] {
     print "🧪 Testing yzx config section views..."
 
     try {
-        ^nu -c 'use ~/.config/yazelix/nushell/scripts/setup/yazi_config_merger.nu *; use ~/.config/yazelix/nushell/scripts/setup/zellij_config_merger.nu *; let root = ($env.HOME | path join ".config" "yazelix"); generate_merged_yazi_config $root --quiet | ignore; generate_merged_zellij_config $root | ignore' | complete | ignore
+        ^nu -c 'use ~/.config/yazelix/nushell/scripts/setup/yazi_config_merger.nu *; let root = ($env.HOME | path join ".config" "yazelix"); generate_merged_yazi_config $root --quiet | ignore' | complete | ignore
         let hx_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config hx | columns | str join ','" | complete).stdout | str trim
         let yazi_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config yazi | columns | str join ','" | complete).stdout | str trim
+        if (which zellij | is-empty) {
+            if ($hx_output | str contains "config_path") and ($yazi_output | str contains "manager") {
+                print "  ℹ️  Skipping zellij config section check because zellij is not available"
+                print "  ✅ yzx config section commands return focused sections"
+                return true
+            }
+        }
+
+        ^nu -c 'use ~/.config/yazelix/nushell/scripts/setup/zellij_config_merger.nu *; let root = ($env.HOME | path join ".config" "yazelix"); generate_merged_zellij_config $root | ignore' | complete | ignore
         let zellij_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config zellij" | complete).stdout | str trim
 
         if ($hx_output | str contains "config_path") and ($yazi_output | str contains "manager") and ($zellij_output | str contains "default_layout") {

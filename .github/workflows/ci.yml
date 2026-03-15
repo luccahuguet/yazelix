@@ -33,5 +33,4 @@ jobs:
         run: nu nushell/scripts/dev/validate_syntax.nu
 
       - name: Run yzx command tests
-        continue-on-error: true
         run: nu nushell/scripts/dev/test_yzx_commands.nu

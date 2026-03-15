@@ -179,6 +179,11 @@ def test_sidebar_state_plugin_generated [] {
 def test_zellij_default_mode_is_enforced_in_merged_config [] {
     print "🧪 Testing merged Zellij config enforces default_mode..."
 
+    if (which zellij | is-empty) {
+        print "  ℹ️  Skipping Zellij config merge test because zellij is not available"
+        return true
+    }
+
     let tmpdir = (^mktemp -d /tmp/yazelix_zellij_mode_test_XXXXXX | str trim)
 
     let result = (try {
