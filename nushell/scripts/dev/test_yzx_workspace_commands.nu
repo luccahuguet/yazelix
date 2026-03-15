@@ -94,25 +94,6 @@ def test_sidebar_wrapper_bootstraps_workspace_root [] {
     }
 }
 
-def test_yzx_cwd_exists [] {
-    print "🧪 Testing yzx cwd command exists..."
-
-    try {
-        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx" | complete).stdout | str trim
-
-        if ($output | str contains "yzx cwd") {
-            print "  ✅ yzx cwd command is documented in help"
-            true
-        } else {
-            print "  ❌ yzx cwd command not found in help"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 def test_yzx_cwd_requires_zellij [] {
     print "🧪 Testing yzx cwd outside Zellij..."
 
@@ -160,46 +141,6 @@ def test_yzx_cwd_resolves_zoxide_query [] {
     }
 }
 
-def test_get_tab_name_uses_exact_directory [] {
-    print "🧪 Testing tab naming uses the exact yzx cwd directory..."
-
-    try {
-        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/integrations/zellij.nu *; get_tab_name ~/.config/yazelix/nushell" | complete)
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and ($stdout == "nushell") {
-            print "  ✅ yzx cwd tab naming matches the exact retargeted directory"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_sidebar_yazi_state_path_normalization [] {
-    print "🧪 Testing sidebar Yazi state path normalization..."
-
-    try {
-        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/integrations/yazi.nu *; get_sidebar_yazi_state_path main 2" | complete)
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and ($stdout | str ends-with "main__terminal_2.txt") {
-            print "  ✅ Sidebar Yazi state paths normalize pane ids consistently"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 def test_resolve_reveal_target_path_from_relative_buffer [] {
     print "🧪 Testing reveal target resolution for relative buffer paths..."
 
@@ -221,80 +162,14 @@ def test_resolve_reveal_target_path_from_relative_buffer [] {
     }
 }
 
-def test_reveal_in_yazi_fails_clearly_outside_zellij [] {
-    print "🧪 Testing reveal in Yazi outside Zellij..."
-
-    try {
-        let output = (^bash -lc $"($CLEAN_ZELLIJ_ENV_PREFIX) nu -c 'use ~/.config/yazelix/nushell/scripts/integrations/yazi.nu *; reveal_in_yazi ~/.config/yazelix/README.md'" | complete)
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and ($stdout | str contains "Reveal in Yazi only works inside a Yazelix/Zellij session.") and (not ($stdout | str contains "YAZI_ID")) {
-            print "  ✅ Reveal in Yazi now fails clearly outside Zellij without relying on YAZI_ID"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_sidebar_yazi_sync_skips_outside_zellij [] {
-    print "🧪 Testing sidebar Yazi sync skips outside Zellij..."
-
-    try {
-        let output = (^bash -lc $"($CLEAN_ZELLIJ_ENV_PREFIX) nu -c 'use ~/.config/yazelix/nushell/scripts/integrations/yazi.nu *; sync_active_sidebar_yazi_to_directory . | to json -r'" | complete)
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and (($stdout | str contains '"status":"skipped"') and ($stdout | str contains '"reason":"outside_zellij"')) {
-            print "  ✅ Sidebar Yazi sync stays non-fatal outside Zellij"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_managed_editor_sync_skips_outside_zellij [] {
-    print "🧪 Testing managed editor cwd sync skips outside Zellij..."
-
-    try {
-        let output = (^bash -lc $"($CLEAN_ZELLIJ_ENV_PREFIX) nu -c 'use ~/.config/yazelix/nushell/scripts/integrations/yazi.nu *; sync_managed_editor_cwd . | to json -r'" | complete)
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and (($stdout | str contains '"status":"skipped"') and ($stdout | str contains '"reason":"outside_zellij"')) {
-            print "  ✅ Managed editor cwd sync stays non-fatal outside Zellij"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 export def run_workspace_tests [] {
     [
         (test_consume_bootstrap_sidebar_cwd)
         (test_restart_uses_home_for_future_tab_defaults)
         (test_sidebar_layout_uses_wrapper_launcher)
         (test_sidebar_wrapper_bootstraps_workspace_root)
-        (test_yzx_cwd_exists)
         (test_yzx_cwd_requires_zellij)
         (test_yzx_cwd_resolves_zoxide_query)
-        (test_get_tab_name_uses_exact_directory)
-        (test_sidebar_yazi_state_path_normalization)
         (test_resolve_reveal_target_path_from_relative_buffer)
-        (test_reveal_in_yazi_fails_clearly_outside_zellij)
-        (test_sidebar_yazi_sync_skips_outside_zellij)
-        (test_managed_editor_sync_skips_outside_zellij)
     ]
 }

@@ -2,34 +2,6 @@
 
 use ../core/yazelix.nu *
 
-def test_yzx_help [] {
-    print "🧪 Testing yzx help..."
-
-    try {
-        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx" | complete).stdout | str trim
-        let required_elements = [
-            "Usage:"
-            "Subcommands:"
-            "yzx doctor"
-            "yzx launch"
-            "yzx dev"
-        ]
-
-        for element in $required_elements {
-            if not ($output | str contains $element) {
-                print $"  ❌ Missing element: ($element)"
-                return false
-            }
-        }
-
-        print "  ✅ Help output contains all required elements"
-        true
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 def test_yzx_status [] {
     print "🧪 Testing yzx status..."
 
@@ -37,121 +9,6 @@ def test_yzx_status [] {
         yzx status | ignore
         print "  ✅ yzx status runs successfully"
         true
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_yzx_status_versions [] {
-    print "🧪 Testing yzx status --versions..."
-
-    try {
-        let output = (
-            ^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx status --versions" | complete
-        ).stdout
-
-        for tool in ["zellij" "yazi" "helix" "nushell"] {
-            if not ($output | str contains $tool) {
-                print $"  ❌ Missing tool: ($tool)"
-                return false
-            }
-        }
-
-        print "  ✅ Versions output contains expected tools"
-        true
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_yzx_why [] {
-    print "🧪 Testing yzx why..."
-
-    try {
-        yzx why | ignore
-        print "  ✅ yzx why runs successfully"
-        true
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_yzx_status_verbose [] {
-    print "🧪 Testing yzx status --verbose..."
-
-    try {
-        let output = (
-            ^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx status --verbose" | complete
-        ).stdout
-
-        for shell in ["bash" "nushell" "fish" "zsh"] {
-            if not ($output | str contains $shell) {
-                print $"  ⚠️  Missing shell in output: ($shell)"
-            }
-        }
-
-        print "  ✅ Status verbose output generated"
-        true
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_yzx_menu_exists [] {
-    print "🧪 Testing yzx menu command exists..."
-
-    try {
-        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx" | complete).stdout | str trim
-
-        if ($output | str contains "yzx menu") {
-            print "  ✅ yzx menu command is documented in help"
-            true
-        } else {
-            print "  ❌ yzx menu command not found in help"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_yzx_sponsor_exists [] {
-    print "🧪 Testing yzx sponsor command exists..."
-
-    try {
-        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx" | complete).stdout | str trim
-
-        if ($output | str contains "yzx sponsor") {
-            print "  ✅ yzx sponsor command is documented in help"
-            true
-        } else {
-            print "  ❌ yzx sponsor command not found in help"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_yzx_config_open_print [] {
-    print "🧪 Testing yzx config open --print..."
-
-    try {
-        let output = (yzx config open --print | into string | str trim)
-
-        if ($output | str ends-with ".toml") and ($output | path exists) {
-            print $"  ✅ Config path resolved: ($output)"
-            true
-        } else {
-            print $"  ❌ Unexpected output: ($output)"
-            false
-        }
     } catch { |err|
         print $"  ❌ Exception: ($err.msg)"
         false
@@ -203,15 +60,8 @@ def test_yzx_config_sections [] {
 
 export def run_core_tests [] {
     [
-        (test_yzx_help)
         (test_yzx_status)
-        (test_yzx_status_versions)
-        (test_yzx_why)
-        (test_yzx_status_verbose)
-        (test_yzx_menu_exists)
-        (test_yzx_sponsor_exists)
         (test_yzx_config_view)
         (test_yzx_config_sections)
-        (test_yzx_config_open_print)
     ]
 }

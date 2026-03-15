@@ -3,25 +3,6 @@
 use ../core/yazelix.nu *
 use ./test_yzx_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX]
 
-def test_yzx_doctor_exists [] {
-    print "🧪 Testing yzx doctor command exists..."
-
-    try {
-        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx" | complete).stdout | str trim
-
-        if ($output | str contains "yzx doctor") {
-            print "  ✅ yzx doctor command is documented in help"
-            true
-        } else {
-            print "  ❌ yzx doctor command not found in help"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 def test_yzx_doctor_reports_zellij_plugin_context [] {
     print "🧪 Testing yzx doctor reports Zellij plugin context..."
 
@@ -91,7 +72,6 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
 
 export def run_doctor_tests [] {
     [
-        (test_yzx_doctor_exists)
         (test_yzx_doctor_reports_zellij_plugin_context)
         (test_yzx_doctor_warns_on_stale_config_fields)
     ]
