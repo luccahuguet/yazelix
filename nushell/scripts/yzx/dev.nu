@@ -58,7 +58,9 @@ def get_runtime_pin_versions [] {
         exit 1
     }
 
+    print "   Resolving nix version from the repo shell..."
     let nix_version_raw = (get_tool_version_from_repo_shell "nix")
+    print "   Resolving devenv version from the repo shell..."
     let devenv_version_raw = (get_tool_version_from_repo_shell "devenv")
     let nix_version = (extract_version $nix_version_raw)
     let devenv_version = (extract_version $devenv_version_raw)
