@@ -40,6 +40,36 @@ def is_sidebar_enabled [] {
     ($config.enable_sidebar? | default true)
 }
 
+export def consume_bootstrap_sidebar_cwd [] {
+    let cwd_file = ($env.YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE? | default "" | str trim)
+    if ($cwd_file | is-empty) {
+        return null
+    }
+
+    let expanded_file = ($cwd_file | path expand)
+    if not ($expanded_file | path exists) {
+        return null
+    }
+
+    let requested_path = (open --raw $expanded_file | str trim)
+    rm -f $expanded_file
+
+    if ($requested_path | is-empty) {
+        return null
+    }
+
+    let expanded_path = ($requested_path | path expand)
+    if not ($expanded_path | path exists) {
+        return null
+    }
+
+    if (($expanded_path | path type) == "dir") {
+        $expanded_path
+    } else {
+        $expanded_path | path dirname
+    }
+}
+
 def get_sidebar_yazi_state_dir [] {
     $env.HOME | path join ".local" "share" "yazelix" "state" "yazi" "sidebar"
 }

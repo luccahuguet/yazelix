@@ -259,6 +259,15 @@ def kill_zellij_session [session_name?: string] {
     }
 }
 
+def create_restart_sidebar_bootstrap_file [target_dir: string] {
+    let state_dir = ($env.HOME | path join ".local" "share" "yazelix" "state" "restart")
+    mkdir $state_dir
+
+    let bootstrap_file = (^mktemp ($state_dir | path join "sidebar_cwd_XXXXXX") | str trim)
+    ($target_dir | path expand) | save --force --raw $bootstrap_file
+    $bootstrap_file
+}
+
 # Restart yazelix
 export def "yzx restart" [
     --reuse         # Reuse the last built profile without rebuilding
@@ -275,6 +284,10 @@ export def "yzx restart" [
     let build_cores = ($config.build_cores? | default "2" | into string)
     let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let session_to_kill = get_current_zellij_session
+    let restart_sidebar_cwd_file = (create_restart_sidebar_bootstrap_file (pwd))
+    let restart_env = {
+        YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE: $restart_sidebar_cwd_file
+    }
 
     # Detect if we're in a Yazelix-controlled terminal (launched via wrapper)
     let is_yazelix_terminal = ($env.YAZELIX_TERMINAL_CONFIG_MODE? | is-not-empty)
@@ -297,14 +310,22 @@ export def "yzx restart" [
 
     # Launch new terminal window
     if $manage_terminals and $should_refresh {
-        rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
-        yzx launch --force-reenter
+        with-env $restart_env {
+            rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
+            yzx launch --force-reenter
+        }
     } else if $reuse_mode {
-        yzx launch --reuse
+        with-env $restart_env {
+            yzx launch --reuse
+        }
     } else if $skip_refresh {
-        yzx launch --skip-refresh
+        with-env $restart_env {
+            yzx launch --skip-refresh
+        }
     } else {
-        yzx launch
+        with-env $restart_env {
+            yzx launch
+        }
     }
 
     # Wait for new session to spawn

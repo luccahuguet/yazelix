@@ -2,7 +2,8 @@ swap_tiled_layout name="basic" {
     ui exact_panes=2 {
         pane split_direction="vertical" {
             pane name="yazi" {
-                command "yazi"
+                command "nu"
+                args "~/.config/yazelix/configs/zellij/scripts/launch_sidebar_yazi.nu"
                 size "100%"
             }
         }

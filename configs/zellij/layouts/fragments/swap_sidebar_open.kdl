@@ -1,3 +1,4 @@
 pane name="sidebar" {
-    command "yazi"
+    command "nu"
+    args "~/.config/yazelix/configs/zellij/scripts/launch_sidebar_yazi.nu"
 }

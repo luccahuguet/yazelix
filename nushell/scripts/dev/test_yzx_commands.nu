@@ -2,6 +2,7 @@
 # Test script for yzx CLI commands
 
 use ../core/yazelix.nu *
+use ../integrations/yazi.nu [consume_bootstrap_sidebar_cwd]
 
 const clean_zellij_env_prefix = "env -u ZELLIJ -u ZELLIJ_SESSION_NAME -u ZELLIJ_PANE_ID -u ZELLIJ_TAB_NAME -u ZELLIJ_TAB_POSITION"
 
@@ -192,6 +193,78 @@ def test_gemini_cli_is_reactivated [] {
             true
         } else {
             print "  ❌ Gemini CLI is missing from the default config or Home Manager module"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_consume_bootstrap_sidebar_cwd [] {
+    print "🧪 Testing restart-only sidebar Yazi cwd bootstrap..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_sidebar_bootstrap_XXXXXX | str trim)
+
+    let result = (try {
+        let workspace_dir = ($tmpdir | path join "workspace")
+        mkdir $workspace_dir
+        let bootstrap_file = ($tmpdir | path join "sidebar_cwd.txt")
+        $workspace_dir | save --force --raw $bootstrap_file
+
+        let resolved = (with-env {YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE: $bootstrap_file} {
+            consume_bootstrap_sidebar_cwd
+        })
+
+        if ($resolved == $workspace_dir) and (not ($bootstrap_file | path exists)) {
+            print "  ✅ Sidebar Yazi bootstrap cwd is consumed exactly once"
+            true
+        } else {
+            print $"  ❌ Unexpected result: resolved=($resolved) file_exists=(($bootstrap_file | path exists))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_restart_uses_home_for_future_tab_defaults [] {
+    print "🧪 Testing restart keeps pane and tab defaults at HOME..."
+
+    try {
+        let output = (^nu -c "source ~/.config/yazelix/nushell/scripts/core/start_yazelix_inner.nu; with-env {HOME: '/tmp/yazelix-home', YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE: '/tmp/sidebar-bootstrap'} { print ({ session_default: (resolve_session_default_cwd '/tmp/restart-workspace'), launch_process: (resolve_launch_process_cwd '/tmp/restart-workspace') } | to json -r) }" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == '{"session_default":"/tmp/yazelix-home","launch_process":"/tmp/yazelix-home"}') {
+            print "  ✅ Restart keeps both the launch process and future tab defaults at HOME"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_sidebar_layout_uses_wrapper_launcher [] {
+    print "🧪 Testing sidebar layouts use the Yazi wrapper launcher..."
+
+    try {
+        let side_layout = (open --raw ~/.config/yazelix/configs/zellij/layouts/yzx_side.kdl)
+        let no_side_layout = (open --raw ~/.config/yazelix/configs/zellij/layouts/yzx_no_side.kdl)
+        let swap_fragment = (open --raw ~/.config/yazelix/configs/zellij/layouts/fragments/swap_sidebar_open.kdl)
+
+        if ($side_layout | str contains "launch_sidebar_yazi.nu") and ($no_side_layout | str contains "launch_sidebar_yazi.nu") and ($swap_fragment | str contains "launch_sidebar_yazi.nu") {
+            print "  ✅ Sidebar layouts launch Yazi through the restart-aware wrapper"
+            true
+        } else {
+            print "  ❌ One or more sidebar layouts still launch Yazi directly"
             false
         }
     } catch { |err|
@@ -684,6 +757,9 @@ def main [] {
         (test_dev_update_canary_set),
         (test_dev_update_defaults_to_verbose_mode),
         (test_gemini_cli_is_reactivated),
+        (test_consume_bootstrap_sidebar_cwd),
+        (test_restart_uses_home_for_future_tab_defaults),
+        (test_sidebar_layout_uses_wrapper_launcher),
         (test_yzx_doctor_exists),
         (test_yzx_doctor_reports_zellij_plugin_context),
         (test_launch_env_omits_default_helix_runtime),
