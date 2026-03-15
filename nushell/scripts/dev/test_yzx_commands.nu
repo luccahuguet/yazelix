@@ -380,7 +380,7 @@ def test_layout_generator_discovers_custom_top_level_layouts [] {
         let custom_layout_path = ($source_dir | path join "custom_layout.kdl")
         'layout { pane }' | save --force --raw $custom_layout_path
 
-        use ~/.config/yazelix/nushell/scripts/utils/layout_generator.nu *
+        use ../utils/layout_generator.nu *
         generate_all_layouts $source_dir $target_dir ["layout", "editor"] "file:/tmp/yazelix_pane_orchestrator.wasm"
 
         let generated_layout_path = ($target_dir | path join "custom_layout.kdl")

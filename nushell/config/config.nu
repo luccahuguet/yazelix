@@ -57,5 +57,4 @@ export def clp [ ] { clip copy }
 # Examples: yazelix help, yazelix get_config, yazelix versions, etc.
 
 # Yazelix command suite
-use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *
-
+use ../scripts/core/yazelix.nu *

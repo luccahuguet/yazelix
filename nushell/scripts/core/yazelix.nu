@@ -370,7 +370,7 @@ export def "yzx update all" [
 export def "yzx update devenv" [
     --verbose  # Show the underlying devenv command
 ] {
-    use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
+    use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available --skip-devenv
 
     if $verbose {

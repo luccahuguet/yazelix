@@ -318,7 +318,7 @@ export def "yzx dev update" [
     --canary-only  # Run canary checks without updating devenv.lock or syncing pins
     --canaries: list<string> = []  # Canary subset: default, maximal
 ] {
-    use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
+    use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
 
     let yazelix_dir = "~/.config/yazelix" | path expand
