@@ -9,6 +9,34 @@ use ../setup/welcome.nu [show_welcome build_welcome_message]
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
+def require_existing_directory [path_value: string, label: string] {
+    let resolved = ($path_value | path expand)
+
+    if not ($resolved | path exists) {
+        error make {msg: $"Missing ($label): ($resolved)"}
+    }
+
+    if (($resolved | path type) != "dir") {
+        error make {msg: $"($label) is not a directory: ($resolved)"}
+    }
+
+    $resolved
+}
+
+def require_existing_layout [layout_path: string] {
+    let resolved = ($layout_path | path expand)
+
+    if not ($resolved | path exists) {
+        error make {msg: $"Zellij layout not found: ($resolved)\nRun `yzx refresh` to regenerate layouts, or check the configured layout name."}
+    }
+
+    if (($resolved | path type) != "file") {
+        error make {msg: $"Zellij layout path is not a file: ($resolved)"}
+    }
+
+    $resolved
+}
+
 def resolve_session_default_cwd [working_dir: string] {
     if (($env.YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE? | default "") | is-not-empty) {
         $env.HOME
@@ -29,7 +57,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     let config = parse_yazelix_config
     let sidebar_enabled = ($config.enable_sidebar? | default true)
     let configured_layout = if $sidebar_enabled { "yzx_side" } else { "yzx_no_side" }
-    let yazelix_dir = ($env.HOME | path join ".config" "yazelix")
+    let yazelix_dir = (require_existing_directory ($env.HOME | path join ".config" "yazelix") "Yazelix runtime directory")
     let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
 
     let log_dir = ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)
@@ -39,14 +67,22 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     show_welcome $config.skip_welcome_screen $quiet_mode $config.ascii_art_mode $config.show_macchina_on_welcome $welcome_message $log_dir $colors
 
     print "🔧 Preparing Yazi configuration..."
-    if $verbose {
-        generate_merged_yazi_config $yazelix_dir | ignore
-    } else {
-        generate_merged_yazi_config $yazelix_dir --quiet | ignore
+    try {
+        if $verbose {
+            generate_merged_yazi_config $yazelix_dir | ignore
+        } else {
+            generate_merged_yazi_config $yazelix_dir --quiet | ignore
+        }
+    } catch { |err|
+        error make {msg: $"Failed to generate Yazi configuration: ($err.msg)\nRun `yzx doctor` to inspect the runtime, then rerun `yzx refresh` if needed."}
     }
 
     let merged_zellij_dir = ($ZELLIJ_CONFIG_PATHS.merged_config_dir | str replace "~" $env.HOME)
-    generate_merged_zellij_config $yazelix_dir | ignore
+    try {
+        generate_merged_zellij_config $yazelix_dir | ignore
+    } catch { |err|
+        error make {msg: $"Failed to generate Zellij configuration: ($err.msg)\nRun `yzx doctor` to inspect the runtime, then rerun `yzx refresh` if needed."}
+    }
 
     let working_dir = if ($cwd_override | is-not-empty) {
         $cwd_override
@@ -56,7 +92,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     let session_default_cwd = (resolve_session_default_cwd $working_dir)
     let launch_process_cwd = (resolve_launch_process_cwd $working_dir)
 
-    let layout_path = if ($layout_override | is-not-empty) {
+    let resolved_layout_path = if ($layout_override | is-not-empty) {
         $layout_override
     } else {
         let layout = if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
@@ -72,6 +108,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
             $"($merged_zellij_dir)/layouts/($layout).kdl"
         }
     }
+    let layout_path = (require_existing_layout $resolved_layout_path)
 
     # Record that the current config/input state has been successfully applied
     # once we are inside the prepared Yazelix runtime.

@@ -8,6 +8,20 @@ use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [SUPPORTED_TERMINALS, TERMINAL_METADATA]
 
+def validate_launch_working_dir [working_dir: string] {
+    let resolved = ($working_dir | path expand)
+
+    if not ($resolved | path exists) {
+        error make {msg: $"Launch directory does not exist: ($resolved)\nUse an existing directory, or use --home to start from HOME."}
+    }
+
+    if (($resolved | path type) != "dir") {
+        error make {msg: $"Launch path is not a directory: ($resolved)\nPass a directory to yzx launch --path."}
+    }
+
+    $resolved
+}
+
 def main [
     launch_cwd?: string
     --terminal(-t): string  # Override terminal selection (for sweep testing)
@@ -53,7 +67,8 @@ def main [
     }
 
     # Use provided launch directory or fall back to current directory
-    let working_dir = if ($launch_cwd | is-empty) { pwd } else { $launch_cwd }
+    let requested_working_dir = if ($launch_cwd | is-empty) { pwd } else { $launch_cwd }
+    let working_dir = (validate_launch_working_dir $requested_working_dir)
     if $verbose_mode {
         print $"Launch directory: ($working_dir)"
     }

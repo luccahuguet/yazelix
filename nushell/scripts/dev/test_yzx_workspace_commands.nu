@@ -54,6 +54,75 @@ def test_restart_uses_home_for_future_tab_defaults [] {
     }
 }
 
+def test_startup_rejects_missing_working_dir [] {
+    print "🧪 Testing startup rejects missing working directories..."
+
+    try {
+        let output = (^nu -c 'source ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu; try { validate_startup_working_dir "/tmp/yazelix_missing_start_dir" | ignore } catch {|err| print $err.msg }' | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "Startup directory does not exist") {
+            print "  ✅ Startup path validation fails early for missing directories"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_launch_rejects_file_working_dir [] {
+    print "🧪 Testing launch rejects file paths as working directories..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_launch_path_test_XXXXXX | str trim)
+
+    let result = (try {
+        let file_path = ($tmpdir | path join "not_a_dir.txt")
+        "hello" | save --force --raw $file_path
+        let output = (with-env {YAZELIX_TEST_FILE_PATH: $file_path} {
+            ^nu -c 'source ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu; try { validate_launch_working_dir $env.YAZELIX_TEST_FILE_PATH | ignore } catch {|err| print $err.msg }' | complete
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "Launch path is not a directory") {
+            print "  ✅ Launch path validation rejects files before terminal startup"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_startup_requires_generated_layout_path [] {
+    print "🧪 Testing startup requires an existing Zellij layout..."
+
+    try {
+        let output = (^nu -c 'source ~/.config/yazelix/nushell/scripts/core/start_yazelix_inner.nu; try { require_existing_layout "/tmp/yazelix_missing_layout.kdl" | ignore } catch {|err| print $err.msg }' | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "Zellij layout not found") and ($stdout | str contains "yzx refresh") {
+            print "  ✅ Startup fails clearly when the generated layout is missing"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_sidebar_layout_uses_wrapper_launcher [] {
     print "🧪 Testing sidebar layouts use the Yazi wrapper launcher..."
 
@@ -166,6 +235,9 @@ export def run_workspace_tests [] {
     [
         (test_consume_bootstrap_sidebar_cwd)
         (test_restart_uses_home_for_future_tab_defaults)
+        (test_startup_rejects_missing_working_dir)
+        (test_launch_rejects_file_working_dir)
+        (test_startup_requires_generated_layout_path)
         (test_sidebar_layout_uses_wrapper_launcher)
         (test_sidebar_wrapper_bootstraps_workspace_root)
         (test_yzx_cwd_requires_zellij)

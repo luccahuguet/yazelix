@@ -5,6 +5,29 @@ use ../utils/environment_bootstrap.nu *
 use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile]
 use ../utils/common.nu [describe_build_parallelism]
 
+def validate_startup_working_dir [working_dir: string] {
+    let resolved = ($working_dir | path expand)
+
+    if not ($resolved | path exists) {
+        error make {msg: $"Startup directory does not exist: ($resolved)\nUse an existing directory, or run yzx launch --home."}
+    }
+
+    if (($resolved | path type) != "dir") {
+        error make {msg: $"Startup path is not a directory: ($resolved)\nPass a directory to yzx launch --path."}
+    }
+
+    $resolved
+}
+
+def require_runtime_script [script_path: string, label: string] {
+    let resolved = ($script_path | path expand)
+    if not ($resolved | path exists) {
+        error make {msg: $"Missing Yazelix ($label): ($resolved)\nYour runtime looks incomplete. Reinstall/regenerate Yazelix and try again."}
+    }
+
+    $resolved
+}
+
 def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse] {
     # Capture original directory before any cd commands
     let original_dir = pwd
@@ -87,11 +110,12 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
 
     # Determine which directory to use as default CWD
     # Priority: 1. cwd_override parameter 2. original directory
-    let working_dir = if ($cwd_override | is-not-empty) {
+    let requested_working_dir = if ($cwd_override | is-not-empty) {
         $cwd_override
     } else {
         $original_dir
     }
+    let working_dir = (validate_startup_working_dir $requested_working_dir)
 
     # Resolve layout from yazelix.toml; explicit override wins for sweep/test flows.
     let configured_layout = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
@@ -109,7 +133,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
         $"($merged_zellij_dir)/layouts/($layout).kdl"
     }
 
-    let inner_script = $"($yazelix_dir)/nushell/scripts/core/start_yazelix_inner.nu"
+    let inner_script = (require_runtime_script $"($yazelix_dir)/nushell/scripts/core/start_yazelix_inner.nu" "startup script")
     let base_args = if ($working_dir | is-not-empty) {
         ["-i", $inner_script, $working_dir, $layout_path]
     } else {
