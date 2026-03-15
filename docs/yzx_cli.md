@@ -128,7 +128,7 @@ Pull latest Yazelix updates from git
 - `yzx update repo`: Pull latest Yazelix updates (`--stash` auto-stashes changes, `--verbose` shows git commands)
 
 Maintainer-only updates:
-- `yzx dev update`: Refresh `devenv.lock` via `devenv update`, run canary refresh/build checks (`default`, `ai-heavy`, `maximal`), then sync pinned runtime `nix`/`devenv` versions and refresh the vendored `configs/zellij/plugins/zjstatus.wasm` (`--yes` skips prompt, `--verbose` shows commands, `--no-canary` skips the gate, `--canary-only` runs the gate without updating)
+- `yzx dev update`: Refresh `devenv.lock` via `devenv update`, run canary refresh/build checks (`default`, `maximal`), then sync pinned runtime `nix`/`devenv` versions and refresh the vendored `configs/zellij/plugins/zjstatus.wasm` (verbose by default; `--quiet` restores the low-noise path, `--yes` skips prompt, `--no-canary` skips the gate, `--canary-only` runs the gate without updating)
 - `yzx dev sync_terminal_configs`: Regenerate terminal configs and sync snapshots into `configs/terminal_emulators/`
 - `yzx dev build_pane_orchestrator [--sync]`: Build the Zellij pane orchestrator wasm for `wasm32-wasip1`; `--sync` also updates the tracked/runtime plugin paths after a successful build. If the toolchain is missing, enable the `rust_wasi` pack.
 

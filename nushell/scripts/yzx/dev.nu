@@ -111,7 +111,7 @@ def print_rust_wasi_enable_hint [] {
 }
 
 def get_available_update_canaries [] {
-    ["default" "ai-heavy" "maximal"]
+    ["default" "maximal"]
 }
 
 def resolve_update_canary_selection [requested: list<string>] {
@@ -144,10 +144,6 @@ def materialize_update_canaries [selected: list<string>] {
 
     let template = (open $default_config_path)
     let all_pack_names = ($template.packs.declarations | columns | sort)
-    let ai_heavy_packs = (
-        ["ai_agents" "ai_tools" "config" "git" "nix" "python" "rust" "rust_maintainer" "ts"]
-        | where { |name| $name in $all_pack_names }
-    )
 
     let base_temp_dir = "~/.local/share/yazelix/update_canaries" | path expand
     mkdir $base_temp_dir
@@ -162,16 +158,6 @@ def materialize_update_canaries [selected: list<string>] {
                         name: "default"
                         config_path: $default_config_path
                         description: "yazelix_default.toml"
-                    }
-                }
-                "ai-heavy" => {
-                    let config_path = ($temp_dir | path join "canary_ai_heavy.toml")
-                    let config = ($template | upsert packs.enabled $ai_heavy_packs)
-                    write_update_canary_config $config $config_path
-                    {
-                        name: "ai-heavy"
-                        config_path: $config_path
-                        description: $"packs.enabled = [($ai_heavy_packs | str join ', ')]"
                     }
                 }
                 "maximal" => {
@@ -248,6 +234,9 @@ def run_update_canaries [selected: list<string>, verbose: bool] {
             $context.canaries
             | each { |canary|
                 print $"🧪 Canary: ($canary.name) — ($canary.description)"
+                if not $verbose {
+                    print "   This might take a while. Canary output is captured unless you use --verbose."
+                }
                 run_update_canary $canary $verbose
             }
         )
@@ -291,17 +280,19 @@ def print_update_canary_failure_details [results: list] {
 }
 
 export def "yzx dev update" [
-    --verbose  # Show the underlying devenv command
+    --verbose  # Deprecated compatibility flag; maintainer update output is verbose by default
+    --quiet  # Capture canary output and reduce update progress noise
     --yes      # Skip confirmation prompt
     --no-canary  # Skip canary refresh/build checks after updating devenv.lock
     --canary-only  # Run canary checks without updating devenv.lock or syncing pins
-    --canaries: list<string> = []  # Canary subset: default, ai-heavy, maximal
+    --canaries: list<string> = []  # Canary subset: default, maximal
 ] {
     use ~/.config/yazelix/nushell/scripts/utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
 
     let yazelix_dir = "~/.config/yazelix" | path expand
     let selected_canaries = resolve_update_canary_selection $canaries
+    let verbose_mode = (not $quiet)
 
     if $no_canary and $canary_only {
         print "❌ --no-canary and --canary-only cannot be used together."
@@ -323,7 +314,7 @@ export def "yzx dev update" [
 
     if $canary_only {
         print $"🧪 Running update canaries only: ($selected_canaries | str join ', ')"
-    } else if $verbose {
+    } else if $verbose_mode {
         print $"⚙️ Running: devenv update \(cwd: ($yazelix_dir)\)"
     } else {
         print "🔄 Updating Yazelix inputs..."
@@ -346,7 +337,7 @@ export def "yzx dev update" [
     if $no_canary {
         print "⚠️  Canary checks were skipped."
     } else {
-        let canary_results = run_update_canaries $selected_canaries $verbose
+        let canary_results = run_update_canaries $selected_canaries $verbose_mode
         print_update_canary_summary $canary_results
         if ($canary_results | any { |result| not $result.ok }) {
             print_update_canary_failure_details $canary_results

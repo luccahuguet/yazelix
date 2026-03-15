@@ -416,6 +416,7 @@ in
           "claude-code"
           "codex"
           "justcode"
+          "gemini-cli"
           "pi"
           "opencode"
           "amp"

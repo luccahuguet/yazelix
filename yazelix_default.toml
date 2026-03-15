@@ -317,7 +317,7 @@ ai_agents = [
   "claude-code",    # Claude Code CLI (Anthropic)
   "codex",          # Codex CLI (OpenAI)
   "justcode",       # just-every/code (installed as `justcode`)
-  # "gemini-cli",   # Blocked: it was crashing and causing unstable setups
+  "gemini-cli",     # Gemini CLI (Google)
   "pi",             # Pi coding agent (Mario Zechner)
   "opencode",       # OpenCode CLI
   "amp",            # Amp coding agent

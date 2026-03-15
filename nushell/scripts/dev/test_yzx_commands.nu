@@ -139,6 +139,67 @@ def test_yzx_dev_exists [] {
     }
 }
 
+def test_dev_update_canary_set [] {
+    print "🧪 Testing yzx dev update canary set..."
+
+    try {
+        let output = (^nu -c "source ~/.config/yazelix/nushell/scripts/yzx/dev.nu; get_available_update_canaries | to json -r" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == "[\"default\",\"maximal\"]") {
+            print "  ✅ yzx dev update exposes the expected canary set"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_dev_update_defaults_to_verbose_mode [] {
+    print "🧪 Testing yzx dev update defaults to verbose mode..."
+
+    try {
+        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; help 'yzx dev update'" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "--quiet") and ($stdout | str contains "verbose by default") {
+            print "  ✅ yzx dev update documents verbose-by-default behavior and the quiet opt-out"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_gemini_cli_is_reactivated [] {
+    print "🧪 Testing Gemini CLI is reactivated in default and Home Manager configs..."
+
+    try {
+        let default_config = (open ~/.config/yazelix/yazelix_default.toml)
+        let default_agents = ($default_config.packs.declarations.ai_agents | default [])
+        let hm_module = (open --raw ~/.config/yazelix/home_manager/module.nix)
+
+        if ("gemini-cli" in $default_agents) and ($hm_module | str contains '"gemini-cli"') {
+            print "  ✅ Gemini CLI is present in both configuration paths"
+            true
+        } else {
+            print "  ❌ Gemini CLI is missing from the default config or Home Manager module"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_yzx_doctor_exists [] {
     print "🧪 Testing yzx doctor command exists..."
 
@@ -620,6 +681,9 @@ def main [] {
         (test_yzx_why),
         (test_yzx_status_verbose),
         (test_yzx_dev_exists),
+        (test_dev_update_canary_set),
+        (test_dev_update_defaults_to_verbose_mode),
+        (test_gemini_cli_is_reactivated),
         (test_yzx_doctor_exists),
         (test_yzx_doctor_reports_zellij_plugin_context),
         (test_launch_env_omits_default_helix_runtime),

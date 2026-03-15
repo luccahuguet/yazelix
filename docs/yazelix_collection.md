@@ -187,6 +187,7 @@ AI coding agents sourced from [llm-agents.nix](https://github.com/numtide/llm-ag
 - [claude-code](https://github.com/anthropics/claude-code) — Claude Code CLI (Anthropic)
 - [codex](https://github.com/openai/codex) — Codex CLI for agentic coding (OpenAI)
 - [justcode](https://github.com/just-every/code) — just-every/code CLI (installed as `justcode`)
+- [gemini-cli](https://github.com/google-gemini/gemini-cli) — Gemini CLI (Google)
 - [pi](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent) — Pi coding agent CLI (Mario Zechner)
 - [opencode](https://github.com/opencode-ai/opencode) — OpenCode CLI
 - [amp](https://github.com/sourcegraph/amp) — Amp coding agent

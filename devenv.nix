@@ -36,6 +36,7 @@ let
     "code"
     "codex"
     "cursor-agent"
+    "gemini-cli"
     "goose-cli"
     "openclaw"
     "pi"
@@ -45,10 +46,7 @@ let
   ];
 
   # Packages explicitly blocked in Yazelix packs/user_packages.
-  # gemini-cli is blocked because it was crashing and causing unstable setups.
-  blockedPackageNames = [
-    "gemini-cli"
-  ];
+  blockedPackageNames = [ ];
 
   nixglIntel =
     if nixglPackages != null && nixglPackages ? nixGLIntel then nixglPackages.nixGLIntel else null;
