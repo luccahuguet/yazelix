@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: nu {0}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Nushell
+        uses: hustcer/setup-nu@v3
+        with:
+          version: "0.111.0"
+
+      - name: Validate Nushell syntax
+        run: nu nushell/scripts/dev/validate_syntax.nu
+
+      - name: Run yzx command tests
+        run: nu nushell/scripts/dev/test_yzx_commands.nu
