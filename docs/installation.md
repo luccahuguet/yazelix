@@ -278,7 +278,7 @@ For detailed macOS setup and troubleshooting, see [assets/macos/README.md](../as
 - **zjstatus**: this can look like an "invisible pane" at the very top where the status bar should be. Focus that top bar area and press `y`.
 - **Yazelix pane-orchestrator plugin**: Yazelix should also open a popup asking for permission for its own orchestrator plugin. You need to answer **yes** to that popup too.
 
-`Alt+y` and `Ctrl+y` depend on the Yazelix pane-orchestrator plugin, not just `zjstatus`.
+`Alt+y` and `Ctrl+y` require the Yazelix pane-orchestrator plugin permissions. `Alt+m` prefers the active Yazi directory and falls back to the current tab workspace root.
 
 The `zjstatus` permission step must be repeated on `zjstatus` updates, since the file changes. See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
 

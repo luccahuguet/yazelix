@@ -108,18 +108,61 @@ def read_sidebar_state_file [state_path: string] {
         null
     } else {
         {
+            path: $state_path
             yazi_id: $yazi_id
             cwd: ($state_lines | get -o 1 | default "" | str trim)
         }
     }
 }
 
-def read_active_sidebar_state [] {
-    let session_name = (get_current_zellij_session_name)
-    if ($session_name | is-empty) {
-        return null
+def get_session_sidebar_state_files [session_name: string] {
+    let state_dir = (get_sidebar_yazi_state_dir)
+    if not ($state_dir | path exists) {
+        return []
     }
 
+    let session_prefix = ($session_name | str trim)
+    if ($session_prefix | is-empty) {
+        return []
+    }
+
+    ls $state_dir
+    | where type == file
+    | where { |entry|
+        let name = ($entry.name | path basename)
+        ($name | str starts-with $"($session_prefix)__") and ($name | str ends-with ".txt")
+    }
+    | sort-by modified --reverse
+    | get name
+}
+
+def get_sidebar_pane_state_files [pane_id: string] {
+    let state_dir = (get_sidebar_yazi_state_dir)
+    if not ($state_dir | path exists) {
+        return []
+    }
+
+    let normalized_pane_id = ($pane_id | str trim)
+    if ($normalized_pane_id | is-empty) {
+        return []
+    }
+
+    let sanitized_pane = (sanitize_sidebar_state_component (normalize_sidebar_pane_id $normalized_pane_id))
+    if ($sanitized_pane | is-empty) {
+        return []
+    }
+
+    ls $state_dir
+    | where type == file
+    | where { |entry|
+        let name = ($entry.name | path basename)
+        ($name | str ends-with $"__($sanitized_pane).txt")
+    }
+    | sort-by modified --reverse
+    | get name
+}
+
+def read_active_sidebar_state [] {
     let sidebar_pane_id = (
         try {
             let state = (debug_editor_state)
@@ -129,11 +172,28 @@ def read_active_sidebar_state [] {
             null
         }
     )
-    if ($sidebar_pane_id | is-empty) {
-        return null
+
+    let session_name = (get_current_zellij_session_name)
+    let pane_paths = if ($sidebar_pane_id | is-not-empty) {
+        get_sidebar_pane_state_files $sidebar_pane_id
+    } else {
+        []
+    }
+    let session_paths = if ($session_name | is-not-empty) {
+        get_session_sidebar_state_files $session_name
+    } else {
+        []
+    }
+    let candidate_paths = ($pane_paths ++ $session_paths | uniq)
+
+    for state_path in $candidate_paths {
+        let sidebar_state = (read_sidebar_state_file $state_path)
+        if ($sidebar_state | is-not-empty) {
+            return $sidebar_state
+        }
     }
 
-    read_sidebar_state_file (get_sidebar_yazi_state_path $session_name $sidebar_pane_id)
+    null
 }
 
 export def get_active_sidebar_yazi_id [] {
@@ -215,6 +275,10 @@ export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: s
 
     try {
         ya emit-to $sidebar_state.yazi_id cd $target_dir
+        if ($sidebar_state.path? | is-not-empty) {
+            $"($sidebar_state.yazi_id)\n($target_dir)\n" | save --force $sidebar_state.path
+            log_to_file $log_file $"Updated sidebar state cache: ($sidebar_state.path)"
+        }
         log_to_file $log_file $"Synced active sidebar Yazi to directory: ($target_dir)"
         {status: "ok", target_dir: $target_dir}
     } catch {|err|
@@ -374,12 +438,17 @@ def open_with_editor_integration [
         log_to_file $log_file $"WARNING: Failed to update workspace root \(status=($workspace_result.status)\)"
     }
 
-    # Sync yazi's directory to match the opened file's location
-    sync_yazi_to_directory $file_path $yazi_id $log_file
-
-    # In no-sidebar mode, we leave the Yazi pane open - no need to close it
     let sidebar_enabled = is_sidebar_enabled
-    if (not $sidebar_enabled) {
+    if $sidebar_enabled {
+        let sidebar_sync_result = (sync_active_sidebar_yazi_to_directory $file_path $log_file)
+        if $sidebar_sync_result.status == "ok" {
+            log_to_file $log_file $"Synced active sidebar Yazi to directory: ($sidebar_sync_result.target_dir)"
+        } else {
+            log_to_file $log_file $"WARNING: Active sidebar Yazi sync skipped \(status=($sidebar_sync_result.status)\)"
+        }
+    } else {
+        # In no-sidebar mode, keep the originating Yazi instance aligned instead.
+        sync_yazi_to_directory $file_path $yazi_id $log_file
         log_to_file $log_file $"No-sidebar mode: leaving Yazi pane open, no close operation needed"
     }
 
@@ -422,8 +491,17 @@ def open_with_generic_editor [file_path: path, editor: string, yazi_id: string] 
         print $"Error: ($error_msg)"
     }
 
-    # Sync yazi's directory to match the opened file's location
-    sync_yazi_to_directory $file_path $yazi_id "open_generic.log"
+    let sidebar_enabled = is_sidebar_enabled
+    if $sidebar_enabled {
+        let sidebar_sync_result = (sync_active_sidebar_yazi_to_directory $file_path "open_generic.log")
+        if $sidebar_sync_result.status == "ok" {
+            log_to_file "open_generic.log" $"Synced active sidebar Yazi to directory: ($sidebar_sync_result.target_dir)"
+        } else {
+            log_to_file "open_generic.log" $"WARNING: Active sidebar Yazi sync skipped \(status=($sidebar_sync_result.status)\)"
+        }
+    } else {
+        sync_yazi_to_directory $file_path $yazi_id "open_generic.log"
+    }
 
     log_to_file "open_generic.log" "open_with_generic_editor function completed"
 }

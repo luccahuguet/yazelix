@@ -48,6 +48,7 @@ local function write_sidebar_state()
 	os.execute(string.format("mkdir -p %q", state_dir))
 
 	local state_path = string.format("%s/%s__%s.txt", state_dir, session_name, pane_id)
+	os.execute(string.format("find %q -maxdepth 1 -type f -name %q ! -path %q -delete", state_dir, session_name .. "__*.txt", state_path))
 	local file = io.open(state_path, "w")
 	if not file then
 		return

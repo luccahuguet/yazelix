@@ -39,7 +39,7 @@ impl ZellijPlugin for State {
     fn load(&mut self, _configuration: BTreeMap<String, String>) {
         set_selectable(false);
         let plugin_ids = get_plugin_ids();
-        self.initial_workspace_state = Some(WorkspaceState::from_root(
+        self.initial_workspace_state = Some(WorkspaceState::from_bootstrap_root(
             plugin_ids.initial_cwd.display().to_string(),
         ));
         request_permission(&[

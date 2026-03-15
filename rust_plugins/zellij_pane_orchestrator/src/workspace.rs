@@ -11,6 +11,13 @@ use crate::{State, COMMAND_STEP_DELAY_MS, RESULT_INVALID_PAYLOAD, RESULT_OK};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct WorkspaceState {
     pub(crate) root: String,
+    pub(crate) source: WorkspaceStateSource,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum WorkspaceStateSource {
+    Bootstrap,
+    Explicit,
 }
 
 #[derive(Deserialize)]
@@ -46,7 +53,12 @@ impl State {
                 let inherited_workspace_state = if is_new_tab {
                     previous_active_tab_position
                         .and_then(|previous_active| {
-                            self.workspace_state_by_tab.get(&previous_active).cloned()
+                            self.workspace_state_by_tab
+                                .get(&previous_active)
+                                .filter(|workspace_state| {
+                                    workspace_state.source == WorkspaceStateSource::Explicit
+                                })
+                                .cloned()
                         })
                         .or_else(|| self.initial_workspace_state.clone())
                 } else if self.workspace_state_by_tab.is_empty() {
@@ -83,7 +95,7 @@ impl State {
             }
         };
 
-        let workspace_state = WorkspaceState::from_root(workspace_root_request.workspace_root);
+        let workspace_state = WorkspaceState::from_explicit_root(workspace_root_request.workspace_root);
         rename_tab(
             tab_index_from_position(active_tab_position),
             &tab_name_from_workspace_root(&workspace_state.root),
@@ -115,7 +127,7 @@ impl State {
             return;
         };
 
-        let workspace_state = WorkspaceState::from_root(workspace_root_request.workspace_root);
+        let workspace_state = WorkspaceState::from_explicit_root(workspace_root_request.workspace_root);
         rename_tab(
             tab_index_from_position(active_tab_position),
             &tab_name_from_workspace_root(&workspace_state.root),
@@ -134,6 +146,10 @@ impl State {
     }
 
     pub(crate) fn open_terminal_in_cwd(&self, pipe_message: &PipeMessage) {
+        let Some(_active_tab_position) = self.ensure_action_ready(pipe_message) else {
+            return;
+        };
+
         let Some(payload) = pipe_message.payload.as_deref() else {
             self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
             return;
@@ -150,11 +166,22 @@ impl State {
         open_terminal(&open_terminal_request.cwd);
         self.respond(pipe_message, RESULT_OK);
     }
+
 }
 
 impl WorkspaceState {
-    pub(crate) fn from_root(root: String) -> Self {
-        Self { root }
+    pub(crate) fn from_bootstrap_root(root: String) -> Self {
+        Self {
+            root,
+            source: WorkspaceStateSource::Bootstrap,
+        }
+    }
+
+    pub(crate) fn from_explicit_root(root: String) -> Self {
+        Self {
+            root,
+            source: WorkspaceStateSource::Explicit,
+        }
     }
 }
 

@@ -59,6 +59,11 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     # once we are inside the prepared Yazelix runtime.
     mark_config_state_applied (compute_config_state)
 
+    # Zellij can reuse the launching process cwd for the first user pane.
+    # Change into the intended workspace cwd right before starting Zellij so
+    # the initial pane does not inherit ~/.config/yazelix.
+    cd $working_dir
+
     if ($config.persistent_sessions == "true") {
         # Check if session already exists
         let existing_sessions = (do { ^zellij list-sessions } | complete)

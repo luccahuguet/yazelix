@@ -465,7 +465,7 @@ export def check_zellij_plugin_health [] {
         $results = ($results | append {
             status: "error"
             message: "Yazelix pane-orchestrator plugin permissions not granted"
-            details: "Grant permissions for both Zellij plugins: focus the top zjstatus bar and press `y`, and also answer yes to the Yazelix orchestrator permission popup. `Alt+y` and `Ctrl+y` depend on the Yazelix orchestrator."
+            details: "Grant permissions for both Zellij plugins: focus the top zjstatus bar and press `y`, and also answer yes to the Yazelix orchestrator permission popup. Yazelix workspace bindings like `Alt+m`, `Alt+y`, `Ctrl+y`, `Alt+r`, `Alt+[`, and `Alt+]` depend on the orchestrator."
             fix_available: false
         })
     } else {

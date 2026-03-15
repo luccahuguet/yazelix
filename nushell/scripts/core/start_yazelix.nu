@@ -67,14 +67,12 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
         ensure_environment_available
     }
 
-    cd $yazelix_dir
-
     # If setup-only mode, just run devenv shell to install hooks and exit
     if $setup_only {
         print "🔧 Setting up Yazelix environment (installing shell hooks and dependencies)..."
         print "   This may take several minutes on first run."
 
-        run_in_devenv_shell "echo '✅ Setup complete! Shell hooks installed.'" --max-jobs $max_jobs --build-cores $build_cores --skip-welcome --verbose=$verbose_mode --force-refresh=$needs_refresh
+        run_in_devenv_shell_command "sh" "-c" "echo '✅ Setup complete! Shell hooks installed.'" --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --skip-welcome --verbose=$verbose_mode --force-refresh=$needs_refresh
 
         print ""
         print "📝 Next steps:"
@@ -112,14 +110,15 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     }
 
     let inner_script = $"($yazelix_dir)/nushell/scripts/core/start_yazelix_inner.nu"
-    let cmd = if ($working_dir | is-not-empty) and $verbose_mode {
-        $"nu -i \"($inner_script)\" \"($working_dir)\" \"($layout_path)\" --verbose"
-    } else if ($working_dir | is-not-empty) {
-        $"nu -i \"($inner_script)\" \"($working_dir)\" \"($layout_path)\""
-    } else if $verbose_mode {
-        $"nu -i \"($inner_script)\" \"\" \"($layout_path)\" --verbose"
+    let base_args = if ($working_dir | is-not-empty) {
+        ["-i", $inner_script, $working_dir, $layout_path]
     } else {
-        $"nu -i \"($inner_script)\" \"\" \"($layout_path)\""
+        ["-i", $inner_script, "", $layout_path]
+    }
+    let inner_args = if $verbose_mode {
+        $base_args | append "--verbose"
+    } else {
+        $base_args
     }
 
     # Run devenv shell with explicit HOME.
@@ -144,7 +143,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
         }
 
         # Use shared devenv runner (consolidates with yzx env)
-        run_in_devenv_shell $cmd --max-jobs $max_jobs --build-cores $build_cores --skip-welcome --verbose=$verbose_mode --force-refresh=($needs_refresh and (not $reuse_mode)) --refresh-output-mode $refresh_output
+        run_in_devenv_shell_command "nu" ...$inner_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --skip-welcome --verbose=$verbose_mode --force-refresh=($needs_refresh and (not $reuse_mode)) --refresh-output-mode $refresh_output
     }
 }
 

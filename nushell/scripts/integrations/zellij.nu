@@ -241,6 +241,11 @@ export def get_current_tab_workspace_root [] {
     if ($state | is-empty) {
         null
     } else {
+        let workspace_root_source = ($state.workspace_root_source? | default "" | into string | str trim)
+        if $workspace_root_source == "bootstrap" {
+            return null
+        }
+
         let workspace_root = ($state.workspace_root? | default "" | into string | str trim)
         if ($workspace_root | is-empty) {
             null

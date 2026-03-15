@@ -4,6 +4,7 @@ use serde::Serialize;
 use zellij_tile::prelude::*;
 
 use crate::{State, RESULT_INVALID_PAYLOAD, RESULT_MISSING, RESULT_OK};
+use crate::workspace::WorkspaceStateSource;
 
 pub(crate) const EDITOR_TITLE: &str = "editor";
 pub(crate) const SIDEBAR_TITLE: &str = "sidebar";
@@ -40,6 +41,7 @@ struct DebugEditorState {
     active_tab_position: Option<usize>,
     active_swap_layout_name: Option<String>,
     workspace_root: Option<String>,
+    workspace_root_source: Option<String>,
     editor_pane_id: Option<String>,
     sidebar_pane_id: Option<String>,
     sidebar_is_suppressed: Option<bool>,
@@ -200,6 +202,19 @@ impl State {
             .and_then(|tab_position| self.workspace_state_by_tab.get(&tab_position))
             .map(|workspace_state| workspace_state.root.clone())
             .or_else(|| self.initial_workspace_state.clone().map(|state| state.root));
+        let workspace_root_source = active_tab_position
+            .and_then(|tab_position| self.workspace_state_by_tab.get(&tab_position))
+            .map(|workspace_state| match workspace_state.source {
+                WorkspaceStateSource::Bootstrap => "bootstrap",
+                WorkspaceStateSource::Explicit => "explicit",
+            })
+            .or_else(|| {
+                self.initial_workspace_state.as_ref().map(|workspace_state| match workspace_state.source {
+                    WorkspaceStateSource::Bootstrap => "bootstrap",
+                    WorkspaceStateSource::Explicit => "explicit",
+                })
+            })
+            .map(str::to_string);
         let editor_pane = active_tab_position
             .and_then(|tab_position| self.managed_panes_by_tab.get(&tab_position))
             .and_then(|managed_tab_panes| managed_tab_panes.editor);
@@ -212,6 +227,7 @@ impl State {
             active_tab_position,
             active_swap_layout_name,
             workspace_root,
+            workspace_root_source,
             editor_pane_id: pane_id_to_string(editor_pane.map(|pane| pane.pane_id)),
             sidebar_pane_id: pane_id_to_string(sidebar_pane.map(|pane| pane.pane_id)),
             sidebar_is_suppressed: sidebar_pane.map(|pane| pane.is_suppressed),

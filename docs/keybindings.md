@@ -53,6 +53,7 @@ If you find a conflict, please open an issue
   - `Alt+w/q` walks left/right (focus tabs)
   - `Ctrl+y` toggles focus between the managed sidebar and editor
   - `Alt+y` toggles the sidebar open/closed
+  - `Alt+m` opens a new terminal in the active Yazi directory, falling back to the current tab workspace root
   - `Alt+r` is the smart reveal key: in the editor it forwards `Alt+r` into the editor, and outside the editor it falls back to the editor/sidebar focus flow
   - `Ctrl+Alt+g` locked mode, `Ctrl+Alt+s` scroll mode, `Ctrl+Alt+o` session mode
 - **Helix**: See [Helix Custom Keybindings](#helix-custom-keybindings) section below

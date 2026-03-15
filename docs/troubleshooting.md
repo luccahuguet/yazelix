@@ -42,7 +42,7 @@ When you first run yazelix, **you need to grant permissions for two separate Zel
 - **zjstatus**: its permission prompt can look like an "invisible pane" at the very top where the status bar should be. Navigate to that top bar area either by keyboard shortcuts (`alt h/j/k/l`) or by clicking it, then press `y`.
 - **Yazelix pane-orchestrator plugin**: Yazelix should also open a popup asking for permission for its own orchestrator plugin. You need to answer **yes** to that popup too.
 
-`Alt+y` and `Ctrl+y` depend on the Yazelix pane-orchestrator plugin, not just `zjstatus`.
+`Alt+y` and `Ctrl+y` require the Yazelix pane-orchestrator plugin permissions. `Alt+m` prefers the active Yazi directory and falls back to the current tab workspace root.
 
 The `zjstatus` permission step must be repeated on `zjstatus` updates, since the file changes.
 
