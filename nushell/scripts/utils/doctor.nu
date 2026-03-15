@@ -345,6 +345,7 @@ export def check_configuration [] {
                 details: (
                     [
                         "Compare your config against yazelix_default.toml."
+                        "To replace it with a fresh template \(with backup\): yzx config reset --yes"
                         ...$detail_lines
                     ] | str join "\n"
                 )

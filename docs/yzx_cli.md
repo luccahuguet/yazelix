@@ -169,6 +169,12 @@ Open the active Yazelix configuration file in your editor
 - Uses `$EDITOR` (set by Yazelix from `[editor] command` in yazelix.toml)
 - `--print`: print the resolved config path without opening
 
+### `yzx config reset [--yes]`
+Replace `yazelix.toml` with a fresh copy of `yazelix_default.toml`
+- Backs up the current `yazelix.toml` to `yazelix.toml.backup-<timestamp>` first when it exists
+- `--yes`: skip the confirmation prompt
+- Use this as a blunt recovery path when `yzx doctor` reports stale config fields
+
 ### `yzx help`
 Show command reference
 
@@ -215,6 +221,7 @@ yzx config --path             # Print the active config path
 yzx config hx                 # Show the Helix section only
 yzx config yazi               # Show the Yazi section only
 yzx config zellij             # Show the Zellij section only
+yzx config reset --yes        # Replace yazelix.toml with a fresh template and keep a backup
 yzx status                    # System information
 yzx status --versions         # Show all tool versions
 yzx status --verbose          # Show detailed shell hook status

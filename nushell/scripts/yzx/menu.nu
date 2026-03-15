@@ -186,6 +186,15 @@ export def "yzx config" [
     }
 }
 
+def get_primary_config_paths [] {
+    let yazelix_dir = ("~/.config/yazelix" | path expand)
+    {
+        yazelix_dir: $yazelix_dir
+        user_config: ($yazelix_dir | path join "yazelix.toml")
+        default_config: ($yazelix_dir | path join "yazelix_default.toml")
+    }
+}
+
 def show_config_section [section: string] {
     let yazi_config_path = ("~/.local/share/yazelix/configs/yazi/yazi.toml" | path expand)
     let zellij_config_path = ("~/.local/share/yazelix/configs/zellij/config.kdl" | path expand)
@@ -243,4 +252,44 @@ export def "yzx config open" [
     } else {
         ^$env.EDITOR $config_path
     }
+}
+
+export def "yzx config reset" [
+    --yes  # Skip confirmation prompt
+] {
+    let paths = get_primary_config_paths
+
+    if not ($paths.default_config | path exists) {
+        error make {msg: $"Default config not found: ($paths.default_config)"}
+    }
+
+    if not $yes {
+        print "⚠️  This replaces yazelix.toml with a fresh copy of yazelix_default.toml."
+        if ($paths.user_config | path exists) {
+            print "   Your current yazelix.toml will be backed up first."
+        }
+        let confirm = try {
+            (input "Continue? [y/N]: " | str downcase)
+        } catch { "n" }
+        if $confirm not-in ["y", "yes"] {
+            print "Aborted."
+            return
+        }
+    }
+
+    let backup_path = if ($paths.user_config | path exists) {
+        let timestamp = (date now | format date "%Y%m%d_%H%M%S")
+        let path = $"($paths.user_config).backup-($timestamp)"
+        mv $paths.user_config $path
+        $path
+    } else {
+        null
+    }
+
+    cp $paths.default_config $paths.user_config
+
+    if ($backup_path | is-not-empty) {
+        print $"✅ Backed up previous config to: ($backup_path)"
+    }
+    print $"✅ Replaced yazelix.toml with a fresh template: ($paths.user_config)"
 }
