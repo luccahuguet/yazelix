@@ -273,6 +273,25 @@ def test_sidebar_layout_uses_wrapper_launcher [] {
     }
 }
 
+def test_sidebar_wrapper_bootstraps_workspace_root [] {
+    print "🧪 Testing sidebar Yazi wrapper bootstraps the tab workspace root..."
+
+    try {
+        let wrapper = (open --raw ~/.config/yazelix/configs/zellij/scripts/launch_sidebar_yazi.nu)
+
+        if ($wrapper | str contains 'set_workspace_root') and ($wrapper | str contains 'bootstrap_workspace_root') {
+            print "  ✅ Sidebar Yazi wrapper updates the tab workspace root before launch"
+            true
+        } else {
+            print "  ❌ Sidebar Yazi wrapper is missing workspace-root bootstrap logic"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_yzx_doctor_exists [] {
     print "🧪 Testing yzx doctor command exists..."
 
@@ -760,6 +779,7 @@ def main [] {
         (test_consume_bootstrap_sidebar_cwd),
         (test_restart_uses_home_for_future_tab_defaults),
         (test_sidebar_layout_uses_wrapper_launcher),
+        (test_sidebar_wrapper_bootstraps_workspace_root),
         (test_yzx_doctor_exists),
         (test_yzx_doctor_reports_zellij_plugin_context),
         (test_launch_env_omits_default_helix_runtime),
