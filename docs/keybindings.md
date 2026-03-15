@@ -53,6 +53,7 @@ If you find a conflict, please open an issue
   - `Alt+w/q` walks left/right (focus tabs)
   - `Ctrl+y` toggles focus between the managed sidebar and editor
   - `Alt+y` toggles the sidebar open/closed
+  - `Alt+r` is the smart reveal key: in the editor it forwards `Alt+r` into the editor, and outside the editor it falls back to the editor/sidebar focus flow
   - `Ctrl+Alt+g` locked mode, `Ctrl+Alt+s` scroll mode, `Ctrl+Alt+o` session mode
 - **Helix**: See [Helix Custom Keybindings](#helix-custom-keybindings) section below
 
@@ -80,7 +81,7 @@ You can also print these Yazelix-owned bindings directly with `yzx keys`.
 
 ## Helix Custom Keybindings
 
-Yazelix does not ship a default Helix-local Yazi keybinding. If you want an editor-local reveal action, bind `reveal_in_yazi.nu` to any Helix shortcut that fits your setup and does not conflict with your own editor bindings.
+Yazelix does not ship a built-in Helix-local Yazi keybinding. If you want an editor-local reveal action, bind `reveal_in_yazi.nu` to any Helix shortcut that fits your setup and does not conflict with your own editor bindings. `Alt+r` is the recommended choice.
 
 The shipped workspace keys are:
 
@@ -88,5 +89,6 @@ The shipped workspace keys are:
 |------------|--------|
 | `Ctrl y` | Toggle focus between the managed editor and sidebar |
 | `Alt y` | Toggle the sidebar open/closed |
+| `Alt r` | Smart reveal key: forwards `Alt+r` into the editor, otherwise falls back to the editor/sidebar focus toggle |
 
-If you add a Helix-local reveal binding, treat it as optional editor customization rather than part of the default Yazelix keymap.
+If you add a Helix-local reveal binding, treat it as optional editor customization rather than part of the default Yazelix keymap. The recommended split is `Alt+r` for reveal, `Ctrl+y` for editor/sidebar focus, and `Alt+y` for sidebar open/close. Yazelix now also binds `Alt+r` at the Zellij layer so it behaves like `Ctrl+y` outside the editor.

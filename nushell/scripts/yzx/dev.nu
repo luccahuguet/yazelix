@@ -89,6 +89,27 @@ def sync_vendored_zjstatus [] {
     }
 }
 
+def get_pane_orchestrator_paths [] {
+    let yazelix_dir = "~/.config/yazelix" | path expand
+    let crate_dir = ($yazelix_dir | path join "rust_plugins" "zellij_pane_orchestrator")
+    let build_target = "wasm32-wasip1"
+    let wasm_path = ($crate_dir | path join "target" $build_target "release" "yazelix_pane_orchestrator.wasm")
+    let sync_script = ($yazelix_dir | path join "nushell" "scripts" "dev" "update_zellij_pane_orchestrator.nu")
+
+    {
+        yazelix_dir: $yazelix_dir
+        crate_dir: $crate_dir
+        build_target: $build_target
+        wasm_path: $wasm_path
+        sync_script: $sync_script
+    }
+}
+
+def print_rust_wasi_enable_hint [] {
+    print "   Enable the `rust_wasi` pack in yazelix.toml to get the pinned WASI-capable Rust toolchain."
+    print '   Example: packs.enabled = ["rust_wasi"]'
+}
+
 def get_available_update_canaries [] {
     ["default" "ai-heavy" "maximal"]
 }
@@ -124,7 +145,7 @@ def materialize_update_canaries [selected: list<string>] {
     let template = (open $default_config_path)
     let all_pack_names = ($template.packs.declarations | columns | sort)
     let ai_heavy_packs = (
-        ["ai_agents" "ai_tools" "config" "git" "nix" "python" "rust" "rust_extra" "ts"]
+        ["ai_agents" "ai_tools" "config" "git" "nix" "python" "rust" "rust_maintainer" "ts"]
         | where { |name| $name in $all_pack_names }
     )
 
@@ -401,6 +422,73 @@ export def "yzx dev sync_terminal_configs" [] {
         let final_content = $"($header)($content)"
         $final_content | save $dest_path --force
         print $"✅ Synced ($entry.terminal) → ($dest_path)"
+    }
+}
+
+export def "yzx dev build_pane_orchestrator" [
+    --sync  # Sync the built wasm into the repo/runtime paths after a successful build
+] {
+    let paths = get_pane_orchestrator_paths
+
+    if not ($paths.crate_dir | path exists) {
+        print $"❌ Pane orchestrator crate not found: ($paths.crate_dir)"
+        exit 1
+    }
+
+    let missing_tools = (
+        ["cargo" "rustc"]
+        | where { |tool| (which $tool | is-empty) }
+    )
+    if ($missing_tools | is-not-empty) {
+        print $"❌ Missing Rust tool(s): ($missing_tools | str join ', ')"
+        print_rust_wasi_enable_hint
+        exit 1
+    }
+
+    print $"🦀 Building pane orchestrator for target ($paths.build_target)..."
+    let result = (do {
+        cd $paths.crate_dir
+        ^cargo build --target $paths.build_target --profile release | complete
+    })
+
+    if ($result.stdout | default "" | str trim | is-not-empty) {
+        print ($result.stdout | str trim)
+    }
+
+    if $result.exit_code != 0 {
+        let stderr_text = ($result.stderr | default "" | str trim)
+        if ($stderr_text | is-not-empty) {
+            print $stderr_text
+        }
+        if (
+            ($stderr_text | str contains "can't find crate for `core`")
+            or ($stderr_text | str contains "can't find crate for `std`")
+            or ($stderr_text | str contains "target may not be installed")
+        ) {
+            print ""
+            print "❌ The wasm target stdlib is not available in the current Rust toolchain."
+            print_rust_wasi_enable_hint
+        } else {
+            print ""
+            print "❌ Pane orchestrator build failed."
+        }
+        exit $result.exit_code
+    }
+
+    if not ($paths.wasm_path | path exists) {
+        print $"❌ Build reported success, but wasm output was not found at: ($paths.wasm_path)"
+        exit 1
+    }
+
+    print $"✅ Built pane orchestrator wasm: ($paths.wasm_path)"
+
+    if $sync {
+        if not ($paths.sync_script | path exists) {
+            print $"❌ Sync helper not found: ($paths.sync_script)"
+            exit 1
+        }
+        print "🔄 Syncing pane orchestrator wasm into Yazelix..."
+        ^nu $paths.sync_script
     }
 }
 

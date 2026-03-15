@@ -4,11 +4,9 @@ This guide covers recommended Helix keybindings that enhance your editing experi
 
 ## Basic Yazelix Integration
 
-Yazelix does not ship a default Helix-local Yazi binding. The default workspace bindings live in Zellij: `Ctrl+y` toggles focus between the managed editor and sidebar, and `Alt+y` toggles the sidebar open or closed.
+Yazelix does not ship a built-in Helix-local Yazi binding. The default workspace bindings live in Zellij: `Ctrl+y` toggles focus between the managed editor and sidebar, and `Alt+y` toggles the sidebar open or closed.
 
-If you want an editor-local reveal action, bind `reveal_in_yazi.nu` to any Helix shortcut that fits your setup and does not conflict with your own editor bindings.
-
-**Note:** `reveal_in_yazi.nu` only works for Helix instances opened from Yazi.
+If you want an editor-local reveal action, bind `reveal_in_yazi.nu` to `Alt+r`. Yazelix now reserves `Alt+r` globally and forwards it into the editor when the managed editor is focused; outside the editor, the same key falls back to the editor/sidebar focus flow.
 
 ## Additional Recommended Keybindings
 
@@ -34,7 +32,8 @@ C-k = [
 C-j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
 
 # System integration
-A-r = [":config-reload", ":reload"]
+C-r = [":config-reload", ":reload"]
+A-r = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
 
 # Git integration
 A-g.b = ":sh git blame -L %{cursor_line},+1 %{buffer_name}"
@@ -63,7 +62,8 @@ backspace.c = ":config-open"
 - `C-j`: Cut current line and paste below
 
 ### System Integration
-- `A-r`: Reload configuration and current file
+- `C-r`: Reload configuration and current file
+- `A-r`: Reveal the current file in the managed Yazi sidebar
 
 ### Git Integration
 - `A-g.b`: Show git blame for current line
@@ -83,7 +83,7 @@ backspace.c = ":config-open"
 
 2. **File Picker Toggles**: Use `backspace.h` and `backspace.i` to quickly adjust what files are visible when using Helix's file picker.
 
-3. **Yazelix Integration**: If you add your own `reveal_in_yazi.nu` binding, you can jump from the current Helix buffer back to the matching file in the sidebar.
+3. **Yazelix Integration**: `Alt+r` is a good fit for `reveal_in_yazi.nu` because Yazelix forwards it into the editor when the managed editor is focused, while the same key behaves like `Ctrl+y` outside the editor.
 
 ## Customization
 

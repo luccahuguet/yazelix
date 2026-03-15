@@ -463,14 +463,18 @@ in
           "python3Packages.ipython"
         ];
         rust = [
+          "rust_toolchain"
           "cargo-edit"
           "cargo-watch"
+          "cargo-nextest"
           "cargo-audit"
         ];
-        rust_extra = [
+        rust_maintainer = [
           "cargo-update"
           "cargo-binstall"
-          "cargo-nextest"
+        ];
+        rust_wasi = [
+          "rust_wasi_toolchain"
         ];
         nix = [
           "nil"

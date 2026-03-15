@@ -11,6 +11,7 @@ let
   inherit (pkgs.stdenv) isLinux isDarwin;
   system = pkgs.stdenv.hostPlatform.system;
 
+  fenixPkgs = if inputs ? fenix then inputs.fenix.packages.${system} else null;
   nixglPackages = if isLinux then inputs.nixgl.packages.${system} else null;
 
   # LLM agents packages from numtide/llm-agents.nix (daily updates)
@@ -479,6 +480,29 @@ let
     else
       null;
 
+  rustWasiToolchain =
+    if fenixPkgs != null then
+      fenixPkgs.combine [
+        fenixPkgs.stable.cargo
+        fenixPkgs.stable.rustc
+        fenixPkgs.stable.rustfmt
+        fenixPkgs.stable.clippy
+        fenixPkgs.targets.wasm32-wasip1.stable.rust-std
+      ]
+    else
+      null;
+
+  rustToolchain =
+    if fenixPkgs != null then
+      fenixPkgs.combine [
+        fenixPkgs.stable.cargo
+        fenixPkgs.stable.rustc
+        fenixPkgs.stable.rustfmt
+        fenixPkgs.stable.clippy
+      ]
+    else
+      null;
+
   resolvePkg =
     name:
     let
@@ -497,6 +521,16 @@ let
         justcodePkg
       else
         throw "Package 'justcode' requires llm-agents.nix package 'code', but it was not found"
+    else if name == "rust_wasi_toolchain" then
+      if rustWasiToolchain != null then
+        rustWasiToolchain
+      else
+        throw "Package 'rust_wasi_toolchain' requires the fenix input, but it was not found in devenv.yaml"
+    else if name == "rust_toolchain" then
+      if rustToolchain != null then
+        rustToolchain
+      else
+        throw "Package 'rust_toolchain' requires the fenix input, but it was not found in devenv.yaml"
     else if llmAgentsValue != null then
       llmAgentsValue
     else if nixpkgsValue != null then

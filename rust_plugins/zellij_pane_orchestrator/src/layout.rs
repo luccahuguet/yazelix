@@ -12,13 +12,6 @@ const VERTICAL_SPLIT_OPEN_LAYOUT_NAME: &str = "vertical_split_open";
 const VERTICAL_SPLIT_CLOSED_LAYOUT_NAME: &str = "vertical_split_closed";
 const BOTTOM_TERMINAL_OPEN_LAYOUT_NAME: &str = "bottom_terminal_open";
 const BOTTOM_TERMINAL_CLOSED_LAYOUT_NAME: &str = "bottom_terminal_closed";
-const LEGACY_BASIC_LAYOUT_NAME: &str = "basic";
-const LEGACY_STACKED_LAYOUT_NAME: &str = "stacked";
-const LEGACY_THREE_COLUMN_LAYOUT_NAME: &str = "three_column";
-const LEGACY_SIDEBAR_CLOSED_LAYOUT_NAME: &str = "sidebar_closed";
-const LEGACY_SINGLE_LAYOUT_NAME: &str = "single";
-const LEGACY_VERTICAL_SPLIT_LAYOUT_NAME: &str = "vertical_split";
-const LEGACY_BOTTOM_TERMINAL_LAYOUT_NAME: &str = "bottom_terminal";
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum FamilyDirection {
@@ -156,10 +149,7 @@ impl LayoutVariant {
 
     fn from_layout_name(layout_name: &str) -> Option<Self> {
         match layout_name {
-            SINGLE_OPEN_LAYOUT_NAME
-            | LEGACY_BASIC_LAYOUT_NAME
-            | LEGACY_STACKED_LAYOUT_NAME
-            | LEGACY_SINGLE_LAYOUT_NAME => Some(Self {
+            SINGLE_OPEN_LAYOUT_NAME => Some(Self {
                 family: LayoutFamily::Single,
                 sidebar_state: SidebarState::Open,
             }),
@@ -167,17 +157,15 @@ impl LayoutVariant {
                 family: LayoutFamily::Single,
                 sidebar_state: SidebarState::Closed,
             }),
-            VERTICAL_SPLIT_OPEN_LAYOUT_NAME
-            | LEGACY_THREE_COLUMN_LAYOUT_NAME
-            | LEGACY_VERTICAL_SPLIT_LAYOUT_NAME => Some(Self {
+            VERTICAL_SPLIT_OPEN_LAYOUT_NAME => Some(Self {
                 family: LayoutFamily::VerticalSplit,
                 sidebar_state: SidebarState::Open,
             }),
-            VERTICAL_SPLIT_CLOSED_LAYOUT_NAME | LEGACY_SIDEBAR_CLOSED_LAYOUT_NAME => Some(Self {
+            VERTICAL_SPLIT_CLOSED_LAYOUT_NAME => Some(Self {
                 family: LayoutFamily::VerticalSplit,
                 sidebar_state: SidebarState::Closed,
             }),
-            BOTTOM_TERMINAL_OPEN_LAYOUT_NAME | LEGACY_BOTTOM_TERMINAL_LAYOUT_NAME => Some(Self {
+            BOTTOM_TERMINAL_OPEN_LAYOUT_NAME => Some(Self {
                 family: LayoutFamily::BottomTerminal,
                 sidebar_state: SidebarState::Open,
             }),

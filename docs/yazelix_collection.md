@@ -118,14 +118,18 @@ Complete toolchains you can declare:
 - [bun](https://bun.sh/) — Fast all-in-one JavaScript runtime, bundler, test runner, and package manager
 
 ### Rust Pack (`rust`)
+- `rust_toolchain` — Pinned stable Rust toolchain with `cargo`, `rustc`, `rustfmt`, and `clippy`
 - [cargo-edit](https://github.com/killercup/cargo-edit) — Add, remove, and upgrade dependencies from the command line (`cargo add`, `cargo rm`)
 - [cargo-watch](https://github.com/watchexec/cargo-watch) — Auto-recompile and re-run on file changes
+- [cargo-nextest](https://github.com/nextest-rs/nextest) — Next-generation test runner with better output and parallelism
 - [cargo-audit](https://github.com/rustsec/rustsec/tree/main/cargo-audit) — Audit dependencies for security vulnerabilities
 
-### Rust Extra Pack (`rust_extra`)
+### Rust Maintainer Pack (`rust_maintainer`)
 - [cargo-update](https://github.com/nabijaczleweli/cargo-update) — Updates Rust crates for project maintenance
 - [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) — Faster installation of Rust tools
-- [cargo-nextest](https://github.com/nextest-rs/nextest) — Next-generation test runner with better output and parallelism
+
+### Rust WASI Pack (`rust_wasi`)
+- `rust_wasi_toolchain` — Pinned Rust toolchain with `cargo`, `rustc`, `rustfmt`, `clippy`, and the `wasm32-wasip1` target for Yazelix/Zellij plugin builds
 
 ### Go Pack (`go`)
 - [gopls](https://github.com/golang/tools/tree/master/gopls) — Official Go language server for IDE features and LSP support

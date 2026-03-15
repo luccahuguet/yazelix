@@ -136,6 +136,20 @@ def read_active_sidebar_state [] {
     read_sidebar_state_file (get_sidebar_yazi_state_path $session_name $sidebar_pane_id)
 }
 
+export def get_active_sidebar_yazi_id [] {
+    let sidebar_state = (read_active_sidebar_state)
+    if ($sidebar_state | is-empty) {
+        null
+    } else {
+        let yazi_id = ($sidebar_state.yazi_id? | default "" | str trim)
+        if ($yazi_id | is-empty) {
+            null
+        } else {
+            $yazi_id
+        }
+    }
+}
+
 export def get_active_sidebar_cwd [] {
     let sidebar_state = (read_active_sidebar_state)
     if ($sidebar_state | is-empty) {
@@ -148,6 +162,30 @@ export def get_active_sidebar_cwd [] {
             $cwd
         }
     }
+}
+
+export def resolve_reveal_target_path [buffer_name: string] {
+    if ($buffer_name | is-empty) {
+        error make {msg: "Buffer name not provided"}
+    }
+
+    let normalized_buffer_name = if ($buffer_name | str contains "~") {
+        $buffer_name | path expand
+    } else {
+        $buffer_name
+    }
+
+    let full_path = if ($normalized_buffer_name | path type) != "relative" {
+        $normalized_buffer_name | path expand
+    } else {
+        ($env.PWD | path join $normalized_buffer_name | path expand)
+    }
+
+    if not ($full_path | path exists) {
+        error make {msg: $"Resolved path '($full_path)' does not exist."}
+    }
+
+    $full_path
 }
 
 export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: string = "yazi_sync.log"] {
@@ -247,44 +285,44 @@ export def reveal_in_yazi [buffer_name: string] {
         return
     }
 
-    if ($buffer_name | is-empty) {
-        let error_msg = "Buffer name not provided"
+    if ($env.ZELLIJ? | is-empty) {
+        let error_msg = "Reveal in Yazi only works inside a Yazelix/Zellij session."
         log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
         print $"Error: ($error_msg)"
         return
     }
 
-    let normalized_buffer_name = if ($buffer_name | str contains "~") {
-        $buffer_name | path expand
-    } else {
-        $buffer_name
+    if (which ya | is-empty) {
+        let error_msg = "The `ya` CLI is not available in this environment."
+        log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
+        print $"Error: ($error_msg)"
+        return
     }
 
-    log_to_file "reveal_in_yazi.log" $"Normalized buffer name: '($normalized_buffer_name)'"
+    let full_path = try {
+        resolve_reveal_target_path $buffer_name
+    } catch {|err|
+        log_to_file "reveal_in_yazi.log" $"ERROR: ($err.msg)"
+        print $"Error: ($err.msg)"
+        return
+    }
 
-    let full_path = ($env.PWD | path join $normalized_buffer_name | path expand)
     log_to_file "reveal_in_yazi.log" $"Resolved full path: '($full_path)'"
 
-    if not ($full_path | path exists) {
-        let error_msg = $"Resolved path '($full_path)' does not exist."
+    let sidebar_yazi_id = (get_active_sidebar_yazi_id)
+    if ($sidebar_yazi_id | is-empty) {
+        let error_msg = "Managed sidebar Yazi is not available in the current tab. Open the sidebar and try again."
         log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
         print $"Error: ($error_msg)"
         return
     }
 
-    if ($env.YAZI_ID | is-empty) {
-        let error_msg = "YAZI_ID not set. reveal_in_yazi requires that you open helix from yazelix's yazi sidebar"
-        log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
-        print $"Error: ($error_msg)"
-        return
-    }
-
-    log_to_file "reveal_in_yazi.log" $"YAZI_ID found: '($env.YAZI_ID)'"
+    log_to_file "reveal_in_yazi.log" $"Managed sidebar Yazi ID found: '($sidebar_yazi_id)'"
 
     try {
         # Use 'reveal' command instead of 'cd' to both navigate to directory and select the file
-        ya emit-to $env.YAZI_ID reveal $full_path
-        log_to_file "reveal_in_yazi.log" $"Successfully sent 'reveal ($full_path)' command to yazi instance ($env.YAZI_ID)"
+        ya emit-to $sidebar_yazi_id reveal $full_path
+        log_to_file "reveal_in_yazi.log" $"Successfully sent 'reveal ($full_path)' command to managed sidebar yazi instance ($sidebar_yazi_id)"
 
         let focus_result = (focus_managed_pane "sidebar" "reveal_in_yazi.log")
         if $focus_result.status == "ok" {

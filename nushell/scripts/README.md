@@ -40,6 +40,7 @@ Scripts for development, testing, and maintenance:
 - `test_fonts.nu` - Font testing for VHS recordings
 - `update_zjstatus.nu` - Maintainer helper to refresh the vendored zjstatus.wasm from the Nix store
 - `update_zellij_pane_orchestrator.nu` - Sync the locally built pane orchestrator wasm into the repo and runtime plugin paths
+  - Pair with `yzx dev build_pane_orchestrator` after enabling the `rust_wasi` pack
 
 ## Usage
 

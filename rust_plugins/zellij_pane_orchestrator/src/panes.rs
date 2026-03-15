@@ -119,6 +119,31 @@ pub(crate) fn build_focused_terminal_pane_by_tab(
 }
 
 impl State {
+    pub(crate) fn smart_reveal(&self, pipe_message: &PipeMessage) {
+        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
+            return;
+        };
+
+        let focus_context = self
+            .focus_context_by_tab
+            .get(&active_tab_position)
+            .copied()
+            .unwrap_or(FocusContext::Other);
+
+        if focus_context == FocusContext::Editor {
+            let Some(editor_pane) = self.get_managed_pane(pipe_message, ManagedPaneKind::Editor)
+            else {
+                return;
+            };
+
+            write_to_pane_id(vec![27, b'r'], editor_pane.pane_id);
+            self.respond(pipe_message, RESULT_OK);
+            return;
+        }
+
+        self.toggle_editor_sidebar_focus(pipe_message);
+    }
+
     pub(crate) fn focus_managed_pane(
         &self,
         pipe_message: &PipeMessage,

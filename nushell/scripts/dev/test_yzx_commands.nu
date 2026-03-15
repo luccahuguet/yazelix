@@ -405,6 +405,46 @@ def test_sidebar_yazi_state_path_normalization [] {
     }
 }
 
+def test_resolve_reveal_target_path_from_relative_buffer [] {
+    print "🧪 Testing reveal target resolution for relative buffer paths..."
+
+    try {
+        let output = (^bash -lc 'cd ~/.config/yazelix && nu -c "use ~/.config/yazelix/nushell/scripts/integrations/yazi.nu *; print (resolve_reveal_target_path README.md)"' | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == "/home/lucca/.config/yazelix/README.md") {
+            print "  ✅ Reveal target resolution expands relative buffer paths against the current cwd"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_reveal_in_yazi_fails_clearly_outside_zellij [] {
+    print "🧪 Testing reveal in Yazi outside Zellij..."
+
+    try {
+        let output = (^bash -lc $"($clean_zellij_env_prefix) nu -c 'use ~/.config/yazelix/nushell/scripts/integrations/yazi.nu *; reveal_in_yazi ~/.config/yazelix/README.md'" | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "Reveal in Yazi only works inside a Yazelix/Zellij session.") and (not ($stdout | str contains "YAZI_ID")) {
+            print "  ✅ Reveal in Yazi now fails clearly outside Zellij without relying on YAZI_ID"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_sidebar_state_plugin_generated [] {
     print "🧪 Testing generated Yazi init includes sidebar-state..."
 
@@ -593,6 +633,8 @@ def main [] {
         (test_yzx_cwd_resolves_zoxide_query),
         (test_get_tab_name_uses_exact_directory),
         (test_sidebar_yazi_state_path_normalization),
+        (test_resolve_reveal_target_path_from_relative_buffer),
+        (test_reveal_in_yazi_fails_clearly_outside_zellij),
         (test_sidebar_state_plugin_generated),
         (test_zellij_default_mode_is_enforced_in_merged_config),
         (test_sidebar_yazi_sync_skips_outside_zellij),

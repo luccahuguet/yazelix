@@ -290,9 +290,7 @@ The `zjstatus` permission step must be repeated on `zjstatus` updates, since the
 
 ### Step 9: Configure Helix Integration (Optional)
 
-If you want a Helix-local reveal action, bind `reveal_in_yazi.nu` to any editor-local shortcut that fits your setup. Yazelix does not ship a default Helix key for this; `Ctrl+y` and `Alt+y` are reserved for workspace navigation in Zellij.
-
-**Note:** `reveal_in_yazi.nu` only works for Helix instances opened from Yazi.
+If you want a Helix-local reveal action, bind `reveal_in_yazi.nu` to any editor-local shortcut that fits your setup. Yazelix recommends `Alt+r` for this; `Ctrl+y` and `Alt+y` are reserved for workspace navigation in Zellij.
 
 For additional recommended Helix keybindings that enhance your editing experience with Yazelix, see [Helix Keybindings Configuration](./helix_keybindings.md).
 

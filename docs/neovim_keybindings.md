@@ -4,11 +4,11 @@ This document describes the recommended Neovim keybindings for full Yazelix inte
 
 ## Essential Keybinding: Reveal in Yazi
 
-The essential keybinding for Yazelix integration should be added to your Neovim config (usually `~/.config/nvim/init.lua`). Use any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `<leader>y`:
+The essential keybinding for Yazelix integration should be added to your Neovim config (usually `~/.config/nvim/init.lua`). Use any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `<M-r>`:
 
 ```lua
 -- Yazelix sidebar integration - reveal current file in Yazi sidebar
-vim.keymap.set('n', '<leader>y', function()
+vim.keymap.set('n', '<M-r>', function()
   local buffer_path = vim.fn.expand('%:p')
   if buffer_path ~= '' then
     vim.fn.system('nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu "' .. buffer_path .. '"')
@@ -16,15 +16,13 @@ vim.keymap.set('n', '<leader>y', function()
 end, { desc = 'Reveal in Yazi sidebar' })
 ```
 
-**Note:** Only works for Neovim instances opened from Yazi.
-
 ### For init.vim Users
 
 If you use `init.vim` instead of `init.lua`:
 
 ```vim
 " Yazelix sidebar integration - reveal current file in Yazi sidebar
-nnoremap <leader>y :call system('nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu "' . expand('%:p') . '"')<CR>
+nnoremap <M-r> :call system('nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu "' . expand('%:p') . '"')<CR>
 ```
 
 ## Additional Recommended Keybindings
@@ -53,7 +51,7 @@ vim.keymap.set('n', '<leader>b', ':Telescope buffers<CR>', { desc = 'List buffer
 
 With Neovim configured for Yazelix, you get:
 
-- **`<leader>y`**: Reveal current buffer in Yazi sidebar (jumps focus to Yazi and selects the file)
+- **`<M-r>`**: Reveal current buffer in Yazi sidebar (jumps focus to Yazi and selects the file)
 - **Smart Instance Management**: Opening files from Yazi reuses existing Neovim instance
 - **Tab Naming**: Zellij tabs automatically named after your project/directory
 - **Yazi Sync**: Yazi directory view stays synchronized with opened files
@@ -74,9 +72,9 @@ With Neovim configured for Yazelix, you get:
    - Reveal in Yazi only works with `sidebar_enabled = true` (default)
    - Run `echo $YAZELIX_ENABLE_SIDEBAR` - should show "true"
 
-2. **Verify Neovim was opened from Yazi:**
-   - Run `echo $YAZI_ID` inside Neovim's terminal
-   - If empty, the Neovim instance wasn't started from Yazi
+2. **Verify you're inside Yazelix/Zellij with a sidebar open:**
+   - `reveal_in_yazi.nu` targets the managed sidebar in the current tab
+   - If the sidebar is closed or the plugin state is not ready yet, the reveal action will fail clearly
 
 3. **Check the logs:**
    ```bash

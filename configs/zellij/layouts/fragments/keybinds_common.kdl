@@ -96,6 +96,15 @@ keybinds {
             }
         }
 
+        // Smart reveal key:
+        // - in the managed editor, forward Alt+r into the editor so editor-local reveal can run
+        // - elsewhere, fall back to the editor/sidebar focus toggle flow
+        bind "Alt r" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "smart_reveal"
+            }
+        }
+
         // Override raw swap-layout cycling with Yazelix family-aware switching.
         bind "Alt [" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {

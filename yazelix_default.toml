@@ -288,7 +288,7 @@ enabled = [
   # "jj",
   # "python",
   # "rust",
-  # "rust_extra",
+  # "rust_maintainer",
   # "nix",
   # "ts",
   # "writing",
@@ -379,15 +379,20 @@ python = [
 ]
 
 rust = [
+  "rust_toolchain", # Pinned stable Rust toolchain with cargo, rustc, rustfmt, and clippy
   "cargo-edit", # Add/remove/upgrade Rust deps
   "cargo-watch", # Rebuild on file changes
+  "cargo-nextest", # Next-gen Rust test runner
   "cargo-audit", # Security audit for Rust deps
 ]
 
-rust_extra = [
+rust_maintainer = [
   "cargo-update", # Update installed cargo binaries
   "cargo-binstall", # Faster install of Rust tools
-  "cargo-nextest", # Next-gen Rust test runner
+]
+
+rust_wasi = [
+  "rust_wasi_toolchain", # Pinned Rust toolchain with wasm32-wasip1 for Yazelix/Zellij plugin builds
 ]
 
 nix = [

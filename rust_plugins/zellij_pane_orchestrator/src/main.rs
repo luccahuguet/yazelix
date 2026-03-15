@@ -98,6 +98,10 @@ impl ZellijPlugin for State {
                 self.toggle_editor_sidebar_focus(&pipe_message);
                 false
             }
+            "smart_reveal" => {
+                self.smart_reveal(&pipe_message);
+                false
+            }
             "open_file" => {
                 self.open_file_in_managed_editor(&pipe_message);
                 false

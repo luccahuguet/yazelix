@@ -131,7 +131,8 @@ command = "vim"          # "nano", "emacs", etc.
 
 **Reveal in Yazi (custom binding):**
 - Jump from Helix buffer to the same file in Yazi sidebar
-- Only works in sidebar mode with Helix
+- Works against the managed sidebar in the current Yazelix tab
+- Recommended binding: `Alt+r`
 - Setup: [Helix Keybindings](./helix_keybindings.md)
 
 **File Picker:**
@@ -149,7 +150,8 @@ command = "vim"          # "nano", "emacs", etc.
 
 **Reveal in Yazi (custom binding):**
 - Jump from Neovim buffer to the same file in Yazi sidebar
-- Only works in sidebar mode with Neovim
+- Works against the managed sidebar in the current Yazelix tab
+- Recommended binding: `Alt+r`
 - Setup: [Neovim Keybindings](./neovim_keybindings.md)
 
 **Smart Instance Management:**

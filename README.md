@@ -99,16 +99,16 @@ Full version history: [Version History](./docs/history.md)
 📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions
 
 ### Helix Integration
-Helix supports optional `reveal_in_yazi.nu` integration through any editor-local shortcut you choose. Yazelix does not ship a default Helix binding for this; `Ctrl+y` and `Alt+y` are reserved for workspace navigation at the Zellij layer.
+Helix supports optional `reveal_in_yazi.nu` integration through `Alt+r`. Yazelix now reserves `Alt+r` globally: in the managed editor it forwards `Alt+r` into Helix for reveal, and outside the editor it falls back to the editor/sidebar focus flow. `Ctrl+y` and `Alt+y` remain the dedicated workspace navigation keys.
 
 📖 **[Complete Helix Keybindings Guide →](./docs/helix_keybindings.md)** - Recommended keybindings for enhanced editing experience
 
 ### Neovim Integration
-For Neovim-Yazi integration, bind `reveal_in_yazi.nu` to any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `<leader>y`:
+For Neovim-Yazi integration, bind `reveal_in_yazi.nu` to any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `<M-r>`:
 
 ```lua
 -- Yazelix sidebar integration - reveal current file in Yazi sidebar
-vim.keymap.set('n', '<leader>y', function()
+vim.keymap.set('n', '<M-r>', function()
   local buffer_path = vim.fn.expand('%:p')
   if buffer_path ~= '' then
     vim.fn.system('nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu "' .. buffer_path .. '"')
