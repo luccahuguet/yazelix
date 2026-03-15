@@ -710,12 +710,21 @@ def test_sidebar_state_plugin_generated [] {
 def test_zellij_default_mode_is_enforced_in_merged_config [] {
     print "🧪 Testing merged Zellij config enforces default_mode..."
 
-    try {
-        let output = (^bash -lc 'tmpdir=$(mktemp -d); trap "rm -rf \"$tmpdir\"" EXIT; cat > "$tmpdir/yazelix.toml" <<'"'"'EOF'"'"'
-[zellij]
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_mode_test_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        let out_dir = ($tmpdir | path join "out")
+        '[zellij]
 default_mode = "locked"
-EOF
-YAZELIX_CONFIG_OVERRIDE="$tmpdir/yazelix.toml" nu -c "use ~/.config/yazelix/nushell/scripts/setup/zellij_config_merger.nu *; let root = (\$env.HOME | path join \".config\" \"yazelix\"); generate_merged_zellij_config \$root | ignore; open --raw (\$env.HOME | path join \".local\" \"share\" \"yazelix\" \"configs\" \"zellij\" \"config.kdl\")"' | complete)
+' | save --force --raw $config_path
+
+        let output = (with-env {
+            YAZELIX_CONFIG_OVERRIDE: $config_path
+            YAZELIX_TEST_OUT_DIR: $out_dir
+        } {
+            ^nu -c 'use ~/.config/yazelix/nushell/scripts/setup/zellij_config_merger.nu *; let root = ($env.HOME | path join ".config" "yazelix"); generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore; open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl")' | complete
+        })
         let stdout = ($output.stdout | str trim)
 
         if ($output.exit_code == 0) and ($stdout | str contains 'default_mode "locked"') {
@@ -728,7 +737,10 @@ YAZELIX_CONFIG_OVERRIDE="$tmpdir/yazelix.toml" nu -c "use ~/.config/yazelix/nush
     } catch { |err|
         print $"  ❌ Exception: ($err.msg)"
         false
-    }
+    })
+
+    rm -rf $tmpdir
+    $result
 }
 
 def test_sidebar_yazi_sync_skips_outside_zellij [] {
