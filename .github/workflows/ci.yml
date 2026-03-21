@@ -20,6 +20,8 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v21
+        with:
+          determinate: false
 
       - name: Enable Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@v13
