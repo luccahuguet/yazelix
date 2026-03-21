@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Profile activation helpers for fast Yazelix launch/restart paths.
 
-use ./common.nu [get_yazelix_nix_config]
+use ./common.nu [get_yazelix_nix_config get_yazelix_dir]
 
 def bool_to_string [value] {
     if $value { "true" } else { "false" }
@@ -25,7 +25,7 @@ def resolve_profile_candidate [candidate: string] {
 }
 
 export def resolve_built_profile [] {
-    let yazelix_dir = "~/.config/yazelix" | path expand
+    let yazelix_dir = get_yazelix_dir
     let candidates = [
         ($yazelix_dir | path join ".devenv/profile")
         ($yazelix_dir | path join ".devenv/gc/shell")
@@ -56,7 +56,7 @@ export def get_launch_profile [config_state: record, --allow-stale] {
         return null
     }
 
-    let yazelix_dir = "~/.config/yazelix" | path expand
+    let yazelix_dir = get_yazelix_dir
     let synced_zjstatus = ($yazelix_dir | path join "configs" "zellij" "plugins" "zjstatus.wasm")
     if not ($synced_zjstatus | path exists) {
         return null
@@ -110,7 +110,7 @@ def resolve_helix_runtime [config: record] {
 }
 
 export def get_launch_env [config: record, profile_path: string] {
-    let yazelix_dir = ($env.HOME | path join ".config" "yazelix")
+    let yazelix_dir = get_yazelix_dir
     let profile_bin = ($profile_path | path join "bin")
     let nix_config = get_yazelix_nix_config
     let enable_sidebar = ($config.enable_sidebar? | default true)

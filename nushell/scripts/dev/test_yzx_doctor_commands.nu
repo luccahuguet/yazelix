@@ -1,13 +1,14 @@
 #!/usr/bin/env nu
 
 use ../core/yazelix.nu *
-use ./test_yzx_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX]
+use ./test_yzx_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir repo_path]
 
 def test_yzx_doctor_reports_zellij_plugin_context [] {
     print "🧪 Testing yzx doctor reports Zellij plugin context..."
 
     try {
-        let output = (^bash -lc $"($CLEAN_ZELLIJ_ENV_PREFIX) nu -c 'use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx doctor --verbose'" | complete)
+        let yzx_script = (repo_path "nushell" "scripts" "core" "yazelix.nu")
+        let output = (^bash -lc $"($CLEAN_ZELLIJ_ENV_PREFIX) nu -c 'use \"($yzx_script)\" *; yzx doctor --verbose'" | complete)
         let stdout = ($output.stdout | str trim)
 
         if ($output.exit_code == 0) and ($stdout | str contains "Zellij plugin health check skipped \(not inside Zellij\)") {
@@ -26,7 +27,7 @@ def test_yzx_doctor_reports_zellij_plugin_context [] {
 def test_yzx_doctor_warns_on_stale_config_fields [] {
     print "🧪 Testing yzx doctor warns about stale config fields..."
 
-    let repo_root = ("~/.config/yazelix" | path expand)
+    let repo_root = (get_repo_config_dir)
     let tmp_home = (mktemp -d | str trim)
     let temp_yazelix_dir = ($tmp_home | path join ".config" "yazelix")
 
@@ -44,8 +45,9 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
         )
         $stale_config | to toml | save ($temp_yazelix_dir | path join "yazelix.toml")
 
-        let output = with-env { HOME: $tmp_home } {
-            ^nu -c 'use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx doctor --verbose' | complete
+        let temp_yzx_script = ($temp_yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu")
+        let output = with-env { HOME: $tmp_home, YAZELIX_DIR: $temp_yazelix_dir } {
+            ^nu -c $"use \"($temp_yzx_script)\" *; yzx doctor --verbose" | complete
         }
         let stdout = ($output.stdout | str trim)
 

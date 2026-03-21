@@ -5,7 +5,7 @@
 use ../utils/config_manager.nu *
 use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
-use ../utils/common.nu [describe_build_parallelism]
+use ../utils/common.nu [describe_build_parallelism get_yazelix_dir require_yazelix_dir]
 use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ./start_yazelix.nu [start_yazelix_session]
 use ../integrations/zellij.nu [set_tab_cwd resolve_tab_cwd_target]
@@ -168,14 +168,15 @@ export def "yzx status" [
     let env_prep = prepare_environment
     let config = $env_prep.config
     let config_state = $env_prep.config_state
-    let shell_status = check_config_versions ~/.config/yazelix
+    let yazelix_dir = (get_yazelix_dir)
+    let shell_status = check_config_versions $yazelix_dir
 
     print "=== Yazelix Status ==="
     print $"Version: ($YAZELIX_VERSION)"
     print $"Description: ($YAZELIX_DESCRIPTION)"
     print $"Config File: ($config_state.config_file)"
-    print $"Directory: ($YAZELIX_CONFIG_DIR | str replace "~" $env.HOME)"
-    print $"Logs: ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)"
+    print $"Directory: ($yazelix_dir)"
+    print $"Logs: ($yazelix_dir | path join "logs")"
     print $"Environment Refresh Needed: ($config_state.needs_refresh)"
     print $"Shell Hooks: (format_shell_hook_summary $shell_status)"
     print $"Default Shell: ($config.default_shell)"
@@ -197,10 +198,11 @@ export def "yzx status" [
     }
     if $versions or $save {
         print ""
+        let version_info_script = ($yazelix_dir | path join "nushell" "scripts" "utils" "version_info.nu")
         if $save {
-            nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu --save
+            nu $version_info_script --save
         } else {
-            nu ~/.config/yazelix/nushell/scripts/utils/version_info.nu
+            nu $version_info_script
         }
     }
     print "=========================="
@@ -479,7 +481,12 @@ export def "yzx update repo" [
         exit 1
     }
 
-    let yazelix_dir = "~/.config/yazelix" | path expand
+    let yazelix_dir = try {
+        require_yazelix_dir
+    } catch {|err|
+        print $"❌ ($err.msg)"
+        exit 1
+    }
     let status = (do {
         cd $yazelix_dir
         ^git status --porcelain
@@ -498,7 +505,7 @@ export def "yzx update repo" [
         if $only_lock_dirty {
             print "❌ Local devenv.lock changes detected."
             print "   If you want upstream updates, delete it and rerun 'yzx update repo':"
-            print "   rm ~/.config/yazelix/devenv.lock"
+            print $"   rm ($yazelix_dir | path join "devenv.lock")"
             exit 1
         }
         print "❌ Working tree is dirty. Please commit or stash changes first."

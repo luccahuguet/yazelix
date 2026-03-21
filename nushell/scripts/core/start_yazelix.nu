@@ -3,7 +3,7 @@
 
 use ../utils/environment_bootstrap.nu *
 use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile]
-use ../utils/common.nu [describe_build_parallelism]
+use ../utils/common.nu [describe_build_parallelism require_yazelix_dir]
 
 def validate_startup_working_dir [working_dir: string] {
     let resolved = ($working_dir | path expand)
@@ -37,20 +37,10 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
         print "🔍 start_yazelix: verbose mode enabled"
     }
 
-    # Resolve HOME using Nushell's built-in
-    let home = $env.HOME
-    if ($home | is-empty) or (not ($home | path exists)) {
-        print "Error: Cannot resolve HOME directory"
-        exit 1
-    }
-
-    # Set absolute path for Yazelix directory
-    let yazelix_dir = $"($home)/.config/yazelix"
-
-    # Navigate to Yazelix directory
-    # This is important for devenv to find devenv.nix in the current directory
-    if not ($yazelix_dir | path exists) {
-        print $"Error: Cannot find Yazelix directory at ($yazelix_dir)"
+    let yazelix_dir = try {
+        require_yazelix_dir
+    } catch {|err|
+        print $"Error: ($err.msg)"
         exit 1
     }
 
@@ -150,7 +140,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     # and passed directly to the zellij command.
     let use_activated_profile = $activated_profile
 
-    with-env {HOME: $home} {
+    with-env {HOME: $env.HOME} {
         if $use_activated_profile {
             if $verbose_mode {
                 print "⚡ Reusing activated profile without entering devenv shell"

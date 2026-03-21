@@ -2,6 +2,8 @@
 # Yazelix Test Runner
 # Runs all tests in the dev/ directory and reports results
 
+use ./common.nu [get_yazelix_dir]
+
 # Run syntax validation before tests
 def run_syntax_validation [
     verbose: bool
@@ -14,8 +16,9 @@ def run_syntax_validation [
     $syntax_log | save --append $log_file
 
     # Run validate_syntax.nu quietly
+    let validate_script = ((get_yazelix_dir) | path join "nushell" "scripts" "dev" "validate_syntax.nu")
     let result = (do {
-        nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/validate_syntax.nu" --quiet
+        nu $validate_script --quiet
     } | complete)
 
     if $result.exit_code == 0 {
@@ -135,21 +138,22 @@ export def run_all_tests [
             $test_args = ($test_args | append ["--delay", ($visual_delay | into string)])
         }
         let test_cmd = ($test_args | str join " ")
+        let logs_dir = ((get_yazelix_dir) | path join "logs")
 
         # Launch Yazelix with skip welcome screen
         print $"💡 In the new window, run: ($test_cmd)"
-        print "📝 Test logs will be saved to: ~/.config/yazelix/logs/"
+        print $"📝 Test logs will be saved to: ($logs_dir)"
         print ""
 
         with-env {YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"} {
-            nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
+            nu ((get_yazelix_dir) | path join "nushell" "scripts" "core" "launch_yazelix.nu")
         }
 
         return
     }
 
     if $lint_only {
-        let log_dir = $"($env.HOME)/.config/yazelix/logs"
+        let log_dir = ((get_yazelix_dir) | path join "logs")
         mkdir $log_dir
         let timestamp = (date now | into int)
         let log_file = $"($log_dir)/test_run_($timestamp).log"
@@ -171,8 +175,8 @@ export def run_all_tests [
         return
     }
 
-    let test_dir = $"($env.HOME)/.config/yazelix/nushell/scripts/dev"
-    let log_dir = $"($env.HOME)/.config/yazelix/logs"
+    let test_dir = ((get_yazelix_dir) | path join "nushell" "scripts" "dev")
+    let log_dir = ((get_yazelix_dir) | path join "logs")
 
     # Create log directory if it doesn't exist
     mkdir $log_dir
@@ -352,5 +356,6 @@ def run_visual_sweep_tests [verbose: bool, delay: int] {
     print ""
 
     let verbose_arg = if $verbose { " --verbose" } else { "" }
-    nu -c $"use ~/.config/yazelix/nushell/scripts/dev/test_config_sweep.nu run_all_sweep_tests; run_all_sweep_tests --visual --visual-delay ($delay)($verbose_arg)"
+    let sweep_script = ((get_yazelix_dir) | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
+    nu -c $"use \"($sweep_script)\" run_all_sweep_tests; run_all_sweep_tests --visual --visual-delay ($delay)($verbose_arg)"
 }

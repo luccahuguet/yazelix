@@ -13,7 +13,7 @@ def main [] {
     print ""
 
     let fixture = (setup_test_home)
-    let results = (with-env { HOME: $fixture.tmp_home } {
+    let results = (with-env { HOME: $fixture.tmp_home, YAZELIX_DIR: $fixture.config_dir } {
         [
             (run_core_tests)
             (run_dev_tests)

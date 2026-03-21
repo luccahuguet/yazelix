@@ -2,6 +2,23 @@
 
 # Utility functions for Yazelix
 
+export def get_yazelix_dir [] {
+    let configured = ($env.YAZELIX_DIR? | default "" | into string | str trim)
+    if ($configured | is-not-empty) {
+        $configured | path expand
+    } else {
+        "~/.config/yazelix" | path expand
+    }
+}
+
+export def require_yazelix_dir [] {
+    let yazelix_dir = (get_yazelix_dir)
+    if not ($yazelix_dir | path exists) {
+        error make {msg: $"Cannot find Yazelix directory at ($yazelix_dir)"}
+    }
+    $yazelix_dir
+}
+
 def get_total_cores [] {
     let total_cores = (sys cpu | length)
     if $total_cores > 0 { $total_cores } else { 1 }

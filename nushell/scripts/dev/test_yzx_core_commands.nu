@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
 use ../core/yazelix.nu *
+use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
 
 def test_yzx_status [] {
     print "🧪 Testing yzx status..."
@@ -19,8 +20,9 @@ def test_yzx_config_view [] {
     print "🧪 Testing yzx config..."
 
     try {
+        let yzx_script = (repo_path "nushell" "scripts" "core" "yazelix.nu")
         let output = (
-            ^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config | columns | str join ','" | complete
+            ^nu -c $"use \"($yzx_script)\" *; yzx config | columns | str join ','" | complete
         ).stdout | str trim
 
         if ($output | str contains "core") and ($output | str contains "terminal") and not ($output | str contains "packs") {
@@ -40,9 +42,13 @@ def test_yzx_config_sections [] {
     print "🧪 Testing yzx config section views..."
 
     try {
-        ^nu -c 'use ~/.config/yazelix/nushell/scripts/setup/yazi_config_merger.nu *; let root = ($env.HOME | path join ".config" "yazelix"); generate_merged_yazi_config $root --quiet | ignore' | complete | ignore
-        let hx_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config hx | columns | str join ','" | complete).stdout | str trim
-        let yazi_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config yazi | columns | str join ','" | complete).stdout | str trim
+        let yzx_script = (repo_path "nushell" "scripts" "core" "yazelix.nu")
+        let yazi_merger = (repo_path "nushell" "scripts" "setup" "yazi_config_merger.nu")
+        let zellij_merger = (repo_path "nushell" "scripts" "setup" "zellij_config_merger.nu")
+        let root = (get_repo_config_dir)
+        ^nu -c $"use \"($yazi_merger)\" *; generate_merged_yazi_config \"($root)\" --quiet | ignore" | complete | ignore
+        let hx_output = (^nu -c $"use \"($yzx_script)\" *; yzx config hx | columns | str join ','" | complete).stdout | str trim
+        let yazi_output = (^nu -c $"use \"($yzx_script)\" *; yzx config yazi | columns | str join ','" | complete).stdout | str trim
         if (which zellij | is-empty) {
             if ($hx_output | str contains "config_path") and ($yazi_output | str contains "manager") {
                 print "  ℹ️  Skipping zellij config section check because zellij is not available"
@@ -51,8 +57,8 @@ def test_yzx_config_sections [] {
             }
         }
 
-        ^nu -c 'use ~/.config/yazelix/nushell/scripts/setup/zellij_config_merger.nu *; let root = ($env.HOME | path join ".config" "yazelix"); generate_merged_zellij_config $root | ignore' | complete | ignore
-        let zellij_output = (^nu -c "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config zellij" | complete).stdout | str trim
+        ^nu -c $"use \"($zellij_merger)\" *; generate_merged_zellij_config \"($root)\" | ignore" | complete | ignore
+        let zellij_output = (^nu -c $"use \"($yzx_script)\" *; yzx config zellij" | complete).stdout | str trim
 
         if ($hx_output | str contains "config_path") and ($yazi_output | str contains "manager") and ($zellij_output | str contains "default_layout") {
             print "  ✅ yzx config section commands return focused sections"
@@ -70,7 +76,7 @@ def test_yzx_config_sections [] {
 def test_yzx_config_reset_replaces_with_backup [] {
     print "🧪 Testing yzx config reset replaces the config with backup..."
 
-    let repo_root = ("~/.config/yazelix" | path expand)
+    let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_config_reset_XXXXXX | str trim)
     let temp_yazelix_dir = ($tmp_home | path join ".config" "yazelix")
     mkdir $temp_yazelix_dir
@@ -82,8 +88,9 @@ def test_yzx_config_reset_replaces_with_backup [] {
 default_shell = "bash"
 ' | save --force --raw ($temp_yazelix_dir | path join "yazelix.toml")
 
-        let output = with-env { HOME: $tmp_home } {
-            ^nu -c 'use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx config reset --yes' | complete
+        let temp_yzx_script = ($temp_yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu")
+        let output = with-env { HOME: $tmp_home, YAZELIX_DIR: $temp_yazelix_dir } {
+            ^nu -c $"use \"($temp_yzx_script)\" *; yzx config reset --yes" | complete
         }
         let stdout = ($output.stdout | str trim)
         let new_config = (open --raw ($temp_yazelix_dir | path join "yazelix.toml"))

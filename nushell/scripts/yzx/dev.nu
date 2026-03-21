@@ -2,6 +2,7 @@
 # Development helper commands for maintainers
 
 use ../utils/terminal_configs.nu generate_all_terminal_configs
+use ../utils/common.nu [get_yazelix_dir]
 
 # Development and maintainer commands
 export def "yzx dev" [] {
@@ -19,7 +20,7 @@ def extract_version [value: string] {
 
 def get_runtime_version_lines_from_repo_shell [] {
     let version_result = (do {
-        cd ("~/.config/yazelix" | path expand)
+        cd (get_yazelix_dir)
         with-env {
             YAZELIX_ENV_ONLY: "true"
             YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
@@ -119,7 +120,7 @@ def get_runtime_pin_versions [] {
 }
 
 def sync_runtime_pins [] {
-    let constants_path = "~/.config/yazelix/nushell/scripts/utils/constants.nu" | path expand
+    let constants_path = ((get_yazelix_dir) | path join "nushell" "scripts" "utils" "constants.nu")
     if not ($constants_path | path exists) {
         print $"❌ Constants file not found: ($constants_path)"
         exit 1
@@ -143,7 +144,7 @@ def sync_runtime_pins [] {
 }
 
 def sync_vendored_zjstatus [] {
-    let update_script = ("~/.config/yazelix/nushell/scripts/dev/update_zjstatus.nu" | path expand)
+    let update_script = ((get_yazelix_dir) | path join "nushell" "scripts" "dev" "update_zjstatus.nu")
     if not ($update_script | path exists) {
         print $"❌ zjstatus refresh helper not found: ($update_script)"
         exit 1
@@ -159,7 +160,7 @@ def sync_vendored_zjstatus [] {
 }
 
 def get_pane_orchestrator_paths [] {
-    let yazelix_dir = "~/.config/yazelix" | path expand
+    let yazelix_dir = get_yazelix_dir
     let crate_dir = ($yazelix_dir | path join "rust_plugins" "zellij_pane_orchestrator")
     let build_target = "wasm32-wasip1"
     let wasm_path = ($crate_dir | path join "target" $build_target "release" "yazelix_pane_orchestrator.wasm")
@@ -206,7 +207,7 @@ def write_update_canary_config [config: record, output_path: string] {
 }
 
 def materialize_update_canaries [selected: list<string>] {
-    let default_config_path = "~/.config/yazelix/yazelix_default.toml" | path expand
+    let default_config_path = ((get_yazelix_dir) | path join "yazelix_default.toml")
     if not ($default_config_path | path exists) {
         error make {msg: $"Default config not found: ($default_config_path)"}
     }
@@ -270,10 +271,11 @@ def trim_output_tail [text: string, max_lines: int] {
 }
 
 def run_update_canary [canary: record, verbose: bool] {
+    let yzx_script = ((get_yazelix_dir) | path join "nushell" "scripts" "core" "yazelix.nu")
     let refresh_command = if $verbose {
-        "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx refresh --force --verbose"
+        $"use \"($yzx_script)\" *; yzx refresh --force --verbose"
     } else {
-        "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx refresh --force"
+        $"use \"($yzx_script)\" *; yzx refresh --force"
     }
 
     let result = (do {
@@ -360,7 +362,7 @@ export def "yzx dev update" [
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
 
-    let yazelix_dir = "~/.config/yazelix" | path expand
+    let yazelix_dir = get_yazelix_dir
     let selected_canaries = resolve_update_canary_selection $canaries
     let verbose_mode = (not $quiet)
 
@@ -442,7 +444,7 @@ export def "yzx dev update" [
 }
 
 export def "yzx dev sync_terminal_configs" [] {
-    let yazelix_dir = "~/.config/yazelix" | path expand
+    let yazelix_dir = get_yazelix_dir
     let config_root = ($yazelix_dir | path join "configs/terminal_emulators")
     let generated_root = "~/.local/share/yazelix/configs/terminal_emulators" | path expand
 
@@ -451,7 +453,7 @@ export def "yzx dev sync_terminal_configs" [] {
         exit 1
     }
 
-    let default_config = "~/.config/yazelix/yazelix_default.toml" | path expand
+    let default_config = ($yazelix_dir | path join "yazelix_default.toml")
     if not ($default_config | path exists) {
         print $"❌ Default config not found: ($default_config)"
         exit 1
@@ -592,7 +594,7 @@ export def "yzx dev bench" [
         $args = ($args | append "--verbose")
     }
 
-    nu $"($env.HOME)/.config/yazelix/nushell/scripts/dev/benchmark_terminals.nu" ...$args
+    nu ((get_yazelix_dir) | path join "nushell" "scripts" "dev" "benchmark_terminals.nu") ...$args
 }
 
 # Profile launch sequence and identify bottlenecks

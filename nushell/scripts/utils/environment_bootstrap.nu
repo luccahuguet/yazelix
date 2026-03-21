@@ -5,12 +5,12 @@
 use config_parser.nu parse_yazelix_config
 use nix_detector.nu ensure_nix_available
 use nix_env_helper.nu ensure_nix_in_environment
-use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config]
+use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config get_yazelix_dir require_yazelix_dir]
 use config_state.nu [compute_config_state mark_config_state_applied]
 
 # Check if unfree pack is enabled in yazelix.toml
 export def is_unfree_enabled [] {
-    let yazelix_dir = "~/.config/yazelix" | path expand
+    let yazelix_dir = get_yazelix_dir
     let toml_file = ($yazelix_dir | path join "yazelix.toml")
     let default_toml = ($yazelix_dir | path join "yazelix_default.toml")
     let config_file = if ($toml_file | path exists) { $toml_file } else { $default_toml }
@@ -21,17 +21,12 @@ export def is_unfree_enabled [] {
 
 # Resolve absolute Yazelix directory from HOME
 def resolve_yazelix_dir [] {
-    let home = $env.HOME
-    if ($home | is-empty) or (not ($home | path exists)) {
-        print "Error: Cannot resolve HOME directory"
+    try {
+        require_yazelix_dir
+    } catch {|err|
+        print $"Error: ($err.msg)"
         exit 1
     }
-    let yazelix_dir = $"($home)/.config/yazelix"
-    if not ($yazelix_dir | path exists) {
-        print $"Error: Cannot find Yazelix directory at ($yazelix_dir)"
-        exit 1
-    }
-    $yazelix_dir
 }
 
 def resolve_refresh_output_mode [mode: string] {

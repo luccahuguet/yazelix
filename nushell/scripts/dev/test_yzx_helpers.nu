@@ -7,7 +7,11 @@ export def get_repo_root [] {
 }
 
 export def get_repo_config_dir [] {
-    "~/.config/yazelix" | path expand
+    ($env.YAZELIX_DIR? | default "~/.config/yazelix") | path expand
+}
+
+export def repo_path [...parts: string] {
+    $parts | reduce -f (get_repo_config_dir) {|part, acc| $acc | path join $part }
 }
 
 export def setup_test_home [] {

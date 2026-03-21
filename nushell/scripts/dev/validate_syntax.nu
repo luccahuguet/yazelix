@@ -2,12 +2,14 @@
 # Yazelix Syntax Validator
 # Uses nu-check to validate syntax of all Nushell scripts
 
+use ../utils/common.nu [get_yazelix_dir]
+
 # Validate syntax of all Nushell scripts in yazelix
 export def main [
     --verbose(-v)  # Show detailed output for each file
     --quiet(-q)    # Only show errors (internal flag for test runner)
 ] {
-    let yazelix_dir = $"($env.HOME)/.config/yazelix"
+    let yazelix_dir = get_yazelix_dir
 
     if not $quiet {
         print "🔍 Validating Nushell script syntax..."

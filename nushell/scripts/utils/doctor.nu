@@ -3,6 +3,7 @@
 
 use logging.nu log_to_file
 use constants.nu [PINNED_NIX_VERSION PINNED_DEVENV_VERSION]
+use common.nu [get_yazelix_dir]
 use config_parser.nu parse_yazelix_config
 use config_schema.nu get_config_validation_findings
 use ../integrations/zellij.nu debug_editor_state
@@ -302,9 +303,10 @@ export def check_environment_variables [] {
 
 # Check configuration files
 export def check_configuration [] {
-    let yazelix_config = "~/.config/yazelix/yazelix.toml"
-    let yazelix_legacy = "~/.config/yazelix/yazelix.nix"
-    let yazelix_default = "~/.config/yazelix/yazelix_default.toml"
+    let yazelix_dir = (get_yazelix_dir)
+    let yazelix_config = ($yazelix_dir | path join "yazelix.toml")
+    let yazelix_legacy = ($yazelix_dir | path join "yazelix.nix")
+    let yazelix_default = ($yazelix_dir | path join "yazelix_default.toml")
     
     mut results = []
     
@@ -318,7 +320,7 @@ export def check_configuration [] {
 
         let validation_result = (try {
             {
-                findings: (get_config_validation_findings "~/.config/yazelix")
+                findings: (get_config_validation_findings $yazelix_dir)
                 error: null
             }
         } catch {|err|
@@ -405,7 +407,7 @@ export def check_shell_integration [] {
 
 # Check log files
 export def check_log_files [] {
-    let logs_dir = "~/.config/yazelix/logs"
+    let logs_dir = ((get_yazelix_dir) | path join "logs")
     let logs_path = ($logs_dir | path expand)
 
     if not ($logs_path | path exists) {
@@ -590,7 +592,7 @@ export def fix_helix_runtime_conflicts [conflicts: list] {
 
 # Clean large log files
 export def fix_large_logs [] {
-    let logs_dir = "~/.config/yazelix/logs"
+    let logs_dir = ((get_yazelix_dir) | path join "logs")
     let logs_path = ($logs_dir | path expand)
     
     if not ($logs_path | path exists) {
@@ -614,8 +616,9 @@ export def fix_large_logs [] {
 
 # Create yazelix.toml from default
 export def fix_create_config [] {
-    let yazelix_config = "~/.config/yazelix/yazelix.toml"
-    let yazelix_default = "~/.config/yazelix/yazelix_default.toml"
+    let yazelix_dir = (get_yazelix_dir)
+    let yazelix_config = ($yazelix_dir | path join "yazelix.toml")
+    let yazelix_default = ($yazelix_dir | path join "yazelix_default.toml")
 
     try {
         cp ($yazelix_default | path expand) ($yazelix_config | path expand)

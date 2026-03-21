@@ -1,6 +1,8 @@
 #!/usr/bin/env nu
 # Configuration parser for yazelix TOML files
 
+use common.nu [get_yazelix_dir]
+
 def parse_refresh_output [raw_config: record] {
     let refresh_output = ($raw_config.core?.refresh_output? | default "normal" | into string | str downcase)
     let allowed = ["quiet", "normal", "full"]
@@ -45,7 +47,7 @@ def parse_positive_parallel_setting [value: any, label: string, allowed_symbols:
 
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
-    let yazelix_dir = "~/.config/yazelix" | path expand
+    let yazelix_dir = get_yazelix_dir
 
     # Check for config override first (for testing)
     let config_to_read = if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) {

@@ -1,12 +1,14 @@
 #!/usr/bin/env nu
 
 use ../core/yazelix.nu *
+use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
 
 def test_dev_update_canary_set [] {
     print "🧪 Testing yzx dev update canary set..."
 
     try {
-        let output = (^nu -c "source ~/.config/yazelix/nushell/scripts/yzx/dev.nu; get_available_update_canaries | to json -r" | complete)
+        let dev_script = (repo_path "nushell" "scripts" "yzx" "dev.nu")
+        let output = (^nu -c $"source \"($dev_script)\"; get_available_update_canaries | to json -r" | complete)
         let stdout = ($output.stdout | str trim)
 
         if ($output.exit_code == 0) and ($stdout == "[\"default\",\"maximal\"]") {
@@ -26,9 +28,9 @@ def test_gemini_cli_is_reactivated [] {
     print "🧪 Testing Gemini CLI is reactivated in default and Home Manager configs..."
 
     try {
-        let default_config = (open ~/.config/yazelix/yazelix_default.toml)
+        let default_config = (open (repo_path "yazelix_default.toml"))
         let default_agents = ($default_config.packs.declarations.ai_agents | default [])
-        let hm_module = (open --raw ~/.config/yazelix/home_manager/module.nix)
+        let hm_module = (open --raw (repo_path "home_manager" "module.nix"))
 
         if ("gemini-cli" in $default_agents) and ($hm_module | str contains '"gemini-cli"') {
             print "  ✅ Gemini CLI is present in both configuration paths"
@@ -47,9 +49,9 @@ def test_tru_is_in_ai_agents [] {
     print "🧪 Testing tru is included in ai_agents..."
 
     try {
-        let default_config = (open ~/.config/yazelix/yazelix_default.toml)
+        let default_config = (open (repo_path "yazelix_default.toml"))
         let default_agents = ($default_config.packs.declarations.ai_agents | default [])
-        let hm_module = (open --raw ~/.config/yazelix/home_manager/module.nix)
+        let hm_module = (open --raw (repo_path "home_manager" "module.nix"))
 
         if ("tru" in $default_agents) and ($hm_module | str contains '"tru"') {
             print "  ✅ tru is present in both ai_agents configuration paths"
@@ -73,7 +75,7 @@ def test_home_manager_desktop_entry_evaluates [] {
     }
 
     try {
-        let flake_dir = ("~/.config/yazelix/home_manager" | path expand)
+        let flake_dir = (repo_path "home_manager")
         let system_output = (^nix eval --impure --raw --expr "builtins.currentSystem" | complete)
         let system = ($system_output.stdout | str trim)
 

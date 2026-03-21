@@ -3,7 +3,7 @@
 # Profiles launch sequence and environment setup to identify bottlenecks
 
 use logging.nu log_to_file
-use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config]
+use common.nu [get_max_cores get_max_jobs get_yazelix_dir get_yazelix_nix_config]
 use config_parser.nu [parse_yazelix_config]
 
 # Profile a single step with timing
@@ -26,7 +26,7 @@ def profile_step [name: string, code: closure] {
 export def profile_environment_setup [] {
     print "📊 Profiling environment setup components..."
 
-    let yazelix_dir = "~/.config/yazelix" | path expand
+    let yazelix_dir = (get_yazelix_dir)
     let log_file = "~/.local/share/yazelix/logs/profile.log" | path expand
 
     mut results = []
@@ -72,13 +72,14 @@ export def profile_cold_launch [
         print "❌ Error: Cold launch profiling must be run from a vanilla terminal\n"
         print "To profile cold launch (emulates desktop entry or fresh terminal):"
         print "  1. Open a new terminal (NOT from Yazelix)"
-        print "  2. Run: nu -c 'use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx dev profile --cold'\n"
+        let core_script = ((get_yazelix_dir) | path join "nushell" "scripts" "core" "yazelix.nu")
+        print $"  2. Run: nu -c 'use \"($core_script)\" *; yzx dev profile --cold'\n"
         return
     }
 
     print "🚀 Profiling cold Yazelix launch (desktop entry / vanilla terminal)...\n"
 
-    let yazelix_dir = "~/.config/yazelix" | path expand
+    let yazelix_dir = (get_yazelix_dir)
 
     # Determine which config file to use
     let config_file = if ($"($yazelix_dir)/yazelix.toml" | path exists) {

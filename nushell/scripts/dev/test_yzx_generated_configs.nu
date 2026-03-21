@@ -1,5 +1,10 @@
 #!/usr/bin/env nu
 
+use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
+use ../utils/launch_state.nu [get_launch_env]
+use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
+use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
+
 def test_layout_generator_discovers_custom_top_level_layouts [] {
     print "🧪 Testing layout generator discovers custom top-level layouts..."
 
@@ -9,7 +14,7 @@ def test_layout_generator_discovers_custom_top_level_layouts [] {
         let source_dir = ($tmpdir | path join "source")
         let target_dir = ($tmpdir | path join "target")
         let fragments_dir = ($source_dir | path join "fragments")
-        let repo_fragments_dir = ($env.HOME | path join ".config" "yazelix" "configs" "zellij" "layouts" "fragments")
+        let repo_fragments_dir = (repo_path "configs" "zellij" "layouts" "fragments")
 
         mkdir $source_dir
         mkdir $fragments_dir
@@ -52,14 +57,23 @@ def test_launch_env_omits_default_helix_runtime [] {
     print "🧪 Testing launch env omits HELIX_RUNTIME by default..."
 
     try {
-        let output = (^nu -c 'use ~/.config/yazelix/nushell/scripts/utils/launch_state.nu *; let cfg = { editor_command: "hx", helix_runtime_path: null, terminals: ["ghostty"], default_shell: "nu", debug_mode: false, enable_sidebar: true, ascii_art_mode: "static", terminal_config_mode: "yazelix" }; let env_map = (get_launch_env $cfg "/tmp/yazelix-profile"); print ($env_map | get -o HELIX_RUNTIME | default "")' | complete)
-        let stdout = ($output.stdout | str trim)
+        let cfg = {
+            editor_command: "hx"
+            helix_runtime_path: null
+            terminals: ["ghostty"]
+            default_shell: "nu"
+            debug_mode: false
+            enable_sidebar: true
+            ascii_art_mode: "static"
+            terminal_config_mode: "yazelix"
+        }
+        let stdout = (get_launch_env $cfg "/tmp/yazelix-profile" | get -o HELIX_RUNTIME | default "" | str trim)
 
-        if ($output.exit_code == 0) and ($stdout == "") {
+        if $stdout == "" {
             print "  ✅ HELIX_RUNTIME is omitted unless explicitly configured"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            print $"  ❌ Unexpected result: stdout=($stdout)"
             false
         }
     } catch { |err|
@@ -72,14 +86,23 @@ def test_launch_env_keeps_custom_helix_runtime_override [] {
     print "🧪 Testing launch env preserves custom Helix runtime override..."
 
     try {
-        let output = (^nu -c 'use ~/.config/yazelix/nushell/scripts/utils/launch_state.nu *; let cfg = { editor_command: "hx", helix_runtime_path: "/tmp/custom-helix-runtime", terminals: ["ghostty"], default_shell: "nu", debug_mode: false, enable_sidebar: true, ascii_art_mode: "static", terminal_config_mode: "yazelix" }; let env_map = (get_launch_env $cfg "/tmp/yazelix-profile"); print ($env_map | get HELIX_RUNTIME)' | complete)
-        let stdout = ($output.stdout | str trim)
+        let cfg = {
+            editor_command: "hx"
+            helix_runtime_path: "/tmp/custom-helix-runtime"
+            terminals: ["ghostty"]
+            default_shell: "nu"
+            debug_mode: false
+            enable_sidebar: true
+            ascii_art_mode: "static"
+            terminal_config_mode: "yazelix"
+        }
+        let stdout = (get_launch_env $cfg "/tmp/yazelix-profile" | get HELIX_RUNTIME | str trim)
 
-        if ($output.exit_code == 0) and ($stdout == "/tmp/custom-helix-runtime") {
+        if $stdout == "/tmp/custom-helix-runtime" {
             print "  ✅ Custom helix_runtime_path is still exported"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            print $"  ❌ Unexpected result: stdout=($stdout)"
             false
         }
     } catch { |err|
@@ -92,14 +115,23 @@ def test_launch_env_omits_yazelix_default_shell [] {
     print "🧪 Testing launch env omits YAZELIX_DEFAULT_SHELL..."
 
     try {
-        let output = (^nu -c 'use ~/.config/yazelix/nushell/scripts/utils/launch_state.nu *; let cfg = { editor_command: "hx", helix_runtime_path: null, terminals: ["ghostty"], default_shell: "fish", debug_mode: false, enable_sidebar: true, ascii_art_mode: "static", terminal_config_mode: "yazelix" }; let env_map = (get_launch_env $cfg "/tmp/yazelix-profile"); print ($env_map | get -o YAZELIX_DEFAULT_SHELL | default "")' | complete)
-        let stdout = ($output.stdout | str trim)
+        let cfg = {
+            editor_command: "hx"
+            helix_runtime_path: null
+            terminals: ["ghostty"]
+            default_shell: "fish"
+            debug_mode: false
+            enable_sidebar: true
+            ascii_art_mode: "static"
+            terminal_config_mode: "yazelix"
+        }
+        let stdout = (get_launch_env $cfg "/tmp/yazelix-profile" | get -o YAZELIX_DEFAULT_SHELL | default "" | str trim)
 
-        if ($output.exit_code == 0) and ($stdout == "") {
+        if $stdout == "" {
             print "  ✅ YAZELIX_DEFAULT_SHELL is no longer part of the launch env"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            print $"  ❌ Unexpected result: stdout=($stdout)"
             false
         }
     } catch { |err|
@@ -112,18 +144,25 @@ def test_zjstatus_widget_reads_shell_from_config [] {
     print "🧪 Testing zjstatus shell widget reads current config..."
 
     try {
-        let output = (^bash -lc 'tmpdir=$(mktemp -d); trap "rm -rf \"$tmpdir\"" EXIT; cat > "$tmpdir/yazelix.toml" <<'"'"'EOF'"'"'
-[shell]
+        let widget_script = (repo_path "nushell" "scripts" "utils" "zjstatus_widget.nu")
+        let tmpdir = (^mktemp -d /tmp/yazelix_widget_shell_XXXXXX | str trim)
+        '[shell]
 default_shell = "nu"
-EOF
-YAZELIX_CONFIG_OVERRIDE="$tmpdir/yazelix.toml" YAZELIX_DEFAULT_SHELL=fish nu ~/.config/yazelix/nushell/scripts/utils/zjstatus_widget.nu shell' | complete)
+' | save --force --raw ($tmpdir | path join "yazelix.toml")
+        let output = (with-env {
+            YAZELIX_CONFIG_OVERRIDE: ($tmpdir | path join "yazelix.toml")
+            YAZELIX_DEFAULT_SHELL: "fish"
+        } {
+            ^nu $widget_script shell | complete
+        })
+        rm -rf $tmpdir
         let stdout = ($output.stdout | str trim)
 
         if ($output.exit_code == 0) and ($stdout == "nu") {
             print "  ✅ Shell widget ignores stale YAZELIX_DEFAULT_SHELL env"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
             false
         }
     } catch { |err|
@@ -136,18 +175,25 @@ def test_zjstatus_widget_reads_editor_from_config [] {
     print "🧪 Testing zjstatus editor widget reads current config..."
 
     try {
-        let output = (^bash -lc 'tmpdir=$(mktemp -d); trap "rm -rf \"$tmpdir\"" EXIT; cat > "$tmpdir/yazelix.toml" <<'"'"'EOF'"'"'
-[editor]
+        let widget_script = (repo_path "nushell" "scripts" "utils" "zjstatus_widget.nu")
+        let tmpdir = (^mktemp -d /tmp/yazelix_widget_editor_XXXXXX | str trim)
+        '[editor]
 command = "nvim --headless"
-EOF
-YAZELIX_CONFIG_OVERRIDE="$tmpdir/yazelix.toml" EDITOR=fish nu ~/.config/yazelix/nushell/scripts/utils/zjstatus_widget.nu editor' | complete)
+' | save --force --raw ($tmpdir | path join "yazelix.toml")
+        let output = (with-env {
+            YAZELIX_CONFIG_OVERRIDE: ($tmpdir | path join "yazelix.toml")
+            EDITOR: "fish"
+        } {
+            ^nu $widget_script editor | complete
+        })
+        rm -rf $tmpdir
         let stdout = ($output.stdout | str trim)
 
         if ($output.exit_code == 0) and ($stdout == "nvim") {
             print "  ✅ Editor widget ignores stale EDITOR env"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
             false
         }
     } catch { |err|
@@ -160,14 +206,15 @@ def test_sidebar_state_plugin_generated [] {
     print "🧪 Testing generated Yazi init includes sidebar-state..."
 
     try {
-        let output = (^nu -c "use ~/.config/yazelix/nushell/scripts/setup/yazi_config_merger.nu *; let root = ($env.HOME | path join '.config' 'yazelix'); generate_merged_yazi_config $root --quiet; open --raw ($env.HOME | path join '.local' 'share' 'yazelix' 'configs' 'yazi' 'init.lua')" | complete)
-        let stdout = ($output.stdout | str trim)
+        let root = (get_repo_config_dir)
+        generate_merged_yazi_config $root --quiet
+        let stdout = (open --raw ($env.HOME | path join ".local" "share" "yazelix" "configs" "yazi" "init.lua") | str trim)
 
-        if ($output.exit_code == 0) and ($stdout | str contains 'require("sidebar-state"):setup()') {
+        if ($stdout | str contains 'require("sidebar-state"):setup()') {
             print "  ✅ Generated Yazi init loads the sidebar-state core plugin"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code)"
+            print "  ❌ Unexpected result: generated init is missing sidebar-state"
             false
         }
     } catch { |err|
@@ -197,15 +244,17 @@ default_mode = "locked"
             YAZELIX_CONFIG_OVERRIDE: $config_path
             YAZELIX_TEST_OUT_DIR: $out_dir
         } {
-            ^nu -c 'use ~/.config/yazelix/nushell/scripts/setup/zellij_config_merger.nu *; let root = ($env.HOME | path join ".config" "yazelix"); generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore; open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl")' | complete
+            let root = (get_repo_config_dir)
+            generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
+            open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl")
         })
-        let stdout = ($output.stdout | str trim)
+        let stdout = ($output | str trim)
 
-        if ($output.exit_code == 0) and ($stdout | str contains 'default_mode "locked"') {
+        if ($stdout | str contains 'default_mode "locked"') {
             print "  ✅ Generated Zellij config enforces the configured default_mode"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code)"
+            print "  ❌ Unexpected result: generated config is missing default_mode"
             false
         }
     } catch { |err|
