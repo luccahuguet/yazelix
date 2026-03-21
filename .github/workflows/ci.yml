@@ -18,6 +18,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v21
+
+      - name: Enable Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@v13
+
       - name: Set up Nushell
         uses: hustcer/setup-nu@v3
         with:
@@ -34,3 +40,7 @@ jobs:
 
       - name: Run yzx command tests
         run: nu nushell/scripts/dev/test_yzx_commands.nu
+
+      - name: Check Home Manager flake
+        shell: bash
+        run: nix flake check ./home_manager --no-build
