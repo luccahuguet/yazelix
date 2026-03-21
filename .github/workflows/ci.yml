@@ -11,6 +11,8 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     defaults:
       run:
         shell: nu {0}
@@ -25,6 +27,9 @@ jobs:
 
       - name: Enable Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@v13
+        with:
+          use-gha-cache: true
+          use-flakehub: false
 
       - name: Set up Nushell
         uses: hustcer/setup-nu@v3
