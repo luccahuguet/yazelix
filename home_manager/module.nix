@@ -540,7 +540,9 @@ in
       icon = "yazelix";
       categories = [ "Development" ];
       type = "Application";
-      startupWMClass = "com.yazelix.Yazelix";
+      settings = {
+        StartupWMClass = "com.yazelix.Yazelix";
+      };
     };
 
     # Generate yazelix.toml configuration file

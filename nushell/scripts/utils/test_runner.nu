@@ -100,6 +100,10 @@ exit 0
     }
 }
 
+def run_standard_test [test_file: string] {
+    do { nu $test_file } | complete
+}
+
 # Run all tests and report results
 export def run_all_tests [
     --verbose(-v)  # Show detailed output
@@ -239,7 +243,7 @@ export def run_all_tests [
                 print $"Running: nu ($test_file)"
                 $"Running: nu ($test_file)\n" | save --append $log_file
 
-                let output = (do { nu $test_file } | complete)
+                let output = (run_standard_test $test_file)
                 print $output.stdout
 
                 # Save to log
@@ -257,7 +261,7 @@ export def run_all_tests [
                 let output = if $test_name == "test_config_sweep" {
                     run_passthrough_test $test_file $log_file
                 } else {
-                    (do { nu $test_file } | complete)
+                    (run_standard_test $test_file)
                 }
 
                 # Log output

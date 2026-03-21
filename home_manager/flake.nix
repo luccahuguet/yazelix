@@ -29,6 +29,42 @@
       homeManagerModules.default = import ./module.nix;
       homeManagerModules.yazelix = import ./module.nix;
 
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          hmConfig =
+            if pkgs.stdenv.isLinux then
+              home-manager.lib.homeManagerConfiguration {
+                inherit pkgs;
+                modules = [
+                  self.homeManagerModules.default
+                  {
+                    home.username = "test";
+                    home.homeDirectory = "/home/test";
+                    home.stateVersion = "24.11";
+                    programs.yazelix.enable = true;
+                  }
+                ];
+              }
+            else
+              null;
+        in
+        if hmConfig == null then
+          { }
+        else
+          let
+            startupWMClass = hmConfig.config.xdg.desktopEntries.yazelix.settings.StartupWMClass;
+          in
+          {
+            desktop_entry_smoke = pkgs.runCommand "yazelix-home-manager-desktop-entry-smoke" {
+              passthru.startupWMClass = startupWMClass;
+            } ''
+              printf '%s' '${startupWMClass}' > "$out"
+            '';
+          }
+      );
+
       # Example configurations for testing
       packages = forAllSystems (
         system:

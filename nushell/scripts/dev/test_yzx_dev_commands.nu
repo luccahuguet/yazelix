@@ -64,10 +64,46 @@ def test_tru_is_in_ai_agents [] {
     }
 }
 
+def test_home_manager_desktop_entry_evaluates [] {
+    print "🧪 Testing Home Manager desktop entry evaluates with StartupWMClass..."
+
+    if (uname).kernel-name != "Linux" {
+        print "  ⏭️  Skipping on non-Linux host"
+        return true
+    }
+
+    try {
+        let flake_dir = ("~/.config/yazelix/home_manager" | path expand)
+        let system_output = (^nix eval --impure --raw --expr "builtins.currentSystem" | complete)
+        let system = ($system_output.stdout | str trim)
+
+        if ($system_output.exit_code != 0) or ($system | is-empty) {
+            print $"  ❌ Failed to resolve current Nix system: stderr=($system_output.stderr | str trim)"
+            return false
+        }
+
+        let attr = $"($flake_dir)#checks.($system).desktop_entry_smoke.startupWMClass"
+        let output = (^nix eval --raw --read-only --no-write-lock-file $attr | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == "com.yazelix.Yazelix") {
+            print "  ✅ Home Manager desktop entry evaluates with StartupWMClass in settings"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 export def run_dev_tests [] {
     [
         (test_dev_update_canary_set)
         (test_gemini_cli_is_reactivated)
         (test_tru_is_in_ai_agents)
+        (test_home_manager_desktop_entry_evaluates)
     ]
 }
