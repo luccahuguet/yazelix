@@ -4,18 +4,33 @@ def contract_start [] {
     "2026-03-22T00:00:00Z" | into datetime
 }
 
+def parse_json_output [] {
+    let value = $in
+    let parsed = if (($value | describe) == "string") {
+        $value | from json
+    } else {
+        $value
+    }
+
+    if (($parsed | describe | str starts-with "record<") and (($parsed | columns) | any { |column| $column == "issues" })) {
+        return $parsed.issues
+    }
+
+    $parsed
+}
+
 def load_github_issues [] {
     ^gh issue list --state all --limit 1000 --json number,state,title,url,createdAt
     | complete
     | get stdout
-    | from json
+    | parse_json_output
 }
 
 def load_beads [] {
     ^br list --all --limit 0 --json
     | complete
     | get stdout
-    | from json
+    | parse_json_output
 }
 
 export def main [] {

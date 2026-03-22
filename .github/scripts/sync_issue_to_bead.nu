@@ -52,11 +52,26 @@ def build_description [issue: record] {
     [$summary, "", "GitHub body:", $body] | str join "\n"
 }
 
+def parse_br_json [] {
+    let value = $in
+    let parsed = if (($value | describe) == "string") {
+        $value | from json
+    } else {
+        $value
+    }
+
+    if (($parsed | describe | str starts-with "record<") and (($parsed | columns) | any { |column| $column == "issues" })) {
+        return $parsed.issues
+    }
+
+    $parsed
+}
+
 def list_beads [] {
     ^br list --all --limit 0 --json
     | complete
     | get stdout
-    | from json
+    | parse_br_json
 }
 
 def find_bead_by_external_ref [issue_url: string] {
@@ -101,7 +116,7 @@ def create_bead [issue: record] {
         }
     }
 
-    let bead = ($created.stdout | from json)
+    let bead = ($created.stdout | parse_br_json)
     maybe_comment_tracking $issue.number $bead.id
     write_outputs {
         bead_id: $bead.id
