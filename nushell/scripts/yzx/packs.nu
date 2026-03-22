@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 # yzx packs - Show enabled packs and their sizes
 
+use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/config_parser.nu parse_yazelix_config
 
 # Format bytes to human readable
@@ -19,7 +20,7 @@ def format_size [bytes: int] {
 # Get the devenv shell derivation path (reliable source of truth)
 # Uses .devenv/gc/shell symlink which is the authoritative GC root for the current shell
 def get_devenv_shell [] {
-    let yazelix_dir = $env.YAZELIX_DIR? | default ("~/.config/yazelix" | path expand)
+    let yazelix_dir = (get_yazelix_runtime_dir)
     let shell_link = ($yazelix_dir | path join ".devenv/gc/shell")
     
     if ($shell_link | path exists) {
@@ -174,7 +175,7 @@ export def "yzx packs" [
     --expand (-e)    # Show individual packages in each pack
     --all (-a)       # Show all declared packs, not just enabled
 ] {
-    let yazelix_dir = $env.YAZELIX_DIR? | default ("~/.config/yazelix" | path expand)
+    let yazelix_dir = (get_yazelix_runtime_dir)
     let config = parse_yazelix_config
 
     let enabled_packs = $config.pack_names? | default []

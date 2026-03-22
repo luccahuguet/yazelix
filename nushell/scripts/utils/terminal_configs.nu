@@ -4,6 +4,7 @@
 use config_parser.nu parse_yazelix_config
 use ./constants_with_helpers.nu *
 use ./constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_COLOR_HEX]
+use ./common.nu [get_yazelix_runtime_dir]
 
 # Helpers
 def get_opacity_value [transparency: string] { $TRANSPARENCY_VALUES | get -o $transparency | default "1.0" }
@@ -60,6 +61,18 @@ def resolve_ghostty_mode_effect [effect] {
 
 def get_ghostty_cursor_effect_shader_path [effect: string] {
     $"./shaders/generated_effects/($effect).glsl"
+}
+
+def get_posix_startup_script [runtime_dir: string] {
+    ($runtime_dir | path join "shells" "posix" "start_yazelix.sh")
+}
+
+def get_posix_startup_command [runtime_dir: string] {
+    $"sh -c 'exec (get_posix_startup_script $runtime_dir)'"
+}
+
+def get_posix_startup_args_string [runtime_dir: string] {
+    $'["-c", "exec (get_posix_startup_script $runtime_dir)"]'
 }
 
 # Section builders
@@ -148,16 +161,18 @@ def build_kitty_cursor [ghostty_trail_color] {
 }
 
 # Config generators
-export def generate_ghostty_config [] {
+export def generate_ghostty_config [runtime_dir?: string] {
     let config = parse_yazelix_config
+    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
+    let shell_command = (get_posix_startup_command $resolved_runtime_dir)
     let selected_color = (resolve_ghostty_trail_color $config.ghostty_trail_color)
     let selected_trail_effect = (resolve_ghostty_trail_effect $config.ghostty_trail_effect)
     let selected_mode_effect = (resolve_ghostty_mode_effect $config.ghostty_mode_effect)
     $"($GHOSTTY_CONFIG_HEADER)
 
 # Start Yazelix via launcher to ensure Nix environment is loaded
-command = \"($YAZELIX_SHELL_COMMAND)\"
-initial-command = \"($YAZELIX_SHELL_COMMAND)\"
+command = \"($shell_command)\"
+initial-command = \"($shell_command)\"
 
 # Yazelix branding for desktop environment recognition
 (build_branding "ghostty" "ini")
@@ -176,13 +191,15 @@ window-padding-y = 10,0
 "
 }
 
-export def generate_wezterm_config [] {
+export def generate_wezterm_config [runtime_dir?: string] {
     let config = parse_yazelix_config
+    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
+    let startup_script = (get_posix_startup_script $resolved_runtime_dir)
     $"-- WezTerm configuration for Yazelix
 local wezterm = require 'wezterm'
 local config = wezterm.config_builder\(\)
 
-config.default_prog = {'sh', '-c', 'exec $HOME/.config/yazelix/shells/posix/start_yazelix.sh'}
+config.default_prog = {'sh', '-c', 'exec ($startup_script)'}
 config.window_decorations = \"NONE\"
 config.window_padding = { left = 0, right = 0, top = 10, bottom = 0 }
 config.color_scheme = '($YAZELIX_THEME)'
@@ -198,11 +215,13 @@ config.enable_tab_bar = false
 return config"
 }
 
-export def generate_kitty_config [] {
+export def generate_kitty_config [runtime_dir?: string] {
     let config = parse_yazelix_config
+    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
+    let shell_command = (get_posix_startup_command $resolved_runtime_dir)
     $"# Kitty configuration for Yazelix
 
-shell ($YAZELIX_SHELL_COMMAND)
+shell ($shell_command)
 hide_window_decorations yes
 window_padding_width 2
 include ($YAZELIX_THEME).conf
@@ -226,8 +245,10 @@ sync_to_monitor yes
 (build_kitty_cursor $config.ghostty_trail_color)"
 }
 
-export def generate_alacritty_config [] {
+export def generate_alacritty_config [runtime_dir?: string] {
     let config = parse_yazelix_config
+    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
+    let shell_args = (get_posix_startup_args_string $resolved_runtime_dir)
     $"# Alacritty configuration for Yazelix
 
 [general]
@@ -237,7 +258,7 @@ import = []
 TERM = \"xterm-256color\"
 
 [terminal]
-shell = { program = \"sh\", args = ($SHELL_ARGS_STRING) }
+shell = { program = \"sh\", args = ($shell_args) }
 
 [window]
 decorations = \"None\"
@@ -261,10 +282,12 @@ size = 12
 primary = { background = \"#000000\", foreground = \"#ffffff\" }"
 }
 
-export def generate_foot_config [] {
+export def generate_foot_config [runtime_dir?: string] {
     let config = parse_yazelix_config
+    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
+    let shell_command = (get_posix_startup_command $resolved_runtime_dir)
     $"# Foot configuration for Yazelix
-shell=($YAZELIX_SHELL_COMMAND)
+shell=($shell_command)
 
 [colors]
 # Transparency \(configurable via yazelix.toml)
@@ -296,8 +319,9 @@ def save_config_with_backup [file_path: string, content: string] {
     $content | save $file_path --force
 }
 
-export def generate_all_terminal_configs [] {
+export def generate_all_terminal_configs [runtime_dir?: string] {
     let config = parse_yazelix_config
+    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
     let manage_terminals = ($config.manage_terminals? | default true)
     mut terminals = ($config.terminals? | default ["ghostty"])
     if ($terminals | is-empty) {
@@ -320,9 +344,9 @@ export def generate_all_terminal_configs [] {
     if $should_generate_ghostty {
         let ghostty_dir = ($configs_dir | path join "ghostty")
         mkdir $ghostty_dir
-        save_config_with_backup ($ghostty_dir | path join "config") (generate_ghostty_config)
+        save_config_with_backup ($ghostty_dir | path join "config") (generate_ghostty_config $resolved_runtime_dir)
 
-        let shaders_src = $"($env.HOME)/.config/yazelix/configs/terminal_emulators/ghostty/shaders"
+        let shaders_src = ($resolved_runtime_dir | path join "configs" "terminal_emulators" "ghostty" "shaders")
         let shaders_dest = ($ghostty_dir | path join "shaders")
         if ($shaders_dest | path exists) { rm --permanent --recursive $shaders_dest }
         mkdir $shaders_dest
@@ -341,7 +365,7 @@ export def generate_all_terminal_configs [] {
     if ($terminals | any {|t| $t == "alacritty" }) {
         let alacritty_dir = ($configs_dir | path join "alacritty")
         mkdir $alacritty_dir
-        save_config_with_backup ($alacritty_dir | path join "alacritty.toml") (generate_alacritty_config)
+        save_config_with_backup ($alacritty_dir | path join "alacritty.toml") (generate_alacritty_config $resolved_runtime_dir)
     }
 
     mut generated = []
@@ -352,7 +376,7 @@ export def generate_all_terminal_configs [] {
     if $should_generate_wezterm {
         let wezterm_dir = ($configs_dir | path join "wezterm")
         mkdir $wezterm_dir
-        save_config_with_backup ($wezterm_dir | path join ".wezterm.lua") (generate_wezterm_config)
+        save_config_with_backup ($wezterm_dir | path join ".wezterm.lua") (generate_wezterm_config $resolved_runtime_dir)
         $generated = ($generated | append "WezTerm")
     }
 
@@ -360,7 +384,7 @@ export def generate_all_terminal_configs [] {
     if $should_generate_kitty {
         let kitty_dir = ($configs_dir | path join "kitty")
         mkdir $kitty_dir
-        save_config_with_backup ($kitty_dir | path join "kitty.conf") (generate_kitty_config)
+        save_config_with_backup ($kitty_dir | path join "kitty.conf") (generate_kitty_config $resolved_runtime_dir)
         $generated = ($generated | append "Kitty")
     }
 
@@ -368,7 +392,7 @@ export def generate_all_terminal_configs [] {
     if $should_generate_foot {
         let foot_dir = ($configs_dir | path join "foot")
         mkdir $foot_dir
-        save_config_with_backup ($foot_dir | path join "foot.ini") (generate_foot_config)
+        save_config_with_backup ($foot_dir | path join "foot.ini") (generate_foot_config $resolved_runtime_dir)
         $generated = ($generated | append "Foot")
     }
 

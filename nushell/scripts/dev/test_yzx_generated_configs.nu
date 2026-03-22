@@ -4,6 +4,13 @@ use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
 use ../utils/launch_state.nu [get_launch_env]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
+use ../utils/terminal_configs.nu [
+    generate_alacritty_config
+    generate_foot_config
+    generate_ghostty_config
+    generate_kitty_config
+    generate_wezterm_config
+]
 
 def test_layout_generator_discovers_custom_top_level_layouts [] {
     print "🧪 Testing layout generator discovers custom top-level layouts..."
@@ -122,6 +129,42 @@ def test_launch_env_omits_default_helix_runtime [] {
             true
         } else {
             print $"  ❌ Unexpected result: stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_terminal_config_generation_rewrites_runtime_root [] {
+    print "🧪 Testing terminal config generation rewrites runtime-root launch paths..."
+
+    let runtime_dir = "/tmp/yazelix-runtime"
+
+    try {
+        let ghostty_config = (generate_ghostty_config $runtime_dir)
+        let wezterm_config = (generate_wezterm_config $runtime_dir)
+        let kitty_config = (generate_kitty_config $runtime_dir)
+        let alacritty_config = (generate_alacritty_config $runtime_dir)
+        let foot_config = (generate_foot_config $runtime_dir)
+
+        if (
+            ($ghostty_config | str contains $"exec ($runtime_dir)/shells/posix/start_yazelix.sh")
+            and ($wezterm_config | str contains $"exec ($runtime_dir)/shells/posix/start_yazelix.sh")
+            and ($kitty_config | str contains $"exec ($runtime_dir)/shells/posix/start_yazelix.sh")
+            and ($alacritty_config | str contains $"exec ($runtime_dir)/shells/posix/start_yazelix.sh")
+            and ($foot_config | str contains $"exec ($runtime_dir)/shells/posix/start_yazelix.sh")
+            and not ($ghostty_config | str contains "$HOME/.config/yazelix")
+            and not ($wezterm_config | str contains "$HOME/.config/yazelix")
+            and not ($kitty_config | str contains "$HOME/.config/yazelix")
+            and not ($alacritty_config | str contains "$HOME/.config/yazelix")
+            and not ($foot_config | str contains "$HOME/.config/yazelix")
+        ) {
+            print "  ✅ Terminal config generation stamps the runtime-root launcher path into every supported terminal config"
+            true
+        } else {
+            print "  ❌ One or more terminal configs still contain stale repo-shaped launch paths"
             false
         }
     } catch { |err|
@@ -318,6 +361,7 @@ export def run_generated_config_tests [] {
     [
         (test_layout_generator_discovers_custom_top_level_layouts)
         (test_layout_generator_rewrites_runtime_paths)
+        (test_terminal_config_generation_rewrites_runtime_root)
         (test_launch_env_omits_default_helix_runtime)
         (test_launch_env_keeps_custom_helix_runtime_override)
         (test_launch_env_omits_yazelix_default_shell)

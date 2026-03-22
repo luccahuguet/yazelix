@@ -2,9 +2,11 @@
 # ~/.config/yazelix/shells/zsh/yazelix_zsh_config.zsh
 # This file is part of Yazelix and should be persisted in the repository.
 
+YAZELIX_RUNTIME_DIR="$(cd "$(dirname "${(%):-%N}")/../.." && pwd)"
+
 # Source Helix mode detection using Nushell (essential dependency)
 if [[ -z "$YAZELIX_HELIX_MODE" ]]; then
-    eval "$(nu -c 'use ~/.config/yazelix/nushell/scripts/utils/helix_mode.nu export_helix_env; export_helix_env')"
+    eval "$(nu -c "use \"$YAZELIX_RUNTIME_DIR/nushell/scripts/utils/helix_mode.nu\" export_helix_env; export_helix_env")"
 fi
 
 # Define the directory where Yazelix generates individual initializer scripts.
@@ -37,7 +39,7 @@ else
 fi
 
 # Yazelix Aliases for Zsh
-alias yazelix="nu $HOME/.config/yazelix/nushell/scripts/core/launch_yazelix.nu"
+alias yazelix="nu $YAZELIX_RUNTIME_DIR/nushell/scripts/core/launch_yazelix.nu"
 alias lg='lazygit'
 
 # Note: yzx command is defined in ~/.zshrc (via v3 hooks) and is always available

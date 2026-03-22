@@ -16,7 +16,8 @@ if ! command -v nu >/dev/null 2>&1; then
   exit 1
 fi
 
-startup_script="$HOME/.config/yazelix/nushell/scripts/core/start_yazelix.nu"
+RUNTIME_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+startup_script="$RUNTIME_DIR/nushell/scripts/core/start_yazelix.nu"
 
 if [ ! -f "$startup_script" ]; then
   echo "Error: Missing Yazelix startup script: $startup_script" >&2

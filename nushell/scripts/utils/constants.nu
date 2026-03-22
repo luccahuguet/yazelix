@@ -87,7 +87,6 @@ export const TERMINAL_METADATA = {
 # Common terminal configuration values
 export const YAZELIX_WINDOW_CLASS = "com.yazelix.Yazelix"
 export const YAZELIX_X11_INSTANCE = "yazelix"
-export const YAZELIX_SHELL_COMMAND = "sh -c 'exec $HOME/.config/yazelix/shells/posix/start_yazelix.sh'"
 export const YAZELIX_THEME = "Abernathy"
 export const FONT_FIRACODE = "FiraCode Nerd Font"
 
@@ -101,10 +100,6 @@ export const TRANSPARENCY_VALUES = {
     very_high: "0.70"
     super_high: "0.60"
 }
-
-# Shell argument templates for terminal configs
-export const SHELL_ARGS_BASH = '["-c", "exec $HOME/.config/yazelix/shells/posix/start_yazelix.sh"]'
-export const SHELL_ARGS_STRING = '["-c", "exec $HOME/.config/yazelix/shells/posix/start_yazelix.sh"]'
 
 # ============================================================================
 # CURSOR TRAIL CONFIGURATION (Ghostty)
@@ -261,10 +256,10 @@ export const SHELL_CONFIGS = {
 
 # Yazelix shell configuration files
 export const YAZELIX_CONFIG_FILES = {
-    bash: "~/.config/yazelix/shells/bash/yazelix_bash_config.sh"
-    nushell: "~/.config/yazelix/nushell/config/config.nu"
-    fish: "~/.config/yazelix/shells/fish/yazelix_fish_config.fish"
-    zsh: "~/.config/yazelix/shells/zsh/yazelix_zsh_config.zsh"
+    bash: "shells/bash/yazelix_bash_config.sh"
+    nushell: "nushell/config/config.nu"
+    fish: "shells/fish/yazelix_fish_config.fish"
+    zsh: "shells/zsh/yazelix_zsh_config.zsh"
 }
 
 # ============================================================================

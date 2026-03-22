@@ -14,31 +14,35 @@ export def get_yazelix_start_comment [] {
     $YAZELIX_START_MARKER + "\n" + $YAZELIX_REGENERATE_COMMENT
 }
 
+export def get_yazelix_runtime_config_path [shell: string, yazelix_dir: string] {
+    let relative_path = ($YAZELIX_CONFIG_FILES | get $shell)
+    ($yazelix_dir | path join $relative_path)
+}
+
 # Get the complete yazelix section content for a shell
 export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
-    let config_file = $YAZELIX_CONFIG_FILES | get $shell
+    let config_file = (get_yazelix_runtime_config_path $shell $yazelix_dir)
+    let yzx_core_path = ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu")
 
     # Generate shell-specific conditional loading + yzx function (always available)
     let section_body = if $shell == "bash" or $shell == "zsh" {
-        let home_file = ($config_file | str replace "~" "$HOME")
         [
             $"if [ -n \"$IN_YAZELIX_SHELL\" ]; then"
-            $"  source \"($home_file)\""
+            $"  source \"($config_file)\""
             "fi"
             "# yzx command - always available for launching/managing yazelix"
             "yzx() {"
-            "    nu -c \"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx $*\""
+            $"    nu -c \"use ($yzx_core_path) *; yzx $*\""
             "}"
         ] | str join "\n"
     } else if $shell == "fish" {
-        let home_file = ($config_file | str replace "~" "$HOME")
         [
             "if test -n \"$IN_YAZELIX_SHELL\""
-            $"  source \"($home_file)\""
+            $"  source \"($config_file)\""
             "end"
             "# yzx command - always available for launching/managing yazelix"
             "function yzx --description \"Yazelix command suite\""
-            "    nu -c \"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx $argv\""
+            $"    nu -c \"use ($yzx_core_path) *; yzx $argv\""
             "end"
         ] | str join "\n"
     } else {
@@ -46,7 +50,7 @@ export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
         # This works because sourcing inside an if block doesn't export aliases properly
         [
             $"source \"($config_file)\""
-            "use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *"
+            $"use ($yzx_core_path) *"
         ] | str join "\n"
     }
 

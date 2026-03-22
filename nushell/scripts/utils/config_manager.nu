@@ -106,10 +106,10 @@ export def check_config_versions [yazelix_dir: string] {
     use ./constants_with_helpers.nu *
 
     let configs = [
-        { name: "bash", file: ($SHELL_CONFIGS.bash | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.bash) }
-        { name: "nushell", file: ($SHELL_CONFIGS.nushell | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.nushell) }
-        { name: "fish", file: ($SHELL_CONFIGS.fish | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.fish) }
-        { name: "zsh", file: ($SHELL_CONFIGS.zsh | str replace "~" $env.HOME), expected_source: ($YAZELIX_CONFIG_FILES.zsh) }
+        { name: "bash", file: ($SHELL_CONFIGS.bash | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "bash" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu") }
+        { name: "nushell", file: ($SHELL_CONFIGS.nushell | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "nushell" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu") }
+        { name: "fish", file: ($SHELL_CONFIGS.fish | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "fish" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu") }
+        { name: "zsh", file: ($SHELL_CONFIGS.zsh | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "zsh" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu") }
     ]
 
     let results = ($configs | each { |config|
@@ -122,19 +122,23 @@ export def check_config_versions [yazelix_dir: string] {
             } else {
                 let expected_source_lines = if $config.name in ["bash", "fish", "zsh"] {
                     [
-                        $"source \"($config.expected_source | str replace '~' $env.HOME)\""
-                        $"source ($config.expected_source | str replace '~' $env.HOME)"
-                        $"source \"$HOME/($config.expected_source | str replace '~/.config/' '.config/')\""
-                        $"source $HOME/($config.expected_source | str replace '~/.config/' '.config/')"
-                        $"source \"~($config.expected_source | str replace '~' '')\""
-                        $"source ~($config.expected_source | str replace '~' '')"
                         $"source \"($config.expected_source)\""
                         $"source ($config.expected_source)"
                     ]
                 } else {
                     [ $"source \"($config.expected_source)\"" ]
                 }
-                if ($expected_source_lines | any { |line| $section.content | str contains $line }) {
+                let expected_yzx_lines = if $config.name == "nushell" {
+                    [ $"use ($config.expected_yzx_core) *" ]
+                } else if $config.name == "fish" {
+                    [ $"    nu -c \"use ($config.expected_yzx_core) *; yzx $argv\"" ]
+                } else {
+                    [ $"    nu -c \"use ($config.expected_yzx_core) *; yzx $*\"" ]
+                }
+                if (
+                    ($expected_source_lines | any { |line| $section.content | str contains $line })
+                    and ($expected_yzx_lines | any { |line| $section.content | str contains $line })
+                ) {
                     { shell: $config.name, status: "current", file: $config.file }
                 } else {
                     { shell: $config.name, status: "outdated", file: $config.file, current_content: $section.content }
@@ -222,4 +226,3 @@ export def migrate_shell_hooks [shell: string, config_file: string, yazelix_dir:
         }
     }
 }
-

@@ -6,7 +6,7 @@ use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_envir
 use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../core/start_yazelix.nu [start_yazelix_session]
-use ../utils/common.nu [describe_build_parallelism]
+use ../utils/common.nu [describe_build_parallelism get_yazelix_runtime_dir]
 
 # Launch yazelix
 export def "yzx launch" [
@@ -207,7 +207,7 @@ export def "yzx launch" [
                 return
             }
 
-            let yazelix_dir = ("~/.config/yazelix" | path expand)
+            let yazelix_dir = (get_yazelix_runtime_dir)
             if $should_refresh and $verbose_mode {
                 let reason = ($config_state.refresh_reason? | default "config or devenv inputs changed since last launch")
                 print $"♻️  Re-entering Yazelix after rebuild \(($reason), ($build_parallelism_description)\)"

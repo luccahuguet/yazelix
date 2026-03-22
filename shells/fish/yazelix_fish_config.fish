@@ -1,9 +1,11 @@
 # Yazelix Fish Configuration
 # This file is sourced by ~/.config/fish/config.fish
 
+set -l YAZELIX_RUNTIME_DIR (path normalize (path dirname (status filename))/../..)
+
 # Source Helix mode detection using Nushell (essential dependency)
 if test -z $YAZELIX_HELIX_MODE
-    eval (nu -c 'use ~/.config/yazelix/nushell/scripts/utils/helix_mode.nu export_helix_env; export_helix_env')
+    eval (nu -c "use \"$YAZELIX_RUNTIME_DIR/nushell/scripts/utils/helix_mode.nu\" export_helix_env; export_helix_env")
 end
 
 # Source generated initializers if they exist
@@ -23,7 +25,7 @@ else
 end
 
 # Yazelix aliases
-alias yazelix="nu $HOME/.config/yazelix/nushell/scripts/core/launch_yazelix.nu"
+alias yazelix="nu $YAZELIX_RUNTIME_DIR/nushell/scripts/core/launch_yazelix.nu"
 alias lg='lazygit'
 
 # Note: yzx command is defined in ~/.config/fish/config.fish (via v3 hooks) and is always available

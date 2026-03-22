@@ -3,6 +3,7 @@
 
 use ../integrations/zellij.nu [resolve_tab_cwd_target set_tab_workspace_root]
 use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
+use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 use ../utils/config_parser.nu parse_yazelix_config
 
 def classify_menu_command [cmd: string] {
@@ -187,11 +188,12 @@ export def "yzx config" [
 }
 
 def get_primary_config_paths [] {
-    let yazelix_dir = ("~/.config/yazelix" | path expand)
+    let config_dir = (get_yazelix_config_dir)
+    let runtime_dir = (get_yazelix_runtime_dir)
     {
-        yazelix_dir: $yazelix_dir
-        user_config: ($yazelix_dir | path join "yazelix.toml")
-        default_config: ($yazelix_dir | path join "yazelix_default.toml")
+        yazelix_dir: $config_dir
+        user_config: ($config_dir | path join "yazelix.toml")
+        default_config: ($runtime_dir | path join "yazelix_default.toml")
     }
 }
 

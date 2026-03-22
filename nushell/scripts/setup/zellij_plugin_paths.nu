@@ -1,5 +1,7 @@
 #!/usr/bin/env nu
 
+use ../utils/common.nu [get_yazelix_runtime_dir]
+
 const pane_orchestrator_plugin_prefix = "yazelix_pane_orchestrator"
 const pane_orchestrator_wasm_name = "yazelix_pane_orchestrator.wasm"
 
@@ -18,12 +20,12 @@ def get_runtime_plugins_dir [] {
     $env.HOME | path join ".local" "share" "yazelix" "configs" "zellij" "plugins"
 }
 
-export def get_tracked_pane_orchestrator_wasm_path [yazelix_dir: string = "~/.config/yazelix"] {
-    let root = ($yazelix_dir | path expand)
+export def get_tracked_pane_orchestrator_wasm_path [yazelix_dir?: string] {
+    let root = (($yazelix_dir | default (get_yazelix_runtime_dir)) | path expand)
     $root | path join "configs" "zellij" "plugins" $pane_orchestrator_wasm_name
 }
 
-export def sync_pane_orchestrator_runtime_wasm [yazelix_dir: string = "~/.config/yazelix"] {
+export def sync_pane_orchestrator_runtime_wasm [yazelix_dir?: string] {
     let tracked_path = (get_tracked_pane_orchestrator_wasm_path $yazelix_dir)
     if not ($tracked_path | path exists) {
         error make {msg: $"Tracked pane orchestrator wasm not found at: ($tracked_path)"}
@@ -64,6 +66,6 @@ export def sync_pane_orchestrator_runtime_wasm [yazelix_dir: string = "~/.config
     $runtime_path
 }
 
-export def get_pane_orchestrator_wasm_path [yazelix_dir: string = "~/.config/yazelix"] {
+export def get_pane_orchestrator_wasm_path [yazelix_dir?: string] {
     sync_pane_orchestrator_runtime_wasm $yazelix_dir
 }
