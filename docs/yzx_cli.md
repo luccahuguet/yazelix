@@ -84,10 +84,6 @@ Show Yazelix-owned keybindings and remaps
 - `yzx keys nu`: show a small curated subset of useful Nushell keybindings
 - `yzx keys nushell`: alias for `yzx keys nu`
 
-### `yzx gen_config <terminal>`
-Print a terminal emulator config generated from `yazelix_default.toml`
-- Example: `yzx gen_config alacritty`
-
 ### `yzx restart [--reuse] [--skip-refresh]`
 Restart Yazelix (handles persistent sessions)
 - `--reuse`: Reopen Yazelix from the last built profile without rebuilding (errors if no cached profile exists)

@@ -480,8 +480,8 @@ def test_packs_helper_uses_runtime_root_for_devenv_links [] {
     $result
 }
 
-def test_relocated_runtime_smoke_supports_status_and_gen_config [] {
-    print "🧪 Testing relocated runtime smoke path supports status and gen_config..."
+def test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering [] {
+    print "🧪 Testing relocated runtime smoke path supports status and terminal-config rendering..."
 
     let fixture = (setup_relocated_runtime_fixture)
 
@@ -495,9 +495,7 @@ def test_relocated_runtime_smoke_supports_status_and_gen_config [] {
         let status_output = with-env $env_overlay {
             ^nu -c $"use \"($fixture.yzx_script)\" *; yzx status" | complete
         }
-        let gen_output = with-env $env_overlay {
-            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx gen_config ghostty" | complete
-        }
+        let gen_output = with-env $env_overlay { ^nu -c $"use \"($fixture.runtime_dir | path join "nushell" "scripts" "yzx" "gen_config.nu")\" [render_terminal_config]; render_terminal_config ghostty" | complete }
 
         let status_stdout = ($status_output.stdout | str trim)
         let gen_stdout = ($gen_output.stdout | str trim)
@@ -511,7 +509,7 @@ def test_relocated_runtime_smoke_supports_status_and_gen_config [] {
             and ($gen_stdout | str contains $"exec ($fixture.startup_script)")
             and not ($gen_stdout | str contains $fixture.repo_root)
         ) {
-            print "  ✅ Relocated runtime smoke path resolves config, runtime, and generated terminal launchers from split roots"
+            print "  ✅ Relocated runtime smoke path resolves config, runtime, and internal terminal launchers from split roots"
             true
         } else {
             print $"  ❌ Unexpected result: status_exit=($status_output.exit_code) gen_exit=($gen_output.exit_code)"
@@ -543,6 +541,6 @@ export def run_core_tests [] {
         (test_runtime_shell_assets_avoid_repo_shaped_runtime_paths)
         (test_pane_orchestrator_tracked_path_defaults_to_runtime_root)
         (test_packs_helper_uses_runtime_root_for_devenv_links)
-        (test_relocated_runtime_smoke_supports_status_and_gen_config)
+        (test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering)
     ]
 }

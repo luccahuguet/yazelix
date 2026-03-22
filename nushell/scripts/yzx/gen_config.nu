@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# yzx gen_config command - Generate terminal config output
+# Internal terminal config rendering helper
 
 use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/constants.nu [SUPPORTED_TERMINALS]
@@ -11,11 +11,10 @@ use ../utils/terminal_configs.nu [
     generate_foot_config
 ]
 
-export def "yzx gen_config" [terminal: string] {
+export def render_terminal_config [terminal: string, runtime_dir?: string] {
     let selected = ($terminal | str downcase | str trim)
     if ($selected | is-empty) {
-        print "Usage: yzx gen_config <terminal>"
-        return
+        error make {msg: "Terminal name is required."}
     }
 
     if $selected not-in $SUPPORTED_TERMINALS {
@@ -23,19 +22,19 @@ export def "yzx gen_config" [terminal: string] {
         error make {msg: $"Unsupported terminal: ($terminal). Supported: ($supported)"}
     }
 
-    let runtime_dir = (get_yazelix_runtime_dir)
-    let default_config = ($runtime_dir | path join "yazelix_default.toml")
+    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
+    let default_config = ($resolved_runtime_dir | path join "yazelix_default.toml")
     if not ($default_config | path exists) {
         error make {msg: $"Default config not found: ($default_config)"}
     }
 
-    with-env {YAZELIX_CONFIG_OVERRIDE: $default_config} {
+    with-env {YAZELIX_CONFIG_OVERRIDE: $default_config, YAZELIX_RUNTIME_DIR: $resolved_runtime_dir} {
         match $selected {
-            "ghostty" => (generate_ghostty_config $runtime_dir)
-            "wezterm" => (generate_wezterm_config $runtime_dir)
-            "kitty" => (generate_kitty_config $runtime_dir)
-            "alacritty" => (generate_alacritty_config $runtime_dir)
-            "foot" => (generate_foot_config $runtime_dir)
+            "ghostty" => (generate_ghostty_config $resolved_runtime_dir)
+            "wezterm" => (generate_wezterm_config $resolved_runtime_dir)
+            "kitty" => (generate_kitty_config $resolved_runtime_dir)
+            "alacritty" => (generate_alacritty_config $resolved_runtime_dir)
+            "foot" => (generate_foot_config $resolved_runtime_dir)
             _ => (error make {msg: $"Unsupported terminal: ($terminal)"})
         }
     }

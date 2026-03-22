@@ -19,7 +19,6 @@ export use ../yzx/packs.nu *
 export use ../yzx/gc.nu *
 export use ../yzx/dev.nu *
 export use ../yzx/menu.nu *
-export use ../yzx/gen_config.nu *
 export use ../yzx/keys.nu *
 
 # =============================================================================

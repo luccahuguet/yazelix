@@ -173,8 +173,8 @@ def test_terminal_config_generation_rewrites_runtime_root [] {
     }
 }
 
-def test_yzx_gen_config_uses_runtime_root_default_template [] {
-    print "🧪 Testing yzx gen_config uses the runtime-root default template..."
+def test_terminal_config_renderer_uses_runtime_root_default_template [] {
+    print "🧪 Testing the internal terminal config renderer uses the runtime-root default template..."
 
     let tmp_home = (^mktemp -d /tmp/yazelix_gen_config_XXXXXX | str trim)
     let runtime_dir = ($tmp_home | path join "runtime")
@@ -182,12 +182,11 @@ def test_yzx_gen_config_uses_runtime_root_default_template [] {
 
     let result = (try {
         cp (repo_path "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
-        let yzx_script = (repo_path "nushell" "scripts" "core" "yazelix.nu")
         let output = with-env {
             HOME: $tmp_home
             YAZELIX_RUNTIME_DIR: $runtime_dir
         } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx gen_config ghostty" | complete
+            ^nu -c $"use \"(repo_path "nushell" "scripts" "yzx" "gen_config.nu")\" [render_terminal_config]; render_terminal_config ghostty" | complete
         }
         let stdout = ($output.stdout | str trim)
 
@@ -196,7 +195,7 @@ def test_yzx_gen_config_uses_runtime_root_default_template [] {
             and ($stdout | str contains $"exec ($runtime_dir)/shells/posix/start_yazelix.sh")
             and not ($stdout | str contains "$HOME/.config/yazelix")
         ) {
-            print "  ✅ yzx gen_config reads the template from the runtime root and emits runtime-root launch paths"
+            print "  ✅ The internal terminal config renderer reads the template from the runtime root and emits runtime-root launch paths"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
@@ -400,7 +399,7 @@ export def run_generated_config_tests [] {
         (test_layout_generator_discovers_custom_top_level_layouts)
         (test_layout_generator_rewrites_runtime_paths)
         (test_terminal_config_generation_rewrites_runtime_root)
-        (test_yzx_gen_config_uses_runtime_root_default_template)
+        (test_terminal_config_renderer_uses_runtime_root_default_template)
         (test_launch_env_omits_default_helix_runtime)
         (test_launch_env_keeps_custom_helix_runtime_override)
         (test_launch_env_omits_yazelix_default_shell)

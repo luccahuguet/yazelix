@@ -10,7 +10,6 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
     - **No manual copying required** - auto-generated when launching yazelix
   - **Reference configs** (generated snapshot): `configs/terminal_emulators/`
     - Refresh snapshots: `yzx dev sync_terminal_configs` (uses `yazelix_default.toml`)
-    - Print a fresh config: `yzx gen_config wezterm`
     - Snapshots match the generated configs under `~/.local/share/yazelix/configs/terminal_emulators/`
 - **Zellij Configuration**: Git-conflict-free three-layer configuration system:
   - **Quick start**: 
