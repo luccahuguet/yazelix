@@ -8,6 +8,66 @@ use nix_env_helper.nu ensure_nix_in_environment
 use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config get_yazelix_dir require_yazelix_dir]
 use config_state.nu [compute_config_state mark_config_state_applied]
 
+def format_command_for_display [command_parts: list<string>] {
+    $command_parts
+    | each { |part|
+        let value = ($part | into string)
+        if ($value | str contains " ") {
+            $"\"($value)\""
+        } else {
+            $value
+        }
+    }
+    | str join " "
+}
+
+def get_stderr_tail [stderr: string, max_lines: int = 5] {
+    $stderr
+    | default ""
+    | lines
+    | last $max_lines
+    | str join "\n"
+    | str trim
+}
+
+export def format_command_failure_summary [
+    label: string
+    command_parts: list<string>
+    exit_code: int
+    stderr: string
+    recovery_hint: string
+    --stderr-streamed
+] {
+    let command_text = (format_command_for_display $command_parts)
+    mut lines = [
+        $"❌ ($label) \(exit code: ($exit_code)\)"
+        $"   Command: ($command_text)"
+    ]
+
+    if $stderr_streamed {
+        $lines = ($lines | append "   stderr tail: output was streamed directly above.")
+    } else {
+        let stderr_tail = (get_stderr_tail $stderr)
+        if ($stderr_tail | is-empty) {
+            $lines = ($lines | append "   stderr tail: no stderr output was captured.")
+        } else {
+            $lines = ($lines | append "   stderr tail:")
+            let indented_tail = (
+                $stderr_tail
+                | lines
+                | each { |line| $"     ($line)" }
+            )
+            $lines = ($lines | append $indented_tail)
+        }
+    }
+
+    if (($recovery_hint | str trim) | is-not-empty) {
+        $lines = ($lines | append $"   Recovery: ($recovery_hint)")
+    }
+
+    $lines | str join "\n"
+}
+
 # Check if unfree pack is enabled in yazelix.toml
 export def is_unfree_enabled [] {
     let yazelix_dir = get_yazelix_dir
@@ -103,19 +163,52 @@ export def rebuild_yazelix_environment [
     let cmd_bin = ($devenv_cmd | first)
     let cmd_args = ($devenv_cmd | skip 1)
 
-    let exit_code = if (is_unfree_enabled) {
+    let rebuild_result = if $refresh_output == "quiet" {
+        if (is_unfree_enabled) {
+            with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
+                let result = (^$cmd_bin ...$cmd_args | complete)
+                {
+                    exit_code: $result.exit_code
+                    stderr: ($result.stderr | default "")
+                    stderr_streamed: false
+                }
+            }
+        } else {
+            let result = (^$cmd_bin ...$cmd_args | complete)
+            {
+                exit_code: $result.exit_code
+                stderr: ($result.stderr | default "")
+                stderr_streamed: false
+            }
+        }
+    } else if (is_unfree_enabled) {
         with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
             ^$cmd_bin ...$cmd_args
-            ($env.LAST_EXIT_CODE? | default 0)
+            {
+                exit_code: ($env.LAST_EXIT_CODE? | default 0)
+                stderr: ""
+                stderr_streamed: true
+            }
         }
     } else {
         ^$cmd_bin ...$cmd_args
-        ($env.LAST_EXIT_CODE? | default 0)
+        {
+            exit_code: ($env.LAST_EXIT_CODE? | default 0)
+            stderr: ""
+            stderr_streamed: true
+        }
     }
 
-    if $exit_code != 0 {
-        print $"❌ Environment rebuild failed \(exit code: ($exit_code)\)"
-        exit $exit_code
+    if $rebuild_result.exit_code != 0 {
+        print (format_command_failure_summary
+            "Environment rebuild failed"
+            $devenv_cmd
+            $rebuild_result.exit_code
+            $rebuild_result.stderr
+            "Run `yzx doctor` to inspect the runtime, then rerun `yzx refresh` or `yzx restart` once the underlying build failure is fixed."
+            --stderr-streamed=$rebuild_result.stderr_streamed
+        )
+        exit $rebuild_result.exit_code
     }
 
     mark_config_state_applied (compute_config_state)

@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # yzx refresh command - Refresh Yazelix devenv cache/environment without launching UI
 
-use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled get_refresh_output_mode]
+use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled get_refresh_output_mode format_command_failure_summary]
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 use ../utils/common.nu [describe_build_parallelism]
 
@@ -57,6 +57,7 @@ def run_refresh_command [devenv_cmd allow_unfree --stream-output] {
         {
             exit_code: $exit_code
             stderr: ""
+            stderr_streamed: true
         }
     } else {
         let result = if $allow_unfree {
@@ -70,6 +71,7 @@ def run_refresh_command [devenv_cmd allow_unfree --stream-output] {
         {
             exit_code: $result.exit_code
             stderr: ($result.stderr | default "")
+            stderr_streamed: false
         }
     }
 }
@@ -136,11 +138,14 @@ export def "yzx refresh" [
 
         let refresh_result = run_refresh_command $devenv_cmd $allow_unfree --stream-output=$show_progress
         if $refresh_result.exit_code != 0 {
-            print $"❌ Refresh failed \(exit code: ($refresh_result.exit_code)\)"
-            let stderr = ($refresh_result.stderr | str trim)
-            if ($stderr | is-not-empty) {
-                print $stderr
-            }
+            print (format_command_failure_summary
+                "Refresh failed"
+                $devenv_cmd
+                $refresh_result.exit_code
+                $refresh_result.stderr
+                "Run `yzx doctor` to inspect the runtime, then rerun `yzx refresh` after fixing the failing build command."
+                --stderr-streamed=$refresh_result.stderr_streamed
+            )
             exit 1
         }
     }

@@ -6,6 +6,7 @@ use ./test_yzx_core_commands.nu [run_core_tests]
 use ./test_yzx_dev_commands.nu [run_dev_tests]
 use ./test_yzx_doctor_commands.nu [run_doctor_tests]
 use ./test_yzx_generated_configs.nu [run_generated_config_tests]
+use ./test_yzx_refresh_commands.nu [run_refresh_tests]
 use ./test_yzx_workspace_commands.nu [run_workspace_tests]
 use ./test_yzx_yazi_commands.nu [run_yazi_tests]
 
@@ -20,6 +21,7 @@ def main [] {
             (run_dev_tests)
             (run_doctor_tests)
             (run_generated_config_tests)
+            (run_refresh_tests)
             (run_workspace_tests)
             (run_yazi_tests)
         ] | flatten
