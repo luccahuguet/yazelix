@@ -6,10 +6,18 @@ def contract_start [] {
 
 def parse_json_output [] {
     let value = $in
+    if ($value | is-empty) {
+        return []
+    }
+
     let parsed = if (($value | describe) == "string") {
         $value | from json
     } else {
         $value
+    }
+
+    if ($parsed == null) {
+        return []
     }
 
     if (($parsed | describe | str starts-with "record<") and (($parsed | columns) | any { |column| $column == "issues" })) {
@@ -20,17 +28,25 @@ def parse_json_output [] {
 }
 
 def load_github_issues [] {
-    ^gh issue list --state all --limit 1000 --json number,state,title,url,createdAt
-    | complete
-    | get stdout
-    | parse_json_output
+    let listed = (^gh issue list --state all --limit 1000 --json number,state,title,url,createdAt | complete)
+    if $listed.exit_code != 0 {
+        error make {
+            msg: $"Failed to load GitHub issues: ($listed.stderr | str trim)"
+        }
+    }
+
+    $listed.stdout | parse_json_output
 }
 
 def load_beads [] {
-    ^br list --all --limit 0 --json
-    | complete
-    | get stdout
-    | parse_json_output
+    let listed = (^br list --all --limit 0 --json | complete)
+    if $listed.exit_code != 0 {
+        error make {
+            msg: $"Failed to load Beads issues: ($listed.stderr | str trim)"
+        }
+    }
+
+    $listed.stdout | parse_json_output
 }
 
 export def main [] {

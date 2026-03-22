@@ -64,10 +64,18 @@ def build_description [issue: record] {
 
 def parse_br_json [] {
     let value = $in
+    if ($value | is-empty) {
+        return []
+    }
+
     let parsed = if (($value | describe) == "string") {
         $value | from json
     } else {
         $value
+    }
+
+    if ($parsed == null) {
+        return []
     }
 
     if (($parsed | describe | str starts-with "record<") and (($parsed | columns) | any { |column| $column == "issues" })) {
@@ -78,10 +86,14 @@ def parse_br_json [] {
 }
 
 def list_beads [] {
-    ^br list --all --limit 0 --json
-    | complete
-    | get stdout
-    | parse_br_json
+    let listed = (^br list --all --limit 0 --json | complete)
+    if $listed.exit_code != 0 {
+        error make {
+            msg: $"Failed to list Beads issues: ($listed.stderr | str trim)"
+        }
+    }
+
+    $listed.stdout | parse_br_json
 }
 
 def find_bead_by_external_ref [issue_url: string] {
