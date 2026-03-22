@@ -14,6 +14,16 @@ def write_outputs [values: record] {
     | save --append $output_path
 }
 
+def flush_beads_export [] {
+    let flushed = (^br sync --flush-only | complete)
+
+    if $flushed.exit_code != 0 {
+        error make {
+            msg: $"Failed to flush Beads export: ($flushed.stderr | str trim)"
+        }
+    }
+}
+
 def infer_issue_type [issue: record] {
     let labels = (
         $issue.labels?
@@ -117,6 +127,7 @@ def create_bead [issue: record] {
     }
 
     let bead = ($created.stdout | parse_br_json)
+    flush_beads_export
     maybe_comment_tracking $issue.number $bead.id
     write_outputs {
         bead_id: $bead.id
@@ -150,6 +161,7 @@ export def main [] {
 
         if $bead.status == "closed" {
             ^br reopen $bead.id --reason "Reopened on GitHub" | complete | ignore
+            flush_beads_export
         }
 
         write_outputs {
@@ -170,6 +182,7 @@ export def main [] {
 
         if $bead.status != "closed" {
             ^br close $bead.id --reason "Closed on GitHub" | complete | ignore
+            flush_beads_export
         }
 
         write_outputs {
