@@ -48,6 +48,47 @@ def test_issue_bead_reconciliation_plan [] {
     }
 }
 
+def test_issue_bead_comment_plan [] {
+    print "🧪 Testing issue/bead comment planning creates, updates, and accepts canonical comments..."
+
+    try {
+        let command = '
+            source nushell/scripts/utils/issue_bead_contract.nu
+            let issue = {number: 600, state: "OPEN", title: "Comment contract", url: "https://github.com/luccahuguet/yazelix/issues/600", createdAt: "2026-03-22T12:40:00Z", body: ""}
+            let bead = {id: "yazelix-comment", status: "open", external_ref: $issue.url}
+            let missing = (plan_issue_bead_comment_sync $issue $bead [])
+            let stale = (plan_issue_bead_comment_sync $issue $bead [{id: "IC_stale", body: "Tracked in Beads as `yazelix-old`."}])
+            let current = (plan_issue_bead_comment_sync $issue $bead [{id: "IC_current", body: "Tracked in Beads as `yazelix-comment`."}])
+            {
+                missing: $missing.kind
+                stale: $stale.kind
+                current: $current.kind
+                expected_body: (canonical_issue_bead_comment_body $bead.id)
+            } | to json -r
+        '
+        let output = (^nu -c $command | complete)
+        let stdout = ($output.stdout | str trim)
+        let resolved = ($stdout | lines | last | from json)
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved.missing == "create")
+            and ($resolved.stale == "update")
+            and ($resolved.current == "noop")
+            and ($resolved.expected_body == "Tracked in Beads as `yazelix-comment`.")
+        ) {
+            print "  ✅ Comment planning enforces one canonical Beads comment body"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) resolved=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_runtime_pin_versions_use_repo_shell [] {
     print "🧪 Testing runtime pin versions come from the repo shell..."
 
@@ -93,6 +134,7 @@ def main [] {
 
     let results = [
         (test_issue_bead_reconciliation_plan)
+        (test_issue_bead_comment_plan)
         (test_runtime_pin_versions_use_repo_shell)
     ]
 

@@ -401,7 +401,14 @@ def test_zellij_horizontal_walking_is_plugin_owned [] {
 
     let result = (try {
         let out_dir = ($tmpdir | path join "out")
-        let output = (with-env { YAZELIX_TEST_OUT_DIR: $out_dir } {
+        let fake_home = ($tmpdir | path join "home")
+        let zellij_config_dir = ($fake_home | path join ".config" "zellij")
+        let zellij_config_path = ($zellij_config_dir | path join "config.kdl")
+        mkdir $zellij_config_dir
+        'keybinds { normal { bind "f1" { WriteChars "fixture"; } } }'
+            | save --force --raw $zellij_config_path
+
+        let output = (with-env { HOME: $fake_home, YAZELIX_TEST_OUT_DIR: $out_dir } {
             let root = (get_repo_config_dir)
             generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
             open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "layouts" "yzx_side.kdl")

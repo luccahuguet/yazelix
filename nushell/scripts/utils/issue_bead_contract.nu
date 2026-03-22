@@ -4,6 +4,10 @@ export def contract_start [] {
     "2026-03-22T00:00:00Z" | into datetime
 }
 
+export def canonical_issue_bead_comment_body [bead_id: string] {
+    $"Tracked in Beads as `($bead_id)`."
+}
+
 export def parse_json_output [] {
     let value = $in
     if ($value | is-empty) {
@@ -43,6 +47,18 @@ export def load_contract_github_issues [] {
     $listed.stdout | parse_json_output
 }
 
+export def load_issue_comments [issue_number: int] {
+    let viewed = (^gh issue view $issue_number --json comments | complete)
+    if $viewed.exit_code != 0 {
+        error make {
+            msg: $"Failed to load comments for GitHub issue #($issue_number): ($viewed.stderr | str trim)"
+        }
+    }
+
+    let parsed = ($viewed.stdout | from json)
+    ($parsed.comments? | default [])
+}
+
 export def load_contract_beads [] {
     let listed = (^br list --all --limit 0 --json | complete)
     if $listed.exit_code != 0 {
@@ -60,15 +76,21 @@ export def infer_issue_type_from_body [body?: string] {
         return "task"
     }
 
-    let extracted = (
+    let matches = (
         $trimmed
         | parse --regex '(?ms)^### Issue Type\s+(?<issue_type>[a-z_]+)(?:\s+### |\s*$)'
-        | get -o 0.issue_type
-        | first
-        | default ""
-        | str trim
-        | str downcase
     )
+    let extracted = if ($matches | is-empty) {
+        ""
+    } else {
+        (
+            $matches
+            | get 0.issue_type
+            | into string
+            | str trim
+            | str downcase
+        )
+    }
 
     if ($extracted | is-empty) {
         return "task"
@@ -149,5 +171,49 @@ export def plan_issue_bead_reconciliation [github_issues: list, beads: list] {
     {
         actions: $actions
         errors: $errors
+    }
+}
+
+export def find_issue_bead_comment [comments: list] {
+    let matching = (
+        $comments
+        | where { |comment|
+            let body = (($comment.body? | default "") | into string | str trim)
+            $body | str starts-with "Tracked in Beads as `"
+        }
+    )
+
+    $matching | get -o 0
+}
+
+export def plan_issue_bead_comment_sync [issue: record, bead: record, comments: list] {
+    let expected_body = (canonical_issue_bead_comment_body $bead.id)
+    let existing_comment = (find_issue_bead_comment $comments)
+
+    if ($existing_comment | is-empty) {
+        return {
+            kind: "create"
+            issue: $issue
+            bead: $bead
+            body: $expected_body
+        }
+    }
+
+    if ((($existing_comment.body? | default "") | str trim) == $expected_body) {
+        return {
+            kind: "noop"
+            issue: $issue
+            bead: $bead
+            body: $expected_body
+            comment: $existing_comment
+        }
+    }
+
+    {
+        kind: "update"
+        issue: $issue
+        bead: $bead
+        body: $expected_body
+        comment: $existing_comment
     }
 }

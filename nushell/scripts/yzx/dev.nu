@@ -5,10 +5,14 @@ use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/common.nu [get_yazelix_dir]
 use ../utils/issue_bead_contract.nu [
     build_imported_issue_description
+    canonical_issue_bead_comment_body
+    find_issue_bead_comment
     infer_issue_type_from_body
     load_contract_beads
     load_contract_github_issues
+    load_issue_comments
     plan_issue_bead_reconciliation
+    plan_issue_bead_comment_sync
 ]
 
 # Development and maintainer commands
@@ -559,6 +563,18 @@ def print_issue_sync_summary [actions: list] {
     print $"  Already aligned: ($unchanged)"
 }
 
+def print_issue_comment_sync_summary [actions: list] {
+    let created = ($actions | where kind == "create" | length)
+    let updated = ($actions | where kind == "update" | length)
+    let unchanged = ($actions | where kind == "noop" | length)
+
+    print ""
+    print "Issue comment sync summary:"
+    print $"  Created: ($created)"
+    print $"  Updated: ($updated)"
+    print $"  Already aligned: ($unchanged)"
+}
+
 def fail_issue_sync_plan [errors: list] {
     print "❌ GitHub/Beads reconciliation is blocked:"
     $errors | each { |err| print $"   - ($err)" }
@@ -621,6 +637,63 @@ def format_issue_sync_action [action: record] {
     }
 }
 
+def collect_issue_bead_comment_actions [github_issues: list, beads: list] {
+    let issue_records = (
+        $github_issues
+        | where { |issue|
+            let matches = (
+                $beads
+                | where { |bead| (($bead.external_ref? | default "") == $issue.url) }
+            )
+            ($matches | length) == 1
+        }
+    )
+
+    $issue_records | each { |issue|
+        let bead = (
+            $beads
+            | where { |candidate| (($candidate.external_ref? | default "") == $issue.url) }
+            | first
+        )
+        let comments = (load_issue_comments $issue.number)
+        plan_issue_bead_comment_sync $issue $bead $comments
+    }
+}
+
+def create_issue_bead_comment [action: record] {
+    let output = (^gh issue comment $action.issue.number --body $action.body | complete)
+    if $output.exit_code != 0 {
+        error make {
+            msg: $"Failed to create Beads comment for GitHub issue #($action.issue.number): ($output.stderr | str trim)"
+        }
+    }
+}
+
+def update_issue_bead_comment [action: record] {
+    let mutation = 'mutation($id: ID!, $body: String!) { updateIssueComment(input: { id: $id, body: $body }) { issueComment { id } } }'
+    let output = (
+        ^gh api graphql
+            -f $"query=($mutation)"
+            -F $"id=($action.comment.id)"
+            -F body=$action.body
+        | complete
+    )
+
+    if $output.exit_code != 0 {
+        error make {
+            msg: $"Failed to update Beads comment for GitHub issue #($action.issue.number): ($output.stderr | str trim)"
+        }
+    }
+}
+
+def format_issue_comment_action [action: record] {
+    match $action.kind {
+        "create" => $"create comment for #($action.issue.number) -> ($action.bead.id)"
+        "update" => $"update comment for #($action.issue.number) -> ($action.bead.id)"
+        _ => $"noop comment #($action.issue.number) -> ($action.bead.id)"
+    }
+}
+
 export def "yzx dev sync_issues" [
     --dry-run  # Show the local GitHub→Beads reconciliation plan without mutating Beads
 ] {
@@ -636,6 +709,9 @@ export def "yzx dev sync_issues" [
 
     let mutating_actions = ($actions | where kind in ["create" "reopen" "close"])
 
+    let initial_comment_actions = (collect_issue_bead_comment_actions $github_issues $beads)
+    let mutating_comment_actions = ($initial_comment_actions | where kind in ["create" "update"])
+
     if $dry_run {
         print "GitHub→Beads local sync plan:"
         if ($mutating_actions | is-empty) {
@@ -643,17 +719,28 @@ export def "yzx dev sync_issues" [
         } else {
             $mutating_actions | each { |action| print $"  - (format_issue_sync_action $action)" }
         }
+        print ""
+        print "GitHub issue comment plan:"
+        if ($mutating_comment_actions | is-empty) {
+            print "  No changes needed."
+        } else {
+            $mutating_comment_actions | each { |action| print $"  - (format_issue_comment_action $action)" }
+        }
         print_issue_sync_summary $actions
+        print_issue_comment_sync_summary $initial_comment_actions
         return
     }
 
-    if ($mutating_actions | is-empty) {
+    if ($mutating_actions | is-empty) and ($mutating_comment_actions | is-empty) {
         print "✅ GitHub issues and local Beads are already aligned."
         print_issue_sync_summary $actions
+        print_issue_comment_sync_summary $initial_comment_actions
         return
     }
 
-    print "🔄 Syncing GitHub issue lifecycle into local Beads..."
+    if not ($mutating_actions | is-empty) {
+        print "🔄 Syncing GitHub issue lifecycle into local Beads..."
+    }
     for action in $mutating_actions {
         match $action.kind {
             "create" => {
@@ -679,6 +766,28 @@ export def "yzx dev sync_issues" [
     }
 
     ^br sync --flush-only
+
+    let refreshed_github_issues = load_contract_github_issues
+    let refreshed_beads = load_contract_beads
+    let comment_actions = (collect_issue_bead_comment_actions $refreshed_github_issues $refreshed_beads)
+    let mutating_comment_actions = ($comment_actions | where kind in ["create" "update"])
+
+    if not ($mutating_comment_actions | is-empty) {
+        print "🔄 Syncing canonical Beads comments onto GitHub issues..."
+        for action in $mutating_comment_actions {
+            match $action.kind {
+                "create" => {
+                    create_issue_bead_comment $action
+                    print $"  ✅ Added Beads comment to GitHub issue #($action.issue.number)"
+                }
+                "update" => {
+                    update_issue_bead_comment $action
+                    print $"  ✅ Updated Beads comment on GitHub issue #($action.issue.number)"
+                }
+            }
+        }
+    }
+
     let validator = (^nu ((get_yazelix_dir) | path join ".github" "scripts" "validate_issue_bead_contract.nu") | complete)
     if $validator.exit_code != 0 {
         print ($validator.stdout | str trim)
@@ -691,6 +800,7 @@ export def "yzx dev sync_issues" [
 
     print "✅ GitHub issue lifecycle is now synced into local Beads."
     print_issue_sync_summary $actions
+    print_issue_comment_sync_summary $comment_actions
 }
 
 export def "yzx dev build_pane_orchestrator" [
