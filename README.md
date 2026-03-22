@@ -45,6 +45,8 @@ Get everything running in less than 10 minutes. No extra dependencies, only Nix
 
 Install once, get the same environment everywhere
 
+Want the high-level product map? See [Architecture Map](./docs/architecture_map.md).
+
 ## Vision
 - Using the terminal should be easy, beautiful, practical and reproducible
 - Good defaults over customization. Have both when possible
