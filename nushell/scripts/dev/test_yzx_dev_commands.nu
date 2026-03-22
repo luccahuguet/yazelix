@@ -172,6 +172,26 @@ def test_readme_title_matches_declared_version [] {
     }
 }
 
+def test_specs_have_traceability_contract [] {
+    print "🧪 Testing real specs declare bead and regression traceability..."
+
+    try {
+        let validator_script = (repo_path "nushell" "scripts" "dev" "validate_specs.nu")
+        let output = (^nu $validator_script | complete)
+
+        if $output.exit_code == 0 {
+            print "  ✅ real specs declare bead and regression traceability"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($output.stderr | str trim)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 export def run_dev_tests [] {
     [
         (test_dev_update_canary_set)
@@ -180,5 +200,6 @@ export def run_dev_tests [] {
         (test_maintainer_pack_stays_in_sync)
         (test_home_manager_desktop_entry_evaluates)
         (test_readme_title_matches_declared_version)
+        (test_specs_have_traceability_contract)
     ]
 }

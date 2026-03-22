@@ -102,6 +102,13 @@ When creating new files or directories, always use underscores to maintain consi
   - The automated validator enforces this contract for issues created on or after `2026-03-22`. Older backlog issues are intentionally grandfathered until they are explicitly imported or touched by the sync workflow.
 - Any automation that mutates Beads in CI must flush the tracked export with `br sync --flush-only` before checking or committing `.beads/issues.jsonl`.
 
+## Spec Workflow
+
+- Use `docs/spec_driven_workflow.md` as the durable entrypoint for when a change needs a spec and how specs relate to Beads.
+- Store reusable spec templates and concrete specs under `docs/specs/`.
+- Prefer specs for user-visible behavior, subsystem contracts, and integration boundaries. Do not create specs for trivial edits or purely mechanical refactors.
+- Real specs should include a small `Traceability` section with one Bead id and at least one concrete `Defended by` check or test.
+
 ## Tool Invocation Workflow
 
 - Prefer `yzx run ...` for project-scoped tool invocations instead of raw `devenv shell ...` when running tools provided by the Yazelix environment.

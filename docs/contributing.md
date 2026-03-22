@@ -34,10 +34,11 @@ This helps in easily tracking which commits are related to specific issues.
 
 1. **Choose an issue** to work on or create a new one if needed.
 2. **Create a new branch** following the naming convention above.
-3. **Make your changes** in your branch, adhering to the existing code style.
-4. **Commit your changes** using the commit message format described above.
-5. **Push your branch** to your fork on GitHub.
-6. **Open a pull request** against the `main` branch of the Yazelix repository.
-7. **Describe your changes** in the PR description, linking to the relevant issue(s).
+3. **Check whether the change needs a spec**. User-visible behavior changes, cross-subsystem boundary changes, and supported integration behavior should usually get a short spec under [`docs/specs/`](/home/lucca/.config/yazelix/docs/specs). See [Spec-Driven Workflow](./spec_driven_workflow.md).
+4. **Make your changes** in your branch, adhering to the existing code style.
+5. **Commit your changes** using the commit message format described above.
+6. **Push your branch** to your fork on GitHub.
+7. **Open a pull request** against the `main` branch of the Yazelix repository.
+8. **Describe your changes** in the PR description, linking to the relevant issue(s).
 
 Thank you for contributing to Yazelix!

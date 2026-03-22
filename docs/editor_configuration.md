@@ -161,6 +161,7 @@ command = "vim"          # "nano", "emacs", etc.
 **Managed Pane Targeting:**
 - Yazelix targets the managed `editor` pane through the pane orchestrator plugin
 - New editor panes are titled `editor` so later opens can reuse them deterministically
+- Editors started manually from an ordinary shell pane are not automatically adopted as the managed `editor` pane
 
 **Command Integration:**
 - Files opened via `:edit` command in existing instances
@@ -176,6 +177,7 @@ command = "vim"          # "nano", "emacs", etc.
 **Zellij Integration:**
 - Proper pane management and focus
 - Terminal multiplexer benefits
+- Generic editors opened manually from shell panes remain ordinary panes; Yazelix-managed routing only applies to the managed `editor` pane
 
 ## Troubleshooting
 

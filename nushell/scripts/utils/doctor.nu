@@ -499,6 +499,10 @@ export def check_zellij_plugin_health [] {
 
     let config = parse_yazelix_config
     let sidebar_enabled = ($config.enable_sidebar? | default true)
+    build_zellij_plugin_health_results $plugin_state $sidebar_enabled
+}
+
+export def build_zellij_plugin_health_results [plugin_state: record, sidebar_enabled: bool] {
     mut results = []
 
     if not ($plugin_state.permissions_granted? | default false) {
@@ -549,7 +553,7 @@ export def check_zellij_plugin_health [] {
         $results = ($results | append {
             status: "info"
             message: "Managed editor pane not detected in the current tab"
-            details: "This is normal until you open a managed Helix or Neovim editor pane in the current tab."
+            details: "This is normal until you open a managed Helix or Neovim editor pane in the current tab. An editor started manually from an ordinary shell pane does not count as the managed editor pane."
             fix_available: false
         })
     } else {

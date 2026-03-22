@@ -2,6 +2,7 @@
 
 use ../core/yazelix.nu *
 use ./test_yzx_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir repo_path]
+use ../utils/doctor.nu [build_zellij_plugin_health_results]
 
 def test_yzx_doctor_reports_zellij_plugin_context [] {
     print "🧪 Testing yzx doctor reports Zellij plugin context..."
@@ -73,9 +74,41 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
     $result
 }
 
+def test_doctor_clarifies_shell_opened_editors_are_not_managed [] {
+    print "🧪 Testing doctor clarifies that shell-opened editors are not managed..."
+
+    try {
+        let results = (build_zellij_plugin_health_results {
+            permissions_granted: true
+            active_tab_position: 0
+            editor_pane_id: null
+            sidebar_pane_id: null
+            active_swap_layout_name: "single_open"
+        } true)
+
+        let editor_result = (
+            $results
+            | where message == "Managed editor pane not detected in the current tab"
+            | get 0
+        )
+
+        if ($editor_result.details | str contains "An editor started manually from an ordinary shell pane does not count as the managed editor pane.") {
+            print "  ✅ doctor explains that shell-opened editors do not count as managed panes"
+            true
+        } else {
+            print $"  ❌ Unexpected details: ($editor_result.details)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 export def run_doctor_tests [] {
     [
         (test_yzx_doctor_reports_zellij_plugin_context)
         (test_yzx_doctor_warns_on_stale_config_fields)
+        (test_doctor_clarifies_shell_opened_editors_are_not_managed)
     ]
 }
