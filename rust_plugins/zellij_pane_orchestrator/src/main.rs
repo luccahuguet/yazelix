@@ -6,6 +6,7 @@ mod workspace;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
 
+use yazelix_pane_orchestrator::horizontal_focus_contract::HorizontalDirection;
 use panes::{FocusContext, ManagedTabPanes};
 use workspace::WorkspaceState;
 use zellij_tile::prelude::*;
@@ -28,6 +29,7 @@ struct State {
     focused_terminal_pane_by_tab: HashMap<usize, PaneId>,
     fallback_terminal_pane_by_tab: HashMap<usize, PaneId>,
     managed_panes_by_tab: HashMap<usize, ManagedTabPanes>,
+    terminal_panes_by_tab: HashMap<usize, Vec<panes::TerminalPaneLayout>>,
     user_pane_count_by_tab: HashMap<usize, usize>,
     workspace_state_by_tab: HashMap<usize, WorkspaceState>,
     seen_tab_positions: HashSet<usize>,
@@ -81,6 +83,8 @@ impl ZellijPlugin for State {
                     panes::build_focused_terminal_pane_by_tab(&pane_manifest);
                 self.fallback_terminal_pane_by_tab =
                     panes::build_fallback_terminal_pane_by_tab(&pane_manifest);
+                self.terminal_panes_by_tab =
+                    panes::build_terminal_panes_by_tab(&pane_manifest);
                 self.user_pane_count_by_tab = panes::build_user_pane_count_by_tab(&pane_manifest);
             }
             Event::PermissionRequestResult(status) => {
@@ -103,6 +107,14 @@ impl ZellijPlugin for State {
             }
             "toggle_editor_sidebar_focus" => {
                 self.toggle_editor_sidebar_focus(&pipe_message);
+                false
+            }
+            "move_focus_left_or_tab" => {
+                self.move_horizontal_focus_or_tab(&pipe_message, HorizontalDirection::Left);
+                false
+            }
+            "move_focus_right_or_tab" => {
+                self.move_horizontal_focus_or_tab(&pipe_message, HorizontalDirection::Right);
                 false
             }
             "smart_reveal" => {

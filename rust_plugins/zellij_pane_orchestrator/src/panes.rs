@@ -2,6 +2,9 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 use zellij_tile::prelude::*;
+use yazelix_pane_orchestrator::horizontal_focus_contract::{
+    HorizontalDirection, HorizontalFocusPlan, HorizontalPaneSnapshot, resolve_horizontal_focus,
+};
 use yazelix_pane_orchestrator::pane_contract::{
     FocusContextPolicy, PaneSnapshot, resolve_focus_context, select_managed_pane_index,
 };
@@ -18,6 +21,17 @@ pub(crate) const SIDEBAR_TITLE: &str = "sidebar";
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct ManagedTerminalPane {
     pub(crate) pane_id: PaneId,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct TerminalPaneLayout {
+    pub(crate) pane_id: PaneId,
+    pub(crate) title: String,
+    pub(crate) is_focused: bool,
+    pub(crate) pane_x: usize,
+    pub(crate) pane_y: usize,
+    pub(crate) pane_columns: usize,
+    pub(crate) pane_rows: usize,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -145,6 +159,31 @@ pub(crate) fn build_fallback_terminal_pane_by_tab(
         .collect()
 }
 
+pub(crate) fn build_terminal_panes_by_tab(
+    pane_manifest: &PaneManifest,
+) -> HashMap<usize, Vec<TerminalPaneLayout>> {
+    pane_manifest
+        .panes
+        .iter()
+        .map(|(tab_position, panes)| {
+            let terminal_panes = panes
+                .iter()
+                .filter(|pane| !pane.is_plugin && !pane.exited)
+                .map(|pane| TerminalPaneLayout {
+                    pane_id: PaneId::Terminal(pane.id),
+                    title: pane.title.clone(),
+                    is_focused: pane.is_focused,
+                    pane_x: pane.pane_x,
+                    pane_y: pane.pane_y,
+                    pane_columns: pane.pane_columns,
+                    pane_rows: pane.pane_rows,
+                })
+                .collect();
+            (*tab_position, terminal_panes)
+        })
+        .collect()
+}
+
 impl State {
     pub(crate) fn smart_reveal(&self, pipe_message: &PipeMessage) {
         let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
@@ -249,6 +288,59 @@ impl State {
                 }
             }
             SidebarFocusTogglePlan::MissingTarget => self.respond(pipe_message, RESULT_MISSING),
+        }
+    }
+
+    pub(crate) fn move_horizontal_focus_or_tab(
+        &self,
+        pipe_message: &PipeMessage,
+        direction: HorizontalDirection,
+    ) {
+        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
+            return;
+        };
+
+        let Some(terminal_panes) = self.terminal_panes_by_tab.get(&active_tab_position) else {
+            self.respond(pipe_message, RESULT_MISSING);
+            return;
+        };
+
+        let sidebar_is_closed = self
+            .get_active_layout_variant(active_tab_position)
+            .map(|variant| variant.is_sidebar_closed())
+            .unwrap_or(false);
+        let pane_snapshots: Vec<HorizontalPaneSnapshot<'_>> = terminal_panes
+            .iter()
+            .map(|pane| HorizontalPaneSnapshot {
+                title: pane.title.as_str(),
+                is_plugin: false,
+                exited: false,
+                is_focused: pane.is_focused,
+                pane_x: pane.pane_x,
+                pane_y: pane.pane_y,
+                pane_columns: pane.pane_columns,
+                pane_rows: pane.pane_rows,
+            })
+            .collect();
+
+        match resolve_horizontal_focus(&pane_snapshots, direction, sidebar_is_closed) {
+            HorizontalFocusPlan::FocusPane(index) => {
+                if let Some(target_pane) = terminal_panes.get(index) {
+                    focus_pane_with_id(target_pane.pane_id, false);
+                    self.respond(pipe_message, RESULT_OK);
+                } else {
+                    self.respond(pipe_message, RESULT_MISSING);
+                }
+            }
+            HorizontalFocusPlan::PreviousTab => {
+                go_to_previous_tab();
+                self.respond(pipe_message, RESULT_OK);
+            }
+            HorizontalFocusPlan::NextTab => {
+                go_to_next_tab();
+                self.respond(pipe_message, RESULT_OK);
+            }
+            HorizontalFocusPlan::MissingFocusedPane => self.respond(pipe_message, RESULT_MISSING),
         }
     }
 

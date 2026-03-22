@@ -394,6 +394,41 @@ default_mode = "locked"
     $result
 }
 
+def test_zellij_horizontal_walking_is_plugin_owned [] {
+    print "🧪 Testing horizontal pane walking routes through the pane orchestrator..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_walk_test_XXXXXX | str trim)
+
+    let result = (try {
+        let out_dir = ($tmpdir | path join "out")
+        let output = (with-env { YAZELIX_TEST_OUT_DIR: $out_dir } {
+            let root = (get_repo_config_dir)
+            generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
+            open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "layouts" "yzx_side.kdl")
+        })
+        let stdout = ($output | str trim)
+
+        if (
+            ($stdout | str contains 'bind "Alt h" "Alt Left" {')
+            and ($stdout | str contains 'name "move_focus_left_or_tab"')
+            and ($stdout | str contains 'bind "Alt l" "Alt Right" {')
+            and ($stdout | str contains 'name "move_focus_right_or_tab"')
+        ) {
+            print "  ✅ Horizontal pane walking is routed through the Yazelix pane orchestrator"
+            true
+        } else {
+            print "  ❌ Unexpected result: generated layout is missing Yazelix-owned Alt+h/Alt+l bindings"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 export def run_generated_config_tests [] {
     [
         (test_layout_generator_discovers_custom_top_level_layouts)
@@ -407,5 +442,6 @@ export def run_generated_config_tests [] {
         (test_zjstatus_widget_reads_editor_from_config)
         (test_sidebar_state_plugin_generated)
         (test_zellij_default_mode_is_enforced_in_merged_config)
+        (test_zellij_horizontal_walking_is_plugin_owned)
     ]
 }

@@ -76,6 +76,18 @@ keybinds {
     }
 
     shared_except "locked" {
+        bind "Alt h" "Alt Left" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "move_focus_left_or_tab"
+            }
+        }
+
+        bind "Alt l" "Alt Right" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "move_focus_right_or_tab"
+            }
+        }
+
         // Remap Ctrl+G from Locked mode to Ctrl+Alt+G to avoid conflict with Claude Code
         // (Ctrl+G is used by many CLIs for editing the prompt with $EDITOR)
         unbind "Ctrl g"
