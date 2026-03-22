@@ -5,6 +5,9 @@ use zellij_tile::prelude::*;
 use yazelix_pane_orchestrator::pane_contract::{
     FocusContextPolicy, PaneSnapshot, resolve_focus_context, select_managed_pane_index,
 };
+use yazelix_pane_orchestrator::sidebar_contract::{
+    SidebarFocusTogglePlan, resolve_sidebar_focus_toggle,
+};
 
 use crate::{State, RESULT_INVALID_PAYLOAD, RESULT_MISSING, RESULT_OK};
 use crate::workspace::WorkspaceStateSource;
@@ -15,8 +18,6 @@ pub(crate) const SIDEBAR_TITLE: &str = "sidebar";
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct ManagedTerminalPane {
     pub(crate) pane_id: PaneId,
-    pub(crate) is_suppressed: bool,
-    pub(crate) pane_columns: usize,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -47,8 +48,6 @@ struct DebugEditorState {
     workspace_root_source: Option<String>,
     editor_pane_id: Option<String>,
     sidebar_pane_id: Option<String>,
-    sidebar_is_suppressed: Option<bool>,
-    sidebar_pane_columns: Option<usize>,
     sidebar_is_collapsed: Option<bool>,
 }
 
@@ -126,6 +125,26 @@ pub(crate) fn build_focused_terminal_pane_by_tab(
         .collect()
 }
 
+pub(crate) fn build_fallback_terminal_pane_by_tab(
+    pane_manifest: &PaneManifest,
+) -> HashMap<usize, PaneId> {
+    pane_manifest
+        .panes
+        .iter()
+        .filter_map(|(tab_position, panes)| {
+            let editor_pane = select_managed_terminal_pane(panes, EDITOR_TITLE);
+            editor_pane
+                .map(|pane| (*tab_position, pane.pane_id))
+                .or_else(|| {
+                    panes
+                        .iter()
+                        .find(|pane| !pane.is_plugin && !pane.exited && pane.title.trim() != SIDEBAR_TITLE)
+                        .map(|pane| (*tab_position, PaneId::Terminal(pane.id)))
+                })
+        })
+        .collect()
+}
+
 impl State {
     pub(crate) fn smart_reveal(&self, pipe_message: &PipeMessage) {
         let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
@@ -161,7 +180,20 @@ impl State {
             return;
         };
 
-        focus_pane_with_id(managed_pane.pane_id, false);
+        let sidebar_is_closed = if matches!(pane_kind, ManagedPaneKind::Sidebar) {
+            self.active_tab_position
+                .and_then(|tab_position| self.get_active_layout_variant(tab_position))
+                .map(|variant| variant.is_sidebar_closed())
+                .unwrap_or(false)
+        } else {
+            false
+        };
+
+        if sidebar_is_closed {
+            self.open_sidebar_and_focus_after_layout_settle();
+        } else {
+            focus_pane_with_id(managed_pane.pane_id, false);
+        }
         self.respond(pipe_message, RESULT_OK);
     }
 
@@ -175,25 +207,49 @@ impl State {
             return;
         };
 
-        let target_pane = if self
+        let focus_context = self
             .focus_context_by_tab
             .get(&active_tab_position)
             .copied()
-            .unwrap_or(FocusContext::Other)
-            == FocusContext::Sidebar
-        {
-            managed_tab_panes.editor
-        } else {
-            managed_tab_panes.sidebar
-        };
+            .unwrap_or(FocusContext::Other);
+        let sidebar_is_closed = self
+            .get_active_layout_variant(active_tab_position)
+            .map(|variant| variant.is_sidebar_closed())
+            .unwrap_or(false);
+        let plan = resolve_sidebar_focus_toggle(
+            focus_context_to_policy(focus_context),
+            managed_tab_panes.sidebar.is_some(),
+            sidebar_is_closed,
+            managed_tab_panes.editor.is_some(),
+        );
 
-        let Some(target_pane) = target_pane else {
-            self.respond(pipe_message, RESULT_MISSING);
-            return;
-        };
-
-        focus_pane_with_id(target_pane.pane_id, false);
-        self.respond(pipe_message, RESULT_OK);
+        match plan {
+            SidebarFocusTogglePlan::FocusEditor => {
+                if let Some(target_pane) = managed_tab_panes.editor {
+                    focus_pane_with_id(target_pane.pane_id, false);
+                    self.respond(pipe_message, RESULT_OK);
+                } else {
+                    self.respond(pipe_message, RESULT_MISSING);
+                }
+            }
+            SidebarFocusTogglePlan::FocusSidebar => {
+                if let Some(target_pane) = managed_tab_panes.sidebar {
+                    focus_pane_with_id(target_pane.pane_id, false);
+                    self.respond(pipe_message, RESULT_OK);
+                } else {
+                    self.respond(pipe_message, RESULT_MISSING);
+                }
+            }
+            SidebarFocusTogglePlan::OpenAndFocusSidebar => {
+                if managed_tab_panes.sidebar.is_some() {
+                    self.open_sidebar_and_focus_after_layout_settle();
+                    self.respond(pipe_message, RESULT_OK);
+                } else {
+                    self.respond(pipe_message, RESULT_MISSING);
+                }
+            }
+            SidebarFocusTogglePlan::MissingTarget => self.respond(pipe_message, RESULT_MISSING),
+        }
     }
 
     pub(crate) fn debug_editor_state(&self, pipe_message: &PipeMessage) {
@@ -236,8 +292,6 @@ impl State {
             workspace_root_source,
             editor_pane_id: pane_id_to_string(editor_pane.map(|pane| pane.pane_id)),
             sidebar_pane_id: pane_id_to_string(sidebar_pane.map(|pane| pane.pane_id)),
-            sidebar_is_suppressed: sidebar_pane.map(|pane| pane.is_suppressed),
-            sidebar_pane_columns: sidebar_pane.map(|pane| pane.pane_columns),
             sidebar_is_collapsed: layout_variant.map(|variant| variant.is_sidebar_closed()),
         };
 
@@ -312,8 +366,6 @@ fn select_managed_terminal_pane(
 
     selected_pane.map(|pane| ManagedTerminalPane {
         pane_id: PaneId::Terminal(pane.id),
-        is_suppressed: pane.is_suppressed,
-        pane_columns: pane.pane_columns,
     })
 }
 

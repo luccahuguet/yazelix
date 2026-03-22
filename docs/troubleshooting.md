@@ -48,6 +48,24 @@ The `zjstatus` permission step must be repeated on `zjstatus` updates, since the
 
 See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
 
+### Pane-Orchestrator Rebuild / Reload Limbo
+
+If you rebuild the pane-orchestrator plugin while Yazelix is already open, avoid reloading it in place inside the live session. That can leave Zellij in a broken permission state where the permission popup is unusable and future Yazelix launches open blank tabs.
+
+**Safer maintainer flow:**
+```bash
+yzx dev build_pane_orchestrator --sync
+yzx restart
+```
+
+**If you are already stuck with blank tabs or a broken permission popup:**
+```bash
+zellij delete-all-sessions -f -y
+yzx launch --here
+```
+
+Yazelix now keeps the pane-orchestrator on a stable runtime plugin path so previously granted permissions can be preserved across rebuilds, but a clean restart is still safer than reloading the plugin inside the active session.
+
 ## Helix Syntax Highlighting Issues
 
 ### Missing Syntax Highlighting

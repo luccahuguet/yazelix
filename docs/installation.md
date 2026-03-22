@@ -282,6 +282,8 @@ For detailed macOS setup and troubleshooting, see [assets/macos/README.md](../as
 
 The `zjstatus` permission step must be repeated on `zjstatus` updates, since the file changes. See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
 
+If you are maintaining Yazelix and rebuild the pane-orchestrator plugin, prefer `yzx restart` after `yzx dev build_pane_orchestrator --sync` instead of reloading the plugin inside the current session.
+
 #### Quick Start Tips
 - Use `alt hjkl` to switch between Zellij panes and tabs
 - Press `Enter` in Yazi to open files in your configured editor

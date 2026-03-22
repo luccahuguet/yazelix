@@ -4,6 +4,13 @@ use ../utils/common.nu [get_yazelix_runtime_dir]
 
 const pane_orchestrator_plugin_prefix = "yazelix_pane_orchestrator"
 const pane_orchestrator_wasm_name = "yazelix_pane_orchestrator.wasm"
+const pane_orchestrator_required_permissions = [
+    "ReadApplicationState"
+    "OpenTerminalsOrPlugins"
+    "ChangeApplicationState"
+    "WriteToStdin"
+    "ReadCliPipes"
+]
 
 def atomic_copy [source_path: string, target_path: string] {
     let target_dir = ($target_path | path dirname)
@@ -20,6 +27,110 @@ def get_runtime_plugins_dir [] {
     $env.HOME | path join ".local" "share" "yazelix" "configs" "zellij" "plugins"
 }
 
+def get_permissions_cache_path [] {
+    $env.HOME | path join ".cache" "zellij" "permissions.kdl"
+}
+
+def parse_permission_blocks [content: string] {
+    mut blocks = []
+    let lines = ($content | lines)
+    mut current_path = null
+    mut current_permissions = []
+
+    for line in $lines {
+        let trimmed = ($line | str trim)
+
+        if $current_path == null {
+            let parsed = ($trimmed | parse --regex '^"(?<path>.+)"\s*\{$')
+            if ($parsed | length) > 0 {
+                $current_path = ($parsed | get 0.path)
+                $current_permissions = []
+            }
+            continue
+        }
+
+        if $trimmed == "}" {
+            $blocks = ($blocks | append {
+                path: $current_path
+                permissions: $current_permissions
+            })
+            $current_path = null
+            $current_permissions = []
+            continue
+        }
+
+        if ($trimmed | is-not-empty) {
+            $current_permissions = ($current_permissions | append $trimmed)
+        }
+    }
+
+    $blocks
+}
+
+def build_permission_block [plugin_path: string, permissions: list<string>] {
+    (
+        [
+            $"\"($plugin_path)\" {"
+            ...($permissions | each {|permission| $"    ($permission)" })
+            "}"
+        ]
+        | str join "\n"
+    )
+}
+
+def permission_block_is_sufficient [permissions: list<string>] {
+    $pane_orchestrator_required_permissions
+    | all {|permission| $permission in $permissions }
+}
+
+def preserve_pane_orchestrator_permissions [tracked_path: string, runtime_path: string] {
+    let permissions_cache_path = (get_permissions_cache_path)
+    if not ($permissions_cache_path | path exists) {
+        return { status: "missing_cache" }
+    }
+
+    let raw_content = (open --raw $permissions_cache_path)
+    let blocks = (parse_permission_blocks $raw_content)
+    let pane_orchestrator_blocks = (
+        $blocks
+        | where {|block|
+            let file_name = ($block.path | path basename)
+            $file_name =~ ("^" + $pane_orchestrator_plugin_prefix + "(_[0-9a-f]+)?\\.wasm$")
+        }
+    )
+
+    let source_block = (
+        $pane_orchestrator_blocks
+        | where {|block| permission_block_is_sufficient $block.permissions }
+        | get -o 0
+    )
+
+    if $source_block == null {
+        return { status: "no_granted_source" }
+    }
+
+    let retained_blocks = (
+        $blocks
+        | where {|block| ($block.path != $tracked_path) and ($block.path != $runtime_path) }
+    )
+    let target_blocks = [
+        (build_permission_block $tracked_path $pane_orchestrator_required_permissions)
+        (build_permission_block $runtime_path $pane_orchestrator_required_permissions)
+    ]
+    let retained_text = ($retained_blocks | each {|block| build_permission_block $block.path $block.permissions })
+    let updated_content = (
+        $retained_text
+        | append $target_blocks
+        | str join "\n\n"
+    )
+
+    $updated_content | save --force --raw $permissions_cache_path
+    {
+        status: "updated"
+        source_path: $source_block.path
+    }
+}
+
 export def get_tracked_pane_orchestrator_wasm_path [yazelix_dir?: string] {
     let root = (($yazelix_dir | default (get_yazelix_runtime_dir)) | path expand)
     $root | path join "configs" "zellij" "plugins" $pane_orchestrator_wasm_name
@@ -31,14 +142,11 @@ export def sync_pane_orchestrator_runtime_wasm [yazelix_dir?: string] {
         error make {msg: $"Tracked pane orchestrator wasm not found at: ($tracked_path)"}
     }
 
-    let wasm_hash = (open --raw $tracked_path | hash sha256 | str substring 0..<12)
     let runtime_dir = (get_runtime_plugins_dir)
-    let runtime_file_name = $"($pane_orchestrator_plugin_prefix)_($wasm_hash).wasm"
+    let runtime_file_name = $pane_orchestrator_wasm_name
     let runtime_path = ($runtime_dir | path join $runtime_file_name)
 
-    if not ($runtime_path | path exists) {
-        atomic_copy $tracked_path $runtime_path
-    }
+    atomic_copy $tracked_path $runtime_path
 
     if ($runtime_dir | path exists) {
         let plugin_name_pattern = ("^" + $pane_orchestrator_plugin_prefix + "(_[0-9a-f]+)?\\.wasm$")
@@ -62,6 +170,8 @@ export def sync_pane_orchestrator_runtime_wasm [yazelix_dir?: string] {
             rm --force ...$stale_runtime_plugins
         }
     }
+
+    preserve_pane_orchestrator_permissions $tracked_path $runtime_path | ignore
 
     $runtime_path
 }

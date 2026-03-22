@@ -99,6 +99,7 @@ def test_maintainer_pack_stays_in_sync [] {
             "tru"
             "beads-rust"
             "beads-viewer"
+            "rust_wasi_toolchain"
         ]
         let default_config = (open (repo_path "yazelix_default.toml"))
         let default_pack = ($default_config.packs.declarations.maintainer | default [])

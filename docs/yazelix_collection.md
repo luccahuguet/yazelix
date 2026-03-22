@@ -117,6 +117,14 @@ Complete toolchains you can declare:
 - [oxlint](https://oxc-project.github.io/) — Extremely fast TypeScript/JavaScript linter from the oxc project
 - [bun](https://bun.sh/) — Fast all-in-one JavaScript runtime, bundler, test runner, and package manager
 
+### Maintainer Pack (`maintainer`)
+- [gh](https://cli.github.com/) — GitHub CLI for repo maintenance and issue/PR work
+- [prek](https://github.com/j178/prek) — Fast local pre-commit hook runner for cheap maintainer checks
+- [tru](https://github.com/Dicklesworthstone/toon_rust) — Compact structured output CLI used in agent/Beads workflows
+- [beads_rust](https://github.com/Dicklesworthstone/beads_rust) — Rust Beads tracker (`br`)
+- [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer) — Beads graph triage viewer (`bv`)
+- `rust_wasi_toolchain` — Pinned Rust toolchain with `wasm32-wasip1` so maintainers can rebuild the Yazelix pane orchestrator wasm without enabling a separate pack
+
 ### Rust Pack (`rust`)
 - `rust_toolchain` — Pinned stable Rust toolchain with `cargo`, `rustc`, `rustfmt`, and `clippy`
 - [cargo-edit](https://github.com/killercup/cargo-edit) — Add, remove, and upgrade dependencies from the command line (`cargo add`, `cargo rm`)

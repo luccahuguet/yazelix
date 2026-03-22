@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 # Sync the locally built pane orchestrator wasm into the tracked repo path
-# and the content-hashed runtime plugin path used by active Yazelix sessions.
+# and the stable runtime plugin path used by active Yazelix sessions.
 
 use ../setup/zellij_plugin_paths.nu [
   get_tracked_pane_orchestrator_wasm_path
@@ -37,6 +37,10 @@ export def main [] {
   print $"Updated merged Zellij config: ($merged_config_path)"
   print $"Size: ($byte_len) bytes"
   print ""
-  print "Reload the plugin in the current Zellij session with:"
-  print $"zellij action start-or-reload-plugin file:($runtime_target_path)"
+  print "Safest next step:"
+  print "Restart Yazelix or open a fresh Yazelix window so Zellij loads the updated plugin cleanly."
+  print "In-place plugin reloads can leave the current session in a broken permission state."
+  print ""
+  print "If you are already stuck in a blank/permission-limbo session, recover with:"
+  print "zellij delete-all-sessions -f -y"
 }

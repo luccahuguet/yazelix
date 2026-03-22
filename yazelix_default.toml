@@ -378,6 +378,7 @@ maintainer = [
   "tru", # Compact Beads/agent structured output CLI
   "beads-rust", # Rust Beads tracker (br)
   "beads-viewer", # Beads Viewer (bv)
+  "rust_wasi_toolchain", # WASI-capable Rust toolchain for rebuilding the pane orchestrator wasm
 ]
 
 # Language packs

@@ -447,6 +447,70 @@ def test_pane_orchestrator_tracked_path_defaults_to_runtime_root [] {
     }
 }
 
+def test_pane_orchestrator_permission_cache_is_preserved_for_stable_runtime_path [] {
+    print "🧪 Testing pane orchestrator sync preserves granted permissions for the stable runtime path..."
+
+    let tmp_home = (^mktemp -d /tmp/yazelix_plugin_permissions_XXXXXX | str trim)
+    let tracked_path = ($tmp_home | path join ".config" "yazelix" "configs" "zellij" "plugins" "yazelix_pane_orchestrator.wasm")
+    let runtime_path = ($tmp_home | path join ".local" "share" "yazelix" "configs" "zellij" "plugins" "yazelix_pane_orchestrator.wasm")
+    let permissions_dir = ($tmp_home | path join ".cache" "zellij")
+    let permissions_path = ($permissions_dir | path join "permissions.kdl")
+
+    let result = (try {
+        mkdir ($tracked_path | path dirname)
+        mkdir ($runtime_path | path dirname)
+        mkdir $permissions_dir
+
+        let existing_block = [
+            $"\"($tmp_home | path join ".local" "share" "yazelix" "configs" "zellij" "plugins" "yazelix_pane_orchestrator_deadbeef1234.wasm")\" {"
+            "    ReadApplicationState"
+            "    OpenTerminalsOrPlugins"
+            "    ChangeApplicationState"
+            "    WriteToStdin"
+            "    ReadCliPipes"
+            "}"
+        ] | str join "\n"
+        $existing_block | save --force --raw $permissions_path
+
+        let helper_script = (repo_path "nushell" "scripts" "setup" "zellij_plugin_paths.nu")
+        let snippet = ([
+            $"source '($helper_script)'"
+            ("let result = (preserve_pane_orchestrator_permissions '"
+                + $tracked_path
+                + "' '"
+                + $runtime_path
+                + "')")
+            "print ($result | to json -r)"
+        ] | str join "\n")
+        let output = with-env { HOME: $tmp_home } {
+            ^nu -c $snippet | complete
+        }
+        let stdout = ($output.stdout | str trim)
+        let cache_contents = (open --raw $permissions_path)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains '"status":"updated"')
+            and ($cache_contents | str contains $tracked_path)
+            and ($cache_contents | str contains $runtime_path)
+            and (($cache_contents | str contains "OpenTerminalsOrPlugins"))
+            and (($cache_contents | str contains "WriteToStdin"))
+        ) {
+            print "  ✅ Granted pane-orchestrator permissions are preserved onto the stable runtime path"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim) cache=($cache_contents)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_packs_helper_uses_runtime_root_for_devenv_links [] {
     print "🧪 Testing yzx packs helper reads .devenv links from the runtime root..."
 
@@ -540,6 +604,7 @@ export def run_core_tests [] {
         (test_bash_runtime_config_uses_its_own_runtime_root)
         (test_runtime_shell_assets_avoid_repo_shaped_runtime_paths)
         (test_pane_orchestrator_tracked_path_defaults_to_runtime_root)
+        (test_pane_orchestrator_permission_cache_is_preserved_for_stable_runtime_path)
         (test_packs_helper_uses_runtime_root_for_devenv_links)
         (test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering)
     ]

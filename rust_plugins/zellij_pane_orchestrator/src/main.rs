@@ -26,6 +26,7 @@ struct State {
     active_swap_layout_name_by_tab: HashMap<usize, Option<String>>,
     focus_context_by_tab: HashMap<usize, FocusContext>,
     focused_terminal_pane_by_tab: HashMap<usize, PaneId>,
+    fallback_terminal_pane_by_tab: HashMap<usize, PaneId>,
     managed_panes_by_tab: HashMap<usize, ManagedTabPanes>,
     user_pane_count_by_tab: HashMap<usize, usize>,
     workspace_state_by_tab: HashMap<usize, WorkspaceState>,
@@ -78,6 +79,8 @@ impl ZellijPlugin for State {
                     panes::build_focus_context_by_tab(&pane_manifest, &self.focus_context_by_tab);
                 self.focused_terminal_pane_by_tab =
                     panes::build_focused_terminal_pane_by_tab(&pane_manifest);
+                self.fallback_terminal_pane_by_tab =
+                    panes::build_fallback_terminal_pane_by_tab(&pane_manifest);
                 self.user_pane_count_by_tab = panes::build_user_pane_count_by_tab(&pane_manifest);
             }
             Event::PermissionRequestResult(status) => {

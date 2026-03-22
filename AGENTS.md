@@ -115,6 +115,20 @@ When creating new files or directories, always use underscores to maintain consi
 - Prefer `yzx run ...` for project-scoped tool invocations instead of raw `devenv shell ...` when running tools provided by the Yazelix environment.
 - Use raw `devenv shell ...` only when `yzx run ...` is not a clean fit for the task, such as larger multi-command shell scripts or environment debugging.
 
+## Rust Plugin Workflow
+
+- **Rust pane-orchestrator source edits are not live by themselves.** Changes under `rust_plugins/zellij_pane_orchestrator/` do not affect Yazelix behavior until the wasm is rebuilt and synced into the tracked/runtime plugin paths.
+- After changing the pane orchestrator, rebuild and sync it before claiming behavior is fixed:
+  ```bash
+  yzx dev build_pane_orchestrator --sync
+  ```
+- If the current shell toolchain cannot build `wasm32-wasip1`, use the pinned Yazelix environment:
+  ```bash
+  devenv shell -- nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_pane_orchestrator --sync'
+  ```
+- **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the synced wasm plus a fresh Yazelix session.
+- After syncing a new pane-orchestrator wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
+
 ## Planning and Decision Making
 
 **ALWAYS PLAN FIRST** - Before taking significant actions (like git commits, major changes, or file operations), explicitly discuss the approach and get user approval. This includes:

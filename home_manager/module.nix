@@ -464,6 +464,7 @@ in
           "tru"
           "beads-rust"
           "beads-viewer"
+          "rust_wasi_toolchain"
         ];
         python = [
           "ruff"
