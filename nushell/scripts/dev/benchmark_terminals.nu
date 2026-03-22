@@ -4,6 +4,7 @@
 
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [SUPPORTED_TERMINALS, TERMINAL_METADATA]
+use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 use sweep/sweep_process_manager.nu [get_terminal_pids, cleanup_visual_test]
 
 # Get terminals that are actually available in the current nix environment
@@ -46,7 +47,8 @@ def benchmark_terminal [
                 YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
             } {
                 # Launch via yzx launch command with --terminal flag to force specific terminal
-                ^nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx launch --terminal ($terminal)"
+                let runtime_dir = (get_yazelix_runtime_dir)
+                ^nu -c $"use \"($runtime_dir)/nushell/scripts/core/yazelix.nu\" *; yzx launch --terminal ($terminal)"
             }
 
             # Give it time to fully start
@@ -152,6 +154,8 @@ export def main [
         print "❌ No supported terminals found in your yazelix environment!"
         print ""
         print "💡 To add terminals, edit ~/.config/yazelix/yazelix.toml:"
+        let config_dir = (get_yazelix_config_dir)
+        print $"   config path: ($config_dir | path join \"yazelix.toml\")"
         print "   terminals = [\"ghostty\" \"wezterm\" \"kitty\" \"alacritty\" \"foot\"];"
         print ""
         print "   Then reload: yzx launch --here"
@@ -164,6 +168,8 @@ export def main [
         print $"⚠️  Unavailable terminals: (($unavailable_terminals | str join ', '))"
         print ""
         print "💡 To benchmark more terminals, add them to ~/.config/yazelix/yazelix.toml:"
+        let config_dir = (get_yazelix_config_dir)
+        print $"   config path: ($config_dir | path join \"yazelix.toml\")"
         let quoted_terminals = ($unavailable_terminals | each {|t| $'"($t)"'} | str join ' ')
         print $"   terminals = [($quoted_terminals)];"
         print "   Then reload: yzx launch --here"
@@ -178,6 +184,8 @@ export def main [
             print $"❌ Terminal '($terminal)' is supported but not available in your environment"
             print ""
             print "💡 To add it, edit ~/.config/yazelix/yazelix.toml:"
+            let config_dir = (get_yazelix_config_dir)
+            print $"   config path: ($config_dir | path join \"yazelix.toml\")"
             print $"   terminals = [\"($terminal)\"];"
             print "   Then reload: yzx launch --here"
             exit 1

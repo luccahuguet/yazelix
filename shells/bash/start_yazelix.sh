@@ -10,8 +10,8 @@ fi
 
 echo "Resolved HOME=$HOME"
 
-# Set absolute path for Yazelix directory
-YAZELIX_DIR="$HOME/.config/yazelix"
+# Resolve Yazelix runtime root from this script location
+YAZELIX_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # Navigate to Yazelix directory
 # This is important for devenv to find devenv.nix in the current directory
@@ -32,9 +32,9 @@ fi
 
 # Detect configuration changes (requires Nushell)
 if command -v nu >/dev/null 2>&1; then
-  NEEDS_REFRESH=$(nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu compute_config_state; let state = compute_config_state; if $state.needs_refresh { "true" } else { "" }')
+  NEEDS_REFRESH=$(nu -c "use \"$YAZELIX_DIR/nushell/scripts/utils/config_state.nu\" compute_config_state; let state = compute_config_state; if \$state.needs_refresh { 'true' } else { '' }")
   if [ "$NEEDS_REFRESH" = "true" ]; then
-    REFRESH_REASON=$(nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu compute_config_state; let state = compute_config_state; if ($state.refresh_reason? | is-not-empty) { $state.refresh_reason } else { "config or devenv inputs changed since last launch" }')
+    REFRESH_REASON=$(nu -c "use \"$YAZELIX_DIR/nushell/scripts/utils/config_state.nu\" compute_config_state; let state = compute_config_state; if (\$state.refresh_reason? | is-not-empty) { \$state.refresh_reason } else { 'config or devenv inputs changed since last launch' }")
     echo "♻️  ${REFRESH_REASON} – rebuilding environment"
   fi
 fi

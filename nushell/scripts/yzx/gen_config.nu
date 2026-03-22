@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 # yzx gen_config command - Generate terminal config output
 
+use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/constants.nu [SUPPORTED_TERMINALS]
 use ../utils/terminal_configs.nu [
     generate_ghostty_config
@@ -22,18 +23,19 @@ export def "yzx gen_config" [terminal: string] {
         error make {msg: $"Unsupported terminal: ($terminal). Supported: ($supported)"}
     }
 
-    let default_config = "~/.config/yazelix/yazelix_default.toml" | path expand
+    let runtime_dir = (get_yazelix_runtime_dir)
+    let default_config = ($runtime_dir | path join "yazelix_default.toml")
     if not ($default_config | path exists) {
         error make {msg: $"Default config not found: ($default_config)"}
     }
 
     with-env {YAZELIX_CONFIG_OVERRIDE: $default_config} {
         match $selected {
-            "ghostty" => (generate_ghostty_config)
-            "wezterm" => (generate_wezterm_config)
-            "kitty" => (generate_kitty_config)
-            "alacritty" => (generate_alacritty_config)
-            "foot" => (generate_foot_config)
+            "ghostty" => (generate_ghostty_config $runtime_dir)
+            "wezterm" => (generate_wezterm_config $runtime_dir)
+            "kitty" => (generate_kitty_config $runtime_dir)
+            "alacritty" => (generate_alacritty_config $runtime_dir)
+            "foot" => (generate_foot_config $runtime_dir)
             _ => (error make {msg: $"Unsupported terminal: ($terminal)"})
         }
     }

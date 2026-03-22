@@ -5,6 +5,7 @@
 use ../../utils/config_parser.nu parse_yazelix_config
 use ../../utils/constants.nu TERMINAL_METADATA
 use ../../utils/terminal_launcher.nu command_exists
+use ../../utils/common.nu [get_yazelix_runtime_dir]
 
 # Validate that environment setup works for a given config
 export def validate_environment [config_path: string]: nothing -> record {
@@ -13,7 +14,8 @@ export def validate_environment [config_path: string]: nothing -> record {
         let validation_cmd = "echo \"TOOLS_START\" && which zellij && which yazi && which hx && echo \"TOOLS_END\" && echo \"VERSION_START\" && zellij --version && yazi --version && hx --version && echo \"VERSION_END\""
         let validation_output = (do {
             with-env {YAZELIX_CONFIG_OVERRIDE: $config_path} {
-                nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx run bash \"-lc\" '($validation_cmd)'"
+                let runtime_dir = (get_yazelix_runtime_dir)
+                nu -c $"use \"($runtime_dir)/nushell/scripts/core/yazelix.nu\" *; yzx run bash \"-lc\" '($validation_cmd)'"
             }
         } | complete)
 
@@ -141,7 +143,8 @@ export def launch_visual_test [config_path: string, test_id: string, terminal: s
             YAZELIX_SWEEP_TEST_ID: $test_id
         } {
             # Use --terminal flag to force specific terminal (prevents fallback to first available)
-            nu -c $"use ~/.config/yazelix/nushell/scripts/core/yazelix.nu *; yzx launch --terminal ($terminal)"
+            let runtime_dir = (get_yazelix_runtime_dir)
+            nu -c $"use \"($runtime_dir)/nushell/scripts/core/yazelix.nu\" *; yzx launch --terminal ($terminal)"
         }
     } | complete)
 

@@ -662,7 +662,7 @@ in
 
     # Save config hash after successful environment setup
     if command -v nu >/dev/null 2>&1; then
-      nu -c 'use ~/.config/yazelix/nushell/scripts/utils/config_state.nu [compute_config_state mark_config_state_applied]; let state = compute_config_state; mark_config_state_applied $state' 2>/dev/null || true
+      nu -c "use \"$YAZELIX_DIR/nushell/scripts/utils/config_state.nu\" [compute_config_state mark_config_state_applied]; let state = compute_config_state; mark_config_state_applied \$state" 2>/dev/null || true
     fi
   '';
 }
