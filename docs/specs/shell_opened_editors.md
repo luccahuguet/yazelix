@@ -101,6 +101,7 @@ Those may be explored later, but they are outside this spec.
 ## Traceability
 
 - Bead: `yazelix-2ex.1.7.3`
+- Defended by: `cargo test --manifest-path rust_plugins/zellij_pane_orchestrator/Cargo.toml --lib`
 - Defended by: `nu nushell/scripts/dev/test_yzx_doctor_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
 

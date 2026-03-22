@@ -2,6 +2,9 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 use zellij_tile::prelude::*;
+use yazelix_pane_orchestrator::pane_contract::{
+    FocusContextPolicy, PaneSnapshot, resolve_focus_context, select_managed_pane_index,
+};
 
 use crate::{State, RESULT_INVALID_PAYLOAD, RESULT_MISSING, RESULT_OK};
 use crate::workspace::WorkspaceStateSource;
@@ -90,14 +93,17 @@ pub(crate) fn build_focus_context_by_tab(
 
     for (tab_position, panes) in &pane_manifest.panes {
         let focused_pane = panes.iter().find(|pane| pane.is_focused && !pane.is_plugin);
-        let focus_context = match focused_pane.map(|pane| pane.title.trim()) {
-            Some(EDITOR_TITLE) => FocusContext::Editor,
-            Some(SIDEBAR_TITLE) => FocusContext::Sidebar,
-            Some(title) if title.starts_with("yzx_") => previous_focus_context_by_tab
-                .get(tab_position)
-                .copied()
-                .unwrap_or(FocusContext::Other),
-            Some(_) | None => FocusContext::Other,
+        let previous_focus_context = previous_focus_context_by_tab
+            .get(tab_position)
+            .copied()
+            .unwrap_or(FocusContext::Other);
+        let focus_context = match resolve_focus_context(
+            focused_pane.map(|pane| pane.title.as_str()),
+            focus_context_to_policy(previous_focus_context),
+        ) {
+            FocusContextPolicy::Editor => FocusContext::Editor,
+            FocusContextPolicy::Sidebar => FocusContext::Sidebar,
+            FocusContextPolicy::Other => FocusContext::Other,
         };
         focus_context_by_tab.insert(*tab_position, focus_context);
     }
@@ -290,24 +296,19 @@ fn select_managed_terminal_pane(
     panes: &[PaneInfo],
     expected_title: &str,
 ) -> Option<ManagedTerminalPane> {
-    let matching_panes: Vec<&PaneInfo> = panes
+    let pane_snapshots: Vec<PaneSnapshot<'_>> = panes
         .iter()
-        .filter(|pane| !pane.is_plugin)
-        .filter(|pane| !pane.exited)
-        .filter(|pane| pane.title.trim() == expected_title)
+        .map(|pane| PaneSnapshot {
+            title: pane.title.as_str(),
+            is_plugin: pane.is_plugin,
+            exited: pane.exited,
+            is_focused: pane.is_focused,
+            is_suppressed: pane.is_suppressed,
+        })
         .collect();
 
-    let selected_pane = matching_panes
-        .iter()
-        .copied()
-        .find(|pane| pane.is_focused)
-        .or_else(|| {
-            matching_panes
-                .iter()
-                .copied()
-                .find(|pane| !pane.is_suppressed)
-        })
-        .or_else(|| matching_panes.first().copied());
+    let selected_pane = select_managed_pane_index(&pane_snapshots, expected_title)
+        .and_then(|index| panes.get(index));
 
     selected_pane.map(|pane| ManagedTerminalPane {
         pane_id: PaneId::Terminal(pane.id),
@@ -321,5 +322,13 @@ fn pane_id_to_string(pane_id: Option<PaneId>) -> Option<String> {
         Some(PaneId::Terminal(id)) => Some(format!("terminal:{id}")),
         Some(PaneId::Plugin(id)) => Some(format!("plugin:{id}")),
         None => None,
+    }
+}
+
+fn focus_context_to_policy(focus_context: FocusContext) -> FocusContextPolicy {
+    match focus_context {
+        FocusContext::Editor => FocusContextPolicy::Editor,
+        FocusContext::Sidebar => FocusContextPolicy::Sidebar,
+        FocusContext::Other => FocusContextPolicy::Other,
     }
 }
