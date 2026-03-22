@@ -3,7 +3,7 @@
 
 use ./config_parser.nu parse_yazelix_config
 use ./config_metadata.nu REBUILD_REQUIRED_KEYS
-use ./common.nu [get_yazelix_dir]
+use ./common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 
 # Extract a nested key from a record using dot notation (e.g., "core.recommended_deps")
 def get_nested_key [record: record, key: string] {
@@ -81,7 +81,7 @@ export def compute_config_state [] {
     }
 
     # Include devenv inputs so updates trigger refresh on restart
-    let yazelix_dir = get_yazelix_dir
+    let yazelix_dir = get_yazelix_runtime_dir
     let lock_path = ($yazelix_dir | path join "devenv.lock")
     let devenv_nix_path = ($yazelix_dir | path join "devenv.nix")
     let devenv_yaml_path = ($yazelix_dir | path join "devenv.yaml")
@@ -204,7 +204,7 @@ export def compute_config_state [] {
 # Mark the current config hash as applied
 export def mark_config_state_applied [state: record] {
     let config_file = ($state.config_file? | default "")
-    let default_config = ((get_yazelix_dir) | path join "yazelix.toml")
+    let default_config = ((get_yazelix_config_dir) | path join "yazelix.toml")
     if ($config_file | is-not-empty) and ($config_file | path expand) != $default_config {
         return
     }

@@ -2,8 +2,13 @@
 
 # Utility functions for Yazelix
 
-export def get_yazelix_dir [] {
-    let configured = ($env.YAZELIX_DIR? | default "" | into string | str trim)
+export def get_yazelix_config_dir [] {
+    let configured = (
+        $env.YAZELIX_CONFIG_DIR?
+        | default ($env.YAZELIX_DIR? | default "")
+        | into string
+        | str trim
+    )
     if ($configured | is-not-empty) {
         $configured | path expand
     } else {
@@ -11,12 +16,42 @@ export def get_yazelix_dir [] {
     }
 }
 
-export def require_yazelix_dir [] {
-    let yazelix_dir = (get_yazelix_dir)
+export def get_yazelix_runtime_dir [] {
+    let configured = (
+        $env.YAZELIX_RUNTIME_DIR?
+        | default ($env.YAZELIX_DIR? | default "")
+        | into string
+        | str trim
+    )
+    if ($configured | is-not-empty) {
+        $configured | path expand
+    } else {
+        "~/.config/yazelix" | path expand
+    }
+}
+
+export def get_yazelix_dir [] {
+    get_yazelix_runtime_dir
+}
+
+export def require_yazelix_config_dir [] {
+    let yazelix_dir = (get_yazelix_config_dir)
     if not ($yazelix_dir | path exists) {
-        error make {msg: $"Cannot find Yazelix directory at ($yazelix_dir)"}
+        error make {msg: $"Cannot find Yazelix config directory at ($yazelix_dir)"}
     }
     $yazelix_dir
+}
+
+export def require_yazelix_runtime_dir [] {
+    let yazelix_dir = (get_yazelix_runtime_dir)
+    if not ($yazelix_dir | path exists) {
+        error make {msg: $"Cannot find Yazelix runtime directory at ($yazelix_dir)"}
+    }
+    $yazelix_dir
+}
+
+export def require_yazelix_dir [] {
+    require_yazelix_runtime_dir
 }
 
 def get_total_cores [] {

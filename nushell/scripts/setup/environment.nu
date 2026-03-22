@@ -3,13 +3,14 @@
 # Called from devenv.nix shellHook to reduce complexity
 
 use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/common.nu [get_yazelix_runtime_dir]
 
 def main [--welcome-source: string, --skip-welcome] {
     # Read configuration directly from TOML - single source of truth!
     let config = parse_yazelix_config
 
     # Extract values from config (all properly typed from TOML)
-    let yazelix_dir = ($env.YAZELIX_DIR? | default ($env.HOME | path join ".config" "yazelix"))
+    let yazelix_dir = (get_yazelix_runtime_dir)
     let default_shell = ($config.default_shell? | default "nu")
     let debug_mode = ($config.debug_mode? | default false)
     let skip_welcome_screen = ($config.skip_welcome_screen? | default false)

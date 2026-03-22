@@ -168,6 +168,58 @@ def test_invalid_config_is_classified_as_config_problem [] {
     $result
 }
 
+def test_config_state_supports_split_config_and_runtime_dirs [] {
+    print "🧪 Testing config state supports split config and runtime directories..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_split_roots_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+
+    let result = (try {
+        cp ($repo_root | path join "yazelix_default.toml") ($temp_config_dir | path join "yazelix.toml")
+        let state_script = ($repo_root | path join "nushell" "scripts" "utils" "config_state.nu")
+        let snippet = ([
+            $"source \"($state_script)\""
+            'let state = (compute_config_state)'
+            'print ({'
+            '    config_file: $state.config_file'
+            '    lock_hash_empty: (($state.lock_hash | default "") | is-empty)'
+            '    runtime_lock_path: ($env.YAZELIX_RUNTIME_DIR | path join "devenv.lock")'
+            '} | to json -r)'
+        ] | str join "\n")
+        let output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $snippet | complete
+        }
+        let stdout = ($output.stdout | str trim)
+        let resolved = ($stdout | lines | last | from json)
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved.config_file == ($temp_config_dir | path join "yazelix.toml"))
+            and ($resolved.lock_hash_empty == false)
+            and (($resolved.runtime_lock_path | path exists))
+        ) {
+            print "  ✅ Config state reads config from the config dir and hashes inputs from the runtime dir"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 export def run_core_tests [] {
     [
         (test_yzx_status)
@@ -175,5 +227,6 @@ export def run_core_tests [] {
         (test_yzx_config_sections)
         (test_yzx_config_reset_replaces_with_backup)
         (test_invalid_config_is_classified_as_config_problem)
+        (test_config_state_supports_split_config_and_runtime_dirs)
     ]
 }

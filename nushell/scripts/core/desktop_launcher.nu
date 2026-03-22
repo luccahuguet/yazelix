@@ -6,6 +6,7 @@
 # behave the same as normal launches.
 
 use ../utils/environment_bootstrap.nu [prepare_environment]
+use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/launch_state.nu [get_launch_env get_launch_profile resolve_built_profile]
 
@@ -20,7 +21,8 @@ def require_launch_script [script_path: string] {
 }
 
 def main [] {
-    let launch_script = (require_launch_script ($env.HOME | path join ".config" "yazelix" "nushell" "scripts" "core" "launch_yazelix.nu"))
+    let runtime_dir = (get_yazelix_runtime_dir)
+    let launch_script = (require_launch_script ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu"))
     let env_prep = prepare_environment
     let config = $env_prep.config
     let cached_profile = (get_launch_profile $env_prep.config_state)

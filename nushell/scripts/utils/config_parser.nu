@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Configuration parser for yazelix TOML files
 
-use common.nu [get_yazelix_dir]
+use common.nu [get_yazelix_config_dir]
 use failure_classes.nu [format_failure_classification]
 
 def parse_refresh_output [raw_config: record] {
@@ -52,7 +52,7 @@ def parse_positive_parallel_setting [value: any, label: string, allowed_symbols:
 
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
-    let yazelix_dir = get_yazelix_dir
+    let yazelix_dir = get_yazelix_config_dir
 
     # Check for config override first (for testing)
     let config_to_read = if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) {
