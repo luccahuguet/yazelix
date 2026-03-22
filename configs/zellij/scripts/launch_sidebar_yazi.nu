@@ -23,9 +23,11 @@ def bootstrap_workspace_root [target_dir: string] {
 }
 
 let bootstrap_dir = (consume_bootstrap_sidebar_cwd)
-if ($bootstrap_dir | is-not-empty) {
-    bootstrap_workspace_root $bootstrap_dir
-    ^yazi $bootstrap_dir
+let target_dir = if ($bootstrap_dir | is-not-empty) {
+    $bootstrap_dir
 } else {
-    ^yazi
+    pwd | path expand
 }
+
+bootstrap_workspace_root $target_dir
+^yazi $target_dir

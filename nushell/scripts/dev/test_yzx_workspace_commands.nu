@@ -263,11 +263,11 @@ def test_sidebar_wrapper_bootstraps_workspace_root [] {
     try {
         let wrapper = (open --raw (repo_path "configs" "zellij" "scripts" "launch_sidebar_yazi.nu"))
 
-        if ($wrapper | str contains 'set_workspace_root') and ($wrapper | str contains 'bootstrap_workspace_root') {
-            print "  ✅ Sidebar Yazi wrapper updates the tab workspace root before launch"
+        if ($wrapper | str contains 'bootstrap_workspace_root $target_dir') and ($wrapper | str contains '^yazi $target_dir') and ($wrapper | str contains 'pwd | path expand') {
+            print "  ✅ Sidebar Yazi wrapper always roots the tab to the launched Yazi directory"
             true
         } else {
-            print "  ❌ Sidebar Yazi wrapper is missing workspace-root bootstrap logic"
+            print "  ❌ Sidebar Yazi wrapper is missing the always-bootstrap target-dir flow"
             false
         }
     } catch { |err|
