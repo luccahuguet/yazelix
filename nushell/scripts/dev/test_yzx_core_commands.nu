@@ -5,6 +5,32 @@ use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
 use ../utils/shell_config_generation.nu [get_yazelix_section_content]
 use ../utils/config_manager.nu [check_config_versions]
 
+def setup_relocated_runtime_fixture [] {
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_relocated_runtime_XXXXXX | str trim)
+    let runtime_dir = ($tmp_home | path join "runtime")
+    let config_dir = ($tmp_home | path join ".config" "yazelix")
+
+    mkdir $runtime_dir
+    mkdir ($tmp_home | path join ".config")
+    mkdir $config_dir
+
+    for entry in ["nushell", "shells", "configs", "devenv.lock", "yazelix_default.toml"] {
+        ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
+    }
+
+    cp (repo_path "yazelix_default.toml") ($config_dir | path join "yazelix.toml")
+
+    {
+        repo_root: $repo_root
+        tmp_home: $tmp_home
+        runtime_dir: $runtime_dir
+        config_dir: $config_dir
+        yzx_script: ($runtime_dir | path join "nushell" "scripts" "core" "yazelix.nu")
+        startup_script: ($runtime_dir | path join "shells" "posix" "start_yazelix.sh")
+    }
+}
+
 def test_yzx_status [] {
     print "🧪 Testing yzx status..."
 
@@ -454,6 +480,54 @@ def test_packs_helper_uses_runtime_root_for_devenv_links [] {
     $result
 }
 
+def test_relocated_runtime_smoke_supports_status_and_gen_config [] {
+    print "🧪 Testing relocated runtime smoke path supports status and gen_config..."
+
+    let fixture = (setup_relocated_runtime_fixture)
+
+    let result = (try {
+        let env_overlay = {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+        }
+
+        let status_output = with-env $env_overlay {
+            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx status" | complete
+        }
+        let gen_output = with-env $env_overlay {
+            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx gen_config ghostty" | complete
+        }
+
+        let status_stdout = ($status_output.stdout | str trim)
+        let gen_stdout = ($gen_output.stdout | str trim)
+
+        if (
+            ($status_output.exit_code == 0)
+            and ($gen_output.exit_code == 0)
+            and ($status_stdout | str contains $"Config File: ($fixture.config_dir | path join "yazelix.toml")")
+            and ($status_stdout | str contains $"Directory: ($fixture.runtime_dir)")
+            and ($status_stdout | str contains $"Logs: ($fixture.runtime_dir | path join "logs")")
+            and ($gen_stdout | str contains $"exec ($fixture.startup_script)")
+            and not ($gen_stdout | str contains $fixture.repo_root)
+        ) {
+            print "  ✅ Relocated runtime smoke path resolves config, runtime, and generated terminal launchers from split roots"
+            true
+        } else {
+            print $"  ❌ Unexpected result: status_exit=($status_output.exit_code) gen_exit=($gen_output.exit_code)"
+            print $"     status=($status_stdout)"
+            print $"     gen=($gen_stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 export def run_core_tests [] {
     [
         (test_yzx_status)
@@ -469,5 +543,6 @@ export def run_core_tests [] {
         (test_runtime_shell_assets_avoid_repo_shaped_runtime_paths)
         (test_pane_orchestrator_tracked_path_defaults_to_runtime_root)
         (test_packs_helper_uses_runtime_root_for_devenv_links)
+        (test_relocated_runtime_smoke_supports_status_and_gen_config)
     ]
 }
