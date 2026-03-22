@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use ~/.config/yazelix/nushell/scripts/integrations/zellij.nu *
+use ../../../nushell/scripts/integrations/zellij.nu *
 
 let result = (toggle_sidebar_layout)
 

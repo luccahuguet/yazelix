@@ -1,4 +1,4 @@
 pane name="sidebar" {
     command "nu"
-    args "~/.config/yazelix/configs/zellij/scripts/launch_sidebar_yazi.nu"
+    args "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"
 }

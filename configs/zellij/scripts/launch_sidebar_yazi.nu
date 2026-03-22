@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
-use ~/.config/yazelix/nushell/scripts/integrations/yazi.nu consume_bootstrap_sidebar_cwd
-use ~/.config/yazelix/nushell/scripts/integrations/zellij.nu run_pane_orchestrator_command_raw
+use ../../../nushell/scripts/integrations/yazi.nu consume_bootstrap_sidebar_cwd
+use ../../../nushell/scripts/integrations/zellij.nu run_pane_orchestrator_command_raw
 
 def bootstrap_workspace_root [target_dir: string] {
     let payload = ({workspace_root: $target_dir} | to json -r)

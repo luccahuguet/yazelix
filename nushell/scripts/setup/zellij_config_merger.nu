@@ -197,7 +197,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     if ($source_layouts_dir | path exists) {
         # Copy layouts to merged config directory
         use ../utils/layout_generator.nu
-        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $pane_orchestrator_plugin_url
+        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $pane_orchestrator_plugin_url $yazelix_dir
     }
     
     # Generate configuration from user config or defaults

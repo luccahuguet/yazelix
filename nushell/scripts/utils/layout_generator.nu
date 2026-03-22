@@ -4,6 +4,7 @@
 const widget_tray_placeholder = "__YAZELIX_WIDGET_TRAY__"
 const pane_orchestrator_plugin_url_placeholder = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__"
 const home_dir_placeholder = "__YAZELIX_HOME_DIR__"
+const runtime_dir_placeholder = "__YAZELIX_RUNTIME_DIR__"
 const static_fragment_specs = [
     {placeholder: "__YAZELIX_ZJSTATUS_TAB_TEMPLATE__", file: "fragments/zjstatus_tab_template.kdl"}
     {placeholder: "__YAZELIX_KEYBINDS_COMMON__", file: "fragments/keybinds_common.kdl"}
@@ -87,6 +88,7 @@ export def generate_layout [
     widget_tray: list<string>
     static_fragments: list<record>
     pane_orchestrator_plugin_url: string
+    runtime_dir: string
 ]: nothing -> nothing {
     let content = (open ($source_layout | path expand))
     mut updated = apply_static_fragments $content $static_fragments
@@ -107,6 +109,10 @@ export def generate_layout [
         $updated = ($updated | str replace -a $home_dir_placeholder $home_dir)
     }
 
+    if ($updated | str contains $runtime_dir_placeholder) {
+        $updated = ($updated | str replace -a $runtime_dir_placeholder ($runtime_dir | path expand))
+    }
+
     if ($updated | str contains $pane_orchestrator_plugin_url_placeholder) {
         $updated = ($updated | str replace -a $pane_orchestrator_plugin_url_placeholder $pane_orchestrator_plugin_url)
     }
@@ -125,6 +131,7 @@ export def generate_all_layouts [
     layouts_target_dir: string
     widget_tray: list<string>
     pane_orchestrator_plugin_url: string
+    runtime_dir: string
 ]: nothing -> nothing {
     let source_root = ($layouts_source_dir | path expand)
     # Ensure target directory exists
@@ -146,7 +153,7 @@ export def generate_all_layouts [
         let target = ($layouts_target_dir | path join $file)
 
         if ($source | path exists) {
-            generate_layout $source $target $widget_tray $static_fragments $pane_orchestrator_plugin_url
+            generate_layout $source $target $widget_tray $static_fragments $pane_orchestrator_plugin_url $runtime_dir
             print $"Generated layout: ($target)"
         }
     }

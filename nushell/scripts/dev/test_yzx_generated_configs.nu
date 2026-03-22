@@ -32,7 +32,7 @@ def test_layout_generator_discovers_custom_top_level_layouts [] {
         'layout { pane }' | save --force --raw $custom_layout_path
 
         use ../utils/layout_generator.nu *
-        generate_all_layouts $source_dir $target_dir ["layout", "editor"] "file:/tmp/yazelix_pane_orchestrator.wasm"
+        generate_all_layouts $source_dir $target_dir ["layout", "editor"] "file:/tmp/yazelix_pane_orchestrator.wasm" $source_dir
 
         let generated_layout_path = ($target_dir | path join "custom_layout.kdl")
         let generated_fragments_dir = ($target_dir | path join "fragments")
@@ -42,6 +42,54 @@ def test_layout_generator_discovers_custom_top_level_layouts [] {
             true
         } else {
             print $"  ❌ Unexpected result: custom_exists=(($generated_layout_path | path exists)) fragments_copied=(($generated_fragments_dir | path exists))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_layout_generator_rewrites_runtime_paths [] {
+    print "🧪 Testing layout generator rewrites runtime-root placeholders..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_layout_runtime_XXXXXX | str trim)
+
+    let result = (try {
+        let source_dir = ($tmpdir | path join "source")
+        let target_dir = ($tmpdir | path join "target")
+        let repo_layouts_dir = (repo_path "configs" "zellij" "layouts")
+        let runtime_dir = ($tmpdir | path join "runtime")
+
+        mkdir $source_dir
+        mkdir $runtime_dir
+        for entry in (ls $repo_layouts_dir) {
+            let target_path = ($source_dir | path join ($entry.name | path basename))
+            if $entry.type == dir {
+                ^cp -R $entry.name $target_path
+            } else {
+                ^cp $entry.name $target_path
+            }
+        }
+
+        use ../utils/layout_generator.nu *
+        generate_all_layouts $source_dir $target_dir ["layout", "editor"] "file:/tmp/yazelix_pane_orchestrator.wasm" $runtime_dir
+
+        let generated_layout = (open --raw ($target_dir | path join "yzx_side.kdl"))
+
+        if (
+            ($generated_layout | str contains $"($runtime_dir)/configs/zellij/scripts/launch_sidebar_yazi.nu")
+            and ($generated_layout | str contains $"file:($runtime_dir)/configs/zellij/plugins/zjstatus.wasm")
+            and ($generated_layout | str contains $"nu ($runtime_dir)/nushell/scripts/utils/zjstatus_widget.nu shell")
+            and not ($generated_layout | str contains "~/.config/yazelix")
+        ) {
+            print "  ✅ Generated layouts stamp the configured runtime root into wrapper and widget paths"
+            true
+        } else {
+            print "  ❌ Generated layouts still contain stale repo-shaped runtime paths"
             false
         }
     } catch { |err|
@@ -269,6 +317,7 @@ default_mode = "locked"
 export def run_generated_config_tests [] {
     [
         (test_layout_generator_discovers_custom_top_level_layouts)
+        (test_layout_generator_rewrites_runtime_paths)
         (test_launch_env_omits_default_helix_runtime)
         (test_launch_env_keeps_custom_helix_runtime_override)
         (test_launch_env_omits_yazelix_default_shell)
