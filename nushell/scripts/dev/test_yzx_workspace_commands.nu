@@ -207,6 +207,78 @@ def test_terminal_launch_reports_immediate_failure [] {
     }
 }
 
+def test_posix_startup_launcher_reports_missing_runtime_script [] {
+    print "🧪 Testing POSIX startup launcher reports missing runtime script..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_posix_startup_test_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        let fake_bin = ($tmpdir | path join "bin")
+        mkdir $fake_home
+        mkdir $fake_bin
+        let nu_bin = (which nu | get 0.path)
+        ^ln -s $nu_bin ($fake_bin | path join "nu")
+        ^ln -s /bin/sh ($fake_bin | path join "sh")
+
+        let startup_script = (repo_path "shells" "posix" "start_yazelix.sh")
+        let output = (with-env {HOME: $fake_home, PATH: $fake_bin} {
+            ^sh $startup_script | complete
+        })
+        let stderr = ($output.stderr | str trim)
+
+        if ($output.exit_code == 1) and ($stderr | str contains "Missing Yazelix startup script") and ($stderr | str contains "runtime looks incomplete") {
+            print "  ✅ POSIX startup launcher fails clearly when the runtime script is missing"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_posix_desktop_launcher_reports_missing_runtime_script [] {
+    print "🧪 Testing POSIX desktop launcher reports missing runtime script..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_posix_desktop_test_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        let fake_bin = ($tmpdir | path join "bin")
+        mkdir $fake_home
+        mkdir $fake_bin
+        let nu_bin = (which nu | get 0.path)
+        ^ln -s $nu_bin ($fake_bin | path join "nu")
+        ^ln -s /bin/sh ($fake_bin | path join "sh")
+
+        let launcher_script = (repo_path "shells" "posix" "desktop_launcher.sh")
+        let output = (with-env {HOME: $fake_home, PATH: $fake_bin} {
+            ^sh $launcher_script | complete
+        })
+        let stderr = ($output.stderr | str trim)
+
+        if ($output.exit_code == 1) and ($stderr | str contains "Missing Yazelix desktop launcher") and ($stderr | str contains "runtime looks incomplete") {
+            print "  ✅ POSIX desktop launcher fails clearly when the runtime script is missing"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def test_startup_requires_generated_layout_path [] {
     print "🧪 Testing startup requires an existing Zellij layout..."
 
@@ -356,6 +428,8 @@ export def run_workspace_tests [] {
         (test_launch_rejects_file_working_dir)
         (test_terminal_launch_requires_bash)
         (test_terminal_launch_reports_immediate_failure)
+        (test_posix_startup_launcher_reports_missing_runtime_script)
+        (test_posix_desktop_launcher_reports_missing_runtime_script)
         (test_startup_requires_generated_layout_path)
         (test_sidebar_layout_uses_wrapper_launcher)
         (test_sidebar_wrapper_bootstraps_workspace_root)

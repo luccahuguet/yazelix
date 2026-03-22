@@ -16,4 +16,12 @@ if ! command -v nu >/dev/null 2>&1; then
   exit 1
 fi
 
-exec nu "$HOME/.config/yazelix/nushell/scripts/core/start_yazelix.nu"
+startup_script="$HOME/.config/yazelix/nushell/scripts/core/start_yazelix.nu"
+
+if [ ! -f "$startup_script" ]; then
+  echo "Error: Missing Yazelix startup script: $startup_script" >&2
+  echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
+  exit 1
+fi
+
+exec nu "$startup_script"

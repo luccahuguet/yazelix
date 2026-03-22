@@ -20,4 +20,12 @@ if ! command -v nu >/dev/null 2>&1; then
   exit 1
 fi
 
-exec nu "$HOME/.config/yazelix/nushell/scripts/core/desktop_launcher.nu"
+launcher_script="$HOME/.config/yazelix/nushell/scripts/core/desktop_launcher.nu"
+
+if [ ! -f "$launcher_script" ]; then
+  echo "Error: Missing Yazelix desktop launcher: $launcher_script" >&2
+  echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
+  exit 1
+fi
+
+exec nu "$launcher_script"
