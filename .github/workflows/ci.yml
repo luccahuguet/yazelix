@@ -40,6 +40,9 @@ jobs:
       - name: Validate Nushell syntax
         run: nu nushell/scripts/dev/validate_syntax.nu
 
+      - name: Validate README version marker
+        run: nu nushell/scripts/dev/validate_readme_version.nu
+
       - name: Run yzx command tests
         run: nu nushell/scripts/dev/test_yzx_commands.nu
 

@@ -101,11 +101,32 @@ def test_home_manager_desktop_entry_evaluates [] {
     }
 }
 
+def test_readme_title_matches_declared_version [] {
+    print "🧪 Testing README title matches YAZELIX_VERSION..."
+
+    try {
+        let validator_script = (repo_path "nushell" "scripts" "dev" "validate_readme_version.nu")
+        let output = (^nu $validator_script | complete)
+
+        if $output.exit_code == 0 {
+            print "  ✅ README title/version marker matches YAZELIX_VERSION"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($output.stderr | str trim)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 export def run_dev_tests [] {
     [
         (test_dev_update_canary_set)
         (test_gemini_cli_is_reactivated)
         (test_tru_is_in_ai_agents)
         (test_home_manager_desktop_entry_evaluates)
+        (test_readme_title_matches_declared_version)
     ]
 }

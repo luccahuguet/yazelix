@@ -159,6 +159,46 @@ def sync_vendored_zjstatus [] {
     }
 }
 
+def get_declared_yazelix_version [] {
+    let constants_path = ((get_yazelix_dir) | path join "nushell" "scripts" "utils" "constants.nu")
+    let constants = (open --raw $constants_path)
+    let version_match = (
+        $constants
+        | parse --regex 'export const YAZELIX_VERSION = "(v[^"]+)"'
+        | get -o capture0
+        | first
+        | default ""
+    )
+
+    if ($version_match | is-empty) {
+        print $"❌ Failed to read YAZELIX_VERSION from: ($constants_path)"
+        exit 1
+    }
+
+    $version_match
+}
+
+def sync_readme_version_marker [] {
+    let readme_path = ((get_yazelix_dir) | path join "README.md")
+    if not ($readme_path | path exists) {
+        print $"❌ README not found: ($readme_path)"
+        exit 1
+    }
+
+    let declared_version = get_declared_yazelix_version
+    let expected_title = $"# Yazelix ($declared_version)"
+    let contents = (open --raw $readme_path)
+    let updated = ($contents | str replace -r '^# Yazelix v[^\r\n]+' $expected_title)
+
+    if $updated == $contents {
+        print $"✅ README version marker already matches ($declared_version)"
+        return
+    }
+
+    $updated | save --force --raw $readme_path
+    print $"✅ Synced README version marker to ($declared_version)"
+}
+
 def get_pane_orchestrator_paths [] {
     let yazelix_dir = get_yazelix_dir
     let crate_dir = ($yazelix_dir | path join "rust_plugins" "zellij_pane_orchestrator")
@@ -439,8 +479,9 @@ export def "yzx dev update" [
 
     print "🔄 Syncing pinned runtime expectations..."
     sync_runtime_pins
+    sync_readme_version_marker
     sync_vendored_zjstatus
-    print "✅ Inputs, canaries, runtime pins, and vendored zjstatus are in sync. Review and commit the changes if everything looks good."
+    print "✅ Inputs, canaries, runtime pins, README version marker, and vendored zjstatus are in sync. Review and commit the changes if everything looks good."
 }
 
 export def "yzx dev sync_terminal_configs" [] {
