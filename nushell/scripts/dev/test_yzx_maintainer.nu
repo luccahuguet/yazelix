@@ -1,6 +1,53 @@
 #!/usr/bin/env nu
 # Test runner for maintainer-only yzx checks
 
+def test_issue_bead_reconciliation_plan [] {
+    print "🧪 Testing issue/bead reconciliation plans create, reopen, close, and reject duplicates..."
+
+    try {
+        let command = '
+            source nushell/scripts/utils/issue_bead_contract.nu
+            let github_issues = [
+                {number: 500, state: "OPEN", title: "Missing bead", url: "https://github.com/luccahuguet/yazelix/issues/500", createdAt: "2026-03-22T12:30:00Z", body: ""}
+                {number: 501, state: "OPEN", title: "Closed bead should reopen", url: "https://github.com/luccahuguet/yazelix/issues/501", createdAt: "2026-03-22T12:31:00Z", body: ""}
+                {number: 502, state: "CLOSED", title: "Open bead should close", url: "https://github.com/luccahuguet/yazelix/issues/502", createdAt: "2026-03-22T12:32:00Z", body: ""}
+                {number: 503, state: "OPEN", title: "Already aligned", url: "https://github.com/luccahuguet/yazelix/issues/503", createdAt: "2026-03-22T12:33:00Z", body: ""}
+                {number: 504, state: "OPEN", title: "Duplicate bead", url: "https://github.com/luccahuguet/yazelix/issues/504", createdAt: "2026-03-22T12:34:00Z", body: ""}
+                {number: 399, state: "OPEN", title: "Grandfathered backlog issue", url: "https://github.com/luccahuguet/yazelix/issues/399", createdAt: "2026-03-21T23:59:59Z", body: ""}
+            ]
+            let beads = [
+                {id: "yazelix-reopen", status: "closed", external_ref: "https://github.com/luccahuguet/yazelix/issues/501"}
+                {id: "yazelix-close", status: "open", external_ref: "https://github.com/luccahuguet/yazelix/issues/502"}
+                {id: "yazelix-noop", status: "open", external_ref: "https://github.com/luccahuguet/yazelix/issues/503"}
+                {id: "yazelix-dup-a", status: "open", external_ref: "https://github.com/luccahuguet/yazelix/issues/504"}
+                {id: "yazelix-dup-b", status: "closed", external_ref: "https://github.com/luccahuguet/yazelix/issues/504"}
+                {id: "yazelix-old", status: "open", external_ref: "https://github.com/luccahuguet/yazelix/issues/399"}
+            ]
+            let plan = (plan_issue_bead_reconciliation $github_issues $beads)
+            {
+                action_kinds: ($plan.actions | each { |action| $action.kind } | sort),
+                errors: ($plan.errors | sort)
+            } | to json -r
+        '
+        let output = (^nu -c $command | complete)
+        let stdout = ($output.stdout | str trim)
+        let resolved = ($stdout | lines | last | from json)
+        let expected_actions = ["close" "create" "noop" "reopen"]
+        let expected_errors = ["Duplicate beads for GitHub issue #504: yazelix-dup-a, yazelix-dup-b"]
+
+        if ($output.exit_code == 0) and ($resolved.action_kinds == $expected_actions) and ($resolved.errors == $expected_errors) {
+            print "  ✅ Reconciliation planning matches the contract surface"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) resolved=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_runtime_pin_versions_use_repo_shell [] {
     print "🧪 Testing runtime pin versions come from the repo shell..."
 
@@ -45,6 +92,7 @@ def main [] {
     print ""
 
     let results = [
+        (test_issue_bead_reconciliation_plan)
         (test_runtime_pin_versions_use_repo_shell)
     ]
 

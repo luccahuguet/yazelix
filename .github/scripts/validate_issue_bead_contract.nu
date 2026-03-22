@@ -1,57 +1,14 @@
 #!/usr/bin/env nu
 
-def contract_start [] {
-    "2026-03-22T00:00:00Z" | into datetime
-}
-
-def parse_json_output [] {
-    let value = $in
-    if ($value | is-empty) {
-        return []
-    }
-
-    let parsed = if (($value | describe) == "string") {
-        $value | from json
-    } else {
-        $value
-    }
-
-    if ($parsed == null) {
-        return []
-    }
-
-    if (($parsed | describe | str starts-with "record<") and (($parsed | columns) | any { |column| $column == "issues" })) {
-        return $parsed.issues
-    }
-
-    $parsed
-}
-
-def load_github_issues [] {
-    let listed = (^gh issue list --state all --limit 1000 --json number,state,title,url,createdAt | complete)
-    if $listed.exit_code != 0 {
-        error make {
-            msg: $"Failed to load GitHub issues: ($listed.stderr | str trim)"
-        }
-    }
-
-    $listed.stdout | parse_json_output
-}
-
-def load_beads [] {
-    let listed = (^br list --all --limit 0 --json | complete)
-    if $listed.exit_code != 0 {
-        error make {
-            msg: $"Failed to load Beads issues: ($listed.stderr | str trim)"
-        }
-    }
-
-    $listed.stdout | parse_json_output
-}
+use ../../nushell/scripts/utils/issue_bead_contract.nu [
+    contract_start
+    load_contract_beads
+    load_contract_github_issues
+]
 
 export def main [] {
-    let github_issues = load_github_issues
-    let beads = load_beads
+    let github_issues = load_contract_github_issues
+    let beads = load_contract_beads
     mut errors = []
 
     for issue in $github_issues {
