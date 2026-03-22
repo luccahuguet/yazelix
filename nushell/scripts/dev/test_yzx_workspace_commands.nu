@@ -162,7 +162,7 @@ def test_terminal_launch_requires_bash [] {
         let output = (run_nu_snippet $snippet {PATH: $isolated_path})
         let stdout = ($output.stdout | str trim)
 
-        if ($output.exit_code == 0) and ($stdout | str contains "bash is not available in PATH") {
+        if ($output.exit_code == 0) and ($stdout | str contains "bash is not available in PATH") and ($stdout | str contains "Failure class: host-dependency problem.") {
             print "  ✅ Terminal launch fails clearly when bash is unavailable"
             true
         } else {
@@ -227,7 +227,7 @@ def test_posix_startup_launcher_reports_missing_runtime_script [] {
         })
         let stderr = ($output.stderr | str trim)
 
-        if ($output.exit_code == 1) and ($stderr | str contains "Missing Yazelix startup script") and ($stderr | str contains "runtime looks incomplete") {
+        if ($output.exit_code == 1) and ($stderr | str contains "Missing Yazelix startup script") and ($stderr | str contains "runtime looks incomplete") and ($stderr | str contains "Failure class: generated-state problem.") {
             print "  ✅ POSIX startup launcher fails clearly when the runtime script is missing"
             true
         } else {
@@ -263,7 +263,7 @@ def test_posix_desktop_launcher_reports_missing_runtime_script [] {
         })
         let stderr = ($output.stderr | str trim)
 
-        if ($output.exit_code == 1) and ($stderr | str contains "Missing Yazelix desktop launcher") and ($stderr | str contains "runtime looks incomplete") {
+        if ($output.exit_code == 1) and ($stderr | str contains "Missing Yazelix desktop launcher") and ($stderr | str contains "runtime looks incomplete") and ($stderr | str contains "Failure class: generated-state problem.") {
             print "  ✅ POSIX desktop launcher fails clearly when the runtime script is missing"
             true
         } else {
@@ -295,7 +295,7 @@ def test_startup_requires_generated_layout_path [] {
         let output = (run_nu_snippet $snippet)
         let stdout = ($output.stdout | str trim)
 
-        if ($output.exit_code == 0) and ($stdout | str contains "Zellij layout not found") and ($stdout | str contains "yzx refresh") {
+        if ($output.exit_code == 0) and ($stdout | str contains "Zellij layout not found") and ($stdout | str contains "yzx refresh") and ($stdout | str contains "Failure class: generated-state problem.") {
             print "  ✅ Startup fails clearly when the generated layout is missing"
             true
         } else {

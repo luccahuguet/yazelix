@@ -5,6 +5,7 @@ use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
+use ../utils/failure_classes.nu [format_failure_classification]
 use ../setup/welcome.nu [show_welcome build_welcome_message]
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
@@ -27,7 +28,8 @@ def require_existing_layout [layout_path: string] {
     let resolved = ($layout_path | path expand)
 
     if not ($resolved | path exists) {
-        error make {msg: $"Zellij layout not found: ($resolved)\nRun `yzx refresh` to regenerate layouts, or check the configured layout name."}
+        let classification = (format_failure_classification "generated-state" "Regenerate layouts with `yzx refresh`, or fix the configured layout name if it points at a missing file.")
+        error make {msg: $"Zellij layout not found: ($resolved)\nRun `yzx refresh` to regenerate layouts, or check the configured layout name.\n($classification)"}
     }
 
     if (($resolved | path type) != "file") {

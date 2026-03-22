@@ -2,6 +2,7 @@
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 use ../utils/environment_bootstrap.nu *
+use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile]
 use ../utils/common.nu [describe_build_parallelism require_yazelix_dir]
 
@@ -22,7 +23,8 @@ def validate_startup_working_dir [working_dir: string] {
 def require_runtime_script [script_path: string, label: string] {
     let resolved = ($script_path | path expand)
     if not ($resolved | path exists) {
-        error make {msg: $"Missing Yazelix ($label): ($resolved)\nYour runtime looks incomplete. Reinstall/regenerate Yazelix and try again."}
+        let classification = (format_failure_classification "generated-state" "Restore the missing runtime asset, or reinstall/regenerate Yazelix and try again.")
+        error make {msg: $"Missing Yazelix ($label): ($resolved)\nYour runtime looks incomplete. Reinstall/regenerate Yazelix and try again.\n($classification)"}
     }
 
     $resolved

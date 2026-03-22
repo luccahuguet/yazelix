@@ -6,12 +6,14 @@
 # behave the same as normal launches.
 
 use ../utils/environment_bootstrap.nu [prepare_environment]
+use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/launch_state.nu [get_launch_env get_launch_profile resolve_built_profile]
 
 def require_launch_script [script_path: string] {
     let resolved = ($script_path | path expand)
     if not ($resolved | path exists) {
-        error make {msg: $"Missing Yazelix desktop launcher: ($resolved)\nYour runtime looks incomplete. Reinstall/regenerate Yazelix and try again."}
+        let classification = (format_failure_classification "generated-state" "Restore the missing launcher script, or reinstall/regenerate Yazelix and try again.")
+        error make {msg: $"Missing Yazelix desktop launcher: ($resolved)\nYour runtime looks incomplete. Reinstall/regenerate Yazelix and try again.\n($classification)"}
     }
 
     $resolved

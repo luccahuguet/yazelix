@@ -123,11 +123,57 @@ default_shell = "bash"
     $result
 }
 
+def test_invalid_config_is_classified_as_config_problem [] {
+    print "🧪 Testing invalid config values are classified as config problems..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_invalid_config_XXXXXX | str trim)
+    let temp_yazelix_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir $temp_yazelix_dir
+
+    let result = (try {
+        ^ln -s ($repo_root | path join "nushell") ($temp_yazelix_dir | path join "nushell")
+        cp ($repo_root | path join "yazelix_default.toml") ($temp_yazelix_dir | path join "yazelix_default.toml")
+
+        let invalid_config = (
+            open ($repo_root | path join "yazelix_default.toml")
+            | upsert core.refresh_output "loud"
+        )
+        $invalid_config | to toml | save ($temp_yazelix_dir | path join "yazelix.toml")
+
+        let parser_script = ($temp_yazelix_dir | path join "nushell" "scripts" "utils" "config_parser.nu")
+        let output = with-env { HOME: $tmp_home, YAZELIX_DIR: $temp_yazelix_dir } {
+            ^nu -c $"source \"($parser_script)\"; try { parse_yazelix_config | ignore } catch {|err| print $err.msg }" | complete
+        }
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Invalid core.refresh_output value")
+            and ($stdout | str contains "Failure class: config problem.")
+            and ($stdout | str contains "yzx config reset --yes")
+        ) {
+            print "  ✅ Invalid config values are classified as config problems"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 export def run_core_tests [] {
     [
         (test_yzx_status)
         (test_yzx_config_view)
         (test_yzx_config_sections)
         (test_yzx_config_reset_replaces_with_backup)
+        (test_invalid_config_is_classified_as_config_problem)
     ]
 }

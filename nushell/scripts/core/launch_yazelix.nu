@@ -3,6 +3,7 @@
 # Nushell version of the Yazelix launcher
 
 use ../utils/config_state.nu compute_config_state
+use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/nix_detector.nu ensure_nix_available
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/terminal_launcher.nu *
@@ -24,7 +25,8 @@ def validate_launch_working_dir [working_dir: string] {
 
 def run_detached_terminal_launch [launch_cmd: string, terminal_name: string, --verbose] {
     if (which bash | is-empty) {
-        error make {msg: $"Cannot launch ($terminal_name): bash is not available in PATH.\nYazelix uses bash to detach new terminal windows."}
+        let classification = (format_failure_classification "host-dependency" "Install bash or fix PATH, then retry the launch.")
+        error make {msg: $"Cannot launch ($terminal_name): bash is not available in PATH.\nYazelix uses bash to detach new terminal windows.\n($classification)"}
     }
 
     let output = (^bash -c $launch_cmd | complete)

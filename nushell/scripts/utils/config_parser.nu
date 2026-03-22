@@ -2,6 +2,7 @@
 # Configuration parser for yazelix TOML files
 
 use common.nu [get_yazelix_dir]
+use failure_classes.nu [format_failure_classification]
 
 def parse_refresh_output [raw_config: record] {
     let refresh_output = ($raw_config.core?.refresh_output? | default "normal" | into string | str downcase)
@@ -9,7 +10,8 @@ def parse_refresh_output [raw_config: record] {
 
     if not ($refresh_output in $allowed) {
         let allowed_text = ($allowed | str join ", ")
-        error make {msg: $"Invalid core.refresh_output value '($refresh_output)'. Expected one of: ($allowed_text)"}
+        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset --yes` to restore the template.")
+        error make {msg: $"Invalid core.refresh_output value '($refresh_output)'. Expected one of: ($allowed_text)\n($classification)"}
     }
 
     $refresh_output
@@ -21,7 +23,8 @@ def parse_zellij_default_mode [raw_config: record] {
 
     if not ($default_mode in $allowed) {
         let allowed_text = ($allowed | str join ", ")
-        error make {msg: $"Invalid zellij.default_mode value '($default_mode)'. Expected one of: ($allowed_text)"}
+        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset --yes` to restore the template.")
+        error make {msg: $"Invalid zellij.default_mode value '($default_mode)'. Expected one of: ($allowed_text)\n($classification)"}
     }
 
     $default_mode
@@ -37,10 +40,12 @@ def parse_positive_parallel_setting [value: any, label: string, allowed_symbols:
     let parsed = (try { $normalized | into int } catch { null })
     if $parsed == null {
         let allowed_text = ($allowed_symbols | str join ", ")
-        error make {msg: $"Invalid ($label) value '($normalized)'. Expected one of: ($allowed_text), or a positive integer."}
+        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset --yes` to restore the template.")
+        error make {msg: $"Invalid ($label) value '($normalized)'. Expected one of: ($allowed_text), or a positive integer.\n($classification)"}
     }
     if $parsed < 1 {
-        error make {msg: $"Invalid ($label) value '($normalized)'. Expected a positive integer."}
+        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset --yes` to restore the template.")
+        error make {msg: $"Invalid ($label) value '($normalized)'. Expected a positive integer.\n($classification)"}
     }
     $normalized
 }
@@ -66,7 +71,8 @@ export def parse_yazelix_config [] {
             print "✅ yazelix.toml created\n"
             $toml_file
         } else {
-            error make {msg: "No yazelix configuration file found (yazelix_default.toml is missing)"}
+            let classification = (format_failure_classification "config" "Restore yazelix_default.toml, or reinstall Yazelix if the default config is missing from the runtime.")
+            error make {msg: $"No yazelix configuration file found \(yazelix_default.toml is missing\)\n($classification)"}
         }
     }
 

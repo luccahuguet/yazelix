@@ -21,6 +21,8 @@ startup_script="$HOME/.config/yazelix/nushell/scripts/core/start_yazelix.nu"
 if [ ! -f "$startup_script" ]; then
   echo "Error: Missing Yazelix startup script: $startup_script" >&2
   echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
+  echo "Failure class: generated-state problem." >&2
+  echo "Recovery: Restore the missing startup script, or reinstall/regenerate Yazelix and try again." >&2
   exit 1
 fi
 
