@@ -119,7 +119,7 @@ Acceptance cases should be:
 Good:
 
 - "A new tab opened from an explicit project-root tab inherits that tab workspace root."
-- "Closing the GitHub issue closes the linked bead through the issue-sync workflow."
+- "Once the linked bead is updated locally, the GitHub/Beads contract validator passes for the closed issue."
 
 Bad:
 

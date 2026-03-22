@@ -100,7 +100,8 @@ When creating new files or directories, always use underscores to maintain consi
   - Open GitHub issues should not map to closed beads, and closed GitHub issues should not map to open beads.
   - Title/body evolution in Beads is allowed after import; `external_ref` and lifecycle sync are the hard contract.
   - The automated validator enforces this contract for issues created on or after `2026-03-22`. Older backlog issues are intentionally grandfathered until they are explicitly imported or touched by the sync workflow.
-- Any automation that mutates Beads in CI must flush the tracked export with `br sync --flush-only` before checking or committing `.beads/issues.jsonl`.
+- GitHub Actions must stay read-only with respect to Beads. Do not let CI mutate or commit `.beads/issues.jsonl`.
+- Sync GitHub issue state into Beads locally during normal maintainer work, then commit the Beads changes on your branch.
 
 ## Spec Workflow
 
