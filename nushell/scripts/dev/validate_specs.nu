@@ -1,9 +1,9 @@
 #!/usr/bin/env nu
 
-use ../utils/common.nu [get_yazelix_dir]
+const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
 
 def load_bead_ids [] {
-    let issues_path = ((get_yazelix_dir) | path join ".beads" "issues.jsonl")
+    let issues_path = ($REPO_ROOT | path join ".beads" "issues.jsonl")
 
     open --raw $issues_path
     | lines
@@ -32,7 +32,7 @@ def get_traceability_section [content: string] {
 }
 
 def validate_spec_file [spec_path: string, bead_ids: list<string>] {
-    let relative_path = ($spec_path | path relative-to (get_yazelix_dir))
+    let relative_path = ($spec_path | path relative-to $REPO_ROOT)
     let content = (open --raw $spec_path)
     let traceability = (get_traceability_section $content)
 
@@ -73,9 +73,8 @@ def validate_spec_file [spec_path: string, bead_ids: list<string>] {
 }
 
 export def main [] {
-    let yazelix_dir = get_yazelix_dir
     let spec_files = (
-        glob (($yazelix_dir | path join "docs" "specs" "*.md"))
+        glob (($REPO_ROOT | path join "docs" "specs" "*.md"))
         | where { |path| ($path | path basename) != "template.md" }
     )
     let bead_ids = (load_bead_ids)

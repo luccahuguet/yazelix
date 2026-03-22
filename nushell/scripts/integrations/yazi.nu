@@ -343,6 +343,14 @@ export def sync_managed_editor_cwd [target_path: path, log_file: string = "edito
     }
 }
 
+export def resolve_managed_editor_open_strategy [status: string] {
+    match $status {
+        "ok" => {action: "reuse_managed"}
+        "missing" => {action: "open_new_managed"}
+        _ => {action: "error", status: $status}
+    }
+}
+
 # Sync yazi's directory to match the opened file's location
 # This keeps yazi's view synchronized with the tab name and editor context
 def sync_yazi_to_directory [file_path: path, yazi_id: string, log_file: string] {
@@ -446,11 +454,12 @@ def open_with_editor_integration [
     log_to_file $log_file $"open_with_($editor_name) called with file_path: '($file_path)'"
 
     let open_result = (do $open_in_existing $file_path)
+    let open_strategy = (resolve_managed_editor_open_strategy $open_result.status)
 
-    if $open_result.status == "ok" {
+    if $open_strategy.action == "reuse_managed" {
         log_to_file $log_file $"Managed editor pane found for ($editor_name), opening in existing instance through pane orchestrator"
         print $"($editor_name) pane found, opening in existing instance"
-    } else if $open_result.status == "missing" {
+    } else if $open_strategy.action == "open_new_managed" {
         log_to_file $log_file $"Managed editor pane missing for ($editor_name), opening new pane"
         print $"($editor_name) pane not found, opening new pane"
         do $open_new_pane $file_path $yazi_id

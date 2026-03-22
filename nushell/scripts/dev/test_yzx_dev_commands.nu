@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use ../core/yazelix.nu *
-use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
+use ./test_yzx_helpers.nu [get_repo_config_dir get_repo_root repo_path]
 
 def extract_hm_pack_declaration [pack_name: string] {
     let hm_module = (open --raw (repo_path "home_manager" "module.nix"))
@@ -156,7 +156,7 @@ def test_readme_title_matches_declared_version [] {
     print "🧪 Testing README title matches YAZELIX_VERSION..."
 
     try {
-        let validator_script = (repo_path "nushell" "scripts" "dev" "validate_readme_version.nu")
+        let validator_script = ((get_repo_root) | path join "nushell" "scripts" "dev" "validate_readme_version.nu")
         let output = (^nu $validator_script | complete)
 
         if $output.exit_code == 0 {
@@ -176,7 +176,7 @@ def test_specs_have_traceability_contract [] {
     print "🧪 Testing real specs declare bead and regression traceability..."
 
     try {
-        let validator_script = (repo_path "nushell" "scripts" "dev" "validate_specs.nu")
+        let validator_script = ((get_repo_root) | path join "nushell" "scripts" "dev" "validate_specs.nu")
         let output = (^nu $validator_script | complete)
 
         if $output.exit_code == 0 {

@@ -102,6 +102,7 @@ Those may be explored later, but they are outside this spec.
 
 - Bead: `yazelix-2ex.1.7.3`
 - Defended by: `nu nushell/scripts/dev/test_yzx_doctor_commands.nu`
+- Defended by: `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
 
 ## Open Questions
 
