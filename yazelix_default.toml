@@ -363,7 +363,7 @@ file-management = [
 git = [
   "onefetch", # Repo summary and stats
   "gh", # GitHub CLI
-  "prek", # Prettier git commit logs
+  "prek", # Fast local pre-commit hook runner
 ]
 
 jj = [
@@ -374,7 +374,7 @@ jj = [
 
 maintainer = [
   "gh", # GitHub CLI for repo maintenance
-  "prek", # Fast local git-hook runner and commit log viewer
+  "prek", # Fast local pre-commit hook runner
   "tru", # Compact Beads/agent structured output CLI
   "beads-rust", # Rust Beads tracker (br)
   "beads-viewer", # Beads Viewer (bv)

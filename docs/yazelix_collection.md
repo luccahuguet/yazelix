@@ -174,7 +174,7 @@ General-purpose development tools:
 ### Git Pack (`git`)
 - [onefetch](https://github.com/o2sh/onefetch) — Git repository summary with statistics and language breakdown
 - [gh](https://cli.github.com/) — GitHub CLI for repository management and PR workflows
-- [prek](https://github.com/piotrek-szczygiel/prek) — Prettier git commit logs and history viewer
+- [prek](https://github.com/j178/prek) — Fast local pre-commit hook runner
 
 ### Jujutsu Pack (`jj`)
 - [jujutsu](https://github.com/martinvonz/jj) — Modern version control system with powerful conflict resolution (command: `jj`)
@@ -189,6 +189,8 @@ Tools for maintaining Yazelix itself without changing runtime behavior.
 - [tru](https://github.com/block/tru) — Compact structured output for Beads and agent workflows
 - [beads-rust](https://github.com/Dicklesworthstone/beads_rust) — Rust Beads tracker (`br`)
 - [beads-viewer](https://github.com/Dicklesworthstone/beads_viewer) — Graph-aware triage and visualization (`bv`)
+
+Use the repo's root [`../.pre-commit-config.yaml`](../.pre-commit-config.yaml) with `prek install`, then run `prek run --all-files` when you want the full fast maintainer checks on demand.
 
 ### AI Agents Pack (`ai_agents`)
 AI coding agents sourced from [llm-agents.nix](https://github.com/numtide/llm-agents.nix) with daily updates.

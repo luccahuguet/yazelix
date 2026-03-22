@@ -1,0 +1,15 @@
+repos:
+  - repo: local
+    hooks:
+      - id: yazelix-validate-syntax
+        name: validate Nushell syntax
+        entry: nu nushell/scripts/dev/validate_syntax.nu --quiet
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: yazelix-validate-readme-version
+        name: validate README version marker
+        entry: nu nushell/scripts/dev/validate_readme_version.nu
+        language: system
+        pass_filenames: false
+        always_run: true
