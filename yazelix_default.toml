@@ -286,6 +286,7 @@ enabled = [
   # "file-management",
   # "git",
   # "jj",
+  # "maintainer",
   # "python",
   # "rust",
   # "rust_maintainer",
@@ -369,6 +370,14 @@ jj = [
   "jujutsu", # Jujutsu VCS (jj)
   "lazyjj", # LazyGit-style TUI for jj
   "jjui", # TUI for Jujutsu VCS
+]
+
+maintainer = [
+  "gh", # GitHub CLI for repo maintenance
+  "prek", # Fast local git-hook runner and commit log viewer
+  "tru", # Compact Beads/agent structured output CLI
+  "beads-rust", # Rust Beads tracker (br)
+  "beads-viewer", # Beads Viewer (bv)
 ]
 
 # Language packs

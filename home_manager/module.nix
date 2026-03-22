@@ -458,6 +458,13 @@ in
           "lazyjj"
           "jjui"
         ];
+        maintainer = [
+          "gh"
+          "prek"
+          "tru"
+          "beads-rust"
+          "beads-viewer"
+        ];
         python = [
           "ruff"
           "uv"

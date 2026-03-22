@@ -181,6 +181,15 @@ General-purpose development tools:
 - [lazyjj](https://github.com/Cretezy/lazyjj) — LazyGit-style TUI for jj
 - [jjui](https://github.com/idursun/jjui) — TUI for Jujutsu VCS
 
+### Maintainer Pack (`maintainer`)
+Tools for maintaining Yazelix itself without changing runtime behavior.
+
+- [gh](https://cli.github.com/) — GitHub CLI for issues, PRs, and repo workflow
+- [prek](https://github.com/j178/prek) — Fast local pre-commit hook runner
+- [tru](https://github.com/block/tru) — Compact structured output for Beads and agent workflows
+- [beads-rust](https://github.com/Dicklesworthstone/beads_rust) — Rust Beads tracker (`br`)
+- [beads-viewer](https://github.com/Dicklesworthstone/beads_viewer) — Graph-aware triage and visualization (`bv`)
+
 ### AI Agents Pack (`ai_agents`)
 AI coding agents sourced from [llm-agents.nix](https://github.com/numtide/llm-agents.nix) with daily updates.
 
