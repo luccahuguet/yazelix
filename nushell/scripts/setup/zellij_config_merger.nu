@@ -20,10 +20,10 @@ def get_zellij_defaults [] {
 
 # Read the user's native Zellij config if it exists
 def read_user_zellij_config [] {
-    let user_config_path = ("~/.config/zellij/config.kdl" | path expand)
+    let user_config_path = ($env.HOME | path join ".config" "zellij" "config.kdl")
     if ($user_config_path | path exists) {
         try {
-            print "📥 Using existing Zellij config from ~/.config/zellij/config.kdl"
+            print $"📥 Using existing Zellij config from ($user_config_path)"
             open $user_config_path
         } catch {|err|
             print $"⚠️  Could not read user config: ($err.msg)"
