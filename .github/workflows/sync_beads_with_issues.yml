@@ -1,0 +1,50 @@
+name: Sync Beads With Issues
+
+on:
+  issues:
+    types:
+      - opened
+      - reopened
+      - closed
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Nushell
+        uses: hustcer/setup-nu@v3
+        with:
+          version: "0.111.0"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install beads-rust
+        run: cargo install beads-rust --locked
+
+      - name: Sync issue into Beads
+        id: sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_EVENT_ACTION: ${{ github.event.action }}
+        run: nu .github/scripts/sync_issue_to_bead.nu
+
+      - name: Commit Beads export
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- .beads/issues.jsonl; then
+            exit 0
+          fi
+          git add .beads/issues.jsonl
+          git commit -m "Sync issue #${{ github.event.issue.number }} to Beads"
+          git push

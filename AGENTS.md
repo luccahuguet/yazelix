@@ -93,6 +93,13 @@ When creating new files or directories, always use underscores to maintain consi
 
 - Prefer the GitHub CLI (`gh`) for inspecting issues, PRs, comments, and repo metadata instead of scraping GitHub pages manually.
 - Use `gh` first when interacting with GitHub state from this repository unless the task specifically requires browser-only behavior.
+- GitHub and Beads have a shared-subset contract:
+  - GitHub owns the public issue, discussion thread, and open/closed lifecycle.
+  - Beads owns planning metadata: dependencies, priority, labels, design notes, acceptance criteria, and execution history.
+  - Every GitHub issue in `luccahuguet/yazelix` should have exactly one bead with the issue URL stored as `external_ref`.
+  - Open GitHub issues should not map to closed beads, and closed GitHub issues should not map to open beads.
+  - Title/body evolution in Beads is allowed after import; `external_ref` and lifecycle sync are the hard contract.
+  - The automated validator enforces this contract for issues created on or after `2026-03-22`. Older backlog issues are intentionally grandfathered until they are explicitly imported or touched by the sync workflow.
 
 ## Tool Invocation Workflow
 

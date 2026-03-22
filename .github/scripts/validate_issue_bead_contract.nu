@@ -1,0 +1,68 @@
+#!/usr/bin/env nu
+
+def contract_start [] {
+    "2026-03-22T00:00:00Z" | into datetime
+}
+
+def load_github_issues [] {
+    ^gh issue list --state all --limit 1000 --json number,state,title,url,createdAt
+    | complete
+    | get stdout
+    | from json
+}
+
+def load_beads [] {
+    ^br list --all --limit 0 --json
+    | complete
+    | get stdout
+    | from json
+}
+
+export def main [] {
+    let github_issues = load_github_issues
+    let beads = load_beads
+    mut errors = []
+
+    for issue in $github_issues {
+        let created_at = ($issue.createdAt | into datetime)
+        if $created_at < (contract_start) {
+            continue
+        }
+
+        let matches = (
+            $beads
+            | where { |bead| (($bead.external_ref? | default "") == $issue.url) }
+        )
+
+        if ($matches | is-empty) {
+            $errors = ($errors | append $"Missing bead for GitHub issue #($issue.number) (($issue.title))")
+            continue
+        }
+
+        if (($matches | length) > 1) {
+            let ids = ($matches | each { |match| $match.id } | str join ", ")
+            $errors = ($errors | append $"Duplicate beads for GitHub issue #($issue.number): ($ids)")
+            continue
+        }
+
+        let bead = ($matches | first)
+        let is_github_open = ($issue.state == "OPEN")
+        let is_bead_closed = ($bead.status == "closed")
+
+        if $is_github_open and $is_bead_closed {
+            $errors = ($errors | append $"State mismatch for GitHub issue #($issue.number): GitHub is open but bead ($bead.id) is closed")
+        }
+
+        if (not $is_github_open) and (not $is_bead_closed) {
+            $errors = ($errors | append $"State mismatch for GitHub issue #($issue.number): GitHub is closed but bead ($bead.id) is ($bead.status)")
+        }
+    }
+
+    if not ($errors | is-empty) {
+        print "Bead/GitHub issue contract violations detected:"
+        $errors | each { |error| print $"- ($error)" }
+        error make { msg: "Bead/GitHub issue contract is invalid" }
+    }
+
+    print "Bead/GitHub issue contract is valid."
+}
