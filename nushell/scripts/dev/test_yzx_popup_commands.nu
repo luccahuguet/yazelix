@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
 use ../yzx/popup.nu [resolve_yzx_popup_command resolve_yzx_popup_cwd]
+use ../../../configs/zellij/scripts/yzx_toggle_popup.nu [resolve_popup_toggle_action]
 use ./test_yzx_helpers.nu [repo_path]
 
 def test_popup_command_prefers_configured_default [] {
@@ -164,6 +165,63 @@ def test_popup_wrapper_runs_inline_without_pane_id [] {
     $result
 }
 
+def test_popup_toggle_wrapper_opens_when_popup_is_missing [] {
+    print "🧪 Testing popup toggle wrapper opens when the popup is missing..."
+
+    try {
+        let result = (resolve_popup_toggle_action false)
+
+        if $result == { action: "open" } {
+            print "  ✅ popup toggle wrapper opens the popup when none exists"
+            true
+        } else {
+            print $"  ❌ Unexpected result: ($result | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_popup_toggle_wrapper_treats_ok_as_handled [] {
+    print "🧪 Testing popup toggle wrapper treats an existing popup toggle as handled..."
+
+    try {
+        let result = (resolve_popup_toggle_action true "ok")
+
+        if $result == { action: "handled" } {
+            print "  ✅ popup toggle wrapper leaves popup focus/close behavior to the plugin when it already exists"
+            true
+        } else {
+            print $"  ❌ Unexpected result: ($result | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_popup_toggle_wrapper_surfaces_permission_denials [] {
+    print "🧪 Testing popup toggle wrapper surfaces popup-plugin permission denials..."
+
+    try {
+        let result = (resolve_popup_toggle_action true "permissions_denied")
+
+        if ($result.action == "error") and ($result.message | str contains "popup-runner plugin permissions") {
+            print "  ✅ popup toggle wrapper reports popup-plugin permission denials clearly"
+            true
+        } else {
+            print $"  ❌ Unexpected result: ($result | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 export def run_popup_tests [] {
     [
         (test_popup_command_prefers_configured_default)
@@ -171,6 +229,9 @@ export def run_popup_tests [] {
         (test_popup_cwd_prefers_workspace_root)
         (test_popup_launch_uses_shared_floating_runner)
         (test_popup_wrapper_runs_inline_without_pane_id)
+        (test_popup_toggle_wrapper_opens_when_popup_is_missing)
+        (test_popup_toggle_wrapper_treats_ok_as_handled)
+        (test_popup_toggle_wrapper_surfaces_permission_denials)
     ]
 }
 

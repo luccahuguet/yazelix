@@ -2,7 +2,7 @@
 
 ## Summary
 
-Yazelix should support one explicit transient popup flow for terminal UIs that are useful temporarily but do not deserve a persistent split. The first supported surface is `yzx popup`, backed by a user-configured `zellij.popup_program` that defaults to `lazygit`.
+Yazelix should support one explicit popup flow for terminal UIs that are useful temporarily but do not deserve a persistent split. The first supported surface is `yzx popup`, backed by a user-configured `zellij.popup_program` that defaults to `lazygit`. The popup key should behave like a managed session surface rather than spawning disposable duplicates forever.
 
 ## Why
 
@@ -24,7 +24,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - `yzx popup <command ...>` overrides the configured command for that invocation.
 - The popup launches in the current tab workspace root when available; otherwise it uses the current shell directory.
 - The popup closes on exit.
-- `Alt+t` opens the configured popup program.
+- `Alt+t` opens one managed popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.
 - `Alt+Shift+M` continues to open the command-palette popup.
 
 ## Non-goals
@@ -35,22 +35,26 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 
 ## Acceptance Cases
 
-1. When a user presses `Alt+t` inside Yazelix, the configured popup program opens in a floating pane instead of replacing an existing workspace pane.
+1. When a user presses `Alt+t` inside Yazelix, the configured popup program opens in one managed floating pane instead of replacing an existing workspace pane.
 2. When `zellij.popup_program` is changed to another argv list, `yzx popup` launches that program without requiring shell-string parsing.
 3. When `yzx popup` runs from a tab with an explicit workspace root, the popup uses that root as its cwd.
-4. When `Alt+Shift+M` is used, the command palette still opens separately from the popup-program flow.
+4. Repeated popup-key presses do not create duplicate popup panes; they focus or close the existing managed popup instead.
+5. When `Alt+Shift+M` is used, the command palette still opens separately from the popup-program flow.
 
 ## Verification
 
 - unit tests: popup command/cwd resolution helpers
+- unit tests: popup lifecycle contract and popup-pane discovery in the popup runner
+- unit tests: popup-toggle wrapper decision path
 - integration tests: `yzx popup` command routing with a fake Zellij binary
 - CI checks: `nu nushell/scripts/dev/test_yzx_commands.nu`
-- manual verification: `Alt+t` opens the configured popup and `Alt+Shift+M` still opens the menu
+- manual verification: `Alt+t` toggles one managed popup and `Alt+Shift+M` still opens the menu
 
 ## Traceability
 
 - Bead: `yazelix-2v0`
-- Defended by: `nushell/scripts/dev/test_yzx_popup_commands.nu`
+- Defended by: `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
+- Defended by: `cargo test --manifest-path rust_plugins/zellij_popup_runner/Cargo.toml --lib`
 
 ## Open Questions
 

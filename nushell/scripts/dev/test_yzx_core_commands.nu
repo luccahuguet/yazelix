@@ -511,6 +511,99 @@ def test_pane_orchestrator_permission_cache_is_preserved_for_stable_runtime_path
     $result
 }
 
+def test_popup_runner_tracked_path_defaults_to_runtime_root [] {
+    print "🧪 Testing popup runner tracked path defaults to the runtime root..."
+
+    let tmp_home = (^mktemp -d /tmp/yazelix_popup_runner_paths_XXXXXX | str trim)
+    let runtime_dir = ($tmp_home | path join "runtime")
+    mkdir ($runtime_dir | path join "configs" "zellij" "plugins")
+
+    let result = (try {
+        let helper_script = (repo_path "nushell" "scripts" "setup" "zellij_plugin_paths.nu")
+        let output = with-env { YAZELIX_RUNTIME_DIR: $runtime_dir } {
+            ^nu -c $"source \"($helper_script)\"; get_tracked_popup_runner_wasm_path" | complete
+        }
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == ($runtime_dir | path join "configs" "zellij" "plugins" "yazelix_popup_runner.wasm")) {
+            print "  ✅ Popup runner helpers default to the configured runtime root"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_popup_runner_permission_cache_is_preserved_for_stable_runtime_path [] {
+    print "🧪 Testing popup runner sync preserves granted permissions for the stable runtime path..."
+
+    let tmp_home = (^mktemp -d /tmp/yazelix_popup_permissions_XXXXXX | str trim)
+    let tracked_path = ($tmp_home | path join ".config" "yazelix" "configs" "zellij" "plugins" "yazelix_popup_runner.wasm")
+    let runtime_path = ($tmp_home | path join ".local" "share" "yazelix" "configs" "zellij" "plugins" "yazelix_popup_runner.wasm")
+    let permissions_dir = ($tmp_home | path join ".cache" "zellij")
+    let permissions_path = ($permissions_dir | path join "permissions.kdl")
+
+    let result = (try {
+        mkdir ($tracked_path | path dirname)
+        mkdir ($runtime_path | path dirname)
+        mkdir $permissions_dir
+
+        let existing_block = [
+            $"\"($tmp_home | path join ".local" "share" "yazelix" "configs" "zellij" "plugins" "yazelix_popup_runner_deadbeef1234.wasm")\" {"
+            "    ReadApplicationState"
+            "    ChangeApplicationState"
+            "    ReadCliPipes"
+            "}"
+        ] | str join "\n"
+        $existing_block | save --force --raw $permissions_path
+
+        let helper_script = (repo_path "nushell" "scripts" "setup" "zellij_plugin_paths.nu")
+        let snippet = ([
+            $"source '($helper_script)'"
+            ("let result = (sync_popup_runner_runtime_wasm '" + ($tmp_home | path join ".config" "yazelix") + "')")
+            "print $result"
+        ] | str join "\n")
+
+        # materialize tracked file so sync can copy it
+        "popup" | save --force --raw $tracked_path
+
+        let output = with-env { HOME: $tmp_home } {
+            ^nu -c $snippet | complete
+        }
+        let stdout = ($output.stdout | str trim)
+        let cache_contents = (open --raw $permissions_path)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout == $runtime_path)
+            and ($cache_contents | str contains $tracked_path)
+            and ($cache_contents | str contains $runtime_path)
+            and ($cache_contents | str contains "ReadCliPipes")
+            and not ($cache_contents | str contains "OpenTerminalsOrPlugins")
+            and not ($cache_contents | str contains "RunCommands")
+        ) {
+            print "  ✅ Granted popup-runner permissions are preserved onto the stable runtime path"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim) cache=($cache_contents)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_packs_helper_uses_runtime_root_for_devenv_links [] {
     print "🧪 Testing yzx packs helper reads .devenv links from the runtime root..."
 
@@ -605,6 +698,8 @@ export def run_core_tests [] {
         (test_runtime_shell_assets_avoid_repo_shaped_runtime_paths)
         (test_pane_orchestrator_tracked_path_defaults_to_runtime_root)
         (test_pane_orchestrator_permission_cache_is_preserved_for_stable_runtime_path)
+        (test_popup_runner_tracked_path_defaults_to_runtime_root)
+        (test_popup_runner_permission_cache_is_preserved_for_stable_runtime_path)
         (test_packs_helper_uses_runtime_root_for_devenv_links)
         (test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering)
     ]

@@ -37,7 +37,7 @@ def print_yazelix_keys [] {
     ]
     heading "Command and mode access"
     print_table [
-        {keybinding: (accent_key "Alt+t"), action: "Open the configured transient popup program"}
+        {keybinding: (accent_key "Alt+t"), action: "Toggle the configured managed popup program"}
         {keybinding: (accent_key "Alt+Shift+M"), action: "Open the yzx command palette popup"}
         {keybinding: (accent_key "Ctrl+Alt+g"), action: "Locked mode"}
         {keybinding: (accent_key "Ctrl+Alt+s"), action: "Scroll mode"}

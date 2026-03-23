@@ -4,11 +4,18 @@ use ../utils/common.nu [get_yazelix_runtime_dir]
 
 const pane_orchestrator_plugin_prefix = "yazelix_pane_orchestrator"
 const pane_orchestrator_wasm_name = "yazelix_pane_orchestrator.wasm"
+const popup_runner_plugin_prefix = "yazelix_popup_runner"
+const popup_runner_wasm_name = "yazelix_popup_runner.wasm"
 const pane_orchestrator_required_permissions = [
     "ReadApplicationState"
     "OpenTerminalsOrPlugins"
     "ChangeApplicationState"
     "WriteToStdin"
+    "ReadCliPipes"
+]
+const popup_runner_required_permissions = [
+    "ReadApplicationState"
+    "ChangeApplicationState"
     "ReadCliPipes"
 ]
 
@@ -78,12 +85,17 @@ def build_permission_block [plugin_path: string, permissions: list<string>] {
     )
 }
 
-def permission_block_is_sufficient [permissions: list<string>] {
-    $pane_orchestrator_required_permissions
+def permission_block_is_sufficient [permissions: list<string>, required_permissions: list<string>] {
+    $required_permissions
     | all {|permission| $permission in $permissions }
 }
 
-def preserve_pane_orchestrator_permissions [tracked_path: string, runtime_path: string] {
+def preserve_plugin_permissions [
+    plugin_prefix: string
+    tracked_path: string
+    runtime_path: string
+    required_permissions: list<string>
+] {
     let permissions_cache_path = (get_permissions_cache_path)
     if not ($permissions_cache_path | path exists) {
         return { status: "missing_cache" }
@@ -95,13 +107,13 @@ def preserve_pane_orchestrator_permissions [tracked_path: string, runtime_path: 
         $blocks
         | where {|block|
             let file_name = ($block.path | path basename)
-            $file_name =~ ("^" + $pane_orchestrator_plugin_prefix + "(_[0-9a-f]+)?\\.wasm$")
+            $file_name =~ ("^" + $plugin_prefix + "(_[0-9a-f]+)?\\.wasm$")
         }
     )
 
     let source_block = (
         $pane_orchestrator_blocks
-        | where {|block| permission_block_is_sufficient $block.permissions }
+        | where {|block| permission_block_is_sufficient $block.permissions $required_permissions }
         | get -o 0
     )
 
@@ -114,8 +126,8 @@ def preserve_pane_orchestrator_permissions [tracked_path: string, runtime_path: 
         | where {|block| ($block.path != $tracked_path) and ($block.path != $runtime_path) }
     )
     let target_blocks = [
-        (build_permission_block $tracked_path $pane_orchestrator_required_permissions)
-        (build_permission_block $runtime_path $pane_orchestrator_required_permissions)
+        (build_permission_block $tracked_path $required_permissions)
+        (build_permission_block $runtime_path $required_permissions)
     ]
     let retained_text = ($retained_blocks | each {|block| build_permission_block $block.path $block.permissions })
     let updated_content = (
@@ -131,9 +143,22 @@ def preserve_pane_orchestrator_permissions [tracked_path: string, runtime_path: 
     }
 }
 
+def preserve_pane_orchestrator_permissions [tracked_path: string, runtime_path: string] {
+    preserve_plugin_permissions $pane_orchestrator_plugin_prefix $tracked_path $runtime_path $pane_orchestrator_required_permissions
+}
+
+def preserve_popup_runner_permissions [tracked_path: string, runtime_path: string] {
+    preserve_plugin_permissions $popup_runner_plugin_prefix $tracked_path $runtime_path $popup_runner_required_permissions
+}
+
 export def get_tracked_pane_orchestrator_wasm_path [yazelix_dir?: string] {
     let root = (($yazelix_dir | default (get_yazelix_runtime_dir)) | path expand)
     $root | path join "configs" "zellij" "plugins" $pane_orchestrator_wasm_name
+}
+
+export def get_tracked_popup_runner_wasm_path [yazelix_dir?: string] {
+    let root = (($yazelix_dir | default (get_yazelix_runtime_dir)) | path expand)
+    $root | path join "configs" "zellij" "plugins" $popup_runner_wasm_name
 }
 
 export def sync_pane_orchestrator_runtime_wasm [yazelix_dir?: string] {
@@ -176,6 +201,50 @@ export def sync_pane_orchestrator_runtime_wasm [yazelix_dir?: string] {
     $runtime_path
 }
 
+export def sync_popup_runner_runtime_wasm [yazelix_dir?: string] {
+    let tracked_path = (get_tracked_popup_runner_wasm_path $yazelix_dir)
+    if not ($tracked_path | path exists) {
+        error make {msg: $"Tracked popup runner wasm not found at: ($tracked_path)"}
+    }
+
+    let runtime_dir = (get_runtime_plugins_dir)
+    let runtime_file_name = $popup_runner_wasm_name
+    let runtime_path = ($runtime_dir | path join $runtime_file_name)
+
+    atomic_copy $tracked_path $runtime_path
+
+    if ($runtime_dir | path exists) {
+        let plugin_name_pattern = ("^" + $popup_runner_plugin_prefix + "(_[0-9a-f]+)?\\.wasm$")
+        let stale_runtime_plugins = (
+            ls $runtime_dir
+            | where type == file
+            | each {|entry|
+                let full_path = $entry.name
+                let file_name = ($full_path | path basename)
+                {
+                    full_path: $full_path
+                    file_name: $file_name
+                }
+            }
+            | where file_name =~ $plugin_name_pattern
+            | where full_path != $runtime_path
+            | get full_path
+        )
+
+        if ($stale_runtime_plugins | length) > 0 {
+            rm --force ...$stale_runtime_plugins
+        }
+    }
+
+    preserve_popup_runner_permissions $tracked_path $runtime_path | ignore
+
+    $runtime_path
+}
+
 export def get_pane_orchestrator_wasm_path [yazelix_dir?: string] {
     sync_pane_orchestrator_runtime_wasm $yazelix_dir
+}
+
+export def get_popup_runner_wasm_path [yazelix_dir?: string] {
+    sync_popup_runner_runtime_wasm $yazelix_dir
 }

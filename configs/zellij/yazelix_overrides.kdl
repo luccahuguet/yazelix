@@ -71,8 +71,7 @@ keybinds {
         unbind "Alt )"
 
         // Unbind Alt+p to avoid Helix conflicts (select_previous_sibling).
-        // Keep pane grouping on Ctrl+Alt+p, and expose the Yazelix popup program on
-        // both Alt+t and Alt+Shift+P.
+        // Keep pane grouping on Ctrl+Alt+p, and expose the Yazelix popup program on Alt+t.
         //
         // Do not unbind a key that Yazelix then reuses in the same merged config.
         // In practice that can suppress the replacement bind entirely.
@@ -80,28 +79,11 @@ keybinds {
         bind "Ctrl Alt p" { TogglePaneInGroup; }
         bind "Ctrl Alt Shift P" { ToggleGroupMarking; }
 
-        // Yazelix transient popup program (defaults to lazygit)
+        // Yazelix managed popup program (defaults to lazygit)
         bind "Alt t" {
-            Run "nu" "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/yzx_popup_program.nu" {
-                name "yzx_popup"
-                floating true
+            Run "nu" "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/yzx_toggle_popup.nu" {
+                name "yzx_popup_toggle"
                 close_on_exit true
-                x "15%"
-                y "15%"
-                width "70%"
-                height "70%"
-            }
-        }
-
-        bind "Alt Shift P" {
-            Run "nu" "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/yzx_popup_program.nu" {
-                name "yzx_popup"
-                floating true
-                close_on_exit true
-                x "15%"
-                y "15%"
-                width "70%"
-                height "70%"
             }
         }
 

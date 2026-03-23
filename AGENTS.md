@@ -54,6 +54,7 @@ When creating new files or directories, always use underscores to maintain consi
 2. **Fail fast with clear errors** - When something is wrong, provide explicit error messages rather than degraded functionality
 3. **Universal robustness** - Yazelix must work reliably for all users, not just maintainers who can manually fix issues
 4. **Avoid redundant code** - Focus on elegant, concise code when possible; eliminate duplication and unnecessary complexity
+5. **Do not ship or rely on local-only host fixes** - Do not patch user-specific caches, local machine state, or other one-off environment artifacts as a substitute for a real Yazelix fix unless the user explicitly asks for a local recovery workaround. Temporary local probes are allowed for diagnosis or to test a hypothesis, but they must be treated as throwaway investigation steps and either reverted or replaced by a real repo fix before calling the work done.
 
 ### Error Handling Philosophy
 - **No silent failures** - Every error should be visible and actionable
@@ -119,16 +120,25 @@ When creating new files or directories, always use underscores to maintain consi
 ## Rust Plugin Workflow
 
 - **Rust pane-orchestrator source edits are not live by themselves.** Changes under `rust_plugins/zellij_pane_orchestrator/` do not affect Yazelix behavior until the wasm is rebuilt and synced into the tracked/runtime plugin paths.
+- **Rust popup-runner source edits are not live by themselves either.** Changes under `rust_plugins/zellij_popup_runner/` do not affect Yazelix behavior until that wasm is rebuilt and synced into the tracked/runtime plugin paths.
 - After changing the pane orchestrator, rebuild and sync it before claiming behavior is fixed:
   ```bash
   yzx dev build_pane_orchestrator --sync
+  ```
+- After changing the popup runner, rebuild and sync it before claiming popup behavior is fixed:
+  ```bash
+  yzx dev build_popup_plugin --sync
   ```
 - If the current shell toolchain cannot build `wasm32-wasip1`, use the pinned Yazelix environment:
   ```bash
   devenv shell -- nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_pane_orchestrator --sync'
   ```
+- For popup-runner rebuilds in the pinned environment:
+  ```bash
+  devenv shell -- nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_popup_plugin --sync'
+  ```
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the synced wasm plus a fresh Yazelix session.
-- After syncing a new pane-orchestrator wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
+- After syncing a new plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
 
 ## Zellij Keybinding Rule
 

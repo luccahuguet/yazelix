@@ -425,7 +425,8 @@ def test_zellij_horizontal_walking_is_plugin_owned [] {
             and ($config_stdout | str contains 'bind "Alt l" "Alt Right" {')
             and ($config_stdout | str contains 'name "move_focus_right_or_tab"')
             and ($config_stdout | str contains 'bind "Alt t" {')
-            and ($config_stdout | str contains 'yzx_popup_program.nu')
+            and ($config_stdout | str contains 'yzx_toggle_popup.nu')
+            and ($config_stdout | str contains 'yazelix_popup_runner.wasm')
             and not ($layout_stdout | str contains 'bind "Alt h" "Alt Left" {')
             and not ($layout_stdout | str contains 'bind "Alt t" {')
         ) {

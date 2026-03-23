@@ -13,13 +13,13 @@ Yazelix uses **selective remapping** - only conflicting Zellij keybindings are c
 | Alt+Shift+H              | Move tab left                 |
 | Alt+Shift+L              | Move tab right                |
 | Alt+Shift+F              | Toggle pane fullscreen        |
-| Alt+t                    | Open the configured popup program |
+| Alt+t                    | Toggle the configured popup program |
 
 ### Zellij Modes (Helix-Compatible)
 | Keybinding                | Action                        | Notes |
 |--------------------------|-------------------------------|-------|
 | **Alt+Shift+M**          | **Yazelix menu**              | opens yzx command palette popup |
-| **Alt+t**                | **Popup program**             | opens the configured transient popup command |
+| **Alt+t**                | **Popup program**             | opens, focuses, or closes the managed popup command |
 | **Ctrl+Alt+g**           | **Locked mode**               | ⚠️ Remapped (was Ctrl+g) |
 | Ctrl+p                   | Pane mode                     | ✅ Original (no conflict) |
 | Ctrl+n                   | Resize mode                   | ✅ Original (no conflict) |
@@ -50,7 +50,7 @@ If you find a conflict, please open an issue
 ## Yazelix Custom Keybindings
 - **Zellij**:
   - `Alt+Shift+F` toggles pane fullscreen
-  - `Alt+t` opens the configured transient popup program (defaults to `lazygit`)
+  - `Alt+t` toggles the configured managed popup program (defaults to `lazygit`)
   - `Alt+Shift+H` moves the current tab left
   - `Alt+Shift+L` moves the current tab right
   - `Alt+w/q` walks left/right (focus tabs)

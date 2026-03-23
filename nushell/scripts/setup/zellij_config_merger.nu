@@ -4,7 +4,7 @@
 
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
 use ../utils/config_parser.nu parse_yazelix_config
-use ./zellij_plugin_paths.nu get_pane_orchestrator_wasm_path
+use ./zellij_plugin_paths.nu [get_pane_orchestrator_wasm_path get_popup_runner_wasm_path]
 
 # Fetch Zellij default configuration
 def get_zellij_defaults [] {
@@ -157,15 +157,30 @@ def split_keybinds_block [config_content: string] {
     }
 }
 
+def split_plugins_block [config_content: string] {
+    let split = (split_top_level_block $config_content "plugins")
+    {
+        config_without_plugins: $split.config_without_block
+        plugin_lines: $split.block_lines
+    }
+}
+
 def build_yazelix_load_plugins_block [
     existing_load_plugin_lines: list<string>
     pane_orchestrator_wasm_path: string
+    popup_runner_wasm_path: string
 ] {
+    mut merged_plugin_lines = $existing_load_plugin_lines
     let pane_orchestrator_entry = $"  \"file:($pane_orchestrator_wasm_path)\""
-    let merged_plugin_lines = if ($existing_load_plugin_lines | any {|line| $line | str contains $pane_orchestrator_wasm_path}) {
-        $existing_load_plugin_lines
-    } else {
-        $existing_load_plugin_lines | append $pane_orchestrator_entry
+    let pane_orchestrator_present = ($merged_plugin_lines | any {|line| $line | str contains $pane_orchestrator_wasm_path })
+    if not $pane_orchestrator_present {
+        $merged_plugin_lines = ($merged_plugin_lines | append $pane_orchestrator_entry)
+    }
+
+    let popup_runner_entry = $"  \"file:($popup_runner_wasm_path)\""
+    let popup_runner_present = ($merged_plugin_lines | any {|line| $line | str contains $popup_runner_wasm_path })
+    if not $popup_runner_present {
+        $merged_plugin_lines = ($merged_plugin_lines | append $popup_runner_entry)
     }
 
     (
@@ -243,10 +258,14 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     
     let pane_orchestrator_wasm_path = (get_pane_orchestrator_wasm_path $yazelix_dir)
     let pane_orchestrator_plugin_url = $"file:($pane_orchestrator_wasm_path)"
+    let popup_runner_wasm_path = (get_popup_runner_wasm_path $yazelix_dir)
     let yazelix_overrides = (read_yazelix_overrides $yazelix_dir $pane_orchestrator_plugin_url)
 
     if not ($pane_orchestrator_wasm_path | path exists) {
         error make {msg: $"Pane orchestrator runtime wasm not found at: ($pane_orchestrator_wasm_path)"}
+    }
+    if not ($popup_runner_wasm_path | path exists) {
+        error make {msg: $"Popup runner runtime wasm not found at: ($popup_runner_wasm_path)"}
     }
 
     # Copy layouts directory to merged config
@@ -261,7 +280,8 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     # Generate configuration from user config or defaults
     let base_config_raw = get_base_config
     let extracted_load_plugins = (split_load_plugins_block $base_config_raw)
-    let extracted_keybinds = (split_keybinds_block $extracted_load_plugins.config_without_load_plugins)
+    let extracted_plugins = (split_plugins_block $extracted_load_plugins.config_without_load_plugins)
+    let extracted_keybinds = (split_keybinds_block $extracted_plugins.config_without_plugins)
     # Remove any settings we control from base config (yazelix.toml takes precedence)
     # This prevents conflicts when multiple declarations of the same setting exist
     let base_config = ($extracted_keybinds.config_without_keybinds | lines | where {|line|
@@ -279,7 +299,6 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         )
     } | str join "\n")
     let merged_keybinds_block = (build_merged_keybinds_block $extracted_keybinds.keybind_lines $yazelix_overrides.keybind_lines)
-
     let merged_config = [
         "// ========================================",
         "// GENERATED ZELLIJ CONFIG (YAZELIX)",
@@ -308,7 +327,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         $"layout_dir \"($yazelix_layout_dir)\"",
         "",
         "// === YAZELIX BACKGROUND PLUGINS ===",
-        (build_yazelix_load_plugins_block $extracted_load_plugins.load_plugin_lines $pane_orchestrator_wasm_path)
+        (build_yazelix_load_plugins_block $extracted_load_plugins.load_plugin_lines $pane_orchestrator_wasm_path $popup_runner_wasm_path)
     ] | str join "\n"
     
     # Write atomically (write to temp file, then move)
