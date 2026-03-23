@@ -84,7 +84,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Better Config Inspection** – `yzx config` is much more useful now, with focused section views for `hx`, `yazi`, and `zellij`, plus `yzx config open`
 - **Simpler Update and Testing Commands** – `yzx update` and `yzx dev test` were simplified into clearer defaults that are easier to remember and safer to use
 - **Clearer Refresh and Environment Feedback** – `yzx env` now shows rebuild activity more clearly, launch paths skip noisy shell-hook welcomes, and Yazelix warns when runtime versions drift
-- **Command Palette** – `yzx menu` gives you a searchable command palette for the main Yazelix actions, including a popup mode inside Zellij on `Alt+Shift+m`
+- **Command Palette** – `yzx menu` gives you a searchable command palette for the main Yazelix actions, including a popup mode inside Zellij on `Alt+Shift+M`
 - **Refresh Workflow** – `yzx refresh` makes it easier to rebuild the Yazelix environment without launching the UI, while `yzx restart` cleanly switches the current window onto the refreshed profile
 
 Full version history: [Version History](./docs/history.md)

@@ -29,7 +29,7 @@ See the origin story in `docs/the_start.md`.
 - **Cross-Tab Yazi Cwd Isolation** - `yzx cwd` and related sidebar sync flows now target the current tab's managed Yazi pane instead of whichever sidebar state file was updated most recently in the session
 - **Stronger Workspace Cwd Routing** - The `yzx cwd` flow gained better tab retargeting, managed-editor cwd sync, sidebar sync, and cleaner tab naming, making directory changes behave more like a first-class workspace action
 - **Zellij and Workspace Diagnostics** - `yzx doctor` now checks Zellij plugin health directly, and Yazelix documents the plugin permission flow more clearly when diagnosing broken workspace behavior
-- **Workspace UX Polish** - Added `yzx keys`, aligned Yazi workspace keybindings, made Zellij default mode configurable, and cleaned up `Alt+Shift+m` pane handling
+- **Workspace UX Polish** - Added `yzx keys`, aligned Yazi workspace keybindings, made Zellij default mode configurable, and cleaned up `Alt+Shift+M` pane handling
 - **Agent and Update Flow Follow-Through** - Added `justcode`, experimented with pi-agent support, then removed the unstable local `pi_rust` packaging path while tightening the canary/update flow
 
 ## v13: Plugin-managed editor/sidebar orchestration, deterministic sidebar controls, and cleaner Zellij workspace navigation
@@ -41,7 +41,7 @@ See the origin story in `docs/the_start.md`.
 - **Better Config Inspection** – `yzx config` now supports focused section views for `hx`, `yazi`, and `zellij`, plus `yzx config open`
 - **Simpler Update and Testing Commands** – `yzx update` and `yzx dev test` were simplified into clearer defaults that are easier to remember and safer to use
 - **Clearer Refresh and Environment Feedback** – `yzx env` now shows rebuild activity more clearly, launch paths skip noisy shell-hook welcomes, and Yazelix warns when runtime versions drift
-- **Command Palette** – `yzx menu` gives you a searchable command palette for the main Yazelix actions, including a popup mode inside Zellij on `Alt+Shift+m`
+- **Command Palette** – `yzx menu` gives you a searchable command palette for the main Yazelix actions, including a popup mode inside Zellij on `Alt+Shift+M`
 - **Refresh Workflow** – `yzx refresh` makes it easier to rebuild the Yazelix environment without launching the UI, while `yzx restart` cleanly switches the current window onto the refreshed profile (as before)
 
 ## v12: User-declared packs, Nixpkgs unstable, declarative themes, and tighter terminal/Zellij/Yazi integration

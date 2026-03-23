@@ -118,6 +118,27 @@ def test_maintainer_pack_stays_in_sync [] {
     }
 }
 
+def test_popup_program_default_stays_in_sync [] {
+    print "🧪 Testing popup_program default stays in sync across config paths..."
+
+    try {
+        let default_config = (open (repo_path "yazelix_default.toml"))
+        let default_popup = ($default_config.zellij.popup_program | default [])
+        let hm_module = (open --raw (repo_path "home_manager" "module.nix"))
+
+        if ($default_popup == ["lazygit"]) and ($hm_module | str contains 'default = [ "lazygit" ];') and ($hm_module | str contains 'popup_program = ${listToToml cfg.popup_program}') {
+            print "  ✅ popup_program default matches in both the default config and Home Manager module"
+            true
+        } else {
+            print $"  ❌ Unexpected popup_program defaults: default=($default_popup | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_home_manager_desktop_entry_evaluates [] {
     print "🧪 Testing Home Manager desktop entry evaluates with StartupWMClass..."
 
@@ -199,6 +220,7 @@ export def run_dev_tests [] {
         (test_gemini_cli_is_reactivated)
         (test_tru_is_in_ai_agents)
         (test_maintainer_pack_stays_in_sync)
+        (test_popup_program_default_stays_in_sync)
         (test_home_manager_desktop_entry_evaluates)
         (test_readme_title_matches_declared_version)
         (test_specs_have_traceability_contract)

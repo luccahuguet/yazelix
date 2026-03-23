@@ -395,7 +395,7 @@ default_mode = "locked"
 }
 
 def test_zellij_horizontal_walking_is_plugin_owned [] {
-    print "🧪 Testing horizontal pane walking routes through the pane orchestrator..."
+    print "🧪 Testing Yazelix-owned Zellij session keybinds are emitted in merged config..."
 
     let tmpdir = (^mktemp -d /tmp/yazelix_zellij_walk_test_XXXXXX | str trim)
 
@@ -411,20 +411,28 @@ def test_zellij_horizontal_walking_is_plugin_owned [] {
         let output = (with-env { HOME: $fake_home, YAZELIX_TEST_OUT_DIR: $out_dir } {
             let root = (get_repo_config_dir)
             generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
-            open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "layouts" "yzx_side.kdl")
+            {
+                config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
+                layout: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "layouts" "yzx_side.kdl"))
+            }
         })
-        let stdout = ($output | str trim)
+        let config_stdout = ($output.config | str trim)
+        let layout_stdout = ($output.layout | str trim)
 
         if (
-            ($stdout | str contains 'bind "Alt h" "Alt Left" {')
-            and ($stdout | str contains 'name "move_focus_left_or_tab"')
-            and ($stdout | str contains 'bind "Alt l" "Alt Right" {')
-            and ($stdout | str contains 'name "move_focus_right_or_tab"')
+            ($config_stdout | str contains 'bind "Alt h" "Alt Left" {')
+            and ($config_stdout | str contains 'name "move_focus_left_or_tab"')
+            and ($config_stdout | str contains 'bind "Alt l" "Alt Right" {')
+            and ($config_stdout | str contains 'name "move_focus_right_or_tab"')
+            and ($config_stdout | str contains 'bind "Alt t" {')
+            and ($config_stdout | str contains 'yzx_popup_program.nu')
+            and not ($layout_stdout | str contains 'bind "Alt h" "Alt Left" {')
+            and not ($layout_stdout | str contains 'bind "Alt t" {')
         ) {
-            print "  ✅ Horizontal pane walking is routed through the Yazelix pane orchestrator"
+            print "  ✅ Yazelix-owned session keybinds are emitted in merged config instead of layout-local keybind blocks"
             true
         } else {
-            print "  ❌ Unexpected result: generated layout is missing Yazelix-owned Alt+h/Alt+l bindings"
+            print "  ❌ Unexpected result: merged config/layout ownership for Yazelix keybinds is wrong"
             false
         }
     } catch { |err|

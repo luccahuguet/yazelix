@@ -130,6 +130,12 @@ When creating new files or directories, always use underscores to maintain consi
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the synced wasm plus a fresh Yazelix session.
 - After syncing a new pane-orchestrator wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
 
+## Zellij Keybinding Rule
+
+- In Yazelix Zellij config, do not `unbind` a key that Yazelix then intends to `bind` for its own action in the same merged config.
+- Empirical rule for this repo: if you `unbind` a key and then try to reuse it for a Yazelix-owned action in the same merged config, that key becomes dead.
+- If Yazelix owns the key, emit only the replacement `bind`. Use `unbind` only for keys Yazelix is truly removing without reusing.
+
 ## Planning and Decision Making
 
 **ALWAYS PLAN FIRST** - Before taking significant actions (like git commits, major changes, or file operations), explicitly discuss the approach and get user approval. This includes:

@@ -107,10 +107,10 @@ def ensure_dir [path: string] {
     }
 }
 
-def split_load_plugins_block [config_content: string] {
+def split_top_level_block [config_content: string, block_name: string] {
     mut stripped_lines = []
-    mut load_plugin_lines = []
-    mut in_load_plugins_block = false
+    mut block_lines = []
+    mut in_named_block = false
     mut brace_depth = 0
 
     for line in ($config_content | lines) {
@@ -118,9 +118,9 @@ def split_load_plugins_block [config_content: string] {
         let open_braces = (($line | split chars | where {|char| $char == "{"}) | length)
         let close_braces = (($line | split chars | where {|char| $char == "}"}) | length)
 
-        if not $in_load_plugins_block {
-            if ($trimmed | str starts-with "load_plugins") {
-                $in_load_plugins_block = true
+        if not $in_named_block {
+            if ($trimmed | str starts-with $block_name) {
+                $in_named_block = true
                 $brace_depth = ($open_braces - $close_braces)
             } else {
                 $stripped_lines = ($stripped_lines | append $line)
@@ -128,16 +128,32 @@ def split_load_plugins_block [config_content: string] {
         } else {
             $brace_depth = ($brace_depth + $open_braces - $close_braces)
             if $brace_depth > 0 {
-                $load_plugin_lines = ($load_plugin_lines | append $line)
+                $block_lines = ($block_lines | append $line)
             } else {
-                $in_load_plugins_block = false
+                $in_named_block = false
             }
         }
     }
 
     {
-        config_without_load_plugins: ($stripped_lines | str join "\n")
-        load_plugin_lines: $load_plugin_lines
+        config_without_block: ($stripped_lines | str join "\n")
+        block_lines: $block_lines
+    }
+}
+
+def split_load_plugins_block [config_content: string] {
+    let split = (split_top_level_block $config_content "load_plugins")
+    {
+        config_without_load_plugins: $split.config_without_block
+        load_plugin_lines: $split.block_lines
+    }
+}
+
+def split_keybinds_block [config_content: string] {
+    let split = (split_top_level_block $config_content "keybinds")
+    {
+        config_without_keybinds: $split.config_without_block
+        keybind_lines: $split.block_lines
     }
 }
 
@@ -160,6 +176,47 @@ def build_yazelix_load_plugins_block [
         ]
         | str join "\n"
     )
+}
+
+def build_merged_keybinds_block [
+    existing_keybind_lines: list<string>
+    yazelix_keybind_lines: list<string>
+] {
+    let merged_keybind_lines = ($existing_keybind_lines | append $yazelix_keybind_lines | flatten)
+    if ($merged_keybind_lines | is-empty) {
+        ""
+    } else {
+        (
+            [
+                "keybinds {"
+                ...$merged_keybind_lines
+                "}"
+            ]
+            | str join "\n"
+        )
+    }
+}
+
+def read_yazelix_overrides [
+    yazelix_dir: string
+    pane_orchestrator_plugin_url: string
+]: nothing -> record {
+    let overrides_path = ($yazelix_dir | path join $ZELLIJ_CONFIG_PATHS.yazelix_overrides)
+
+    if not ($overrides_path | path exists) {
+        error make {msg: $"Missing Yazelix Zellij overrides file: ($overrides_path)"}
+    }
+
+    let resolved_overrides = (
+        (open $overrides_path)
+        | str replace -a "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" $pane_orchestrator_plugin_url
+        | str replace -a "__YAZELIX_RUNTIME_DIR__" ($yazelix_dir | path expand)
+    )
+    let split_keybinds = (split_keybinds_block $resolved_overrides)
+    {
+        overrides_without_keybinds: $split_keybinds.config_without_keybinds
+        keybind_lines: $split_keybinds.keybind_lines
+    }
 }
 
 # Main function: Generate merged Zellij configuration
@@ -186,6 +243,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     
     let pane_orchestrator_wasm_path = (get_pane_orchestrator_wasm_path $yazelix_dir)
     let pane_orchestrator_plugin_url = $"file:($pane_orchestrator_wasm_path)"
+    let yazelix_overrides = (read_yazelix_overrides $yazelix_dir $pane_orchestrator_plugin_url)
 
     if not ($pane_orchestrator_wasm_path | path exists) {
         error make {msg: $"Pane orchestrator runtime wasm not found at: ($pane_orchestrator_wasm_path)"}
@@ -203,9 +261,10 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     # Generate configuration from user config or defaults
     let base_config_raw = get_base_config
     let extracted_load_plugins = (split_load_plugins_block $base_config_raw)
+    let extracted_keybinds = (split_keybinds_block $extracted_load_plugins.config_without_load_plugins)
     # Remove any settings we control from base config (yazelix.toml takes precedence)
     # This prevents conflicts when multiple declarations of the same setting exist
-    let base_config = ($extracted_load_plugins.config_without_load_plugins | lines | where {|line|
+    let base_config = ($extracted_keybinds.config_without_keybinds | lines | where {|line|
         let trimmed = ($line | str trim)
         not (
             ($trimmed | str starts-with "theme ") or
@@ -219,6 +278,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
             ($trimmed | str starts-with "default_shell ")
         )
     } | str join "\n")
+    let merged_keybinds_block = (build_merged_keybinds_block $extracted_keybinds.keybind_lines $yazelix_overrides.keybind_lines)
 
     let merged_config = [
         "// ========================================",
@@ -232,6 +292,10 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         "// ========================================",
         "",
         $base_config,
+        "",
+        $yazelix_overrides.overrides_without_keybinds,
+        "",
+        $merged_keybinds_block,
         "",
         (get_dynamic_overrides),
         "",

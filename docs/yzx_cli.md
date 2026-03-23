@@ -148,8 +148,17 @@ Interactive command palette (fuzzy search)
 - Lists most `yzx` commands while hiding maintenance-heavy or low-signal entries (`yzx dev*`, `yzx env`, `yzx run`)
 - Cancel with `Esc`
 - In popup mode after running a command: `Backspace` returns to menu, `Enter`/`Esc` closes popup
-- Keybind: `Alt Shift m` opens the popup menu in Zellij
+- Keybind: `Alt Shift M` opens the popup menu in Zellij
 - Popup pane is named `yzx_menu` to avoid duplicate menu instances
+
+### `yzx popup [COMMAND ...]`
+Open a transient floating-pane command inside Zellij
+- Default: runs `zellij.popup_program` from `yazelix.toml`
+- `COMMAND ...`: override the configured popup command for one invocation
+- Uses the current tab workspace root as cwd when available; otherwise uses the current shell cwd
+- Errors if not in Zellij
+- Default keybind: `Alt t`
+- Popup pane is named `yzx_popup`
 
 ### `yzx config [--full] [--path]`
 Show the active Yazelix configuration via Nushell `open`

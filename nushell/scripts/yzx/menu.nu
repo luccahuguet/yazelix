@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # yzx menu - Interactive command palette and config opener
 
-use ../integrations/zellij.nu [resolve_tab_cwd_target set_tab_workspace_root]
+use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap open_floating_runtime_wrapper resolve_tab_cwd_target set_tab_workspace_root]
 use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 use ../utils/config_parser.nu parse_yazelix_config
@@ -135,8 +135,8 @@ export def "yzx menu" [
             error make {msg: "Not in a Zellij session; run `yzx menu` directly or start Yazelix/Zellij first."}
         }
 
-        let wrapper = $"($env.HOME)/.config/yazelix/configs/zellij/scripts/yzx_menu_popup.nu"
-        zellij run --name yzx_menu --floating --close-on-exit --width 70% --height 70% --x 15% --y 15% -- nu $wrapper
+        let popup_cwd = ((get_current_tab_workspace_root_including_bootstrap) | default (pwd))
+        open_floating_runtime_wrapper "yzx_menu" "yzx_menu_popup.nu" $popup_cwd
         return
     }
 

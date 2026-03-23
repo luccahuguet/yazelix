@@ -3,6 +3,7 @@
 
 use ../utils/logging.nu *
 use ../setup/zellij_plugin_paths.nu get_pane_orchestrator_wasm_path
+use ../utils/common.nu [get_yazelix_runtime_dir]
 
 def get_pane_orchestrator_plugin_url [] {
     let wasm_path = (get_pane_orchestrator_wasm_path)
@@ -30,6 +31,23 @@ def run_pane_orchestrator_command [command_name: string, log_file: string, paylo
 
 export def run_pane_orchestrator_command_raw [command_name: string, payload: string = "", log_file: string = "zellij_plugin_debug.log"] {
     run_pane_orchestrator_command $command_name $log_file $payload
+}
+
+export def open_floating_runtime_wrapper [
+    pane_name: string
+    wrapper_name: string
+    cwd: string
+    extra_env: record = {}
+    command_args: list<string> = []
+] {
+    let runtime_dir = (get_yazelix_runtime_dir)
+    let wrapper = ($runtime_dir | path join "configs" "zellij" "scripts" $wrapper_name)
+    if not ($wrapper | path exists) {
+        error make {msg: $"Floating wrapper script not found at: ($wrapper)"}
+    }
+
+    let env_args = ($extra_env | transpose key value | each {|row| $"($row.key)=($row.value)" })
+    ^zellij run --name $pane_name --floating --close-on-exit --width 70% --height 70% --x 15% --y 15% --cwd $cwd -- env ...$env_args nu $wrapper ...$command_args
 }
 
 export def focus_managed_pane [pane_name: string, log_file: string = "zellij_plugin.log"] {

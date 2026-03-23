@@ -37,7 +37,8 @@ def print_yazelix_keys [] {
     ]
     heading "Command and mode access"
     print_table [
-        {keybinding: (accent_key "Alt+Shift+m"), action: "Open the yzx command palette popup"}
+        {keybinding: (accent_key "Alt+t"), action: "Open the configured transient popup program"}
+        {keybinding: (accent_key "Alt+Shift+M"), action: "Open the yzx command palette popup"}
         {keybinding: (accent_key "Ctrl+Alt+g"), action: "Locked mode"}
         {keybinding: (accent_key "Ctrl+Alt+s"), action: "Scroll mode"}
         {keybinding: (accent_key "Ctrl+Alt+o"), action: "Session mode"}
@@ -47,7 +48,7 @@ def print_yazelix_keys [] {
         {keybinding: (accent_key "Alt+h / Alt+l"), action: "Walk left/right across visible panes, falling back to previous/next tab"}
         {keybinding: (accent_key "Alt+w / Alt+q"), action: "Walk next/previous tab"}
         {keybinding: (accent_key "Alt+Shift+H / Alt+Shift+L"), action: "Move current tab left/right"}
-        {keybinding: (accent_key "Alt+Shift+f"), action: "Toggle pane fullscreen"}
+        {keybinding: (accent_key "Alt+Shift+F"), action: "Toggle pane fullscreen"}
     ]
     heading "More"
     print $"(label 'Yazi:') (accent_cmd 'yzx keys yazi')"
@@ -66,7 +67,7 @@ def print_yazi_keys [] {
         }
         {
             step: "Optional"
-            action: $"Press (accent_key '`Alt+Shift+f`') first"
+            action: $"Press (accent_key '`Alt+Shift+F`') first"
             notes: "Fullscreen the pane for easier reading"
         }
     ] | table)

@@ -288,7 +288,7 @@ If you are maintaining Yazelix and rebuild the pane-orchestrator plugin, prefer 
 - Use `alt hjkl` to switch between Zellij panes and tabs
 - Press `Enter` in Yazi to open files in your configured editor
 - Use `yzx help` to see all available management commands
-- Use `Alt+Shift+f` to toggle fullscreen on the current pane
+- Use `Alt+Shift+F` to toggle fullscreen on the current pane
 
 ### Step 9: Configure Helix Integration (Optional)
 

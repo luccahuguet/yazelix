@@ -44,6 +44,7 @@ def test_parse_config [] {
             "persistent_sessions",
             "session_name",
             "zellij_default_mode",
+            "popup_program",
             "terminals",
             "default_shell",
             "helix_mode",
@@ -112,6 +113,13 @@ def test_config_values [] {
             return false
         } else {
             print $"  ✅ Valid zellij_default_mode: ($config.zellij_default_mode)"
+        }
+
+        if (($config.popup_program | describe) !~ "list") or ($config.popup_program | is-empty) {
+            print $"  ❌ Invalid popup_program: ($config.popup_program | to json -r)"
+            return false
+        } else {
+            print $"  ✅ Valid popup_program: (($config.popup_program | str join ' '))"
         }
 
         true

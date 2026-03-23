@@ -214,6 +214,15 @@ widget_tray = [
   "ram",     # RAM usage
 ]
 
+# Default transient popup command for Zellij floating-pane launches.
+# This powers `yzx popup` and the default popup keybinding.
+# Use an argv-style list, not a shell string.
+# Examples:
+#   ["lazygit"]
+#   ["claude-code", "--continue"]
+#   ["opencode"]
+popup_program = ["lazygit"]
+
 # Zellij persistent session configuration
 # When true, Yazelix will use zellij attach with the specified session name
 # When false, Yazelix will create a new session each time

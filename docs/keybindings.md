@@ -12,12 +12,14 @@ Yazelix uses **selective remapping** - only conflicting Zellij keybindings are c
 | Alt+q                    | Walk to previous tab (focus)  |
 | Alt+Shift+H              | Move tab left                 |
 | Alt+Shift+L              | Move tab right                |
-| Alt+Shift+f              | Toggle pane fullscreen        |
+| Alt+Shift+F              | Toggle pane fullscreen        |
+| Alt+t                    | Open the configured popup program |
 
 ### Zellij Modes (Helix-Compatible)
 | Keybinding                | Action                        | Notes |
 |--------------------------|-------------------------------|-------|
-| **Alt+Shift+m**          | **Yazelix menu**              | opens yzx command palette popup |
+| **Alt+Shift+M**          | **Yazelix menu**              | opens yzx command palette popup |
+| **Alt+t**                | **Popup program**             | opens the configured transient popup command |
 | **Ctrl+Alt+g**           | **Locked mode**               | ⚠️ Remapped (was Ctrl+g) |
 | Ctrl+p                   | Pane mode                     | ✅ Original (no conflict) |
 | Ctrl+n                   | Resize mode                   | ✅ Original (no conflict) |
@@ -37,7 +39,7 @@ If you find a conflict, please open an issue
 - **Yazelix**: Run `yzx keys` for Yazelix-owned bindings; use `yzx keys yazi`, `yzx keys hx`, or `yzx keys nu` for tool-specific discoverability hints
 - **Zellij**: Shows all keybindings visually in the status bar—works out of the box
 - **Helix**: Similar to Zellij, key bindings are easy to discover
-- **Yazi**: Press `~` to see all keybindings and commands (use `Alt Shift f` to fullscreen the pane for a better view)
+- **Yazi**: Press `~` to see all keybindings and commands (use `Alt Shift F` to fullscreen the pane for a better view)
 - **Nushell**:
   - Run `tutor` in Nushell
   - Read the [Nushell Book](https://www.nushell.sh/book/)
@@ -47,7 +49,8 @@ If you find a conflict, please open an issue
 
 ## Yazelix Custom Keybindings
 - **Zellij**:
-  - `Alt+Shift+f` toggles pane fullscreen
+  - `Alt+Shift+F` toggles pane fullscreen
+  - `Alt+t` opens the configured transient popup program (defaults to `lazygit`)
   - `Alt+Shift+H` moves the current tab left
   - `Alt+Shift+L` moves the current tab right
   - `Alt+w/q` walks left/right (focus tabs)

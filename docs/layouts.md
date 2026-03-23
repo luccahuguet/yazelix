@@ -39,6 +39,6 @@ So the current rule is:
 
 ## Tips
 
-- Use `Alt+Shift+f` to toggle pane fullscreen temporarily
+- Use `Alt+Shift+F` to toggle pane fullscreen temporarily
 - Keep custom launch layouts as top-level `.kdl` files under `configs/zellij/layouts/`
 - Keep sidebar-family changes inside the built-in families unless you are also updating the pane orchestrator

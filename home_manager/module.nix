@@ -319,6 +319,15 @@ in
       description = "Zjstatus widget tray order (layout/editor/shell/term/cpu/ram)";
     };
 
+    popup_program = mkOption {
+      type = types.listOf types.str;
+      default = [ "lazygit" ];
+      description = ''
+        Default transient popup command for `yzx popup` and the default popup keybinding.
+        Use an argv-style list, eg. [ "lazygit" ] or [ "claude-code" "--continue" ].
+      '';
+    };
+
     yazi_plugins = mkOption {
       type = types.listOf types.str;
       default = [
@@ -621,6 +630,7 @@ in
             "support_kitty_keyboard_protocol = ${boolToToml cfg.support_kitty_keyboard_protocol}"
             "theme = ${escapeString cfg.zellij_theme}"
             "widget_tray = ${listToToml cfg.zellij_widget_tray}"
+            "popup_program = ${listToToml cfg.popup_program}"
             "persistent_sessions = ${boolToToml cfg.persistent_sessions}"
             "session_name = ${escapeString cfg.session_name}"
             "default_mode = ${escapeString cfg.zellij_default_mode}"

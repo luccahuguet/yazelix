@@ -1,16 +1,13 @@
 // Yazelix-specific overrides
- 
-// override these in zellij/personal/user_config.kdl
- 
-// Use Yazelix's custom layouts (yzx_side.kdl or yzx_no_side.kdl)
-default_layout "yazelix"
+//
+// Applied at the merged config.kdl layer so they are session-wide and do not
+// depend on layout-local keybind loading behavior.
 
-// Clipboard command is now set dynamically based on platform (pbcopy on macOS, wl-copy on Linux)
-// See nushell/scripts/setup/zellij_config_merger.nu for implementation
-// Override in configs/zellij/personal/user_config.kdl if needed
+// override these in zellij/personal/user_config.kdl when needed
 
-// Use configured editor (via EDITOR env var) for viewing scrollback history when pressing Ctrl+Alt+s
-// scrollback_editor defaults to $EDITOR when not specified
+// Use configured editor (via EDITOR env var) for viewing scrollback history
+// when pressing Ctrl+Alt+s. scrollback_editor defaults to $EDITOR when not
+// specified.
 
 // Enable session serialization for workspace recovery
 session_serialization true
@@ -18,3 +15,227 @@ pane_viewport_serialization true
 
 // Remove pane borders - required for zjstatus plugin to display properly
 pane_frames false
+
+keybinds {
+    shared {
+        // Use original Zellij keybinding but with Ctrl+Alt modifier
+        // Original: Ctrl+O, now: Ctrl+Alt+O to avoid Helix conflicts
+        unbind "Ctrl o"
+        bind "Ctrl Alt o" { SwitchToMode "Session"; }
+
+        // Use original Zellij keybinding but with Ctrl+Alt modifier
+        // Original: Ctrl+S, now: Ctrl+Alt+S to avoid Helix conflicts
+        unbind "Ctrl s"
+        bind "Ctrl Alt s" { SwitchToMode "Scroll"; }
+
+        // Previously: Alt + i (in helix: shrink_selection)
+        unbind "Alt i"
+        // Move tab left (new)
+        bind "Alt Shift H" { MoveTab "Left"; }
+
+        // Previously: Alt + o (in helix: expand_selection)
+        unbind "Alt o"
+        // Move tab right (new)
+        bind "Alt Shift L" { MoveTab "Right"; }
+
+        // Previously: Alt + n (in helix: select_next_sibling)
+        bind "Alt m" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "open_workspace_terminal"
+            }
+        }
+        unbind "Alt n"
+
+        // Alt+number: Go directly to tab 1-9 (tmux style)
+        bind "Alt 1" { GoToTab 1; }
+        bind "Alt 2" { GoToTab 2; }
+        bind "Alt 3" { GoToTab 3; }
+        bind "Alt 4" { GoToTab 4; }
+        bind "Alt 5" { GoToTab 5; }
+        bind "Alt 6" { GoToTab 6; }
+        bind "Alt 7" { GoToTab 7; }
+        bind "Alt 8" { GoToTab 8; }
+        bind "Alt 9" { GoToTab 9; }
+
+        // Not a remap, just for ease of use
+        bind "Alt Shift F" { ToggleFocusFullscreen; SwitchToMode "Normal"; }
+
+        // Alt+q/w: Walk (focus) left/right between tabs
+        bind "Alt q" { GoToPreviousTab; }
+        bind "Alt w" { GoToNextTab; }
+
+        // Unbind Alt+( and Alt+)
+        // fixes selection cycling in helix for alacritty and wezterm
+        // does not work for kitty or ghostty
+        unbind "Alt ("
+        unbind "Alt )"
+
+        // Unbind Alt+p to avoid Helix conflicts (select_previous_sibling).
+        // Keep pane grouping on Ctrl+Alt+p, and expose the Yazelix popup program on
+        // both Alt+t and Alt+Shift+P.
+        //
+        // Do not unbind a key that Yazelix then reuses in the same merged config.
+        // In practice that can suppress the replacement bind entirely.
+        unbind "Alt p"
+        bind "Ctrl Alt p" { TogglePaneInGroup; }
+        bind "Ctrl Alt Shift P" { ToggleGroupMarking; }
+
+        // Yazelix transient popup program (defaults to lazygit)
+        bind "Alt t" {
+            Run "nu" "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/yzx_popup_program.nu" {
+                name "yzx_popup"
+                floating true
+                close_on_exit true
+                x "15%"
+                y "15%"
+                width "70%"
+                height "70%"
+            }
+        }
+
+        bind "Alt Shift P" {
+            Run "nu" "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/yzx_popup_program.nu" {
+                name "yzx_popup"
+                floating true
+                close_on_exit true
+                x "15%"
+                y "15%"
+                width "70%"
+                height "70%"
+            }
+        }
+
+        // Yazelix command palette (yzx menu) in a floating pane
+        bind "Alt Shift M" {
+            Run "nu" "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/yzx_menu_popup.nu" {
+                name "yzx_menu"
+                floating true
+                close_on_exit true
+                x "15%"
+                y "15%"
+                width "70%"
+                height "70%"
+            }
+        }
+    }
+
+    shared_except "locked" {
+        bind "Alt h" "Alt Left" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "move_focus_left_or_tab"
+            }
+        }
+
+        bind "Alt l" "Alt Right" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "move_focus_right_or_tab"
+            }
+        }
+
+        // Remap Ctrl+G from Locked mode to Ctrl+Alt+G to avoid conflict with Claude Code
+        // (Ctrl+G is used by many CLIs for editing the prompt with $EDITOR)
+        unbind "Ctrl g"
+        bind "Ctrl Alt g" { SwitchToMode "Locked"; }
+
+        // Toggle focus between the managed sidebar and the managed editor.
+        bind "Ctrl y" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_editor_sidebar_focus"
+            }
+        }
+
+        // Toggle the managed sidebar by switching between the paired open/closed swap layouts.
+        bind "Alt y" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_sidebar"
+            }
+        }
+
+        // Smart reveal key:
+        // - in the managed editor, forward Alt+r into the editor so editor-local reveal can run
+        // - elsewhere, fall back to the editor/sidebar focus toggle flow
+        bind "Alt r" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "smart_reveal"
+            }
+        }
+
+        // Override raw swap-layout cycling with Yazelix family-aware switching.
+        bind "Alt [" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "previous_family"
+            }
+        }
+        bind "Alt ]" {
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "next_family"
+            }
+        }
+    }
+
+    shared_except "pane" "locked" {
+        bind "Ctrl p" { SwitchToMode "Pane"; }
+    }
+
+    shared_except "resize" "locked" {
+        bind "Ctrl n" { SwitchToMode "Resize"; }
+    }
+
+    shared_except "scroll" "locked" {
+        unbind "Ctrl s"
+        bind "Ctrl Alt s" { SwitchToMode "Scroll"; }
+    }
+
+    shared_except "session" "locked" {
+        unbind "Ctrl o"
+        bind "Ctrl Alt o" { SwitchToMode "Session"; }
+    }
+
+    shared_except "tab" "locked" {
+        bind "Ctrl t" { SwitchToMode "Tab"; }
+    }
+
+    shared_except "move" "locked" {
+        bind "Ctrl h" { SwitchToMode "Move"; }
+    }
+
+    shared_except "locked" {
+        unbind "Ctrl b"
+    }
+
+    shared_except "locked" {
+        bind "Ctrl q" { Quit; }
+    }
+
+    locked {
+        bind "Ctrl Alt g" { SwitchToMode "Normal"; }
+    }
+
+    pane {
+        bind "Ctrl p" { SwitchToMode "Normal"; }
+    }
+
+    resize {
+        bind "Ctrl n" { SwitchToMode "Normal"; }
+    }
+
+    session {
+        // Exit session mode
+        unbind "Ctrl o"
+        bind "Ctrl Alt o" { SwitchToMode "Normal"; }
+    }
+
+    scroll {
+        // Exit scroll mode
+        unbind "Ctrl s"
+        bind "Ctrl Alt s" { SwitchToMode "Normal"; }
+    }
+
+    tab {
+        bind "Ctrl t" { SwitchToMode "Normal"; }
+    }
+
+    move {
+        bind "Ctrl h" { SwitchToMode "Normal"; }
+    }
+}
