@@ -5,11 +5,9 @@
 </div>
 
 ## Preview
-**v8:**
-![yazelix_v8_demo](assets/demos/yazelix_v8_demo.gif)
+![Current Yazelix workspace](assets/screenshots/yazelix_current_example.png)
 
-**v13:**
-![yazelix_v13_example](assets/screenshots/yazelix_v13_example.png)
+The repo keeps one maintained static preview. Add richer demos only when there is a clear front-door surface that actually needs them; see [docs/preview_assets.md](docs/preview_assets.md) for the lightweight capture policy.
 
 ## Overview
 Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://github.com/zellij-org/zellij), and [Helix](https://helix-editor.com) (hence the name!), with first-class support for [Neovim](https://neovim.io) too.
