@@ -61,6 +61,26 @@ def print_yazi_keys [] {
     print ""
     print ([
         {
+            step: "Open in editor"
+            action: (accent_key "`Enter`")
+            notes: "Uses Yazelix's configured editor opener"
+        }
+        {
+            step: "Built-in open"
+            action: (accent_key "`o`")
+            notes: "Uses Yazi's built-in open action"
+        }
+        {
+            step: "Open with"
+            action: (accent_key "`O`")
+            notes: "Shows Yazi's built-in open menu for alternate handlers"
+        }
+        {
+            step: "Yazelix workspace"
+            action: (accent_key "`Alt+p`")
+            notes: "Open the selected directory in a new pane and make it the tab workspace root"
+        }
+        {
             step: "Open key help"
             action: $"Focus the Yazi pane and press (accent_key '`~`')"
             notes: "Shows Yazi's keybindings and commands"

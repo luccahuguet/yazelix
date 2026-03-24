@@ -134,6 +134,14 @@ run = "plugin yamb jump"
 desc = "Jump to bookmark"
 ```
 
+Yazelix intentionally keeps Yazi's upstream open flow intact:
+
+- `Enter`: opens the hovered item through Yazelix's configured editor opener
+- `o`: uses Yazi's built-in open action
+- `O`: opens Yazi's built-in "Open with" menu for alternate handlers, including the system file manager path when available
+
+Because `O` already exposes the practical "open outside the editor" flow, Yazelix does not add a separate default keybinding for opening in the host file manager.
+
 This file is gitignored, so your keybindings persist across updates.
 
 ### Edit Source Configs
