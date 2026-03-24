@@ -118,6 +118,58 @@ def test_maintainer_pack_stays_in_sync [] {
     }
 }
 
+def test_ts_pack_stays_in_sync [] {
+    print "🧪 Testing ts pack stays in sync across config paths..."
+
+    try {
+        let expected = [
+            "nodePackages.typescript-language-server"
+            "tailwindcss-language-server"
+            "biome"
+            "oxlint"
+        ]
+        let default_config = (open (repo_path "yazelix_default.toml"))
+        let default_pack = ($default_config.packs.declarations.ts | default [])
+        let hm_pack = (extract_hm_pack_declaration "ts")
+
+        if (($default_pack | sort) == ($expected | sort)) and (($hm_pack | sort) == ($expected | sort)) {
+            print "  ✅ ts pack matches in both the default config and Home Manager module"
+            true
+        } else {
+            print $"  ❌ Unexpected ts pack contents: default=($default_pack | to json -r) hm=($hm_pack | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_modern_js_pack_stays_in_sync [] {
+    print "🧪 Testing modern_js pack stays in sync across config paths..."
+
+    try {
+        let expected = [
+            "bun"
+            "deno"
+        ]
+        let default_config = (open (repo_path "yazelix_default.toml"))
+        let default_pack = ($default_config.packs.declarations.modern_js | default [])
+        let hm_pack = (extract_hm_pack_declaration "modern_js")
+
+        if (($default_pack | sort) == ($expected | sort)) and (($hm_pack | sort) == ($expected | sort)) {
+            print "  ✅ modern_js pack matches in both the default config and Home Manager module"
+            true
+        } else {
+            print $"  ❌ Unexpected modern_js pack contents: default=($default_pack | to json -r) hm=($hm_pack | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_popup_program_default_stays_in_sync [] {
     print "🧪 Testing popup_program default stays in sync across config paths..."
 
@@ -220,6 +272,8 @@ export def run_dev_tests [] {
         (test_gemini_cli_is_reactivated)
         (test_tru_is_in_ai_agents)
         (test_maintainer_pack_stays_in_sync)
+        (test_ts_pack_stays_in_sync)
+        (test_modern_js_pack_stays_in_sync)
         (test_popup_program_default_stays_in_sync)
         (test_home_manager_desktop_entry_evaluates)
         (test_readme_title_matches_declared_version)

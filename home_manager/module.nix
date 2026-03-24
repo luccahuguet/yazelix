@@ -502,9 +502,13 @@ in
         ];
         ts = [
           "nodePackages.typescript-language-server"
+          "tailwindcss-language-server"
           "biome"
           "oxlint"
+        ];
+        modern_js = [
           "bun"
+          "deno"
         ];
         go = [
           "gopls"

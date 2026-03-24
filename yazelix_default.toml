@@ -423,9 +423,14 @@ nix = [
 
 ts = [
   "nodePackages.typescript-language-server", # TypeScript language server (LSP)
+  "tailwindcss-language-server", # Tailwind CSS language server (LSP)
   "biome", # JS/TS formatter and linter
   "oxlint", # Fast JS/TS linter
-  "bun", # JS runtime, bundler, and test runner
+]
+
+modern_js = [
+  "bun", # JS runtime, package manager, bundler, and test runner
+  "deno", # JS/TS runtime with first-class tooling
 ]
 
 go = [

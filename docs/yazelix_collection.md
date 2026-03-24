@@ -113,9 +113,14 @@ Complete toolchains you can declare:
 
 ### TypeScript Pack (`ts`)
 - [typescript-language-server](https://github.com/typescript-language-server/typescript-language-server) — TypeScript language server for IDE features and LSP support
+- [tailwindcss-language-server](https://github.com/tailwindlabs/tailwindcss-intellisense) — Tailwind CSS language server for utility-class completions, hovers, and diagnostics in Tailwind projects
 - [biome](https://biomejs.dev/) — Formats JS, TS, JSON, CSS, and lints JS/TS
 - [oxlint](https://oxc-project.github.io/) — Extremely fast TypeScript/JavaScript linter from the oxc project
-- [bun](https://bun.sh/) — Fast all-in-one JavaScript runtime, bundler, test runner, and package manager
+
+### Modern JS Pack (`modern_js`)
+- [bun](https://bun.sh/) — Fast all-in-one JavaScript runtime, package manager, bundler, and test runner
+- [deno](https://deno.com/) — Secure JavaScript and TypeScript runtime with built-in tooling
+- `vite-plus` is not bundled yet because it is not packaged in the current nixpkgs snapshot used by Yazelix
 
 ### Maintainer Pack (`maintainer`)
 - [gh](https://cli.github.com/) — GitHub CLI for repo maintenance and issue/PR work
