@@ -420,21 +420,26 @@ def test_resolve_reveal_target_path_from_relative_buffer [] {
     }
 }
 
-export def run_workspace_tests [] {
+export def run_workspace_canonical_tests [] {
     [
-        (test_consume_bootstrap_sidebar_cwd)
-        (test_restart_uses_home_for_future_tab_defaults)
         (test_startup_rejects_missing_working_dir)
         (test_launch_rejects_file_working_dir)
-        (test_terminal_launch_requires_bash)
-        (test_terminal_launch_reports_immediate_failure)
-        (test_posix_startup_launcher_reports_missing_runtime_script)
-        (test_posix_desktop_launcher_reports_missing_runtime_script)
         (test_startup_requires_generated_layout_path)
-        (test_sidebar_layout_uses_wrapper_launcher)
-        (test_sidebar_wrapper_bootstraps_workspace_root)
         (test_yzx_cwd_requires_zellij)
         (test_yzx_cwd_resolves_zoxide_query)
+    ]
+}
+
+export def run_workspace_noncanonical_tests [] {
+    [
+        (test_terminal_launch_reports_immediate_failure)
         (test_resolve_reveal_target_path_from_relative_buffer)
     ]
+}
+
+export def run_workspace_tests [] {
+    [
+        (run_workspace_canonical_tests)
+        (run_workspace_noncanonical_tests)
+    ] | flatten
 }

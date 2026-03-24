@@ -38,73 +38,27 @@ def run_syntax_validation [
     }
 }
 
-def run_passthrough_test [test_file: string, log_file: string] {
-    let status_file = (^mktemp | str trim)
-    let stdout_file = (^mktemp | str trim)
-    let stderr_file = (^mktemp | str trim)
-    let progress_file = (^mktemp | str trim)
-    "" | save --force $progress_file
-    let runner_script = '
-set +e
-
-progress_file="$1"
-test_file="$2"
-stdout_file="$3"
-stderr_file="$4"
-status_file="$5"
-
-: > "$progress_file"
-
-YAZELIX_SWEEP_PROGRESS_FILE="$progress_file" \
-  nu "$test_file" >"$stdout_file" 2>"$stderr_file" &
-test_pid=$!
-
-tail -n +1 -f "$progress_file" &
-tail_pid=$!
-
-wait "$test_pid"
-test_status=$?
-
-kill "$tail_pid" 2>/dev/null || true
-wait "$tail_pid" 2>/dev/null || true
-
-printf "%s" "$test_status" > "$status_file"
-exit 0
-'
-    ^bash -lc $runner_script bash $progress_file $test_file $stdout_file $stderr_file $status_file
-
-    let exit_code = try {
-        open --raw $status_file | str trim | into int
-    } catch {
-        1
-    }
-    let stdout = try {
-        open --raw $stdout_file
-    } catch {
-        ""
-    }
-    let stderr = try {
-        open --raw $stderr_file
-    } catch {
-        ""
-    }
-    rm -f $status_file $stdout_file $stderr_file $progress_file
-
-    $"Test: (($test_file | path basename | str replace '.nu' ''))\nExit code: ($exit_code)\nStdout:\n($stdout)\n" | save --append $log_file
-    if not ($stderr | is-empty) {
-        $"Stderr:\n($stderr)\n" | save --append $log_file
-    }
-    $"---\n" | save --append $log_file
-
-    {
-        exit_code: $exit_code
-        stdout: $stdout
-        stderr: $stderr
-    }
-}
-
 def run_standard_test [test_file: string] {
     do { nu $test_file } | complete
+}
+
+def get_default_test_file_names [] {
+    [
+        "test_yzx_commands.nu"
+        "test_yzx_extra_regressions.nu"
+        "test_reuse_mode.nu"
+    ]
+}
+
+def resolve_suite_test_files [test_dir: string, file_names: list<string>] {
+    $file_names
+    | each {|name|
+        let path = ($test_dir | path join $name)
+        if not ($path | path exists) {
+            error make { msg: $"Missing test file declared in suite: ($path)" }
+        }
+        $path
+    }
 }
 
 # Run all tests and report results
@@ -112,15 +66,15 @@ export def run_all_tests [
     --verbose(-v)  # Show detailed output
     --new-window(-n)  # Run tests in a new Yazelix window
     --lint-only  # Run only syntax validation
-    --sweep  # Run only the non-visual configuration sweep
-    --visual  # Run only the visual terminal sweep
-    --all(-a)  # Run the full suite plus the visual terminal sweep
+    --sweep  # Run the non-visual configuration sweep only
+    --visual  # Run the visual terminal sweep only
+    --all(-a)  # Run the default suite plus sweep + visual lanes
     --delay: int = 3  # Delay between visual terminal launches in seconds
 ] {
     let visual_delay = ($delay | default 3)
     let run_only_sweep = ($sweep and not $visual and not $all)
     let run_only_visual = ($visual and not $sweep and not $all)
-    let run_both_sweeps = ($sweep and $visual and not $all)
+    let run_only_both_sweeps = ($sweep and $visual and not $all)
 
     # If --new-window flag is set, launch tests in a new Yazelix instance
     if $new_window {
@@ -175,6 +129,17 @@ export def run_all_tests [
         return
     }
 
+    if $run_only_sweep {
+        run_nonvisual_sweep_tests $verbose
+        return
+    }
+
+    if $run_only_both_sweeps {
+        run_nonvisual_sweep_tests $verbose
+        run_visual_sweep_tests $verbose $visual_delay
+        return
+    }
+
     let test_dir = ((get_yazelix_dir) | path join "nushell" "scripts" "dev")
     let log_dir = ((get_yazelix_dir) | path join "logs")
 
@@ -189,23 +154,14 @@ export def run_all_tests [
     let header = $"=== Yazelix Test Run ===\nDate: (date now)\nVerbose: ($verbose)\n\n"
     $header | save $log_file
 
-    # Find all test_*.nu files (excluding test_fonts.nu which is for manual testing)
-    mut test_files = try {
-        glob $"($test_dir)/test_*.nu" | where $it !~ "test_fonts"
-    } catch {
-        []
-    }
-
-    if $run_only_sweep or $run_both_sweeps {
-        $test_files = ($test_files | where ($it | path basename) == "test_config_sweep.nu")
-    }
+    let test_files = (resolve_suite_test_files $test_dir (get_default_test_file_names))
 
     if ($test_files | is-empty) {
-        print "❌ No test files found"
+        print "❌ No test files found for the selected suite"
         return
     }
 
-    let msg_header = "=== Yazelix Test Suite ==="
+    let msg_header = "=== Yazelix Default Test Suite ==="
     let msg_count = $"Running ($test_files | length) test file\(s\)..."
 
     print $msg_header
@@ -262,20 +218,14 @@ export def run_all_tests [
                     {status: "❌ FAIL", test: $test_name, error: $"Exit code: ($output.exit_code)\nStderr: ($output.stderr)"}
                 }
             } else {
-                let output = if $test_name == "test_config_sweep" {
-                    run_passthrough_test $test_file $log_file
-                } else {
-                    (run_standard_test $test_file)
-                }
+                let output = (run_standard_test $test_file)
 
                 # Log output
-                if $test_name != "test_config_sweep" {
-                    $"Test: ($test_name)\nExit code: ($output.exit_code)\nStdout:\n($output.stdout)\n" | save --append $log_file
-                    if not ($output.stderr | is-empty) {
-                        $"Stderr:\n($output.stderr)\n" | save --append $log_file
-                    }
-                    $"---\n" | save --append $log_file
+                $"Test: ($test_name)\nExit code: ($output.exit_code)\nStdout:\n($output.stdout)\n" | save --append $log_file
+                if not ($output.stderr | is-empty) {
+                    $"Stderr:\n($output.stderr)\n" | save --append $log_file
                 }
+                $"---\n" | save --append $log_file
 
                 if $output.exit_code == 0 {
                     {status: "✅ PASS", test: $test_name, error: null}
@@ -343,11 +293,24 @@ export def run_all_tests [
         print $"📝 Full log: ($log_file)"
         print ""
 
-        # Run visual terminal sweep tests if --all flag is set
-        if $all or $run_both_sweeps {
+        if $sweep or $all {
+            run_nonvisual_sweep_tests $verbose
+        }
+
+        if $visual or $all {
             run_visual_sweep_tests $verbose $visual_delay
         }
     }
+}
+
+def run_nonvisual_sweep_tests [verbose: bool] {
+    print ""
+    print "=== Running Non-Visual Configuration Sweep Tests ==="
+    print ""
+
+    let verbose_arg = if $verbose { " --verbose" } else { "" }
+    let sweep_script = ((get_yazelix_dir) | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
+    nu -c $"use \"($sweep_script)\" run_all_sweep_tests; run_all_sweep_tests($verbose_arg)"
 }
 
 def run_visual_sweep_tests [verbose: bool, delay: int] {

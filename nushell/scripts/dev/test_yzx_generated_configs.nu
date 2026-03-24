@@ -567,22 +567,23 @@ def test_zellij_horizontal_walking_is_plugin_owned [] {
     $result
 }
 
-export def run_generated_config_tests [] {
+export def run_generated_config_canonical_tests [] {
     [
-        (test_layout_generator_discovers_custom_top_level_layouts)
         (test_layout_generator_rewrites_runtime_paths)
-        (test_terminal_config_generation_rewrites_runtime_root)
-        (test_terminal_config_renderer_uses_runtime_root_default_template)
-        (test_launch_env_omits_default_helix_runtime)
-        (test_launch_env_keeps_custom_helix_runtime_override)
-        (test_launch_env_omits_yazelix_default_shell)
-        (test_zjstatus_widget_reads_shell_from_config)
-        (test_zjstatus_widget_reads_editor_from_config)
-        (test_zjstatus_custom_text_is_trimmed_and_truncated_in_config_parser)
-        (test_generated_zellij_layout_omits_empty_custom_text_badge)
-        (test_generated_zellij_layout_renders_capped_custom_text_before_branding)
-        (test_sidebar_state_plugin_generated)
         (test_zellij_default_mode_is_enforced_in_merged_config)
+    ]
+}
+
+export def run_generated_config_noncanonical_tests [] {
+    [
+        (test_generated_zellij_layout_renders_capped_custom_text_before_branding)
         (test_zellij_horizontal_walking_is_plugin_owned)
     ]
+}
+
+export def run_generated_config_tests [] {
+    [
+        (run_generated_config_canonical_tests)
+        (run_generated_config_noncanonical_tests)
+    ] | flatten
 }

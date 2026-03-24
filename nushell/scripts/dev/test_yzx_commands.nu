@@ -1,31 +1,31 @@
 #!/usr/bin/env nu
-# Test runner for yzx CLI commands
+# Core regression runner for high-signal yzx CLI contracts
 
 use ./test_yzx_helpers.nu [setup_test_home]
-use ./test_yzx_core_commands.nu [run_core_tests]
-use ./test_yzx_dev_commands.nu [run_dev_tests]
-use ./test_yzx_doctor_commands.nu [run_doctor_tests]
-use ./test_yzx_generated_configs.nu [run_generated_config_tests]
-use ./test_yzx_popup_commands.nu [run_popup_tests]
-use ./test_yzx_refresh_commands.nu [run_refresh_tests]
-use ./test_yzx_workspace_commands.nu [run_workspace_tests]
-use ./test_yzx_yazi_commands.nu [run_yazi_tests]
+use ./test_yzx_core_commands.nu [run_core_canonical_tests]
+use ./test_yzx_dev_commands.nu [run_dev_canonical_tests]
+use ./test_yzx_doctor_commands.nu [run_doctor_canonical_tests]
+use ./test_yzx_generated_configs.nu [run_generated_config_canonical_tests]
+use ./test_yzx_popup_commands.nu [run_popup_canonical_tests]
+use ./test_yzx_refresh_commands.nu [run_refresh_canonical_tests]
+use ./test_yzx_workspace_commands.nu [run_workspace_canonical_tests]
+use ./test_yzx_yazi_commands.nu [run_yazi_canonical_tests]
 
 def main [] {
-    print "=== Testing yzx Commands ==="
+    print "=== Testing core yzx contracts ==="
     print ""
 
     let fixture = (setup_test_home)
     let results = (with-env { HOME: $fixture.tmp_home, YAZELIX_DIR: $fixture.config_dir } {
         [
-            (run_core_tests)
-            (run_dev_tests)
-            (run_doctor_tests)
-            (run_generated_config_tests)
-            (run_popup_tests)
-            (run_refresh_tests)
-            (run_workspace_tests)
-            (run_yazi_tests)
+            (run_core_canonical_tests)
+            (run_dev_canonical_tests)
+            (run_doctor_canonical_tests)
+            (run_generated_config_canonical_tests)
+            (run_popup_canonical_tests)
+            (run_refresh_canonical_tests)
+            (run_workspace_canonical_tests)
+            (run_yazi_canonical_tests)
         ] | flatten
     })
     rm -rf $fixture.tmp_home
@@ -35,9 +35,9 @@ def main [] {
 
     print ""
     if $passed == $total {
-        print $"✅ All yzx command tests passed \(($passed)/($total)\)"
+        print $"✅ All core yzx tests passed \(($passed)/($total)\)"
     } else {
-        print $"❌ Some tests failed \(($passed)/($total)\)"
-        error make { msg: "yzx command tests failed" }
+        print $"❌ Some core yzx tests failed \(($passed)/($total)\)"
+        error make { msg: "core yzx tests failed" }
     }
 }

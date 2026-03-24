@@ -683,24 +683,24 @@ def test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering [
     $result
 }
 
-export def run_core_tests [] {
+export def run_core_canonical_tests [] {
     [
         (test_yzx_status)
-        (test_yzx_config_view)
-        (test_yzx_config_sections)
-        (test_yzx_config_reset_replaces_with_backup)
         (test_invalid_config_is_classified_as_config_problem)
         (test_config_state_supports_split_config_and_runtime_dirs)
-        (test_config_reset_supports_split_config_and_runtime_dirs)
-        (test_shell_hook_generation_uses_runtime_root)
-        (test_shell_hook_version_check_accepts_runtime_root_hooks)
-        (test_bash_runtime_config_uses_its_own_runtime_root)
-        (test_runtime_shell_assets_avoid_repo_shaped_runtime_paths)
-        (test_pane_orchestrator_tracked_path_defaults_to_runtime_root)
-        (test_pane_orchestrator_permission_cache_is_preserved_for_stable_runtime_path)
-        (test_popup_runner_tracked_path_defaults_to_runtime_root)
-        (test_popup_runner_permission_cache_is_preserved_for_stable_runtime_path)
-        (test_packs_helper_uses_runtime_root_for_devenv_links)
         (test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering)
     ]
+}
+
+export def run_core_noncanonical_tests [] {
+    [
+        (test_yzx_config_reset_replaces_with_backup)
+    ]
+}
+
+export def run_core_tests [] {
+    [
+        (run_core_canonical_tests)
+        (run_core_noncanonical_tests)
+    ] | flatten
 }

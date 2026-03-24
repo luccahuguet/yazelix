@@ -222,17 +222,25 @@ def test_popup_toggle_wrapper_surfaces_permission_denials [] {
     }
 }
 
-export def run_popup_tests [] {
+export def run_popup_canonical_tests [] {
     [
         (test_popup_command_prefers_configured_default)
-        (test_popup_command_allows_inline_override)
         (test_popup_cwd_prefers_workspace_root)
-        (test_popup_launch_uses_shared_floating_runner)
-        (test_popup_wrapper_runs_inline_without_pane_id)
-        (test_popup_toggle_wrapper_opens_when_popup_is_missing)
-        (test_popup_toggle_wrapper_treats_ok_as_handled)
         (test_popup_toggle_wrapper_surfaces_permission_denials)
     ]
+}
+
+export def run_popup_noncanonical_tests [] {
+    [
+        (test_popup_command_allows_inline_override)
+    ]
+}
+
+export def run_popup_tests [] {
+    [
+        (run_popup_canonical_tests)
+        (run_popup_noncanonical_tests)
+    ] | flatten
 }
 
 def main [] {

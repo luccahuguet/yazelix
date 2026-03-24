@@ -40,9 +40,20 @@ def test_existing_managed_editor_is_reused [] {
     }
 }
 
-export def run_yazi_tests [] {
+export def run_yazi_canonical_tests [] {
     [
         (test_missing_managed_editor_opens_new_managed_pane)
         (test_existing_managed_editor_is_reused)
     ]
+}
+
+export def run_yazi_noncanonical_tests [] {
+    []
+}
+
+export def run_yazi_tests [] {
+    [
+        (run_yazi_canonical_tests)
+        (run_yazi_noncanonical_tests)
+    ] | flatten
 }

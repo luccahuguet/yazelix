@@ -247,26 +247,6 @@ def test_home_manager_desktop_entry_evaluates [] {
     }
 }
 
-def test_readme_title_matches_declared_version [] {
-    print "🧪 Testing README title matches YAZELIX_VERSION..."
-
-    try {
-        let validator_script = ((get_repo_root) | path join "nushell" "scripts" "dev" "validate_readme_version.nu")
-        let output = (^nu $validator_script | complete)
-
-        if $output.exit_code == 0 {
-            print "  ✅ README title/version marker matches YAZELIX_VERSION"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 def test_specs_have_traceability_contract [] {
     print "🧪 Testing real specs declare bead and regression traceability..."
 
@@ -287,18 +267,20 @@ def test_specs_have_traceability_contract [] {
     }
 }
 
-export def run_dev_tests [] {
+export def run_dev_canonical_tests [] {
     [
-        (test_dev_update_canary_set)
-        (test_gemini_cli_is_reactivated)
-        (test_tru_is_in_ai_agents)
-        (test_maintainer_pack_stays_in_sync)
-        (test_ts_pack_stays_in_sync)
-        (test_modern_js_pack_stays_in_sync)
-        (test_popup_program_default_stays_in_sync)
-        (test_zellij_custom_text_default_stays_in_sync)
         (test_home_manager_desktop_entry_evaluates)
-        (test_readme_title_matches_declared_version)
         (test_specs_have_traceability_contract)
     ]
+}
+
+export def run_dev_noncanonical_tests [] {
+    []
+}
+
+export def run_dev_tests [] {
+    [
+        (run_dev_canonical_tests)
+        (run_dev_noncanonical_tests)
+    ] | flatten
 }

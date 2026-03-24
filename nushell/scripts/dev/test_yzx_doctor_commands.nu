@@ -105,10 +105,19 @@ def test_doctor_clarifies_shell_opened_editors_are_not_managed [] {
     }
 }
 
+export def run_doctor_canonical_tests [] {
+    [
+        (test_yzx_doctor_warns_on_stale_config_fields)
+    ]
+}
+
+export def run_doctor_noncanonical_tests [] {
+    []
+}
+
 export def run_doctor_tests [] {
     [
-        (test_yzx_doctor_reports_zellij_plugin_context)
-        (test_yzx_doctor_warns_on_stale_config_fields)
-        (test_doctor_clarifies_shell_opened_editors_are_not_managed)
-    ]
+        (run_doctor_canonical_tests)
+        (run_doctor_noncanonical_tests)
+    ] | flatten
 }

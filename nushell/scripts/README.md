@@ -60,7 +60,7 @@ nu ~/.config/yazelix/nushell/scripts/core/yazelix.nu help
 ```bash
 # Validate script syntax
 yzx dev test --lint-only # Run syntax validation only
-yzx dev test             # Run tests (includes syntax validation)
+yzx dev test             # Run the default non-sweep regression suite (includes syntax validation)
 yzx dev test --sweep     # Run only the config/shell sweep
 yzx dev test --visual    # Run only the visual terminal sweep
 

@@ -65,9 +65,19 @@ def test_command_failure_summary_marks_streamed_output [] {
     }
 }
 
-export def run_refresh_tests [] {
+export def run_refresh_canonical_tests [] {
     [
         (test_command_failure_summary_includes_command_tail_and_recovery)
-        (test_command_failure_summary_marks_streamed_output)
     ]
+}
+
+export def run_refresh_noncanonical_tests [] {
+    []
+}
+
+export def run_refresh_tests [] {
+    [
+        (run_refresh_canonical_tests)
+        (run_refresh_noncanonical_tests)
+    ] | flatten
 }

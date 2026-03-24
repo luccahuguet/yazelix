@@ -12,12 +12,13 @@ Health checks and diagnostics
 
 ### `yzx dev test [--verbose] [--new-window] [--lint-only] [--sweep] [--visual] [--all] [--delay SECONDS]`
 Run Yazelix test suite
+- Default: run the normal non-sweep automated regression suite
 - `--verbose`: Show detailed test output
 - `--new-window`: Launch tests in a new Yazelix window (useful for debugging crashes)
 - `--lint-only`: Run only syntax validation
 - `--sweep`: Run only the non-visual configuration sweep
 - `--visual`: Run only the visual terminal sweep (launches actual terminal windows)
-- `--all`: Run the full suite plus the visual terminal sweep
+- `--all`: Run the default suite plus non-visual sweep + visual sweep
 - `--delay`: Delay between visual terminal launches in seconds (default: 3)
 
 ### `yzx dev bench [-n ITERATIONS] [-t TERMINAL] [--verbose]`
@@ -255,13 +256,13 @@ yzx packs --expand            # Show packages within each pack
 yzx packs --all               # Show all declared packs (even disabled)
 
 # Development verification
-yzx dev test                  # Run the default test suite
-yzx dev test --verbose        # Run tests with detailed output
+yzx dev test                  # Run the default non-sweep regression suite
+yzx dev test --verbose        # Run the default suite with detailed output
 yzx dev test --new-window     # Run tests in separate window (for debugging)
 yzx dev test --lint-only      # Run only syntax validation
 yzx dev test --sweep          # Run only the non-visual config/shell sweep
 yzx dev test --visual         # Run only the visual terminal sweep
-yzx dev test --all            # Run full suite plus visual terminal sweep
+yzx dev test --all            # Run the default suite plus sweep + visual lanes
 
 # Benchmarking
 yzx dev bench                 # Benchmark all available terminals (3 iterations each)

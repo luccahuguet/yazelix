@@ -958,9 +958,9 @@ export def "yzx dev test" [
     --verbose(-v)  # Show detailed test output
     --new-window(-n)  # Run tests in a new Yazelix window
     --lint-only  # Run only syntax validation
-    --sweep  # Run only the non-visual configuration sweep
-    --visual  # Run only the visual terminal sweep
-    --all(-a)  # Run the full suite plus the visual terminal sweep
+    --sweep  # Run the non-visual configuration sweep only
+    --visual  # Run the visual terminal sweep only
+    --all(-a)  # Run the default suite plus sweep + visual lanes
     --delay: int = 3  # Delay between visual terminal launches in seconds
 ] {
     use ../utils/test_runner.nu run_all_tests
