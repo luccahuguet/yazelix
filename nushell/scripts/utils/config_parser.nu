@@ -30,6 +30,26 @@ def parse_zellij_default_mode [raw_config: record] {
     $default_mode
 }
 
+def parse_zjstatus_custom_text [raw_config: record] {
+    let raw_text = ($raw_config.zellij?.custom_text? | default "" | into string)
+    let compact = (
+        $raw_text
+        | str replace -ar '\s+' ' '
+        | str trim
+        | str replace -ar '[\[\]\{\}"\\]' ''
+    )
+
+    if ($compact | is-empty) {
+        return ""
+    }
+
+    if (($compact | str length) > 8) {
+        $compact | str substring 0..7
+    } else {
+        $compact
+    }
+}
+
 def parse_positive_parallel_setting [value: any, label: string, allowed_symbols: list<string>, default_value: string] {
     let normalized = ($value | default $default_value | into string | str downcase)
 
@@ -99,6 +119,7 @@ export def parse_yazelix_config [] {
         zellij_default_mode: (parse_zellij_default_mode $raw_config),
         zellij_theme: ($raw_config.zellij?.theme? | default "default"),
         zellij_widget_tray: ($raw_config.zellij?.widget_tray? | default ["layout", "editor", "shell", "term", "cpu", "ram"]),
+        zellij_custom_text: (parse_zjstatus_custom_text $raw_config),
         popup_program: ($raw_config.zellij?.popup_program? | default ["lazygit"]),
         support_kitty_keyboard_protocol: ($raw_config.zellij?.support_kitty_keyboard_protocol? | default false | into string),
         terminals: ($raw_config.terminal?.terminals? | default ["ghostty"]),

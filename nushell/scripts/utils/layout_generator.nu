@@ -2,6 +2,7 @@
 # Copy Zellij layouts to merged config directory
 
 const widget_tray_placeholder = "__YAZELIX_WIDGET_TRAY__"
+const custom_text_placeholder = "__YAZELIX_CUSTOM_TEXT_SEGMENT__"
 const pane_orchestrator_plugin_url_placeholder = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__"
 const home_dir_placeholder = "__YAZELIX_HOME_DIR__"
 const runtime_dir_placeholder = "__YAZELIX_RUNTIME_DIR__"
@@ -33,6 +34,15 @@ def build_widget_tray [widget_tray: list<string>]: nothing -> string {
         $parts = ($parts | append $part)
     }
     $parts | str join " "
+}
+
+def build_custom_text_segment [custom_text: string]: nothing -> string {
+    let trimmed = ($custom_text | str trim)
+    if ($trimmed | is-empty) {
+        ""
+    } else {
+        $"#[fg=#ffff00,bold][($trimmed)] "
+    }
 }
 
 def load_static_fragments [layouts_source_dir: string]: nothing -> list<record> {
@@ -86,6 +96,7 @@ export def generate_layout [
     source_layout: string
     target_layout: string
     widget_tray: list<string>
+    custom_text: string
     static_fragments: list<record>
     pane_orchestrator_plugin_url: string
     runtime_dir: string
@@ -103,6 +114,11 @@ export def generate_layout [
     if ($updated | str contains $widget_tray_placeholder) {
         let tray = build_widget_tray $widget_tray
         $updated = ($updated | str replace -a $widget_tray_placeholder $tray)
+    }
+
+    if ($updated | str contains $custom_text_placeholder) {
+        let segment = build_custom_text_segment $custom_text
+        $updated = ($updated | str replace -a $custom_text_placeholder $segment)
     }
 
     if ($updated | str contains $home_dir_placeholder) {
@@ -130,6 +146,7 @@ export def generate_all_layouts [
     layouts_source_dir: string
     layouts_target_dir: string
     widget_tray: list<string>
+    custom_text: string
     pane_orchestrator_plugin_url: string
     runtime_dir: string
 ]: nothing -> nothing {
@@ -153,7 +170,7 @@ export def generate_all_layouts [
         let target = ($layouts_target_dir | path join $file)
 
         if ($source | path exists) {
-            generate_layout $source $target $widget_tray $static_fragments $pane_orchestrator_plugin_url $runtime_dir
+            generate_layout $source $target $widget_tray $custom_text $static_fragments $pane_orchestrator_plugin_url $runtime_dir
             print $"Generated layout: ($target)"
         }
     }

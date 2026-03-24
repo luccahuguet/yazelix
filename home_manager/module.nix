@@ -319,6 +319,12 @@ in
       description = "Zjstatus widget tray order (layout/editor/shell/term/cpu/ram)";
     };
 
+    zellij_custom_text = mkOption {
+      type = types.str;
+      default = "";
+      description = "Optional short zjstatus badge shown before YAZELIX. Trimmed and capped at 8 characters.";
+    };
+
     popup_program = mkOption {
       type = types.listOf types.str;
       default = [ "lazygit" ];
@@ -634,6 +640,7 @@ in
             "support_kitty_keyboard_protocol = ${boolToToml cfg.support_kitty_keyboard_protocol}"
             "theme = ${escapeString cfg.zellij_theme}"
             "widget_tray = ${listToToml cfg.zellij_widget_tray}"
+            "custom_text = ${escapeString cfg.zellij_custom_text}"
             "popup_program = ${listToToml cfg.popup_program}"
             "persistent_sessions = ${boolToToml cfg.persistent_sessions}"
             "session_name = ${escapeString cfg.session_name}"

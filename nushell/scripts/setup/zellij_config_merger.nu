@@ -245,6 +245,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     let yazelix_layout_dir = $"($merged_config_dir)/layouts"
     let config = parse_yazelix_config
     let widget_tray = ($config.zellij_widget_tray? | default ["layout", "editor", "shell", "term", "cpu", "ram"])
+    let custom_text = ($config.zellij_custom_text? | default "")
     let kitty_protocol = ($config | get -o support_kitty_keyboard_protocol | default "true")
     let kitty_protocol_value = if ($kitty_protocol | str starts-with "false") { "false" } else { "true" }
     let default_shell = ($config.default_shell? | default "nu")
@@ -274,7 +275,10 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     if ($source_layouts_dir | path exists) {
         # Copy layouts to merged config directory
         use ../utils/layout_generator.nu
-        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $pane_orchestrator_plugin_url $yazelix_dir
+        if ($custom_text | is-not-empty) {
+            print $"ℹ️  zjstatus custom text badge: '($custom_text)'"
+        }
+        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $custom_text $pane_orchestrator_plugin_url $yazelix_dir
     }
     
     # Generate configuration from user config or defaults

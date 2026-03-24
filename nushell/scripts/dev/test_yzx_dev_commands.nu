@@ -191,6 +191,27 @@ def test_popup_program_default_stays_in_sync [] {
     }
 }
 
+def test_zellij_custom_text_default_stays_in_sync [] {
+    print "🧪 Testing zellij custom_text default stays in sync across config paths..."
+
+    try {
+        let default_config = (open (repo_path "yazelix_default.toml"))
+        let default_custom_text = ($default_config.zellij.custom_text | default "")
+        let hm_module = (open --raw (repo_path "home_manager" "module.nix"))
+
+        if ($default_custom_text == "") and ($hm_module | str contains 'default = "";') and ($hm_module | str contains 'custom_text = ${escapeString cfg.zellij_custom_text}') {
+            print "  ✅ zellij custom_text default matches in both the default config and Home Manager module"
+            true
+        } else {
+            print $"  ❌ Unexpected zellij custom_text defaults: default=($default_custom_text | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_home_manager_desktop_entry_evaluates [] {
     print "🧪 Testing Home Manager desktop entry evaluates with StartupWMClass..."
 
@@ -275,6 +296,7 @@ export def run_dev_tests [] {
         (test_ts_pack_stays_in_sync)
         (test_modern_js_pack_stays_in_sync)
         (test_popup_program_default_stays_in_sync)
+        (test_zellij_custom_text_default_stays_in_sync)
         (test_home_manager_desktop_entry_evaluates)
         (test_readme_title_matches_declared_version)
         (test_specs_have_traceability_contract)

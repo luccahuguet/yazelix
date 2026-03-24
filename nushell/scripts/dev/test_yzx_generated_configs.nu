@@ -39,7 +39,7 @@ def test_layout_generator_discovers_custom_top_level_layouts [] {
         'layout { pane }' | save --force --raw $custom_layout_path
 
         use ../utils/layout_generator.nu *
-        generate_all_layouts $source_dir $target_dir ["layout", "editor"] "file:/tmp/yazelix_pane_orchestrator.wasm" $source_dir
+        generate_all_layouts $source_dir $target_dir ["layout", "editor"] "" "file:/tmp/yazelix_pane_orchestrator.wasm" $source_dir
 
         let generated_layout_path = ($target_dir | path join "custom_layout.kdl")
         let generated_fragments_dir = ($target_dir | path join "fragments")
@@ -83,7 +83,7 @@ def test_layout_generator_rewrites_runtime_paths [] {
         }
 
         use ../utils/layout_generator.nu *
-        generate_all_layouts $source_dir $target_dir ["layout", "editor"] "file:/tmp/yazelix_pane_orchestrator.wasm" $runtime_dir
+        generate_all_layouts $source_dir $target_dir ["layout", "editor"] "" "file:/tmp/yazelix_pane_orchestrator.wasm" $runtime_dir
 
         let generated_layout = (open --raw ($target_dir | path join "yzx_side.kdl"))
 
@@ -330,6 +330,112 @@ command = "nvim --headless"
     }
 }
 
+def test_zjstatus_custom_text_is_trimmed_and_truncated_in_config_parser [] {
+    print "🧪 Testing zjstatus custom text is normalized in config parsing..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_widget_custom_text_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        '[zellij]
+custom_text = "  notes[]{}12345  "
+' | save --force --raw $config_path
+
+        let parsed = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+        let normalized = ($parsed | get zellij_custom_text)
+
+        if $normalized == "notes123" {
+            print "  ✅ Config parser trims, sanitizes, and caps zjstatus custom text to 8 characters"
+            true
+        } else {
+            print $"  ❌ Unexpected result: normalized=($normalized)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_generated_zellij_layout_omits_empty_custom_text_badge [] {
+    print "🧪 Testing generated Zellij layout omits empty zjstatus custom text..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_badge_empty_XXXXXX | str trim)
+
+    let result = (try {
+        let out_dir = ($tmpdir | path join "out")
+
+        let generated_layout = (with-env { YAZELIX_TEST_OUT_DIR: $out_dir } {
+            let root = (get_repo_config_dir)
+            generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
+            open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "layouts" "yzx_side.kdl")
+        })
+        let stdout = ($generated_layout | str trim)
+
+        if (
+            ($stdout | str contains '#[fg=#00ccff,bold]YAZELIX {command_version}')
+            and not ($stdout | str contains '#[fg=#ffff00,bold][')
+        ) {
+            print "  ✅ Empty zjstatus custom text stays invisible in the generated layout"
+            true
+        } else {
+            print "  ❌ Unexpected result: empty custom text still rendered a badge"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_generated_zellij_layout_renders_capped_custom_text_before_branding [] {
+    print "🧪 Testing generated Zellij layout renders capped zjstatus custom text before branding..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_badge_render_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        let out_dir = ($tmpdir | path join "out")
+        '[zellij]
+custom_text = "  roadmap-2026  "
+' | save --force --raw $config_path
+
+        let generated_layout = (with-env {
+            YAZELIX_CONFIG_OVERRIDE: $config_path
+            YAZELIX_TEST_OUT_DIR: $out_dir
+        } {
+            let root = (get_repo_config_dir)
+            generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
+            open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "layouts" "yzx_side.kdl")
+        })
+        let stdout = ($generated_layout | str trim)
+        let expected_segment = '#[fg=#ffff00,bold][roadmap-] #[fg=#00ccff,bold]YAZELIX {command_version}'
+
+        if ($stdout | str contains $expected_segment) {
+            print "  ✅ Rendered zjstatus custom text is capped to 8 characters and placed before YAZELIX"
+            true
+        } else {
+            print $"  ❌ Unexpected result: expected_segment=($expected_segment)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def test_sidebar_state_plugin_generated [] {
     print "🧪 Testing generated Yazi init includes sidebar-state..."
 
@@ -456,6 +562,9 @@ export def run_generated_config_tests [] {
         (test_launch_env_omits_yazelix_default_shell)
         (test_zjstatus_widget_reads_shell_from_config)
         (test_zjstatus_widget_reads_editor_from_config)
+        (test_zjstatus_custom_text_is_trimmed_and_truncated_in_config_parser)
+        (test_generated_zellij_layout_omits_empty_custom_text_badge)
+        (test_generated_zellij_layout_renders_capped_custom_text_before_branding)
         (test_sidebar_state_plugin_generated)
         (test_zellij_default_mode_is_enforced_in_merged_config)
         (test_zellij_horizontal_walking_is_plugin_owned)

@@ -214,6 +214,10 @@ widget_tray = [
   "ram",     # RAM usage
 ]
 
+# Optional short badge shown just before the YAZELIX version segment in zjstatus.
+# Empty by default. Whitespace is trimmed and the rendered text is capped at 8 characters.
+custom_text = ""
+
 # Default transient popup command for Zellij floating-pane launches.
 # This powers `yzx popup` and the default popup keybinding.
 # Use an argv-style list, not a shell string.
