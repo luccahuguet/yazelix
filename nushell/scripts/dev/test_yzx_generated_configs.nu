@@ -363,6 +363,14 @@ custom_text = "  notes[]{}12345  "
     $result
 }
 
+def write_minimal_user_zellij_config [fake_home: string] {
+    let zellij_config_dir = ($fake_home | path join ".config" "zellij")
+    let zellij_config_path = ($zellij_config_dir | path join "config.kdl")
+    mkdir $zellij_config_dir
+    'keybinds { normal { bind "f1" { WriteChars "fixture"; } } }'
+        | save --force --raw $zellij_config_path
+}
+
 def test_generated_zellij_layout_omits_empty_custom_text_badge [] {
     print "🧪 Testing generated Zellij layout omits empty zjstatus custom text..."
 
@@ -370,8 +378,13 @@ def test_generated_zellij_layout_omits_empty_custom_text_badge [] {
 
     let result = (try {
         let out_dir = ($tmpdir | path join "out")
+        let fake_home = ($tmpdir | path join "home")
+        write_minimal_user_zellij_config $fake_home
 
-        let generated_layout = (with-env { YAZELIX_TEST_OUT_DIR: $out_dir } {
+        let generated_layout = (with-env {
+            HOME: $fake_home
+            YAZELIX_TEST_OUT_DIR: $out_dir
+        } {
             let root = (get_repo_config_dir)
             generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
             open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "layouts" "yzx_side.kdl")
@@ -405,11 +418,14 @@ def test_generated_zellij_layout_renders_capped_custom_text_before_branding [] {
     let result = (try {
         let config_path = ($tmpdir | path join "yazelix.toml")
         let out_dir = ($tmpdir | path join "out")
+        let fake_home = ($tmpdir | path join "home")
+        write_minimal_user_zellij_config $fake_home
         '[zellij]
 custom_text = "  roadmap-2026  "
 ' | save --force --raw $config_path
 
         let generated_layout = (with-env {
+            HOME: $fake_home
             YAZELIX_CONFIG_OVERRIDE: $config_path
             YAZELIX_TEST_OUT_DIR: $out_dir
         } {
