@@ -42,7 +42,7 @@ def run_standard_test [test_file: string] {
     do { nu $test_file } | complete
 }
 
-def get_default_test_file_names [] {
+export def get_default_test_file_names [] {
     [
         "test_yzx_commands.nu"
         "test_yzx_extra_regressions.nu"

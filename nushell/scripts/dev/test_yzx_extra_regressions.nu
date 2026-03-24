@@ -1,5 +1,7 @@
 #!/usr/bin/env nu
 # Small extra-regression runner for cheap non-core yzx checks
+# Regression-only default-suite entrypoint justified in
+# nushell/scripts/dev/validate_default_test_traceability.nu.
 
 use ./test_yzx_helpers.nu [setup_test_home]
 use ./test_yzx_core_commands.nu [run_core_noncanonical_tests]

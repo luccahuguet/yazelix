@@ -52,9 +52,9 @@ The current repo surface should be understood roughly as:
   - `validate_readme_version.nu`
   - `validate_specs.nu`
 - Default automated lane:
-  - `test_yzx_commands.nu`
-  - `test_yzx_extra_regressions.nu`
-  - the explicit standalone reuse-path regression `test_reuse_mode.nu`
+  - `test_yzx_commands.nu` as the spec-backed core bundle
+  - `test_yzx_extra_regressions.nu` as a small regression-only allowlist entry with justification
+  - the explicit standalone reuse-path regression `test_reuse_mode.nu` as a small regression-only allowlist entry with justification
 - Direct maintainer-only or exploratory scripts that are no longer part of the normal default lane:
   - `test_yzx_maintainer.nu`
 - Optional sweep coverage:
@@ -106,6 +106,12 @@ A test is a strong demotion candidate when it is:
 - tightly coupled to implementation details without protecting supported behavior
 - expensive relative to the signal it provides
 
+### Default-suite traceability model
+
+- `test_yzx_commands.nu` should stay tied to one or more real spec `Defended by:` lines.
+- `test_yzx_extra_regressions.nu` and `test_reuse_mode.nu` are currently the only justified regression-only default-suite entrypoints.
+- The regression-only allowlist should stay tiny and justified in one validator rather than expanding into a shadow second suite.
+
 ### Lane placement rules
 
 - Put cheap structural validators in cheap validator lanes, not in the default `yzx` command bundle.
@@ -153,6 +159,7 @@ So the duplicate README-version assertion is removed from `nushell/scripts/dev/t
 - integration tests: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
 - integration tests: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - integration tests: `nu nushell/scripts/dev/test_yzx_extra_regressions.nu`
+- CI checks: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
 - CI checks: `nu nushell/scripts/dev/validate_readme_version.nu`
 - CI checks: `nu nushell/scripts/dev/validate_specs.nu`
 - manual verification: review `.github/workflows/ci.yml` and `.pre-commit-config.yaml` against the lane definitions in this spec
@@ -161,6 +168,7 @@ So the duplicate README-version assertion is removed from `nushell/scripts/dev/t
 
 - Bead: `yazelix-leq`
 - Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
+- Defended by: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
 - Defended by: `nu nushell/scripts/dev/validate_readme_version.nu`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`
 

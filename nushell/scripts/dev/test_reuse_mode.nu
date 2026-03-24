@@ -1,5 +1,7 @@
 #!/usr/bin/env nu
 # Regression tests for stale profile reuse in --reuse command paths.
+# Regression-only default-suite entrypoint justified in
+# nushell/scripts/dev/validate_default_test_traceability.nu.
 
 use ../utils/launch_state.nu [get_launch_profile require_reused_launch_profile resolve_built_profile]
 

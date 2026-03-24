@@ -1,5 +1,8 @@
 #!/usr/bin/env nu
 # Core regression runner for high-signal yzx CLI contracts
+# Defends: docs/specs/test_suite_governance.md
+# Defends: docs/specs/floating_tui_panes.md
+# Defends: docs/workspace_session_contract.md
 
 use ./test_yzx_helpers.nu [setup_test_home]
 use ./test_yzx_core_commands.nu [run_core_canonical_tests]

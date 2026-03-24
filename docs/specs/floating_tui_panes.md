@@ -53,6 +53,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 ## Traceability
 
 - Bead: `yazelix-2v0`
+- Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
 - Defended by: `cargo test --manifest-path rust_plugins/zellij_popup_runner/Cargo.toml --lib`
 

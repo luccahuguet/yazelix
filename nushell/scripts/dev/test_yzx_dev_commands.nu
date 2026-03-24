@@ -267,10 +267,31 @@ def test_specs_have_traceability_contract [] {
     }
 }
 
+def test_default_suite_traceability_contract [] {
+    print "🧪 Testing the default test suite is tied to specs or justified regression-only entries..."
+
+    try {
+        let validator_script = ((get_repo_root) | path join "nushell" "scripts" "dev" "validate_default_test_traceability.nu")
+        let output = (^nu $validator_script | complete)
+
+        if $output.exit_code == 0 {
+            print "  ✅ default-suite entrypoints are traced to specs or a tiny justified allowlist"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($output.stderr | str trim)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 export def run_dev_canonical_tests [] {
     [
         (test_home_manager_desktop_entry_evaluates)
         (test_specs_have_traceability_contract)
+        (test_default_suite_traceability_contract)
     ]
 }
 
