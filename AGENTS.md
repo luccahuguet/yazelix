@@ -98,7 +98,7 @@ When creating new files or directories, always use underscores to maintain consi
   - GitHub owns the public issue, discussion thread, and open/closed lifecycle.
   - Beads owns planning metadata: dependencies, priority, labels, design notes, acceptance criteria, and execution history.
   - Every GitHub issue in `luccahuguet/yazelix` should have exactly one bead with the issue URL stored as `external_ref`.
-  - Every in-contract GitHub issue should also have one canonical visible comment of the form `Tracked in Beads as \`yazelix-...\`.` so the mapping is obvious from the issue page.
+  - Every in-contract GitHub issue should also have one canonical visible automated comment of the form `Automated: Tracked in Beads as \`yazelix-...\`.` so the mapping is obvious from the issue page.
   - Open GitHub issues should not map to closed beads, and closed GitHub issues should not map to open beads.
   - Title/body evolution in Beads is allowed after import; `external_ref` and lifecycle sync are the hard contract.
   - The automated validator enforces this contract for issues created on or after `2026-03-22`. Older backlog issues are intentionally grandfathered until they are explicitly imported or touched by the local sync flow.

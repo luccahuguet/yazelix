@@ -58,7 +58,7 @@ def test_issue_bead_comment_plan [] {
             let bead = {id: "yazelix-comment", status: "open", external_ref: $issue.url}
             let missing = (plan_issue_bead_comment_sync $issue $bead [])
             let stale = (plan_issue_bead_comment_sync $issue $bead [{id: "IC_stale", body: "Tracked in Beads as `yazelix-old`."}])
-            let current = (plan_issue_bead_comment_sync $issue $bead [{id: "IC_current", body: "Tracked in Beads as `yazelix-comment`."}])
+            let current = (plan_issue_bead_comment_sync $issue $bead [{id: "IC_current", body: "Automated: Tracked in Beads as `yazelix-comment`."}])
             {
                 missing: $missing.kind
                 stale: $stale.kind
@@ -75,7 +75,7 @@ def test_issue_bead_comment_plan [] {
             and ($resolved.missing == "create")
             and ($resolved.stale == "update")
             and ($resolved.current == "noop")
-            and ($resolved.expected_body == "Tracked in Beads as `yazelix-comment`.")
+            and ($resolved.expected_body == "Automated: Tracked in Beads as `yazelix-comment`.")
         ) {
             print "  ✅ Comment planning enforces one canonical Beads comment body"
             true

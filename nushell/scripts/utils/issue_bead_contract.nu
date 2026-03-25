@@ -5,7 +5,7 @@ export def contract_start [] {
 }
 
 export def canonical_issue_bead_comment_body [bead_id: string] {
-    $"Tracked in Beads as `($bead_id)`."
+    $"Automated: Tracked in Beads as `($bead_id)`."
 }
 
 export def parse_json_output [] {
@@ -179,7 +179,7 @@ export def find_issue_bead_comment [comments: list] {
         $comments
         | where { |comment|
             let body = (($comment.body? | default "") | into string | str trim)
-            $body | str starts-with "Tracked in Beads as `"
+            ($body | str starts-with "Tracked in Beads as `") or ($body | str starts-with "Automated: Tracked in Beads as `")
         }
     )
 
