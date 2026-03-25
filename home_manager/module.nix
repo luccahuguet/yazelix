@@ -334,6 +334,18 @@ in
       '';
     };
 
+    popup_width_percent = mkOption {
+      type = types.intBetween 1 100;
+      default = 90;
+      description = "Width of the managed popup as a percentage of the current tab.";
+    };
+
+    popup_height_percent = mkOption {
+      type = types.intBetween 1 100;
+      default = 90;
+      description = "Height of the managed popup as a percentage of the current tab.";
+    };
+
     yazi_plugins = mkOption {
       type = types.listOf types.str;
       default = [
@@ -642,6 +654,8 @@ in
             "widget_tray = ${listToToml cfg.zellij_widget_tray}"
             "custom_text = ${escapeString cfg.zellij_custom_text}"
             "popup_program = ${listToToml cfg.popup_program}"
+            "popup_width_percent = ${toString cfg.popup_width_percent}"
+            "popup_height_percent = ${toString cfg.popup_height_percent}"
             "persistent_sessions = ${boolToToml cfg.persistent_sessions}"
             "session_name = ${escapeString cfg.session_name}"
             "default_mode = ${escapeString cfg.zellij_default_mode}"

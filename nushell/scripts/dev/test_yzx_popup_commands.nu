@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
 use ../yzx/popup.nu [resolve_yzx_popup_command resolve_yzx_popup_cwd]
+use ../utils/config_parser.nu [parse_yazelix_config]
 use ../../../configs/zellij/scripts/yzx_toggle_popup.nu [resolve_popup_toggle_action]
 use ./test_yzx_helpers.nu [repo_path]
 
@@ -87,6 +88,8 @@ def test_popup_launch_uses_shared_floating_runner [] {
         [
             "[zellij]"
             "popup_program = [\"lazygit\"]"
+            "popup_width_percent = 61"
+            "popup_height_percent = 73"
         ] | str join "\n" | save --force --raw $config_path
 
         let yzx_script = (repo_path "nushell" "scripts" "core" "yazelix.nu")
@@ -107,12 +110,89 @@ def test_popup_launch_uses_shared_floating_runner [] {
             and ($logged | str contains "--name")
             and ($logged | str contains "yzx_popup")
             and ($logged | str contains "--floating")
+            and ($logged | str contains "61%")
+            and ($logged | str contains "73%")
             and ($logged | str contains "yzx_popup_program.nu")
         ) {
             print "  ✅ yzx popup launches through the shared floating runner"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) logged=($logged) stderr=($output.stderr | str trim)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_popup_size_parser_accepts_valid_percentages [] {
+    print "🧪 Testing popup size config accepts percentages from 1 to 100..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_popup_size_valid_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+
+        [
+            "[zellij]"
+            "popup_program = [\"lazygit\"]"
+            "popup_width_percent = 1"
+            "popup_height_percent = 100"
+        ] | str join "\n" | save --force --raw $config_path
+
+        let parsed = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            parse_yazelix_config
+        })
+
+        if ($parsed.popup_width_percent == 1) and ($parsed.popup_height_percent == 100) {
+            print "  ✅ popup size config accepts the full 1..100 range"
+            true
+        } else {
+            print $"  ❌ Unexpected parsed values: width=($parsed.popup_width_percent) height=($parsed.popup_height_percent)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_popup_size_parser_rejects_out_of_range_percentages [] {
+    print "🧪 Testing popup size config rejects percentages outside 1 to 100..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_popup_size_invalid_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+
+        [
+            "[zellij]"
+            "popup_program = [\"lazygit\"]"
+            "popup_width_percent = 0"
+            "popup_height_percent = 101"
+        ] | str join "\n" | save --force --raw $config_path
+
+        let parse_result = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            try {
+                parse_yazelix_config
+                { ok: true }
+            } catch { |err|
+                { ok: false, msg: $err.msg }
+            }
+        })
+
+        if (not $parse_result.ok) and ($parse_result.msg | str contains "zellij.popup_width_percent") {
+            print "  ✅ popup size config fails fast on out-of-range values"
+            true
+        } else {
+            print $"  ❌ Unexpected parser result: ($parse_result | to json -r)"
             false
         }
     } catch { |err|
@@ -226,6 +306,8 @@ export def run_popup_canonical_tests [] {
     [
         (test_popup_command_prefers_configured_default)
         (test_popup_cwd_prefers_workspace_root)
+        (test_popup_size_parser_accepts_valid_percentages)
+        (test_popup_size_parser_rejects_out_of_range_percentages)
         (test_popup_toggle_wrapper_surfaces_permission_denials)
     ]
 }

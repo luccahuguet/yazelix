@@ -68,5 +68,5 @@ export def "yzx popup" [
     }
 
     let popup_cwd = (resolve_popup_cwd ((get_current_tab_workspace_root_including_bootstrap) | default "") (pwd))
-    open_floating_runtime_wrapper "yzx_popup" "yzx_popup_program.nu" $popup_cwd { } $popup_program
+    open_floating_runtime_wrapper "yzx_popup" "yzx_popup_program.nu" $popup_cwd { } $popup_program $config.popup_width_percent $config.popup_height_percent
 }

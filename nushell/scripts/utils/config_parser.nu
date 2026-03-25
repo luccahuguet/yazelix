@@ -70,6 +70,23 @@ def parse_positive_parallel_setting [value: any, label: string, allowed_symbols:
     $normalized
 }
 
+def parse_percentage_setting [value: any, label: string, default_value: int] {
+    let normalized = ($value | default $default_value | into string | str trim)
+    let parsed = (try { $normalized | into int } catch { null })
+
+    if $parsed == null {
+        let classification = (format_failure_classification "config" "Update yazelix.toml with a value from 1 to 100, or run `yzx config reset --yes` to restore the template.")
+        error make {msg: $"Invalid ($label) value '($normalized)'. Expected an integer from 1 to 100.\n($classification)"}
+    }
+
+    if ($parsed < 1) or ($parsed > 100) {
+        let classification = (format_failure_classification "config" "Update yazelix.toml with a value from 1 to 100, or run `yzx config reset --yes` to restore the template.")
+        error make {msg: $"Invalid ($label) value '($normalized)'. Expected an integer from 1 to 100.\n($classification)"}
+    }
+
+    $parsed
+}
+
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
     let yazelix_dir = get_yazelix_config_dir
@@ -121,6 +138,8 @@ export def parse_yazelix_config [] {
         zellij_widget_tray: ($raw_config.zellij?.widget_tray? | default ["layout", "editor", "shell", "term", "cpu", "ram"]),
         zellij_custom_text: (parse_zjstatus_custom_text $raw_config),
         popup_program: ($raw_config.zellij?.popup_program? | default ["lazygit"]),
+        popup_width_percent: (parse_percentage_setting $raw_config.zellij?.popup_width_percent? "zellij.popup_width_percent" 90),
+        popup_height_percent: (parse_percentage_setting $raw_config.zellij?.popup_height_percent? "zellij.popup_height_percent" 90),
         support_kitty_keyboard_protocol: ($raw_config.zellij?.support_kitty_keyboard_protocol? | default false | into string),
         terminals: ($raw_config.terminal?.terminals? | default ["ghostty"]),
         manage_terminals: ($raw_config.terminal?.manage_terminals? | default true),

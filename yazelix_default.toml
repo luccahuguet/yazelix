@@ -227,6 +227,11 @@ custom_text = ""
 #   ["opencode"]
 popup_program = ["lazygit"]
 
+# Width and height of the managed popup as percentages of the current tab.
+# Valid range: 1 to 100.
+popup_width_percent = 90
+popup_height_percent = 90
+
 # Zellij persistent session configuration
 # When true, Yazelix will use zellij attach with the specified session name
 # When false, Yazelix will create a new session each time

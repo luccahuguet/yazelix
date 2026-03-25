@@ -39,6 +39,8 @@ export def open_floating_runtime_wrapper [
     cwd: string
     extra_env: record = {}
     command_args: list<string> = []
+    width_percent: int = 90
+    height_percent: int = 90
 ] {
     let runtime_dir = (get_yazelix_runtime_dir)
     let wrapper = ($runtime_dir | path join "configs" "zellij" "scripts" $wrapper_name)
@@ -47,7 +49,14 @@ export def open_floating_runtime_wrapper [
     }
 
     let env_args = ($extra_env | transpose key value | each {|row| $"($row.key)=($row.value)" })
-    ^zellij run --name $pane_name --floating --close-on-exit --width 70% --height 70% --x 15% --y 15% --cwd $cwd -- env ...$env_args nu $wrapper ...$command_args
+    let width_arg = $"($width_percent)%"
+    let height_arg = $"($height_percent)%"
+    let x_offset = (((100 - $width_percent) / 2) | math floor | into int)
+    let y_offset = (((100 - $height_percent) / 2) | math floor | into int)
+    let x_arg = $"($x_offset)%"
+    let y_arg = $"($y_offset)%"
+
+    ^zellij run --name $pane_name --floating --close-on-exit --width $width_arg --height $height_arg --x $x_arg --y $y_arg --cwd $cwd -- env ...$env_args nu $wrapper ...$command_args
 }
 
 export def focus_managed_pane [pane_name: string, log_file: string = "zellij_plugin.log"] {
