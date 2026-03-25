@@ -1,55 +1,11 @@
-name: Work Item
-description: Create a tracked work item that maps cleanly into Beads.
-title: ""
-labels: []
+name: Issue
+description: Report a bug, request a feature, or note something that needs work.
 body:
-  - type: dropdown
-    id: issue_type
+  - type: textarea
+    id: details
     attributes:
-      label: Issue Type
-      description: Choose the closest Beads issue type.
-      options:
-        - feature
-        - task
-        - bug
-        - docs
-        - question
-        - epic
+      label: Details
+      description: Describe the problem, idea, or request.
+      placeholder: What happened, what should change, or what would you like to see?
     validations:
       required: true
-
-  - type: textarea
-    id: summary
-    attributes:
-      label: Summary
-      description: Short problem or outcome statement.
-      placeholder: What should change?
-    validations:
-      required: true
-
-  - type: textarea
-    id: context
-    attributes:
-      label: Context
-      description: Why this matters, or what is currently wrong.
-      placeholder: Current behavior, motivation, or surrounding context.
-    validations:
-      required: true
-
-  - type: textarea
-    id: direction
-    attributes:
-      label: Proposed Direction
-      description: Initial design direction or constraints.
-      placeholder: Suggested approach, boundaries, tradeoffs, or open questions.
-    validations:
-      required: false
-
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: Acceptance Criteria
-      description: Concrete conditions that would make this done.
-      placeholder: Bullet points or short checks are fine.
-    validations:
-      required: false
