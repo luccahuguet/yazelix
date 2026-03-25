@@ -27,3 +27,6 @@ rust_plugins/*/target/
 
 # bv (beads viewer) local config and caches
 .bv/
+
+# Kiro local workspace/spec artifacts
+.kiro/
