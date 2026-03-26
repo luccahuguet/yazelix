@@ -49,7 +49,7 @@ def test_issue_bead_reconciliation_plan [] {
 }
 
 def test_issue_bead_comment_plan [] {
-    print "🧪 Testing issue/bead comment planning creates, updates, and accepts canonical comments..."
+    print "🧪 Testing issue/bead comment planning creates, repairs legacy placeholders, updates stale comments, and accepts canonical comments..."
 
     try {
         let command = '
@@ -57,10 +57,12 @@ def test_issue_bead_comment_plan [] {
             let issue = {number: 600, state: "OPEN", title: "Comment contract", url: "https://github.com/luccahuguet/yazelix/issues/600", createdAt: "2026-03-22T12:40:00Z", body: ""}
             let bead = {id: "yazelix-comment", status: "open", external_ref: $issue.url}
             let missing = (plan_issue_bead_comment_sync $issue $bead [])
+            let placeholder = (plan_issue_bead_comment_sync $issue $bead [{id: "IC_placeholder", body: "$action.body"}])
             let stale = (plan_issue_bead_comment_sync $issue $bead [{id: "IC_stale", body: "Tracked in Beads as `yazelix-old`."}])
             let current = (plan_issue_bead_comment_sync $issue $bead [{id: "IC_current", body: "Automated: Tracked in Beads as `yazelix-comment`."}])
             {
                 missing: $missing.kind
+                placeholder: $placeholder.kind
                 stale: $stale.kind
                 current: $current.kind
                 expected_body: (canonical_issue_bead_comment_body $bead.id)
@@ -73,6 +75,7 @@ def test_issue_bead_comment_plan [] {
         if (
             ($output.exit_code == 0)
             and ($resolved.missing == "create")
+            and ($resolved.placeholder == "update")
             and ($resolved.stale == "update")
             and ($resolved.current == "noop")
             and ($resolved.expected_body == "Automated: Tracked in Beads as `yazelix-comment`.")

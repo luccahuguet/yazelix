@@ -179,7 +179,7 @@ export def find_issue_bead_comment [comments: list] {
         $comments
         | where { |comment|
             let body = (($comment.body? | default "") | into string | str trim)
-            ($body | str starts-with "Tracked in Beads as `") or ($body | str starts-with "Automated: Tracked in Beads as `")
+            ($body == "$action.body") or ($body | str starts-with "Tracked in Beads as `") or ($body | str starts-with "Automated: Tracked in Beads as `")
         }
     )
 

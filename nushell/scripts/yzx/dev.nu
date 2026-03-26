@@ -691,7 +691,7 @@ def update_issue_bead_comment [action: record] {
         ^gh api graphql
             -f $"query=($mutation)"
             -F $"id=($action.comment.id)"
-            -F body=$action.body
+            -F $"body=($action.body)"
         | complete
     )
 
