@@ -199,11 +199,12 @@ export def "yzx status" [
     if $versions or $save {
         print ""
         let version_info_script = ($yazelix_dir | path join "nushell" "scripts" "utils" "version_info.nu")
-        if $save {
-            nu $version_info_script --save
+        let version_info_command = if $save {
+            $"source \"($version_info_script)\"; main --save"
         } else {
-            nu $version_info_script
+            $"source \"($version_info_script)\"; main"
         }
+        ^nu -c $version_info_command
     }
     print "=========================="
 }

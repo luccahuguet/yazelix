@@ -50,7 +50,12 @@ def format_locked_entry [node: record] {
 }
 
 def load_lockfile [] {
-    let lock_path = $"($env.HOME)/.config/yazelix/devenv.lock"
+    let runtime_root = if ($env.YAZELIX_RUNTIME_DIR? | is-not-empty) {
+        $env.YAZELIX_RUNTIME_DIR
+    } else {
+        $"($env.HOME)/.config/yazelix"
+    }
+    let lock_path = ($runtime_root | path join "devenv.lock")
     if not ($lock_path | path exists) {
         return null
     }
@@ -220,7 +225,7 @@ export def main [
             ""
             "## Usage"
             ""
-            "- **Regenerate**: `nu nushell/scripts/utils/version_info.nu --save`"
+            "- **Regenerate**: `yzx status --save`"
             "- **Locked**: Flake input revisions when available (nix uses nixpkgs)"
             "- **Runtime**: Versions resolved from current PATH"
         ]

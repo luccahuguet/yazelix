@@ -89,7 +89,7 @@ impl State {
             }
         };
 
-        focus_pane_with_id(editor_pane.pane_id, false);
+        focus_pane_with_id(editor_pane.pane_id, false, false);
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_to_pane_id(vec![27], editor_pane.pane_id);
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
@@ -117,7 +117,7 @@ impl State {
             return;
         };
 
-        focus_pane_with_id(editor_pane.pane_id, false);
+        focus_pane_with_id(editor_pane.pane_id, false, false);
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_chars_to_pane_id(payload, editor_pane.pane_id);
         self.respond(pipe_message, RESULT_OK);
@@ -128,7 +128,7 @@ impl State {
             return;
         };
 
-        focus_pane_with_id(editor_pane.pane_id, false);
+        focus_pane_with_id(editor_pane.pane_id, false, false);
         sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
         write_to_pane_id(vec![27], editor_pane.pane_id);
         self.respond(pipe_message, RESULT_OK);

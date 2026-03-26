@@ -231,7 +231,7 @@ impl State {
         if sidebar_is_closed {
             self.open_sidebar_and_focus_after_layout_settle();
         } else {
-            focus_pane_with_id(managed_pane.pane_id, false);
+            focus_pane_with_id(managed_pane.pane_id, false, false);
         }
         self.respond(pipe_message, RESULT_OK);
     }
@@ -265,7 +265,7 @@ impl State {
         match plan {
             SidebarFocusTogglePlan::FocusEditor => {
                 if let Some(target_pane) = managed_tab_panes.editor {
-                    focus_pane_with_id(target_pane.pane_id, false);
+                    focus_pane_with_id(target_pane.pane_id, false, false);
                     self.respond(pipe_message, RESULT_OK);
                 } else {
                     self.respond(pipe_message, RESULT_MISSING);
@@ -273,7 +273,7 @@ impl State {
             }
             SidebarFocusTogglePlan::FocusSidebar => {
                 if let Some(target_pane) = managed_tab_panes.sidebar {
-                    focus_pane_with_id(target_pane.pane_id, false);
+                    focus_pane_with_id(target_pane.pane_id, false, false);
                     self.respond(pipe_message, RESULT_OK);
                 } else {
                     self.respond(pipe_message, RESULT_MISSING);
@@ -326,7 +326,7 @@ impl State {
         match resolve_horizontal_focus(&pane_snapshots, direction, sidebar_is_closed) {
             HorizontalFocusPlan::FocusPane(index) => {
                 if let Some(target_pane) = terminal_panes.get(index) {
-                    focus_pane_with_id(target_pane.pane_id, false);
+                    focus_pane_with_id(target_pane.pane_id, false, false);
                     self.respond(pipe_message, RESULT_OK);
                 } else {
                     self.respond(pipe_message, RESULT_MISSING);

@@ -78,7 +78,7 @@ impl State {
             }
             PopupTogglePlan::FocusPopup => {
                 if let Some(popup_pane) = popup_pane {
-                    focus_pane_with_id(popup_pane.pane_id, true);
+                    focus_pane_with_id(popup_pane.pane_id, true, false);
                     self.respond(pipe_message, RESULT_OK);
                 } else {
                     self.respond(pipe_message, RESULT_MISSING);

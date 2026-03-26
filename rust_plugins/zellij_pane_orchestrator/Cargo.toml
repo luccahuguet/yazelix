@@ -6,4 +6,4 @@ edition = "2021"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-zellij-tile = "0.43.1"
+zellij-tile = "0.44.0"
