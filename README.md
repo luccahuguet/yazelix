@@ -1,4 +1,4 @@
-# Yazelix v13.6
+# Yazelix v13.7
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
