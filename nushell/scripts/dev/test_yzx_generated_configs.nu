@@ -406,6 +406,61 @@ ghostty_trail_glow = "none"
     $result
 }
 
+def test_generate_all_terminal_configs_honors_ghostty_trail_color_none [] {
+    print "🧪 Testing ghostty_trail_color = none disables the palette shader and Kitty fallback trail..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_ghostty_trail_none_XXXXXX | str trim)
+    let fake_home = ($tmpdir | path join "home")
+    let config_path = ($tmpdir | path join "yazelix.toml")
+    let runtime_root = (pwd)
+    let terminal_configs_script = ($runtime_root | path join "nushell" "scripts" "utils" "terminal_configs.nu")
+    mkdir $fake_home
+
+    let result = (try {
+        '[terminal]
+terminals = ["ghostty", "kitty"]
+ghostty_trail_color = "none"
+' | save --force --raw $config_path
+
+        let findings = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            use ../utils/config_schema.nu [validate_enum_values]
+            validate_enum_values (open $config_path)
+        })
+        let color_findings = ($findings | where path == "terminal.ghostty_trail_color")
+
+        let command_output = (with-env {
+            HOME: $fake_home
+            YAZELIX_CONFIG_OVERRIDE: $config_path
+        } {
+            ^nu -c $"use \"($terminal_configs_script)\" [generate_all_terminal_configs]; generate_all_terminal_configs \"($runtime_root)\"" | complete
+        })
+
+        let ghostty_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "config"))
+        let kitty_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "kitty" "kitty.conf"))
+
+        if (
+            (($color_findings | is-empty))
+            and ($command_output.exit_code == 0)
+            and ($ghostty_config | str contains '# Cursor color palette: none (disable Yazelix color trail palette)')
+            and (not ($ghostty_config | str contains 'cursor-color = '))
+            and (not ($ghostty_config | str contains 'custom-shader = ./shaders/cursor_trail_'))
+            and ($kitty_config | str contains '# cursor_trail 0  # ghostty_trail_color = none disables the fallback trail')
+        ) {
+            print "  ✅ ghostty_trail_color = none cleanly disables the palette shader and Kitty fallback trail"
+            true
+        } else {
+            print $"  ❌ Unexpected result: findings=($color_findings | to json -r) exit=($command_output.exit_code) stderr=(($command_output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def test_config_schema_rejects_invalid_ghostty_trail_glow [] {
     print "🧪 Testing config schema rejects invalid Ghostty trail glow levels..."
 
@@ -704,6 +759,7 @@ export def run_generated_config_canonical_tests [] {
     [
         (test_layout_generator_rewrites_runtime_paths)
         (test_ghostty_trail_glow_defaults_to_medium_and_reads_explicit_levels)
+        (test_generate_all_terminal_configs_honors_ghostty_trail_color_none)
         (test_config_schema_rejects_invalid_ghostty_trail_glow)
         (test_generate_all_terminal_configs_honors_ghostty_trail_glow)
         (test_zellij_default_mode_is_enforced_in_merged_config)

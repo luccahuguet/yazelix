@@ -160,6 +160,7 @@ in
 
     ghostty_trail_color = mkOption {
       type = types.enum [
+        "none"
         "blaze"
         "snow"
         "cosmic"
@@ -178,7 +179,8 @@ in
       default = "random";
       description = ''
         Ghostty cursor color palette and Kitty cursor-trail fallback preset.
-        Supported by Ghostty: "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "eclipse", "dusk", "orchid", "reef", "inferno", "random"
+        Disable the palette and fallback trail: "none"
+        Supported by Ghostty: "none", "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "eclipse", "dusk", "orchid", "reef", "inferno", "random"
         Supported by Ghostty and Kitty: "snow"
         "random" chooses a different Ghostty color palette each generation (excluding "party")
       '';

@@ -119,6 +119,8 @@ background-opacity-cells = true"
 def build_ghostty_cursor_palette [selected_color: string] {
     if $selected_color == null {
         "# cursor-color = #ffb929"
+    } else if $selected_color == "none" {
+        "# Cursor color palette: none \(disable Yazelix color trail palette\)"
     } else {
         let cursor_hex = (get_ghostty_cursor_color_hex $selected_color)
         [
@@ -155,6 +157,7 @@ def build_ghostty_cursor_effects [trail_effect, mode_effect] {
 def build_kitty_cursor [ghostty_trail_color] {
     match $ghostty_trail_color {
         "snow" | "random" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
+        "none" => "# cursor_trail 0  # ghostty_trail_color = none disables the fallback trail",
         null => "# cursor_trail 0",
         _ => "# cursor_trail 0  # Custom effects \(blaze/ocean/forest/sunset/neon/cosmic\) not supported"
     }

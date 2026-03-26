@@ -133,6 +133,7 @@ manage_terminals = true
 config_mode = "yazelix"
 
 # Cursor color palette for Ghostty shaders, plus Kitty's simple cursor-trail fallback
+# Disable the palette and fallback trail: "none"
 # Mono-color: "blaze", "snow", "cosmic", "ocean", "forest", "sunset"
 # Duo-color: "neon", "eclipse", "dusk", "orchid", "reef"
 # Extreme: "party"

@@ -5,7 +5,7 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
 - **Configuration File**: Edit `~/.config/yazelix/yazelix.toml` for all core options. See [yazelix_default.toml](../yazelix_default.toml) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, sidebar toggle, debug mode, etc).
 - **Terminal Configurations**:
   - **Bundled terminals** (yazelix-ghostty, etc.): Configs generated dynamically from your yazelix settings
-    - **Ghostty cursor shaders**: Use `ghostty_trail_color` for the palette, `ghostty_trail_effect` for cursor-movement trails, and `ghostty_mode_effect` for mode-change pulses like Neovim normal/insert transitions. Each defaults to `random`. Helix does not support every trail effect yet; Neovim currently has the best support.
+    - **Ghostty cursor shaders**: Use `ghostty_trail_color` for the palette, `ghostty_trail_effect` for cursor-movement trails, and `ghostty_mode_effect` for mode-change pulses like Neovim normal/insert transitions. `ghostty_trail_color = "none"` disables the Yazelix palette shader and Kitty fallback trail; the others default to `random`. Helix does not support every trail effect yet; Neovim currently has the best support.
     - **Transparency**: Configure `transparency = "none"`, `"low"`, `"medium"`, or `"high"`
     - **No manual copying required** - auto-generated when launching yazelix
   - **Reference configs** (generated snapshot): `configs/terminal_emulators/`

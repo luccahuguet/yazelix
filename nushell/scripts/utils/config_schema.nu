@@ -144,7 +144,7 @@ def get_nested_value [data: any, path: list<string>] {
 # Helper: Validate enum values for key fields
 export def validate_enum_values [user: record] {
     mut findings = []
-    let ghostty_trail_color_allowed = (($CURSOR_TRAIL_SHADERS | columns | where $it != "none") | append ["random"])
+    let ghostty_trail_color_allowed = (($CURSOR_TRAIL_SHADERS | columns) | append ["random"])
     let ghostty_trail_effect_allowed = ($GHOSTTY_TRAIL_EFFECTS | append ["random"])
     let ghostty_mode_effect_allowed = ($GHOSTTY_MODE_EFFECTS | append ["random"])
     let enums = [
