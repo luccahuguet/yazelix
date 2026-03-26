@@ -43,11 +43,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 
     float mod = .005; // Smaller modifier for cleaner white effect
     //trail - clean white effect
-    vec4 trail = mix(TRAIL_COLOR_ACCENT, fragColor, 1. - smoothstep(0., sdfTrail + mod, 0.006));
-    trail = mix(TRAIL_COLOR, trail, 1. - smoothstep(0., sdfTrail + mod, 0.005));
+    vec4 trail = mix(TRAIL_COLOR_ACCENT, fragColor, trailGlowMask(sdfTrail, mod, 0.006));
+    trail = mix(TRAIL_COLOR, trail, trailEdgeMask(sdfTrail, mod, 0.005));
     trail = mix(trail, TRAIL_COLOR, step(sdfTrail + mod, 0.));
     //cursor - subtle white glow
-    trail = mix(TRAIL_COLOR_ACCENT, trail, 1. - smoothstep(0., sdfCurrentCursor + .001, 0.003));
-    trail = mix(TRAIL_COLOR, trail, 1. - smoothstep(0., sdfCurrentCursor + .001, 0.003));
+    trail = mix(TRAIL_COLOR_ACCENT, trail, cursorGlowMask(sdfCurrentCursor, .001, 0.003));
+    trail = mix(TRAIL_COLOR, trail, cursorEdgeMask(sdfCurrentCursor, .001, 0.003));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }

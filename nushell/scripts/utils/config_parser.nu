@@ -147,6 +147,7 @@ export def parse_yazelix_config [] {
         ghostty_trail_color: ($raw_config.terminal?.ghostty_trail_color? | default "random"),
         ghostty_trail_effect: ($raw_config.terminal?.ghostty_trail_effect? | default "random"),
         ghostty_mode_effect: ($raw_config.terminal?.ghostty_mode_effect? | default "random"),
+        ghostty_trail_glow: ($raw_config.terminal?.ghostty_trail_glow? | default "medium"),
         transparency: ($raw_config.terminal?.transparency? | default "medium"),
         default_shell: ($raw_config.shell?.default_shell? | default "nu"),
         extra_shells: ($raw_config.shell?.extra_shells? | default []),

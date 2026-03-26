@@ -363,6 +363,139 @@ custom_text = "  notes[]{}12345  "
     $result
 }
 
+def test_ghostty_trail_glow_defaults_to_medium_and_reads_explicit_levels [] {
+    print "🧪 Testing Ghostty trail glow defaults to medium and parses explicit levels..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_ghostty_glow_parse_XXXXXX | str trim)
+
+    let result = (try {
+        let default_config_path = ($tmpdir | path join "default.toml")
+        let explicit_config_path = ($tmpdir | path join "explicit.toml")
+
+        '[terminal]
+ghostty_trail_color = "blaze"
+' | save --force --raw $default_config_path
+
+        '[terminal]
+ghostty_trail_color = "blaze"
+ghostty_trail_glow = "none"
+' | save --force --raw $explicit_config_path
+
+        let parsed_default = (with-env { YAZELIX_CONFIG_OVERRIDE: $default_config_path } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+        let parsed_explicit = (with-env { YAZELIX_CONFIG_OVERRIDE: $explicit_config_path } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+
+        if ($parsed_default.ghostty_trail_glow == "medium") and ($parsed_explicit.ghostty_trail_glow == "none") {
+            print "  ✅ Ghostty trail glow defaults to medium and honors explicit enum values"
+            true
+        } else {
+            print $"  ❌ Unexpected values: default=($parsed_default.ghostty_trail_glow) explicit=($parsed_explicit.ghostty_trail_glow)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_config_schema_rejects_invalid_ghostty_trail_glow [] {
+    print "🧪 Testing config schema rejects invalid Ghostty trail glow levels..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_ghostty_glow_schema_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        '[terminal]
+ghostty_trail_glow = "ultra"
+' | save --force --raw $config_path
+
+        let findings = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            use ../utils/config_schema.nu [validate_enum_values]
+            validate_enum_values (open $config_path)
+        })
+        let glow_findings = ($findings | where path == "terminal.ghostty_trail_glow")
+
+        if (
+            (($glow_findings | length) == 1)
+            and (($glow_findings | get 0.kind) == "invalid_enum")
+        ) {
+            print "  ✅ Config schema rejects unsupported Ghostty trail glow enum values"
+            true
+        } else {
+            print $"  ❌ Unexpected findings: ($glow_findings | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_generate_all_terminal_configs_honors_ghostty_trail_glow [] {
+    print "🧪 Testing Ghostty terminal config generation propagates trail glow into shaders..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_ghostty_glow_gen_XXXXXX | str trim)
+    let fake_home = ($tmpdir | path join "home")
+    let config_path = ($tmpdir | path join "yazelix.toml")
+    let runtime_root = (pwd)
+    let terminal_configs_script = ($runtime_root | path join "nushell" "scripts" "utils" "terminal_configs.nu")
+    mkdir $fake_home
+
+    let result = (try {
+        '[terminal]
+terminals = ["ghostty"]
+ghostty_trail_color = "blaze"
+ghostty_trail_effect = "tail"
+ghostty_mode_effect = "ripple"
+ghostty_trail_glow = "none"
+' | save --force --raw $config_path
+
+        let command_output = (with-env {
+            HOME: $fake_home
+            YAZELIX_CONFIG_OVERRIDE: $config_path
+        } {
+            ^nu -c $"use \"($terminal_configs_script)\" [generate_all_terminal_configs]; generate_all_terminal_configs \"($runtime_root)\"" | complete
+        })
+
+        let blaze_shader = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "shaders" "cursor_trail_blaze.glsl"))
+        let tail_shader = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "shaders" "generated_effects" "tail.glsl"))
+        let blur_matches = ($tail_shader | parse -r 'const float BLUR = (?<value>[0-9.]+);')
+        let blur_value = if ($blur_matches | is-empty) { null } else { $blur_matches | get 0.value | into float }
+
+        if (
+            ($command_output.exit_code == 0)
+            and ($blaze_shader | str contains 'const float YAZELIX_TRAIL_GLOW_STRENGTH = 0.0;')
+            and ($blaze_shader | str contains 'const float YAZELIX_CURSOR_GLOW_STRENGTH = 0.0;')
+            and ($tail_shader | str contains 'ghostty_trail_glow = none')
+            and ($blur_value != null)
+            and ($blur_value < 0.5)
+        ) {
+            print "  ✅ Ghostty shader generation removes extra aura for glow=none while preserving shader selection"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($command_output.exit_code) blur=($blur_value) blaze_has_header=(($blaze_shader | str contains 'YAZELIX_TRAIL_GLOW_STRENGTH = 0.0;')) stderr=(($command_output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def write_minimal_user_zellij_config [fake_home: string] {
     let zellij_config_dir = ($fake_home | path join ".config" "zellij")
     let zellij_config_path = ($zellij_config_dir | path join "config.kdl")
@@ -570,6 +703,9 @@ def test_zellij_horizontal_walking_is_plugin_owned [] {
 export def run_generated_config_canonical_tests [] {
     [
         (test_layout_generator_rewrites_runtime_paths)
+        (test_ghostty_trail_glow_defaults_to_medium_and_reads_explicit_levels)
+        (test_config_schema_rejects_invalid_ghostty_trail_glow)
+        (test_generate_all_terminal_configs_honors_ghostty_trail_glow)
         (test_zellij_default_mode_is_enforced_in_merged_config)
     ]
 }

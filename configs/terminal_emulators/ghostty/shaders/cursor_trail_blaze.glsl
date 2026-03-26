@@ -96,11 +96,11 @@ float cursorEdgeMask(float sdf, float offset, float width) {
     return 1.0 - smoothstep(0.0, sdf + offset, width);
 }
 
-// Sunset orange/pink variant
+// Blaze fire variant
 
-const vec4 TRAIL_COLOR = vec4(1.00, 0.48, 0.35, 1.0);      // ~#FF7A59
-const vec4 TRAIL_COLOR_ACCENT = vec4(1.00, 0.24, 0.37, 1.0); // ~#FF3D5E
-const float DURATION = 0.27;
+const vec4 TRAIL_COLOR = vec4(1.0, 0.725, 0.161, 1.0);
+const vec4 TRAIL_COLOR_ACCENT = vec4(1.0, 0.0, 0.0, 1.0);
+const float DURATION = 0.3;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
@@ -130,10 +130,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     float easedProgress = ease(progress);
     float lineLength = distance(centerCC, centerCP);
 
-    float mod = .006;
+    float mod = .007;
     vec4 trail = mix(saturate(TRAIL_COLOR_ACCENT, 1.5), fragColor, trailGlowMask(sdfTrail, mod, 0.007));
     trail = mix(saturate(TRAIL_COLOR, 1.5), trail, trailEdgeMask(sdfTrail, mod, 0.006));
-    trail = mix(trail, saturate(TRAIL_COLOR, 1.4), step(sdfTrail + mod, 0.));
+    trail = mix(trail, saturate(TRAIL_COLOR, 1.5), step(sdfTrail + mod, 0.));
     trail = mix(saturate(TRAIL_COLOR_ACCENT, 1.5), trail, cursorGlowMask(sdfCurrentCursor, .002, 0.004));
     trail = mix(saturate(TRAIL_COLOR, 1.5), trail, cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));

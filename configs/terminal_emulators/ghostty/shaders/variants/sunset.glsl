@@ -33,10 +33,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     float lineLength = distance(centerCC, centerCP);
 
     float mod = .006;
-    vec4 trail = mix(saturate(TRAIL_COLOR_ACCENT, 1.5), fragColor, 1. - smoothstep(0., sdfTrail + mod, 0.007));
-    trail = mix(saturate(TRAIL_COLOR, 1.5), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
+    vec4 trail = mix(saturate(TRAIL_COLOR_ACCENT, 1.5), fragColor, trailGlowMask(sdfTrail, mod, 0.007));
+    trail = mix(saturate(TRAIL_COLOR, 1.5), trail, trailEdgeMask(sdfTrail, mod, 0.006));
     trail = mix(trail, saturate(TRAIL_COLOR, 1.4), step(sdfTrail + mod, 0.));
-    trail = mix(saturate(TRAIL_COLOR_ACCENT, 1.5), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
-    trail = mix(saturate(TRAIL_COLOR, 1.5), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
+    trail = mix(saturate(TRAIL_COLOR_ACCENT, 1.5), trail, cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = mix(saturate(TRAIL_COLOR, 1.5), trail, cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }

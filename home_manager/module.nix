@@ -216,6 +216,24 @@ in
       '';
     };
 
+    ghostty_trail_glow = mkOption {
+      type = types.enum [
+        "none"
+        "low"
+        "medium"
+        "high"
+      ];
+      default = "medium";
+      description = ''
+        Glow level around Ghostty cursor trails and related cursor effects.
+
+        - "none": keep the cursor/trail color effect but remove the extra spatial glow
+        - "low": a tighter, subtler aura
+        - "medium": the current Yazelix look (default)
+        - "high": a larger, brighter aura
+      '';
+    };
+
     transparency = mkOption {
       type = types.enum [
         "none"
@@ -644,6 +662,7 @@ in
           ++ ghosttyTrailEffectLine
           ++ ghosttyModeEffectLine
           ++ [
+            "ghostty_trail_glow = ${escapeString cfg.ghostty_trail_glow}"
             "transparency = ${escapeString cfg.transparency}"
             ""
             "[zellij]"

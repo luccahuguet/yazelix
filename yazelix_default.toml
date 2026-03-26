@@ -151,6 +151,14 @@ ghostty_trail_effect = "random"
 # Options: "ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "random"
 ghostty_mode_effect = "random"
 
+# Glow around Ghostty cursor trails and related cursor effects (default: "medium")
+# Options: "none", "low", "medium", "high"
+# - "none":   Keep the cursor/trail color effect but remove the extra spatial glow
+# - "low":    Tight, subtle glow
+# - "medium": Current Yazelix look (recommended default)
+# - "high":   Larger, brighter aura
+ghostty_trail_glow = "medium"
+
 # Terminal transparency level (default: "medium")
 # Options: "none", "very_low", "low", "medium", "high", "very_high", "super_high"
 # - "none":       No transparency (opacity = 1.0)

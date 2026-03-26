@@ -357,7 +357,8 @@ export def generate_all_terminal_configs [runtime_dir?: string] {
         # Build cursor shader variants inside the generated config tree
         let build_script = ($shaders_src | path join "build_shaders.nu")
         if ($build_script | path exists) {
-            nu -c $"use '($build_script)' [build_cursor_trail_shaders build_ghostty_cursor_effect_shaders]; build_cursor_trail_shaders '($shaders_dest)'; build_ghostty_cursor_effect_shaders '($shaders_dest)'"
+            let glow_level = ($config.ghostty_trail_glow? | default "medium")
+            nu -c $"use '($build_script)' [build_cursor_trail_shaders build_ghostty_cursor_effect_shaders]; build_cursor_trail_shaders '($shaders_dest)' '($glow_level)'; build_ghostty_cursor_effect_shaders '($shaders_dest)' '($glow_level)'"
         }
     }
 

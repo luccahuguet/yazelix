@@ -10,6 +10,7 @@ The cursor trail shaders are now built from modular components to eliminate ~79%
 shaders/
 ├── cursor_trail_common.glsl     # Shared functions (~68 lines)
 ├── variants/                     # Variant-specific code (3-60 lines each)
+│   ├── blaze.glsl
 │   ├── white.glsl
 │   ├── sunset.glsl
 │   ├── ocean.glsl
@@ -29,12 +30,12 @@ shaders/
 ## How It Works
 
 **Before refactoring:**
-- 12 shader files × ~100+ lines each = ~1,500 lines total
+- 13 shader files × ~100+ lines each = ~1,500 lines total
 - ~1,200 lines of duplicated code (79%)
 
 **After refactoring:**
 - 1 common library (68 lines)
-- 12 variant files (3-60 lines each, ~311 lines total)
+- 13 variant files (3-60 lines each, ~311 lines total)
 - Total source: **~379 lines** (75% reduction!)
 
 ## Making Changes
@@ -59,7 +60,7 @@ shaders/
 ### Manual build (for testing):
 
 ```bash
-nu build_shaders.nu   # Manually trigger shader build
+nu build_shaders.nu medium   # Manually trigger shader build for a glow level
 ```
 
 ## Build Process
@@ -69,6 +70,7 @@ The build is **fully automatic**:
 - Combines `cursor_trail_common.glsl` with each variant in `variants/`
 - Outputs complete shaders ready for Ghostty to use
 - No manual intervention needed!
+- Honors `ghostty_trail_glow = none | low | medium | high` when generating the final shaders
 
 ## Important Notes
 
@@ -79,8 +81,8 @@ The build is **fully automatic**:
 
 ## Variant Categories
 
-### Simple Two-Color (7 variants)
-- `white`, `sunset`, `ocean`, `forest`, `cosmic`
+### Simple Two-Color (6 variants)
+- `blaze`, `white`, `sunset`, `ocean`, `forest`, `cosmic`
 - Only color constants differ
 
 ### Dual-Blend (2 variants)

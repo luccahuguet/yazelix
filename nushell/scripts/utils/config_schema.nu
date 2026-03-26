@@ -2,7 +2,7 @@
 # Dynamic Yazelix Config Schema Validator
 # Uses yazelix_default.toml as the reference for validation
 
-use constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_SHADERS, GHOSTTY_TRAIL_EFFECTS, GHOSTTY_MODE_EFFECTS]
+use constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_SHADERS, GHOSTTY_TRAIL_EFFECTS, GHOSTTY_MODE_EFFECTS, GHOSTTY_TRAIL_GLOW_LEVELS]
 
 const OPEN_RECORD_PATHS = [
     ["packs", "declarations"]
@@ -132,11 +132,11 @@ export def compare_configs [default: any, user: any, path: list<string> = []] {
 def get_nested_value [data: any, path: list<string>] {
     mut current = $data
     for segment in $path {
-        let current = (try {
-            $current | get $segment
+        try {
+            $current = ($current | get $segment)
         } catch {
             return null
-        })
+        }
     }
     $current
 }
@@ -155,6 +155,7 @@ export def validate_enum_values [user: record] {
         { path: ["terminal", "ghostty_trail_color"], label: "terminal.ghostty_trail_color", allowed: $ghostty_trail_color_allowed },
         { path: ["terminal", "ghostty_trail_effect"], label: "terminal.ghostty_trail_effect", allowed: $ghostty_trail_effect_allowed },
         { path: ["terminal", "ghostty_mode_effect"], label: "terminal.ghostty_mode_effect", allowed: $ghostty_mode_effect_allowed },
+        { path: ["terminal", "ghostty_trail_glow"], label: "terminal.ghostty_trail_glow", allowed: $GHOSTTY_TRAIL_GLOW_LEVELS },
         { path: ["ascii", "mode"], label: "ascii.mode", allowed: ["static", "animated"] },
         { path: ["zellij", "widget_tray"], label: "zellij.widget_tray", allowed: ["layout", "editor", "shell", "term", "cpu", "ram"] }
     ]

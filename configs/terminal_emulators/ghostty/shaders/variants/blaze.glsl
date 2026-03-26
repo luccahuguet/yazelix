@@ -1,17 +1,8 @@
-// Reef variant: duo orbit (electric cyan ↔ venom green)
+// Blaze fire variant
 
-vec4 dualBlend(float segment, vec4 c0, vec4 c1) {
-    float seg = mod(segment, 2.0);
-    float frac = fract(seg);
-    vec4 a = (seg < 1.0) ? c0 : c1;
-    vec4 b = (seg < 1.0) ? c1 : c0;
-    float blend = smoothstep(0.0, 1.0, frac);
-    return mix(a, b, blend);
-}
-
-const vec4 REEF_CYAN = vec4(0.0, 0.902, 1.0, 1.0);   // #00E6FF
-const vec4 REEF_VENOM = vec4(0.0, 0.752, 0.231, 1.0); // #00C03B
-const float DURATION = 0.26;
+const vec4 TRAIL_COLOR = vec4(1.0, 0.725, 0.161, 1.0);
+const vec4 TRAIL_COLOR_ACCENT = vec4(1.0, 0.0, 0.0, 1.0);
+const float DURATION = 0.3;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
@@ -41,23 +32,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     float easedProgress = ease(progress);
     float lineLength = distance(centerCC, centerCP);
 
-    float mod = .005;
-
-    vec2 dir = normalize(vu - centerCC + 1e-6);
-    float angle = atan(dir.y, dir.x);
-    float normAngle = (angle + 3.14159265) / (6.2831853);
-    float segment = normAngle * 2.0;
-    float pulse = 0.05 * sin(iTime * 1.5);
-
-    vec4 base = dualBlend(segment, REEF_CYAN, REEF_VENOM);
-    vec4 edge = dualBlend(segment + 0.5 + pulse * 0.2, REEF_CYAN, REEF_VENOM);
-
-    vec4 trail = fragColor;
-    trail = mix(saturate(base, 1.5), trail, trailGlowMask(sdfTrail, mod + 0.010, 0.035));
-    trail = mix(saturate(edge, 1.6), trail, trailEdgeMask(sdfTrail, mod, 0.006));
-    trail = mix(trail, saturate(base, 1.55), step(sdfTrail + mod, 0.));
-
-    trail = mix(saturate(edge, 1.6), trail, cursorGlowMask(sdfCurrentCursor, .002, 0.004));
-    trail = mix(saturate(base, 1.55), trail, cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
+    float mod = .007;
+    vec4 trail = mix(saturate(TRAIL_COLOR_ACCENT, 1.5), fragColor, trailGlowMask(sdfTrail, mod, 0.007));
+    trail = mix(saturate(TRAIL_COLOR, 1.5), trail, trailEdgeMask(sdfTrail, mod, 0.006));
+    trail = mix(trail, saturate(TRAIL_COLOR, 1.5), step(sdfTrail + mod, 0.));
+    trail = mix(saturate(TRAIL_COLOR_ACCENT, 1.5), trail, cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = mix(saturate(TRAIL_COLOR, 1.5), trail, cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }

@@ -48,12 +48,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 
     // Build glow with restrained intensity
     vec4 trail = fragColor;
-    trail = mix(saturate(neonBase, 1.4), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
-    trail = mix(saturate(neonEdge, 1.5), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
+    trail = mix(saturate(neonBase, 1.4), trail, trailGlowMask(sdfTrail, mod + 0.010, 0.035));
+    trail = mix(saturate(neonEdge, 1.5), trail, trailEdgeMask(sdfTrail, mod, 0.006));
     trail = mix(trail, saturate(neonBase, 1.45), step(sdfTrail + mod, 0.));
 
     // Cursor core and edge
-    trail = mix(saturate(neonEdge, 1.55), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
-    trail = mix(saturate(neonBase, 1.5), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
+    trail = mix(saturate(neonEdge, 1.55), trail, cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = mix(saturate(neonBase, 1.5), trail, cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }

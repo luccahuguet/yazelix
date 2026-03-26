@@ -108,7 +108,7 @@ export const TRANSPARENCY_VALUES = {
 # Cursor trail shader paths
 # Note: Use get_cursor_trail_random_pool() to get the pool for random selection
 export const CURSOR_TRAIL_SHADERS = {
-    blaze: "./shaders/cursor_smear.glsl"
+    blaze: "./shaders/cursor_trail_blaze.glsl"
     snow: "./shaders/cursor_trail_white.glsl"
     cosmic: "./shaders/cursor_trail_cosmic.glsl"
     ocean: "./shaders/cursor_trail_ocean.glsl"
@@ -169,6 +169,13 @@ export const GHOSTTY_MODE_EFFECTS = [
     "ripple_rectangle"
 ]
 
+export const GHOSTTY_TRAIL_GLOW_LEVELS = [
+    "none"
+    "low"
+    "medium"
+    "high"
+]
+
 export const GHOSTTY_CURSOR_EFFECT_TEMPLATE_FILES = {
     tail: "cursor_tail.glsl"
     warp: "cursor_warp.glsl"
@@ -182,7 +189,7 @@ export const GHOSTTY_CURSOR_EFFECT_TEMPLATE_FILES = {
 # Cursor trail presets documentation
 export const CURSOR_TRAIL_PRESETS_COMMENT = "# Alternative presets (uncomment to try)
 # snow:  custom-shader = ./shaders/cursor_trail_white.glsl
-# blaze (fire):  custom-shader = ./shaders/cursor_smear.glsl
+# blaze (fire):  custom-shader = ./shaders/cursor_trail_blaze.glsl
 # cosmic (violet): custom-shader = ./shaders/cursor_trail_cosmic.glsl
 # ocean (blue):  custom-shader = ./shaders/cursor_trail_ocean.glsl
 # forest (green): custom-shader = ./shaders/cursor_trail_forest.glsl

@@ -44,11 +44,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     vec4 duskEdge = mix(blend, DUSK_CORAL, 0.32 + pulse * 0.6);
 
     vec4 trail = fragColor;
-    trail = mix(saturate(duskBase, 1.35), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
-    trail = mix(saturate(duskEdge, 1.45), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
+    trail = mix(saturate(duskBase, 1.35), trail, trailGlowMask(sdfTrail, mod + 0.010, 0.035));
+    trail = mix(saturate(duskEdge, 1.45), trail, trailEdgeMask(sdfTrail, mod, 0.006));
     trail = mix(trail, saturate(duskBase, 1.4), step(sdfTrail + mod, 0.));
 
-    trail = mix(saturate(duskEdge, 1.5), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
-    trail = mix(saturate(duskBase, 1.45), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
+    trail = mix(saturate(duskEdge, 1.5), trail, cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = mix(saturate(duskBase, 1.45), trail, cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }

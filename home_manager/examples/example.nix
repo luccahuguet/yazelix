@@ -44,6 +44,7 @@
     ghostty_trail_color = "random"; # Optional: Ghostty color palette + Kitty fallback
     ghostty_trail_effect = "random"; # Optional: "tail", "warp", "sweep", "random", or null
     ghostty_mode_effect = "random"; # Optional: "ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "random", or null
+    ghostty_trail_glow = "medium"; # Optional: "none", "low", "medium", or "high"
     transparency = "medium"; # Optional: "none".."super_high"
 
     # Editor configuration

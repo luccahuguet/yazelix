@@ -44,12 +44,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     vec4 edge = mix(INFERNO_CRIMSON, INFERNO_GUNMETAL, edgeMix);
 
     vec4 trail = fragColor;
-    trail = mix(saturate(base, 1.6), trail, 1. - smoothstep(0.0, sdfTrail + mod + 0.010, 0.035));
-    trail = mix(saturate(edge, 1.7), trail, 1. - smoothstep(0., sdfTrail + mod, 0.006));
+    trail = mix(saturate(base, 1.6), trail, trailGlowMask(sdfTrail, mod + 0.010, 0.035));
+    trail = mix(saturate(edge, 1.7), trail, trailEdgeMask(sdfTrail, mod, 0.006));
     trail = mix(trail, saturate(base, 1.65), step(sdfTrail + mod, 0.));
 
-    trail = mix(saturate(edge, 1.7), trail, 1. - smoothstep(0., sdfCurrentCursor + .002, 0.004));
-    trail = mix(INFERNO_CRIMSON, trail, 1. - smoothstep(0., sdfCurrentCursor + .001, 0.003));
+    trail = mix(saturate(edge, 1.7), trail, cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = mix(INFERNO_CRIMSON, trail, cursorEdgeMask(sdfCurrentCursor, .001, 0.003));
     float fade = 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength);
     fragColor = mix(trail, fragColor, fade);
     float coreMask = 1. - smoothstep(-0.0015, 0.0005, sdfCurrentCursor);

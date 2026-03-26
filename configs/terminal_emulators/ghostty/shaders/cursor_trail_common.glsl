@@ -66,3 +66,27 @@ vec4 saturate(vec4 color, float factor) {
     float gray = dot(color, vec4(0.299, 0.587, 0.114, 0.));
     return mix(vec4(gray), color, factor);
 }
+
+float yazelixGlowMask(float sdf, float offset, float width, float widthScale, float strength) {
+    if (strength <= 0.0) {
+        return 0.0;
+    }
+
+    return strength * (1.0 - smoothstep(0.0, sdf + offset, width * widthScale));
+}
+
+float trailGlowMask(float sdf, float offset, float width) {
+    return yazelixGlowMask(sdf, offset, width, YAZELIX_TRAIL_GLOW_WIDTH_SCALE, YAZELIX_TRAIL_GLOW_STRENGTH);
+}
+
+float trailEdgeMask(float sdf, float offset, float width) {
+    return 1.0 - smoothstep(0.0, sdf + offset, width);
+}
+
+float cursorGlowMask(float sdf, float offset, float width) {
+    return yazelixGlowMask(sdf, offset, width, YAZELIX_CURSOR_GLOW_WIDTH_SCALE, YAZELIX_CURSOR_GLOW_STRENGTH);
+}
+
+float cursorEdgeMask(float sdf, float offset, float width) {
+    return 1.0 - smoothstep(0.0, sdf + offset, width);
+}
