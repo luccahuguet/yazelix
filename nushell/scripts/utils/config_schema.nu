@@ -164,7 +164,7 @@ export def validate_enum_values [user: record] {
         if $value == null {
             continue
         }
-        if ($enum.label == "terminal.terminals") and (value | describe | str contains "list") {
+        if ($enum.label == "terminal.terminals") and ($value | describe | str contains "list") {
             for v in $value {
                 if not ($v in $enum.allowed) {
                     let allowed_str = ($enum.allowed | str join ", ")
@@ -177,7 +177,7 @@ export def validate_enum_values [user: record] {
                     ])
                 }
             }
-        } else if ($enum.label == "zellij.widget_tray") and (value | describe | str contains "list") {
+        } else if ($enum.label == "zellij.widget_tray") and ($value | describe | str contains "list") {
             for v in $value {
                 if not ($v in $enum.allowed) {
                     let allowed_str = ($enum.allowed | str join ", ")
