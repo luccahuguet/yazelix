@@ -11,10 +11,11 @@ manual_actions = []
 [releases."v13.8"]
 version = "v13.8"
 date = "2026-03-27"
-headline = "Config migration follow-up after the v13.8 upgrade"
+headline = "Zellij 0.44, startup recovery, and migration-aware upgrade UX"
 summary = [
-    "This fixture treats v13.8 as the first release that carries config migration guidance.",
-    "Users with stale tray or shell toggles should migrate before relying on startup.",
+    "Upgraded Yazelix to Zellij 0.44, hardened the startup handoff, and added an explicit permission recovery path for broken plugin state.",
+    "Added migration-aware stale-config diagnostics plus yzx config migrate and yzx doctor --fix for safe deterministic rewrites.",
+    "Added a root CHANGELOG, structured upgrade notes, first-run upgrade summaries, and historical v12/v13 note backfill.",
 ]
 upgrade_impact = "migration_available"
 acknowledged_guarded_changes = []
