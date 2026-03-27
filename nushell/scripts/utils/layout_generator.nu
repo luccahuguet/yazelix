@@ -14,16 +14,15 @@ const static_fragment_specs = [
 ]
 
 def build_widget_tray [widget_tray: list<string>]: nothing -> string {
-    let allowed = ["layout", "editor", "shell", "term", "cpu", "ram"]
+    let allowed = ["editor", "shell", "term", "cpu", "ram"]
     mut parts = []
     for widget in $widget_tray {
         if not ($widget in $allowed) {
             let allowed_str = ($allowed | str join ", ")
-            print $"❌ Invalid zellij.widget_tray entry: ($widget) (allowed: ($allowed_str))"
+            print $"❌ Invalid zellij.widget_tray entry: ($widget) \(allowed: ($allowed_str)\)"
             exit 1
         }
         let part = match $widget {
-            "layout" => "{swap_layout}"
             "editor" => "#[fg=#00ff88,bold][editor: {command_editor}]"
             "shell" => "#[fg=#00ff88,bold][shell: {command_shell}]"
             "term" => "#[fg=#00ff88,bold][term: {command_term}]"
@@ -133,8 +132,8 @@ export def generate_layout [
         $updated = ($updated | str replace -a $pane_orchestrator_plugin_url_placeholder $pane_orchestrator_plugin_url)
     }
 
-    if ($updated | str contains "zjstatus.wasm") and not ($updated | str contains "{swap_layout}") {
-        print $"❌ Missing widget tray placeholder in: ($source_layout)"
+    if ($updated | str contains $widget_tray_placeholder) {
+        print $"❌ Failed to expand widget tray placeholder in: ($source_layout)"
         exit 1
     }
 

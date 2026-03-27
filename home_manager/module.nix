@@ -329,14 +329,13 @@ in
     zellij_widget_tray = mkOption {
       type = types.listOf types.str;
       default = [
-        "layout"
         "editor"
         "shell"
         "term"
         "cpu"
         "ram"
       ];
-      description = "Zjstatus widget tray order (layout/editor/shell/term/cpu/ram)";
+      description = "Zjstatus widget tray order (editor/shell/term/cpu/ram)";
     };
 
     zellij_custom_text = mkOption {

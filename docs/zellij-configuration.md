@@ -47,7 +47,6 @@ simplified_ui true
 ```toml
 [zellij]
 widget_tray = [
-  "layout",  # Swap layout widget
   "editor",  # Active editor
   "shell",   # Active shell
   "term",    # Terminal emulator

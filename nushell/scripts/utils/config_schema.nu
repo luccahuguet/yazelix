@@ -157,7 +157,7 @@ export def validate_enum_values [user: record] {
         { path: ["terminal", "ghostty_mode_effect"], label: "terminal.ghostty_mode_effect", allowed: $ghostty_mode_effect_allowed },
         { path: ["terminal", "ghostty_trail_glow"], label: "terminal.ghostty_trail_glow", allowed: $GHOSTTY_TRAIL_GLOW_LEVELS },
         { path: ["ascii", "mode"], label: "ascii.mode", allowed: ["static", "animated"] },
-        { path: ["zellij", "widget_tray"], label: "zellij.widget_tray", allowed: ["layout", "editor", "shell", "term", "cpu", "ram"] }
+        { path: ["zellij", "widget_tray"], label: "zellij.widget_tray", allowed: ["editor", "shell", "term", "cpu", "ram"] }
     ]
     for enum in $enums {
         let value = (get_nested_value $user $enum.path)

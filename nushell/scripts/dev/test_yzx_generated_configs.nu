@@ -39,7 +39,7 @@ def test_layout_generator_discovers_custom_top_level_layouts [] {
         'layout { pane }' | save --force --raw $custom_layout_path
 
         use ../utils/layout_generator.nu *
-        generate_all_layouts $source_dir $target_dir ["layout", "editor"] "" "file:/tmp/yazelix_pane_orchestrator.wasm" $source_dir
+        generate_all_layouts $source_dir $target_dir ["editor"] "" "file:/tmp/yazelix_pane_orchestrator.wasm" $source_dir
 
         let generated_layout_path = ($target_dir | path join "custom_layout.kdl")
         let generated_fragments_dir = ($target_dir | path join "fragments")
@@ -83,7 +83,7 @@ def test_layout_generator_rewrites_runtime_paths [] {
         }
 
         use ../utils/layout_generator.nu *
-        generate_all_layouts $source_dir $target_dir ["layout", "editor"] "" "file:/tmp/yazelix_pane_orchestrator.wasm" $runtime_dir
+        generate_all_layouts $source_dir $target_dir ["editor"] "" "file:/tmp/yazelix_pane_orchestrator.wasm" $runtime_dir
 
         let generated_layout = (open --raw ($target_dir | path join "yzx_side.kdl"))
 
@@ -330,6 +330,37 @@ command = "nvim --headless"
     }
 }
 
+def test_zellij_widget_tray_defaults_omit_layout [] {
+    print "🧪 Testing zellij.widget_tray defaults omit the broken layout widget..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_widget_tray_default_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        '' | save --force --raw $config_path
+
+        let parsed = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+        let tray = ($parsed | get zellij_widget_tray)
+
+        if $tray == ["editor", "shell", "term", "cpu", "ram"] {
+            print "  ✅ Default widget tray no longer includes the layout widget"
+            true
+        } else {
+            print $"  ❌ Unexpected default widget tray: ($tray | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def test_zjstatus_custom_text_is_trimmed_and_truncated_in_config_parser [] {
     print "🧪 Testing zjstatus custom text is normalized in config parsing..."
 
@@ -486,6 +517,43 @@ ghostty_trail_glow = "ultra"
             true
         } else {
             print $"  ❌ Unexpected findings: ($glow_findings | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_config_schema_rejects_removed_layout_widget [] {
+    print "🧪 Testing config schema rejects the removed zellij layout widget..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_widget_tray_schema_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        '[zellij]
+widget_tray = ["layout", "editor"]
+' | save --force --raw $config_path
+
+        let findings = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            use ../utils/config_schema.nu [validate_enum_values]
+            validate_enum_values (open $config_path)
+        })
+        let tray_findings = ($findings | where path == "zellij.widget_tray")
+
+        if (
+            (($tray_findings | length) == 1)
+            and (($tray_findings | get 0.kind) == "invalid_enum")
+            and ((($tray_findings | get 0.message) | str contains "layout"))
+        ) {
+            print "  ✅ Config schema rejects the removed layout widget entry"
+            true
+        } else {
+            print $"  ❌ Unexpected findings: ($tray_findings | to json -r)"
             false
         }
     } catch { |err|
@@ -765,8 +833,10 @@ def test_zellij_horizontal_walking_is_plugin_owned [] {
 export def run_generated_config_canonical_tests [] {
     [
         (test_layout_generator_rewrites_runtime_paths)
+        (test_zellij_widget_tray_defaults_omit_layout)
         (test_ghostty_trail_glow_defaults_to_medium_and_reads_explicit_levels)
         (test_generate_all_terminal_configs_honors_ghostty_trail_color_none)
+        (test_config_schema_rejects_removed_layout_widget)
         (test_config_schema_rejects_invalid_ghostty_trail_glow)
         (test_generate_all_terminal_configs_honors_ghostty_trail_glow)
         (test_zellij_default_mode_is_enforced_in_merged_config)

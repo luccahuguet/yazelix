@@ -135,7 +135,7 @@ export def parse_yazelix_config [] {
         session_name: ($raw_config.zellij?.session_name? | default "yazelix"),
         zellij_default_mode: (parse_zellij_default_mode $raw_config),
         zellij_theme: ($raw_config.zellij?.theme? | default "default"),
-        zellij_widget_tray: ($raw_config.zellij?.widget_tray? | default ["layout", "editor", "shell", "term", "cpu", "ram"]),
+        zellij_widget_tray: ($raw_config.zellij?.widget_tray? | default ["editor", "shell", "term", "cpu", "ram"]),
         zellij_custom_text: (parse_zjstatus_custom_text $raw_config),
         popup_program: ($raw_config.zellij?.popup_program? | default ["lazygit"]),
         popup_width_percent: (parse_percentage_setting $raw_config.zellij?.popup_width_percent? "zellij.popup_width_percent" 90),
