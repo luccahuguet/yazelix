@@ -14,7 +14,7 @@ def classify_menu_command [cmd: string] {
         {tag: "config", color: (ansi cyan)}
     } else if ($cmd | str starts-with "yzx update") or ($cmd | str starts-with "yzx gc") or ($cmd | str starts-with "yzx packs") or ($cmd == "yzx doctor") {
         {tag: "system", color: (ansi yellow)}
-    } else if ($cmd == "yzx help") or ($cmd == "yzx why") or ($cmd == "yzx status") or ($cmd == "yzx sponsor") or ($cmd == "yzx whats_new") or ($cmd | str starts-with "yzx keys") {
+    } else if ($cmd == "yzx help") or ($cmd == "yzx why") or ($cmd == "yzx status") or ($cmd == "yzx sponsor") or ($cmd == "yzx whats_new") or ($cmd | str starts-with "yzx keys") or ($cmd | str starts-with "yzx tutor") {
         {tag: "help", color: (ansi blue)}
     } else {
         {tag: "other", color: (ansi purple)}

@@ -284,6 +284,169 @@ def test_yzx_desktop_uninstall_removes_generated_entry [] {
     $result
 }
 
+def test_yzx_tutor_prints_guided_overview [] {
+    print "🧪 Testing yzx tutor prints the Yazelix guided overview..."
+
+    let fixture = (setup_relocated_runtime_fixture)
+
+    let result = (try {
+        let real_nu = (which nu | get 0.path)
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+        } {
+            ^$real_nu -c $"use \"($fixture.yzx_script)\" *; yzx tutor" | complete
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "Yazelix tutor") and ($stdout | str contains "yzx keys") and ($stdout | str contains "yzx tutor hx") and ($stdout | str contains "yzx help") {
+            print "  ✅ yzx tutor prints the guided Yazelix overview"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($output.stderr | str trim)"
+            print $"     stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_yzx_tutor_help_surface_stays_small [] {
+    print "🧪 Testing yzx tutor help surface stays small..."
+
+    let fixture = (setup_relocated_runtime_fixture)
+
+    let result = (try {
+        let real_nu = (which nu | get 0.path)
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+        } {
+            ^$real_nu -c $"use \"($fixture.yzx_script)\" *; help commands | where name =~ '^yzx tutor' | get name | to json -r" | complete
+        })
+        let names = (if ($output.stdout | str trim | is-empty) { [] } else { $output.stdout | from json })
+
+        if ($output.exit_code == 0) and ($names == ["yzx tutor", "yzx tutor helix", "yzx tutor hx", "yzx tutor nu", "yzx tutor nushell"]) {
+            print "  ✅ yzx tutor exposes only the intended command surface"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($output.stderr | str trim) names=($names | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_yzx_tutor_hx_delegates_to_helix_tutor [] {
+    print "🧪 Testing yzx tutor hx delegates to hx --tutor..."
+
+    let fixture = (setup_relocated_runtime_fixture)
+
+    let result = (try {
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        let args_file = ($fixture.tmp_home | path join "hx_args.txt")
+        let real_nu = (which nu | get 0.path)
+        mkdir $fake_bin
+
+        [
+            "#!/bin/sh"
+            $"printf '%s\\n' \"$@\" > \"($args_file)\""
+            "echo \"fake hx tutor\""
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "hx")
+        ^chmod +x ($fake_bin | path join "hx")
+
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            PATH: ([$fake_bin] | append $env.PATH)
+        } {
+            ^$real_nu -c $"use \"($fixture.yzx_script)\" *; yzx tutor hx" | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let recorded_args = if ($args_file | path exists) {
+            open --raw $args_file | str trim
+        } else {
+            ""
+        }
+
+        if ($output.exit_code == 0) and ($stdout == "fake hx tutor") and ($recorded_args == "--tutor") {
+            print "  ✅ yzx tutor hx delegates to Helix's built-in tutor"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim) args=($recorded_args)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_yzx_tutor_nu_delegates_to_nushell_tutor [] {
+    print "🧪 Testing yzx tutor nu delegates to nu -c tutor..."
+
+    let fixture = (setup_relocated_runtime_fixture)
+
+    let result = (try {
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        let args_file = ($fixture.tmp_home | path join "nu_args.txt")
+        let real_nu = (which nu | get 0.path)
+        mkdir $fake_bin
+
+        [
+            "#!/bin/sh"
+            $"printf '%s\\n' \"$@\" > \"($args_file)\""
+            "echo \"fake nu tutor\""
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "nu")
+        ^chmod +x ($fake_bin | path join "nu")
+
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            PATH: ([$fake_bin] | append $env.PATH)
+        } {
+            ^$real_nu -c $"use \"($fixture.yzx_script)\" *; yzx tutor nu" | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let recorded_args = if ($args_file | path exists) {
+            open --raw $args_file | lines
+        } else {
+            []
+        }
+
+        if ($output.exit_code == 0) and ($stdout == "fake nu tutor") and ($recorded_args == ["-c", "tutor"]) {
+            print "  ✅ yzx tutor nu delegates to Nushell's built-in tutor"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim) args=($recorded_args | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 def test_config_migration_rule_metadata_is_complete [] {
     print "🧪 Testing config migration rule metadata completeness..."
 
@@ -1481,6 +1644,10 @@ export def run_core_canonical_tests [] {
         (test_yzx_status_versions_uses_invoking_path_for_versions)
         (test_yzx_desktop_install_writes_valid_absolute_launcher)
         (test_yzx_desktop_uninstall_removes_generated_entry)
+        (test_yzx_tutor_prints_guided_overview)
+        (test_yzx_tutor_help_surface_stays_small)
+        (test_yzx_tutor_hx_delegates_to_helix_tutor)
+        (test_yzx_tutor_nu_delegates_to_nushell_tutor)
         (test_config_migration_rule_metadata_is_complete)
         (test_config_migration_plan_orders_safe_rewrites)
         (test_config_migration_plan_marks_ambiguous_cases_manual)

@@ -85,6 +85,15 @@ Show Yazelix-owned keybindings and remaps
 - `yzx keys nu`: show a small curated subset of useful Nushell keybindings
 - `yzx keys nushell`: alias for `yzx keys nu`
 
+### `yzx tutor`
+Show the guided Yazelix overview
+- Default: print the Yazelix-specific tutor with the workspace model and next-step commands
+- Keeps a clear split with other help surfaces: `yzx help` is command reference, `yzx keys` is keybinding discoverability
+- `yzx tutor hx`: launch Helix's built-in tutorial via `hx --tutor`
+- `yzx tutor helix`: alias for `yzx tutor hx`
+- `yzx tutor nu`: launch Nushell's built-in tutorial in a fresh `nu` process
+- `yzx tutor nushell`: alias for `yzx tutor nu`
+
 ### `yzx restart [--reuse] [--skip-refresh]`
 Restart Yazelix (handles persistent sessions)
 - `--reuse`: Reopen Yazelix from the last built profile without rebuilding (errors if no cached profile exists)
@@ -231,6 +240,9 @@ yzx keys                      # Show Yazelix-owned bindings and remaps
 yzx keys yazi                 # How to view Yazi's own bindings
 yzx keys hx                   # How to discover Helix bindings
 yzx keys nu                   # Small curated Nushell keybinding subset
+yzx tutor                     # Guided Yazelix overview
+yzx tutor hx                  # Launch Helix's built-in tutor
+yzx tutor nu                  # Launch Nushell's built-in tutor
 yzx restart --reuse           # Reopen from the last built profile without rebuilding
 
 # Diagnostics and info
