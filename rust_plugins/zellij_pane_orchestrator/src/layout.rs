@@ -312,6 +312,12 @@ impl State {
             .as_deref()
             .and_then(LayoutVariant::from_layout_name)
             .or_else(|| {
+                self.last_known_layout_variant_by_tab
+                    .borrow()
+                    .get(&active_tab_position)
+                    .copied()
+            })
+            .or_else(|| {
                 self.terminal_panes_by_tab
                     .get(&active_tab_position)
                     .and_then(|terminal_panes| {
@@ -548,6 +554,9 @@ impl State {
         let layout_kdl = build_override_layout_kdl(layout_variant, terminal_panes.len())?;
         let layout_info = LayoutInfo::Stringified(layout_kdl);
         override_layout(layout_info, false, false, true, BTreeMap::new());
+        self.last_known_layout_variant_by_tab
+            .borrow_mut()
+            .insert(active_tab_position, layout_variant);
         Some(())
     }
 }
@@ -580,7 +589,7 @@ impl LayoutVariant {
         }
     }
 
-    fn from_layout_name(layout_name: &str) -> Option<Self> {
+    pub(crate) fn from_layout_name(layout_name: &str) -> Option<Self> {
         match layout_name {
             SINGLE_OPEN_LAYOUT_NAME => Some(Self {
                 family: LayoutFamily::Single,

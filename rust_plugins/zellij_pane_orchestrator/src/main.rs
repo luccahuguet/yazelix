@@ -3,6 +3,7 @@ mod layout;
 mod panes;
 mod workspace;
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
 use std::fs::{self, OpenOptions};
@@ -28,6 +29,7 @@ pub(crate) const SWAP_LAYOUT_STEP_DELAY_MS: u64 = 1;
 struct State {
     active_tab_position: Option<usize>,
     active_swap_layout_name_by_tab: HashMap<usize, Option<String>>,
+    last_known_layout_variant_by_tab: RefCell<HashMap<usize, layout::LayoutVariant>>,
     focus_context_by_tab: HashMap<usize, FocusContext>,
     focused_terminal_pane_by_tab: HashMap<usize, PaneId>,
     fallback_terminal_pane_by_tab: HashMap<usize, PaneId>,
@@ -73,6 +75,19 @@ impl ZellijPlugin for State {
                 self.active_tab_position =
                     tabs.iter().find(|tab| tab.active).map(|tab| tab.position);
                 self.reconcile_workspace_state(&tabs);
+                {
+                    let mut last_known_layout_variant_by_tab =
+                        self.last_known_layout_variant_by_tab.borrow_mut();
+                    for tab in &tabs {
+                        if let Some(layout_variant) = tab
+                            .active_swap_layout_name
+                            .as_deref()
+                            .and_then(layout::LayoutVariant::from_layout_name)
+                        {
+                            last_known_layout_variant_by_tab.insert(tab.position, layout_variant);
+                        }
+                    }
+                }
                 self.active_swap_layout_name_by_tab = tabs
                     .into_iter()
                     .map(|tab| (tab.position, tab.active_swap_layout_name))
