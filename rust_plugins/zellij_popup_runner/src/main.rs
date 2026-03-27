@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use yazelix_popup_runner::popup_contract::{PopupTogglePlan, resolve_popup_toggle};
-use yazelix_popup_runner::popup_pane_contract::{PopupPaneState, select_popup_pane};
+use yazelix_popup_runner::popup_pane_contract::{select_popup_pane, PopupPaneState};
 use zellij_tile::prelude::*;
 
 const RESULT_OK: &str = "ok";
@@ -36,13 +35,16 @@ impl ZellijPlugin for State {
     fn update(&mut self, event: Event) -> bool {
         match event {
             Event::TabUpdate(tabs) => {
-                self.active_tab_position = tabs.iter().find(|tab| tab.active).map(|tab| tab.position);
+                self.active_tab_position =
+                    tabs.iter().find(|tab| tab.active).map(|tab| tab.position);
             }
             Event::PaneUpdate(pane_manifest) => {
                 self.popup_panes_by_tab = pane_manifest
                     .panes
                     .into_iter()
-                    .filter_map(|(tab_position, panes)| select_popup_pane(&panes).map(|pane| (tab_position, pane)))
+                    .filter_map(|(tab_position, panes)| {
+                        select_popup_pane(&panes).map(|pane| (tab_position, pane))
+                    })
                     .collect();
             }
             Event::PermissionRequestResult(status) => {
@@ -56,7 +58,6 @@ impl ZellijPlugin for State {
     fn pipe(&mut self, pipe_message: PipeMessage) -> bool {
         match pipe_message.name.as_str() {
             "toggle_popup" => self.toggle_popup(&pipe_message),
-            "has_popup" => self.has_popup(&pipe_message),
             _ => {}
         }
         false
@@ -71,28 +72,18 @@ impl State {
             return;
         };
 
-        let popup_pane = self.popup_panes_by_tab.get(&active_tab_position).copied();
-        match resolve_popup_toggle(popup_pane.is_some(), popup_pane.map(|pane| pane.is_focused).unwrap_or(false)) {
-            PopupTogglePlan::OpenPopup => {
-                self.respond(pipe_message, RESULT_MISSING);
-            }
-            PopupTogglePlan::FocusPopup => {
-                if let Some(popup_pane) = popup_pane {
-                    focus_pane_with_id(popup_pane.pane_id, true, false);
-                    self.respond(pipe_message, RESULT_OK);
-                } else {
-                    self.respond(pipe_message, RESULT_MISSING);
-                }
-            }
-            PopupTogglePlan::ClosePopup => {
-                if let Some(popup_pane) = popup_pane {
-                    close_pane_with_id(popup_pane.pane_id);
-                    self.respond(pipe_message, RESULT_OK);
-                } else {
-                    self.respond(pipe_message, RESULT_MISSING);
-                }
-            }
+        let Some(popup_pane) = self.popup_panes_by_tab.get(&active_tab_position).copied() else {
+            self.respond(pipe_message, RESULT_MISSING);
+            return;
+        };
+
+        if popup_pane.is_focused {
+            close_pane_with_id(popup_pane.pane_id);
+        } else {
+            focus_pane_with_id(popup_pane.pane_id, true, false);
         }
+
+        self.respond(pipe_message, RESULT_OK);
     }
 
     fn ensure_action_ready(&self, pipe_message: &PipeMessage) -> Option<usize> {
@@ -114,22 +105,9 @@ impl State {
             cli_pipe_output(pipe_id, result);
         }
     }
-
-    fn has_popup(&self, pipe_message: &PipeMessage) {
-        let Some(active_tab_position) = self.active_tab_position else {
-            self.respond(pipe_message, RESULT_NOT_READY);
-            return;
-        };
-
-        if self.popup_panes_by_tab.contains_key(&active_tab_position) {
-            self.respond(pipe_message, "true");
-        } else {
-            self.respond(pipe_message, "false");
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    // Covered by lib-level popup_contract and popup_pane_contract tests.
+    // Covered by lib-level popup_pane_contract tests.
 }

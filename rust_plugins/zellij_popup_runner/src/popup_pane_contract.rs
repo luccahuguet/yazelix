@@ -16,14 +16,12 @@ pub fn select_popup_pane(panes: &[PaneInfo]) -> Option<PopupPaneState> {
             !pane.is_plugin
                 && !pane.exited
                 && pane.is_floating
-                && (
-                    pane.title == POPUP_PANE_TITLE
-                        || pane
-                            .terminal_command
-                            .as_deref()
-                            .map(|command| command.contains(POPUP_WRAPPER_MARKER))
-                            .unwrap_or(false)
-                )
+                && (pane.title == POPUP_PANE_TITLE
+                    || pane
+                        .terminal_command
+                        .as_deref()
+                        .map(|command| command.contains(POPUP_WRAPPER_MARKER))
+                        .unwrap_or(false))
         })
         .max_by_key(|pane| pane.is_focused)
         .map(|pane| PopupPaneState {
@@ -34,7 +32,7 @@ pub fn select_popup_pane(panes: &[PaneInfo]) -> Option<PopupPaneState> {
 
 #[cfg(test)]
 mod tests {
-    use super::{POPUP_PANE_TITLE, POPUP_WRAPPER_MARKER, PopupPaneState, select_popup_pane};
+    use super::{select_popup_pane, PopupPaneState, POPUP_PANE_TITLE, POPUP_WRAPPER_MARKER};
     use zellij_tile::prelude::{PaneId, PaneInfo};
 
     fn popup_pane(command: Option<&str>, is_focused: bool) -> PaneInfo {
@@ -70,7 +68,9 @@ mod tests {
     #[test]
     fn selects_popup_by_wrapper_command() {
         let panes = vec![popup_pane(
-            Some(&format!("nu /tmp/runtime/configs/zellij/scripts/{POPUP_WRAPPER_MARKER}")),
+            Some(&format!(
+                "nu /tmp/runtime/configs/zellij/scripts/{POPUP_WRAPPER_MARKER}"
+            )),
             false,
         )];
 

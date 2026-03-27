@@ -57,8 +57,8 @@ pub fn resolve_sidebar_focus_toggle(
 #[cfg(test)]
 mod tests {
     use super::{
-        SidebarFocusTogglePlan, SidebarVisibilityTogglePlan, resolve_sidebar_focus_toggle,
-        resolve_sidebar_visibility_toggle,
+        resolve_sidebar_focus_toggle, resolve_sidebar_visibility_toggle, SidebarFocusTogglePlan,
+        SidebarVisibilityTogglePlan,
     };
     use crate::pane_contract::FocusContextPolicy;
 

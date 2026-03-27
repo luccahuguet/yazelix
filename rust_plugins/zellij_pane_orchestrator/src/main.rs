@@ -7,9 +7,9 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
 
-use yazelix_pane_orchestrator::horizontal_focus_contract::HorizontalDirection;
 use panes::{FocusContext, ManagedTabPanes};
 use workspace::WorkspaceState;
+use yazelix_pane_orchestrator::horizontal_focus_contract::HorizontalDirection;
 use zellij_tile::prelude::*;
 
 pub(crate) const RESULT_OK: &str = "ok";
@@ -49,9 +49,7 @@ impl ZellijPlugin for State {
             .ok()
             .filter(|home| !home.trim().is_empty())
             .unwrap_or_else(|| plugin_ids.initial_cwd.display().to_string());
-        self.initial_workspace_state = Some(WorkspaceState::from_bootstrap_root(
-            bootstrap_root,
-        ));
+        self.initial_workspace_state = Some(WorkspaceState::from_bootstrap_root(bootstrap_root));
         request_permission(&[
             PermissionType::ReadApplicationState,
             PermissionType::ChangeApplicationState,
@@ -98,8 +96,7 @@ impl ZellijPlugin for State {
                     panes::build_focused_terminal_pane_by_tab(&pane_manifest);
                 self.fallback_terminal_pane_by_tab =
                     panes::build_fallback_terminal_pane_by_tab(&pane_manifest);
-                self.terminal_panes_by_tab =
-                    panes::build_terminal_panes_by_tab(&pane_manifest);
+                self.terminal_panes_by_tab = panes::build_terminal_panes_by_tab(&pane_manifest);
                 self.user_pane_count_by_tab = panes::build_user_pane_count_by_tab(&pane_manifest);
             }
             Event::PermissionRequestResult(status) => {

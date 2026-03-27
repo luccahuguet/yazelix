@@ -249,7 +249,7 @@ def test_popup_toggle_wrapper_opens_when_popup_is_missing [] {
     print "🧪 Testing popup toggle wrapper opens when the popup is missing..."
 
     try {
-        let result = (resolve_popup_toggle_action false)
+        let result = (resolve_popup_toggle_action "missing")
 
         if $result == { action: "open" } {
             print "  ✅ popup toggle wrapper opens the popup when none exists"
@@ -268,7 +268,7 @@ def test_popup_toggle_wrapper_treats_ok_as_handled [] {
     print "🧪 Testing popup toggle wrapper treats an existing popup toggle as handled..."
 
     try {
-        let result = (resolve_popup_toggle_action true "ok")
+        let result = (resolve_popup_toggle_action "ok")
 
         if $result == { action: "handled" } {
             print "  ✅ popup toggle wrapper leaves popup focus/close behavior to the plugin when it already exists"
@@ -287,7 +287,7 @@ def test_popup_toggle_wrapper_surfaces_permission_denials [] {
     print "🧪 Testing popup toggle wrapper surfaces popup-plugin permission denials..."
 
     try {
-        let result = (resolve_popup_toggle_action true "permissions_denied")
+        let result = (resolve_popup_toggle_action "permissions_denied")
 
         if ($result.action == "error") and ($result.message | str contains "popup-runner plugin permissions") {
             print "  ✅ popup toggle wrapper reports popup-plugin permission denials clearly"

@@ -1,19 +1,19 @@
 use std::collections::HashMap;
 
 use serde::Serialize;
-use zellij_tile::prelude::*;
 use yazelix_pane_orchestrator::horizontal_focus_contract::{
-    HorizontalDirection, HorizontalFocusPlan, HorizontalPaneSnapshot, resolve_horizontal_focus,
+    resolve_horizontal_focus, HorizontalDirection, HorizontalFocusPlan, HorizontalPaneSnapshot,
 };
 use yazelix_pane_orchestrator::pane_contract::{
-    FocusContextPolicy, PaneSnapshot, resolve_focus_context, select_managed_pane_index,
+    resolve_focus_context, select_managed_pane_index, FocusContextPolicy, PaneSnapshot,
 };
 use yazelix_pane_orchestrator::sidebar_contract::{
-    SidebarFocusTogglePlan, resolve_sidebar_focus_toggle,
+    resolve_sidebar_focus_toggle, SidebarFocusTogglePlan,
 };
+use zellij_tile::prelude::*;
 
-use crate::{State, RESULT_INVALID_PAYLOAD, RESULT_MISSING, RESULT_OK};
 use crate::workspace::WorkspaceStateSource;
+use crate::{State, RESULT_INVALID_PAYLOAD, RESULT_MISSING, RESULT_OK};
 
 pub(crate) const EDITOR_TITLE: &str = "editor";
 pub(crate) const SIDEBAR_TITLE: &str = "sidebar";
@@ -152,7 +152,9 @@ pub(crate) fn build_fallback_terminal_pane_by_tab(
                 .or_else(|| {
                     panes
                         .iter()
-                        .find(|pane| !pane.is_plugin && !pane.exited && pane.title.trim() != SIDEBAR_TITLE)
+                        .find(|pane| {
+                            !pane.is_plugin && !pane.exited && pane.title.trim() != SIDEBAR_TITLE
+                        })
                         .map(|pane| (*tab_position, PaneId::Terminal(pane.id)))
                 })
         })
@@ -363,10 +365,12 @@ impl State {
                 WorkspaceStateSource::Explicit => "explicit",
             })
             .or_else(|| {
-                self.initial_workspace_state.as_ref().map(|workspace_state| match workspace_state.source {
-                    WorkspaceStateSource::Bootstrap => "bootstrap",
-                    WorkspaceStateSource::Explicit => "explicit",
-                })
+                self.initial_workspace_state
+                    .as_ref()
+                    .map(|workspace_state| match workspace_state.source {
+                        WorkspaceStateSource::Bootstrap => "bootstrap",
+                        WorkspaceStateSource::Explicit => "explicit",
+                    })
             })
             .map(str::to_string);
         let editor_pane = active_tab_position

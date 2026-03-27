@@ -3,13 +3,13 @@ use std::env;
 use std::thread::sleep;
 use std::time::Duration;
 
-use zellij_tile::prelude::*;
 use yazelix_pane_orchestrator::pane_contract::FocusContextPolicy;
 use yazelix_pane_orchestrator::sidebar_contract::{
-    SidebarVisibilityTogglePlan, resolve_sidebar_visibility_toggle,
+    resolve_sidebar_visibility_toggle, SidebarVisibilityTogglePlan,
 };
+use zellij_tile::prelude::*;
 
-use crate::panes::{ManagedTabPanes, SIDEBAR_TITLE, TerminalPaneLayout};
+use crate::panes::{ManagedTabPanes, TerminalPaneLayout, SIDEBAR_TITLE};
 use crate::{State, RESULT_MISSING, RESULT_OK, RESULT_UNKNOWN_LAYOUT, SWAP_LAYOUT_STEP_DELAY_MS};
 
 const SINGLE_OPEN_LAYOUT_NAME: &str = "single_open";
@@ -31,7 +31,8 @@ const DEFAULT_WIDGET_TRAY: &str =
     "{swap_layout} #[fg=#00ff88,bold][editor: {command_editor}] #[fg=#00ff88,bold][shell: {command_shell}] #[fg=#00ff88,bold][term: {command_term}] {command_cpu} {command_ram}";
 const DEFAULT_CUSTOM_TEXT_SEGMENT: &str = "";
 const SIDE_LAYOUT_TEMPLATE: &str = include_str!("../../../configs/zellij/layouts/yzx_side.kdl");
-const SIDE_SWAP_LAYOUT_TEMPLATE: &str = include_str!("../../../configs/zellij/layouts/yzx_side.swap.kdl");
+const SIDE_SWAP_LAYOUT_TEMPLATE: &str =
+    include_str!("../../../configs/zellij/layouts/yzx_side.swap.kdl");
 const ZJSTATUS_TAB_TEMPLATE: &str =
     include_str!("../../../configs/zellij/layouts/fragments/zjstatus_tab_template.kdl");
 const KEYBINDS_COMMON_TEMPLATE: &str =
@@ -96,7 +97,10 @@ impl State {
         };
 
         if self
-            .apply_override_layout_for_variant(layout_variant.shift_family(direction), active_tab_position)
+            .apply_override_layout_for_variant(
+                layout_variant.shift_family(direction),
+                active_tab_position,
+            )
             .is_none()
         {
             self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
@@ -133,7 +137,7 @@ impl State {
             .get(&active_tab_position)
             .is_some();
 
-        match resolve_sidebar_visibility_toggle(
+        let (target_variant, focus_right_after) = match resolve_sidebar_visibility_toggle(
             layout_variant.is_sidebar_closed(),
             match focus_context {
                 crate::panes::FocusContext::Editor => FocusContextPolicy::Editor,
@@ -144,55 +148,29 @@ impl State {
             has_focus_fallback,
         ) {
             SidebarVisibilityTogglePlan::OpenPreservingFocus => {
-                if self
-                    .apply_override_layout_for_variant(
-                        layout_variant.with_sidebar_state(SidebarState::Open),
-                        active_tab_position,
-                    )
-                    .is_none()
-                {
-                    self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
-                    return;
-                }
+                (layout_variant.with_sidebar_state(SidebarState::Open), false)
             }
-            SidebarVisibilityTogglePlan::ClosePreservingFocus => {
-                if self
-                    .apply_override_layout_for_variant(
-                        layout_variant.with_sidebar_state(SidebarState::Closed),
-                        active_tab_position,
-                    )
-                    .is_none()
-                {
-                    self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
-                    return;
-                }
-            }
-            SidebarVisibilityTogglePlan::CloseAndFocusEditor => {
-                if self
-                    .apply_override_layout_for_variant(
-                        layout_variant.with_sidebar_state(SidebarState::Closed),
-                        active_tab_position,
-                    )
-                    .is_none()
-                {
-                    self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
-                    return;
-                }
-                self.move_focus_right_after_layout_settle();
-            }
-            SidebarVisibilityTogglePlan::CloseAndFocusFallback => {
-                if self
-                    .apply_override_layout_for_variant(
-                        layout_variant.with_sidebar_state(SidebarState::Closed),
-                        active_tab_position,
-                    )
-                    .is_none()
-                {
-                    self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
-                    return;
-                }
-                self.move_focus_right_after_layout_settle();
-            }
+            SidebarVisibilityTogglePlan::ClosePreservingFocus => (
+                layout_variant.with_sidebar_state(SidebarState::Closed),
+                false,
+            ),
+            SidebarVisibilityTogglePlan::CloseAndFocusEditor
+            | SidebarVisibilityTogglePlan::CloseAndFocusFallback => (
+                layout_variant.with_sidebar_state(SidebarState::Closed),
+                true,
+            ),
+        };
+
+        if self
+            .apply_override_layout_for_variant(target_variant, active_tab_position)
+            .is_none()
+        {
+            self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
+            return;
+        }
+
+        if focus_right_after {
+            self.move_focus_right_after_layout_settle();
         }
 
         self.respond(pipe_message, RESULT_OK);
@@ -258,21 +236,20 @@ impl State {
     }
 
     pub(crate) fn open_sidebar_and_focus_after_layout_settle(&self) {
-        if let Some(active_tab_position) = self.active_tab_position {
-            if let Some(layout_variant) = self.get_active_layout_variant(active_tab_position) {
-                if self
-                    .apply_override_layout_for_variant(
-                        layout_variant.with_sidebar_state(SidebarState::Open),
-                        active_tab_position,
-                    )
-                    .is_none()
-                {
-                    self.run_previous_swap_layout_steps(1);
-                }
-            } else {
-                self.run_previous_swap_layout_steps(1);
-            }
-        } else {
+        let opened_with_override = self
+            .active_tab_position
+            .and_then(|active_tab_position| {
+                self.get_active_layout_variant(active_tab_position)
+                    .and_then(|layout_variant| {
+                        self.apply_override_layout_for_variant(
+                            layout_variant.with_sidebar_state(SidebarState::Open),
+                            active_tab_position,
+                        )
+                    })
+            })
+            .is_some();
+
+        if !opened_with_override {
             self.run_previous_swap_layout_steps(1);
         }
         self.move_focus_to_sidebar_after_layout_settle();
@@ -329,7 +306,9 @@ impl LayoutVariant {
             (LayoutFamily::BottomTerminal, FamilyDirection::Next) => LayoutFamily::Single,
             (LayoutFamily::Single, FamilyDirection::Previous) => LayoutFamily::BottomTerminal,
             (LayoutFamily::VerticalSplit, FamilyDirection::Previous) => LayoutFamily::Single,
-            (LayoutFamily::BottomTerminal, FamilyDirection::Previous) => LayoutFamily::VerticalSplit,
+            (LayoutFamily::BottomTerminal, FamilyDirection::Previous) => {
+                LayoutFamily::VerticalSplit
+            }
         };
 
         Self {
@@ -373,10 +352,16 @@ fn infer_layout_variant_from_terminal_panes(
     terminal_panes: &[TerminalPaneLayout],
     managed_tab_panes: Option<&ManagedTabPanes>,
 ) -> Option<LayoutVariant> {
-    let managed_sidebar_id = managed_tab_panes.and_then(|tab| tab.sidebar).map(|pane| pane.pane_id);
+    let managed_sidebar_id = managed_tab_panes
+        .and_then(|tab| tab.sidebar)
+        .map(|pane| pane.pane_id);
     let sidebar_pane = managed_sidebar_id
         .and_then(|pane_id| terminal_panes.iter().find(|pane| pane.pane_id == pane_id))
-        .or_else(|| terminal_panes.iter().find(|pane| pane.title.trim() == SIDEBAR_TITLE))?;
+        .or_else(|| {
+            terminal_panes
+                .iter()
+                .find(|pane| pane.title.trim() == SIDEBAR_TITLE)
+        })?;
     let non_sidebar_panes = terminal_panes
         .iter()
         .filter(|pane| pane.pane_id != sidebar_pane.pane_id)
@@ -415,40 +400,24 @@ fn build_override_layout_kdl(
     layout_variant: LayoutVariant,
     total_terminal_panes: usize,
 ) -> Option<String> {
-    let resolved_runtime_dir = runtime_dir();
-    let sidebar_launcher = runtime_script_path("launch_sidebar_yazi.nu", &resolved_runtime_dir);
-    let runtime_layout = render_embedded_side_layout(&resolved_runtime_dir);
-    let swap_layouts = render_embedded_swap_layouts(&resolved_runtime_dir);
-    build_override_layout_kdl_with_inputs(
-        layout_variant,
-        total_terminal_panes,
-        Some(runtime_layout.as_str()),
-        Some(swap_layouts.as_str()),
-        &sidebar_launcher,
-    )
-}
-
-fn build_override_layout_kdl_with_inputs(
-    layout_variant: LayoutVariant,
-    total_terminal_panes: usize,
-    runtime_layout: Option<&str>,
-    swap_layouts: Option<&str>,
-    sidebar_launcher: &str,
-) -> Option<String> {
     if total_terminal_panes < 2 {
         return None;
     }
 
-    let ui_tab_template = extract_ui_tab_template(runtime_layout?)?;
+    let resolved_runtime_dir = runtime_dir();
+    let sidebar_launcher = runtime_script_path("launch_sidebar_yazi.nu", &resolved_runtime_dir);
+    let runtime_layout = render_embedded_side_layout(&resolved_runtime_dir);
+    let swap_layouts = render_embedded_swap_layouts(&resolved_runtime_dir);
+    let ui_tab_template = extract_ui_tab_template(&runtime_layout)?;
     let content_layout = build_content_layout_kdl(
         layout_variant,
         total_terminal_panes.saturating_sub(1),
-        sidebar_launcher,
+        &sidebar_launcher,
     )?;
 
     Some(format!(
         "layout {{\n{ui_tab_template}\n\n{}\n\nui {{\n{content_layout}\n}}\n}}\n",
-        swap_layouts?
+        swap_layouts
     ))
 }
 
@@ -515,28 +484,40 @@ fn build_generic_terminal_panes(count: usize, indent_level: usize) -> String {
 }
 
 fn render_embedded_side_layout(runtime_dir: &str) -> String {
-    let with_fragments = apply_static_fragment(
-        apply_static_fragment(
-            SIDE_LAYOUT_TEMPLATE.to_string(),
-            ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER,
-            ZJSTATUS_TAB_TEMPLATE,
-        ),
-        KEYBINDS_COMMON_PLACEHOLDER,
-        KEYBINDS_COMMON_TEMPLATE,
-    );
-    replace_layout_placeholders(with_fragments, runtime_dir)
+    render_embedded_layout(
+        SIDE_LAYOUT_TEMPLATE,
+        runtime_dir,
+        &[
+            (ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER, ZJSTATUS_TAB_TEMPLATE),
+            (KEYBINDS_COMMON_PLACEHOLDER, KEYBINDS_COMMON_TEMPLATE),
+        ],
+    )
 }
 
 fn render_embedded_swap_layouts(runtime_dir: &str) -> String {
-    let with_fragments = apply_static_fragment(
-        apply_static_fragment(
-            SIDE_SWAP_LAYOUT_TEMPLATE.to_string(),
-            SWAP_SIDEBAR_OPEN_PLACEHOLDER,
-            SWAP_SIDEBAR_OPEN_TEMPLATE,
-        ),
-        SWAP_SIDEBAR_CLOSED_PLACEHOLDER,
-        SWAP_SIDEBAR_CLOSED_TEMPLATE,
-    );
+    render_embedded_layout(
+        SIDE_SWAP_LAYOUT_TEMPLATE,
+        runtime_dir,
+        &[
+            (SWAP_SIDEBAR_OPEN_PLACEHOLDER, SWAP_SIDEBAR_OPEN_TEMPLATE),
+            (
+                SWAP_SIDEBAR_CLOSED_PLACEHOLDER,
+                SWAP_SIDEBAR_CLOSED_TEMPLATE,
+            ),
+        ],
+    )
+}
+
+fn render_embedded_layout(
+    template: &str,
+    runtime_dir: &str,
+    static_fragments: &[(&str, &str)],
+) -> String {
+    let with_fragments = static_fragments
+        .iter()
+        .fold(template.to_string(), |content, (placeholder, fragment)| {
+            apply_static_fragment(content, placeholder, fragment)
+        });
     replace_layout_placeholders(with_fragments, runtime_dir)
 }
 
@@ -603,10 +584,10 @@ fn is_no_sidebar_mode(managed_tab_panes: Option<&ManagedTabPanes>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        FamilyDirection, LayoutFamily, LayoutVariant, SidebarState, build_bottom_terminal_family_kdl,
-        build_content_layout_kdl, build_generic_terminal_panes, build_override_layout_kdl,
-        build_single_family_kdl, build_vertical_split_family_kdl, extract_ui_tab_template,
-        infer_layout_variant_from_terminal_panes,
+        build_bottom_terminal_family_kdl, build_content_layout_kdl, build_generic_terminal_panes,
+        build_override_layout_kdl, build_single_family_kdl, build_vertical_split_family_kdl,
+        extract_ui_tab_template, infer_layout_variant_from_terminal_panes, FamilyDirection,
+        LayoutFamily, LayoutVariant, SidebarState,
     };
     use crate::panes::{ManagedTabPanes, ManagedTerminalPane, TerminalPaneLayout};
     use zellij_tile::prelude::PaneId;
@@ -762,7 +743,9 @@ mod tests {
 
     #[test]
     fn builds_override_layout_from_embedded_templates_without_runtime_file_reads() {
-        unsafe { std::env::set_var("YAZELIX_RUNTIME_DIR", "/tmp/yazelix-runtime"); }
+        unsafe {
+            std::env::set_var("YAZELIX_RUNTIME_DIR", "/tmp/yazelix-runtime");
+        }
 
         let layout_kdl = build_override_layout_kdl(
             LayoutVariant {
@@ -775,10 +758,15 @@ mod tests {
 
         assert!(layout_kdl.contains("tab_template name=\"ui\""));
         assert!(layout_kdl.contains("swap_tiled_layout name=\"single_open\""));
-        assert!(layout_kdl.contains("file:/tmp/yazelix-runtime/configs/zellij/plugins/zjstatus.wasm"));
-        assert!(layout_kdl.contains("/tmp/yazelix-runtime/configs/zellij/scripts/launch_sidebar_yazi.nu"));
+        assert!(
+            layout_kdl.contains("file:/tmp/yazelix-runtime/configs/zellij/plugins/zjstatus.wasm")
+        );
+        assert!(layout_kdl
+            .contains("/tmp/yazelix-runtime/configs/zellij/scripts/launch_sidebar_yazi.nu"));
 
-        unsafe { std::env::remove_var("YAZELIX_RUNTIME_DIR"); }
+        unsafe {
+            std::env::remove_var("YAZELIX_RUNTIME_DIR");
+        }
     }
 
     #[test]

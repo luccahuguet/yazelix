@@ -54,7 +54,9 @@ pub fn resolve_focus_context(
 
 #[cfg(test)]
 mod tests {
-    use super::{FocusContextPolicy, PaneSnapshot, resolve_focus_context, select_managed_pane_index};
+    use super::{
+        resolve_focus_context, select_managed_pane_index, FocusContextPolicy, PaneSnapshot,
+    };
 
     #[test]
     fn only_exact_editor_title_counts_as_managed_editor() {

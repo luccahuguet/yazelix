@@ -161,6 +161,12 @@ When creating new files or directories, always use underscores to maintain consi
 - What does the user explicitly want vs. what they implicitly expect?
 - How do similar tools handle this situation and why?
 
+### Delete-First Protocol
+
+- Make the requirements less "dumb": Question every requirement, especially those from smart people, to ensure they are not illogical or based on flawed assumptions.
+- Delete the part or process: Actively remove unnecessary steps, components, or processes. If you are not occasionally adding parts back in, you are not deleting enough.
+- Simplify or optimize: Streamline the remaining essential components. Never optimize a part or process that should have been deleted.
+
 ## Verification Requirements
 
 - **Always test the exact functions or commands you change** before committing.

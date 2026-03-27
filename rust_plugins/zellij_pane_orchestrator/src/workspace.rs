@@ -82,7 +82,8 @@ impl State {
             }
         };
 
-        let workspace_state = WorkspaceState::from_explicit_root(workspace_root_request.workspace_root);
+        let workspace_state =
+            WorkspaceState::from_explicit_root(workspace_root_request.workspace_root);
         rename_tab(
             tab_index_from_position(active_tab_position),
             &tab_name_from_workspace_root(&workspace_state.root),
@@ -114,7 +115,8 @@ impl State {
             return;
         };
 
-        let workspace_state = WorkspaceState::from_explicit_root(workspace_root_request.workspace_root);
+        let workspace_state =
+            WorkspaceState::from_explicit_root(workspace_root_request.workspace_root);
         rename_tab(
             tab_index_from_position(active_tab_position),
             &tab_name_from_workspace_root(&workspace_state.root),
@@ -172,7 +174,6 @@ impl State {
         open_terminal(&workspace_state.root);
         self.respond(pipe_message, RESULT_OK);
     }
-
 }
 
 impl WorkspaceState {
