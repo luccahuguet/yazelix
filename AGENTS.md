@@ -154,6 +154,8 @@ When creating new files or directories, always use underscores to maintain consi
 - Tool selection: Which approach to use when multiple options exist
 - Architecture decisions: How to structure or integrate new features
 
+**PREFER PLANNING SPACE FIRST** - It is usually much easier, faster, and safer to improve the plan than to correct code after implementation starts. Spend real effort refining the problem framing, scope, dependencies, user impact, migration story, and verification strategy before making code changes.
+
 **REASON FROM FIRST PRINCIPLES** - When faced with design decisions or trade-offs, analyze the fundamental requirements and constraints rather than following conventions blindly. Consider:
 - What is the core problem being solved?
 - What are the fundamental constraints (safety, user expectations, system behavior)?
