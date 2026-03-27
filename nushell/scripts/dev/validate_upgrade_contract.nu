@@ -25,6 +25,19 @@ def load_notes [] {
     open (($REPO_ROOT | path join "docs" "upgrade_notes.toml"))
 }
 
+def load_notes_from_ref [ref: string] {
+    if not (ref_exists $ref) {
+        return null
+    }
+
+    let result = (^git show $"($ref):docs/upgrade_notes.toml" | complete)
+    if $result.exit_code != 0 {
+        return null
+    }
+
+    $result.stdout | from toml
+}
+
 def load_changelog [] {
     open --raw (($REPO_ROOT | path join "CHANGELOG.md"))
 }
@@ -35,6 +48,14 @@ def get_release_entries [] {
 
 def get_entry [entries: record, key: string] {
     $entries | get -o $key
+}
+
+def drop_acknowledged_guarded_changes [entry: record] {
+    if ("acknowledged_guarded_changes" in ($entry | columns)) {
+        $entry | reject acknowledged_guarded_changes
+    } else {
+        $entry
+    }
 }
 
 def as_string_list [value: any] {
@@ -207,6 +228,44 @@ def get_previous_version [base: string] {
     extract_version_from_constants $result.stdout
 }
 
+def notes_changed_only_acknowledgements [entries: record, diff_base: string] {
+    let previous_notes = (load_notes_from_ref $diff_base)
+    if $previous_notes == null {
+        return false
+    }
+
+    let previous_entries = ($previous_notes.releases? | default null)
+    if $previous_entries == null {
+        return false
+    }
+
+    let current_keys = (($entries | columns) | sort)
+    let previous_keys = (($previous_entries | columns) | sort)
+    if $current_keys != $previous_keys {
+        return false
+    }
+
+    let changed_keys = (
+        $current_keys | where {|key|
+            (get_entry $entries $key) != (get_entry $previous_entries $key)
+        }
+    )
+
+    if ($changed_keys | is-empty) {
+        return false
+    }
+
+    for key in $changed_keys {
+        let current_entry = (get_entry $entries $key)
+        let previous_entry = (get_entry $previous_entries $key)
+        if (drop_acknowledged_guarded_changes $current_entry) != (drop_acknowledged_guarded_changes $previous_entry) {
+            return false
+        }
+    }
+
+    true
+}
+
 def validate_ci_rules [entries: record, diff_base: string] {
     let changed_files = (get_changed_files $diff_base)
     let current_entry = (get_entry $entries $YAZELIX_VERSION)
@@ -216,12 +275,17 @@ def validate_ci_rules [entries: record, diff_base: string] {
     let docs_changed = ("docs/upgrade_notes.toml" in $changed_files) and ("CHANGELOG.md" in $changed_files)
     let one_doc_changed = (("docs/upgrade_notes.toml" in $changed_files) or ("CHANGELOG.md" in $changed_files)) and (not $docs_changed)
     let changed_ack_required = ($changed_files | where {|path| $path in $ACK_REQUIRED_FILES })
+    let ack_only_notes_change = (
+        ("docs/upgrade_notes.toml" in $changed_files)
+        and (not ("CHANGELOG.md" in $changed_files))
+        and (notes_changed_only_acknowledgements $entries $diff_base)
+    )
     let target_key = if $version_bumped { $YAZELIX_VERSION } else { "unreleased" }
     let target_entry = if $target_key == "unreleased" { $unreleased_entry } else { $current_entry }
     let acknowledged = (as_string_list $target_entry.acknowledged_guarded_changes)
     mut errors = []
 
-    if $one_doc_changed {
+    if $one_doc_changed and (not $ack_only_notes_change) {
         $errors = ($errors | append "CI: CHANGELOG.md and docs/upgrade_notes.toml must change together")
     }
 
@@ -229,7 +293,7 @@ def validate_ci_rules [entries: record, diff_base: string] {
         $errors = ($errors | append $"CI: version bump from ($previous_version) to ($YAZELIX_VERSION) must update both CHANGELOG.md and docs/upgrade_notes.toml")
     }
 
-    if (not $version_bumped) and (not ($changed_ack_required | is-empty)) and (not $docs_changed) {
+    if (not $version_bumped) and (not ($changed_ack_required | is-empty)) and (not $docs_changed) and (not $ack_only_notes_change) {
         $errors = ($errors | append "CI: guarded config-contract changes must update both CHANGELOG.md and docs/upgrade_notes.toml in the same diff")
     }
 

@@ -39,10 +39,17 @@ def setup_repo_fixture [] {
 
 def run_validator [fixture: record, ci: bool = false] {
     if $ci {
-        ^nu $fixture.validator --ci | complete
+        ^nu $fixture.validator --ci --diff-base HEAD~1 | complete
     } else {
         ^nu $fixture.validator | complete
     }
+}
+
+def commit_fixture_change [fixture: record, message: string] {
+    ^git -C $fixture.fixture_root config user.email "codex@example.com"
+    ^git -C $fixture.fixture_root config user.name "Codex"
+    ^git -C $fixture.fixture_root add -A
+    ^git -C $fixture.fixture_root commit --quiet -m $message
 }
 
 def run_current_repo_case [] {
@@ -68,6 +75,7 @@ def run_broken_notes_case [] {
     log_line $log_file "Case: broken upgrade notes are rejected"
     let broken_notes = (
         open $fixture.notes
+        | upsert releases.unreleased.upgrade_impact "migration_available"
         | upsert releases.unreleased.migration_ids []
     )
     $broken_notes | to toml | save --force $fixture.notes
@@ -85,10 +93,63 @@ def run_broken_notes_case [] {
     $ok
 }
 
+def run_ci_ack_only_notes_case [] {
+    let fixture = (setup_repo_fixture)
+    let log_file = $fixture.log_file
+
+    log_line $log_file "Case: CI accepts ack-only structured note updates without a changelog edit"
+    let updated_notes = (
+        open $fixture.notes
+        | upsert releases.unreleased.acknowledged_guarded_changes ["nushell/scripts/utils/config_migrations.nu"]
+    )
+    $updated_notes | to toml | save --force $fixture.notes
+    commit_fixture_change $fixture "Ack guarded change in upgrade notes only"
+
+    log_block $log_file "Updated upgrade_notes.toml" (open --raw $fixture.notes)
+
+    let result = (run_validator $fixture true)
+    log_block $log_file "Validator stdout" ($result.stdout | str trim)
+    log_block $log_file "Validator stderr" ($result.stderr | str trim)
+
+    let ok = ($result.exit_code == 0) and (($result.stdout | str contains "Upgrade contract is valid in CI mode"))
+    if $ok { log_line $log_file "Result: PASS" } else { log_line $log_file "Result: FAIL" }
+
+    rm -rf ($fixture.fixture_root | path dirname)
+    $ok
+}
+
+def run_ci_summary_without_changelog_case [] {
+    let fixture = (setup_repo_fixture)
+    let log_file = $fixture.log_file
+
+    log_line $log_file "Case: CI rejects user-facing structured note changes without a changelog edit"
+    let updated_notes = (
+        open $fixture.notes
+        | upsert releases.unreleased.summary ["A real unreleased note without the matching changelog update."]
+    )
+    $updated_notes | to toml | save --force $fixture.notes
+    commit_fixture_change $fixture "Change unreleased summary without changelog"
+
+    log_block $log_file "Updated upgrade_notes.toml" (open --raw $fixture.notes)
+
+    let result = (run_validator $fixture true)
+    log_block $log_file "Validator stdout" ($result.stdout | str trim)
+    log_block $log_file "Validator stderr" ($result.stderr | str trim)
+
+    let combined_output = ([$result.stdout $result.stderr] | str join "\n")
+    let ok = ($result.exit_code != 0) and ($combined_output | str contains "CHANGELOG.md and docs/upgrade_notes.toml must change together")
+    if $ok { log_line $log_file "Result: PASS" } else { log_line $log_file "Result: FAIL" }
+
+    rm -rf ($fixture.fixture_root | path dirname)
+    $ok
+}
+
 export def main [] {
     let results = [
         (run_current_repo_case)
         (run_broken_notes_case)
+        (run_ci_ack_only_notes_case)
+        (run_ci_summary_without_changelog_case)
     ]
     let passed = ($results | where $it == true | length)
     let total = ($results | length)
