@@ -18,7 +18,7 @@ summary = [
     "Added a root CHANGELOG, structured upgrade notes, first-run upgrade summaries, and historical v12/v13 note backfill.",
 ]
 upgrade_impact = "migration_available"
-acknowledged_guarded_changes = []
+acknowledged_guarded_changes = ["nushell/scripts/utils/config_migrations.nu"]
 migration_ids = [
     "remove_zellij_widget_tray_layout",
     "remove_shell_enable_atuin",
