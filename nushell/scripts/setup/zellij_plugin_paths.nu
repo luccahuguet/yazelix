@@ -85,6 +85,39 @@ def build_permission_block [plugin_path: string, permissions: list<string>] {
     )
 }
 
+def upsert_permission_blocks [blocks: list<string>] {
+    let permissions_cache_path = (get_permissions_cache_path)
+    let existing_blocks = if ($permissions_cache_path | path exists) {
+        parse_permission_blocks (open --raw $permissions_cache_path)
+    } else {
+        []
+    }
+    let target_paths = (
+        $blocks
+        | each {|block|
+            (
+                $block
+                | lines
+                | first
+                | parse --regex '^"(?<path>.+)"\s*\{$'
+                | get 0.path
+            )
+        }
+    )
+    let retained_text = (
+        $existing_blocks
+        | where {|block| $block.path not-in $target_paths }
+        | each {|block| build_permission_block $block.path $block.permissions }
+    )
+    let updated_content = ($retained_text | append $blocks | str join "\n\n")
+    let cache_dir = ($permissions_cache_path | path dirname)
+    if not ($cache_dir | path exists) {
+        mkdir $cache_dir
+    }
+    $updated_content | save --force --raw $permissions_cache_path
+    $permissions_cache_path
+}
+
 def permission_block_is_sufficient [permissions: list<string>, required_permissions: list<string>] {
     $required_permissions
     | all {|permission| $permission in $permissions }
@@ -247,4 +280,27 @@ export def get_pane_orchestrator_wasm_path [yazelix_dir?: string] {
 
 export def get_popup_runner_wasm_path [yazelix_dir?: string] {
     sync_popup_runner_runtime_wasm $yazelix_dir
+}
+
+export def seed_yazelix_plugin_permissions [yazelix_dir?: string] {
+    let tracked_pane_orchestrator = (get_tracked_pane_orchestrator_wasm_path $yazelix_dir)
+    let tracked_popup_runner = (get_tracked_popup_runner_wasm_path $yazelix_dir)
+    let runtime_pane_orchestrator = (sync_pane_orchestrator_runtime_wasm $yazelix_dir)
+    let runtime_popup_runner = (sync_popup_runner_runtime_wasm $yazelix_dir)
+
+    let blocks = [
+        (build_permission_block $tracked_pane_orchestrator $pane_orchestrator_required_permissions)
+        (build_permission_block $runtime_pane_orchestrator $pane_orchestrator_required_permissions)
+        (build_permission_block $tracked_popup_runner $popup_runner_required_permissions)
+        (build_permission_block $runtime_popup_runner $popup_runner_required_permissions)
+    ]
+    let permissions_cache_path = (upsert_permission_blocks $blocks)
+
+    {
+        permissions_cache_path: $permissions_cache_path
+        tracked_pane_orchestrator: $tracked_pane_orchestrator
+        runtime_pane_orchestrator: $runtime_pane_orchestrator
+        tracked_popup_runner: $tracked_popup_runner
+        runtime_popup_runner: $runtime_popup_runner
+    }
 }

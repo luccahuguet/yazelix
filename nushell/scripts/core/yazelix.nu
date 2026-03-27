@@ -6,6 +6,7 @@ use ../utils/config_manager.nu *
 use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
 use ../utils/common.nu [describe_build_parallelism get_yazelix_dir require_yazelix_dir]
+use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ./start_yazelix.nu [start_yazelix_session]
 use ../integrations/zellij.nu [set_tab_cwd resolve_tab_cwd_target]
@@ -148,7 +149,7 @@ export def "yzx cwd" [
         }
         "permissions_denied" => {
             print "❌ The Yazelix pane orchestrator plugin is missing required Zellij permissions."
-            print "   Reload the Yazelix session and try again."
+            print "   Run `yzx repair zellij-permissions`, then restart Yazelix."
             exit 1
         }
         _ => {
@@ -341,6 +342,17 @@ export def "yzx doctor" [
 ] {
     use ../utils/doctor.nu run_doctor_checks
     run_doctor_checks $verbose $fix
+}
+
+export def "yzx repair" [] {
+    print "Available recovery commands:"
+    print "  yzx repair zellij-permissions   Seed Yazelix plugin grants in ~/.cache/zellij/permissions.kdl"
+}
+
+export def "yzx repair zellij-permissions" [] {
+    let result = (seed_yazelix_plugin_permissions)
+    print $"✅ Seeded Yazelix plugin permissions at: ($result.permissions_cache_path)"
+    print "   Restart Yazelix so Zellij reloads the plugin permission state."
 }
 
 # Update dependencies and inputs

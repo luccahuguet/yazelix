@@ -651,6 +651,61 @@ def test_popup_runner_permission_cache_is_preserved_for_stable_runtime_path [] {
     $result
 }
 
+def test_seed_yazelix_plugin_permissions_materializes_required_grants [] {
+    print "🧪 Testing zellij permission repair seeds Yazelix plugin grants..."
+
+    let tmp_home = (^mktemp -d /tmp/yazelix_seed_permissions_XXXXXX | str trim)
+    let yazelix_dir = ($tmp_home | path join ".config" "yazelix")
+    let tracked_plugins_dir = ($yazelix_dir | path join "configs" "zellij" "plugins")
+    let permissions_path = ($tmp_home | path join ".cache" "zellij" "permissions.kdl")
+    let runtime_pane_path = ($tmp_home | path join ".local" "share" "yazelix" "configs" "zellij" "plugins" "yazelix_pane_orchestrator.wasm")
+    let runtime_popup_path = ($tmp_home | path join ".local" "share" "yazelix" "configs" "zellij" "plugins" "yazelix_popup_runner.wasm")
+
+    let result = (try {
+        mkdir $tracked_plugins_dir
+        "pane" | save --force --raw ($tracked_plugins_dir | path join "yazelix_pane_orchestrator.wasm")
+        "popup" | save --force --raw ($tracked_plugins_dir | path join "yazelix_popup_runner.wasm")
+
+        let helper_script = (repo_path "nushell" "scripts" "setup" "zellij_plugin_paths.nu")
+        let snippet = ([
+            $"source '($helper_script)'"
+            ("let result = (seed_yazelix_plugin_permissions '" + $yazelix_dir + "')")
+            "print ($result | to json -r)"
+        ] | str join "\n")
+        let output = with-env { HOME: $tmp_home } {
+            ^nu -c $snippet | complete
+        }
+        let stdout = ($output.stdout | str trim)
+        let cache_contents = (open --raw $permissions_path)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains $permissions_path)
+            and ($runtime_pane_path | path exists)
+            and ($runtime_popup_path | path exists)
+            and ($cache_contents | str contains ($tracked_plugins_dir | path join "yazelix_pane_orchestrator.wasm"))
+            and ($cache_contents | str contains $runtime_pane_path)
+            and ($cache_contents | str contains "OpenTerminalsOrPlugins")
+            and ($cache_contents | str contains "WriteToStdin")
+            and ($cache_contents | str contains ($tracked_plugins_dir | path join "yazelix_popup_runner.wasm"))
+            and ($cache_contents | str contains $runtime_popup_path)
+            and ($cache_contents | str contains "ReadCliPipes")
+        ) {
+            print "  ✅ Yazelix permission repair seeds both plugin grants and runtime wasm paths"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim) cache=($cache_contents)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_packs_helper_uses_runtime_root_for_devenv_links [] {
     print "🧪 Testing yzx packs helper reads .devenv links from the runtime root..."
 
@@ -742,6 +797,7 @@ export def run_core_canonical_tests [] {
 
 export def run_core_noncanonical_tests [] {
     [
+        (test_seed_yazelix_plugin_permissions_materializes_required_grants)
         (test_yzx_config_reset_replaces_with_backup)
     ]
 }
