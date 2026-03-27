@@ -734,10 +734,17 @@ def test_zellij_horizontal_walking_is_plugin_owned [] {
             and ($config_stdout | str contains 'name "move_focus_left_or_tab"')
             and ($config_stdout | str contains 'bind "Alt l" "Alt Right" {')
             and ($config_stdout | str contains 'name "move_focus_right_or_tab"')
+            and ($config_stdout | str contains 'bind "Alt y" {')
+            and ($config_stdout | str contains 'name "toggle_sidebar"')
+            and ($config_stdout | str contains 'bind "Alt [" {')
+            and ($config_stdout | str contains 'name "previous_family"')
+            and ($config_stdout | str contains 'bind "Alt ]" {')
+            and ($config_stdout | str contains 'name "next_family"')
             and ($config_stdout | str contains 'bind "Alt t" {')
             and ($config_stdout | str contains 'yzx_toggle_popup.nu')
             and ($config_stdout | str contains 'yazelix_popup_runner.wasm')
             and not ($layout_stdout | str contains 'bind "Alt h" "Alt Left" {')
+            and not ($layout_stdout | str contains 'bind "Alt y" {')
             and not ($layout_stdout | str contains 'bind "Alt t" {')
         ) {
             print "  ✅ Yazelix-owned session keybinds are emitted in merged config instead of layout-local keybind blocks"

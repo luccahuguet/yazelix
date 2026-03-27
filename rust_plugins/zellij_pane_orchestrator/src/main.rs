@@ -5,6 +5,9 @@ mod workspace;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use yazelix_pane_orchestrator::horizontal_focus_contract::HorizontalDirection;
 use panes::{FocusContext, ManagedTabPanes};
@@ -141,6 +144,14 @@ impl ZellijPlugin for State {
                 self.toggle_sidebar(&pipe_message);
                 false
             }
+            "debug_layout_state" => {
+                self.debug_layout_state(&pipe_message);
+                false
+            }
+            "debug_override_build_state" => {
+                self.debug_override_build_state(&pipe_message);
+                false
+            }
             "set_workspace_root" => {
                 self.set_workspace_root(&pipe_message);
                 false
@@ -194,6 +205,21 @@ impl State {
     pub(crate) fn respond(&self, pipe_message: &PipeMessage, result: &str) {
         if let PipeSource::Cli(pipe_id) = &pipe_message.source {
             cli_pipe_output(pipe_id, result);
+        }
+    }
+
+    pub(crate) fn append_layout_debug_log(&self, message: &str) {
+        let home_dir = env::var("HOME").unwrap_or_else(|_| String::from("/"));
+        let log_dir = format!("{home_dir}/.local/share/yazelix/logs");
+        let _ = fs::create_dir_all(&log_dir);
+        let log_path = format!("{log_dir}/pane_orchestrator_layout.log");
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_secs().to_string())
+            .unwrap_or_else(|_| String::from("0"));
+
+        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(log_path) {
+            let _ = writeln!(file, "[{timestamp}] {message}");
         }
     }
 }

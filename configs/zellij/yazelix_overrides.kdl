@@ -126,7 +126,7 @@ keybinds {
             }
         }
 
-        // Toggle the managed sidebar by switching between the paired open/closed swap layouts.
+        // Toggle the managed sidebar through the pane orchestrator plugin.
         bind "Alt y" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
                 name "toggle_sidebar"
