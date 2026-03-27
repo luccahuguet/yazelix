@@ -258,24 +258,6 @@ export def debug_editor_state [] {
     }
 }
 
-export def debug_layout_state [] {
-    let response = (run_pane_orchestrator_command_raw "debug_layout_state")
-    try {
-        $response | from json
-    } catch {
-        {raw: $response}
-    }
-}
-
-export def debug_override_build_state [] {
-    let response = (run_pane_orchestrator_command_raw "debug_override_build_state")
-    try {
-        $response | from json
-    } catch {
-        {raw: $response}
-    }
-}
-
 def read_current_tab_workspace_root [--include-bootstrap] {
     let state = try {
         debug_editor_state

@@ -3,7 +3,6 @@ use std::env;
 use std::thread::sleep;
 use std::time::Duration;
 
-use serde::Serialize;
 use zellij_tile::prelude::*;
 use yazelix_pane_orchestrator::pane_contract::FocusContextPolicy;
 use yazelix_pane_orchestrator::sidebar_contract::{
@@ -48,66 +47,23 @@ pub(crate) enum FamilyDirection {
     Previous,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum LayoutFamily {
     Single,
     VerticalSplit,
     BottomTerminal,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum SidebarState {
     Open,
     Closed,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct LayoutVariant {
     family: LayoutFamily,
     sidebar_state: SidebarState,
-}
-
-#[derive(Serialize)]
-struct DebugLayoutPaneState {
-    pane_id: String,
-    title: String,
-    is_focused: bool,
-    pane_x: usize,
-    pane_y: usize,
-    pane_columns: usize,
-    pane_rows: usize,
-}
-
-#[derive(Serialize)]
-struct DebugLayoutState {
-    active_tab_position: Option<usize>,
-    active_swap_layout_name: Option<String>,
-    resolved_layout_variant: Option<LayoutVariant>,
-    focus_context: Option<String>,
-    user_pane_count: Option<usize>,
-    managed_editor_pane_id: Option<String>,
-    managed_sidebar_pane_id: Option<String>,
-    focused_terminal_pane_id: Option<String>,
-    fallback_terminal_pane_id: Option<String>,
-    terminal_panes: Vec<DebugLayoutPaneState>,
-}
-
-#[derive(Serialize)]
-struct DebugOverrideBuildState {
-    active_tab_position: Option<usize>,
-    active_swap_layout_name: Option<String>,
-    resolved_layout_variant: Option<LayoutVariant>,
-    total_terminal_panes: Option<usize>,
-    current_home_dir: String,
-    resolved_runtime_dir: String,
-    embedded_layout_template_available: bool,
-    embedded_swap_layout_template_available: bool,
-    embedded_zjstatus_template_available: bool,
-    embedded_swap_sidebar_open_available: bool,
-    embedded_swap_sidebar_closed_available: bool,
-    ui_tab_template_extracted: bool,
-    content_layout_generated: bool,
-    override_layout_generated: bool,
 }
 
 impl State {
@@ -119,10 +75,8 @@ impl State {
         let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
             return;
         };
-        self.log_layout_action_snapshot("switch_layout_family", active_tab_position);
 
         if !self.can_switch_layout_family(active_tab_position) {
-            self.append_layout_debug_log("switch_layout_family short-circuited: not enough panes");
             self.respond(pipe_message, RESULT_OK);
             return;
         }
@@ -132,17 +86,11 @@ impl State {
                 FamilyDirection::Next => self.run_next_swap_layout_steps(1),
                 FamilyDirection::Previous => self.run_previous_swap_layout_steps(1),
             }
-            self.append_layout_debug_log("switch_layout_family used legacy no-sidebar swap-layout path");
             self.respond(pipe_message, RESULT_OK);
             return;
         }
 
         let Some(layout_variant) = self.get_active_layout_variant(active_tab_position) else {
-            self.log_layout_action_failure(
-                "switch_layout_family",
-                active_tab_position,
-                RESULT_UNKNOWN_LAYOUT,
-            );
             self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
             return;
         };
@@ -151,16 +99,10 @@ impl State {
             .apply_override_layout_for_variant(layout_variant.shift_family(direction), active_tab_position)
             .is_none()
         {
-            self.log_layout_action_failure(
-                "switch_layout_family",
-                active_tab_position,
-                RESULT_UNKNOWN_LAYOUT,
-            );
             self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
             return;
         }
 
-        self.log_layout_action_snapshot("switch_layout_family success", active_tab_position);
         self.respond(pipe_message, RESULT_OK);
     }
 
@@ -168,16 +110,13 @@ impl State {
         let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
             return;
         };
-        self.log_layout_action_snapshot("toggle_sidebar", active_tab_position);
 
         if is_no_sidebar_mode(self.managed_panes_by_tab.get(&active_tab_position)) {
-            self.append_layout_debug_log("toggle_sidebar returned missing in no-sidebar mode");
             self.respond(pipe_message, RESULT_MISSING);
             return;
         }
 
         let Some(layout_variant) = self.get_active_layout_variant(active_tab_position) else {
-            self.log_layout_action_failure("toggle_sidebar", active_tab_position, RESULT_UNKNOWN_LAYOUT);
             self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
             return;
         };
@@ -212,11 +151,6 @@ impl State {
                     )
                     .is_none()
                 {
-                    self.log_layout_action_failure(
-                        "toggle_sidebar",
-                        active_tab_position,
-                        RESULT_UNKNOWN_LAYOUT,
-                    );
                     self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
                     return;
                 }
@@ -229,11 +163,6 @@ impl State {
                     )
                     .is_none()
                 {
-                    self.log_layout_action_failure(
-                        "toggle_sidebar",
-                        active_tab_position,
-                        RESULT_UNKNOWN_LAYOUT,
-                    );
                     self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
                     return;
                 }
@@ -246,11 +175,6 @@ impl State {
                     )
                     .is_none()
                 {
-                    self.log_layout_action_failure(
-                        "toggle_sidebar",
-                        active_tab_position,
-                        RESULT_UNKNOWN_LAYOUT,
-                    );
                     self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
                     return;
                 }
@@ -264,11 +188,6 @@ impl State {
                     )
                     .is_none()
                 {
-                    self.log_layout_action_failure(
-                        "toggle_sidebar",
-                        active_tab_position,
-                        RESULT_UNKNOWN_LAYOUT,
-                    );
                     self.respond(pipe_message, RESULT_UNKNOWN_LAYOUT);
                     return;
                 }
@@ -276,26 +195,7 @@ impl State {
             }
         }
 
-        self.log_layout_action_snapshot("toggle_sidebar success", active_tab_position);
         self.respond(pipe_message, RESULT_OK);
-    }
-
-    pub(crate) fn debug_layout_state(&self, pipe_message: &PipeMessage) {
-        let state = self.build_debug_layout_state(self.active_tab_position);
-
-        match serde_json::to_string(&state) {
-            Ok(serialized_state) => self.respond(pipe_message, &serialized_state),
-            Err(_) => self.respond(pipe_message, crate::RESULT_INVALID_PAYLOAD),
-        }
-    }
-
-    pub(crate) fn debug_override_build_state(&self, pipe_message: &PipeMessage) {
-        let state = self.build_debug_override_build_state(self.active_tab_position);
-
-        match serde_json::to_string(&state) {
-            Ok(serialized_state) => self.respond(pipe_message, &serialized_state),
-            Err(_) => self.respond(pipe_message, crate::RESULT_INVALID_PAYLOAD),
-        }
     }
 
     pub(crate) fn get_active_layout_variant(
@@ -376,157 +276,6 @@ impl State {
             self.run_previous_swap_layout_steps(1);
         }
         self.move_focus_to_sidebar_after_layout_settle();
-    }
-
-    fn build_debug_layout_state(&self, active_tab_position: Option<usize>) -> DebugLayoutState {
-        let active_swap_layout_name = active_tab_position
-            .and_then(|tab_position| self.active_swap_layout_name_by_tab.get(&tab_position))
-            .cloned()
-            .flatten();
-        let resolved_layout_variant =
-            active_tab_position.and_then(|tab_position| self.get_active_layout_variant(tab_position));
-        let focus_context = active_tab_position
-            .and_then(|tab_position| self.focus_context_by_tab.get(&tab_position))
-            .map(|context| match context {
-                crate::panes::FocusContext::Editor => "editor",
-                crate::panes::FocusContext::Sidebar => "sidebar",
-                crate::panes::FocusContext::Other => "other",
-            })
-            .map(str::to_string);
-        let user_pane_count = active_tab_position
-            .and_then(|tab_position| self.user_pane_count_by_tab.get(&tab_position))
-            .copied();
-        let managed_tab_panes =
-            active_tab_position.and_then(|tab_position| self.managed_panes_by_tab.get(&tab_position));
-        let terminal_panes = active_tab_position
-            .and_then(|tab_position| self.terminal_panes_by_tab.get(&tab_position))
-            .map(|panes| {
-                panes
-                    .iter()
-                    .map(|pane| DebugLayoutPaneState {
-                        pane_id: format!("{:?}", pane.pane_id),
-                        title: pane.title.clone(),
-                        is_focused: pane.is_focused,
-                        pane_x: pane.pane_x,
-                        pane_y: pane.pane_y,
-                        pane_columns: pane.pane_columns,
-                        pane_rows: pane.pane_rows,
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
-
-        DebugLayoutState {
-            active_tab_position,
-            active_swap_layout_name,
-            resolved_layout_variant,
-            focus_context,
-            user_pane_count,
-            managed_editor_pane_id: managed_tab_panes
-                .and_then(|panes| panes.editor)
-                .map(|pane| format!("{:?}", pane.pane_id)),
-            managed_sidebar_pane_id: managed_tab_panes
-                .and_then(|panes| panes.sidebar)
-                .map(|pane| format!("{:?}", pane.pane_id)),
-            focused_terminal_pane_id: active_tab_position
-                .and_then(|tab_position| self.focused_terminal_pane_by_tab.get(&tab_position))
-                .map(|pane_id| format!("{:?}", pane_id)),
-            fallback_terminal_pane_id: active_tab_position
-                .and_then(|tab_position| self.fallback_terminal_pane_by_tab.get(&tab_position))
-                .map(|pane_id| format!("{:?}", pane_id)),
-            terminal_panes,
-        }
-    }
-
-    fn build_debug_override_build_state(
-        &self,
-        active_tab_position: Option<usize>,
-    ) -> DebugOverrideBuildState {
-        let current_home_dir = home_dir();
-        let resolved_runtime_dir = runtime_dir();
-        let runtime_sidebar_launcher_file =
-            runtime_script_path("launch_sidebar_yazi.nu", &resolved_runtime_dir);
-        let active_swap_layout_name = active_tab_position
-            .and_then(|tab_position| self.active_swap_layout_name_by_tab.get(&tab_position))
-            .cloned()
-            .flatten();
-        let resolved_layout_variant =
-            active_tab_position.and_then(|tab_position| self.get_active_layout_variant(tab_position));
-        let total_terminal_panes = active_tab_position
-            .and_then(|tab_position| self.terminal_panes_by_tab.get(&tab_position))
-            .map(|panes| panes.len());
-
-        let rendered_side_layout = render_embedded_side_layout(&resolved_runtime_dir);
-        let rendered_swap_layouts = render_embedded_swap_layouts(&resolved_runtime_dir);
-        let ui_tab_template_extracted = extract_ui_tab_template(&rendered_side_layout).is_some();
-        let content_layout_generated = resolved_layout_variant
-            .zip(total_terminal_panes)
-            .and_then(|(layout_variant, pane_count)| {
-                build_content_layout_kdl(
-                    layout_variant,
-                    pane_count.saturating_sub(1),
-                    &runtime_sidebar_launcher_file,
-                )
-            })
-            .is_some();
-        let override_layout_generated = resolved_layout_variant
-            .zip(total_terminal_panes)
-            .and_then(|(layout_variant, pane_count)| {
-                build_override_layout_kdl_with_inputs(
-                    layout_variant,
-                    pane_count,
-                    Some(rendered_side_layout.as_str()),
-                    Some(rendered_swap_layouts.as_str()),
-                    &runtime_sidebar_launcher_file,
-                )
-            })
-            .is_some();
-
-        DebugOverrideBuildState {
-            active_tab_position,
-            active_swap_layout_name,
-            resolved_layout_variant,
-            total_terminal_panes,
-            current_home_dir,
-            resolved_runtime_dir,
-            embedded_layout_template_available: !SIDE_LAYOUT_TEMPLATE.trim().is_empty(),
-            embedded_swap_layout_template_available: !SIDE_SWAP_LAYOUT_TEMPLATE.trim().is_empty(),
-            embedded_zjstatus_template_available: !ZJSTATUS_TAB_TEMPLATE.trim().is_empty(),
-            embedded_swap_sidebar_open_available: !SWAP_SIDEBAR_OPEN_TEMPLATE.trim().is_empty(),
-            embedded_swap_sidebar_closed_available: !SWAP_SIDEBAR_CLOSED_TEMPLATE.trim().is_empty(),
-            ui_tab_template_extracted,
-            content_layout_generated,
-            override_layout_generated,
-        }
-    }
-
-    fn log_layout_action_failure(
-        &self,
-        action_name: &str,
-        active_tab_position: usize,
-        result: &str,
-    ) {
-        let state = self.build_debug_layout_state(Some(active_tab_position));
-        if let Ok(serialized_state) = serde_json::to_string(&state) {
-            self.append_layout_debug_log(&format!(
-                "{action_name} failed with {result}: {serialized_state}"
-            ));
-        } else {
-            self.append_layout_debug_log(&format!(
-                "{action_name} failed with {result}: <state serialization failed>"
-            ));
-        }
-    }
-
-    fn log_layout_action_snapshot(&self, action_name: &str, active_tab_position: usize) {
-        let state = self.build_debug_layout_state(Some(active_tab_position));
-        if let Ok(serialized_state) = serde_json::to_string(&state) {
-            self.append_layout_debug_log(&format!("{action_name}: {serialized_state}"));
-        } else {
-            self.append_layout_debug_log(&format!(
-                "{action_name}: <state serialization failed>"
-            ));
-        }
     }
 
     fn move_focus_right_after_layout_settle(&self) {
