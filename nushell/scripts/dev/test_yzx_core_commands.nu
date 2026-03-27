@@ -213,6 +213,77 @@ echo "zellij 9.9.9"
     $result
 }
 
+def test_yzx_desktop_install_writes_valid_absolute_launcher [] {
+    print "🧪 Testing yzx desktop install writes a valid absolute launcher entry..."
+
+    let fixture = (setup_relocated_runtime_fixture)
+
+    let result = (try {
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+        } {
+            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx desktop install --print-path" | complete
+        })
+        let desktop_path = ($output.stdout | str trim)
+        let desktop_file = if ($desktop_path | is-not-empty) and ($desktop_path | path exists) {
+            open --raw $desktop_path
+        } else {
+            ""
+        }
+        let expected_exec = $"Exec=\"($fixture.runtime_dir | path join "shells" "posix" "desktop_launcher.sh")\""
+
+        if ($output.exit_code == 0) and ($desktop_path == ($fixture.tmp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")) and ($desktop_file | str contains $expected_exec) {
+            print "  ✅ yzx desktop install writes the desktop entry with a direct absolute launcher path"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) path=($desktop_path) stderr=($output.stderr | str trim)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_yzx_desktop_uninstall_removes_generated_entry [] {
+    print "🧪 Testing yzx desktop uninstall removes the generated entry..."
+
+    let fixture = (setup_relocated_runtime_fixture)
+
+    let result = (try {
+        let env_overlay = {
+            HOME: $fixture.tmp_home
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+        }
+        let install_output = (with-env $env_overlay {
+            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx desktop install --print-path" | complete
+        })
+        let desktop_path = ($install_output.stdout | str trim)
+        let uninstall_output = (with-env $env_overlay {
+            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx desktop uninstall --print-path" | complete
+        })
+        let removed_path = ($uninstall_output.stdout | str trim)
+
+        if ($install_output.exit_code == 0) and ($uninstall_output.exit_code == 0) and ($removed_path == $desktop_path) and (not ($desktop_path | path exists)) {
+            print "  ✅ yzx desktop uninstall removes the generated desktop entry"
+            true
+        } else {
+            print $"  ❌ Unexpected result: install_exit=($install_output.exit_code) uninstall_exit=($uninstall_output.exit_code) path=($removed_path) stderr=($uninstall_output.stderr | str trim)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 def test_config_migration_rule_metadata_is_complete [] {
     print "🧪 Testing config migration rule metadata completeness..."
 
@@ -1408,6 +1479,8 @@ export def run_core_canonical_tests [] {
     [
         (test_yzx_status)
         (test_yzx_status_versions_uses_invoking_path_for_versions)
+        (test_yzx_desktop_install_writes_valid_absolute_launcher)
+        (test_yzx_desktop_uninstall_removes_generated_entry)
         (test_config_migration_rule_metadata_is_complete)
         (test_config_migration_plan_orders_safe_rewrites)
         (test_config_migration_plan_marks_ambiguous_cases_manual)

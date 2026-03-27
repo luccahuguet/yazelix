@@ -213,7 +213,7 @@ def test_zellij_custom_text_default_stays_in_sync [] {
 }
 
 def test_home_manager_desktop_entry_evaluates [] {
-    print "🧪 Testing Home Manager desktop entry evaluates with StartupWMClass..."
+    print "🧪 Testing Home Manager desktop entry uses the POSIX launcher contract..."
 
     if (uname).kernel-name != "Linux" {
         print "  ⏭️  Skipping on non-Linux host"
@@ -230,15 +230,19 @@ def test_home_manager_desktop_entry_evaluates [] {
             return false
         }
 
-        let attr = $"($flake_dir)#checks.($system).desktop_entry_smoke.startupWMClass"
-        let output = (^nix eval --raw --read-only --no-write-lock-file $attr | complete)
-        let stdout = ($output.stdout | str trim)
+        let startup_attr = $"($flake_dir)#checks.($system).desktop_entry_smoke.startupWMClass"
+        let exec_attr = $"($flake_dir)#checks.($system).desktop_entry_smoke.exec"
+        let startup_output = (^nix eval --raw --read-only --no-write-lock-file $startup_attr | complete)
+        let exec_output = (^nix eval --raw --read-only --no-write-lock-file $exec_attr | complete)
+        let startup_wm_class = ($startup_output.stdout | str trim)
+        let desktop_exec = ($exec_output.stdout | str trim)
+        let expected_exec = "/home/test/.config/yazelix/shells/posix/desktop_launcher.sh"
 
-        if ($output.exit_code == 0) and ($stdout == "com.yazelix.Yazelix") {
-            print "  ✅ Home Manager desktop entry evaluates with StartupWMClass in settings"
+        if ($startup_output.exit_code == 0) and ($exec_output.exit_code == 0) and ($startup_wm_class == "com.yazelix.Yazelix") and ($desktop_exec == $expected_exec) {
+            print "  ✅ Home Manager desktop entry evaluates with the POSIX launcher and StartupWMClass"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
+            print $"  ❌ Unexpected result: startup_exit=($startup_output.exit_code) startup=($startup_wm_class) exec_exit=($exec_output.exit_code) exec=($desktop_exec) stderr=($startup_output.stderr | str trim) ($exec_output.stderr | str trim)"
             false
         }
     } catch { |err|

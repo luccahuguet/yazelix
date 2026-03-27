@@ -226,10 +226,10 @@ This will automatically configure your shell and then you can use:
 
 ##### Linux (GNOME, KDE, etc.)
 
-To make Yazelix searchable from your desktop environment, copy the desktop entry:
+To make Yazelix searchable from your desktop environment, generate the user-local desktop entry:
 
 ```bash
-cp ~/.config/yazelix/assets/desktop/com.yazelix.Yazelix.desktop ~/.local/share/applications/
+yzx desktop install
 ```
 
 After this, you can search for "Yazelix" in your application launcher and launch it directly.
@@ -241,10 +241,10 @@ For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.):
 
 ```bash
-sh -c 'exec "$HOME/.config/yazelix/shells/posix/desktop_launcher.sh"'
+~/.config/yazelix/shells/posix/desktop_launcher.sh
 ```
 
-This uses a POSIX launcher script to avoid shell profile issues across different user configurations.
+This launches the same POSIX entrypoint used by the generated desktop entry.
 
 ##### macOS (Spotlight, Launchpad, Dock)
 

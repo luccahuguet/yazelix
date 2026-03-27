@@ -54,10 +54,12 @@
           { }
         else
           let
+            desktopExec = hmConfig.config.xdg.desktopEntries.yazelix.exec;
             startupWMClass = hmConfig.config.xdg.desktopEntries.yazelix.settings.StartupWMClass;
           in
           {
             desktop_entry_smoke = pkgs.runCommand "yazelix-home-manager-desktop-entry-smoke" {
+              passthru.exec = desktopExec;
               passthru.startupWMClass = startupWMClass;
             } ''
               printf '%s' '${startupWMClass}' > "$out"

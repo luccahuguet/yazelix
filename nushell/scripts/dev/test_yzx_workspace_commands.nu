@@ -279,6 +279,57 @@ def test_posix_desktop_launcher_reports_missing_runtime_script [] {
     $result
 }
 
+def test_posix_desktop_launcher_direct_exec_ignores_hostile_shell_env [] {
+    print "🧪 Testing POSIX desktop launcher direct exec ignores hostile shell env..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_posix_desktop_env_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
+        let nu_log = ($tmpdir | path join "nu_invocation.txt")
+        let env_file = ($tmpdir | path join "env.sh")
+        mkdir $fake_profile_bin
+
+        [
+            "#!/bin/sh"
+            $"printf '%s\\n' \"$*\" > '($nu_log)'"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($fake_profile_bin | path join "nu")
+        ^chmod +x ($fake_profile_bin | path join "nu")
+
+        [
+            "echo SHOULD_NOT_SOURCE_ENV >&2"
+            "exit 94"
+        ] | str join "\n" | save --force --raw $env_file
+
+        let launcher_script = (repo_path "shells" "posix" "desktop_launcher.sh")
+        let output = (with-env {HOME: $fake_home, BASH_ENV: $env_file, ENV: $env_file} {
+            ^$launcher_script | complete
+        })
+        let stderr = ($output.stderr | str trim)
+        let nu_invocation = if ($nu_log | path exists) {
+            open --raw $nu_log | str trim
+        } else {
+            ""
+        }
+
+        if ($output.exit_code == 0) and ($stderr == "") and ($nu_invocation | str ends-with "nushell/scripts/core/desktop_launcher.nu") {
+            print "  ✅ POSIX desktop launcher reaches Nushell without sourcing hostile shell env files"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr) nu=($nu_invocation)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def test_startup_requires_generated_layout_path [] {
     print "🧪 Testing startup requires an existing Zellij layout..."
 
@@ -422,6 +473,7 @@ def test_resolve_reveal_target_path_from_relative_buffer [] {
 
 export def run_workspace_canonical_tests [] {
     [
+        (test_posix_desktop_launcher_direct_exec_ignores_hostile_shell_env)
         (test_startup_rejects_missing_working_dir)
         (test_launch_rejects_file_working_dir)
         (test_startup_requires_generated_layout_path)

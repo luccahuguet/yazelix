@@ -594,7 +594,7 @@ in
     xdg.desktopEntries.yazelix = {
       name = "Yazelix";
       comment = "Yazi + Zellij + Helix integrated terminal environment";
-      exec = "${config.xdg.configHome}/yazelix/nushell/scripts/core/desktop_launcher.nu";
+      exec = "${config.xdg.configHome}/yazelix/shells/posix/desktop_launcher.sh";
       icon = "yazelix";
       categories = [ "Development" ];
       type = "Application";

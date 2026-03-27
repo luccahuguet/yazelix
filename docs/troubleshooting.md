@@ -111,9 +111,9 @@ If launching Yazelix from your desktop environment (application menu, keyboard s
 
 **Cause:** Your bash profile files (`.bashrc`, `.bash_profile`) contain interactive-only commands (like `bind` for readline) that fail when bash runs without a TTY.
 
-**Solution:** Update your desktop entry to the latest version:
+**Solution:** Reinstall the generated desktop entry:
 ```bash
-cp ~/.config/yazelix/assets/desktop/com.yazelix.Yazelix.desktop ~/.local/share/applications/
+yzx desktop install
 ```
 
 The updated launcher uses POSIX `sh` with explicit Nix paths, bypassing bash profile issues entirely.
@@ -123,9 +123,9 @@ The updated launcher uses POSIX `sh` with explicit Nix paths, bypassing bash pro
 If clicking Yazelix in your application menu does nothing:
 
 1. **Check if `nu` is installed:** Run `nu --version` in a terminal
-2. **Re-copy the desktop entry:** The launcher may be outdated
+2. **Reinstall the desktop entry:** The launcher may be outdated
    ```bash
-   cp ~/.config/yazelix/assets/desktop/com.yazelix.Yazelix.desktop ~/.local/share/applications/
+   yzx desktop install
    ```
 3. **Verify Nix paths:** Ensure `~/.nix-profile/bin` or `~/.local/state/nix/profile/bin` exists
 
