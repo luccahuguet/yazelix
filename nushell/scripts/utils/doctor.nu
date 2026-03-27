@@ -3,9 +3,9 @@
 
 use logging.nu log_to_file
 use constants.nu [PINNED_NIX_VERSION PINNED_DEVENV_VERSION]
-use common.nu [get_yazelix_dir]
+use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir]
+use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
-use config_schema.nu get_config_validation_findings
 use ../integrations/zellij.nu debug_editor_state
 
 def extract_first_semver [text: string] {
@@ -303,10 +303,11 @@ export def check_environment_variables [] {
 
 # Check configuration files
 export def check_configuration [] {
-    let yazelix_dir = (get_yazelix_dir)
-    let yazelix_config = ($yazelix_dir | path join "yazelix.toml")
-    let yazelix_legacy = ($yazelix_dir | path join "yazelix.nix")
-    let yazelix_default = ($yazelix_dir | path join "yazelix_default.toml")
+    let config_dir = (get_yazelix_config_dir)
+    let runtime_dir = (get_yazelix_runtime_dir)
+    let yazelix_config = ($config_dir | path join "yazelix.toml")
+    let yazelix_legacy = ($config_dir | path join "yazelix.nix")
+    let yazelix_default = ($runtime_dir | path join "yazelix_default.toml")
     
     mut results = []
     
@@ -320,12 +321,12 @@ export def check_configuration [] {
 
         let validation_result = (try {
             {
-                findings: (get_config_validation_findings $yazelix_dir)
+                report: (build_config_diagnostic_report $yazelix_config $yazelix_default --include-missing)
                 error: null
             }
         } catch {|err|
             {
-                findings: []
+                report: null
                 error: $err.msg
             }
         })
@@ -337,21 +338,14 @@ export def check_configuration [] {
                 details: $validation_result.error
                 fix_available: false
             })
-        } else if not ($validation_result.findings | is-empty) {
-            let validation_findings = $validation_result.findings
-            let issue_count = ($validation_findings | length)
-            let detail_lines = ($validation_findings | each {|finding| $" - ($finding.message)" })
+        } else if ($validation_result.report.issue_count > 0) {
+            let issue_count = $validation_result.report.issue_count
             $results = ($results | append {
                 status: "warning"
-                message: $"Stale or invalid yazelix.toml fields detected \(($issue_count) issues\)"
-                details: (
-                    [
-                        "Compare your config against yazelix_default.toml."
-                        "To replace it with a fresh template \(with backup\): yzx config reset --yes"
-                        ...$detail_lines
-                    ] | str join "\n"
-                )
-                fix_available: false
+                message: $"Stale, unsupported, or migration-aware yazelix.toml entries detected \(($issue_count) issues\)"
+                details: (render_doctor_config_details $validation_result.report)
+                fix_available: $validation_result.report.has_fixable_migrations
+                config_diagnostic_report: $validation_result.report
             })
         }
     } else if ($yazelix_legacy | path expand | path exists) {
@@ -737,6 +731,17 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
         let config_issues = ($all_results | where status == "info" and message =~ "default")
         if not ($config_issues | is-empty) {
             fix_create_config
+        }
+
+        let migration_issues = ($all_results | where config_diagnostic_report? != null)
+        for $issue in $migration_issues {
+            let report = $issue.config_diagnostic_report
+            if $report.has_fixable_migrations {
+                let apply_result = (apply_doctor_config_fixes $report)
+                if $apply_result.status == "applied" {
+                    print $"✅ Applied ($apply_result.applied_count) config migration fix\(es\) with backup: ($apply_result.backup_path)"
+                }
+            }
         }
 
         print "\n✅ Auto-fix completed. Run 'yzx doctor' again to verify."

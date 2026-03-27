@@ -54,7 +54,7 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
 
         if (
             ($output.exit_code == 0)
-            and ($stdout | str contains "Stale or invalid yazelix.toml fields detected")
+            and ($stdout | str contains "Stale, unsupported, or migration-aware yazelix.toml entries detected")
             and ($stdout | str contains "Unknown config field: core.stale_field")
             and ($stdout | str contains "yzx config reset --yes")
             and not ($stdout | str contains "packs.declarations.custom_pack")
@@ -66,6 +66,102 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
             false
         }
     } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_yzx_doctor_reports_known_migration_with_fix_guidance [] {
+    print "🧪 Testing yzx doctor reports known config migrations with fix guidance..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_doctor_migration_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+
+    let result = (try {
+        '[zellij]
+widget_tray = ["layout", "editor"]
+' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+
+        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+        let output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($yzx_script)\" *; yzx doctor --verbose" | complete
+        }
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Known migration at zellij.widget_tray")
+            and ($stdout | str contains "Safe preview: `yzx config migrate`")
+            and ($stdout | str contains "Safe apply: `yzx config migrate --apply` or `yzx doctor --fix`")
+        ) {
+            print "  ✅ yzx doctor reports known migrations with the shared recovery guidance"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_yzx_doctor_fix_applies_safe_config_migrations [] {
+    print "🧪 Testing yzx doctor --fix applies safe config migrations..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_doctor_fix_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+
+    let result = (try {
+        '[zellij]
+widget_tray = ["layout", "editor"]
+
+[shell]
+enable_atuin = true
+' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+
+        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+        let output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($yzx_script)\" *; yzx doctor --fix" | complete
+        }
+        let stdout = ($output.stdout | str trim)
+        let rewritten = (open ($temp_config_dir | path join "yazelix.toml"))
+        let backups = (ls $temp_config_dir | where name =~ 'yazelix\.toml\.backup-')
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Applied 2 config migration fix")
+            and (($rewritten | get zellij.widget_tray) == ["editor"])
+            and not (($rewritten.shell? | default {}) | columns | any {|column| $column == "enable_atuin" })
+            and (($backups | length) == 1)
+        ) {
+            print "  ✅ yzx doctor --fix applies safe config migrations with backup"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) rewritten=($rewritten | to json -r) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
     })
@@ -108,6 +204,8 @@ def test_doctor_clarifies_shell_opened_editors_are_not_managed [] {
 export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
+        (test_yzx_doctor_reports_known_migration_with_fix_guidance)
+        (test_yzx_doctor_fix_applies_safe_config_migrations)
     ]
 }
 

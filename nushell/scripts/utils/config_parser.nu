@@ -1,7 +1,8 @@
 #!/usr/bin/env nu
 # Configuration parser for yazelix TOML files
 
-use common.nu [get_yazelix_config_dir]
+use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
+use config_diagnostics.nu [build_config_diagnostic_report render_startup_config_error]
 use failure_classes.nu [format_failure_classification]
 
 def parse_refresh_output [raw_config: record] {
@@ -89,21 +90,23 @@ def parse_percentage_setting [value: any, label: string, default_value: int] {
 
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
-    let yazelix_dir = get_yazelix_config_dir
+    let yazelix_config_dir = get_yazelix_config_dir
+    let yazelix_runtime_dir = get_yazelix_runtime_dir
 
     # Check for config override first (for testing)
     let config_to_read = if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) {
         $env.YAZELIX_CONFIG_OVERRIDE
     } else {
         # Determine which config file to use
-        let toml_file = ($yazelix_dir | path join "yazelix.toml")
-        let default_toml = ($yazelix_dir | path join "yazelix_default.toml")
+        let toml_file = ($yazelix_config_dir | path join "yazelix.toml")
+        let default_toml = ($yazelix_runtime_dir | path join "yazelix_default.toml")
 
         if ($toml_file | path exists) {
             $toml_file
         } else if ($default_toml | path exists) {
             # Auto-create yazelix.toml from default (copy raw to preserve comments)
             print "📝 Creating yazelix.toml from yazelix_default.toml..."
+            mkdir $yazelix_config_dir
             cp $default_toml $toml_file
             print "✅ yazelix.toml created\n"
             $toml_file
@@ -115,6 +118,14 @@ export def parse_yazelix_config [] {
 
     # Parse TOML configuration (Nushell auto-parses TOML files)
     let raw_config = open $config_to_read
+    let default_config_path = ($yazelix_runtime_dir | path join "yazelix_default.toml")
+
+    if ($config_to_read | path basename) == "yazelix.toml" and ($default_config_path | path exists) {
+        let diagnostic_report = (build_config_diagnostic_report $config_to_read $default_config_path)
+        if $diagnostic_report.has_blocking {
+            error make {msg: (render_startup_config_error $diagnostic_report)}
+        }
+    }
 
     let editor_cmd = ($raw_config.editor?.command? | default "" | into string)
     let editor_command = if ($editor_cmd | is-empty) { null } else { $editor_cmd }

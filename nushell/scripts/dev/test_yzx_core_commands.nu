@@ -536,7 +536,8 @@ def test_invalid_config_is_classified_as_config_problem [] {
 
         if (
             ($output.exit_code == 0)
-            and ($stdout | str contains "Invalid core.refresh_output value")
+            and ($stdout | str contains "Unsupported config value at core.refresh_output")
+            and ($stdout | str contains "Invalid value for core.refresh_output: loud")
             and ($stdout | str contains "Failure class: config problem.")
             and ($stdout | str contains "yzx config reset --yes")
         ) {
@@ -547,6 +548,53 @@ def test_invalid_config_is_classified_as_config_problem [] {
             false
         }
     } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_startup_reports_known_config_migration_before_generic_wrappers [] {
+    print "🧪 Testing startup reports known config migrations before generic wrappers..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_startup_migration_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+
+    let result = (try {
+        '[zellij]
+widget_tray = ["layout", "editor"]
+' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+
+        let inner_script = ($repo_root | path join "nushell" "scripts" "core" "start_yazelix_inner.nu")
+        let output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"source \"($inner_script)\"; try { main \"($tmp_home)\" \"($tmp_home | path join "unused.kdl")\" } catch {|err| print $err.msg }" | complete
+        }
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Known migration at zellij.widget_tray")
+            and ($stdout | str contains "after v13.7 on 2026-03-27")
+            and ($stdout | str contains "yzx config migrate --apply")
+            and ($stdout | str contains "yzx doctor --fix")
+            and not ($stdout | str contains "Failed to generate Zellij configuration")
+        ) {
+            print "  ✅ Startup surfaces migration-aware config failures before generic wrappers"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
+            false
+        }
+    } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
     })
@@ -1109,6 +1157,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_config_migrate_apply_rewrites_config_with_backup)
         (test_yzx_config_migrate_apply_noops_on_current_config)
         (test_invalid_config_is_classified_as_config_problem)
+        (test_startup_reports_known_config_migration_before_generic_wrappers)
         (test_config_state_supports_split_config_and_runtime_dirs)
         (test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering)
     ]
