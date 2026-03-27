@@ -2,6 +2,11 @@
 
 use ../core/yazelix.nu *
 use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
+use ../utils/config_migrations.nu [
+    build_config_migration_plan_from_record
+    render_config_migration_plan
+    validate_config_migration_rules
+]
 use ../utils/shell_config_generation.nu [get_yazelix_section_content]
 use ../utils/config_manager.nu [check_config_versions]
 
@@ -29,6 +34,61 @@ def setup_relocated_runtime_fixture [] {
         yzx_script: ($runtime_dir | path join "nushell" "scripts" "core" "yazelix.nu")
         startup_script: ($runtime_dir | path join "shells" "posix" "start_yazelix.sh")
     }
+}
+
+def setup_config_migrate_fixture [label: string, raw_toml: string] {
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
+    let config_dir = ($tmp_home | path join ".config" "yazelix")
+
+    mkdir ($tmp_home | path join ".config")
+    mkdir $config_dir
+
+    $raw_toml | save --force --raw ($config_dir | path join "yazelix.toml")
+
+    {
+        repo_root: $repo_root
+        tmp_home: $tmp_home
+        config_dir: $config_dir
+        config_path: ($config_dir | path join "yazelix.toml")
+        yzx_script: ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+    }
+}
+
+def run_config_migrate_command [fixture: record, args: list<string> = []] {
+    let migrate_command = if ($args | is-empty) {
+        "yzx config migrate"
+    } else {
+        let joined_args = ($args | str join " ")
+        $"yzx config migrate ($joined_args)"
+    }
+
+    with-env {
+        HOME: $fixture.tmp_home
+        YAZELIX_CONFIG_DIR: $fixture.config_dir
+        YAZELIX_RUNTIME_DIR: $fixture.repo_root
+    } {
+        ^nu -c $"use \"($fixture.yzx_script)\" *; ($migrate_command)" | complete
+    }
+}
+
+def record_has_path [data: record, path: list<string>] {
+    mut current = $data
+
+    for segment in $path {
+        if not ((($current | describe) | str contains "record")) {
+            return false
+        }
+
+        let keys = ($current | columns)
+        if not ($segment in $keys) {
+            return false
+        }
+
+        $current = ($current | get $segment)
+    }
+
+    true
 }
 
 def test_yzx_status [] {
@@ -83,6 +143,258 @@ echo "zellij 9.9.9"
             false
         }
     } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_config_migration_rule_metadata_is_complete [] {
+    print "🧪 Testing config migration rule metadata completeness..."
+
+    try {
+        let errors = (validate_config_migration_rules)
+
+        if ($errors | is-empty) {
+            print "  ✅ Config migration rules expose complete metadata"
+            true
+        } else {
+            print $"  ❌ Unexpected metadata errors: ($errors | str join ' | ')"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_config_migration_plan_orders_safe_rewrites [] {
+    print "🧪 Testing config migration plan ordering and deterministic rewrites..."
+
+    try {
+        let plan = (build_config_migration_plan_from_record {
+            zellij: { widget_tray: ["layout", "editor", "cpu"] }
+            terminal: {
+                preferred_terminal: "ghostty"
+                extra_terminals: ["wezterm", "kitty", "wezterm"]
+            }
+            shell: { enable_atuin: true }
+        })
+        let ids = ($plan.results | get id)
+        let migrated = $plan.migrated_config
+
+        if (
+            ($ids == [
+                "remove_zellij_widget_tray_layout",
+                "unify_terminal_preference_list",
+                "remove_shell_enable_atuin"
+            ])
+            and ($plan.auto_count == 3)
+            and ($plan.manual_count == 0)
+            and (($migrated | get zellij.widget_tray) == ["editor", "cpu"])
+            and (($migrated | get terminal.terminals) == ["ghostty", "wezterm", "kitty"])
+            and not (record_has_path $migrated ["terminal", "preferred_terminal"])
+            and not (record_has_path $migrated ["terminal", "extra_terminals"])
+            and not (record_has_path $migrated ["shell", "enable_atuin"])
+        ) {
+            print "  ✅ Migration plan preserves rule order and applies deterministic rewrites"
+            true
+        } else {
+            print $"  ❌ Unexpected plan result: ids=($ids | to json -r) migrated=($migrated | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_config_migration_plan_marks_ambiguous_cases_manual [] {
+    print "🧪 Testing config migration plan leaves ambiguous cases manual-only..."
+
+    try {
+        let plan = (build_config_migration_plan_from_record {
+            terminal: {
+                preferred_terminal: "ghostty"
+                terminals: ["kitty"]
+                cursor_trail: "random"
+            }
+        })
+        let manual_ids = ($plan.manual_results | get id)
+
+        if (
+            ($plan.auto_count == 0)
+            and ($plan.manual_count == 2)
+            and ($manual_ids == [
+                "unify_terminal_preference_list",
+                "review_legacy_cursor_trail_settings"
+            ])
+        ) {
+            print "  ✅ Conflicting or lossy migrations stay manual-only"
+            true
+        } else {
+            print $"  ❌ Unexpected manual plan: ($plan | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_config_migration_preview_rendering_is_high_signal [] {
+    print "🧪 Testing config migration preview rendering..."
+
+    try {
+        let plan = (build_config_migration_plan_from_record {
+            zellij: { widget_tray: ["layout", "editor"] }
+            terminal: { cursor_trail: "snow" }
+        } "/tmp/yazelix.toml")
+        let rendered = (render_config_migration_plan $plan)
+
+        if (
+            ($rendered | str contains "[AUTO] remove_zellij_widget_tray_layout")
+            and ($rendered | str contains '[MANUAL] review_legacy_cursor_trail_settings')
+            and ($rendered | str contains 'Preview only. Re-run with `yzx config migrate --apply`')
+            and ($rendered | str contains "Manual-only items will stay untouched on apply.")
+        ) {
+            print "  ✅ Migration preview clearly distinguishes safe and manual cases"
+            true
+        } else {
+            print $"  ❌ Unexpected preview output: ($rendered)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_yzx_config_migrate_preview_reports_known_migrations [] {
+    print "🧪 Testing yzx config migrate preview reports safe and manual migrations..."
+
+    let fixture = (setup_config_migrate_fixture
+        "yazelix_migrate_preview"
+        '[terminal]
+preferred_terminal = "ghostty"
+extra_terminals = ["wezterm"]
+cursor_trail = "random"
+
+[zellij]
+widget_tray = ["layout", "editor"]
+
+[shell]
+enable_atuin = true
+')
+
+    let result = (try {
+        let output = (run_config_migrate_command $fixture)
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "[AUTO] remove_zellij_widget_tray_layout")
+            and ($stdout | str contains "[AUTO] unify_terminal_preference_list")
+            and ($stdout | str contains "[AUTO] remove_shell_enable_atuin")
+            and ($stdout | str contains "[MANUAL] review_legacy_cursor_trail_settings")
+        ) {
+            print "  ✅ yzx config migrate preview reports real migration matches"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_yzx_config_migrate_apply_rewrites_config_with_backup [] {
+    print "🧪 Testing yzx config migrate apply rewrites config with backup..."
+
+    let fixture = (setup_config_migrate_fixture
+        "yazelix_migrate_apply"
+        '[terminal]
+preferred_terminal = "ghostty"
+extra_terminals = ["wezterm", "kitty", "wezterm"]
+
+[zellij]
+widget_tray = ["layout", "editor"]
+
+[shell]
+enable_atuin = true
+')
+
+    let result = (try {
+        let output = (run_config_migrate_command $fixture ["--apply", "--yes"])
+        let stdout = ($output.stdout | str trim)
+        let updated = (open $fixture.config_path)
+        let backups = (
+            ls $fixture.config_dir
+            | where name =~ 'yazelix\.toml\.backup-'
+        )
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Backed up previous config")
+            and ($stdout | str contains "Applied 3 config migration")
+            and (($updated | get terminal.terminals) == ["ghostty", "wezterm", "kitty"])
+            and (($updated | get zellij.widget_tray) == ["editor"])
+            and not (record_has_path $updated ["terminal", "preferred_terminal"])
+            and not (record_has_path $updated ["terminal", "extra_terminals"])
+            and not (record_has_path $updated ["shell", "enable_atuin"])
+            and (($backups | length) == 1)
+        ) {
+            print "  ✅ yzx config migrate applies deterministic rewrites and keeps a backup"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) updated=($updated | to json -r) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_yzx_config_migrate_apply_noops_on_current_config [] {
+    print "🧪 Testing yzx config migrate apply noops on a current config..."
+
+    let fixture = (setup_config_migrate_fixture
+        "yazelix_migrate_clean"
+        (open --raw (repo_path "yazelix_default.toml"))
+    )
+
+    let result = (try {
+        let output = (run_config_migrate_command $fixture ["--apply", "--yes"])
+        let stdout = ($output.stdout | str trim)
+        let backups = (
+            ls $fixture.config_dir
+            | where name =~ 'yazelix\.toml\.backup-'
+        )
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "No known config migrations detected.")
+            and ($stdout | str contains "No safe config rewrites to apply.")
+            and (($backups | length) == 0)
+        ) {
+            print "  ✅ yzx config migrate leaves current configs untouched"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
     })
@@ -789,6 +1101,13 @@ export def run_core_canonical_tests [] {
     [
         (test_yzx_status)
         (test_yzx_status_versions_uses_invoking_path_for_versions)
+        (test_config_migration_rule_metadata_is_complete)
+        (test_config_migration_plan_orders_safe_rewrites)
+        (test_config_migration_plan_marks_ambiguous_cases_manual)
+        (test_config_migration_preview_rendering_is_high_signal)
+        (test_yzx_config_migrate_preview_reports_known_migrations)
+        (test_yzx_config_migrate_apply_rewrites_config_with_backup)
+        (test_yzx_config_migrate_apply_noops_on_current_config)
         (test_invalid_config_is_classified_as_config_problem)
         (test_config_state_supports_split_config_and_runtime_dirs)
         (test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering)

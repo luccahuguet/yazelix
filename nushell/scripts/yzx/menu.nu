@@ -4,6 +4,7 @@
 use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap open_floating_runtime_wrapper resolve_tab_cwd_target set_tab_workspace_root]
 use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
+use ../utils/config_migrations.nu [apply_config_migration_plan get_config_migration_plan render_config_migration_plan validate_config_migration_rules]
 use ../utils/config_parser.nu parse_yazelix_config
 
 def classify_menu_command [cmd: string] {
@@ -253,6 +254,62 @@ export def "yzx config open" [
         error make {msg: $"EDITOR is not set. Set it in yazelix.toml under [editor] command, or export EDITOR in your shell.\nConfig path: ($config_path)"}
     } else {
         ^$env.EDITOR $config_path
+    }
+}
+
+# Preview or apply known Yazelix config migrations
+export def "yzx config migrate" [
+    --apply  # Write safe migrations back to yazelix.toml
+    --yes    # Skip confirmation prompt when using --apply
+] {
+    let metadata_errors = (validate_config_migration_rules)
+    if not ($metadata_errors | is-empty) {
+        let details = ($metadata_errors | each {|line| $" - ($line)" } | str join "\n")
+        error make {msg: $"Config migration rules are invalid:\n($details)"}
+    }
+
+    let paths = get_primary_config_paths
+
+    if not ($paths.user_config | path exists) {
+        error make {msg: $"User config not found: ($paths.user_config)"}
+    }
+
+    let plan = (get_config_migration_plan $paths.user_config)
+    print (render_config_migration_plan $plan)
+
+    if not $apply {
+        return
+    }
+
+    if not $plan.has_auto_changes {
+        print ""
+        print "No safe config rewrites to apply."
+        return
+    }
+
+    if not $yes {
+        print ""
+        print "⚠️  This rewrites yazelix.toml from parsed TOML."
+        print "   The original file will be backed up first."
+        print "   Comments and key ordering may be normalized."
+        let confirm = try {
+            (input "Apply the safe migrations? [y/N]: " | str downcase)
+        } catch { "n" }
+        if $confirm not-in ["y", "yes"] {
+            print "Aborted."
+            return
+        }
+    }
+
+    let apply_result = (apply_config_migration_plan $plan)
+
+    print ""
+    print $"✅ Backed up previous config to: ($apply_result.backup_path)"
+    print $"✅ Applied ($apply_result.applied_count) config migration\(s\) to: ($apply_result.config_path)"
+    print "ℹ️  Comments and key ordering were normalized because Yazelix rewrote the file from parsed TOML."
+
+    if $apply_result.manual_count > 0 {
+        print $"ℹ️  ($apply_result.manual_count) manual migration item\(s\) still need follow-up."
     }
 }
 

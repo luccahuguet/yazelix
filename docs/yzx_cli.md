@@ -174,6 +174,15 @@ Open the active Yazelix configuration file in your editor
 - Uses `$EDITOR` (set by Yazelix from `[editor] command` in yazelix.toml)
 - `--print`: print the resolved config path without opening
 
+### `yzx config migrate [--apply] [--yes]`
+Preview or apply known Yazelix config migrations
+- Default: preview known safe rewrites and manual-only follow-up without changing the file
+- `--apply`: write only deterministic rewrites back to `yazelix.toml`
+- `--yes`: skip the confirmation prompt for `--apply`
+- Always uses a backup-first write path on apply
+- Never guesses on ambiguous legacy config; those cases stay manual-only
+- Rewrites from parsed TOML, so comments and key ordering may be normalized on apply
+
 ### `yzx config reset [--yes]`
 Replace `yazelix.toml` with a fresh copy of `yazelix_default.toml`
 - Backs up the current `yazelix.toml` to `yazelix.toml.backup-<timestamp>` first when it exists
@@ -226,6 +235,8 @@ yzx config --path             # Print the active config path
 yzx config hx                 # Show the Helix section only
 yzx config yazi               # Show the Yazi section only
 yzx config zellij             # Show the Zellij section only
+yzx config migrate            # Preview known config migrations
+yzx config migrate --apply --yes  # Apply safe migrations with backup
 yzx config reset --yes        # Replace yazelix.toml with a fresh template and keep a backup
 yzx status                    # System information
 yzx status --versions         # Show all tool versions
