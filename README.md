@@ -98,7 +98,6 @@ Full version history: [Version History](./docs/history.md)
 - **Terminal**: Ghostty (via Homebrew on macOS), Kitty, WezTerm, Alacritty; Foot on Linux only
 - **Editor**: Any editor works. Helix and Neovim have first-class support (reveal in sidebar, open buffer in a running instance, managed editor-pane targeting). Configure via `editor_command` in `yazelix.toml`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
-- See the version compatibility table [here](./docs/version_table.md) (generated dynamically!)
 
 ## Installation
 

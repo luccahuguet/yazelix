@@ -90,12 +90,11 @@ Restart Yazelix (handles persistent sessions)
 - `--reuse`: Reopen Yazelix from the last built profile without rebuilding (errors if no cached profile exists)
 - `--skip-refresh, -s`: Skip explicit refresh trigger and allow potentially stale environment
 
-### `yzx status [--versions] [--verbose] [--save]`
+### `yzx status [--versions] [--verbose]`
 Show current Yazelix status
 - Default: show active config, refresh state, shell hook summary, and key runtime settings
 - `--versions, -V`: include the full tool version matrix
 - `--verbose, -v`: include detailed shell hook status table
-- `--save`: write the version matrix to `docs/version_table.md` (implies `--versions`)
 
 ### `yzx sponsor`
 Open the Yazelix GitHub Sponsors page

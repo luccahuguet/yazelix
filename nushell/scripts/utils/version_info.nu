@@ -181,9 +181,7 @@ def get_locked_version [tool: string, lockfile: record] {
 }
 
 # Main function - markdown table output
-export def main [
-    --save(-s)
-] {
+export def main [] {
     let tools = [
         "yazi"
         "zellij"
@@ -211,35 +209,7 @@ export def main [
         {tool: $tool, locked: $locked, runtime: $runtime}
     })
 
-    if $save {
-        let header = [
-            "# Yazelix Tool Versions"
-            ""
-            $"Generated: (date now | format date '%Y-%m-%d %H:%M:%S')"
-            ""
-        ]
-
-        let table_md = ($tool_data | to md --pretty)
-
-        let notes = [
-            ""
-            "## Usage"
-            ""
-            "- **Regenerate**: `yzx status --save`"
-            "- **Locked**: Flake input revisions when available (nix uses nixpkgs)"
-            "- **Runtime**: Versions resolved from current PATH"
-        ]
-
-        let full_output = ([$header [$table_md] $notes] | flatten | str join "\n")
-
-        let file_path = "docs/version_table.md"
-        $full_output | save $file_path --force
-        print $"✅ Version table saved to ($file_path)"
-    } else {
-        print "Yazelix Tool Versions"
-        print $"Generated: (date now | format date '%Y-%m-%d %H:%M:%S')"
-        print ($tool_data | table)
-        print ""
-        print "Run with --save to write Markdown output."
-    }
+    print "Yazelix Tool Versions"
+    print $"Generated: (date now | format date '%Y-%m-%d %H:%M:%S')"
+    print ($tool_data | table)
 }

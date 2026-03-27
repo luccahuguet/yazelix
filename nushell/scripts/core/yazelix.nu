@@ -163,7 +163,6 @@ export def "yzx cwd" [
 export def "yzx status" [
     --versions(-V)  # Include tool version matrix
     --verbose(-v)   # Include detailed shell hook status
-    --save          # Save version matrix to docs/version_table.md (implies --versions)
 ] {
     let env_prep = prepare_environment
     let config = $env_prep.config
@@ -196,14 +195,10 @@ export def "yzx status" [
         print "Shell Hook Details:"
         print ($shell_status | table)
     }
-    if $versions or $save {
+    if $versions {
         print ""
         let version_info_script = ($yazelix_dir | path join "nushell" "scripts" "utils" "version_info.nu")
-        let version_info_command = if $save {
-            $"source \"($version_info_script)\"; main --save"
-        } else {
-            $"source \"($version_info_script)\"; main"
-        }
+        let version_info_command = $"source \"($version_info_script)\"; main"
         ^nu -c $version_info_command
     }
     print "=========================="

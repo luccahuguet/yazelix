@@ -44,15 +44,14 @@ def test_yzx_status [] {
     }
 }
 
-def test_yzx_status_save_uses_invoking_path_for_versions [] {
-    print "🧪 Testing yzx status --save resolves tool versions from the invoking PATH..."
+def test_yzx_status_versions_uses_invoking_path_for_versions [] {
+    print "🧪 Testing yzx status --versions resolves tool versions from the invoking PATH..."
 
     let fixture = (setup_relocated_runtime_fixture)
 
     let result = (try {
         let fake_bin = ($fixture.tmp_home | path join "bin")
         mkdir $fake_bin
-        mkdir ($fixture.runtime_dir | path join "docs")
         let nu_bin = (which nu | get 0.path)
 
         '#!/bin/sh
@@ -71,22 +70,16 @@ echo "zellij 9.9.9"
         let output = with-env $env_overlay {
             do {
                 cd $fixture.runtime_dir
-                ^nu -c $"use \"($fixture.yzx_script)\" *; yzx status --save" | complete
+                ^nu -c $"use \"($fixture.yzx_script)\" *; yzx status --versions" | complete
             }
         }
-        let saved_table = (open --raw ($fixture.runtime_dir | path join "docs" "version_table.md"))
-        let zellij_row = (
-            $saved_table
-            | lines
-            | where ($in | str contains "| zellij")
-            | first
-        )
+        let stdout = ($output.stdout | str trim)
 
-        if ($output.exit_code == 0) and ($zellij_row | str contains "9.9.9") {
-            print "  ✅ yzx status --save uses the invoking PATH for version resolution"
+        if ($output.exit_code == 0) and ($stdout | str contains "Yazelix Tool Versions") and ($stdout | str contains "9.9.9") {
+            print "  ✅ yzx status --versions uses the invoking PATH for version resolution"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) row=($zellij_row) stderr=($output.stderr | str trim)"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($output.stderr | str trim)"
             false
         }
     } catch { |err|
@@ -740,7 +733,7 @@ def test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering [
 export def run_core_canonical_tests [] {
     [
         (test_yzx_status)
-        (test_yzx_status_save_uses_invoking_path_for_versions)
+        (test_yzx_status_versions_uses_invoking_path_for_versions)
         (test_invalid_config_is_classified_as_config_problem)
         (test_config_state_supports_split_config_and_runtime_dirs)
         (test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering)

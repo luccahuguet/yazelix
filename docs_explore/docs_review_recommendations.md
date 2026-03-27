@@ -24,7 +24,6 @@ Scope: markdown files currently in `docs/`.
 - `docs/editor_configuration.md` - User-facing editor setup.
 - `docs/editor_terminal_integration.md` - User-facing IDE terminal setup.
 - `docs/customization.md` - High-level customization guide.
-- `docs/version_table.md` - User-facing version table.
 - `docs/desktop_icon_setup.md` - User-facing desktop setup.
 - `docs/styling.md` - User-facing styling tips.
 - `docs/contributing.md` - Contributor guidance.
