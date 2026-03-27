@@ -30,6 +30,20 @@ export def get_yazelix_runtime_dir [] {
     }
 }
 
+export def get_yazelix_state_dir [] {
+    let configured = (
+        $env.YAZELIX_STATE_DIR?
+        | default ""
+        | into string
+        | str trim
+    )
+    if ($configured | is-not-empty) {
+        $configured | path expand
+    } else {
+        "~/.local/share/yazelix" | path expand
+    }
+}
+
 export def get_yazelix_dir [] {
     get_yazelix_runtime_dir
 }

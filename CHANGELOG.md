@@ -4,7 +4,7 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Upgrade contract, config migrations, and stale-config diagnostics.
+Upgrade contract, config migrations, diagnostics, and first-run summaries.
 
 Upgrade impact: migration available
 
@@ -12,6 +12,7 @@ Highlights:
 - Added `yzx config migrate` with a shared migration registry, preview-first behavior, backup-first apply mode, and explicit manual-only cases.
 - Startup, refresh, and `yzx doctor` now surface migration-aware config diagnostics instead of collapsing stale config into generic failures.
 - `yzx doctor --fix` can now apply the same safe config rewrites as `yzx config migrate --apply`.
+- Added a first-run upgrade summary and the `yzx whats_new` reopen command.
 
 Migration notes:
 - Removed the broken `layout` value from `zellij.widget_tray`; safe migration is available.

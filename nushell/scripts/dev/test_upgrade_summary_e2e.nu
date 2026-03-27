@@ -1,0 +1,169 @@
+#!/usr/bin/env nu
+
+use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
+
+def log_line [log_file: string, line: string] {
+    print $line
+    $"($line)\n" | save --append --raw $log_file
+}
+
+def log_block [log_file: string, title: string, content: string] {
+    log_line $log_file $"=== ($title) ==="
+    if ($content | is-empty) {
+        log_line $log_file "<empty>"
+    } else {
+        for line in ($content | lines) {
+            log_line $log_file $line
+        }
+    }
+    log_line $log_file ""
+}
+
+def setup_fixture [] {
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_upgrade_summary_e2e_XXXXXX | str trim)
+    let runtime_dir = ($tmp_home | path join "runtime")
+    let config_dir = ($tmp_home | path join ".config" "yazelix")
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+    let log_file = ($tmp_home | path join "upgrade_summary_e2e.log")
+
+    mkdir $runtime_dir
+    mkdir ($tmp_home | path join ".config")
+    mkdir $config_dir
+    mkdir ($tmp_home | path join ".local" "share")
+    mkdir $state_dir
+
+    for entry in ["nushell", "shells", "configs", "devenv.lock", "yazelix_default.toml", "CHANGELOG.md"] {
+        ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
+    }
+
+    ^cp -R (repo_path "docs") ($runtime_dir | path join "docs")
+    '[zellij]
+widget_tray = ["layout", "editor"]
+
+[shell]
+enable_atuin = true
+' | save --force --raw ($config_dir | path join "yazelix.toml")
+
+    let notes_path = ($runtime_dir | path join "docs" "upgrade_notes.toml")
+    let notes = (open $notes_path)
+    let updated_release = (
+        ($notes.releases | get "v13.7")
+        | upsert headline "Config migration follow-up after the v13.7 upgrade"
+        | upsert summary [
+            "This fixture simulates a release that ships upgrade-summary migration guidance."
+            "It should point stale configs at the migrate and doctor repair surfaces."
+        ]
+        | upsert upgrade_impact "migration_available"
+        | upsert migration_ids [
+            "remove_zellij_widget_tray_layout"
+            "remove_shell_enable_atuin"
+        ]
+        | upsert manual_actions []
+    )
+    ($notes | upsert releases ($notes.releases | upsert "v13.7" $updated_release)) | to toml | save --force $notes_path
+    "" | save --force --raw $log_file
+
+    {
+        repo_root: $repo_root
+        tmp_home: $tmp_home
+        runtime_dir: $runtime_dir
+        config_dir: $config_dir
+        state_dir: $state_dir
+        upgrade_summary_script: ($runtime_dir | path join "nushell" "scripts" "utils" "upgrade_summary.nu")
+        yzx_script: ($runtime_dir | path join "nushell" "scripts" "core" "yazelix.nu")
+        state_file: ($state_dir | path join "state" "upgrade_summary" "last_seen_version.txt")
+        log_file: $log_file
+    }
+}
+
+def run_first_run_probe [fixture: record] {
+    let command = [
+        $"source \"($fixture.upgrade_summary_script)\""
+        "let result = (maybe_show_first_run_upgrade_summary)"
+        "print '=== RESULT ==='"
+        "print ($result | to json -r)"
+    ] | str join "; "
+
+    with-env {
+        HOME: $fixture.tmp_home
+        YAZELIX_CONFIG_DIR: $fixture.config_dir
+        YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+        YAZELIX_STATE_DIR: $fixture.state_dir
+    } {
+        ^nu -c $command | complete
+    }
+}
+
+def run_whats_new [fixture: record] {
+    with-env {
+        HOME: $fixture.tmp_home
+        YAZELIX_CONFIG_DIR: $fixture.config_dir
+        YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+        YAZELIX_STATE_DIR: $fixture.state_dir
+    } {
+        ^nu -c $"use \"($fixture.yzx_script)\" *; yzx whats_new" | complete
+    }
+}
+
+export def main [] {
+    let fixture = (setup_fixture)
+    let log_file = $fixture.log_file
+
+    log_line $log_file "Case: first run, second run, and manual reopen all use the same current-version summary"
+    log_line $log_file $"Temp HOME: ($fixture.tmp_home)"
+    log_line $log_file $"Runtime dir: ($fixture.runtime_dir)"
+    log_line $log_file $"Config dir: ($fixture.config_dir)"
+    log_line $log_file ""
+    log_block $log_file "Input TOML" (open --raw ($fixture.config_dir | path join "yazelix.toml"))
+    log_block $log_file "Mutated upgrade_notes.toml" (open --raw ($fixture.runtime_dir | path join "docs" "upgrade_notes.toml"))
+
+    let first = (run_first_run_probe $fixture)
+    log_block $log_file "First-run stdout" ($first.stdout | str trim)
+    log_block $log_file "First-run stderr" ($first.stderr | str trim)
+
+    let state_after_first = if ($fixture.state_file | path exists) {
+        open --raw $fixture.state_file | str trim
+    } else {
+        ""
+    }
+    log_block $log_file "State after first run" $state_after_first
+
+    let second = (run_first_run_probe $fixture)
+    log_block $log_file "Second-run stdout" ($second.stdout | str trim)
+    log_block $log_file "Second-run stderr" ($second.stderr | str trim)
+
+    let manual = (run_whats_new $fixture)
+    log_block $log_file "yzx whats_new stdout" ($manual.stdout | str trim)
+    log_block $log_file "yzx whats_new stderr" ($manual.stderr | str trim)
+
+    let second_lines = ($second.stdout | lines)
+    let second_leading_line = ($second_lines | get -o 0 | default "")
+
+    let ok = (
+        (($first.stdout | str contains "What's New In Yazelix v13.7"))
+        and (($first.stdout | str contains "Detected matching migration candidates in your current config"))
+        and ($state_after_first == "v13.7")
+        and ($second_leading_line == "=== RESULT ===")
+        and (($second.stdout | str contains '"shown":false'))
+        and (($manual.stdout | str contains "What's New In Yazelix v13.7"))
+        and (($manual.stdout | str contains "yzx config migrate --apply"))
+    )
+
+    if $ok {
+        log_line $log_file "Result: PASS"
+    } else {
+        log_line $log_file "Result: FAIL"
+    }
+
+    rm -rf $fixture.tmp_home
+
+    if $ok {
+        print ""
+        print "✅ Upgrade summary e2e checks passed (1/1)"
+    } else {
+        print ""
+        print "❌ Upgrade summary e2e checks failed (0/1)"
+        error make {msg: "upgrade summary e2e checks failed"}
+    }
+}

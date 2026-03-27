@@ -1,32 +1,33 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = "Upgrade contract, config migrations, and stale-config diagnostics"
+headline = "Upgrade contract, config migrations, diagnostics, and first-run summaries"
 summary = [
-  "Added yzx config migrate with preview-first and backup-first apply behavior.",
-  "Made startup, refresh, and doctor surface migration-aware config diagnostics.",
-  "Added doctor --fix support for deterministic config rewrites.",
+    "Added yzx config migrate with preview-first and backup-first apply behavior.",
+    "Made startup, refresh, and doctor surface migration-aware config diagnostics.",
+    "Added doctor --fix support for deterministic config rewrites.",
+    "Added a first-run per-version upgrade summary plus the yzx whats_new reopen command.",
 ]
 upgrade_impact = "migration_available"
-acknowledged_guarded_changes = [
-  "nushell/scripts/utils/config_migrations.nu",
-]
+acknowledged_guarded_changes = ["nushell/scripts/utils/config_migrations.nu"]
 migration_ids = [
-  "remove_zellij_widget_tray_layout",
-  "remove_shell_enable_atuin",
+    "remove_zellij_widget_tray_layout",
+    "remove_shell_enable_atuin",
 ]
 manual_actions = []
 
 [releases."v13.7"]
 version = "v13.7"
 date = "2026-03-26"
-headline = "Popup polish, Ghostty controls, and stronger validation"
+headline = "Config migration follow-up after the v13.7 upgrade"
 summary = [
-  "Added configurable popup sizing and popup command selection.",
-  "Added Ghostty trail glow controls and a none trail-color option.",
-  "Strengthened config-schema validation and test/spec governance.",
+    "This fixture treats v13.7 as the first release that carries config migration guidance.",
+    "Users with stale tray or shell toggles should migrate before relying on startup.",
 ]
-upgrade_impact = "no_user_action"
+upgrade_impact = "migration_available"
 acknowledged_guarded_changes = []
-migration_ids = []
+migration_ids = [
+    "remove_zellij_widget_tray_layout",
+    "remove_shell_enable_atuin",
+]
 manual_actions = []

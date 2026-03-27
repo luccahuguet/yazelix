@@ -22,6 +22,7 @@ export use ../yzx/gc.nu *
 export use ../yzx/dev.nu *
 export use ../yzx/menu.nu *
 export use ../yzx/keys.nu *
+export use ../yzx/whats_new.nu *
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT

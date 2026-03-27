@@ -101,6 +101,12 @@ Open the Yazelix GitHub Sponsors page
 - Opens `https://github.com/sponsors/luccahuguet` when possible
 - Falls back to printing the URL if no opener is available
 
+### `yzx whats_new`
+Show the current Yazelix release summary on demand
+- Prints the current version entry from `docs/upgrade_notes.toml`
+- Marks the current version as seen so startup does not need to repeat the same note
+- Reuses the same migration-aware guidance shown on first interactive run after an upgrade
+
 ### `yzx update [--verbose]`
 Show available update targets
 - `--verbose`: accepted for consistency with subcommands

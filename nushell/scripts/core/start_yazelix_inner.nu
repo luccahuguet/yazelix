@@ -7,6 +7,7 @@ use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
 use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/failure_classes.nu [format_failure_classification]
+use ../utils/upgrade_summary.nu [maybe_show_first_run_upgrade_summary]
 use ../setup/welcome.nu [show_welcome build_welcome_message]
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
@@ -68,6 +69,15 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     let colors = get_yazelix_colors
     let welcome_message = build_welcome_message $yazelix_dir $config.helix_mode $colors
     show_welcome $config.skip_welcome_screen $quiet_mode $config.ascii_art_mode $config.show_macchina_on_welcome $welcome_message $log_dir $colors
+    let upgrade_summary = (try { maybe_show_first_run_upgrade_summary } catch {|err|
+        if $verbose {
+            print $"⚠️ Failed to render upgrade summary: ($err.msg)"
+        }
+        null
+    })
+    if ($upgrade_summary != null) and (($upgrade_summary.shown? | default false) == true) {
+        print ""
+    }
 
     print "🔧 Preparing Yazi configuration..."
     try {

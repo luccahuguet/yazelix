@@ -7,6 +7,10 @@ use ../utils/config_migrations.nu [
     render_config_migration_plan
     validate_config_migration_rules
 ]
+use ../utils/upgrade_summary.nu [
+    build_current_upgrade_summary_report
+    maybe_show_first_run_upgrade_summary
+]
 use ../utils/shell_config_generation.nu [get_yazelix_section_content]
 use ../utils/config_manager.nu [check_config_versions]
 
@@ -52,6 +56,62 @@ def setup_config_migrate_fixture [label: string, raw_toml: string] {
         config_dir: $config_dir
         config_path: ($config_dir | path join "yazelix.toml")
         yzx_script: ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+    }
+}
+
+def setup_upgrade_summary_fixture [
+    label: string
+    raw_toml: string
+    --migration-notes
+] {
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
+    let runtime_dir = ($tmp_home | path join "runtime")
+    let config_dir = ($tmp_home | path join ".config" "yazelix")
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+
+    mkdir $runtime_dir
+    mkdir ($tmp_home | path join ".config")
+    mkdir $config_dir
+    mkdir ($tmp_home | path join ".local" "share")
+    mkdir $state_dir
+
+    for entry in ["nushell", "shells", "configs", "devenv.lock", "yazelix_default.toml", "CHANGELOG.md"] {
+        ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
+    }
+
+    ^cp -R (repo_path "docs") ($runtime_dir | path join "docs")
+    $raw_toml | save --force --raw ($config_dir | path join "yazelix.toml")
+
+    if $migration_notes {
+        let notes_path = ($runtime_dir | path join "docs" "upgrade_notes.toml")
+        let notes = (open $notes_path)
+        let updated_release = (
+            ($notes.releases | get "v13.7")
+            | upsert headline "Config migration follow-up after the v13.7 upgrade"
+            | upsert summary [
+                "This fixture treats v13.7 as the first release that carries config migration guidance."
+                "Users with stale tray or shell toggles should migrate before relying on startup."
+            ]
+            | upsert upgrade_impact "migration_available"
+            | upsert migration_ids [
+                "remove_zellij_widget_tray_layout"
+                "remove_shell_enable_atuin"
+            ]
+            | upsert manual_actions []
+        )
+        let updated_notes = ($notes | upsert releases ($notes.releases | upsert "v13.7" $updated_release))
+        $updated_notes | to toml | save --force $notes_path
+    }
+
+    {
+        repo_root: $repo_root
+        tmp_home: $tmp_home
+        runtime_dir: $runtime_dir
+        config_dir: $config_dir
+        state_dir: $state_dir
+        config_path: ($config_dir | path join "yazelix.toml")
+        yzx_script: ($runtime_dir | path join "nushell" "scripts" "core" "yazelix.nu")
     }
 }
 
@@ -392,6 +452,147 @@ def test_yzx_config_migrate_apply_noops_on_current_config [] {
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_upgrade_summary_first_run_marks_seen_and_second_run_stays_quiet [] {
+    print "🧪 Testing first-run upgrade summary marks the version as seen..."
+
+    let fixture = (setup_upgrade_summary_fixture
+        "yazelix_upgrade_summary_seen"
+        (open --raw (repo_path "yazelix_default.toml"))
+    )
+
+    let result = (try {
+        let first = with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_STATE_DIR: $fixture.state_dir
+        } {
+            maybe_show_first_run_upgrade_summary
+        }
+        let second = with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_STATE_DIR: $fixture.state_dir
+        } {
+            maybe_show_first_run_upgrade_summary
+        }
+        let stored_version = (open --raw ($fixture.state_dir | path join "state" "upgrade_summary" "last_seen_version.txt") | str trim)
+
+        if (
+            ($first.shown == true)
+            and ($first.output | str contains "What's New In Yazelix v13.7")
+            and ($second.shown == false)
+            and ($second.reason == "already_seen")
+            and ($stored_version == "v13.7")
+        ) {
+            print "  ✅ First-run upgrade summary persists the seen version and suppresses the repeat"
+            true
+        } else {
+            print $"  ❌ Unexpected result: first=($first | to json -r) second=($second | to json -r) stored=($stored_version)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_upgrade_summary_report_detects_matching_migrations [] {
+    print "🧪 Testing upgrade summary report detects matching migration candidates..."
+
+    let fixture = (setup_upgrade_summary_fixture
+        "yazelix_upgrade_summary_migrations"
+        '[zellij]
+widget_tray = ["layout", "editor"]
+
+[shell]
+enable_atuin = true
+'
+        --migration-notes
+    )
+
+    let result = (try {
+        let report = with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_STATE_DIR: $fixture.state_dir
+        } {
+            build_current_upgrade_summary_report
+        }
+
+        if (
+            ($report.found == true)
+            and (($report.matching_migration_ids | length) == 2)
+            and ("remove_zellij_widget_tray_layout" in $report.matching_migration_ids)
+            and ("remove_shell_enable_atuin" in $report.matching_migration_ids)
+            and ($report.output | str contains "Detected matching migration candidates in your current config")
+            and ($report.output | str contains "yzx config migrate --apply")
+        ) {
+            print "  ✅ Upgrade summary report points current stale config at the migration flow"
+            true
+        } else {
+            print $"  ❌ Unexpected report: ($report | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_yzx_whats_new_reopens_current_summary_even_after_seen [] {
+    print "🧪 Testing yzx whats_new reopens the current summary even after the version was seen..."
+
+    let fixture = (setup_upgrade_summary_fixture
+        "yazelix_upgrade_summary_reopen"
+        '[zellij]
+widget_tray = ["layout", "editor"]
+'
+        --migration-notes
+    )
+
+    let result = (try {
+        mkdir ($fixture.state_dir | path join "state" "upgrade_summary")
+        "v13.7" | save --force --raw ($fixture.state_dir | path join "state" "upgrade_summary" "last_seen_version.txt")
+        let output = with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_STATE_DIR: $fixture.state_dir
+        } {
+            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx whats_new" | complete
+        }
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "What's New In Yazelix v13.7")
+            and ($stdout | str contains "Detected matching migration candidates in your current config")
+            and ($stdout | str contains "Reopen later: `yzx whats_new`")
+        ) {
+            print "  ✅ yzx whats_new reopens the current release summary regardless of seen state"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
             false
         }
     } catch {|err|
@@ -1156,6 +1357,9 @@ export def run_core_canonical_tests [] {
         (test_yzx_config_migrate_preview_reports_known_migrations)
         (test_yzx_config_migrate_apply_rewrites_config_with_backup)
         (test_yzx_config_migrate_apply_noops_on_current_config)
+        (test_upgrade_summary_first_run_marks_seen_and_second_run_stays_quiet)
+        (test_upgrade_summary_report_detects_matching_migrations)
+        (test_yzx_whats_new_reopens_current_summary_even_after_seen)
         (test_invalid_config_is_classified_as_config_problem)
         (test_startup_reports_known_config_migration_before_generic_wrappers)
         (test_config_state_supports_split_config_and_runtime_dirs)
