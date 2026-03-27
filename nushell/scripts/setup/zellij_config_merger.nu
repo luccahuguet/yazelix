@@ -91,6 +91,7 @@ def get_dynamic_overrides [] {
         "// === YAZELIX DYNAMIC SETTINGS (from yazelix.toml) ===",
         $"theme \"($theme)\"",
         $"show_startup_tips ($show_tips_value)",
+        "show_release_notes false",
         "ui {",
         "    pane_frames {",
         $"        rounded_corners ($rounded_value)",

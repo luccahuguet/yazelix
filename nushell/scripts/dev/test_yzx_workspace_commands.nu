@@ -329,17 +329,17 @@ def test_sidebar_layout_uses_wrapper_launcher [] {
     }
 }
 
-def test_sidebar_wrapper_bootstraps_workspace_root [] {
-    print "🧪 Testing sidebar Yazi wrapper bootstraps the tab workspace root..."
+def test_sidebar_wrapper_avoids_startup_plugin_ipc [] {
+    print "🧪 Testing sidebar Yazi wrapper avoids startup plugin IPC..."
 
     try {
         let wrapper = (open --raw (repo_path "configs" "zellij" "scripts" "launch_sidebar_yazi.nu"))
 
-        if ($wrapper | str contains 'bootstrap_workspace_root $target_dir') and ($wrapper | str contains '^yazi $target_dir') and ($wrapper | str contains 'pwd | path expand') {
-            print "  ✅ Sidebar Yazi wrapper always roots the tab to the launched Yazi directory"
+        if ($wrapper | str contains '^yazi $target_dir') and ($wrapper | str contains 'pwd | path expand') and (not ($wrapper | str contains 'run_pane_orchestrator_command_raw')) and (not ($wrapper | str contains 'bootstrap_workspace_root')) {
+            print "  ✅ Sidebar Yazi wrapper launches Yazi without boot-time plugin IPC"
             true
         } else {
-            print "  ❌ Sidebar Yazi wrapper is missing the always-bootstrap target-dir flow"
+            print "  ❌ Sidebar Yazi wrapper still performs boot-time plugin IPC"
             false
         }
     } catch { |err|
@@ -432,6 +432,7 @@ export def run_workspace_canonical_tests [] {
 
 export def run_workspace_noncanonical_tests [] {
     [
+        (test_sidebar_wrapper_avoids_startup_plugin_ipc)
         (test_terminal_launch_reports_immediate_failure)
         (test_resolve_reveal_target_path_from_relative_buffer)
     ]

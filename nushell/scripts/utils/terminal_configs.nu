@@ -173,8 +173,8 @@ export def generate_ghostty_config [runtime_dir?: string] {
     let selected_mode_effect = (resolve_ghostty_mode_effect $config.ghostty_mode_effect)
     $"($GHOSTTY_CONFIG_HEADER)
 
-# Start Yazelix via launcher to ensure Nix environment is loaded
-command = \"($shell_command)\"
+# Start Yazelix via launcher to ensure Nix environment is loaded.
+# Use only one startup hook here; duplicating both can spawn two launch trees.
 initial-command = \"($shell_command)\"
 
 # Yazelix branding for desktop environment recognition
