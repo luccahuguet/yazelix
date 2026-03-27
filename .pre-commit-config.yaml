@@ -13,3 +13,9 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: yazelix-validate-upgrade-contract
+        name: validate upgrade contract
+        entry: nu nushell/scripts/dev/validate_upgrade_contract.nu
+        language: system
+        pass_filenames: false
+        always_run: true

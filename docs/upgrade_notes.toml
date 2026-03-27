@@ -1,0 +1,32 @@
+[releases.unreleased]
+version = "unreleased"
+date = ""
+headline = "Upgrade contract, config migrations, and stale-config diagnostics"
+summary = [
+  "Added yzx config migrate with preview-first and backup-first apply behavior.",
+  "Made startup, refresh, and doctor surface migration-aware config diagnostics.",
+  "Added doctor --fix support for deterministic config rewrites.",
+]
+upgrade_impact = "migration_available"
+acknowledged_guarded_changes = [
+  "nushell/scripts/utils/config_migrations.nu",
+]
+migration_ids = [
+  "remove_zellij_widget_tray_layout",
+  "remove_shell_enable_atuin",
+]
+manual_actions = []
+
+[releases."v13.7"]
+version = "v13.7"
+date = "2026-03-26"
+headline = "Popup polish, Ghostty controls, and stronger validation"
+summary = [
+  "Added configurable popup sizing and popup command selection.",
+  "Added Ghostty trail glow controls and a none trail-color option.",
+  "Strengthened config-schema validation and test/spec governance.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []

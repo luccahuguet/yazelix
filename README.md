@@ -87,7 +87,7 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 - **Command Palette** – `yzx menu` gives you a searchable command palette for the main Yazelix actions, including a popup mode inside Zellij on `Alt+Shift+M`
 - **Refresh Workflow** – `yzx refresh` makes it easier to rebuild the Yazelix environment without launching the UI, while `yzx restart` cleanly switches the current window onto the refreshed profile
 
-Full version history: [Version History](./docs/history.md)
+Upgrade notes: [CHANGELOG](./CHANGELOG.md) | Full version history: [Version History](./docs/history.md)
 
 ## Experiments
 
@@ -139,7 +139,7 @@ When opening files from Yazi, Yazelix will:
 
 ## Version History & Changelog
 
-For a detailed history of all major Yazelix version bumps and changelogs, see [Version History](./docs/history.md).
+For concise upgrade-facing notes, see [CHANGELOG](./CHANGELOG.md). For the longer narrative history of major version bumps, see [Version History](./docs/history.md).
 
 ## POSIX/XDG Paths
 

@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v21
@@ -42,6 +44,9 @@ jobs:
 
       - name: Validate README version marker
         run: nu nushell/scripts/dev/validate_readme_version.nu
+
+      - name: Validate upgrade contract
+        run: nu nushell/scripts/dev/validate_upgrade_contract.nu --ci
 
       - name: Run yzx command tests
         run: nu nushell/scripts/dev/test_yzx_commands.nu
