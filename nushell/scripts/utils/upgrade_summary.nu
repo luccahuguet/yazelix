@@ -47,24 +47,24 @@ def load_upgrade_notes_registry [] {
     }
 }
 
-def load_current_release_entry [] {
+export def get_upgrade_note_entry [version: string = $YAZELIX_VERSION] {
     let registry = (load_upgrade_notes_registry)
     if $registry == null {
         return null
     }
 
     let release_keys = ($registry.releases | columns)
-    if not ($YAZELIX_VERSION in $release_keys) {
+    if not ($version in $release_keys) {
         return null
     }
 
-    let entry = ($registry.releases | get $YAZELIX_VERSION)
+    let entry = ($registry.releases | get $version)
     if not (($entry | describe) | str contains "record") {
         return null
     }
 
     ($entry | merge {
-        key: $YAZELIX_VERSION
+        key: $version
         notes_path: $registry.notes_path
         changelog_path: $registry.changelog_path
     })
@@ -236,15 +236,15 @@ export def render_upgrade_summary [entry: record, matching_migrations: list<reco
     $lines | str join "\n"
 }
 
-export def build_current_upgrade_summary_report [] {
-    let entry = (load_current_release_entry)
+export def build_upgrade_summary_report [version: string = $YAZELIX_VERSION] {
+    let entry = (get_upgrade_note_entry $version)
     let state_path = (get_upgrade_summary_state_path)
     let last_seen_version = (read_last_seen_upgrade_version)
 
     if $entry == null {
         return {
             found: false
-            version: $YAZELIX_VERSION
+            version: $version
             notes_path: (get_upgrade_notes_path)
             changelog_path: (get_changelog_path)
             state_path: $state_path
@@ -260,7 +260,7 @@ export def build_current_upgrade_summary_report [] {
 
     {
         found: true
-        version: $YAZELIX_VERSION
+        version: $version
         entry: $entry
         notes_path: $entry.notes_path
         changelog_path: $entry.changelog_path
@@ -272,8 +272,12 @@ export def build_current_upgrade_summary_report [] {
     }
 }
 
+export def build_current_upgrade_summary_report [] {
+    build_upgrade_summary_report $YAZELIX_VERSION
+}
+
 export def maybe_show_first_run_upgrade_summary [] {
-    let report = (build_current_upgrade_summary_report)
+    let report = (build_upgrade_summary_report $YAZELIX_VERSION)
 
     if not $report.found {
         return ($report | merge { shown: false, reason: "missing_release_entry" })
@@ -295,7 +299,7 @@ export def maybe_show_first_run_upgrade_summary [] {
 }
 
 export def show_current_upgrade_summary [--mark-seen] {
-    let report = (build_current_upgrade_summary_report)
+    let report = (build_upgrade_summary_report $YAZELIX_VERSION)
 
     if not $report.found {
         error make {msg: $"No upgrade notes found for ($report.version). Expected an entry in ($report.notes_path)."}

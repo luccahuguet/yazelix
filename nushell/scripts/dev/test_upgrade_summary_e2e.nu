@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
 use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
+use ../utils/constants.nu [YAZELIX_VERSION]
 
 def log_line [log_file: string, line: string] {
     print $line
@@ -48,8 +49,8 @@ enable_atuin = true
     let notes_path = ($runtime_dir | path join "docs" "upgrade_notes.toml")
     let notes = (open $notes_path)
     let updated_release = (
-        ($notes.releases | get "v13.7")
-        | upsert headline "Config migration follow-up after the v13.7 upgrade"
+        ($notes.releases | get $YAZELIX_VERSION)
+        | upsert headline $"Config migration follow-up after the ($YAZELIX_VERSION) upgrade"
         | upsert summary [
             "This fixture simulates a release that ships upgrade-summary migration guidance."
             "It should point stale configs at the migrate and doctor repair surfaces."
@@ -61,7 +62,7 @@ enable_atuin = true
         ]
         | upsert manual_actions []
     )
-    ($notes | upsert releases ($notes.releases | upsert "v13.7" $updated_release)) | to toml | save --force $notes_path
+    ($notes | upsert releases ($notes.releases | upsert $YAZELIX_VERSION $updated_release)) | to toml | save --force $notes_path
     "" | save --force --raw $log_file
 
     {
@@ -141,12 +142,12 @@ export def main [] {
     let second_leading_line = ($second_lines | get -o 0 | default "")
 
     let ok = (
-        (($first.stdout | str contains "What's New In Yazelix v13.7"))
+        (($first.stdout | str contains $"What's New In Yazelix ($YAZELIX_VERSION)"))
         and (($first.stdout | str contains "Detected matching migration candidates in your current config"))
-        and ($state_after_first == "v13.7")
+        and ($state_after_first == $YAZELIX_VERSION)
         and ($second_leading_line == "=== RESULT ===")
         and (($second.stdout | str contains '"shown":false'))
-        and (($manual.stdout | str contains "What's New In Yazelix v13.7"))
+        and (($manual.stdout | str contains $"What's New In Yazelix ($YAZELIX_VERSION)"))
         and (($manual.stdout | str contains "yzx config migrate --apply"))
     )
 

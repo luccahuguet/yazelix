@@ -1,15 +1,23 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = "Upgrade contract, config migrations, diagnostics, and first-run summaries"
+headline = "No unreleased notes yet"
+summary = ["Placeholder until the next user-facing change lands."]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v13.8"]
+version = "v13.8"
+date = "2026-03-27"
+headline = "Config migration follow-up after the v13.8 upgrade"
 summary = [
-    "Added yzx config migrate with preview-first and backup-first apply behavior.",
-    "Made startup, refresh, and doctor surface migration-aware config diagnostics.",
-    "Added doctor --fix support for deterministic config rewrites.",
-    "Added a first-run per-version upgrade summary plus the yzx whats_new reopen command.",
+    "This fixture treats v13.8 as the first release that carries config migration guidance.",
+    "Users with stale tray or shell toggles should migrate before relying on startup.",
 ]
 upgrade_impact = "migration_available"
-acknowledged_guarded_changes = ["nushell/scripts/utils/config_migrations.nu"]
+acknowledged_guarded_changes = []
 migration_ids = [
     "remove_zellij_widget_tray_layout",
     "remove_shell_enable_atuin",
@@ -19,15 +27,257 @@ manual_actions = []
 [releases."v13.7"]
 version = "v13.7"
 date = "2026-03-26"
-headline = "Config migration follow-up after the v13.7 upgrade"
+headline = "Popup polish, Ghostty controls, and stronger validation"
 summary = [
-    "This fixture treats v13.7 as the first release that carries config migration guidance.",
-    "Users with stale tray or shell toggles should migrate before relying on startup.",
+    "Added configurable popup sizing and a configurable popup program for Zellij floating panes.",
+    'Added Ghostty trail glow controls plus a ghostty_trail_color = "none" option.',
+    "Tightened config-schema validation, ignored Yazelix config backup files, and improved test/spec governance.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v13.6"]
+version = "v13.6"
+date = "2026-03-23"
+headline = "Managed popup runner workflow and configurable popup commands"
+summary = [
+    "Shipped the managed popup-runner workflow for Zellij floating panes.",
+    "Added configurable popup commands and trimmed the preview asset surface around popup flows.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v13.5"]
+version = "v13.5"
+date = "2026-03-22"
+headline = "Pane-walking polish and Zellij config merge path fixes"
+summary = [
+    "Fixed Zellij config merge path resolution and removed residual runtime path callers.",
+    "Stabilized pane-orchestrator updates and made pane walking skip the closed managed sidebar.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v13.4"]
+version = "v13.4"
+date = "2026-03-22"
+headline = "Reliability hardening, issue automation, and spec workflow foundations"
+summary = [
+    "Hardened launch, config, CI, and Home Manager reliability around the modern runtime model.",
+    "Added Beads and GitHub issue contract automation, architecture docs, and the spec-driven workflow foundation.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v13.3"]
+version = "v13.3"
+date = "2026-03-15"
+headline = "Restart workspace bootstrap follow-through and roadmap reset"
+summary = [
+    "Bootstrapped the first-tab workspace from restarted Yazi state and added restart-only Yazi cwd inheritance.",
+    "Refined the maintainer update flow, restored Gemini CLI support, and reset the rewrite roadmap in Beads.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v13.2"]
+version = "v13.2"
+date = "2026-03-15"
+headline = "Workspace opening polish and the Ghostty cursor-effect transition"
+summary = [
+    "Made Alt+p set the tab workspace root and fixed Alt+m cwd regressions and startup cwd leaks.",
+    "Started the Ghostty cursor-effect transition that split older cursor-trail intent across newer trail and mode fields.",
+]
+upgrade_impact = "manual_action_required"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = ["If you customized older Ghostty cursor-trail settings, review them against the newer trail and mode fields because the old intent is not always safe to rewrite automatically."]
+
+[releases."v13.1"]
+version = "v13.1"
+date = "2026-03-14"
+headline = "Safer multi-tab cwd routing, stronger workspace sync, and better diagnostics"
+summary = [
+    "Scoped Yazi sidebar cwd sync to the current tab and strengthened the yzx cwd workspace flow.",
+    "Improved Zellij and workspace diagnostics while cleaning up pane-handling and update-canary behavior.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases.v13]
+version = "v13"
+date = "2026-03-07"
+headline = "Plugin-managed editor/sidebar orchestration and deterministic workspace controls"
+summary = [
+    "Replaced fragile pane-scanning with plugin-managed editor and sidebar orchestration plus deterministic layout controls.",
+    "Improved launch freshness on restart and unified workspace-navigation behavior around the pane orchestrator.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v12.11"]
+version = "v12.11"
+date = "2026-03-06"
+headline = "TUI rebuild restoration and restart refresh fixes"
+summary = [
+    "Restored the TUI rebuild flow for launch and fixed restart refresh quoting.",
+    "Reduced sweep subprocess cost, showed live sweep progress, and removed dead launch IPC plumbing.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v12.10"]
+version = "v12.10"
+date = "2026-03-03"
+headline = "Refresh command and shell-initializer simplification"
+summary = [
+    "Added yzx refresh and shared devenv refresh helpers across the main command surface.",
+    "Removed the shell.enable_atuin toggle and simplified shell initializers to rely on direct PATH detection.",
 ]
 upgrade_impact = "migration_available"
 acknowledged_guarded_changes = []
-migration_ids = [
-    "remove_zellij_widget_tray_layout",
-    "remove_shell_enable_atuin",
+migration_ids = ["remove_shell_enable_atuin"]
+manual_actions = []
+
+[releases."v12.9"]
+version = "v12.9"
+date = "2026-02-08"
+headline = "Ghostty input fixes and sidebar/layout cleanup"
+summary = [
+    "Added an automatic Ghostty IM-module fallback for dead keys on Wayland.",
+    "Cleaned up sidebar and zjstatus layout handling around restart and startup.",
 ]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v12.8"]
+version = "v12.8"
+date = "2026-02-08"
+headline = "Command palette and restart hardening"
+summary = [
+    "Added the yzx command palette.",
+    "Hardened restart launch behavior around the refreshed modern command flow.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v12.7"]
+version = "v12.7"
+date = "2026-02-07"
+headline = "Safer yzx env shell supervision and better version reporting"
+summary = [
+    "Reworked yzx env shell supervision to prevent orphaned shells and prefer the stronger setpriv path where available.",
+    "Improved version reporting and locked tool-version resolution more tightly to the repo state.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v12.6"]
+version = "v12.6"
+date = "2026-02-01"
+headline = "Update-nix flow and desktop launcher hardening"
+summary = [
+    "Added yzx update nix and strengthened version pin reporting around the maintainer flow.",
+    "Hardened the desktop launcher shell environment and clarified Yazi config merge behavior.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v12.5"]
+version = "v12.5"
+date = "2026-01-29"
+headline = "Garbage collection command and stronger pack reporting"
+summary = [
+    "Added yzx gc for Nix-store cleanup.",
+    "Improved yzx packs output and CLI documentation around the pack surface.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v12.4"]
+version = "v12.4"
+date = "2026-01-29"
+headline = "Dynamic Yazelix version display in zjstatus"
+summary = ["Made the zjstatus bar read the live Yazelix version from constants.nu."]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v12.3"]
+version = "v12.3"
+date = "2026-01-29"
+headline = "llm-agents integration, AI packs, and yzx packs"
+summary = [
+    "Integrated llm-agents.nix, added AI-focused packs, and added the yzx packs inspection command.",
+    "Added Cachix binary caches and tightened unfree-package handling around the AI tooling surface.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v12.2"]
+version = "v12.2"
+date = "2026-01-29"
+headline = "AI pack experiment and system-mode rollback"
+summary = [
+    "Added the first AI pack experiment for the newer tooling era.",
+    "Backed out the short-lived system mode path and documented the experiment more clearly.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v12.1"]
+version = "v12.1"
+date = "2026-01-25"
+headline = "yzx run and Helix utility-prefix polish"
+summary = [
+    "Added yzx run for running a single command inside the Yazelix environment.",
+    "Polished the Helix utility prefix and refined the release notes around the v12 surface.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases.v12]
+version = "v12"
+date = "2026-01-25"
+headline = "User-declared packs, Yazi config merging, and tighter terminal integration"
+summary = [
+    "Added user-declared packs, Yazi user-config merging, and cleaner terminal and persistent-session behavior.",
+    "Fixed default-shell persistence, hot-reload behavior, and Kitty cursor-trail fallback handling.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
 manual_actions = []

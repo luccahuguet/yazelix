@@ -1,13 +1,15 @@
 #!/usr/bin/env nu
 
 use ../core/yazelix.nu *
-use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
+use ./test_yzx_helpers.nu [get_repo_config_dir get_repo_root repo_path]
 use ../utils/config_migrations.nu [
     build_config_migration_plan_from_record
     render_config_migration_plan
     validate_config_migration_rules
 ]
+use ../utils/constants.nu [YAZELIX_VERSION]
 use ../utils/upgrade_summary.nu [
+    build_upgrade_summary_report
     build_current_upgrade_summary_report
     maybe_show_first_run_upgrade_summary
 ]
@@ -87,10 +89,10 @@ def setup_upgrade_summary_fixture [
         let notes_path = ($runtime_dir | path join "docs" "upgrade_notes.toml")
         let notes = (open $notes_path)
         let updated_release = (
-            ($notes.releases | get "v13.7")
-            | upsert headline "Config migration follow-up after the v13.7 upgrade"
+            ($notes.releases | get $YAZELIX_VERSION)
+            | upsert headline $"Config migration follow-up after the ($YAZELIX_VERSION) upgrade"
             | upsert summary [
-                "This fixture treats v13.7 as the first release that carries config migration guidance."
+                $"This fixture treats ($YAZELIX_VERSION) as the first release that carries config migration guidance."
                 "Users with stale tray or shell toggles should migrate before relying on startup."
             ]
             | upsert upgrade_impact "migration_available"
@@ -100,7 +102,7 @@ def setup_upgrade_summary_fixture [
             ]
             | upsert manual_actions []
         )
-        let updated_notes = ($notes | upsert releases ($notes.releases | upsert "v13.7" $updated_release))
+        let updated_notes = ($notes | upsert releases ($notes.releases | upsert $YAZELIX_VERSION $updated_release))
         $updated_notes | to toml | save --force $notes_path
     }
 
@@ -492,10 +494,10 @@ def test_upgrade_summary_first_run_marks_seen_and_second_run_stays_quiet [] {
 
         if (
             ($first.shown == true)
-            and ($first.output | str contains "What's New In Yazelix v13.7")
+            and ($first.output | str contains $"What's New In Yazelix ($YAZELIX_VERSION)")
             and ($second.shown == false)
             and ($second.reason == "already_seen")
-            and ($stored_version == "v13.7")
+            and ($stored_version == $YAZELIX_VERSION)
         ) {
             print "  ✅ First-run upgrade summary persists the seen version and suppresses the repeat"
             true
@@ -572,7 +574,7 @@ widget_tray = ["layout", "editor"]
 
     let result = (try {
         mkdir ($fixture.state_dir | path join "state" "upgrade_summary")
-        "v13.7" | save --force --raw ($fixture.state_dir | path join "state" "upgrade_summary" "last_seen_version.txt")
+        $YAZELIX_VERSION | save --force --raw ($fixture.state_dir | path join "state" "upgrade_summary" "last_seen_version.txt")
         let output = with-env {
             HOME: $fixture.tmp_home
             YAZELIX_CONFIG_DIR: $fixture.config_dir
@@ -585,7 +587,7 @@ widget_tray = ["layout", "editor"]
 
         if (
             ($output.exit_code == 0)
-            and ($stdout | str contains "What's New In Yazelix v13.7")
+            and ($stdout | str contains $"What's New In Yazelix ($YAZELIX_VERSION)")
             and ($stdout | str contains "Detected matching migration candidates in your current config")
             and ($stdout | str contains "Reopen later: `yzx whats_new`")
         ) {
@@ -601,6 +603,62 @@ widget_tray = ["layout", "editor"]
     })
 
     rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_historical_upgrade_notes_cover_v12_v13_tag_floor [] {
+    print "🧪 Testing historical upgrade notes cover the supported v12/v13 tag floor..."
+
+    let repo_root = (get_repo_config_dir)
+    let repo_git_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_historical_notes_XXXXXX | str trim)
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+    mkdir ($tmp_home | path join ".local" "share")
+    mkdir $state_dir
+
+    let result = (try {
+        let tags = (
+            ^git -C $repo_git_root tag --sort=creatordate
+            | lines
+            | where {|tag| ($tag | str starts-with "v12") or ($tag | str starts-with "v13") }
+        )
+        let notes = (open ($repo_root | path join "docs" "upgrade_notes.toml"))
+        let release_keys = ($notes.releases | columns)
+        let missing = ($tags | where {|tag| not ($tag in $release_keys) })
+        let sample_versions = ["v12", "v12.10", "v13.2", "v13.7"]
+        let reports = (
+            $sample_versions
+            | each {|version|
+                with-env {
+                    HOME: $tmp_home
+                    YAZELIX_RUNTIME_DIR: $repo_root
+                    YAZELIX_CONFIG_OVERRIDE: ($repo_root | path join "yazelix_default.toml")
+                    YAZELIX_STATE_DIR: $state_dir
+                } {
+                    build_upgrade_summary_report $version
+                }
+            }
+        )
+
+        if (
+            ($missing | is-empty)
+            and ($reports | all {|report| $report.found == true })
+            and (($reports | where version == "v12.10" | first).entry.upgrade_impact == "migration_available")
+            and (($reports | where version == "v13.2" | first).entry.upgrade_impact == "manual_action_required")
+        ) {
+            print "  ✅ Historical notes cover the supported v12/v13 tag floor and load through exact-version reports"
+            true
+        } else {
+            print $"  ❌ Missing tags: ($missing | to json -r)"
+            print $"  ❌ Reports: ($reports | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
     $result
 }
 
@@ -1360,6 +1418,7 @@ export def run_core_canonical_tests [] {
         (test_upgrade_summary_first_run_marks_seen_and_second_run_stays_quiet)
         (test_upgrade_summary_report_detects_matching_migrations)
         (test_yzx_whats_new_reopens_current_summary_even_after_seen)
+        (test_historical_upgrade_notes_cover_v12_v13_tag_floor)
         (test_invalid_config_is_classified_as_config_problem)
         (test_startup_reports_known_config_migration_before_generic_wrappers)
         (test_config_state_supports_split_config_and_runtime_dirs)
