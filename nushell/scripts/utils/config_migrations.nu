@@ -71,6 +71,19 @@ const CONFIG_MIGRATION_RULES = [
         rationale: "Yazelix no longer has an ambient fallback mode for terminal configs. Users must now choose either Yazelix-managed configs or their terminal's real native config."
         manual_fix: "Replace terminal.config_mode = \"auto\" with either \"yazelix\" or \"user\" after deciding which config owner you want."
     }
+    {
+        id: "split_legacy_pack_config_surface"
+        title: "Move legacy [packs] out of yazelix.toml into yazelix_packs.toml"
+        kind: "field_reshape"
+        introduced_in: "v13.8"
+        introduced_after_version: null
+        introduced_on: "2026-03-28"
+        auto_apply: true
+        user_visible: true
+        guarded_paths: ["packs"]
+        rationale: "Yazelix now keeps pack declarations in a dedicated yazelix_packs.toml sidecar so the main config stays focused and pack ownership is unambiguous."
+        manual_fix: "Move [packs] out of yazelix.toml into yazelix_packs.toml, then re-run with only the sidecar owning pack settings."
+    }
 ]
 
 def maybe_get [data: any, path: list<string>] {
@@ -313,13 +326,54 @@ def plan_review_terminal_config_mode_auto [config: record] {
     (make_result "review_terminal_config_mode_auto" "manual_only" [] [(format_path $path)] $config)
 }
 
-def get_plan_step [rule_id: string, config: record] {
+def plan_split_legacy_pack_config_surface [config: record, pack_config: any, pack_config_path: string] {
+    let path = ["packs"]
+    let packs = (maybe_get $config $path)
+
+    if $packs == null {
+        return null
+    }
+
+    if not (($packs | describe) | str contains "record") {
+        return (make_result "split_legacy_pack_config_surface" "manual_only" [] [(format_path $path)] $config)
+    }
+
+    if $pack_config != null {
+        return (make_result
+            "split_legacy_pack_config_surface"
+            "manual_only"
+            []
+            [
+                (format_path $path)
+                $pack_config_path
+            ]
+            $config
+        )
+    }
+
+    let updated_config = ($config | reject packs)
+
+    (
+        make_result
+            "split_legacy_pack_config_surface"
+            "auto"
+            [
+                "Move [packs] out of yazelix.toml into yazelix_packs.toml."
+            ]
+            [(format_path $path)]
+            $updated_config
+        | upsert pack_config_after $packs
+    )
+}
+
+def get_plan_step [rule_id: string, config: record, pack_config: any = null, pack_config_path: string = "yazelix_packs.toml"] {
     match $rule_id {
         "remove_zellij_widget_tray_layout" => (plan_remove_zellij_widget_tray_layout $config)
         "unify_terminal_preference_list" => (plan_unify_terminal_preference_list $config)
         "remove_shell_enable_atuin" => (plan_remove_shell_enable_atuin $config)
         "review_legacy_cursor_trail_settings" => (plan_review_legacy_cursor_trail_settings $config)
         "review_terminal_config_mode_auto" => (plan_review_terminal_config_mode_auto $config)
+        "split_legacy_pack_config_surface" => (plan_split_legacy_pack_config_surface $config $pack_config $pack_config_path)
         _ => (error make {msg: $"Unknown config migration rule id: ($rule_id)"})
     }
 }
@@ -391,12 +445,13 @@ export def validate_config_migration_rules [] {
     $errors
 }
 
-export def build_config_migration_plan_from_record [config: record, config_path: string = "<memory>"] {
+export def build_config_migration_plan_from_record [config: record, config_path: string = "<memory>", pack_config: any = null, pack_config_path: string = "yazelix_packs.toml"] {
     mut current_config = $config
+    mut current_pack_config = $pack_config
     mut results = []
 
     for rule in $CONFIG_MIGRATION_RULES {
-        let step = (get_plan_step $rule.id $current_config)
+        let step = (get_plan_step $rule.id $current_config $current_pack_config $pack_config_path)
         if $step == null {
             continue
         }
@@ -405,6 +460,9 @@ export def build_config_migration_plan_from_record [config: record, config_path:
 
         if $step.status == "auto" {
             $current_config = $step.config_after
+            if ("pack_config_after" in ($step | columns)) {
+                $current_pack_config = $step.pack_config_after
+            }
         }
     }
 
@@ -413,8 +471,11 @@ export def build_config_migration_plan_from_record [config: record, config_path:
 
     {
         config_path: $config_path
+        pack_config_path: $pack_config_path
         original_config: $config
         migrated_config: $current_config
+        original_pack_config: $pack_config
+        migrated_pack_config: $current_pack_config
         results: $results
         auto_results: $auto_results
         manual_results: $manual_results
@@ -422,12 +483,22 @@ export def build_config_migration_plan_from_record [config: record, config_path:
         manual_count: ($manual_results | length)
         has_auto_changes: (not ($auto_results | is-empty))
         has_manual_items: (not ($manual_results | is-empty))
+        has_pack_config_change: ($current_pack_config != $pack_config)
     }
 }
 
 export def get_config_migration_plan [config_path: string] {
     let config = open $config_path
-    build_config_migration_plan_from_record $config $config_path
+    use config_surfaces.nu get_pack_sidecar_path
+
+    let pack_config_path = (get_pack_sidecar_path $config_path)
+    let pack_config = if ($pack_config_path | path exists) {
+        open $pack_config_path
+    } else {
+        null
+    }
+
+    build_config_migration_plan_from_record $config $config_path $pack_config $pack_config_path
 }
 
 export def render_config_migration_plan [plan: record] {
@@ -492,6 +563,8 @@ export def apply_config_migration_plan [plan: record] {
             status: "noop"
             config_path: $plan.config_path
             backup_path: null
+            pack_config_path: ($plan.pack_config_path? | default null)
+            pack_backup_path: null
             applied_count: 0
             manual_count: $plan.manual_count
         }
@@ -499,22 +572,49 @@ export def apply_config_migration_plan [plan: record] {
 
     let timestamp = (date now | format date "%Y%m%d_%H%M%S")
     let backup_path = $"($plan.config_path).backup-($timestamp)"
+    let pack_config_path = ($plan.pack_config_path? | default null)
+    let pack_backup_path = if ($pack_config_path != null) and ($pack_config_path | path exists) and $plan.has_pack_config_change {
+        let path = $"($pack_config_path).backup-($timestamp)"
+        cp $pack_config_path $path
+        $path
+    } else {
+        null
+    }
     let rewritten = ($plan.migrated_config | to toml)
+    let pack_rewritten = if $plan.has_pack_config_change {
+        $plan.migrated_pack_config | to toml
+    } else {
+        null
+    }
 
     cp $plan.config_path $backup_path
 
     try {
         $rewritten | save --force --raw $plan.config_path
+        if $pack_rewritten != null {
+            $pack_rewritten | save --force --raw $pack_config_path
+        }
         {
             status: "applied"
             config_path: $plan.config_path
             backup_path: $backup_path
+            pack_config_path: $pack_config_path
+            pack_backup_path: $pack_backup_path
             applied_count: $plan.auto_count
             manual_count: $plan.manual_count
         }
     } catch {|err|
         try {
             cp $backup_path $plan.config_path
+        }
+        if ($pack_backup_path != null) {
+            try {
+                cp $pack_backup_path $pack_config_path
+            }
+        } else if ($pack_rewritten != null) and ($pack_config_path != null) and ($pack_config_path | path exists) {
+            try {
+                rm $pack_config_path
+            }
         }
         error make {msg: $"Failed to apply config migrations: ($err.msg)"}
     }

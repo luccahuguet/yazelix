@@ -5,7 +5,7 @@ use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstra
 use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 use ../utils/config_migrations.nu [apply_config_migration_plan get_config_migration_plan render_config_migration_plan validate_config_migration_rules]
-use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/config_surfaces.nu resolve_active_config_paths
 
 def classify_menu_command [cmd: string] {
     if ($cmd | str starts-with "yzx launch") or ($cmd == "yzx restart") {
@@ -248,8 +248,7 @@ export def "yzx config zellij" [] {
 export def "yzx config open" [
     --print  # Print the config path without opening
 ] {
-    let config = parse_yazelix_config
-    let config_path = $config.config_file
+    let config_path = ((resolve_active_config_paths).config_file)
 
     if $print {
         $config_path
@@ -293,7 +292,8 @@ export def "yzx config migrate" [
     if not $yes {
         print ""
         print "⚠️  This rewrites yazelix.toml from parsed TOML."
-        print "   The original file will be backed up first."
+        print "   It may also create or rewrite yazelix_packs.toml when packs are migrated."
+        print "   Any rewritten file will be backed up first."
         print "   Comments and key ordering may be normalized."
         let confirm = try {
             (input "Apply the safe migrations? [y/N]: " | str downcase)
@@ -308,6 +308,12 @@ export def "yzx config migrate" [
 
     print ""
     print $"✅ Backed up previous config to: ($apply_result.backup_path)"
+    if ($apply_result.pack_backup_path? | is-not-empty) {
+        print $"✅ Backed up previous pack config to: ($apply_result.pack_backup_path)"
+    }
+    if ($apply_result.pack_config_path? | is-not-empty) and ($apply_result.pack_backup_path? | is-empty) and (($apply_result.pack_config_path | path exists)) {
+        print $"✅ Wrote pack config to: ($apply_result.pack_config_path)"
+    }
     print $"✅ Applied ($apply_result.applied_count) config migration\(s\) to: ($apply_result.config_path)"
     print "ℹ️  Comments and key ordering were normalized because Yazelix rewrote the file from parsed TOML."
 

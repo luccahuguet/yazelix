@@ -370,36 +370,43 @@ def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
     $result
 }
 
-def test_parse_yazelix_config_preserves_legacy_main_file_packs [] {
-    print "🧪 Testing parse_yazelix_config preserves legacy [packs] in yazelix.toml when no sidecar exists..."
+def test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance [] {
+    print "🧪 Testing parse_yazelix_config rejects legacy [packs] in yazelix.toml and points users at migrate..."
 
-    let tmpdir = (^mktemp -d /tmp/yazelix_pack_legacy_main_XXXXXX | str trim)
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_pack_legacy_main_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
 
     let result = (try {
-        let config_path = ($tmpdir | path join "yazelix.toml")
-
         '[packs]
 enabled = ["git"]
 user_packages = ["docker"]
 
 [packs.declarations]
 git = ["gh", "prek"]
-' | save --force --raw $config_path
+' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
 
-        let parsed = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
-            parse_yazelix_config
+        let parser_result = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($repo_root | path join "nushell" "scripts" "utils" "config_parser.nu")\" [parse_yazelix_config]; parse_yazelix_config" | complete
         })
 
+        let stderr = ($parser_result.stderr | str trim)
+
         if (
-            ($parsed.pack_names == ["git"])
-            and ($parsed.user_packages == ["docker"])
-            and (($parsed.pack_declarations | get git) == ["gh", "prek"])
+            ($parser_result.exit_code != 0)
+            and ($stderr | str contains "Known migration at packs")
+            and ($stderr | str contains "yzx config migrate --apply")
         ) {
-            print "  ✅ Legacy pack settings in yazelix.toml still work when no sidecar is present"
+            print "  ✅ Legacy pack settings are now blocked with shared migration guidance"
             true
         } else {
-            print $"  ❌ Unexpected parsed legacy pack config: ($parsed | select pack_names user_packages pack_declarations | to json -r)"
+            print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr)"
             false
         }
     } catch { |err|
@@ -407,7 +414,7 @@ git = ["gh", "prek"]
         false
     })
 
-    rm -rf $tmpdir
+    rm -rf $tmp_home
     $result
 }
 
@@ -1189,7 +1196,7 @@ export def run_generated_config_canonical_tests [] {
         (test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root)
         (test_parse_yazelix_config_reads_pack_sidecar)
         (test_parse_yazelix_config_bootstraps_split_default_surfaces)
-        (test_parse_yazelix_config_preserves_legacy_main_file_packs)
+        (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)
         (test_parse_yazelix_config_rejects_split_pack_ownership)
         (test_user_mode_requires_real_terminal_config)
         (test_config_schema_rejects_removed_auto_terminal_config_mode)

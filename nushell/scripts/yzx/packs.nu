@@ -193,7 +193,7 @@ export def "yzx packs" [
     }
 
     if ($packs_to_show | is-empty) {
-        print "No packs enabled. Enable packs in yazelix_packs.toml, or in yazelix.toml under [packs] when no sidecar is present."
+        print "No packs enabled. Enable packs in yazelix_packs.toml."
         return
     }
 

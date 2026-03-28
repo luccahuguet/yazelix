@@ -81,7 +81,7 @@ export def merge_pack_sidecar [
                 $"Pack sidecar: ($pack_path)"
                 "When yazelix_packs.toml exists, it fully owns pack settings."
             ]
-            "Move every [packs] entry out of yazelix.toml and into yazelix_packs.toml, or delete yazelix_packs.toml if you want to keep packs in the main file."
+            "Move every [packs] entry out of yazelix.toml and into yazelix_packs.toml so the sidecar is the only pack owner."
         )
     }
 

@@ -170,6 +170,64 @@ enable_atuin = true
     $result
 }
 
+def test_yzx_doctor_fix_splits_legacy_pack_config [] {
+    print "🧪 Testing yzx doctor --fix migrates legacy [packs] into yazelix_packs.toml..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_doctor_fix_packs_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+
+    let result = (try {
+        '[packs]
+enabled = ["git"]
+user_packages = ["docker"]
+
+[packs.declarations]
+git = ["gh", "prek"]
+' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+
+        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+        let output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($yzx_script)\" *; yzx doctor --fix" | complete
+        }
+        let stdout = ($output.stdout | str trim)
+        let rewritten = (open ($temp_config_dir | path join "yazelix.toml"))
+        let pack_path = ($temp_config_dir | path join "yazelix_packs.toml")
+        let pack_rewritten = (if ($pack_path | path exists) { open $pack_path } else { null })
+        let pack_rendered = (if $pack_rewritten == null { "<missing>" } else { $pack_rewritten | to json -r })
+        let backups = (ls $temp_config_dir | where name =~ 'yazelix\.toml\.backup-')
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Applied 1 config migration fix")
+            and ($stdout | str contains "Wrote pack config to")
+            and not ("packs" in ($rewritten | columns))
+            and ($pack_rewritten.enabled == ["git"])
+            and ($pack_rewritten.user_packages == ["docker"])
+            and (($pack_rewritten.declarations | get git) == ["gh", "prek"])
+            and (($backups | length) == 1)
+        ) {
+            print "  ✅ yzx doctor --fix now migrates legacy pack ownership into the sidecar"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main=($rewritten | to json -r) pack=($pack_rendered) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_doctor_clarifies_shell_opened_editors_are_not_managed [] {
     print "🧪 Testing doctor clarifies that shell-opened editors are not managed..."
 
@@ -206,6 +264,7 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_warns_on_stale_config_fields)
         (test_yzx_doctor_reports_known_migration_with_fix_guidance)
         (test_yzx_doctor_fix_applies_safe_config_migrations)
+        (test_yzx_doctor_fix_splits_legacy_pack_config)
     ]
 }
 

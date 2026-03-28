@@ -111,7 +111,12 @@ export def parse_yazelix_config [] {
     if ($config_to_read | path basename) == "yazelix.toml" and ($default_config_path | path exists) {
         let default_surface = (load_config_surface_from_main $default_config_path)
         let diagnostic_report = (
-            build_config_diagnostic_report_from_records $raw_config $default_surface.merged_config $config_to_read
+            build_config_diagnostic_report_from_records
+                $raw_config
+                $default_surface.merged_config
+                $config_to_read
+                $config_surface.main_config
+                $config_surface.pack_config
             | upsert config_path $config_surface.display_config_path
         )
         if $diagnostic_report.has_blocking {

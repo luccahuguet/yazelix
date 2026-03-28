@@ -165,10 +165,70 @@ cursor_trail = "snow"
     $ok
 }
 
+def run_pack_split_case [] {
+    let fixture = (setup_fixture
+        "yazelix_migrate_e2e_pack_split"
+        '[packs]
+enabled = ["git", "go"]
+user_packages = ["docker"]
+
+[packs.declarations]
+git = ["gh", "prek"]
+go = ["gopls", "golangci-lint"]
+')
+    let log_file = $fixture.log_file
+    let pack_path = ($fixture.config_dir | path join "yazelix_packs.toml")
+
+    log_line $log_file "Case: split legacy pack surface"
+    log_line $log_file $"Temp HOME: ($fixture.tmp_home)"
+    log_line $log_file $"Config path: ($fixture.config_path)"
+    log_line $log_file $"Pack path: ($pack_path)"
+    log_line $log_file $"Log file: ($log_file)"
+    log_line $log_file ""
+    log_block $log_file "Input TOML" (open --raw $fixture.config_path)
+
+    let preview = (run_migrate $fixture)
+    log_block $log_file "Preview stdout" ($preview.stdout | str trim)
+    log_block $log_file "Preview stderr" ($preview.stderr | str trim)
+
+    let apply = (run_migrate $fixture ["--apply", "--yes"])
+    log_block $log_file "Apply stdout" ($apply.stdout | str trim)
+    log_block $log_file "Apply stderr" ($apply.stderr | str trim)
+    log_block $log_file "Output main TOML" (open --raw $fixture.config_path)
+    log_block $log_file "Output pack TOML" (if ($pack_path | path exists) { open --raw $pack_path } else { "<missing>" })
+
+    let backups = (ls $fixture.config_dir | where name =~ 'yazelix\.toml\.backup-')
+    log_block $log_file "Backups" (($backups | get name | str join "\n"))
+
+    let parsed_main = (open $fixture.config_path)
+    let parsed_pack = (if ($pack_path | path exists) { open $pack_path } else { null })
+    let ok = (
+        ($preview.exit_code == 0)
+        and ($apply.exit_code == 0)
+        and (($preview.stdout | str contains "[AUTO] split_legacy_pack_config_surface"))
+        and (($apply.stdout | str contains "Wrote pack config to"))
+        and not ("packs" in ($parsed_main | columns))
+        and ($parsed_pack.enabled == ["git", "go"])
+        and ($parsed_pack.user_packages == ["docker"])
+        and (($parsed_pack.declarations | get git) == ["gh", "prek"])
+        and (($backups | length) == 1)
+    )
+
+    if $ok {
+        log_line $log_file "Result: PASS"
+    } else {
+        log_line $log_file "Result: FAIL"
+    }
+
+    rm -rf $fixture.tmp_home
+    $ok
+}
+
 export def main [] {
     let results = [
         (run_mixed_migration_case)
         (run_manual_conflict_case)
+        (run_pack_split_case)
     ]
     let passed = ($results | where $it == true | length)
     let total = ($results | length)

@@ -94,7 +94,7 @@ git = [
 ]
 ```
 
-If you are not using `yazelix_packs.toml`, Yazelix still accepts the legacy `[packs]` section in `yazelix.toml`. Do not define packs in both places at the same time.
+Packs now belong in `yazelix_packs.toml`. If you still have a legacy `[packs]` section in `yazelix.toml`, run `yzx config migrate --apply` to move it into the sidecar.
 
 **Individual packages**: Add specific tools via `user_packages` in `yazelix_packs.toml`:
 ```toml
@@ -228,7 +228,7 @@ AI support tools: analytics, code review, and utilities (from llm-agents.nix).
 - [picoclaw](https://github.com/picoclaw/picoclaw) — PicoClaw
 - [zeroclaw](https://github.com/zeroclaw-labs/zeroclaw) — ZeroClaw
 
-**Usage**: Prefer `yazelix_packs.toml` for pack enablement, declarations, and `user_packages`. Legacy `[packs]` entries in `yazelix.toml` still work when no sidecar is present.
+**Usage**: Use `yazelix_packs.toml` for pack enablement, declarations, and `user_packages`. Legacy `[packs]` entries in `yazelix.toml` should be migrated with `yzx config migrate --apply`.
 
 ---
 

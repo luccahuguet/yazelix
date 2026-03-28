@@ -584,6 +584,58 @@ enable_atuin = true
     $result
 }
 
+def test_yzx_config_migrate_apply_splits_legacy_packs_into_sidecar [] {
+    print "🧪 Testing yzx config migrate apply moves legacy [packs] into yazelix_packs.toml..."
+
+    let fixture = (setup_config_migrate_fixture
+        "yazelix_migrate_pack_split"
+        '[packs]
+enabled = ["git", "go"]
+user_packages = ["docker"]
+
+[packs.declarations]
+git = ["gh", "prek"]
+go = ["gopls", "golangci-lint"]
+')
+
+    let result = (try {
+        let output = (run_config_migrate_command $fixture ["--apply", "--yes"])
+        let stdout = ($output.stdout | str trim)
+        let updated_main = (open $fixture.config_path)
+        let pack_path = ($fixture.config_dir | path join "yazelix_packs.toml")
+        let updated_pack = (if ($pack_path | path exists) { open $pack_path } else { null })
+        let updated_pack_rendered = (if $updated_pack == null { "<missing>" } else { $updated_pack | to json -r })
+        let backups = (
+            ls $fixture.config_dir
+            | where name =~ 'yazelix\.toml\.backup-'
+        )
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "[AUTO] split_legacy_pack_config_surface")
+            and ($stdout | str contains "Wrote pack config to")
+            and not (record_has_path $updated_main ["packs"])
+            and ($updated_pack.enabled == ["git", "go"])
+            and ($updated_pack.user_packages == ["docker"])
+            and (($updated_pack.declarations | get git) == ["gh", "prek"])
+            and (($updated_pack.declarations | get go) == ["gopls", "golangci-lint"])
+            and (($backups | length) == 1)
+        ) {
+            print "  ✅ yzx config migrate now moves legacy pack ownership into yazelix_packs.toml"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main=($updated_main | to json -r) pack=($updated_pack_rendered) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 def test_yzx_config_migrate_apply_noops_on_current_config [] {
     print "🧪 Testing yzx config migrate apply noops on a current config..."
 
@@ -1753,6 +1805,7 @@ export def run_core_canonical_tests [] {
         (test_config_migration_preview_rendering_is_high_signal)
         (test_yzx_config_migrate_preview_reports_known_migrations)
         (test_yzx_config_migrate_apply_rewrites_config_with_backup)
+        (test_yzx_config_migrate_apply_splits_legacy_packs_into_sidecar)
         (test_yzx_config_migrate_apply_noops_on_current_config)
         (test_upgrade_summary_first_run_marks_seen_and_second_run_stays_quiet)
         (test_upgrade_summary_report_detects_matching_migrations)

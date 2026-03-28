@@ -742,6 +742,12 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
                 let apply_result = (apply_doctor_config_fixes $report)
                 if $apply_result.status == "applied" {
                     print $"✅ Applied ($apply_result.applied_count) config migration fix\(es\) with backup: ($apply_result.backup_path)"
+                    if ($apply_result.pack_backup_path? | is-not-empty) {
+                        print $"✅ Backed up previous pack config to: ($apply_result.pack_backup_path)"
+                    }
+                    if ($apply_result.pack_config_path? | is-not-empty) and ($apply_result.pack_backup_path? | is-empty) and (($apply_result.pack_config_path | path exists)) {
+                        print $"✅ Wrote pack config to: ($apply_result.pack_config_path)"
+                    }
                 }
             }
         }

@@ -192,7 +192,7 @@ Open the active Yazelix configuration file in your editor
 ### `yzx config migrate [--apply] [--yes]`
 Preview or apply known Yazelix config migrations
 - Default: preview known safe rewrites and manual-only follow-up without changing the file
-- `--apply`: write only deterministic rewrites back to `yazelix.toml`
+- `--apply`: write only deterministic rewrites back to `yazelix.toml`, and create or rewrite `yazelix_packs.toml` when packs are migrated out of the main config
 - `--yes`: skip the confirmation prompt for `--apply`
 - Always uses a backup-first write path on apply
 - Never guesses on ambiguous legacy config; those cases stay manual-only
