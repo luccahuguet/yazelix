@@ -127,9 +127,9 @@ manage_terminals = true
 
 # Terminal config mode (how Yazelix handles terminal emulator configs)
 # Options:
-# - "auto":   Prefer the user's config if present; otherwise use Yazelix's config
-# - "user":   Always use the user's config paths
-# - "yazelix": Always use Yazelix-provided configs under ~/.config/yazelix/configs/terminal_emulators
+# - "yazelix": Use Yazelix-managed configs under ~/.local/share/yazelix/configs/terminal_emulators
+# - "user":    Load the terminal's native user config path instead; this requires that the real config file already exists
+# Supported customization path: keep "yazelix" and add terminal-native tweaks under ~/.config/yazelix/terminal_overrides/
 config_mode = "yazelix"
 
 # Cursor color palette for Ghostty shaders, plus Kitty's simple cursor-trail fallback

@@ -88,6 +88,19 @@ def parse_percentage_setting [value: any, label: string, default_value: int] {
     $parsed
 }
 
+def parse_terminal_config_mode [raw_config: record] {
+    let mode = ($raw_config.terminal?.config_mode? | default "yazelix" | into string | str downcase)
+    let allowed = ["yazelix", "user"]
+
+    if not ($mode in $allowed) {
+        let allowed_text = ($allowed | str join ", ")
+        let classification = (format_failure_classification "config" "Use `terminal.config_mode = \"yazelix\"` for the supported managed path, or `\"user\"` only when you want Yazelix to load the terminal's native config file.")
+        error make {msg: $"Invalid terminal.config_mode value '($mode)'. Expected one of: ($allowed_text)\n($classification)"}
+    }
+
+    $mode
+}
+
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
     let yazelix_config_dir = get_yazelix_config_dir
@@ -154,7 +167,7 @@ export def parse_yazelix_config [] {
         support_kitty_keyboard_protocol: ($raw_config.zellij?.support_kitty_keyboard_protocol? | default false | into string),
         terminals: ($raw_config.terminal?.terminals? | default ["ghostty"]),
         manage_terminals: ($raw_config.terminal?.manage_terminals? | default true),
-        terminal_config_mode: ($raw_config.terminal?.config_mode? | default "yazelix"),
+        terminal_config_mode: (parse_terminal_config_mode $raw_config),
         ghostty_trail_color: ($raw_config.terminal?.ghostty_trail_color? | default "random"),
         ghostty_trail_effect: ($raw_config.terminal?.ghostty_trail_effect? | default "random"),
         ghostty_mode_effect: ($raw_config.terminal?.ghostty_mode_effect? | default "random"),

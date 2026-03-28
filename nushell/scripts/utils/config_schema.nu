@@ -152,6 +152,7 @@ export def validate_enum_values [user: record] {
         { path: ["helix", "mode"], label: "helix.mode", allowed: ["release", "source"] },
         { path: ["core", "refresh_output"], label: "core.refresh_output", allowed: ["quiet", "normal", "full"] },
         { path: ["terminal", "terminals"], label: "terminal.terminals", allowed: $SUPPORTED_TERMINALS },
+        { path: ["terminal", "config_mode"], label: "terminal.config_mode", allowed: ["yazelix", "user"] },
         { path: ["terminal", "ghostty_trail_color"], label: "terminal.ghostty_trail_color", allowed: $ghostty_trail_color_allowed },
         { path: ["terminal", "ghostty_trail_effect"], label: "terminal.ghostty_trail_effect", allowed: $ghostty_trail_effect_allowed },
         { path: ["terminal", "ghostty_mode_effect"], label: "terminal.ghostty_mode_effect", allowed: $ghostty_mode_effect_allowed },

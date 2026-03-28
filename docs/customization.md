@@ -7,7 +7,13 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
   - **Bundled terminals** (yazelix-ghostty, etc.): Configs generated dynamically from your yazelix settings
     - **Ghostty cursor shaders**: Use `ghostty_trail_color` for the palette, `ghostty_trail_effect` for cursor-movement trails, and `ghostty_mode_effect` for mode-change pulses like Neovim normal/insert transitions. `ghostty_trail_color = "none"` disables the Yazelix palette shader and Kitty fallback trail; the others default to `random`. Helix does not support every trail effect yet; Neovim currently has the best support.
     - **Transparency**: Configure `transparency = "none"`, `"low"`, `"medium"`, or `"high"`
-    - **No manual copying required** - auto-generated when launching yazelix
+    - **Yazelix-specific terminal overrides**: For Ghostty, Kitty, and Alacritty, add personal terminal-native settings under `~/.config/yazelix/terminal_overrides/`
+      - `ghostty`
+      - `kitty.conf`
+      - `alacritty.toml`
+      Yazelix owns startup/integration-critical behavior; these override files are for terminal-local preferences such as theme, fonts, opacity, padding, and cursor style.
+    - **Config ownership switch**: `terminal.config_mode = "yazelix"` keeps using Yazelix-managed configs; `"user"` loads the terminal's native config file instead and fails if it is missing
+    - **No manual copying required** - generated automatically when launching Yazelix
   - **Reference configs** (generated snapshot): `configs/terminal_emulators/`
     - Refresh snapshots: `yzx dev sync_terminal_configs` (uses `yazelix_default.toml`)
     - Snapshots match the generated configs under `~/.local/share/yazelix/configs/terminal_emulators/`

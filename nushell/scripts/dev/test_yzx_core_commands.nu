@@ -1540,10 +1540,10 @@ def test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering [
             and ($status_stdout | str contains $"Config File: ($fixture.config_dir | path join "yazelix.toml")")
             and ($status_stdout | str contains $"Directory: ($fixture.runtime_dir)")
             and ($status_stdout | str contains $"Logs: ($fixture.runtime_dir | path join "logs")")
-            and ($gen_stdout | str contains $"exec ($fixture.startup_script)")
+            and not ($gen_stdout | str contains "start_yazelix.sh")
             and not ($gen_stdout | str contains $fixture.repo_root)
         ) {
-            print "  ✅ Relocated runtime smoke path resolves config, runtime, and internal terminal launchers from split roots"
+            print "  ✅ Relocated runtime smoke path resolves config and runtime while keeping startup launchers out of generated terminal configs"
             true
         } else {
             print $"  ❌ Unexpected result: status_exit=($status_output.exit_code) gen_exit=($gen_output.exit_code)"

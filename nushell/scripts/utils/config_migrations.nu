@@ -58,6 +58,19 @@ const CONFIG_MIGRATION_RULES = [
         rationale: "The old cursor-trail settings were split into separate color and effect fields, and the old combinations are not always safe to rewrite automatically."
         manual_fix: "Replace the legacy cursor-trail fields with terminal.ghostty_trail_color, terminal.ghostty_trail_effect, and terminal.ghostty_mode_effect after reviewing the old intent."
     }
+    {
+        id: "review_terminal_config_mode_auto"
+        title: "Review the removed terminal.config_mode = auto setting manually"
+        kind: "manual_only"
+        introduced_in: "v13.8"
+        introduced_after_version: null
+        introduced_on: "2026-03-28"
+        auto_apply: false
+        user_visible: true
+        guarded_paths: ["terminal.config_mode"]
+        rationale: "Yazelix no longer has an ambient fallback mode for terminal configs. Users must now choose either Yazelix-managed configs or their terminal's real native config."
+        manual_fix: "Replace terminal.config_mode = \"auto\" with either \"yazelix\" or \"user\" after deciding which config owner you want."
+    }
 ]
 
 def maybe_get [data: any, path: list<string>] {
@@ -284,12 +297,29 @@ def plan_review_legacy_cursor_trail_settings [config: record] {
     (make_result "review_legacy_cursor_trail_settings" "manual_only" [] $matched $config)
 }
 
+def plan_review_terminal_config_mode_auto [config: record] {
+    let path = ["terminal", "config_mode"]
+    let value = (maybe_get $config $path)
+
+    if $value == null {
+        return null
+    }
+
+    let normalized = ($value | into string | str downcase)
+    if $normalized != "auto" {
+        return null
+    }
+
+    (make_result "review_terminal_config_mode_auto" "manual_only" [] [(format_path $path)] $config)
+}
+
 def get_plan_step [rule_id: string, config: record] {
     match $rule_id {
         "remove_zellij_widget_tray_layout" => (plan_remove_zellij_widget_tray_layout $config)
         "unify_terminal_preference_list" => (plan_unify_terminal_preference_list $config)
         "remove_shell_enable_atuin" => (plan_remove_shell_enable_atuin $config)
         "review_legacy_cursor_trail_settings" => (plan_review_legacy_cursor_trail_settings $config)
+        "review_terminal_config_mode_auto" => (plan_review_terminal_config_mode_auto $config)
         _ => (error make {msg: $"Unknown config migration rule id: ($rule_id)"})
     }
 }

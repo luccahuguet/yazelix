@@ -195,19 +195,55 @@ let
   '';
 
   yazelixLayoutName = if enableSidebar then "yzx_side" else "yzx_no_side";
+  startupScriptPath = ''"''${YAZELIX_DIR:-$HOME/.config/yazelix}/shells/posix/start_yazelix.sh"'';
+  mkTerminalConfigResolver =
+    {
+      terminalName,
+      yazelixConfigPath,
+      userMainPath,
+      userAltPath ? null,
+    }:
+    ''
+      MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
+      MODE="''${MODE:-yazelix}"
+      YZ_CONF="${yazelixConfigPath}"
+      if [ "$MODE" = "yazelix" ]; then
+        CONF="$YZ_CONF"
+      elif [ "$MODE" = "user" ]; then
+        ${if userAltPath == null then
+          ''
+            USER_CONF="${userMainPath}"
+          ''
+        else
+          ''
+            USER_CONF_MAIN="${userMainPath}"
+            USER_CONF_ALT="${userAltPath}"
+            if [ -f "$USER_CONF_MAIN" ]; then
+              USER_CONF="$USER_CONF_MAIN"
+            else
+              USER_CONF="$USER_CONF_ALT"
+            fi
+          ''}
+        if [ ! -f "$USER_CONF" ]; then
+          echo "Error: terminal.config_mode = user requires a real ${terminalName} user config at $USER_CONF" >&2
+          exit 1
+        fi
+        CONF="$USER_CONF"
+      else
+        echo "Error: Unsupported YAZELIX_TERMINAL_CONFIG_MODE '$MODE'. Expected 'yazelix' or 'user'." >&2
+        exit 1
+      fi
+    '';
 
   # Terminal wrappers replicate the flake-based launchers
   ghosttyWrapper = pkgs.writeShellScriptBin "yazelix-ghostty" (
     if isLinux then
       ''
-        MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
-        MODE="''${MODE:-auto}"
-        USER_CONF="$HOME/.config/ghostty/config"
-        YZ_CONF="$HOME/.local/share/yazelix/configs/terminal_emulators/ghostty/config"
-        CONF="$YZ_CONF"
-        if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
-          if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
-        fi
+        ${mkTerminalConfigResolver {
+          terminalName = "ghostty";
+          yazelixConfigPath = "$HOME/.local/share/yazelix/configs/terminal_emulators/ghostty/config";
+          userMainPath = "$HOME/.config/ghostty/config";
+        }}
         # On Wayland, stale IM variables (e.g. GTK_IM_MODULE=ibus without daemon)
         # can break dead-key/compose input in GTK terminals.
         if [ -n "''${WAYLAND_DISPLAY:-}" ]; then
@@ -238,23 +274,22 @@ let
         exec ${
           lib.optionalString (nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "
         }${pkgs.ghostty}/bin/ghostty \
+          --config-default-files=false \
           --config-file="$CONF" \
           --gtk-single-instance=false \
           --class="com.yazelix.Yazelix" \
           --x11-instance-name="yazelix" \
-          --title="Yazelix - Ghostty" "$@"
+          --title="Yazelix - Ghostty" "$@" \
+          -e sh -c "exec ${startupScriptPath}"
       ''
     else
       ''
         # macOS: Detect Homebrew-installed Ghostty
-        MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
-        MODE="''${MODE:-auto}"
-        USER_CONF="$HOME/.config/ghostty/config"
-        YZ_CONF="$HOME/.local/share/yazelix/configs/terminal_emulators/ghostty/config"
-        CONF="$YZ_CONF"
-        if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
-          if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
-        fi
+        ${mkTerminalConfigResolver {
+          terminalName = "ghostty";
+          yazelixConfigPath = "$HOME/.local/share/yazelix/configs/terminal_emulators/ghostty/config";
+          userMainPath = "$HOME/.config/ghostty/config";
+        }}
 
         # Try to find Ghostty binary (Homebrew installation)
         GHOSTTY_BIN=""
@@ -269,28 +304,28 @@ let
         fi
 
         exec "$GHOSTTY_BIN" \
+          --config-default-files=false \
           --config-file="$CONF" \
-          --title="Yazelix - Ghostty" "$@"
+          --title="Yazelix - Ghostty" "$@" \
+          -e sh -c "exec ${startupScriptPath}"
       ''
   );
 
   kittyWrapper =
     if lib.elem "kitty" terminalList then
       pkgs.writeShellScriptBin "yazelix-kitty" ''
-        MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
-        MODE="''${MODE:-auto}"
-        USER_CONF="$HOME/.config/kitty/kitty.conf"
-        YZ_CONF="$HOME/.local/share/yazelix/configs/terminal_emulators/kitty/kitty.conf"
-        CONF="$YZ_CONF"
-        if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
-          if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
-        fi
+        ${mkTerminalConfigResolver {
+          terminalName = "kitty";
+          yazelixConfigPath = "$HOME/.local/share/yazelix/configs/terminal_emulators/kitty/kitty.conf";
+          userMainPath = "$HOME/.config/kitty/kitty.conf";
+        }}
         exec ${
           lib.optionalString (isLinux && nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "
         }${pkgs.kitty}/bin/kitty \
           --config="$CONF" \
           --class="com.yazelix.Yazelix" \
-          --title="Yazelix - Kitty" "$@"
+          --title="Yazelix - Kitty" "$@" \
+          sh -c "exec ${startupScriptPath}"
       ''
     else
       null;
@@ -298,23 +333,19 @@ let
   weztermWrapper =
     if lib.elem "wezterm" terminalList then
       pkgs.writeShellScriptBin "yazelix-wezterm" ''
-        MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
-        MODE="''${MODE:-auto}"
-        USER_CONF_MAIN="$HOME/.wezterm.lua"
-        USER_CONF_ALT="$HOME/.config/wezterm/wezterm.lua"
-        if [ -f "$USER_CONF_MAIN" ]; then USER_CONF="$USER_CONF_MAIN"; else USER_CONF="$USER_CONF_ALT"; fi
-        YZ_CONF="$HOME/.local/share/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua"
-        CONF="$YZ_CONF"
-        if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
-          if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
-        fi
+        ${mkTerminalConfigResolver {
+          terminalName = "wezterm";
+          yazelixConfigPath = "$HOME/.local/share/yazelix/configs/terminal_emulators/wezterm/.wezterm.lua";
+          userMainPath = "$HOME/.wezterm.lua";
+          userAltPath = "$HOME/.config/wezterm/wezterm.lua";
+        }}
         exec ${
           lib.optionalString (isLinux && nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "
         }${pkgs.wezterm}/bin/wezterm \
           --config-file="$CONF" \
           --config 'window_decorations="NONE"' \
           --config enable_tab_bar=false \
-          start --class=com.yazelix.Yazelix "$@"
+          start --class=com.yazelix.Yazelix "$@" -- sh -c "exec ${startupScriptPath}"
       ''
     else
       null;
@@ -322,20 +353,18 @@ let
   alacrittyWrapper =
     if lib.elem "alacritty" terminalList then
       pkgs.writeShellScriptBin "yazelix-alacritty" ''
-        MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
-        MODE="''${MODE:-auto}"
-        USER_CONF="$HOME/.config/alacritty/alacritty.toml"
-        YZ_CONF="$HOME/.local/share/yazelix/configs/terminal_emulators/alacritty/alacritty.toml"
-        CONF="$YZ_CONF"
-        if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
-          if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
-        fi
+        ${mkTerminalConfigResolver {
+          terminalName = "alacritty";
+          yazelixConfigPath = "$HOME/.local/share/yazelix/configs/terminal_emulators/alacritty/alacritty.toml";
+          userMainPath = "$HOME/.config/alacritty/alacritty.toml";
+        }}
         exec ${
           lib.optionalString (isLinux && nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "
         }${pkgs.alacritty}/bin/alacritty \
           --config-file="$CONF" \
           --class="com.yazelix.Yazelix" \
-          --title="Yazelix - Alacritty" "$@"
+          --title="Yazelix - Alacritty" "$@" \
+          -e sh -c "exec ${startupScriptPath}"
       ''
     else
       null;
@@ -343,19 +372,17 @@ let
   footWrapper =
     if isLinux && (lib.elem "foot" terminalList) then
       pkgs.writeShellScriptBin "yazelix-foot" ''
-        MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
-        MODE="''${MODE:-auto}"
-        USER_CONF="$HOME/.config/foot/foot.ini"
-        YZ_CONF="$HOME/.local/share/yazelix/configs/terminal_emulators/foot/foot.ini"
-        CONF="$YZ_CONF"
-        if [ "$MODE" = "user" ] || [ "$MODE" = "auto" ]; then
-          if [ -f "$USER_CONF" ]; then CONF="$USER_CONF"; fi
-        fi
+        ${mkTerminalConfigResolver {
+          terminalName = "foot";
+          yazelixConfigPath = "$HOME/.local/share/yazelix/configs/terminal_emulators/foot/foot.ini";
+          userMainPath = "$HOME/.config/foot/foot.ini";
+        }}
         exec ${
           lib.optionalString (nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "
         }${pkgs.foot}/bin/foot \
           --config="$CONF" \
-          --app-id="com.yazelix.Yazelix" "$@"
+          --app-id="com.yazelix.Yazelix" "$@" \
+          sh -c "exec ${startupScriptPath}"
       ''
     else
       null;

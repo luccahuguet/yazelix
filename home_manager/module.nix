@@ -145,16 +145,14 @@ in
 
     terminal_config_mode = mkOption {
       type = types.enum [
-        "auto"
-        "user"
         "yazelix"
+        "user"
       ];
       default = "yazelix";
       description = ''
         How Yazelix selects terminal configs:
         - "yazelix": use Yazelix-managed configs in ~/.local/share/yazelix (default)
-        - "auto": prefer user configs if present, otherwise Yazelix configs
-        - "user": always use user configs (e.g., ~/.config/ghostty/config)
+        - "user": load the terminal's native user config path and fail if it does not exist
       '';
     };
 

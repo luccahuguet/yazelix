@@ -4,12 +4,9 @@ use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
 use ../utils/launch_state.nu [get_launch_env]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
+use ../utils/terminal_launcher.nu [resolve_terminal_config]
 use ../utils/terminal_configs.nu [
-    generate_alacritty_config
-    generate_foot_config
-    generate_ghostty_config
-    generate_kitty_config
-    generate_wezterm_config
+    generate_all_terminal_configs
 ]
 
 def test_layout_generator_discovers_custom_top_level_layouts [] {
@@ -137,79 +134,6 @@ def test_launch_env_omits_default_helix_runtime [] {
     }
 }
 
-def test_terminal_config_generation_rewrites_runtime_root [] {
-    print "🧪 Testing terminal config generation rewrites runtime-root launch paths..."
-
-    let runtime_dir = "/tmp/yazelix-runtime"
-
-    try {
-        let ghostty_config = (generate_ghostty_config $runtime_dir)
-        let wezterm_config = (generate_wezterm_config $runtime_dir)
-        let kitty_config = (generate_kitty_config $runtime_dir)
-        let alacritty_config = (generate_alacritty_config $runtime_dir)
-        let foot_config = (generate_foot_config $runtime_dir)
-
-        if (
-            ($ghostty_config | str contains $"exec ($runtime_dir)/shells/posix/start_yazelix.sh")
-            and ($wezterm_config | str contains $"exec ($runtime_dir)/shells/posix/start_yazelix.sh")
-            and ($kitty_config | str contains $"exec ($runtime_dir)/shells/posix/start_yazelix.sh")
-            and ($alacritty_config | str contains $"exec ($runtime_dir)/shells/posix/start_yazelix.sh")
-            and ($foot_config | str contains $"exec ($runtime_dir)/shells/posix/start_yazelix.sh")
-            and not ($ghostty_config | str contains "$HOME/.config/yazelix")
-            and not ($wezterm_config | str contains "$HOME/.config/yazelix")
-            and not ($kitty_config | str contains "$HOME/.config/yazelix")
-            and not ($alacritty_config | str contains "$HOME/.config/yazelix")
-            and not ($foot_config | str contains "$HOME/.config/yazelix")
-        ) {
-            print "  ✅ Terminal config generation stamps the runtime-root launcher path into every supported terminal config"
-            true
-        } else {
-            print "  ❌ One or more terminal configs still contain stale repo-shaped launch paths"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_terminal_config_renderer_uses_runtime_root_default_template [] {
-    print "🧪 Testing the internal terminal config renderer uses the runtime-root default template..."
-
-    let tmp_home = (^mktemp -d /tmp/yazelix_gen_config_XXXXXX | str trim)
-    let runtime_dir = ($tmp_home | path join "runtime")
-    mkdir $runtime_dir
-
-    let result = (try {
-        cp (repo_path "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
-        let output = with-env {
-            HOME: $tmp_home
-            YAZELIX_RUNTIME_DIR: $runtime_dir
-        } {
-            ^nu -c $"use \"(repo_path "nushell" "scripts" "yzx" "gen_config.nu")\" [render_terminal_config]; render_terminal_config ghostty" | complete
-        }
-        let stdout = ($output.stdout | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains $"exec ($runtime_dir)/shells/posix/start_yazelix.sh")
-            and not ($stdout | str contains "$HOME/.config/yazelix")
-        ) {
-            print "  ✅ The internal terminal config renderer reads the template from the runtime root and emits runtime-root launch paths"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
 def test_launch_env_keeps_custom_helix_runtime_override [] {
     print "🧪 Testing launch env preserves custom Helix runtime override..."
 
@@ -237,6 +161,137 @@ def test_launch_env_keeps_custom_helix_runtime_override [] {
         print $"  ❌ Exception: ($err.msg)"
         false
     }
+}
+
+def test_generate_all_terminal_configs_creates_override_scaffolds [] {
+    print "🧪 Testing bundled terminal config generation creates Yazelix-specific override scaffolds..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_terminal_override_scaffold_XXXXXX | str trim)
+    let fake_home = ($tmpdir | path join "home")
+    let config_path = ($tmpdir | path join "yazelix.toml")
+    let runtime_root = (pwd)
+    mkdir $fake_home
+
+    let result = (try {
+        '[terminal]
+terminals = ["ghostty", "kitty", "alacritty", "wezterm", "foot"]
+' | save --force --raw $config_path
+
+        with-env {
+            HOME: $fake_home
+            YAZELIX_CONFIG_DIR: ($fake_home | path join ".config" "yazelix")
+            YAZELIX_CONFIG_OVERRIDE: $config_path
+        } {
+            generate_all_terminal_configs $runtime_root
+        }
+
+        let override_root = ($fake_home | path join ".config" "yazelix" "terminal_overrides")
+        let ghostty_override = ($override_root | path join "ghostty")
+        let kitty_override = ($override_root | path join "kitty.conf")
+        let alacritty_override = ($override_root | path join "alacritty.toml")
+        let ghostty_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "config"))
+        let kitty_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "kitty" "kitty.conf"))
+        let alacritty_entrypoint = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "alacritty" "alacritty.toml"))
+        let wezterm_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "wezterm" ".wezterm.lua"))
+        let foot_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "foot" "foot.ini"))
+
+        if (
+            ($ghostty_override | path exists)
+            and ($kitty_override | path exists)
+            and ($alacritty_override | path exists)
+            and ((open --raw $ghostty_override) | str contains "Personal Ghostty overrides")
+            and ((open --raw $kitty_override) | str contains "Personal Kitty overrides")
+            and ((open --raw $alacritty_override) | str contains "Personal Alacritty overrides")
+            and ($ghostty_config | str contains $"config-file = ?\"($ghostty_override)\"")
+            and ($kitty_config | str contains $"include ($kitty_override)")
+            and ($alacritty_entrypoint | str contains $"\"($fake_home)/.local/share/yazelix/configs/terminal_emulators/alacritty/alacritty_base.toml\"")
+            and ($alacritty_entrypoint | str contains $"\"($fake_home)/.config/yazelix/terminal_overrides/alacritty.toml\"")
+            and not ($ghostty_config | str contains "start_yazelix.sh")
+            and not ($kitty_config | str contains "start_yazelix.sh")
+            and not ($alacritty_entrypoint | str contains "start_yazelix.sh")
+            and not ($wezterm_config | str contains "start_yazelix.sh")
+            and not ($foot_config | str contains "start_yazelix.sh")
+        ) {
+            print "  ✅ Terminal config generation creates override scaffolds and keeps startup out of generated terminal configs"
+            true
+        } else {
+            print "  ❌ Override scaffold generation did not produce the expected files or imports"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_user_mode_requires_real_terminal_config [] {
+    print "🧪 Testing terminal.config_mode = user fails fast when the user terminal config is missing..."
+
+    let fake_home = (^mktemp -d /tmp/yazelix_user_mode_missing_XXXXXX | str trim)
+
+    let result = (try {
+        let message = (with-env { HOME: $fake_home } {
+            try {
+                resolve_terminal_config "ghostty" "user"
+                "unexpected-success"
+            } catch {|err|
+                $err.msg
+            }
+        })
+
+        if ($message | str contains "terminal.config_mode = user requires a real ghostty user config") {
+            print "  ✅ user mode fails clearly instead of silently falling back to Yazelix-managed config"
+            true
+        } else {
+            print $"  ❌ Unexpected message: ($message)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fake_home
+    $result
+}
+
+def test_config_schema_rejects_removed_auto_terminal_config_mode [] {
+    print "🧪 Testing config schema rejects the removed terminal.config_mode = auto value..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_terminal_mode_schema_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        '[terminal]
+config_mode = "auto"
+' | save --force --raw $config_path
+
+        let findings = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            use ../utils/config_schema.nu [validate_enum_values]
+            validate_enum_values (open $config_path)
+        })
+        let mode_findings = ($findings | where path == "terminal.config_mode")
+
+        if (
+            (($mode_findings | length) == 1)
+            and (($mode_findings | get 0.kind) == "invalid_enum")
+        ) {
+            print "  ✅ Config schema rejects the removed auto terminal config mode"
+            true
+        } else {
+            print $"  ❌ Unexpected findings: ($mode_findings | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
 }
 
 def test_launch_env_omits_yazelix_default_shell [] {
@@ -834,6 +889,9 @@ export def run_generated_config_canonical_tests [] {
     [
         (test_layout_generator_rewrites_runtime_paths)
         (test_zellij_widget_tray_defaults_omit_layout)
+        (test_generate_all_terminal_configs_creates_override_scaffolds)
+        (test_user_mode_requires_real_terminal_config)
+        (test_config_schema_rejects_removed_auto_terminal_config_mode)
         (test_ghostty_trail_glow_defaults_to_medium_and_reads_explicit_levels)
         (test_generate_all_terminal_configs_honors_ghostty_trail_color_none)
         (test_config_schema_rejects_removed_layout_widget)

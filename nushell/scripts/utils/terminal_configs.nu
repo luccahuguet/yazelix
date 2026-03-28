@@ -4,7 +4,7 @@
 use config_parser.nu parse_yazelix_config
 use ./constants_with_helpers.nu *
 use ./constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_COLOR_HEX]
-use ./common.nu [get_yazelix_runtime_dir]
+use ./common.nu [get_yazelix_config_dir, get_yazelix_runtime_dir]
 
 # Helpers
 def get_opacity_value [transparency: string] { $TRANSPARENCY_VALUES | get -o $transparency | default "1.0" }
@@ -63,16 +63,39 @@ def get_ghostty_cursor_effect_shader_path [effect: string] {
     $"./shaders/generated_effects/($effect).glsl"
 }
 
-def get_posix_startup_script [runtime_dir: string] {
-    ($runtime_dir | path join "shells" "posix" "start_yazelix.sh")
+def get_terminal_override_dir [] {
+    (get_yazelix_config_dir) | path join "terminal_overrides"
 }
 
-def get_posix_startup_command [runtime_dir: string] {
-    $"sh -c 'exec (get_posix_startup_script $runtime_dir)'"
+def get_terminal_override_path [terminal: string] {
+    let override_dir = (get_terminal_override_dir)
+    match $terminal {
+        "ghostty" => ($override_dir | path join "ghostty")
+        "kitty" => ($override_dir | path join "kitty.conf")
+        "alacritty" => ($override_dir | path join "alacritty.toml")
+        _ => null
+    }
 }
 
-def get_posix_startup_args_string [runtime_dir: string] {
-    $'["-c", "exec (get_posix_startup_script $runtime_dir)"]'
+def ensure_terminal_override_scaffold [terminal: string] {
+    let override_path = (get_terminal_override_path $terminal)
+    if $override_path == null {
+        return
+    }
+
+    mkdir ($override_path | path dirname)
+    if ($override_path | path exists) {
+        return
+    }
+
+    let scaffold = match $terminal {
+        "ghostty" => "# Personal Ghostty overrides for Yazelix.\n# Put theme, font-family, font-size, cursor style, padding, and similar preferences here.\n# Avoid launch-critical keys such as command or initial-command.\n"
+        "kitty" => "# Personal Kitty overrides for Yazelix.\n# Put theme, fonts, opacity, padding, cursor_shape, and similar preferences here.\n# Avoid launch-critical keys such as shell.\n"
+        "alacritty" => "# Personal Alacritty overrides for Yazelix.\n# Put theme, fonts, opacity, padding, cursor, and similar preferences here.\n# Avoid launch-critical keys such as terminal.shell.\n"
+        _ => ""
+    }
+
+    $scaffold | save --force --raw $override_path
 }
 
 # Section builders
@@ -166,16 +189,11 @@ def build_kitty_cursor [ghostty_trail_color] {
 # Config generators
 export def generate_ghostty_config [runtime_dir?: string] {
     let config = parse_yazelix_config
-    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
-    let shell_command = (get_posix_startup_command $resolved_runtime_dir)
     let selected_color = (resolve_ghostty_trail_color $config.ghostty_trail_color)
     let selected_trail_effect = (resolve_ghostty_trail_effect $config.ghostty_trail_effect)
     let selected_mode_effect = (resolve_ghostty_mode_effect $config.ghostty_mode_effect)
+    let override_path = (get_terminal_override_path "ghostty")
     $"($GHOSTTY_CONFIG_HEADER)
-
-# Start Yazelix via launcher to ensure Nix environment is loaded.
-# Use only one startup hook here; duplicating both can spawn two launch trees.
-initial-command = \"($shell_command)\"
 
 # Yazelix branding for desktop environment recognition
 (build_branding "ghostty" "ini")
@@ -191,18 +209,18 @@ window-padding-y = 10,0
 # Ghostty cursor color + effects \(configurable via yazelix.toml\)
 (build_ghostty_cursor_palette $selected_color)
 (build_ghostty_cursor_effects $selected_trail_effect $selected_mode_effect)
+
+# Personal Yazelix Ghostty overrides
+config-file = ?\"($override_path)\"
 "
 }
 
 export def generate_wezterm_config [runtime_dir?: string] {
     let config = parse_yazelix_config
-    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
-    let startup_script = (get_posix_startup_script $resolved_runtime_dir)
     $"-- WezTerm configuration for Yazelix
 local wezterm = require 'wezterm'
 local config = wezterm.config_builder\(\)
 
-config.default_prog = {'sh', '-c', 'exec ($startup_script)'}
 config.window_decorations = \"NONE\"
 config.window_padding = { left = 0, right = 0, top = 10, bottom = 0 }
 config.color_scheme = '($YAZELIX_THEME)'
@@ -220,11 +238,9 @@ return config"
 
 export def generate_kitty_config [runtime_dir?: string] {
     let config = parse_yazelix_config
-    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
-    let shell_command = (get_posix_startup_command $resolved_runtime_dir)
+    let override_path = (get_terminal_override_path "kitty")
     $"# Kitty configuration for Yazelix
 
-shell ($shell_command)
 hide_window_decorations yes
 window_padding_width 2
 include ($YAZELIX_THEME).conf
@@ -245,23 +261,18 @@ input_delay 3
 sync_to_monitor yes
 
 # Cursor trail effect \(configurable via yazelix.toml\)
-(build_kitty_cursor $config.ghostty_trail_color)"
+(build_kitty_cursor $config.ghostty_trail_color)
+
+# Personal Yazelix Kitty overrides
+include ($override_path)"
 }
 
-export def generate_alacritty_config [runtime_dir?: string] {
+def generate_alacritty_base_config [] {
     let config = parse_yazelix_config
-    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
-    let shell_args = (get_posix_startup_args_string $resolved_runtime_dir)
-    $"# Alacritty configuration for Yazelix
-
-[general]
-import = []
+    $"# Alacritty base configuration for Yazelix
 
 [env]
 TERM = \"xterm-256color\"
-
-[terminal]
-shell = { program = \"sh\", args = ($shell_args) }
 
 [window]
 decorations = \"None\"
@@ -285,12 +296,20 @@ size = 12
 primary = { background = \"#000000\", foreground = \"#ffffff\" }"
 }
 
+export def generate_alacritty_config [runtime_dir?: string] {
+    let generated_dir = ($YAZELIX_GENERATED_CONFIGS_DIR | str replace "~" $env.HOME)
+    let base_path = ($generated_dir | path join "terminal_emulators" "alacritty" "alacritty_base.toml")
+    let override_path = (get_terminal_override_path "alacritty")
+    $"# Alacritty configuration entrypoint for Yazelix
+
+[general]
+import = [\"($base_path)\", \"($override_path)\"]
+"
+}
+
 export def generate_foot_config [runtime_dir?: string] {
     let config = parse_yazelix_config
-    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
-    let shell_command = (get_posix_startup_command $resolved_runtime_dir)
     $"# Foot configuration for Yazelix
-shell=($shell_command)
 
 [colors]
 # Transparency \(configurable via yazelix.toml)
@@ -343,6 +362,10 @@ export def generate_all_terminal_configs [runtime_dir?: string] {
 
     print "Generating bundled terminal configurations..."
 
+    ensure_terminal_override_scaffold "ghostty"
+    ensure_terminal_override_scaffold "kitty"
+    ensure_terminal_override_scaffold "alacritty"
+
     # Ghostty (optional)
     if $should_generate_ghostty {
         let ghostty_dir = ($configs_dir | path join "ghostty")
@@ -369,6 +392,7 @@ export def generate_all_terminal_configs [runtime_dir?: string] {
     if ($terminals | any {|t| $t == "alacritty" }) {
         let alacritty_dir = ($configs_dir | path join "alacritty")
         mkdir $alacritty_dir
+        save_config_with_backup ($alacritty_dir | path join "alacritty_base.toml") (generate_alacritty_base_config)
         save_config_with_backup ($alacritty_dir | path join "alacritty.toml") (generate_alacritty_config $resolved_runtime_dir)
     }
 

@@ -2,23 +2,29 @@
 # Terminal launcher utilities for Yazelix
 
 use constants.nu [SUPPORTED_TERMINALS, TERMINAL_CONFIG_PATHS, TERMINAL_METADATA]
+use common.nu [get_yazelix_runtime_dir]
 
 # Check if a command is available
 export def command_exists [cmd: string]: nothing -> bool {
     (which $cmd | length) > 0
 }
 
+def get_startup_script_path []: nothing -> string {
+    let runtime_dir = (get_yazelix_runtime_dir)
+    $runtime_dir | path join "shells" "posix" "start_yazelix.sh"
+}
+
 # Resolve config path for a terminal based on mode
-export def resolve_terminal_config [terminal: string, mode: string]: nothing -> string {
+export def resolve_terminal_config [terminal: string, mode: string] {
     let home = $env.HOME
     let config_paths = $TERMINAL_CONFIG_PATHS | get $terminal
 
     if $mode == "yazelix" {
-        $config_paths.yazelix | str replace "~" $home
-    } else {
-        # user or auto mode - prefer user config if it exists
+        return ($config_paths.yazelix | str replace "~" $home)
+    }
+
+    if $mode == "user" {
         let user_path = if ($config_paths | get -o user_main) != null {
-            # Special case for wezterm which has two possible user paths
             let main = $config_paths.user_main | str replace "~" $home
             let alt = $config_paths.user_alt | str replace "~" $home
             if ($main | path exists) { $main } else { $alt }
@@ -26,10 +32,14 @@ export def resolve_terminal_config [terminal: string, mode: string]: nothing -> 
             $config_paths.user | str replace "~" $home
         }
 
-        let yazelix_path = $config_paths.yazelix | str replace "~" $home
+        if ($user_path | path exists) {
+            return $user_path
+        }
 
-        if ($user_path | path exists) { $user_path } else { $yazelix_path }
+        error make {msg: $"terminal.config_mode = user requires a real ($terminal) user config at ($user_path)"}
     }
+
+    error make {msg: $"Unsupported terminal.config_mode '($mode)'. Expected 'yazelix' or 'user'."}
 }
 
 # Detect available terminal (wrapper or direct)
@@ -127,6 +137,8 @@ export def build_launch_command [
     let use_wrapper = $terminal_info.use_wrapper
     let launch_prefix = build_detached_launch_prefix $needs_reload
     let working_dir_arg = (get_working_dir_arg $terminal $working_dir)
+    let startup_script = (get_startup_script_path)
+    let startup_shell = $"sh -c 'exec ($startup_script)'"
 
     if $use_wrapper {
         # Wrappers handle config internally via environment variable
@@ -137,19 +149,19 @@ export def build_launch_command [
         let nixgl_prefix = if (which nixGLIntel | is-not-empty) { "nixGLIntel " } else { "" }
         let terminal_cmd = match $terminal {
             "ghostty" => {
-                $"($nixgl_prefix)ghostty --config-file=($config_path) --gtk-single-instance=false --title=\"Yazelix - Ghostty\"($working_dir_arg)"
+                $"($nixgl_prefix)ghostty --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --title=\"Yazelix - Ghostty\"($working_dir_arg) -e ($startup_shell)"
             },
             "wezterm" => {
-                $"($nixgl_prefix)wezterm --config-file ($config_path) start($working_dir_arg) --class=com.yazelix.Yazelix"
+                $"($nixgl_prefix)wezterm --config-file ($config_path) start --class=com.yazelix.Yazelix($working_dir_arg) -- ($startup_shell)"
             },
             "kitty" => {
-                $"($nixgl_prefix)kitty --config=($config_path) --class=com.yazelix.Yazelix --title=\"Yazelix - Kitty\"($working_dir_arg)"
+                $"($nixgl_prefix)kitty --config=($config_path) --class=com.yazelix.Yazelix --title=\"Yazelix - Kitty\"($working_dir_arg) ($startup_shell)"
             },
             "alacritty" => {
-                $"($nixgl_prefix)alacritty --config-file ($config_path) --title \"Yazelix - Alacritty\"($working_dir_arg)"
+                $"($nixgl_prefix)alacritty --config-file ($config_path) --title \"Yazelix - Alacritty\"($working_dir_arg) -e ($startup_shell)"
             },
             "foot" => {
-                $"($nixgl_prefix)foot --config ($config_path) --app-id com.yazelix.Yazelix($working_dir_arg)"
+                $"($nixgl_prefix)foot --config ($config_path) --app-id com.yazelix.Yazelix($working_dir_arg) ($startup_shell)"
             },
             _ => {
                 error make {msg: $"Unknown terminal: ($terminal)"}

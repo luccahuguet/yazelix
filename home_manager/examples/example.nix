@@ -40,7 +40,7 @@
       "ghostty"
     ]; # Better for media previews
     manage_terminals = true;
-    terminal_config_mode = "yazelix"; # Optional: "auto", "user", or "yazelix"
+    terminal_config_mode = "yazelix"; # Optional: "yazelix" or "user"
     ghostty_trail_color = "random"; # Optional: Ghostty color palette + Kitty fallback
     ghostty_trail_effect = "random"; # Optional: "tail", "warp", "sweep", "random", or null
     ghostty_mode_effect = "random"; # Optional: "ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "random", or null
