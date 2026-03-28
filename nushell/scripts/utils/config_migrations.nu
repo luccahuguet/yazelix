@@ -9,6 +9,7 @@ const CONFIG_MIGRATION_RULES = [
         introduced_in: null
         introduced_after_version: "v13.7"
         introduced_on: "2026-03-27"
+        review_after_days: 180
         auto_apply: true
         user_visible: true
         guarded_paths: ["zellij.widget_tray"]
@@ -22,6 +23,7 @@ const CONFIG_MIGRATION_RULES = [
         introduced_in: "v11.6"
         introduced_after_version: null
         introduced_on: "2026-01-03"
+        review_after_days: 180
         auto_apply: true
         user_visible: true
         guarded_paths: ["terminal.preferred_terminal", "terminal.extra_terminals", "terminal.terminals"]
@@ -35,6 +37,7 @@ const CONFIG_MIGRATION_RULES = [
         introduced_in: "v12.10"
         introduced_after_version: null
         introduced_on: "2026-02-22"
+        review_after_days: 180
         auto_apply: true
         user_visible: true
         guarded_paths: ["shell.enable_atuin"]
@@ -48,6 +51,7 @@ const CONFIG_MIGRATION_RULES = [
         introduced_in: "v13.2"
         introduced_after_version: null
         introduced_on: "2026-03-14"
+        review_after_days: 365
         auto_apply: false
         user_visible: true
         guarded_paths: [
@@ -65,6 +69,7 @@ const CONFIG_MIGRATION_RULES = [
         introduced_in: "v13.8"
         introduced_after_version: null
         introduced_on: "2026-03-28"
+        review_after_days: 365
         auto_apply: false
         user_visible: true
         guarded_paths: ["terminal.config_mode"]
@@ -78,6 +83,7 @@ const CONFIG_MIGRATION_RULES = [
         introduced_in: "v13.8"
         introduced_after_version: null
         introduced_on: "2026-03-28"
+        review_after_days: 180
         auto_apply: true
         user_visible: true
         guarded_paths: ["packs"]
@@ -388,6 +394,7 @@ export def validate_config_migration_rules [] {
         "title"
         "kind"
         "introduced_on"
+        "review_after_days"
         "auto_apply"
         "user_visible"
         "guarded_paths"
@@ -420,6 +427,14 @@ export def validate_config_migration_rules [] {
             if ($field == "guarded_paths") and (($value | describe) | str contains "list") {
                 if ($value | is-empty) {
                     $errors = ($errors | append $"Config migration rule ($rule.id) must declare at least one guarded path")
+                }
+                continue
+            }
+
+            if $field == "review_after_days" {
+                let parsed = (try { $value | into int } catch { null })
+                if ($parsed == null) or ($parsed < 1) {
+                    $errors = ($errors | append $"Config migration rule ($rule.id) must declare a positive review_after_days value")
                 }
                 continue
             }

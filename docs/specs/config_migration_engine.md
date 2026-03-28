@@ -16,6 +16,7 @@ This spec covers:
 - preview-first behavior for `yzx config migrate`
 - explicit apply behavior with backup and normalized TOML rewrite
 - rule matching and ordering for safe and manual-only migrations
+- migration retention and review policy
 - metadata validation and high-signal automated verification
 
 ## Behavior
@@ -27,6 +28,18 @@ The command must default to a read-only preview. The preview should enumerate sa
 When the user reruns with `--apply`, Yazelix should write only the deterministic rewrites from the plan. Before writing, it must back up the original `yazelix.toml`. Because the file is rewritten from parsed TOML, comments and key ordering may be normalized; the command should say so explicitly.
 
 When a rule is ambiguous or lossy, the migration engine must not guess. It should leave the config unchanged for that rule and explain the manual follow-up needed.
+
+## Migration Retention Policy
+
+Migration rules should not accumulate forever without review. Every rule in the shared registry must declare a `review_after_days` horizon so maintainers can revisit whether the rule is still worth carrying.
+
+The policy is review-based, not time-based auto-deletion:
+
+- auto-apply deterministic rewrites should usually be reviewed after about 180 days
+- manual-only migration guards should usually be reviewed after about 365 days
+- especially dangerous legacy shapes may remain longer, but only by explicit maintainer choice after review
+
+The review question is whether the rule still pays for its complexity. Old low-value rewrites should be removed first. Manual-only guards may stay longer when they keep startup and doctor guidance humane for users who update infrequently.
 
 ## Non-goals
 
@@ -42,6 +55,7 @@ When a rule is ambiguous or lossy, the migration engine must not guess. It shoul
 3. When a config contains legacy cursor-trail fields whose meaning is no longer deterministic, preview marks them manual-only and apply leaves them untouched.
 4. When a config is already current, preview says there are no known migrations and apply does not create a backup or rewrite the file.
 5. When the migration registry is malformed, validation fails loudly before the engine is trusted by higher-level UX.
+6. When a migration rule is added without a positive `review_after_days` value, validation fails loudly before the engine is trusted by higher-level UX.
 
 ## Verification
 
@@ -50,6 +64,7 @@ When a rule is ambiguous or lossy, the migration engine must not guess. It shoul
 - e2e scripts: `nu nushell/scripts/dev/test_config_migrate_e2e.nu`
 - CI checks: `nu nushell/scripts/dev/validate_specs.nu` and `nu nushell/scripts/dev/validate_config_migration_rules.nu`
 - manual verification: run `yzx config migrate` and `yzx config migrate --apply` against temp config roots with known stale configs
+- metadata validation must also reject rules that do not declare a positive `review_after_days`
 
 ## Traceability
 
