@@ -227,6 +227,57 @@ terminals = ["ghostty", "kitty", "alacritty", "wezterm", "foot"]
     $result
 }
 
+def test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root [] {
+    print "🧪 Testing terminal override scaffolds ignore YAZELIX_DIR runtime roots..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_terminal_override_path_boundary_XXXXXX | str trim)
+    let fake_home = ($tmpdir | path join "home")
+    let fake_runtime_root = ($tmpdir | path join "runtime_root")
+    let config_path = ($tmpdir | path join "yazelix.toml")
+    let runtime_root = (pwd)
+    let terminal_configs_script = ($runtime_root | path join "nushell" "scripts" "utils" "terminal_configs.nu")
+    mkdir $fake_home
+    mkdir $fake_runtime_root
+
+    let result = (try {
+        '[terminal]
+terminals = ["ghostty", "kitty", "alacritty"]
+' | save --force --raw $config_path
+
+        let command_output = (with-env {
+            HOME: $fake_home
+            YAZELIX_DIR: $fake_runtime_root
+            YAZELIX_CONFIG_OVERRIDE: $config_path
+        } {
+            ^nu -c $"use \"($terminal_configs_script)\" [generate_all_terminal_configs]; generate_all_terminal_configs \"($runtime_root)\"" | complete
+        })
+
+        let expected_override_root = ($fake_home | path join ".config" "yazelix" "terminal_overrides")
+        let misplaced_override_root = ($fake_runtime_root | path join "terminal_overrides")
+
+        if (
+            ($command_output.exit_code == 0)
+            and ($expected_override_root | path exists)
+            and (($expected_override_root | path join "ghostty") | path exists)
+            and (($expected_override_root | path join "kitty.conf") | path exists)
+            and (($expected_override_root | path join "alacritty.toml") | path exists)
+            and not ($misplaced_override_root | path exists)
+        ) {
+            print "  ✅ Override scaffolds stay under HOME/.config/yazelix even when YAZELIX_DIR points elsewhere"
+            true
+        } else {
+            print $"  ❌ Unexpected override destinations: exit=($command_output.exit_code) expected_root_exists=(($expected_override_root | path exists)) misplaced_root_exists=(($misplaced_override_root | path exists)) expected_root=($expected_override_root) misplaced_root=($misplaced_override_root) stderr=(($command_output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def test_user_mode_requires_real_terminal_config [] {
     print "🧪 Testing terminal.config_mode = user fails fast when the user terminal config is missing..."
 
@@ -959,6 +1010,7 @@ export def run_generated_config_canonical_tests [] {
         (test_layout_generator_rewrites_runtime_paths)
         (test_zellij_widget_tray_defaults_omit_layout)
         (test_generate_all_terminal_configs_creates_override_scaffolds)
+        (test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root)
         (test_user_mode_requires_real_terminal_config)
         (test_config_schema_rejects_removed_auto_terminal_config_mode)
         (test_ghostty_trail_glow_defaults_to_medium_and_reads_explicit_levels)
