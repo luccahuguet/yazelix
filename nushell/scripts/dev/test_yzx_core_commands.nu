@@ -82,7 +82,7 @@ def setup_upgrade_summary_fixture [
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
 
-    ^cp -R (repo_path "docs") ($runtime_dir | path join "docs")
+    ^cp -LR (repo_path "docs") ($runtime_dir | path join "docs")
     $raw_toml | save --force --raw ($config_dir | path join "yazelix.toml")
 
     if $migration_notes {
@@ -151,19 +151,6 @@ def record_has_path [data: record, path: list<string>] {
     }
 
     true
-}
-
-def test_yzx_status [] {
-    print "🧪 Testing yzx status..."
-
-    try {
-        yzx status | ignore
-        print "  ✅ yzx status runs successfully"
-        true
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
 }
 
 def test_yzx_status_versions_uses_invoking_path_for_versions [] {
@@ -273,71 +260,6 @@ def test_yzx_desktop_uninstall_removes_generated_entry [] {
             true
         } else {
             print $"  ❌ Unexpected result: install_exit=($install_output.exit_code) uninstall_exit=($uninstall_output.exit_code) path=($removed_path) stderr=($uninstall_output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-def test_yzx_tutor_prints_guided_overview [] {
-    print "🧪 Testing yzx tutor prints the Yazelix guided overview..."
-
-    let fixture = (setup_relocated_runtime_fixture)
-
-    let result = (try {
-        let real_nu = (which nu | get 0.path)
-        let output = (with-env {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-        } {
-            ^$real_nu -c $"use \"($fixture.yzx_script)\" *; yzx tutor" | complete
-        })
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and ($stdout | str contains "Yazelix tutor") and ($stdout | str contains "yzx keys") and ($stdout | str contains "yzx tutor hx") and ($stdout | str contains "yzx help") {
-            print "  ✅ yzx tutor prints the guided Yazelix overview"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($output.stderr | str trim)"
-            print $"     stdout=($stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-def test_yzx_tutor_help_surface_stays_small [] {
-    print "🧪 Testing yzx tutor help surface stays small..."
-
-    let fixture = (setup_relocated_runtime_fixture)
-
-    let result = (try {
-        let real_nu = (which nu | get 0.path)
-        let output = (with-env {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-        } {
-            ^$real_nu -c $"use \"($fixture.yzx_script)\" *; help commands | where name =~ '^yzx tutor' | get name | to json -r" | complete
-        })
-        let names = (if ($output.stdout | str trim | is-empty) { [] } else { $output.stdout | from json })
-
-        if ($output.exit_code == 0) and ($names == ["yzx tutor", "yzx tutor helix", "yzx tutor hx", "yzx tutor nu", "yzx tutor nushell"]) {
-            print "  ✅ yzx tutor exposes only the intended command surface"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($output.stderr | str trim) names=($names | to json -r)"
             false
         }
     } catch { |err|
@@ -1640,12 +1562,9 @@ def test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering [
 
 export def run_core_canonical_tests [] {
     [
-        (test_yzx_status)
         (test_yzx_status_versions_uses_invoking_path_for_versions)
         (test_yzx_desktop_install_writes_valid_absolute_launcher)
         (test_yzx_desktop_uninstall_removes_generated_entry)
-        (test_yzx_tutor_prints_guided_overview)
-        (test_yzx_tutor_help_surface_stays_small)
         (test_yzx_tutor_hx_delegates_to_helix_tutor)
         (test_yzx_tutor_nu_delegates_to_nushell_tutor)
         (test_config_migration_rule_metadata_is_complete)

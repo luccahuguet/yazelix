@@ -19,3 +19,15 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: yazelix-validate-specs
+        name: validate spec traceability
+        entry: nu nushell/scripts/dev/validate_specs.nu
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: yazelix-validate-default-test-traceability
+        name: validate default-suite traceability
+        entry: nu nushell/scripts/dev/validate_default_test_traceability.nu
+        language: system
+        pass_filenames: false
+        always_run: true

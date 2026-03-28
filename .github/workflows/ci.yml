@@ -48,6 +48,12 @@ jobs:
       - name: Validate upgrade contract
         run: nu nushell/scripts/dev/validate_upgrade_contract.nu --ci
 
+      - name: Validate spec traceability
+        run: nu nushell/scripts/dev/validate_specs.nu
+
+      - name: Validate default-suite traceability
+        run: nu nushell/scripts/dev/validate_default_test_traceability.nu
+
       - name: Run yzx command tests
         run: nu nushell/scripts/dev/test_yzx_commands.nu
 
