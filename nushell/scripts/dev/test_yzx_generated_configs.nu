@@ -278,6 +278,137 @@ terminals = ["ghostty", "kitty", "alacritty"]
     $result
 }
 
+def test_parse_yazelix_config_reads_pack_sidecar [] {
+    print "🧪 Testing parse_yazelix_config reads yazelix_packs.toml as the pack source when present..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_pack_sidecar_parse_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        let pack_path = ($tmpdir | path join "yazelix_packs.toml")
+
+        '[core]
+debug_mode = false
+' | save --force --raw $config_path
+
+        'enabled = ["git", "rust"]
+user_packages = ["docker", "kubectl"]
+
+[declarations]
+git = ["gh", "prek"]
+rust = ["rust_toolchain"]
+' | save --force --raw $pack_path
+
+        let parsed = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+
+        if (
+            ($parsed.pack_names == ["git", "rust"])
+            and ($parsed.user_packages == ["docker", "kubectl"])
+            and (($parsed.pack_declarations | get git) == ["gh", "prek"])
+            and (($parsed.pack_declarations | get rust) == ["rust_toolchain"])
+        ) {
+            print "  ✅ parse_yazelix_config loads packs from the dedicated sidecar without needing [packs] in yazelix.toml"
+            true
+        } else {
+            print $"  ❌ Unexpected parsed pack config: ($parsed | select pack_names user_packages pack_declarations | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_parse_yazelix_config_preserves_legacy_main_file_packs [] {
+    print "🧪 Testing parse_yazelix_config preserves legacy [packs] in yazelix.toml when no sidecar exists..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_pack_legacy_main_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+
+        '[packs]
+enabled = ["git"]
+user_packages = ["docker"]
+
+[packs.declarations]
+git = ["gh", "prek"]
+' | save --force --raw $config_path
+
+        let parsed = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+
+        if (
+            ($parsed.pack_names == ["git"])
+            and ($parsed.user_packages == ["docker"])
+            and (($parsed.pack_declarations | get git) == ["gh", "prek"])
+        ) {
+            print "  ✅ Legacy pack settings in yazelix.toml still work when no sidecar is present"
+            true
+        } else {
+            print $"  ❌ Unexpected parsed legacy pack config: ($parsed | select pack_names user_packages pack_declarations | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_parse_yazelix_config_rejects_split_pack_ownership [] {
+    print "🧪 Testing parse_yazelix_config fails fast when yazelix.toml and yazelix_packs.toml both define packs..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_pack_sidecar_conflict_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        let pack_path = ($tmpdir | path join "yazelix_packs.toml")
+        let parser_script = (repo_path "nushell" "scripts" "utils" "config_parser.nu")
+
+        '[packs]
+enabled = ["git"]
+' | save --force --raw $config_path
+
+        'enabled = ["rust"]
+' | save --force --raw $pack_path
+
+        let output = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            ^nu -c $"source \"($parser_script)\"; try { parse_yazelix_config | ignore } catch {|err| print $err.msg }" | complete
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Yazelix found pack settings in both yazelix.toml and yazelix_packs.toml.")
+            and ($stdout | str contains "fully owns pack settings")
+            and ($stdout | str contains "Failure class: config problem.")
+        ) {
+            print "  ✅ parse_yazelix_config fails fast on ambiguous split pack ownership"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def test_user_mode_requires_real_terminal_config [] {
     print "🧪 Testing terminal.config_mode = user fails fast when the user terminal config is missing..."
 
@@ -1011,6 +1142,9 @@ export def run_generated_config_canonical_tests [] {
         (test_zellij_widget_tray_defaults_omit_layout)
         (test_generate_all_terminal_configs_creates_override_scaffolds)
         (test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root)
+        (test_parse_yazelix_config_reads_pack_sidecar)
+        (test_parse_yazelix_config_preserves_legacy_main_file_packs)
+        (test_parse_yazelix_config_rejects_split_pack_ownership)
         (test_user_mode_requires_real_terminal_config)
         (test_config_schema_rejects_removed_auto_terminal_config_mode)
         (test_ghostty_trail_glow_defaults_to_medium_and_reads_explicit_levels)

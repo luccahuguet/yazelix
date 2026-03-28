@@ -22,17 +22,35 @@ def test_home_manager_desktop_entry_evaluates [] {
 
         let startup_attr = $"($flake_dir)#checks.($system).desktop_entry_smoke.startupWMClass"
         let exec_attr = $"($flake_dir)#checks.($system).desktop_entry_smoke.exec"
+        let toml_attr = $"($flake_dir)#checks.($system).desktop_entry_smoke.yazelixToml"
+        let packs_attr = $"($flake_dir)#checks.($system).desktop_entry_smoke.yazelixPacksToml"
         let startup_output = (^nix eval --raw --read-only --no-write-lock-file $startup_attr | complete)
         let exec_output = (^nix eval --raw --read-only --no-write-lock-file $exec_attr | complete)
+        let toml_output = (^nix eval --raw --read-only --no-write-lock-file $toml_attr | complete)
+        let packs_output = (^nix eval --raw --read-only --no-write-lock-file $packs_attr | complete)
         let startup_wm_class = ($startup_output.stdout | str trim)
         let desktop_exec = ($exec_output.stdout | str trim)
+        let generated_toml = ($toml_output.stdout | str trim)
+        let generated_packs = ($packs_output.stdout | str trim)
         let expected_exec = "/home/test/.config/yazelix/shells/posix/desktop_launcher.sh"
 
-        if ($startup_output.exit_code == 0) and ($exec_output.exit_code == 0) and ($startup_wm_class == "com.yazelix.Yazelix") and ($desktop_exec == $expected_exec) {
-            print "  ✅ Home Manager desktop entry evaluates with the POSIX launcher and StartupWMClass"
+        if (
+            ($startup_output.exit_code == 0)
+            and ($exec_output.exit_code == 0)
+            and ($toml_output.exit_code == 0)
+            and ($packs_output.exit_code == 0)
+            and ($startup_wm_class == "com.yazelix.Yazelix")
+            and ($desktop_exec == $expected_exec)
+            and (not ($generated_toml | str contains "[packs]"))
+            and ($generated_toml | str contains "Pack configuration lives in yazelix_packs.toml.")
+            and ($generated_packs | str contains "enabled = [")
+            and ($generated_packs | str contains '"git"')
+            and ($generated_packs | str contains "[declarations]")
+        ) {
+            print "  ✅ Home Manager emits desktop entry plus split pack config surfaces"
             true
         } else {
-            print $"  ❌ Unexpected result: startup_exit=($startup_output.exit_code) startup=($startup_wm_class) exec_exit=($exec_output.exit_code) exec=($desktop_exec) stderr=($startup_output.stderr | str trim) ($exec_output.stderr | str trim)"
+            print $"  ❌ Unexpected result: startup_exit=($startup_output.exit_code) startup=($startup_wm_class) exec_exit=($exec_output.exit_code) exec=($desktop_exec) toml_exit=($toml_output.exit_code) packs_exit=($packs_output.exit_code) stderr=($startup_output.stderr | str trim) ($exec_output.stderr | str trim) ($toml_output.stderr | str trim) ($packs_output.stderr | str trim)"
             false
         }
     } catch { |err|

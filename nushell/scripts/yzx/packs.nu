@@ -182,7 +182,7 @@ export def "yzx packs" [
     let declarations = $config.pack_declarations? | default {}
 
     if ($declarations | is-empty) {
-        print "No packs declared in yazelix.toml"
+        print "No packs declared in yazelix.toml or yazelix_packs.toml"
         return
     }
 
@@ -193,7 +193,7 @@ export def "yzx packs" [
     }
 
     if ($packs_to_show | is-empty) {
-        print "No packs enabled. Enable packs in yazelix.toml under [packs].enabled"
+        print "No packs enabled. Enable packs in yazelix_packs.toml, or in yazelix.toml under [packs] when no sidecar is present."
         return
     }
 

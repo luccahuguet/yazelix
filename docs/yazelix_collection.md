@@ -72,13 +72,12 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 
 Yazelix offers two ways to add packages:
 
-**Pack declarations**: Define packs in `[packs.declarations]` and enable them via `packs.enabled`:
+**Pack declarations**: Define packs in `~/.config/yazelix/yazelix_packs.toml` and enable them via `enabled`:
 ```toml
-[packs]
 enabled = ["python", "git"]
 user_packages = ["docker", "kubectl", "gleam"]
 
-[packs.declarations]
+[declarations]
 python = [
   "ruff",
   "uv",
@@ -95,9 +94,10 @@ git = [
 ]
 ```
 
-**Individual packages**: Add specific tools via `user_packages` in `yazelix.toml`:
+If you are not using `yazelix_packs.toml`, Yazelix still accepts the legacy `[packs]` section in `yazelix.toml`. Do not define packs in both places at the same time.
+
+**Individual packages**: Add specific tools via `user_packages` in `yazelix_packs.toml`:
 ```toml
-[packs]
 # user_packages = ["atuin", "docker", "kubectl", "gleam"]
 ```
 
@@ -231,7 +231,7 @@ AI support tools: analytics, code review, and utilities (from llm-agents.nix).
 - [picoclaw](https://github.com/picoclaw/picoclaw) — PicoClaw
 - [zeroclaw](https://github.com/zeroclaw-labs/zeroclaw) — ZeroClaw
 
-**Usage**: Enable packs in `yazelix.toml` by listing them in `packs.enabled` and defining them in `packs.declarations`, or add individual tools via `user_packages` for fine-grained control.
+**Usage**: Prefer `yazelix_packs.toml` for pack enablement, declarations, and `user_packages`. Legacy `[packs]` entries in `yazelix.toml` still work when no sidecar is present.
 
 ---
 

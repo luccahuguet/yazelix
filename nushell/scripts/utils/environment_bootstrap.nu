@@ -70,12 +70,8 @@ export def format_command_failure_summary [
 
 # Check if unfree pack is enabled in yazelix.toml
 export def is_unfree_enabled [] {
-    let yazelix_dir = get_yazelix_dir
-    let toml_file = ($yazelix_dir | path join "yazelix.toml")
-    let default_toml = ($yazelix_dir | path join "yazelix_default.toml")
-    let config_file = if ($toml_file | path exists) { $toml_file } else { $default_toml }
-    let raw_config = open $config_file
-    let pack_names = ($raw_config.packs?.enabled? | default [])
+    let config = parse_yazelix_config
+    let pack_names = ($config.pack_names? | default [])
     $pack_names | any { |name| $name == "unfree" }
 }
 

@@ -4,6 +4,7 @@
 use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 use config_migrations.nu [apply_config_migration_plan build_config_migration_plan_from_record]
 use config_schema.nu [compare_configs validate_enum_values]
+use config_surfaces.nu load_config_surface_from_main
 use failure_classes.nu [format_failure_classification]
 
 def format_release_context [result: record] {
@@ -167,9 +168,13 @@ export def build_config_diagnostic_report [
     default_path: string
     --include-missing
 ] {
-    let user_config = open $config_path
+    let config_surface = (load_config_surface_from_main $config_path)
+    let user_config = $config_surface.merged_config
     let default_config = open $default_path
-    build_config_diagnostic_report_from_records $user_config $default_config $config_path --include-missing=$include_missing
+    (
+        build_config_diagnostic_report_from_records $user_config $default_config $config_path --include-missing=$include_missing
+        | upsert config_path $config_surface.display_config_path
+    )
 }
 
 export def build_active_config_diagnostic_report [--include-missing] {

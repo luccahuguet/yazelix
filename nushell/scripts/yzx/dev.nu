@@ -243,8 +243,8 @@ def get_popup_runner_paths [] {
 }
 
 def print_rust_wasi_enable_hint [] {
-    print "   Enable the `rust_wasi` pack in yazelix.toml to get the pinned WASI-capable Rust toolchain."
-    print '   Example: packs.enabled = ["rust_wasi"]'
+    print "   Enable the `rust_wasi` pack in ~/.config/yazelix/yazelix_packs.toml to get the pinned WASI-capable Rust toolchain."
+    print '   Example: enabled = ["rust_wasi"]'
 }
 
 def get_available_update_canaries [] {

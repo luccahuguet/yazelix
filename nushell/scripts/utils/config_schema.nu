@@ -3,6 +3,7 @@
 # Uses yazelix_default.toml as the reference for validation
 
 use constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_SHADERS, GHOSTTY_TRAIL_EFFECTS, GHOSTTY_MODE_EFFECTS, GHOSTTY_TRAIL_GLOW_LEVELS]
+use config_surfaces.nu load_config_surface_from_main
 
 const OPEN_RECORD_PATHS = [
     ["packs", "declarations"]
@@ -219,7 +220,7 @@ export def get_config_validation_findings [yazelix_dir: string] {
         []
     } else {
         let default_config = open $default_path
-        let user_config = open $user_path
+        let user_config = ((load_config_surface_from_main $user_path).merged_config)
         let schema_findings = (compare_configs $default_config $user_config)
         let enum_findings = (validate_enum_values $user_config)
         [ $schema_findings $enum_findings ] | flatten
