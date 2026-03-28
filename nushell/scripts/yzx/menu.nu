@@ -195,7 +195,9 @@ def get_primary_config_paths [] {
     {
         yazelix_dir: $config_dir
         user_config: ($config_dir | path join "yazelix.toml")
+        user_pack_config: ($config_dir | path join "yazelix_packs.toml")
         default_config: ($runtime_dir | path join "yazelix_default.toml")
+        default_pack_config: ($runtime_dir | path join "yazelix_packs.toml")
     }
 }
 
@@ -317,6 +319,7 @@ export def "yzx config migrate" [
 export def "yzx config reset" [
     --yes  # Skip confirmation prompt
 ] {
+    use ../utils/config_surfaces.nu [copy_default_config_surfaces]
     let paths = get_primary_config_paths
 
     if not ($paths.default_config | path exists) {
@@ -346,10 +349,25 @@ export def "yzx config reset" [
         null
     }
 
-    cp $paths.default_config $paths.user_config
+    let pack_backup_path = if ($paths.user_pack_config | path exists) {
+        let timestamp = (date now | format date "%Y%m%d_%H%M%S")
+        let path = $"($paths.user_pack_config).backup-($timestamp)"
+        mv $paths.user_pack_config $path
+        $path
+    } else {
+        null
+    }
+
+    let copy_result = (copy_default_config_surfaces $paths.default_config $paths.user_config)
 
     if ($backup_path | is-not-empty) {
         print $"✅ Backed up previous config to: ($backup_path)"
     }
+    if ($pack_backup_path | is-not-empty) {
+        print $"✅ Backed up previous pack config to: ($pack_backup_path)"
+    }
     print $"✅ Replaced yazelix.toml with a fresh template: ($paths.user_config)"
+    if $copy_result.pack_config_copied {
+        print $"✅ Replaced yazelix_packs.toml with a fresh template: ($copy_result.pack_config_path)"
+    }
 }

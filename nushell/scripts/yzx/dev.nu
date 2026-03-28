@@ -279,7 +279,9 @@ def materialize_update_canaries [selected: list<string>] {
         error make {msg: $"Default config not found: ($default_config_path)"}
     }
 
-    let template = (open $default_config_path)
+    use ../utils/config_surfaces.nu [copy_default_config_surfaces load_config_surface_from_main]
+    let template_surface = (load_config_surface_from_main $default_config_path)
+    let template = $template_surface.merged_config
     let all_pack_names = ($template.packs.declarations | columns | sort)
 
     let base_temp_dir = "~/.local/share/yazelix/update_canaries" | path expand
@@ -294,13 +296,21 @@ def materialize_update_canaries [selected: list<string>] {
                     {
                         name: "default"
                         config_path: $default_config_path
-                        description: "yazelix_default.toml"
+                        description: "yazelix_default.toml (+ yazelix_packs.toml when present)"
                     }
                 }
                 "maximal" => {
-                    let config_path = ($temp_dir | path join "canary_maximal.toml")
+                    let config_dir = ($temp_dir | path join "maximal")
+                    let config_path = ($config_dir | path join "yazelix.toml")
+                    mkdir $config_dir
+                    let copied = (copy_default_config_surfaces $default_config_path $config_path)
                     let config = ($template | upsert packs.enabled $all_pack_names)
-                    write_update_canary_config $config $config_path
+                    ($config | reject packs) | to toml | save --force --raw $copied.config_path
+                    {
+                        enabled: $all_pack_names
+                        declarations: ($template.packs.declarations)
+                        user_packages: ($template.packs.user_packages? | default [])
+                    } | to toml | save --force --raw $copied.pack_config_path
                     {
                         name: "maximal"
                         config_path: $config_path

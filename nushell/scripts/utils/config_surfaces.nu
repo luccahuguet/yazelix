@@ -37,6 +37,29 @@ export def get_pack_sidecar_path [config_file: string] {
     ($config_file | path dirname | path join $PACK_SIDECAR_FILENAME)
 }
 
+export def copy_default_config_surfaces [
+    default_config_path: string
+    target_config_path: string
+] {
+    let default_pack_path = (get_pack_sidecar_path $default_config_path)
+    let target_pack_path = (get_pack_sidecar_path $target_config_path)
+
+    mkdir ($target_config_path | path dirname)
+    cp $default_config_path $target_config_path
+
+    if ($default_pack_path | path exists) {
+        cp $default_pack_path $target_pack_path
+    } else if ($target_pack_path | path exists) {
+        rm $target_pack_path
+    }
+
+    {
+        config_path: $target_config_path
+        pack_config_path: $target_pack_path
+        pack_config_copied: ($default_pack_path | path exists)
+    }
+}
+
 export def merge_pack_sidecar [
     main_config: record
     config_path: string
@@ -118,10 +141,9 @@ export def resolve_active_config_paths [] {
             $toml_file
         } else if ($default_toml | path exists) {
             print "📝 Creating yazelix.toml from yazelix_default.toml..."
-            mkdir $yazelix_config_dir
-            cp $default_toml $toml_file
+            let copy_result = (copy_default_config_surfaces $default_toml $toml_file)
             print "✅ yazelix.toml created\n"
-            $toml_file
+            $copy_result.config_path
         } else {
             (make_surface_error
                 "No yazelix configuration file found."

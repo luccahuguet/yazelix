@@ -1,0 +1,176 @@
+# Yazelix Pack Configuration (TOML format)
+# This sidecar keeps pack declarations and user package selection out of the
+# main yazelix.toml so the top-level config stays easier to scan.
+#
+# Note: Package changes automatically trigger a rebuild when detected.
+
+# Enable packs by name (see [declarations] below)
+enabled = [
+  # "ai_agents",
+  # "ai_tools",
+  # "config",
+  # "file-management",
+  # "git",
+  # "jj",
+  # "maintainer",
+  # "python",
+  # "rust",
+  # "rust_maintainer",
+  # "nix",
+  # "ts",
+  # "writing",
+  # "go",
+  # "go_extra",
+  # "kotlin",
+]
+
+# Add individual packages here if you don't want entire packs
+# Tip: If you only need one tool from a pack, add it here instead
+#
+# Note: Package names must exist in nixpkgs
+# Search packages at: https://search.nixos.org/packages
+user_packages = [
+  # "atuin", # Shell history manager with sync — auto-configured when detected
+  # "gleam",
+]
+
+[declarations]
+# Pack declarations are lists of package names.
+# AI tools resolve from llm-agents.nix (daily updates), others from nixpkgs.
+# Uncomment entries below to build your own packs.
+
+# AI coding agents (from llm-agents.nix)
+ai_agents = [
+  "claude-code",    # Claude Code CLI (Anthropic)
+  "codex",          # Codex CLI (OpenAI)
+  "justcode",       # just-every/code (installed as `justcode`)
+  "gemini-cli",     # Gemini CLI (Google)
+  "pi",             # Pi coding agent (Mario Zechner)
+  "opencode",       # OpenCode CLI
+  "amp",            # Amp coding agent
+  "cursor-agent",   # Cursor agent
+  "goose-cli",      # Goose CLI (Block)
+  "tru",            # TOON CLI for compact Beads/agent structured output
+]
+
+# AI support tools: analytics, review, utilities (from llm-agents.nix)
+ai_tools = [
+  # Code review
+  "coderabbit-cli", # AI code review
+  # Usage analytics
+  "ccusage",        # Claude Code usage tracker
+  "ccusage-amp",    # Amp usage tracker
+  "ccusage-codex",  # Codex usage tracker
+  "ccusage-opencode", # OpenCode usage tracker
+  # Utilities
+  "beads",          # Original Beads tracker (bd)
+  "beads-rust",     # Rust Beads tracker (br) - recommended Beads CLI
+  "beads-viewer",   # Beads Viewer (bv) - graph-aware TUI and robot triage
+  "openclaw",       # OpenClaw (formerly moltbot/clawdbot)
+  "picoclaw",       # PicoClaw
+  "zeroclaw",       # ZeroClaw
+]
+
+# Unfree packages from nixpkgs (enables NIXPKGS_ALLOW_UNFREE=1)
+# Add unfree nixpkgs packages here if needed
+# unfree = []
+
+config = [
+  "mpls", # Markdown Preview LSP
+  "yaml-language-server", # YAML language server
+]
+
+file-management = [
+  "ouch", # Archive handling
+  "erdtree", # Tree view with file sizes
+  "serpl", # Search/replace CLI
+]
+
+git = [
+  "onefetch", # Repo summary and stats
+  "gh", # GitHub CLI
+  "prek", # Fast local pre-commit hook runner
+]
+
+jj = [
+  "jujutsu", # Jujutsu VCS (jj)
+  "lazyjj", # LazyGit-style TUI for jj
+  "jjui", # TUI for Jujutsu VCS
+]
+
+maintainer = [
+  "gh", # GitHub CLI for repo maintenance
+  "prek", # Fast local pre-commit hook runner
+  "tru", # Compact Beads/agent structured output CLI
+  "beads-rust", # Rust Beads tracker (br)
+  "beads-viewer", # Beads Viewer (bv)
+  "rust_wasi_toolchain", # WASI-capable Rust toolchain for rebuilding the pane orchestrator wasm
+]
+
+# Language packs
+python = [
+  "ruff", # Fast Python linter/formatter
+  "uv", # Ultra-fast Python package manager
+  "ty", # Fast Python type checker
+  "python3Packages.ipython", # Enhanced Python REPL
+]
+
+rust = [
+  "rust_toolchain", # Pinned stable Rust toolchain with cargo, rustc, rustfmt, and clippy
+  "cargo-edit", # Add/remove/upgrade Rust deps
+  "cargo-watch", # Rebuild on file changes
+  "cargo-nextest", # Next-gen Rust test runner
+  "cargo-audit", # Security audit for Rust deps
+]
+
+rust_maintainer = [
+  "cargo-update", # Update installed cargo binaries
+  "cargo-binstall", # Faster install of Rust tools
+]
+
+rust_wasi = [
+  "rust_wasi_toolchain", # Pinned Rust toolchain with wasm32-wasip1 for Yazelix/Zellij plugin builds
+]
+
+nix = [
+  "nil", # Nix language server
+  "nixd", # Nix language server with diagnostics
+  "nixfmt", # Nix formatter
+]
+
+ts = [
+  "nodePackages.typescript-language-server", # TypeScript language server (LSP)
+  "tailwindcss-language-server", # Tailwind CSS language server (LSP)
+  "biome", # JS/TS formatter and linter
+  "oxlint", # Fast JS/TS linter
+]
+
+modern_js = [
+  "bun", # JS runtime, package manager, bundler, and test runner
+  "deno", # JS/TS runtime with first-class tooling
+]
+
+go = [
+  "gopls", # Go language server (LSP)
+  "golangci-lint", # Fast Go linter aggregator
+]
+
+go_extra = [
+  "delve", # Go debugger
+  "air", # Live reload for Go
+  "govulncheck", # Go vulnerability scanner
+]
+
+kotlin = [
+  "kotlin-language-server", # Kotlin language server (LSP)
+  "ktlint", # Kotlin linter/formatter
+  "detekt", # Kotlin static analysis
+  "gradle", # Build tool for Kotlin/JVM
+]
+
+writing = [
+  "typst",           # Typst compiler, formatter, and language server
+  "tinymist",        # Full-featured Typst language server (LSP)
+  "pandoc",          # Universal document converter (Markdown, LaTeX, Word, PDF, EPUB, ...)
+  "markdown-oxide",  # Markdown PKM language server (LSP for notes and links)
+]

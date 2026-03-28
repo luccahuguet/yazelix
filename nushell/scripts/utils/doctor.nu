@@ -614,12 +614,14 @@ export def fix_large_logs [] {
 
 # Create yazelix.toml from default
 export def fix_create_config [] {
-    let yazelix_dir = (get_yazelix_dir)
-    let yazelix_config = ($yazelix_dir | path join "yazelix.toml")
-    let yazelix_default = ($yazelix_dir | path join "yazelix_default.toml")
+    use ./config_surfaces.nu [copy_default_config_surfaces]
+    let yazelix_config_dir = (get_yazelix_config_dir)
+    let yazelix_runtime_dir = (get_yazelix_runtime_dir)
+    let yazelix_config = ($yazelix_config_dir | path join "yazelix.toml")
+    let yazelix_default = ($yazelix_runtime_dir | path join "yazelix_default.toml")
 
     try {
-        cp ($yazelix_default | path expand) ($yazelix_config | path expand)
+        copy_default_config_surfaces ($yazelix_default | path expand) ($yazelix_config | path expand) | ignore
         print $"✅ Created yazelix.toml from template"
         return true
     } catch {

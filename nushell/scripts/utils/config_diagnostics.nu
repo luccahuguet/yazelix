@@ -170,7 +170,7 @@ export def build_config_diagnostic_report [
 ] {
     let config_surface = (load_config_surface_from_main $config_path)
     let user_config = $config_surface.merged_config
-    let default_config = open $default_path
+    let default_config = ((load_config_surface_from_main $default_path).merged_config)
     (
         build_config_diagnostic_report_from_records $user_config $default_config $config_path --include-missing=$include_missing
         | upsert config_path $config_surface.display_config_path

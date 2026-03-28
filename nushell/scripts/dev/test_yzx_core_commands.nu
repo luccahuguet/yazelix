@@ -821,23 +821,50 @@ def test_historical_upgrade_notes_cover_v12_v13_tag_floor [] {
 def test_yzx_config_view [] {
     print "🧪 Testing yzx config..."
 
-    try {
-        let yzx_script = (repo_path "nushell" "scripts" "core" "yazelix.nu")
-        let output = (
-            ^nu -c $"use \"($yzx_script)\" *; yzx config | columns | str join ','" | complete
-        ).stdout | str trim
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_config_view_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
 
-        if ($output | str contains "core") and ($output | str contains "terminal") and not ($output | str contains "packs") {
+    let result = (try {
+        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+        '[core]
+debug_mode = false
+' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+        'enabled = ["git"]
+
+[declarations]
+git = ["gh"]
+' | save --force --raw ($temp_config_dir | path join "yazelix_packs.toml")
+
+        let command_output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($yzx_script)\" *; yzx config | columns | str join ','" | complete
+        }
+        let output = ($command_output.stdout | str trim)
+
+        if (
+            ($command_output.exit_code == 0)
+            and ($output | str contains "core")
+            and not ($output | str contains "packs")
+        ) {
             print "  ✅ yzx config hides packs by default"
             true
         } else {
-            print $"  ❌ Unexpected output: ($output)"
+            print $"  ❌ Unexpected output: exit=($command_output.exit_code) stdout=($output) stderr=($command_output.stderr | str trim)"
             false
         }
     } catch { |err|
         print $"  ❌ Exception: ($err.msg)"
         false
-    }
+    })
+
+    rm -rf $tmp_home
+    $result
 }
 
 def test_yzx_config_full_merges_pack_sidecar [] {
@@ -933,39 +960,55 @@ def test_yzx_config_reset_replaces_with_backup [] {
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_config_reset_XXXXXX | str trim)
     let temp_yazelix_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
     mkdir $temp_yazelix_dir
 
     let result = (try {
-        ^ln -s ($repo_root | path join "nushell") ($temp_yazelix_dir | path join "nushell")
-        cp ($repo_root | path join "yazelix_default.toml") ($temp_yazelix_dir | path join "yazelix_default.toml")
         '[shell]
 default_shell = "bash"
 ' | save --force --raw ($temp_yazelix_dir | path join "yazelix.toml")
+        'enabled = ["git"]
+' | save --force --raw ($temp_yazelix_dir | path join "yazelix_packs.toml")
 
-        let temp_yzx_script = ($temp_yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu")
-        let output = with-env { HOME: $tmp_home, YAZELIX_DIR: $temp_yazelix_dir } {
-            ^nu -c $"use \"($temp_yzx_script)\" *; yzx config reset --yes" | complete
+        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+        let output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_yazelix_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($yzx_script)\" *; yzx config reset --yes" | complete
         }
         let stdout = ($output.stdout | str trim)
         let new_config = (open --raw ($temp_yazelix_dir | path join "yazelix.toml"))
-        let default_config = (open --raw ($temp_yazelix_dir | path join "yazelix_default.toml"))
+        let default_config = (open --raw ($repo_root | path join "yazelix_default.toml"))
+        let new_pack_config = (open --raw ($temp_yazelix_dir | path join "yazelix_packs.toml"))
+        let default_pack_config = (open --raw ($repo_root | path join "yazelix_packs.toml"))
         let backups = (
             ls $temp_yazelix_dir
             | where name =~ 'yazelix\.toml\.backup-'
         )
+        let pack_backups = (
+            ls $temp_yazelix_dir
+            | where name =~ 'yazelix_packs\.toml\.backup-'
+        )
         let backup_content = if ($backups | is-empty) { "" } else { open --raw (($backups | first).name) }
+        let pack_backup_content = if ($pack_backups | is-empty) { "" } else { open --raw (($pack_backups | first).name) }
 
         if (
             ($output.exit_code == 0)
             and ($stdout | str contains "Backed up previous config")
+            and ($stdout | str contains "Backed up previous pack config")
             and ($stdout | str contains "Replaced yazelix.toml with a fresh template")
+            and ($stdout | str contains "Replaced yazelix_packs.toml with a fresh template")
             and ($new_config == $default_config)
+            and ($new_pack_config == $default_pack_config)
             and ($backup_content | str contains 'default_shell = "bash"')
+            and ($pack_backup_content | str contains 'enabled = ["git"]')
         ) {
-            print "  ✅ yzx config reset backs up the current config and restores the template"
+            print "  ✅ yzx config reset backs up both config surfaces and restores the split templates"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) backups=(($backups | length))"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) backups=(($backups | length)) pack_backups=(($pack_backups | length))"
             false
         }
     } catch { |err|
@@ -1214,6 +1257,8 @@ def test_config_reset_supports_split_config_and_runtime_dirs [] {
         '[shell]
 default_shell = "bash"
 ' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+        'enabled = ["git"]
+' | save --force --raw ($temp_config_dir | path join "yazelix_packs.toml")
 
         let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
         let output = with-env {
@@ -1226,13 +1271,17 @@ default_shell = "bash"
         let stdout = ($output.stdout | str trim)
         let new_config = (open --raw ($temp_config_dir | path join "yazelix.toml"))
         let default_config = (open --raw ($repo_root | path join "yazelix_default.toml"))
+        let new_pack_config = (open --raw ($temp_config_dir | path join "yazelix_packs.toml"))
+        let default_pack_config = (open --raw ($repo_root | path join "yazelix_packs.toml"))
 
         if (
             ($output.exit_code == 0)
             and ($stdout | str contains "Replaced yazelix.toml with a fresh template")
+            and ($stdout | str contains "Replaced yazelix_packs.toml with a fresh template")
             and ($new_config == $default_config)
+            and ($new_pack_config == $default_pack_config)
         ) {
-            print "  ✅ yzx config reset reads the template from the runtime root and writes to the config root"
+            print "  ✅ yzx config reset reads both split templates from the runtime root and writes them to the config root"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"

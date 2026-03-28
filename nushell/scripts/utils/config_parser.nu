@@ -3,7 +3,7 @@
 
 use config_diagnostics.nu [build_config_diagnostic_report_from_records render_startup_config_error]
 use failure_classes.nu [format_failure_classification]
-use config_surfaces.nu load_active_config_surface
+use config_surfaces.nu [load_active_config_surface load_config_surface_from_main]
 
 def parse_refresh_output [raw_config: record] {
     let refresh_output = ($raw_config.core?.refresh_output? | default "normal" | into string | str downcase)
@@ -109,8 +109,9 @@ export def parse_yazelix_config [] {
     let default_config_path = $config_surface.default_config_path
 
     if ($config_to_read | path basename) == "yazelix.toml" and ($default_config_path | path exists) {
+        let default_surface = (load_config_surface_from_main $default_config_path)
         let diagnostic_report = (
-            build_config_diagnostic_report_from_records $raw_config (open $default_config_path) $config_to_read
+            build_config_diagnostic_report_from_records $raw_config $default_surface.merged_config $config_to_read
             | upsert config_path $config_surface.display_config_path
         )
         if $diagnostic_report.has_blocking {

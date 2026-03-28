@@ -219,7 +219,7 @@ export def get_config_validation_findings [yazelix_dir: string] {
     if not ($user_path | path exists) {
         []
     } else {
-        let default_config = open $default_path
+        let default_config = ((load_config_surface_from_main $default_path).merged_config)
         let user_config = ((load_config_surface_from_main $user_path).merged_config)
         let schema_findings = (compare_configs $default_config $user_config)
         let enum_findings = (validate_enum_values $user_config)

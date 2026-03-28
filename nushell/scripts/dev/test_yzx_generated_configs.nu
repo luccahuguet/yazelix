@@ -325,6 +325,51 @@ rust = ["rust_toolchain"]
     $result
 }
 
+def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
+    print "🧪 Testing parse_yazelix_config bootstraps both default config surfaces on first run..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_pack_bootstrap_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+
+    let result = (try {
+        let parsed = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+
+        let main_exists = (($temp_config_dir | path join "yazelix.toml") | path exists)
+        let pack_exists = (($temp_config_dir | path join "yazelix_packs.toml") | path exists)
+        let generated_main = (if $main_exists { open --raw ($temp_config_dir | path join "yazelix.toml") } else { "" })
+        let generated_packs = (if $pack_exists { open --raw ($temp_config_dir | path join "yazelix_packs.toml") } else { "" })
+
+        if (
+            $main_exists
+            and $pack_exists
+            and ($generated_main | str contains "Pack configuration lives in ~/.config/yazelix/yazelix_packs.toml")
+            and ($generated_packs | str contains "[declarations]")
+            and ((($parsed.pack_declarations | default {}) | columns | length) > 0)
+        ) {
+            print "  ✅ First-run bootstrap now materializes both yazelix.toml and yazelix_packs.toml from runtime defaults"
+            true
+        } else {
+            print $"  ❌ Unexpected result: main_exists=($main_exists) pack_exists=($pack_exists) parsed=($parsed | select pack_names pack_declarations | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_parse_yazelix_config_preserves_legacy_main_file_packs [] {
     print "🧪 Testing parse_yazelix_config preserves legacy [packs] in yazelix.toml when no sidecar exists..."
 
@@ -1143,6 +1188,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_all_terminal_configs_creates_override_scaffolds)
         (test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root)
         (test_parse_yazelix_config_reads_pack_sidecar)
+        (test_parse_yazelix_config_bootstraps_split_default_surfaces)
         (test_parse_yazelix_config_preserves_legacy_main_file_packs)
         (test_parse_yazelix_config_rejects_split_pack_ownership)
         (test_user_mode_requires_real_terminal_config)
