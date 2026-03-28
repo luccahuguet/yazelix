@@ -20,7 +20,6 @@ enabled = [
   # "ts",
   # "writing",
   # "go",
-  # "go_extra",
   # "kotlin",
 ]
 
@@ -153,11 +152,7 @@ modern_js = [
 go = [
   "gopls", # Go language server (LSP)
   "golangci-lint", # Fast Go linter aggregator
-]
-
-go_extra = [
   "delve", # Go debugger
-  "air", # Live reload for Go
   "govulncheck", # Go vulnerability scanner
 ]
 

@@ -548,10 +548,7 @@ in
         go = [
           "gopls"
           "golangci-lint"
-        ];
-        go_extra = [
           "delve"
-          "air"
           "govulncheck"
         ];
         kotlin = [

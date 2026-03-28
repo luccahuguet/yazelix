@@ -147,10 +147,7 @@ Complete toolchains you can declare:
 ### Go Pack (`go`)
 - [gopls](https://github.com/golang/tools/tree/master/gopls) — Official Go language server for IDE features and LSP support
 - [golangci-lint](https://github.com/golangci/golangci-lint) — Fast, comprehensive Go linter aggregator running multiple linters in parallel
-
-### Go Extra Pack (`go_extra`)
 - [delve](https://github.com/go-delve/delve) — Powerful debugger for Go with breakpoints, variable inspection, and more
-- [air](https://github.com/cosmtrek/air) — Live reload for Go development with hot reloading on file changes
 - [govulncheck](https://golang.org/x/vuln/cmd/govulncheck) — Official Go vulnerability scanner from the Go security team
 
 ### Kotlin Pack (`kotlin`)
