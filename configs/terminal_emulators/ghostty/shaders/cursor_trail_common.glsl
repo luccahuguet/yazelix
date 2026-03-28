@@ -72,7 +72,7 @@ float yazelixGlowMask(float sdf, float offset, float width, float widthScale, fl
         return 0.0;
     }
 
-    return strength * (1.0 - smoothstep(0.0, sdf + offset, width * widthScale));
+    return strength * (1.0 - smoothstep(offset, offset + (width * widthScale), sdf));
 }
 
 float trailGlowMask(float sdf, float offset, float width) {
@@ -80,7 +80,7 @@ float trailGlowMask(float sdf, float offset, float width) {
 }
 
 float trailEdgeMask(float sdf, float offset, float width) {
-    return 1.0 - smoothstep(0.0, sdf + offset, width);
+    return 1.0 - smoothstep(0.0, width * YAZELIX_TRAIL_EDGE_WIDTH_SCALE, sdf + (offset * YAZELIX_TRAIL_EDGE_WIDTH_SCALE));
 }
 
 float cursorGlowMask(float sdf, float offset, float width) {
@@ -88,5 +88,13 @@ float cursorGlowMask(float sdf, float offset, float width) {
 }
 
 float cursorEdgeMask(float sdf, float offset, float width) {
-    return 1.0 - smoothstep(0.0, sdf + offset, width);
+    return 1.0 - smoothstep(0.0, width * YAZELIX_CURSOR_EDGE_WIDTH_SCALE, sdf + (offset * YAZELIX_CURSOR_EDGE_WIDTH_SCALE));
+}
+
+vec4 applyTrailLayer(vec4 base, vec4 overlay, float mask) {
+    return mix(base, overlay, clamp(mask, 0.0, 1.0));
+}
+
+float trailCoreMask(float sdf, float offset) {
+    return step(sdf + (offset * YAZELIX_TRAIL_CORE_OFFSET_SCALE), 0.0);
 }

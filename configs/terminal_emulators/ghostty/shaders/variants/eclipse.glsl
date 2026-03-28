@@ -44,11 +44,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     vec4 eclipseEdge = mix(blend, ECLIPSE_GOLD, 0.30 + pulse * 0.5);
 
     vec4 trail = fragColor;
-    trail = mix(saturate(eclipseBase, 1.35), trail, trailGlowMask(sdfTrail, mod + 0.010, 0.035));
-    trail = mix(saturate(eclipseEdge, 1.45), trail, trailEdgeMask(sdfTrail, mod, 0.006));
-    trail = mix(trail, saturate(eclipseBase, 1.4), step(sdfTrail + mod, 0.));
+    trail = applyTrailLayer(trail, saturate(eclipseBase, 1.35), trailGlowMask(sdfTrail, mod + 0.010, 0.035));
+    trail = applyTrailLayer(trail, saturate(eclipseEdge, 1.45), trailEdgeMask(sdfTrail, mod, 0.006));
+    trail = mix(trail, saturate(eclipseBase, 1.4), trailCoreMask(sdfTrail, mod));
 
-    trail = mix(saturate(eclipseEdge, 1.5), trail, cursorGlowMask(sdfCurrentCursor, .002, 0.004));
-    trail = mix(saturate(eclipseBase, 1.45), trail, cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
+    trail = applyTrailLayer(trail, saturate(eclipseEdge, 1.5), cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = applyTrailLayer(trail, saturate(eclipseBase, 1.45), cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }

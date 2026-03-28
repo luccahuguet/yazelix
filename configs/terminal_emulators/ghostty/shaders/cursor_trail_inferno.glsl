@@ -3,6 +3,9 @@ const float YAZELIX_TRAIL_GLOW_STRENGTH = 1.0;
 const float YAZELIX_TRAIL_GLOW_WIDTH_SCALE = 1.0;
 const float YAZELIX_CURSOR_GLOW_STRENGTH = 1.0;
 const float YAZELIX_CURSOR_GLOW_WIDTH_SCALE = 1.0;
+const float YAZELIX_TRAIL_EDGE_WIDTH_SCALE = 1.0;
+const float YAZELIX_CURSOR_EDGE_WIDTH_SCALE = 1.0;
+const float YAZELIX_TRAIL_CORE_OFFSET_SCALE = 1.0;
 // Common cursor trail shader functions
 // This file is included by the build script when generating cursor trail variants
 // DO NOT use this file directly - it's not a complete shader
@@ -77,7 +80,7 @@ float yazelixGlowMask(float sdf, float offset, float width, float widthScale, fl
         return 0.0;
     }
 
-    return strength * (1.0 - smoothstep(0.0, sdf + offset, width * widthScale));
+    return strength * (1.0 - smoothstep(offset, offset + (width * widthScale), sdf));
 }
 
 float trailGlowMask(float sdf, float offset, float width) {
@@ -85,7 +88,7 @@ float trailGlowMask(float sdf, float offset, float width) {
 }
 
 float trailEdgeMask(float sdf, float offset, float width) {
-    return 1.0 - smoothstep(0.0, sdf + offset, width);
+    return 1.0 - smoothstep(0.0, width * YAZELIX_TRAIL_EDGE_WIDTH_SCALE, sdf + (offset * YAZELIX_TRAIL_EDGE_WIDTH_SCALE));
 }
 
 float cursorGlowMask(float sdf, float offset, float width) {
@@ -93,7 +96,15 @@ float cursorGlowMask(float sdf, float offset, float width) {
 }
 
 float cursorEdgeMask(float sdf, float offset, float width) {
-    return 1.0 - smoothstep(0.0, sdf + offset, width);
+    return 1.0 - smoothstep(0.0, width * YAZELIX_CURSOR_EDGE_WIDTH_SCALE, sdf + (offset * YAZELIX_CURSOR_EDGE_WIDTH_SCALE));
+}
+
+vec4 applyTrailLayer(vec4 base, vec4 overlay, float mask) {
+    return mix(base, overlay, clamp(mask, 0.0, 1.0));
+}
+
+float trailCoreMask(float sdf, float offset) {
+    return step(sdf + (offset * YAZELIX_TRAIL_CORE_OFFSET_SCALE), 0.0);
 }
 
 // Inferno variant: duo horizon (blazing crimson ↑, gunmetal steel ↓)
@@ -142,12 +153,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     vec4 edge = mix(INFERNO_CRIMSON, INFERNO_GUNMETAL, edgeMix);
 
     vec4 trail = fragColor;
-    trail = mix(saturate(base, 1.6), trail, trailGlowMask(sdfTrail, mod + 0.010, 0.035));
-    trail = mix(saturate(edge, 1.7), trail, trailEdgeMask(sdfTrail, mod, 0.006));
-    trail = mix(trail, saturate(base, 1.65), step(sdfTrail + mod, 0.));
+    trail = applyTrailLayer(trail, saturate(base, 1.6), trailGlowMask(sdfTrail, mod + 0.010, 0.035));
+    trail = applyTrailLayer(trail, saturate(edge, 1.7), trailEdgeMask(sdfTrail, mod, 0.006));
+    trail = mix(trail, saturate(base, 1.65), trailCoreMask(sdfTrail, mod));
 
-    trail = mix(saturate(edge, 1.7), trail, cursorGlowMask(sdfCurrentCursor, .002, 0.004));
-    trail = mix(INFERNO_CRIMSON, trail, cursorEdgeMask(sdfCurrentCursor, .001, 0.003));
+    trail = applyTrailLayer(trail, saturate(edge, 1.7), cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = applyTrailLayer(trail, INFERNO_CRIMSON, cursorEdgeMask(sdfCurrentCursor, .001, 0.003));
     float fade = 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength);
     fragColor = mix(trail, fragColor, fade);
     float coreMask = 1. - smoothstep(-0.0015, 0.0005, sdfCurrentCursor);

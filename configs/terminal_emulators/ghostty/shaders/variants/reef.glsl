@@ -53,11 +53,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     vec4 edge = dualBlend(segment + 0.5 + pulse * 0.2, REEF_CYAN, REEF_VENOM);
 
     vec4 trail = fragColor;
-    trail = mix(saturate(base, 1.5), trail, trailGlowMask(sdfTrail, mod + 0.010, 0.035));
-    trail = mix(saturate(edge, 1.6), trail, trailEdgeMask(sdfTrail, mod, 0.006));
-    trail = mix(trail, saturate(base, 1.55), step(sdfTrail + mod, 0.));
+    trail = applyTrailLayer(trail, saturate(base, 1.5), trailGlowMask(sdfTrail, mod + 0.010, 0.035));
+    trail = applyTrailLayer(trail, saturate(edge, 1.6), trailEdgeMask(sdfTrail, mod, 0.006));
+    trail = mix(trail, saturate(base, 1.55), trailCoreMask(sdfTrail, mod));
 
-    trail = mix(saturate(edge, 1.6), trail, cursorGlowMask(sdfCurrentCursor, .002, 0.004));
-    trail = mix(saturate(base, 1.55), trail, cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
+    trail = applyTrailLayer(trail, saturate(edge, 1.6), cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = applyTrailLayer(trail, saturate(base, 1.55), cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }

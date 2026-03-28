@@ -634,7 +634,7 @@ def test_generate_all_terminal_configs_honors_ghostty_trail_glow [] {
         '[terminal]
 terminals = ["ghostty"]
 ghostty_trail_color = "blaze"
-ghostty_trail_effect = "tail"
+ghostty_trail_effect = "sweep"
 ghostty_mode_effect = "ripple"
 ghostty_trail_glow = "none"
 ' | save --force --raw $config_path
@@ -647,22 +647,92 @@ ghostty_trail_glow = "none"
         })
 
         let blaze_shader = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "shaders" "cursor_trail_blaze.glsl"))
-        let tail_shader = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "shaders" "generated_effects" "tail.glsl"))
-        let blur_matches = ($tail_shader | parse -r 'const float BLUR = (?<value>[0-9.]+);')
+        let sweep_shader = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "shaders" "generated_effects" "sweep.glsl"))
+        let ripple_shader = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "shaders" "generated_effects" "ripple.glsl"))
+        let sweep_length_matches = ($sweep_shader | parse -r 'const float TRAIL_LENGTH = (?<value>[0-9.eE-]+);')
+        let sweep_length_value = if ($sweep_length_matches | is-empty) { null } else { $sweep_length_matches | get 0.value | into float }
+        let blur_matches = ($ripple_shader | parse -r 'const float BLUR = (?<value>[0-9.]+);')
         let blur_value = if ($blur_matches | is-empty) { null } else { $blur_matches | get 0.value | into float }
+        let radius_matches = ($ripple_shader | parse -r 'const float MAX_RADIUS = (?<value>[0-9.eE-]+);')
+        let radius_value = if ($radius_matches | is-empty) { null } else { $radius_matches | get 0.value | into float }
+        let ring_matches = ($ripple_shader | parse -r 'const float RING_THICKNESS = (?<value>[0-9.eE-]+);')
+        let ring_value = if ($ring_matches | is-empty) { null } else { $ring_matches | get 0.value | into float }
 
         if (
             ($command_output.exit_code == 0)
             and ($blaze_shader | str contains 'const float YAZELIX_TRAIL_GLOW_STRENGTH = 0.0;')
             and ($blaze_shader | str contains 'const float YAZELIX_CURSOR_GLOW_STRENGTH = 0.0;')
-            and ($tail_shader | str contains 'ghostty_trail_glow = none')
+            and ($blaze_shader | str contains 'const float YAZELIX_TRAIL_EDGE_WIDTH_SCALE = 0.0;')
+            and ($blaze_shader | str contains 'const float YAZELIX_CURSOR_EDGE_WIDTH_SCALE = 0.0;')
+            and ($blaze_shader | str contains 'const float YAZELIX_TRAIL_CORE_OFFSET_SCALE = 0.0;')
+            and ($blaze_shader | str contains 'vec4 trail = fragColor;')
+            and ($blaze_shader | str contains 'trail = applyTrailLayer(trail, saturate(TRAIL_COLOR_ACCENT, 1.5), trailGlowMask')
+            and ($blaze_shader | str contains 'trailCoreMask(sdfTrail, mod)')
+            and not ($blaze_shader | str contains 'vec4 trail = mix(saturate(TRAIL_COLOR_ACCENT, 1.5), fragColor, trailGlowMask')
+            and ($sweep_shader | str contains 'ghostty_trail_glow = none')
+            and ($sweep_length_value != null)
+            and ($sweep_length_value == 0.0)
+            and ($ripple_shader | str contains 'ghostty_trail_glow = none')
             and ($blur_value != null)
             and ($blur_value < 0.5)
+            and ($radius_value != null)
+            and ($radius_value == 0.0)
+            and ($ring_value != null)
+            and ($ring_value == 0.0)
         ) {
-            print "  ✅ Ghostty shader generation removes extra aura for glow=none while preserving shader selection"
+            print "  ✅ Ghostty shader generation collapses sweep and ripple spread for glow=none instead of only lowering blur"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($command_output.exit_code) blur=($blur_value) blaze_has_header=(($blaze_shader | str contains 'YAZELIX_TRAIL_GLOW_STRENGTH = 0.0;')) stderr=(($command_output.stderr | str trim))"
+            print $"  ❌ Unexpected result: exit=($command_output.exit_code) sweep=($sweep_length_value) blur=($blur_value) radius=($radius_value) ring=($ring_value) blaze_has_header=(($blaze_shader | str contains 'YAZELIX_TRAIL_GLOW_STRENGTH = 0.0;')) stderr=(($command_output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_generate_all_terminal_configs_normalizes_ghostty_medium_glow_across_variants [] {
+    print "🧪 Testing Ghostty medium glow keeps mono and multicolor variants on the same spread contract..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_ghostty_medium_glow_variants_XXXXXX | str trim)
+    let fake_home = ($tmpdir | path join "home")
+    let config_path = ($tmpdir | path join "yazelix.toml")
+    let runtime_root = (pwd)
+    let terminal_configs_script = ($runtime_root | path join "nushell" "scripts" "utils" "terminal_configs.nu")
+    mkdir $fake_home
+
+    let result = (try {
+        '[terminal]
+terminals = ["ghostty"]
+ghostty_trail_color = "blaze"
+ghostty_trail_effect = "tail"
+ghostty_mode_effect = "ripple"
+ghostty_trail_glow = "medium"
+' | save --force --raw $config_path
+
+        let command_output = (with-env {
+            HOME: $fake_home
+            YAZELIX_CONFIG_OVERRIDE: $config_path
+        } {
+            ^nu -c $"use \"($terminal_configs_script)\" [generate_all_terminal_configs]; generate_all_terminal_configs \"($runtime_root)\"" | complete
+        })
+
+        let blaze_shader = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "shaders" "cursor_trail_blaze.glsl"))
+        let dusk_shader = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "shaders" "cursor_trail_dusk.glsl"))
+
+        if (
+            ($command_output.exit_code == 0)
+            and ($blaze_shader | str contains 'trailGlowMask(sdfTrail, mod + 0.010, 0.035)')
+            and ($dusk_shader | str contains 'trailGlowMask(sdfTrail, mod + 0.010, 0.035)')
+        ) {
+            print "  ✅ Mono and multicolor Ghostty variants now share the same medium outer-glow spread"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($command_output.exit_code) blaze_match=(($blaze_shader | str contains 'trailGlowMask(sdfTrail, mod + 0.010, 0.035)')) dusk_match=(($dusk_shader | str contains 'trailGlowMask(sdfTrail, mod + 0.010, 0.035)')) stderr=(($command_output.stderr | str trim))"
             false
         }
     } catch { |err|
@@ -897,6 +967,7 @@ export def run_generated_config_canonical_tests [] {
         (test_config_schema_rejects_removed_layout_widget)
         (test_config_schema_rejects_invalid_ghostty_trail_glow)
         (test_generate_all_terminal_configs_honors_ghostty_trail_glow)
+        (test_generate_all_terminal_configs_normalizes_ghostty_medium_glow_across_variants)
         (test_zellij_default_mode_is_enforced_in_merged_config)
     ]
 }

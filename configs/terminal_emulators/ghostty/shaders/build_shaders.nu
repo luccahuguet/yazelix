@@ -21,6 +21,11 @@ def get_glow_profile [glow_level: string] {
             trail_glow_strength: "0.0"
             cursor_glow_strength: "0.0"
             effect_blur_factor: 0.1
+            effect_spread_factor: 0.0
+            effect_ring_thickness_factor: 0.0
+            trail_edge_width_scale: 0.0
+            cursor_edge_width_scale: 0.0
+            trail_core_offset_scale: 0.0
             trail_glow_width_scale: "1.0"
             cursor_glow_width_scale: "1.0"
         }
@@ -28,6 +33,11 @@ def get_glow_profile [glow_level: string] {
             trail_glow_strength: "1.0"
             cursor_glow_strength: "1.0"
             effect_blur_factor: 0.7
+            effect_spread_factor: 1.0
+            effect_ring_thickness_factor: 1.0
+            trail_edge_width_scale: 1.0
+            cursor_edge_width_scale: 1.0
+            trail_core_offset_scale: 1.0
             trail_glow_width_scale: "0.55"
             cursor_glow_width_scale: "0.6"
         }
@@ -35,6 +45,11 @@ def get_glow_profile [glow_level: string] {
             trail_glow_strength: "1.0"
             cursor_glow_strength: "1.0"
             effect_blur_factor: 1.45
+            effect_spread_factor: 1.0
+            effect_ring_thickness_factor: 1.0
+            trail_edge_width_scale: 1.0
+            cursor_edge_width_scale: 1.0
+            trail_core_offset_scale: 1.0
             trail_glow_width_scale: "1.7"
             cursor_glow_width_scale: "1.6"
         }
@@ -42,6 +57,11 @@ def get_glow_profile [glow_level: string] {
             trail_glow_strength: "1.0"
             cursor_glow_strength: "1.0"
             effect_blur_factor: 1.0
+            effect_spread_factor: 1.0
+            effect_ring_thickness_factor: 1.0
+            trail_edge_width_scale: 1.0
+            cursor_edge_width_scale: 1.0
+            trail_core_offset_scale: 1.0
             trail_glow_width_scale: "1.0"
             cursor_glow_width_scale: "1.0"
         }
@@ -57,6 +77,9 @@ def render_trail_glow_header [glow_level: string] {
         $"const float YAZELIX_TRAIL_GLOW_WIDTH_SCALE = ($profile.trail_glow_width_scale);"
         $"const float YAZELIX_CURSOR_GLOW_STRENGTH = ($profile.cursor_glow_strength);"
         $"const float YAZELIX_CURSOR_GLOW_WIDTH_SCALE = ($profile.cursor_glow_width_scale);"
+        $"const float YAZELIX_TRAIL_EDGE_WIDTH_SCALE = ($profile.trail_edge_width_scale);"
+        $"const float YAZELIX_CURSOR_EDGE_WIDTH_SCALE = ($profile.cursor_edge_width_scale);"
+        $"const float YAZELIX_TRAIL_CORE_OFFSET_SCALE = ($profile.trail_core_offset_scale);"
         ""
     ] | str join "\n"
 }
@@ -68,6 +91,18 @@ def get_glsl_float_constant [template_code: string, constant_name: string] {
         null
     } else {
         $matches | get 0.value | into float
+    }
+}
+
+def scale_glsl_float_constant [template_code: string, constant_name: string, factor: float] {
+    let base_value = (get_glsl_float_constant $template_code $constant_name)
+    if $base_value == null {
+        $template_code
+    } else {
+        let scaled_value = ($base_value * $factor)
+        let pattern = ('const float ' + $constant_name + ' = [0-9.]+;')
+        let replacement = ('const float ' + $constant_name + ' = ' + ($scaled_value | into string) + ';')
+        $template_code | str replace -r $pattern $replacement
     }
 }
 
@@ -125,12 +160,13 @@ def get_ghostty_cursor_effect_templates [] {
 def render_ghostty_cursor_effect_shader [template_code: string, glow_level: string] {
     let profile = (get_glow_profile $glow_level)
     mut rendered = ($template_code | str replace -r 'vec4 COLOR = [^;]+;' "vec4 COLOR = iCurrentCursorColor;")
-    let base_blur = (get_glsl_float_constant $template_code "BLUR")
-
-    if $base_blur != null {
-        let blur_value = ($base_blur * $profile.effect_blur_factor)
-        $rendered = ($rendered | str replace -r 'const float BLUR = [0-9.]+;' $"const float BLUR = ($blur_value);")
-    }
+    $rendered = (scale_glsl_float_constant $rendered "BLUR" $profile.effect_blur_factor)
+    $rendered = (scale_glsl_float_constant $rendered "MAX_RADIUS" $profile.effect_spread_factor)
+    $rendered = (scale_glsl_float_constant $rendered "MAX_SIZE" $profile.effect_spread_factor)
+    $rendered = (scale_glsl_float_constant $rendered "MAX_TRAIL_LENGTH" $profile.effect_spread_factor)
+    $rendered = (scale_glsl_float_constant $rendered "TRAIL_LENGTH" $profile.effect_spread_factor)
+    $rendered = (scale_glsl_float_constant $rendered "TRAIL_SIZE" $profile.effect_spread_factor)
+    $rendered = (scale_glsl_float_constant $rendered "RING_THICKNESS" $profile.effect_ring_thickness_factor)
 
     $rendered
 }

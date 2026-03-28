@@ -50,14 +50,14 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     // Build vibrant core, bright edges, and soft outer glow
     vec4 trail = fragColor;
     // Outer glow
-    trail = mix(saturate(neonBase, 1.6), trail, trailGlowMask(sdfTrail, mod + 0.010, 0.035));
+    trail = applyTrailLayer(trail, saturate(neonBase, 1.6), trailGlowMask(sdfTrail, mod + 0.010, 0.035));
     // Edge highlight
-    trail = mix(saturate(neonEdge, 1.7), trail, trailEdgeMask(sdfTrail, mod, 0.006));
+    trail = applyTrailLayer(trail, saturate(neonEdge, 1.7), trailEdgeMask(sdfTrail, mod, 0.006));
     // Core fill
-    trail = mix(saturate(neonBase, 1.6), trail, step(sdfTrail + mod, 0.));
+    trail = mix(trail, saturate(neonBase, 1.6), trailCoreMask(sdfTrail, mod));
 
     // Cursor core and edge pop
-    trail = mix(saturate(neonEdge, 1.8), trail, cursorGlowMask(sdfCurrentCursor, .002, 0.004));
-    trail = mix(saturate(neonBase, 1.7), trail, cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
+    trail = applyTrailLayer(trail, saturate(neonEdge, 1.8), cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = applyTrailLayer(trail, saturate(neonBase, 1.7), cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }

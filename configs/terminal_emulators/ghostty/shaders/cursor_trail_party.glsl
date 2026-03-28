@@ -3,6 +3,9 @@ const float YAZELIX_TRAIL_GLOW_STRENGTH = 1.0;
 const float YAZELIX_TRAIL_GLOW_WIDTH_SCALE = 1.0;
 const float YAZELIX_CURSOR_GLOW_STRENGTH = 1.0;
 const float YAZELIX_CURSOR_GLOW_WIDTH_SCALE = 1.0;
+const float YAZELIX_TRAIL_EDGE_WIDTH_SCALE = 1.0;
+const float YAZELIX_CURSOR_EDGE_WIDTH_SCALE = 1.0;
+const float YAZELIX_TRAIL_CORE_OFFSET_SCALE = 1.0;
 // Common cursor trail shader functions
 // This file is included by the build script when generating cursor trail variants
 // DO NOT use this file directly - it's not a complete shader
@@ -77,7 +80,7 @@ float yazelixGlowMask(float sdf, float offset, float width, float widthScale, fl
         return 0.0;
     }
 
-    return strength * (1.0 - smoothstep(0.0, sdf + offset, width * widthScale));
+    return strength * (1.0 - smoothstep(offset, offset + (width * widthScale), sdf));
 }
 
 float trailGlowMask(float sdf, float offset, float width) {
@@ -85,7 +88,7 @@ float trailGlowMask(float sdf, float offset, float width) {
 }
 
 float trailEdgeMask(float sdf, float offset, float width) {
-    return 1.0 - smoothstep(0.0, sdf + offset, width);
+    return 1.0 - smoothstep(0.0, width * YAZELIX_TRAIL_EDGE_WIDTH_SCALE, sdf + (offset * YAZELIX_TRAIL_EDGE_WIDTH_SCALE));
 }
 
 float cursorGlowMask(float sdf, float offset, float width) {
@@ -93,7 +96,15 @@ float cursorGlowMask(float sdf, float offset, float width) {
 }
 
 float cursorEdgeMask(float sdf, float offset, float width) {
-    return 1.0 - smoothstep(0.0, sdf + offset, width);
+    return 1.0 - smoothstep(0.0, width * YAZELIX_CURSOR_EDGE_WIDTH_SCALE, sdf + (offset * YAZELIX_CURSOR_EDGE_WIDTH_SCALE));
+}
+
+vec4 applyTrailLayer(vec4 base, vec4 overlay, float mask) {
+    return mix(base, overlay, clamp(mask, 0.0, 1.0));
+}
+
+float trailCoreMask(float sdf, float offset) {
+    return step(sdf + (offset * YAZELIX_TRAIL_CORE_OFFSET_SCALE), 0.0);
 }
 
 // Party variant: vivid multi-hue neon with animated HSV palette
@@ -148,14 +159,14 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     // Build vibrant core, bright edges, and soft outer glow
     vec4 trail = fragColor;
     // Outer glow
-    trail = mix(saturate(neonBase, 1.6), trail, trailGlowMask(sdfTrail, mod + 0.010, 0.035));
+    trail = applyTrailLayer(trail, saturate(neonBase, 1.6), trailGlowMask(sdfTrail, mod + 0.010, 0.035));
     // Edge highlight
-    trail = mix(saturate(neonEdge, 1.7), trail, trailEdgeMask(sdfTrail, mod, 0.006));
+    trail = applyTrailLayer(trail, saturate(neonEdge, 1.7), trailEdgeMask(sdfTrail, mod, 0.006));
     // Core fill
-    trail = mix(saturate(neonBase, 1.6), trail, step(sdfTrail + mod, 0.));
+    trail = mix(trail, saturate(neonBase, 1.6), trailCoreMask(sdfTrail, mod));
 
     // Cursor core and edge pop
-    trail = mix(saturate(neonEdge, 1.8), trail, cursorGlowMask(sdfCurrentCursor, .002, 0.004));
-    trail = mix(saturate(neonBase, 1.7), trail, cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
+    trail = applyTrailLayer(trail, saturate(neonEdge, 1.8), cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = applyTrailLayer(trail, saturate(neonBase, 1.7), cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }
