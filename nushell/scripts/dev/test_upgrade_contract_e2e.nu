@@ -25,7 +25,22 @@ def setup_repo_fixture [] {
     let fixture_root = ($tmp_root | path join "repo")
     let log_file = ($tmp_root | path join "upgrade_contract_e2e.log")
 
-    ^cp -R $repo_root $fixture_root
+    mkdir $fixture_root
+    mkdir ($fixture_root | path join "docs")
+    mkdir ($fixture_root | path join "nushell")
+    mkdir ($fixture_root | path join "nushell" "scripts")
+    mkdir ($fixture_root | path join "nushell" "scripts" "dev")
+    mkdir ($fixture_root | path join "nushell" "scripts" "utils")
+    ^cp ($repo_root | path join "CHANGELOG.md") ($fixture_root | path join "CHANGELOG.md")
+    ^cp ($repo_root | path join "docs" "upgrade_notes.toml") ($fixture_root | path join "docs" "upgrade_notes.toml")
+    ^cp ($repo_root | path join "nushell" "scripts" "dev" "validate_upgrade_contract.nu") ($fixture_root | path join "nushell" "scripts" "dev" "validate_upgrade_contract.nu")
+    ^cp ($repo_root | path join "nushell" "scripts" "utils" "constants.nu") ($fixture_root | path join "nushell" "scripts" "utils" "constants.nu")
+    ^cp ($repo_root | path join "nushell" "scripts" "utils" "config_migrations.nu") ($fixture_root | path join "nushell" "scripts" "utils" "config_migrations.nu")
+    ^git -C $fixture_root init --quiet
+    ^git -C $fixture_root config user.email "codex@example.com"
+    ^git -C $fixture_root config user.name "Codex"
+    ^git -C $fixture_root add -A
+    ^git -C $fixture_root commit --quiet -m "Fixture baseline"
     "" | save --force --raw $log_file
 
     {
@@ -38,6 +53,8 @@ def setup_repo_fixture [] {
 }
 
 def run_validator [fixture: record, ci: bool = false] {
+    cd $fixture.fixture_root
+
     if $ci {
         ^nu $fixture.validator --ci --diff-base HEAD~1 | complete
     } else {
@@ -144,12 +161,42 @@ def run_ci_summary_without_changelog_case [] {
     $ok
 }
 
+def run_ci_series_only_notes_case [] {
+    let fixture = (setup_repo_fixture)
+    let log_file = $fixture.log_file
+
+    log_line $log_file "Case: CI accepts README-series-only structured note updates without a changelog edit"
+    let updated_notes = (
+        open $fixture.notes
+        | upsert series.v13.summary [
+            "Plugin-managed workspaces and deterministic editor/sidebar routing define the v13 experience."
+            "Workspace retargeting, migration-aware upgrade UX, and popup/runtime hardening kept tightening through the series."
+            "The public command surface is cleaner, with better inspection, release-note, and recovery paths."
+        ]
+    )
+    $updated_notes | to toml | save --force $fixture.notes
+    commit_fixture_change $fixture "Adjust v13 README series summary only"
+
+    log_block $log_file "Updated upgrade_notes.toml" (open --raw $fixture.notes)
+
+    let result = (run_validator $fixture true)
+    log_block $log_file "Validator stdout" ($result.stdout | str trim)
+    log_block $log_file "Validator stderr" ($result.stderr | str trim)
+
+    let ok = ($result.exit_code == 0) and (($result.stdout | str contains "Upgrade contract is valid in CI mode"))
+    if $ok { log_line $log_file "Result: PASS" } else { log_line $log_file "Result: FAIL" }
+
+    rm -rf ($fixture.fixture_root | path dirname)
+    $ok
+}
+
 export def main [] {
     let results = [
         (run_current_repo_case)
         (run_broken_notes_case)
         (run_ci_ack_only_notes_case)
         (run_ci_summary_without_changelog_case)
+        (run_ci_series_only_notes_case)
     ]
     let passed = ($results | where $it == true | length)
     let total = ($results | length)

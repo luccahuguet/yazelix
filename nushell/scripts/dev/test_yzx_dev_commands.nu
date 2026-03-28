@@ -291,8 +291,61 @@ def test_default_suite_traceability_contract [] {
     }
 }
 
+def test_sync_readme_version_marker_rebuilds_generated_series_block [] {
+    print "🧪 Testing README sync rebuilds the generated latest-series block..."
+
+    let tmp_root = (^mktemp -d /tmp/yazelix_readme_sync_XXXXXX | str trim)
+    let fixture_root = ($tmp_root | path join "repo")
+
+    let result = (try {
+        mkdir $fixture_root
+        mkdir ($fixture_root | path join "docs")
+        mkdir ($fixture_root | path join "nushell")
+        mkdir ($fixture_root | path join "nushell" "scripts")
+        mkdir ($fixture_root | path join "nushell" "scripts" "utils")
+
+        let readme_path = ($fixture_root | path join "README.md")
+        ^cp (repo_path "README.md") $readme_path
+        ^cp (repo_path "docs" "upgrade_notes.toml") ($fixture_root | path join "docs" "upgrade_notes.toml")
+        ^cp (repo_path "nushell" "scripts" "utils" "common.nu") ($fixture_root | path join "nushell" "scripts" "utils" "common.nu")
+        ^cp (repo_path "nushell" "scripts" "utils" "constants.nu") ($fixture_root | path join "nushell" "scripts" "utils" "constants.nu")
+        ^cp (repo_path "nushell" "scripts" "utils" "readme_release_block.nu") ($fixture_root | path join "nushell" "scripts" "utils" "readme_release_block.nu")
+        let broken_readme = (
+            open --raw $readme_path
+            | str replace -r '(?s)<!-- BEGIN GENERATED README LATEST SERIES -->.*<!-- END GENERATED README LATEST SERIES -->' $"<!-- BEGIN GENERATED README LATEST SERIES -->\n## What's New In v0\n\n- stale block\n\n<!-- END GENERATED README LATEST SERIES -->"
+        )
+        $broken_readme | save --force --raw $readme_path
+
+        let helper_script = ($fixture_root | path join "nushell" "scripts" "utils" "readme_release_block.nu")
+
+        let sync_output = (with-env {YAZELIX_DIR: $fixture_root} {
+            ^nu -c $"use \"($helper_script)\" [sync_readme_surface]; sync_readme_surface | ignore" | complete
+        })
+        let expected_output = (with-env {YAZELIX_DIR: $fixture_root} {
+            ^nu -c $"use \"($helper_script)\" [render_readme_latest_series_section]; render_readme_latest_series_section" | complete
+        })
+        let expected_section = ($expected_output.stdout | str trim)
+        let updated_readme = (open --raw $readme_path)
+
+        if ($sync_output.exit_code == 0) and ($expected_output.exit_code == 0) and ($updated_readme | str contains $expected_section) and (not ($updated_readme | str contains "stale block")) {
+            print "  ✅ README sync restores the generated latest-series block from upgrade_notes.toml"
+            true
+        } else {
+            print $"  ❌ Unexpected result: sync_exit=($sync_output.exit_code) expected_exit=($expected_output.exit_code) sync_stderr=($sync_output.stderr | str trim) expected_stderr=($expected_output.stderr | str trim)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 export def run_dev_canonical_tests [] {
     [
+        (test_sync_readme_version_marker_rebuilds_generated_series_block)
         (test_home_manager_desktop_entry_evaluates)
         (test_specs_have_traceability_contract)
         (test_default_suite_traceability_contract)

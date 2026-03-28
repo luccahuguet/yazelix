@@ -8,7 +8,7 @@ repos:
         pass_filenames: false
         always_run: true
       - id: yazelix-validate-readme-version
-        name: validate README version marker
+        name: validate generated README surface
         entry: nu nushell/scripts/dev/validate_readme_version.nu
         language: system
         pass_filenames: false

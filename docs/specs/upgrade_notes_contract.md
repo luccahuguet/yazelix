@@ -14,6 +14,7 @@ This spec covers:
 
 - the root `CHANGELOG.md`
 - `docs/upgrade_notes.toml` as the canonical structured source
+- optional major-series summaries in `docs/upgrade_notes.toml` for README projections
 - required release-note fields for released and unreleased work
 - validator wiring in `prek` and CI
 - guarded-file enforcement for upgrade-sensitive surfaces
@@ -26,6 +27,8 @@ Yazelix should keep:
 - `docs/upgrade_notes.toml` as the canonical structured source
 
 The structured notes must include at least the current `YAZELIX_VERSION` and an `unreleased` bucket so `main` can describe post-release work honestly without inventing fake versions. Each entry must declare its upgrade impact, migration ids when safe migrations exist, and manual actions when automation is not possible.
+
+`docs/upgrade_notes.toml` may also include optional major-series summaries, such as `series.v13`, when Yazelix wants a curated README projection of the current major line. Those summaries are not exact-version release notes and should stay high-level.
 
 Cheap validation should run locally and in CI to ensure the files exist, the current version is represented, the changelog headings and headlines line up with the structured data, and the migration ids resolve to real migration rules.
 

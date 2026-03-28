@@ -3,6 +3,7 @@
 
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/common.nu [get_yazelix_dir]
+use ../utils/readme_release_block.nu [sync_readme_surface]
 use ../utils/issue_bead_contract.nu [
     build_imported_issue_description
     canonical_issue_bead_comment_body
@@ -197,17 +198,16 @@ def sync_readme_version_marker [] {
     }
 
     let declared_version = get_declared_yazelix_version
-    let expected_title = $"# Yazelix ($declared_version)"
-    let contents = (open --raw $readme_path)
-    let updated = ($contents | str replace -r '^# Yazelix v[^\r\n]+' $expected_title)
+    let sync_result = (sync_readme_surface $readme_path $declared_version)
+    let title_changed = $sync_result.title_changed
+    let series_changed = $sync_result.series_changed
 
-    if $updated == $contents {
-        print $"✅ README version marker already matches ($declared_version)"
+    if (not $title_changed) and (not $series_changed) {
+        print $"✅ README version marker and generated latest-series block already match ($declared_version)"
         return
     }
 
-    $updated | save --force --raw $readme_path
-    print $"✅ Synced README version marker to ($declared_version)"
+    print $"✅ Synced README title/version marker and generated latest-series block for ($declared_version)"
 }
 
 def get_pane_orchestrator_paths [] {

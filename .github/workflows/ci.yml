@@ -42,7 +42,7 @@ jobs:
       - name: Validate Nushell syntax
         run: nu nushell/scripts/dev/validate_syntax.nu
 
-      - name: Validate README version marker
+      - name: Validate generated README surface
         run: nu nushell/scripts/dev/validate_readme_version.nu
 
       - name: Validate upgrade contract

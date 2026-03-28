@@ -59,35 +59,20 @@ Want the high-level product map? See [Architecture Map](./docs/architecture_map.
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
-## Improvements in v13.2
+<!-- BEGIN GENERATED README LATEST SERIES -->
+## What's New In v13
 
-- **Workspace Hardening** - New-tab workspace defaults, tab-local workspace routing, and the `Alt+m` / `Alt+p` workspace flows were tightened so Yazelix behaves more predictably across tabs
-- **Zellij Integration Hardening** - The pane orchestrator and layout/config generation were further hardened to reduce stale state, helper-pane traps, and workspace drift
-- **Keybinding Model Polish** - `yzx keys` and the README/docs now describe the current workspace actions more clearly, especially around `Alt+m`, `Alt+p`, and editor/sidebar movement
+Plugin-managed workspaces, migration-aware upgrades, and a cleaner runtime story.
 
-## Improvements in v13.1
+- Plugin-managed editor/sidebar orchestration and deterministic workspace routing became the core of the v13 experience.
+- Workspace retargeting, `yzx cwd`, and Yazi-driven editor opens got much tighter tab-local behavior and better diagnostics.
+- The command surface got cleaner with `yzx config`, `yzx menu`, `yzx keys`, `yzx refresh`, and `yzx whats_new`.
+- Upgrade and recovery UX improved with structured release notes, migration-aware diagnostics, `yzx config migrate`, and `yzx doctor --fix`.
+- Later v13 releases hardened popup flows, startup recovery, desktop integration, and the move to Zellij 0.44.
 
-- **Cross-Tab Yazi Cwd Isolation** - `yzx cwd` and related sidebar sync flows now resolve the current tab's managed Yazi pane instead of guessing from session-global state, fixing the cross-tab cwd leak that could show up when every tab starts with Yazi
-- **Stronger Workspace Cwd Routing** - The `yzx cwd` flow now has better tab retargeting, managed-editor cwd sync, cleaner tab naming, and tighter Yazi workspace keybinding alignment
-- **Better Workspace Diagnostics and Controls** - `yzx doctor` can diagnose Zellij plugin health, `yzx keys` exposes the current keymap surface more clearly, and Zellij default mode handling is now configurable
-- **Agent and Update Flow Polish** - Yazelix now ships the `justcode` command, added pi-agent support before later removing the unstable local `pi_rust` packaging, and further hardened the canary/update path
-
-## Improvements in v13
-
-- **The Biggest Pain Points Are Fixed** – v13 replaces fragile pane-scanning flows with a real Zellij plugin that tracks the managed `editor` and `sidebar` panes and routes workspace actions directly instead of relying on shell heuristics
-- **The Sidebar Can Always Find the Editor** – The sidebar can now always find the managed `editor` pane and open files in it reliably, and it is much faster because Yazelix no longer has to walk through panes or rely on pane-scanning heuristics
-- **Sidebar and Layout Controls Are Finally Separate** – Sidebar open/close now has its own `Alt+y` binding instead of being entangled with layout-family switching on `Alt+[` and `Alt+]`
-- **Deterministic Workspace Navigation** – `Ctrl+y` toggles focus between the managed editor and sidebar, while `Alt+[` and `Alt+]` switch predictably between the `single`, `vertical split`, and `bottom terminal` layouts
-- **Cleaner Keybinding Model** – Editor/sidebar navigation is unified, editor-local reveal bindings are documented explicitly, and the temporary wrapper-pane transport was replaced with direct plugin messages
-- **Runtime Plugin Reliability** – The pane orchestrator now ships through a content-hashed runtime wasm path, avoiding stale-plugin cache confusion during development and restart flows
-- **Launch Robustness** – `yzx restart` now forces a fresh `devenv` entry path instead of reusing stale terminal state
-- **Better Config Inspection** – `yzx config` is much more useful now, with focused section views for `hx`, `yazi`, and `zellij`, plus `yzx config open`
-- **Simpler Update and Testing Commands** – `yzx update` and `yzx dev test` were simplified into clearer defaults that are easier to remember and safer to use
-- **Clearer Refresh and Environment Feedback** – `yzx env` now shows rebuild activity more clearly, launch paths skip noisy shell-hook welcomes, and Yazelix warns when runtime versions drift
-- **Command Palette** – `yzx menu` gives you a searchable command palette for the main Yazelix actions, including a popup mode inside Zellij on `Alt+Shift+M`
-- **Refresh Workflow** – `yzx refresh` makes it easier to rebuild the Yazelix environment without launching the UI, while `yzx restart` cleanly switches the current window onto the refreshed profile
-
-Upgrade notes: [CHANGELOG](./CHANGELOG.md) | Full version history: [Version History](./docs/history.md)
+For exact v13.8 upgrade notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new`.
+For the longer project story, see [Version History](./docs/history.md).
+<!-- END GENERATED README LATEST SERIES -->
 
 ## Experiments
 
@@ -136,10 +121,6 @@ When opening files from Yazi, Yazelix will:
 - Reuse that pane directly when it exists, instead of scanning nearby panes or depending on stack position.
 - Create a new pane titled `editor` when no managed editor pane exists yet.
 - Use the same managed-pane flow for both Helix and Neovim; configure the editor via `editor_command` in `yazelix.toml`.
-
-## Version History & Changelog
-
-For concise upgrade-facing notes, see [CHANGELOG](./CHANGELOG.md). For the longer narrative history of major version bumps, see [Version History](./docs/history.md).
 
 ## POSIX/XDG Paths
 

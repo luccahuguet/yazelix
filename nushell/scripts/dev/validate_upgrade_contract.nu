@@ -58,6 +58,14 @@ def drop_acknowledged_guarded_changes [entry: record] {
     }
 }
 
+def drop_optional_series [notes: record] {
+    if ("series" in ($notes | columns)) {
+        $notes | reject series
+    } else {
+        $notes
+    }
+}
+
 def as_string_list [value: any] {
     if (($value | describe) | str contains "list") {
         $value | each {|item| $item | into string }
@@ -266,6 +274,25 @@ def notes_changed_only_acknowledgements [entries: record, diff_base: string] {
     true
 }
 
+def notes_changed_only_series [diff_base: string] {
+    let previous_notes = (load_notes_from_ref $diff_base)
+    if $previous_notes == null {
+        return false
+    }
+
+    let current_notes = (load_notes)
+    let current_without_series = (drop_optional_series $current_notes)
+    let previous_without_series = (drop_optional_series $previous_notes)
+
+    if $current_without_series != $previous_without_series {
+        return false
+    }
+
+    let current_series = ($current_notes.series? | default null)
+    let previous_series = ($previous_notes.series? | default null)
+    $current_series != $previous_series
+}
+
 def validate_ci_rules [entries: record, diff_base: string] {
     let changed_files = (get_changed_files $diff_base)
     let current_entry = (get_entry $entries $YAZELIX_VERSION)
@@ -280,12 +307,17 @@ def validate_ci_rules [entries: record, diff_base: string] {
         and (not ("CHANGELOG.md" in $changed_files))
         and (notes_changed_only_acknowledgements $entries $diff_base)
     )
+    let series_only_notes_change = (
+        ("docs/upgrade_notes.toml" in $changed_files)
+        and (not ("CHANGELOG.md" in $changed_files))
+        and (notes_changed_only_series $diff_base)
+    )
     let target_key = if $version_bumped { $YAZELIX_VERSION } else { "unreleased" }
     let target_entry = if $target_key == "unreleased" { $unreleased_entry } else { $current_entry }
     let acknowledged = (as_string_list $target_entry.acknowledged_guarded_changes)
     mut errors = []
 
-    if $one_doc_changed and (not $ack_only_notes_change) {
+    if $one_doc_changed and (not $ack_only_notes_change) and (not $series_only_notes_change) {
         $errors = ($errors | append "CI: CHANGELOG.md and docs/upgrade_notes.toml must change together")
     }
 
