@@ -98,3 +98,47 @@ vec4 applyTrailLayer(vec4 base, vec4 overlay, float mask) {
 float trailCoreMask(float sdf, float offset) {
     return step(sdf + (offset * YAZELIX_TRAIL_CORE_OFFSET_SCALE), 0.0);
 }
+
+void renderSimpleDualColorTrail(
+    out vec4 fragColor,
+    in vec2 fragCoord,
+    vec4 trailColor,
+    vec4 accentColor,
+    float duration,
+    float mod,
+    float coreSaturation
+) {
+    #if !defined(WEB)
+    fragColor = texture(iChannel0, fragCoord.xy / iResolution.xy);
+    #endif
+    vec2 vu = normalize(fragCoord, 1.);
+    vec2 offsetFactor = vec2(-.5, 0.5);
+
+    vec4 currentCursor = vec4(normalize(iCurrentCursor.xy, 1.), normalize(iCurrentCursor.zw, 0.));
+    vec4 previousCursor = vec4(normalize(iPreviousCursor.xy, 1.), normalize(iPreviousCursor.zw, 0.));
+
+    vec2 centerCC = getRectangleCenter(currentCursor);
+    vec2 centerCP = getRectangleCenter(previousCursor);
+    float vertexFactor = determineStartVertexFactor(currentCursor.xy, previousCursor.xy);
+    float invertedVertexFactor = 1.0 - vertexFactor;
+
+    vec2 v0 = vec2(currentCursor.x + currentCursor.z * vertexFactor, currentCursor.y - currentCursor.w);
+    vec2 v1 = vec2(currentCursor.x + currentCursor.z * invertedVertexFactor, currentCursor.y);
+    vec2 v2 = vec2(previousCursor.x + currentCursor.z * invertedVertexFactor, previousCursor.y);
+    vec2 v3 = vec2(previousCursor.x + currentCursor.z * vertexFactor, previousCursor.y - previousCursor.w);
+
+    float sdfCurrentCursor = getSdfRectangle(vu, currentCursor.xy - (currentCursor.zw * offsetFactor), currentCursor.zw * 0.5);
+    float sdfTrail = getSdfParallelogram(vu, v0, v1, v2, v3);
+
+    float progress = clamp((iTime - iTimeCursorChange) / duration, 0.0, 1.0);
+    float easedProgress = ease(progress);
+    float lineLength = distance(centerCC, centerCP);
+
+    vec4 trail = fragColor;
+    trail = applyTrailLayer(trail, saturate(accentColor, 1.5), trailGlowMask(sdfTrail, mod + 0.010, 0.035));
+    trail = applyTrailLayer(trail, saturate(trailColor, 1.5), trailEdgeMask(sdfTrail, mod, 0.006));
+    trail = mix(trail, saturate(trailColor, coreSaturation), trailCoreMask(sdfTrail, mod));
+    trail = applyTrailLayer(trail, saturate(accentColor, 1.5), cursorGlowMask(sdfCurrentCursor, .002, 0.004));
+    trail = applyTrailLayer(trail, saturate(trailColor, 1.5), cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
+    fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
+}
