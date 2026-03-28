@@ -4,6 +4,7 @@
 use ./config_parser.nu parse_yazelix_config
 use ./config_metadata.nu REBUILD_REQUIRED_KEYS
 use ./common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
+use ./config_surfaces.nu load_active_config_surface
 
 # Extract a nested key from a record using dot notation (e.g., "core.recommended_deps")
 def get_nested_key [record: record, key: string] {
@@ -61,6 +62,7 @@ def normalize_toml [toml_string: string] {
 #   current_hash: sha256 of rebuild-required config (empty string if missing)
 #   cached_hash: previously stored hash (empty if none)
 export def compute_config_state [] {
+    let config_surface = (load_active_config_surface)
     let config = parse_yazelix_config
     let config_file = $config.config_file
 
@@ -73,9 +75,7 @@ export def compute_config_state [] {
     let config_hash = if ($config_file | is-empty) or (not ($config_file | path exists)) {
         ""
     } else {
-        # Load full TOML, extract rebuild-required keys, normalize, and hash
-        let full_config = (open $config_file)
-        let rebuild_config = (extract_rebuild_config $full_config)
+        let rebuild_config = (extract_rebuild_config $config_surface.merged_config)
         let normalized = ($rebuild_config | to toml)
         $normalized | hash sha256
     }

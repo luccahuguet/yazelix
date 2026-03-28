@@ -177,14 +177,15 @@ export def "yzx config" [
     --full   # Include the packs section
     --path   # Print the resolved config path
 ] {
-    let config = parse_yazelix_config
-    let config_path = $config.config_file
+    use ../utils/config_surfaces.nu [load_active_config_surface]
+    let config_surface = (load_active_config_surface)
+    let config_path = $config_surface.config_file
 
     if $path {
         $config_path
     } else {
-        let raw_config = (open $config_path)
-        if $full { $raw_config } else { $raw_config | reject packs }
+        let active_config = $config_surface.merged_config
+        if $full { $active_config } else { $active_config | reject packs }
     }
 }
 

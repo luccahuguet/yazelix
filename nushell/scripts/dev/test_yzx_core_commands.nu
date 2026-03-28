@@ -840,6 +840,58 @@ def test_yzx_config_view [] {
     }
 }
 
+def test_yzx_config_full_merges_pack_sidecar [] {
+    print "🧪 Testing yzx config --full merges the dedicated pack sidecar..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_config_full_sidecar_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+
+    let result = (try {
+        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+
+        '[core]
+debug_mode = false
+' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+
+        'enabled = ["git"]
+
+[declarations]
+git = ["gh", "prek"]
+' | save --force --raw ($temp_config_dir | path join "yazelix_packs.toml")
+
+        let output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($yzx_script)\" *; yzx config --full | to json -r" | complete
+        }
+        let stdout = ($output.stdout | str trim)
+        let rendered = ($stdout | from json)
+
+        if (
+            ($output.exit_code == 0)
+            and (($rendered.packs.enabled? | default []) == ["git"])
+            and ((($rendered.packs.declarations? | default {}) | get git) == ["gh", "prek"])
+        ) {
+            print "  ✅ yzx config --full renders the merged pack sidecar view"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_yzx_config_sections [] {
     print "🧪 Testing yzx config section views..."
 
@@ -1059,6 +1111,85 @@ def test_config_state_supports_split_config_and_runtime_dirs [] {
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_config_state_hashes_pack_sidecar_changes [] {
+    print "🧪 Testing config state hashing includes yazelix_packs.toml changes..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_config_state_packs_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+
+    let result = (try {
+        let state_script = ($repo_root | path join "nushell" "scripts" "utils" "config_state.nu")
+        '[core]
+debug_mode = false
+' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+
+        'enabled = ["git"]
+
+[declarations]
+git = ["gh"]
+' | save --force --raw ($temp_config_dir | path join "yazelix_packs.toml")
+
+        let baseline_snippet = ([
+            $"source \"($state_script)\""
+            "let state = (compute_config_state)"
+            "mark_config_state_applied $state"
+            "print ($state | to json -r)"
+        ] | str join "\n")
+        let baseline_output = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $baseline_snippet | complete
+        })
+        let baseline = (($baseline_output.stdout | str trim) | from json)
+
+        'enabled = ["rust"]
+
+[declarations]
+rust = ["rust_toolchain"]
+' | save --force --raw ($temp_config_dir | path join "yazelix_packs.toml")
+
+        let changed_snippet = ([
+            $"source \"($state_script)\""
+            "print ((compute_config_state) | to json -r)"
+        ] | str join "\n")
+        let changed_output = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $changed_snippet | complete
+        })
+        let changed = (($changed_output.stdout | str trim) | from json)
+
+        if (
+            ($baseline_output.exit_code == 0)
+            and ($changed_output.exit_code == 0)
+            and ($baseline.config_hash | is-not-empty)
+            and ($changed.config_hash | is-not-empty)
+            and ($changed.config_hash != $baseline.config_hash)
+            and ($changed.needs_refresh == true)
+            and ($changed.refresh_reason == "config changed since last launch")
+        ) {
+            print "  ✅ Config-state hashing reacts to sidecar-only pack changes"
+            true
+        } else {
+            print $"  ❌ Unexpected result: baseline_exit=($baseline_output.exit_code) changed_exit=($changed_output.exit_code) baseline=($baseline | select config_hash needs_refresh refresh_reason | to json -r) changed=($changed | select config_hash needs_refresh refresh_reason | to json -r) stderr=($baseline_output.stderr | str trim) ($changed_output.stderr | str trim)"
             false
         }
     } catch { |err|
@@ -1578,9 +1709,12 @@ export def run_core_canonical_tests [] {
         (test_upgrade_summary_report_detects_matching_migrations)
         (test_yzx_whats_new_reopens_current_summary_even_after_seen)
         (test_historical_upgrade_notes_cover_v12_v13_tag_floor)
+        (test_yzx_config_view)
+        (test_yzx_config_full_merges_pack_sidecar)
         (test_invalid_config_is_classified_as_config_problem)
         (test_startup_reports_known_config_migration_before_generic_wrappers)
         (test_config_state_supports_split_config_and_runtime_dirs)
+        (test_config_state_hashes_pack_sidecar_changes)
         (test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering)
     ]
 }
