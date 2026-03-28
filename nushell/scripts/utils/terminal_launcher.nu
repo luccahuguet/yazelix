@@ -42,6 +42,11 @@ export def resolve_terminal_config [terminal: string, mode: string] {
     error make {msg: $"Unsupported terminal.config_mode '($mode)'. Expected 'yazelix' or 'user'."}
 }
 
+export def resolve_terminal_config_from_env [terminal: string] {
+    let mode = ($env.YAZELIX_TERMINAL_CONFIG_MODE? | default "yazelix" | into string | str downcase)
+    resolve_terminal_config $terminal $mode
+}
+
 # Detect available terminal (wrapper or direct)
 export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
     # Build list of terminals to check: use list order if provided, otherwise preferred first
