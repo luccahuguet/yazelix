@@ -60,7 +60,19 @@ shaders/
 ### Manual build (for testing or local preview):
 
 ```bash
-nu build_shaders.nu medium   # Manually trigger shader build for a glow level
+nu build_shaders.nu medium
+```
+
+By default, that writes generated shaders into the normal runtime output tree:
+
+```text
+~/.local/share/yazelix/configs/terminal_emulators/ghostty/shaders
+```
+
+If you really want to write to a different destination, pass an explicit output directory:
+
+```bash
+nu build_shaders.nu medium /tmp/ghostty_shader_preview
 ```
 
 ## Build Process
@@ -78,6 +90,7 @@ The build is **fully automatic**:
 - **ALWAYS edit** either `cursor_trail_common.glsl` or files in `variants/`
 - Shaders are **automatically built** during Yazelix startup - no manual steps needed!
 - The generated shaders are **not** git-tracked; the maintained source is the common library, variants, and build script
+- The manual build command defaults to the runtime output directory so it does not dirty the source tree
 
 ## Variant Categories
 

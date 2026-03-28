@@ -2,7 +2,7 @@
 # Build script to generate cursor trail shaders from common library + variants
 # This combines cursor_trail_common.glsl with each variant file to eliminate duplication
 
-use ../../../../nushell/scripts/utils/constants.nu GHOSTTY_CURSOR_EFFECT_TEMPLATE_FILES
+use ../../../../nushell/scripts/utils/constants.nu [GHOSTTY_CURSOR_EFFECT_TEMPLATE_FILES, YAZELIX_GENERATED_CONFIGS_DIR]
 
 const GHOSTTY_TRAIL_GLOW_LEVELS = ["none" "low" "medium" "high"]
 
@@ -107,10 +107,12 @@ def scale_glsl_float_constant [template_code: string, constant_name: string, fac
 }
 
 # Build cursor trail shaders from common library + variants
-export def build_cursor_trail_shaders [shader_dir: path, glow_level: string = "medium"] {
+export def build_cursor_trail_shaders [shader_source_dir: path, glow_level: string = "medium", output_dir?: path] {
     assert_glow_level $glow_level
-    let common_file = ($shader_dir | path join "cursor_trail_common.glsl")
-    let variants_dir = ($shader_dir | path join "variants")
+    let source_dir = ($shader_source_dir | path expand)
+    let target_dir = (($output_dir | default $source_dir) | path expand)
+    let common_file = ($source_dir | path join "cursor_trail_common.glsl")
+    let variants_dir = ($source_dir | path join "variants")
 
     # Check if source files exist
     if not ($common_file | path exists) {
@@ -135,9 +137,11 @@ export def build_cursor_trail_shaders [shader_dir: path, glow_level: string = "m
         return
     }
 
+    mkdir $target_dir
+
     for variant_file in $variants {
         let variant_name = ($variant_file | path basename | str replace ".glsl" "")
-        let output_file = ($shader_dir | path join $"cursor_trail_($variant_name).glsl")
+        let output_file = ($target_dir | path join $"cursor_trail_($variant_name).glsl")
 
         # Read variant code
         let variant_code = (open $variant_file)
@@ -171,15 +175,18 @@ def render_ghostty_cursor_effect_shader [template_code: string, glow_level: stri
     $rendered
 }
 
-export def build_ghostty_cursor_effect_shaders [shader_dir: path, glow_level: string = "medium"] {
+export def build_ghostty_cursor_effect_shaders [shader_source_dir: path, glow_level: string = "medium", output_dir?: path] {
     assert_glow_level $glow_level
-    let templates_dir = ($shader_dir | path join "upstream_effects")
+    let source_dir = ($shader_source_dir | path expand)
+    let target_dir = (($output_dir | default $source_dir) | path expand)
+    let templates_dir = ($source_dir | path join "upstream_effects")
     if not ($templates_dir | path exists) {
         print $"⚠ Ghostty cursor effect templates not found: ($templates_dir)"
         return
     }
 
-    let generated_dir = ($shader_dir | path join "generated_effects")
+    mkdir $target_dir
+    let generated_dir = ($target_dir | path join "generated_effects")
     if ($generated_dir | path exists) {
         rm --permanent --recursive $generated_dir
     }
@@ -205,14 +212,18 @@ export def build_ghostty_cursor_effect_shaders [shader_dir: path, glow_level: st
     print $"✓ Built ($built_count) Ghostty cursor effect shaders from vendored templates"
 }
 
-# Main entry point when run directly
-def main [glow_level: string = "medium"] {
-    let shader_dir = ($env.PWD)
+# Main entry point when run directly.
+# Default output is the generated runtime Ghostty shader directory, not the source tree.
+def main [glow_level: string = "medium", output_dir?: path] {
+    let shader_source_dir = ($env.PWD | path expand)
+    let default_output_dir = (($YAZELIX_GENERATED_CONFIGS_DIR | str replace "~" $env.HOME) | path join "terminal_emulators" "ghostty" "shaders")
+    let shader_output_dir = (($output_dir | default $default_output_dir) | path expand)
     print $"Building cursor trail shaders..."
-    print $"Shader directory: ($shader_dir)"
+    print $"Shader source directory: ($shader_source_dir)"
+    print $"Shader output directory: ($shader_output_dir)"
     print $"Glow level: ($glow_level)"
     print ""
 
-    build_cursor_trail_shaders $shader_dir $glow_level
-    build_ghostty_cursor_effect_shaders $shader_dir $glow_level
+    build_cursor_trail_shaders $shader_source_dir $glow_level $shader_output_dir
+    build_ghostty_cursor_effect_shaders $shader_source_dir $glow_level $shader_output_dir
 }
