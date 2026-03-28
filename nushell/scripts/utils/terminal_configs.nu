@@ -187,7 +187,7 @@ def build_kitty_cursor [ghostty_trail_color] {
 }
 
 # Config generators
-export def generate_ghostty_config [runtime_dir?: string] {
+export def generate_ghostty_config [] {
     let config = parse_yazelix_config
     let selected_color = (resolve_ghostty_trail_color $config.ghostty_trail_color)
     let selected_trail_effect = (resolve_ghostty_trail_effect $config.ghostty_trail_effect)
@@ -215,7 +215,7 @@ config-file = ?\"($override_path)\"
 "
 }
 
-export def generate_wezterm_config [runtime_dir?: string] {
+export def generate_wezterm_config [] {
     let config = parse_yazelix_config
     $"-- WezTerm configuration for Yazelix
 local wezterm = require 'wezterm'
@@ -236,7 +236,7 @@ config.enable_tab_bar = false
 return config"
 }
 
-export def generate_kitty_config [runtime_dir?: string] {
+export def generate_kitty_config [] {
     let config = parse_yazelix_config
     let override_path = (get_terminal_override_path "kitty")
     $"# Kitty configuration for Yazelix
@@ -296,7 +296,7 @@ size = 12
 primary = { background = \"#000000\", foreground = \"#ffffff\" }"
 }
 
-export def generate_alacritty_config [runtime_dir?: string] {
+export def generate_alacritty_config [] {
     let generated_dir = ($YAZELIX_GENERATED_CONFIGS_DIR | str replace "~" $env.HOME)
     let base_path = ($generated_dir | path join "terminal_emulators" "alacritty" "alacritty_base.toml")
     let override_path = (get_terminal_override_path "alacritty")
@@ -307,7 +307,7 @@ import = [\"($base_path)\", \"($override_path)\"]
 "
 }
 
-export def generate_foot_config [runtime_dir?: string] {
+export def generate_foot_config [] {
     let config = parse_yazelix_config
     $"# Foot configuration for Yazelix
 
@@ -370,7 +370,7 @@ export def generate_all_terminal_configs [runtime_dir?: string] {
     if $should_generate_ghostty {
         let ghostty_dir = ($configs_dir | path join "ghostty")
         mkdir $ghostty_dir
-        save_config_with_backup ($ghostty_dir | path join "config") (generate_ghostty_config $resolved_runtime_dir)
+        save_config_with_backup ($ghostty_dir | path join "config") (generate_ghostty_config)
 
         let shaders_src = ($resolved_runtime_dir | path join "configs" "terminal_emulators" "ghostty" "shaders")
         let shaders_dest = ($ghostty_dir | path join "shaders")
@@ -393,7 +393,7 @@ export def generate_all_terminal_configs [runtime_dir?: string] {
         let alacritty_dir = ($configs_dir | path join "alacritty")
         mkdir $alacritty_dir
         save_config_with_backup ($alacritty_dir | path join "alacritty_base.toml") (generate_alacritty_base_config)
-        save_config_with_backup ($alacritty_dir | path join "alacritty.toml") (generate_alacritty_config $resolved_runtime_dir)
+        save_config_with_backup ($alacritty_dir | path join "alacritty.toml") (generate_alacritty_config)
     }
 
     mut generated = []
@@ -404,7 +404,7 @@ export def generate_all_terminal_configs [runtime_dir?: string] {
     if $should_generate_wezterm {
         let wezterm_dir = ($configs_dir | path join "wezterm")
         mkdir $wezterm_dir
-        save_config_with_backup ($wezterm_dir | path join ".wezterm.lua") (generate_wezterm_config $resolved_runtime_dir)
+        save_config_with_backup ($wezterm_dir | path join ".wezterm.lua") (generate_wezterm_config)
         $generated = ($generated | append "WezTerm")
     }
 
@@ -412,7 +412,7 @@ export def generate_all_terminal_configs [runtime_dir?: string] {
     if $should_generate_kitty {
         let kitty_dir = ($configs_dir | path join "kitty")
         mkdir $kitty_dir
-        save_config_with_backup ($kitty_dir | path join "kitty.conf") (generate_kitty_config $resolved_runtime_dir)
+        save_config_with_backup ($kitty_dir | path join "kitty.conf") (generate_kitty_config)
         $generated = ($generated | append "Kitty")
     }
 
@@ -420,7 +420,7 @@ export def generate_all_terminal_configs [runtime_dir?: string] {
     if $should_generate_foot {
         let foot_dir = ($configs_dir | path join "foot")
         mkdir $foot_dir
-        save_config_with_backup ($foot_dir | path join "foot.ini") (generate_foot_config $resolved_runtime_dir)
+        save_config_with_backup ($foot_dir | path join "foot.ini") (generate_foot_config)
         $generated = ($generated | append "Foot")
     }
 

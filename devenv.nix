@@ -295,8 +295,6 @@ let
           lib.optionalString (isLinux && nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "
         }${pkgs.wezterm}/bin/wezterm \
           --config-file="$CONF" \
-          --config 'window_decorations="NONE"' \
-          --config enable_tab_bar=false \
           start --class=com.yazelix.Yazelix "$@" -- sh -c "exec ${startupScriptPath}"
       ''
     else

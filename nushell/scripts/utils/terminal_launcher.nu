@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Terminal launcher utilities for Yazelix
 
-use constants.nu [SUPPORTED_TERMINALS, TERMINAL_CONFIG_PATHS, TERMINAL_METADATA]
+use constants.nu [SUPPORTED_TERMINALS, TERMINAL_CONFIG_PATHS, TERMINAL_METADATA, YAZELIX_WINDOW_CLASS, YAZELIX_X11_INSTANCE]
 use common.nu [get_yazelix_runtime_dir]
 
 # Check if a command is available
@@ -12,6 +12,10 @@ export def command_exists [cmd: string]: nothing -> bool {
 def get_startup_script_path []: nothing -> string {
     let runtime_dir = (get_yazelix_runtime_dir)
     $runtime_dir | path join "shells" "posix" "start_yazelix.sh"
+}
+
+def get_terminal_title [terminal: string] {
+    $"Yazelix - (($TERMINAL_METADATA | get $terminal | get name))"
 }
 
 # Resolve config path for a terminal based on mode
@@ -144,6 +148,7 @@ export def build_launch_command [
     let working_dir_arg = (get_working_dir_arg $terminal $working_dir)
     let startup_script = (get_startup_script_path)
     let startup_shell = $"sh -c 'exec ($startup_script)'"
+    let title = (get_terminal_title $terminal)
 
     if $use_wrapper {
         # Wrappers handle config internally via environment variable
@@ -154,19 +159,19 @@ export def build_launch_command [
         let nixgl_prefix = if (which nixGLIntel | is-not-empty) { "nixGLIntel " } else { "" }
         let terminal_cmd = match $terminal {
             "ghostty" => {
-                $"($nixgl_prefix)ghostty --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --title=\"Yazelix - Ghostty\"($working_dir_arg) -e ($startup_shell)"
+                $"($nixgl_prefix)ghostty --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --class=\"($YAZELIX_WINDOW_CLASS)\" --x11-instance-name=\"($YAZELIX_X11_INSTANCE)\" --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
             },
             "wezterm" => {
-                $"($nixgl_prefix)wezterm --config-file ($config_path) start --class=com.yazelix.Yazelix($working_dir_arg) -- ($startup_shell)"
+                $"($nixgl_prefix)wezterm --config-file ($config_path) start --class=($YAZELIX_WINDOW_CLASS)($working_dir_arg) -- ($startup_shell)"
             },
             "kitty" => {
-                $"($nixgl_prefix)kitty --config=($config_path) --class=com.yazelix.Yazelix --title=\"Yazelix - Kitty\"($working_dir_arg) ($startup_shell)"
+                $"($nixgl_prefix)kitty --config=($config_path) --class=($YAZELIX_WINDOW_CLASS) --title=\"($title)\"($working_dir_arg) ($startup_shell)"
             },
             "alacritty" => {
-                $"($nixgl_prefix)alacritty --config-file ($config_path) --title \"Yazelix - Alacritty\"($working_dir_arg) -e ($startup_shell)"
+                $"($nixgl_prefix)alacritty --config-file ($config_path) --class \"($YAZELIX_WINDOW_CLASS)\" --title \"($title)\"($working_dir_arg) -e ($startup_shell)"
             },
             "foot" => {
-                $"($nixgl_prefix)foot --config ($config_path) --app-id com.yazelix.Yazelix($working_dir_arg) ($startup_shell)"
+                $"($nixgl_prefix)foot --config ($config_path) --app-id ($YAZELIX_WINDOW_CLASS)($working_dir_arg) ($startup_shell)"
             },
             _ => {
                 error make {msg: $"Unknown terminal: ($terminal)"}
