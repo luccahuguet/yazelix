@@ -24,7 +24,7 @@ shaders/
 │   ├── party.glsl
 │   └── inferno.glsl
 ├── build_shaders.nu             # Build script (nushell, runs automatically)
-└── cursor_trail_*.glsl          # Generated shaders (DO NOT EDIT)
+└── cursor_trail_*.glsl          # Generated locally/runtime only (gitignored)
 ```
 
 ## How It Works
@@ -57,7 +57,7 @@ shaders/
 3. Update `nushell/scripts/utils/constants.nu` to add the new variant to `CURSOR_TRAIL_SHADERS`
 4. Shaders will be **automatically rebuilt** next time Yazelix starts or configs are regenerated
 
-### Manual build (for testing):
+### Manual build (for testing or local preview):
 
 ```bash
 nu build_shaders.nu medium   # Manually trigger shader build for a glow level
@@ -77,7 +77,7 @@ The build is **fully automatic**:
 - **DO NOT directly edit** the generated `cursor_trail_*.glsl` files - your changes will be overwritten
 - **ALWAYS edit** either `cursor_trail_common.glsl` or files in `variants/`
 - Shaders are **automatically built** during Yazelix startup - no manual steps needed!
-- The generated shaders are git-tracked to ensure they work immediately for users
+- The generated shaders are **not** git-tracked; the maintained source is the common library, variants, and build script
 
 ## Variant Categories
 

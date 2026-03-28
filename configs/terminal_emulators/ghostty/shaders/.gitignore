@@ -1,1 +1,3 @@
 generated_effects/
+cursor_trail_*.glsl
+!cursor_trail_common.glsl

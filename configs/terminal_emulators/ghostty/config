@@ -64,8 +64,12 @@ window-padding-y = 10,0
 background-opacity = 0.85
 
 # Cursor trail effect (configurable via yazelix.toml)
+# Generated cursor trail shaders are built into the runtime config tree by Yazelix.
+# If you are experimenting directly in this source tree, run:
+#   nu ./shaders/build_shaders.nu medium
+# Then point custom-shader at one of the generated cursor_trail_*.glsl files.
 # random preset: cosmic
-custom-shader = ./shaders/cursor_trail_cosmic.glsl
+# custom-shader = ./shaders/cursor_trail_cosmic.glsl
 
 # Alternative presets (uncomment to try)
 # snow:  custom-shader = ./shaders/cursor_trail_white.glsl
