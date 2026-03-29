@@ -19,6 +19,31 @@ summary = [
     "Later v13 releases hardened popup flows, startup recovery, desktop integration, and the move to Zellij 0.44.",
 ]
 
+[releases."v13.9"]
+version = "v13.9"
+date = "2026-03-29"
+headline = "Managed config boundaries, richer welcomes, and cleaner terminal ownership"
+summary = [
+    "Split pack settings into `yazelix_packs.toml`, tightened migration-aware config ownership, and made `user_configs/` the canonical managed input boundary for Zellij, Yazi, and the main Yazelix config surfaces.",
+    "Added terminal override layers for Ghostty, Kitty, and Alacritty while keeping launch-critical startup behavior Yazelix-owned and moving Ghostty shader generation toward runtime state.",
+    "Expanded the front-door UX with per-user desktop entries, `yzx tutor`, `yzx screen`, explicit `yzx config open` targets, and a much richer welcome-screen system with multiple styles and animations.",
+]
+upgrade_impact = "migration_available"
+acknowledged_guarded_changes = [
+    "yazelix_default.toml",
+    "yazelix_packs_default.toml",
+    "home_manager/module.nix",
+    "nushell/scripts/utils/config_schema.nu",
+    "nushell/scripts/utils/config_migrations.nu",
+]
+migration_ids = [
+    "split_legacy_pack_config_surface",
+    "replace_ascii_art_mode_with_welcome_style",
+    "rename_life_welcome_style_to_game_of_life",
+    "review_terminal_config_mode_auto",
+]
+manual_actions = []
+
 [releases."v13.8"]
 version = "v13.8"
 date = "2026-03-27"

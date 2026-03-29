@@ -11,6 +11,22 @@ Upgrade impact: no user action required
 Highlights:
 - Placeholder until the next user-facing change lands.
 
+## v13.9 - 2026-03-29
+
+Managed config boundaries, richer welcomes, and cleaner terminal ownership.
+
+Upgrade impact: migration available
+
+Highlights:
+- Split pack settings into `yazelix_packs.toml`, tightened migration-aware config ownership, and made `user_configs/` the canonical managed input boundary for Zellij, Yazi, and the main Yazelix config surfaces.
+- Added terminal override layers for Ghostty, Kitty, and Alacritty while keeping launch-critical startup behavior Yazelix-owned and moving Ghostty shader generation toward runtime state.
+- Expanded the front-door UX with per-user desktop entries, `yzx tutor`, `yzx screen`, explicit `yzx config open` targets, and a much richer welcome-screen system with multiple styles and animations.
+
+Migration notes:
+- `yzx config migrate` can move legacy `[packs]` settings into `yazelix_packs.toml`, replace `[ascii].mode` with `[core].welcome_style`, and rename `core.welcome_style = "life"` to `"game_of_life"`.
+- If you still use `terminal.config_mode = "auto"`, replace it with either `"yazelix"` or `"user"` after deciding which config owner you want.
+- Yazelix now treats `user_configs/` as the canonical managed input boundary and relocates legacy root or native config files into that structure when it can do so safely.
+
 ## v13.8 - 2026-03-27
 
 Zellij 0.44, startup recovery, and migration-aware upgrade UX.
