@@ -17,6 +17,7 @@ def build_sweep_config [
             debug_mode: false
             skip_welcome_screen: true
             show_macchina_on_welcome: false
+            welcome_style: "static"
         }
         helix: {
             mode: ($features.helix_mode? | default "release")
@@ -42,14 +43,6 @@ def build_sweep_config [
             rounded_corners: true
             persistent_sessions: ($features.persistent_sessions? | default false)
             session_name: $"sweep_test_($test_id)"
-        }
-        ascii: {
-            mode: "static"
-        }
-        packs: {
-            enabled: []
-            declarations: {}
-            user_packages: []
         }
     }
 }

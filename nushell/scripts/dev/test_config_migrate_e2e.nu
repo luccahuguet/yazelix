@@ -224,11 +224,60 @@ go = ["gopls", "golangci-lint"]
     $ok
 }
 
+def run_welcome_style_migration_case [] {
+    let fixture = (setup_fixture
+        "yazelix_migrate_e2e_welcome_style"
+        '[ascii]
+mode = "animated"
+')
+    let log_file = $fixture.log_file
+
+    log_line $log_file "Case: migrate legacy ascii.mode into core.welcome_style"
+    log_line $log_file $"Temp HOME: ($fixture.tmp_home)"
+    log_line $log_file $"Config path: ($fixture.config_path)"
+    log_line $log_file $"Log file: ($log_file)"
+    log_line $log_file ""
+    log_block $log_file "Input TOML" (open --raw $fixture.config_path)
+
+    let preview = (run_migrate $fixture)
+    log_block $log_file "Preview stdout" ($preview.stdout | str trim)
+    log_block $log_file "Preview stderr" ($preview.stderr | str trim)
+
+    let apply = (run_migrate $fixture ["--apply", "--yes"])
+    log_block $log_file "Apply stdout" ($apply.stdout | str trim)
+    log_block $log_file "Apply stderr" ($apply.stderr | str trim)
+    log_block $log_file "Output main TOML" (open --raw $fixture.config_path)
+
+    let backups = (ls $fixture.config_dir | where name =~ 'yazelix\.toml\.backup-')
+    log_block $log_file "Backups" (($backups | get name | str join "\n"))
+
+    let parsed_main = (open $fixture.config_path)
+    let ok = (
+        ($preview.exit_code == 0)
+        and ($apply.exit_code == 0)
+        and (($preview.stdout | str contains "[AUTO] replace_ascii_art_mode_with_welcome_style"))
+        and (($apply.stdout | str contains "Applied 1 config migration"))
+        and (($parsed_main.core | get welcome_style) == "logo")
+        and not ("ascii" in ($parsed_main | columns))
+        and (($backups | length) == 1)
+    )
+
+    if $ok {
+        log_line $log_file "Result: PASS"
+    } else {
+        log_line $log_file "Result: FAIL"
+    }
+
+    rm -rf $fixture.tmp_home
+    $ok
+}
+
 export def main [] {
     let results = [
         (run_mixed_migration_case)
         (run_manual_conflict_case)
         (run_pack_split_case)
+        (run_welcome_style_migration_case)
     ]
     let passed = ($results | where $it == true | length)
     let total = ($results | length)

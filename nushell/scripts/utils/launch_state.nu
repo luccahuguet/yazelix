@@ -132,7 +132,7 @@ export def get_launch_env [config: record, profile_path: string] {
         YAZELIX_HELIX_MODE: ($config.helix_mode? | default "release" | into string)
         YAZELIX_PREFERRED_TERMINAL: $preferred_terminal
         YAZELIX_TERMINAL_CONFIG_MODE: ($config.terminal_config_mode? | default "yazelix" | into string)
-        YAZELIX_ASCII_ART_MODE: ($config.ascii_art_mode? | default "static" | into string)
+        YAZELIX_WELCOME_STYLE: ($config.welcome_style? | default "random" | into string)
         EDITOR: $editor_command
     }
 

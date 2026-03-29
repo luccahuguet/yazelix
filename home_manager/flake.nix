@@ -106,7 +106,7 @@
                 editor_command = "hx";
                 
                 # Display options
-                ascii_art_mode = "animated";  # Opt-in for animated welcome (default: "static")
+                welcome_style = "random";  # Random animated welcome style (never static)
                 show_macchina_on_welcome = true;
                 
                 # Session configuration

@@ -14,6 +14,36 @@ export def get_yazelix_colors [] {
     }
 }
 
+export const WELCOME_STYLE_VALUES = ["static", "logo", "boids", "life", "mandelbrot", "random"]
+export const ANIMATED_WELCOME_STYLE_VALUES = ["logo", "boids", "life", "mandelbrot"]
+
+export def get_welcome_style_random_pool [] {
+    $ANIMATED_WELCOME_STYLE_VALUES
+}
+
+export def resolve_welcome_style [welcome_style: string, random_index?: int] {
+    let normalized = ($welcome_style | into string | str downcase)
+
+    if $normalized != "random" {
+        return $normalized
+    }
+
+    let pool = (get_welcome_style_random_pool)
+    if ($pool | is-empty) {
+        error make {msg: "Welcome style random pool is empty."}
+    }
+
+    let max_index = (($pool | length) - 1)
+    let selected_index = if $random_index == null {
+        random int 0..$max_index
+    } else {
+        let provided = ($random_index | into int)
+        $provided mod ($pool | length)
+    }
+
+    $pool | get $selected_index
+}
+
 export def get_welcome_ascii_art [] {
     let colors = get_yazelix_colors
     let purple = $colors.purple
@@ -184,4 +214,27 @@ export def play_animation [duration: duration ] {
     }
     # After animation, move cursor just below the art
     print ((0..($art_height - 1) | each { "" } | str join "\n"))
+}
+
+export def render_welcome_style [welcome_style: string, duration: duration = 0.5sec] {
+    let resolved_style = (resolve_welcome_style $welcome_style)
+
+    if $resolved_style == "static" {
+        let ascii_art = get_welcome_ascii_art
+        for line in $ascii_art {
+            print $line
+        }
+        print ""
+        return
+    }
+
+    if $resolved_style in ["logo", "boids", "life", "mandelbrot"] {
+        print ""
+        # The dedicated boids/life/mandelbrot renderers land in their own beads.
+        # Until then, animated styles share the current Yazelix logo animation.
+        play_animation $duration
+        return
+    }
+
+    error make {msg: $"Unsupported welcome_style: ($resolved_style)"}
 }

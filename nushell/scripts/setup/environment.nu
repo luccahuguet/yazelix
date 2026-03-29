@@ -15,7 +15,7 @@ def main [--welcome-source: string, --skip-welcome] {
     let debug_mode = ($config.debug_mode? | default false)
     let skip_welcome_screen = ($config.skip_welcome_screen? | default false)
     let helix_mode = ($config.helix_mode? | default "release")
-    let ascii_art_mode = ($config.ascii_art_mode? | default "static")
+    let welcome_style = ($config.welcome_style? | default "random")
     let show_macchina_on_welcome = ($config.show_macchina_on_welcome? | default false)
 
     # Parse extra shells from config
@@ -145,6 +145,6 @@ def main [--welcome-source: string, --skip-welcome] {
 
     # Display welcome screen or log it (skip when start_yazelix handles it)
     if $welcome_source != "start" {
-        show_welcome $skip_welcome_screen $quiet_mode $ascii_art_mode $show_macchina_on_welcome $welcome_message $log_dir $colors $skip_welcome
+        show_welcome $skip_welcome_screen $quiet_mode $welcome_style $show_macchina_on_welcome $welcome_message $log_dir $colors $skip_welcome
     }
 }

@@ -3,6 +3,7 @@
 # Uses yazelix_default.toml as the reference for validation
 
 use constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_SHADERS, GHOSTTY_TRAIL_EFFECTS, GHOSTTY_MODE_EFFECTS, GHOSTTY_TRAIL_GLOW_LEVELS]
+use ascii_art.nu [WELCOME_STYLE_VALUES]
 use config_surfaces.nu load_config_surface_from_main
 
 const OPEN_RECORD_PATHS = [
@@ -158,7 +159,7 @@ export def validate_enum_values [user: record] {
         { path: ["terminal", "ghostty_trail_effect"], label: "terminal.ghostty_trail_effect", allowed: $ghostty_trail_effect_allowed },
         { path: ["terminal", "ghostty_mode_effect"], label: "terminal.ghostty_mode_effect", allowed: $ghostty_mode_effect_allowed },
         { path: ["terminal", "ghostty_trail_glow"], label: "terminal.ghostty_trail_glow", allowed: $GHOSTTY_TRAIL_GLOW_LEVELS },
-        { path: ["ascii", "mode"], label: "ascii.mode", allowed: ["static", "animated"] },
+        { path: ["core", "welcome_style"], label: "core.welcome_style", allowed: $WELCOME_STYLE_VALUES },
         { path: ["zellij", "widget_tray"], label: "zellij.widget_tray", allowed: ["editor", "shell", "term", "cpu", "ram"] }
     ]
     for enum in $enums {

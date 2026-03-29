@@ -56,7 +56,7 @@
     # Development-friendly settings
     debug_mode = true; # Enable verbose logging
     skip_welcome_screen = false; # Show welcome screen
-    ascii_art_mode = "static"; # Static ASCII art for faster startup
+    welcome_style = "static"; # Static Yazelix logo for faster startup
     show_macchina_on_welcome = true;
 
     # Zellij customization

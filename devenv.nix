@@ -109,7 +109,7 @@ let
     persistent_sessions = rawConfig.zellij.persistent_sessions or false;
     session_name = rawConfig.zellij.session_name or "yazelix";
 
-    ascii_art_mode = rawConfig.ascii.mode or "static";
+    welcome_style = rawConfig.core.welcome_style or "random";
 
     pack_names = rawPacks.enabled or [ ];
     pack_declarations = rawPacks.declarations or { };
@@ -185,7 +185,7 @@ let
 
   debugMode = userConfig.debug_mode or false;
   skipWelcomeScreen = userConfig.skip_welcome_screen or false;
-  asciiArtMode = userConfig.ascii_art_mode or "static";
+  welcomeStyle = userConfig.welcome_style or "random";
   enableSidebar = userConfig.enable_sidebar or true;
   showMacchinaOnWelcome = userConfig.show_macchina_on_welcome or false;
   yazelixNixConfig = ''
@@ -590,7 +590,7 @@ in
     YAZELIX_HELIX_MODE = helixMode;
     YAZELIX_PREFERRED_TERMINAL = preferredTerminal;
     YAZELIX_TERMINAL_CONFIG_MODE = terminalConfigMode;
-    YAZELIX_ASCII_ART_MODE = asciiArtMode;
+    YAZELIX_WELCOME_STYLE = welcomeStyle;
     EDITOR = editorCommand;
   } // lib.optionalAttrs (helixRuntimePath != null) {
     HELIX_RUNTIME = helixRuntimePath;
@@ -611,7 +611,7 @@ in
     export YAZELIX_HELIX_MODE="${helixMode}"
     export YAZELIX_PREFERRED_TERMINAL="${preferredTerminal}"
     export YAZELIX_TERMINAL_CONFIG_MODE="${terminalConfigMode}"
-    export YAZELIX_ASCII_ART_MODE="${asciiArtMode}"
+    export YAZELIX_WELCOME_STYLE="${welcomeStyle}"
     export EDITOR="${editorCommand}"
     ${lib.optionalString (helixRuntimePath != null) ''
       export HELIX_RUNTIME="${helixRuntimePath}"

@@ -2,6 +2,7 @@
 
 use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
 use ../utils/launch_state.nu [get_launch_env]
+use ../utils/ascii_art.nu [get_welcome_style_random_pool resolve_welcome_style]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/terminal_launcher.nu [resolve_terminal_config]
@@ -116,7 +117,7 @@ def test_launch_env_omits_default_helix_runtime [] {
             default_shell: "nu"
             debug_mode: false
             enable_sidebar: true
-            ascii_art_mode: "static"
+            welcome_style: "static"
             terminal_config_mode: "yazelix"
         }
         let stdout = (get_launch_env $cfg "/tmp/yazelix-profile" | get -o HELIX_RUNTIME | default "" | str trim)
@@ -145,7 +146,7 @@ def test_launch_env_keeps_custom_helix_runtime_override [] {
             default_shell: "nu"
             debug_mode: false
             enable_sidebar: true
-            ascii_art_mode: "static"
+            welcome_style: "static"
             terminal_config_mode: "yazelix"
         }
         let stdout = (get_launch_env $cfg "/tmp/yazelix-profile" | get HELIX_RUNTIME | str trim)
@@ -325,6 +326,114 @@ rust = ["rust_toolchain"]
     $result
 }
 
+def test_parse_yazelix_config_reads_core_welcome_style [] {
+    print "🧪 Testing parse_yazelix_config reads core.welcome_style..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_welcome_style_parse_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+
+        '[core]
+welcome_style = "mandelbrot"
+' | save --force --raw $config_path
+
+        let parsed = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+
+        if ($parsed.welcome_style == "mandelbrot") {
+            print "  ✅ parse_yazelix_config reads the new core.welcome_style field"
+            true
+        } else {
+            print $"  ❌ Unexpected parsed welcome style: ($parsed.welcome_style)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+def test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance [] {
+    print "🧪 Testing parse_yazelix_config rejects legacy [ascii].mode with one clean migration path..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_welcome_style_legacy_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+
+    let result = (try {
+        '[ascii]
+mode = "animated"
+' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+
+        let parser_result = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($repo_root | path join "nushell" "scripts" "utils" "config_parser.nu")\" [parse_yazelix_config]; parse_yazelix_config" | complete
+        })
+
+        let stderr = ($parser_result.stderr | str trim)
+
+        if (
+            ($parser_result.exit_code != 0)
+            and ($stderr | str contains "Known migration at ascii")
+            and ($stderr | str contains "Replace legacy [ascii].mode with core.welcome_style")
+            and ($stderr | str contains "yzx config migrate --apply")
+            and not ($stderr | str contains "Unknown config field at ascii")
+        ) {
+            print "  ✅ Legacy [ascii].mode now points at one clean migration path during startup"
+            true
+        } else {
+            print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_welcome_style_random_pool_excludes_static [] {
+    print "🧪 Testing welcome_style random pool excludes static and only resolves animated styles..."
+
+    try {
+        let pool = (get_welcome_style_random_pool)
+        let resolved = (
+            0..3
+            | each {|index| resolve_welcome_style "random" $index }
+            | uniq
+        )
+
+        if (
+            ($pool == ["logo", "boids", "life", "mandelbrot"])
+            and ("static" not-in $pool)
+            and ("static" not-in $resolved)
+            and ($resolved | all {|style| $style in $pool })
+        ) {
+            print "  ✅ random welcome selection excludes static and resolves only through the animated pool"
+            true
+        } else {
+            print $"  ❌ Unexpected pool/resolution: pool=($pool | to json -r) resolved=($resolved | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
     print "🧪 Testing parse_yazelix_config bootstraps both default config surfaces on first run..."
 
@@ -359,6 +468,48 @@ def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
             true
         } else {
             print $"  ❌ Unexpected result: main_exists=($main_exists) pack_exists=($pack_exists) parsed=($parsed | select pack_names pack_declarations | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_parse_yazelix_config_bootstraps_welcome_style_surface [] {
+    print "🧪 Testing first-run bootstrap writes welcome_style into the generated main config..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_welcome_bootstrap_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+
+    let result = (try {
+        let parsed = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+
+        let main_path = ($temp_config_dir | path join "yazelix.toml")
+        let generated_main = (if ($main_path | path exists) { open --raw $main_path } else { "" })
+
+        if (
+            ($main_path | path exists)
+            and ($parsed.welcome_style == "random")
+            and ($generated_main | str contains 'welcome_style = "random"')
+            and not ($generated_main | str contains "[ascii]")
+        ) {
+            print "  ✅ First-run bootstrap writes the new welcome_style surface into yazelix.toml"
+            true
+        } else {
+            print $"  ❌ Unexpected bootstrap result: main_exists=((($main_path | path exists))) parsed=($parsed.welcome_style) main=($generated_main)"
             false
         }
     } catch { |err|
@@ -539,7 +690,7 @@ def test_launch_env_omits_yazelix_default_shell [] {
             default_shell: "fish"
             debug_mode: false
             enable_sidebar: true
-            ascii_art_mode: "static"
+            welcome_style: "static"
             terminal_config_mode: "yazelix"
         }
         let stdout = (get_launch_env $cfg "/tmp/yazelix-profile" | get -o YAZELIX_DEFAULT_SHELL | default "" | str trim)
@@ -1194,10 +1345,14 @@ export def run_generated_config_canonical_tests [] {
         (test_zellij_widget_tray_defaults_omit_layout)
         (test_generate_all_terminal_configs_creates_override_scaffolds)
         (test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root)
+        (test_parse_yazelix_config_reads_core_welcome_style)
+        (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
         (test_parse_yazelix_config_reads_pack_sidecar)
+        (test_parse_yazelix_config_bootstraps_welcome_style_surface)
         (test_parse_yazelix_config_bootstraps_split_default_surfaces)
         (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)
         (test_parse_yazelix_config_rejects_split_pack_ownership)
+        (test_welcome_style_random_pool_excludes_static)
         (test_user_mode_requires_real_terminal_config)
         (test_config_schema_rejects_removed_auto_terminal_config_mode)
         (test_ghostty_trail_glow_defaults_to_medium_and_reads_explicit_levels)

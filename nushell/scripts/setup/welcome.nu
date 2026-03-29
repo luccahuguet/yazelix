@@ -6,21 +6,12 @@ use ../utils/ascii_art.nu *
 use ../utils/constants.nu YAZELIX_VERSION
 use ../utils/config_parser.nu parse_yazelix_config
 
-# Show ASCII art based on mode (animated or static)
-export def show_ascii_art [
-    ascii_art_mode: string
+# Show welcome art based on the configured style
+export def show_welcome_art [
+    welcome_style: string
     show_macchina_on_welcome: bool
 ]: nothing -> nothing {
-    if $ascii_art_mode == "animated" {
-        print ""
-        play_animation 0.5sec
-    } else if $ascii_art_mode == "static" {
-        let ascii_art = get_welcome_ascii_art
-        for $line in $ascii_art {
-            print $line
-        }
-        print ""
-    }
+    render_welcome_style $welcome_style 0.5sec
 
     # Show macchina if enabled and available
     if $show_macchina_on_welcome {
@@ -127,7 +118,7 @@ export def build_welcome_message [
 export def show_welcome [
     skip_welcome_screen: bool
     quiet_mode: bool
-    ascii_art_mode: string
+    welcome_style: string
     show_macchina_on_welcome: bool
     welcome_message: list<string>
     log_dir: string
@@ -140,7 +131,7 @@ export def show_welcome [
 
     # Show ASCII art first (if not skipping)
     if (not $should_skip_welcome) and (not $quiet_mode) {
-        show_ascii_art $ascii_art_mode $show_macchina_on_welcome
+        show_welcome_art $welcome_style $show_macchina_on_welcome
     }
 
     # Show welcome or log it

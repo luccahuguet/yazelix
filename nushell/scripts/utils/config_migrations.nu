@@ -77,6 +77,20 @@ const CONFIG_MIGRATION_RULES = [
         manual_fix: "Replace terminal.config_mode = \"auto\" with either \"yazelix\" or \"user\" after deciding which config owner you want."
     }
     {
+        id: "replace_ascii_art_mode_with_welcome_style"
+        title: "Replace legacy [ascii].mode with core.welcome_style"
+        kind: "field_reshape"
+        introduced_in: "v13.8"
+        introduced_after_version: null
+        introduced_on: "2026-03-29"
+        review_after_days: 180
+        auto_apply: true
+        user_visible: true
+        guarded_paths: ["ascii", "ascii.mode", "core.welcome_style"]
+        rationale: "Yazelix now uses one welcome_style selector instead of a separate ASCII-art mode field. Animated welcome now maps to the branded logo style."
+        manual_fix: "Move [ascii].mode into [core].welcome_style. Use \"static\", \"logo\", \"boids\", \"life\", \"mandelbrot\", or \"random\"."
+    }
+    {
         id: "split_legacy_pack_config_surface"
         title: "Move legacy [packs] out of yazelix.toml into yazelix_packs.toml"
         kind: "field_reshape"
@@ -332,6 +346,65 @@ def plan_review_terminal_config_mode_auto [config: record] {
     (make_result "review_terminal_config_mode_auto" "manual_only" [] [(format_path $path)] $config)
 }
 
+def plan_replace_ascii_art_mode_with_welcome_style [config: record] {
+    let legacy_root_path = ["ascii"]
+    let old_path = ["ascii", "mode"]
+    let new_path = ["core", "welcome_style"]
+    let legacy_value = (maybe_get $config $old_path)
+
+    if $legacy_value == null {
+        return null
+    }
+
+    if (has_path $config $new_path) {
+        return (make_result
+            "replace_ascii_art_mode_with_welcome_style"
+            "manual_only"
+            []
+            [
+                (format_path $legacy_root_path)
+                (format_path $old_path)
+                (format_path $new_path)
+            ]
+            $config
+        )
+    }
+
+    let normalized = (try { $legacy_value | into string | str downcase } catch { null })
+    let mapped = match $normalized {
+        "static" => "static"
+        "animated" => "logo"
+        _ => null
+    }
+
+    if $mapped == null {
+        return (make_result
+            "replace_ascii_art_mode_with_welcome_style"
+            "manual_only"
+            []
+            [
+                (format_path $legacy_root_path)
+                (format_path $old_path)
+            ]
+            $config
+        )
+    }
+
+    let updated_core = (($config.core? | default {}) | upsert welcome_style $mapped)
+    let updated_config = (($config | reject ascii) | upsert core $updated_core)
+
+    (make_result
+        "replace_ascii_art_mode_with_welcome_style"
+        "auto"
+        [$"Replace [ascii].mode = \"($normalized)\" with [core].welcome_style = \"($mapped)\"."]
+        [
+            (format_path $legacy_root_path)
+            (format_path $old_path)
+        ]
+        $updated_config
+    )
+}
+
 def plan_split_legacy_pack_config_surface [config: record, pack_config: any, pack_config_path: string] {
     let path = ["packs"]
     let packs = (maybe_get $config $path)
@@ -379,6 +452,7 @@ def get_plan_step [rule_id: string, config: record, pack_config: any = null, pac
         "remove_shell_enable_atuin" => (plan_remove_shell_enable_atuin $config)
         "review_legacy_cursor_trail_settings" => (plan_review_legacy_cursor_trail_settings $config)
         "review_terminal_config_mode_auto" => (plan_review_terminal_config_mode_auto $config)
+        "replace_ascii_art_mode_with_welcome_style" => (plan_replace_ascii_art_mode_with_welcome_style $config)
         "split_legacy_pack_config_surface" => (plan_split_legacy_pack_config_surface $config $pack_config $pack_config_path)
         _ => (error make {msg: $"Unknown config migration rule id: ($rule_id)"})
     }

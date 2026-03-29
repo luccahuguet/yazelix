@@ -406,13 +406,25 @@ in
       description = "Skip the welcome screen on startup";
     };
 
-    ascii_art_mode = mkOption {
+    welcome_style = mkOption {
       type = types.enum [
         "static"
-        "animated"
+        "logo"
+        "boids"
+        "life"
+        "mandelbrot"
+        "random"
       ];
-      default = "animated";
-      description = "ASCII art display mode";
+      default = "random";
+      description = ''
+        Welcome screen style.
+        - "static": show the resting Yazelix logo frame only
+        - "logo": show the branded animated logo reveal
+        - "boids": reserved animated flocking style
+        - "life": reserved Game of Life style
+        - "mandelbrot": reserved fractal style
+        - "random": choose one animated style at random (never "static")
+      '';
     };
 
     show_macchina_on_welcome = mkOption {
@@ -631,6 +643,7 @@ in
             "debug_mode = ${boolToToml cfg.debug_mode}"
             "skip_welcome_screen = ${boolToToml cfg.skip_welcome_screen}"
             "show_macchina_on_welcome = ${boolToToml cfg.show_macchina_on_welcome}"
+            "welcome_style = ${escapeString cfg.welcome_style}"
             "refresh_output = ${escapeString cfg.refresh_output}"
             "max_jobs = ${escapeString cfg.max_jobs}"
             "build_cores = ${escapeString cfg.build_cores}"
@@ -679,9 +692,6 @@ in
             "plugins = ${listToToml cfg.yazi_plugins}"
             "theme = ${escapeString cfg.yazi_theme}"
             "sort_by = ${escapeString cfg.yazi_sort_by}"
-            ""
-            "[ascii]"
-            "mode = ${escapeString cfg.ascii_art_mode}"
           ]
           ++ [
             ""

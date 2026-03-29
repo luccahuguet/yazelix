@@ -101,6 +101,19 @@ def parse_terminal_config_mode [raw_config: record] {
     $mode
 }
 
+def parse_welcome_style [raw_config: record] {
+    let style = ($raw_config.core?.welcome_style? | default "random" | into string | str downcase)
+    let allowed = ["static", "logo", "boids", "life", "mandelbrot", "random"]
+
+    if not ($style in $allowed) {
+        let allowed_text = ($allowed | str join ", ")
+        let classification = (format_failure_classification "config" "Update core.welcome_style with one of the supported values, or run `yzx config reset --yes` to restore the template.")
+        error make {msg: $"Invalid core.welcome_style value '($style)'. Expected one of: ($allowed_text)\n($classification)"}
+    }
+
+    $style
+}
+
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
     let config_surface = load_active_config_surface
@@ -135,10 +148,10 @@ export def parse_yazelix_config [] {
         debug_mode: ($raw_config.core?.debug_mode? | default false),
         skip_welcome_screen: ($raw_config.core?.skip_welcome_screen? | default false),
         show_macchina_on_welcome: ($raw_config.core?.show_macchina_on_welcome? | default true),
+        welcome_style: (parse_welcome_style $raw_config),
         refresh_output: (parse_refresh_output $raw_config),
         max_jobs: (parse_positive_parallel_setting $raw_config.core?.max_jobs? "core.max_jobs" ["auto", "max", "max_minus_one", "half", "quarter"] "half"),
         build_cores: (parse_positive_parallel_setting $raw_config.core?.build_cores? "core.build_cores" ["max", "max_minus_one", "half", "quarter"] "2"),
-        ascii_art_mode: ($raw_config.ascii?.mode? | default "static"),
         persistent_sessions: ($raw_config.zellij?.persistent_sessions? | default false | into string),
         session_name: ($raw_config.zellij?.session_name? | default "yazelix"),
         zellij_default_mode: (parse_zellij_default_mode $raw_config),
