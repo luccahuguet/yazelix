@@ -152,6 +152,13 @@ def colorize_boid_char [char: string, index: int] {
     $"($color)($char)($colors.reset)"
 }
 
+def colorize_life_char [x: int, y: int] {
+    let colors = get_yazelix_colors
+    let palette = [$colors.green, $colors.cyan, $colors.blue, $colors.purple]
+    let color = ($palette | get (($x + $y) mod ($palette | length)))
+    $"($color)■($colors.reset)"
+}
+
 def make_border [inner_width: int, character: string] {
     repeat_char $character ($inner_width + 2)
 }
@@ -260,6 +267,32 @@ def get_boids_welcome_spec [variant: string] {
     }
 }
 
+def get_life_welcome_spec [variant: string] {
+    match $variant {
+        "narrow" => {
+            {
+                inner_width: 22
+                body_height: 4
+            }
+        }
+        "medium" => {
+            {
+                inner_width: 34
+                body_height: 5
+            }
+        }
+        "wide" => {
+            {
+                inner_width: 46
+                body_height: 5
+            }
+        }
+        _ => {
+            error make {msg: $"Unsupported life welcome variant: ($variant)"}
+        }
+    }
+}
+
 def make_boid_point [x: int, y: int, char: string, index: int] {
     { x: $x, y: $y, char: $char, index: $index }
 }
@@ -350,6 +383,137 @@ def build_boids_frame [spec: record, phase: string] {
     ]
 }
 
+def make_life_cell [x: int, y: int] {
+    { x: $x, y: $y }
+}
+
+def life_cell_key [cell: record] {
+    $"($cell.x),($cell.y)"
+}
+
+def unique_life_cells [cells: list<record>] {
+    mut keys = []
+    mut unique = []
+
+    for cell in $cells {
+        let key = (life_cell_key $cell)
+        if not ($key in $keys) {
+            $keys = ($keys | append $key)
+            $unique = ($unique | append $cell)
+        }
+    }
+
+    $unique
+}
+
+def has_life_cell [cells: list<record>, x: int, y: int] {
+    $cells | any {|cell| ($cell.x == $x) and ($cell.y == $y) }
+}
+
+def get_life_seed [spec: record] {
+    let width = ($spec.inner_width | into int)
+    let height = ($spec.body_height | into int)
+    let mid_x = ($width / 2 | math floor)
+    let mid_y = ($height / 2 | math floor)
+
+    unique_life_cells [
+        (make_life_cell 3 1)
+        (make_life_cell 4 1)
+        (make_life_cell 5 1)
+        (make_life_cell ($width - 6) ($height - 2))
+        (make_life_cell ($width - 5) ($height - 2))
+        (make_life_cell ($width - 4) ($height - 2))
+        (make_life_cell ($mid_x - 1) ($mid_y - 1))
+        (make_life_cell $mid_x ($mid_y - 1))
+        (make_life_cell ($mid_x + 1) ($mid_y - 1))
+        (make_life_cell ($mid_x - 1) $mid_y)
+        (make_life_cell $mid_x ($mid_y + 1))
+    ]
+}
+
+def count_live_neighbors [cells: list<record>, x: int, y: int] {
+    mut count = 0
+
+    for ny in [($y - 1), $y, ($y + 1)] {
+        for nx in [($x - 1), $x, ($x + 1)] {
+            if ($nx == $x) and ($ny == $y) {
+                continue
+            }
+
+            if (has_life_cell $cells $nx $ny) {
+                $count += 1
+            }
+        }
+    }
+
+    $count
+}
+
+def step_life_cells [cells: list<record>, width: int, height: int] {
+    mut candidates = []
+
+    for cell in $cells {
+        for ny in [($cell.y - 1), $cell.y, ($cell.y + 1)] {
+            if ($ny < 0) or ($ny >= $height) {
+                continue
+            }
+
+            for nx in [($cell.x - 1), $cell.x, ($cell.x + 1)] {
+                if ($nx < 0) or ($nx >= $width) {
+                    continue
+                }
+
+                $candidates = ($candidates | append [(make_life_cell $nx $ny)])
+            }
+        }
+    }
+
+    let unique_candidates = (unique_life_cells $candidates)
+    mut next_cells = []
+
+    for candidate in $unique_candidates {
+        let neighbors = (count_live_neighbors $cells $candidate.x $candidate.y)
+        let alive = (has_life_cell $cells $candidate.x $candidate.y)
+
+        if ($neighbors == 3) or ($alive and ($neighbors == 2)) {
+            $next_cells = ($next_cells | append [$candidate])
+        }
+    }
+
+    unique_life_cells $next_cells
+}
+
+def render_life_row [width: int, row_index: int, cells: list<record>] {
+    0..($width - 1)
+    | each {|x|
+        if (has_life_cell $cells $x $row_index) {
+            colorize_life_char $x $row_index
+        } else {
+            " "
+        }
+    }
+    | str join ""
+}
+
+def build_life_frame [spec: record, cells: list<record>] {
+    let colors = get_yazelix_colors
+    let width = ($spec.inner_width | into int)
+    let height = ($spec.body_height | into int)
+    let body = (
+        0..($height - 1)
+        | each {|row_index|
+            let row = (render_life_row $width $row_index $cells)
+            $"($colors.purple)│($colors.reset)($row)($colors.purple)│($colors.reset)"
+        }
+    )
+
+    [
+        $"($colors.purple)╭(make_border $width "─")╮($colors.reset)"
+        ...$body
+        $"($colors.purple)╰(make_border $width "─")╯($colors.reset)"
+    ]
+}
+
 export def get_logo_welcome_frame [width?: int] {
     let variant = (get_logo_welcome_variant $width)
     let spec = (get_logo_welcome_spec $variant)
@@ -377,6 +541,23 @@ export def get_boids_animation_frames [width?: int] {
         (build_boids_frame $spec "scatter")
         (build_boids_frame $spec "drift")
         (build_boids_frame $spec "cluster")
+        (get_logo_welcome_frame $width)
+    ]
+}
+
+export def get_life_animation_frames [width?: int] {
+    let variant = (get_logo_welcome_variant $width)
+    let spec = (get_life_welcome_spec $variant)
+    let width_limit = ($spec.inner_width | into int)
+    let height_limit = ($spec.body_height | into int)
+    let frame0_cells = (get_life_seed $spec)
+    let frame1_cells = (step_life_cells $frame0_cells $width_limit $height_limit)
+    let frame2_cells = (step_life_cells $frame1_cells $width_limit $height_limit)
+
+    [
+        (build_life_frame $spec $frame0_cells)
+        (build_life_frame $spec $frame1_cells)
+        (build_life_frame $spec $frame2_cells)
         (get_logo_welcome_frame $width)
     ]
 }
@@ -435,7 +616,13 @@ export def render_welcome_style [welcome_style: string, duration: duration = 0.5
         return
     }
 
-    if $resolved_style in ["life", "mandelbrot"] {
+    if $resolved_style == "life" {
+        print ""
+        play_frames (get_life_animation_frames $width) $duration
+        return
+    }
+
+    if $resolved_style == "mandelbrot" {
         print ""
         # Dedicated renderers land in their own welcome-style beads.
         # Until then, animated styles share the logo-forward reveal contract.

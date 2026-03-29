@@ -4,6 +4,7 @@ use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
 use ../utils/launch_state.nu [get_launch_env]
 use ../utils/ascii_art.nu [
     get_boids_animation_frames
+    get_life_animation_frames
     get_logo_animation_frames
     get_logo_welcome_frame
     get_logo_welcome_variant
@@ -484,6 +485,87 @@ def test_boids_animation_lands_on_logo_resting_frame [] {
             true
         } else {
             print "  ❌ Boids animation does not land on the shared final logo frame"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_life_animation_is_deterministic_and_evolves [] {
+    print "🧪 Testing life welcome generation is deterministic and evolves before landing on the logo frame..."
+
+    try {
+        let frames_a = (get_life_animation_frames 60)
+        let frames_b = (get_life_animation_frames 60)
+        let frame0 = ($frames_a | get 0)
+        let frame1 = ($frames_a | get 1)
+        let frame2 = ($frames_a | get 2)
+
+        if (
+            ($frames_a == $frames_b)
+            and ($frame0 != $frame1)
+            and ($frame1 != $frame2)
+            and (($frames_a | length) == 4)
+        ) {
+            print "  ✅ Life welcome generation is deterministic and advances through real intermediate states"
+            true
+        } else {
+            print $"  ❌ Unexpected life animation progression: frames=(($frames_a | length)) deterministic=(($frames_a == $frames_b)) frame0_eq_frame1=(($frame0 == $frame1)) frame1_eq_frame2=(($frame1 == $frame2))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_life_animation_stays_bounded_and_width_aware [] {
+    print "🧪 Testing life welcome frames stay bounded and fit the chosen width..."
+
+    try {
+        let narrow_frames = (get_life_animation_frames 36)
+        let medium_frames = (get_life_animation_frames 60)
+        let wide_frames = (get_life_animation_frames 100)
+
+        let narrow_width = ($narrow_frames | each {|frame| get_max_visible_width $frame } | math max)
+        let medium_width = ($medium_frames | each {|frame| get_max_visible_width $frame } | math max)
+        let wide_width = ($wide_frames | each {|frame| get_max_visible_width $frame } | math max)
+
+        if (
+            (($narrow_frames | length) == 4)
+            and (($medium_frames | length) == 4)
+            and (($wide_frames | length) == 4)
+            and ($narrow_width <= 36)
+            and ($medium_width <= 60)
+            and ($wide_width <= 100)
+        ) {
+            print "  ✅ Life welcome generation stays bounded and respects narrow, medium, and wide width budgets"
+            true
+        } else {
+            print $"  ❌ Unexpected life frame budgets: narrow_frames=(($narrow_frames | length)) narrow_width=($narrow_width) medium_width=($medium_width) wide_width=($wide_width)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_life_animation_lands_on_logo_resting_frame [] {
+    print "🧪 Testing life animation lands on the shared logo resting frame..."
+
+    try {
+        let static_logo = (get_logo_welcome_frame 60)
+        let life_frames = (get_life_animation_frames 60)
+        let final_frame = ($life_frames | last)
+
+        if ($final_frame == $static_logo) {
+            print "  ✅ Life animation resolves into the same readable final frame as the logo baseline"
+            true
+        } else {
+            print "  ❌ Life animation does not land on the shared final logo frame"
             false
         }
     } catch { |err|
@@ -1480,6 +1562,9 @@ export def run_generated_config_canonical_tests [] {
         (test_logo_animation_lands_on_static_resting_frame)
         (test_boids_animation_stays_bounded_and_width_aware)
         (test_boids_animation_lands_on_logo_resting_frame)
+        (test_life_animation_is_deterministic_and_evolves)
+        (test_life_animation_stays_bounded_and_width_aware)
+        (test_life_animation_lands_on_logo_resting_frame)
         (test_zellij_widget_tray_defaults_omit_layout)
         (test_generate_all_terminal_configs_creates_override_scaffolds)
         (test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root)
