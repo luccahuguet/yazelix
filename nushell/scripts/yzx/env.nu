@@ -3,6 +3,7 @@
 
 use ../utils/environment_bootstrap.nu *
 use ../utils/doctor.nu print_runtime_version_drift_warning
+use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu [describe_build_parallelism]
 use ../utils/launch_state.nu [get_launch_env require_reused_launch_profile]
 
@@ -60,6 +61,7 @@ export def "yzx env" [
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
     print_runtime_version_drift_warning
+    run_entrypoint_config_migration_preflight "yzx env" | ignore
 
     # Prepare environment (shared with start_yazelix.nu)
     let env_prep = prepare_environment

@@ -5,6 +5,7 @@
 use ../utils/config_manager.nu *
 use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
+use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu [describe_build_parallelism get_yazelix_dir require_yazelix_dir]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
@@ -276,6 +277,7 @@ export def "yzx restart" [
     --reuse         # Reuse the last built profile without rebuilding
     --skip-refresh(-s) # Skip explicit refresh trigger and allow potentially stale environment
 ] {
+    run_entrypoint_config_migration_preflight "yzx restart" | ignore
     let env_prep = prepare_environment
     let config = $env_prep.config
     let manage_terminals = ($config.manage_terminals? | default true)

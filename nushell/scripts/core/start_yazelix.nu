@@ -2,6 +2,7 @@
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 use ../utils/environment_bootstrap.nu *
+use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile]
 use ../utils/common.nu [describe_build_parallelism require_yazelix_dir]
@@ -45,6 +46,8 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
         print $"Error: ($err.msg)"
         exit 1
     }
+
+    run_entrypoint_config_migration_preflight "Yazelix startup" | ignore
 
     let env_prep = prepare_environment --verbose=$verbose_mode
     let config = $env_prep.config

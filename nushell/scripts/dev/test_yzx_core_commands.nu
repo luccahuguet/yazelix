@@ -125,6 +125,19 @@ def run_config_migrate_command [fixture: record, args: list<string> = []] {
     }
 }
 
+def run_entrypoint_preflight_command [fixture: record, entrypoint_label: string, --allow-noninteractive] {
+    let helper_script = (repo_path "nushell" "scripts" "utils" "entrypoint_config_migrations.nu")
+    let allow_suffix = if $allow_noninteractive { " --allow-noninteractive" } else { "" }
+
+    with-env {
+        HOME: $fixture.tmp_home
+        YAZELIX_CONFIG_DIR: $fixture.config_dir
+        YAZELIX_RUNTIME_DIR: $fixture.repo_root
+    } {
+        ^nu -c $"use \"($helper_script)\" [run_entrypoint_config_migration_preflight]; run_entrypoint_config_migration_preflight \"($entrypoint_label)\"($allow_suffix)" | complete
+    }
+}
+
 def record_has_path [data: record, path: list<string>] {
     mut current = $data
 
@@ -692,6 +705,126 @@ def test_yzx_config_migrate_apply_noops_on_current_config [] {
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_entrypoint_preflight_auto_applies_safe_migrations [] {
+    print "🧪 Testing entrypoint migration preflight auto-applies deterministic rewrites..."
+
+    let fixture = (setup_config_migrate_fixture
+        "yazelix_entrypoint_preflight_auto"
+        '[zellij]
+widget_tray = ["layout", "editor"]
+
+[shell]
+enable_atuin = true
+')
+
+    let result = (try {
+        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
+        let stdout = ($output.stdout | str trim)
+        let updated = (open $fixture.config_path)
+        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Yazelix auto-applied 2 safe config migration")
+            and (($updated | get zellij.widget_tray) == ["editor"])
+            and not (($updated.shell? | default {}) | columns | any {|column| $column == "enable_atuin" })
+            and (($backups | length) == 1)
+        ) {
+            print "  ✅ Entry-point preflight auto-applies deterministic config rewrites with backup"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) updated=($updated | to json -r) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_entrypoint_preflight_applies_auto_changes_then_blocks_on_manual_followup [] {
+    print "🧪 Testing entrypoint migration preflight applies safe rewrites before blocking on manual follow-up..."
+
+    let fixture = (setup_config_migrate_fixture
+        "yazelix_entrypoint_preflight_mixed"
+        '[zellij]
+widget_tray = ["layout", "editor"]
+
+[terminal]
+config_mode = "auto"
+')
+
+    let result = (try {
+        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
+        let stdout = ($output.stdout | str trim)
+        let stderr = ($output.stderr | str trim)
+        let updated = (open $fixture.config_path)
+        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
+
+        if (
+            ($output.exit_code != 0)
+            and ($stdout | str contains "Yazelix auto-applied 1 safe config migration")
+            and ($stderr | str contains "[MANUAL] review_terminal_config_mode_auto")
+            and (($updated | get zellij.widget_tray) == ["editor"])
+            and (($updated | get terminal.config_mode) == "auto")
+            and (($backups | length) == 1)
+        ) {
+            print "  ✅ Entry-point preflight fixes the deterministic subset and then blocks on manual-only config follow-up"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr) updated=($updated | to json -r) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_entrypoint_preflight_relocates_legacy_root_config_surfaces [] {
+    print "🧪 Testing entrypoint migration preflight relocates legacy root config into user_configs..."
+
+    let fixture = (setup_legacy_root_config_migrate_fixture
+        "yazelix_entrypoint_preflight_root_relocate"
+        '[shell]
+default_shell = "bash"
+'
+    )
+
+    let result = (try {
+        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
+        let stdout = ($output.stdout | str trim)
+        let relocated_main = ($fixture.user_config_dir | path join "yazelix.toml")
+        let updated = (open $relocated_main)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "relocated the managed config into user_configs")
+            and ($relocated_main | path exists)
+            and not ($fixture.config_path | path exists)
+            and (($updated.shell.default_shell? | default "") == "bash")
+        ) {
+            print "  ✅ Entry-point preflight relocates deterministic legacy root config ownership before continuing"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) relocated_exists=(($relocated_main | path exists)) updated=($updated | to json -r)"
             false
         }
     } catch {|err|
@@ -1951,6 +2084,9 @@ export def run_core_canonical_tests [] {
         (test_yzx_config_migrate_apply_splits_legacy_packs_into_sidecar)
         (test_yzx_config_migrate_apply_relocates_legacy_root_config_into_user_configs)
         (test_yzx_config_migrate_apply_noops_on_current_config)
+        (test_entrypoint_preflight_auto_applies_safe_migrations)
+        (test_entrypoint_preflight_applies_auto_changes_then_blocks_on_manual_followup)
+        (test_entrypoint_preflight_relocates_legacy_root_config_surfaces)
         (test_upgrade_summary_first_run_marks_seen_and_second_run_stays_quiet)
         (test_upgrade_summary_report_detects_matching_migrations)
         (test_build_welcome_message_uses_current_major_series_headline)

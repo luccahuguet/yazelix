@@ -725,6 +725,44 @@ mode = "animated"
     $result
 }
 
+def test_parse_yazelix_config_does_not_auto_apply_safe_migrations [] {
+    print "🧪 Testing parse_yazelix_config keeps safe migration rewrites out of read paths..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_parser_no_auto_apply"
+        '[shell]
+enable_atuin = true
+'
+    )
+
+    let result = (try {
+        let parser_result = (run_parse_yazelix_config_probe $fixture)
+        let stderr = ($parser_result.stderr | str trim)
+        let updated = (open $fixture.config_path)
+        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
+
+        if (
+            ($parser_result.exit_code != 0)
+            and ($stderr | str contains "Known migration at shell.enable_atuin")
+            and ($stderr | str contains "yzx config migrate --apply")
+            and (($updated.shell.enable_atuin? | default false) == true)
+            and (($backups | length) == 0)
+        ) {
+            print "  ✅ parse_yazelix_config still fails cleanly without rewriting safe migration cases"
+            true
+        } else {
+            print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr) updated=($updated | to json -r) backups=(($backups | length))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
     print "🧪 Testing parse_yazelix_config bootstraps both default config surfaces on first run..."
 
@@ -1832,6 +1870,7 @@ export def run_generated_config_canonical_tests [] {
         (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
         (test_parse_yazelix_config_reads_core_welcome_style)
         (test_parse_yazelix_config_reads_core_welcome_duration_seconds)
+        (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
         (test_welcome_playback_duration_honors_config_for_game_of_life_but_not_logo)
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
         (test_parse_yazelix_config_reads_pack_sidecar)
