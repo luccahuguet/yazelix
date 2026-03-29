@@ -1422,10 +1422,18 @@ ghostty_trail_glow = "medium"
 }
 
 def write_minimal_user_zellij_config [fake_home: string] {
-    let zellij_config_dir = ($fake_home | path join ".config" "zellij")
+    let zellij_config_dir = ($fake_home | path join ".config" "yazelix" "user_configs" "zellij")
     let zellij_config_path = ($zellij_config_dir | path join "config.kdl")
     mkdir $zellij_config_dir
     'keybinds { normal { bind "f1" { WriteChars "fixture"; } } }'
+        | save --force --raw $zellij_config_path
+}
+
+def write_legacy_native_zellij_config [fake_home: string] {
+    let zellij_config_dir = ($fake_home | path join ".config" "zellij")
+    let zellij_config_path = ($zellij_config_dir | path join "config.kdl")
+    mkdir $zellij_config_dir
+    'scroll_buffer_size 12345'
         | save --force --raw $zellij_config_path
 }
 
@@ -1602,11 +1610,13 @@ def test_zellij_default_mode_is_enforced_in_merged_config [] {
     let result = (try {
         let config_path = ($tmpdir | path join "yazelix.toml")
         let out_dir = ($tmpdir | path join "out")
+        let fake_home = ($tmpdir | path join "home")
         '[zellij]
 default_mode = "locked"
 ' | save --force --raw $config_path
 
         let output = (with-env {
+            HOME: $fake_home
             YAZELIX_CONFIG_OVERRIDE: $config_path
             YAZELIX_TEST_OUT_DIR: $out_dir
         } {
@@ -1640,11 +1650,7 @@ def test_zellij_horizontal_walking_is_plugin_owned [] {
     let result = (try {
         let out_dir = ($tmpdir | path join "out")
         let fake_home = ($tmpdir | path join "home")
-        let zellij_config_dir = ($fake_home | path join ".config" "zellij")
-        let zellij_config_path = ($zellij_config_dir | path join "config.kdl")
-        mkdir $zellij_config_dir
-        'keybinds { normal { bind "f1" { WriteChars "fixture"; } } }'
-            | save --force --raw $zellij_config_path
+        write_minimal_user_zellij_config $fake_home
 
         let output = (with-env { HOME: $fake_home, YAZELIX_TEST_OUT_DIR: $out_dir } {
             let root = (get_repo_config_dir)
@@ -1690,6 +1696,47 @@ def test_zellij_horizontal_walking_is_plugin_owned [] {
     $result
 }
 
+def test_generate_merged_zellij_config_relocates_legacy_native_user_config [] {
+    print "🧪 Testing merged Zellij config relocates legacy native user config into user_configs/zellij..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_user_cfg_relocate_XXXXXX | str trim)
+
+    let result = (try {
+        let out_dir = ($tmpdir | path join "out")
+        let fake_home = ($tmpdir | path join "home")
+        write_legacy_native_zellij_config $fake_home
+
+        let output = (with-env { HOME: $fake_home, YAZELIX_TEST_OUT_DIR: $out_dir } {
+            let root = (get_repo_config_dir)
+            generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
+            {
+                config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
+                relocated_exists: ((($fake_home | path join ".config" "yazelix" "user_configs" "zellij" "config.kdl") | path exists))
+                legacy_exists: ((($fake_home | path join ".config" "zellij" "config.kdl") | path exists))
+            }
+        })
+        let config_stdout = ($output.config | str trim)
+
+        if (
+            ($config_stdout | str contains 'scroll_buffer_size 12345')
+            and $output.relocated_exists
+            and (not $output.legacy_exists)
+        ) {
+            print "  ✅ Merged Zellij config relocates the legacy native config into user_configs/zellij and uses it"
+            true
+        } else {
+            print "  ❌ Unexpected result: legacy native Zellij config did not relocate or merge correctly"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 export def run_generated_config_canonical_tests [] {
     [
         (test_layout_generator_rewrites_runtime_paths)
@@ -1723,6 +1770,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_all_terminal_configs_honors_ghostty_trail_glow)
         (test_generate_all_terminal_configs_normalizes_ghostty_medium_glow_across_variants)
         (test_generate_merged_yazi_config_relocates_legacy_user_overrides)
+        (test_generate_merged_zellij_config_relocates_legacy_native_user_config)
         (test_zellij_default_mode_is_enforced_in_merged_config)
     ]
 }

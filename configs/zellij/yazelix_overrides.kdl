@@ -3,7 +3,7 @@
 // Applied at the merged config.kdl layer so they are session-wide and do not
 // depend on layout-local keybind loading behavior.
 
-// override these in ~/.config/zellij/config.kdl when needed
+// override these in ~/.config/yazelix/user_configs/zellij/config.kdl when needed
 
 // Use configured editor (via EDITOR env var) for viewing scrollback history
 // when pressing Ctrl+Alt+s. scrollback_editor defaults to $EDITOR when not

@@ -3,13 +3,13 @@
 // ========================================
 // This is a template file with documentation and examples.
 // 
-// Example native Zellij config settings for ~/.config/zellij/config.kdl
-// Copy the parts you want into your real native config file.
+// Example managed Zellij config settings for ~/.config/yazelix/user_configs/zellij/config.kdl
+// Copy the parts you want into your real managed config file.
 //
 // Configuration layers (in order of precedence):
 //   1. Zellij defaults (from `zellij setup --dump-config`)
 //   2. Yazelix overrides (yazelix_overrides.kdl) 
-//   3. Your native settings (~/.config/zellij/config.kdl) - HIGHEST PRIORITY
+//   3. Your managed settings (~/.config/yazelix/user_configs/zellij/config.kdl) - HIGHEST PRIORITY
 //
 // IMPORTANT: Merging uses simple concatenation. Zellij uses the last occurrence
 // of any setting. For nested blocks (ui, keybinds, themes), avoid duplicates

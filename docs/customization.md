@@ -17,11 +17,11 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
   - **Reference configs** (generated snapshot): `configs/terminal_emulators/`
     - Refresh snapshots: `yzx dev sync_terminal_configs` (uses `yazelix_default.toml`)
     - Snapshots match the generated configs under `~/.local/share/yazelix/configs/terminal_emulators/`
-- **Zellij Configuration**: Native Zellij config plus Yazelix overlays:
-  - **Quick start**: Edit `~/.config/zellij/config.kdl`
+- **Zellij Configuration**: Yazelix-managed user config plus generated runtime overlays:
+  - **Quick start**: Edit `~/.config/yazelix/user_configs/zellij/config.kdl`
   - **Full guide**: [Zellij Configuration Documentation](./zellij-configuration.md)
-  - **Three layers**: Zellij defaults or your native config + Yazelix dynamic settings + Yazelix enforced settings
-  - **Smart merging**: Yazelix reads your native Zellij config when present and regenerates the merged runtime config on startup
+  - **Three layers**: Your Yazelix-managed Zellij config or Zellij defaults + Yazelix dynamic settings + Yazelix enforced settings
+  - **Managed input boundary**: Yazelix reads `user_configs/zellij/config.kdl` in managed mode and regenerates the merged runtime config on startup
 - **Yazi Configuration**: Git-conflict-free two-layer configuration system:
   - **Quick start**: 
     ```bash

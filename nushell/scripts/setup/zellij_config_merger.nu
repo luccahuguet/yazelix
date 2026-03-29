@@ -1,9 +1,10 @@
 #!/usr/bin/env nu
 # Zellij Configuration Merger
-# Uses the user's Zellij config when available, falls back to Zellij defaults
+# Uses the Yazelix-managed user Zellij config when available, falls back to Zellij defaults
 
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
 use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/common.nu [get_yazelix_user_config_dir]
 use ./zellij_plugin_paths.nu [get_pane_orchestrator_wasm_path get_popup_runner_wasm_path]
 
 # Fetch Zellij default configuration
@@ -18,9 +19,45 @@ def get_zellij_defaults [] {
     $result
 }
 
-# Read the user's native Zellij config if it exists
+def get_zellij_user_config_path [] {
+    (get_yazelix_user_config_dir) | path join "zellij" "config.kdl"
+}
+
+def get_legacy_native_zellij_config_path [] {
+    ($env.HOME | path join ".config" "zellij" "config.kdl")
+}
+
+def reconcile_zellij_user_config_path [] {
+    let current_path = (get_zellij_user_config_path)
+    let legacy_path = (get_legacy_native_zellij_config_path)
+    let current_exists = ($current_path | path exists)
+    let legacy_exists = ($legacy_path | path exists)
+
+    if $current_exists and $legacy_exists {
+        error make {
+            msg: (
+                [
+                    "Yazelix found duplicate Zellij user config files in both user_configs and the native Zellij path."
+                    $"user_configs path: ($current_path)"
+                    $"native legacy path: ($legacy_path)"
+                    ""
+                    "Keep only the user_configs copy. Move or delete ~/.config/zellij/config.kdl so Yazelix has one clear managed owner."
+                ] | str join "\n"
+            )
+        }
+    }
+
+    if $legacy_exists {
+        mkdir ($current_path | path dirname)
+        mv $legacy_path $current_path
+    }
+
+    $current_path
+}
+
+# Read the Yazelix-managed user Zellij config if it exists
 def read_user_zellij_config [] {
-    let user_config_path = ($env.HOME | path join ".config" "zellij" "config.kdl")
+    let user_config_path = (reconcile_zellij_user_config_path)
     if ($user_config_path | path exists) {
         try {
             print $"📥 Using existing Zellij config from ($user_config_path)"
@@ -34,7 +71,7 @@ def read_user_zellij_config [] {
     }
 }
 
-# Choose the base config: user config if present, otherwise Zellij defaults
+# Choose the base config: Yazelix-managed user config if present, otherwise Zellij defaults
 def get_base_config [] {
     let user_config = read_user_zellij_config
     if ($user_config | is-not-empty) {
@@ -309,7 +346,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         "// GENERATED ZELLIJ CONFIG (YAZELIX)",
         "// ========================================",
         "// Source preference:",
-        "//   1) ~/.config/zellij/config.kdl (user-managed)",
+        "//   1) ~/.config/yazelix/user_configs/zellij/config.kdl (user-managed)",
         "//   2) zellij setup --dump-config (defaults)",
         "//",
         $"// Generated: (date now | format date '%Y-%m-%d %H:%M:%S')",

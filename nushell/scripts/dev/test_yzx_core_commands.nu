@@ -1045,7 +1045,7 @@ def test_yzx_config_sections [] {
 }
 
 def test_yzx_config_open_targets_print_paths [] {
-    print "🧪 Testing yzx config open resolves main and packs targets..."
+    print "🧪 Testing yzx config open resolves main, packs, and zellij targets..."
 
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_config_open_targets_XXXXXX | str trim)
@@ -1069,6 +1069,13 @@ def test_yzx_config_open_targets_print_paths [] {
         } {
             ^nu -c $"use \"($yzx_script)\" *; yzx config open packs --print" | complete
         }
+        let zellij_output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($yzx_script)\" *; yzx config open zellij --print" | complete
+        }
         let invalid_output = with-env {
             HOME: $tmp_home
             YAZELIX_CONFIG_DIR: $temp_config_dir
@@ -1079,22 +1086,26 @@ def test_yzx_config_open_targets_print_paths [] {
 
         let expected_main = ($temp_config_dir | path join "user_configs" "yazelix.toml")
         let expected_packs = ($temp_config_dir | path join "user_configs" "yazelix_packs.toml")
+        let expected_zellij = ($temp_config_dir | path join "user_configs" "zellij" "config.kdl")
         let main_stdout = ($main_output.stdout | str trim)
         let packs_stdout = ($packs_output.stdout | str trim)
+        let zellij_stdout = ($zellij_output.stdout | str trim)
         let invalid_stderr = ($invalid_output.stderr | str trim)
 
         if (
             ($main_output.exit_code == 0)
             and ($packs_output.exit_code == 0)
+            and ($zellij_output.exit_code == 0)
             and ($invalid_output.exit_code != 0)
             and ($main_stdout == $expected_main)
             and ($packs_stdout == $expected_packs)
+            and ($zellij_stdout == $expected_zellij)
             and ($invalid_stderr | str contains "Invalid config open target 'weird'")
         ) {
-            print "  ✅ yzx config open resolves main and packs explicitly and rejects unknown targets"
+            print "  ✅ yzx config open resolves main, packs, and zellij explicitly and rejects unknown targets"
             true
         } else {
-            print $"  ❌ Unexpected result: main_exit=($main_output.exit_code) main=($main_stdout) packs_exit=($packs_output.exit_code) packs=($packs_stdout) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
+            print $"  ❌ Unexpected result: main_exit=($main_output.exit_code) main=($main_stdout) packs_exit=($packs_output.exit_code) packs=($packs_stdout) zellij_exit=($zellij_output.exit_code) zellij=($zellij_stdout) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
             false
         }
     } catch {|err|

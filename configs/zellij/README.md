@@ -1,12 +1,12 @@
 # Yazelix: Zellij Configuration
 
-Yazelix uses your native Zellij config when present, then layers Yazelix requirements on top.
+Yazelix uses your managed Zellij config under `user_configs/` when present, then layers Yazelix requirements on top.
 
 ## Quick Start
 
 ```bash
-# Edit your native Zellij config
-~/.config/zellij/config.kdl
+# Edit your Yazelix-managed Zellij config
+~/.config/yazelix/user_configs/zellij/config.kdl
 ```
 
 ## Documentation
@@ -15,7 +15,7 @@ For complete configuration guide, see: [Zellij Configuration Documentation](../.
 
 ## Current Defaults
 
-- Three-layer merging: Zellij defaults + Yazelix overrides + your personal settings
+- Three-layer merging: Zellij defaults + Yazelix overrides + your managed settings
 - Default layout optimized for sidebar/no-sidebar modes
 - Wayland clipboard integration (`wl-copy`)
 - Helix editor integration for scrollback

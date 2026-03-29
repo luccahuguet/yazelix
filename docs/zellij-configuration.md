@@ -1,20 +1,20 @@
 # Zellij Configuration
 
-Yazelix uses a three-layer Zellij configuration system centered on your native Zellij config.
+Yazelix uses a three-layer Zellij configuration system centered on its managed user config surface.
 
 ## Quick Start
 
-Edit your native Zellij config:
+Edit your Yazelix-managed Zellij config:
 
 ```bash
-~/.config/zellij/config.kdl
+~/.config/yazelix/user_configs/zellij/config.kdl
 ```
 
 ## How It Works
 
-The merger now prefers your **native Zellij config** when present, then forcibly layers Yazelix requirements on top:
+The merger now prefers your **Yazelix-managed Zellij config** when present, then forcibly layers Yazelix requirements on top:
 
-1. **User config**: `~/.config/zellij/config.kdl` (if it exists). If missing, Yazelix falls back to `zellij setup --dump-config`.
+1. **User config**: `~/.config/yazelix/user_configs/zellij/config.kdl` (if it exists). If missing, Yazelix falls back to `zellij setup --dump-config`.
 2. **Dynamic Yazelix settings**: Generated from `yazelix.toml` (e.g., rounded corners) and appended after the user config so they win.
 3. **Enforced Yazelix settings**: Always appended last to guarantee required behavior:
    - `pane_frames false` (needed for `zjstatus`)
@@ -70,7 +70,7 @@ scroll_buffer_size 50000
 
 ## Best Practices
 
-**For UI settings**, add them to your native Zellij config (no conflicts with Yazelix defaults):
+**For UI settings**, add them to your managed Zellij config:
 ```kdl
 ui {
     pane_frames {
@@ -105,10 +105,11 @@ ui {
 - For nested blocks (ui, keybinds), you may need to override the entire section
 
 **KDL syntax errors?**
-- Check your personal config file syntax against examples in the template
+- Check your managed Zellij config syntax against examples in the template
 - Zellij will show parsing errors on startup if KDL is invalid
 
-**Want to reset?**
-- Move `~/.config/zellij/config.kdl` out of the way and let Yazelix fall back to `zellij setup --dump-config`
+**Migrating from a native Zellij config?**
+- Yazelix relocates a legacy `~/.config/zellij/config.kdl` into `~/.config/yazelix/user_configs/zellij/config.kdl` when it first needs the managed file
+- If both files exist, Yazelix fails fast and asks you to keep only the `user_configs` copy
 
 For complete Zellij configuration options: https://zellij.dev/documentation/

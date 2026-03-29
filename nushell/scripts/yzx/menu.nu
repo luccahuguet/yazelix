@@ -3,7 +3,7 @@
 
 use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap open_floating_runtime_wrapper resolve_tab_cwd_target set_tab_workspace_root]
 use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
-use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
+use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_user_config_dir]
 use ../utils/config_migrations.nu [apply_config_migration_plan get_config_migration_plan render_config_migration_plan validate_config_migration_rules]
 use ../utils/config_surfaces.nu [resolve_active_config_paths get_primary_config_paths]
 
@@ -234,7 +234,7 @@ export def "yzx config zellij" [] {
 
 # Open a Yazelix configuration surface in your editor
 export def "yzx config open" [
-    target?: string  # Config target: main or packs
+    target?: string  # Config target: main, packs, or zellij
     --print  # Print the config path without opening
 ] {
     let paths = get_primary_config_paths
@@ -243,8 +243,9 @@ export def "yzx config open" [
         match $normalized_target {
             "main" => $paths.user_config
             "packs" => $paths.user_pack_config
+            "zellij" => ((get_yazelix_user_config_dir $paths.config_dir) | path join "zellij" "config.kdl")
             _ => {
-                error make {msg: $"Invalid config open target '($normalized_target)'. Expected 'main' or 'packs'."}
+                error make {msg: $"Invalid config open target '($normalized_target)'. Expected 'main', 'packs', or 'zellij'."}
             }
         }
     )
@@ -254,6 +255,7 @@ export def "yzx config open" [
     } else if ($env.EDITOR? | is-empty) {
         error make {msg: $"EDITOR is not set. Set it in yazelix.toml under [editor] command, or export EDITOR in your shell.\nConfig path: ($config_path)"}
     } else {
+        mkdir ($config_path | path dirname)
         ^$env.EDITOR $config_path
     }
 }
