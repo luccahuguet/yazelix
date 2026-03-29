@@ -1,43 +1,11 @@
 #!/usr/bin/env nu
 
-use ./test_yzx_helpers.nu [get_repo_config_dir]
-
-def log_line [log_file: string, line: string] {
-    print $line
-    $"($line)\n" | save --append --raw $log_file
-}
-
-def log_block [log_file: string, title: string, content: string] {
-    log_line $log_file $"=== ($title) ==="
-    if ($content | is-empty) {
-        log_line $log_file "<empty>"
-    } else {
-        for line in ($content | lines) {
-            log_line $log_file $line
-        }
-    }
-    log_line $log_file ""
-}
+use ./test_yzx_helpers.nu [add_fixture_log log_block log_line setup_managed_config_fixture]
 
 def setup_fixture [label: string, raw_toml: string] {
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
-    let config_dir = ($tmp_home | path join ".config" "yazelix")
-    let log_file = ($tmp_home | path join "stale_config_diagnostics_e2e.log")
-
-    mkdir ($tmp_home | path join ".config")
-    mkdir $config_dir
-    $raw_toml | save --force --raw ($config_dir | path join "yazelix.toml")
-    "" | save --force --raw $log_file
-
-    {
-        repo_root: $repo_root
-        tmp_home: $tmp_home
-        config_dir: $config_dir
-        config_path: ($config_dir | path join "yazelix.toml")
-        yzx_script: ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
-        inner_script: ($repo_root | path join "nushell" "scripts" "core" "start_yazelix_inner.nu")
-        log_file: $log_file
+    let fixture = (add_fixture_log (setup_managed_config_fixture $label $raw_toml) "stale_config_diagnostics_e2e.log")
+    $fixture | merge {
+        inner_script: ($fixture.repo_root | path join "nushell" "scripts" "core" "start_yazelix_inner.nu")
     }
 }
 

@@ -1,36 +1,22 @@
 #!/usr/bin/env nu
 
-use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
+use ./test_yzx_helpers.nu [get_repo_config_dir log_block log_line repo_path]
 use ../utils/constants.nu [YAZELIX_VERSION]
-
-def log_line [log_file: string, line: string] {
-    print $line
-    $"($line)\n" | save --append --raw $log_file
-}
-
-def log_block [log_file: string, title: string, content: string] {
-    log_line $log_file $"=== ($title) ==="
-    if ($content | is-empty) {
-        log_line $log_file "<empty>"
-    } else {
-        for line in ($content | lines) {
-            log_line $log_file $line
-        }
-    }
-    log_line $log_file ""
-}
 
 def setup_fixture [] {
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_upgrade_summary_e2e_XXXXXX | str trim)
     let runtime_dir = ($tmp_home | path join "runtime")
     let config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
+    let config_path = ($user_config_dir | path join "yazelix.toml")
     let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
     let log_file = ($tmp_home | path join "upgrade_summary_e2e.log")
 
     mkdir $runtime_dir
     mkdir ($tmp_home | path join ".config")
     mkdir $config_dir
+    mkdir $user_config_dir
     mkdir ($tmp_home | path join ".local" "share")
     mkdir $state_dir
 
@@ -44,7 +30,7 @@ widget_tray = ["layout", "editor"]
 
 [shell]
 enable_atuin = true
-' | save --force --raw ($config_dir | path join "yazelix.toml")
+' | save --force --raw $config_path
 
     let notes_path = ($runtime_dir | path join "docs" "upgrade_notes.toml")
     let notes = (open $notes_path)
@@ -70,6 +56,8 @@ enable_atuin = true
         tmp_home: $tmp_home
         runtime_dir: $runtime_dir
         config_dir: $config_dir
+        user_config_dir: $user_config_dir
+        config_path: $config_path
         state_dir: $state_dir
         upgrade_summary_script: ($runtime_dir | path join "nushell" "scripts" "utils" "upgrade_summary.nu")
         yzx_script: ($runtime_dir | path join "nushell" "scripts" "core" "yazelix.nu")
@@ -114,9 +102,9 @@ export def main [] {
     log_line $log_file "Case: first run, second run, and manual reopen all use the same current-version summary"
     log_line $log_file $"Temp HOME: ($fixture.tmp_home)"
     log_line $log_file $"Runtime dir: ($fixture.runtime_dir)"
-    log_line $log_file $"Config dir: ($fixture.config_dir)"
+    log_line $log_file $"Config path: ($fixture.config_path)"
     log_line $log_file ""
-    log_block $log_file "Input TOML" (open --raw ($fixture.config_dir | path join "yazelix.toml"))
+    log_block $log_file "Input TOML" (open --raw $fixture.config_path)
     log_block $log_file "Mutated upgrade_notes.toml" (open --raw ($fixture.runtime_dir | path join "docs" "upgrade_notes.toml"))
 
     let first = (run_first_run_probe $fixture)

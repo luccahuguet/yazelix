@@ -36,3 +36,58 @@ export def setup_test_home [] {
         config_dir: $config_dir
     }
 }
+
+export def setup_managed_config_fixture [
+    label: string
+    raw_toml: string
+    --legacy-root
+] {
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
+    let config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
+
+    mkdir ($tmp_home | path join ".config")
+    mkdir $config_dir
+    mkdir $user_config_dir
+
+    let config_path = if $legacy_root {
+        ($config_dir | path join "yazelix.toml")
+    } else {
+        ($user_config_dir | path join "yazelix.toml")
+    }
+
+    $raw_toml | save --force --raw $config_path
+
+    {
+        repo_root: $repo_root
+        tmp_home: $tmp_home
+        config_dir: $config_dir
+        user_config_dir: $user_config_dir
+        config_path: $config_path
+        yzx_script: ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+    }
+}
+
+export def add_fixture_log [fixture: record, log_file_name: string] {
+    let log_file = ($fixture.tmp_home | path join $log_file_name)
+    "" | save --force --raw $log_file
+    $fixture | merge { log_file: $log_file }
+}
+
+export def log_line [log_file: string, line: string] {
+    print $line
+    $"($line)\n" | save --append --raw $log_file
+}
+
+export def log_block [log_file: string, title: string, content: string] {
+    log_line $log_file $"=== ($title) ==="
+    if ($content | is-empty) {
+        log_line $log_file "<empty>"
+    } else {
+        for line in ($content | lines) {
+            log_line $log_file $line
+        }
+    }
+    log_line $log_file ""
+}

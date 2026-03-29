@@ -1,46 +1,9 @@
 #!/usr/bin/env nu
 
-use ./test_yzx_helpers.nu [get_repo_config_dir]
-
-def log_line [log_file: string, line: string] {
-    print $line
-    $"($line)\n" | save --append --raw $log_file
-}
-
-def log_block [log_file: string, title: string, content: string] {
-    log_line $log_file $"=== ($title) ==="
-    if ($content | is-empty) {
-        log_line $log_file "<empty>"
-    } else {
-        for line in ($content | lines) {
-            log_line $log_file $line
-        }
-    }
-    log_line $log_file ""
-}
+use ./test_yzx_helpers.nu [add_fixture_log log_block log_line setup_managed_config_fixture]
 
 def setup_fixture [label: string, raw_toml: string] {
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
-    let config_dir = ($tmp_home | path join ".config" "yazelix")
-    let user_config_dir = ($config_dir | path join "user_configs")
-    let log_file = ($tmp_home | path join "config_migrate_e2e.log")
-
-    mkdir ($tmp_home | path join ".config")
-    mkdir $config_dir
-    mkdir $user_config_dir
-    $raw_toml | save --force --raw ($user_config_dir | path join "yazelix.toml")
-    "" | save --force --raw $log_file
-
-    {
-        repo_root: $repo_root
-        tmp_home: $tmp_home
-        config_dir: $config_dir
-        user_config_dir: $user_config_dir
-        config_path: ($user_config_dir | path join "yazelix.toml")
-        log_file: $log_file
-        yzx_script: ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
-    }
+    add_fixture_log (setup_managed_config_fixture $label $raw_toml) "config_migrate_e2e.log"
 }
 
 def run_migrate [fixture: record, args: list<string> = []] {
@@ -227,63 +190,18 @@ go = ["gopls", "golangci-lint"]
     $ok
 }
 
-def run_welcome_style_migration_case [] {
+def run_ascii_mode_migration_case [
+    label: string
+    mode: string
+    case_title: string
+] {
     let fixture = (setup_fixture
-        "yazelix_migrate_e2e_welcome_style"
-        '[ascii]
-mode = "animated"
-')
-    let log_file = $fixture.log_file
-
-    log_line $log_file "Case: migrate legacy ascii.mode into core.welcome_style"
-    log_line $log_file $"Temp HOME: ($fixture.tmp_home)"
-    log_line $log_file $"Config path: ($fixture.config_path)"
-    log_line $log_file $"Log file: ($log_file)"
-    log_line $log_file ""
-    log_block $log_file "Input TOML" (open --raw $fixture.config_path)
-
-    let preview = (run_migrate $fixture)
-    log_block $log_file "Preview stdout" ($preview.stdout | str trim)
-    log_block $log_file "Preview stderr" ($preview.stderr | str trim)
-
-    let apply = (run_migrate $fixture ["--apply", "--yes"])
-    log_block $log_file "Apply stdout" ($apply.stdout | str trim)
-    log_block $log_file "Apply stderr" ($apply.stderr | str trim)
-    log_block $log_file "Output main TOML" (open --raw $fixture.config_path)
-
-    let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
-    log_block $log_file "Backups" (($backups | get name | str join "\n"))
-
-    let parsed_main = (open $fixture.config_path)
-    let ok = (
-        ($preview.exit_code == 0)
-        and ($apply.exit_code == 0)
-        and (($preview.stdout | str contains "[AUTO] replace_ascii_art_mode_with_welcome_style"))
-        and (($apply.stdout | str contains "Applied 1 config migration"))
-        and (($parsed_main.core | get welcome_style) == "random")
-        and not ("ascii" in ($parsed_main | columns))
-        and (($backups | length) == 1)
+        $label
+        $"[ascii]\nmode = \"($mode)\"\n"
     )
-
-    if $ok {
-        log_line $log_file "Result: PASS"
-    } else {
-        log_line $log_file "Result: FAIL"
-    }
-
-    rm -rf $fixture.tmp_home
-    $ok
-}
-
-def run_static_welcome_style_migration_case [] {
-    let fixture = (setup_fixture
-        "yazelix_migrate_e2e_welcome_style_static"
-        '[ascii]
-mode = "static"
-')
     let log_file = $fixture.log_file
 
-    log_line $log_file "Case: migrate legacy ascii.mode = static into core.welcome_style = random"
+    log_line $log_file $case_title
     log_line $log_file $"Temp HOME: ($fixture.tmp_home)"
     log_line $log_file $"Config path: ($fixture.config_path)"
     log_line $log_file $"Log file: ($log_file)"
@@ -375,8 +293,16 @@ export def main [] {
         (run_mixed_migration_case)
         (run_manual_conflict_case)
         (run_pack_split_case)
-        (run_welcome_style_migration_case)
-        (run_static_welcome_style_migration_case)
+        (run_ascii_mode_migration_case
+            "yazelix_migrate_e2e_welcome_style"
+            "animated"
+            "Case: migrate legacy ascii.mode into core.welcome_style"
+        )
+        (run_ascii_mode_migration_case
+            "yazelix_migrate_e2e_welcome_style_static"
+            "static"
+            "Case: migrate legacy ascii.mode = static into core.welcome_style = random"
+        )
         (run_game_of_life_style_rename_case)
     ]
     let passed = ($results | where $it == true | length)

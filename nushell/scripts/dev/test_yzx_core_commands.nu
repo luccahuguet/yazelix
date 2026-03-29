@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use ../core/yazelix.nu *
-use ./test_yzx_helpers.nu [get_repo_config_dir get_repo_root repo_path]
+use ./test_yzx_helpers.nu [get_repo_config_dir get_repo_root repo_path setup_managed_config_fixture]
 use ../utils/config_migrations.nu [
     build_config_migration_plan_from_record
     render_config_migration_plan
@@ -45,31 +45,11 @@ def setup_relocated_runtime_fixture [] {
 }
 
 def setup_config_migrate_fixture [label: string, raw_toml: string] {
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
-    let config_dir = ($tmp_home | path join ".config" "yazelix")
-    let user_config_dir = ($config_dir | path join "user_configs")
-
-    mkdir ($tmp_home | path join ".config")
-    mkdir $config_dir
-    mkdir $user_config_dir
-
-    $raw_toml | save --force --raw ($user_config_dir | path join "yazelix.toml")
-
-    {
-        repo_root: $repo_root
-        tmp_home: $tmp_home
-        config_dir: $config_dir
-        user_config_dir: $user_config_dir
-        config_path: ($user_config_dir | path join "yazelix.toml")
-        yzx_script: ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
-    }
+    setup_managed_config_fixture $label $raw_toml
 }
 
 def setup_legacy_root_config_migrate_fixture [label: string, raw_toml: string] {
-    let fixture = (setup_config_migrate_fixture $label $raw_toml)
-    mv $fixture.config_path ($fixture.config_dir | path join "yazelix.toml")
-    $fixture | upsert config_path ($fixture.config_dir | path join "yazelix.toml")
+    setup_managed_config_fixture $label $raw_toml --legacy-root
 }
 
 def setup_upgrade_summary_fixture [
