@@ -426,7 +426,7 @@ yazelix/
 - [ ] Optimize binary size (strip symbols, LTO)
 - [ ] Run `cargo clippy` and fix all warnings
 - [ ] Run `cargo fmt` for consistent style
-- [ ] Update `CLAUDE.md` with Rust conventions if needed
+- [ ] Update `AGENTS.md` with Rust conventions if needed
 
 **Completion Criteria:** Documentation complete, polished user and contributor experience
 

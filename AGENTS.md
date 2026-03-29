@@ -6,7 +6,7 @@ This file is the single source of truth for agent workflow, coding conventions, 
 
 Use Beads as the agent memory and triage layer for Yazelix work.
 
-- Prefer `AGENTS.md` for durable agent workflow rules; keep `CLAUDE.md` focused on repo conventions and implementation guidance.
+- Use `AGENTS.md` as the single durable source of agent workflow rules and command-surface policy.
 - Use `bv --robot-triage` as the default entrypoint for task context instead of manually reconstructing project state from `.beads`.
 - When token budget matters, prefer `bv --robot-triage --format toon`.
 - For bounded handoff context, use `bv --agent-brief <dir>` to export a compact bundle (`triage.json`, `insights.json`, `brief.md`, `helpers.md`).
@@ -15,7 +15,7 @@ Use Beads as the agent memory and triage layer for Yazelix work.
   - `bv` decides what to work on.
   - `br` updates issue state.
   - Coordination between multiple agents should use a separate coordination layer, not ad-hoc issue comments or long prompt memory.
-- Keep agent files short. Do not copy large issue graphs, long triage dumps, or project history into `AGENTS.md` / `CLAUDE.md`; store dynamic state in Beads and regenerate it when needed.
+- Keep agent guidance short. Do not copy large issue graphs, long triage dumps, or project history into `AGENTS.md`; store dynamic state in Beads and regenerate it when needed.
 
 ## File Naming Conventions
 
@@ -119,6 +119,11 @@ When creating new files or directories, always use underscores to maintain consi
 
 - Prefer `yzx run ...` for project-scoped tool invocations instead of raw `devenv shell ...` when running tools provided by the Yazelix environment.
 - Use raw `devenv shell ...` only when `yzx run ...` is not a clean fit for the task, such as larger multi-command shell scripts or environment debugging.
+
+## Command Surface Policy
+
+- When renaming or simplifying a user-facing command surface, do not keep legacy aliases by default.
+- Only preserve old command names as aliases when the user explicitly asks for a compatibility transition.
 
 ## Rust Plugin Workflow
 
