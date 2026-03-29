@@ -247,12 +247,13 @@ def test_terminal_override_imports_ignore_yazelix_dir_runtime_root [] {
     let tmpdir = (^mktemp -d /tmp/yazelix_terminal_override_path_boundary_XXXXXX | str trim)
     let fake_home = ($tmpdir | path join "home")
     let fake_runtime_root = ($tmpdir | path join "runtime_root")
+    let fake_config_dir = ($fake_home | path join ".config" "yazelix")
     let config_path = ($tmpdir | path join "yazelix.toml")
     let runtime_root = (pwd)
     let terminal_configs_script = ($runtime_root | path join "nushell" "scripts" "utils" "terminal_configs.nu")
     mkdir $fake_home
     mkdir $fake_runtime_root
-    mkdir ($fake_home | path join ".config" "yazelix" "user_configs" "terminal")
+    mkdir ($fake_config_dir | path join "user_configs" "terminal")
 
     let result = (try {
         '[terminal]
@@ -268,6 +269,8 @@ terminals = ["ghostty", "kitty", "alacritty"]
 
         let command_output = (with-env {
             HOME: $fake_home
+            XDG_CONFIG_HOME: ($fake_home | path join ".config")
+            YAZELIX_CONFIG_DIR: $fake_config_dir
             YAZELIX_DIR: $fake_runtime_root
             YAZELIX_CONFIG_OVERRIDE: $config_path
         } {
@@ -1853,9 +1856,15 @@ def test_generate_merged_zellij_config_relocates_legacy_native_user_config [] {
     let result = (try {
         let out_dir = ($tmpdir | path join "out")
         let fake_home = ($tmpdir | path join "home")
+        let fake_config_dir = ($fake_home | path join ".config" "yazelix")
         write_legacy_native_zellij_config $fake_home
 
-        let output = (with-env { HOME: $fake_home, YAZELIX_TEST_OUT_DIR: $out_dir } {
+        let output = (with-env {
+            HOME: $fake_home
+            XDG_CONFIG_HOME: ($fake_home | path join ".config")
+            YAZELIX_CONFIG_DIR: $fake_config_dir
+            YAZELIX_TEST_OUT_DIR: $out_dir
+        } {
             let root = (get_repo_config_dir)
             generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
             {

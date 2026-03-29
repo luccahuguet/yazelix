@@ -1429,6 +1429,7 @@ def test_invalid_config_is_classified_as_config_problem [] {
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_invalid_config_XXXXXX | str trim)
     let temp_yazelix_dir = ($tmp_home | path join ".config" "yazelix")
+    let xdg_config_home = ($tmp_home | path join ".config")
     mkdir $temp_yazelix_dir
 
     let result = (try {
@@ -1444,7 +1445,12 @@ def test_invalid_config_is_classified_as_config_problem [] {
         $invalid_config | to toml | save ($user_config_dir | path join "yazelix.toml")
 
         let parser_script = ($temp_yazelix_dir | path join "nushell" "scripts" "utils" "config_parser.nu")
-        let output = with-env { HOME: $tmp_home, YAZELIX_DIR: $temp_yazelix_dir } {
+        let output = with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $temp_yazelix_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
             ^nu -c $"source \"($parser_script)\"; try { parse_yazelix_config | ignore } catch {|err| print $err.msg }" | complete
         }
         let stdout = ($output.stdout | str trim)

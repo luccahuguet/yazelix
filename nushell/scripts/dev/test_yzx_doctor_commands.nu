@@ -44,9 +44,6 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
     )
 
     let result = (try {
-        ^ln -s ($fixture.repo_root | path join "nushell") ($fixture.config_dir | path join "nushell")
-        cp ($fixture.repo_root | path join "yazelix_default.toml") ($fixture.config_dir | path join "yazelix_default.toml")
-
         let stale_config = (
             open ($fixture.repo_root | path join "yazelix_default.toml")
             | upsert core.stale_field true
@@ -55,9 +52,13 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
         )
         $stale_config | to toml | save --force $fixture.config_path
 
-        let temp_yzx_script = ($fixture.config_dir | path join "nushell" "scripts" "core" "yazelix.nu")
-        let output = with-env { HOME: $fixture.tmp_home, YAZELIX_DIR: $fixture.config_dir } {
-            ^nu -c $"use \"($temp_yzx_script)\" *; yzx doctor --verbose" | complete
+        let output = with-env {
+            HOME: $fixture.tmp_home
+            XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        } {
+            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx doctor --verbose" | complete
         }
         let stdout = ($output.stdout | str trim)
 
