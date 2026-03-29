@@ -573,7 +573,7 @@ def test_game_of_life_animation_is_deterministic_and_evolves [] {
             and ($frame0 != $frame1)
             and ($frame1 != $frame2)
             and ($frame2 != $frame6)
-            and (($frames_a | length) == 9)
+            and (($frames_a | length) >= 10)
         ) {
             print "  ✅ game_of_life welcome generation is deterministic and advances through real intermediate states"
             true
@@ -602,10 +602,10 @@ def test_game_of_life_animation_stays_bounded_and_width_aware [] {
         let hero_width = ($hero_frames | each {|frame| get_max_visible_width $frame } | math max)
 
         if (
-            (($narrow_frames | length) == 9)
-            and (($medium_frames | length) == 9)
-            and (($wide_frames | length) == 9)
-            and (($hero_frames | length) == 9)
+            (($narrow_frames | length) >= 10)
+            and (($medium_frames | length) >= 10)
+            and (($wide_frames | length) >= 10)
+            and (($hero_frames | length) >= 10)
             and ($narrow_width <= 36)
             and ($medium_width <= 60)
             and ($wide_width <= 100)
@@ -637,6 +637,31 @@ def test_game_of_life_animation_lands_on_logo_resting_frame [] {
             true
         } else {
             print "  ❌ game_of_life animation does not land on the shared final logo frame"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_game_of_life_welcome_duration_adds_frames_without_slowing_early_evolution [] {
+    print "🧪 Testing longer game_of_life welcome duration adds frames instead of slowing the same short sequence..."
+
+    try {
+        let short_frames = (get_game_of_life_animation_frames 60 2.0)
+        let long_frames = (get_game_of_life_animation_frames 60 8.0)
+        let short_live_frames = ($short_frames | drop nth (($short_frames | length) - 1))
+        let long_live_prefix = ($long_frames | first ($short_live_frames | length))
+
+        if (
+            (($long_frames | length) > ($short_frames | length))
+            and ($long_live_prefix == $short_live_frames)
+        ) {
+            print "  ✅ Longer welcome duration extends game_of_life with more frames while preserving the same early cadence"
+            true
+        } else {
+            print $"  ❌ Unexpected game_of_life duration behavior: short=(($short_frames | length)) long=(($long_frames | length)) prefix_equal=(($long_live_prefix == $short_live_frames))"
             false
         }
     } catch { |err|
@@ -1609,6 +1634,7 @@ export def run_generated_config_canonical_tests [] {
         (test_game_of_life_animation_is_deterministic_and_evolves)
         (test_game_of_life_animation_stays_bounded_and_width_aware)
         (test_game_of_life_animation_lands_on_logo_resting_frame)
+        (test_game_of_life_welcome_duration_adds_frames_without_slowing_early_evolution)
         (test_zellij_widget_tray_defaults_omit_layout)
         (test_generate_all_terminal_configs_creates_override_scaffolds)
         (test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root)

@@ -11,6 +11,7 @@ use ./test_yzx_doctor_commands.nu [run_doctor_canonical_tests]
 use ./test_yzx_generated_configs.nu [run_generated_config_canonical_tests]
 use ./test_yzx_popup_commands.nu [run_popup_canonical_tests]
 use ./test_yzx_refresh_commands.nu [run_refresh_canonical_tests]
+use ./test_yzx_screen_commands.nu [run_screen_canonical_tests]
 use ./test_yzx_workspace_commands.nu [run_workspace_canonical_tests]
 use ./test_yzx_yazi_commands.nu [run_yazi_canonical_tests]
 
@@ -27,6 +28,7 @@ def main [] {
             (run_generated_config_canonical_tests)
             (run_popup_canonical_tests)
             (run_refresh_canonical_tests)
+            (run_screen_canonical_tests)
             (run_workspace_canonical_tests)
             (run_yazi_canonical_tests)
         ] | flatten

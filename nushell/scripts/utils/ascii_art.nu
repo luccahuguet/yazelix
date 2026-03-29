@@ -3,6 +3,7 @@
 
 export const WELCOME_STYLE_VALUES = ["static", "logo", "boids", "game_of_life", "mandelbrot", "random"]
 export const ANIMATED_WELCOME_STYLE_VALUES = ["game_of_life"]
+export const SCREEN_STYLE_VALUES = ["logo", "boids", "game_of_life", "random"]
 
 # Export the color scheme used in the welcome art for consistent styling.
 export def get_yazelix_colors [] {
@@ -20,6 +21,10 @@ export def get_yazelix_colors [] {
 
 export def get_welcome_style_random_pool [] {
     $ANIMATED_WELCOME_STYLE_VALUES
+}
+
+export def get_screen_style_random_pool [] {
+    get_welcome_style_random_pool
 }
 
 export def resolve_welcome_style [welcome_style: string, random_index?: int] {
@@ -43,6 +48,53 @@ export def resolve_welcome_style [welcome_style: string, random_index?: int] {
     }
 
     $pool | get $selected_index
+}
+
+def trim_resting_frame [frames: list<list<string>>] {
+    if (($frames | length) <= 1) {
+        $frames
+    } else {
+        $frames | first (($frames | length) - 1)
+    }
+}
+
+export def resolve_screen_style [screen_style?: string, random_index?: int] {
+    let requested = ($screen_style | default "random" | into string | str downcase)
+
+    if not ($requested in $SCREEN_STYLE_VALUES) {
+        let allowed_text = ($SCREEN_STYLE_VALUES | str join ", ")
+        error make {msg: $"Invalid screen style '($requested)'. Expected one of: ($allowed_text)"}
+    }
+
+    if $requested == "random" {
+        return (resolve_welcome_style "random" $random_index)
+    }
+
+    $requested
+}
+
+export def get_screen_cycle_frames [screen_style: string, width?: int] {
+    let resolved_style = (resolve_screen_style $screen_style)
+
+    match $resolved_style {
+        "logo" => (trim_resting_frame (get_logo_animation_frames $width))
+        "boids" => (trim_resting_frame (get_boids_animation_frames $width))
+        "game_of_life" => (get_game_of_life_screen_cycle_frames $width)
+        _ => {
+            error make {msg: $"Unsupported screen style: ($resolved_style)"}
+        }
+    }
+}
+
+export def get_screen_frame_delay [screen_style: string] {
+    let resolved_style = (resolve_screen_style $screen_style)
+
+    match $resolved_style {
+        "game_of_life" => 160ms
+        "logo" => 120ms
+        "boids" => 120ms
+        _ => 140ms
+    }
 }
 
 def strip_ansi_codes [text: string] {
@@ -671,25 +723,20 @@ def render_game_of_life_row [grid_width: int, inner_width: int, row_index: int, 
     pad_text_right $row $inner_width
 }
 
-def build_game_of_life_frame [spec: record, cells: list<record>] {
-    let colors = get_yazelix_colors
+def build_game_of_life_screen_lines [spec: record, cells: list<record>, resolved_width: int] {
     let inner_width = ($spec.inner_width | into int)
     let height = ($spec.body_height | into int)
     let grid_width = (get_game_of_life_grid_width $inner_width)
     let cell_keys = (build_game_of_life_cell_keys $cells)
+
     let body = (
         0..($height - 1)
         | each {|row_index|
-            let row = (render_game_of_life_row $grid_width $inner_width $row_index $cell_keys)
-            $"($colors.purple)│($colors.reset)($row)($colors.purple)│($colors.reset)"
+            render_game_of_life_row $grid_width $inner_width $row_index $cell_keys
         }
     )
 
-    [
-        $"($colors.purple)╭(make_border $inner_width "─")╮($colors.reset)"
-        ...$body
-        $"($colors.purple)╰(make_border $inner_width "─")╯($colors.reset)"
-    ]
+    center_frame_lines $body $resolved_width
 }
 
 export def get_logo_welcome_frame [width?: int] {
@@ -726,25 +773,79 @@ export def get_boids_animation_frames [width?: int] {
     ]
 }
 
-export def get_game_of_life_animation_frames [width?: int] {
+export def get_game_of_life_welcome_frame_delay [] {
+    220ms
+}
+
+export def get_game_of_life_animation_frames [width?: int, duration_seconds: float = 2.0] {
     let resolved_width = ($width | default (get_terminal_width) | into int)
     let resolved_height = (get_terminal_height)
     let variant = (get_logo_welcome_variant $resolved_width)
     let spec = (get_game_of_life_welcome_spec $variant $resolved_width $resolved_height)
     let width_limit = (get_game_of_life_grid_width ($spec.inner_width | into int))
     let height_limit = ($spec.body_height | into int)
+    let fixed_frame_delay = (get_game_of_life_welcome_frame_delay)
+    let computed_frame_count = ((($duration_seconds * 1sec) / $fixed_frame_delay) | math ceil | into int)
+    let simulation_frame_count = if $computed_frame_count < 2 { 2 } else { $computed_frame_count }
     mut current_cells = (build_live_game_of_life_seed $spec)
-    mut simulation_frames = [(build_game_of_life_frame $spec $current_cells)]
+    mut simulation_frames = [(build_game_of_life_screen_lines $spec $current_cells $resolved_width)]
 
-    for _ in 1..7 {
+    for _ in 1..($simulation_frame_count - 1) {
         $current_cells = (step_game_of_life_cells_fast $current_cells $width_limit $height_limit)
-        $simulation_frames = ($simulation_frames | append [(build_game_of_life_frame $spec $current_cells)])
+        $simulation_frames = ($simulation_frames | append [(build_game_of_life_screen_lines $spec $current_cells $resolved_width)])
     }
 
     [
-        ...($simulation_frames | each {|frame| center_frame_lines $frame $resolved_width })
+        ...$simulation_frames
         (get_logo_welcome_frame $width)
     ]
+}
+
+export def get_game_of_life_screen_cycle_frames [width?: int, height?: int, duration_seconds: float = 2.0] {
+    let resolved_width = ($width | default (get_terminal_width) | into int)
+    let resolved_height = ($height | default (get_terminal_height) | into int)
+    let variant = (get_logo_welcome_variant $resolved_width)
+    let spec = (get_game_of_life_welcome_spec $variant $resolved_width $resolved_height)
+    let width_limit = (get_game_of_life_grid_width ($spec.inner_width | into int))
+    let height_limit = ($spec.body_height | into int)
+    let fixed_frame_delay = (get_game_of_life_welcome_frame_delay)
+    let computed_frame_count = ((($duration_seconds * 1sec) / $fixed_frame_delay) | math ceil | into int)
+    let simulation_frame_count = if $computed_frame_count < 2 { 2 } else { $computed_frame_count }
+    mut current_cells = (build_live_game_of_life_seed $spec)
+    mut simulation_frames = [(build_game_of_life_screen_lines $spec $current_cells $resolved_width)]
+
+    for _ in 1..($simulation_frame_count - 1) {
+        $current_cells = (step_game_of_life_cells_fast $current_cells $width_limit $height_limit)
+        $simulation_frames = ($simulation_frames | append [(build_game_of_life_screen_lines $spec $current_cells $resolved_width)])
+    }
+
+    $simulation_frames
+}
+
+export def get_game_of_life_screen_state [width?: int, height?: int] {
+    let resolved_width = ($width | default (get_terminal_width) | into int)
+    let resolved_height = ($height | default (get_terminal_height) | into int)
+    let variant = (get_logo_welcome_variant $resolved_width)
+    let spec = (get_game_of_life_welcome_spec $variant $resolved_width $resolved_height)
+
+    {
+        resolved_width: $resolved_width
+        resolved_height: $resolved_height
+        spec: $spec
+        cells: (build_live_game_of_life_seed $spec)
+    }
+}
+
+export def step_game_of_life_screen_state [state: record] {
+    let spec = $state.spec
+    let width_limit = (get_game_of_life_grid_width ($spec.inner_width | into int))
+    let height_limit = ($spec.body_height | into int)
+
+    $state | upsert cells (step_game_of_life_cells_fast $state.cells $width_limit $height_limit)
+}
+
+export def render_game_of_life_screen_state [state: record] {
+    build_game_of_life_screen_lines $state.spec $state.cells ($state.resolved_width | into int)
 }
 
 export def get_welcome_ascii_art [width?: int] {
@@ -761,6 +862,36 @@ export def play_frames [frames: list<list<string>>, duration: duration] {
     }
 
     let frame_delay = ($duration / ($frames | length))
+    let max_frame_height = ($frames | each {|frame| $frame | length } | math max)
+    let last_index = (($frames | length) - 1)
+
+    for item in ($frames | enumerate) {
+        let frame = $item.item
+        let padded_frame = if (($frame | length) < $max_frame_height) {
+            let filler = (0..(($max_frame_height - ($frame | length)) - 1) | each { "" })
+            ($frame | append $filler)
+        } else {
+            $frame
+        }
+
+        for line in $padded_frame {
+            print $"\r\u{1b}[2K($line)"
+        }
+
+        if $item.index < $last_index {
+            sleep $frame_delay
+            print ("\u{1b}[" + (($max_frame_height + 1) | into string) + "A")
+        } else {
+            print ("\u{1b}[" + (($max_frame_height - ($frame | length)) | into string) + "A")
+        }
+    }
+}
+
+export def play_frames_with_delay [frames: list<list<string>>, frame_delay: duration] {
+    if ($frames | is-empty) {
+        return
+    }
+
     let max_frame_height = ($frames | each {|frame| $frame | length } | math max)
     let last_index = (($frames | length) - 1)
 
@@ -826,7 +957,8 @@ export def render_welcome_style [welcome_style: string, duration_seconds: float 
 
     if $resolved_style == "game_of_life" {
         print ""
-        play_frames (get_game_of_life_animation_frames $width) $playback_duration
+        let frames = (get_game_of_life_animation_frames $width $duration_seconds)
+        play_frames_with_delay $frames (get_game_of_life_welcome_frame_delay)
         return
     }
 

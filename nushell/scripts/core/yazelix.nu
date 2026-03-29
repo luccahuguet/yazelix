@@ -18,6 +18,7 @@ export use ../yzx/refresh.nu *
 export use ../yzx/run.nu *
 export use ../yzx/packs.nu *
 export use ../yzx/popup.nu *
+export use ../yzx/screen.nu *
 export use ../yzx/gc.nu *
 export use ../yzx/dev.nu *
 export use ../yzx/desktop.nu *
