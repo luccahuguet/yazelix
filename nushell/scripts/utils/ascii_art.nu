@@ -1,8 +1,8 @@
 #!/usr/bin/env nu
 # Width-aware welcome art for Yazelix.
 
-export const WELCOME_STYLE_VALUES = ["static", "logo", "boids", "life", "mandelbrot", "random"]
-export const ANIMATED_WELCOME_STYLE_VALUES = ["logo", "boids", "life", "mandelbrot"]
+export const WELCOME_STYLE_VALUES = ["static", "logo", "boids", "game_of_life", "mandelbrot", "random"]
+export const ANIMATED_WELCOME_STYLE_VALUES = ["logo", "boids", "game_of_life", "mandelbrot"]
 
 # Export the color scheme used in the welcome art for consistent styling.
 export def get_yazelix_colors [] {
@@ -95,7 +95,7 @@ export def get_logo_welcome_variant [width?: int] {
 }
 
 def center_text [text: string, width: int] {
-    let visible_width = ($text | str length)
+    let visible_width = (get_visible_line_width $text)
     if $visible_width >= $width {
         return $text
     }
@@ -106,7 +106,7 @@ def center_text [text: string, width: int] {
 }
 
 def pad_text_right [text: string, width: int] {
-    let visible_width = ($text | str length)
+    let visible_width = (get_visible_line_width $text)
     if $visible_width >= $width {
         return $text
     }
@@ -115,7 +115,7 @@ def pad_text_right [text: string, width: int] {
 }
 
 def fit_inner_width [resolved_width: int, minimum_width: int] {
-    let proposed_width = ($resolved_width - 4)
+    let proposed_width = ($resolved_width - 6)
     if $proposed_width < $minimum_width {
         $minimum_width
     } else {
@@ -163,11 +163,11 @@ def colorize_boid_char [char: string, index: int] {
     $"($color)($char)($colors.reset)"
 }
 
-def colorize_life_char [x: int, y: int] {
+def colorize_game_of_life_char [x: int, y: int] {
     let colors = get_yazelix_colors
     let palette = [$colors.green, $colors.cyan, $colors.blue, $colors.purple]
     let color = ($palette | get (($x + $y) mod ($palette | length)))
-    $"($color)■($colors.reset)"
+    $"($color)█($colors.reset)"
 }
 
 def make_border [inner_width: int, character: string] {
@@ -257,7 +257,7 @@ def get_logo_welcome_spec [variant: string, resolved_width: int] {
                 body_lines: [
                     "yazi + zellij + helix, wired together and ready"
                     "one shell, one workspace, one real flow"
-                    "alt+shift+m menu · ctrl+y sidebar jump"
+                    "alt+shift+m menu | ctrl+y sidebar jump"
                     "packs, sessions, terminals, all under one roof"
                 ]
                 footer: "welcome to yazelix"
@@ -273,7 +273,7 @@ def get_logo_welcome_spec [variant: string, resolved_width: int] {
                     "yazi + zellij + helix, wired together and ready"
                     "one shell, one workspace, one real flow"
                     "sidebar, editor, sessions, packs, and terminals already aligned"
-                    "alt+shift+m menu · ctrl+y sidebar jump · alt+[ / alt+] layout family"
+                    "alt+shift+m menu | ctrl+y sidebar jump | alt+[ / alt+] layout family"
                     "launch once, then stay in flow"
                 ]
                 footer: "welcome to yazelix"
@@ -321,34 +321,34 @@ def get_boids_welcome_spec [variant: string, resolved_width: int] {
     }
 }
 
-def get_life_welcome_spec [variant: string, resolved_width: int] {
+def get_game_of_life_welcome_spec [variant: string, resolved_width: int] {
     match $variant {
         "narrow" => {
             {
                 inner_width: (fit_inner_width $resolved_width 22)
-                body_height: 4
+                body_height: 6
             }
         }
         "medium" => {
             {
                 inner_width: (fit_inner_width $resolved_width 34)
-                body_height: 5
+                body_height: 11
             }
         }
         "wide" => {
             {
                 inner_width: (fit_inner_width $resolved_width 58)
-                body_height: 5
+                body_height: 11
             }
         }
         "hero" => {
             {
                 inner_width: (fit_inner_width $resolved_width 76)
-                body_height: 7
+                body_height: 13
             }
         }
         _ => {
-            error make {msg: $"Unsupported life welcome variant: ($variant)"}
+            error make {msg: $"Unsupported game_of_life welcome variant: ($variant)"}
         }
     }
 }
@@ -443,20 +443,20 @@ def build_boids_frame [spec: record, phase: string] {
     ]
 }
 
-def make_life_cell [x: int, y: int] {
+def make_game_of_life_cell [x: int, y: int] {
     { x: $x, y: $y }
 }
 
-def life_cell_key [cell: record] {
+def game_of_life_cell_key [cell: record] {
     $"($cell.x),($cell.y)"
 }
 
-def unique_life_cells [cells: list<record>] {
+def unique_game_of_life_cells [cells: list<record>] {
     mut keys = []
     mut unique = []
 
     for cell in $cells {
-        let key = (life_cell_key $cell)
+        let key = (game_of_life_cell_key $cell)
         if not ($key in $keys) {
             $keys = ($keys | append $key)
             $unique = ($unique | append $cell)
@@ -466,51 +466,41 @@ def unique_life_cells [cells: list<record>] {
     $unique
 }
 
-def has_life_cell [cells: list<record>, x: int, y: int] {
-    $cells | any {|cell| ($cell.x == $x) and ($cell.y == $y) }
+def offset_game_of_life_shape [shape: list<list<int>>, offset_x: int, offset_y: int] {
+    $shape | each {|pair| make_game_of_life_cell ($pair.0 + $offset_x) ($pair.1 + $offset_y) }
 }
 
-def get_life_seed [spec: record] {
-    let width = ($spec.inner_width | into int)
-    let height = ($spec.body_height | into int)
-    let mid_x = ($width / 2 | math floor)
-    let mid_y = ($height / 2 | math floor)
-
-    unique_life_cells [
-        (make_life_cell 3 1)
-        (make_life_cell 4 1)
-        (make_life_cell 5 1)
-        (make_life_cell ($width - 6) ($height - 2))
-        (make_life_cell ($width - 5) ($height - 2))
-        (make_life_cell ($width - 4) ($height - 2))
-        (make_life_cell ($mid_x - 1) ($mid_y - 1))
-        (make_life_cell $mid_x ($mid_y - 1))
-        (make_life_cell ($mid_x + 1) ($mid_y - 1))
-        (make_life_cell ($mid_x - 1) $mid_y)
-        (make_life_cell $mid_x ($mid_y + 1))
-    ]
+def get_right_glider_shape [] {
+    [[1 0] [2 1] [0 2] [1 2] [2 2]]
 }
 
-def count_live_neighbors [cells: list<record>, x: int, y: int] {
-    mut count = 0
+def get_left_glider_shape [] {
+    [[1 0] [0 1] [2 2] [1 2] [0 2]]
+}
 
-    for ny in [($y - 1), $y, ($y + 1)] {
-        for nx in [($x - 1), $x, ($x + 1)] {
-            if ($nx == $x) and ($ny == $y) {
-                continue
-            }
+def build_record_cell_map [cells: list<record>] {
+    mut cell_map = {}
 
-            if (has_life_cell $cells $nx $ny) {
-                $count += 1
-            }
-        }
+    for cell in $cells {
+        $cell_map = ($cell_map | upsert (game_of_life_cell_key $cell) true)
     }
 
-    $count
+    $cell_map
 }
 
-def step_life_cells [cells: list<record>, width: int, height: int] {
-    mut candidates = []
+def add_neighbor_count [counts: record, x: int, y: int] {
+    let key = $"($x),($y)"
+    let current = ($counts | get -o $key | default 0)
+    $counts | upsert $key ($current + 1)
+}
+
+def split_game_of_life_key [key: string] {
+    let parts = ($key | split row ",")
+    { x: ($parts | get 0 | into int), y: ($parts | get 1 | into int) }
+}
+
+def count_game_of_life_neighbors_record [cells: list<record>, width: int, height: int] {
+    mut counts = {}
 
     for cell in $cells {
         for ny in [($cell.y - 1), $cell.y, ($cell.y + 1)] {
@@ -523,54 +513,104 @@ def step_life_cells [cells: list<record>, width: int, height: int] {
                     continue
                 }
 
-                $candidates = ($candidates | append [(make_life_cell $nx $ny)])
+                if ($nx == $cell.x) and ($ny == $cell.y) {
+                    continue
+                }
+
+                $counts = (add_neighbor_count $counts $nx $ny)
             }
         }
     }
 
-    let unique_candidates = (unique_life_cells $candidates)
+    $counts
+}
+
+def step_game_of_life_cells_fast [cells: list<record>, width: int, height: int] {
+    let alive_map = (build_record_cell_map $cells)
+    let neighbor_counts = (count_game_of_life_neighbors_record $cells $width $height)
     mut next_cells = []
 
-    for candidate in $unique_candidates {
-        let neighbors = (count_live_neighbors $cells $candidate.x $candidate.y)
-        let alive = (has_life_cell $cells $candidate.x $candidate.y)
+    for column in ($neighbor_counts | transpose key value) {
+        let point = (split_game_of_life_key $column.key)
+        let alive = ($alive_map | get -o $column.key | default false)
+        let neighbors = ($column.value | into int)
 
         if ($neighbors == 3) or ($alive and ($neighbors == 2)) {
-            $next_cells = ($next_cells | append [$candidate])
+            $next_cells = ($next_cells | append [(make_game_of_life_cell $point.x $point.y)])
         }
     }
 
-    unique_life_cells $next_cells
+    unique_game_of_life_cells $next_cells
 }
 
-def render_life_row [width: int, row_index: int, cells: list<record>] {
-    0..($width - 1)
+def step_game_of_life_cells_n_fast [cells: list<record>, width: int, height: int, generations: int] {
+    mut current = $cells
+
+    for _ in 1..$generations {
+        $current = (step_game_of_life_cells_fast $current $width $height)
+    }
+
+    $current
+}
+
+def build_live_game_of_life_seed [spec: record] {
+    let width = (get_game_of_life_grid_width ($spec.inner_width | into int))
+    let height = ($spec.body_height | into int)
+    let mid_y = ($height / 2 | math floor)
+    let lane_y_top = if ($mid_y - 2) < 0 { 0 } else { $mid_y - 2 }
+    let lane_y_bottom = if ($mid_y + 1) >= $height { $height - 3 } else { $mid_y + 1 }
+    let right_glider = (get_right_glider_shape)
+    let left_glider = (get_left_glider_shape)
+
+    let left_glider_cells = (offset_game_of_life_shape $right_glider 1 $lane_y_top)
+    let right_glider_cells = (offset_game_of_life_shape $left_glider ($width - 4) $lane_y_bottom)
+
+    unique_game_of_life_cells ($left_glider_cells | append $right_glider_cells)
+}
+
+def build_game_of_life_cell_keys [cells: list<record>] {
+    $cells | each {|cell| game_of_life_cell_key $cell }
+}
+
+def get_game_of_life_grid_width [inner_width: int] {
+    let grid_width = (($inner_width / 2) | math floor)
+    if $grid_width < 1 { 1 } else { $grid_width }
+}
+
+def render_game_of_life_row [grid_width: int, inner_width: int, row_index: int, cell_keys: list<string>] {
+    let row = (
+    0..($grid_width - 1)
     | each {|x|
-        if (has_life_cell $cells $x $row_index) {
-            colorize_life_char $x $row_index
+        if ($"($x),($row_index)" in $cell_keys) {
+            $"(colorize_game_of_life_char $x $row_index)(colorize_game_of_life_char $x $row_index)"
         } else {
-            " "
+            "  "
         }
     }
     | str join ""
+    )
+
+    pad_text_right $row $inner_width
 }
 
-def build_life_frame [spec: record, cells: list<record>] {
+def build_game_of_life_frame [spec: record, cells: list<record>] {
     let colors = get_yazelix_colors
-    let width = ($spec.inner_width | into int)
+    let inner_width = ($spec.inner_width | into int)
     let height = ($spec.body_height | into int)
+    let grid_width = (get_game_of_life_grid_width $inner_width)
+    let cell_keys = (build_game_of_life_cell_keys $cells)
     let body = (
         0..($height - 1)
         | each {|row_index|
-            let row = (render_life_row $width $row_index $cells)
+            let row = (render_game_of_life_row $grid_width $inner_width $row_index $cell_keys)
             $"($colors.purple)│($colors.reset)($row)($colors.purple)│($colors.reset)"
         }
     )
 
     [
-        $"($colors.purple)╭(make_border $width "─")╮($colors.reset)"
+        $"($colors.purple)╭(make_border $inner_width "─")╮($colors.reset)"
         ...$body
-        $"($colors.purple)╰(make_border $width "─")╯($colors.reset)"
+        $"($colors.purple)╰(make_border $inner_width "─")╯($colors.reset)"
     ]
 }
 
@@ -608,20 +648,22 @@ export def get_boids_animation_frames [width?: int] {
     ]
 }
 
-export def get_life_animation_frames [width?: int] {
+export def get_game_of_life_animation_frames [width?: int] {
     let resolved_width = ($width | default (get_terminal_width) | into int)
     let variant = (get_logo_welcome_variant $resolved_width)
-    let spec = (get_life_welcome_spec $variant $resolved_width)
-    let width_limit = ($spec.inner_width | into int)
+    let spec = (get_game_of_life_welcome_spec $variant $resolved_width)
+    let width_limit = (get_game_of_life_grid_width ($spec.inner_width | into int))
     let height_limit = ($spec.body_height | into int)
-    let frame0_cells = (get_life_seed $spec)
-    let frame1_cells = (step_life_cells $frame0_cells $width_limit $height_limit)
-    let frame2_cells = (step_life_cells $frame1_cells $width_limit $height_limit)
+    mut current_cells = (build_live_game_of_life_seed $spec)
+    mut simulation_frames = [(build_game_of_life_frame $spec $current_cells)]
+
+    for _ in 1..7 {
+        $current_cells = (step_game_of_life_cells_fast $current_cells $width_limit $height_limit)
+        $simulation_frames = ($simulation_frames | append [(build_game_of_life_frame $spec $current_cells)])
+    }
 
     [
-        (build_life_frame $spec $frame0_cells)
-        (build_life_frame $spec $frame1_cells)
-        (build_life_frame $spec $frame2_cells)
+        ...$simulation_frames
         (get_logo_welcome_frame $width)
     ]
 }
@@ -640,17 +682,24 @@ export def play_frames [frames: list<list<string>>, duration: duration] {
     }
 
     let frame_delay = ($duration / ($frames | length))
-    let art_height = (($frames | first) | length)
+    let max_frame_height = ($frames | each {|frame| $frame | length } | math max)
 
     for frame in $frames {
-        for line in $frame {
+        let padded_frame = if (($frame | length) < $max_frame_height) {
+            let filler = (0..(($max_frame_height - ($frame | length)) - 1) | each { "" })
+            ($frame | append $filler)
+        } else {
+            $frame
+        }
+
+        for line in $padded_frame {
             print $"\r\u{1b}[2K($line)"
         }
         sleep $frame_delay
-        print ("\u{1b}[" + (($art_height + 1) | into string) + "A")
+        print ("\u{1b}[" + (($max_frame_height + 1) | into string) + "A")
     }
 
-    print ((0..($art_height - 1) | each { "" } | str join "\n"))
+    print ((0..($max_frame_height - 1) | each { "" } | str join "\n"))
 }
 
 export def play_animation [duration: duration, width?: int] {
@@ -659,7 +708,7 @@ export def play_animation [duration: duration, width?: int] {
 }
 
 def get_welcome_playback_duration [welcome_style: string, duration: duration] {
-    if $welcome_style == "life" {
+    if $welcome_style == "game_of_life" {
         2sec
     } else {
         $duration
@@ -691,9 +740,9 @@ export def render_welcome_style [welcome_style: string, duration: duration = 0.5
         return
     }
 
-    if $resolved_style == "life" {
+    if $resolved_style == "game_of_life" {
         print ""
-        play_frames (get_life_animation_frames $width) $playback_duration
+        play_frames (get_game_of_life_animation_frames $width) $playback_duration
         return
     }
 

@@ -88,7 +88,21 @@ const CONFIG_MIGRATION_RULES = [
         user_visible: true
         guarded_paths: ["ascii", "ascii.mode", "core.welcome_style"]
         rationale: "Yazelix now uses one welcome_style selector instead of a separate ASCII-art mode field. Animated welcome now maps to the branded logo style."
-        manual_fix: "Move [ascii].mode into [core].welcome_style. Use \"static\", \"logo\", \"boids\", \"life\", \"mandelbrot\", or \"random\"."
+        manual_fix: "Move [ascii].mode into [core].welcome_style. Use \"static\", \"logo\", \"boids\", \"game_of_life\", \"mandelbrot\", or \"random\"."
+    }
+    {
+        id: "rename_life_welcome_style_to_game_of_life"
+        title: "Rename core.welcome_style = life to game_of_life"
+        kind: "field_reshape"
+        introduced_in: "v13.8"
+        introduced_after_version: null
+        introduced_on: "2026-03-29"
+        review_after_days: 180
+        auto_apply: true
+        user_visible: true
+        guarded_paths: ["core.welcome_style"]
+        rationale: "Yazelix now uses the clearer game_of_life welcome-style name instead of the shorter life alias."
+        manual_fix: "Replace core.welcome_style = \"life\" with \"game_of_life\"."
     }
     {
         id: "split_legacy_pack_config_surface"
@@ -405,6 +419,31 @@ def plan_replace_ascii_art_mode_with_welcome_style [config: record] {
     )
 }
 
+def plan_rename_life_welcome_style_to_game_of_life [config: record] {
+    let path = ["core", "welcome_style"]
+    let value = (maybe_get $config $path)
+
+    if $value == null {
+        return null
+    }
+
+    let normalized = (try { $value | into string | str downcase } catch { null })
+    if $normalized != "life" {
+        return null
+    }
+
+    let updated_core = (($config.core? | default {}) | upsert welcome_style "game_of_life")
+    let updated_config = ($config | upsert core $updated_core)
+
+    (make_result
+        "rename_life_welcome_style_to_game_of_life"
+        "auto"
+        ['Replace [core].welcome_style = "life" with "game_of_life".']
+        [(format_path $path)]
+        $updated_config
+    )
+}
+
 def plan_split_legacy_pack_config_surface [config: record, pack_config: any, pack_config_path: string] {
     let path = ["packs"]
     let packs = (maybe_get $config $path)
@@ -453,6 +492,7 @@ def get_plan_step [rule_id: string, config: record, pack_config: any = null, pac
         "review_legacy_cursor_trail_settings" => (plan_review_legacy_cursor_trail_settings $config)
         "review_terminal_config_mode_auto" => (plan_review_terminal_config_mode_auto $config)
         "replace_ascii_art_mode_with_welcome_style" => (plan_replace_ascii_art_mode_with_welcome_style $config)
+        "rename_life_welcome_style_to_game_of_life" => (plan_rename_life_welcome_style_to_game_of_life $config)
         "split_legacy_pack_config_surface" => (plan_split_legacy_pack_config_surface $config $pack_config $pack_config_path)
         _ => (error make {msg: $"Unknown config migration rule id: ($rule_id)"})
     }

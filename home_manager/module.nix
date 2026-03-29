@@ -411,7 +411,7 @@ in
         "static"
         "logo"
         "boids"
-        "life"
+        "game_of_life"
         "mandelbrot"
         "random"
       ];
@@ -421,7 +421,7 @@ in
         - "static": show the resting Yazelix logo frame only
         - "logo": show the branded animated logo reveal
         - "boids": reserved animated flocking style
-        - "life": reserved Game of Life style
+        - "game_of_life": reserved Game of Life style
         - "mandelbrot": reserved fractal style
         - "random": choose one animated style at random (never "static")
       '';

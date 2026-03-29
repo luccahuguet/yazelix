@@ -103,7 +103,7 @@ def parse_terminal_config_mode [raw_config: record] {
 
 def parse_welcome_style [raw_config: record] {
     let style = ($raw_config.core?.welcome_style? | default "random" | into string | str downcase)
-    let allowed = ["static", "logo", "boids", "life", "mandelbrot", "random"]
+    let allowed = ["static", "logo", "boids", "game_of_life", "mandelbrot", "random"]
 
     if not ($style in $allowed) {
         let allowed_text = ($allowed | str join ", ")
