@@ -171,11 +171,12 @@ enable_atuin = true
 }
 
 def test_yzx_doctor_fix_splits_legacy_pack_config [] {
-    print "🧪 Testing yzx doctor --fix migrates legacy [packs] into yazelix_packs.toml..."
+    print "🧪 Testing yzx doctor --fix relocates legacy pack config into user_configs/yazelix_packs.toml..."
 
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_doctor_fix_packs_XXXXXX | str trim)
     let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($temp_config_dir | path join "user_configs")
     mkdir ($tmp_home | path join ".config")
     mkdir $temp_config_dir
 
@@ -197,11 +198,11 @@ git = ["gh", "prek"]
             ^nu -c $"use \"($yzx_script)\" *; yzx doctor --fix" | complete
         }
         let stdout = ($output.stdout | str trim)
-        let rewritten = (open ($temp_config_dir | path join "yazelix.toml"))
-        let pack_path = ($temp_config_dir | path join "yazelix_packs.toml")
+        let rewritten = (open ($user_config_dir | path join "yazelix.toml"))
+        let pack_path = ($user_config_dir | path join "yazelix_packs.toml")
         let pack_rewritten = (if ($pack_path | path exists) { open $pack_path } else { null })
         let pack_rendered = (if $pack_rewritten == null { "<missing>" } else { $pack_rewritten | to json -r })
-        let backups = (ls $temp_config_dir | where name =~ 'yazelix\.toml\.backup-')
+        let backups = (ls $user_config_dir | where name =~ 'yazelix\.toml\.backup-')
 
         if (
             ($output.exit_code == 0)
@@ -212,8 +213,9 @@ git = ["gh", "prek"]
             and ($pack_rewritten.user_packages == ["docker"])
             and (($pack_rewritten.declarations | get git) == ["gh", "prek"])
             and (($backups | length) == 1)
+            and not (($temp_config_dir | path join "yazelix.toml") | path exists)
         ) {
-            print "  ✅ yzx doctor --fix now migrates legacy pack ownership into the sidecar"
+            print "  ✅ yzx doctor --fix relocates legacy pack ownership into user_configs"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main=($rewritten | to json -r) pack=($pack_rendered) backups=(($backups | length))"

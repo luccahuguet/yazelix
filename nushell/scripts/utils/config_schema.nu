@@ -4,7 +4,7 @@
 
 use constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_SHADERS, GHOSTTY_TRAIL_EFFECTS, GHOSTTY_MODE_EFFECTS, GHOSTTY_TRAIL_GLOW_LEVELS]
 use ascii_art.nu [WELCOME_STYLE_VALUES]
-use config_surfaces.nu load_config_surface_from_main
+use config_surfaces.nu [load_config_surface_from_main get_main_user_config_path]
 
 const OPEN_RECORD_PATHS = [
     ["packs", "declarations"]
@@ -228,7 +228,7 @@ export def validate_enum_values [user: record] {
 
 export def get_config_validation_findings [yazelix_dir: string] {
     let default_path = ($yazelix_dir | path expand | path join "yazelix_default.toml")
-    let user_path = ($yazelix_dir | path expand | path join "yazelix.toml")
+    let user_path = (get_main_user_config_path $yazelix_dir)
 
     if not ($default_path | path exists) {
         error make {msg: $"yazelix_default.toml not found at ($default_path)"}
@@ -248,7 +248,7 @@ export def get_config_validation_findings [yazelix_dir: string] {
 # Main exported function: validate user config against yazelix_default.toml
 export def validate_config_against_default [yazelix_dir: string] {
     let default_path = ($yazelix_dir | path expand | path join "yazelix_default.toml")
-    let user_path = ($yazelix_dir | path expand | path join "yazelix.toml")
+    let user_path = (get_main_user_config_path $yazelix_dir)
     if not ($default_path | path exists) {
         print $"❌ yazelix_default.toml not found at ($default_path)"
         return

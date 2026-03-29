@@ -85,7 +85,7 @@ def main [
     if ($legacy_nix_config | path exists) and ($legacy_nix_config != $active_config_file) {
         print ""
         print "⚠️  Detected legacy config: ~/.config/yazelix/yazelix.nix"
-        print "   Yazelix now reads settings from ~/.config/yazelix/yazelix.toml."
+        print "   Yazelix now reads settings from ~/.config/yazelix/user_configs/yazelix.toml."
         print "   Copy your custom options into the TOML file (see docs/customization.md) and remove the old file once migrated."
         print ""
     }
@@ -123,7 +123,7 @@ def main [
             }
             print "Error: terminal.terminals must include at least one terminal"
             print $"Detected terminals: ($available_str)"
-            print "Set [terminal].terminals in ~/.config/yazelix/yazelix.toml"
+            print "Set [terminal].terminals in ~/.config/yazelix/user_configs/yazelix.toml"
             exit 1
         } else {
             $terminals = $SUPPORTED_TERMINALS

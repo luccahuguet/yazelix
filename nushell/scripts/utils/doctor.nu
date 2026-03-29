@@ -4,6 +4,7 @@
 use logging.nu log_to_file
 use constants.nu [PINNED_NIX_VERSION PINNED_DEVENV_VERSION]
 use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir]
+use config_surfaces.nu [get_main_user_config_path reconcile_primary_config_surfaces]
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
 use ../integrations/zellij.nu debug_editor_state
@@ -305,11 +306,32 @@ export def check_environment_variables [] {
 export def check_configuration [] {
     let config_dir = (get_yazelix_config_dir)
     let runtime_dir = (get_yazelix_runtime_dir)
-    let yazelix_config = ($config_dir | path join "yazelix.toml")
     let yazelix_legacy = ($config_dir | path join "yazelix.nix")
-    let yazelix_default = ($runtime_dir | path join "yazelix_default.toml")
+    let surface_paths = (try {
+        {
+            paths: (reconcile_primary_config_surfaces $config_dir $runtime_dir)
+            error: null
+        }
+    } catch {|err|
+        {
+            paths: null
+            error: $err.msg
+        }
+    })
     
     mut results = []
+
+    if ($surface_paths.error | is-not-empty) {
+        return [{
+            status: "error"
+            message: "Could not reconcile Yazelix config surfaces"
+            details: $surface_paths.error
+            fix_available: false
+        }]
+    }
+
+    let yazelix_config = $surface_paths.paths.user_config
+    let yazelix_default = $surface_paths.paths.default_config
     
     if ($yazelix_config | path expand | path exists) {
         $results = ($results | append {
@@ -617,7 +639,7 @@ export def fix_create_config [] {
     use ./config_surfaces.nu [copy_default_config_surfaces]
     let yazelix_config_dir = (get_yazelix_config_dir)
     let yazelix_runtime_dir = (get_yazelix_runtime_dir)
-    let yazelix_config = ($yazelix_config_dir | path join "yazelix.toml")
+    let yazelix_config = (get_main_user_config_path $yazelix_config_dir)
     let yazelix_default = ($yazelix_runtime_dir | path join "yazelix_default.toml")
 
     try {

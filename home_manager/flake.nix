@@ -57,8 +57,8 @@
           let
             desktopExec = hmConfig.config.xdg.desktopEntries.yazelix.exec;
             startupWMClass = hmConfig.config.xdg.desktopEntries.yazelix.settings.StartupWMClass;
-            yazelixToml = hmConfig.config.xdg.configFile."yazelix/yazelix.toml".text;
-            yazelixPacksToml = hmConfig.config.xdg.configFile."yazelix/yazelix_packs.toml".text;
+            yazelixToml = hmConfig.config.xdg.configFile."yazelix/user_configs/yazelix.toml".text;
+            yazelixPacksToml = hmConfig.config.xdg.configFile."yazelix/user_configs/yazelix_packs.toml".text;
           in
           {
             desktop_entry_smoke = pkgs.runCommand "yazelix-home-manager-desktop-entry-smoke" {

@@ -5,6 +5,7 @@
 use logging.nu log_to_file
 use common.nu [get_max_cores get_max_jobs get_yazelix_dir get_yazelix_nix_config]
 use config_parser.nu [parse_yazelix_config]
+use config_surfaces.nu get_main_user_config_path
 
 # Profile a single step with timing
 def profile_step [name: string, code: closure] {
@@ -40,7 +41,7 @@ export def profile_environment_setup [] {
 
     # Profile config detection
     let config_result = (profile_step "Config hash computation" {
-        let primary_config = $"($yazelix_dir)/yazelix.toml"
+        let primary_config = (get_main_user_config_path $yazelix_dir)
         let legacy_config = $"($yazelix_dir)/yazelix.nix"
         let config_file = if ($primary_config | path exists) {
             $primary_config
@@ -82,8 +83,9 @@ export def profile_cold_launch [
     let yazelix_dir = (get_yazelix_dir)
 
     # Determine which config file to use
-    let config_file = if ($"($yazelix_dir)/yazelix.toml" | path exists) {
-        $"($yazelix_dir)/yazelix.toml"
+    let primary_config = (get_main_user_config_path $yazelix_dir)
+    let config_file = if ($primary_config | path exists) {
+        $primary_config
     } else if ($"($yazelix_dir)/yazelix.nix" | path exists) {
         $"($yazelix_dir)/yazelix.nix"
     } else {

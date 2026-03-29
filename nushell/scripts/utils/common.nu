@@ -16,6 +16,15 @@ export def get_yazelix_config_dir [] {
     }
 }
 
+export def get_yazelix_user_config_dir [config_root?: string] {
+    let root = if $config_root == null {
+        get_yazelix_config_dir
+    } else {
+        $config_root | path expand
+    }
+    ($root | path join "user_configs")
+}
+
 export def get_yazelix_runtime_dir [] {
     let configured = (
         $env.YAZELIX_RUNTIME_DIR?

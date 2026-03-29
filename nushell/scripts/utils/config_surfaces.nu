@@ -1,9 +1,10 @@
 #!/usr/bin/env nu
 # Shared helpers for loading Yazelix config surfaces.
 
-use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
+use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_user_config_dir]
 use failure_classes.nu [format_failure_classification]
 
+export const MAIN_CONFIG_FILENAME = "yazelix.toml"
 export const PACK_SIDECAR_FILENAME = "yazelix_packs.toml"
 export const PACK_DEFAULT_FILENAME = "yazelix_packs_default.toml"
 
@@ -34,12 +35,35 @@ def ensure_record_surface [value: any, label: string, path: string] {
     }
 }
 
-export def get_pack_sidecar_path [config_file: string] {
-    ($config_file | path dirname | path join $PACK_SIDECAR_FILENAME)
+export def get_main_user_config_path [config_root?: string] {
+    (get_yazelix_user_config_dir $config_root) | path join $MAIN_CONFIG_FILENAME
+}
+
+export def get_pack_sidecar_path [config_file_or_root?: string] {
+    if $config_file_or_root == null {
+        return ((get_yazelix_user_config_dir) | path join $PACK_SIDECAR_FILENAME)
+    }
+
+    let candidate = ($config_file_or_root | path expand)
+    if ($candidate | path basename) == $MAIN_CONFIG_FILENAME {
+        ($candidate | path dirname | path join $PACK_SIDECAR_FILENAME)
+    } else {
+        ($candidate | path join $PACK_SIDECAR_FILENAME)
+    }
 }
 
 export def get_pack_default_path [default_config_path: string] {
     ($default_config_path | path dirname | path join $PACK_DEFAULT_FILENAME)
+}
+
+export def get_legacy_main_config_path [config_root?: string] {
+    let root = if $config_root == null { get_yazelix_config_dir } else { $config_root | path expand }
+    ($root | path join $MAIN_CONFIG_FILENAME)
+}
+
+export def get_legacy_pack_sidecar_path [config_root?: string] {
+    let root = if $config_root == null { get_yazelix_config_dir } else { $config_root | path expand }
+    ($root | path join $PACK_SIDECAR_FILENAME)
 }
 
 def get_associated_pack_surface_path [config_file: string] {
@@ -60,16 +84,76 @@ export def copy_default_config_surfaces [
     mkdir ($target_config_path | path dirname)
     cp $default_config_path $target_config_path
 
-    if ($default_pack_path | path exists) {
+    let pack_config_copied = if ($default_pack_path | path exists) and not ($target_pack_path | path exists) {
         cp $default_pack_path $target_pack_path
+        true
     } else if ($target_pack_path | path exists) {
-        rm $target_pack_path
+        false
+    } else {
+        false
     }
 
     {
         config_path: $target_config_path
         pack_config_path: $target_pack_path
-        pack_config_copied: ($default_pack_path | path exists)
+        pack_config_copied: $pack_config_copied
+    }
+}
+
+def relocate_legacy_config_surfaces_if_needed [paths: record] {
+    let current_exists = ($paths.user_config | path exists)
+    let current_pack_exists = ($paths.user_pack_config | path exists)
+    let legacy_exists = ($paths.legacy_user_config | path exists)
+    let legacy_pack_exists = ($paths.legacy_pack_config | path exists)
+
+    if ($current_exists or $current_pack_exists) and ($legacy_exists or $legacy_pack_exists) {
+        (make_surface_error
+            "Yazelix found duplicate config surfaces in both the repo root and user_configs."
+            [
+                $"user_configs main: ($paths.user_config)"
+                $"user_configs packs: ($paths.user_pack_config)"
+                $"legacy main: ($paths.legacy_user_config)"
+                $"legacy packs: ($paths.legacy_pack_config)"
+            ]
+            "Keep only the user_configs copies. Move or delete the legacy root-level config files so Yazelix has one clear config owner."
+        )
+    }
+
+    if not ($legacy_exists or $legacy_pack_exists) {
+        return
+    }
+
+    mkdir $paths.user_config_dir
+
+    if $legacy_exists {
+        mv $paths.legacy_user_config $paths.user_config
+    }
+
+    if $legacy_pack_exists {
+        mv $paths.legacy_pack_config $paths.user_pack_config
+    }
+}
+
+export def reconcile_primary_config_surfaces [config_root?: string, runtime_root?: string] {
+    let paths = (get_primary_config_paths $config_root $runtime_root)
+    relocate_legacy_config_surfaces_if_needed $paths
+    $paths
+}
+
+export def get_primary_config_paths [config_root?: string, runtime_root?: string] {
+    let resolved_config_root = if $config_root == null { get_yazelix_config_dir } else { $config_root | path expand }
+    let resolved_runtime_root = if $runtime_root == null { get_yazelix_runtime_dir } else { $runtime_root | path expand }
+    let user_config_dir = (get_yazelix_user_config_dir $resolved_config_root)
+
+    {
+        config_dir: $resolved_config_root
+        user_config_dir: $user_config_dir
+        user_config: (get_main_user_config_path $resolved_config_root)
+        user_pack_config: (get_pack_sidecar_path (get_main_user_config_path $resolved_config_root))
+        legacy_user_config: (get_legacy_main_config_path $resolved_config_root)
+        legacy_pack_config: (get_legacy_pack_sidecar_path $resolved_config_root)
+        default_config: ($resolved_runtime_root | path join "yazelix_default.toml")
+        default_pack_config: ($resolved_runtime_root | path join $PACK_DEFAULT_FILENAME)
     }
 }
 
@@ -141,20 +225,16 @@ export def load_config_surface_from_main [config_file: string] {
 }
 
 export def resolve_active_config_paths [] {
-    let yazelix_config_dir = get_yazelix_config_dir
-    let yazelix_runtime_dir = get_yazelix_runtime_dir
+    let paths = (reconcile_primary_config_surfaces)
 
     let config_file = if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) {
         $env.YAZELIX_CONFIG_OVERRIDE
     } else {
-        let toml_file = ($yazelix_config_dir | path join "yazelix.toml")
-        let default_toml = ($yazelix_runtime_dir | path join "yazelix_default.toml")
-
-        if ($toml_file | path exists) {
-            $toml_file
-        } else if ($default_toml | path exists) {
+        if ($paths.user_config | path exists) {
+            $paths.user_config
+        } else if ($paths.default_config | path exists) {
             print "📝 Creating yazelix.toml from yazelix_default.toml..."
-            let copy_result = (copy_default_config_surfaces $default_toml $toml_file)
+            let copy_result = (copy_default_config_surfaces $paths.default_config $paths.user_config)
             print "✅ yazelix.toml created\n"
             $copy_result.config_path
         } else {
@@ -170,7 +250,7 @@ export def resolve_active_config_paths [] {
 
     {
         config_file: $config_file
-        default_config_path: ($yazelix_runtime_dir | path join "yazelix_default.toml")
+        default_config_path: $paths.default_config
     }
 }
 

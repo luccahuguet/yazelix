@@ -2,8 +2,9 @@
 # Helix mode detection utility for Yazelix
 
 # Get the current Helix mode from yazelix.toml configuration (falls back to legacy yazelix.nix)
+use config_surfaces.nu get_main_user_config_path
 export def get_helix_mode [] {
-    let toml_config = $"($env.HOME)/.config/yazelix/yazelix.toml"
+    let toml_config = (get_main_user_config_path)
     let legacy_config = $"($env.HOME)/.config/yazelix/yazelix.nix"
     let default_toml = $"($env.HOME)/.config/yazelix/yazelix_default.toml"
 

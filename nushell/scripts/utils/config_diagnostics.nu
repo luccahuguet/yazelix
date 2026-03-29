@@ -4,7 +4,7 @@
 use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 use config_migrations.nu [apply_config_migration_plan build_config_migration_plan_from_record]
 use config_schema.nu [compare_configs validate_enum_values]
-use config_surfaces.nu [get_pack_sidecar_path load_config_surface_from_main]
+use config_surfaces.nu [get_pack_sidecar_path load_config_surface_from_main get_main_user_config_path]
 use failure_classes.nu [format_failure_classification]
 
 def format_release_context [result: record] {
@@ -195,7 +195,7 @@ export def build_config_diagnostic_report [
 export def build_active_config_diagnostic_report [--include-missing] {
     let config_dir = (get_yazelix_config_dir)
     let runtime_dir = (get_yazelix_runtime_dir)
-    let config_path = ($config_dir | path join "yazelix.toml")
+    let config_path = (get_main_user_config_path $config_dir)
     let default_path = ($runtime_dir | path join "yazelix_default.toml")
 
     if not ($default_path | path exists) {

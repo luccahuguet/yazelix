@@ -5,7 +5,7 @@ use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstra
 use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 use ../utils/config_migrations.nu [apply_config_migration_plan get_config_migration_plan render_config_migration_plan validate_config_migration_rules]
-use ../utils/config_surfaces.nu resolve_active_config_paths
+use ../utils/config_surfaces.nu [resolve_active_config_paths get_primary_config_paths]
 
 def classify_menu_command [cmd: string] {
     if ($cmd | str starts-with "yzx launch") or ($cmd == "yzx restart") {
@@ -186,18 +186,6 @@ export def "yzx config" [
     } else {
         let active_config = $config_surface.merged_config
         if $full { $active_config } else { $active_config | reject packs }
-    }
-}
-
-def get_primary_config_paths [] {
-    let config_dir = (get_yazelix_config_dir)
-    let runtime_dir = (get_yazelix_runtime_dir)
-    {
-        yazelix_dir: $config_dir
-        user_config: ($config_dir | path join "yazelix.toml")
-        user_pack_config: ($config_dir | path join "yazelix_packs.toml")
-        default_config: ($runtime_dir | path join "yazelix_default.toml")
-        default_pack_config: ($runtime_dir | path join "yazelix_packs_default.toml")
     }
 }
 

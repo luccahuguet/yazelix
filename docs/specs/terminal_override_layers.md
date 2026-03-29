@@ -12,13 +12,13 @@ The real customization need is not full terminal-config ownership. It is a safe 
 
 - Ghostty, Kitty, and Alacritty terminal override layering
 - Yazelix-managed base terminal configs
-- Yazelix-specific user override files under `~/.config/yazelix/terminal_overrides/`
+- Yazelix-specific user override files under `~/.config/yazelix/user_configs/terminal/`
 - launcher ownership of startup behavior where needed so user override files can stay broad
 
 ## Behavior
 
 - Yazelix generates its own managed base config for supported terminals.
-- Yazelix also supports a per-terminal user override file under `~/.config/yazelix/terminal_overrides/`.
+- Yazelix also supports a per-terminal user override file under `~/.config/yazelix/user_configs/terminal/`.
 - User override files are automatically picked up when Yazelix launches in the managed-config path.
 - `terminal.config_mode = "yazelix"` keeps using the managed config plus the Yazelix-specific override layer.
 - `terminal.config_mode = "user"` switches to the terminal's real native config path and fails fast if that file does not exist.

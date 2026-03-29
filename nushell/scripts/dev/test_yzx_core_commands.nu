@@ -1077,8 +1077,8 @@ def test_yzx_config_open_targets_print_paths [] {
             ^nu -c $"use \"($yzx_script)\" *; yzx config open weird --print" | complete
         }
 
-        let expected_main = ($temp_config_dir | path join "yazelix.toml")
-        let expected_packs = ($temp_config_dir | path join "yazelix_packs.toml")
+        let expected_main = ($temp_config_dir | path join "user_configs" "yazelix.toml")
+        let expected_packs = ($temp_config_dir | path join "user_configs" "yazelix_packs.toml")
         let main_stdout = ($main_output.stdout | str trim)
         let packs_stdout = ($packs_output.stdout | str trim)
         let invalid_stderr = ($invalid_output.stderr | str trim)
@@ -1116,11 +1116,14 @@ def test_yzx_config_reset_replaces_with_backup [] {
     mkdir $temp_yazelix_dir
 
     let result = (try {
+        let user_config_dir = ($temp_yazelix_dir | path join "user_configs")
+        mkdir $user_config_dir
+
         '[shell]
 default_shell = "bash"
-' | save --force --raw ($temp_yazelix_dir | path join "yazelix.toml")
+' | save --force --raw ($user_config_dir | path join "yazelix.toml")
         'enabled = ["git"]
-' | save --force --raw ($temp_yazelix_dir | path join "yazelix_packs.toml")
+' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
 
         let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
         let output = with-env {
@@ -1131,16 +1134,16 @@ default_shell = "bash"
             ^nu -c $"use \"($yzx_script)\" *; yzx config reset --yes" | complete
         }
         let stdout = ($output.stdout | str trim)
-        let new_config = (open --raw ($temp_yazelix_dir | path join "yazelix.toml"))
+        let new_config = (open --raw ($user_config_dir | path join "yazelix.toml"))
         let default_config = (open --raw ($repo_root | path join "yazelix_default.toml"))
-        let new_pack_config = (open --raw ($temp_yazelix_dir | path join "yazelix_packs.toml"))
+        let new_pack_config = (open --raw ($user_config_dir | path join "yazelix_packs.toml"))
         let default_pack_config = (open --raw ($repo_root | path join "yazelix_packs_default.toml"))
         let backups = (
-            ls $temp_yazelix_dir
+            ls $user_config_dir
             | where name =~ 'yazelix\.toml\.backup-'
         )
         let pack_backups = (
-            ls $temp_yazelix_dir
+            ls $user_config_dir
             | where name =~ 'yazelix_packs\.toml\.backup-'
         )
         let backup_content = if ($backups | is-empty) { "" } else { open --raw (($backups | first).name) }
@@ -1323,20 +1326,21 @@ def test_config_state_hashes_pack_sidecar_changes [] {
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_config_state_packs_XXXXXX | str trim)
     let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($temp_config_dir | path join "user_configs")
     mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
+    mkdir $user_config_dir
 
     let result = (try {
         let state_script = ($repo_root | path join "nushell" "scripts" "utils" "config_state.nu")
         '[core]
 debug_mode = false
-' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+' | save --force --raw ($user_config_dir | path join "yazelix.toml")
 
         'enabled = ["git"]
 
 [declarations]
 git = ["gh"]
-' | save --force --raw ($temp_config_dir | path join "yazelix_packs.toml")
+' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
 
         let baseline_snippet = ([
             $"source \"($state_script)\""
@@ -1357,7 +1361,7 @@ git = ["gh"]
 
 [declarations]
 rust = ["rust_toolchain"]
-' | save --force --raw ($temp_config_dir | path join "yazelix_packs.toml")
+' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
 
         let changed_snippet = ([
             $"source \"($state_script)\""

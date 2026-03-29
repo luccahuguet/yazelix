@@ -131,7 +131,7 @@ manage_terminals = true
 # Options:
 # - "yazelix": Use Yazelix-managed configs under ~/.local/share/yazelix/configs/terminal_emulators
 # - "user":    Load the terminal's native user config path instead; this requires that the real config file already exists
-# Supported customization path: keep "yazelix" and add terminal-native tweaks under ~/.config/yazelix/terminal_overrides/
+# Supported customization path: keep "yazelix" and add terminal-native tweaks under ~/.config/yazelix/user_configs/terminal/
 config_mode = "yazelix"
 
 # Cursor color palette for Ghostty shaders, plus Kitty's simple cursor-trail fallback
@@ -299,6 +299,6 @@ theme = "default"
 # This value is the source of truth and overrides any sort_by in configs/yazi/user/yazi.toml
 sort_by = "alphabetical"
 
-# Pack configuration lives in ~/.config/yazelix/yazelix_packs.toml
+# Pack configuration lives in ~/.config/yazelix/user_configs/yazelix_packs.toml
 # so this main config stays focused on core Yazelix behavior.
 # See docs/yazelix_collection.md for the full pack catalog and examples.

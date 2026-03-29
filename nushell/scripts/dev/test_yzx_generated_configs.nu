@@ -172,8 +172,8 @@ def test_launch_env_keeps_custom_helix_runtime_override [] {
     }
 }
 
-def test_generate_all_terminal_configs_creates_override_scaffolds [] {
-    print "🧪 Testing bundled terminal config generation creates Yazelix-specific override scaffolds..."
+def test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in [] {
+    print "🧪 Testing bundled terminal config generation keeps user terminal overrides opt-in..."
 
     let tmpdir = (^mktemp -d /tmp/yazelix_terminal_override_scaffold_XXXXXX | str trim)
     let fake_home = ($tmpdir | path join "home")
@@ -194,10 +194,7 @@ terminals = ["ghostty", "kitty", "alacritty", "wezterm", "foot"]
             generate_all_terminal_configs $runtime_root
         }
 
-        let override_root = ($fake_home | path join ".config" "yazelix" "terminal_overrides")
-        let ghostty_override = ($override_root | path join "ghostty")
-        let kitty_override = ($override_root | path join "kitty.conf")
-        let alacritty_override = ($override_root | path join "alacritty.toml")
+        let override_root = ($fake_home | path join ".config" "yazelix" "user_configs" "terminal")
         let ghostty_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "config"))
         let kitty_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "kitty" "kitty.conf"))
         let alacritty_entrypoint = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "alacritty" "alacritty.toml"))
@@ -205,26 +202,23 @@ terminals = ["ghostty", "kitty", "alacritty", "wezterm", "foot"]
         let foot_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "foot" "foot.ini"))
 
         if (
-            ($ghostty_override | path exists)
-            and ($kitty_override | path exists)
-            and ($alacritty_override | path exists)
-            and ((open --raw $ghostty_override) | str contains "Personal Ghostty overrides")
-            and ((open --raw $kitty_override) | str contains "Personal Kitty overrides")
-            and ((open --raw $alacritty_override) | str contains "Personal Alacritty overrides")
-            and ($ghostty_config | str contains $"config-file = ?\"($ghostty_override)\"")
-            and ($kitty_config | str contains $"include ($kitty_override)")
+            not ($override_root | path exists)
+            and ($ghostty_config | str contains $"config-file = ?\"($override_root | path join "ghostty")\"")
+            and not ($kitty_config | str contains "include ~/.config/yazelix")
+            and ($kitty_config | str contains $"Create ($override_root | path join "kitty.conf") if you want terminal-native Kitty tweaks.")
             and ($alacritty_entrypoint | str contains $"\"($fake_home)/.local/share/yazelix/configs/terminal_emulators/alacritty/alacritty_base.toml\"")
-            and ($alacritty_entrypoint | str contains $"\"($fake_home)/.config/yazelix/terminal_overrides/alacritty.toml\"")
+            and not ($alacritty_entrypoint | str contains $"\"($override_root | path join "alacritty.toml")\"")
+            and ($alacritty_entrypoint | str contains $"Create ($override_root | path join "alacritty.toml") if you want terminal-native Alacritty tweaks.")
             and not ($ghostty_config | str contains "start_yazelix.sh")
             and not ($kitty_config | str contains "start_yazelix.sh")
             and not ($alacritty_entrypoint | str contains "start_yazelix.sh")
             and not ($wezterm_config | str contains "start_yazelix.sh")
             and not ($foot_config | str contains "start_yazelix.sh")
         ) {
-            print "  ✅ Terminal config generation creates override scaffolds and keeps startup out of generated terminal configs"
+            print "  ✅ Terminal config generation keeps user terminal overrides opt-in and keeps startup out of generated terminal configs"
             true
         } else {
-            print "  ❌ Override scaffold generation did not produce the expected files or imports"
+            print "  ❌ Terminal config generation still scaffolded or imported unexpected user override files"
             false
         }
     } catch {|err|
@@ -236,8 +230,8 @@ terminals = ["ghostty", "kitty", "alacritty", "wezterm", "foot"]
     $result
 }
 
-def test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root [] {
-    print "🧪 Testing terminal override scaffolds ignore YAZELIX_DIR runtime roots..."
+def test_terminal_override_imports_ignore_yazelix_dir_runtime_root [] {
+    print "🧪 Testing terminal override imports ignore YAZELIX_DIR runtime roots..."
 
     let tmpdir = (^mktemp -d /tmp/yazelix_terminal_override_path_boundary_XXXXXX | str trim)
     let fake_home = ($tmpdir | path join "home")
@@ -247,11 +241,19 @@ def test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root [] {
     let terminal_configs_script = ($runtime_root | path join "nushell" "scripts" "utils" "terminal_configs.nu")
     mkdir $fake_home
     mkdir $fake_runtime_root
+    mkdir ($fake_home | path join ".config" "yazelix" "user_configs" "terminal")
 
     let result = (try {
         '[terminal]
 terminals = ["ghostty", "kitty", "alacritty"]
 ' | save --force --raw $config_path
+
+        '# user-owned ghostty override
+' | save --force --raw ($fake_home | path join ".config" "yazelix" "user_configs" "terminal" "ghostty")
+        '# user-owned kitty override
+' | save --force --raw ($fake_home | path join ".config" "yazelix" "user_configs" "terminal" "kitty.conf")
+        '# user-owned alacritty override
+' | save --force --raw ($fake_home | path join ".config" "yazelix" "user_configs" "terminal" "alacritty.toml")
 
         let command_output = (with-env {
             HOME: $fake_home
@@ -261,8 +263,11 @@ terminals = ["ghostty", "kitty", "alacritty"]
             ^nu -c $"use \"($terminal_configs_script)\" [generate_all_terminal_configs]; generate_all_terminal_configs \"($runtime_root)\"" | complete
         })
 
-        let expected_override_root = ($fake_home | path join ".config" "yazelix" "terminal_overrides")
-        let misplaced_override_root = ($fake_runtime_root | path join "terminal_overrides")
+        let expected_override_root = ($fake_home | path join ".config" "yazelix" "user_configs" "terminal")
+        let misplaced_override_root = ($fake_runtime_root | path join "user_configs" "terminal")
+        let ghostty_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "config"))
+        let kitty_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "kitty" "kitty.conf"))
+        let alacritty_entrypoint = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "alacritty" "alacritty.toml"))
 
         if (
             ($command_output.exit_code == 0)
@@ -270,9 +275,12 @@ terminals = ["ghostty", "kitty", "alacritty"]
             and (($expected_override_root | path join "ghostty") | path exists)
             and (($expected_override_root | path join "kitty.conf") | path exists)
             and (($expected_override_root | path join "alacritty.toml") | path exists)
+            and ($ghostty_config | str contains $"config-file = ?\"($expected_override_root | path join "ghostty")\"")
+            and ($kitty_config | str contains $"include ($expected_override_root | path join "kitty.conf")")
+            and ($alacritty_entrypoint | str contains $"\"($expected_override_root | path join "alacritty.toml")\"")
             and not ($misplaced_override_root | path exists)
         ) {
-            print "  ✅ Override scaffolds stay under HOME/.config/yazelix even when YAZELIX_DIR points elsewhere"
+            print "  ✅ Terminal override imports stay under HOME/.config/yazelix/user_configs even when YAZELIX_DIR points elsewhere"
             true
         } else {
             print $"  ❌ Unexpected override destinations: exit=($command_output.exit_code) expected_root_exists=(($expected_override_root | path exists)) misplaced_root_exists=(($misplaced_override_root | path exists)) expected_root=($expected_override_root) misplaced_root=($misplaced_override_root) stderr=(($command_output.stderr | str trim))"
@@ -734,19 +742,20 @@ def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
             parse_yazelix_config
         })
 
-        let main_exists = (($temp_config_dir | path join "yazelix.toml") | path exists)
-        let pack_exists = (($temp_config_dir | path join "yazelix_packs.toml") | path exists)
-        let generated_main = (if $main_exists { open --raw ($temp_config_dir | path join "yazelix.toml") } else { "" })
-        let generated_packs = (if $pack_exists { open --raw ($temp_config_dir | path join "yazelix_packs.toml") } else { "" })
+        let user_config_dir = ($temp_config_dir | path join "user_configs")
+        let main_exists = (($user_config_dir | path join "yazelix.toml") | path exists)
+        let pack_exists = (($user_config_dir | path join "yazelix_packs.toml") | path exists)
+        let generated_main = (if $main_exists { open --raw ($user_config_dir | path join "yazelix.toml") } else { "" })
+        let generated_packs = (if $pack_exists { open --raw ($user_config_dir | path join "yazelix_packs.toml") } else { "" })
 
         if (
             $main_exists
             and $pack_exists
-            and ($generated_main | str contains "Pack configuration lives in ~/.config/yazelix/yazelix_packs.toml")
+            and ($generated_main | str contains "Pack configuration lives in ~/.config/yazelix/user_configs/yazelix_packs.toml")
             and ($generated_packs | str contains "[declarations]")
             and ((($parsed.pack_declarations | default {}) | columns | length) > 0)
         ) {
-            print "  ✅ First-run bootstrap now materializes both yazelix.toml and yazelix_packs.toml from runtime defaults"
+            print "  ✅ First-run bootstrap now materializes both user_configs TOML surfaces from runtime defaults"
             true
         } else {
             print $"  ❌ Unexpected result: main_exists=($main_exists) pack_exists=($pack_exists) parsed=($parsed | select pack_names pack_declarations | to json -r)"
@@ -1636,8 +1645,8 @@ export def run_generated_config_canonical_tests [] {
         (test_game_of_life_animation_lands_on_logo_resting_frame)
         (test_game_of_life_welcome_duration_adds_frames_without_slowing_early_evolution)
         (test_zellij_widget_tray_defaults_omit_layout)
-        (test_generate_all_terminal_configs_creates_override_scaffolds)
-        (test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root)
+        (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
+        (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
         (test_parse_yazelix_config_reads_core_welcome_style)
         (test_parse_yazelix_config_reads_core_welcome_duration_seconds)
         (test_welcome_playback_duration_honors_config_for_game_of_life_but_not_logo)

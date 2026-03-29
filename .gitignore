@@ -18,6 +18,8 @@ yazelix.toml
 yazelix_packs.toml
 yazelix.toml.backup-*
 yazelix_packs.toml.backup-*
+user_configs/*
+!user_configs/README.md
 helix_custom/
 configs/yazi/user/*
 !configs/yazi/user/README.md

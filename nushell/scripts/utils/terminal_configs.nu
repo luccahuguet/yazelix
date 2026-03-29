@@ -4,7 +4,7 @@
 use config_parser.nu parse_yazelix_config
 use ./constants_with_helpers.nu *
 use ./constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_COLOR_HEX]
-use ./common.nu [get_yazelix_config_dir, get_yazelix_runtime_dir]
+use ./common.nu [get_yazelix_runtime_dir get_yazelix_user_config_dir]
 
 # Helpers
 def get_opacity_value [transparency: string] { $TRANSPARENCY_VALUES | get -o $transparency | default "1.0" }
@@ -64,7 +64,7 @@ def get_ghostty_cursor_effect_shader_path [effect: string] {
 }
 
 def get_terminal_override_dir [] {
-    (get_yazelix_config_dir) | path join "terminal_overrides"
+    (get_yazelix_user_config_dir) | path join "terminal"
 }
 
 def get_terminal_override_path [terminal: string] {
@@ -75,27 +75,6 @@ def get_terminal_override_path [terminal: string] {
         "alacritty" => ($override_dir | path join "alacritty.toml")
         _ => null
     }
-}
-
-def ensure_terminal_override_scaffold [terminal: string] {
-    let override_path = (get_terminal_override_path $terminal)
-    if $override_path == null {
-        return
-    }
-
-    mkdir ($override_path | path dirname)
-    if ($override_path | path exists) {
-        return
-    }
-
-    let scaffold = match $terminal {
-        "ghostty" => "# Personal Ghostty overrides for Yazelix.\n# Put theme, font-family, font-size, cursor style, padding, and similar preferences here.\n# Avoid launch-critical keys such as command or initial-command.\n"
-        "kitty" => "# Personal Kitty overrides for Yazelix.\n# Put theme, fonts, opacity, padding, cursor_shape, and similar preferences here.\n# Avoid launch-critical keys such as shell.\n"
-        "alacritty" => "# Personal Alacritty overrides for Yazelix.\n# Put theme, fonts, opacity, padding, cursor, and similar preferences here.\n# Avoid launch-critical keys such as terminal.shell.\n"
-        _ => ""
-    }
-
-    $scaffold | save --force --raw $override_path
 }
 
 # Section builders
@@ -210,7 +189,7 @@ window-padding-y = 10,0
 (build_ghostty_cursor_palette $selected_color)
 (build_ghostty_cursor_effects $selected_trail_effect $selected_mode_effect)
 
-# Personal Yazelix Ghostty overrides
+# Personal Yazelix Ghostty overrides \(optional, user-owned\)
 config-file = ?\"($override_path)\"
 "
 }
@@ -239,6 +218,11 @@ return config"
 export def generate_kitty_config [] {
     let config = parse_yazelix_config
     let override_path = (get_terminal_override_path "kitty")
+    let override_section = if ($override_path | path exists) {
+        $"# Personal Yazelix Kitty overrides\ninclude ($override_path)"
+    } else {
+        $"# Personal Yazelix Kitty overrides \(optional, user-owned\)\n# Create ($override_path) if you want terminal-native Kitty tweaks."
+    }
     $"# Kitty configuration for Yazelix
 
 hide_window_decorations yes
@@ -264,7 +248,7 @@ sync_to_monitor yes
 (build_kitty_cursor $config.ghostty_trail_color)
 
 # Personal Yazelix Kitty overrides
-include ($override_path)"
+($override_section)"
 }
 
 def generate_alacritty_base_config [] {
@@ -300,10 +284,19 @@ export def generate_alacritty_config [] {
     let generated_dir = ($YAZELIX_GENERATED_CONFIGS_DIR | str replace "~" $env.HOME)
     let base_path = ($generated_dir | path join "terminal_emulators" "alacritty" "alacritty_base.toml")
     let override_path = (get_terminal_override_path "alacritty")
+    let import_list = if ($override_path | path exists) {
+        [$base_path, $override_path]
+    } else {
+        [$base_path]
+    }
+    let import_rendered = ($import_list | each {|path| $"\"($path)\"" } | str join ", ")
     $"# Alacritty configuration entrypoint for Yazelix
 
 [general]
-import = [\"($base_path)\", \"($override_path)\"]
+import = [($import_rendered)]
+
+# Personal Yazelix Alacritty overrides \(optional, user-owned\)
+# Create ($override_path) if you want terminal-native Alacritty tweaks.
 "
 }
 
@@ -361,10 +354,6 @@ export def generate_all_terminal_configs [runtime_dir?: string] {
     let configs_dir = ($generated_dir | path join "terminal_emulators")
 
     print "Generating bundled terminal configurations..."
-
-    ensure_terminal_override_scaffold "ghostty"
-    ensure_terminal_override_scaffold "kitty"
-    ensure_terminal_override_scaffold "alacritty"
 
     # Ghostty (optional)
     if $should_generate_ghostty {

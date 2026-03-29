@@ -1,9 +1,10 @@
 #!/usr/bin/env nu
 # Shared upgrade-note loading, rendering, and first-run suppression state.
 
-use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_state_dir]
+use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 use constants.nu [YAZELIX_VERSION]
 use config_migrations.nu [build_config_migration_plan_from_record]
+use config_surfaces.nu get_main_user_config_path
 
 def normalize_string_list [values: any] {
     if not (($values | describe) | str contains "list") {
@@ -75,9 +76,8 @@ def resolve_raw_config_path [] {
         return $env.YAZELIX_CONFIG_OVERRIDE
     }
 
-    let config_dir = (get_yazelix_config_dir)
     let runtime_dir = (get_yazelix_runtime_dir)
-    let user_config = ($config_dir | path join "yazelix.toml")
+    let user_config = (get_main_user_config_path)
     let default_config = ($runtime_dir | path join "yazelix_default.toml")
 
     if ($user_config | path exists) {

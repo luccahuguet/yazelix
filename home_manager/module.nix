@@ -621,7 +621,7 @@ in
     };
 
     # Generate yazelix.toml configuration file
-    xdg.configFile."yazelix/yazelix.toml" = {
+    xdg.configFile."yazelix/user_configs/yazelix.toml" = {
       text =
         let
           editorCommand = if cfg.editor_command != null then cfg.editor_command else "";
@@ -706,14 +706,14 @@ in
           ]
           ++ [
             ""
-            "# Pack configuration lives in yazelix_packs.toml."
+            "# Pack configuration lives in user_configs/yazelix_packs.toml."
             ""
           ]
         )
         + "\n";
     };
 
-    xdg.configFile."yazelix/yazelix_packs.toml" = {
+    xdg.configFile."yazelix/user_configs/yazelix_packs.toml" = {
       text =
         lib.concatStringsSep "\n" (
           [

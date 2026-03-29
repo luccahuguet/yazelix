@@ -3,6 +3,7 @@
 
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/common.nu [get_yazelix_dir]
+use ../utils/config_surfaces.nu [copy_default_config_surfaces load_config_surface_from_main get_main_user_config_path]
 use ../utils/readme_release_block.nu [sync_readme_surface]
 use ../utils/issue_bead_contract.nu [
     build_imported_issue_description
@@ -243,7 +244,7 @@ def get_popup_runner_paths [] {
 }
 
 def print_rust_wasi_enable_hint [] {
-    print "   Enable the `rust_wasi` pack in ~/.config/yazelix/yazelix_packs.toml to get the pinned WASI-capable Rust toolchain."
+    print "   Enable the `rust_wasi` pack in ~/.config/yazelix/user_configs/yazelix_packs.toml to get the pinned WASI-capable Rust toolchain."
     print '   Example: enabled = ["rust_wasi"]'
 }
 
@@ -279,7 +280,6 @@ def materialize_update_canaries [selected: list<string>] {
         error make {msg: $"Default config not found: ($default_config_path)"}
     }
 
-    use ../utils/config_surfaces.nu [copy_default_config_surfaces load_config_surface_from_main]
     let template_surface = (load_config_surface_from_main $default_config_path)
     let template = $template_surface.merged_config
     let all_pack_names = ($template.packs.declarations | columns | sort)
@@ -301,7 +301,7 @@ def materialize_update_canaries [selected: list<string>] {
                 }
                 "maximal" => {
                     let config_dir = ($temp_dir | path join "maximal")
-                    let config_path = ($config_dir | path join "yazelix.toml")
+                    let config_path = (get_main_user_config_path $config_dir)
                     mkdir $config_dir
                     let copied = (copy_default_config_surfaces $default_config_path $config_path)
                     let config = ($template | upsert packs.enabled $all_pack_names)
