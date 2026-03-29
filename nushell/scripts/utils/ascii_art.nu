@@ -679,48 +679,47 @@ def build_live_game_of_life_seed [spec: record] {
     }
     let max_start_y = if ($height - 3) < 0 { 0 } else { $height - 3 }
     let right_glider = (get_right_glider_shape)
-    let raw_rows = if $glider_count == 2 {
-        [1, ($height - 4)]
+    let right_edge_x = if ($width - 5) < 0 { 0 } else { $width - 5 }
+    let inner_right_x = if ($width - 9) < 0 { 0 } else { $width - 9 }
+    let middle_upper_y = (($height / 2) | math floor) - 3
+    let middle_lower_y = (($height / 2) | math floor) + 1
+    let raw_placements = if $glider_count == 2 {
+        [
+            { x: 1, y: 1 }
+            { x: $right_edge_x, y: ($height - 4) }
+        ]
     } else if $glider_count == 4 {
-        [1, ($height / 3 | math floor), (($height * 2 / 3) | math floor), ($height - 4)]
+        [
+            { x: 1, y: 1 }
+            { x: $right_edge_x, y: 2 }
+            { x: 4, y: ($height - 7) }
+            { x: $inner_right_x, y: ($height - 4) }
+        ]
     } else {
         [
-            1
-            ($height / 5 | math floor)
-            (($height * 2 / 5) | math floor)
-            (($height * 3 / 5) | math floor)
-            (($height * 4 / 5) | math floor)
-            ($height - 4)
+            { x: 1, y: 1 }
+            { x: $right_edge_x, y: 2 }
+            { x: 3, y: $middle_upper_y }
+            { x: $inner_right_x, y: $middle_lower_y }
+            { x: 5, y: ($height - 7) }
+            { x: $right_edge_x, y: ($height - 4) }
         ]
     }
-    let rows = (
-        $raw_rows
-        | each {|row|
-            let row_int = ($row | into int)
-            if $row_int > $max_start_y { $max_start_y } else if $row_int < 0 { 0 } else { $row_int }
-        }
-    )
-    let spacing = if $glider_count <= 1 {
-        $width
-    } else {
-        let available = if ($width - 3) < 1 { 1 } else { $width - 3 }
-        let base_spacing = (($available / $glider_count) | math floor | into int)
-        if $base_spacing < 6 { 6 } else { $base_spacing }
-    }
-    let x_offsets = (
-        0..($glider_count - 1)
-        | each {|index|
-            let candidate = (1 + ($index * $spacing))
-            if $candidate > ($width - 3) { (($candidate mod $width) | into int) } else { ($candidate | into int) }
+    let placements = (
+        $raw_placements
+        | each {|placement|
+            let row_int = ($placement.y | into int)
+            let clamped_y = if $row_int > $max_start_y { $max_start_y } else if $row_int < 0 { 0 } else { $row_int }
+            let col_int = ($placement.x | into int)
+            let clamped_x = if $col_int < 0 { 0 } else if $col_int > ($width - 3) { ($width - 3) } else { $col_int }
+            { x: $clamped_x, y: $clamped_y }
         }
     )
 
     let glider_cells = (
-        $x_offsets
-        | enumerate
-        | each {|item|
-            let row = ($rows | get $item.index)
-            offset_game_of_life_shape $right_glider $item.item $row
+        $placements
+        | each {|placement|
+            offset_game_of_life_shape $right_glider $placement.x $placement.y
         }
         | flatten
     )
