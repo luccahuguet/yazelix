@@ -2,7 +2,7 @@
 # Width-aware welcome art for Yazelix.
 
 export const WELCOME_STYLE_VALUES = ["static", "logo", "boids", "game_of_life", "mandelbrot", "random"]
-export const ANIMATED_WELCOME_STYLE_VALUES = ["logo", "boids", "game_of_life", "mandelbrot"]
+export const ANIMATED_WELCOME_STYLE_VALUES = ["game_of_life"]
 
 # Export the color scheme used in the welcome art for consistent styling.
 export def get_yazelix_colors [] {

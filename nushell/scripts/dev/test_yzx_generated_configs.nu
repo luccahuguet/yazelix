@@ -649,7 +649,7 @@ def test_welcome_style_random_pool_excludes_static [] {
         )
 
         if (
-            ($pool == ["logo", "boids", "game_of_life", "mandelbrot"])
+            ($pool == ["game_of_life"])
             and ("static" not-in $pool)
             and ("static" not-in $resolved)
             and ($resolved | all {|style| $style in $pool })

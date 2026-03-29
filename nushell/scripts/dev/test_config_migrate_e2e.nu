@@ -257,7 +257,7 @@ mode = "animated"
         and ($apply.exit_code == 0)
         and (($preview.stdout | str contains "[AUTO] replace_ascii_art_mode_with_welcome_style"))
         and (($apply.stdout | str contains "Applied 1 config migration"))
-        and (($parsed_main.core | get welcome_style) == "logo")
+        and (($parsed_main.core | get welcome_style) == "random")
         and not ("ascii" in ($parsed_main | columns))
         and (($backups | length) == 1)
     )

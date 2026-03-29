@@ -87,7 +87,7 @@ const CONFIG_MIGRATION_RULES = [
         auto_apply: true
         user_visible: true
         guarded_paths: ["ascii", "ascii.mode", "core.welcome_style"]
-        rationale: "Yazelix now uses one welcome_style selector instead of a separate ASCII-art mode field. Animated welcome now maps to the branded logo style."
+        rationale: "Yazelix now uses one welcome_style selector instead of a separate ASCII-art mode field. Animated welcome now maps to the random welcome-style pool."
         manual_fix: "Move [ascii].mode into [core].welcome_style. Use \"static\", \"logo\", \"boids\", \"game_of_life\", \"mandelbrot\", or \"random\"."
     }
     {
@@ -387,7 +387,7 @@ def plan_replace_ascii_art_mode_with_welcome_style [config: record] {
     let normalized = (try { $legacy_value | into string | str downcase } catch { null })
     let mapped = match $normalized {
         "static" => "static"
-        "animated" => "logo"
+        "animated" => "random"
         _ => null
     }
 
