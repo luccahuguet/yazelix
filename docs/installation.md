@@ -133,11 +133,12 @@ git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 
 ```bash
 # Create your personal config from the template
-cp ~/.config/yazelix/yazelix_default.toml ~/.config/yazelix/yazelix.toml
+mkdir -p ~/.config/yazelix/user_configs
+cp ~/.config/yazelix/yazelix_default.toml ~/.config/yazelix/user_configs/yazelix.toml
 
 # Edit the configuration to suit your needs
 # Use your preferred editor (hx, vim, etc.)
-hx ~/.config/yazelix/yazelix.toml
+hx ~/.config/yazelix/user_configs/yazelix.toml
 ```
 
 #### Dependency Groups & Size Estimates
@@ -345,7 +346,7 @@ Check installed tool versions: `nu nushell/scripts/utils/version_info.nu`
 Run diagnostics: `yzx doctor` - Automated health checks and fixes
 
 ### Customization
-If you followed step 5, you already have your `~/.config/yazelix/yazelix.toml` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](../yazelix_default.toml) for all available options and their descriptions.
+If you followed step 5, you already have your `~/.config/yazelix/user_configs/yazelix.toml` config file ready. You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](../yazelix_default.toml) for all available options and their descriptions.
 
 For complete customization options, see the [Customization Guide](./customization.md).
 

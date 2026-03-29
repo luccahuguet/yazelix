@@ -153,7 +153,7 @@ export def main [
     if ($available_terminals | is-empty) {
         print "❌ No supported terminals found in your yazelix environment!"
         print ""
-        print "💡 To add terminals, edit ~/.config/yazelix/yazelix.toml:"
+        print "💡 To add terminals, edit ~/.config/yazelix/user_configs/yazelix.toml:"
         let config_dir = (get_yazelix_config_dir)
         print $"   config path: ($config_dir | path join \"yazelix.toml\")"
         print "   terminals = [\"ghostty\" \"wezterm\" \"kitty\" \"alacritty\" \"foot\"];"
@@ -167,7 +167,7 @@ export def main [
         print $"📋 Available terminals: (($available_terminals | str join ', '))"
         print $"⚠️  Unavailable terminals: (($unavailable_terminals | str join ', '))"
         print ""
-        print "💡 To benchmark more terminals, add them to ~/.config/yazelix/yazelix.toml:"
+        print "💡 To benchmark more terminals, add them to ~/.config/yazelix/user_configs/yazelix.toml:"
         let config_dir = (get_yazelix_config_dir)
         print $"   config path: ($config_dir | path join \"yazelix.toml\")"
         let quoted_terminals = ($unavailable_terminals | each {|t| $'"($t)"'} | str join ' ')
@@ -183,7 +183,7 @@ export def main [
         } else if $terminal in $SUPPORTED_TERMINALS {
             print $"❌ Terminal '($terminal)' is supported but not available in your environment"
             print ""
-            print "💡 To add it, edit ~/.config/yazelix/yazelix.toml:"
+            print "💡 To add it, edit ~/.config/yazelix/user_configs/yazelix.toml:"
             let config_dir = (get_yazelix_config_dir)
             print $"   config path: ($config_dir | path join \"yazelix.toml\")"
             print $"   terminals = [\"($terminal)\"];"

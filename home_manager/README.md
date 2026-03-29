@@ -80,7 +80,7 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
 
 1. **Backup your current configuration:**
    ```bash
-   cp ~/.config/yazelix/yazelix.toml ~/.config/yazelix/yazelix.toml.backup
+   cp ~/.config/yazelix/user_configs/yazelix.toml ~/.config/yazelix/user_configs/yazelix.toml.backup
    ```
 
 2. **Configure the Home Manager module** (see example.nix)
@@ -99,7 +99,7 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
    home-manager switch
    ```
 
-3. **Restore manual config:** `cp ~/.config/yazelix/yazelix_default.toml ~/.config/yazelix/yazelix.toml`
+3. **Restore manual config:** `cp ~/.config/yazelix/yazelix_default.toml ~/.config/yazelix/user_configs/yazelix.toml`
 
 ## Safety Features
 
@@ -111,7 +111,7 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
 ## Troubleshooting
 
 ### Configuration not applied
-- Check that `~/.config/yazelix/yazelix.toml` was created
+- Check that `~/.config/yazelix/user_configs/yazelix.toml` was created
 - Verify Home Manager configuration syntax
 - Run `home-manager switch` to apply changes
 

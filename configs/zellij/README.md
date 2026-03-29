@@ -1,15 +1,12 @@
 # Yazelix: Zellij Configuration
 
-Yazelix provides a three-layer Zellij configuration system that prevents git conflicts when customizing Zellij settings.
+Yazelix uses your native Zellij config when present, then layers Yazelix requirements on top.
 
 ## Quick Start
 
 ```bash
-# Copy templates to create your personal configs (one time setup)
-cp -r configs/zellij/user configs/zellij/personal
-
-# Edit files in configs/zellij/personal/ to customize Zellij
-# Your settings automatically override Yazelix defaults
+# Edit your native Zellij config
+~/.config/zellij/config.kdl
 ```
 
 ## Documentation

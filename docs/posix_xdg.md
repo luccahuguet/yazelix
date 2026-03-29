@@ -10,8 +10,10 @@ Yazelix follows the XDG Base Directory Specification and respects these variable
 ## Key Locations
 
 - Config (XDG_CONFIG_HOME)
-  - `~/.config/yazelix/yazelix.toml` – user config (auto‑created from template on first run)
+  - `~/.config/yazelix/user_configs/yazelix.toml` – user config (auto‑created from template on first run)
+  - `~/.config/yazelix/user_configs/yazelix_packs.toml` – pack config surface (auto‑created from template on first run)
   - `~/.config/yazelix/yazelix_default.toml` – template with defaults
+  - `~/.config/yazelix/yazelix_packs_default.toml` – pack template with defaults
   - `~/.config/yazelix/nushell/config/config.nu` – Yazelix Nushell config sourced into your shell
 
 - Data (XDG_DATA_HOME)
@@ -35,5 +37,5 @@ Set by the dev shell (flake `shellHook`) to wire integrations:
 - `EDITOR` – your configured editor command or Yazelix Helix
 
 Notes:
-- If you change `XDG_CONFIG_HOME`, Yazelix looks for `yazelix.toml` under the new `.../yazelix/` path.
+- If you change `XDG_CONFIG_HOME`, Yazelix looks for config under the new `.../yazelix/user_configs/` path.
 - Generated files follow `XDG_DATA_HOME`.

@@ -11,6 +11,10 @@ export def get_yazelix_config_dir [] {
     )
     if ($configured | is-not-empty) {
         $configured | path expand
+    } else if (($env.XDG_CONFIG_HOME? | default "" | into string | str trim) | is-not-empty) {
+        ($env.XDG_CONFIG_HOME | path join "yazelix")
+    } else if (($env.HOME? | default "" | into string | str trim) | is-not-empty) {
+        ($env.HOME | path join ".config" "yazelix")
     } else {
         "~/.config/yazelix" | path expand
     }
@@ -35,7 +39,7 @@ export def get_yazelix_runtime_dir [] {
     if ($configured | is-not-empty) {
         $configured | path expand
     } else {
-        "~/.config/yazelix" | path expand
+        get_yazelix_config_dir
     }
 }
 
@@ -48,6 +52,10 @@ export def get_yazelix_state_dir [] {
     )
     if ($configured | is-not-empty) {
         $configured | path expand
+    } else if (($env.XDG_DATA_HOME? | default "" | into string | str trim) | is-not-empty) {
+        ($env.XDG_DATA_HOME | path join "yazelix")
+    } else if (($env.HOME? | default "" | into string | str trim) | is-not-empty) {
+        ($env.HOME | path join ".local" "share" "yazelix")
     } else {
         "~/.local/share/yazelix" | path expand
     }

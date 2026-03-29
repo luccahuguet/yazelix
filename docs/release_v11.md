@@ -8,7 +8,7 @@
 ## Upgrade Notes
 1. Ensure `devenv` is installed (`nix profile install github:cachix/devenv/latest`).
 2. Launch Yazelix as usual (`yzx launch` or the desktop entry); the first run rebuilds the devenv cache, subsequent launches are near-instant.
-3. If you previously customized `yazelix.nix`, copy those settings into `~/.config/yazelix/yazelix.toml` (Yazelix prints a warning when the legacy file is detected).
+3. If you previously customized `yazelix.nix`, copy those settings into `~/.config/yazelix/user_configs/yazelix.toml` (Yazelix prints a warning when the legacy file is detected).
 
 ## Links
 - [README Improvements](../README.md#improvements-of-v11-over-v10)

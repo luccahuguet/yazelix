@@ -26,14 +26,14 @@ yzx doctor --fix              # Auto-fix safe issues
 **Yazelix now uses `yazelix.toml` and `devenv.nix` instead of the old `yazelix.nix` and `flake.nix`.**
 
 If you have an older Yazelix setup:
-- Configuration is now in `~/.config/yazelix/yazelix.toml` (not `yazelix.nix`)
+- Configuration is now in `~/.config/yazelix/user_configs/yazelix.toml` (not `yazelix.nix`)
 - Development environment is defined in `devenv.nix` (not `flake.nix`)
 - The default template is `yazelix_default.toml`
 
 **Migration steps:**
 1. It's recommended that you go through the [Installation Guide](installation.md) to properly install devenv
-2. Your `yazelix.toml` will be auto-created from `yazelix_default.toml` on yazelix startup if not found
-3. Copy any custom settings from your old `yazelix.nix` to the new `yazelix.toml` format
+2. Your `user_configs/yazelix.toml` will be auto-created from `yazelix_default.toml` on yazelix startup if not found
+3. Copy any custom settings from your old `yazelix.nix` to the new `user_configs/yazelix.toml` format
 
 ## First Run: Zellij Plugin Permissions (is the top bar looking funny/weird/broken?)
 
@@ -92,7 +92,7 @@ Yazelix aligns Helix with the selected runtime automatically. Old `~/.config/hel
 
 ### Reset Configuration
 ```bash
-rm ~/.config/yazelix/yazelix.toml
+rm ~/.config/yazelix/user_configs/yazelix.toml
 exit         # Exit current session
 yzx launch   # Start fresh in new window - regenerates defaults
 ```

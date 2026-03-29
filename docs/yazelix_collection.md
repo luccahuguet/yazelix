@@ -72,7 +72,7 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 
 Yazelix offers two ways to add packages:
 
-**Pack declarations**: Define packs in `~/.config/yazelix/yazelix_packs.toml` and enable them via `enabled`:
+**Pack declarations**: Define packs in `~/.config/yazelix/user_configs/yazelix_packs.toml` and enable them via `enabled`:
 ```toml
 enabled = ["python", "git"]
 user_packages = ["docker", "kubectl", "gleam"]
@@ -96,7 +96,7 @@ git = [
 
 Packs now belong in `yazelix_packs.toml`. If you still have a legacy `[packs]` section in `yazelix.toml`, run `yzx config migrate --apply` to move it into the sidecar.
 
-**Individual packages**: Add specific tools via `user_packages` in `yazelix_packs.toml`:
+**Individual packages**: Add specific tools via `user_packages` in `~/.config/yazelix/user_configs/yazelix_packs.toml`:
 ```toml
 # user_packages = ["atuin", "docker", "kubectl", "gleam"]
 ```
@@ -228,7 +228,7 @@ AI support tools: analytics, code review, and utilities (from llm-agents.nix).
 - [picoclaw](https://github.com/picoclaw/picoclaw) — PicoClaw
 - [zeroclaw](https://github.com/zeroclaw-labs/zeroclaw) — ZeroClaw
 
-**Usage**: Use `yazelix_packs.toml` for pack enablement, declarations, and `user_packages`. Legacy `[packs]` entries in `yazelix.toml` should be migrated with `yzx config migrate --apply`.
+**Usage**: Use `~/.config/yazelix/user_configs/yazelix_packs.toml` for pack enablement, declarations, and `user_packages`. Legacy `[packs]` entries in `yazelix.toml` should be migrated with `yzx config migrate --apply`.
 
 ---
 

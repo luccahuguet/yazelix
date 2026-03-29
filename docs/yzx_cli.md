@@ -188,7 +188,7 @@ Show the active Yazelix configuration via Nushell `open`
 Open a Yazelix configuration file in your editor
 - Uses `$EDITOR` (set by Yazelix from `[editor] command` in yazelix.toml)
 - Default target: `main`
-- `packs`: target `yazelix_packs.toml`
+- `packs`: target `user_configs/yazelix_packs.toml`
 - `--print`: print the resolved config path without opening
 
 ### `yzx config migrate [--apply] [--yes]`

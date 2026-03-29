@@ -2,7 +2,7 @@
 
 Yazelix is highly customizable! Here are the main ways you can tailor your experience:
 
-- **Configuration File**: Edit `~/.config/yazelix/yazelix.toml` for all core options. See [yazelix_default.toml](../yazelix_default.toml) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, sidebar toggle, debug mode, etc).
+- **Configuration File**: Edit `~/.config/yazelix/user_configs/yazelix.toml` for all core options. See [yazelix_default.toml](../yazelix_default.toml) for a full list and descriptions of every option (shell, editor, terminal, recommended tools, sidebar toggle, debug mode, etc).
 - **Terminal Configurations**:
   - **Bundled terminals** (yazelix-ghostty, etc.): Configs generated dynamically from your yazelix settings
     - **Ghostty cursor shaders**: Use `ghostty_trail_color` for the palette, `ghostty_trail_effect` for cursor-movement trails, and `ghostty_mode_effect` for mode-change pulses like Neovim normal/insert transitions. `ghostty_trail_color = "none"` disables the Yazelix palette shader and Kitty fallback trail; the others default to `random`. Helix does not support every trail effect yet; Neovim currently has the best support.
@@ -17,21 +17,17 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
   - **Reference configs** (generated snapshot): `configs/terminal_emulators/`
     - Refresh snapshots: `yzx dev sync_terminal_configs` (uses `yazelix_default.toml`)
     - Snapshots match the generated configs under `~/.local/share/yazelix/configs/terminal_emulators/`
-- **Zellij Configuration**: Git-conflict-free three-layer configuration system:
-  - **Quick start**: 
-    ```bash
-    cp ~/.config/yazelix/configs/zellij/user/user_config.kdl ~/.config/yazelix/configs/zellij/personal/user_config.kdl
-    ```
-    Then edit the personal copy
+- **Zellij Configuration**: Native Zellij config plus Yazelix overlays:
+  - **Quick start**: Edit `~/.config/zellij/config.kdl`
   - **Full guide**: [Zellij Configuration Documentation](./zellij-configuration.md)
-  - **Three layers**: Zellij defaults + Yazelix overrides + your personal settings (highest priority)
-  - **Smart merging**: Configurations automatically merge on startup, personal configs are git ignored
+  - **Three layers**: Zellij defaults or your native config + Yazelix dynamic settings + Yazelix enforced settings
+  - **Smart merging**: Yazelix reads your native Zellij config when present and regenerates the merged runtime config on startup
 - **Yazi Configuration**: Git-conflict-free two-layer configuration system:
   - **Quick start**: 
     ```bash
-    cp -r configs/yazi/user configs/yazi/personal
+    mkdir -p ~/.config/yazelix/user_configs/yazi
     ```
-    Then edit personal configs
+    Then create only the Yazi override files you need there
   - **Full guide**: [Yazi Configuration Documentation](./yazi-configuration.md)
   - **Two layers**: Yazelix defaults + your personal overrides (highest priority)
   - **TOML merging**: Intelligent section merging prevents duplicate keys, personal configs are git ignored

@@ -1,15 +1,13 @@
 # Zellij Configuration
 
-Yazelix uses a three-layer Zellij configuration system that prevents git conflicts when customizing settings.
+Yazelix uses a three-layer Zellij configuration system centered on your native Zellij config.
 
 ## Quick Start
 
-```bash
-# Copy templates to create your personal configs (one time setup)
-cp -r configs/zellij/user configs/zellij/personal
+Edit your native Zellij config:
 
-# Edit files in configs/zellij/personal/ to customize Zellij
-# Your settings automatically override defaults
+```bash
+~/.config/zellij/config.kdl
 ```
 
 ## How It Works
@@ -72,7 +70,7 @@ scroll_buffer_size 50000
 
 ## Best Practices
 
-**For UI settings**, add them to your personal config (no conflicts with Yazelix defaults):
+**For UI settings**, add them to your native Zellij config (no conflicts with Yazelix defaults):
 ```kdl
 ui {
     pane_frames {
@@ -111,6 +109,6 @@ ui {
 - Zellij will show parsing errors on startup if KDL is invalid
 
 **Want to reset?**
-- Delete `configs/zellij/personal/` and copy templates again: `cp -r configs/zellij/user configs/zellij/personal`
+- Move `~/.config/zellij/config.kdl` out of the way and let Yazelix fall back to `zellij setup --dump-config`
 
 For complete Zellij configuration options: https://zellij.dev/documentation/

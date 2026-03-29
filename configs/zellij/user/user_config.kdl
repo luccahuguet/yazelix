@@ -3,15 +3,13 @@
 // ========================================
 // This is a template file with documentation and examples.
 // 
-// To customize Zellij:
-// 1. Copy this directory: cp -r configs/zellij/user configs/zellij/personal
-// 2. Edit files in configs/zellij/personal/ to customize your settings
-// 3. Your personal configs are git ignored - no conflicts on updates!
+// Example native Zellij config settings for ~/.config/zellij/config.kdl
+// Copy the parts you want into your real native config file.
 //
 // Configuration layers (in order of precedence):
 //   1. Zellij defaults (from `zellij setup --dump-config`)
 //   2. Yazelix overrides (yazelix_overrides.kdl) 
-//   3. Your settings (personal/user_config.kdl) - HIGHEST PRIORITY
+//   3. Your native settings (~/.config/zellij/config.kdl) - HIGHEST PRIORITY
 //
 // IMPORTANT: Merging uses simple concatenation. Zellij uses the last occurrence
 // of any setting. For nested blocks (ui, keybinds, themes), avoid duplicates

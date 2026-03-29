@@ -42,7 +42,7 @@ ya pkg add XYenon/clipboard.yazi
 plugins = ["git", "clipboard"]
 ```
 
-**Note:** Plugins in this list get auto-generated `require("plugin"):setup()` calls. If you need custom configuration options, don't add the plugin here - configure it manually in `user/init.lua` instead.
+**Note:** Plugins in this list get auto-generated `require("plugin"):setup()` calls. If you need custom configuration options, don't add the plugin here; configure them manually in `~/.config/yazelix/user_configs/yazi/init.lua` instead.
 
 ### Theme
 
@@ -96,7 +96,7 @@ For deeper customization beyond `yazelix.toml` options:
 Some plugins (like `yamb` for bookmarks) require custom Lua code beyond a simple `require().setup()`. Create your own init.lua:
 
 ```bash
-~/.config/yazelix/configs/yazi/user/init.lua
+~/.config/yazelix/user_configs/yazi/init.lua
 ```
 
 Your code is appended after the auto-generated plugin requires. Example:
@@ -117,7 +117,7 @@ This file is gitignored, so your customizations persist across updates.
 Add custom keybindings without editing the base keymap:
 
 ```bash
-~/.config/yazelix/configs/yazi/user/keymap.toml
+~/.config/yazelix/user_configs/yazi/keymap.toml
 ```
 
 Your keybindings are merged with yazelix defaults. Example for yamb bookmarks:

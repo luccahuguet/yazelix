@@ -1513,10 +1513,18 @@ custom_text = "  roadmap-2026  "
 def test_sidebar_state_plugin_generated [] {
     print "🧪 Testing generated Yazi init includes sidebar-state..."
 
-    try {
-        let root = (get_repo_config_dir)
-        generate_merged_yazi_config $root --quiet
-        let stdout = (open --raw ($env.HOME | path join ".local" "share" "yazelix" "configs" "yazi" "init.lua") | str trim)
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_yazi_sidebar_state_XXXXXX | str trim)
+
+    let result = (try {
+        let stdout = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: ($tmp_home | path join ".config" "yazelix")
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            generate_merged_yazi_config $repo_root --quiet | ignore
+            open --raw ($tmp_home | path join ".local" "share" "yazelix" "configs" "yazi" "init.lua")
+        } | str trim)
 
         if ($stdout | str contains 'require("sidebar-state"):setup()') {
             print "  ✅ Generated Yazi init loads the sidebar-state core plugin"
@@ -1528,7 +1536,57 @@ def test_sidebar_state_plugin_generated [] {
     } catch { |err|
         print $"  ❌ Exception: ($err.msg)"
         false
-    }
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_generate_merged_yazi_config_relocates_legacy_user_overrides [] {
+    print "🧪 Testing merged Yazi config relocates legacy user overrides into user_configs/yazi..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_yazi_user_configs_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    let legacy_user_dir = ($temp_config_dir | path join "configs" "yazi" "user")
+    let canonical_user_dir = ($temp_config_dir | path join "user_configs" "yazi")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+    mkdir $legacy_user_dir
+
+    let result = (try {
+        '-- legacy user code
+return "yazi-user-marker"
+' | save --force --raw ($legacy_user_dir | path join "init.lua")
+
+        let merged_init = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            generate_merged_yazi_config $repo_root --quiet | ignore
+            open --raw ($tmp_home | path join ".local" "share" "yazelix" "configs" "yazi" "init.lua")
+        })
+
+        if (
+            (($canonical_user_dir | path join "init.lua") | path exists)
+            and not (($legacy_user_dir | path join "init.lua") | path exists)
+            and ($merged_init | str contains "yazi-user-marker")
+            and ($merged_init | str contains "~/.config/yazelix/user_configs/yazi/init.lua")
+        ) {
+            print "  ✅ Legacy Yazi user overrides relocate into user_configs and still merge"
+            true
+        } else {
+            print "  ❌ Unexpected result: Yazi legacy override did not relocate or merge correctly"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
 }
 
 def test_zellij_default_mode_is_enforced_in_merged_config [] {
@@ -1664,6 +1722,7 @@ export def run_generated_config_canonical_tests [] {
         (test_config_schema_rejects_invalid_ghostty_trail_glow)
         (test_generate_all_terminal_configs_honors_ghostty_trail_glow)
         (test_generate_all_terminal_configs_normalizes_ghostty_medium_glow_across_variants)
+        (test_generate_merged_yazi_config_relocates_legacy_user_overrides)
         (test_zellij_default_mode_is_enforced_in_merged_config)
     ]
 }

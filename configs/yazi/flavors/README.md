@@ -4,7 +4,7 @@ This directory contains 24 bundled Yazi color themes (flavors) for use with Yaze
 
 ## Usage
 
-Configure your theme in `~/.config/yazelix/yazelix.toml`:
+Configure your theme in `~/.config/yazelix/user_configs/yazelix.toml`:
 
 ```toml
 [yazi]
