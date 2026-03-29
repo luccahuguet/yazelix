@@ -1,8 +1,18 @@
 #!/usr/bin/env nu
 
 use ../core/yazelix.nu *
-use ./test_yzx_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir repo_path]
+use ./test_yzx_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir repo_path setup_managed_config_fixture]
 use ../utils/doctor.nu [build_zellij_plugin_health_results]
+
+def run_doctor_command_for_fixture [fixture: record, command: string] {
+    with-env {
+        HOME: $fixture.tmp_home
+        YAZELIX_CONFIG_DIR: $fixture.config_dir
+        YAZELIX_RUNTIME_DIR: $fixture.repo_root
+    } {
+        ^nu -c $"use \"($fixture.yzx_script)\" *; ($command)" | complete
+    }
+}
 
 def test_yzx_doctor_reports_zellij_plugin_context [] {
     print "🧪 Testing yzx doctor reports Zellij plugin context..."
@@ -28,26 +38,25 @@ def test_yzx_doctor_reports_zellij_plugin_context [] {
 def test_yzx_doctor_warns_on_stale_config_fields [] {
     print "🧪 Testing yzx doctor warns about stale config fields..."
 
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (mktemp -d | str trim)
-    let temp_yazelix_dir = ($tmp_home | path join ".config" "yazelix")
-
-    mkdir $temp_yazelix_dir
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_stale_fields"
+        ""
+    )
 
     let result = (try {
-        ^ln -s ($repo_root | path join "nushell") ($temp_yazelix_dir | path join "nushell")
-        cp ($repo_root | path join "yazelix_default.toml") ($temp_yazelix_dir | path join "yazelix_default.toml")
+        ^ln -s ($fixture.repo_root | path join "nushell") ($fixture.config_dir | path join "nushell")
+        cp ($fixture.repo_root | path join "yazelix_default.toml") ($fixture.config_dir | path join "yazelix_default.toml")
 
         let stale_config = (
-            open ($repo_root | path join "yazelix_default.toml")
+            open ($fixture.repo_root | path join "yazelix_default.toml")
             | upsert core.stale_field true
             | upsert packs.declarations.custom_pack ["hello"]
             | upsert packs.enabled ["custom_pack"]
         )
-        $stale_config | to toml | save ($temp_yazelix_dir | path join "yazelix.toml")
+        $stale_config | to toml | save --force $fixture.config_path
 
-        let temp_yzx_script = ($temp_yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu")
-        let output = with-env { HOME: $tmp_home, YAZELIX_DIR: $temp_yazelix_dir } {
+        let temp_yzx_script = ($fixture.config_dir | path join "nushell" "scripts" "core" "yazelix.nu")
+        let output = with-env { HOME: $fixture.tmp_home, YAZELIX_DIR: $fixture.config_dir } {
             ^nu -c $"use \"($temp_yzx_script)\" *; yzx doctor --verbose" | complete
         }
         let stdout = ($output.stdout | str trim)
@@ -70,32 +79,21 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
         false
     })
 
-    rm -rf $tmp_home
+    rm -rf $fixture.tmp_home
     $result
 }
 
 def test_yzx_doctor_reports_known_migration_with_fix_guidance [] {
     print "🧪 Testing yzx doctor reports known config migrations with fix guidance..."
 
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_doctor_migration_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-
-    let result = (try {
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_migration"
         '[zellij]
 widget_tray = ["layout", "editor"]
-' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+')
 
-        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
-        let output = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx doctor --verbose" | complete
-        }
+    let result = (try {
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose")
         let stdout = ($output.stdout | str trim)
 
         if (
@@ -115,38 +113,27 @@ widget_tray = ["layout", "editor"]
         false
     })
 
-    rm -rf $tmp_home
+    rm -rf $fixture.tmp_home
     $result
 }
 
 def test_yzx_doctor_fix_applies_safe_config_migrations [] {
     print "🧪 Testing yzx doctor --fix applies safe config migrations..."
 
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_doctor_fix_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-
-    let result = (try {
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_fix"
         '[zellij]
 widget_tray = ["layout", "editor"]
 
 [shell]
 enable_atuin = true
-' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+')
 
-        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
-        let output = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx doctor --fix" | complete
-        }
+    let result = (try {
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --fix")
         let stdout = ($output.stdout | str trim)
-        let rewritten = (open ($temp_config_dir | path join "yazelix.toml"))
-        let backups = (ls $temp_config_dir | where name =~ 'yazelix\.toml\.backup-')
+        let rewritten = (open $fixture.config_path)
+        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
 
         if (
             ($output.exit_code == 0)
@@ -166,43 +153,33 @@ enable_atuin = true
         false
     })
 
-    rm -rf $tmp_home
+    rm -rf $fixture.tmp_home
     $result
 }
 
 def test_yzx_doctor_fix_splits_legacy_pack_config [] {
     print "🧪 Testing yzx doctor --fix relocates legacy pack config into user_configs/yazelix_packs.toml..."
 
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_doctor_fix_packs_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    let user_config_dir = ($temp_config_dir | path join "user_configs")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-
-    let result = (try {
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_fix_packs"
         '[packs]
 enabled = ["git"]
 user_packages = ["docker"]
 
 [packs.declarations]
 git = ["gh", "prek"]
-' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+'
+        --legacy-root
+    )
 
-        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
-        let output = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx doctor --fix" | complete
-        }
+    let result = (try {
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --fix")
         let stdout = ($output.stdout | str trim)
-        let rewritten = (open ($user_config_dir | path join "yazelix.toml"))
-        let pack_path = ($user_config_dir | path join "yazelix_packs.toml")
+        let rewritten = (open ($fixture.user_config_dir | path join "yazelix.toml"))
+        let pack_path = ($fixture.user_config_dir | path join "yazelix_packs.toml")
         let pack_rewritten = (if ($pack_path | path exists) { open $pack_path } else { null })
         let pack_rendered = (if $pack_rewritten == null { "<missing>" } else { $pack_rewritten | to json -r })
-        let backups = (ls $user_config_dir | where name =~ 'yazelix\.toml\.backup-')
+        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
 
         if (
             ($output.exit_code == 0)
@@ -213,7 +190,7 @@ git = ["gh", "prek"]
             and ($pack_rewritten.user_packages == ["docker"])
             and (($pack_rewritten.declarations | get git) == ["gh", "prek"])
             and (($backups | length) == 1)
-            and not (($temp_config_dir | path join "yazelix.toml") | path exists)
+            and not ($fixture.config_path | path exists)
         ) {
             print "  ✅ yzx doctor --fix relocates legacy pack ownership into user_configs"
             true
@@ -226,7 +203,7 @@ git = ["gh", "prek"]
         false
     })
 
-    rm -rf $tmp_home
+    rm -rf $fixture.tmp_home
     $result
 }
 

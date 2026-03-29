@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
+use ./test_yzx_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
 use ../utils/launch_state.nu [get_launch_env]
 use ../utils/ascii_art.nu [
     get_boids_animation_frames
@@ -17,6 +17,16 @@ use ../utils/terminal_launcher.nu [resolve_terminal_config]
 use ../utils/terminal_configs.nu [
     generate_all_terminal_configs
 ]
+
+def run_parse_yazelix_config_probe [fixture: record, extra_env: record = {}] {
+    with-env ({
+        HOME: $fixture.tmp_home
+        YAZELIX_CONFIG_DIR: $fixture.config_dir
+        YAZELIX_RUNTIME_DIR: $fixture.repo_root
+    } | merge $extra_env) {
+        ^nu -c $"use \"($fixture.repo_root | path join "nushell" "scripts" "utils" "config_parser.nu")\" [parse_yazelix_config]; parse_yazelix_config" | complete
+    }
+}
 
 def test_layout_generator_discovers_custom_top_level_layouts [] {
     print "🧪 Testing layout generator discovers custom top-level layouts..."
@@ -681,24 +691,15 @@ def test_game_of_life_welcome_duration_adds_frames_without_slowing_early_evoluti
 def test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance [] {
     print "🧪 Testing parse_yazelix_config rejects legacy [ascii].mode with one clean migration path..."
 
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_welcome_style_legacy_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-
-    let result = (try {
+    let fixture = (setup_managed_config_fixture
+        "yazelix_welcome_style_legacy"
         '[ascii]
 mode = "animated"
-' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+'
+    )
 
-        let parser_result = (with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $"use \"($repo_root | path join "nushell" "scripts" "utils" "config_parser.nu")\" [parse_yazelix_config]; parse_yazelix_config" | complete
-        })
+    let result = (try {
+        let parser_result = (run_parse_yazelix_config_probe $fixture)
 
         let stderr = ($parser_result.stderr | str trim)
 
@@ -720,7 +721,7 @@ mode = "animated"
         false
     })
 
-    rm -rf $tmp_home
+    rm -rf $fixture.tmp_home
     $result
 }
 
@@ -773,24 +774,16 @@ def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
 def test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation [] {
     print "🧪 Testing parse_yazelix_config rejects legacy root-level config files when it cannot prompt..."
 
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_legacy_root_no_prompt_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-
-    let result = (try {
+    let fixture = (setup_managed_config_fixture
+        "yazelix_legacy_root_no_prompt"
         '[shell]
 default_shell = "bash"
-' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+'
+        --legacy-root
+    )
 
-        let parser_result = (with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $"use \"($repo_root | path join "nushell" "scripts" "utils" "config_parser.nu")\" [parse_yazelix_config]; parse_yazelix_config" | complete
-        })
+    let result = (try {
+        let parser_result = (run_parse_yazelix_config_probe $fixture)
 
         let stderr = ($parser_result.stderr | str trim)
 
@@ -799,8 +792,8 @@ default_shell = "bash"
             and ($stderr | str contains "legacy root-level config files but could not prompt for")
             and ($stderr | str contains "confirmation")
             and ($stderr | str contains "yzx doctor --fix")
-            and (($temp_config_dir | path join "yazelix.toml") | path exists)
-            and not (($temp_config_dir | path join "user_configs" "yazelix.toml") | path exists)
+            and ($fixture.config_path | path exists)
+            and not (($fixture.user_config_dir | path join "yazelix.toml") | path exists)
         ) {
             print "  ✅ Legacy root-level config now fails clearly instead of silently relocating in non-interactive startup"
             true
@@ -813,40 +806,40 @@ default_shell = "bash"
         false
     })
 
-    rm -rf $tmp_home
+    rm -rf $fixture.tmp_home
     $result
 }
 
 def test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed [] {
     print "🧪 Testing parse_yazelix_config relocates legacy root-level config when explicitly allowed..."
 
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_legacy_root_allowed_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-
-    let result = (try {
+    let fixture = (setup_managed_config_fixture
+        "yazelix_legacy_root_allowed"
         '[shell]
 default_shell = "bash"
-' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+'
+        --legacy-root
+    )
 
-        let parsed = (with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-            YAZELIX_ACCEPT_USER_CONFIG_RELOCATION: "true"
-        } {
+    let result = (try {
+        let parsed = (with-env { YAZELIX_ACCEPT_USER_CONFIG_RELOCATION: "true" } {
             use ../utils/config_parser.nu [parse_yazelix_config]
-            parse_yazelix_config
+            with-env {
+                HOME: $fixture.tmp_home
+                YAZELIX_CONFIG_DIR: $fixture.config_dir
+                YAZELIX_RUNTIME_DIR: $fixture.repo_root
+                YAZELIX_ACCEPT_USER_CONFIG_RELOCATION: "true"
+            } {
+                parse_yazelix_config
+            }
         })
 
-        let relocated_path = ($temp_config_dir | path join "user_configs" "yazelix.toml")
+        let relocated_path = ($fixture.user_config_dir | path join "yazelix.toml")
 
         if (
             (($parsed.default_shell? | default "") == "bash")
             and ($relocated_path | path exists)
-            and not (($temp_config_dir | path join "yazelix.toml") | path exists)
+            and not ($fixture.config_path | path exists)
         ) {
             print "  ✅ Explicitly allowed relocation moves the legacy root config into user_configs"
             true
@@ -859,7 +852,7 @@ default_shell = "bash"
         false
     })
 
-    rm -rf $tmp_home
+    rm -rf $fixture.tmp_home
     $result
 }
 
@@ -910,28 +903,19 @@ def test_parse_yazelix_config_bootstraps_welcome_style_surface [] {
 def test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance [] {
     print "🧪 Testing parse_yazelix_config rejects legacy [packs] in yazelix.toml and points users at migrate..."
 
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_pack_legacy_main_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-
-    let result = (try {
+    let fixture = (setup_managed_config_fixture
+        "yazelix_pack_legacy_main"
         '[packs]
 enabled = ["git"]
 user_packages = ["docker"]
 
 [packs.declarations]
 git = ["gh", "prek"]
-' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+'
+    )
 
-        let parser_result = (with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $"use \"($repo_root | path join "nushell" "scripts" "utils" "config_parser.nu")\" [parse_yazelix_config]; parse_yazelix_config" | complete
-        })
+    let result = (try {
+        let parser_result = (run_parse_yazelix_config_probe $fixture)
 
         let stderr = ($parser_result.stderr | str trim)
 
@@ -951,7 +935,7 @@ git = ["gh", "prek"]
         false
     })
 
-    rm -rf $tmp_home
+    rm -rf $fixture.tmp_home
     $result
 }
 
