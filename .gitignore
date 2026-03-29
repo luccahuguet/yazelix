@@ -44,3 +44,6 @@ rust_plugins/*/target/
 
 # Kiro local workspace/spec artifacts
 .kiro/
+
+# Editor-local project settings
+.vscode/

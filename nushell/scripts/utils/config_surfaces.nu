@@ -153,6 +153,28 @@ export def copy_default_config_surfaces [
     }
 }
 
+def ensure_default_pack_sidecar_if_missing [default_config_path: string, target_config_path: string] {
+    let default_pack_path = (get_pack_default_path $default_config_path)
+    let target_pack_path = (get_pack_sidecar_path $target_config_path)
+
+    if not ($default_pack_path | path exists) {
+        return false
+    }
+
+    if ($target_pack_path | path exists) {
+        return false
+    }
+
+    let existing_main_config = (ensure_record_surface (open $target_config_path) "main config" $target_config_path)
+    if ("packs" in ($existing_main_config | columns)) {
+        return false
+    }
+
+    mkdir ($target_pack_path | path dirname)
+    cp $default_pack_path $target_pack_path
+    true
+}
+
 def relocate_legacy_config_surfaces_if_needed [paths: record] {
     let current_exists = ($paths.user_config | path exists)
     let current_pack_exists = ($paths.user_pack_config | path exists)
@@ -285,6 +307,10 @@ export def resolve_active_config_paths [] {
         $env.YAZELIX_CONFIG_OVERRIDE
     } else {
         if ($paths.user_config | path exists) {
+            if (ensure_default_pack_sidecar_if_missing $paths.default_config $paths.user_config) {
+                print "📝 Creating yazelix_packs.toml from yazelix_packs_default.toml..."
+                print "✅ yazelix_packs.toml created\n"
+            }
             $paths.user_config
         } else if ($paths.default_config | path exists) {
             print "📝 Creating yazelix.toml from yazelix_default.toml..."

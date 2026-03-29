@@ -845,6 +845,53 @@ def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
     $result
 }
 
+def test_parse_yazelix_config_bootstraps_missing_pack_sidecar_for_existing_main_config [] {
+    print "🧪 Testing parse_yazelix_config backfills yazelix_packs.toml when only the main config already exists..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_pack_sidecar_backfill_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($temp_config_dir | path join "user_configs")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+    mkdir $user_config_dir
+
+    let result = (try {
+        cp ($repo_root | path join "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
+
+        let parsed = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+
+        let pack_path = ($user_config_dir | path join "yazelix_packs.toml")
+        let pack_exists = ($pack_path | path exists)
+        let generated_packs = (if $pack_exists { open --raw $pack_path } else { "" })
+
+        if (
+            $pack_exists
+            and ($generated_packs | str contains "[declarations]")
+            and ((($parsed.pack_declarations | default {}) | columns | length) > 0)
+        ) {
+            print "  ✅ Existing managed main config now backfills the missing yazelix_packs.toml sidecar"
+            true
+        } else {
+            print $"  ❌ Unexpected result: pack_exists=($pack_exists) parsed=($parsed | select pack_names pack_declarations | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation [] {
     print "🧪 Testing parse_yazelix_config rejects legacy root-level config files when it cannot prompt..."
 
@@ -1919,6 +1966,7 @@ export def run_generated_config_canonical_tests [] {
         (test_parse_yazelix_config_reads_pack_sidecar)
         (test_parse_yazelix_config_bootstraps_welcome_style_surface)
         (test_parse_yazelix_config_bootstraps_split_default_surfaces)
+        (test_parse_yazelix_config_bootstraps_missing_pack_sidecar_for_existing_main_config)
         (test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation)
         (test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed)
         (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)

@@ -220,36 +220,19 @@ def show_config_section [section: string] {
     }
 }
 
-export def "yzx config hx" [] {
+export def "yzx show hx" [] {
     show_config_section "hx"
 }
 
-export def "yzx config yazi" [] {
+export def "yzx show yazi" [] {
     show_config_section "yazi"
 }
 
-export def "yzx config zellij" [] {
+export def "yzx show zellij" [] {
     show_config_section "zellij"
 }
 
-# Open a Yazelix configuration surface in your editor
-export def "yzx config open" [
-    target?: string  # Config target: main, packs, or zellij
-    --print  # Print the config path without opening
-] {
-    let paths = get_primary_config_paths
-    let normalized_target = ($target | default "main" | into string | str downcase)
-    let config_path = (
-        match $normalized_target {
-            "main" => $paths.user_config
-            "packs" => $paths.user_pack_config
-            "zellij" => ((get_yazelix_user_config_dir $paths.config_dir) | path join "zellij" "config.kdl")
-            _ => {
-                error make {msg: $"Invalid config open target '($normalized_target)'. Expected 'main', 'packs', or 'zellij'."}
-            }
-        }
-    )
-
+def open_config_surface_in_editor [config_path: string, --print] {
     if $print {
         $config_path
     } else if ($env.EDITOR? | is-empty) {
@@ -258,6 +241,20 @@ export def "yzx config open" [
         mkdir ($config_path | path dirname)
         ^$env.EDITOR $config_path
     }
+}
+
+export def "yzx open config" [
+    --print  # Print the config path without opening
+] {
+    let paths = get_primary_config_paths
+    open_config_surface_in_editor $paths.user_config --print=$print
+}
+
+export def "yzx open packs" [
+    --print  # Print the config path without opening
+] {
+    let paths = get_primary_config_paths
+    open_config_surface_in_editor $paths.user_pack_config --print=$print
 }
 
 def resolve_config_migration_context [] {
