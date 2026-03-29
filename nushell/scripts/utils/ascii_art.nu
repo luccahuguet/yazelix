@@ -87,8 +87,10 @@ export def get_logo_welcome_variant [width?: int] {
         "narrow"
     } else if $resolved_width < 72 {
         "medium"
-    } else {
+    } else if $resolved_width < 120 {
         "wide"
+    } else {
+        "hero"
     }
 }
 
@@ -110,6 +112,15 @@ def pad_text_right [text: string, width: int] {
     }
 
     $"($text)((' ' | fill -w ($width - $visible_width)))"
+}
+
+def fit_inner_width [resolved_width: int, minimum_width: int] {
+    let proposed_width = ($resolved_width - 4)
+    if $proposed_width < $minimum_width {
+        $minimum_width
+    } else {
+        $proposed_width
+    }
 }
 
 def repeat_char [character: string, count: int] {
@@ -166,7 +177,11 @@ def make_border [inner_width: int, character: string] {
 def build_logo_card_frame [spec: record, shown_body_count: int, accent: string = "full"] {
     let colors = get_yazelix_colors
     let inner_width = ($spec.inner_width | into int)
-    let title_text = if $accent == "hint" { "YZX" } else { "YAZELIX" }
+    let title_text = if $accent == "hint" {
+        ($spec.title_hint_text? | default "YZX")
+    } else {
+        ($spec.title_text? | default "YAZELIX")
+    }
     let title_plain = (center_text $title_text $inner_width)
     let title_colored = if $accent == "hint" {
         $"($colors.faint)($colors.purple)($title_plain)($colors.reset)"
@@ -178,8 +193,14 @@ def build_logo_card_frame [spec: record, shown_body_count: int, accent: string =
         $spec.body_lines
         | enumerate
         | each {|item|
+            let aligned_line = if (($spec.body_alignment? | default "left") == "center") {
+                center_text $item.item $inner_width
+            } else {
+                pad_text_right $item.item $inner_width
+            }
+
             if $item.index < $shown_body_count {
-                colorize_body_line (pad_text_right $item.item $inner_width) $item.index
+                colorize_body_line $aligned_line $item.index
             } else {
                 $"($colors.faint)(pad_text_right "" $inner_width)($colors.reset)"
             }
@@ -198,11 +219,14 @@ def build_logo_card_frame [spec: record, shown_body_count: int, accent: string =
     ]
 }
 
-def get_logo_welcome_spec [variant: string] {
+def get_logo_welcome_spec [variant: string, resolved_width: int] {
     match $variant {
         "narrow" => {
             {
-                inner_width: 22
+                inner_width: (fit_inner_width $resolved_width 22)
+                title_text: "YAZELIX"
+                title_hint_text: "YZX"
+                body_alignment: "left"
                 body_lines: [
                     "yazi zellij helix"
                     "one shell. one flow."
@@ -212,7 +236,10 @@ def get_logo_welcome_spec [variant: string] {
         }
         "medium" => {
             {
-                inner_width: 34
+                inner_width: (fit_inner_width $resolved_width 34)
+                title_text: "YAZELIX"
+                title_hint_text: "YZX"
+                body_alignment: "left"
                 body_lines: [
                     "yazi + zellij + helix"
                     "one shell, one workspace"
@@ -223,11 +250,31 @@ def get_logo_welcome_spec [variant: string] {
         }
         "wide" => {
             {
-                inner_width: 46
+                inner_width: (fit_inner_width $resolved_width 58)
+                title_text: "YAZELIX"
+                title_hint_text: "YZX"
+                body_alignment: "center"
                 body_lines: [
-                    "yazi + zellij + helix, wired together"
+                    "yazi + zellij + helix, wired together and ready"
                     "one shell, one workspace, one real flow"
-                    "alt+shift+m menu · ctrl+y sidebar"
+                    "alt+shift+m menu · ctrl+y sidebar jump"
+                    "packs, sessions, terminals, all under one roof"
+                ]
+                footer: "welcome to yazelix"
+            }
+        }
+        "hero" => {
+            {
+                inner_width: (fit_inner_width $resolved_width 76)
+                title_text: "Y A Z E L I X"
+                title_hint_text: "Y Z X"
+                body_alignment: "center"
+                body_lines: [
+                    "yazi + zellij + helix, wired together and ready"
+                    "one shell, one workspace, one real flow"
+                    "sidebar, editor, sessions, packs, and terminals already aligned"
+                    "alt+shift+m menu · ctrl+y sidebar jump · alt+[ / alt+] layout family"
+                    "launch once, then stay in flow"
                 ]
                 footer: "welcome to yazelix"
             }
@@ -238,26 +285,33 @@ def get_logo_welcome_spec [variant: string] {
     }
 }
 
-def get_boids_welcome_spec [variant: string] {
+def get_boids_welcome_spec [variant: string, resolved_width: int] {
     match $variant {
         "narrow" => {
             {
-                inner_width: 22
+                inner_width: (fit_inner_width $resolved_width 22)
                 body_height: 4
                 caption: "flocking..."
             }
         }
         "medium" => {
             {
-                inner_width: 34
+                inner_width: (fit_inner_width $resolved_width 34)
                 body_height: 5
                 caption: "flocking..."
             }
         }
         "wide" => {
             {
-                inner_width: 46
+                inner_width: (fit_inner_width $resolved_width 58)
                 body_height: 5
+                caption: "flocking..."
+            }
+        }
+        "hero" => {
+            {
+                inner_width: (fit_inner_width $resolved_width 76)
+                body_height: 7
                 caption: "flocking..."
             }
         }
@@ -267,24 +321,30 @@ def get_boids_welcome_spec [variant: string] {
     }
 }
 
-def get_life_welcome_spec [variant: string] {
+def get_life_welcome_spec [variant: string, resolved_width: int] {
     match $variant {
         "narrow" => {
             {
-                inner_width: 22
+                inner_width: (fit_inner_width $resolved_width 22)
                 body_height: 4
             }
         }
         "medium" => {
             {
-                inner_width: 34
+                inner_width: (fit_inner_width $resolved_width 34)
                 body_height: 5
             }
         }
         "wide" => {
             {
-                inner_width: 46
+                inner_width: (fit_inner_width $resolved_width 58)
                 body_height: 5
+            }
+        }
+        "hero" => {
+            {
+                inner_width: (fit_inner_width $resolved_width 76)
+                body_height: 7
             }
         }
         _ => {
@@ -515,14 +575,16 @@ def build_life_frame [spec: record, cells: list<record>] {
 }
 
 export def get_logo_welcome_frame [width?: int] {
-    let variant = (get_logo_welcome_variant $width)
-    let spec = (get_logo_welcome_spec $variant)
+    let resolved_width = ($width | default (get_terminal_width) | into int)
+    let variant = (get_logo_welcome_variant $resolved_width)
+    let spec = (get_logo_welcome_spec $variant $resolved_width)
     build_logo_card_frame $spec ($spec.body_lines | length)
 }
 
 export def get_logo_animation_frames [width?: int] {
-    let variant = (get_logo_welcome_variant $width)
-    let spec = (get_logo_welcome_spec $variant)
+    let resolved_width = ($width | default (get_terminal_width) | into int)
+    let variant = (get_logo_welcome_variant $resolved_width)
+    let spec = (get_logo_welcome_spec $variant $resolved_width)
     let final_count = ($spec.body_lines | length)
 
     [
@@ -534,8 +596,9 @@ export def get_logo_animation_frames [width?: int] {
 }
 
 export def get_boids_animation_frames [width?: int] {
-    let variant = (get_logo_welcome_variant $width)
-    let spec = (get_boids_welcome_spec $variant)
+    let resolved_width = ($width | default (get_terminal_width) | into int)
+    let variant = (get_logo_welcome_variant $resolved_width)
+    let spec = (get_boids_welcome_spec $variant $resolved_width)
 
     [
         (build_boids_frame $spec "scatter")
@@ -546,8 +609,9 @@ export def get_boids_animation_frames [width?: int] {
 }
 
 export def get_life_animation_frames [width?: int] {
-    let variant = (get_logo_welcome_variant $width)
-    let spec = (get_life_welcome_spec $variant)
+    let resolved_width = ($width | default (get_terminal_width) | into int)
+    let variant = (get_logo_welcome_variant $resolved_width)
+    let spec = (get_life_welcome_spec $variant $resolved_width)
     let width_limit = ($spec.inner_width | into int)
     let height_limit = ($spec.body_height | into int)
     let frame0_cells = (get_life_seed $spec)
@@ -592,8 +656,17 @@ export def play_animation [duration: duration, width?: int] {
     play_frames $frames $duration
 }
 
+def get_welcome_playback_duration [welcome_style: string, duration: duration] {
+    if $welcome_style == "life" {
+        2sec
+    } else {
+        $duration
+    }
+}
+
 export def render_welcome_style [welcome_style: string, duration: duration = 0.5sec, width?: int] {
     let resolved_style = (resolve_welcome_style $welcome_style)
+    let playback_duration = (get_welcome_playback_duration $resolved_style $duration)
 
     if $resolved_style == "static" {
         let ascii_art = (get_welcome_ascii_art $width)
@@ -606,19 +679,19 @@ export def render_welcome_style [welcome_style: string, duration: duration = 0.5
 
     if $resolved_style == "logo" {
         print ""
-        play_animation $duration $width
+        play_animation $playback_duration $width
         return
     }
 
     if $resolved_style == "boids" {
         print ""
-        play_frames (get_boids_animation_frames $width) $duration
+        play_frames (get_boids_animation_frames $width) $playback_duration
         return
     }
 
     if $resolved_style == "life" {
         print ""
-        play_frames (get_life_animation_frames $width) $duration
+        play_frames (get_life_animation_frames $width) $playback_duration
         return
     }
 
@@ -626,7 +699,7 @@ export def render_welcome_style [welcome_style: string, duration: duration = 0.5
         print ""
         # Dedicated renderers land in their own welcome-style beads.
         # Until then, animated styles share the logo-forward reveal contract.
-        play_animation $duration $width
+        play_animation $playback_duration $width
         return
     }
 

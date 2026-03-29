@@ -375,12 +375,13 @@ def test_logo_welcome_variant_adapts_to_width [] {
         let narrow = (get_logo_welcome_variant 36)
         let medium = (get_logo_welcome_variant 60)
         let wide = (get_logo_welcome_variant 100)
+        let hero = (get_logo_welcome_variant 150)
 
-        if ($narrow == "narrow") and ($medium == "medium") and ($wide == "wide") {
-            print "  ✅ Logo welcome style picks narrow, medium, and wide variants at the expected widths"
+        if ($narrow == "narrow") and ($medium == "medium") and ($wide == "wide") and ($hero == "hero") {
+            print "  ✅ Logo welcome style picks narrow, medium, wide, and hero variants at the expected widths"
             true
         } else {
-            print $"  ❌ Unexpected variants: narrow=($narrow) medium=($medium) wide=($wide)"
+            print $"  ❌ Unexpected variants: narrow=($narrow) medium=($medium) wide=($wide) hero=($hero)"
             false
         }
     } catch { |err|
@@ -396,21 +397,25 @@ def test_logo_welcome_frame_respects_width_budget [] {
         let narrow_frame = (get_logo_welcome_frame 36)
         let medium_frame = (get_logo_welcome_frame 60)
         let wide_frame = (get_logo_welcome_frame 100)
+        let hero_frame = (get_logo_welcome_frame 150)
 
         let narrow_width = (get_max_visible_width $narrow_frame)
         let medium_width = (get_max_visible_width $medium_frame)
         let wide_width = (get_max_visible_width $wide_frame)
+        let hero_width = (get_max_visible_width $hero_frame)
 
         if (
             ($narrow_width <= 36)
             and ($medium_width <= 60)
             and ($wide_width <= 100)
+            and ($hero_width <= 150)
+            and ($hero_width > $wide_width)
             and (($narrow_frame | length) >= 4)
         ) {
-            print "  ✅ Logo welcome frames stay inside their target widths and keep the Yazelix wordmark readable"
+            print "  ✅ Logo welcome frames stay inside their target widths and expand meaningfully on large terminals"
             true
         } else {
-            print $"  ❌ Unexpected frame widths: narrow=($narrow_width) medium=($medium_width) wide=($wide_width)"
+            print $"  ❌ Unexpected frame widths: narrow=($narrow_width) medium=($medium_width) wide=($wide_width) hero=($hero_width)"
             false
         }
     } catch { |err|
@@ -447,23 +452,28 @@ def test_boids_animation_stays_bounded_and_width_aware [] {
         let narrow_frames = (get_boids_animation_frames 36)
         let medium_frames = (get_boids_animation_frames 60)
         let wide_frames = (get_boids_animation_frames 100)
+        let hero_frames = (get_boids_animation_frames 150)
 
         let narrow_width = ($narrow_frames | each {|frame| get_max_visible_width $frame } | math max)
         let medium_width = ($medium_frames | each {|frame| get_max_visible_width $frame } | math max)
         let wide_width = ($wide_frames | each {|frame| get_max_visible_width $frame } | math max)
+        let hero_width = ($hero_frames | each {|frame| get_max_visible_width $frame } | math max)
 
         if (
             (($narrow_frames | length) == 4)
             and (($medium_frames | length) == 4)
             and (($wide_frames | length) == 4)
+            and (($hero_frames | length) == 4)
             and ($narrow_width <= 36)
             and ($medium_width <= 60)
             and ($wide_width <= 100)
+            and ($hero_width <= 150)
+            and ($hero_width > $wide_width)
         ) {
-            print "  ✅ Boids welcome generation stays bounded and respects narrow, medium, and wide width budgets"
+            print "  ✅ Boids welcome generation stays bounded and scales up on large terminals"
             true
         } else {
-            print $"  ❌ Unexpected boids frame budgets: narrow_frames=(($narrow_frames | length)) narrow_width=($narrow_width) medium_width=($medium_width) wide_width=($wide_width)"
+            print $"  ❌ Unexpected boids frame budgets: narrow_frames=(($narrow_frames | length)) narrow_width=($narrow_width) medium_width=($medium_width) wide_width=($wide_width) hero_width=($hero_width)"
             false
         }
     } catch { |err|
@@ -528,23 +538,28 @@ def test_life_animation_stays_bounded_and_width_aware [] {
         let narrow_frames = (get_life_animation_frames 36)
         let medium_frames = (get_life_animation_frames 60)
         let wide_frames = (get_life_animation_frames 100)
+        let hero_frames = (get_life_animation_frames 150)
 
         let narrow_width = ($narrow_frames | each {|frame| get_max_visible_width $frame } | math max)
         let medium_width = ($medium_frames | each {|frame| get_max_visible_width $frame } | math max)
         let wide_width = ($wide_frames | each {|frame| get_max_visible_width $frame } | math max)
+        let hero_width = ($hero_frames | each {|frame| get_max_visible_width $frame } | math max)
 
         if (
             (($narrow_frames | length) == 4)
             and (($medium_frames | length) == 4)
             and (($wide_frames | length) == 4)
+            and (($hero_frames | length) == 4)
             and ($narrow_width <= 36)
             and ($medium_width <= 60)
             and ($wide_width <= 100)
+            and ($hero_width <= 150)
+            and ($hero_width > $wide_width)
         ) {
-            print "  ✅ Life welcome generation stays bounded and respects narrow, medium, and wide width budgets"
+            print "  ✅ Life welcome generation stays bounded and scales up on large terminals"
             true
         } else {
-            print $"  ❌ Unexpected life frame budgets: narrow_frames=(($narrow_frames | length)) narrow_width=($narrow_width) medium_width=($medium_width) wide_width=($wide_width)"
+            print $"  ❌ Unexpected life frame budgets: narrow_frames=(($narrow_frames | length)) narrow_width=($narrow_width) medium_width=($medium_width) wide_width=($wide_width) hero_width=($hero_width)"
             false
         }
     } catch { |err|
