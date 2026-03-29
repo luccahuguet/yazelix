@@ -184,9 +184,11 @@ Show the active Yazelix configuration via Nushell `open`
 - `yzx config yazi`: show the `[yazi]` section
 - `yzx config zellij`: show the `[zellij]` section
 
-### `yzx config open [--print]`
-Open the active Yazelix configuration file in your editor
+### `yzx config open [main|packs] [--print]`
+Open a Yazelix configuration file in your editor
 - Uses `$EDITOR` (set by Yazelix from `[editor] command` in yazelix.toml)
+- Default target: `main`
+- `packs`: target `yazelix_packs.toml`
 - `--print`: print the resolved config path without opening
 
 ### `yzx config migrate [--apply] [--yes]`

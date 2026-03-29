@@ -1006,6 +1006,68 @@ def test_yzx_config_sections [] {
     }
 }
 
+def test_yzx_config_open_targets_print_paths [] {
+    print "🧪 Testing yzx config open resolves main and packs targets..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_config_open_targets_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+
+    let result = (try {
+        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+        let main_output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($yzx_script)\" *; yzx config open main --print" | complete
+        }
+        let packs_output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($yzx_script)\" *; yzx config open packs --print" | complete
+        }
+        let invalid_output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($yzx_script)\" *; yzx config open weird --print" | complete
+        }
+
+        let expected_main = ($temp_config_dir | path join "yazelix.toml")
+        let expected_packs = ($temp_config_dir | path join "yazelix_packs.toml")
+        let main_stdout = ($main_output.stdout | str trim)
+        let packs_stdout = ($packs_output.stdout | str trim)
+        let invalid_stderr = ($invalid_output.stderr | str trim)
+
+        if (
+            ($main_output.exit_code == 0)
+            and ($packs_output.exit_code == 0)
+            and ($invalid_output.exit_code != 0)
+            and ($main_stdout == $expected_main)
+            and ($packs_stdout == $expected_packs)
+            and ($invalid_stderr | str contains "Invalid config open target 'weird'")
+        ) {
+            print "  ✅ yzx config open resolves main and packs explicitly and rejects unknown targets"
+            true
+        } else {
+            print $"  ❌ Unexpected result: main_exit=($main_output.exit_code) main=($main_stdout) packs_exit=($packs_output.exit_code) packs=($packs_stdout) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_yzx_config_reset_replaces_with_backup [] {
     print "🧪 Testing yzx config reset replaces the config with backup..."
 
@@ -1813,6 +1875,7 @@ export def run_core_canonical_tests [] {
         (test_historical_upgrade_notes_cover_v12_v13_tag_floor)
         (test_yzx_config_view)
         (test_yzx_config_full_merges_pack_sidecar)
+        (test_yzx_config_open_targets_print_paths)
         (test_invalid_config_is_classified_as_config_problem)
         (test_startup_reports_known_config_migration_before_generic_wrappers)
         (test_config_state_supports_split_config_and_runtime_dirs)
