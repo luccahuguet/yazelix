@@ -300,3 +300,4 @@ sort_by = "alphabetical"
 
 # Pack configuration lives in ~/.config/yazelix/yazelix_packs.toml
 # so this main config stays focused on core Yazelix behavior.
+# See docs/yazelix_collection.md for the full pack catalog and examples.

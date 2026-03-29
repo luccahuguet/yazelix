@@ -1,10 +1,11 @@
 # Yazelix Pack Configuration (TOML format)
-# This sidecar keeps pack declarations and user package selection out of the
-# main yazelix.toml so the top-level config stays easier to scan.
+# Keep pack enablement and declarations here so `yazelix.toml` stays focused on
+# core Yazelix behavior.
 #
-# Note: Package changes automatically trigger a rebuild when detected.
+# For the full pack catalog, usage notes, and examples, see:
+#   docs/yazelix_collection.md
 
-# Enable packs by name (see [declarations] below)
+# Enable packs by name. Uncomment the packs you want from [declarations] below.
 enabled = [
   # "ai_agents",
   # "ai_tools",
@@ -23,55 +24,46 @@ enabled = [
   # "kotlin",
 ]
 
-# Add individual packages here if you don't want entire packs
-# Tip: If you only need one tool from a pack, add it here instead
-#
-# Note: Package names must exist in nixpkgs
-# Search packages at: https://search.nixos.org/packages
+# Add individual packages here if you want a few tools without enabling a full pack.
+# Package names must exist in nixpkgs:
+#   https://search.nixos.org/packages
 user_packages = [
-  # "atuin", # Shell history manager with sync — auto-configured when detected
+  # "atuin",
   # "gleam",
 ]
 
 [declarations]
 # Pack declarations are lists of package names.
-# AI tools resolve from llm-agents.nix (daily updates), others from nixpkgs.
-# Uncomment entries below to build your own packs.
+# AI-related entries resolve from llm-agents.nix; the rest come from nixpkgs.
 
-# AI coding agents (from llm-agents.nix)
 ai_agents = [
-  "claude-code",    # Claude Code CLI (Anthropic)
-  "codex",          # Codex CLI (OpenAI)
-  "justcode",       # just-every/code (installed as `justcode`)
-  "gemini-cli",     # Gemini CLI (Google)
-  "pi",             # Pi coding agent (Mario Zechner)
+  "claude-code",    # Claude Code CLI
+  "codex",          # Codex CLI
+  "justcode",       # just-every/code
+  "gemini-cli",     # Gemini CLI
+  "pi",             # Pi coding agent
   "opencode",       # OpenCode CLI
   "amp",            # Amp coding agent
   "cursor-agent",   # Cursor agent
-  "goose-cli",      # Goose CLI (Block)
-  "tru",            # TOON CLI for compact Beads/agent structured output
+  "goose-cli",      # Goose CLI
+  "tru",            # TOON CLI for compact Beads/agent output
 ]
 
-# AI support tools: analytics, review, utilities (from llm-agents.nix)
 ai_tools = [
-  # Code review
-  "coderabbit-cli", # AI code review
-  # Usage analytics
-  "ccusage",        # Claude Code usage tracker
-  "ccusage-amp",    # Amp usage tracker
-  "ccusage-codex",  # Codex usage tracker
+  "coderabbit-cli",   # AI code review
+  "ccusage",          # Claude Code usage tracker
+  "ccusage-amp",      # Amp usage tracker
+  "ccusage-codex",    # Codex usage tracker
   "ccusage-opencode", # OpenCode usage tracker
-  # Utilities
-  "beads",          # Original Beads tracker (bd)
-  "beads-rust",     # Rust Beads tracker (br) - recommended Beads CLI
-  "beads-viewer",   # Beads Viewer (bv) - graph-aware TUI and robot triage
-  "openclaw",       # OpenClaw (formerly moltbot/clawdbot)
-  "picoclaw",       # PicoClaw
-  "zeroclaw",       # ZeroClaw
+  "beads",            # Original Beads tracker (bd)
+  "beads-rust",       # Rust Beads tracker (br)
+  "beads-viewer",     # Beads Viewer (bv)
+  "openclaw",         # OpenClaw
+  "picoclaw",         # PicoClaw
+  "zeroclaw",         # ZeroClaw
 ]
 
-# Unfree packages from nixpkgs (enables NIXPKGS_ALLOW_UNFREE=1)
-# Add unfree nixpkgs packages here if needed
+# Add unfree nixpkgs packages here if needed.
 # unfree = []
 
 config = [
@@ -103,10 +95,9 @@ maintainer = [
   "tru", # Compact Beads/agent structured output CLI
   "beads-rust", # Rust Beads tracker (br)
   "beads-viewer", # Beads Viewer (bv)
-  "rust_wasi_toolchain", # WASI-capable Rust toolchain for rebuilding the pane orchestrator wasm
+  "rust_wasi_toolchain", # WASI-capable Rust toolchain for plugin rebuilds
 ]
 
-# Language packs
 python = [
   "ruff", # Fast Python linter/formatter
   "uv", # Ultra-fast Python package manager
@@ -115,7 +106,7 @@ python = [
 ]
 
 rust = [
-  "rust_toolchain", # Pinned stable Rust toolchain with cargo, rustc, rustfmt, and clippy
+  "rust_toolchain", # Stable Rust toolchain with cargo, rustc, rustfmt, clippy
   "cargo-edit", # Add/remove/upgrade Rust deps
   "cargo-watch", # Rebuild on file changes
   "cargo-nextest", # Next-gen Rust test runner
@@ -128,7 +119,7 @@ rust_maintainer = [
 ]
 
 rust_wasi = [
-  "rust_wasi_toolchain", # Pinned Rust toolchain with wasm32-wasip1 for Yazelix/Zellij plugin builds
+  "rust_wasi_toolchain", # Rust toolchain with wasm32-wasip1 for plugin builds
 ]
 
 nix = [
@@ -138,8 +129,8 @@ nix = [
 ]
 
 ts = [
-  "nodePackages.typescript-language-server", # TypeScript language server (LSP)
-  "tailwindcss-language-server", # Tailwind CSS language server (LSP)
+  "nodePackages.typescript-language-server", # TypeScript language server
+  "tailwindcss-language-server", # Tailwind CSS language server
   "biome", # JS/TS formatter and linter
   "oxlint", # Fast JS/TS linter
 ]
@@ -150,14 +141,14 @@ modern_js = [
 ]
 
 go = [
-  "gopls", # Go language server (LSP)
+  "gopls", # Go language server
   "golangci-lint", # Fast Go linter aggregator
   "delve", # Go debugger
   "govulncheck", # Go vulnerability scanner
 ]
 
 kotlin = [
-  "kotlin-language-server", # Kotlin language server (LSP)
+  "kotlin-language-server", # Kotlin language server
   "ktlint", # Kotlin linter/formatter
   "detekt", # Kotlin static analysis
   "gradle", # Build tool for Kotlin/JVM
@@ -165,7 +156,7 @@ kotlin = [
 
 writing = [
   "typst",           # Typst compiler, formatter, and language server
-  "tinymist",        # Full-featured Typst language server (LSP)
-  "pandoc",          # Universal document converter (Markdown, LaTeX, Word, PDF, EPUB, ...)
-  "markdown-oxide",  # Markdown PKM language server (LSP for notes and links)
+  "tinymist",        # Full-featured Typst language server
+  "pandoc",          # Universal document converter
+  "markdown-oxide",  # Markdown PKM language server
 ]

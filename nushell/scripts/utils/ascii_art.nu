@@ -171,7 +171,7 @@ def colorize_life_char [x: int, y: int] {
 }
 
 def make_border [inner_width: int, character: string] {
-    repeat_char $character ($inner_width + 2)
+    repeat_char $character $inner_width
 }
 
 def build_logo_card_frame [spec: record, shown_body_count: int, accent: string = "full"] {
@@ -643,7 +643,9 @@ export def play_frames [frames: list<list<string>>, duration: duration] {
     let art_height = (($frames | first) | length)
 
     for frame in $frames {
-        print ($frame | str join "\n")
+        for line in $frame {
+            print $"\r\u{1b}[2K($line)"
+        }
         sleep $frame_delay
         print ("\u{1b}[" + (($art_height + 1) | into string) + "A")
     }
