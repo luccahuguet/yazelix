@@ -19,16 +19,24 @@ export def setup_test_home [] {
     let tmp_home = (^mktemp -d /tmp/yazelix_test_home_XXXXXX | str trim)
     let config_parent = ($tmp_home | path join ".config")
     let config_dir = ($config_parent | path join "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
 
     mkdir $config_parent
     mkdir $config_dir
+    mkdir $user_config_dir
 
-    for entry in (ls $repo_root | where name != ($repo_root | path join ".git") and name != ($repo_root | path join "yazelix.toml")) {
+    for entry in (
+        ls $repo_root
+        | where name != ($repo_root | path join ".git")
+        | where name != ($repo_root | path join "user_configs")
+        | where name != ($repo_root | path join "yazelix.toml")
+        | where name != ($repo_root | path join "yazelix_packs.toml")
+    ) {
         let name = ($entry.name | path basename)
         ^ln -s $entry.name ($config_dir | path join $name)
     }
 
-    cp ($repo_root | path join "yazelix_default.toml") ($config_dir | path join "yazelix.toml")
+    cp ($repo_root | path join "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
 
     {
         repo_root: $repo_root

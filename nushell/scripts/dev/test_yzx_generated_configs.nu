@@ -912,7 +912,7 @@ def test_parse_yazelix_config_bootstraps_welcome_style_surface [] {
             parse_yazelix_config
         })
 
-        let main_path = ($temp_config_dir | path join "yazelix.toml")
+        let main_path = ($temp_config_dir | path join "user_configs" "yazelix.toml")
         let generated_main = (if ($main_path | path exists) { open --raw $main_path } else { "" })
 
         if (

@@ -19,6 +19,7 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
     let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let runtime_dir = ($tmp_home | path join "runtime")
     let config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
     let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
     let fake_bin = ($tmp_home | path join "bin")
     let zellij_log = ($tmp_home | path join "zellij.log")
@@ -28,6 +29,7 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
     mkdir $runtime_dir
     mkdir ($tmp_home | path join ".config")
     mkdir $config_dir
+    mkdir $user_config_dir
     mkdir ($tmp_home | path join ".local" "share")
     mkdir $state_dir
     mkdir $fake_bin
@@ -49,7 +51,7 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
         ""
         "[shell]"
         'default_shell = "nu"'
-    ] | str join "\n" | save --force --raw ($config_dir | path join "yazelix.toml")
+    ] | str join "\n" | save --force --raw ($user_config_dir | path join "yazelix.toml")
 
     [
         "#!/bin/sh"

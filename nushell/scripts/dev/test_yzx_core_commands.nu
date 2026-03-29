@@ -23,16 +23,18 @@ def setup_relocated_runtime_fixture [] {
     let tmp_home = (^mktemp -d /tmp/yazelix_relocated_runtime_XXXXXX | str trim)
     let runtime_dir = ($tmp_home | path join "runtime")
     let config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
 
     mkdir $runtime_dir
     mkdir ($tmp_home | path join ".config")
     mkdir $config_dir
+    mkdir $user_config_dir
 
     for entry in ["nushell", "shells", "configs", "devenv.lock", "yazelix_default.toml"] {
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
 
-    cp (repo_path "yazelix_default.toml") ($config_dir | path join "yazelix.toml")
+    cp (repo_path "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
 
     {
         repo_root: $repo_root
@@ -61,11 +63,13 @@ def setup_upgrade_summary_fixture [
     let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let runtime_dir = ($tmp_home | path join "runtime")
     let config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
     let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
 
     mkdir $runtime_dir
     mkdir ($tmp_home | path join ".config")
     mkdir $config_dir
+    mkdir $user_config_dir
     mkdir ($tmp_home | path join ".local" "share")
     mkdir $state_dir
 
@@ -74,7 +78,7 @@ def setup_upgrade_summary_fixture [
     }
 
     ^cp -LR (repo_path "docs") ($runtime_dir | path join "docs")
-    $raw_toml | save --force --raw ($config_dir | path join "yazelix.toml")
+    $raw_toml | save --force --raw ($user_config_dir | path join "yazelix.toml")
 
     if $migration_notes {
         let notes_path = ($runtime_dir | path join "docs" "upgrade_notes.toml")
@@ -103,7 +107,7 @@ def setup_upgrade_summary_fixture [
         runtime_dir: $runtime_dir
         config_dir: $config_dir
         state_dir: $state_dir
-        config_path: ($config_dir | path join "yazelix.toml")
+        config_path: ($user_config_dir | path join "yazelix.toml")
         yzx_script: ($runtime_dir | path join "nushell" "scripts" "core" "yazelix.nu")
     }
 }
@@ -1075,19 +1079,21 @@ def test_yzx_config_view [] {
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_config_view_XXXXXX | str trim)
     let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($temp_config_dir | path join "user_configs")
     mkdir ($tmp_home | path join ".config")
     mkdir $temp_config_dir
+    mkdir $user_config_dir
 
     let result = (try {
         let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
         '[core]
 debug_mode = false
-' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+' | save --force --raw ($user_config_dir | path join "yazelix.toml")
         'enabled = ["git"]
 
 [declarations]
 git = ["gh"]
-' | save --force --raw ($temp_config_dir | path join "yazelix_packs.toml")
+' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
 
         let command_output = with-env {
             HOME: $tmp_home
@@ -1124,21 +1130,23 @@ def test_yzx_config_full_merges_pack_sidecar [] {
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_config_full_sidecar_XXXXXX | str trim)
     let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($temp_config_dir | path join "user_configs")
     mkdir ($tmp_home | path join ".config")
     mkdir $temp_config_dir
+    mkdir $user_config_dir
 
     let result = (try {
         let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
 
         '[core]
 debug_mode = false
-' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+' | save --force --raw ($user_config_dir | path join "yazelix.toml")
 
         'enabled = ["git"]
 
 [declarations]
 git = ["gh", "prek"]
-' | save --force --raw ($temp_config_dir | path join "yazelix_packs.toml")
+' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
 
         let output = with-env {
             HOME: $tmp_home
@@ -1469,13 +1477,15 @@ def test_startup_reports_known_config_migration_before_generic_wrappers [] {
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_startup_migration_XXXXXX | str trim)
     let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($temp_config_dir | path join "user_configs")
     mkdir ($tmp_home | path join ".config")
     mkdir $temp_config_dir
+    mkdir $user_config_dir
 
     let result = (try {
         '[zellij]
 widget_tray = ["layout", "editor"]
-' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+' | save --force --raw ($user_config_dir | path join "yazelix.toml")
 
         let inner_script = ($repo_root | path join "nushell" "scripts" "core" "start_yazelix_inner.nu")
         let output = with-env {
@@ -1516,20 +1526,17 @@ def test_config_state_supports_split_config_and_runtime_dirs [] {
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_split_roots_XXXXXX | str trim)
     let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($temp_config_dir | path join "user_configs")
     mkdir ($tmp_home | path join ".config")
     mkdir $temp_config_dir
+    mkdir $user_config_dir
 
     let result = (try {
-        cp ($repo_root | path join "yazelix_default.toml") ($temp_config_dir | path join "yazelix.toml")
+        cp ($repo_root | path join "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
         let state_script = ($repo_root | path join "nushell" "scripts" "utils" "config_state.nu")
         let snippet = ([
             $"source \"($state_script)\""
-            'let state = (compute_config_state)'
-            'print ({'
-            '    config_file: $state.config_file'
-            '    lock_hash_empty: (($state.lock_hash | default "") | is-empty)'
-            '    runtime_lock_path: ($env.YAZELIX_RUNTIME_DIR | path join "devenv.lock")'
-            '} | to json -r)'
+            'print ((compute_config_state) | to json -r)'
         ] | str join "\n")
         let output = with-env {
             HOME: $tmp_home
@@ -1543,9 +1550,9 @@ def test_config_state_supports_split_config_and_runtime_dirs [] {
 
         if (
             ($output.exit_code == 0)
-            and ($resolved.config_file == ($temp_config_dir | path join "yazelix.toml"))
-            and ($resolved.lock_hash_empty == false)
-            and (($resolved.runtime_lock_path | path exists))
+            and ($resolved.config_file == ($user_config_dir | path join "yazelix.toml"))
+            and (($resolved.lock_hash | default "") | is-not-empty)
+            and ((($repo_root | path join "devenv.lock") | path exists))
         ) {
             print "  ✅ Config state reads config from the config dir and hashes inputs from the runtime dir"
             true
@@ -2116,7 +2123,7 @@ def test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering [
         if (
             ($status_output.exit_code == 0)
             and ($gen_output.exit_code == 0)
-            and ($status_stdout | str contains $"Config File: ($fixture.config_dir | path join "yazelix.toml")")
+            and ($status_stdout | str contains $"Config File: ($fixture.config_dir | path join "user_configs" "yazelix.toml")")
             and ($status_stdout | str contains $"Directory: ($fixture.runtime_dir)")
             and ($status_stdout | str contains $"Logs: ($fixture.runtime_dir | path join "logs")")
             and not ($gen_stdout | str contains "start_yazelix.sh")
