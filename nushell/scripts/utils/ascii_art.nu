@@ -80,6 +80,25 @@ export def get_terminal_width [] {
     }
 }
 
+export def get_terminal_height [] {
+    let explicit = ($env.YAZELIX_WELCOME_HEIGHT? | default "")
+    if ($explicit | is-not-empty) {
+        return ($explicit | into int)
+    }
+
+    try {
+        let size = (term size)
+        let height = ($size.rows? | default 24)
+        if ($height | into int) > 0 {
+            $height | into int
+        } else {
+            24
+        }
+    } catch {
+        24
+    }
+}
+
 export def get_logo_welcome_variant [width?: int] {
     let resolved_width = ($width | default (get_terminal_width) | into int)
 
@@ -219,6 +238,10 @@ def build_logo_card_frame [spec: record, shown_body_count: int, accent: string =
     ]
 }
 
+def center_frame_lines [lines: list<string>, target_width: int] {
+    $lines | each {|line| center_text $line $target_width }
+}
+
 def get_logo_welcome_spec [variant: string, resolved_width: int] {
     match $variant {
         "narrow" => {
@@ -266,8 +289,8 @@ def get_logo_welcome_spec [variant: string, resolved_width: int] {
         "hero" => {
             {
                 inner_width: (fit_inner_width $resolved_width 76)
-                title_text: "Y A Z E L I X"
-                title_hint_text: "Y Z X"
+                title_text: "YAZELIX"
+                title_hint_text: "YZX"
                 body_alignment: "center"
                 body_lines: [
                     "yazi + zellij + helix, wired together and ready"
@@ -321,30 +344,39 @@ def get_boids_welcome_spec [variant: string, resolved_width: int] {
     }
 }
 
-def get_game_of_life_welcome_spec [variant: string, resolved_width: int] {
+def resolve_game_of_life_body_height [minimum_height: int, resolved_height: int] {
+    let fullscreen_height = ($resolved_height - 6)
+    if $fullscreen_height > $minimum_height {
+        $fullscreen_height
+    } else {
+        $minimum_height
+    }
+}
+
+def get_game_of_life_welcome_spec [variant: string, resolved_width: int, resolved_height: int] {
     match $variant {
         "narrow" => {
             {
                 inner_width: (fit_inner_width $resolved_width 22)
-                body_height: 6
+                body_height: (resolve_game_of_life_body_height 8 $resolved_height)
             }
         }
         "medium" => {
             {
                 inner_width: (fit_inner_width $resolved_width 34)
-                body_height: 11
+                body_height: (resolve_game_of_life_body_height 12 $resolved_height)
             }
         }
         "wide" => {
             {
                 inner_width: (fit_inner_width $resolved_width 58)
-                body_height: 11
+                body_height: (resolve_game_of_life_body_height 14 $resolved_height)
             }
         }
         "hero" => {
             {
                 inner_width: (fit_inner_width $resolved_width 76)
-                body_height: 13
+                body_height: (resolve_game_of_life_body_height 16 $resolved_height)
             }
         }
         _ => {
@@ -556,14 +588,66 @@ def step_game_of_life_cells_n_fast [cells: list<record>, width: int, height: int
 def build_live_game_of_life_seed [spec: record] {
     let width = (get_game_of_life_grid_width ($spec.inner_width | into int))
     let height = ($spec.body_height | into int)
-    let mid_y = ($height / 2 | math floor)
-    let lane_y_top = if ($mid_y - 2) < 0 { 0 } else { $mid_y - 2 }
-    let lane_y_bottom = if ($mid_y + 1) >= $height { $height - 3 } else { $mid_y + 1 }
+    let glider_pairs = if $width >= 36 {
+        3
+    } else if $width >= 22 {
+        2
+    } else {
+        1
+    }
+    let max_start_y = if ($height - 3) < 0 { 0 } else { $height - 3 }
+    let left_rows = if $glider_pairs == 1 {
+        [($height / 2 | math floor)]
+    } else if $glider_pairs == 2 {
+        [1, ($height - 4)]
+    } else {
+        [1, ($height / 2 | math floor), ($height - 4)]
+    }
+    let right_rows = if $glider_pairs == 1 {
+        [($height / 2 | math floor)]
+    } else if $glider_pairs == 2 {
+        [($height - 4), 1]
+    } else {
+        [($height - 4), ($height / 2 | math floor), 1]
+    }
+    let left_offsets = if $glider_pairs == 1 {
+        [1]
+    } else if $glider_pairs == 2 {
+        [1, 9]
+    } else {
+        [1, 9, 17]
+    }
+    let right_offsets = if $glider_pairs == 1 {
+        [($width - 4)]
+    } else if $glider_pairs == 2 {
+        [($width - 4), ($width - 12)]
+    } else {
+        [($width - 4), ($width - 12), ($width - 20)]
+    }
     let right_glider = (get_right_glider_shape)
     let left_glider = (get_left_glider_shape)
 
-    let left_glider_cells = (offset_game_of_life_shape $right_glider 1 $lane_y_top)
-    let right_glider_cells = (offset_game_of_life_shape $left_glider ($width - 4) $lane_y_bottom)
+    let left_glider_cells = (
+        $left_offsets
+        | enumerate
+        | each {|item|
+            let row = (($left_rows | get $item.index) | into int)
+            let clamped_row = if $row > $max_start_y { $max_start_y } else { $row }
+            offset_game_of_life_shape $right_glider $item.item $clamped_row
+        }
+        | flatten
+    )
+
+    let right_glider_cells = (
+        $right_offsets
+        | enumerate
+        | each {|item|
+            let row = (($right_rows | get $item.index) | into int)
+            let clamped_row = if $row > $max_start_y { $max_start_y } else { $row }
+            offset_game_of_life_shape $left_glider $item.item $clamped_row
+        }
+        | flatten
+    )
 
     unique_game_of_life_cells ($left_glider_cells | append $right_glider_cells)
 }
@@ -618,7 +702,7 @@ export def get_logo_welcome_frame [width?: int] {
     let resolved_width = ($width | default (get_terminal_width) | into int)
     let variant = (get_logo_welcome_variant $resolved_width)
     let spec = (get_logo_welcome_spec $variant $resolved_width)
-    build_logo_card_frame $spec ($spec.body_lines | length)
+    center_frame_lines (build_logo_card_frame $spec ($spec.body_lines | length)) $resolved_width
 }
 
 export def get_logo_animation_frames [width?: int] {
@@ -628,10 +712,10 @@ export def get_logo_animation_frames [width?: int] {
     let final_count = ($spec.body_lines | length)
 
     [
-        (build_logo_card_frame $spec 0 "hint")
-        (build_logo_card_frame $spec 0 "full")
-        (build_logo_card_frame $spec 1 "full")
-        (build_logo_card_frame $spec $final_count "full")
+        (center_frame_lines (build_logo_card_frame $spec 0 "hint") $resolved_width)
+        (center_frame_lines (build_logo_card_frame $spec 0 "full") $resolved_width)
+        (center_frame_lines (build_logo_card_frame $spec 1 "full") $resolved_width)
+        (center_frame_lines (build_logo_card_frame $spec $final_count "full") $resolved_width)
     ]
 }
 
@@ -641,17 +725,18 @@ export def get_boids_animation_frames [width?: int] {
     let spec = (get_boids_welcome_spec $variant $resolved_width)
 
     [
-        (build_boids_frame $spec "scatter")
-        (build_boids_frame $spec "drift")
-        (build_boids_frame $spec "cluster")
+        (center_frame_lines (build_boids_frame $spec "scatter") $resolved_width)
+        (center_frame_lines (build_boids_frame $spec "drift") $resolved_width)
+        (center_frame_lines (build_boids_frame $spec "cluster") $resolved_width)
         (get_logo_welcome_frame $width)
     ]
 }
 
 export def get_game_of_life_animation_frames [width?: int] {
     let resolved_width = ($width | default (get_terminal_width) | into int)
+    let resolved_height = (get_terminal_height)
     let variant = (get_logo_welcome_variant $resolved_width)
-    let spec = (get_game_of_life_welcome_spec $variant $resolved_width)
+    let spec = (get_game_of_life_welcome_spec $variant $resolved_width $resolved_height)
     let width_limit = (get_game_of_life_grid_width ($spec.inner_width | into int))
     let height_limit = ($spec.body_height | into int)
     mut current_cells = (build_live_game_of_life_seed $spec)
@@ -663,7 +748,7 @@ export def get_game_of_life_animation_frames [width?: int] {
     }
 
     [
-        ...$simulation_frames
+        ...($simulation_frames | each {|frame| center_frame_lines $frame $resolved_width })
         (get_logo_welcome_frame $width)
     ]
 }
@@ -683,8 +768,10 @@ export def play_frames [frames: list<list<string>>, duration: duration] {
 
     let frame_delay = ($duration / ($frames | length))
     let max_frame_height = ($frames | each {|frame| $frame | length } | math max)
+    let last_index = (($frames | length) - 1)
 
-    for frame in $frames {
+    for item in ($frames | enumerate) {
+        let frame = $item.item
         let padded_frame = if (($frame | length) < $max_frame_height) {
             let filler = (0..(($max_frame_height - ($frame | length)) - 1) | each { "" })
             ($frame | append $filler)
@@ -695,11 +782,14 @@ export def play_frames [frames: list<list<string>>, duration: duration] {
         for line in $padded_frame {
             print $"\r\u{1b}[2K($line)"
         }
-        sleep $frame_delay
-        print ("\u{1b}[" + (($max_frame_height + 1) | into string) + "A")
-    }
 
-    print ((0..($max_frame_height - 1) | each { "" } | str join "\n"))
+        if $item.index < $last_index {
+            sleep $frame_delay
+            print ("\u{1b}[" + (($max_frame_height + 1) | into string) + "A")
+        } else {
+            print ("\u{1b}[" + (($max_frame_height - ($frame | length)) | into string) + "A")
+        }
+    }
 }
 
 export def play_animation [duration: duration, width?: int] {
