@@ -1347,6 +1347,74 @@ default_shell = "bash"
     $result
 }
 
+def test_yzx_config_reset_supports_no_backup [] {
+    print "🧪 Testing yzx config reset can replace config surfaces without backups..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_config_reset_no_backup_XXXXXX | str trim)
+    let temp_yazelix_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_yazelix_dir
+
+    let result = (try {
+        let user_config_dir = ($temp_yazelix_dir | path join "user_configs")
+        mkdir $user_config_dir
+
+        '[shell]
+default_shell = "bash"
+' | save --force --raw ($user_config_dir | path join "yazelix.toml")
+        'enabled = ["git"]
+' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
+
+        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+        let output = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_yazelix_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($yzx_script)\" *; yzx config reset --yes --no-backup" | complete
+        }
+        let stdout = ($output.stdout | str trim)
+        let new_config = (open --raw ($user_config_dir | path join "yazelix.toml"))
+        let default_config = (open --raw ($repo_root | path join "yazelix_default.toml"))
+        let new_pack_config = (open --raw ($user_config_dir | path join "yazelix_packs.toml"))
+        let default_pack_config = (open --raw ($repo_root | path join "yazelix_packs_default.toml"))
+        let backups = (
+            ls $user_config_dir
+            | where name =~ 'yazelix\.toml\.backup-'
+        )
+        let pack_backups = (
+            ls $user_config_dir
+            | where name =~ 'yazelix_packs\.toml\.backup-'
+        )
+
+        if (
+            ($output.exit_code == 0)
+            and not ($stdout | str contains "Backed up previous config")
+            and not ($stdout | str contains "Backed up previous pack config")
+            and ($stdout | str contains "Replaced yazelix.toml with a fresh template")
+            and ($stdout | str contains "Replaced yazelix_packs.toml with a fresh template")
+            and ($stdout | str contains "removed without backup")
+            and ($new_config == $default_config)
+            and ($new_pack_config == $default_pack_config)
+            and ($backups | is-empty)
+            and ($pack_backups | is-empty)
+        ) {
+            print "  ✅ yzx config reset can skip backup creation when explicitly requested"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) backups=(($backups | length)) pack_backups=(($pack_backups | length))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_invalid_config_is_classified_as_config_problem [] {
     print "🧪 Testing invalid config values are classified as config problems..."
 
@@ -1358,12 +1426,14 @@ def test_invalid_config_is_classified_as_config_problem [] {
     let result = (try {
         ^ln -s ($repo_root | path join "nushell") ($temp_yazelix_dir | path join "nushell")
         cp ($repo_root | path join "yazelix_default.toml") ($temp_yazelix_dir | path join "yazelix_default.toml")
+        let user_config_dir = ($temp_yazelix_dir | path join "user_configs")
+        mkdir $user_config_dir
 
         let invalid_config = (
             open ($repo_root | path join "yazelix_default.toml")
             | upsert core.refresh_output "loud"
         )
-        $invalid_config | to toml | save ($temp_yazelix_dir | path join "yazelix.toml")
+        $invalid_config | to toml | save ($user_config_dir | path join "yazelix.toml")
 
         let parser_script = ($temp_yazelix_dir | path join "nushell" "scripts" "utils" "config_parser.nu")
         let output = with-env { HOME: $tmp_home, YAZELIX_DIR: $temp_yazelix_dir } {
@@ -1376,7 +1446,7 @@ def test_invalid_config_is_classified_as_config_problem [] {
             and ($stdout | str contains "Unsupported config value at core.refresh_output")
             and ($stdout | str contains "Invalid value for core.refresh_output: loud")
             and ($stdout | str contains "Failure class: config problem.")
-            and ($stdout | str contains "yzx config reset --yes")
+            and ($stdout | str contains "yzx config reset")
         ) {
             print "  ✅ Invalid config values are classified as config problems"
             true
@@ -1597,9 +1667,10 @@ default_shell = "bash"
             ^nu -c $"use \"($yzx_script)\" *; yzx config reset --yes" | complete
         }
         let stdout = ($output.stdout | str trim)
-        let new_config = (open --raw ($temp_config_dir | path join "yazelix.toml"))
+        let user_config_dir = ($temp_config_dir | path join "user_configs")
+        let new_config = (open --raw ($user_config_dir | path join "yazelix.toml"))
         let default_config = (open --raw ($repo_root | path join "yazelix_default.toml"))
-        let new_pack_config = (open --raw ($temp_config_dir | path join "yazelix_packs.toml"))
+        let new_pack_config = (open --raw ($user_config_dir | path join "yazelix_packs.toml"))
         let default_pack_config = (open --raw ($repo_root | path join "yazelix_packs_default.toml"))
 
         if (
@@ -2107,6 +2178,7 @@ export def run_core_noncanonical_tests [] {
     [
         (test_seed_yazelix_plugin_permissions_materializes_required_grants)
         (test_yzx_config_reset_replaces_with_backup)
+        (test_yzx_config_reset_supports_no_backup)
     ]
 }
 

@@ -411,19 +411,32 @@ export def "yzx config migrate" [
 }
 
 export def "yzx config reset" [
-    --yes  # Skip confirmation prompt
+    --yes        # Skip confirmation prompt
+    --no-backup  # Replace config surfaces without writing timestamped backups first
 ] {
     use ../utils/config_surfaces.nu [copy_default_config_surfaces]
     let paths = get_primary_config_paths
+    let user_config_exists = ($paths.user_config | path exists)
+    let user_pack_config_exists = ($paths.user_pack_config | path exists)
+    let removed_without_backup = ($no_backup and ($user_config_exists or $user_pack_config_exists))
 
     if not ($paths.default_config | path exists) {
         error make {msg: $"Default config not found: ($paths.default_config)"}
     }
 
     if not $yes {
-        print "⚠️  This replaces yazelix.toml with a fresh copy of yazelix_default.toml."
-        if ($paths.user_config | path exists) {
+        print "⚠️  This replaces yazelix.toml and yazelix_packs.toml with fresh shipped templates."
+        if $user_config_exists and not $no_backup {
             print "   Your current yazelix.toml will be backed up first."
+        }
+        if $user_config_exists and $no_backup {
+            print "   Your current yazelix.toml will be removed without a backup."
+        }
+        if $user_pack_config_exists and not $no_backup {
+            print "   Your current yazelix_packs.toml will be backed up first."
+        }
+        if $user_pack_config_exists and $no_backup {
+            print "   Your current yazelix_packs.toml will be removed without a backup."
         }
         let confirm = try {
             (input "Continue? [y/N]: " | str downcase)
@@ -434,20 +447,26 @@ export def "yzx config reset" [
         }
     }
 
-    let backup_path = if ($paths.user_config | path exists) {
+    let backup_path = if $user_config_exists and not $no_backup {
         let timestamp = (date now | format date "%Y%m%d_%H%M%S")
         let path = $"($paths.user_config).backup-($timestamp)"
         mv $paths.user_config $path
         $path
+    } else if $user_config_exists and $no_backup {
+        rm $paths.user_config
+        null
     } else {
         null
     }
 
-    let pack_backup_path = if ($paths.user_pack_config | path exists) {
+    let pack_backup_path = if $user_pack_config_exists and not $no_backup {
         let timestamp = (date now | format date "%Y%m%d_%H%M%S")
         let path = $"($paths.user_pack_config).backup-($timestamp)"
         mv $paths.user_pack_config $path
         $path
+    } else if $user_pack_config_exists and $no_backup {
+        rm $paths.user_pack_config
+        null
     } else {
         null
     }
@@ -463,5 +482,8 @@ export def "yzx config reset" [
     print $"✅ Replaced yazelix.toml with a fresh template: ($paths.user_config)"
     if $copy_result.pack_config_copied {
         print $"✅ Replaced yazelix_packs.toml with a fresh template: ($copy_result.pack_config_path)"
+    }
+    if $removed_without_backup {
+        print "⚠️  Previous config surfaces were removed without backup."
     }
 }

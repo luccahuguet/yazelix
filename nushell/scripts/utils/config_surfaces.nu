@@ -232,7 +232,7 @@ export def merge_pack_sidecar [
                 $"Pack sidecar: ($pack_path)"
                 "When yazelix_packs.toml exists, it fully owns pack settings."
             ]
-            "Because both files already define packs, `yzx config migrate --apply` cannot safely choose which file should define the pack settings. Remove the duplicate [packs] entry from yazelix.toml or move the desired pack settings fully into yazelix_packs.toml so only yazelix_packs.toml defines packs. If you want to discard custom pack edits and restore the shipped config surfaces instead, run `yzx config reset --yes` as the blunt fallback."
+            "Because both files already define packs, `yzx config migrate --apply` cannot safely choose which file should define the pack settings. Remove the duplicate [packs] entry from yazelix.toml or move the desired pack settings fully into yazelix_packs.toml so only yazelix_packs.toml defines packs. If you want to discard custom pack edits and restore the shipped config surfaces instead, run `yzx config reset` as the blunt fallback."
         )
     }
 

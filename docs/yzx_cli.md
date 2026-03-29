@@ -201,10 +201,11 @@ Preview or apply known Yazelix config migrations
 - Never guesses on ambiguous legacy config; those cases stay manual-only
 - Rewrites from parsed TOML, so comments and key ordering may be normalized on apply
 
-### `yzx config reset [--yes]`
-Replace `yazelix.toml` with a fresh copy of `yazelix_default.toml`
-- Backs up the current `yazelix.toml` to `yazelix.toml.backup-<timestamp>` first when it exists
+### `yzx config reset [--yes] [--no-backup]`
+Replace `yazelix.toml` and `yazelix_packs.toml` with fresh copies of the shipped templates
+- Backs up the current config surfaces to `*.backup-<timestamp>` first when they exist
 - `--yes`: skip the confirmation prompt
+- `--no-backup`: discard the previous config surfaces instead of renaming them to backups first
 - Use this as a blunt recovery path when `yzx doctor` reports stale config fields
 
 ### `yzx help`
@@ -258,7 +259,9 @@ yzx config yazi               # Show the Yazi section only
 yzx config zellij             # Show the Zellij section only
 yzx config migrate            # Preview known config migrations
 yzx config migrate --apply --yes  # Apply safe migrations with backup
-yzx config reset --yes        # Replace yazelix.toml with a fresh template and keep a backup
+yzx config reset              # Replace both config surfaces with fresh templates after confirmation
+yzx config reset --yes        # Replace both config surfaces with fresh templates and keep backups
+yzx config reset --yes --no-backup  # Replace both config surfaces without writing backups
 yzx status                    # System information
 yzx status --versions         # Show all tool versions
 yzx status --verbose          # Show detailed shell hook status

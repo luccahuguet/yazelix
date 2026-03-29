@@ -11,7 +11,7 @@ def parse_refresh_output [raw_config: record] {
 
     if not ($refresh_output in $allowed) {
         let allowed_text = ($allowed | str join ", ")
-        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset --yes` to restore the template.")
+        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset` to restore the template.")
         error make {msg: $"Invalid core.refresh_output value '($refresh_output)'. Expected one of: ($allowed_text)\n($classification)"}
     }
 
@@ -24,7 +24,7 @@ def parse_zellij_default_mode [raw_config: record] {
 
     if not ($default_mode in $allowed) {
         let allowed_text = ($allowed | str join ", ")
-        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset --yes` to restore the template.")
+        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset` to restore the template.")
         error make {msg: $"Invalid zellij.default_mode value '($default_mode)'. Expected one of: ($allowed_text)\n($classification)"}
     }
 
@@ -61,11 +61,11 @@ def parse_positive_parallel_setting [value: any, label: string, allowed_symbols:
     let parsed = (try { $normalized | into int } catch { null })
     if $parsed == null {
         let allowed_text = ($allowed_symbols | str join ", ")
-        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset --yes` to restore the template.")
+        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset` to restore the template.")
         error make {msg: $"Invalid ($label) value '($normalized)'. Expected one of: ($allowed_text), or a positive integer.\n($classification)"}
     }
     if $parsed < 1 {
-        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset --yes` to restore the template.")
+        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset` to restore the template.")
         error make {msg: $"Invalid ($label) value '($normalized)'. Expected a positive integer.\n($classification)"}
     }
     $normalized
@@ -76,12 +76,12 @@ def parse_percentage_setting [value: any, label: string, default_value: int] {
     let parsed = (try { $normalized | into int } catch { null })
 
     if $parsed == null {
-        let classification = (format_failure_classification "config" "Update yazelix.toml with a value from 1 to 100, or run `yzx config reset --yes` to restore the template.")
+        let classification = (format_failure_classification "config" "Update yazelix.toml with a value from 1 to 100, or run `yzx config reset` to restore the template.")
         error make {msg: $"Invalid ($label) value '($normalized)'. Expected an integer from 1 to 100.\n($classification)"}
     }
 
     if ($parsed < 1) or ($parsed > 100) {
-        let classification = (format_failure_classification "config" "Update yazelix.toml with a value from 1 to 100, or run `yzx config reset --yes` to restore the template.")
+        let classification = (format_failure_classification "config" "Update yazelix.toml with a value from 1 to 100, or run `yzx config reset` to restore the template.")
         error make {msg: $"Invalid ($label) value '($normalized)'. Expected an integer from 1 to 100.\n($classification)"}
     }
 
@@ -107,7 +107,7 @@ def parse_welcome_style [raw_config: record] {
 
     if not ($style in $allowed) {
         let allowed_text = ($allowed | str join ", ")
-        let classification = (format_failure_classification "config" "Update core.welcome_style with one of the supported values, or run `yzx config reset --yes` to restore the template.")
+        let classification = (format_failure_classification "config" "Update core.welcome_style with one of the supported values, or run `yzx config reset` to restore the template.")
         error make {msg: $"Invalid core.welcome_style value '($style)'. Expected one of: ($allowed_text)\n($classification)"}
     }
 
@@ -119,12 +119,12 @@ def parse_welcome_duration_seconds [raw_config: record] {
     let parsed = (try { $raw_value | into float } catch { null })
 
     if $parsed == null {
-        let classification = (format_failure_classification "config" "Update core.welcome_duration_seconds to a number from 0.2 to 8.0, or run `yzx config reset --yes` to restore the template.")
+        let classification = (format_failure_classification "config" "Update core.welcome_duration_seconds to a number from 0.2 to 8.0, or run `yzx config reset` to restore the template.")
         error make {msg: $"Invalid core.welcome_duration_seconds value '($raw_value)'. Expected a number from 0.2 to 8.0.\n($classification)"}
     }
 
     if ($parsed < 0.2) or ($parsed > 8.0) {
-        let classification = (format_failure_classification "config" "Update core.welcome_duration_seconds to a number from 0.2 to 8.0, or run `yzx config reset --yes` to restore the template.")
+        let classification = (format_failure_classification "config" "Update core.welcome_duration_seconds to a number from 0.2 to 8.0, or run `yzx config reset` to restore the template.")
         error make {msg: $"Invalid core.welcome_duration_seconds value '($raw_value)'. Expected a number from 0.2 to 8.0.\n($classification)"}
     }
 

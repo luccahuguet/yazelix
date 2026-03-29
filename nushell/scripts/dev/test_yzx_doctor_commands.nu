@@ -65,7 +65,7 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
             ($output.exit_code == 0)
             and ($stdout | str contains "Stale, unsupported, or migration-aware yazelix.toml entries detected")
             and ($stdout | str contains "Unknown config field: core.stale_field")
-            and ($stdout | str contains "yzx config reset --yes")
+            and ($stdout | str contains "yzx config reset")
             and not ($stdout | str contains "packs.declarations.custom_pack")
         ) {
             print "  ✅ yzx doctor reports stale config fields without flagging custom pack declarations"

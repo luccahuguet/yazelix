@@ -75,7 +75,7 @@ def make_schema_diagnostic [finding: record] {
                     $finding.message
                     "Next: Remove or rename this field manually."
                     "Next: Run `yzx doctor --verbose` to review the full config report."
-                    "Next: Use `yzx config reset --yes` only as a blunt fallback."
+                    "Next: Use `yzx config reset` only as a blunt fallback."
                 ]
             }
         )
@@ -96,7 +96,7 @@ def make_schema_diagnostic [finding: record] {
                     $finding.message
                     "Next: Replace this value with one of the supported options."
                     "Next: Run `yzx doctor --verbose` to review the full config report."
-                    "Next: Use `yzx config reset --yes` only as a blunt fallback."
+                    "Next: Use `yzx config reset` only as a blunt fallback."
                 ]
             }
         )
@@ -214,7 +214,7 @@ export def render_startup_config_error [report: record] {
     let recovery_hint = if $report.has_fixable_migrations {
         "Run `yzx config migrate` to preview known safe rewrites, `yzx config migrate --apply` to apply them with backup, or `yzx doctor --fix` to apply the same safe rewrites from the doctor flow."
     } else {
-        "Update the reported config fields manually, then retry. Use `yzx config reset --yes` only as a blunt fallback."
+        "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback."
     }
 
     (
@@ -238,13 +238,13 @@ export def render_doctor_config_details [report: record] {
             ""
             "Safe preview: `yzx config migrate`"
             "Safe apply: `yzx config migrate --apply` or `yzx doctor --fix`"
-            "Blunt fallback: `yzx config reset --yes`"
+            "Blunt fallback: `yzx config reset`"
         ]
     } else {
         [
             ""
             "Review the listed fields manually."
-            "Blunt fallback: `yzx config reset --yes`"
+            "Blunt fallback: `yzx config reset`"
         ]
     }
 
