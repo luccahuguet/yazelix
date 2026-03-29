@@ -1754,11 +1754,12 @@ def test_zellij_horizontal_walking_is_plugin_owned [] {
             and ($config_stdout | str contains 'bind "Alt t" {')
             and ($config_stdout | str contains 'yzx_toggle_popup.nu')
             and ($config_stdout | str contains 'yazelix_popup_runner.wasm')
+            and not ($layout_stdout | str contains 'hide_frame_for_single_pane')
             and not ($layout_stdout | str contains 'bind "Alt h" "Alt Left" {')
             and not ($layout_stdout | str contains 'bind "Alt y" {')
             and not ($layout_stdout | str contains 'bind "Alt t" {')
         ) {
-            print "  ✅ Yazelix-owned session keybinds are emitted in merged config instead of layout-local keybind blocks"
+            print "  ✅ Yazelix-owned session keybinds stay in merged config and managed layouts keep the unsafe zjstatus frame toggle disabled"
             true
         } else {
             print "  ❌ Unexpected result: merged config/layout ownership for Yazelix keybinds is wrong"

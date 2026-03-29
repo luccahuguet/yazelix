@@ -12,7 +12,6 @@ layout {
                 format_space  ""
 
                 border_enabled  "false"
-                hide_frame_for_single_pane "true"
 
                 mode_normal  "#[bg=#00ff88,fg=#000000,bold] NORMAL "
                 mode_tmux    "#[bg=#ffff00,fg=#000000,bold] TMUX "
@@ -77,7 +76,6 @@ layout {
                format_space  ""
 
                border_enabled  "false"
-               hide_frame_for_single_pane "true"
 
                mode_normal  "#[bg=#00ff88,fg=#000000,bold] NORMAL "
                mode_tmux    "#[bg=#ffff00,fg=#000000,bold] TMUX "
