@@ -405,6 +405,14 @@ def resolve_game_of_life_body_height [minimum_height: int, resolved_height: int]
     }
 }
 
+def resolve_game_of_life_screen_body_height [minimum_height: int, resolved_height: int] {
+    if $resolved_height > $minimum_height {
+        $resolved_height
+    } else {
+        $minimum_height
+    }
+}
+
 def get_game_of_life_welcome_spec [variant: string, resolved_width: int, resolved_height: int] {
     match $variant {
         "narrow" => {
@@ -433,6 +441,38 @@ def get_game_of_life_welcome_spec [variant: string, resolved_width: int, resolve
         }
         _ => {
             error make {msg: $"Unsupported game_of_life welcome variant: ($variant)"}
+        }
+    }
+}
+
+def get_game_of_life_screen_spec [variant: string, resolved_width: int, resolved_height: int] {
+    match $variant {
+        "narrow" => {
+            {
+                inner_width: (fit_inner_width $resolved_width 22)
+                body_height: (resolve_game_of_life_screen_body_height 8 $resolved_height)
+            }
+        }
+        "medium" => {
+            {
+                inner_width: (fit_inner_width $resolved_width 34)
+                body_height: (resolve_game_of_life_screen_body_height 12 $resolved_height)
+            }
+        }
+        "wide" => {
+            {
+                inner_width: (fit_inner_width $resolved_width 58)
+                body_height: (resolve_game_of_life_screen_body_height 14 $resolved_height)
+            }
+        }
+        "hero" => {
+            {
+                inner_width: (fit_inner_width $resolved_width 76)
+                body_height: (resolve_game_of_life_screen_body_height 16 $resolved_height)
+            }
+        }
+        _ => {
+            error make {msg: $"Unsupported game_of_life screen variant: ($variant)"}
         }
     }
 }
@@ -558,10 +598,6 @@ def get_right_glider_shape [] {
     [[1 0] [2 1] [0 2] [1 2] [2 2]]
 }
 
-def get_left_glider_shape [] {
-    [[1 0] [0 1] [2 2] [1 2] [0 2]]
-}
-
 def build_record_cell_map [cells: list<record>] {
     mut cell_map = {}
 
@@ -634,68 +670,62 @@ def step_game_of_life_cells_n_fast [cells: list<record>, width: int, height: int
 def build_live_game_of_life_seed [spec: record] {
     let width = (get_game_of_life_grid_width ($spec.inner_width | into int))
     let height = ($spec.body_height | into int)
-    let glider_pairs = if $width >= 36 {
-        3
+    let glider_count = if $width >= 36 {
+        6
     } else if $width >= 22 {
-        2
+        4
     } else {
-        1
+        2
     }
     let max_start_y = if ($height - 3) < 0 { 0 } else { $height - 3 }
-    let left_rows = if $glider_pairs == 1 {
-        [($height / 2 | math floor)]
-    } else if $glider_pairs == 2 {
-        [1, ($height - 4)]
-    } else {
-        [1, ($height / 2 | math floor), ($height - 4)]
-    }
-    let right_rows = if $glider_pairs == 1 {
-        [($height / 2 | math floor)]
-    } else if $glider_pairs == 2 {
-        [($height - 4), 1]
-    } else {
-        [($height - 4), ($height / 2 | math floor), 1]
-    }
-    let left_offsets = if $glider_pairs == 1 {
-        [1]
-    } else if $glider_pairs == 2 {
-        [1, 9]
-    } else {
-        [1, 9, 17]
-    }
-    let right_offsets = if $glider_pairs == 1 {
-        [($width - 4)]
-    } else if $glider_pairs == 2 {
-        [($width - 4), ($width - 12)]
-    } else {
-        [($width - 4), ($width - 12), ($width - 20)]
-    }
     let right_glider = (get_right_glider_shape)
-    let left_glider = (get_left_glider_shape)
+    let raw_rows = if $glider_count == 2 {
+        [1, ($height - 4)]
+    } else if $glider_count == 4 {
+        [1, ($height / 3 | math floor), (($height * 2 / 3) | math floor), ($height - 4)]
+    } else {
+        [
+            1
+            ($height / 5 | math floor)
+            (($height * 2 / 5) | math floor)
+            (($height * 3 / 5) | math floor)
+            (($height * 4 / 5) | math floor)
+            ($height - 4)
+        ]
+    }
+    let rows = (
+        $raw_rows
+        | each {|row|
+            let row_int = ($row | into int)
+            if $row_int > $max_start_y { $max_start_y } else if $row_int < 0 { 0 } else { $row_int }
+        }
+    )
+    let spacing = if $glider_count <= 1 {
+        $width
+    } else {
+        let available = if ($width - 3) < 1 { 1 } else { $width - 3 }
+        let base_spacing = (($available / $glider_count) | math floor | into int)
+        if $base_spacing < 6 { 6 } else { $base_spacing }
+    }
+    let x_offsets = (
+        0..($glider_count - 1)
+        | each {|index|
+            let candidate = (1 + ($index * $spacing))
+            if $candidate > ($width - 3) { (($candidate mod $width) | into int) } else { ($candidate | into int) }
+        }
+    )
 
-    let left_glider_cells = (
-        $left_offsets
+    let glider_cells = (
+        $x_offsets
         | enumerate
         | each {|item|
-            let row = (($left_rows | get $item.index) | into int)
-            let clamped_row = if $row > $max_start_y { $max_start_y } else { $row }
-            offset_game_of_life_shape $right_glider $item.item $clamped_row
+            let row = ($rows | get $item.index)
+            offset_game_of_life_shape $right_glider $item.item $row
         }
         | flatten
     )
 
-    let right_glider_cells = (
-        $right_offsets
-        | enumerate
-        | each {|item|
-            let row = (($right_rows | get $item.index) | into int)
-            let clamped_row = if $row > $max_start_y { $max_start_y } else { $row }
-            offset_game_of_life_shape $left_glider $item.item $clamped_row
-        }
-        | flatten
-    )
-
-    unique_game_of_life_cells ($left_glider_cells | append $right_glider_cells)
+    unique_game_of_life_cells $glider_cells
 }
 
 def build_game_of_life_cell_keys [cells: list<record>] {
@@ -805,7 +835,7 @@ export def get_game_of_life_screen_cycle_frames [width?: int, height?: int, dura
     let resolved_width = ($width | default (get_terminal_width) | into int)
     let resolved_height = ($height | default (get_terminal_height) | into int)
     let variant = (get_logo_welcome_variant $resolved_width)
-    let spec = (get_game_of_life_welcome_spec $variant $resolved_width $resolved_height)
+    let spec = (get_game_of_life_screen_spec $variant $resolved_width $resolved_height)
     let width_limit = (get_game_of_life_grid_width ($spec.inner_width | into int))
     let height_limit = ($spec.body_height | into int)
     let fixed_frame_delay = (get_game_of_life_welcome_frame_delay)
@@ -826,7 +856,7 @@ export def get_game_of_life_screen_state [width?: int, height?: int] {
     let resolved_width = ($width | default (get_terminal_width) | into int)
     let resolved_height = ($height | default (get_terminal_height) | into int)
     let variant = (get_logo_welcome_variant $resolved_width)
-    let spec = (get_game_of_life_welcome_spec $variant $resolved_width $resolved_height)
+    let spec = (get_game_of_life_screen_spec $variant $resolved_width $resolved_height)
 
     {
         resolved_width: $resolved_width
