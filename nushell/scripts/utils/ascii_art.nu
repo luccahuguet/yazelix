@@ -935,6 +935,62 @@ export def play_frames [frames: list<list<string>>, duration: duration] {
     }
 }
 
+export def play_frames_interruptibly [frames: list<list<string>>, frame_delay: duration, poller?: closure, on_skip?: closure] {
+    if ($frames | is-empty) {
+        return false
+    }
+
+    let max_frame_height = ($frames | each {|frame| $frame | length } | math max)
+    let last_index = (($frames | length) - 1)
+
+    for item in ($frames | enumerate) {
+        let frame = $item.item
+        let padded_frame = if (($frame | length) < $max_frame_height) {
+            let filler = (0..(($max_frame_height - ($frame | length)) - 1) | each { "" })
+            ($frame | append $filler)
+        } else {
+            $frame
+        }
+
+        for line in $padded_frame {
+            print $"\r\u{1b}[2K($line)"
+        }
+
+        if $item.index < $last_index {
+            let should_skip = if $poller == null {
+                false
+            } else {
+                do $poller $frame_delay
+            }
+
+            if $should_skip {
+                if $on_skip != null {
+                    do $on_skip $frame_delay
+                }
+                print ("\u{1b}[" + (($max_frame_height - ($frame | length)) | into string) + "A")
+                return true
+            }
+
+            sleep $frame_delay
+            print ("\u{1b}[" + (($max_frame_height + 1) | into string) + "A")
+        } else {
+            print ("\u{1b}[" + (($max_frame_height - ($frame | length)) | into string) + "A")
+        }
+    }
+
+    false
+}
+
+def repaint_resting_logo_after_skip [width?] {
+    let logo_frame = (get_logo_welcome_frame $width)
+
+    print -n "\u{1b}[H\u{1b}[2J"
+    print ""
+    for line in $logo_frame {
+        print $line
+    }
+}
+
 export def play_frames_with_delay [frames: list<list<string>>, frame_delay: duration] {
     if ($frames | is-empty) {
         return
@@ -979,8 +1035,13 @@ export def get_welcome_playback_duration [welcome_style: string, duration_second
 }
 
 export def render_welcome_style [welcome_style: string, duration_seconds: float = 2.0, width?: int] {
+    render_welcome_style_interruptibly $welcome_style $duration_seconds $width | ignore
+}
+
+export def render_welcome_style_interruptibly [welcome_style: string, duration_seconds: float = 2.0, width?, poller?: closure] {
     let resolved_style = (resolve_welcome_style $welcome_style)
     let playback_duration = (get_welcome_playback_duration $resolved_style $duration_seconds)
+    let skip_to_resting_logo = {|_frame_delay| repaint_resting_logo_after_skip $width }
 
     if $resolved_style == "static" {
         let ascii_art = (get_welcome_ascii_art $width)
@@ -988,26 +1049,25 @@ export def render_welcome_style [welcome_style: string, duration_seconds: float 
             print $line
         }
         print ""
-        return
+        return false
     }
 
     if $resolved_style == "logo" {
         print ""
-        play_animation $playback_duration $width
-        return
+        let frames = (get_animated_ascii_art $width)
+        return (play_frames_interruptibly $frames ($playback_duration / ($frames | length)) $poller $skip_to_resting_logo)
     }
 
     if $resolved_style == "boids" {
         print ""
-        play_frames (get_boids_animation_frames $width) $playback_duration
-        return
+        let frames = (get_boids_animation_frames $width)
+        return (play_frames_interruptibly $frames ($playback_duration / ($frames | length)) $poller $skip_to_resting_logo)
     }
 
     if $resolved_style == "game_of_life" {
         print ""
         let frames = (get_game_of_life_animation_frames $width $duration_seconds)
-        play_frames_with_delay $frames (get_game_of_life_welcome_frame_delay)
-        return
+        return (play_frames_interruptibly $frames (get_game_of_life_welcome_frame_delay) $poller $skip_to_resting_logo)
     }
 
     if $resolved_style == "mandelbrot" {
@@ -1015,7 +1075,7 @@ export def render_welcome_style [welcome_style: string, duration_seconds: float 
         # Dedicated renderers land in their own welcome-style beads.
         # Until then, animated styles share the logo-forward reveal contract.
         play_animation $playback_duration $width
-        return
+        return false
     }
 
     error make {msg: $"Unsupported welcome_style: ($resolved_style)"}

@@ -104,6 +104,8 @@ When creating new files or directories, always use underscores to maintain consi
   - The automated validator enforces this contract for issues created on or after `2026-03-22`. Older backlog issues are intentionally grandfathered until they are explicitly imported or touched by the local sync flow.
 - GitHub Actions must stay read-only with respect to Beads. Do not let CI mutate or commit `.beads/issues.jsonl`.
 - Sync GitHub issue state into Beads locally during normal maintainer work with `yzx dev sync_issues`; that command is also responsible for creating or repairing the canonical Beads comment on GitHub issues. Then commit the Beads changes on your branch.
+- Do not block on `yzx dev sync_issues` when it is slow or hanging. If the faster path is obvious, update Beads directly first with `br` or by editing `.beads/issues.jsonl`, continue the implementation work, and repair the GitHub/Beads contract afterward.
+- When taking that direct path, still preserve the contract before calling the work done: the bead must have the correct `external_ref`, GitHub open/closed state must match the bead lifecycle, and the canonical `Automated: Tracked in Beads as \`yazelix-...\`.` comment should exist on the issue page.
 
 ## Spec Workflow
 

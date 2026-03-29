@@ -9,17 +9,40 @@ use ../utils/readme_release_block.nu get_current_major_series_entry
 use ../utils/upgrade_summary.nu get_upgrade_note_entry
 
 # Show welcome art based on the configured style
+def has_interactive_welcome_tty [] {
+    let result = (^tty | complete)
+    $result.exit_code == 0
+}
+
+def poll_for_welcome_keypress [timeout: duration] {
+    if not (has_interactive_welcome_tty) {
+        return false
+    }
+
+    let timeout_seconds = (($timeout / 1sec) | into string)
+    let poll_script = ($env.YAZELIX_WELCOME_SKIP_POLL_COMMAND? | default 'read -rsn1 -t "$1" _key && printf key || printf timeout')
+    let result = (^bash -lc $poll_script bash $timeout_seconds | complete)
+
+    if $result.exit_code != 0 {
+        return false
+    }
+
+    (($result.stdout | str trim) == "key")
+}
+
 export def show_welcome_art [
     welcome_style: string
     welcome_duration_seconds: float
     show_macchina_on_welcome: bool
-]: nothing -> nothing {
-    render_welcome_style $welcome_style $welcome_duration_seconds
+]: nothing -> bool {
+    let skipped = (render_welcome_style_interruptibly $welcome_style $welcome_duration_seconds null {|timeout| poll_for_welcome_keypress $timeout })
 
     # Show macchina if enabled and available
     if $show_macchina_on_welcome {
         macchina -o machine -o distribution -o desktop-environment -o processor -o gpu -o terminal
     }
+
+    $skipped
 }
 
 # Get flake last updated info
@@ -168,7 +191,7 @@ export def show_welcome [
 
     # Show ASCII art first (if not skipping)
     if (not $should_skip_welcome) and (not $quiet_mode) {
-        show_welcome_art $welcome_style $welcome_duration_seconds $show_macchina_on_welcome
+        show_welcome_art $welcome_style $welcome_duration_seconds $show_macchina_on_welcome | ignore
     }
 
     # Show welcome or log it

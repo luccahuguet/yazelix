@@ -10,6 +10,7 @@ use ../utils/ascii_art.nu [
     get_logo_welcome_variant
     get_max_visible_width
     get_welcome_playback_duration
+    render_welcome_style_interruptibly
 ]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
@@ -515,6 +516,38 @@ def test_welcome_playback_duration_honors_config_for_game_of_life_but_not_logo [
         print $"  ❌ Exception: ($err.msg)"
         false
     }
+}
+
+def test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip [] {
+    print "🧪 Testing skipping game_of_life repaints the resting logo frame..."
+
+    let result = (try {
+        let art_script = (repo_path "nushell" "scripts" "utils" "ascii_art.nu")
+        let output = (^nu -c $"use \"($art_script)\" [render_welcome_style_interruptibly]; render_welcome_style_interruptibly game_of_life 0.5 60 {|timeout| true } | ignore" | complete)
+        let clean_stdout = (
+            $output.stdout
+            | str replace -ar '\u001b\[[0-9;?]*[A-Za-z]' ''
+            | str replace -a "\r" ""
+        )
+
+        if (
+            ($output.exit_code == 0)
+            and ($clean_stdout | str contains "YAZELIX")
+            and ($clean_stdout | str contains "your reproducible terminal IDE")
+            and ($clean_stdout | str contains "welcome to yazelix")
+        ) {
+            print "  ✅ Welcome skip repaints the resting logo frame instead of leaving animated output behind"
+            true
+        } else {
+            print $"  ❌ Unexpected skip repaint result: exit=($output.exit_code) stdout=($clean_stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    $result
 }
 
 def test_boids_animation_stays_bounded_and_width_aware [] {
@@ -1872,6 +1905,7 @@ export def run_generated_config_canonical_tests [] {
         (test_parse_yazelix_config_reads_core_welcome_duration_seconds)
         (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
         (test_welcome_playback_duration_honors_config_for_game_of_life_but_not_logo)
+        (test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip)
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
         (test_parse_yazelix_config_reads_pack_sidecar)
         (test_parse_yazelix_config_bootstraps_welcome_style_surface)
