@@ -296,7 +296,7 @@ def materialize_update_canaries [selected: list<string>] {
                     {
                         name: "default"
                         config_path: $default_config_path
-                        description: "yazelix_default.toml (+ yazelix_packs.toml when present)"
+                        description: "yazelix_default.toml + yazelix_packs_default.toml"
                     }
                 }
                 "maximal" => {

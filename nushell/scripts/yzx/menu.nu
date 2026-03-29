@@ -197,7 +197,7 @@ def get_primary_config_paths [] {
         user_config: ($config_dir | path join "yazelix.toml")
         user_pack_config: ($config_dir | path join "yazelix_packs.toml")
         default_config: ($runtime_dir | path join "yazelix_default.toml")
-        default_pack_config: ($runtime_dir | path join "yazelix_packs.toml")
+        default_pack_config: ($runtime_dir | path join "yazelix_packs_default.toml")
     }
 }
 

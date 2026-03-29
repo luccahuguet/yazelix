@@ -5,6 +5,7 @@ use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 use failure_classes.nu [format_failure_classification]
 
 export const PACK_SIDECAR_FILENAME = "yazelix_packs.toml"
+export const PACK_DEFAULT_FILENAME = "yazelix_packs_default.toml"
 
 def make_surface_error [headline: string, details: list<string>, recovery_hint: string] {
     error make {
@@ -37,11 +38,23 @@ export def get_pack_sidecar_path [config_file: string] {
     ($config_file | path dirname | path join $PACK_SIDECAR_FILENAME)
 }
 
+export def get_pack_default_path [default_config_path: string] {
+    ($default_config_path | path dirname | path join $PACK_DEFAULT_FILENAME)
+}
+
+def get_associated_pack_surface_path [config_file: string] {
+    if ($config_file | path basename) == "yazelix_default.toml" {
+        get_pack_default_path $config_file
+    } else {
+        get_pack_sidecar_path $config_file
+    }
+}
+
 export def copy_default_config_surfaces [
     default_config_path: string
     target_config_path: string
 ] {
-    let default_pack_path = (get_pack_sidecar_path $default_config_path)
+    let default_pack_path = (get_pack_default_path $default_config_path)
     let target_pack_path = (get_pack_sidecar_path $target_config_path)
 
     mkdir ($target_config_path | path dirname)
@@ -102,7 +115,7 @@ export def merge_pack_sidecar [
 
 export def load_config_surface_from_main [config_file: string] {
     let main_config = (ensure_record_surface (open $config_file) "main config" $config_file)
-    let pack_config_file = (get_pack_sidecar_path $config_file)
+    let pack_config_file = (get_associated_pack_surface_path $config_file)
     let pack_config = if ($pack_config_file | path exists) {
         open $pack_config_file
     } else {

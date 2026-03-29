@@ -1034,7 +1034,7 @@ default_shell = "bash"
         let new_config = (open --raw ($temp_yazelix_dir | path join "yazelix.toml"))
         let default_config = (open --raw ($repo_root | path join "yazelix_default.toml"))
         let new_pack_config = (open --raw ($temp_yazelix_dir | path join "yazelix_packs.toml"))
-        let default_pack_config = (open --raw ($repo_root | path join "yazelix_packs.toml"))
+        let default_pack_config = (open --raw ($repo_root | path join "yazelix_packs_default.toml"))
         let backups = (
             ls $temp_yazelix_dir
             | where name =~ 'yazelix\.toml\.backup-'
@@ -1324,7 +1324,7 @@ default_shell = "bash"
         let new_config = (open --raw ($temp_config_dir | path join "yazelix.toml"))
         let default_config = (open --raw ($repo_root | path join "yazelix_default.toml"))
         let new_pack_config = (open --raw ($temp_config_dir | path join "yazelix_packs.toml"))
-        let default_pack_config = (open --raw ($repo_root | path join "yazelix_packs.toml"))
+        let default_pack_config = (open --raw ($repo_root | path join "yazelix_packs_default.toml"))
 
         if (
             ($output.exit_code == 0)

@@ -15,7 +15,9 @@ shells/zsh/initializers
 # User configuration
 yazelix.nix
 yazelix.toml
+yazelix_packs.toml
 yazelix.toml.backup-*
+yazelix_packs.toml.backup-*
 helix_custom/
 configs/yazi/user/*
 !configs/yazi/user/README.md
