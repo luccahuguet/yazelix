@@ -10,7 +10,11 @@ use ../utils/config_surfaces.nu [resolve_active_config_paths get_primary_config_
 def classify_menu_command [cmd: string] {
     if ($cmd | str starts-with "yzx launch") or ($cmd == "yzx restart") {
         {tag: "session", color: (ansi green)}
-    } else if ($cmd | str starts-with "yzx config") {
+    } else if (
+        ($cmd | str starts-with "yzx config")
+        or ($cmd | str starts-with "yzx open")
+        or ($cmd | str starts-with "yzx edit")
+    ) {
         {tag: "config", color: (ansi cyan)}
     } else if ($cmd | str starts-with "yzx update") or ($cmd | str starts-with "yzx gc") or ($cmd | str starts-with "yzx packs") or ($cmd == "yzx doctor") {
         {tag: "system", color: (ansi yellow)}
@@ -220,15 +224,15 @@ def show_config_section [section: string] {
     }
 }
 
-export def "yzx show hx" [] {
+export def "yzx open hx" [] {
     show_config_section "hx"
 }
 
-export def "yzx show yazi" [] {
+export def "yzx open yazi" [] {
     show_config_section "yazi"
 }
 
-export def "yzx show zellij" [] {
+export def "yzx open zellij" [] {
     show_config_section "zellij"
 }
 
@@ -243,14 +247,14 @@ def open_config_surface_in_editor [config_path: string, --print] {
     }
 }
 
-export def "yzx open config" [
+export def "yzx edit config" [
     --print  # Print the config path without opening
 ] {
     let paths = get_primary_config_paths
     open_config_surface_in_editor $paths.user_config --print=$print
 }
 
-export def "yzx open packs" [
+export def "yzx edit packs" [
     --print  # Print the config path without opening
 ] {
     let paths = get_primary_config_paths

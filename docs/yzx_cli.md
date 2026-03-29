@@ -181,19 +181,19 @@ Show the active Yazelix configuration via Nushell `open`
 - `--full`: include the `packs` section
 - `--path`: print the resolved config path
 
-### `yzx show hx|yazi|zellij`
-Show a focused downstream config surface
-- `yzx show hx`: show the Helix config view
-- `yzx show yazi`: show the merged Yazi config
-- `yzx show zellij`: show the merged Zellij config
+### `yzx open hx|yazi|zellij`
+Inspect a focused downstream config surface
+- `yzx open hx`: show the Helix config view
+- `yzx open yazi`: show the merged Yazi config
+- `yzx open zellij`: show the merged Zellij config
 
-### `yzx open config [--print]`
+### `yzx edit config [--print]`
 Open the main Yazelix config file in your editor
 - Uses `$EDITOR` (set by Yazelix from `[editor] command` in yazelix.toml)
 - Targets `user_configs/yazelix.toml`
 - `--print`: print the resolved config path without opening
 
-### `yzx open packs [--print]`
+### `yzx edit packs [--print]`
 Open the Yazelix pack sidecar in your editor
 - Uses `$EDITOR` (set by Yazelix from `[editor] command` in yazelix.toml)
 - Targets `user_configs/yazelix_packs.toml`
@@ -261,11 +261,11 @@ yzx doctor --fix              # Health check with auto-fix
 yzx config                    # Show active config without the packs section
 yzx config --full             # Show the full config including packs
 yzx config --path             # Print the active config path
-yzx show hx                   # Show the Helix section only
-yzx show yazi                 # Show the Yazi section only
-yzx show zellij              # Show the Zellij section only
-yzx open config               # Open the main managed config
-yzx open packs                # Open the pack sidecar
+yzx open hx                   # Show the Helix section only
+yzx open yazi                 # Show the Yazi section only
+yzx open zellij               # Show the Zellij section only
+yzx edit config               # Open the main managed config
+yzx edit packs                # Open the pack sidecar
 yzx config migrate            # Preview known config migrations
 yzx config migrate --apply --yes  # Apply safe migrations with backup
 yzx config reset              # Replace both config surfaces with fresh templates after confirmation

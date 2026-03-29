@@ -1179,7 +1179,7 @@ git = ["gh", "prek"]
 }
 
 def test_yzx_config_sections [] {
-    print "🧪 Testing yzx show section views..."
+    print "🧪 Testing yzx open downstream config views..."
 
     try {
         let yzx_script = (repo_path "nushell" "scripts" "core" "yazelix.nu")
@@ -1187,21 +1187,21 @@ def test_yzx_config_sections [] {
         let zellij_merger = (repo_path "nushell" "scripts" "setup" "zellij_config_merger.nu")
         let root = (get_repo_config_dir)
         ^nu -c $"use \"($yazi_merger)\" *; generate_merged_yazi_config \"($root)\" --quiet | ignore" | complete | ignore
-        let hx_output = (^nu -c $"use \"($yzx_script)\" *; yzx show hx | columns | str join ','" | complete).stdout | str trim
-        let yazi_output = (^nu -c $"use \"($yzx_script)\" *; yzx show yazi | columns | str join ','" | complete).stdout | str trim
+        let hx_output = (^nu -c $"use \"($yzx_script)\" *; yzx open hx | columns | str join ','" | complete).stdout | str trim
+        let yazi_output = (^nu -c $"use \"($yzx_script)\" *; yzx open yazi | columns | str join ','" | complete).stdout | str trim
         if (which zellij | is-empty) {
             if ($hx_output | str contains "config_path") and ($yazi_output | str contains "manager") {
                 print "  ℹ️  Skipping zellij config section check because zellij is not available"
-                print "  ✅ yzx show section commands return focused sections"
+                print "  ✅ yzx open section commands return focused sections"
                 return true
             }
         }
 
         ^nu -c $"use \"($zellij_merger)\" *; generate_merged_zellij_config \"($root)\" | ignore" | complete | ignore
-        let zellij_output = (^nu -c $"use \"($yzx_script)\" *; yzx show zellij" | complete).stdout | str trim
+        let zellij_output = (^nu -c $"use \"($yzx_script)\" *; yzx open zellij" | complete).stdout | str trim
 
         if ($hx_output | str contains "config_path") and ($yazi_output | str contains "manager") and ($zellij_output | str contains "default_layout") {
-            print "  ✅ yzx show section commands return focused sections"
+            print "  ✅ yzx open section commands return focused sections"
             true
         } else {
             print $"  ❌ Unexpected section output: hx=($hx_output) yazi=($yazi_output) zellij=($zellij_output)"
@@ -1213,8 +1213,8 @@ def test_yzx_config_sections [] {
     }
 }
 
-def test_yzx_open_targets_print_paths [] {
-    print "🧪 Testing yzx open config and yzx open packs print the managed config paths..."
+def test_yzx_edit_targets_print_paths [] {
+    print "🧪 Testing yzx edit config and yzx edit packs print the managed config paths..."
 
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_config_open_targets_XXXXXX | str trim)
@@ -1229,28 +1229,28 @@ def test_yzx_open_targets_print_paths [] {
             YAZELIX_CONFIG_DIR: $temp_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx open config --print" | complete
+            ^nu -c $"use \"($yzx_script)\" *; yzx edit config --print" | complete
         }
         let packs_output = with-env {
             HOME: $tmp_home
             YAZELIX_CONFIG_DIR: $temp_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx open packs --print" | complete
+            ^nu -c $"use \"($yzx_script)\" *; yzx edit packs --print" | complete
         }
         let missing_subcommand_output = with-env {
             HOME: $tmp_home
             YAZELIX_CONFIG_DIR: $temp_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx open --print" | complete
+            ^nu -c $"use \"($yzx_script)\" *; yzx edit --print" | complete
         }
         let invalid_output = with-env {
             HOME: $tmp_home
             YAZELIX_CONFIG_DIR: $temp_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx open weird --print" | complete
+            ^nu -c $"use \"($yzx_script)\" *; yzx edit weird --print" | complete
         }
 
         let expected_main = ($temp_config_dir | path join "user_configs" "yazelix.toml")
@@ -1267,10 +1267,10 @@ def test_yzx_open_targets_print_paths [] {
             and ($invalid_output.exit_code != 0)
             and ($main_stdout == $expected_main)
             and ($packs_stdout == $expected_packs)
-            and ($missing_subcommand_stderr | str contains "open")
-            and ($invalid_stderr | str contains "open")
+            and ($missing_subcommand_stderr | str contains "edit")
+            and ($invalid_stderr | str contains "edit")
         ) {
-            print "  ✅ yzx open config and yzx open packs resolve the managed config paths and reject unknown leaf commands"
+            print "  ✅ yzx edit config and yzx edit packs resolve the managed config paths and reject unknown leaf commands"
             true
         } else {
             print $"  ❌ Unexpected result: main_exit=($main_output.exit_code) main=($main_stdout) packs_exit=($packs_output.exit_code) packs=($packs_stdout) missing_exit=($missing_subcommand_output.exit_code) missing_stderr=($missing_subcommand_stderr) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
@@ -2177,7 +2177,7 @@ export def run_core_canonical_tests [] {
         (test_historical_upgrade_notes_cover_v12_v13_tag_floor)
         (test_yzx_config_view)
         (test_yzx_config_full_merges_pack_sidecar)
-        (test_yzx_open_targets_print_paths)
+        (test_yzx_edit_targets_print_paths)
         (test_invalid_config_is_classified_as_config_problem)
         (test_startup_reports_known_config_migration_before_generic_wrappers)
         (test_config_state_supports_split_config_and_runtime_dirs)
