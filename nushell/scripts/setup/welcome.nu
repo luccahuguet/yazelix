@@ -9,9 +9,10 @@ use ../utils/config_parser.nu parse_yazelix_config
 # Show welcome art based on the configured style
 export def show_welcome_art [
     welcome_style: string
+    welcome_duration_seconds: float
     show_macchina_on_welcome: bool
 ]: nothing -> nothing {
-    render_welcome_style $welcome_style 0.5sec
+    render_welcome_style $welcome_style $welcome_duration_seconds
 
     # Show macchina if enabled and available
     if $show_macchina_on_welcome {
@@ -119,6 +120,7 @@ export def show_welcome [
     skip_welcome_screen: bool
     quiet_mode: bool
     welcome_style: string
+    welcome_duration_seconds: float
     show_macchina_on_welcome: bool
     welcome_message: list<string>
     log_dir: string
@@ -131,7 +133,7 @@ export def show_welcome [
 
     # Show ASCII art first (if not skipping)
     if (not $should_skip_welcome) and (not $quiet_mode) {
-        show_welcome_art $welcome_style $show_macchina_on_welcome
+        show_welcome_art $welcome_style $welcome_duration_seconds $show_macchina_on_welcome
     }
 
     # Show welcome or log it

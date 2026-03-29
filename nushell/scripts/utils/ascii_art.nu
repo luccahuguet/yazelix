@@ -536,20 +536,14 @@ def count_game_of_life_neighbors_record [cells: list<record>, width: int, height
 
     for cell in $cells {
         for ny in [($cell.y - 1), $cell.y, ($cell.y + 1)] {
-            if ($ny < 0) or ($ny >= $height) {
-                continue
-            }
-
             for nx in [($cell.x - 1), $cell.x, ($cell.x + 1)] {
-                if ($nx < 0) or ($nx >= $width) {
-                    continue
-                }
-
                 if ($nx == $cell.x) and ($ny == $cell.y) {
                     continue
                 }
 
-                $counts = (add_neighbor_count $counts $nx $ny)
+                let wrapped_x = (($nx + $width) mod $width)
+                let wrapped_y = (($ny + $height) mod $height)
+                $counts = (add_neighbor_count $counts $wrapped_x $wrapped_y)
             }
         }
     }
@@ -797,17 +791,17 @@ export def play_animation [duration: duration, width?: int] {
     play_frames $frames $duration
 }
 
-def get_welcome_playback_duration [welcome_style: string, duration: duration] {
-    if $welcome_style == "game_of_life" {
-        2sec
+export def get_welcome_playback_duration [welcome_style: string, duration_seconds: float] {
+    if $welcome_style == "logo" {
+        0.5sec
     } else {
-        $duration
+        ($duration_seconds * 1sec)
     }
 }
 
-export def render_welcome_style [welcome_style: string, duration: duration = 0.5sec, width?: int] {
+export def render_welcome_style [welcome_style: string, duration_seconds: float = 2.0, width?: int] {
     let resolved_style = (resolve_welcome_style $welcome_style)
-    let playback_duration = (get_welcome_playback_duration $resolved_style $duration)
+    let playback_duration = (get_welcome_playback_duration $resolved_style $duration_seconds)
 
     if $resolved_style == "static" {
         let ascii_art = (get_welcome_ascii_art $width)

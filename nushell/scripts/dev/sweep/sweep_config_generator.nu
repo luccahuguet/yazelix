@@ -18,6 +18,7 @@ def build_sweep_config [
             skip_welcome_screen: true
             show_macchina_on_welcome: false
             welcome_style: "static"
+            welcome_duration_seconds: 2.0
         }
         helix: {
             mode: ($features.helix_mode? | default "release")

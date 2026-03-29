@@ -114,6 +114,23 @@ def parse_welcome_style [raw_config: record] {
     $style
 }
 
+def parse_welcome_duration_seconds [raw_config: record] {
+    let raw_value = ($raw_config.core?.welcome_duration_seconds? | default 2.0)
+    let parsed = (try { $raw_value | into float } catch { null })
+
+    if $parsed == null {
+        let classification = (format_failure_classification "config" "Update core.welcome_duration_seconds to a number from 0.2 to 8.0, or run `yzx config reset --yes` to restore the template.")
+        error make {msg: $"Invalid core.welcome_duration_seconds value '($raw_value)'. Expected a number from 0.2 to 8.0.\n($classification)"}
+    }
+
+    if ($parsed < 0.2) or ($parsed > 8.0) {
+        let classification = (format_failure_classification "config" "Update core.welcome_duration_seconds to a number from 0.2 to 8.0, or run `yzx config reset --yes` to restore the template.")
+        error make {msg: $"Invalid core.welcome_duration_seconds value '($raw_value)'. Expected a number from 0.2 to 8.0.\n($classification)"}
+    }
+
+    $parsed
+}
+
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
     let config_surface = load_active_config_surface
@@ -149,6 +166,7 @@ export def parse_yazelix_config [] {
         skip_welcome_screen: ($raw_config.core?.skip_welcome_screen? | default false),
         show_macchina_on_welcome: ($raw_config.core?.show_macchina_on_welcome? | default true),
         welcome_style: (parse_welcome_style $raw_config),
+        welcome_duration_seconds: (parse_welcome_duration_seconds $raw_config),
         refresh_output: (parse_refresh_output $raw_config),
         max_jobs: (parse_positive_parallel_setting $raw_config.core?.max_jobs? "core.max_jobs" ["auto", "max", "max_minus_one", "half", "quarter"] "half"),
         build_cores: (parse_positive_parallel_setting $raw_config.core?.build_cores? "core.build_cores" ["max", "max_minus_one", "half", "quarter"] "2"),

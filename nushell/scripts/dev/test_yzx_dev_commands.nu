@@ -43,6 +43,7 @@ def test_home_manager_desktop_entry_evaluates [] {
             and ($desktop_exec == $expected_exec)
             and (not ($generated_toml | str contains "[packs]"))
             and ($generated_toml | str contains 'welcome_style = "random"')
+            and ($generated_toml | str contains "welcome_duration_seconds = 2")
             and not ($generated_toml | str contains "[ascii]")
             and ($generated_toml | str contains "Pack configuration lives in yazelix_packs.toml.")
             and ($generated_packs | str contains "enabled = [")

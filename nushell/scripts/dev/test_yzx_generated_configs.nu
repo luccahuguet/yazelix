@@ -9,8 +9,7 @@ use ../utils/ascii_art.nu [
     get_logo_welcome_frame
     get_logo_welcome_variant
     get_max_visible_width
-    get_welcome_style_random_pool
-    resolve_welcome_style
+    get_welcome_playback_duration
 ]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
@@ -368,6 +367,39 @@ welcome_style = "mandelbrot"
     $result
 }
 
+def test_parse_yazelix_config_reads_core_welcome_duration_seconds [] {
+    print "🧪 Testing parse_yazelix_config reads core.welcome_duration_seconds..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_welcome_duration_parse_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+
+        '[core]
+welcome_duration_seconds = 2.5
+' | save --force --raw $config_path
+
+        let parsed = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+
+        if $parsed.welcome_duration_seconds == 2.5 {
+            print "  ✅ parse_yazelix_config reads the new core.welcome_duration_seconds field"
+            true
+        } else {
+            print $"  ❌ Unexpected parsed welcome duration: ($parsed.welcome_duration_seconds)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def test_logo_welcome_variant_adapts_to_width [] {
     print "🧪 Testing logo welcome variant selection adapts to terminal width..."
 
@@ -437,6 +469,28 @@ def test_logo_animation_lands_on_static_resting_frame [] {
             true
         } else {
             print $"  ❌ Unexpected animation landing state: frames=(($animation_frames | length))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_welcome_playback_duration_honors_config_for_game_of_life_but_not_logo [] {
+    print "🧪 Testing welcome duration is configurable for game_of_life while logo keeps its fixed timing..."
+
+    try {
+        let configured_duration = 3.5
+        let logo_duration = (get_welcome_playback_duration "logo" $configured_duration)
+        let game_of_life_duration = (get_welcome_playback_duration "game_of_life" $configured_duration)
+        let expected_game_of_life_duration = ("3sec 500ms" | into duration)
+
+        if ($logo_duration == 500ms) and ($game_of_life_duration == $expected_game_of_life_duration) {
+            print "  ✅ game_of_life honors configured duration while logo stays on its fixed reveal budget"
+            true
+        } else {
+            print $"  ❌ Unexpected durations: logo=($logo_duration) game_of_life=($game_of_life_duration)"
             false
         }
     } catch { |err|
@@ -637,35 +691,6 @@ mode = "animated"
     $result
 }
 
-def test_welcome_style_random_pool_excludes_static [] {
-    print "🧪 Testing welcome_style random pool excludes static and only resolves animated styles..."
-
-    try {
-        let pool = (get_welcome_style_random_pool)
-        let resolved = (
-            0..3
-            | each {|index| resolve_welcome_style "random" $index }
-            | uniq
-        )
-
-        if (
-            ($pool == ["game_of_life"])
-            and ("static" not-in $pool)
-            and ("static" not-in $resolved)
-            and ($resolved | all {|style| $style in $pool })
-        ) {
-            print "  ✅ random welcome selection excludes static and resolves only through the animated pool"
-            true
-        } else {
-            print $"  ❌ Unexpected pool/resolution: pool=($pool | to json -r) resolved=($resolved | to json -r)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
     print "🧪 Testing parse_yazelix_config bootstraps both default config surfaces on first run..."
 
@@ -735,13 +760,15 @@ def test_parse_yazelix_config_bootstraps_welcome_style_surface [] {
         if (
             ($main_path | path exists)
             and ($parsed.welcome_style == "random")
+            and ($parsed.welcome_duration_seconds == 2.0)
             and ($generated_main | str contains 'welcome_style = "random"')
+            and ($generated_main | str contains 'welcome_duration_seconds = 2.0')
             and not ($generated_main | str contains "[ascii]")
         ) {
-            print "  ✅ First-run bootstrap writes the new welcome_style surface into yazelix.toml"
+            print "  ✅ First-run bootstrap writes the welcome style and duration surfaces into yazelix.toml"
             true
         } else {
-            print $"  ❌ Unexpected bootstrap result: main_exists=((($main_path | path exists))) parsed=($parsed.welcome_style) main=($generated_main)"
+            print $"  ❌ Unexpected bootstrap result: main_exists=((($main_path | path exists))) parsed_style=($parsed.welcome_style) parsed_duration=($parsed.welcome_duration_seconds) main=($generated_main)"
             false
         }
     } catch { |err|
@@ -1586,13 +1613,14 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_all_terminal_configs_creates_override_scaffolds)
         (test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root)
         (test_parse_yazelix_config_reads_core_welcome_style)
+        (test_parse_yazelix_config_reads_core_welcome_duration_seconds)
+        (test_welcome_playback_duration_honors_config_for_game_of_life_but_not_logo)
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
         (test_parse_yazelix_config_reads_pack_sidecar)
         (test_parse_yazelix_config_bootstraps_welcome_style_surface)
         (test_parse_yazelix_config_bootstraps_split_default_surfaces)
         (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)
         (test_parse_yazelix_config_rejects_split_pack_ownership)
-        (test_welcome_style_random_pool_excludes_static)
         (test_user_mode_requires_real_terminal_config)
         (test_config_schema_rejects_removed_auto_terminal_config_mode)
         (test_ghostty_trail_glow_defaults_to_medium_and_reads_explicit_levels)

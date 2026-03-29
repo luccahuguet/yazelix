@@ -10,6 +10,10 @@ const OPEN_RECORD_PATHS = [
     ["packs", "declarations"]
 ]
 
+const FLEXIBLE_NUMERIC_PATHS = [
+    ["core", "welcome_duration_seconds"]
+]
+
 def format_config_path [path: list<string>] {
     if ($path | is-empty) {
         "<root>"
@@ -51,6 +55,11 @@ def make_finding [kind: string, path: list<string>, message: string] {
 def is_open_record_path [path: list<string>] {
     let target = (format_config_path $path)
     $OPEN_RECORD_PATHS | any {|candidate| (format_config_path $candidate) == $target }
+}
+
+def is_flexible_numeric_path [path: list<string>] {
+    let target = (format_config_path $path)
+    $FLEXIBLE_NUMERIC_PATHS | any {|candidate| (format_config_path $candidate) == $target }
 }
 
 # Compare two config structures recursively, except for explicitly user-extensible paths.
@@ -118,6 +127,14 @@ export def compare_configs [default: any, user: any, path: list<string> = []] {
     }
 
     if $default_kind != $user_kind {
+        if (
+            (is_flexible_numeric_path $path)
+            and ($default_kind in ["int", "float"])
+            and ($user_kind in ["int", "float"])
+        ) {
+            return []
+        }
+
         return [
             (make_finding
                 "type_mismatch"

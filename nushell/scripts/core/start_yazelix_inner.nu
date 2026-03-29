@@ -68,7 +68,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     mkdir $log_dir
     let colors = get_yazelix_colors
     let welcome_message = build_welcome_message $yazelix_dir $config.helix_mode $colors
-    show_welcome $config.skip_welcome_screen $quiet_mode $config.welcome_style $config.show_macchina_on_welcome $welcome_message $log_dir $colors
+    show_welcome $config.skip_welcome_screen $quiet_mode $config.welcome_style $config.welcome_duration_seconds $config.show_macchina_on_welcome $welcome_message $log_dir $colors
     let upgrade_summary = (try { maybe_show_first_run_upgrade_summary } catch {|err|
         if $verbose {
             print $"⚠️ Failed to render upgrade summary: ($err.msg)"

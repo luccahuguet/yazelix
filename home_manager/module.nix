@@ -427,6 +427,16 @@ in
       '';
     };
 
+    welcome_duration_seconds = mkOption {
+      type = types.addCheck (types.either types.int types.float) (value: value >= 0.2 && value <= 8.0);
+      default = 2.0;
+      description = ''
+        Welcome animation duration in seconds for animated styles.
+        The logo style keeps its fixed timing and ignores this value.
+        Valid range: 0.2 to 8.0.
+      '';
+    };
+
     show_macchina_on_welcome = mkOption {
       type = types.bool;
       default = true;
@@ -644,6 +654,7 @@ in
             "skip_welcome_screen = ${boolToToml cfg.skip_welcome_screen}"
             "show_macchina_on_welcome = ${boolToToml cfg.show_macchina_on_welcome}"
             "welcome_style = ${escapeString cfg.welcome_style}"
+            "welcome_duration_seconds = ${toString cfg.welcome_duration_seconds}"
             "refresh_output = ${escapeString cfg.refresh_output}"
             "max_jobs = ${escapeString cfg.max_jobs}"
             "build_cores = ${escapeString cfg.build_cores}"
