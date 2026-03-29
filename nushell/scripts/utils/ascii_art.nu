@@ -145,6 +145,13 @@ def colorize_body_line [text: string, index: int] {
     $"($color)($text)($colors.reset)"
 }
 
+def colorize_boid_char [char: string, index: int] {
+    let colors = get_yazelix_colors
+    let palette = [$colors.cyan, $colors.blue, $colors.purple]
+    let color = ($palette | get ($index mod ($palette | length)))
+    $"($color)($char)($colors.reset)"
+}
+
 def make_border [inner_width: int, character: string] {
     repeat_char $character ($inner_width + 2)
 }
@@ -224,6 +231,125 @@ def get_logo_welcome_spec [variant: string] {
     }
 }
 
+def get_boids_welcome_spec [variant: string] {
+    match $variant {
+        "narrow" => {
+            {
+                inner_width: 22
+                body_height: 4
+                caption: "flocking..."
+            }
+        }
+        "medium" => {
+            {
+                inner_width: 34
+                body_height: 5
+                caption: "flocking..."
+            }
+        }
+        "wide" => {
+            {
+                inner_width: 46
+                body_height: 5
+                caption: "flocking..."
+            }
+        }
+        _ => {
+            error make {msg: $"Unsupported boids welcome variant: ($variant)"}
+        }
+    }
+}
+
+def make_boid_point [x: int, y: int, char: string, index: int] {
+    { x: $x, y: $y, char: $char, index: $index }
+}
+
+def get_boid_positions [spec: record, phase: string] {
+    let width = ($spec.inner_width | into int)
+    let height = ($spec.body_height | into int)
+    let mid_x = ($width / 2 | math floor)
+    let low_y = if $height > 2 { $height - 2 } else { 1 }
+    let mid_y = ($height / 2 | math floor)
+
+    match $phase {
+        "scatter" => [
+            (make_boid_point 1 0 ">" 0)
+            (make_boid_point ($width - 2) 0 "<" 1)
+            (make_boid_point 3 $low_y "^" 2)
+            (make_boid_point ($width - 4) $low_y "v" 3)
+            (make_boid_point ($mid_x - 6) $mid_y "*" 4)
+            (make_boid_point ($mid_x + 5) $mid_y "*" 5)
+        ]
+        "drift" => [
+            (make_boid_point ($mid_x - 8) 1 ">" 0)
+            (make_boid_point ($mid_x + 7) 1 "<" 1)
+            (make_boid_point ($mid_x - 5) $mid_y "^" 2)
+            (make_boid_point ($mid_x + 4) $mid_y "v" 3)
+            (make_boid_point ($mid_x - 2) ($low_y - 1) "*" 4)
+            (make_boid_point ($mid_x + 1) ($low_y - 1) "*" 5)
+        ]
+        "cluster" => [
+            (make_boid_point ($mid_x - 4) 1 ">" 0)
+            (make_boid_point ($mid_x + 3) 1 "<" 1)
+            (make_boid_point ($mid_x - 2) $mid_y "^" 2)
+            (make_boid_point ($mid_x + 1) $mid_y "v" 3)
+            (make_boid_point ($mid_x - 6) ($low_y - 1) "*" 4)
+            (make_boid_point ($mid_x + 5) ($low_y - 1) "*" 5)
+        ]
+        _ => {
+            error make {msg: $"Unsupported boids phase: ($phase)"}
+        }
+    }
+}
+
+def render_boid_row [width: int, row_index: int, points: list<record>, caption?: string] {
+    0..($width - 1)
+    | each {|x|
+        let point = ($points | where x == $x and y == $row_index | get -o 0)
+        if $point == null {
+            " "
+        } else {
+            colorize_boid_char $point.char $point.index
+        }
+    }
+    | str join ""
+}
+
+def build_boids_frame [spec: record, phase: string] {
+    let colors = get_yazelix_colors
+    let width = ($spec.inner_width | into int)
+    let height = ($spec.body_height | into int)
+    let points = (get_boid_positions $spec $phase)
+    let caption_row = if $phase == "cluster" {
+        ($height - 1)
+    } else {
+        -1
+    }
+    let caption = if $phase == "cluster" {
+        $"($colors.faint)($colors.purple)(center_text $spec.caption $width)($colors.reset)"
+    } else {
+        null
+    }
+
+    let body = (
+        0..($height - 1)
+        | each {|row_index|
+            let row = if ($caption != null) and ($row_index == $caption_row) {
+                $caption
+            } else {
+                render_boid_row $width $row_index $points
+            }
+            $"($colors.purple)│($colors.reset)($row)($colors.purple)│($colors.reset)"
+        }
+    )
+
+    [
+        $"($colors.purple)╭(make_border $width "─")╮($colors.reset)"
+        ...$body
+        $"($colors.purple)╰(make_border $width "─")╯($colors.reset)"
+    ]
+}
+
 export def get_logo_welcome_frame [width?: int] {
     let variant = (get_logo_welcome_variant $width)
     let spec = (get_logo_welcome_spec $variant)
@@ -240,6 +366,18 @@ export def get_logo_animation_frames [width?: int] {
         (build_logo_card_frame $spec 0 "full")
         (build_logo_card_frame $spec 1 "full")
         (build_logo_card_frame $spec $final_count "full")
+    ]
+}
+
+export def get_boids_animation_frames [width?: int] {
+    let variant = (get_logo_welcome_variant $width)
+    let spec = (get_boids_welcome_spec $variant)
+
+    [
+        (build_boids_frame $spec "scatter")
+        (build_boids_frame $spec "drift")
+        (build_boids_frame $spec "cluster")
+        (get_logo_welcome_frame $width)
     ]
 }
 
@@ -291,7 +429,13 @@ export def render_welcome_style [welcome_style: string, duration: duration = 0.5
         return
     }
 
-    if $resolved_style in ["boids", "life", "mandelbrot"] {
+    if $resolved_style == "boids" {
+        print ""
+        play_frames (get_boids_animation_frames $width) $duration
+        return
+    }
+
+    if $resolved_style in ["life", "mandelbrot"] {
         print ""
         # Dedicated renderers land in their own welcome-style beads.
         # Until then, animated styles share the logo-forward reveal contract.

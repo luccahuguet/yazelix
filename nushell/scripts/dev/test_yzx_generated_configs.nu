@@ -3,6 +3,7 @@
 use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
 use ../utils/launch_state.nu [get_launch_env]
 use ../utils/ascii_art.nu [
+    get_boids_animation_frames
     get_logo_animation_frames
     get_logo_welcome_frame
     get_logo_welcome_variant
@@ -430,6 +431,59 @@ def test_logo_animation_lands_on_static_resting_frame [] {
             true
         } else {
             print $"  ❌ Unexpected animation landing state: frames=(($animation_frames | length))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_boids_animation_stays_bounded_and_width_aware [] {
+    print "🧪 Testing boids welcome frames stay bounded and fit the chosen width..."
+
+    try {
+        let narrow_frames = (get_boids_animation_frames 36)
+        let medium_frames = (get_boids_animation_frames 60)
+        let wide_frames = (get_boids_animation_frames 100)
+
+        let narrow_width = ($narrow_frames | each {|frame| get_max_visible_width $frame } | math max)
+        let medium_width = ($medium_frames | each {|frame| get_max_visible_width $frame } | math max)
+        let wide_width = ($wide_frames | each {|frame| get_max_visible_width $frame } | math max)
+
+        if (
+            (($narrow_frames | length) == 4)
+            and (($medium_frames | length) == 4)
+            and (($wide_frames | length) == 4)
+            and ($narrow_width <= 36)
+            and ($medium_width <= 60)
+            and ($wide_width <= 100)
+        ) {
+            print "  ✅ Boids welcome generation stays bounded and respects narrow, medium, and wide width budgets"
+            true
+        } else {
+            print $"  ❌ Unexpected boids frame budgets: narrow_frames=(($narrow_frames | length)) narrow_width=($narrow_width) medium_width=($medium_width) wide_width=($wide_width)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_boids_animation_lands_on_logo_resting_frame [] {
+    print "🧪 Testing boids animation lands on the shared logo resting frame..."
+
+    try {
+        let static_logo = (get_logo_welcome_frame 60)
+        let boids_frames = (get_boids_animation_frames 60)
+        let final_frame = ($boids_frames | last)
+
+        if ($final_frame == $static_logo) {
+            print "  ✅ Boids animation resolves into the same readable final frame as the logo baseline"
+            true
+        } else {
+            print "  ❌ Boids animation does not land on the shared final logo frame"
             false
         }
     } catch { |err|
@@ -1424,6 +1478,8 @@ export def run_generated_config_canonical_tests [] {
         (test_logo_welcome_variant_adapts_to_width)
         (test_logo_welcome_frame_respects_width_budget)
         (test_logo_animation_lands_on_static_resting_frame)
+        (test_boids_animation_stays_bounded_and_width_aware)
+        (test_boids_animation_lands_on_logo_resting_frame)
         (test_zellij_widget_tray_defaults_omit_layout)
         (test_generate_all_terminal_configs_creates_override_scaffolds)
         (test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root)
