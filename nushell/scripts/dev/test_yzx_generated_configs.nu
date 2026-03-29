@@ -2,7 +2,14 @@
 
 use ./test_yzx_helpers.nu [get_repo_config_dir repo_path]
 use ../utils/launch_state.nu [get_launch_env]
-use ../utils/ascii_art.nu [get_welcome_style_random_pool resolve_welcome_style]
+use ../utils/ascii_art.nu [
+    get_logo_animation_frames
+    get_logo_welcome_frame
+    get_logo_welcome_variant
+    get_max_visible_width
+    get_welcome_style_random_pool
+    resolve_welcome_style
+]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/terminal_launcher.nu [resolve_terminal_config]
@@ -357,6 +364,78 @@ welcome_style = "mandelbrot"
 
     rm -rf $tmpdir
     $result
+}
+
+def test_logo_welcome_variant_adapts_to_width [] {
+    print "🧪 Testing logo welcome variant selection adapts to terminal width..."
+
+    try {
+        let narrow = (get_logo_welcome_variant 36)
+        let medium = (get_logo_welcome_variant 60)
+        let wide = (get_logo_welcome_variant 100)
+
+        if ($narrow == "narrow") and ($medium == "medium") and ($wide == "wide") {
+            print "  ✅ Logo welcome style picks narrow, medium, and wide variants at the expected widths"
+            true
+        } else {
+            print $"  ❌ Unexpected variants: narrow=($narrow) medium=($medium) wide=($wide)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_logo_welcome_frame_respects_width_budget [] {
+    print "🧪 Testing logo welcome frames stay within the selected width budget..."
+
+    try {
+        let narrow_frame = (get_logo_welcome_frame 36)
+        let medium_frame = (get_logo_welcome_frame 60)
+        let wide_frame = (get_logo_welcome_frame 100)
+
+        let narrow_width = (get_max_visible_width $narrow_frame)
+        let medium_width = (get_max_visible_width $medium_frame)
+        let wide_width = (get_max_visible_width $wide_frame)
+
+        if (
+            ($narrow_width <= 36)
+            and ($medium_width <= 60)
+            and ($wide_width <= 100)
+            and (($narrow_frame | length) >= 4)
+        ) {
+            print "  ✅ Logo welcome frames stay inside their target widths and keep the Yazelix wordmark readable"
+            true
+        } else {
+            print $"  ❌ Unexpected frame widths: narrow=($narrow_width) medium=($medium_width) wide=($wide_width)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_logo_animation_lands_on_static_resting_frame [] {
+    print "🧪 Testing logo animation lands on the same final branded frame as static mode..."
+
+    try {
+        let static_frame = (get_logo_welcome_frame 60)
+        let animation_frames = (get_logo_animation_frames 60)
+        let final_frame = ($animation_frames | last)
+
+        if ($final_frame == $static_frame) and (($animation_frames | length) >= 4) {
+            print "  ✅ Logo animation resolves cleanly into the same resting frame static mode uses"
+            true
+        } else {
+            print $"  ❌ Unexpected animation landing state: frames=(($animation_frames | length))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
 }
 
 def test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance [] {
@@ -1342,6 +1421,9 @@ def test_zellij_horizontal_walking_is_plugin_owned [] {
 export def run_generated_config_canonical_tests [] {
     [
         (test_layout_generator_rewrites_runtime_paths)
+        (test_logo_welcome_variant_adapts_to_width)
+        (test_logo_welcome_frame_respects_width_budget)
+        (test_logo_animation_lands_on_static_resting_frame)
         (test_zellij_widget_tray_defaults_omit_layout)
         (test_generate_all_terminal_configs_creates_override_scaffolds)
         (test_terminal_override_scaffolds_ignore_yazelix_dir_runtime_root)
