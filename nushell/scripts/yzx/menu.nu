@@ -5,7 +5,7 @@ use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstra
 use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_user_config_dir]
 use ../utils/config_migrations.nu [apply_config_migration_plan get_config_migration_plan render_config_migration_plan validate_config_migration_rules]
-use ../utils/config_surfaces.nu [resolve_active_config_paths get_primary_config_paths]
+use ../utils/config_surfaces.nu [resolve_active_config_paths get_primary_config_paths reconcile_primary_config_surfaces]
 
 def classify_menu_command [cmd: string] {
     if ($cmd | str starts-with "yzx launch") or ($cmd == "yzx restart") {
@@ -260,6 +260,50 @@ export def "yzx config open" [
     }
 }
 
+def resolve_config_migration_context [] {
+    let paths = get_primary_config_paths
+    let user_exists = ($paths.user_config | path exists)
+    let user_pack_exists = ($paths.user_pack_config | path exists)
+    let legacy_exists = ($paths.legacy_user_config | path exists)
+    let legacy_pack_exists = ($paths.legacy_pack_config | path exists)
+
+    if ($user_exists or $user_pack_exists) and ($legacy_exists or $legacy_pack_exists) {
+        error make {
+            msg: (
+                [
+                    "Yazelix found duplicate config surfaces in both the repo root and user_configs."
+                    $"user_configs main: ($paths.user_config)"
+                    $"user_configs packs: ($paths.user_pack_config)"
+                    $"legacy main: ($paths.legacy_user_config)"
+                    $"legacy packs: ($paths.legacy_pack_config)"
+                    ""
+                    "Keep only the user_configs copies. Move or delete the legacy root-level config files so Yazelix has one clear config owner."
+                ] | str join "\n"
+            )
+        }
+    }
+
+    if $user_exists {
+        return {
+            paths: $paths
+            preview_config_path: $paths.user_config
+            preview_pack_path: $paths.user_pack_config
+            relocation_needed: false
+        }
+    }
+
+    if $legacy_exists {
+        return {
+            paths: $paths
+            preview_config_path: $paths.legacy_user_config
+            preview_pack_path: $paths.legacy_pack_config
+            relocation_needed: true
+        }
+    }
+
+    error make {msg: $"User config not found: ($paths.user_config)"}
+}
+
 # Preview or apply known Yazelix config migrations
 export def "yzx config migrate" [
     --apply  # Write safe migrations back to yazelix.toml
@@ -271,20 +315,36 @@ export def "yzx config migrate" [
         error make {msg: $"Config migration rules are invalid:\n($details)"}
     }
 
-    let paths = get_primary_config_paths
-
-    if not ($paths.user_config | path exists) {
-        error make {msg: $"User config not found: ($paths.user_config)"}
+    let context = (resolve_config_migration_context)
+    let preview_plan = (get_config_migration_plan $context.preview_config_path)
+    if $context.relocation_needed {
+        print "Yazelix config path migration preview"
+        print $"[AUTO] relocate_root_config_surfaces_into_user_configs"
+        print $"  Legacy main: ($context.paths.legacy_user_config)"
+        if ($context.paths.legacy_pack_config | path exists) {
+            print $"  Legacy packs: ($context.paths.legacy_pack_config)"
+        }
+        print $"  Target main: ($context.paths.user_config)"
+        print $"  Target packs: ($context.paths.user_pack_config)"
+        print "  Change: Move the legacy root-level managed config files into user_configs before applying any safe rewrites."
+        print ""
     }
-
-    let plan = (get_config_migration_plan $paths.user_config)
-    print (render_config_migration_plan $plan)
+    print (render_config_migration_plan $preview_plan)
 
     if not $apply {
         return
     }
 
-    if not $plan.has_auto_changes {
+    let had_path_relocation = $context.relocation_needed
+    if $had_path_relocation {
+        with-env { YAZELIX_ACCEPT_USER_CONFIG_RELOCATION: "true" } {
+            reconcile_primary_config_surfaces | ignore
+        }
+    }
+
+    let apply_plan = (get_config_migration_plan $context.paths.user_config)
+
+    if (not $apply_plan.has_auto_changes) and (not $had_path_relocation) {
         print ""
         print "No safe config rewrites to apply."
         return
@@ -293,6 +353,9 @@ export def "yzx config migrate" [
     if not $yes {
         print ""
         print "⚠️  This rewrites yazelix.toml from parsed TOML."
+        if $had_path_relocation {
+            print "   It will also move legacy root-level config files into user_configs."
+        }
         print "   It may also create or rewrite yazelix_packs.toml when packs are migrated."
         print "   Any rewritten file will be backed up first."
         print "   Comments and key ordering may be normalized."
@@ -305,18 +368,42 @@ export def "yzx config migrate" [
         }
     }
 
-    let apply_result = (apply_config_migration_plan $plan)
+    let apply_result = if $apply_plan.has_auto_changes {
+        apply_config_migration_plan $apply_plan
+    } else {
+        {
+            status: "relocated"
+            config_path: $context.paths.user_config
+            backup_path: null
+            pack_config_path: $context.paths.user_pack_config
+            pack_backup_path: null
+            applied_count: 0
+            manual_count: $apply_plan.manual_count
+        }
+    }
 
     print ""
-    print $"✅ Backed up previous config to: ($apply_result.backup_path)"
+    if $had_path_relocation {
+        print $"✅ Relocated managed config into: ($context.paths.user_config)"
+        if ($context.paths.user_pack_config | path exists) {
+            print $"✅ Using managed pack config at: ($context.paths.user_pack_config)"
+        }
+    }
+    if ($apply_result.backup_path? | is-not-empty) {
+        print $"✅ Backed up previous config to: ($apply_result.backup_path)"
+    }
     if ($apply_result.pack_backup_path? | is-not-empty) {
         print $"✅ Backed up previous pack config to: ($apply_result.pack_backup_path)"
     }
     if ($apply_result.pack_config_path? | is-not-empty) and ($apply_result.pack_backup_path? | is-empty) and (($apply_result.pack_config_path | path exists)) {
         print $"✅ Wrote pack config to: ($apply_result.pack_config_path)"
     }
-    print $"✅ Applied ($apply_result.applied_count) config migration\(s\) to: ($apply_result.config_path)"
-    print "ℹ️  Comments and key ordering were normalized because Yazelix rewrote the file from parsed TOML."
+    if $apply_result.applied_count > 0 {
+        print $"✅ Applied ($apply_result.applied_count) config migration\(s\) to: ($apply_result.config_path)"
+        print "ℹ️  Comments and key ordering were normalized because Yazelix rewrote the file from parsed TOML."
+    } else if $had_path_relocation {
+        print "ℹ️  No additional TOML rewrites were needed after relocating the managed config surfaces."
+    }
 
     if $apply_result.manual_count > 0 {
         print $"ℹ️  ($apply_result.manual_count) manual migration item\(s\) still need follow-up."

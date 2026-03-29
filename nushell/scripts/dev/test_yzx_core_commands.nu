@@ -48,19 +48,28 @@ def setup_config_migrate_fixture [label: string, raw_toml: string] {
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
 
     mkdir ($tmp_home | path join ".config")
     mkdir $config_dir
+    mkdir $user_config_dir
 
-    $raw_toml | save --force --raw ($config_dir | path join "yazelix.toml")
+    $raw_toml | save --force --raw ($user_config_dir | path join "yazelix.toml")
 
     {
         repo_root: $repo_root
         tmp_home: $tmp_home
         config_dir: $config_dir
-        config_path: ($config_dir | path join "yazelix.toml")
+        user_config_dir: $user_config_dir
+        config_path: ($user_config_dir | path join "yazelix.toml")
         yzx_script: ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
     }
+}
+
+def setup_legacy_root_config_migrate_fixture [label: string, raw_toml: string] {
+    let fixture = (setup_config_migrate_fixture $label $raw_toml)
+    mv $fixture.config_path ($fixture.config_dir | path join "yazelix.toml")
+    $fixture | upsert config_path ($fixture.config_dir | path join "yazelix.toml")
 }
 
 def setup_upgrade_summary_fixture [
@@ -556,7 +565,7 @@ enable_atuin = true
         let stdout = ($output.stdout | str trim)
         let updated = (open $fixture.config_path)
         let backups = (
-            ls $fixture.config_dir
+            ls $fixture.user_config_dir
             | where name =~ 'yazelix\.toml\.backup-'
         )
 
@@ -604,11 +613,11 @@ go = ["gopls", "golangci-lint"]
         let output = (run_config_migrate_command $fixture ["--apply", "--yes"])
         let stdout = ($output.stdout | str trim)
         let updated_main = (open $fixture.config_path)
-        let pack_path = ($fixture.config_dir | path join "yazelix_packs.toml")
+        let pack_path = ($fixture.user_config_dir | path join "yazelix_packs.toml")
         let updated_pack = (if ($pack_path | path exists) { open $pack_path } else { null })
         let updated_pack_rendered = (if $updated_pack == null { "<missing>" } else { $updated_pack | to json -r })
         let backups = (
-            ls $fixture.config_dir
+            ls $fixture.user_config_dir
             | where name =~ 'yazelix\.toml\.backup-'
         )
 
@@ -638,6 +647,45 @@ go = ["gopls", "golangci-lint"]
     $result
 }
 
+def test_yzx_config_migrate_apply_relocates_legacy_root_config_into_user_configs [] {
+    print "🧪 Testing yzx config migrate apply relocates legacy root-level config into user_configs..."
+
+    let fixture = (setup_legacy_root_config_migrate_fixture
+        "yazelix_migrate_root_relocate"
+        '[shell]
+default_shell = "bash"
+')
+
+    let result = (try {
+        let output = (run_config_migrate_command $fixture ["--apply", "--yes"])
+        let stdout = ($output.stdout | str trim)
+        let relocated_main = ($fixture.user_config_dir | path join "yazelix.toml")
+        let updated = (open $relocated_main)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "relocate_root_config_surfaces_into_user_configs")
+            and ($stdout | str contains "Relocated managed config into")
+            and ($stdout | str contains "No additional TOML rewrites were needed")
+            and (($updated.shell.default_shell? | default "") == "bash")
+            and ($relocated_main | path exists)
+            and not (($fixture.config_dir | path join "yazelix.toml") | path exists)
+        ) {
+            print "  ✅ yzx config migrate --apply now owns the legacy root-to-user_configs path relocation"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) relocated_exists=(($relocated_main | path exists)) updated=($updated | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 def test_yzx_config_migrate_apply_noops_on_current_config [] {
     print "🧪 Testing yzx config migrate apply noops on a current config..."
 
@@ -650,7 +698,7 @@ def test_yzx_config_migrate_apply_noops_on_current_config [] {
         let output = (run_config_migrate_command $fixture ["--apply", "--yes"])
         let stdout = ($output.stdout | str trim)
         let backups = (
-            ls $fixture.config_dir
+            ls $fixture.user_config_dir
             | where name =~ 'yazelix\.toml\.backup-'
         )
 
@@ -1921,6 +1969,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_config_migrate_preview_reports_known_migrations)
         (test_yzx_config_migrate_apply_rewrites_config_with_backup)
         (test_yzx_config_migrate_apply_splits_legacy_packs_into_sidecar)
+        (test_yzx_config_migrate_apply_relocates_legacy_root_config_into_user_configs)
         (test_yzx_config_migrate_apply_noops_on_current_config)
         (test_upgrade_summary_first_run_marks_seen_and_second_run_stays_quiet)
         (test_upgrade_summary_report_detects_matching_migrations)

@@ -770,6 +770,99 @@ def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
     $result
 }
 
+def test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation [] {
+    print "🧪 Testing parse_yazelix_config rejects legacy root-level config files when it cannot prompt..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_legacy_root_no_prompt_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+
+    let result = (try {
+        '[shell]
+default_shell = "bash"
+' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+
+        let parser_result = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($repo_root | path join "nushell" "scripts" "utils" "config_parser.nu")\" [parse_yazelix_config]; parse_yazelix_config" | complete
+        })
+
+        let stderr = ($parser_result.stderr | str trim)
+
+        if (
+            ($parser_result.exit_code != 0)
+            and ($stderr | str contains "legacy root-level config files but could not prompt for")
+            and ($stderr | str contains "confirmation")
+            and ($stderr | str contains "yzx doctor --fix")
+            and (($temp_config_dir | path join "yazelix.toml") | path exists)
+            and not (($temp_config_dir | path join "user_configs" "yazelix.toml") | path exists)
+        ) {
+            print "  ✅ Legacy root-level config now fails clearly instead of silently relocating in non-interactive startup"
+            true
+        } else {
+            print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed [] {
+    print "🧪 Testing parse_yazelix_config relocates legacy root-level config when explicitly allowed..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_legacy_root_allowed_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+
+    let result = (try {
+        '[shell]
+default_shell = "bash"
+' | save --force --raw ($temp_config_dir | path join "yazelix.toml")
+
+        let parsed = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_ACCEPT_USER_CONFIG_RELOCATION: "true"
+        } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+
+        let relocated_path = ($temp_config_dir | path join "user_configs" "yazelix.toml")
+
+        if (
+            (($parsed.default_shell? | default "") == "bash")
+            and ($relocated_path | path exists)
+            and not (($temp_config_dir | path join "yazelix.toml") | path exists)
+        ) {
+            print "  ✅ Explicitly allowed relocation moves the legacy root config into user_configs"
+            true
+        } else {
+            print $"  ❌ Unexpected result: parsed=($parsed | to json -r) relocated_exists=(($relocated_path | path exists))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_parse_yazelix_config_bootstraps_welcome_style_surface [] {
     print "🧪 Testing first-run bootstrap writes welcome_style into the generated main config..."
 
@@ -1759,6 +1852,8 @@ export def run_generated_config_canonical_tests [] {
         (test_parse_yazelix_config_reads_pack_sidecar)
         (test_parse_yazelix_config_bootstraps_welcome_style_surface)
         (test_parse_yazelix_config_bootstraps_split_default_surfaces)
+        (test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation)
+        (test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed)
         (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)
         (test_parse_yazelix_config_rejects_split_pack_ownership)
         (test_user_mode_requires_real_terminal_config)

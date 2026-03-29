@@ -345,7 +345,13 @@ export def "yzx doctor" [
     --fix(-f)      # Attempt to auto-fix issues
 ] {
     use ../utils/doctor.nu run_doctor_checks
-    run_doctor_checks $verbose $fix
+    if $fix {
+        with-env { YAZELIX_ACCEPT_USER_CONFIG_RELOCATION: "true" } {
+            run_doctor_checks $verbose $fix
+        }
+    } else {
+        run_doctor_checks $verbose $fix
+    }
 }
 
 export def "yzx repair" [] {

@@ -23,18 +23,21 @@ def setup_fixture [label: string, raw_toml: string] {
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
     let log_file = ($tmp_home | path join "config_migrate_e2e.log")
 
     mkdir ($tmp_home | path join ".config")
     mkdir $config_dir
-    $raw_toml | save --force --raw ($config_dir | path join "yazelix.toml")
+    mkdir $user_config_dir
+    $raw_toml | save --force --raw ($user_config_dir | path join "yazelix.toml")
     "" | save --force --raw $log_file
 
     {
         repo_root: $repo_root
         tmp_home: $tmp_home
         config_dir: $config_dir
-        config_path: ($config_dir | path join "yazelix.toml")
+        user_config_dir: $user_config_dir
+        config_path: ($user_config_dir | path join "yazelix.toml")
         log_file: $log_file
         yzx_script: ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
     }
@@ -89,7 +92,7 @@ enable_atuin = true
     log_block $log_file "Apply stderr" ($apply.stderr | str trim)
     log_block $log_file "Output TOML" (open --raw $fixture.config_path)
 
-    let backups = (ls $fixture.config_dir | where name =~ 'yazelix\.toml\.backup-')
+    let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
     log_block $log_file "Backups" (($backups | get name | str join "\n"))
 
     let parsed = (open $fixture.config_path)
@@ -143,7 +146,7 @@ cursor_trail = "snow"
     log_block $log_file "Apply stderr" ($apply.stderr | str trim)
     log_block $log_file "Output TOML" (open --raw $fixture.config_path)
 
-    let backups = (ls $fixture.config_dir | where name =~ 'yazelix\.toml\.backup-')
+    let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
     log_block $log_file "Backups" (($backups | get name | str join "\n"))
 
     let ok = (
@@ -177,7 +180,7 @@ git = ["gh", "prek"]
 go = ["gopls", "golangci-lint"]
 ')
     let log_file = $fixture.log_file
-    let pack_path = ($fixture.config_dir | path join "yazelix_packs.toml")
+    let pack_path = ($fixture.user_config_dir | path join "yazelix_packs.toml")
 
     log_line $log_file "Case: split legacy pack surface"
     log_line $log_file $"Temp HOME: ($fixture.tmp_home)"
@@ -197,7 +200,7 @@ go = ["gopls", "golangci-lint"]
     log_block $log_file "Output main TOML" (open --raw $fixture.config_path)
     log_block $log_file "Output pack TOML" (if ($pack_path | path exists) { open --raw $pack_path } else { "<missing>" })
 
-    let backups = (ls $fixture.config_dir | where name =~ 'yazelix\.toml\.backup-')
+    let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
     log_block $log_file "Backups" (($backups | get name | str join "\n"))
 
     let parsed_main = (open $fixture.config_path)
@@ -248,7 +251,7 @@ mode = "animated"
     log_block $log_file "Apply stderr" ($apply.stderr | str trim)
     log_block $log_file "Output main TOML" (open --raw $fixture.config_path)
 
-    let backups = (ls $fixture.config_dir | where name =~ 'yazelix\.toml\.backup-')
+    let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
     log_block $log_file "Backups" (($backups | get name | str join "\n"))
 
     let parsed_main = (open $fixture.config_path)
@@ -296,7 +299,7 @@ mode = "static"
     log_block $log_file "Apply stderr" ($apply.stderr | str trim)
     log_block $log_file "Output main TOML" (open --raw $fixture.config_path)
 
-    let backups = (ls $fixture.config_dir | where name =~ 'yazelix\.toml\.backup-')
+    let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
     log_block $log_file "Backups" (($backups | get name | str join "\n"))
 
     let parsed_main = (open $fixture.config_path)
@@ -344,7 +347,7 @@ welcome_style = "life"
     log_block $log_file "Apply stderr" ($apply.stderr | str trim)
     log_block $log_file "Output main TOML" (open --raw $fixture.config_path)
 
-    let backups = (ls $fixture.config_dir | where name =~ 'yazelix\.toml\.backup-')
+    let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
     log_block $log_file "Backups" (($backups | get name | str join "\n"))
 
     let parsed_main = (open $fixture.config_path)

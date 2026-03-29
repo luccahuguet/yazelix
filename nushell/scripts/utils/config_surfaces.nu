@@ -21,6 +21,59 @@ def make_surface_error [headline: string, details: list<string>, recovery_hint: 
     }
 }
 
+def parse_truthy_env [value: any] {
+    let normalized = ($value | default "" | into string | str trim | str downcase)
+    $normalized in ["1" "true" "yes" "y" "on"]
+}
+
+def has_interactive_tty [] {
+    let result = (^tty | complete)
+    $result.exit_code == 0
+}
+
+def confirm_legacy_config_surface_relocation [paths: record] {
+    if (parse_truthy_env ($env.YAZELIX_ACCEPT_USER_CONFIG_RELOCATION? | default "")) {
+        return
+    }
+
+    if not (has_interactive_tty) {
+        (make_surface_error
+            "Yazelix found legacy root-level config files but could not prompt for confirmation."
+            [
+                $"legacy main: ($paths.legacy_user_config)"
+                $"legacy packs: ($paths.legacy_pack_config)"
+                $"target main: ($paths.user_config)"
+                $"target packs: ($paths.user_pack_config)"
+            ]
+            "Rerun in an interactive terminal and confirm the relocation, move the files into user_configs manually, or use `yzx doctor --fix` to apply the managed relocation path."
+        )
+    }
+
+    print "⚠️  Yazelix found legacy root-level config files that now belong under user_configs."
+    if ($paths.legacy_user_config | path exists) {
+        print $"   Main config: ($paths.legacy_user_config) -> ($paths.user_config)"
+    }
+    if ($paths.legacy_pack_config | path exists) {
+        print $"   Pack config: ($paths.legacy_pack_config) -> ($paths.user_pack_config)"
+    }
+    print "   This moves your managed config files into the canonical user_configs location."
+
+    let confirm = (input "Move them now? [y/N]: " | str downcase | str trim)
+
+    if $confirm not-in ["y", "yes"] {
+        (make_surface_error
+            "Yazelix did not relocate the legacy root-level config files."
+            [
+                $"legacy main: ($paths.legacy_user_config)"
+                $"legacy packs: ($paths.legacy_pack_config)"
+                $"target main: ($paths.user_config)"
+                $"target packs: ($paths.user_pack_config)"
+            ]
+            "Move the files into user_configs manually, rerun in an interactive terminal and confirm the relocation, or use `yzx doctor --fix` to apply the managed relocation path."
+        )
+    }
+}
+
 def ensure_record_surface [value: any, label: string, path: string] {
     if (($value | describe) | str contains "record") {
         $value
@@ -123,6 +176,7 @@ def relocate_legacy_config_surfaces_if_needed [paths: record] {
         return
     }
 
+    confirm_legacy_config_surface_relocation $paths
     mkdir $paths.user_config_dir
 
     if $legacy_exists {
