@@ -5,6 +5,8 @@
 use ../utils/ascii_art.nu *
 use ../utils/constants.nu YAZELIX_VERSION
 use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/readme_release_block.nu get_current_major_series_entry
+use ../utils/upgrade_summary.nu get_upgrade_note_entry
 
 # Show welcome art based on the configured style
 export def show_welcome_art [
@@ -91,6 +93,38 @@ export def get_terminal_info [colors: record]: nothing -> string {
 }
 
 # Build complete welcome message
+def get_startup_release_headline [] {
+    let series_headline = (try {
+        let entry = (get_current_major_series_entry)
+        ($entry.headline? | default "" | into string | str trim)
+    } catch {
+        ""
+    })
+
+    if ($series_headline | is-not-empty) {
+        return $series_headline
+    }
+
+    let release_headline = (try {
+        let entry = (get_upgrade_note_entry)
+        if $entry == null {
+            ""
+        } else {
+            ($entry.headline? | default "" | into string | str trim)
+        }
+    } catch {
+        ""
+    })
+
+    let raw_headline = if ($series_headline | is-not-empty) {
+        $series_headline
+    } else {
+        $release_headline
+    }
+
+    $raw_headline | str replace -r '\.+$' ""
+}
+
 export def build_welcome_message [
     yazelix_dir: string
     helix_mode: string
@@ -100,11 +134,12 @@ export def build_welcome_message [
     let helix_info = get_helix_info $helix_mode $colors
     let session_info = get_session_info $colors
     let terminal_info = get_terminal_info $colors
+    let release_headline = (get_startup_release_headline)
 
     [
         "",
         $"($colors.purple)🎉 Welcome to Yazelix ($YAZELIX_VERSION)!($colors.reset)",
-        $"($colors.blue)Lots of polish, support for any editor, home-manager config, better zellij tab navigation, persistent sessions and more!($colors.reset)",
+        (if ($release_headline | is-not-empty) { $"($colors.blue)($release_headline)($colors.reset)" } else { "" }),
         $flake_info,
         $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",
         $helix_info,

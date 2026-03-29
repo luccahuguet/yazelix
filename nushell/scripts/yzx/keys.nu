@@ -35,13 +35,10 @@ def print_yazelix_keys [] {
         {keybinding: (accent_key "Alt+m"), action: "Open a new terminal in the current tab workspace root"}
         {keybinding: (accent_key "Alt+p"), action: "In Yazi, open the selected directory in a new pane and make it the tab workspace root"}
     ]
-    heading "Command and mode access"
+    heading "Command access"
     print_table [
         {keybinding: (accent_key "Alt+t"), action: "Toggle the configured managed popup program"}
         {keybinding: (accent_key "Alt+Shift+M"), action: "Open the yzx command palette popup"}
-        {keybinding: (accent_key "Ctrl+Alt+g"), action: "Locked mode"}
-        {keybinding: (accent_key "Ctrl+Alt+s"), action: "Scroll mode"}
-        {keybinding: (accent_key "Ctrl+Alt+o"), action: "Session mode"}
     ]
     heading "Tab and pane movement"
     print_table [

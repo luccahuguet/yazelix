@@ -8,6 +8,7 @@ export const SCREEN_STYLE_VALUES = ["logo", "boids", "game_of_life", "random"]
 # Export the color scheme used in the welcome art for consistent styling.
 export def get_yazelix_colors [] {
     {
+        red: (ansi red)
         purple: (ansi purple)
         cyan: (ansi cyan)
         blue: (ansi blue)
@@ -204,7 +205,7 @@ def repeat_char [character: string, count: int] {
 
 def colorize_logo_text [text: string] {
     let colors = get_yazelix_colors
-    let palette = [$colors.purple, $colors.cyan, $colors.blue]
+    let palette = [$colors.red, $colors.green, $colors.yellow, $colors.blue, $colors.purple]
     let reset = $colors.reset
     let chars = ($text | split chars)
 
@@ -223,8 +224,26 @@ def colorize_logo_text [text: string] {
 
 def colorize_body_line [text: string, index: int] {
     let colors = get_yazelix_colors
-    let color = if ($index mod 2) == 0 { $colors.cyan } else { $colors.blue }
-    $"($color)($text)($colors.reset)"
+    let base_color = $colors.green
+    let accent_color = $colors.blue
+    let base = $"($base_color)($text)($colors.reset)"
+
+    (
+        $base
+        | str replace -a "reproducible" $"($accent_color)reproducible($base_color)"
+        | str replace -a "declarative" $"($accent_color)declarative($base_color)"
+        | str replace -a "helix" $"($accent_color)helix($base_color)"
+        | str replace -a "zellij" $"($accent_color)zellij($base_color)"
+        | str replace -a "terminals" $"($accent_color)terminals($base_color)"
+        | str replace -a "shells" $"($accent_color)shells($base_color)"
+        | str replace -a "packs" $"($accent_color)packs($base_color)"
+        | str replace -a "SSH" $"($accent_color)SSH($base_color)"
+    )
+}
+
+def colorize_footer_text [text: string] {
+    let colors = get_yazelix_colors
+    $"($colors.yellow)($text)($colors.reset)"
 }
 
 def colorize_boid_char [char: string, index: int] {
@@ -279,7 +298,7 @@ def build_logo_card_frame [spec: record, shown_body_count: int, accent: string =
     )
 
     let footer_plain = (center_text $spec.footer $inner_width)
-    let footer_colored = $"($colors.faint)($colors.purple)($footer_plain)($colors.reset)"
+    let footer_colored = (colorize_footer_text $footer_plain)
 
     [
         $"($colors.purple)╭(make_border $inner_width "─")╮($colors.reset)"
@@ -316,9 +335,9 @@ def get_logo_welcome_spec [variant: string, resolved_width: int] {
                 title_hint_text: "YZX"
                 body_alignment: "left"
                 body_lines: [
-                    "yazi + zellij + helix"
-                    "one shell, one workspace"
-                    "alt+shift+m opens yzx menu"
+                    "your reproducible terminal IDE"
+                    "zero-conflict helix/zellij keys"
+                    "top terminals, shells, and packs"
                 ]
                 footer: "welcome to yazelix"
             }
@@ -330,10 +349,10 @@ def get_logo_welcome_spec [variant: string, resolved_width: int] {
                 title_hint_text: "YZX"
                 body_alignment: "center"
                 body_lines: [
-                    "yazi + zellij + helix, wired together and ready"
-                    "one shell, one workspace, one real flow"
-                    "alt+shift+m menu | ctrl+y sidebar jump"
-                    "packs, sessions, terminals, all under one roof"
+                    "your reproducible, declarative terminal IDE"
+                    "zero-conflict keybindings between helix and zellij"
+                    "supports all top terminals and shells"
+                    "curated program packs \(all configurable\)"
                 ]
                 footer: "welcome to yazelix"
             }
@@ -345,11 +364,11 @@ def get_logo_welcome_spec [variant: string, resolved_width: int] {
                 title_hint_text: "YZX"
                 body_alignment: "center"
                 body_lines: [
-                    "yazi + zellij + helix, wired together and ready"
-                    "one shell, one workspace, one real flow"
-                    "sidebar, editor, sessions, packs, and terminals already aligned"
-                    "alt+shift+m menu | ctrl+y sidebar jump | alt+[ / alt+] layout family"
-                    "launch once, then stay in flow"
+                    "your reproducible, declarative terminal IDE"
+                    "zero-conflict keybindings between helix and zellij"
+                    "supports all top terminals and shells"
+                    "curated program packs \(all configurable\)"
+                    "shines over SSH"
                 ]
                 footer: "welcome to yazelix"
             }

@@ -13,6 +13,8 @@ use ../utils/upgrade_summary.nu [
     build_current_upgrade_summary_report
     maybe_show_first_run_upgrade_summary
 ]
+use ../utils/ascii_art.nu get_yazelix_colors
+use ../setup/welcome.nu build_welcome_message
 use ../utils/shell_config_generation.nu [get_yazelix_section_content]
 use ../utils/config_manager.nu [check_config_versions]
 
@@ -761,6 +763,42 @@ enable_atuin = true
             false
         }
     } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def test_build_welcome_message_uses_current_major_series_headline [] {
+    print "🧪 Testing build_welcome_message uses the current major-series headline from upgrade_notes.toml..."
+
+    let fixture = (setup_upgrade_summary_fixture "yazelix_welcome_headline" "")
+
+    let result = (try {
+        let env_overlay = {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_STATE_DIR: $fixture.state_dir
+        }
+
+        let welcome_lines = with-env $env_overlay {
+            build_welcome_message $fixture.runtime_dir "release" (get_yazelix_colors)
+        }
+        let headline_line = ($welcome_lines | get 1)
+        let notes = (open ($fixture.runtime_dir | path join "docs" "upgrade_notes.toml"))
+        let expected_headline = ($notes.series.v13.headline | into string | str trim)
+
+        if ($headline_line | str contains $expected_headline) {
+            print "  ✅ Startup welcome copy now reads the maintained current-series headline from upgrade_notes.toml"
+            true
+        } else {
+            print $"  ❌ Unexpected startup headline line: ($headline_line)"
+            false
+        }
+    } catch { |err|
         print $"  ❌ Exception: ($err.msg)"
         false
     })
@@ -1871,6 +1909,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_config_migrate_apply_noops_on_current_config)
         (test_upgrade_summary_first_run_marks_seen_and_second_run_stays_quiet)
         (test_upgrade_summary_report_detects_matching_migrations)
+        (test_build_welcome_message_uses_current_major_series_headline)
         (test_yzx_whats_new_reopens_current_summary_even_after_seen)
         (test_historical_upgrade_notes_cover_v12_v13_tag_floor)
         (test_yzx_config_view)
