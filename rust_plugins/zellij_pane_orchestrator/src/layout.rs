@@ -279,7 +279,11 @@ impl State {
         let terminal_panes = self.terminal_panes_by_tab.get(&active_tab_position)?;
         let layout_kdl = build_override_layout_kdl(layout_variant, terminal_panes.len())?;
         let layout_info = LayoutInfo::Stringified(layout_kdl);
-        override_layout(layout_info, false, false, true, BTreeMap::new());
+        // Preserve the existing panes while reshaping the active tab. Recreating panes
+        // here can drop session-scoped state, including Yazelix's frame-less pane
+        // behavior, when Alt+y flips the sidebar open/closed within the same layout
+        // family.
+        override_layout(layout_info, true, true, true, BTreeMap::new());
         self.last_known_layout_variant_by_tab
             .borrow_mut()
             .insert(active_tab_position, layout_variant);
