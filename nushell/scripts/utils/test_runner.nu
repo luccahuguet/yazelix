@@ -69,6 +69,33 @@ def render_profile_summary [records: list<record>, title: string] {
     ] | str join "\n"
 }
 
+def summarize_failure_output [stdout: string, stderr: string] {
+    let stdout_tail = (
+        $stdout
+        | lines
+        | last 40
+        | str join "\n"
+        | str trim
+    )
+    let stderr_tail = (
+        $stderr
+        | lines
+        | last 40
+        | str join "\n"
+        | str trim
+    )
+
+    mut sections = []
+    if not ($stdout_tail | is-empty) {
+        $sections = ($sections | append $"Stdout tail:\n($stdout_tail)")
+    }
+    if not ($stderr_tail | is-empty) {
+        $sections = ($sections | append $"Stderr tail:\n($stderr_tail)")
+    }
+
+    $sections | str join "\n"
+}
+
 export def get_default_test_file_names [] {
     [
         "test_yzx_commands.nu"
@@ -244,7 +271,8 @@ export def run_all_tests [
                 if $output.exit_code == 0 {
                     {status: "✅ PASS", test: $test_name, error: null}
                 } else {
-                    {status: "❌ FAIL", test: $test_name, error: $"Exit code: ($output.exit_code)\nStderr: ($output.stderr)"}
+                    let failure_details = (summarize_failure_output $output.stdout $output.stderr)
+                    {status: "❌ FAIL", test: $test_name, error: $"Exit code: ($output.exit_code)\n($failure_details)"}
                 }
             } else {
                 let output = (run_standard_test $test_file)
@@ -259,7 +287,8 @@ export def run_all_tests [
                 if $output.exit_code == 0 {
                     {status: "✅ PASS", test: $test_name, error: null}
                 } else {
-                    {status: "❌ FAIL", test: $test_name, error: $"Exit code: ($output.exit_code)\nStderr: ($output.stderr)"}
+                    let failure_details = (summarize_failure_output $output.stdout $output.stderr)
+                    {status: "❌ FAIL", test: $test_name, error: $"Exit code: ($output.exit_code)\n($failure_details)"}
                 }
             }
         } catch { |err|
