@@ -1,10 +1,16 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = "No unreleased notes yet"
-summary = ["Placeholder until the next user-facing change lands."]
+headline = "Configurable Yazi command overrides and doc-surface cleanup"
+summary = [
+    "Added `[yazi].command` and `[yazi].ya_command` so managed Yazi launches and sidebar/reveal actions can use explicit binaries instead of only relying on `PATH`.",
+    "Clarified that custom Yazi plugin initialization lives in `user_configs/yazi/init.lua`, and updated user-facing docs to the current nested config shape and `user_configs/` paths.",
+]
 upgrade_impact = "no_user_action"
-acknowledged_guarded_changes = []
+acknowledged_guarded_changes = [
+    "yazelix_default.toml",
+    "home_manager/module.nix",
+]
 migration_ids = []
 manual_actions = []
 
