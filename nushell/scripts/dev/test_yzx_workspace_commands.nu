@@ -226,28 +226,41 @@ def test_posix_desktop_launcher_direct_exec_ignores_hostile_shell_env [] {
 }
 
 def test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions [] {
-    print "🧪 Testing yzx launch --here --path honors the requested directory for non-persistent sessions..."
+    print "🧪 Testing non-persistent startup keeps the requested directory for both launch and restart..."
 
     let fixture = (setup_launch_path_fixture "yazelix_launch_here_path_nonpersistent" false false)
 
     let result = (try {
         let target_dir = ($fixture.tmp_home | path join "project")
         mkdir $target_dir
-        let output = (with-env $fixture.env {
+        let launch_output = (with-env $fixture.env {
             ^nu $fixture.start_inner $target_dir $fixture.layout_path | complete
         })
-        let stdout = ($output.stdout | str trim)
-        let zellij_log = if ($fixture.zellij_log | path exists) {
-            open --raw $fixture.zellij_log | str trim
-        } else {
-            ""
-        }
+        let launch_stdout = ($launch_output.stdout | str trim)
+        let launch_zellij_log = if ($fixture.zellij_log | path exists) { open --raw $fixture.zellij_log | str trim } else { "" }
 
-        if ($output.exit_code == 0) and ($zellij_log | str contains $"options --default-cwd ($target_dir)") and (not ($stdout | str contains "--path ignored")) {
-            print "  ✅ Non-persistent sessions pass the requested launch path through to Zellij"
+        let restart_state_dir = ($fixture.tmp_home | path join ".local" "share" "yazelix" "state" "restart")
+        mkdir $restart_state_dir
+        let restart_bootstrap_file = ($restart_state_dir | path join "sidebar_cwd_restart.txt")
+        $target_dir | save --force --raw $restart_bootstrap_file
+        "" | save --force --raw $fixture.zellij_log
+        let restart_output = (with-env ($fixture.env | merge {
+            YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE: $restart_bootstrap_file
+        }) {
+            ^nu $fixture.start_inner $target_dir $fixture.layout_path | complete
+        })
+        let restart_stdout = ($restart_output.stdout | str trim)
+        let restart_zellij_log = if ($fixture.zellij_log | path exists) { open --raw $fixture.zellij_log | str trim } else { "" }
+
+        let launch_ok = ($launch_output.exit_code == 0) and ($launch_zellij_log | str contains $"options --default-cwd ($target_dir)") and (not ($launch_stdout | str contains "--path ignored"))
+        let restart_ok = ($restart_output.exit_code == 0) and ($restart_zellij_log | str contains $"options --default-cwd ($target_dir)") and (not ($restart_stdout | str contains "--path ignored"))
+
+        if $launch_ok and $restart_ok {
+            print "  ✅ Non-persistent sessions keep the requested directory as Zellij's cwd, including restart bootstrap flows"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) zellij=($zellij_log)"
+            print $"  ❌ Unexpected launch result: exit=($launch_output.exit_code) stdout=($launch_stdout) zellij=($launch_zellij_log)"
+            print $"  ❌ Unexpected restart result: exit=($restart_output.exit_code) stdout=($restart_stdout) zellij=($restart_zellij_log)"
             false
         }
     } catch { |err|

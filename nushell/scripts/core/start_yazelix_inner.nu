@@ -41,22 +41,6 @@ def require_existing_layout [layout_path: string] {
     $resolved
 }
 
-def resolve_session_default_cwd [working_dir: string] {
-    if (($env.YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE? | default "") | is-not-empty) {
-        $env.HOME
-    } else {
-        $working_dir
-    }
-}
-
-def resolve_launch_process_cwd [working_dir: string] {
-    if (($env.YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE? | default "") | is-not-empty) {
-        $env.HOME
-    } else {
-        $working_dir
-    }
-}
-
 def main [cwd_override?: string, layout_override?: string, --verbose] {
     let config = parse_yazelix_config
     let sidebar_enabled = ($config.enable_sidebar? | default true)
@@ -102,8 +86,8 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     } else {
         $env.HOME
     }
-    let session_default_cwd = (resolve_session_default_cwd $working_dir)
-    let launch_process_cwd = (resolve_launch_process_cwd $working_dir)
+    let session_default_cwd = $working_dir
+    let launch_process_cwd = $working_dir
 
     let resolved_layout_path = if ($layout_override | is-not-empty) {
         $layout_override
@@ -127,7 +111,6 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     # once we are inside the prepared Yazelix runtime.
     mark_config_state_applied (compute_config_state)
 
-    # Keep restart-only Yazi bootstrap separate from the pane/session cwd defaults.
     cd $launch_process_cwd
 
     if ($config.persistent_sessions == "true") {
