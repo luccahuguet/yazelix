@@ -125,6 +125,53 @@ def test_layout_generator_rewrites_runtime_paths [] {
     $result
 }
 
+def test_layout_generator_removes_stale_generated_layouts [] {
+    print "🧪 Testing layout generator removes stale generated layouts..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_layout_cleanup_XXXXXX | str trim)
+
+    let result = (try {
+        let source_dir = ($tmpdir | path join "source")
+        let target_dir = ($tmpdir | path join "target")
+        let repo_layouts_dir = (repo_path "configs" "zellij" "layouts")
+        let runtime_dir = ($tmpdir | path join "runtime")
+
+        mkdir $source_dir
+        mkdir $runtime_dir
+        for entry in (ls $repo_layouts_dir) {
+            let target_path = ($source_dir | path join ($entry.name | path basename))
+            if $entry.type == dir {
+                ^cp -R $entry.name $target_path
+            } else {
+                ^cp $entry.name $target_path
+            }
+        }
+
+        mkdir $target_dir
+        let stale_layout = ($target_dir | path join "yzx_side_single_open.kdl")
+        "layout { pane }" | save --force --raw $stale_layout
+
+        use ../utils/layout_generator.nu *
+        generate_all_layouts $source_dir $target_dir ["editor"] "" "file:/tmp/yazelix_pane_orchestrator.wasm" $runtime_dir
+
+        let expected_layout = ($target_dir | path join "yzx_side.kdl")
+
+        if (not ($stale_layout | path exists)) and ($expected_layout | path exists) {
+            print "  ✅ Layout generation removes stale generated layouts before writing the current set"
+            true
+        } else {
+            print $"  ❌ Unexpected result: stale_exists=(($stale_layout | path exists)) expected_exists=(($expected_layout | path exists))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def test_launch_env_omits_default_helix_runtime [] {
     print "🧪 Testing launch env omits HELIX_RUNTIME by default..."
 
@@ -1945,6 +1992,7 @@ def test_generate_merged_zellij_config_relocates_legacy_native_user_config [] {
 export def run_generated_config_canonical_tests [] {
     [
         (test_layout_generator_rewrites_runtime_paths)
+        (test_layout_generator_removes_stale_generated_layouts)
         (test_logo_welcome_variant_adapts_to_width)
         (test_logo_welcome_frame_respects_width_budget)
         (test_logo_animation_lands_on_static_resting_frame)

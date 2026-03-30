@@ -282,7 +282,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     let merged_config_path = ($merged_config_dir | path join "config.kdl")
     let yazelix_layout_dir = $"($merged_config_dir)/layouts"
     let config = parse_yazelix_config
-    let widget_tray = ($config.zellij_widget_tray? | default ["layout", "editor", "shell", "term", "cpu", "ram"])
+    let widget_tray = ($config.zellij_widget_tray? | default ["editor", "shell", "term", "cpu", "ram"])
     let custom_text = ($config.zellij_custom_text? | default "")
     let kitty_protocol = ($config | get -o support_kitty_keyboard_protocol | default "true")
     let kitty_protocol_value = if ($kitty_protocol | str starts-with "false") { "false" } else { "true" }

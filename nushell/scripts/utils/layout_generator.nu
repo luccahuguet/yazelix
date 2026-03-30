@@ -161,7 +161,18 @@ export def generate_all_layouts [
         | each { |file| $file | path basename }
         | sort
     )
+    let expected_targets = ($layout_files | each { |file| ($layouts_target_dir | path join $file | path expand) })
     let static_fragments = load_static_fragments $source_root
+
+    let stale_targets = (
+        ls ($layouts_target_dir | path expand)
+        | where type == file
+        | get name
+        | where { |file| (($file | path parse | get extension | default "") == "kdl") and ($file not-in $expected_targets) }
+    )
+    for stale_target in $stale_targets {
+        rm --force $stale_target
+    }
 
     # Copy each layout file
     for file in $layout_files {
