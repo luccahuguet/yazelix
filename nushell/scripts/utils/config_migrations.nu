@@ -45,6 +45,20 @@ const CONFIG_MIGRATION_RULES = [
         manual_fix: "Remove shell.enable_atuin from [shell]."
     }
     {
+        id: "move_legacy_helix_command_to_editor_command"
+        title: "Move legacy helix.command to editor.command"
+        kind: "field_reshape"
+        introduced_in: null
+        introduced_after_version: "v13.10"
+        introduced_on: "2026-03-30"
+        review_after_days: 180
+        auto_apply: true
+        user_visible: true
+        guarded_paths: ["helix.command", "editor.command"]
+        rationale: "Yazelix now owns editor selection under [editor].command, while [helix] only keeps Helix-specific settings like mode and runtime_path."
+        manual_fix: "Move helix.command into [editor].command. If both fields exist with different values, keep the one you intend to use and remove the other manually."
+    }
+    {
         id: "review_legacy_cursor_trail_settings"
         title: "Review legacy Ghostty cursor-trail settings manually"
         kind: "manual_only"
@@ -325,6 +339,57 @@ def plan_remove_shell_enable_atuin [config: record] {
     (make_result "remove_shell_enable_atuin" "auto" ["Remove the obsolete shell.enable_atuin setting."] [(format_path $path)] ($config | upsert shell $updated_shell))
 }
 
+def plan_move_legacy_helix_command_to_editor_command [config: record] {
+    let legacy_path = ["helix", "command"]
+    let editor_path = ["editor", "command"]
+    let legacy_value = (maybe_get $config $legacy_path)
+
+    if $legacy_value == null {
+        return null
+    }
+
+    if not (($legacy_value | describe) | str contains "string") {
+        return (make_result "move_legacy_helix_command_to_editor_command" "manual_only" [] [(format_path $legacy_path)] $config)
+    }
+
+    let editor_value = (maybe_get $config $editor_path)
+    if $editor_value != null {
+        if not (($editor_value | describe) | str contains "string") {
+            return (make_result "move_legacy_helix_command_to_editor_command" "manual_only" [] [(format_path $editor_path)] $config)
+        }
+
+        if $editor_value != $legacy_value {
+            return (make_result
+                "move_legacy_helix_command_to_editor_command"
+                "manual_only"
+                []
+                [
+                    (format_path $legacy_path)
+                    (format_path $editor_path)
+                ]
+                $config
+            )
+        }
+    }
+
+    let updated_helix = (($config.helix? | default {}) | reject command)
+    let updated_editor = (($config.editor? | default {}) | upsert command $legacy_value)
+    let updated_config = ($config | upsert helix $updated_helix | upsert editor $updated_editor)
+    let changes = if $editor_value == null {
+        [$"Move [helix].command = \"($legacy_value)\" into [editor].command."]
+    } else {
+        ["Remove duplicated legacy [helix].command because [editor].command already owns editor selection."]
+    }
+
+    (make_result
+        "move_legacy_helix_command_to_editor_command"
+        "auto"
+        $changes
+        [(format_path $legacy_path)]
+        $updated_config
+    )
+}
+
 def plan_review_legacy_cursor_trail_settings [config: record] {
     let legacy_paths = [
         ["terminal", "cursor_trail"]
@@ -489,6 +554,7 @@ def get_plan_step [rule_id: string, config: record, pack_config: any = null, pac
         "remove_zellij_widget_tray_layout" => (plan_remove_zellij_widget_tray_layout $config)
         "unify_terminal_preference_list" => (plan_unify_terminal_preference_list $config)
         "remove_shell_enable_atuin" => (plan_remove_shell_enable_atuin $config)
+        "move_legacy_helix_command_to_editor_command" => (plan_move_legacy_helix_command_to_editor_command $config)
         "review_legacy_cursor_trail_settings" => (plan_review_legacy_cursor_trail_settings $config)
         "review_terminal_config_mode_auto" => (plan_review_terminal_config_mode_auto $config)
         "replace_ascii_art_mode_with_welcome_style" => (plan_replace_ascii_art_mode_with_welcome_style $config)

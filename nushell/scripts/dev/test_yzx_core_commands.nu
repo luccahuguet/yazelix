@@ -285,6 +285,46 @@ enable_atuin = true
     $result
 }
 
+def test_entrypoint_preflight_migrates_legacy_helix_command [] {
+    print "🧪 Testing entrypoint migration preflight rewrites legacy helix.command into editor.command..."
+
+    let fixture = (setup_config_migrate_fixture
+        "yazelix_entrypoint_preflight_legacy_helix_command"
+        '[helix]
+command = "/tmp/custom-hx"
+runtime_path = "/tmp/custom-runtime"
+'
+    )
+
+    let result = (try {
+        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
+        let stdout = ($output.stdout | str trim)
+        let updated = (open $fixture.config_path)
+        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Yazelix auto-applied 1 safe config migration")
+            and (($updated.editor.command? | default "") == "/tmp/custom-hx")
+            and (($updated.helix.runtime_path? | default "") == "/tmp/custom-runtime")
+            and not (($updated.helix? | default {}) | columns | any {|column| $column == "command" })
+            and (($backups | length) == 1)
+        ) {
+            print "  ✅ Entry-point preflight preserves custom Helix runtime settings while migrating the legacy command field"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) updated=($updated | to json -r) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 def test_entrypoint_preflight_applies_auto_changes_then_blocks_on_manual_followup [] {
     print "🧪 Testing entrypoint migration preflight applies safe rewrites before blocking on manual follow-up..."
 
@@ -640,6 +680,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_config_migrate_apply_splits_legacy_packs_into_sidecar)
         (test_yzx_config_migrate_apply_noops_on_current_config)
         (test_entrypoint_preflight_auto_applies_safe_migrations)
+        (test_entrypoint_preflight_migrates_legacy_helix_command)
         (test_entrypoint_preflight_applies_auto_changes_then_blocks_on_manual_followup)
         (test_entrypoint_preflight_relocates_legacy_root_config_surfaces)
         (test_yzx_config_view)
