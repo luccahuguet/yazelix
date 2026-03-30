@@ -11,6 +11,21 @@ Upgrade impact: no user action required
 Highlights:
 - Placeholder until the next user-facing change lands.
 
+## v13.10 - 2026-03-30
+
+Automatic safe migrations, sidebar/layout polish, and cleaner config commands.
+
+Upgrade impact: manual action required
+
+Highlights:
+- Added automatic safe config-migration preflight on startup, launch, restart, and interactive env flows, while keeping `yzx config migrate` as the explicit preview and repair surface.
+- Stabilized sidebar-aware layout control with pane-orchestrator fixes, removed stale swap-layout widget output, added the missing no-side bottom-terminal family, and made `editor.sidebar_width_percent` configurable.
+- Simplified config-facing commands by splitting downstream inspection into `yzx open hx|yazi|zellij`, managed config editing into `yzx edit config|packs`, and adding `yzx config reset --no-backup`, while polishing welcome-screen skip behavior.
+
+Migration notes:
+- Replace `yzx config hx`, `yzx config yazi`, and `yzx config zellij` with `yzx open hx`, `yzx open yazi`, and `yzx open zellij`.
+- Replace `yzx config open config` and `yzx config open packs` with `yzx edit config` and `yzx edit packs`.
+
 ## v13.9 - 2026-03-29
 
 Managed config boundaries, richer welcomes, and cleaner terminal ownership.

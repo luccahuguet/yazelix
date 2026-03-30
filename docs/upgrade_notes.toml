@@ -8,6 +8,26 @@ acknowledged_guarded_changes = []
 migration_ids = []
 manual_actions = []
 
+[releases."v13.10"]
+version = "v13.10"
+date = "2026-03-30"
+headline = "Automatic safe migrations, sidebar/layout polish, and cleaner config commands"
+summary = [
+    "Added automatic safe config-migration preflight on startup, launch, restart, and interactive env flows, while keeping `yzx config migrate` as the explicit preview and repair surface.",
+    "Stabilized sidebar-aware layout control with pane-orchestrator fixes, removed stale swap-layout widget output, added the missing no-side bottom-terminal family, and made `editor.sidebar_width_percent` configurable.",
+    "Simplified config-facing commands by splitting downstream inspection into `yzx open hx|yazi|zellij`, managed config editing into `yzx edit config|packs`, and adding `yzx config reset --no-backup`, while polishing welcome-screen skip behavior.",
+]
+upgrade_impact = "manual_action_required"
+acknowledged_guarded_changes = [
+    "yazelix_default.toml",
+    "home_manager/module.nix",
+]
+migration_ids = []
+manual_actions = [
+    "Replace `yzx config hx`, `yzx config yazi`, and `yzx config zellij` with `yzx open hx`, `yzx open yazi`, and `yzx open zellij`.",
+    "Replace `yzx config open config` and `yzx config open packs` with `yzx edit config` and `yzx edit packs`.",
+]
+
 [series.v13]
 version = "v13"
 headline = "Plugin-managed workspaces, migration-aware upgrades, and a cleaner runtime story."
