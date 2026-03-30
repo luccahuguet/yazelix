@@ -45,6 +45,31 @@ export def setup_test_home [] {
     }
 }
 
+export def test_profiling_enabled [--profile] {
+    if $profile {
+        return true
+    }
+
+    let raw_value = ($env.YAZELIX_TEST_PROFILE? | default "false" | into string | str downcase | str trim)
+    $raw_value in ["1", "true", "yes", "on"]
+}
+
+export def format_test_profile_report [records: list<record>, title: string] {
+    let sorted = ($records | sort-by elapsed_ms --reverse)
+    let lines = (
+        $sorted
+        | each {|record|
+            let seconds = (($record.elapsed_ms | into float) / 1000.0 | into string | str substring 0..4)
+            $"  - ($record.name): ($seconds)s"
+        }
+    )
+
+    [
+        $title
+        ...$lines
+    ] | str join "\n"
+}
+
 export def setup_managed_config_fixture [
     label: string
     raw_toml: string

@@ -10,12 +10,13 @@ Health checks and diagnostics
 - `--fix`: Auto-fix safe issues
 - Warns when `yazelix.toml` has stale, removed, or invalid fields relative to `yazelix_default.toml`
 
-### `yzx dev test [--verbose] [--new-window] [--lint-only] [--sweep] [--visual] [--all] [--delay SECONDS]`
+### `yzx dev test [--verbose] [--new-window] [--lint-only] [--profile] [--sweep] [--visual] [--all] [--delay SECONDS]`
 Run Yazelix test suite
 - Default: run the normal non-sweep automated regression suite
 - `--verbose`: Show detailed test output
 - `--new-window`: Launch tests in a new Yazelix window (useful for debugging crashes)
 - `--lint-only`: Run only syntax validation
+- `--profile`: Print timing summaries for the default suite and the internal `test_yzx_commands.nu` sub-suites
 - `--sweep`: Run only the non-visual configuration sweep
 - `--visual`: Run only the visual terminal sweep (launches actual terminal windows)
 - `--all`: Run the default suite plus non-visual sweep + visual sweep

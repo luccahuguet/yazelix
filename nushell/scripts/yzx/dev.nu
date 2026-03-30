@@ -968,13 +968,14 @@ export def "yzx dev test" [
     --verbose(-v)  # Show detailed test output
     --new-window(-n)  # Run tests in a new Yazelix window
     --lint-only  # Run only syntax validation
+    --profile  # Print timing summaries for the default suite
     --sweep  # Run the non-visual configuration sweep only
     --visual  # Run the visual terminal sweep only
     --all(-a)  # Run the default suite plus sweep + visual lanes
     --delay: int = 3  # Delay between visual terminal launches in seconds
 ] {
     use ../utils/test_runner.nu run_all_tests
-    run_all_tests --verbose=$verbose --new-window=$new_window --lint-only=$lint_only --sweep=$sweep --visual=$visual --all=$all --delay $delay
+    run_all_tests --verbose=$verbose --new-window=$new_window --lint-only=$lint_only --profile=$profile --sweep=$sweep --visual=$visual --all=$all --delay $delay
 }
 
 # Benchmark terminal launch performance

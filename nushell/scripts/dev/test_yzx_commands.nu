@@ -4,7 +4,7 @@
 # Defends: docs/specs/floating_tui_panes.md
 # Defends: docs/workspace_session_contract.md
 
-use ./test_yzx_helpers.nu [setup_test_home]
+use ./test_yzx_helpers.nu [format_test_profile_report setup_test_home test_profiling_enabled]
 use ./test_yzx_core_commands.nu [run_core_canonical_tests]
 use ./test_yzx_dev_commands.nu [run_dev_canonical_tests]
 use ./test_yzx_doctor_commands.nu [run_doctor_canonical_tests]
@@ -15,30 +15,49 @@ use ./test_yzx_screen_commands.nu [run_screen_canonical_tests]
 use ./test_yzx_workspace_commands.nu [run_workspace_canonical_tests]
 use ./test_yzx_yazi_commands.nu [run_yazi_canonical_tests]
 
-def main [] {
+def build_profiled_suite_result [name: string, runner: closure] {
+    let started = (date now)
+    let results = (do $runner)
+    let elapsed = ((date now) - $started)
+
+    {
+        name: $name
+        elapsed_ms: ($elapsed / 1ms)
+        results: $results
+    }
+}
+
+def main [--profile] {
     print "=== Testing core yzx contracts ==="
     print ""
 
     let fixture = (setup_test_home)
-    let results = (with-env { HOME: $fixture.tmp_home, YAZELIX_DIR: $fixture.config_dir } {
+    let profiling = (test_profiling_enabled --profile=$profile)
+    let suite_results = (with-env { HOME: $fixture.tmp_home, YAZELIX_DIR: $fixture.config_dir } {
         [
-            (run_core_canonical_tests)
-            (run_dev_canonical_tests)
-            (run_doctor_canonical_tests)
-            (run_generated_config_canonical_tests)
-            (run_popup_canonical_tests)
-            (run_refresh_canonical_tests)
-            (run_screen_canonical_tests)
-            (run_workspace_canonical_tests)
-            (run_yazi_canonical_tests)
-        ] | flatten
+            (build_profiled_suite_result "core" { run_core_canonical_tests })
+            (build_profiled_suite_result "dev" { run_dev_canonical_tests })
+            (build_profiled_suite_result "doctor" { run_doctor_canonical_tests })
+            (build_profiled_suite_result "generated" { run_generated_config_canonical_tests })
+            (build_profiled_suite_result "popup" { run_popup_canonical_tests })
+            (build_profiled_suite_result "refresh" { run_refresh_canonical_tests })
+            (build_profiled_suite_result "screen" { run_screen_canonical_tests })
+            (build_profiled_suite_result "workspace" { run_workspace_canonical_tests })
+            (build_profiled_suite_result "yazi" { run_yazi_canonical_tests })
+        ]
     })
     rm -rf $fixture.tmp_home
 
+    let results = ($suite_results | each {|suite| $suite.results } | flatten)
     let passed = ($results | where $it == true | length)
     let total = ($results | length)
 
     print ""
+    if $profiling {
+        print (format_test_profile_report $suite_results "=== test_yzx_commands.nu profile ===")
+        print ""
+    }
+
     if $passed == $total {
         print $"✅ All core yzx tests passed \(($passed)/($total)\)"
     } else {

@@ -39,7 +39,34 @@ def run_syntax_validation [
 }
 
 def run_standard_test [test_file: string] {
-    do { nu $test_file } | complete
+    if (test_profiling_enabled) {
+        with-env {YAZELIX_TEST_PROFILE: "1"} {
+            do { nu $test_file } | complete
+        }
+    } else {
+        do { nu $test_file } | complete
+    }
+}
+
+def test_profiling_enabled [] {
+    let raw_value = ($env.YAZELIX_TEST_PROFILE? | default "false" | into string | str downcase | str trim)
+    $raw_value in ["1", "true", "yes", "on"]
+}
+
+def render_profile_summary [records: list<record>, title: string] {
+    let sorted = ($records | sort-by elapsed_ms --reverse)
+    let lines = (
+        $sorted
+        | each {|record|
+            let seconds = (($record.elapsed_ms | into float) / 1000.0 | into string | str substring 0..4)
+            $"  - ($record.test): ($seconds)s"
+        }
+    )
+
+    [
+        $title
+        ...$lines
+    ] | str join "\n"
 }
 
 export def get_default_test_file_names [] {
@@ -66,11 +93,13 @@ export def run_all_tests [
     --verbose(-v)  # Show detailed output
     --new-window(-n)  # Run tests in a new Yazelix window
     --lint-only  # Run only syntax validation
+    --profile  # Print timing summaries for the default suite
     --sweep  # Run the non-visual configuration sweep only
     --visual  # Run the visual terminal sweep only
     --all(-a)  # Run the default suite plus sweep + visual lanes
     --delay: int = 3  # Delay between visual terminal launches in seconds
 ] {
+    let profiling = ($profile or (test_profiling_enabled))
     let visual_delay = ($delay | default 3)
     let run_only_sweep = ($sweep and not $visual and not $all)
     let run_only_visual = ($visual and not $sweep and not $all)
@@ -85,6 +114,7 @@ export def run_all_tests [
         mut test_args = ["yzx", "dev", "test"]
         if $verbose { $test_args = ($test_args | append "--verbose") }
         if $lint_only { $test_args = ($test_args | append "--lint-only") }
+        if $profile { $test_args = ($test_args | append "--profile") }
         if $sweep { $test_args = ($test_args | append "--sweep") }
         if $visual { $test_args = ($test_args | append "--visual") }
         if $all { $test_args = ($test_args | append "--all") }
@@ -189,6 +219,7 @@ export def run_all_tests [
 
     let results = $test_files | each { |test_file|
         let test_name = ($test_file | path basename | str replace ".nu" "")
+        let started = (date now)
 
         if $verbose {
             print $"📋 Running: ($test_name)"
@@ -243,7 +274,8 @@ export def run_all_tests [
             print ""
         }
 
-        $result
+        let elapsed_ms = (((date now) - $started) / 1ms)
+        $result | upsert elapsed_ms $elapsed_ms
     }
 
     # Summary
@@ -278,6 +310,13 @@ export def run_all_tests [
         }
     }
     $"\n($summary)\n" | save --append $log_file
+
+    if $profiling {
+        print ""
+        let profile_report = (render_profile_summary $results "=== Default Suite Profile ===")
+        print $profile_report
+        $"($profile_report)\n" | save --append $log_file
+    }
 
     if $failed > 0 {
         print ""
