@@ -4,104 +4,110 @@
 use ./test_yzx_helpers.nu [setup_managed_config_fixture]
 use ../integrations/yazi.nu [get_ya_command, get_yazi_command, resolve_managed_editor_open_strategy]
 
-def test_missing_managed_editor_opens_new_managed_pane [] {
-    print "🧪 Testing shell-opened editors do not get adopted as the managed editor pane..."
+def test_managed_editor_open_strategy_routes_missing_and_existing_states [] {
+    print "🧪 Testing managed editor open strategy routes both missing and existing states correctly..."
 
     try {
-        let result = (resolve_managed_editor_open_strategy "missing")
-
-        if $result.action == "open_new_managed" {
-            print "  ✅ missing managed-editor state routes Yazi opens to a new managed editor pane"
-            true
-        } else {
-            print $"  ❌ Unexpected routing result: ($result | to json -r)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_existing_managed_editor_is_reused [] {
-    print "🧪 Testing existing managed editor panes are reused..."
-
-    try {
-        let result = (resolve_managed_editor_open_strategy "ok")
-
-        if $result.action == "reuse_managed" {
-            print "  ✅ existing managed-editor state reuses the managed editor pane"
-            true
-        } else {
-            print $"  ❌ Unexpected routing result: ($result | to json -r)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_yazi_command_resolvers_default_to_path_binaries [] {
-    print "🧪 Testing Yazi command resolvers default to PATH binaries when unset..."
-
-    let fixture = (setup_managed_config_fixture "yazelix_yazi_command_defaults" '[core]
-recommended_deps = true
-')
-
-    let result = (try {
-        let resolved = (with-env {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.repo_root
-        } {
+        let cases = [
             {
-                yazi: (get_yazi_command)
-                ya: (get_ya_command)
+                status: "missing"
+                expected_action: "open_new_managed"
             }
-        })
+            {
+                status: "ok"
+                expected_action: "reuse_managed"
+            }
+        ]
 
-        if ($resolved.yazi == "yazi") and ($resolved.ya == "ya") {
-            print "  ✅ Unset Yazi command config falls back to PATH binaries"
+        let failures = (
+            $cases
+            | where {|case|
+                let result = (resolve_managed_editor_open_strategy $case.status)
+                $result.action != $case.expected_action
+            }
+        )
+
+        if ($failures | is-empty) {
+            print "  ✅ managed editor routing stays correct for missing and existing pane states"
             true
         } else {
-            print $"  ❌ Unexpected resolved commands: ($resolved | to json -r)"
+            print $"  ❌ Unexpected routing failures: ($failures | to json -r)"
             false
         }
     } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
+    }
 }
 
-def test_yazi_command_resolvers_honor_custom_config [] {
-    print "🧪 Testing Yazi command resolvers honor custom configured binaries..."
+def test_yazi_command_resolvers_honor_defaults_and_overrides [] {
+    print "🧪 Testing Yazi command resolvers honor defaults and explicit overrides..."
 
-    let fixture = (setup_managed_config_fixture "yazelix_yazi_command_overrides" '[yazi]
+    let cases = [
+        {
+            label: "defaults"
+            raw_toml: '[core]
+recommended_deps = true
+'
+            expected_yazi: "yazi"
+            expected_ya: "ya"
+        }
+        {
+            label: "overrides"
+            raw_toml: '[yazi]
 command = "/opt/custom/yazi"
 ya_command = "/opt/custom/ya"
-')
+'
+            expected_yazi: "/opt/custom/yazi"
+            expected_ya: "/opt/custom/ya"
+        }
+    ]
 
     let result = (try {
-        let resolved = (with-env {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.repo_root
-        } {
-            {
-                yazi: (get_yazi_command)
-                ya: (get_ya_command)
-            }
-        })
+        let failures = (
+            $cases
+            | each {|case|
+                let fixture = (setup_managed_config_fixture $"yazelix_yazi_command_($case.label)" $case.raw_toml)
 
-        if ($resolved.yazi == "/opt/custom/yazi") and ($resolved.ya == "/opt/custom/ya") {
-            print "  ✅ Custom Yazi command config is respected"
+                try {
+                    let resolved = (with-env {
+                        HOME: $fixture.tmp_home
+                        YAZELIX_CONFIG_DIR: $fixture.config_dir
+                        YAZELIX_RUNTIME_DIR: $fixture.repo_root
+                    } {
+                        {
+                            yazi: (get_yazi_command)
+                            ya: (get_ya_command)
+                        }
+                    })
+
+                    if ($resolved.yazi == $case.expected_yazi) and ($resolved.ya == $case.expected_ya) {
+                        null
+                    } else {
+                        {
+                            label: $case.label
+                            resolved: $resolved
+                            expected_yazi: $case.expected_yazi
+                            expected_ya: $case.expected_ya
+                        }
+                    }
+                } catch {|err|
+                    {
+                        label: $case.label
+                        error: $err.msg
+                    }
+                } finally {
+                    rm -rf $fixture.tmp_home
+                }
+            }
+            | where {|item| $item != null}
+        )
+
+        if ($failures | is-empty) {
+            print "  ✅ Yazi command config falls back to PATH by default and honors explicit overrides"
             true
         } else {
-            print $"  ❌ Unexpected resolved commands: ($resolved | to json -r)"
+            print $"  ❌ Unexpected resolver failures: ($failures | to json -r)"
             false
         }
     } catch {|err|
@@ -109,16 +115,13 @@ ya_command = "/opt/custom/ya"
         false
     })
 
-    rm -rf $fixture.tmp_home
     $result
 }
 
 export def run_yazi_canonical_tests [] {
     [
-        (test_missing_managed_editor_opens_new_managed_pane)
-        (test_existing_managed_editor_is_reused)
-        (test_yazi_command_resolvers_default_to_path_binaries)
-        (test_yazi_command_resolvers_honor_custom_config)
+        (test_managed_editor_open_strategy_routes_missing_and_existing_states)
+        (test_yazi_command_resolvers_honor_defaults_and_overrides)
     ]
 }
 
