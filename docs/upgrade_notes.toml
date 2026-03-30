@@ -1,9 +1,10 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = "Configurable Yazi command overrides and doc-surface cleanup"
+headline = "Configurable Yazi command overrides, Ghostty neon tuning, and doc-surface cleanup"
 summary = [
     "Added `[yazi].command` and `[yazi].ya_command` so managed Yazi launches and sidebar/reveal actions can use explicit binaries instead of only relying on `PATH`.",
+    "Tuned the Ghostty neon cursor-trail base color from violet toward a brighter cyan-blue so the shipped neon variant matches its intended palette.",
     "Clarified that custom Yazi plugin initialization lives in `user_configs/yazi/init.lua`, and updated user-facing docs to the current nested config shape and `user_configs/` paths.",
     "Refreshed maintainer input pins and updated the tracked preferred `devenv` CLI version to `2.0.7`.",
 ]
