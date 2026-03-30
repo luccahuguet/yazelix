@@ -51,18 +51,58 @@ let
   nixglIntel =
     if nixglPackages != null && nixglPackages ? nixGLIntel then nixglPackages.nixGLIntel else null;
 
-  # Import user configuration from TOML
-  # IMPORTANT: yazelix.toml is gitignored, so Yazelix reads it via an absolute path under $HOME.
-  # Current devenv releases expose that path to evaluation without requiring a separate --impure flag.
+  # Import user configuration from TOML.
+  # IMPORTANT: Yazelix now owns the managed config surfaces under user_configs/.
+  # Current devenv releases expose those paths to evaluation without requiring
+  # a separate --impure flag.
   homeDir = builtins.getEnv "HOME";
-  tomlConfigFile = if homeDir != "" then "${homeDir}/.config/yazelix/yazelix.toml" else "";
+  configRoot = if homeDir != "" then "${homeDir}/.config/yazelix" else "";
+  userConfigDir = if configRoot != "" then "${configRoot}/user_configs" else "";
+  tomlConfigFile = if userConfigDir != "" then "${userConfigDir}/yazelix.toml" else "";
+  legacyTomlConfigFile = if configRoot != "" then "${configRoot}/yazelix.toml" else "";
+  packTomlConfigFile = if userConfigDir != "" then "${userConfigDir}/yazelix_packs.toml" else "";
   defaultTomlConfigFile = ./yazelix_default.toml;
+  defaultPackTomlConfigFile = ./yazelix_packs_default.toml;
 
-  rawConfig =
+  mainConfigPath =
     if tomlConfigFile != "" && builtins.pathExists (builtins.toPath tomlConfigFile) then
-      builtins.fromTOML (builtins.readFile tomlConfigFile)
+      tomlConfigFile
+    else if legacyTomlConfigFile != "" && builtins.pathExists (builtins.toPath legacyTomlConfigFile) then
+      legacyTomlConfigFile
+    else
+      "";
+
+  rawMainConfig =
+    if mainConfigPath != "" then
+      builtins.fromTOML (builtins.readFile mainConfigPath)
     else
       builtins.fromTOML (builtins.readFile defaultTomlConfigFile);
+
+  rawPackSidecar =
+    if packTomlConfigFile != "" && builtins.pathExists (builtins.toPath packTomlConfigFile) then
+      builtins.fromTOML (builtins.readFile packTomlConfigFile)
+    else
+      builtins.fromTOML (builtins.readFile defaultPackTomlConfigFile);
+
+  packSurfaceGuard =
+    if (rawMainConfig ? packs) && (packTomlConfigFile != "" && builtins.pathExists (builtins.toPath packTomlConfigFile)) then
+      throw ''
+        Yazelix found pack settings in both yazelix.toml and yazelix_packs.toml.
+        Move pack settings fully into ~/.config/yazelix/user_configs/yazelix_packs.toml
+        or remove the duplicate [packs] table from the main config.
+      ''
+    else
+      null;
+
+  rawConfig =
+    rawMainConfig
+    // {
+      packs =
+        if rawMainConfig ? packs then
+          rawMainConfig.packs
+        else
+          rawPackSidecar;
+    };
 
   rawPacks = rawConfig.packs or { };
   _ =

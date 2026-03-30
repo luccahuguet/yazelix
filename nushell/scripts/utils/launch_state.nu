@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Profile activation helpers for fast Yazelix launch/restart paths.
 
-use ./common.nu [get_yazelix_nix_config get_yazelix_dir]
+use ./common.nu [get_yazelix_nix_config get_yazelix_dir get_yazelix_state_dir]
 
 def bool_to_string [value] {
     if $value { "true" } else { "false" }
@@ -24,7 +24,30 @@ def resolve_profile_candidate [candidate: string] {
     }
 }
 
+def get_launch_state_path [] {
+    (get_yazelix_state_dir | path join "state" "launch_state.json")
+}
+
+def load_launch_state [] {
+    let state_path = (get_launch_state_path)
+    if not ($state_path | path exists) {
+        return null
+    }
+
+    try {
+        open $state_path
+    } catch {
+        null
+    }
+}
+
 export def resolve_built_profile [] {
+    let env_profile = ($env.DEVENV_PROFILE? | default "")
+    let resolved_env_profile = (resolve_profile_candidate $env_profile)
+    if ($resolved_env_profile | is-not-empty) {
+        return $resolved_env_profile
+    }
+
     let yazelix_dir = get_yazelix_dir
     let candidates = [
         ($yazelix_dir | path join ".devenv/profile")
@@ -38,12 +61,48 @@ export def resolve_built_profile [] {
         }
     }
 
-    let env_profile = ($env.DEVENV_PROFILE? | default "")
-    if ($env_profile | is-not-empty) and ($env_profile | path exists) {
-        return $env_profile
+    ""
+}
+
+def resolve_recorded_launch_profile [config_state: record, --allow-stale] {
+    let launch_state = (load_launch_state)
+    if $launch_state == null {
+        return null
     }
 
-    ""
+    let recorded_profile = (
+        $launch_state
+        | get -o profile_path
+        | default ""
+        | into string
+    )
+    let resolved_profile = (resolve_profile_candidate $recorded_profile)
+    if ($resolved_profile | is-empty) {
+        return null
+    }
+
+    let recorded_hash = (
+        $launch_state
+        | get -o combined_hash
+        | default ""
+        | into string
+    )
+    let current_hash = (
+        $config_state
+        | get -o combined_hash
+        | default ""
+        | into string
+    )
+
+    if (not $allow_stale) and ($recorded_hash != $current_hash) {
+        return null
+    }
+
+    $resolved_profile
+}
+
+export def has_matching_launch_state [config_state: record, --allow-stale] {
+    (resolve_recorded_launch_profile $config_state --allow-stale=$allow_stale) != null
 }
 
 export def get_launch_profile [config_state: record, --allow-stale] {
@@ -51,7 +110,7 @@ export def get_launch_profile [config_state: record, --allow-stale] {
         return null
     }
 
-    let profile_path = resolve_built_profile
+    let profile_path = (resolve_recorded_launch_profile $config_state --allow-stale=$allow_stale)
     if ($profile_path | is-empty) or (not ($profile_path | path exists)) {
         return null
     }
@@ -63,6 +122,34 @@ export def get_launch_profile [config_state: record, --allow-stale] {
     }
 
     $profile_path
+}
+
+export def record_launch_state [config_state: record, profile_path?: string] {
+    let preferred_profile = if $profile_path == null {
+        ($env.DEVENV_PROFILE? | default "")
+    } else {
+        $profile_path
+    }
+    let resolved_profile = (resolve_profile_candidate $preferred_profile)
+    if ($resolved_profile | is-empty) {
+        return
+    }
+
+    let state_path = (get_launch_state_path)
+    let state_dir = ($state_path | path dirname)
+    if not ($state_dir | path exists) {
+        mkdir $state_dir
+    }
+
+    {
+        combined_hash: (
+            $config_state
+            | get -o combined_hash
+            | default ""
+            | into string
+        )
+        profile_path: $resolved_profile
+    } | to json | save --force $state_path
 }
 
 export def require_reused_launch_profile [config_state: record, command_name: string] {

@@ -3,7 +3,9 @@
 # Called from devenv.nix shellHook to reduce complexity
 
 use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/config_state.nu compute_config_state
 use ../utils/common.nu [get_yazelix_runtime_dir]
+use ../utils/launch_state.nu [record_launch_state]
 
 def main [--welcome-source: string, --skip-welcome] {
     # Read configuration directly from TOML - single source of truth!
@@ -133,6 +135,8 @@ def main [--welcome-source: string, --skip-welcome] {
     if not $quiet_mode {
         print "✅ Yazelix environment setup complete!"
     }
+
+    record_launch_state (compute_config_state)
 
     # Import welcome module
     use ./welcome.nu *

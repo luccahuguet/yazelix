@@ -3,6 +3,7 @@ use std::env;
 use std::thread::sleep;
 use std::time::Duration;
 
+use shlex::split as shell_split;
 use yazelix_pane_orchestrator::pane_contract::FocusContextPolicy;
 use yazelix_pane_orchestrator::sidebar_contract::{
     resolve_sidebar_visibility_toggle, SidebarVisibilityTogglePlan,
@@ -65,6 +66,20 @@ pub(crate) struct ZjstatusSegments {
 pub(crate) struct OverrideLayoutConfig {
     pub(crate) zjstatus_segments: ZjstatusSegments,
     pub(crate) sidebar_width_percent: usize,
+}
+
+struct OverrideLayoutPlan {
+    layout_kdl: String,
+    retain_existing_terminal_panes: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct PreservedTerminalPaneSpec {
+    title: String,
+    command: String,
+    args: Vec<String>,
+    cwd: Option<String>,
+    is_focused: bool,
 }
 
 impl Default for OverrideLayoutConfig {
@@ -305,13 +320,20 @@ impl State {
         active_tab_position: usize,
     ) -> Option<()> {
         let terminal_panes = self.terminal_panes_by_tab.get(&active_tab_position)?;
-        let layout_kdl = build_override_layout_kdl(
+        let override_layout_plan = build_override_layout_kdl(
             layout_variant,
-            terminal_panes.len(),
+            terminal_panes,
+            self.managed_panes_by_tab.get(&active_tab_position),
             &self.override_layout_config,
         )?;
-        let layout_info = LayoutInfo::Stringified(layout_kdl);
-        override_layout(layout_info, false, false, true, BTreeMap::new());
+        let layout_info = LayoutInfo::Stringified(override_layout_plan.layout_kdl);
+        override_layout(
+            layout_info,
+            override_layout_plan.retain_existing_terminal_panes,
+            false,
+            true,
+            BTreeMap::new(),
+        );
         self.last_known_layout_variant_by_tab
             .borrow_mut()
             .insert(active_tab_position, layout_variant);
@@ -430,6 +452,49 @@ fn infer_layout_variant_from_terminal_panes(
 
 fn build_override_layout_kdl(
     layout_variant: LayoutVariant,
+    terminal_panes: &[TerminalPaneLayout],
+    managed_tab_panes: Option<&ManagedTabPanes>,
+    override_layout_config: &OverrideLayoutConfig,
+) -> Option<OverrideLayoutPlan> {
+    if let Some(layout_kdl) =
+        build_preserving_override_layout_kdl(layout_variant, terminal_panes, managed_tab_panes, override_layout_config)
+    {
+        return Some(OverrideLayoutPlan {
+            layout_kdl,
+            retain_existing_terminal_panes: true,
+        });
+    }
+
+    let layout_kdl = build_generic_override_layout_kdl(
+        layout_variant,
+        terminal_panes.len(),
+        override_layout_config,
+    )?;
+    Some(OverrideLayoutPlan {
+        layout_kdl,
+        retain_existing_terminal_panes: false,
+    })
+}
+
+fn build_preserving_override_layout_kdl(
+    layout_variant: LayoutVariant,
+    terminal_panes: &[TerminalPaneLayout],
+    managed_tab_panes: Option<&ManagedTabPanes>,
+    override_layout_config: &OverrideLayoutConfig,
+) -> Option<String> {
+    let sidebar_pane = select_sidebar_pane(terminal_panes, managed_tab_panes)?;
+    let sidebar_spec = build_preserved_terminal_pane_spec(sidebar_pane)?;
+    let content_pane_specs = ordered_content_pane_specs(terminal_panes, managed_tab_panes)?;
+    build_override_layout_with_content_specs(
+        layout_variant,
+        &sidebar_spec,
+        &content_pane_specs,
+        override_layout_config,
+    )
+}
+
+fn build_generic_override_layout_kdl(
+    layout_variant: LayoutVariant,
     total_terminal_panes: usize,
     override_layout_config: &OverrideLayoutConfig,
 ) -> Option<String> {
@@ -442,7 +507,7 @@ fn build_override_layout_kdl(
     let runtime_layout = render_embedded_side_layout(&resolved_runtime_dir, override_layout_config);
     let swap_layouts = render_embedded_swap_layouts(&resolved_runtime_dir, override_layout_config);
     let ui_tab_template = extract_ui_tab_template(&runtime_layout)?;
-    let content_layout = build_content_layout_kdl(
+    let content_layout = build_generic_content_layout_kdl(
         layout_variant,
         total_terminal_panes.saturating_sub(1),
         &sidebar_launcher,
@@ -455,7 +520,70 @@ fn build_override_layout_kdl(
     ))
 }
 
+fn build_override_layout_with_content_specs(
+    layout_variant: LayoutVariant,
+    sidebar_spec: &PreservedTerminalPaneSpec,
+    content_pane_specs: &[PreservedTerminalPaneSpec],
+    override_layout_config: &OverrideLayoutConfig,
+) -> Option<String> {
+    if content_pane_specs.is_empty() {
+        return None;
+    }
+
+    let resolved_runtime_dir = runtime_dir();
+    let runtime_layout = render_embedded_side_layout(&resolved_runtime_dir, override_layout_config);
+    let swap_layouts = render_embedded_swap_layouts(&resolved_runtime_dir, override_layout_config);
+    let ui_tab_template = extract_ui_tab_template(&runtime_layout)?;
+    let content_layout = build_content_layout_kdl(
+        layout_variant,
+        sidebar_spec,
+        content_pane_specs,
+        override_layout_config.sidebar_width_percent,
+    )?;
+
+    Some(format!(
+        "layout {{\n{ui_tab_template}\n\n{}\n\nui {{\n{content_layout}\n}}\n}}\n",
+        swap_layouts
+    ))
+}
+
 fn build_content_layout_kdl(
+    layout_variant: LayoutVariant,
+    sidebar_spec: &PreservedTerminalPaneSpec,
+    content_pane_specs: &[PreservedTerminalPaneSpec],
+    sidebar_width_percent: usize,
+) -> Option<String> {
+    if content_pane_specs.is_empty() {
+        return None;
+    }
+
+    let layout_widths = LayoutWidths::new(sidebar_width_percent, layout_variant.sidebar_state);
+
+    let sidebar_pane = match layout_variant.sidebar_state {
+        SidebarState::Open => build_terminal_pane_node(
+            sidebar_spec,
+            2,
+            Some(format!("{}%", layout_widths.sidebar_width_percent)),
+        ),
+        SidebarState::Closed => build_terminal_pane_node(sidebar_spec, 2, Some(String::from("1"))),
+    };
+
+    let content_region = match layout_variant.family {
+        LayoutFamily::Single => build_single_family_kdl(content_pane_specs, &layout_widths),
+        LayoutFamily::VerticalSplit => {
+            build_vertical_split_family_kdl(content_pane_specs, &layout_widths)?
+        }
+        LayoutFamily::BottomTerminal => {
+            build_bottom_terminal_family_kdl(content_pane_specs, &layout_widths)?
+        }
+    };
+
+    Some(format!(
+        "    pane split_direction=\"vertical\" {{\n{sidebar_pane}\n{content_region}\n    }}"
+    ))
+}
+
+fn build_generic_content_layout_kdl(
     layout_variant: LayoutVariant,
     non_sidebar_terminal_panes: usize,
     sidebar_launcher: &str,
@@ -478,12 +606,12 @@ fn build_content_layout_kdl(
     };
 
     let content_region = match layout_variant.family {
-        LayoutFamily::Single => build_single_family_kdl(non_sidebar_terminal_panes, &layout_widths),
+        LayoutFamily::Single => build_generic_single_family_kdl(non_sidebar_terminal_panes, &layout_widths),
         LayoutFamily::VerticalSplit => {
-            build_vertical_split_family_kdl(non_sidebar_terminal_panes, &layout_widths)?
+            build_generic_vertical_split_family_kdl(non_sidebar_terminal_panes, &layout_widths)?
         }
         LayoutFamily::BottomTerminal => {
-            build_bottom_terminal_family_kdl(non_sidebar_terminal_panes, &layout_widths)?
+            build_generic_bottom_terminal_family_kdl(non_sidebar_terminal_panes, &layout_widths)?
         }
     };
 
@@ -492,7 +620,55 @@ fn build_content_layout_kdl(
     ))
 }
 
-fn build_single_family_kdl(
+fn build_single_family_kdl(content_pane_specs: &[PreservedTerminalPaneSpec], layout_widths: &LayoutWidths) -> String {
+    format!(
+        "        pane stacked=true {{\n            size \"{}%\"\n{}\n        }}",
+        layout_widths.content_width_percent,
+        build_explicit_terminal_panes(content_pane_specs, 3)
+    )
+}
+
+fn build_vertical_split_family_kdl(
+    content_pane_specs: &[PreservedTerminalPaneSpec],
+    layout_widths: &LayoutWidths,
+) -> Option<String> {
+    if content_pane_specs.len() < 2 {
+        return Some(build_single_family_kdl(content_pane_specs, layout_widths));
+    }
+    let stacked_panes = content_pane_specs.len().checked_sub(1)?;
+    let primary_panes = &content_pane_specs[..stacked_panes];
+    let secondary_pane = content_pane_specs.last()?;
+    Some(format!(
+        "        pane stacked=true {{\n            size \"{}%\"\n{}\n        }}\n{}\n",
+        layout_widths.primary_width_percent,
+        build_explicit_terminal_panes(primary_panes, 3),
+        build_terminal_pane_node(
+            secondary_pane,
+            2,
+            Some(format!("{}%", layout_widths.secondary_width_percent)),
+        ),
+    ))
+}
+
+fn build_bottom_terminal_family_kdl(
+    content_pane_specs: &[PreservedTerminalPaneSpec],
+    layout_widths: &LayoutWidths,
+) -> Option<String> {
+    if content_pane_specs.len() < 2 {
+        return Some(build_single_family_kdl(content_pane_specs, layout_widths));
+    }
+    let stacked_panes = content_pane_specs.len().checked_sub(1)?;
+    let top_panes = &content_pane_specs[..stacked_panes];
+    let bottom_pane = content_pane_specs.last()?;
+    Some(format!(
+        "        pane split_direction=\"horizontal\" {{\n            size \"{}%\"\n            pane stacked=true {{\n                size \"70%\"\n{}\n            }}\n{}\n        }}",
+        layout_widths.content_width_percent,
+        build_explicit_terminal_panes(top_panes, 4),
+        build_terminal_pane_node(bottom_pane, 3, Some(String::from("30%"))),
+    ))
+}
+
+fn build_generic_single_family_kdl(
     non_sidebar_terminal_panes: usize,
     layout_widths: &LayoutWidths,
 ) -> String {
@@ -503,7 +679,7 @@ fn build_single_family_kdl(
     )
 }
 
-fn build_vertical_split_family_kdl(
+fn build_generic_vertical_split_family_kdl(
     non_sidebar_terminal_panes: usize,
     layout_widths: &LayoutWidths,
 ) -> Option<String> {
@@ -511,13 +687,12 @@ fn build_vertical_split_family_kdl(
     Some(format!(
         "        pane stacked=true {{\n            size \"{}%\"\n{}\n        }}\n        pane {{\n            size \"{}%\"\n        }}",
         layout_widths.primary_width_percent,
-        build_generic_terminal_panes(stacked_panes, 3)
-        ,
+        build_generic_terminal_panes(stacked_panes, 3),
         layout_widths.secondary_width_percent
     ))
 }
 
-fn build_bottom_terminal_family_kdl(
+fn build_generic_bottom_terminal_family_kdl(
     non_sidebar_terminal_panes: usize,
     layout_widths: &LayoutWidths,
 ) -> Option<String> {
@@ -562,6 +737,144 @@ fn build_generic_terminal_panes(count: usize, indent_level: usize) -> String {
         .map(|_| format!("{indent}pane"))
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+fn build_explicit_terminal_panes(
+    pane_specs: &[PreservedTerminalPaneSpec],
+    indent_level: usize,
+) -> String {
+    pane_specs
+        .iter()
+        .map(|pane_spec| build_terminal_pane_node(pane_spec, indent_level, None))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn build_terminal_pane_node(
+    pane_spec: &PreservedTerminalPaneSpec,
+    indent_level: usize,
+    size_override: Option<String>,
+) -> String {
+    let indent = "    ".repeat(indent_level);
+    let body_indent = "    ".repeat(indent_level + 1);
+    let mut header_parts = vec![String::from("pane")];
+
+    if !pane_spec.title.trim().is_empty() {
+        header_parts.push(format!("name=\"{}\"", escape_kdl_string(&pane_spec.title)));
+    }
+    if pane_spec.is_focused {
+        header_parts.push(String::from("focus=true"));
+    }
+
+    let mut lines = vec![format!("{indent}{} {{", header_parts.join(" "))];
+    lines.push(format!(
+        "{body_indent}command \"{}\"",
+        escape_kdl_string(&pane_spec.command)
+    ));
+    if !pane_spec.args.is_empty() {
+        let rendered_args = pane_spec
+            .args
+            .iter()
+            .map(|arg| format!("\"{}\"", escape_kdl_string(arg)))
+            .collect::<Vec<_>>()
+            .join(" ");
+        lines.push(format!("{body_indent}args {rendered_args}"));
+    }
+    if let Some(cwd) = &pane_spec.cwd {
+        lines.push(format!(
+            "{body_indent}cwd \"{}\"",
+            escape_kdl_string(cwd)
+        ));
+    }
+    if let Some(size) = size_override {
+        lines.push(format!("{body_indent}size \"{size}\""));
+    }
+    lines.push(format!("{indent}}}"));
+    lines.join("\n")
+}
+
+fn ordered_content_pane_specs(
+    terminal_panes: &[TerminalPaneLayout],
+    managed_tab_panes: Option<&ManagedTabPanes>,
+) -> Option<Vec<PreservedTerminalPaneSpec>> {
+    let sidebar_pane_id = select_sidebar_pane(terminal_panes, managed_tab_panes)?.pane_id;
+    let editor_pane_id = managed_tab_panes.and_then(|tab| tab.editor).map(|pane| pane.pane_id);
+
+    let mut content_panes = terminal_panes
+        .iter()
+        .filter(|pane| pane.pane_id != sidebar_pane_id)
+        .collect::<Vec<_>>();
+    content_panes.sort_by_key(|pane| {
+        let role_rank = if Some(pane.pane_id) == editor_pane_id {
+            0usize
+        } else {
+            1usize
+        };
+        (role_rank, pane.pane_y, pane.pane_x, pane.title.clone())
+    });
+
+    let content_pane_specs = content_panes
+        .into_iter()
+        .map(build_preserved_terminal_pane_spec)
+        .collect::<Option<Vec<_>>>()?;
+
+    if content_pane_specs.is_empty() {
+        return None;
+    }
+    Some(content_pane_specs)
+}
+
+fn select_sidebar_pane<'a>(
+    terminal_panes: &'a [TerminalPaneLayout],
+    managed_tab_panes: Option<&ManagedTabPanes>,
+) -> Option<&'a TerminalPaneLayout> {
+    let managed_sidebar_id = managed_tab_panes
+        .and_then(|tab| tab.sidebar)
+        .map(|pane| pane.pane_id);
+    terminal_panes
+        .iter()
+        .find(|pane| Some(pane.pane_id) == managed_sidebar_id)
+        .or_else(|| {
+            terminal_panes
+                .iter()
+                .find(|pane| pane.title.trim() == SIDEBAR_TITLE)
+        })
+}
+
+fn build_preserved_terminal_pane_spec(
+    pane: &TerminalPaneLayout,
+) -> Option<PreservedTerminalPaneSpec> {
+    let terminal_command = pane.terminal_command.as_ref()?;
+    let command_parts = shell_split(terminal_command)?;
+    let (command, args) = command_parts.split_first()?;
+
+    Some(PreservedTerminalPaneSpec {
+        title: pane.title.clone(),
+        command: command.clone(),
+        args: args.to_vec(),
+        cwd: resolve_preserved_pane_cwd(pane),
+        is_focused: pane.is_focused,
+    })
+}
+
+#[cfg(test)]
+fn resolve_preserved_pane_cwd(_pane: &TerminalPaneLayout) -> Option<String> {
+    None
+}
+
+#[cfg(not(test))]
+fn resolve_preserved_pane_cwd(pane: &TerminalPaneLayout) -> Option<String> {
+    if pane.title.trim() != crate::panes::EDITOR_TITLE && pane.title.trim() != SIDEBAR_TITLE {
+        return None;
+    }
+
+    get_pane_cwd(pane.pane_id)
+        .ok()
+        .map(|cwd| cwd.display().to_string())
+}
+
+fn escape_kdl_string(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 fn render_embedded_side_layout(
@@ -726,9 +1039,10 @@ fn is_no_sidebar_mode(managed_tab_panes: Option<&ManagedTabPanes>) -> bool {
 mod tests {
     use super::{
         build_bottom_terminal_family_kdl, build_content_layout_kdl, build_generic_terminal_panes,
-        build_override_layout_kdl, build_single_family_kdl, build_vertical_split_family_kdl,
-        extract_ui_tab_template, infer_layout_variant_from_terminal_panes, FamilyDirection,
-        LayoutFamily, LayoutVariant, OverrideLayoutConfig, SidebarState, ZjstatusSegments,
+        build_override_layout_kdl, build_preserved_terminal_pane_spec, build_single_family_kdl,
+        build_terminal_pane_node, build_vertical_split_family_kdl, extract_ui_tab_template,
+        infer_layout_variant_from_terminal_panes, FamilyDirection, LayoutFamily, LayoutVariant,
+        OverrideLayoutConfig, SidebarState, ZjstatusSegments,
     };
     use crate::panes::{ManagedTabPanes, ManagedTerminalPane, TerminalPaneLayout};
     use zellij_tile::prelude::PaneId;
@@ -736,6 +1050,7 @@ mod tests {
     fn terminal_pane(
         pane_id: PaneId,
         title: &str,
+        terminal_command: Option<&str>,
         x: usize,
         y: usize,
         columns: usize,
@@ -744,6 +1059,7 @@ mod tests {
         TerminalPaneLayout {
             pane_id,
             title: title.to_string(),
+            terminal_command: terminal_command.map(|value| value.to_string()),
             is_focused: false,
             pane_x: x,
             pane_y: y,
@@ -755,9 +1071,9 @@ mod tests {
     #[test]
     fn infers_single_open_from_stacked_editor_region() {
         let panes = vec![
-            terminal_pane(PaneId::Terminal(1), "sidebar", 0, 0, 16, 24),
-            terminal_pane(PaneId::Terminal(2), "editor", 16, 0, 64, 24),
-            terminal_pane(PaneId::Terminal(3), "shell", 16, 0, 64, 24),
+            terminal_pane(PaneId::Terminal(1), "sidebar", Some("nu sidebar.nu"), 0, 0, 16, 24),
+            terminal_pane(PaneId::Terminal(2), "editor", Some("hx"), 16, 0, 64, 24),
+            terminal_pane(PaneId::Terminal(3), "shell", Some("bash"), 16, 0, 64, 24),
         ];
 
         assert_eq!(
@@ -772,9 +1088,9 @@ mod tests {
     #[test]
     fn infers_vertical_split_closed_from_multiple_x_positions() {
         let panes = vec![
-            terminal_pane(PaneId::Terminal(1), "sidebar", 0, 0, 1, 24),
-            terminal_pane(PaneId::Terminal(2), "editor", 1, 0, 39, 24),
-            terminal_pane(PaneId::Terminal(3), "shell", 40, 0, 40, 24),
+            terminal_pane(PaneId::Terminal(1), "sidebar", Some("nu sidebar.nu"), 0, 0, 1, 24),
+            terminal_pane(PaneId::Terminal(2), "editor", Some("hx"), 1, 0, 39, 24),
+            terminal_pane(PaneId::Terminal(3), "shell", Some("bash"), 40, 0, 40, 24),
         ];
 
         assert_eq!(
@@ -789,9 +1105,9 @@ mod tests {
     #[test]
     fn infers_bottom_terminal_from_multiple_y_positions() {
         let panes = vec![
-            terminal_pane(PaneId::Terminal(1), "sidebar", 0, 0, 16, 24),
-            terminal_pane(PaneId::Terminal(2), "editor", 16, 0, 64, 16),
-            terminal_pane(PaneId::Terminal(3), "shell", 16, 16, 64, 8),
+            terminal_pane(PaneId::Terminal(1), "sidebar", Some("nu sidebar.nu"), 0, 0, 16, 24),
+            terminal_pane(PaneId::Terminal(2), "editor", Some("hx"), 16, 0, 64, 16),
+            terminal_pane(PaneId::Terminal(3), "shell", Some("bash"), 16, 16, 64, 8),
         ];
 
         assert_eq!(
@@ -806,9 +1122,9 @@ mod tests {
     #[test]
     fn infers_layout_from_managed_sidebar_pane_id_when_title_drifted() {
         let panes = vec![
-            terminal_pane(PaneId::Terminal(41), "yazi", 0, 0, 16, 24),
-            terminal_pane(PaneId::Terminal(42), "editor", 16, 0, 39, 24),
-            terminal_pane(PaneId::Terminal(43), "shell", 55, 0, 25, 24),
+            terminal_pane(PaneId::Terminal(41), "yazi", Some("nu sidebar.nu"), 0, 0, 16, 24),
+            terminal_pane(PaneId::Terminal(42), "editor", Some("hx"), 16, 0, 39, 24),
+            terminal_pane(PaneId::Terminal(43), "shell", Some("bash"), 55, 0, 25, 24),
         ];
         let managed_tab_panes = ManagedTabPanes {
             editor: Some(ManagedTerminalPane {
@@ -854,27 +1170,79 @@ mod tests {
     #[test]
     fn generates_explicit_terminal_slots_without_children_placeholders() {
         let open_layout_widths = super::LayoutWidths::new(20, SidebarState::Open);
-        let single = build_single_family_kdl(3, &open_layout_widths);
-        let vertical = build_vertical_split_family_kdl(3, &open_layout_widths).unwrap();
-        let bottom = build_bottom_terminal_family_kdl(3, &open_layout_widths).unwrap();
+        let panes = vec![
+            build_preserved_terminal_pane_spec(&terminal_pane(
+                PaneId::Terminal(2),
+                "editor",
+                Some("hx"),
+                16,
+                0,
+                64,
+                24,
+            ))
+            .unwrap(),
+            build_preserved_terminal_pane_spec(&terminal_pane(
+                PaneId::Terminal(3),
+                "shell",
+                Some("bash"),
+                16,
+                0,
+                64,
+                24,
+            ))
+            .unwrap(),
+            build_preserved_terminal_pane_spec(&terminal_pane(
+                PaneId::Terminal(4),
+                "term",
+                Some("zsh"),
+                16,
+                0,
+                64,
+                24,
+            ))
+            .unwrap(),
+        ];
+        let single = build_single_family_kdl(&panes, &open_layout_widths);
+        let vertical = build_vertical_split_family_kdl(&panes, &open_layout_widths).unwrap();
+        let bottom = build_bottom_terminal_family_kdl(&panes, &open_layout_widths).unwrap();
 
         assert!(!single.contains("children"));
         assert!(!vertical.contains("children"));
         assert!(!bottom.contains("children"));
-        assert_eq!(single.matches("\n            pane").count(), 4);
-        assert_eq!(vertical.matches("\n            pane").count(), 4);
-        assert_eq!(bottom.matches("\n                pane").count(), 4);
+        assert!(single.contains("command \"hx\""));
+        assert!(vertical.contains("command \"bash\""));
+        assert!(bottom.contains("command \"zsh\""));
     }
 
     #[test]
     fn builds_single_sidebar_layout_with_one_content_pane() {
+        let sidebar_spec = build_preserved_terminal_pane_spec(&terminal_pane(
+            PaneId::Terminal(1),
+            "sidebar",
+            Some("nu /tmp/launch_sidebar_yazi.nu"),
+            0,
+            0,
+            16,
+            24,
+        ))
+        .unwrap();
+        let content_spec = build_preserved_terminal_pane_spec(&terminal_pane(
+            PaneId::Terminal(2),
+            "editor",
+            Some("hx"),
+            16,
+            0,
+            64,
+            24,
+        ))
+        .unwrap();
         let content_layout = build_content_layout_kdl(
             LayoutVariant {
                 family: LayoutFamily::Single,
                 sidebar_state: SidebarState::Open,
             },
-            1,
-            "/tmp/launch_sidebar_yazi.nu",
+            &sidebar_spec,
+            &[content_spec],
             20,
         )
         .unwrap();
@@ -883,7 +1251,7 @@ mod tests {
         assert!(content_layout.contains("pane stacked=true"));
         assert!(content_layout.contains("size \"20%\""));
         assert!(content_layout.contains("size \"80%\""));
-        assert_eq!(content_layout.matches("\n            pane").count(), 1);
+        assert!(content_layout.contains("command \"hx\""));
     }
 
     #[test]
@@ -892,12 +1260,25 @@ mod tests {
             std::env::set_var("YAZELIX_RUNTIME_DIR", "/tmp/yazelix-runtime");
         }
 
-        let layout_kdl = build_override_layout_kdl(
+        let layout_plan = build_override_layout_kdl(
             LayoutVariant {
                 family: LayoutFamily::Single,
                 sidebar_state: SidebarState::Open,
             },
-            3,
+            &[
+                terminal_pane(
+                    PaneId::Terminal(1),
+                    "sidebar",
+                    Some("nu /tmp/yazelix-runtime/configs/zellij/scripts/launch_sidebar_yazi.nu"),
+                    0,
+                    0,
+                    16,
+                    24,
+                ),
+                terminal_pane(PaneId::Terminal(2), "editor", Some("hx"), 16, 0, 64, 24),
+                terminal_pane(PaneId::Terminal(3), "shell", Some("bash"), 16, 0, 64, 24),
+            ],
+            None,
             &OverrideLayoutConfig {
                 zjstatus_segments: ZjstatusSegments {
                     widget_tray: "#[fg=#00ff88,bold][editor: {command_editor}] {command_cpu}"
@@ -908,6 +1289,7 @@ mod tests {
             },
         )
         .unwrap();
+        let layout_kdl = &layout_plan.layout_kdl;
 
         assert!(layout_kdl.contains("tab_template name=\"ui\""));
         assert!(layout_kdl.contains("swap_tiled_layout name=\"single_open\""));
@@ -919,8 +1301,9 @@ mod tests {
         assert!(!layout_kdl.contains("{swap_layout}"));
         assert!(layout_kdl.contains("size \"25%\""));
         assert!(layout_kdl.contains("size \"75%\""));
-        assert!(layout_kdl
-            .contains("/tmp/yazelix-runtime/configs/zellij/scripts/launch_sidebar_yazi.nu"));
+        assert!(layout_kdl.contains("command \"hx\""));
+        assert!(layout_kdl.contains("command \"bash\""));
+        assert!(layout_plan.retain_existing_terminal_panes);
 
         unsafe {
             std::env::remove_var("YAZELIX_RUNTIME_DIR");
@@ -953,5 +1336,24 @@ layout {
         let panes = build_generic_terminal_panes(4, 2);
         assert_eq!(panes.matches("\n        pane").count(), 3);
         assert!(panes.starts_with("        pane"));
+    }
+
+    #[test]
+    fn terminal_pane_node_preserves_args_and_escaping() {
+        let pane_spec = build_preserved_terminal_pane_spec(&terminal_pane(
+            PaneId::Terminal(7),
+            "editor",
+            Some("env YAZI_ID=demo hx /tmp/file.txt"),
+            0,
+            0,
+            10,
+            10,
+        ))
+        .unwrap();
+        let pane_node = build_terminal_pane_node(&pane_spec, 2, Some(String::from("80%")));
+        assert!(pane_node.contains("command \"env\""));
+        assert!(pane_node.contains("args \"YAZI_ID=demo\" \"hx\" \"/tmp/file.txt\""));
+        assert!(pane_node.contains("name=\"editor\""));
+        assert!(pane_node.contains("size \"80%\""));
     }
 }

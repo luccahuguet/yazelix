@@ -8,7 +8,7 @@
 use ../utils/environment_bootstrap.nu [prepare_environment]
 use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/failure_classes.nu [format_failure_classification]
-use ../utils/launch_state.nu [get_launch_env get_launch_profile resolve_built_profile]
+use ../utils/launch_state.nu [get_launch_env get_launch_profile]
 
 def require_launch_script [script_path: string] {
     let resolved = ($script_path | path expand)
@@ -26,14 +26,9 @@ def main [] {
     let env_prep = prepare_environment
     let config = $env_prep.config
     let cached_profile = (get_launch_profile $env_prep.config_state)
-    let bootstrap_profile = if $cached_profile != null {
-        $cached_profile
-    } else {
-        resolve_built_profile
-    }
 
-    if ($bootstrap_profile | is-not-empty) {
-        with-env (get_launch_env $config $bootstrap_profile) {
+    if $cached_profile != null {
+        with-env (get_launch_env $config $cached_profile) {
             ^nu $launch_script $env.HOME
         }
     } else {

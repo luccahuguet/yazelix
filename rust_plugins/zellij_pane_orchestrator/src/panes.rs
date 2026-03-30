@@ -27,6 +27,7 @@ pub(crate) struct ManagedTerminalPane {
 pub(crate) struct TerminalPaneLayout {
     pub(crate) pane_id: PaneId,
     pub(crate) title: String,
+    pub(crate) terminal_command: Option<String>,
     pub(crate) is_focused: bool,
     pub(crate) pane_x: usize,
     pub(crate) pane_y: usize,
@@ -174,6 +175,7 @@ pub(crate) fn build_terminal_panes_by_tab(
                 .map(|pane| TerminalPaneLayout {
                     pane_id: PaneId::Terminal(pane.id),
                     title: pane.title.clone(),
+                    terminal_command: pane.terminal_command.clone(),
                     is_focused: pane.is_focused,
                     pane_x: pane.pane_x,
                     pane_y: pane.pane_y,

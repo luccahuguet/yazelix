@@ -5,6 +5,7 @@ use ./config_parser.nu parse_yazelix_config
 use ./config_metadata.nu REBUILD_REQUIRED_KEYS
 use ./common.nu [get_yazelix_runtime_dir]
 use ./config_surfaces.nu [load_active_config_surface get_main_user_config_path]
+use ./launch_state.nu [has_matching_launch_state]
 
 # Extract a nested key from a record using dot notation (e.g., "core.recommended_deps")
 def get_nested_key [record: record, key: string] {
@@ -164,24 +165,28 @@ export def compute_config_state [] {
         false
     }
 
-    let needs_refresh = if $has_structured_cache {
+    let inputs_require_refresh = if $has_structured_cache {
         $config_changed or $inputs_changed
     } else if ($cached_hash | is-not-empty) {
         $combined_hash != $cached_hash
     } else {
         true
     }
+    let has_verified_launch_profile = (has_matching_launch_state {combined_hash: $combined_hash} --allow-stale=false)
+    let needs_refresh = $inputs_require_refresh or (not $has_verified_launch_profile)
 
     let refresh_reason = if not $needs_refresh {
         ""
-    } else if not $has_structured_cache {
+    } else if $inputs_require_refresh and (not $has_structured_cache) {
         "config or devenv inputs changed since last launch"
-    } else if $config_changed and $inputs_changed {
+    } else if $inputs_require_refresh and $config_changed and $inputs_changed {
         "config and devenv inputs changed since last launch"
-    } else if $config_changed {
+    } else if $inputs_require_refresh and $config_changed {
         "config changed since last launch"
-    } else if $inputs_changed {
+    } else if $inputs_require_refresh and $inputs_changed {
         "devenv inputs changed since last launch"
+    } else if not $has_verified_launch_profile {
+        "verified launch profile missing for current config"
     } else {
         "config or devenv inputs changed since last launch"
     }
