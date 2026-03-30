@@ -11,6 +11,7 @@ Upgrade impact: no user action required
 Highlights:
 - Added `[yazi].command` and `[yazi].ya_command` so managed Yazi launches and sidebar/reveal actions can use explicit binaries instead of only relying on `PATH`.
 - Clarified that custom Yazi plugin initialization lives in `user_configs/yazi/init.lua`, and updated user-facing docs to the current nested config shape and `user_configs/` paths.
+- Refreshed maintainer input pins and updated the tracked preferred `devenv` CLI version to `2.0.7`.
 
 ## v13.10 - 2026-03-30
 
