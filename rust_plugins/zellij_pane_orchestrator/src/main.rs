@@ -5,10 +5,9 @@ mod workspace;
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::env;
 
 use panes::{FocusContext, ManagedTabPanes};
-use workspace::WorkspaceState;
+use workspace::{bootstrap_workspace_root, WorkspaceState};
 use yazelix_pane_orchestrator::horizontal_focus_contract::HorizontalDirection;
 use zellij_tile::prelude::*;
 
@@ -46,10 +45,7 @@ impl ZellijPlugin for State {
     fn load(&mut self, configuration: BTreeMap<String, String>) {
         set_selectable(false);
         let plugin_ids = get_plugin_ids();
-        let bootstrap_root = env::var("HOME")
-            .ok()
-            .filter(|home| !home.trim().is_empty())
-            .unwrap_or_else(|| plugin_ids.initial_cwd.display().to_string());
+        let bootstrap_root = bootstrap_workspace_root(&plugin_ids.initial_cwd);
         self.initial_workspace_state = Some(WorkspaceState::from_bootstrap_root(bootstrap_root));
         self.override_layout_config = layout::OverrideLayoutConfig {
             zjstatus_segments: layout::ZjstatusSegments {

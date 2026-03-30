@@ -14,6 +14,10 @@ pub(crate) struct WorkspaceState {
     pub(crate) source: WorkspaceStateSource,
 }
 
+pub(crate) fn bootstrap_workspace_root(initial_cwd: &Path) -> String {
+    initial_cwd.display().to_string()
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum WorkspaceStateSource {
     Bootstrap,
@@ -222,4 +226,19 @@ fn escape_double_quoted_path(path: &str) -> String {
         .replace('"', "\\\"")
         .replace('$', "\\$")
         .replace('`', "\\`")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bootstrap_workspace_root;
+    use std::path::PathBuf;
+
+    #[test]
+    fn bootstrap_workspace_root_uses_initial_cwd() {
+        let initial_cwd = PathBuf::from("/tmp/restarted-project");
+
+        let result = bootstrap_workspace_root(&initial_cwd);
+
+        assert_eq!(result, "/tmp/restarted-project");
+    }
 }
