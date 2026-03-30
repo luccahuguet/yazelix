@@ -27,9 +27,6 @@ const ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_TEMPLATE
 const KEYBINDS_COMMON_PLACEHOLDER: &str = "__YAZELIX_KEYBINDS_COMMON__";
 const SWAP_SIDEBAR_OPEN_PLACEHOLDER: &str = "__YAZELIX_SWAP_SIDEBAR_OPEN__";
 const SWAP_SIDEBAR_CLOSED_PLACEHOLDER: &str = "__YAZELIX_SWAP_SIDEBAR_CLOSED__";
-const DEFAULT_WIDGET_TRAY: &str =
-    "{swap_layout} #[fg=#00ff88,bold][editor: {command_editor}] #[fg=#00ff88,bold][shell: {command_shell}] #[fg=#00ff88,bold][term: {command_term}] {command_cpu} {command_ram}";
-const DEFAULT_CUSTOM_TEXT_SEGMENT: &str = "";
 const SIDE_LAYOUT_TEMPLATE: &str = include_str!("../../../configs/zellij/layouts/yzx_side.kdl");
 const SIDE_SWAP_LAYOUT_TEMPLATE: &str =
     include_str!("../../../configs/zellij/layouts/yzx_side.swap.kdl");
@@ -277,7 +274,12 @@ impl State {
         active_tab_position: usize,
     ) -> Option<()> {
         let terminal_panes = self.terminal_panes_by_tab.get(&active_tab_position)?;
-        let layout_kdl = build_override_layout_kdl(layout_variant, terminal_panes.len())?;
+        let layout_kdl = build_override_layout_kdl(
+            layout_variant,
+            terminal_panes.len(),
+            &self.widget_tray_segment,
+            &self.custom_text_segment,
+        )?;
         let layout_info = LayoutInfo::Stringified(layout_kdl);
         override_layout(layout_info, false, false, true, BTreeMap::new());
         self.last_known_layout_variant_by_tab
@@ -399,6 +401,8 @@ fn infer_layout_variant_from_terminal_panes(
 fn build_override_layout_kdl(
     layout_variant: LayoutVariant,
     total_terminal_panes: usize,
+    widget_tray_segment: &str,
+    custom_text_segment: &str,
 ) -> Option<String> {
     if total_terminal_panes < 2 {
         return None;
@@ -406,8 +410,16 @@ fn build_override_layout_kdl(
 
     let resolved_runtime_dir = runtime_dir();
     let sidebar_launcher = runtime_script_path("launch_sidebar_yazi.nu", &resolved_runtime_dir);
-    let runtime_layout = render_embedded_side_layout(&resolved_runtime_dir);
-    let swap_layouts = render_embedded_swap_layouts(&resolved_runtime_dir);
+    let runtime_layout = render_embedded_side_layout(
+        &resolved_runtime_dir,
+        widget_tray_segment,
+        custom_text_segment,
+    );
+    let swap_layouts = render_embedded_swap_layouts(
+        &resolved_runtime_dir,
+        widget_tray_segment,
+        custom_text_segment,
+    );
     let ui_tab_template = extract_ui_tab_template(&runtime_layout)?;
     let content_layout = build_content_layout_kdl(
         layout_variant,
@@ -483,10 +495,16 @@ fn build_generic_terminal_panes(count: usize, indent_level: usize) -> String {
         .join("\n")
 }
 
-fn render_embedded_side_layout(runtime_dir: &str) -> String {
+fn render_embedded_side_layout(
+    runtime_dir: &str,
+    widget_tray_segment: &str,
+    custom_text_segment: &str,
+) -> String {
     render_embedded_layout(
         SIDE_LAYOUT_TEMPLATE,
         runtime_dir,
+        widget_tray_segment,
+        custom_text_segment,
         &[
             (ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER, ZJSTATUS_TAB_TEMPLATE),
             (KEYBINDS_COMMON_PLACEHOLDER, KEYBINDS_COMMON_TEMPLATE),
@@ -494,10 +512,16 @@ fn render_embedded_side_layout(runtime_dir: &str) -> String {
     )
 }
 
-fn render_embedded_swap_layouts(runtime_dir: &str) -> String {
+fn render_embedded_swap_layouts(
+    runtime_dir: &str,
+    widget_tray_segment: &str,
+    custom_text_segment: &str,
+) -> String {
     render_embedded_layout(
         SIDE_SWAP_LAYOUT_TEMPLATE,
         runtime_dir,
+        widget_tray_segment,
+        custom_text_segment,
         &[
             (SWAP_SIDEBAR_OPEN_PLACEHOLDER, SWAP_SIDEBAR_OPEN_TEMPLATE),
             (
@@ -511,6 +535,8 @@ fn render_embedded_swap_layouts(runtime_dir: &str) -> String {
 fn render_embedded_layout(
     template: &str,
     runtime_dir: &str,
+    widget_tray_segment: &str,
+    custom_text_segment: &str,
     static_fragments: &[(&str, &str)],
 ) -> String {
     let with_fragments = static_fragments
@@ -518,7 +544,12 @@ fn render_embedded_layout(
         .fold(template.to_string(), |content, (placeholder, fragment)| {
             apply_static_fragment(content, placeholder, fragment)
         });
-    replace_layout_placeholders(with_fragments, runtime_dir)
+    replace_layout_placeholders(
+        with_fragments,
+        runtime_dir,
+        widget_tray_segment,
+        custom_text_segment,
+    )
 }
 
 fn apply_static_fragment(content: String, placeholder: &str, fragment: &str) -> String {
@@ -548,19 +579,29 @@ fn apply_static_fragment(content: String, placeholder: &str, fragment: &str) -> 
         .join("\n")
 }
 
-fn replace_layout_placeholders(content: String, runtime_dir: &str) -> String {
+fn replace_layout_placeholders(
+    content: String,
+    runtime_dir: &str,
+    widget_tray_segment: &str,
+    custom_text_segment: &str,
+) -> String {
     content
         .replace(HOME_DIR_PLACEHOLDER, &home_dir())
         .replace(RUNTIME_DIR_PLACEHOLDER, runtime_dir)
-        .replace(WIDGET_TRAY_PLACEHOLDER, DEFAULT_WIDGET_TRAY)
-        .replace(CUSTOM_TEXT_SEGMENT_PLACEHOLDER, DEFAULT_CUSTOM_TEXT_SEGMENT)
+        .replace(WIDGET_TRAY_PLACEHOLDER, widget_tray_segment)
+        .replace(CUSTOM_TEXT_SEGMENT_PLACEHOLDER, custom_text_segment)
 }
 
 fn runtime_dir() -> String {
     env::var("YAZELIX_RUNTIME_DIR")
         .ok()
         .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| format!("{}/.config/yazelix", home_dir()))
+        .or_else(|| {
+            env::var("YAZELIX_DIR")
+                .ok()
+                .filter(|value| !value.trim().is_empty())
+        })
+        .unwrap_or_else(|| String::from("/"))
 }
 
 fn runtime_script_path(file_name: &str, runtime_dir: &str) -> String {
@@ -742,7 +783,7 @@ mod tests {
     }
 
     #[test]
-    fn builds_override_layout_from_embedded_templates_without_runtime_file_reads() {
+    fn builds_override_layout_from_embedded_templates_with_configured_segments() {
         unsafe {
             std::env::set_var("YAZELIX_RUNTIME_DIR", "/tmp/yazelix-runtime");
         }
@@ -753,6 +794,8 @@ mod tests {
                 sidebar_state: SidebarState::Open,
             },
             3,
+            "#[fg=#00ff88,bold][editor: {command_editor}] {command_cpu}",
+            "#[fg=#ffff00,bold][TEST] ",
         )
         .unwrap();
 
@@ -761,8 +804,10 @@ mod tests {
         assert!(
             layout_kdl.contains("file:/tmp/yazelix-runtime/configs/zellij/plugins/zjstatus.wasm")
         );
-        assert!(layout_kdl
-            .contains("/tmp/yazelix-runtime/configs/zellij/scripts/launch_sidebar_yazi.nu"));
+        assert!(layout_kdl.contains("#[fg=#00ff88,bold][editor: {command_editor}] {command_cpu}"));
+        assert!(layout_kdl.contains("#[fg=#ffff00,bold][TEST]"));
+        assert!(!layout_kdl.contains("{swap_layout}"));
+        assert!(layout_kdl.contains("/tmp/yazelix-runtime/configs/zellij/scripts/launch_sidebar_yazi.nu"));
 
         unsafe {
             std::env::remove_var("YAZELIX_RUNTIME_DIR");

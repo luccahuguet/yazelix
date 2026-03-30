@@ -2,7 +2,7 @@
 # Zellij integration utilities for Yazelix
 
 use ../utils/logging.nu *
-use ../setup/zellij_plugin_paths.nu get_pane_orchestrator_wasm_path
+use ../setup/zellij_plugin_paths.nu [PANE_ORCHESTRATOR_PLUGIN_ALIAS get_pane_orchestrator_wasm_path]
 use ../utils/common.nu [get_yazelix_runtime_dir]
 
 def get_pane_orchestrator_plugin_url [] {
@@ -11,7 +11,7 @@ def get_pane_orchestrator_plugin_url [] {
         error make {msg: $"Yazelix pane orchestrator plugin not found at: ($wasm_path)"}
     }
 
-    $"file:($wasm_path)"
+    $PANE_ORCHESTRATOR_PLUGIN_ALIAS
 }
 
 def run_pane_orchestrator_command [command_name: string, log_file: string, payload: string = ""] {

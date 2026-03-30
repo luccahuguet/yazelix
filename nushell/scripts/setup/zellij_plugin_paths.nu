@@ -6,6 +6,8 @@ const pane_orchestrator_plugin_prefix = "yazelix_pane_orchestrator"
 const pane_orchestrator_wasm_name = "yazelix_pane_orchestrator.wasm"
 const popup_runner_plugin_prefix = "yazelix_popup_runner"
 const popup_runner_wasm_name = "yazelix_popup_runner.wasm"
+export const PANE_ORCHESTRATOR_PLUGIN_ALIAS = "yazelix_pane_orchestrator"
+export const POPUP_RUNNER_PLUGIN_ALIAS = "yazelix_popup_runner"
 const pane_orchestrator_required_permissions = [
     "ReadApplicationState"
     "OpenTerminalsOrPlugins"

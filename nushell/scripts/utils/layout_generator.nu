@@ -13,7 +13,7 @@ const static_fragment_specs = [
     {placeholder: "__YAZELIX_SWAP_SIDEBAR_CLOSED__", file: "fragments/swap_sidebar_closed.kdl"}
 ]
 
-def build_widget_tray [widget_tray: list<string>]: nothing -> string {
+export def render_widget_tray_segment [widget_tray: list<string>]: nothing -> string {
     let allowed = ["editor", "shell", "term", "cpu", "ram"]
     mut parts = []
     for widget in $widget_tray {
@@ -35,7 +35,7 @@ def build_widget_tray [widget_tray: list<string>]: nothing -> string {
     $parts | str join " "
 }
 
-def build_custom_text_segment [custom_text: string]: nothing -> string {
+export def render_custom_text_segment [custom_text: string]: nothing -> string {
     let trimmed = ($custom_text | str trim)
     if ($trimmed | is-empty) {
         ""
@@ -111,12 +111,12 @@ export def generate_layout [
     )
 
     if ($updated | str contains $widget_tray_placeholder) {
-        let tray = build_widget_tray $widget_tray
+        let tray = render_widget_tray_segment $widget_tray
         $updated = ($updated | str replace -a $widget_tray_placeholder $tray)
     }
 
     if ($updated | str contains $custom_text_placeholder) {
-        let segment = build_custom_text_segment $custom_text
+        let segment = render_custom_text_segment $custom_text
         $updated = ($updated | str replace -a $custom_text_placeholder $segment)
     }
 

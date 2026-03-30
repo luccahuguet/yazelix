@@ -5,7 +5,8 @@
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [get_yazelix_user_config_dir]
-use ./zellij_plugin_paths.nu [get_pane_orchestrator_wasm_path get_popup_runner_wasm_path]
+use ../utils/layout_generator.nu [render_custom_text_segment render_widget_tray_segment]
+use ./zellij_plugin_paths.nu [PANE_ORCHESTRATOR_PLUGIN_ALIAS POPUP_RUNNER_PLUGIN_ALIAS get_pane_orchestrator_wasm_path get_popup_runner_wasm_path]
 
 # Fetch Zellij default configuration
 def get_zellij_defaults [] {
@@ -205,18 +206,18 @@ def split_plugins_block [config_content: string] {
 
 def build_yazelix_load_plugins_block [
     existing_load_plugin_lines: list<string>
-    pane_orchestrator_wasm_path: string
-    popup_runner_wasm_path: string
+    pane_orchestrator_alias: string
+    popup_runner_alias: string
 ] {
     mut merged_plugin_lines = $existing_load_plugin_lines
-    let pane_orchestrator_entry = $"  \"file:($pane_orchestrator_wasm_path)\""
-    let pane_orchestrator_present = ($merged_plugin_lines | any {|line| $line | str contains $pane_orchestrator_wasm_path })
+    let pane_orchestrator_entry = $"  ($pane_orchestrator_alias)"
+    let pane_orchestrator_present = ($merged_plugin_lines | any {|line| ($line | str trim) == $pane_orchestrator_alias })
     if not $pane_orchestrator_present {
         $merged_plugin_lines = ($merged_plugin_lines | append $pane_orchestrator_entry)
     }
 
-    let popup_runner_entry = $"  \"file:($popup_runner_wasm_path)\""
-    let popup_runner_present = ($merged_plugin_lines | any {|line| $line | str contains $popup_runner_wasm_path })
+    let popup_runner_entry = $"  ($popup_runner_alias)"
+    let popup_runner_present = ($merged_plugin_lines | any {|line| ($line | str trim) == $popup_runner_alias })
     if not $popup_runner_present {
         $merged_plugin_lines = ($merged_plugin_lines | append $popup_runner_entry)
     }
@@ -229,6 +230,50 @@ def build_yazelix_load_plugins_block [
         ]
         | str join "\n"
     )
+}
+
+def build_yazelix_plugins_block [
+    existing_plugin_lines: list<string>
+    pane_orchestrator_alias: string
+    pane_orchestrator_wasm_path: string
+    popup_runner_alias: string
+    popup_runner_wasm_path: string
+    widget_tray_segment: string
+    custom_text_segment: string
+] {
+    let escaped_widget_tray = ($widget_tray_segment | to json -r)
+    let escaped_custom_text = ($custom_text_segment | to json -r)
+    let pane_alias_present = ($existing_plugin_lines | any {|line| $line | str contains $"($pane_orchestrator_alias) location=" })
+    let popup_alias_present = ($existing_plugin_lines | any {|line| $line | str contains $"($popup_runner_alias) location=" })
+    mut merged_plugin_lines = $existing_plugin_lines
+
+    if not $pane_alias_present {
+        $merged_plugin_lines = ($merged_plugin_lines | append [
+            $"    ($pane_orchestrator_alias) location=\"file:($pane_orchestrator_wasm_path)\" {"
+            $"        widget_tray_segment ($escaped_widget_tray)"
+            $"        custom_text_segment ($escaped_custom_text)"
+            "    }"
+        ])
+    }
+
+    if not $popup_alias_present {
+        $merged_plugin_lines = ($merged_plugin_lines | append [
+            $"    ($popup_runner_alias) location=\"file:($popup_runner_wasm_path)\""
+        ])
+    }
+
+    if ($merged_plugin_lines | is-empty) {
+        ""
+    } else {
+        (
+            [
+                "plugins {"
+                ...($merged_plugin_lines | flatten)
+                "}"
+            ]
+            | str join "\n"
+        )
+    }
 }
 
 def build_merged_keybinds_block [
@@ -296,9 +341,11 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     ensure_dir $merged_config_path
     
     let pane_orchestrator_wasm_path = (get_pane_orchestrator_wasm_path $yazelix_dir)
-    let pane_orchestrator_plugin_url = $"file:($pane_orchestrator_wasm_path)"
+    let pane_orchestrator_plugin_url = $PANE_ORCHESTRATOR_PLUGIN_ALIAS
     let popup_runner_wasm_path = (get_popup_runner_wasm_path $yazelix_dir)
     let yazelix_overrides = (read_yazelix_overrides $yazelix_dir $pane_orchestrator_plugin_url)
+    let widget_tray_segment = (render_widget_tray_segment $widget_tray)
+    let custom_text_segment = (render_custom_text_segment $custom_text)
 
     if not ($pane_orchestrator_wasm_path | path exists) {
         error make {msg: $"Pane orchestrator runtime wasm not found at: ($pane_orchestrator_wasm_path)"}
@@ -358,6 +405,16 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         "",
         $merged_keybinds_block,
         "",
+        (build_yazelix_plugins_block
+            $extracted_plugins.plugin_lines
+            $PANE_ORCHESTRATOR_PLUGIN_ALIAS
+            $pane_orchestrator_wasm_path
+            $POPUP_RUNNER_PLUGIN_ALIAS
+            $popup_runner_wasm_path
+            $widget_tray_segment
+            $custom_text_segment
+        ),
+        "",
         (get_dynamic_overrides),
         "",
         "// === YAZELIX ENFORCED SETTINGS ===",
@@ -369,7 +426,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         $"layout_dir \"($yazelix_layout_dir)\"",
         "",
         "// === YAZELIX BACKGROUND PLUGINS ===",
-        (build_yazelix_load_plugins_block $extracted_load_plugins.load_plugin_lines $pane_orchestrator_wasm_path $popup_runner_wasm_path)
+        (build_yazelix_load_plugins_block $extracted_load_plugins.load_plugin_lines $PANE_ORCHESTRATOR_PLUGIN_ALIAS $POPUP_RUNNER_PLUGIN_ALIAS)
     ] | str join "\n"
     
     # Write atomically (write to temp file, then move)
