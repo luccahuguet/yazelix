@@ -3,6 +3,7 @@
 # Used by both start_yazelix.nu and yzx env to avoid duplication
 
 use config_parser.nu parse_yazelix_config
+use devenv_cli.nu [is_preferred_devenv_available resolve_preferred_devenv_path]
 use nix_detector.nu ensure_nix_available
 use nix_env_helper.nu ensure_nix_in_environment
 use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config get_yazelix_dir require_yazelix_dir]
@@ -110,6 +111,7 @@ export def get_devenv_base_command [
     --refresh-eval-cache  # Include --refresh-eval-cache in devenv arguments
 ] {
     let yazelix_dir = resolve_yazelix_dir
+    let devenv_path = (resolve_preferred_devenv_path)
     let nix_config = get_yazelix_nix_config
     let resolved_max_jobs = if ($max_jobs | is-not-empty) {
         get_max_jobs $max_jobs
@@ -127,7 +129,7 @@ export def get_devenv_base_command [
         "-C"
         $yazelix_dir
         $"NIX_CONFIG=($nix_config)"
-        "devenv"
+        $devenv_path
         "--max-jobs"
         ($resolved_max_jobs | into string)
         "--cores"
@@ -264,7 +266,7 @@ export def run_in_devenv_shell [
         ^sh -c $command
     } else {
         # Not in managed shell, enter devenv first
-        if (which devenv | is-empty) {
+        if not (is_preferred_devenv_available) {
             print ""
             print "❌ devenv command not found."
             print "   Yazelix v11+ moved from flake-based `nix develop` shells to devenv."
@@ -357,7 +359,7 @@ export def run_in_devenv_shell_command [
         return
     }
 
-    if (which devenv | is-empty) {
+    if not (is_preferred_devenv_available) {
         print ""
         print "❌ devenv command not found."
         print "   Yazelix v11+ moved from flake-based `nix develop` shells to devenv."

@@ -1,6 +1,8 @@
 #!/usr/bin/env nu
 # Nix installation detector and graceful failure handler
 
+use devenv_cli.nu is_preferred_devenv_available
+
 # Check if Nix is installed and properly configured
 export def check_nix_installation [
     --skip-devenv  # Skip devenv CLI check (for installing/updating devenv itself)
@@ -57,12 +59,7 @@ export def check_nix_installation [
 
     if not $skip_devenv {
         # Ensure devenv command is available
-        let devenv_available = try {
-            let result = (^devenv --help | complete)
-            $result.exit_code == 0
-        } catch {
-            false
-        }
+        let devenv_available = (is_preferred_devenv_available)
 
         if not $devenv_available {
             return {

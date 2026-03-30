@@ -7,6 +7,7 @@ use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir]
 use config_surfaces.nu [get_main_user_config_path reconcile_primary_config_surfaces]
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
+use devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available]
 use ../integrations/zellij.nu debug_editor_state
 
 def extract_first_semver [text: string] {
@@ -27,8 +28,8 @@ def get_runtime_tool_version [tool: string] {
             }
         }
         "devenv" => {
-            if (which devenv | is-empty) { "not installed" } else {
-                try { extract_first_semver (devenv --version | lines | first) } catch { "error" }
+            if not (is_preferred_devenv_available) { "not installed" } else {
+                try { extract_first_semver (get_preferred_devenv_version_line) } catch { "error" }
             }
         }
         _ => "unknown"
@@ -460,13 +461,13 @@ export def check_log_files [] {
 }
 
 def is_devenv_installed [] {
-    (which devenv | is-not-empty)
+    is_preferred_devenv_available
 }
 
 # Check devenv installation for performance boost
 export def check_devenv_installation [] {
     if (is_devenv_installed) {
-        let version = try { (devenv version | str trim) } catch { "unknown" }
+        let version = try { (get_preferred_devenv_version_line | str trim) } catch { "unknown" }
         {
             status: "ok"
             message: $"devenv installed: ($version)"

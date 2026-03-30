@@ -93,7 +93,7 @@ def test_issue_bead_comment_plan [] {
 }
 
 def test_runtime_pin_versions_use_repo_shell [] {
-    print "🧪 Testing runtime pin versions come from the repo shell..."
+    print "🧪 Testing runtime pin versions use repo-shell nix and preferred devenv CLI..."
 
     if (which nix | is-empty) {
         print "  ❌ nix is required for maintainer tests"
@@ -131,6 +131,76 @@ def test_runtime_pin_versions_use_repo_shell [] {
     }
 }
 
+def test_preferred_devenv_resolution_uses_profile_entry [] {
+    print "🧪 Testing preferred devenv resolution uses the active Nix profile entry when available..."
+
+    if (which nix | is-empty) {
+        print "  ❌ nix is required for maintainer tests"
+        return false
+    }
+
+    try {
+        let command = '
+            source nushell/scripts/utils/devenv_cli.nu
+            let profile = (try { ^nix profile list --json | from json } catch { null })
+            let profile_store = if $profile == null {
+                ""
+            } else {
+                $profile | get -o elements.devenv.storePaths.0 | default ""
+            }
+            let expected = if ($profile_store | is-not-empty) {
+                $profile_store | path join "bin" "devenv"
+            } else {
+                which devenv | where type == "external" | get path | first
+            }
+            {
+                resolved: (resolve_preferred_devenv_path)
+                expected: $expected
+            } | to json -r
+        '
+        let output = (^nu -c $command | complete)
+        let stdout = ($output.stdout | str trim)
+        let resolved = ($stdout | lines | last | from json)
+
+        if ($output.exit_code == 0) and ($resolved.resolved == $resolved.expected) {
+            print "  ✅ Preferred devenv resolution matches the intended source of truth"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) resolved=($stdout)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_nushell_initializer_restores_current_path_first [] {
+    print "🧪 Testing the generated Nushell initializer preserves current PATH precedence..."
+
+    try {
+        let temp_home = (^mktemp -d | str trim)
+        let yazelix_dir = $env.PWD
+        let output = (with-env { HOME: $temp_home YAZELIX_QUIET_MODE: "true" } {
+            ^nu nushell/scripts/setup/initializers.nu $yazelix_dir "nu" | complete
+        })
+        let aggregate = ($temp_home | path join ".local" "share" "yazelix" "initializers" "nushell" "yazelix_init.nu")
+        let content = if ($aggregate | path exists) { open --raw $aggregate } else { "" }
+        rm -rf $temp_home
+
+        if ($output.exit_code == 0) and ($content | str contains '$env.PATH = ($env.PATH | append $initial_path | uniq)') {
+            print "  ✅ Generated initializer keeps current PATH entries ahead of the saved PATH"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) aggregate=($aggregate)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def main [] {
     print "=== Testing yzx Maintainer Commands ==="
     print ""
@@ -139,6 +209,8 @@ def main [] {
         (test_issue_bead_reconciliation_plan)
         (test_issue_bead_comment_plan)
         (test_runtime_pin_versions_use_repo_shell)
+        (test_preferred_devenv_resolution_uses_profile_entry)
+        (test_nushell_initializer_restores_current_path_first)
     ]
 
     let passed = ($results | where $it == true | length)

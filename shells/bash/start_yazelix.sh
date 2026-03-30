@@ -8,6 +8,16 @@ if [ -z "$HOME" ] || [ ! -d "$HOME" ]; then
   exit 1
 fi
 
+PATH="$HOME/.local/state/nix/profile/bin:$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
+
+# Load Nix profile if available (mirrors login shell behavior)
+for nix_profile in "$HOME/.nix-profile/etc/profile.d/nix.sh" "/nix/var/nix/profiles/default/etc/profile.d/nix.sh"; do
+  if [ -f "$nix_profile" ]; then
+    . "$nix_profile"
+    break
+  fi
+done
+
 echo "Resolved HOME=$HOME"
 
 # Resolve Yazelix runtime root from this script location
@@ -18,7 +28,7 @@ YAZELIX_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$YAZELIX_DIR" || { echo "Error: Cannot cd to $YAZELIX_DIR"; exit 1; }
 
 # Ensure devenv is available
-if ! command -v devenv >/dev/null 2>&1; then
+if ! DEVENV_BIN="$(command -v devenv)"; then
   echo ""
   echo "❌ 'devenv' command not found."
   echo "   Yazelix v11+ moved from flake-based 'nix develop' shells to devenv."
@@ -47,7 +57,7 @@ if command -v nproc >/dev/null 2>&1; then
 else
   MAX_CORES=$(sysctl -n hw.ncpu)  # macOS
 fi
-HOME="$HOME" devenv --cores "$MAX_CORES" shell -- \
+HOME="$HOME" "$DEVENV_BIN" --cores "$MAX_CORES" shell -- \
   nu "$YAZELIX_DIR/nushell/scripts/core/start_yazelix_inner.nu"
 
 # Hash is now saved during enterShell hook in devenv.nix

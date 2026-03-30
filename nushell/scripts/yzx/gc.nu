@@ -1,6 +1,8 @@
 #!/usr/bin/env nu
 # yzx gc - Garbage collection for Nix store
 
+use ../utils/devenv_cli.nu resolve_preferred_devenv_path
+
 # Format bytes to human readable
 def format_size [bytes: int] {
     if $bytes < 1024 {
@@ -56,7 +58,8 @@ def filter_gc_lines [stdout: string, stderr: string, ignored_prefixes: list<stri
 # Run devenv gc with quiet mode, filtering remaining noise
 def run_devenv_gc [] {
     let start = (date now)
-    let result = (do { ^devenv gc --quiet } | complete)
+    let devenv_path = (resolve_preferred_devenv_path)
+    let result = (do { ^$devenv_path gc --quiet } | complete)
 
     {
         exit_code: $result.exit_code

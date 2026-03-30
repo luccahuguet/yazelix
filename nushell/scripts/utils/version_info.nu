@@ -1,6 +1,8 @@
 #!/usr/bin/env nu
 # Simple version information for Yazelix tools
 
+use devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available]
+
 def extract_first_semver [] {
     let matches = ($in | parse --regex '(\d+\.\d+\.\d+)' | get -o capture0)
     if ($matches | is-empty) {
@@ -126,8 +128,8 @@ def get_version [tool: string] {
                 try { (nix --version | lines | first | extract_last_semver) } catch { "error" }
             }
             "devenv" => {
-                if (which devenv | is-empty) { return "not installed" }
-                try { (devenv --version | lines | first | extract_first_semver) } catch { "error" }
+                if not (is_preferred_devenv_available) { return "not installed" }
+                try { (get_preferred_devenv_version_line | extract_first_semver) } catch { "error" }
             }
             "kitty" => {
                 if (which kitty | is-empty) { return "not installed" }

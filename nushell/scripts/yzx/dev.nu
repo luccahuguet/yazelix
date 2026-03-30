@@ -4,6 +4,7 @@
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/common.nu [get_yazelix_dir]
 use ../utils/config_surfaces.nu [copy_default_config_surfaces load_config_surface_from_main get_main_user_config_path]
+use ../utils/devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available resolve_preferred_devenv_path]
 use ../utils/readme_release_block.nu [sync_readme_surface]
 use ../utils/issue_bead_contract.nu [
     build_imported_issue_description
@@ -32,13 +33,21 @@ def extract_version [value: string] {
 }
 
 def get_runtime_version_lines_from_repo_shell [] {
+    let devenv_path = (resolve_preferred_devenv_path)
+    let devenv_version_raw = try {
+        get_preferred_devenv_version_line
+    } catch {|err|
+        print $"❌ Failed to resolve preferred devenv CLI version: ($err.msg)"
+        exit 1
+    }
+
     let version_result = (do {
         cd (get_yazelix_dir)
         with-env {
             YAZELIX_ENV_ONLY: "true"
             YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
         } {
-            ^devenv shell --no-tui -- sh -c 'printf "__YZX_NIX__\n"; nix --version; printf "__YZX_DEVENV__\n"; devenv --version' | complete
+            ^$devenv_path shell --no-tui -- sh -c 'printf "__YZX_NIX__\n"; nix --version' | complete
         }
     })
 
@@ -59,23 +68,18 @@ def get_runtime_version_lines_from_repo_shell [] {
 
     mut current_tool = ""
     mut nix_version_raw = ""
-    mut devenv_version_raw = ""
 
     for line in $lines {
         let trimmed = ($line | str trim)
         if $trimmed == "__YZX_NIX__" {
             $current_tool = "nix"
-        } else if $trimmed == "__YZX_DEVENV__" {
-            $current_tool = "devenv"
         } else if ($current_tool == "nix") and ($nix_version_raw | is-empty) {
             $nix_version_raw = $trimmed
-        } else if ($current_tool == "devenv") and ($devenv_version_raw | is-empty) {
-            $devenv_version_raw = $trimmed
         }
     }
 
     if ($nix_version_raw | is-empty) or ($devenv_version_raw | is-empty) {
-        print "❌ Failed to capture runtime versions from the repo shell."
+        print "❌ Failed to capture runtime versions from the repo shell and preferred devenv CLI."
         exit 1
     }
 
@@ -104,12 +108,12 @@ def get_runtime_pin_versions [] {
         exit 1
     }
 
-    if (which devenv | is-empty) {
+    if not (is_preferred_devenv_available) {
         print "❌ devenv not found in PATH."
         exit 1
     }
 
-    print "   Resolving nix and devenv versions from the repo shell..."
+    print "   Resolving nix from the repo shell and devenv from the preferred CLI..."
     let runtime_versions = (get_runtime_version_lines_from_repo_shell)
     let nix_version_raw = $runtime_versions.nix_raw
     let devenv_version_raw = $runtime_versions.devenv_raw
@@ -478,10 +482,11 @@ export def "yzx dev update" [
         try {
             do {
                 cd $yazelix_dir
+                let devenv_path = (resolve_preferred_devenv_path)
                 if ($input_name | is-not-empty) {
-                    ^devenv update $input_name
+                    ^$devenv_path update $input_name
                 } else {
-                    ^devenv update
+                    ^$devenv_path update
                 }
             }
         } catch {|err|
