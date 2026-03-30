@@ -304,7 +304,7 @@ export def generate_foot_config [] {
     let config = parse_yazelix_config
     $"# Foot configuration for Yazelix
 
-[colors]
+[colors-dark]
 # Transparency \(configurable via yazelix.toml)
 (build_transparency $config.transparency "ini" "alpha")
 

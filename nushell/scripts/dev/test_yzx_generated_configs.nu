@@ -61,6 +61,8 @@ terminals = ["ghostty", "kitty", "alacritty", "wezterm", "foot"]
             and not ($alacritty_entrypoint | str contains "start_yazelix.sh")
             and not ($wezterm_config | str contains "start_yazelix.sh")
             and not ($foot_config | str contains "start_yazelix.sh")
+            and ($foot_config | str contains "[colors-dark]")
+            and not ($foot_config | str contains "[colors]\n")
         ) {
             print "  ✅ Terminal config generation keeps user terminal overrides opt-in and keeps startup out of generated terminal configs"
             true
