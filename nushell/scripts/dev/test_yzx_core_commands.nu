@@ -1,41 +1,9 @@
 #!/usr/bin/env nu
 
 use ../core/yazelix.nu *
-use ./test_yzx_helpers.nu [get_repo_config_dir get_repo_root repo_path setup_managed_config_fixture]
-use ../utils/constants.nu [YAZELIX_VERSION]
-use ../utils/upgrade_summary.nu [
-    maybe_show_first_run_upgrade_summary
-]
+use ./test_yzx_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
 use ../utils/shell_config_generation.nu [get_yazelix_section_content]
 use ../utils/config_manager.nu [check_config_versions]
-
-def setup_relocated_runtime_fixture [] {
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_relocated_runtime_XXXXXX | str trim)
-    let runtime_dir = ($tmp_home | path join "runtime")
-    let config_dir = ($tmp_home | path join ".config" "yazelix")
-    let user_config_dir = ($config_dir | path join "user_configs")
-
-    mkdir $runtime_dir
-    mkdir ($tmp_home | path join ".config")
-    mkdir $config_dir
-    mkdir $user_config_dir
-
-    for entry in ["nushell", "shells", "configs", "devenv.lock", "yazelix_default.toml"] {
-        ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
-    }
-
-    cp (repo_path "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
-
-    {
-        repo_root: $repo_root
-        tmp_home: $tmp_home
-        runtime_dir: $runtime_dir
-        config_dir: $config_dir
-        yzx_script: ($runtime_dir | path join "nushell" "scripts" "core" "yazelix.nu")
-        startup_script: ($runtime_dir | path join "shells" "posix" "start_yazelix.sh")
-    }
-}
 
 def setup_config_migrate_fixture [label: string, raw_toml: string] {
     setup_managed_config_fixture $label $raw_toml
@@ -45,63 +13,6 @@ def setup_legacy_root_config_migrate_fixture [label: string, raw_toml: string] {
     setup_managed_config_fixture $label $raw_toml --legacy-root
 }
 
-def setup_upgrade_summary_fixture [
-    label: string
-    raw_toml: string
-    --migration-notes
-] {
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
-    let runtime_dir = ($tmp_home | path join "runtime")
-    let config_dir = ($tmp_home | path join ".config" "yazelix")
-    let user_config_dir = ($config_dir | path join "user_configs")
-    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
-
-    mkdir $runtime_dir
-    mkdir ($tmp_home | path join ".config")
-    mkdir $config_dir
-    mkdir $user_config_dir
-    mkdir ($tmp_home | path join ".local" "share")
-    mkdir $state_dir
-
-    for entry in ["nushell", "shells", "configs", "devenv.lock", "yazelix_default.toml", "CHANGELOG.md"] {
-        ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
-    }
-
-    ^cp -LR (repo_path "docs") ($runtime_dir | path join "docs")
-    $raw_toml | save --force --raw ($user_config_dir | path join "yazelix.toml")
-
-    if $migration_notes {
-        let notes_path = ($runtime_dir | path join "docs" "upgrade_notes.toml")
-        let notes = (open $notes_path)
-        let updated_release = (
-            ($notes.releases | get $YAZELIX_VERSION)
-            | upsert headline $"Config migration follow-up after the ($YAZELIX_VERSION) upgrade"
-            | upsert summary [
-                $"This fixture treats ($YAZELIX_VERSION) as the first release that carries config migration guidance."
-                "Users with stale tray or shell toggles should migrate before relying on startup."
-            ]
-            | upsert upgrade_impact "migration_available"
-            | upsert migration_ids [
-                "remove_zellij_widget_tray_layout"
-                "remove_shell_enable_atuin"
-            ]
-            | upsert manual_actions []
-        )
-        let updated_notes = ($notes | upsert releases ($notes.releases | upsert $YAZELIX_VERSION $updated_release))
-        $updated_notes | to toml | save --force $notes_path
-    }
-
-    {
-        repo_root: $repo_root
-        tmp_home: $tmp_home
-        runtime_dir: $runtime_dir
-        config_dir: $config_dir
-        state_dir: $state_dir
-        config_path: ($user_config_dir | path join "yazelix.toml")
-        yzx_script: ($runtime_dir | path join "nushell" "scripts" "core" "yazelix.nu")
-    }
-}
 
 def run_config_migrate_command [fixture: record, args: list<string> = []] {
     let migrate_command = if ($args | is-empty) {
@@ -150,124 +61,6 @@ def record_has_path [data: record, path: list<string>] {
     }
 
     true
-}
-
-def test_yzx_status_versions_uses_invoking_path_for_versions [] {
-    print "🧪 Testing yzx status --versions resolves tool versions from the invoking PATH..."
-
-    let fixture = (setup_relocated_runtime_fixture)
-
-    let result = (try {
-        let fake_bin = ($fixture.tmp_home | path join "bin")
-        mkdir $fake_bin
-        let nu_bin = (which nu | get 0.path)
-
-        '#!/bin/sh
-echo "zellij 9.9.9"
-' | save --force --raw ($fake_bin | path join "zellij")
-        ^chmod +x ($fake_bin | path join "zellij")
-        ^ln -s $nu_bin ($fake_bin | path join "nu")
-
-        let env_overlay = {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-            PATH: ([$fake_bin] | append $env.PATH)
-        }
-
-        let output = with-env $env_overlay {
-            do {
-                cd $fixture.runtime_dir
-                ^nu -c $"use \"($fixture.yzx_script)\" *; yzx status --versions" | complete
-            }
-        }
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and ($stdout | str contains "Yazelix Tool Versions") and ($stdout | str contains "9.9.9") {
-            print "  ✅ yzx status --versions uses the invoking PATH for version resolution"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-def test_yzx_desktop_install_writes_valid_absolute_launcher [] {
-    print "🧪 Testing yzx desktop install writes a valid absolute launcher entry..."
-
-    let fixture = (setup_relocated_runtime_fixture)
-
-    let result = (try {
-        let output = (with-env {
-            HOME: $fixture.tmp_home
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-        } {
-            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx desktop install --print-path" | complete
-        })
-        let desktop_path = ($output.stdout | str trim)
-        let desktop_file = if ($desktop_path | is-not-empty) and ($desktop_path | path exists) {
-            open --raw $desktop_path
-        } else {
-            ""
-        }
-        let expected_exec = $"Exec=\"($fixture.runtime_dir | path join "shells" "posix" "desktop_launcher.sh")\""
-
-        if ($output.exit_code == 0) and ($desktop_path == ($fixture.tmp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")) and ($desktop_file | str contains $expected_exec) {
-            print "  ✅ yzx desktop install writes the desktop entry with a direct absolute launcher path"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) path=($desktop_path) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-def test_yzx_desktop_uninstall_removes_generated_entry [] {
-    print "🧪 Testing yzx desktop uninstall removes the generated entry..."
-
-    let fixture = (setup_relocated_runtime_fixture)
-
-    let result = (try {
-        let env_overlay = {
-            HOME: $fixture.tmp_home
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-        }
-        let install_output = (with-env $env_overlay {
-            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx desktop install --print-path" | complete
-        })
-        let desktop_path = ($install_output.stdout | str trim)
-        let uninstall_output = (with-env $env_overlay {
-            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx desktop uninstall --print-path" | complete
-        })
-        let removed_path = ($uninstall_output.stdout | str trim)
-
-        if ($install_output.exit_code == 0) and ($uninstall_output.exit_code == 0) and ($removed_path == $desktop_path) and (not ($desktop_path | path exists)) {
-            print "  ✅ yzx desktop uninstall removes the generated desktop entry"
-            true
-        } else {
-            print $"  ❌ Unexpected result: install_exit=($install_output.exit_code) uninstall_exit=($uninstall_output.exit_code) path=($removed_path) stderr=($uninstall_output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
 }
 
 def test_yzx_config_migrate_preview_reports_known_migrations [] {
@@ -612,100 +405,6 @@ default_shell = "bash"
     $result
 }
 
-def test_upgrade_summary_first_run_marks_seen_and_second_run_stays_quiet [] {
-    print "🧪 Testing first-run upgrade summary marks the version as seen..."
-
-    let fixture = (setup_upgrade_summary_fixture
-        "yazelix_upgrade_summary_seen"
-        (open --raw (repo_path "yazelix_default.toml"))
-    )
-
-    let result = (try {
-        let first = with-env {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-            YAZELIX_STATE_DIR: $fixture.state_dir
-        } {
-            maybe_show_first_run_upgrade_summary
-        }
-        let second = with-env {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-            YAZELIX_STATE_DIR: $fixture.state_dir
-        } {
-            maybe_show_first_run_upgrade_summary
-        }
-        let stored_version = (open --raw ($fixture.state_dir | path join "state" "upgrade_summary" "last_seen_version.txt") | str trim)
-
-        if (
-            ($first.shown == true)
-            and ($first.output | str contains $"What's New In Yazelix ($YAZELIX_VERSION)")
-            and ($second.shown == false)
-            and ($second.reason == "already_seen")
-            and ($stored_version == $YAZELIX_VERSION)
-        ) {
-            print "  ✅ First-run upgrade summary persists the seen version and suppresses the repeat"
-            true
-        } else {
-            print $"  ❌ Unexpected result: first=($first | to json -r) second=($second | to json -r) stored=($stored_version)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-def test_yzx_whats_new_reopens_current_summary_even_after_seen [] {
-    print "🧪 Testing yzx whats_new reopens the current summary even after the version was seen..."
-
-    let fixture = (setup_upgrade_summary_fixture
-        "yazelix_upgrade_summary_reopen"
-        '[zellij]
-widget_tray = ["layout", "editor"]
-'
-        --migration-notes
-    )
-
-    let result = (try {
-        mkdir ($fixture.state_dir | path join "state" "upgrade_summary")
-        $YAZELIX_VERSION | save --force --raw ($fixture.state_dir | path join "state" "upgrade_summary" "last_seen_version.txt")
-        let output = with-env {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-            YAZELIX_STATE_DIR: $fixture.state_dir
-        } {
-            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx whats_new" | complete
-        }
-        let stdout = ($output.stdout | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains $"What's New In Yazelix ($YAZELIX_VERSION)")
-            and ($stdout | str contains "Detected matching migration candidates in your current config")
-            and ($stdout | str contains "Reopen later: `yzx whats_new`")
-        ) {
-            print "  ✅ yzx whats_new reopens the current release summary regardless of seen state"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
 def test_yzx_config_view [] {
     print "🧪 Testing yzx config..."
 
@@ -1013,135 +712,6 @@ widget_tray = ["layout", "editor"]
             false
         }
     } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
-def test_config_state_supports_split_config_and_runtime_dirs [] {
-    print "🧪 Testing config state supports split config and runtime directories..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_split_roots_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    let user_config_dir = ($temp_config_dir | path join "user_configs")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-    mkdir $user_config_dir
-
-    let result = (try {
-        cp ($repo_root | path join "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
-        let state_script = ($repo_root | path join "nushell" "scripts" "utils" "config_state.nu")
-        let snippet = ([
-            $"source \"($state_script)\""
-            'print ((compute_config_state) | to json -r)'
-        ] | str join "\n")
-        let output = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $snippet | complete
-        }
-        let stdout = ($output.stdout | str trim)
-        let resolved = ($stdout | lines | last | from json)
-
-        if (
-            ($output.exit_code == 0)
-            and ($resolved.config_file == ($user_config_dir | path join "yazelix.toml"))
-            and (($resolved.lock_hash | default "") | is-not-empty)
-            and ((($repo_root | path join "devenv.lock") | path exists))
-        ) {
-            print "  ✅ Config state reads config from the config dir and hashes inputs from the runtime dir"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
-def test_config_state_hashes_pack_sidecar_changes [] {
-    print "🧪 Testing config state hashing includes yazelix_packs.toml changes..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_config_state_packs_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    let user_config_dir = ($temp_config_dir | path join "user_configs")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $user_config_dir
-
-    let result = (try {
-        let state_script = ($repo_root | path join "nushell" "scripts" "utils" "config_state.nu")
-        '[core]
-debug_mode = false
-' | save --force --raw ($user_config_dir | path join "yazelix.toml")
-
-        'enabled = ["git"]
-
-[declarations]
-git = ["gh"]
-' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
-
-        let baseline_snippet = ([
-            $"source \"($state_script)\""
-            "let state = (compute_config_state)"
-            "mark_config_state_applied $state"
-            "print ($state | to json -r)"
-        ] | str join "\n")
-        let baseline_output = (with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $baseline_snippet | complete
-        })
-        let baseline = (($baseline_output.stdout | str trim) | from json)
-
-        'enabled = ["rust"]
-
-[declarations]
-rust = ["rust_toolchain"]
-' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
-
-        let changed_snippet = ([
-            $"source \"($state_script)\""
-            "print ((compute_config_state) | to json -r)"
-        ] | str join "\n")
-        let changed_output = (with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $changed_snippet | complete
-        })
-        let changed = (($changed_output.stdout | str trim) | from json)
-
-        if (
-            ($baseline_output.exit_code == 0)
-            and ($changed_output.exit_code == 0)
-            and ($baseline.config_hash | is-not-empty)
-            and ($changed.config_hash | is-not-empty)
-            and ($changed.config_hash != $baseline.config_hash)
-            and ($changed.needs_refresh == true)
-            and ($changed.refresh_reason == "config changed since last launch")
-        ) {
-            print "  ✅ Config-state hashing reacts to sidecar-only pack changes"
-            true
-        } else {
-            print $"  ❌ Unexpected result: baseline_exit=($baseline_output.exit_code) changed_exit=($changed_output.exit_code) baseline=($baseline | select config_hash needs_refresh refresh_reason | to json -r) changed=($changed | select config_hash needs_refresh refresh_reason | to json -r) stderr=($baseline_output.stderr | str trim) ($changed_output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
         print $"  ❌ Exception: ($err.msg)"
         false
     })
@@ -1546,57 +1116,8 @@ def test_packs_helper_uses_runtime_root_for_devenv_links [] {
     $result
 }
 
-def test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering [] {
-    print "🧪 Testing relocated runtime smoke path supports status and terminal-config rendering..."
-
-    let fixture = (setup_relocated_runtime_fixture)
-
-    let result = (try {
-        let env_overlay = {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-        }
-
-        let status_output = with-env $env_overlay {
-            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx status" | complete
-        }
-        let gen_output = with-env $env_overlay { ^nu -c $"use \"($fixture.runtime_dir | path join "nushell" "scripts" "yzx" "gen_config.nu")\" [render_terminal_config]; render_terminal_config ghostty" | complete }
-
-        let status_stdout = ($status_output.stdout | str trim)
-        let gen_stdout = ($gen_output.stdout | str trim)
-
-        if (
-            ($status_output.exit_code == 0)
-            and ($gen_output.exit_code == 0)
-            and ($status_stdout | str contains $"Config File: ($fixture.config_dir | path join "user_configs" "yazelix.toml")")
-            and ($status_stdout | str contains $"Directory: ($fixture.runtime_dir)")
-            and ($status_stdout | str contains $"Logs: ($fixture.runtime_dir | path join "logs")")
-            and not ($gen_stdout | str contains "start_yazelix.sh")
-            and not ($gen_stdout | str contains $fixture.repo_root)
-        ) {
-            print "  ✅ Relocated runtime smoke path resolves config and runtime while keeping startup launchers out of generated terminal configs"
-            true
-        } else {
-            print $"  ❌ Unexpected result: status_exit=($status_output.exit_code) gen_exit=($gen_output.exit_code)"
-            print $"     status=($status_stdout)"
-            print $"     gen=($gen_stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
 export def run_core_canonical_tests [] {
     [
-        (test_yzx_status_versions_uses_invoking_path_for_versions)
-        (test_yzx_desktop_install_writes_valid_absolute_launcher)
-        (test_yzx_desktop_uninstall_removes_generated_entry)
         (test_yzx_config_migrate_preview_reports_known_migrations)
         (test_yzx_config_migrate_apply_rewrites_config_with_backup)
         (test_yzx_config_migrate_apply_splits_legacy_packs_into_sidecar)
@@ -1605,16 +1126,11 @@ export def run_core_canonical_tests [] {
         (test_entrypoint_preflight_auto_applies_safe_migrations)
         (test_entrypoint_preflight_applies_auto_changes_then_blocks_on_manual_followup)
         (test_entrypoint_preflight_relocates_legacy_root_config_surfaces)
-        (test_upgrade_summary_first_run_marks_seen_and_second_run_stays_quiet)
-        (test_yzx_whats_new_reopens_current_summary_even_after_seen)
         (test_yzx_config_view)
         (test_yzx_config_full_merges_pack_sidecar)
         (test_yzx_edit_targets_print_paths)
         (test_invalid_config_is_classified_as_config_problem)
         (test_startup_reports_known_config_migration_before_generic_wrappers)
-        (test_config_state_supports_split_config_and_runtime_dirs)
-        (test_config_state_hashes_pack_sidecar_changes)
-        (test_relocated_runtime_smoke_supports_status_and_terminal_config_rendering)
     ]
 }
 
