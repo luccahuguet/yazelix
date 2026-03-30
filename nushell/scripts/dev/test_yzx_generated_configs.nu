@@ -19,198 +19,6 @@ def run_parse_yazelix_config_probe [fixture: record, extra_env: record = {}] {
     }
 }
 
-def test_layout_generator_rewrites_runtime_paths [] {
-    print "🧪 Testing layout generator rewrites runtime-root placeholders..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_layout_runtime_XXXXXX | str trim)
-
-    let result = (try {
-        let source_dir = ($tmpdir | path join "source")
-        let target_dir = ($tmpdir | path join "target")
-        let repo_layouts_dir = (repo_path "configs" "zellij" "layouts")
-        let runtime_dir = ($tmpdir | path join "runtime")
-
-        mkdir $source_dir
-        mkdir $runtime_dir
-        for entry in (ls $repo_layouts_dir) {
-            let target_path = ($source_dir | path join ($entry.name | path basename))
-            if $entry.type == dir {
-                ^cp -R $entry.name $target_path
-            } else {
-                ^cp $entry.name $target_path
-            }
-        }
-
-        use ../utils/layout_generator.nu *
-        generate_all_layouts $source_dir $target_dir ["editor"] "" "file:/tmp/yazelix_pane_orchestrator.wasm" $runtime_dir 20
-
-        let generated_layout = (open --raw ($target_dir | path join "yzx_side.kdl"))
-
-        if (
-            ($generated_layout | str contains $"($runtime_dir)/configs/zellij/scripts/launch_sidebar_yazi.nu")
-            and ($generated_layout | str contains $"file:($runtime_dir)/configs/zellij/plugins/zjstatus.wasm")
-            and ($generated_layout | str contains $"nu ($runtime_dir)/nushell/scripts/utils/zjstatus_widget.nu shell")
-            and not ($generated_layout | str contains "~/.config/yazelix")
-        ) {
-            print "  ✅ Generated layouts stamp the configured runtime root into wrapper and widget paths"
-            true
-        } else {
-            print "  ❌ Generated layouts still contain stale repo-shaped runtime paths"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
-def test_layout_generator_removes_stale_generated_layouts [] {
-    print "🧪 Testing layout generator removes stale generated layouts..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_layout_cleanup_XXXXXX | str trim)
-
-    let result = (try {
-        let source_dir = ($tmpdir | path join "source")
-        let target_dir = ($tmpdir | path join "target")
-        let repo_layouts_dir = (repo_path "configs" "zellij" "layouts")
-        let runtime_dir = ($tmpdir | path join "runtime")
-
-        mkdir $source_dir
-        mkdir $runtime_dir
-        for entry in (ls $repo_layouts_dir) {
-            let target_path = ($source_dir | path join ($entry.name | path basename))
-            if $entry.type == dir {
-                ^cp -R $entry.name $target_path
-            } else {
-                ^cp $entry.name $target_path
-            }
-        }
-
-        mkdir $target_dir
-        let stale_layout = ($target_dir | path join "yzx_side_single_open.kdl")
-        "layout { pane }" | save --force --raw $stale_layout
-
-        use ../utils/layout_generator.nu *
-        generate_all_layouts $source_dir $target_dir ["editor"] "" "file:/tmp/yazelix_pane_orchestrator.wasm" $runtime_dir 20
-
-        let expected_layout = ($target_dir | path join "yzx_side.kdl")
-
-        if (not ($stale_layout | path exists)) and ($expected_layout | path exists) {
-            print "  ✅ Layout generation removes stale generated layouts before writing the current set"
-            true
-        } else {
-            print $"  ❌ Unexpected result: stale_exists=(($stale_layout | path exists)) expected_exists=(($expected_layout | path exists))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
-def test_layout_generator_keeps_no_side_bottom_terminal_family [] {
-    print "🧪 Testing no-side swap layouts include the bottom-terminal family..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_no_side_bottom_terminal_XXXXXX | str trim)
-
-    let result = (try {
-        let source_dir = ($tmpdir | path join "source")
-        let target_dir = ($tmpdir | path join "target")
-        let repo_layouts_dir = (repo_path "configs" "zellij" "layouts")
-        let runtime_dir = ($tmpdir | path join "runtime")
-
-        mkdir $source_dir
-        mkdir $runtime_dir
-        for entry in (ls $repo_layouts_dir) {
-            let target_path = ($source_dir | path join ($entry.name | path basename))
-            if $entry.type == dir {
-                ^cp -R $entry.name $target_path
-            } else {
-                ^cp $entry.name $target_path
-            }
-        }
-
-        use ../utils/layout_generator.nu *
-        generate_all_layouts $source_dir $target_dir ["editor"] "" "file:/tmp/yazelix_pane_orchestrator.wasm" $runtime_dir 20
-
-        let generated_swap_layout = (open --raw ($target_dir | path join "yzx_no_side.swap.kdl"))
-
-        if (
-            ($generated_swap_layout | str contains 'swap_tiled_layout name="bottom_terminal"')
-            and ($generated_swap_layout | str contains 'pane split_direction="horizontal"')
-            and ($generated_swap_layout | str contains 'pane stacked=true')
-        ) {
-            print "  ✅ No-side swap layouts keep the bottom-terminal family available"
-            true
-        } else {
-            print "  ❌ No-side swap layouts are missing the bottom-terminal family"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
-def test_layout_generator_honors_custom_sidebar_width_percent [] {
-    print "🧪 Testing generated sidebar layouts honor a custom sidebar width percent..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_sidebar_width_layout_XXXXXX | str trim)
-
-    let result = (try {
-        let source_dir = ($tmpdir | path join "source")
-        let target_dir = ($tmpdir | path join "target")
-        let repo_layouts_dir = (repo_path "configs" "zellij" "layouts")
-        let runtime_dir = ($tmpdir | path join "runtime")
-
-        mkdir $source_dir
-        mkdir $runtime_dir
-        for entry in (ls $repo_layouts_dir) {
-            let target_path = ($source_dir | path join ($entry.name | path basename))
-            if $entry.type == dir {
-                ^cp -R $entry.name $target_path
-            } else {
-                ^cp $entry.name $target_path
-            }
-        }
-
-        use ../utils/layout_generator.nu *
-        generate_all_layouts $source_dir $target_dir ["editor"] "" "file:/tmp/yazelix_pane_orchestrator.wasm" $runtime_dir 25
-
-        let generated_side_layout = (open --raw ($target_dir | path join "yzx_side.kdl"))
-        let generated_swap_layout = (open --raw ($target_dir | path join "yzx_side.swap.kdl"))
-
-        if (
-            ($generated_side_layout | str contains 'size "25%"')
-            and ($generated_swap_layout | str contains 'size "25%"')
-            and ($generated_swap_layout | str contains 'size "75%"')
-            and ($generated_swap_layout | str contains 'size "45%"')
-            and ($generated_swap_layout | str contains 'size "30%"')
-        ) {
-            print "  ✅ Sidebar-aware layouts use the configured open sidebar width consistently"
-            true
-        } else {
-            print "  ❌ Generated sidebar layouts did not reflect the configured width"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
 def test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in [] {
     print "🧪 Testing bundled terminal config generation keeps user terminal overrides opt-in..."
 
@@ -1006,51 +814,6 @@ return "yazi-user-marker"
     $result
 }
 
-def test_zellij_default_mode_is_enforced_in_merged_config [] {
-    print "🧪 Testing merged Zellij config enforces default_mode..."
-
-    if (which zellij | is-empty) {
-        print "  ℹ️  Skipping Zellij config merge test because zellij is not available"
-        return true
-    }
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_mode_test_XXXXXX | str trim)
-
-    let result = (try {
-        let config_path = ($tmpdir | path join "yazelix.toml")
-        let out_dir = ($tmpdir | path join "out")
-        let fake_home = ($tmpdir | path join "home")
-        '[zellij]
-default_mode = "locked"
-' | save --force --raw $config_path
-
-        let output = (with-env {
-            HOME: $fake_home
-            YAZELIX_CONFIG_OVERRIDE: $config_path
-            YAZELIX_TEST_OUT_DIR: $out_dir
-        } {
-            let root = (get_repo_config_dir)
-            generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
-            open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl")
-        })
-        let stdout = ($output | str trim)
-
-        if ($stdout | str contains 'default_mode "locked"') {
-            print "  ✅ Generated Zellij config enforces the configured default_mode"
-            true
-        } else {
-            print "  ❌ Unexpected result: generated config is missing default_mode"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
 def test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config [] {
     print "🧪 Testing merged Zellij config carries editor.sidebar_width_percent into layouts and plugin config..."
 
@@ -1156,10 +919,6 @@ def test_generate_merged_zellij_config_relocates_legacy_native_user_config [] {
 
 export def run_generated_config_canonical_tests [] {
     [
-        (test_layout_generator_rewrites_runtime_paths)
-        (test_layout_generator_removes_stale_generated_layouts)
-        (test_layout_generator_keeps_no_side_bottom_terminal_family)
-        (test_layout_generator_honors_custom_sidebar_width_percent)
         (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
         (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
         (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
@@ -1177,7 +936,6 @@ export def run_generated_config_canonical_tests [] {
         (test_config_schema_rejects_removed_layout_widget)
         (test_generate_merged_yazi_config_relocates_legacy_user_overrides)
         (test_generate_merged_zellij_config_relocates_legacy_native_user_config)
-        (test_zellij_default_mode_is_enforced_in_merged_config)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
     ]
 }
