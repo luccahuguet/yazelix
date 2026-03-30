@@ -173,6 +173,10 @@ export def parse_yazelix_config [] {
 
     let editor_cmd = ($raw_config.editor?.command? | default "" | into string)
     let editor_command = if ($editor_cmd | is-empty) { null } else { $editor_cmd }
+    let yazi_cmd = ($raw_config.yazi?.command? | default "" | into string)
+    let yazi_command = if ($yazi_cmd | is-empty) { null } else { $yazi_cmd }
+    let ya_cmd = ($raw_config.yazi?.ya_command? | default "" | into string)
+    let yazi_ya_command = if ($ya_cmd | is-empty) { null } else { $ya_cmd }
 
     # Extract and return values
     {
@@ -214,6 +218,8 @@ export def parse_yazelix_config [] {
         sidebar_width_percent: (parse_sidebar_width_percent $raw_config),
         disable_zellij_tips: ($raw_config.zellij?.disable_tips? | default true | into string),
         zellij_rounded_corners: ($raw_config.zellij?.rounded_corners? | default true | into string),
+        yazi_command: $yazi_command,
+        yazi_ya_command: $yazi_ya_command,
         yazi_plugins: ($raw_config.yazi?.plugins? | default ["git"]),
         yazi_theme: ($raw_config.yazi?.theme? | default "default"),
         yazi_sort_by: ($raw_config.yazi?.sort_by? | default "alphabetical"),

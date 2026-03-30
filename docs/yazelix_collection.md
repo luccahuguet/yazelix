@@ -54,7 +54,7 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 
 ## Editor Integration
 - [Helix](https://helix-editor.com) — The default modal text editor for Yazelix, with deep integration for sidebar and buffer management. 🚀 deep-integration
-- [vim](https://www.vim.org/) / [neovim](https://neovim.io/) / [kakoune](https://kakoune.org/) / etc / **any terminal editor**: Yazelix is designed to let you set your preferred terminal editor via the `editor_command` configuration option. You can use any editor that launches from the terminal and Yazelix will integrate with your chosen editor for file opening from yazi and from the terminal.
+- [vim](https://www.vim.org/) / [neovim](https://neovim.io/) / [kakoune](https://kakoune.org/) / etc / **any terminal editor**: Yazelix is designed to let you set your preferred terminal editor via `[editor].command` in `yazelix.toml`. You can use any editor that launches from the terminal and Yazelix will integrate with your chosen editor for file opening from Yazi and from the terminal.
 
 
 ## Yazi Plugins & Extensions

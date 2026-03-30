@@ -58,7 +58,7 @@ With Neovim configured for Yazelix, you get:
 
 ## Workflow Example
 
-1. Start Yazelix with Neovim: `yzx launch` (with `editor_command = "nvim"` in `yazelix.toml`)
+1. Start Yazelix with Neovim: `yzx launch` (with `[editor].command = "nvim"` in `yazelix.toml`)
 2. Navigate files in Yazi sidebar (left pane)
 3. Press `e` on a file to edit in Neovim
 4. While editing, press your reveal binding to reveal the current file in Yazi

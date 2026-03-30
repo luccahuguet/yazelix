@@ -4,6 +4,8 @@
 # Usage: Call this from Helix with the current buffer path as argument
 # This script writes the selected file to /tmp/yazi-helix-chooser for Helix to read
 
+use ./yazi.nu get_yazi_command
+
 def main [
     current_file?: string  # Current buffer file path (optional)
 ] {
@@ -39,12 +41,14 @@ def main [
         rm $chooser_file
     }
     
+    let yazi_command = (get_yazi_command)
+
     # Launch Yazi with proper argument order
     if ($start_path | path exists) {
-        run-external "yazi" $start_path "--chooser-file" $chooser_file
+        run-external $yazi_command $start_path "--chooser-file" $chooser_file
     } else {
         # Fallback to current directory if path doesn't exist
-        run-external "yazi" "." "--chooser-file" $chooser_file
+        run-external $yazi_command "." "--chooser-file" $chooser_file
     }
     
     # Basic file picker functionality only

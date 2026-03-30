@@ -27,7 +27,7 @@ Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://gith
   - A Yazi plugin to enhance the status bar in the sidebar pane, making it uncluttered, colorful, and showing file permissions
   - A [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) showing file changes in the Yazi sidebar
   - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/luccahuguet/auto-layout.yazi), perfect for sidebar use
-  - **Modular editor support**: Helix and Neovim have full integration features, or use any other editor via the `editor_command` setting
+  - **Modular editor support**: Helix and Neovim have full integration features, or use any other editor via `[editor].command`
 - This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
 
 ## Why Yazelix
@@ -81,7 +81,7 @@ For the longer project story, see [Version History](./docs/history.md).
 ## Compatibility
 - **Platform**: Works on Linux and macOS
 - **Terminal**: Ghostty (via Homebrew on macOS), Kitty, WezTerm, Alacritty; Foot on Linux only
-- **Editor**: Any editor works. Helix and Neovim have first-class support (reveal in sidebar, open buffer in a running instance, managed editor-pane targeting). Configure via `editor_command` in `yazelix.toml`
+- **Editor**: Any editor works. Helix and Neovim have first-class support (reveal in sidebar, open buffer in a running instance, managed editor-pane targeting). Configure via `[editor].command` in `yazelix.toml`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 
 ## Installation
@@ -120,7 +120,7 @@ When opening files from Yazi, Yazelix will:
 - Ask the Yazelix pane orchestrator plugin for the managed `editor` pane in the current tab.
 - Reuse that pane directly when it exists, instead of scanning nearby panes or depending on stack position.
 - Create a new pane titled `editor` when no managed editor pane exists yet.
-- Use the same managed-pane flow for both Helix and Neovim; configure the editor via `editor_command` in `yazelix.toml`.
+- Use the same managed-pane flow for both Helix and Neovim; configure the editor via `[editor].command` in `yazelix.toml`.
 
 ## POSIX/XDG Paths
 
@@ -134,7 +134,7 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
-- **Core settings**: Edit `~/.config/yazelix/yazelix.toml` for shell, editor, terminal, and package preferences
+- **Core settings**: Edit `~/.config/yazelix/user_configs/yazelix.toml` for shell, editor, terminal, and package preferences
 - **Yazi customization**: Configure plugins, theme, and sorting in `yazelix.toml` under the `[yazi]` section (see [Yazi Configuration](./docs/yazi-configuration.md))
 - **Zellij customization**: Add personal overrides in `configs/zellij/personal/` directory
 - **Your configs persist** across Yazelix updates without git conflicts
@@ -147,10 +147,29 @@ Yazelix uses a **layered configuration system** that safely merges your personal
 📝 **[Editor Configuration Guide →](./docs/editor_configuration.md)** - Complete guide for configuring editors
 
 **Quick setup:**
-- **Default (recommended)**: `editor_command = null` - Uses yazelix's Helix, no conflicts, full integration
-- **Neovim**: `editor_command = "nvim"` - Full integration (reveal in sidebar, same-instance opening, managed editor-pane targeting)
-- **System Helix**: `editor_command = "hx"` - Requires matching `helix_runtime_path`, full integration
-- **Other editors**: `editor_command = "vim"` - Basic integration (file opening, tab naming only)
+- **Default (recommended)**:
+  ```toml
+  [editor]
+  command = ""
+  ```
+- **Neovim**:
+  ```toml
+  [editor]
+  command = "nvim"
+  ```
+- **System Helix**:
+  ```toml
+  [editor]
+  command = "hx"
+
+  [helix]
+  runtime_path = "/path/to/runtime"  # Only when your Helix runtime is outside normal discovery paths
+  ```
+- **Other editors**:
+  ```toml
+  [editor]
+  command = "vim"
+  ```
 
 ### Alternative: CLI-Only Mode
 To use Yazelix tools without starting the full interface (no sidebar, no Zellij), use:
@@ -177,7 +196,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/yazelix.toml` config file ready! You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](./yazelix_default.toml) for all available options and their descriptions.
+If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/user_configs/yazelix.toml` config file ready. You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](./yazelix_default.toml) for all available options and their descriptions.
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default): Modern, fast terminal written in Zig with great performance

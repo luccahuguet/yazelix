@@ -5,6 +5,49 @@ use ../utils/logging.nu log_to_file
 use ../utils/config_parser.nu parse_yazelix_config
 use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, set_workspace_for_path, focus_managed_pane, set_managed_editor_cwd, debug_editor_state]
 
+def resolve_optional_command [configured: any, fallback: string] {
+    let raw = ($configured | default "" | into string | str trim)
+    if ($raw | is-empty) {
+        $fallback
+    } else {
+        $raw
+    }
+}
+
+def command_is_available [command: string] {
+    let normalized = ($command | str trim)
+    if ($normalized | is-empty) {
+        false
+    } else if (($normalized | str contains "/") or ($normalized | str starts-with "~")) {
+        (($normalized | path expand) | path exists)
+    } else {
+        (which $normalized | is-not-empty)
+    }
+}
+
+export def get_yazi_command [] {
+    let config = parse_yazelix_config
+    resolve_optional_command ($config.yazi_command? | default null) "yazi"
+}
+
+export def get_ya_command [] {
+    let config = parse_yazelix_config
+    resolve_optional_command ($config.yazi_ya_command? | default null) "ya"
+}
+
+def has_yazi_command [] {
+    command_is_available (get_yazi_command)
+}
+
+def has_ya_command [] {
+    command_is_available (get_ya_command)
+}
+
+def run_ya_emit_to [yazi_id: string, action: string, ...args: string] {
+    let ya_command = (get_ya_command)
+    run-external $ya_command "emit-to" $yazi_id $action ...$args
+}
+
 # Check if the editor command is Helix (supports both simple names and full paths)
 # This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
 def is_helix_editor [editor: string] {
@@ -287,7 +330,7 @@ export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: s
         return {status: "skipped", reason: "outside_zellij"}
     }
 
-    if (which ya | is-empty) {
+    if not (has_ya_command) {
         return {status: "skipped", reason: "ya_missing"}
     }
 
@@ -304,7 +347,7 @@ export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: s
     }
 
     try {
-        ya emit-to $sidebar_state.yazi_id cd $target_dir
+        run_ya_emit_to $sidebar_state.yazi_id "cd" $target_dir
         if ($sidebar_state.path? | is-not-empty) {
             $"($sidebar_state.yazi_id)\n($target_dir)\n" | save --force $sidebar_state.path
             log_to_file $log_file $"Updated sidebar state cache: ($sidebar_state.path)"
@@ -366,7 +409,7 @@ def sync_yazi_to_directory [file_path: path, yazi_id: string, log_file: string] 
     }
 
     try {
-        ya emit-to $yazi_id cd $target_dir
+        run_ya_emit_to $yazi_id "cd" $target_dir
         log_to_file $log_file $"Successfully navigated yazi to directory: ($target_dir)"
     } catch {|err|
         log_to_file $log_file $"Failed to navigate yazi: ($err.msg)"
@@ -394,8 +437,8 @@ export def reveal_in_yazi [buffer_name: string] {
         return
     }
 
-    if (which ya | is-empty) {
-        let error_msg = "The `ya` CLI is not available in this environment."
+    if not (has_ya_command) {
+        let error_msg = $"The configured Yazi CLI `\(get_ya_command\)` is not available in this environment."
         log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
         print $"Error: ($error_msg)"
         return
@@ -423,7 +466,7 @@ export def reveal_in_yazi [buffer_name: string] {
 
     try {
         # Use 'reveal' command instead of 'cd' to both navigate to directory and select the file
-        ya emit-to $sidebar_yazi_id reveal $full_path
+        run_ya_emit_to $sidebar_yazi_id "reveal" $full_path
         log_to_file "reveal_in_yazi.log" $"Successfully sent 'reveal ($full_path)' command to managed sidebar yazi instance ($sidebar_yazi_id)"
 
         let focus_result = (focus_managed_pane "sidebar" "reveal_in_yazi.log")

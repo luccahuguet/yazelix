@@ -378,6 +378,18 @@ in
       description = "Yazi plugins to load (core plugins auto_layout and sidebar_status are always loaded)";
     };
 
+    yazi_command = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      description = "Custom Yazi binary for Yazelix-managed Yazi launches. Null uses `yazi` from PATH.";
+    };
+
+    yazi_ya_command = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      description = "Custom `ya` CLI for Yazelix-managed reveal and sidebar-sync actions. Null uses `ya` from PATH.";
+    };
+
     yazi_theme = mkOption {
       type = types.str;
       default = "default";
@@ -631,6 +643,8 @@ in
       text =
         let
           editorCommand = if cfg.editor_command != null then cfg.editor_command else "";
+          yaziCommand = if cfg.yazi_command != null then cfg.yazi_command else "";
+          yaziYaCommand = if cfg.yazi_ya_command != null then cfg.yazi_ya_command else "";
           ghosttyTrailEffectLine =
             if cfg.ghostty_trail_effect != null then
               [ "ghostty_trail_effect = ${escapeString cfg.ghostty_trail_effect}" ]
@@ -707,6 +721,8 @@ in
             "default_mode = ${escapeString cfg.zellij_default_mode}"
             ""
             "[yazi]"
+            "command = ${escapeString yaziCommand}"
+            "ya_command = ${escapeString yaziYaCommand}"
             "plugins = ${listToToml cfg.yazi_plugins}"
             "theme = ${escapeString cfg.yazi_theme}"
             "sort_by = ${escapeString cfg.yazi_sort_by}"

@@ -19,6 +19,18 @@ Restart yazelix and your changes take effect!
 
 All yazi settings are in `yazelix.toml`:
 
+### Binary Overrides
+
+```toml
+[yazi]
+command = "/path/to/custom/yazi"  # Optional: managed Yazi binary override
+ya_command = "/path/to/custom/ya" # Optional: managed `ya` CLI override
+```
+
+Leave both empty to use `yazi` and `ya` from `PATH`.
+
+Use this only when Yazelix-managed Yazi launches and sidebar actions need a specific binary. Custom plugin initialization should still go in `~/.config/yazelix/user_configs/yazi/init.lua`.
+
 ### Plugins
 
 ```toml

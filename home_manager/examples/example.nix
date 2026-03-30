@@ -52,6 +52,8 @@
     editor_command = "hx"; # Optional: Use system Helix from PATH
     # editor_command = "nvim";     # Optional: Use other editor (loses Helix features)
     # helix_runtime_path = "/home/user/helix/runtime";  # Optional: only for custom/nonstandard Helix runtimes
+    # yazi_command = "/path/to/custom/yazi";            # Optional: managed Yazi binary override
+    # yazi_ya_command = "/path/to/custom/ya";           # Optional: managed Yazi CLI override
 
     # Development-friendly settings
     debug_mode = true; # Enable verbose logging

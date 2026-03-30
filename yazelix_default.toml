@@ -263,6 +263,15 @@ session_name = "yazelix"
 default_mode = "normal"
 
 [yazi]
+# Custom Yazi binary override.
+# Leave empty to use `yazi` from PATH.
+# Set this only when you want Yazelix-managed Yazi launches to use a specific binary.
+command = ""
+
+# Custom `ya` CLI override used for sidebar sync and reveal actions.
+# Leave empty to use `ya` from PATH.
+ya_command = ""
+
 # Plugins to load (core plugins auto-layout and sidebar-status are always loaded)
 #
 # Bundled plugins (shipped with yazelix, always available):
