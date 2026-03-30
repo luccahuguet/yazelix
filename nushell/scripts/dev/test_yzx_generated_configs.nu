@@ -172,6 +172,53 @@ def test_layout_generator_removes_stale_generated_layouts [] {
     $result
 }
 
+def test_layout_generator_keeps_no_side_bottom_terminal_family [] {
+    print "🧪 Testing no-side swap layouts include the bottom-terminal family..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_no_side_bottom_terminal_XXXXXX | str trim)
+
+    let result = (try {
+        let source_dir = ($tmpdir | path join "source")
+        let target_dir = ($tmpdir | path join "target")
+        let repo_layouts_dir = (repo_path "configs" "zellij" "layouts")
+        let runtime_dir = ($tmpdir | path join "runtime")
+
+        mkdir $source_dir
+        mkdir $runtime_dir
+        for entry in (ls $repo_layouts_dir) {
+            let target_path = ($source_dir | path join ($entry.name | path basename))
+            if $entry.type == dir {
+                ^cp -R $entry.name $target_path
+            } else {
+                ^cp $entry.name $target_path
+            }
+        }
+
+        use ../utils/layout_generator.nu *
+        generate_all_layouts $source_dir $target_dir ["editor"] "" "file:/tmp/yazelix_pane_orchestrator.wasm" $runtime_dir
+
+        let generated_swap_layout = (open --raw ($target_dir | path join "yzx_no_side.swap.kdl"))
+
+        if (
+            ($generated_swap_layout | str contains 'swap_tiled_layout name="bottom_terminal"')
+            and ($generated_swap_layout | str contains 'pane split_direction="horizontal"')
+            and ($generated_swap_layout | str contains 'pane stacked=true')
+        ) {
+            print "  ✅ No-side swap layouts keep the bottom-terminal family available"
+            true
+        } else {
+            print "  ❌ No-side swap layouts are missing the bottom-terminal family"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def test_launch_env_omits_default_helix_runtime [] {
     print "🧪 Testing launch env omits HELIX_RUNTIME by default..."
 
@@ -1993,6 +2040,7 @@ export def run_generated_config_canonical_tests [] {
     [
         (test_layout_generator_rewrites_runtime_paths)
         (test_layout_generator_removes_stale_generated_layouts)
+        (test_layout_generator_keeps_no_side_bottom_terminal_family)
         (test_logo_welcome_variant_adapts_to_width)
         (test_logo_welcome_frame_respects_width_budget)
         (test_logo_animation_lands_on_static_resting_frame)

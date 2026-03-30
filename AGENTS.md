@@ -43,6 +43,12 @@ When creating new files or directories, always use underscores to maintain consi
 - All paths reference `~/.config/yazelix/` as the base directory
 - Scripts are organized in `nushell/scripts/` with subdirectories using underscores
 
+## Upstream Reference Clones
+
+- For upstream dependency code inspection, prefer the local reference clones under `/home/lucca/pjs/open_source/rust/` before browsing the network.
+- Current expected mirrors include `/home/lucca/pjs/open_source/rust/helix`, `/home/lucca/pjs/open_source/rust/yazi`, `/home/lucca/pjs/open_source/rust/zellij`, and `/home/lucca/pjs/open_source/rust/nushell`.
+- Treat those clones as read-only reference checkouts unless the user explicitly asks to modify them.
+
 ## Configuration Management Principles
 
 ### Synchronization Requirements
