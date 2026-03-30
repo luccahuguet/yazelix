@@ -1,4 +1,6 @@
 #!/usr/bin/env nu
+# Defends: docs/specs/test_suite_governance.md
+# Defends: docs/workspace_session_contract.md
 
 use ../integrations/yazi.nu [resolve_reveal_target_path]
 use ./test_yzx_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path]

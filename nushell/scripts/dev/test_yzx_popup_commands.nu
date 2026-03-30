@@ -1,4 +1,6 @@
 #!/usr/bin/env nu
+# Defends: docs/specs/test_suite_governance.md
+# Defends: docs/specs/floating_tui_panes.md
 
 use ../yzx/popup.nu [resolve_yzx_popup_command resolve_yzx_popup_cwd]
 use ../utils/config_parser.nu [parse_yazelix_config]

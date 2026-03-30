@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Defends: docs/specs/test_suite_governance.md
 
 use ../core/yazelix.nu *
 use ./test_yzx_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]

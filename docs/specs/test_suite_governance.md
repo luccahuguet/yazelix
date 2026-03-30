@@ -108,6 +108,10 @@ A test is a strong demotion candidate when it is:
 - `test_yzx_commands.nu` should stay tied to one or more real spec `Defended by:` lines.
 - The default automated suite should contain only spec-backed entrypoints.
 - If a regression matters enough for the default lane, it should be promoted into a spec-backed bundle or accompanied by a dedicated spec instead of living as a policy exception.
+- The default lane should also enforce mechanical anti-creep guardrails:
+  - no dead noncanonical `def test_...` helpers inside default-lane component files
+  - a canonical test-count budget
+  - a default-suite runtime budget
 
 ### Lane placement rules
 
@@ -118,6 +122,7 @@ A test is a strong demotion candidate when it is:
 - Put true windowed or visual checks in the visual sweep lane or manual verification path.
 - Keep `prek` for checks maintainers can tolerate on frequent local runs.
 - CI may call a narrower set of high-signal commands than the full local suite if the tradeoff is explicit and documented.
+- Budget increases should be explicit. If a change needs more default-lane tests or more runtime, it should update the validator budget in the same PR with a short justification.
 
 ### Concrete cleanup in this change
 
@@ -156,6 +161,7 @@ So the duplicate README-version assertion is removed from `nushell/scripts/dev/t
 - integration tests: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
 - integration tests: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - CI checks: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
+- CI checks: `nu nushell/scripts/dev/validate_default_test_budget.nu`
 - CI checks: `nu nushell/scripts/dev/validate_readme_version.nu`
 - CI checks: `nu nushell/scripts/dev/validate_specs.nu`
 - manual verification: review `.github/workflows/ci.yml` and `.pre-commit-config.yaml` against the lane definitions in this spec

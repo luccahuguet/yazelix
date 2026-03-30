@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
+# Defends: docs/specs/test_suite_governance.md
 
 use ./test_yzx_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
-use ../utils/launch_state.nu [get_launch_env]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/terminal_launcher.nu [resolve_terminal_config]
@@ -621,97 +621,6 @@ config_mode = "auto"
 
     rm -rf $tmpdir
     $result
-}
-
-def test_launch_env_omits_yazelix_default_shell [] {
-    print "🧪 Testing launch env omits YAZELIX_DEFAULT_SHELL..."
-
-    try {
-        let cfg = {
-            editor_command: "hx"
-            helix_runtime_path: null
-            terminals: ["ghostty"]
-            default_shell: "fish"
-            debug_mode: false
-            enable_sidebar: true
-            welcome_style: "static"
-            terminal_config_mode: "yazelix"
-        }
-        let stdout = (get_launch_env $cfg "/tmp/yazelix-profile" | get -o YAZELIX_DEFAULT_SHELL | default "" | str trim)
-
-        if $stdout == "" {
-            print "  ✅ YAZELIX_DEFAULT_SHELL is no longer part of the launch env"
-            true
-        } else {
-            print $"  ❌ Unexpected result: stdout=($stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_zjstatus_widget_reads_shell_from_config [] {
-    print "🧪 Testing zjstatus shell widget reads current config..."
-
-    try {
-        let widget_script = (repo_path "nushell" "scripts" "utils" "zjstatus_widget.nu")
-        let tmpdir = (^mktemp -d /tmp/yazelix_widget_shell_XXXXXX | str trim)
-        '[shell]
-default_shell = "nu"
-' | save --force --raw ($tmpdir | path join "yazelix.toml")
-        let output = (with-env {
-            YAZELIX_CONFIG_OVERRIDE: ($tmpdir | path join "yazelix.toml")
-            YAZELIX_DEFAULT_SHELL: "fish"
-        } {
-            ^nu $widget_script shell | complete
-        })
-        rm -rf $tmpdir
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and ($stdout == "nu") {
-            print "  ✅ Shell widget ignores stale YAZELIX_DEFAULT_SHELL env"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_zjstatus_widget_reads_editor_from_config [] {
-    print "🧪 Testing zjstatus editor widget reads current config..."
-
-    try {
-        let widget_script = (repo_path "nushell" "scripts" "utils" "zjstatus_widget.nu")
-        let tmpdir = (^mktemp -d /tmp/yazelix_widget_editor_XXXXXX | str trim)
-        '[editor]
-command = "nvim --headless"
-' | save --force --raw ($tmpdir | path join "yazelix.toml")
-        let output = (with-env {
-            YAZELIX_CONFIG_OVERRIDE: ($tmpdir | path join "yazelix.toml")
-            EDITOR: "fish"
-        } {
-            ^nu $widget_script editor | complete
-        })
-        rm -rf $tmpdir
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and ($stdout == "nvim") {
-            print "  ✅ Editor widget ignores stale EDITOR env"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
 }
 
 def test_config_schema_rejects_removed_layout_widget [] {

@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Defends: docs/specs/test_suite_governance.md
 
 use ../integrations/yazi.nu [resolve_managed_editor_open_strategy]
 

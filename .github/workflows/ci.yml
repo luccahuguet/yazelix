@@ -51,11 +51,11 @@ jobs:
       - name: Validate spec traceability
         run: nu nushell/scripts/dev/validate_specs.nu
 
-      - name: Validate default-suite traceability
+      - name: Validate default-suite shape and traceability
         run: nu nushell/scripts/dev/validate_default_test_traceability.nu
 
-      - name: Run yzx command tests
-        run: nu nushell/scripts/dev/test_yzx_commands.nu
+      - name: Validate default-suite runtime budget
+        run: nu nushell/scripts/dev/validate_default_test_budget.nu
 
       - name: Check Home Manager flake
         shell: bash

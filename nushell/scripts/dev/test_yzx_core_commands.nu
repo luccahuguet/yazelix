@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Defends: docs/specs/test_suite_governance.md
 
 use ../core/yazelix.nu *
 use ./test_yzx_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
@@ -376,7 +377,6 @@ def test_yzx_config_view [] {
     mkdir $user_config_dir
 
     let result = (try {
-        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
         '[core]
 debug_mode = false
 ' | save --force --raw ($user_config_dir | path join "yazelix.toml")
@@ -386,24 +386,22 @@ debug_mode = false
 git = ["gh"]
 ' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
 
-        let command_output = with-env {
+        let output = with-env {
             HOME: $tmp_home
             YAZELIX_CONFIG_DIR: $temp_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx config | columns | str join ','" | complete
+            yzx config | columns | str join ','
         }
-        let output = ($command_output.stdout | str trim)
 
         if (
-            ($command_output.exit_code == 0)
-            and ($output | str contains "core")
+            ($output | str contains "core")
             and not ($output | str contains "packs")
         ) {
             print "  ✅ yzx config hides packs by default"
             true
         } else {
-            print $"  ❌ Unexpected output: exit=($command_output.exit_code) stdout=($output) stderr=($command_output.stderr | str trim)"
+            print $"  ❌ Unexpected output: ($output)"
             false
         }
     } catch { |err|
@@ -427,8 +425,6 @@ def test_yzx_config_full_merges_pack_sidecar [] {
     mkdir $user_config_dir
 
     let result = (try {
-        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
-
         '[core]
 debug_mode = false
 ' | save --force --raw ($user_config_dir | path join "yazelix.toml")
@@ -439,25 +435,22 @@ debug_mode = false
 git = ["gh", "prek"]
 ' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
 
-        let output = with-env {
+        let rendered = with-env {
             HOME: $tmp_home
             YAZELIX_CONFIG_DIR: $temp_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx config --full | to json -r" | complete
+            yzx config --full
         }
-        let stdout = ($output.stdout | str trim)
-        let rendered = ($stdout | from json)
 
         if (
-            ($output.exit_code == 0)
-            and (($rendered.packs.enabled? | default []) == ["git"])
+            (($rendered.packs.enabled? | default []) == ["git"])
             and ((($rendered.packs.declarations? | default {}) | get git) == ["gh", "prek"])
         ) {
             print "  ✅ yzx config --full renders the merged pack sidecar view"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
+            print $"  ❌ Unexpected result: ($rendered | to json -r)"
             false
         }
     } catch { |err|
@@ -480,19 +473,19 @@ def test_yzx_edit_targets_print_paths [] {
 
     let result = (try {
         let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
-        let main_output = with-env {
+        let main_stdout = with-env {
             HOME: $tmp_home
             YAZELIX_CONFIG_DIR: $temp_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx edit config --print" | complete
+            yzx edit config --print
         }
-        let packs_output = with-env {
+        let packs_stdout = with-env {
             HOME: $tmp_home
             YAZELIX_CONFIG_DIR: $temp_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx edit packs --print" | complete
+            yzx edit packs --print
         }
         let missing_subcommand_output = with-env {
             HOME: $tmp_home
@@ -511,15 +504,11 @@ def test_yzx_edit_targets_print_paths [] {
 
         let expected_main = ($temp_config_dir | path join "user_configs" "yazelix.toml")
         let expected_packs = ($temp_config_dir | path join "user_configs" "yazelix_packs.toml")
-        let main_stdout = ($main_output.stdout | str trim)
-        let packs_stdout = ($packs_output.stdout | str trim)
         let missing_subcommand_stderr = ($missing_subcommand_output.stderr | str trim)
         let invalid_stderr = ($invalid_output.stderr | str trim)
 
         if (
-            ($main_output.exit_code == 0)
-            and ($packs_output.exit_code == 0)
-            and ($missing_subcommand_output.exit_code != 0)
+            ($missing_subcommand_output.exit_code != 0)
             and ($invalid_output.exit_code != 0)
             and ($main_stdout == $expected_main)
             and ($packs_stdout == $expected_packs)
@@ -529,7 +518,7 @@ def test_yzx_edit_targets_print_paths [] {
             print "  ✅ yzx edit config and yzx edit packs resolve the managed config paths and reject unknown leaf commands"
             true
         } else {
-            print $"  ❌ Unexpected result: main_exit=($main_output.exit_code) main=($main_stdout) packs_exit=($packs_output.exit_code) packs=($packs_stdout) missing_exit=($missing_subcommand_output.exit_code) missing_stderr=($missing_subcommand_stderr) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
+            print $"  ❌ Unexpected result: main=($main_stdout) packs=($packs_stdout) missing_exit=($missing_subcommand_output.exit_code) missing_stderr=($missing_subcommand_stderr) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
             false
         }
     } catch {|err|

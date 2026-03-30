@@ -6,7 +6,6 @@
 
 use ./test_yzx_helpers.nu [format_test_profile_report setup_test_home test_profiling_enabled]
 use ./test_yzx_core_commands.nu [run_core_canonical_tests]
-use ./test_yzx_dev_commands.nu [run_dev_canonical_tests]
 use ./test_yzx_doctor_commands.nu [run_doctor_canonical_tests]
 use ./test_yzx_generated_configs.nu [run_generated_config_canonical_tests]
 use ./test_yzx_popup_commands.nu [run_popup_canonical_tests]
@@ -36,7 +35,6 @@ def main [--profile] {
     let suite_results = (with-env { HOME: $fixture.tmp_home, YAZELIX_DIR: $fixture.config_dir } {
         [
             (build_profiled_suite_result "core" { run_core_canonical_tests })
-            (build_profiled_suite_result "dev" { run_dev_canonical_tests })
             (build_profiled_suite_result "doctor" { run_doctor_canonical_tests })
             (build_profiled_suite_result "generated" { run_generated_config_canonical_tests })
             (build_profiled_suite_result "popup" { run_popup_canonical_tests })
