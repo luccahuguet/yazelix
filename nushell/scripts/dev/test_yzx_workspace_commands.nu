@@ -237,6 +237,7 @@ def test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions []
             ^nu $fixture.start_inner $target_dir $fixture.layout_path | complete
         })
         let launch_stdout = ($launch_output.stdout | str trim)
+        let launch_stderr = ($launch_output.stderr | str trim)
         let launch_zellij_log = if ($fixture.zellij_log | path exists) { open --raw $fixture.zellij_log | str trim } else { "" }
 
         let restart_state_dir = ($fixture.tmp_home | path join ".local" "share" "yazelix" "state" "restart")
@@ -250,6 +251,7 @@ def test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions []
             ^nu $fixture.start_inner $target_dir $fixture.layout_path | complete
         })
         let restart_stdout = ($restart_output.stdout | str trim)
+        let restart_stderr = ($restart_output.stderr | str trim)
         let restart_zellij_log = if ($fixture.zellij_log | path exists) { open --raw $fixture.zellij_log | str trim } else { "" }
 
         let launch_ok = ($launch_output.exit_code == 0) and ($launch_zellij_log | str contains $"options --default-cwd ($target_dir)") and (not ($launch_stdout | str contains "--path ignored"))
@@ -259,8 +261,8 @@ def test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions []
             print "  ✅ Non-persistent sessions keep the requested directory as Zellij's cwd, including restart bootstrap flows"
             true
         } else {
-            print $"  ❌ Unexpected launch result: exit=($launch_output.exit_code) stdout=($launch_stdout) zellij=($launch_zellij_log)"
-            print $"  ❌ Unexpected restart result: exit=($restart_output.exit_code) stdout=($restart_stdout) zellij=($restart_zellij_log)"
+            print $"  ❌ Unexpected launch result: exit=($launch_output.exit_code) stdout=($launch_stdout) stderr=($launch_stderr) zellij=($launch_zellij_log)"
+            print $"  ❌ Unexpected restart result: exit=($restart_output.exit_code) stdout=($restart_stdout) stderr=($restart_stderr) zellij=($restart_zellij_log)"
             false
         }
     } catch { |err|
