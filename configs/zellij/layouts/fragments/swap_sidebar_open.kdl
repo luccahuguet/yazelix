@@ -1,4 +1,5 @@
 pane name="sidebar" {
     command "nu"
     args "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/launch_sidebar_yazi.nu"
+    size "__YAZELIX_SIDEBAR_WIDTH_PERCENT__"
 }

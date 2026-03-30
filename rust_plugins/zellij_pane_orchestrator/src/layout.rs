@@ -27,6 +27,14 @@ const ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_TEMPLATE
 const KEYBINDS_COMMON_PLACEHOLDER: &str = "__YAZELIX_KEYBINDS_COMMON__";
 const SWAP_SIDEBAR_OPEN_PLACEHOLDER: &str = "__YAZELIX_SWAP_SIDEBAR_OPEN__";
 const SWAP_SIDEBAR_CLOSED_PLACEHOLDER: &str = "__YAZELIX_SWAP_SIDEBAR_CLOSED__";
+const SIDEBAR_WIDTH_PERCENT_PLACEHOLDER: &str = "__YAZELIX_SIDEBAR_WIDTH_PERCENT__";
+const OPEN_CONTENT_WIDTH_PERCENT_PLACEHOLDER: &str = "__YAZELIX_OPEN_CONTENT_WIDTH_PERCENT__";
+const OPEN_PRIMARY_WIDTH_PERCENT_PLACEHOLDER: &str = "__YAZELIX_OPEN_PRIMARY_WIDTH_PERCENT__";
+const OPEN_SECONDARY_WIDTH_PERCENT_PLACEHOLDER: &str = "__YAZELIX_OPEN_SECONDARY_WIDTH_PERCENT__";
+const CLOSED_CONTENT_WIDTH_PERCENT_PLACEHOLDER: &str = "__YAZELIX_CLOSED_CONTENT_WIDTH_PERCENT__";
+const CLOSED_PRIMARY_WIDTH_PERCENT_PLACEHOLDER: &str = "__YAZELIX_CLOSED_PRIMARY_WIDTH_PERCENT__";
+const CLOSED_SECONDARY_WIDTH_PERCENT_PLACEHOLDER: &str =
+    "__YAZELIX_CLOSED_SECONDARY_WIDTH_PERCENT__";
 const SIDE_LAYOUT_TEMPLATE: &str = include_str!("../../../configs/zellij/layouts/yzx_side.kdl");
 const SIDE_SWAP_LAYOUT_TEMPLATE: &str =
     include_str!("../../../configs/zellij/layouts/yzx_side.swap.kdl");
@@ -38,6 +46,9 @@ const SWAP_SIDEBAR_OPEN_TEMPLATE: &str =
     include_str!("../../../configs/zellij/layouts/fragments/swap_sidebar_open.kdl");
 const SWAP_SIDEBAR_CLOSED_TEMPLATE: &str =
     include_str!("../../../configs/zellij/layouts/fragments/swap_sidebar_closed.kdl");
+pub(crate) const DEFAULT_SIDEBAR_WIDTH_PERCENT: usize = 20;
+const MIN_SIDEBAR_WIDTH_PERCENT: usize = 10;
+const MAX_SIDEBAR_WIDTH_PERCENT: usize = 40;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum FamilyDirection {
@@ -49,6 +60,20 @@ pub(crate) enum FamilyDirection {
 pub(crate) struct ZjstatusSegments {
     pub(crate) widget_tray: String,
     pub(crate) custom_text: String,
+}
+
+pub(crate) struct OverrideLayoutConfig {
+    pub(crate) zjstatus_segments: ZjstatusSegments,
+    pub(crate) sidebar_width_percent: usize,
+}
+
+impl Default for OverrideLayoutConfig {
+    fn default() -> Self {
+        Self {
+            zjstatus_segments: ZjstatusSegments::default(),
+            sidebar_width_percent: DEFAULT_SIDEBAR_WIDTH_PERCENT,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -283,7 +308,7 @@ impl State {
         let layout_kdl = build_override_layout_kdl(
             layout_variant,
             terminal_panes.len(),
-            &self.zjstatus_segments,
+            &self.override_layout_config,
         )?;
         let layout_info = LayoutInfo::Stringified(layout_kdl);
         override_layout(layout_info, false, false, true, BTreeMap::new());
@@ -406,7 +431,7 @@ fn infer_layout_variant_from_terminal_panes(
 fn build_override_layout_kdl(
     layout_variant: LayoutVariant,
     total_terminal_panes: usize,
-    zjstatus_segments: &ZjstatusSegments,
+    override_layout_config: &OverrideLayoutConfig,
 ) -> Option<String> {
     if total_terminal_panes < 2 {
         return None;
@@ -414,19 +439,14 @@ fn build_override_layout_kdl(
 
     let resolved_runtime_dir = runtime_dir();
     let sidebar_launcher = runtime_script_path("launch_sidebar_yazi.nu", &resolved_runtime_dir);
-    let runtime_layout = render_embedded_side_layout(
-        &resolved_runtime_dir,
-        zjstatus_segments,
-    );
-    let swap_layouts = render_embedded_swap_layouts(
-        &resolved_runtime_dir,
-        zjstatus_segments,
-    );
+    let runtime_layout = render_embedded_side_layout(&resolved_runtime_dir, override_layout_config);
+    let swap_layouts = render_embedded_swap_layouts(&resolved_runtime_dir, override_layout_config);
     let ui_tab_template = extract_ui_tab_template(&runtime_layout)?;
     let content_layout = build_content_layout_kdl(
         layout_variant,
         total_terminal_panes.saturating_sub(1),
         &sidebar_launcher,
+        override_layout_config.sidebar_width_percent,
     )?;
 
     Some(format!(
@@ -439,14 +459,18 @@ fn build_content_layout_kdl(
     layout_variant: LayoutVariant,
     non_sidebar_terminal_panes: usize,
     sidebar_launcher: &str,
+    sidebar_width_percent: usize,
 ) -> Option<String> {
     if non_sidebar_terminal_panes < 1 {
         return None;
     }
 
+    let layout_widths = LayoutWidths::new(sidebar_width_percent, layout_variant.sidebar_state);
+
     let sidebar_pane = match layout_variant.sidebar_state {
         SidebarState::Open => format!(
-            "        pane name=\"sidebar\" {{\n            command \"nu\"\n            args \"{sidebar_launcher}\"\n        }}"
+            "        pane name=\"sidebar\" {{\n            command \"nu\"\n            args \"{sidebar_launcher}\"\n            size \"{}%\"\n        }}",
+            layout_widths.sidebar_width_percent
         ),
         SidebarState::Closed => format!(
             "        pane name=\"sidebar\" {{\n            command \"nu\"\n            args \"{sidebar_launcher}\"\n            size \"1\"\n        }}"
@@ -454,10 +478,12 @@ fn build_content_layout_kdl(
     };
 
     let content_region = match layout_variant.family {
-        LayoutFamily::Single => build_single_family_kdl(non_sidebar_terminal_panes),
-        LayoutFamily::VerticalSplit => build_vertical_split_family_kdl(non_sidebar_terminal_panes)?,
+        LayoutFamily::Single => build_single_family_kdl(non_sidebar_terminal_panes, &layout_widths),
+        LayoutFamily::VerticalSplit => {
+            build_vertical_split_family_kdl(non_sidebar_terminal_panes, &layout_widths)?
+        }
         LayoutFamily::BottomTerminal => {
-            build_bottom_terminal_family_kdl(non_sidebar_terminal_panes)?
+            build_bottom_terminal_family_kdl(non_sidebar_terminal_panes, &layout_widths)?
         }
     };
 
@@ -466,27 +492,68 @@ fn build_content_layout_kdl(
     ))
 }
 
-fn build_single_family_kdl(non_sidebar_terminal_panes: usize) -> String {
+fn build_single_family_kdl(
+    non_sidebar_terminal_panes: usize,
+    layout_widths: &LayoutWidths,
+) -> String {
     format!(
-        "        pane stacked=true {{\n            size \"80%\"\n{}\n        }}",
+        "        pane stacked=true {{\n            size \"{}%\"\n{}\n        }}",
+        layout_widths.content_width_percent,
         build_generic_terminal_panes(non_sidebar_terminal_panes, 3)
     )
 }
 
-fn build_vertical_split_family_kdl(non_sidebar_terminal_panes: usize) -> Option<String> {
+fn build_vertical_split_family_kdl(
+    non_sidebar_terminal_panes: usize,
+    layout_widths: &LayoutWidths,
+) -> Option<String> {
     let stacked_panes = non_sidebar_terminal_panes.checked_sub(1)?;
     Some(format!(
-        "        pane stacked=true {{\n            size \"48%\"\n{}\n        }}\n        pane {{\n            size \"32%\"\n        }}",
+        "        pane stacked=true {{\n            size \"{}%\"\n{}\n        }}\n        pane {{\n            size \"{}%\"\n        }}",
+        layout_widths.primary_width_percent,
         build_generic_terminal_panes(stacked_panes, 3)
+        ,
+        layout_widths.secondary_width_percent
     ))
 }
 
-fn build_bottom_terminal_family_kdl(non_sidebar_terminal_panes: usize) -> Option<String> {
+fn build_bottom_terminal_family_kdl(
+    non_sidebar_terminal_panes: usize,
+    layout_widths: &LayoutWidths,
+) -> Option<String> {
     let stacked_panes = non_sidebar_terminal_panes.checked_sub(1)?;
     Some(format!(
-        "        pane split_direction=\"horizontal\" {{\n            size \"80%\"\n            pane stacked=true {{\n                size \"70%\"\n{}\n            }}\n            pane {{\n                size \"30%\"\n            }}\n        }}",
+        "        pane split_direction=\"horizontal\" {{\n            size \"{}%\"\n            pane stacked=true {{\n                size \"70%\"\n{}\n            }}\n            pane {{\n                size \"30%\"\n            }}\n        }}",
+        layout_widths.content_width_percent,
         build_generic_terminal_panes(stacked_panes, 4)
     ))
+}
+
+struct LayoutWidths {
+    sidebar_width_percent: usize,
+    content_width_percent: usize,
+    primary_width_percent: usize,
+    secondary_width_percent: usize,
+}
+
+impl LayoutWidths {
+    fn new(sidebar_width_percent: usize, sidebar_state: SidebarState) -> Self {
+        let normalized_sidebar_width_percent =
+            sidebar_width_percent.clamp(MIN_SIDEBAR_WIDTH_PERCENT, MAX_SIDEBAR_WIDTH_PERCENT);
+        let content_width_percent = match sidebar_state {
+            SidebarState::Open => 100usize.saturating_sub(normalized_sidebar_width_percent),
+            SidebarState::Closed => 99,
+        };
+        let primary_width_percent = (content_width_percent * 3) / 5;
+        let secondary_width_percent = content_width_percent - primary_width_percent;
+
+        Self {
+            sidebar_width_percent: normalized_sidebar_width_percent,
+            content_width_percent,
+            primary_width_percent,
+            secondary_width_percent,
+        }
+    }
 }
 
 fn build_generic_terminal_panes(count: usize, indent_level: usize) -> String {
@@ -499,12 +566,12 @@ fn build_generic_terminal_panes(count: usize, indent_level: usize) -> String {
 
 fn render_embedded_side_layout(
     runtime_dir: &str,
-    zjstatus_segments: &ZjstatusSegments,
+    override_layout_config: &OverrideLayoutConfig,
 ) -> String {
     render_embedded_layout(
         SIDE_LAYOUT_TEMPLATE,
         runtime_dir,
-        zjstatus_segments,
+        override_layout_config,
         &[
             (ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER, ZJSTATUS_TAB_TEMPLATE),
             (KEYBINDS_COMMON_PLACEHOLDER, KEYBINDS_COMMON_TEMPLATE),
@@ -514,12 +581,12 @@ fn render_embedded_side_layout(
 
 fn render_embedded_swap_layouts(
     runtime_dir: &str,
-    zjstatus_segments: &ZjstatusSegments,
+    override_layout_config: &OverrideLayoutConfig,
 ) -> String {
     render_embedded_layout(
         SIDE_SWAP_LAYOUT_TEMPLATE,
         runtime_dir,
-        zjstatus_segments,
+        override_layout_config,
         &[
             (SWAP_SIDEBAR_OPEN_PLACEHOLDER, SWAP_SIDEBAR_OPEN_TEMPLATE),
             (
@@ -533,7 +600,7 @@ fn render_embedded_swap_layouts(
 fn render_embedded_layout(
     template: &str,
     runtime_dir: &str,
-    zjstatus_segments: &ZjstatusSegments,
+    override_layout_config: &OverrideLayoutConfig,
     static_fragments: &[(&str, &str)],
 ) -> String {
     let with_fragments = static_fragments
@@ -541,11 +608,7 @@ fn render_embedded_layout(
         .fold(template.to_string(), |content, (placeholder, fragment)| {
             apply_static_fragment(content, placeholder, fragment)
         });
-    replace_layout_placeholders(
-        with_fragments,
-        runtime_dir,
-        zjstatus_segments,
-    )
+    replace_layout_placeholders(with_fragments, runtime_dir, override_layout_config)
 }
 
 fn apply_static_fragment(content: String, placeholder: &str, fragment: &str) -> String {
@@ -578,13 +641,55 @@ fn apply_static_fragment(content: String, placeholder: &str, fragment: &str) -> 
 fn replace_layout_placeholders(
     content: String,
     runtime_dir: &str,
-    zjstatus_segments: &ZjstatusSegments,
+    override_layout_config: &OverrideLayoutConfig,
 ) -> String {
+    let open_layout_widths = LayoutWidths::new(
+        override_layout_config.sidebar_width_percent,
+        SidebarState::Open,
+    );
+    let closed_layout_widths = LayoutWidths::new(
+        override_layout_config.sidebar_width_percent,
+        SidebarState::Closed,
+    );
     content
         .replace(HOME_DIR_PLACEHOLDER, &home_dir())
         .replace(RUNTIME_DIR_PLACEHOLDER, runtime_dir)
-        .replace(WIDGET_TRAY_PLACEHOLDER, &zjstatus_segments.widget_tray)
-        .replace(CUSTOM_TEXT_SEGMENT_PLACEHOLDER, &zjstatus_segments.custom_text)
+        .replace(
+            WIDGET_TRAY_PLACEHOLDER,
+            &override_layout_config.zjstatus_segments.widget_tray,
+        )
+        .replace(
+            CUSTOM_TEXT_SEGMENT_PLACEHOLDER,
+            &override_layout_config.zjstatus_segments.custom_text,
+        )
+        .replace(
+            SIDEBAR_WIDTH_PERCENT_PLACEHOLDER,
+            &format!("{}%", open_layout_widths.sidebar_width_percent),
+        )
+        .replace(
+            OPEN_CONTENT_WIDTH_PERCENT_PLACEHOLDER,
+            &format!("{}%", open_layout_widths.content_width_percent),
+        )
+        .replace(
+            OPEN_PRIMARY_WIDTH_PERCENT_PLACEHOLDER,
+            &format!("{}%", open_layout_widths.primary_width_percent),
+        )
+        .replace(
+            OPEN_SECONDARY_WIDTH_PERCENT_PLACEHOLDER,
+            &format!("{}%", open_layout_widths.secondary_width_percent),
+        )
+        .replace(
+            CLOSED_CONTENT_WIDTH_PERCENT_PLACEHOLDER,
+            &format!("{}%", closed_layout_widths.content_width_percent),
+        )
+        .replace(
+            CLOSED_PRIMARY_WIDTH_PERCENT_PLACEHOLDER,
+            &format!("{}%", closed_layout_widths.primary_width_percent),
+        )
+        .replace(
+            CLOSED_SECONDARY_WIDTH_PERCENT_PLACEHOLDER,
+            &format!("{}%", closed_layout_widths.secondary_width_percent),
+        )
 }
 
 fn runtime_dir() -> String {
@@ -622,8 +727,8 @@ mod tests {
     use super::{
         build_bottom_terminal_family_kdl, build_content_layout_kdl, build_generic_terminal_panes,
         build_override_layout_kdl, build_single_family_kdl, build_vertical_split_family_kdl,
-        extract_ui_tab_template, infer_layout_variant_from_terminal_panes, FamilyDirection, LayoutFamily,
-        LayoutVariant, SidebarState, ZjstatusSegments,
+        extract_ui_tab_template, infer_layout_variant_from_terminal_panes, FamilyDirection,
+        LayoutFamily, LayoutVariant, OverrideLayoutConfig, SidebarState, ZjstatusSegments,
     };
     use crate::panes::{ManagedTabPanes, ManagedTerminalPane, TerminalPaneLayout};
     use zellij_tile::prelude::PaneId;
@@ -748,9 +853,10 @@ mod tests {
 
     #[test]
     fn generates_explicit_terminal_slots_without_children_placeholders() {
-        let single = build_single_family_kdl(3);
-        let vertical = build_vertical_split_family_kdl(3).unwrap();
-        let bottom = build_bottom_terminal_family_kdl(3).unwrap();
+        let open_layout_widths = super::LayoutWidths::new(20, SidebarState::Open);
+        let single = build_single_family_kdl(3, &open_layout_widths);
+        let vertical = build_vertical_split_family_kdl(3, &open_layout_widths).unwrap();
+        let bottom = build_bottom_terminal_family_kdl(3, &open_layout_widths).unwrap();
 
         assert!(!single.contains("children"));
         assert!(!vertical.contains("children"));
@@ -769,11 +875,14 @@ mod tests {
             },
             1,
             "/tmp/launch_sidebar_yazi.nu",
+            20,
         )
         .unwrap();
 
         assert!(content_layout.contains("name=\"sidebar\""));
         assert!(content_layout.contains("pane stacked=true"));
+        assert!(content_layout.contains("size \"20%\""));
+        assert!(content_layout.contains("size \"80%\""));
         assert_eq!(content_layout.matches("\n            pane").count(), 1);
     }
 
@@ -789,9 +898,13 @@ mod tests {
                 sidebar_state: SidebarState::Open,
             },
             3,
-            &ZjstatusSegments {
-                widget_tray: "#[fg=#00ff88,bold][editor: {command_editor}] {command_cpu}".into(),
-                custom_text: "#[fg=#ffff00,bold][TEST] ".into(),
+            &OverrideLayoutConfig {
+                zjstatus_segments: ZjstatusSegments {
+                    widget_tray: "#[fg=#00ff88,bold][editor: {command_editor}] {command_cpu}"
+                        .into(),
+                    custom_text: "#[fg=#ffff00,bold][TEST] ".into(),
+                },
+                sidebar_width_percent: 25,
             },
         )
         .unwrap();
@@ -804,7 +917,10 @@ mod tests {
         assert!(layout_kdl.contains("#[fg=#00ff88,bold][editor: {command_editor}] {command_cpu}"));
         assert!(layout_kdl.contains("#[fg=#ffff00,bold][TEST]"));
         assert!(!layout_kdl.contains("{swap_layout}"));
-        assert!(layout_kdl.contains("/tmp/yazelix-runtime/configs/zellij/scripts/launch_sidebar_yazi.nu"));
+        assert!(layout_kdl.contains("size \"25%\""));
+        assert!(layout_kdl.contains("size \"75%\""));
+        assert!(layout_kdl
+            .contains("/tmp/yazelix-runtime/configs/zellij/scripts/launch_sidebar_yazi.nu"));
 
         unsafe {
             std::env::remove_var("YAZELIX_RUNTIME_DIR");

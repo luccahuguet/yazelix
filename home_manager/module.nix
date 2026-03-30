@@ -289,6 +289,12 @@ in
       description = "Enable or disable the Yazi sidebar";
     };
 
+    sidebar_width_percent = mkOption {
+      type = types.ints.between 10 40;
+      default = 20;
+      description = "Width of the open Yazi sidebar as a percentage of the tab.";
+    };
+
     disable_zellij_tips = mkOption {
       type = types.bool;
       default = true;
@@ -668,6 +674,7 @@ in
             "[editor]"
             "command = ${escapeString editorCommand}"
             "enable_sidebar = ${boolToToml cfg.enable_sidebar}"
+            "sidebar_width_percent = ${toString cfg.sidebar_width_percent}"
             ""
             "[shell]"
             "default_shell = ${escapeString cfg.default_shell}"

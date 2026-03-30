@@ -6,6 +6,13 @@ const custom_text_placeholder = "__YAZELIX_CUSTOM_TEXT_SEGMENT__"
 const pane_orchestrator_plugin_url_placeholder = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__"
 const home_dir_placeholder = "__YAZELIX_HOME_DIR__"
 const runtime_dir_placeholder = "__YAZELIX_RUNTIME_DIR__"
+const sidebar_width_percent_placeholder = "__YAZELIX_SIDEBAR_WIDTH_PERCENT__"
+const open_content_width_percent_placeholder = "__YAZELIX_OPEN_CONTENT_WIDTH_PERCENT__"
+const open_primary_width_percent_placeholder = "__YAZELIX_OPEN_PRIMARY_WIDTH_PERCENT__"
+const open_secondary_width_percent_placeholder = "__YAZELIX_OPEN_SECONDARY_WIDTH_PERCENT__"
+const closed_content_width_percent_placeholder = "__YAZELIX_CLOSED_CONTENT_WIDTH_PERCENT__"
+const closed_primary_width_percent_placeholder = "__YAZELIX_CLOSED_PRIMARY_WIDTH_PERCENT__"
+const closed_secondary_width_percent_placeholder = "__YAZELIX_CLOSED_SECONDARY_WIDTH_PERCENT__"
 const static_fragment_specs = [
     {placeholder: "__YAZELIX_ZJSTATUS_TAB_TEMPLATE__", file: "fragments/zjstatus_tab_template.kdl"}
     {placeholder: "__YAZELIX_KEYBINDS_COMMON__", file: "fragments/keybinds_common.kdl"}
@@ -87,6 +94,30 @@ def apply_static_fragments [
     $updated
 }
 
+def compute_sidebar_layout_percentages [sidebar_width_percent: int]: nothing -> record {
+    if ($sidebar_width_percent < 10) or ($sidebar_width_percent > 40) {
+        print $"❌ Invalid sidebar width percent: ($sidebar_width_percent) \(expected 10 to 40\)"
+        exit 1
+    }
+
+    let open_content_width_percent = (100 - $sidebar_width_percent)
+    let open_primary_width_percent = (($open_content_width_percent * 3) // 5)
+    let open_secondary_width_percent = ($open_content_width_percent - $open_primary_width_percent)
+    let closed_content_width_percent = 99
+    let closed_primary_width_percent = (($closed_content_width_percent * 3) // 5)
+    let closed_secondary_width_percent = ($closed_content_width_percent - $closed_primary_width_percent)
+
+    {
+        sidebar_width_percent: $"($sidebar_width_percent)%"
+        open_content_width_percent: $"($open_content_width_percent)%"
+        open_primary_width_percent: $"($open_primary_width_percent)%"
+        open_secondary_width_percent: $"($open_secondary_width_percent)%"
+        closed_content_width_percent: $"($closed_content_width_percent)%"
+        closed_primary_width_percent: $"($closed_primary_width_percent)%"
+        closed_secondary_width_percent: $"($closed_secondary_width_percent)%"
+    }
+}
+
 # Copy a layout file to the target directory
 # Parameters:
 #   source_layout: path to the template layout file
@@ -99,9 +130,11 @@ export def generate_layout [
     static_fragments: list<record>
     pane_orchestrator_plugin_url: string
     runtime_dir: string
+    sidebar_width_percent: int
 ]: nothing -> nothing {
     let content = (open ($source_layout | path expand))
     mut updated = apply_static_fragments $content $static_fragments
+    let layout_percentages = (compute_sidebar_layout_percentages $sidebar_width_percent)
     let home_dir = (
         if (($env.HOME? | default "") | is-not-empty) {
             $env.HOME | path expand
@@ -132,6 +165,20 @@ export def generate_layout [
         $updated = ($updated | str replace -a $pane_orchestrator_plugin_url_placeholder $pane_orchestrator_plugin_url)
     }
 
+    for placeholder in [
+        {name: $sidebar_width_percent_placeholder, value: $layout_percentages.sidebar_width_percent}
+        {name: $open_content_width_percent_placeholder, value: $layout_percentages.open_content_width_percent}
+        {name: $open_primary_width_percent_placeholder, value: $layout_percentages.open_primary_width_percent}
+        {name: $open_secondary_width_percent_placeholder, value: $layout_percentages.open_secondary_width_percent}
+        {name: $closed_content_width_percent_placeholder, value: $layout_percentages.closed_content_width_percent}
+        {name: $closed_primary_width_percent_placeholder, value: $layout_percentages.closed_primary_width_percent}
+        {name: $closed_secondary_width_percent_placeholder, value: $layout_percentages.closed_secondary_width_percent}
+    ] {
+        if ($updated | str contains $placeholder.name) {
+            $updated = ($updated | str replace -a $placeholder.name $placeholder.value)
+        }
+    }
+
     if ($updated | str contains $widget_tray_placeholder) {
         print $"❌ Failed to expand widget tray placeholder in: ($source_layout)"
         exit 1
@@ -148,6 +195,7 @@ export def generate_all_layouts [
     custom_text: string
     pane_orchestrator_plugin_url: string
     runtime_dir: string
+    sidebar_width_percent: int
 ]: nothing -> nothing {
     let source_root = ($layouts_source_dir | path expand)
     # Ensure target directory exists
@@ -180,7 +228,7 @@ export def generate_all_layouts [
         let target = ($layouts_target_dir | path join $file)
 
         if ($source | path exists) {
-            generate_layout $source $target $widget_tray $custom_text $static_fragments $pane_orchestrator_plugin_url $runtime_dir
+            generate_layout $source $target $widget_tray $custom_text $static_fragments $pane_orchestrator_plugin_url $runtime_dir $sidebar_width_percent
             print $"Generated layout: ($target)"
         }
     }

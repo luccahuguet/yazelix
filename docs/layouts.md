@@ -10,9 +10,12 @@ Yazelix ships two startup layouts and two swap-layout files:
 Set the startup mode in `yazelix.toml`:
 
 ```toml
+sidebar_width_percent = 20
 enable_sidebar = true   # Uses yzx_side.kdl
 enable_sidebar = false  # Uses yzx_no_side.kdl
 ```
+
+`editor.sidebar_width_percent` controls the open Yazi sidebar width as a percentage of the tab. Valid range: `10` to `40`.
 
 ## Supported Customization
 

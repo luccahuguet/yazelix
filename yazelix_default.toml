@@ -89,6 +89,11 @@ command = ""  # Leave empty to use yazelix's helix (recommended), or set to "nvi
 # You can access Yazi manually with `yazi` command or `Ctrl+y` inside Yazelix
 enable_sidebar = true
 
+# Sidebar width when the Yazi sidebar is open (default: 20)
+# Valid range: 10 to 40 percent
+# Higher values give Yazi more room but reduce editor space
+sidebar_width_percent = 20
+
 [shell]
 # Default shell for Zellij: "nu", "bash", "fish", or "zsh" (default: "nu")
 # Note: fish and zsh are only installed if set as default_shell or included in extra_shells

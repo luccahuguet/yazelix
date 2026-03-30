@@ -36,7 +36,7 @@ struct State {
     workspace_state_by_tab: HashMap<usize, WorkspaceState>,
     seen_tab_positions: HashSet<usize>,
     initial_workspace_state: Option<WorkspaceState>,
-    zjstatus_segments: layout::ZjstatusSegments,
+    override_layout_config: layout::OverrideLayoutConfig,
     permissions_granted: bool,
 }
 
@@ -51,15 +51,22 @@ impl ZellijPlugin for State {
             .filter(|home| !home.trim().is_empty())
             .unwrap_or_else(|| plugin_ids.initial_cwd.display().to_string());
         self.initial_workspace_state = Some(WorkspaceState::from_bootstrap_root(bootstrap_root));
-        self.zjstatus_segments = layout::ZjstatusSegments {
-            widget_tray: configuration
-                .get("widget_tray_segment")
-                .cloned()
-                .unwrap_or_default(),
-            custom_text: configuration
-                .get("custom_text_segment")
-                .cloned()
-                .unwrap_or_default(),
+        self.override_layout_config = layout::OverrideLayoutConfig {
+            zjstatus_segments: layout::ZjstatusSegments {
+                widget_tray: configuration
+                    .get("widget_tray_segment")
+                    .cloned()
+                    .unwrap_or_default(),
+                custom_text: configuration
+                    .get("custom_text_segment")
+                    .cloned()
+                    .unwrap_or_default(),
+            },
+            sidebar_width_percent: configuration
+                .get("sidebar_width_percent")
+                .and_then(|value| value.parse::<usize>().ok())
+                .filter(|value| (10..=40).contains(value))
+                .unwrap_or(layout::DEFAULT_SIDEBAR_WIDTH_PERCENT),
         };
         request_permission(&[
             PermissionType::ReadApplicationState,

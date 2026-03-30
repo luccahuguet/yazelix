@@ -238,9 +238,11 @@ def build_yazelix_plugins_block [
     pane_orchestrator_wasm_path: string
     widget_tray_segment: string
     custom_text_segment: string
+    sidebar_width_percent: int
 ] {
     let escaped_widget_tray = ($widget_tray_segment | to json -r)
     let escaped_custom_text = ($custom_text_segment | to json -r)
+    let escaped_sidebar_width_percent = ($sidebar_width_percent | into string | to json -r)
     let pane_alias_present = ($existing_plugin_lines | any {|line| $line | str contains $"($pane_orchestrator_alias) location=" })
     mut merged_plugin_lines = $existing_plugin_lines
 
@@ -249,6 +251,7 @@ def build_yazelix_plugins_block [
             $"    ($pane_orchestrator_alias) location=\"file:($pane_orchestrator_wasm_path)\" {"
             $"        widget_tray_segment ($escaped_widget_tray)"
             $"        custom_text_segment ($escaped_custom_text)"
+            $"        sidebar_width_percent ($escaped_sidebar_width_percent)"
             "    }"
         ])
     }
@@ -325,6 +328,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     let default_shell = ($config.default_shell? | default "nu")
     let default_mode = ($config.zellij_default_mode? | default "normal")
     let default_layout_name = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
+    let sidebar_width_percent = ($config.sidebar_width_percent? | default 20)
     
     print "🔄 Regenerating Zellij configuration..."
     
@@ -354,7 +358,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         if ($custom_text | is-not-empty) {
             print $"ℹ️  zjstatus custom text badge: '($custom_text)'"
         }
-        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $custom_text $pane_orchestrator_plugin_url $yazelix_dir
+        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $custom_text $pane_orchestrator_plugin_url $yazelix_dir $sidebar_width_percent
     }
     
     # Generate configuration from user config or defaults
@@ -402,6 +406,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
             $pane_orchestrator_wasm_path
             $widget_tray_segment
             $custom_text_segment
+            $sidebar_width_percent
         ),
         "",
         (get_dynamic_overrides),

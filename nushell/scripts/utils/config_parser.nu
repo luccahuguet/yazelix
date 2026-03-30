@@ -88,6 +88,23 @@ def parse_percentage_setting [value: any, label: string, default_value: int] {
     $parsed
 }
 
+def parse_sidebar_width_percent [raw_config: record] {
+    let normalized = ($raw_config.editor?.sidebar_width_percent? | default 20 | into string | str trim)
+    let parsed = (try { $normalized | into int } catch { null })
+
+    if $parsed == null {
+        let classification = (format_failure_classification "config" "Update editor.sidebar_width_percent to an integer from 10 to 40, or run `yzx config reset` to restore the template.")
+        error make {msg: $"Invalid editor.sidebar_width_percent value '($normalized)'. Expected an integer from 10 to 40.\n($classification)"}
+    }
+
+    if ($parsed < 10) or ($parsed > 40) {
+        let classification = (format_failure_classification "config" "Update editor.sidebar_width_percent to an integer from 10 to 40, or run `yzx config reset` to restore the template.")
+        error make {msg: $"Invalid editor.sidebar_width_percent value '($normalized)'. Expected an integer from 10 to 40.\n($classification)"}
+    }
+
+    $parsed
+}
+
 def parse_terminal_config_mode [raw_config: record] {
     let mode = ($raw_config.terminal?.config_mode? | default "yazelix" | into string | str downcase)
     let allowed = ["yazelix", "user"]
@@ -194,6 +211,7 @@ export def parse_yazelix_config [] {
         helix_runtime_path: ($raw_config.helix?.runtime_path? | default null),
         editor_command: $editor_command,
         enable_sidebar: ($raw_config.editor?.enable_sidebar? | default true),
+        sidebar_width_percent: (parse_sidebar_width_percent $raw_config),
         disable_zellij_tips: ($raw_config.zellij?.disable_tips? | default true | into string),
         zellij_rounded_corners: ($raw_config.zellij?.rounded_corners? | default true | into string),
         yazi_plugins: ($raw_config.yazi?.plugins? | default ["git"]),

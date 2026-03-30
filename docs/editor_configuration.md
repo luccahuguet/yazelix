@@ -30,6 +30,7 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
 # In yazelix.toml:
 [editor]
 command = ""             # Use Yazelix's Helix (recommended)
+sidebar_width_percent = 20
 # helix_runtime_path = "/path/to/runtime"  # Optional override when using custom builds
 ```
 
