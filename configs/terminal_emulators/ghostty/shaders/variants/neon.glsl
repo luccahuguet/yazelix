@@ -1,8 +1,10 @@
-// Neon variant with multi-color blending
+// Neon variant with a warm synthwave stack and cyan as a supporting accent
 
-const vec4 NEON_CYAN = vec4(0.20, 1.00, 0.00, 1.0);
-const vec4 NEON_MAGENTA = vec4(1.00, 0.00, 1.00, 1.0);
-const vec4 NEON_LIME = vec4(0.67, 1.00, 0.20, 1.0);
+const vec4 NEON_CYAN = vec4(0.00, 0.92, 1.00, 1.0);
+const vec4 NEON_PURPLE = vec4(0.60, 0.20, 1.00, 1.0);
+const vec4 NEON_RED = vec4(1.00, 0.24, 0.28, 1.0);
+const vec4 NEON_YELLOW = vec4(1.00, 0.88, 0.18, 1.0);
+const vec4 NEON_CORE_SHADOW = vec4(0.02, 0.08, 0.12, 1.0);
 const float DURATION = 0.22;
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord)
@@ -35,25 +37,53 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 
     float mod = .005;
 
-    // Blend classic neon colors along the trail axis with a very subtle time pulse
-    vec2 axis = normalize(centerCC - centerCP + 1e-6);
-    float u = dot(vu - centerCP, axis);
-    float t = clamp(u / max(lineLength, 1e-4), 0.0, 1.0);
-    float pulse = 0.08 * sin(iTime * 1.2);
+    float pulse = 0.06 * sin(iTime * 1.2);
+    vec4 neonCore = mix(NEON_CYAN, vec4(0.78, 1.00, 1.00, 1.0), 0.16 + pulse * 0.10);
+    vec4 neonBase = mix(
+        mix(NEON_PURPLE, NEON_RED, 0.42 + pulse * 0.10),
+        mix(NEON_YELLOW, NEON_CYAN, 0.18),
+        0.30
+    );
+    vec4 neonBorder = mix(NEON_RED, vec4(1.00, 0.50, 0.10, 1.0), 0.24 + pulse * 0.08);
 
-    vec4 c1 = mix(NEON_CYAN, NEON_MAGENTA, smoothstep(0.0, 1.0, t));
-    vec4 c2 = mix(NEON_MAGENTA, NEON_LIME, smoothstep(0.0, 1.0, t));
-    vec4 neonBase = mix(c1, c2, 0.35 + pulse);
-    vec4 neonEdge = mix(neonBase, NEON_MAGENTA, 0.25);
+    float cursorOuterPurpleGlow = cursorGlowMask(sdfCurrentCursor, .016, 0.022);
+    float cursorOuterRedGlow = cursorGlowMask(sdfCurrentCursor, .011, 0.016);
+    float cursorOuterYellowGlow = cursorGlowMask(sdfCurrentCursor, .007, 0.011);
+    float cursorOuterCyanGlow = cursorGlowMask(sdfCurrentCursor, .004, 0.006);
+    float cursorInnerGlow = cursorGlowMask(sdfCurrentCursor, .006, 0.006);
+    float cursorPurpleRing = clamp(
+        (1.0 - smoothstep(-0.008, -0.001, sdfCurrentCursor))
+        - (1.0 - smoothstep(-0.020, -0.011, sdfCurrentCursor)),
+        0.0,
+        1.0
+    );
+    float cursorRedInnerHalo = clamp(
+        (1.0 - smoothstep(-0.003, 0.003, sdfCurrentCursor))
+        - (1.0 - smoothstep(-0.024, -0.014, sdfCurrentCursor)),
+        0.0,
+        1.0
+    );
+    float cursorRedBorder = cursorEdgeMask(sdfCurrentCursor, -.0032, 0.0155);
+    float cursorYellowBorder = cursorEdgeMask(sdfCurrentCursor, -.0002, 0.0062);
+    float cursorCore = clamp(1.0 - smoothstep(-0.026, -0.012, sdfCurrentCursor), 0.0, 1.0);
 
-    // Build glow with restrained intensity
+    // Build a duo trail: cyan fill and halo with a red accented rim
     vec4 trail = fragColor;
-    trail = applyTrailLayer(trail, saturate(neonBase, 1.4), trailGlowMask(sdfTrail, mod + 0.010, 0.035));
-    trail = applyTrailLayer(trail, saturate(neonEdge, 1.5), trailEdgeMask(sdfTrail, mod, 0.006));
-    trail = mix(trail, saturate(neonBase, 1.45), trailCoreMask(sdfTrail, mod));
+    trail = applyTrailLayer(trail, saturate(neonBase, 1.6), trailGlowMask(sdfTrail, mod + 0.012, 0.045));
+    trail = applyTrailLayer(trail, saturate(neonBorder, 1.8), trailEdgeMask(sdfTrail, mod, 0.005));
+    trail = mix(trail, saturate(neonBase, 1.2), trailCoreMask(sdfTrail, mod) * 0.50);
 
-    // Cursor core and edge
-    trail = applyTrailLayer(trail, saturate(neonEdge, 1.55), cursorGlowMask(sdfCurrentCursor, .002, 0.004));
-    trail = applyTrailLayer(trail, saturate(neonBase, 1.5), cursorEdgeMask(sdfCurrentCursor, .002, 0.004));
+    // Make the cursor read like a neon tube: cyan inner face with a warm layered synthwave halo
+    trail = mix(trail, mix(fragColor, NEON_CORE_SHADOW, 0.70), cursorCore * 0.55);
+    trail = applyTrailLayer(trail, saturate(neonCore, 1.65), cursorCore * 0.92);
+    trail = applyTrailLayer(trail, saturate(NEON_PURPLE, 2.0), cursorOuterPurpleGlow * 0.95);
+    trail = applyTrailLayer(trail, saturate(NEON_RED, 2.05), cursorOuterRedGlow * 0.88);
+    trail = applyTrailLayer(trail, saturate(NEON_YELLOW, 2.1), cursorOuterYellowGlow * 0.62);
+    trail = applyTrailLayer(trail, saturate(NEON_CYAN, 1.45), cursorOuterCyanGlow * 0.18);
+    trail = applyTrailLayer(trail, saturate(mix(neonCore, neonBase, 0.25), 1.7), cursorInnerGlow * 0.65);
+    trail = applyTrailLayer(trail, saturate(NEON_PURPLE, 2.15), cursorPurpleRing);
+    trail = applyTrailLayer(trail, saturate(neonBorder, 2.35), cursorRedInnerHalo);
+    trail = applyTrailLayer(trail, saturate(NEON_RED, 2.3), cursorRedBorder);
+    trail = applyTrailLayer(trail, saturate(NEON_YELLOW, 2.65), cursorYellowBorder);
     fragColor = mix(trail, fragColor, 1. - smoothstep(0., sdfCurrentCursor, easedProgress * lineLength));
 }
