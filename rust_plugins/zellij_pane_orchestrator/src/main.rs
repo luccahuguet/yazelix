@@ -36,8 +36,7 @@ struct State {
     workspace_state_by_tab: HashMap<usize, WorkspaceState>,
     seen_tab_positions: HashSet<usize>,
     initial_workspace_state: Option<WorkspaceState>,
-    widget_tray_segment: String,
-    custom_text_segment: String,
+    zjstatus_segments: layout::ZjstatusSegments,
     permissions_granted: bool,
 }
 
@@ -52,14 +51,16 @@ impl ZellijPlugin for State {
             .filter(|home| !home.trim().is_empty())
             .unwrap_or_else(|| plugin_ids.initial_cwd.display().to_string());
         self.initial_workspace_state = Some(WorkspaceState::from_bootstrap_root(bootstrap_root));
-        self.widget_tray_segment = configuration
-            .get("widget_tray_segment")
-            .cloned()
-            .unwrap_or_default();
-        self.custom_text_segment = configuration
-            .get("custom_text_segment")
-            .cloned()
-            .unwrap_or_default();
+        self.zjstatus_segments = layout::ZjstatusSegments {
+            widget_tray: configuration
+                .get("widget_tray_segment")
+                .cloned()
+                .unwrap_or_default(),
+            custom_text: configuration
+                .get("custom_text_segment")
+                .cloned()
+                .unwrap_or_default(),
+        };
         request_permission(&[
             PermissionType::ReadApplicationState,
             PermissionType::ChangeApplicationState,

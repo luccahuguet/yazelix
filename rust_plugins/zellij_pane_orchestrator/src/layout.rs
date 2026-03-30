@@ -45,6 +45,12 @@ pub(crate) enum FamilyDirection {
     Previous,
 }
 
+#[derive(Default)]
+pub(crate) struct ZjstatusSegments {
+    pub(crate) widget_tray: String,
+    pub(crate) custom_text: String,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum LayoutFamily {
     Single,
@@ -277,8 +283,7 @@ impl State {
         let layout_kdl = build_override_layout_kdl(
             layout_variant,
             terminal_panes.len(),
-            &self.widget_tray_segment,
-            &self.custom_text_segment,
+            &self.zjstatus_segments,
         )?;
         let layout_info = LayoutInfo::Stringified(layout_kdl);
         override_layout(layout_info, false, false, true, BTreeMap::new());
@@ -401,8 +406,7 @@ fn infer_layout_variant_from_terminal_panes(
 fn build_override_layout_kdl(
     layout_variant: LayoutVariant,
     total_terminal_panes: usize,
-    widget_tray_segment: &str,
-    custom_text_segment: &str,
+    zjstatus_segments: &ZjstatusSegments,
 ) -> Option<String> {
     if total_terminal_panes < 2 {
         return None;
@@ -412,13 +416,11 @@ fn build_override_layout_kdl(
     let sidebar_launcher = runtime_script_path("launch_sidebar_yazi.nu", &resolved_runtime_dir);
     let runtime_layout = render_embedded_side_layout(
         &resolved_runtime_dir,
-        widget_tray_segment,
-        custom_text_segment,
+        zjstatus_segments,
     );
     let swap_layouts = render_embedded_swap_layouts(
         &resolved_runtime_dir,
-        widget_tray_segment,
-        custom_text_segment,
+        zjstatus_segments,
     );
     let ui_tab_template = extract_ui_tab_template(&runtime_layout)?;
     let content_layout = build_content_layout_kdl(
@@ -497,14 +499,12 @@ fn build_generic_terminal_panes(count: usize, indent_level: usize) -> String {
 
 fn render_embedded_side_layout(
     runtime_dir: &str,
-    widget_tray_segment: &str,
-    custom_text_segment: &str,
+    zjstatus_segments: &ZjstatusSegments,
 ) -> String {
     render_embedded_layout(
         SIDE_LAYOUT_TEMPLATE,
         runtime_dir,
-        widget_tray_segment,
-        custom_text_segment,
+        zjstatus_segments,
         &[
             (ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER, ZJSTATUS_TAB_TEMPLATE),
             (KEYBINDS_COMMON_PLACEHOLDER, KEYBINDS_COMMON_TEMPLATE),
@@ -514,14 +514,12 @@ fn render_embedded_side_layout(
 
 fn render_embedded_swap_layouts(
     runtime_dir: &str,
-    widget_tray_segment: &str,
-    custom_text_segment: &str,
+    zjstatus_segments: &ZjstatusSegments,
 ) -> String {
     render_embedded_layout(
         SIDE_SWAP_LAYOUT_TEMPLATE,
         runtime_dir,
-        widget_tray_segment,
-        custom_text_segment,
+        zjstatus_segments,
         &[
             (SWAP_SIDEBAR_OPEN_PLACEHOLDER, SWAP_SIDEBAR_OPEN_TEMPLATE),
             (
@@ -535,8 +533,7 @@ fn render_embedded_swap_layouts(
 fn render_embedded_layout(
     template: &str,
     runtime_dir: &str,
-    widget_tray_segment: &str,
-    custom_text_segment: &str,
+    zjstatus_segments: &ZjstatusSegments,
     static_fragments: &[(&str, &str)],
 ) -> String {
     let with_fragments = static_fragments
@@ -547,8 +544,7 @@ fn render_embedded_layout(
     replace_layout_placeholders(
         with_fragments,
         runtime_dir,
-        widget_tray_segment,
-        custom_text_segment,
+        zjstatus_segments,
     )
 }
 
@@ -582,14 +578,13 @@ fn apply_static_fragment(content: String, placeholder: &str, fragment: &str) -> 
 fn replace_layout_placeholders(
     content: String,
     runtime_dir: &str,
-    widget_tray_segment: &str,
-    custom_text_segment: &str,
+    zjstatus_segments: &ZjstatusSegments,
 ) -> String {
     content
         .replace(HOME_DIR_PLACEHOLDER, &home_dir())
         .replace(RUNTIME_DIR_PLACEHOLDER, runtime_dir)
-        .replace(WIDGET_TRAY_PLACEHOLDER, widget_tray_segment)
-        .replace(CUSTOM_TEXT_SEGMENT_PLACEHOLDER, custom_text_segment)
+        .replace(WIDGET_TRAY_PLACEHOLDER, &zjstatus_segments.widget_tray)
+        .replace(CUSTOM_TEXT_SEGMENT_PLACEHOLDER, &zjstatus_segments.custom_text)
 }
 
 fn runtime_dir() -> String {
@@ -627,8 +622,8 @@ mod tests {
     use super::{
         build_bottom_terminal_family_kdl, build_content_layout_kdl, build_generic_terminal_panes,
         build_override_layout_kdl, build_single_family_kdl, build_vertical_split_family_kdl,
-        extract_ui_tab_template, infer_layout_variant_from_terminal_panes, FamilyDirection,
-        LayoutFamily, LayoutVariant, SidebarState,
+        extract_ui_tab_template, infer_layout_variant_from_terminal_panes, FamilyDirection, LayoutFamily,
+        LayoutVariant, SidebarState, ZjstatusSegments,
     };
     use crate::panes::{ManagedTabPanes, ManagedTerminalPane, TerminalPaneLayout};
     use zellij_tile::prelude::PaneId;
@@ -794,8 +789,10 @@ mod tests {
                 sidebar_state: SidebarState::Open,
             },
             3,
-            "#[fg=#00ff88,bold][editor: {command_editor}] {command_cpu}",
-            "#[fg=#ffff00,bold][TEST] ",
+            &ZjstatusSegments {
+                widget_tray: "#[fg=#00ff88,bold][editor: {command_editor}] {command_cpu}".into(),
+                custom_text: "#[fg=#ffff00,bold][TEST] ".into(),
+            },
         )
         .unwrap();
 
