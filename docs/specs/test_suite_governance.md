@@ -35,7 +35,6 @@ This spec defines:
 | Cheap validator lane | `nu nushell/scripts/dev/validate_syntax.nu`, `nu nushell/scripts/dev/validate_readme_version.nu` | Very fast structural or source-of-truth checks | Good fit for `prek` and direct CI steps |
 | Default automated regression lane | `yzx dev test` | The normal non-sweep automated regression suite | Uses explicit membership |
 | Internal core regression bundle | `nu nushell/scripts/dev/test_yzx_commands.nu` | High-signal core launch/runtime/workspace/integration contracts | Internal organization detail |
-| Internal extra regression bundle | `nu nushell/scripts/dev/test_yzx_extra_regressions.nu` plus `test_reuse_mode.nu` | Small set of extra cheap regressions still worth running by default | Internal organization detail |
 | Non-visual sweep lane | `yzx dev test --sweep` | Matrix coverage for config and supported shell/terminal combinations without opening windows | Environment-sensitive but still scriptable |
 | Visual sweep lane | `yzx dev test --visual` | Real terminal-window validation | Heavy, manualish, and not the default lane |
 | Full lane | `yzx dev test --all` | Default automated suite + non-visual sweep + visual sweep | For broader release confidence |
@@ -53,8 +52,6 @@ The current repo surface should be understood roughly as:
   - `validate_specs.nu`
 - Default automated lane:
   - `test_yzx_commands.nu` as the spec-backed core bundle
-  - `test_yzx_extra_regressions.nu` as a small regression-only allowlist entry with justification
-  - the explicit standalone reuse-path regression `test_reuse_mode.nu` as a small regression-only allowlist entry with justification
 - Direct maintainer-only or exploratory scripts that are no longer part of the normal default lane:
   - `test_yzx_maintainer.nu`
 - Optional sweep coverage:
@@ -109,13 +106,13 @@ A test is a strong demotion candidate when it is:
 ### Default-suite traceability model
 
 - `test_yzx_commands.nu` should stay tied to one or more real spec `Defended by:` lines.
-- `test_yzx_extra_regressions.nu` and `test_reuse_mode.nu` are currently the only justified regression-only default-suite entrypoints.
-- The regression-only allowlist should stay tiny and justified in one validator rather than expanding into a shadow second suite.
+- The default automated suite should contain only spec-backed entrypoints.
+- If a regression matters enough for the default lane, it should be promoted into a spec-backed bundle or accompanied by a dedicated spec instead of living as a policy exception.
 
 ### Lane placement rules
 
 - Put cheap structural validators in cheap validator lanes, not in the default `yzx` command bundle.
-- Keep the default automated suite small and high-signal even if it includes one tiny extra-regression bundle alongside the core contracts.
+- Keep the default automated suite small, spec-backed, and high-signal.
 - Remove weak, low-level, or packaging/config-sync checks instead of preserving them indefinitely in a public secondary lane.
 - Put cross-shell, cross-terminal, or matrix concerns in the sweep lanes.
 - Put true windowed or visual checks in the visual sweep lane or manual verification path.
@@ -126,7 +123,7 @@ A test is a strong demotion candidate when it is:
 
 The default lane now uses explicit suite membership instead of implicitly globbing `test_*.nu`. This avoids treating library-like test bundles with no `main` entrypoint as if they were real runnable tests.
 
-The normal non-sweep automated suite was then pruned aggressively: low-signal standalone files for config-parser trivia, terminal-metadata trivia, and weak Nix-detection scenario printing were removed from the maintained suite, and many packaging/config-sync or lower-level helper assertions were dropped from the grouped extra regressions.
+The normal non-sweep automated suite was then pruned aggressively: regression-only sidecar entrypoints were removed from the default lane, and low-signal parser, formatting, metadata, and animation-detail assertions were deleted or demoted so the maintained contract stays centered on supported user behavior.
 
 The README version invariant also belongs to the cheap validator lane, not the default `yzx` command regression bundle.
 
@@ -158,7 +155,6 @@ So the duplicate README-version assertion is removed from `nushell/scripts/dev/t
 - unit tests: n/a
 - integration tests: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
 - integration tests: `nu nushell/scripts/dev/test_yzx_commands.nu`
-- integration tests: `nu nushell/scripts/dev/test_yzx_extra_regressions.nu`
 - CI checks: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
 - CI checks: `nu nushell/scripts/dev/validate_readme_version.nu`
 - CI checks: `nu nushell/scripts/dev/validate_specs.nu`

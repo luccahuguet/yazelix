@@ -47,13 +47,6 @@ export def run_yazi_canonical_tests [] {
     ]
 }
 
-export def run_yazi_noncanonical_tests [] {
-    []
-}
-
 export def run_yazi_tests [] {
-    [
-        (run_yazi_canonical_tests)
-        (run_yazi_noncanonical_tests)
-    ] | flatten
+    run_yazi_canonical_tests
 }

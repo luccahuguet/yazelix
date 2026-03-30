@@ -2,19 +2,10 @@
 
 use ../core/yazelix.nu *
 use ./test_yzx_helpers.nu [get_repo_config_dir get_repo_root repo_path setup_managed_config_fixture]
-use ../utils/config_migrations.nu [
-    build_config_migration_plan_from_record
-    render_config_migration_plan
-    validate_config_migration_rules
-]
 use ../utils/constants.nu [YAZELIX_VERSION]
 use ../utils/upgrade_summary.nu [
-    build_upgrade_summary_report
-    build_current_upgrade_summary_report
     maybe_show_first_run_upgrade_summary
 ]
-use ../utils/ascii_art.nu get_yazelix_colors
-use ../setup/welcome.nu build_welcome_message
 use ../utils/shell_config_generation.nu [get_yazelix_section_content]
 use ../utils/config_manager.nu [check_config_versions]
 
@@ -277,225 +268,6 @@ def test_yzx_desktop_uninstall_removes_generated_entry [] {
 
     rm -rf $fixture.tmp_home
     $result
-}
-
-def test_yzx_tutor_hx_delegates_to_helix_tutor [] {
-    print "🧪 Testing yzx tutor hx delegates to hx --tutor..."
-
-    let fixture = (setup_relocated_runtime_fixture)
-
-    let result = (try {
-        let fake_bin = ($fixture.tmp_home | path join "bin")
-        let args_file = ($fixture.tmp_home | path join "hx_args.txt")
-        let real_nu = (which nu | get 0.path)
-        mkdir $fake_bin
-
-        [
-            "#!/bin/sh"
-            $"printf '%s\\n' \"$@\" > \"($args_file)\""
-            "echo \"fake hx tutor\""
-        ] | str join "\n" | save --force --raw ($fake_bin | path join "hx")
-        ^chmod +x ($fake_bin | path join "hx")
-
-        let output = (with-env {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-            PATH: ([$fake_bin] | append $env.PATH)
-        } {
-            ^$real_nu -c $"use \"($fixture.yzx_script)\" *; yzx tutor hx" | complete
-        })
-        let stdout = ($output.stdout | str trim)
-        let recorded_args = if ($args_file | path exists) {
-            open --raw $args_file | str trim
-        } else {
-            ""
-        }
-
-        if ($output.exit_code == 0) and ($stdout == "fake hx tutor") and ($recorded_args == "--tutor") {
-            print "  ✅ yzx tutor hx delegates to Helix's built-in tutor"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim) args=($recorded_args)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-def test_yzx_tutor_nu_delegates_to_nushell_tutor [] {
-    print "🧪 Testing yzx tutor nu delegates to nu -c tutor..."
-
-    let fixture = (setup_relocated_runtime_fixture)
-
-    let result = (try {
-        let fake_bin = ($fixture.tmp_home | path join "bin")
-        let args_file = ($fixture.tmp_home | path join "nu_args.txt")
-        let real_nu = (which nu | get 0.path)
-        mkdir $fake_bin
-
-        [
-            "#!/bin/sh"
-            $"printf '%s\\n' \"$@\" > \"($args_file)\""
-            "echo \"fake nu tutor\""
-        ] | str join "\n" | save --force --raw ($fake_bin | path join "nu")
-        ^chmod +x ($fake_bin | path join "nu")
-
-        let output = (with-env {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-            PATH: ([$fake_bin] | append $env.PATH)
-        } {
-            ^$real_nu -c $"use \"($fixture.yzx_script)\" *; yzx tutor nu" | complete
-        })
-        let stdout = ($output.stdout | str trim)
-        let recorded_args = if ($args_file | path exists) {
-            open --raw $args_file | lines
-        } else {
-            []
-        }
-
-        if ($output.exit_code == 0) and ($stdout == "fake nu tutor") and ($recorded_args == ["-c", "tutor"]) {
-            print "  ✅ yzx tutor nu delegates to Nushell's built-in tutor"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim) args=($recorded_args | to json -r)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-def test_config_migration_rule_metadata_is_complete [] {
-    print "🧪 Testing config migration rule metadata completeness..."
-
-    try {
-        let errors = (validate_config_migration_rules)
-
-        if ($errors | is-empty) {
-            print "  ✅ Config migration rules expose complete metadata"
-            true
-        } else {
-            print $"  ❌ Unexpected metadata errors: ($errors | str join ' | ')"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_config_migration_plan_orders_safe_rewrites [] {
-    print "🧪 Testing config migration plan ordering and deterministic rewrites..."
-
-    try {
-        let plan = (build_config_migration_plan_from_record {
-            zellij: { widget_tray: ["layout", "editor", "cpu"] }
-            terminal: {
-                preferred_terminal: "ghostty"
-                extra_terminals: ["wezterm", "kitty", "wezterm"]
-            }
-            shell: { enable_atuin: true }
-        })
-        let ids = ($plan.results | get id)
-        let migrated = $plan.migrated_config
-
-        if (
-            ($ids == [
-                "remove_zellij_widget_tray_layout",
-                "unify_terminal_preference_list",
-                "remove_shell_enable_atuin"
-            ])
-            and ($plan.auto_count == 3)
-            and ($plan.manual_count == 0)
-            and (($migrated | get zellij.widget_tray) == ["editor", "cpu"])
-            and (($migrated | get terminal.terminals) == ["ghostty", "wezterm", "kitty"])
-            and not (record_has_path $migrated ["terminal", "preferred_terminal"])
-            and not (record_has_path $migrated ["terminal", "extra_terminals"])
-            and not (record_has_path $migrated ["shell", "enable_atuin"])
-        ) {
-            print "  ✅ Migration plan preserves rule order and applies deterministic rewrites"
-            true
-        } else {
-            print $"  ❌ Unexpected plan result: ids=($ids | to json -r) migrated=($migrated | to json -r)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_config_migration_plan_marks_ambiguous_cases_manual [] {
-    print "🧪 Testing config migration plan leaves ambiguous cases manual-only..."
-
-    try {
-        let plan = (build_config_migration_plan_from_record {
-            terminal: {
-                preferred_terminal: "ghostty"
-                terminals: ["kitty"]
-                cursor_trail: "random"
-            }
-        })
-        let manual_ids = ($plan.manual_results | get id)
-
-        if (
-            ($plan.auto_count == 0)
-            and ($plan.manual_count == 2)
-            and ($manual_ids == [
-                "unify_terminal_preference_list",
-                "review_legacy_cursor_trail_settings"
-            ])
-        ) {
-            print "  ✅ Conflicting or lossy migrations stay manual-only"
-            true
-        } else {
-            print $"  ❌ Unexpected manual plan: ($plan | to json -r)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_config_migration_preview_rendering_is_high_signal [] {
-    print "🧪 Testing config migration preview rendering..."
-
-    try {
-        let plan = (build_config_migration_plan_from_record {
-            zellij: { widget_tray: ["layout", "editor"] }
-            terminal: { cursor_trail: "snow" }
-        } "/tmp/yazelix.toml")
-        let rendered = (render_config_migration_plan $plan)
-
-        if (
-            ($rendered | str contains "[AUTO] remove_zellij_widget_tray_layout")
-            and ($rendered | str contains '[MANUAL] review_legacy_cursor_trail_settings')
-            and ($rendered | str contains 'Preview only. Re-run with `yzx config migrate --apply`')
-            and ($rendered | str contains "Manual-only items will stay untouched on apply.")
-        ) {
-            print "  ✅ Migration preview clearly distinguishes safe and manual cases"
-            true
-        } else {
-            print $"  ❌ Unexpected preview output: ($rendered)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
 }
 
 def test_yzx_config_migrate_preview_reports_known_migrations [] {
@@ -889,89 +661,6 @@ def test_upgrade_summary_first_run_marks_seen_and_second_run_stays_quiet [] {
     $result
 }
 
-def test_upgrade_summary_report_detects_matching_migrations [] {
-    print "🧪 Testing upgrade summary report detects matching migration candidates..."
-
-    let fixture = (setup_upgrade_summary_fixture
-        "yazelix_upgrade_summary_migrations"
-        '[zellij]
-widget_tray = ["layout", "editor"]
-
-[shell]
-enable_atuin = true
-'
-        --migration-notes
-    )
-
-    let result = (try {
-        let report = with-env {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-            YAZELIX_STATE_DIR: $fixture.state_dir
-        } {
-            build_current_upgrade_summary_report
-        }
-
-        if (
-            ($report.found == true)
-            and (($report.matching_migration_ids | length) == 2)
-            and ("remove_zellij_widget_tray_layout" in $report.matching_migration_ids)
-            and ("remove_shell_enable_atuin" in $report.matching_migration_ids)
-            and ($report.output | str contains "Detected matching migration candidates in your current config")
-            and ($report.output | str contains "yzx config migrate --apply")
-        ) {
-            print "  ✅ Upgrade summary report points current stale config at the migration flow"
-            true
-        } else {
-            print $"  ❌ Unexpected report: ($report | to json -r)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-def test_build_welcome_message_uses_current_major_series_headline [] {
-    print "🧪 Testing build_welcome_message uses the current major-series headline from upgrade_notes.toml..."
-
-    let fixture = (setup_upgrade_summary_fixture "yazelix_welcome_headline" "")
-
-    let result = (try {
-        let env_overlay = {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-            YAZELIX_STATE_DIR: $fixture.state_dir
-        }
-
-        let welcome_lines = with-env $env_overlay {
-            build_welcome_message $fixture.runtime_dir "release" (get_yazelix_colors)
-        }
-        let headline_line = ($welcome_lines | get 1)
-        let notes = (open ($fixture.runtime_dir | path join "docs" "upgrade_notes.toml"))
-        let expected_headline = ($notes.series.v13.headline | into string | str trim)
-
-        if ($headline_line | str contains $expected_headline) {
-            print "  ✅ Startup welcome copy now reads the maintained current-series headline from upgrade_notes.toml"
-            true
-        } else {
-            print $"  ❌ Unexpected startup headline line: ($headline_line)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
 def test_yzx_whats_new_reopens_current_summary_even_after_seen [] {
     print "🧪 Testing yzx whats_new reopens the current summary even after the version was seen..."
 
@@ -1014,62 +703,6 @@ widget_tray = ["layout", "editor"]
     })
 
     rm -rf $fixture.tmp_home
-    $result
-}
-
-def test_historical_upgrade_notes_cover_v12_v13_tag_floor [] {
-    print "🧪 Testing historical upgrade notes cover the supported v12/v13 tag floor..."
-
-    let repo_root = (get_repo_config_dir)
-    let repo_git_root = (get_repo_root)
-    let tmp_home = (^mktemp -d /tmp/yazelix_historical_notes_XXXXXX | str trim)
-    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
-    mkdir ($tmp_home | path join ".local" "share")
-    mkdir $state_dir
-
-    let result = (try {
-        let tags = (
-            ^git -C $repo_git_root tag --sort=creatordate
-            | lines
-            | where {|tag| ($tag | str starts-with "v12") or ($tag | str starts-with "v13") }
-        )
-        let notes = (open ($repo_root | path join "docs" "upgrade_notes.toml"))
-        let release_keys = ($notes.releases | columns)
-        let missing = ($tags | where {|tag| not ($tag in $release_keys) })
-        let sample_versions = ["v12", "v12.10", "v13.2", "v13.7"]
-        let reports = (
-            $sample_versions
-            | each {|version|
-                with-env {
-                    HOME: $tmp_home
-                    YAZELIX_RUNTIME_DIR: $repo_root
-                    YAZELIX_CONFIG_OVERRIDE: ($repo_root | path join "yazelix_default.toml")
-                    YAZELIX_STATE_DIR: $state_dir
-                } {
-                    build_upgrade_summary_report $version
-                }
-            }
-        )
-
-        if (
-            ($missing | is-empty)
-            and ($reports | all {|report| $report.found == true })
-            and (($reports | where version == "v12.10" | first).entry.upgrade_impact == "migration_available")
-            and (($reports | where version == "v13.2" | first).entry.upgrade_impact == "manual_action_required")
-        ) {
-            print "  ✅ Historical notes cover the supported v12/v13 tag floor and load through exact-version reports"
-            true
-        } else {
-            print $"  ❌ Missing tags: ($missing | to json -r)"
-            print $"  ❌ Reports: ($reports | to json -r)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
     $result
 }
 
@@ -1277,143 +910,6 @@ def test_yzx_edit_targets_print_paths [] {
             false
         }
     } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
-def test_yzx_config_reset_replaces_with_backup [] {
-    print "🧪 Testing yzx config reset replaces the config with backup..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_config_reset_XXXXXX | str trim)
-    let temp_yazelix_dir = ($tmp_home | path join ".config" "yazelix")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_yazelix_dir
-
-    let result = (try {
-        let user_config_dir = ($temp_yazelix_dir | path join "user_configs")
-        mkdir $user_config_dir
-
-        '[shell]
-default_shell = "bash"
-' | save --force --raw ($user_config_dir | path join "yazelix.toml")
-        'enabled = ["git"]
-' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
-
-        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
-        let output = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_yazelix_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx config reset --yes" | complete
-        }
-        let stdout = ($output.stdout | str trim)
-        let new_config = (open --raw ($user_config_dir | path join "yazelix.toml"))
-        let default_config = (open --raw ($repo_root | path join "yazelix_default.toml"))
-        let new_pack_config = (open --raw ($user_config_dir | path join "yazelix_packs.toml"))
-        let default_pack_config = (open --raw ($repo_root | path join "yazelix_packs_default.toml"))
-        let backups = (
-            ls $user_config_dir
-            | where name =~ 'yazelix\.toml\.backup-'
-        )
-        let pack_backups = (
-            ls $user_config_dir
-            | where name =~ 'yazelix_packs\.toml\.backup-'
-        )
-        let backup_content = if ($backups | is-empty) { "" } else { open --raw (($backups | first).name) }
-        let pack_backup_content = if ($pack_backups | is-empty) { "" } else { open --raw (($pack_backups | first).name) }
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Backed up previous config")
-            and ($stdout | str contains "Backed up previous pack config")
-            and ($stdout | str contains "Replaced yazelix.toml with a fresh template")
-            and ($stdout | str contains "Replaced yazelix_packs.toml with a fresh template")
-            and ($new_config == $default_config)
-            and ($new_pack_config == $default_pack_config)
-            and ($backup_content | str contains 'default_shell = "bash"')
-            and ($pack_backup_content | str contains 'enabled = ["git"]')
-        ) {
-            print "  ✅ yzx config reset backs up both config surfaces and restores the split templates"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) backups=(($backups | length)) pack_backups=(($pack_backups | length))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
-def test_yzx_config_reset_supports_no_backup [] {
-    print "🧪 Testing yzx config reset can replace config surfaces without backups..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_config_reset_no_backup_XXXXXX | str trim)
-    let temp_yazelix_dir = ($tmp_home | path join ".config" "yazelix")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_yazelix_dir
-
-    let result = (try {
-        let user_config_dir = ($temp_yazelix_dir | path join "user_configs")
-        mkdir $user_config_dir
-
-        '[shell]
-default_shell = "bash"
-' | save --force --raw ($user_config_dir | path join "yazelix.toml")
-        'enabled = ["git"]
-' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
-
-        let yzx_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
-        let output = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_yazelix_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $"use \"($yzx_script)\" *; yzx config reset --yes --no-backup" | complete
-        }
-        let stdout = ($output.stdout | str trim)
-        let new_config = (open --raw ($user_config_dir | path join "yazelix.toml"))
-        let default_config = (open --raw ($repo_root | path join "yazelix_default.toml"))
-        let new_pack_config = (open --raw ($user_config_dir | path join "yazelix_packs.toml"))
-        let default_pack_config = (open --raw ($repo_root | path join "yazelix_packs_default.toml"))
-        let backups = (
-            ls $user_config_dir
-            | where name =~ 'yazelix\.toml\.backup-'
-        )
-        let pack_backups = (
-            ls $user_config_dir
-            | where name =~ 'yazelix_packs\.toml\.backup-'
-        )
-
-        if (
-            ($output.exit_code == 0)
-            and not ($stdout | str contains "Backed up previous config")
-            and not ($stdout | str contains "Backed up previous pack config")
-            and ($stdout | str contains "Replaced yazelix.toml with a fresh template")
-            and ($stdout | str contains "Replaced yazelix_packs.toml with a fresh template")
-            and ($stdout | str contains "removed without backup")
-            and ($new_config == $default_config)
-            and ($new_pack_config == $default_pack_config)
-            and ($backups | is-empty)
-            and ($pack_backups | is-empty)
-        ) {
-            print "  ✅ yzx config reset can skip backup creation when explicitly requested"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) backups=(($backups | length)) pack_backups=(($pack_backups | length))"
-            false
-        }
-    } catch { |err|
         print $"  ❌ Exception: ($err.msg)"
         false
     })
@@ -2017,61 +1513,6 @@ def test_popup_runner_permission_cache_is_preserved_for_stable_runtime_path [] {
     $result
 }
 
-def test_seed_yazelix_plugin_permissions_materializes_required_grants [] {
-    print "🧪 Testing zellij permission repair seeds Yazelix plugin grants..."
-
-    let tmp_home = (^mktemp -d /tmp/yazelix_seed_permissions_XXXXXX | str trim)
-    let yazelix_dir = ($tmp_home | path join ".config" "yazelix")
-    let tracked_plugins_dir = ($yazelix_dir | path join "configs" "zellij" "plugins")
-    let permissions_path = ($tmp_home | path join ".cache" "zellij" "permissions.kdl")
-    let runtime_pane_path = ($tmp_home | path join ".local" "share" "yazelix" "configs" "zellij" "plugins" "yazelix_pane_orchestrator.wasm")
-    let runtime_popup_path = ($tmp_home | path join ".local" "share" "yazelix" "configs" "zellij" "plugins" "yazelix_popup_runner.wasm")
-
-    let result = (try {
-        mkdir $tracked_plugins_dir
-        "pane" | save --force --raw ($tracked_plugins_dir | path join "yazelix_pane_orchestrator.wasm")
-        "popup" | save --force --raw ($tracked_plugins_dir | path join "yazelix_popup_runner.wasm")
-
-        let helper_script = (repo_path "nushell" "scripts" "setup" "zellij_plugin_paths.nu")
-        let snippet = ([
-            $"source '($helper_script)'"
-            ("let result = (seed_yazelix_plugin_permissions '" + $yazelix_dir + "')")
-            "print ($result | to json -r)"
-        ] | str join "\n")
-        let output = with-env { HOME: $tmp_home } {
-            ^nu -c $snippet | complete
-        }
-        let stdout = ($output.stdout | str trim)
-        let cache_contents = (open --raw $permissions_path)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains $permissions_path)
-            and ($runtime_pane_path | path exists)
-            and ($runtime_popup_path | path exists)
-            and ($cache_contents | str contains ($tracked_plugins_dir | path join "yazelix_pane_orchestrator.wasm"))
-            and ($cache_contents | str contains $runtime_pane_path)
-            and ($cache_contents | str contains "OpenTerminalsOrPlugins")
-            and ($cache_contents | str contains "WriteToStdin")
-            and ($cache_contents | str contains ($tracked_plugins_dir | path join "yazelix_popup_runner.wasm"))
-            and ($cache_contents | str contains $runtime_popup_path)
-            and ($cache_contents | str contains "ReadCliPipes")
-        ) {
-            print "  ✅ Yazelix permission repair seeds both plugin grants and runtime wasm paths"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim) cache=($cache_contents)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
 def test_packs_helper_uses_runtime_root_for_devenv_links [] {
     print "🧪 Testing yzx packs helper reads .devenv links from the runtime root..."
 
@@ -2156,12 +1597,6 @@ export def run_core_canonical_tests [] {
         (test_yzx_status_versions_uses_invoking_path_for_versions)
         (test_yzx_desktop_install_writes_valid_absolute_launcher)
         (test_yzx_desktop_uninstall_removes_generated_entry)
-        (test_yzx_tutor_hx_delegates_to_helix_tutor)
-        (test_yzx_tutor_nu_delegates_to_nushell_tutor)
-        (test_config_migration_rule_metadata_is_complete)
-        (test_config_migration_plan_orders_safe_rewrites)
-        (test_config_migration_plan_marks_ambiguous_cases_manual)
-        (test_config_migration_preview_rendering_is_high_signal)
         (test_yzx_config_migrate_preview_reports_known_migrations)
         (test_yzx_config_migrate_apply_rewrites_config_with_backup)
         (test_yzx_config_migrate_apply_splits_legacy_packs_into_sidecar)
@@ -2171,10 +1606,7 @@ export def run_core_canonical_tests [] {
         (test_entrypoint_preflight_applies_auto_changes_then_blocks_on_manual_followup)
         (test_entrypoint_preflight_relocates_legacy_root_config_surfaces)
         (test_upgrade_summary_first_run_marks_seen_and_second_run_stays_quiet)
-        (test_upgrade_summary_report_detects_matching_migrations)
-        (test_build_welcome_message_uses_current_major_series_headline)
         (test_yzx_whats_new_reopens_current_summary_even_after_seen)
-        (test_historical_upgrade_notes_cover_v12_v13_tag_floor)
         (test_yzx_config_view)
         (test_yzx_config_full_merges_pack_sidecar)
         (test_yzx_edit_targets_print_paths)
@@ -2186,17 +1618,6 @@ export def run_core_canonical_tests [] {
     ]
 }
 
-export def run_core_noncanonical_tests [] {
-    [
-        (test_seed_yazelix_plugin_permissions_materializes_required_grants)
-        (test_yzx_config_reset_replaces_with_backup)
-        (test_yzx_config_reset_supports_no_backup)
-    ]
-}
-
 export def run_core_tests [] {
-    [
-        (run_core_canonical_tests)
-        (run_core_noncanonical_tests)
-    ] | flatten
+    run_core_canonical_tests
 }

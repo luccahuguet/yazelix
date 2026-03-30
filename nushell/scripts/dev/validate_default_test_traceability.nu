@@ -1,11 +1,6 @@
 #!/usr/bin/env nu
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
-const REGRESSION_ONLY_ALLOWLIST = {
-    test_yzx_extra_regressions.nu: "Keeps a very small bundle of cheap regression-only checks in the default suite: config reset backup behavior, capped zjstatus custom-text rendering, session keybind ownership, popup inline override, launch failure diagnostics, and reveal target resolution."
-    test_reuse_mode.nu: "Keeps the stale-profile reuse regression in the default suite because --reuse path selection is a real user-facing contract but does not yet have its own dedicated spec."
-}
-
 def get_traceability_section [content: string] {
     let sections = (
         $content
@@ -68,27 +63,9 @@ export def main [] {
     let defended_by_lines = (load_spec_defended_by_lines)
     mut errors = []
 
-    if (($REGRESSION_ONLY_ALLOWLIST | columns | length) > 2) {
-        $errors = ($errors | append "Default-suite regression-only allowlist should stay tiny \(more than 2 entries found\)")
-    }
-
     for entrypoint in $entrypoints {
-        if ($entrypoint in ($REGRESSION_ONLY_ALLOWLIST | columns)) {
-            let reason = ($REGRESSION_ONLY_ALLOWLIST | get $entrypoint | into string | str trim)
-            if ($reason | is-empty) {
-                $errors = ($errors | append $"Default-suite regression-only allowlist entry lacks justification: ($entrypoint)")
-            }
-            continue
-        }
-
         if not (is_spec_backed $entrypoint $defended_by_lines) {
             $errors = ($errors | append $"Default-suite entrypoint is not tied to any spec traceability line: ($entrypoint)")
-        }
-    }
-
-    for allowlisted in ($REGRESSION_ONLY_ALLOWLIST | columns) {
-        if not ($allowlisted in $entrypoints) {
-            $errors = ($errors | append $"Regression-only allowlist entry is not part of the default suite: ($allowlisted)")
         }
     }
 

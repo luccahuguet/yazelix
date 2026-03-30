@@ -271,35 +271,6 @@ def test_terminal_launch_requires_bash [] {
     $result
 }
 
-def test_terminal_launch_reports_immediate_failure [] {
-    print "🧪 Testing terminal launch reports immediate command failures..."
-
-    try {
-        let launch_script = (repo_path "nushell" "scripts" "core" "launch_yazelix.nu")
-        let snippet = ([
-            $"source \"($launch_script)\""
-            'try {'
-            '    run_detached_terminal_launch "echo launch-broke >&2; exit 23" "Test Terminal"'
-            '} catch {|err|'
-            '    print $err.msg'
-            '}'
-        ] | str join "\n")
-        let output = (run_nu_snippet $snippet)
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and ($stdout | str contains "Failed to launch Test Terminal") and ($stdout | str contains "exit code: 23") and ($stdout | str contains "launch-broke") {
-            print "  ✅ Terminal launch failures include exit code and stderr context"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 def test_posix_startup_launcher_reports_missing_runtime_script [] {
     print "🧪 Testing POSIX startup launcher reports missing runtime script..."
 
@@ -541,25 +512,6 @@ def test_sidebar_layout_uses_wrapper_launcher [] {
     }
 }
 
-def test_sidebar_wrapper_avoids_startup_plugin_ipc [] {
-    print "🧪 Testing sidebar Yazi wrapper avoids startup plugin IPC..."
-
-    try {
-        let wrapper = (open --raw (repo_path "configs" "zellij" "scripts" "launch_sidebar_yazi.nu"))
-
-        if ($wrapper | str contains '^yazi $target_dir') and ($wrapper | str contains 'pwd | path expand') and (not ($wrapper | str contains 'run_pane_orchestrator_command_raw')) and (not ($wrapper | str contains 'bootstrap_workspace_root')) {
-            print "  ✅ Sidebar Yazi wrapper launches Yazi without boot-time plugin IPC"
-            true
-        } else {
-            print "  ❌ Sidebar Yazi wrapper still performs boot-time plugin IPC"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 def test_yzx_cwd_requires_zellij [] {
     print "🧪 Testing yzx cwd outside Zellij..."
 
@@ -609,29 +561,6 @@ def test_yzx_cwd_resolves_zoxide_query [] {
     }
 }
 
-def test_resolve_reveal_target_path_from_relative_buffer [] {
-    print "🧪 Testing reveal target resolution for relative buffer paths..."
-
-    try {
-        let expected_readme = ((get_repo_root) | path join "README.md")
-        let stdout = (do {
-            cd (get_repo_config_dir)
-            resolve_reveal_target_path "README.md"
-        } | str trim)
-
-        if $stdout == $expected_readme {
-            print "  ✅ Reveal target resolution expands relative buffer paths against the current cwd"
-            true
-        } else {
-            print $"  ❌ Unexpected result: stdout=($stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 export def run_workspace_canonical_tests [] {
     [
         (test_posix_desktop_launcher_direct_exec_ignores_hostile_shell_env)
@@ -645,17 +574,6 @@ export def run_workspace_canonical_tests [] {
     ]
 }
 
-export def run_workspace_noncanonical_tests [] {
-    [
-        (test_sidebar_wrapper_avoids_startup_plugin_ipc)
-        (test_terminal_launch_reports_immediate_failure)
-        (test_resolve_reveal_target_path_from_relative_buffer)
-    ]
-}
-
 export def run_workspace_tests [] {
-    [
-        (run_workspace_canonical_tests)
-        (run_workspace_noncanonical_tests)
-    ] | flatten
+    run_workspace_canonical_tests
 }

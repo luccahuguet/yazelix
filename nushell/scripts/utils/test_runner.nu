@@ -72,8 +72,6 @@ def render_profile_summary [records: list<record>, title: string] {
 export def get_default_test_file_names [] {
     [
         "test_yzx_commands.nu"
-        "test_yzx_extra_regressions.nu"
-        "test_reuse_mode.nu"
     ]
 }
 

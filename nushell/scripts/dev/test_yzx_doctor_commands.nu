@@ -248,13 +248,6 @@ export def run_doctor_canonical_tests [] {
     ]
 }
 
-export def run_doctor_noncanonical_tests [] {
-    []
-}
-
 export def run_doctor_tests [] {
-    [
-        (run_doctor_canonical_tests)
-        (run_doctor_noncanonical_tests)
-    ] | flatten
+    run_doctor_canonical_tests
 }

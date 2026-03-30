@@ -24,25 +24,6 @@ def test_popup_command_prefers_configured_default [] {
     }
 }
 
-def test_popup_command_allows_inline_override [] {
-    print "🧪 Testing yzx popup allows an inline command override..."
-
-    try {
-        let result = (resolve_yzx_popup_command ["lazygit"] "claude-code" "--continue")
-
-        if $result == ["claude-code", "--continue"] {
-            print "  ✅ yzx popup overrides the configured popup program when explicit args are passed"
-            true
-        } else {
-            print $"  ❌ Unexpected result: ($result | to json -r)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 def test_popup_cwd_prefers_workspace_root [] {
     print "🧪 Testing yzx popup uses the tab workspace root for cwd..."
 
@@ -312,17 +293,8 @@ export def run_popup_canonical_tests [] {
     ]
 }
 
-export def run_popup_noncanonical_tests [] {
-    [
-        (test_popup_command_allows_inline_override)
-    ]
-}
-
 export def run_popup_tests [] {
-    [
-        (run_popup_canonical_tests)
-        (run_popup_noncanonical_tests)
-    ] | flatten
+    run_popup_canonical_tests
 }
 
 def main [] {

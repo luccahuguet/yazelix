@@ -71,13 +71,6 @@ export def run_refresh_canonical_tests [] {
     ]
 }
 
-export def run_refresh_noncanonical_tests [] {
-    []
-}
-
 export def run_refresh_tests [] {
-    [
-        (run_refresh_canonical_tests)
-        (run_refresh_noncanonical_tests)
-    ] | flatten
+    run_refresh_canonical_tests
 }

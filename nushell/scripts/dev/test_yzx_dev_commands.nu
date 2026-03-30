@@ -121,13 +121,6 @@ export def run_dev_canonical_tests [] {
     ]
 }
 
-export def run_dev_noncanonical_tests [] {
-    []
-}
-
 export def run_dev_tests [] {
-    [
-        (run_dev_canonical_tests)
-        (run_dev_noncanonical_tests)
-    ] | flatten
+    run_dev_canonical_tests
 }
