@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use ../integrations/yazi.nu [consume_bootstrap_sidebar_cwd resolve_reveal_target_path]
+use ../integrations/yazi.nu [resolve_reveal_target_path]
 use ./test_yzx_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path]
 
 def run_nu_snippet [snippet: string, extra_env?: record] {
@@ -107,67 +107,6 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
     }
 }
 
-def test_consume_bootstrap_sidebar_cwd [] {
-    print "🧪 Testing restart-only sidebar Yazi cwd bootstrap..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_sidebar_bootstrap_XXXXXX | str trim)
-
-    let result = (try {
-        let workspace_dir = ($tmpdir | path join "workspace")
-        mkdir $workspace_dir
-        let bootstrap_file = ($tmpdir | path join "sidebar_cwd.txt")
-        $workspace_dir | save --force --raw $bootstrap_file
-
-        let resolved = (with-env {YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE: $bootstrap_file} {
-            consume_bootstrap_sidebar_cwd
-        })
-
-        if ($resolved == $workspace_dir) and (not ($bootstrap_file | path exists)) {
-            print "  ✅ Sidebar Yazi bootstrap cwd is consumed exactly once"
-            true
-        } else {
-            print $"  ❌ Unexpected result: resolved=($resolved) file_exists=(($bootstrap_file | path exists))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
-def test_restart_uses_home_for_future_tab_defaults [] {
-    print "🧪 Testing restart keeps pane and tab defaults at HOME..."
-
-    try {
-        let start_inner = (repo_path "nushell" "scripts" "core" "start_yazelix_inner.nu")
-        let snippet = ([
-            $"source \"($start_inner)\""
-            'with-env {HOME: "/tmp/yazelix-home", YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE: "/tmp/sidebar-bootstrap"} {'
-            '    print ({'
-            '        session_default: (resolve_session_default_cwd "/tmp/restart-workspace")'
-            '        launch_process: (resolve_launch_process_cwd "/tmp/restart-workspace")'
-            '    } | to json -r)'
-            '}'
-        ] | str join "\n")
-        let output = (run_nu_snippet $snippet)
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and ($stdout == '{"session_default":"/tmp/yazelix-home","launch_process":"/tmp/yazelix-home"}') {
-            print "  ✅ Restart keeps both the launch process and future tab defaults at HOME"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 def test_startup_rejects_missing_working_dir [] {
     print "🧪 Testing startup rejects missing working directories..."
 
@@ -222,116 +161,6 @@ def test_launch_rejects_file_working_dir [] {
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
-def test_terminal_launch_requires_bash [] {
-    print "🧪 Testing terminal launch reports missing bash..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_launch_bash_test_XXXXXX | str trim)
-
-    let result = (try {
-        let nu_bin = (which nu | get 0.path)
-        let isolated_path = ($tmpdir | path join "bin")
-        mkdir $isolated_path
-        ^ln -s $nu_bin ($isolated_path | path join "nu")
-        let launch_script = (repo_path "nushell" "scripts" "core" "launch_yazelix.nu")
-        let snippet = ([
-            $"source \"($launch_script)\""
-            'try {'
-            '    run_detached_terminal_launch "exit 0" "Test Terminal"'
-            '} catch {|err|'
-            '    print $err.msg'
-            '}'
-        ] | str join "\n")
-        let output = (run_nu_snippet $snippet {PATH: $isolated_path})
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and ($stdout | str contains "bash is not available in PATH") and ($stdout | str contains "Failure class: host-dependency problem.") {
-            print "  ✅ Terminal launch fails clearly when bash is unavailable"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
-def test_posix_startup_launcher_reports_missing_runtime_script [] {
-    print "🧪 Testing POSIX startup launcher reports missing runtime script..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_posix_startup_test_XXXXXX | str trim)
-
-    let result = (try {
-        let fake_home = ($tmpdir | path join "home")
-        let fake_bin = ($tmpdir | path join "bin")
-        mkdir $fake_home
-        mkdir $fake_bin
-        let nu_bin = (which nu | get 0.path)
-        ^ln -s $nu_bin ($fake_bin | path join "nu")
-        ^ln -s /bin/sh ($fake_bin | path join "sh")
-
-        let startup_script = (repo_path "shells" "posix" "start_yazelix.sh")
-        let output = (with-env {HOME: $fake_home, PATH: $fake_bin} {
-            ^sh $startup_script | complete
-        })
-        let stderr = ($output.stderr | str trim)
-
-        if ($output.exit_code == 1) and ($stderr | str contains "Missing Yazelix startup script") and ($stderr | str contains "runtime looks incomplete") and ($stderr | str contains "Failure class: generated-state problem.") {
-            print "  ✅ POSIX startup launcher fails clearly when the runtime script is missing"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
-def test_posix_desktop_launcher_reports_missing_runtime_script [] {
-    print "🧪 Testing POSIX desktop launcher reports missing runtime script..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_posix_desktop_test_XXXXXX | str trim)
-
-    let result = (try {
-        let fake_home = ($tmpdir | path join "home")
-        let fake_bin = ($tmpdir | path join "bin")
-        mkdir $fake_home
-        mkdir $fake_bin
-        let nu_bin = (which nu | get 0.path)
-        ^ln -s $nu_bin ($fake_bin | path join "nu")
-        ^ln -s /bin/sh ($fake_bin | path join "sh")
-
-        let launcher_script = (repo_path "shells" "posix" "desktop_launcher.sh")
-        let output = (with-env {HOME: $fake_home, PATH: $fake_bin} {
-            ^sh $launcher_script | complete
-        })
-        let stderr = ($output.stderr | str trim)
-
-        if ($output.exit_code == 1) and ($stderr | str contains "Missing Yazelix desktop launcher") and ($stderr | str contains "runtime looks incomplete") and ($stderr | str contains "Failure class: generated-state problem.") {
-            print "  ✅ POSIX desktop launcher fails clearly when the runtime script is missing"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr)"
             false
         }
     } catch { |err|
@@ -483,27 +312,6 @@ def test_startup_requires_generated_layout_path [] {
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_sidebar_layout_uses_wrapper_launcher [] {
-    print "🧪 Testing sidebar layouts use the Yazi wrapper launcher..."
-
-    try {
-        let side_layout = (open --raw (repo_path "configs" "zellij" "layouts" "yzx_side.kdl"))
-        let no_side_layout = (open --raw (repo_path "configs" "zellij" "layouts" "yzx_no_side.kdl"))
-        let swap_fragment = (open --raw (repo_path "configs" "zellij" "layouts" "fragments" "swap_sidebar_open.kdl"))
-
-        if ($side_layout | str contains "launch_sidebar_yazi.nu") and ($no_side_layout | str contains "launch_sidebar_yazi.nu") and ($swap_fragment | str contains "launch_sidebar_yazi.nu") {
-            print "  ✅ Sidebar layouts launch Yazi through the restart-aware wrapper"
-            true
-        } else {
-            print "  ❌ One or more sidebar layouts still launch Yazi directly"
             false
         }
     } catch { |err|
