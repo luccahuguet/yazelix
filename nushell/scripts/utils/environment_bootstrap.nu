@@ -154,6 +154,8 @@ export def get_devenv_base_command [
         "-C"
         $devenv_project_dir
         $"NIX_CONFIG=($nix_config)"
+        $"YAZELIX_RUNTIME_DIR=($yazelix_dir)"
+        $"YAZELIX_DIR=($yazelix_dir)"
         $devenv_path
         "--max-jobs"
         ($resolved_max_jobs | into string)

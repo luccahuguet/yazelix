@@ -57,8 +57,7 @@ let
   # a separate --impure flag.
   homeDir = builtins.getEnv "HOME";
   configRoot = if homeDir != "" then "${homeDir}/.config/yazelix" else "";
-  runtimeRoot = toString ./.;
-  runtimeRootRef = "\${YAZELIX_RUNTIME_DIR:-${runtimeRoot}}";
+  runtimeRootRef = "\${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}";
   userConfigDir = if configRoot != "" then "${configRoot}/user_configs" else "";
   tomlConfigFile = if userConfigDir != "" then "${userConfigDir}/yazelix.toml" else "";
   legacyTomlConfigFile = if configRoot != "" then "${configRoot}/yazelix.toml" else "";
@@ -623,8 +622,6 @@ in
 
   env = {
     YAZELIX_CONFIG_DIR = "$HOME/.config/yazelix";
-    YAZELIX_RUNTIME_DIR = runtimeRoot;
-    YAZELIX_DIR = runtimeRoot;
     IN_YAZELIX_SHELL = "true";
     NIX_CONFIG = yazelixNixConfig;
     YAZELIX_DEBUG_MODE = boolToString debugMode;
@@ -646,7 +643,7 @@ in
     fi
 
     export YAZELIX_CONFIG_DIR="''${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}"
-    export YAZELIX_RUNTIME_DIR="''${YAZELIX_RUNTIME_DIR:-${runtimeRoot}}"
+    export YAZELIX_RUNTIME_DIR="''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}"
     export YAZELIX_DIR="$YAZELIX_RUNTIME_DIR"
     export IN_YAZELIX_SHELL="true"
     export NIX_CONFIG='${yazelixNixConfig}'
@@ -669,15 +666,15 @@ in
 
     # Environment setup now reads directly from yazelix.toml (single source of truth)
     if [ "$YAZELIX_SHELLHOOK_SKIP_WELCOME" = "true" ]; then
-      nu "$YAZELIX_RUNTIME_DIR/nushell/scripts/setup/environment.nu" --skip-welcome
+      ${pkgs.nushell}/bin/nu "''${YAZELIX_RUNTIME_DIR}/nushell/scripts/setup/environment.nu" --skip-welcome
       unset YAZELIX_SHELLHOOK_SKIP_WELCOME
     else
-      nu "$YAZELIX_RUNTIME_DIR/nushell/scripts/setup/environment.nu"
+      ${pkgs.nushell}/bin/nu "''${YAZELIX_RUNTIME_DIR}/nushell/scripts/setup/environment.nu"
     fi
 
     # Save config hash after successful environment setup
-    if command -v nu >/dev/null 2>&1; then
-      nu -c "use \"$YAZELIX_RUNTIME_DIR/nushell/scripts/utils/config_state.nu\" [compute_config_state mark_config_state_applied]; let state = compute_config_state; mark_config_state_applied \$state" 2>/dev/null || true
+    if command -v ${pkgs.nushell}/bin/nu >/dev/null 2>&1; then
+      ${pkgs.nushell}/bin/nu -c "use \"''${YAZELIX_RUNTIME_DIR}/nushell/scripts/utils/config_state.nu\" [compute_config_state mark_config_state_applied]; let state = compute_config_state; mark_config_state_applied \$state" 2>/dev/null || true
     fi
   '';
 }

@@ -45,6 +45,15 @@ def get_inferred_runtime_dir [] {
     }
 }
 
+def get_installed_runtime_dir [] {
+    let candidate = (get_yazelix_state_dir | path join "runtime" "current")
+    if (is_valid_runtime_dir $candidate) {
+        $candidate | path expand
+    } else {
+        null
+    }
+}
+
 export def get_yazelix_config_dir [] {
     let configured = (
         $env.YAZELIX_CONFIG_DIR?
@@ -79,8 +88,15 @@ export def get_yazelix_runtime_dir [] {
         | into string
         | str trim
     )
-    if ($configured | is-not-empty) and (is_valid_runtime_dir $configured) {
+    let installed_runtime = (get_installed_runtime_dir)
+    let configured_path = if ($configured | is-not-empty) { $configured | path expand } else { "" }
+
+    if ($configured | is-not-empty) and ($configured_path | str starts-with "/nix/store/") and ($installed_runtime != null) and ($configured_path != $installed_runtime) {
+        $installed_runtime
+    } else if ($configured | is-not-empty) and (is_valid_runtime_dir $configured) {
         $configured | path expand
+    } else if $installed_runtime != null {
+        $installed_runtime
     } else if ((get_inferred_runtime_dir) != null) {
         get_inferred_runtime_dir
     } else {
