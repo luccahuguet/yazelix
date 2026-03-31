@@ -58,7 +58,7 @@ let
   homeDir = builtins.getEnv "HOME";
   configRoot = if homeDir != "" then "${homeDir}/.config/yazelix" else "";
   runtimeRoot = toString ./.;
-  runtimeRootRef = ''${YAZELIX_RUNTIME_DIR:-''${YAZELIX_DIR:-${runtimeRoot}}}'';
+  runtimeRootRef = "\${YAZELIX_RUNTIME_DIR:-${runtimeRoot}}";
   userConfigDir = if configRoot != "" then "${configRoot}/user_configs" else "";
   tomlConfigFile = if userConfigDir != "" then "${userConfigDir}/yazelix.toml" else "";
   legacyTomlConfigFile = if configRoot != "" then "${configRoot}/yazelix.toml" else "";

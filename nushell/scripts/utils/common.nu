@@ -2,6 +2,34 @@
 
 # Utility functions for Yazelix
 
+const COMMON_MODULE_PATH = (path self)
+const INFERRED_RUNTIME_DIR = (
+    $COMMON_MODULE_PATH
+    | path dirname
+    | path join ".." ".." ".."
+    | path expand
+)
+
+def is_valid_runtime_dir [candidate?: string] {
+    if $candidate == null {
+        return false
+    }
+
+    let candidate_path = ($candidate | path expand)
+    let sentinel = ($candidate_path | path join "yazelix_default.toml")
+    ($candidate_path | path exists) and ($sentinel | path exists)
+}
+
+def get_inferred_runtime_dir [] {
+    let candidate = ($INFERRED_RUNTIME_DIR | path expand)
+    let sentinel = ($candidate | path join "yazelix_default.toml")
+    if ($candidate | path exists) and ($sentinel | path exists) {
+        $candidate
+    } else {
+        null
+    }
+}
+
 export def get_yazelix_config_dir [] {
     let configured = (
         $env.YAZELIX_CONFIG_DIR?
@@ -36,8 +64,10 @@ export def get_yazelix_runtime_dir [] {
         | into string
         | str trim
     )
-    if ($configured | is-not-empty) {
+    if ($configured | is-not-empty) and (is_valid_runtime_dir $configured) {
         $configured | path expand
+    } else if ((get_inferred_runtime_dir) != null) {
+        get_inferred_runtime_dir
     } else {
         get_yazelix_config_dir
     }

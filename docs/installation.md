@@ -54,6 +54,17 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 
 ## Step-by-Step Installation
 
+## Quickstart
+
+If you already have Nix, Nushell, and the Yazelix-pinned `devenv` CLI installed, the shortest working bootstrap flow is:
+
+```bash
+git clone https://github.com/luccahuguet/yazelix ~/src/yazelix
+nu ~/src/yazelix/nushell/scripts/core/start_yazelix.nu --setup-only
+```
+
+This works from any clone location. The repo does **not** need to live under `~/.config/yazelix`.
+
 ### Step 1: Install Nix Package Manager (~2.5GB)
 
 Yazelix requires Nix with flakes enabled. We recommend the **Determinate Systems Nix Installer** because it's reliable, fast, and includes modern features out of the box, but any Nix installation with flakes enabled will work.
