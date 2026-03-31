@@ -1,6 +1,6 @@
 # Yazelix Installation Guide
 
-This guide provides complete step-by-step instructions for installing and setting up Yazelix.
+This guide provides the canonical install flow for Yazelix.
 
 ## What is Nix?
 
@@ -14,7 +14,7 @@ Nix is just a package manager that ensures reproducible, reliable software insta
 
 It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software. And it's way easier than having to install everything separately and manually.
 
-**Important**: You don't need to learn Nix or Nushell to use Yazelix! Nix just installs the tools and yazelix uses nushell internally, and you can use your preferred shell (bash, fish, zsh, or nushell) for your daily work. You can install nix and nushell once, and forget they ever existed.
+**Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix is the only real prerequisite. The installer will materialize the Yazelix runtime, install the pinned `devenv` CLI if needed, and install the stable `yzx` command for you.
 
 ## Supported Terminal Emulators
 Yazelix provides 5 terminal emulators built-in via Nix - set your `terminals` list in `yazelix.toml`:
@@ -52,18 +52,24 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 - Provided by Yazelix via Nix (no installation needed)
 - Reference: https://codeberg.org/dnkl/foot/src/branch/master/INSTALL.md
 
-## Step-by-Step Installation
-
 ## Quickstart
 
-If you already have Nix, Nushell, and the Yazelix-pinned `devenv` CLI installed, the shortest working bootstrap flow is:
+If you already have Nix with flakes enabled, the canonical install flow is:
 
 ```bash
-git clone https://github.com/luccahuguet/yazelix ~/src/yazelix
-nu ~/src/yazelix/nushell/scripts/core/start_yazelix.nu --setup-only
+nix run github:luccahuguet/yazelix#install
+yzx launch
 ```
 
-This works from any clone location. The repo does **not** need to live under `~/.config/yazelix`.
+What this does:
+- installs or refreshes the Yazelix-pinned `devenv` CLI if needed
+- materializes the Yazelix runtime under `~/.local/share/yazelix/runtime/current`
+- seeds `~/.config/yazelix/user_configs/` if missing
+- installs the stable `yzx` command into `~/.local/bin/yzx`
+
+You do **not** need to clone the repo for normal installation.
+
+## Step-by-Step Installation
 
 ### Step 1: Install Nix Package Manager (~2.5GB)
 
@@ -97,64 +103,27 @@ eval-cores = 0
 
 Set `eval-cores` to 0 to use all cores, or 1 to disable.
 
-### Step 2: Install Nushell
+### Step 2: Install Yazelix
 
-Nushell is required to run Yazelix (used internally). You can use your preferred shell (bash, fish, zsh, or nushell) for daily work:
+Run the installer app exposed by the top-level Yazelix flake:
 
 ```bash
-nix profile add nixpkgs#nushell
+nix run github:luccahuguet/yazelix#install
 ```
 
-**What this does:**
-- Installs Nushell, which Yazelix uses for its internal scripts
-- You don't need to learn Nushell - it runs behind the scenes
-- Verify installation:
+After it finishes:
+
 ```bash
-nu --version
+yzx launch
 ```
 
-**Other platforms**: See https://www.nushell.sh/book/installation.html
+Normal usage relies on the installed runtime and `yzx` entrypoints. User configuration lives under `~/.config/yazelix/user_configs/`.
 
-### Step 3: Install devenv CLI
+### Step 3: Configure Your Installation (Optional)
 
-Yazelix runs on the [`devenv`](https://devenv.sh) development environment. Install the CLI once so you can launch the Yazelix shell quickly. Prefer the Yazelix-pinned revision so the standalone CLI matches the environment Yazelix was checked against:
-
-```bash
-nix profile install github:cachix/devenv/cfd12842b061f9df79e18375d93d72e41f1fbbdf#devenv
-```
-
-**What this does:**
-- Installs the Yazelix-pinned `devenv` CLI into your user profile (~5GB with all dependencies)
-- Provides the `devenv shell` command that Yazelix uses for fast, cached launches
-- Verify installation:
-```bash
-devenv --version
-```
-
-### Step 4: Install the Yazelix Runtime
-
-Yazelix needs its shipped runtime assets available somewhere on disk.
-
-There is currently no separate `yzx install` or `yzx setup` command. Bootstrap still happens through the Yazelix runtime entrypoint itself.
-
-Today, the simplest concrete install path is still a cloned Yazelix repo on disk, but it does **not** have to live under `~/.config/yazelix`. Clone it anywhere convenient:
-```bash
-git clone https://github.com/luccahuguet/yazelix ~/src/yazelix
-```
-
-Normal usage should rely on the installed Yazelix runtime and `yzx` entrypoints. User configuration lives under `~/.config/yazelix/user_configs/`. That config root is separate from wherever your cloned repo lives.
-
-### Step 5: Configure Your Installation (Optional)
-
-**Before installing dependencies**, you can create and customize your configuration to control what gets downloaded. If you skip this step, the first Yazelix setup run will auto-create `user_configs/yazelix.toml` from the shipped defaults:
+If you skipped customization before the installer, it will auto-create `user_configs/yazelix.toml` and `user_configs/yazelix_packs.toml` from the shipped defaults. You can edit them anytime afterward:
 
 ```bash
-# Create your personal config from the template
-mkdir -p ~/.config/yazelix/user_configs
-cp ~/src/yazelix/yazelix_default.toml ~/.config/yazelix/user_configs/yazelix.toml
-
-# Edit the configuration to suit your needs
-# Use your preferred editor (hx, vim, etc.)
 hx ~/.config/yazelix/user_configs/yazelix.toml
 ```
 
@@ -183,7 +152,7 @@ hx ~/.config/yazelix/user_configs/yazelix.toml
 - **Managed terminals**: Set `manage_terminals = true` to install via Nix, or false to use system-installed terminals only
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
-### Step 6: Install Fonts (Required for Kitty and Alacritty)
+### Step 4: Install Fonts (Required for Kitty and Alacritty)
 
 If you're using Kitty or Alacritty, install Nerd Fonts for proper icon display using modern Nix commands:
 
@@ -203,51 +172,20 @@ home.packages = with pkgs; [
 
 **Note**: WezTerm and Ghostty have better font fallback and don't require this step.
 
-### Step 7: Set Up Yazelix to Auto-Launch in Your Terminal
+### Step 5: Launch and Shell Integration
 
-#### Option A: Automatic Launch (Recommended for most users)
-
-For the **first launch**:
-
-- cloned-repo installs can run the repo script directly
-- package-ready installs should run the shipped `start_yazelix.sh` from the installed runtime root instead
-- there is still no separate `yzx setup` command; this runtime entrypoint is the setup path
-
-Cloned-repo example:
+For most users, the installer is enough. After `nix run ...#install`, open a fresh shell if `~/.local/bin` is not already on your `PATH`, then use:
 
 ```bash
-nu ~/src/yazelix/nushell/scripts/core/start_yazelix.nu --setup-only
+yzx launch
 ```
 
-**What this does**:
-- Bootstraps the devenv environment and installs all Yazelix packages (~2.2GB)
-- Sets up shell hooks (makes the `yzx` command available)
-- Installs a stable `~/.local/bin/yzx` wrapper for editor integrations and host-launched tools
-- Does NOT launch the UI (avoids terminal compatibility issues)
+Useful launch variants:
+- `yzx launch` opens Yazelix in a new terminal window
+- `yzx launch --here` starts Yazelix in the current terminal
+- `yzx help` shows the command surface
 
-**First run note**: The first launch will take several minutes to download and install all dependencies. Subsequent launches will be instant thanks to devenv's caching.
-
-**After setup completes**:
-1. Restart your shell (or source your shell config)
-2. Use `yzx launch` to start Yazelix in a new terminal window:
-```bash
-yzx launch  # Opens in new terminal in current directory
-```
-
-#### Option B: Manual Launch (For users who don't want to modify terminal configs)
-
-If you prefer to keep your existing terminal configuration unchanged, just run Yazelix once and it will automatically set up the `yzx` command for you. This is still runtime-entrypoint bootstrap, not a separate `yzx install` step.
-
-Cloned-repo example:
-
-```bash
-nu ~/src/yazelix/nushell/scripts/core/start_yazelix.nu
-```
-
-This will automatically configure your shell and then you can use:
-- `yzx launch` (opens Yazelix in a new terminal window in current directory)
-- `yzx launch --here` (starts Yazelix in current terminal)
-- `yzx help` (see all available commands)
+**First run note**: the first launch may take several minutes while Yazelix downloads and installs its environment. Subsequent launches are much faster because `devenv` caching is reused.
 
 #### Optional: Desktop/Application Launcher Integration
 
@@ -272,6 +210,19 @@ To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.), use the inst
 ```
 
 This launches the same POSIX entrypoint used by the generated desktop entry. In package-ready installs, the same launcher should come from the installed runtime rather than a cloned repo path.
+
+## Maintainer / Clone-Based Flow
+
+Normal users should prefer `nix run github:luccahuguet/yazelix#install`.
+
+If you are doing maintainer work or explicitly want to run from a cloned repo, that still works, and the clone can live anywhere:
+
+```bash
+git clone https://github.com/luccahuguet/yazelix ~/src/yazelix
+nu ~/src/yazelix/nushell/scripts/core/start_yazelix.nu --setup-only
+```
+
+That is now the advanced/maintainer path, not the primary install story.
 
 ##### macOS (Spotlight, Launchpad, Dock)
 

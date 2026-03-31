@@ -86,6 +86,11 @@ For the longer project story, see [Version History](./docs/history.md).
 
 ## Installation
 
+```bash
+nix run github:luccahuguet/yazelix#install
+yzx launch
+```
+
 📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions
 
 ### Helix Integration
