@@ -17,7 +17,7 @@ Highlights:
 
 ## Unreleased
 
-Choose nix run as the install front door.
+Choose nix run as the install front door
 
 Upgrade impact: no user action required
 

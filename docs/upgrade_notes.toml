@@ -1,7 +1,7 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = "Pending changes"
+headline = "Choose nix run as the install front door"
 summary = ["Choose nix run as the install front door."]
 upgrade_impact = "no_user_action"
 acknowledged_guarded_changes = [
