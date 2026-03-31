@@ -54,6 +54,24 @@ def get_installed_runtime_dir [] {
     }
 }
 
+def expand_user_path_string [value: string] {
+    let trimmed = ($value | str trim)
+    if ($trimmed | is-empty) {
+        return $trimmed
+    }
+
+    let home_dir = ($env.HOME? | default "" | into string)
+    let expanded_home = if ($home_dir | is-not-empty) and ($trimmed | str starts-with "$HOME/") {
+        $trimmed | str replace "$HOME" $home_dir
+    } else if ($home_dir | is-not-empty) and ($trimmed == "$HOME") {
+        $home_dir
+    } else {
+        $trimmed
+    }
+
+    $expanded_home | path expand
+}
+
 export def get_yazelix_config_dir [] {
     let configured = (
         $env.YAZELIX_CONFIG_DIR?
@@ -62,7 +80,7 @@ export def get_yazelix_config_dir [] {
         | str trim
     )
     if ($configured | is-not-empty) {
-        $configured | path expand
+        expand_user_path_string $configured
     } else if (($env.XDG_CONFIG_HOME? | default "" | into string | str trim) | is-not-empty) {
         ($env.XDG_CONFIG_HOME | path join "yazelix")
     } else if (($env.HOME? | default "" | into string | str trim) | is-not-empty) {
@@ -112,7 +130,7 @@ export def get_yazelix_state_dir [] {
         | str trim
     )
     if ($configured | is-not-empty) {
-        $configured | path expand
+        expand_user_path_string $configured
     } else if (($env.XDG_DATA_HOME? | default "" | into string | str trim) | is-not-empty) {
         ($env.XDG_DATA_HOME | path join "yazelix")
     } else if (($env.HOME? | default "" | into string | str trim) | is-not-empty) {

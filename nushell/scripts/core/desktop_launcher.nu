@@ -1,14 +1,11 @@
 #!/usr/bin/env nu
 
 # Yazelix Desktop Launcher
-# Launch the terminal window immediately, but keep the resolved Yazelix
-# profile environment so wrapper binaries and terminal runtime selection
-# behave the same as normal launches.
+# Launch through the same prepared devenv path as normal `yzx launch`.
 
-use ../utils/environment_bootstrap.nu [prepare_environment]
+use ../utils/environment_bootstrap.nu [prepare_environment run_in_devenv_shell_command]
 use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/failure_classes.nu [format_failure_classification]
-use ../utils/launch_state.nu [get_launch_env get_launch_profile]
 
 def require_launch_script [script_path: string] {
     let resolved = ($script_path | path expand)
@@ -25,13 +22,9 @@ def main [] {
     let launch_script = (require_launch_script ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu"))
     let env_prep = prepare_environment
     let config = $env_prep.config
-    let cached_profile = (get_launch_profile $env_prep.config_state)
+    let max_jobs = ($config.max_jobs? | default "half" | into string)
+    let build_cores = ($config.build_cores? | default "2" | into string)
+    let refresh_output = ($config.refresh_output? | default "normal" | into string)
 
-    if $cached_profile != null {
-        with-env (get_launch_env $config $cached_profile) {
-            ^nu $launch_script $env.HOME
-        }
-    } else {
-        ^nu $launch_script $env.HOME
-    }
+    run_in_devenv_shell_command "nu" $launch_script $env.HOME --cwd $env.HOME --runtime-dir $runtime_dir --skip-welcome --quiet --max-jobs $max_jobs --build-cores $build_cores --force-refresh=$env_prep.needs_refresh --refresh-output-mode $refresh_output
 }
