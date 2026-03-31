@@ -3,7 +3,9 @@
 # Generates yazi configs from yazelix defaults + dynamic settings from yazelix.toml
 
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/common.nu [get_yazelix_config_dir get_yazelix_state_dir get_yazelix_user_config_dir]
+use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_state_dir get_yazelix_user_config_dir]
+
+const runtime_dir_placeholder = "__YAZELIX_RUNTIME_DIR__"
 
 # Ensure directory exists
 def ensure_dir [path: string] {
@@ -15,6 +17,11 @@ def ensure_dir [path: string] {
 
 def get_yazi_user_config_dir [] {
     (get_yazelix_user_config_dir) | path join "yazi"
+}
+
+def render_runtime_root_placeholders [content: string] {
+    let runtime_dir = (get_yazelix_runtime_dir | path expand)
+    $content | str replace -a $runtime_dir_placeholder $runtime_dir
 }
 
 def get_legacy_yazi_user_config_dir [] {
@@ -229,7 +236,7 @@ def generate_yazi_toml [source_dir: string, merged_dir: string, sort_by: string,
     ] | str join "\n"
 
     # Write final config
-    let config_content = ($final_config | to toml)
+    let config_content = (render_runtime_root_placeholders ($final_config | to toml))
     $"($header)($config_content)" | save -f $merged_path
 
     if not $quiet {
@@ -369,7 +376,7 @@ def generate_keymap_toml [source_dir: string, merged_dir: string, --quiet] {
     ] | str join "\n"
 
     # Write final keymap
-    let keymap_content = ($final_keymap | to toml)
+    let keymap_content = (render_runtime_root_placeholders ($final_keymap | to toml))
     $"($header)($keymap_content)" | save -f $merged_path
 
     if not $quiet {
@@ -440,7 +447,7 @@ def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
         ""
     ] | str join "\n"
 
-    let init_content = $"($header)($requires)\n"
+    let init_content = (render_runtime_root_placeholders $"($header)($requires)\n")
 
     # Check for user custom init.lua and append if exists
     let user_init_path = (reconcile_yazi_user_file "init.lua")
@@ -456,7 +463,7 @@ def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
             ""
             $user_init
         ] | str join "\n"
-        $"($init_content)($user_section)"
+        (render_runtime_root_placeholders $"($init_content)($user_section)")
     } else {
         $init_content
     }

@@ -1,6 +1,6 @@
 [[mgr.append_keymap]]
 on = [ "<A-p>" ]
-run = "shell 'nu $HOME/.config/yazelix/nushell/scripts/integrations/open_dir_in_pane.nu \"$0\"'"
+run = "shell 'nu __YAZELIX_RUNTIME_DIR__/nushell/scripts/integrations/open_dir_in_pane.nu \"$0\"'"
 desc = "Open directory in new pane"
 
 [[mgr.append_keymap]]
