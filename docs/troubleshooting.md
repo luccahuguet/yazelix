@@ -23,11 +23,12 @@ yzx doctor --fix              # Auto-fix safe issues
 
 ## Configuration File Migration
 
-**Yazelix now uses `yazelix.toml` and `devenv.nix` instead of the old `yazelix.nix` and `flake.nix`.**
+**Yazelix now uses `yazelix.toml` and `devenv.nix` instead of the old `yazelix.nix`.**
 
 If you have an older Yazelix setup:
 - Configuration is now in `~/.config/yazelix/user_configs/yazelix.toml` (not `yazelix.nix`)
-- Development environment is defined in `devenv.nix` (not `flake.nix`)
+- The runtime environment is defined in `devenv.nix`
+- A thin top-level flake now exists as the install front door: `nix run github:luccahuguet/yazelix#install`
 - The default template is `yazelix_default.toml`
 
 **Migration steps:**

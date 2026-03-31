@@ -12,7 +12,7 @@ The repo keeps one maintained static preview. Add richer demos only when there i
 ## Overview
 Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://github.com/zellij-org/zellij), and [Helix](https://helix-editor.com) (hence the name!), with first-class support for [Neovim](https://neovim.io) too.
 
-- Yazelix now uses the devenv-based shell (`devenv.nix`) and `yazelix.toml`. The legacy flake interface (`flake.nix`, `yazelix.nix`) has been removed.
+- Yazelix now uses the devenv-based runtime (`devenv.nix`) and `yazelix.toml`. The legacy `yazelix.nix` config is gone, but Yazelix now also ships a thin top-level flake front door for installation via `nix run github:luccahuguet/yazelix#install`.
 
 - **Use your preferred shell**: Bash, Fish, Zsh, or Nushell - Yazelix works with all of them
 - Zellij orchestrates everything, with Yazi as a sidebar and your chosen editor (Helix by default)
