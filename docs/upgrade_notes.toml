@@ -1,6 +1,16 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
+headline = ""
+summary = []
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v13.11"]
+version = "v13.11"
+date = "2026-03-31"
 headline = "Configurable Yazi command overrides, Ghostty neon tuning, and maintainer tooling polish"
 summary = [
     "Added `[yazi].command` and `[yazi].ya_command` so managed Yazi launches and sidebar/reveal actions can use explicit binaries instead of only relying on `PATH`.",

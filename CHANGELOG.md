@@ -2,7 +2,7 @@
 
 Short, upgrade-facing release notes live here. The longer narrative history remains in [docs/history.md](./docs/history.md).
 
-## Unreleased
+## v13.11 - 2026-03-31
 
 Configurable Yazi command overrides, Ghostty neon tuning, and maintainer tooling polish.
 
@@ -14,6 +14,8 @@ Highlights:
 - Tuned the Ghostty neon cursor-trail base color from violet toward a brighter cyan-blue so the shipped neon variant matches its intended palette.
 - Clarified that custom Yazi plugin initialization lives in `user_configs/yazi/init.lua`, and updated user-facing docs to the current nested config shape and `user_configs/` paths.
 - Refreshed maintainer input pins and updated the tracked preferred `devenv` CLI version to `2.0.7`.
+
+## Unreleased
 
 ## v13.10 - 2026-03-30
 
