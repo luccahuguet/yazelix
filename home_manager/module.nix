@@ -550,6 +550,10 @@ in
           "beads-viewer"
           "rust_wasi_toolchain"
         ];
+        nushell = [
+          "nufmt"
+          "nu-lint"
+        ];
         python = [
           "ruff"
           "uv"
