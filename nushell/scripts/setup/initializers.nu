@@ -2,6 +2,15 @@
 # Universal shell initializer generator for Yazelix
 # Generates initializer scripts for all supported shells
 
+def normalize_initializer_content [shell_name: string, init_content: string] {
+    if $shell_name == "nu" {
+        $init_content
+        | str replace -a "get $field --ignore-errors" "get --optional $field"
+    } else {
+        $init_content
+    }
+}
+
 def main [yazelix_dir: string, shells_to_configure_str: string] {
     # Import constants for XDG paths
     use ../utils/constants.nu *
@@ -85,13 +94,14 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
                         $shell.name
                     }
 
-                    let init_content = if ($tool.name == "mise") {
+                    let raw_init_content = if ($tool.name == "mise") {
                         (run-external "mise" "activate" $effective_shell_name)
                     } else if ($tool.name == "carapace" and $shell.name == "nu") {
                         (run-external "carapace" "_carapace" "nushell")
                     } else {
                         (run-external $tool.name "init" $effective_shell_name)
                     }
+                    let init_content = (normalize_initializer_content $shell.name $raw_init_content)
                     $init_content | save --force $output_file
                     { status: "success", tool: $tool.name, shell: $shell.name, file: $output_file }
                 } catch { |error|
