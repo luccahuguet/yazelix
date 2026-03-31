@@ -41,8 +41,9 @@ Use this only when Yazelix-managed Yazi launches and sidebar actions need a spec
 plugins = ["git"]
 ```
 
-**Bundled plugins:**
+**Bundled plugins and helpers:**
 - `git` - Git status integration (shows file changes)
+- `zoxide-editor` - Bundled helper plugin behind `Alt+z`; it drives the direct-open Zoxide jump without needing a `plugins = [...]` entry
 
 **Adding external plugins:**
 ```bash
@@ -96,6 +97,7 @@ When yazelix starts:
 - **Layout ratio**: `[1, 4, 3]` optimized for sidebar mode
 - **Git integration**: Shows git status in listings (via git plugin)
 - **Editor integration**: Opens files with yazelix's configured editor
+- **Direct zoxide jump**: `Alt+z` opens a Zoxide picker and retargets the managed editor/workspace directly to the selected directory
 - **Auto layout**: Adjusts pane layout based on terminal width
 - **Custom status bar**: Enhanced readability for sidebar mode
 
@@ -151,6 +153,8 @@ Yazelix intentionally keeps Yazi's upstream open flow intact:
 - `Enter`: opens the hovered item through Yazelix's configured editor opener
 - `o`: uses Yazi's built-in open action
 - `O`: opens Yazi's built-in "Open with" menu for alternate handlers, including the system file manager path when available
+- `Z`: keeps Yazi's native Zoxide jump behavior inside Yazi
+- `Alt+z`: runs the bundled `zoxide-editor` plugin so the selected directory becomes the managed editor/workspace target immediately
 
 Because `O` already exposes the practical "open outside the editor" flow, Yazelix does not add a separate default keybinding for opening in the host file manager.
 

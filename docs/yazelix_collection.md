@@ -19,7 +19,7 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 - [Helix](https://helix-editor.com) — A modal text editor inspired by Kakoune and Neovim, featuring fast performance, tree-sitter syntax highlighting, and LSP support. Helix is the default editor for Yazelix, enabling advanced workflows and sidebar integration. 🚀 deep-integration
 - [Nushell](https://www.nushell.sh) — A modern shell that treats data as structured tables, making scripting and configuration more robust. Nushell is the default shell for Yazelix and powers its configuration and scripting. (default shell)
 - [fzf](https://github.com/junegunn/fzf) — A general-purpose command-line fuzzy finder. Used in Yazelix for quick file and directory navigation. Press `z` in Yazi or `fzf` from terminal.
-- [zoxide](https://github.com/ajeetdsouza/zoxide) — A smarter cd command, tracking your most-used directories for instant navigation. Press `Z` in Yazi or `z` from terminal. 🔧 auto-configured
+- [zoxide](https://github.com/ajeetdsouza/zoxide) — A smarter cd command, tracking your most-used directories for instant navigation. Use `z` from the terminal, `Z` inside Yazi for the native jump flow, or `Alt+z` inside Yazi for Yazelix's direct-open jump into the managed editor/workspace. 🔧 auto-configured
 - [starship](https://starship.rs) — A minimal, blazing-fast, and customizable prompt for any shell. Provides Yazelix with a beautiful, informative, and context-aware shell prompt. 🔧 auto-configured
 - [bash](https://www.gnu.org/software/bash/) — The GNU Bourne Again Shell, included for compatibility and as a fallback shell option.
 - [macchina](https://github.com/Macchina-CLI/macchina) — A fast, customizable system information fetch tool. Used to display system info on the Yazelix welcome screen.
@@ -61,6 +61,7 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 Plugin catalog: https://github.com/yazi-rs/plugins
 - [auto-layout.yazi](https://github.com/luccahuguet/auto-layout.yazi) — A Yazi plugin that dynamically adjusts the column layout for optimal sidebar usage. Core to the Yazelix sidebar experience. This is a maintained fork of Joseph Schmitt's [original implementation](https://github.com/josephschmitt/auto-layout.yazi) (unmaintained).
 - [sidebar-status.yazi](../configs/yazi/plugins/sidebar-status.yazi/main.lua) — Removes a space-hungry status item so Yazi fits cleanly as a sidebar. Yazelix-only plugin.
+- [zoxide-editor.yazi](../configs/yazi/plugins/zoxide-editor.yazi/main.lua) — Bundled Yazelix plugin that reuses Zoxide's interactive jump flow but sends the chosen directory straight into the managed editor/workspace instead of leaving you one level too deep inside Yazi.
 - [git.yazi](https://github.com/yazi-rs/plugins/tree/main/git.yazi) — A plugin that shows git status and changes directly in the Yazi sidebar, improving project awareness.
 - [starship.yazi](https://github.com/Rolv-Apneseth/starship.yazi) — Displays the Starship prompt in Yazi's header, showing contextual information like git branch, virtual environments, and project details.
 - [lazygit.yazi](https://github.com/Lil-Dank/lazygit.yazi) — Launch lazygit directly from Yazi with a keybinding, providing seamless git workflow integration.

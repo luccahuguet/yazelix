@@ -3,6 +3,11 @@ on = [ "<A-p>" ]
 run = "shell 'nu $HOME/.config/yazelix/nushell/scripts/integrations/open_dir_in_pane.nu \"$0\"'"
 desc = "Open directory in new pane"
 
+[[mgr.append_keymap]]
+on = [ "<A-z>" ]
+run = "plugin zoxide-editor"
+desc = "Zoxide jump → open in editor"
+
 [[mgr.prepend_keymap]]
 on = [ "g", "l" ]
 run = "plugin lazygit"

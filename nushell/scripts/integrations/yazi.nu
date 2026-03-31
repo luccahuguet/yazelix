@@ -74,7 +74,7 @@ export def get_managed_editor_kind [] {
     }
 }
 
-def is_sidebar_enabled [] {
+export def is_sidebar_enabled [] {
     let config = parse_yazelix_config
     ($config.enable_sidebar? | default true)
 }

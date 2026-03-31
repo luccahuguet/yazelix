@@ -66,7 +66,8 @@ You can also print these Yazelix-owned bindings directly with `yzx keys`.
 ## Keybinding Tips
 - **Zellij**: `Alt+number` for tab, `Alt+w/q` for tab walk, `Alt+Shift+H/L` for tab move
 - **Yazi**: 
-  - `Z`: Use Zoxide (fuzzy find known paths)
+  - `Z`: Use Yazi's built-in Zoxide jump and stay inside Yazi
+  - `Alt+z`: Use Yazelix's direct-open Zoxide jump to retarget the managed editor and workspace immediately
   - `z`: Use fzf (fuzzy find unknown paths)
   - `SPACE`: Select files
   - `y`: Yank (copy); `Y`: Unyank (cancel copy)

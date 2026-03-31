@@ -34,6 +34,7 @@ def print_yazelix_keys [] {
         {keybinding: (accent_key "Alt+y"), action: "Toggle the sidebar open/closed"}
         {keybinding: (accent_key "Alt+m"), action: "Open a new terminal in the current tab workspace root"}
         {keybinding: (accent_key "Alt+p"), action: "In Yazi, open the selected directory in a new pane and make it the tab workspace root"}
+        {keybinding: (accent_key "Alt+z"), action: "In Yazi, open a Zoxide picker and retarget the managed editor/workspace to the selected directory"}
     ]
     heading "Command access"
     print_table [
@@ -76,6 +77,16 @@ def print_yazi_keys [] {
             step: "Yazelix workspace"
             action: (accent_key "`Alt+p`")
             notes: "Open the selected directory in a new pane and make it the tab workspace root"
+        }
+        {
+            step: "Native zoxide jump"
+            action: (accent_key "`Z`")
+            notes: "Use Yazi's built-in Zoxide jump and stay inside Yazi"
+        }
+        {
+            step: "Direct-open zoxide jump"
+            action: (accent_key "`Alt+z`")
+            notes: "Use Yazelix's bundled zoxide jump to retarget the managed editor/workspace immediately"
         }
         {
             step: "Open key help"

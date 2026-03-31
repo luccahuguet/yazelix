@@ -378,6 +378,45 @@ def open_new_editor_pane [file_path: path, yazi_id: string, log_file: string] {
     log_to_file $log_file $"Command executed successfully with pane name: ($pane_name)"
 }
 
+export def open_new_managed_editor_in_cwd [
+    editor_kind: string
+    target_dir: path
+    yazi_id: string = ""
+    log_file: string = "open_editor.log"
+] {
+    let expanded_target_dir = ($target_dir | path expand)
+    if not ($expanded_target_dir | path exists) {
+        error make {msg: $"Target directory does not exist: ($expanded_target_dir)"}
+    }
+
+    let working_dir = if (($expanded_target_dir | path type) == "dir") {
+        $expanded_target_dir
+    } else {
+        $expanded_target_dir | path dirname
+    }
+
+    let editor = ($env.EDITOR? | default "" | str trim)
+    if ($editor | is-empty) {
+        error make {msg: "EDITOR environment variable is not set"}
+    }
+
+    let yazi_env = if ($yazi_id | str trim | is-empty) {
+        []
+    } else {
+        [$"YAZI_ID=($yazi_id)"]
+    }
+
+    let editor_args = if $editor_kind == "helix" {
+        [$working_dir]
+    } else {
+        []
+    }
+
+    log_to_file $log_file $"Launching new managed editor pane in cwd=($working_dir) with editor=($editor), editor_kind=($editor_kind)"
+    zellij run --name "editor" --cwd $working_dir -- env ...$yazi_env $editor ...$editor_args
+    log_to_file $log_file "Command executed successfully with pane name: editor"
+}
+
 # Open a new pane and set up Helix with Yazi integration
 export def open_new_helix_pane [file_path: path, yazi_id: string] {
     open_new_editor_pane $file_path $yazi_id "open_helix.log"
