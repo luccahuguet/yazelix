@@ -21,6 +21,33 @@ def describe_initializer_issue [result: record] {
     }
 }
 
+def make_initializer_result [
+    status: string
+    tool: string
+    shell: string
+    reason?: string
+    error?: string
+    file?: string
+] {
+    mut result = {
+        status: $status
+        tool: $tool
+        shell: $shell
+    }
+
+    if $reason != null {
+        $result = ($result | upsert reason $reason)
+    }
+    if $error != null {
+        $result = ($result | upsert error $error)
+    }
+    if $file != null {
+        $result = ($result | upsert file $file)
+    }
+
+    $result
+}
+
 def main [yazelix_dir: string, shells_to_configure_str: string] {
     # Import constants for XDG paths
     use ../utils/constants.nu *
@@ -47,30 +74,11 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
 
     # Use XDG-compliant state directories for initializers
     let all_shells = [
-        { 
-            name: "nu" 
-            dir: ($SHELL_INITIALIZER_DIRS.nushell | str replace "~" $env.HOME)
-            ext: "nu" 
-            tool_overrides: { zoxide: "nushell" } 
-        }
-        { 
-            name: "bash" 
-            dir: ($SHELL_INITIALIZER_DIRS.bash | str replace "~" $env.HOME)
-            ext: "sh" 
-            tool_overrides: {} 
-        }
-        { 
-            name: "fish" 
-            dir: ($SHELL_INITIALIZER_DIRS.fish | str replace "~" $env.HOME)
-            ext: "fish" 
-            tool_overrides: {} 
-        }
-        { 
-            name: "zsh" 
-            dir: ($SHELL_INITIALIZER_DIRS.zsh | str replace "~" $env.HOME)
-            ext: "zsh" 
-            tool_overrides: {} 
-        }
+        [name dir ext tool_overrides];
+        ["nu" ($SHELL_INITIALIZER_DIRS.nushell | str replace "~" $env.HOME) "nu" { zoxide: "nushell" }]
+        ["bash" ($SHELL_INITIALIZER_DIRS.bash | str replace "~" $env.HOME) "sh" {}]
+        ["fish" ($SHELL_INITIALIZER_DIRS.fish | str replace "~" $env.HOME) "fish" {}]
+        ["zsh" ($SHELL_INITIALIZER_DIRS.zsh | str replace "~" $env.HOME) "zsh" {}]
     ]
 
     # Filter shells to only include those we want to configure
@@ -90,20 +98,10 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
                 # Tool not found: record and remove any previous output
                 if $tool.required {
                     if ($output_file | path exists) { rm $output_file }
-                    {
-                        status: "required-missing"
-                        tool: $tool.name
-                        shell: $shell.name
-                        reason: "tool not found"
-                    }
+                    make_initializer_result "required-missing" $tool.name $shell.name "tool not found"
                 } else {
                     if ($output_file | path exists) { rm $output_file }
-                    {
-                        status: "missing"
-                        tool: $tool.name
-                        shell: $shell.name
-                        reason: "tool not found"
-                    }
+                    make_initializer_result "missing" $tool.name $shell.name "tool not found"
                 }
             } else {
                 try {
@@ -123,29 +121,14 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
                     }
                     let init_content = (normalize_initializer_content $shell.name $raw_init_content)
                     $init_content | save --force $output_file
-                    {
-                        status: "success"
-                        tool: $tool.name
-                        shell: $shell.name
-                        file: $output_file
-                    }
+                    make_initializer_result "success" $tool.name $shell.name null null $output_file
                 } catch { |error|
                     # On failure, record and remove any previous output
                     if ($output_file | path exists) { rm $output_file }
                     if $tool.required {
-                        {
-                            status: "required-failed"
-                            tool: $tool.name
-                            shell: $shell.name
-                            error: $error.msg
-                        }
+                        make_initializer_result "required-failed" $tool.name $shell.name null $error.msg
                     } else {
-                        {
-                            status: "failed"
-                            tool: $tool.name
-                            shell: $shell.name
-                            error: $error.msg
-                        }
+                        make_initializer_result "failed" $tool.name $shell.name null $error.msg
                     }
                 }
             }
