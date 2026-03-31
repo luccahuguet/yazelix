@@ -33,7 +33,9 @@ if [ ! -f "$runtime_env_script" ]; then
   exit 1
 fi
 
-. "$runtime_env_script" "$RUNTIME_DIR"
+export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$RUNTIME_DIR"
+. "$runtime_env_script" || exit 1
+unset YAZELIX_BOOTSTRAP_RUNTIME_DIR
 
 if [ ! -f "$core_script" ]; then
   echo "Error: Missing Yazelix CLI module: $core_script" >&2

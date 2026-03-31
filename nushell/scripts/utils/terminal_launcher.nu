@@ -68,10 +68,11 @@ export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
     }
 
     let terminals_to_check = if $prefer_wrappers {
-        # Check wrappers first, then direct
-        let wrappers = $ordered_terminals | each {|t| {terminal: $t, use_wrapper: true}}
+        # Prefer direct terminal binaries first so source-tree launches do not depend
+        # on stale built wrapper scripts. Fall back to wrappers when needed.
         let direct = $ordered_terminals | each {|t| {terminal: $t, use_wrapper: false}}
-        $wrappers | append $direct
+        let wrappers = $ordered_terminals | each {|t| {terminal: $t, use_wrapper: true}}
+        $direct | append $wrappers
     } else {
         # Direct terminal only
         $ordered_terminals | each {|t| {terminal: $t, use_wrapper: false}}

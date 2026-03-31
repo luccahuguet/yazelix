@@ -264,7 +264,7 @@ def generate_theme_toml [source_dir: string, merged_dir: string, theme: string, 
     # Add flavor configuration
     # Only set flavor if theme is not "default" (Yazi's built-in default)
     let flavor_config = if $theme != "default" and $theme != "random" {
-        { flavor: { dark: $theme } }
+        { flavor: { dark: $theme, light: $theme } }
     } else if $theme == "default" {
         {} # Don't set flavor for default theme
     } else {

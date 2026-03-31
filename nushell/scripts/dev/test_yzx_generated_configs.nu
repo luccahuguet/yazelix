@@ -481,7 +481,7 @@ def test_parse_yazelix_config_falls_back_to_canonical_yazi_plugins_default [] {
     let fixture = (setup_managed_config_fixture
         "yazelix_yazi_plugins_fallback"
         '[yazi]
-theme = "default"
+theme = "tokyo-night"
 '
     )
 

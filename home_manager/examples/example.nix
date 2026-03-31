@@ -72,7 +72,7 @@
       "git"
       "starship"
     ];
-    yazi_theme = "default"; # Optional: flavor name or "random-dark"
+    yazi_theme = "tokyo-night"; # Optional: flavor name or "random-dark"
     yazi_sort_by = "alphabetical";
 
     # Persistent sessions for long-running work

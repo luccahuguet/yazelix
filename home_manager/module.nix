@@ -392,7 +392,7 @@ in
 
     yazi_theme = mkOption {
       type = types.str;
-      default = "default";
+      default = "tokyo-night";
       description = ''
         Yazi color theme (flavor). 25 built-in flavors available (19 dark + 5 light + default).
         Use "random-dark" or "random-light" to pick a different theme on each yazelix restart.

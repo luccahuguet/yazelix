@@ -298,7 +298,7 @@ plugins = [
 # Yazi theme (flavor) configuration
 # Special options: "random-dark" (picks from 19 dark themes), "random-light" (picks from 5 light themes)
 # Available flavors (25 total: 1 default + 19 dark + 5 light):
-#   Default: "default"
+#   Default: "tokyo-night"
 #   Dark themes (19): "catppuccin-mocha", "catppuccin-frappe", "catppuccin-macchiato",
 #                     "dracula", "gruvbox-dark", "tokyo-night", "kanagawa", "kanagawa-dragon",
 #                     "rose-pine", "rose-pine-moon", "flexoki-dark", "bluloco-dark",
@@ -306,7 +306,7 @@ plugins = [
 #   Light themes (5): "catppuccin-latte", "kanagawa-lotus", "rose-pine-dawn",
 #                     "flexoki-light", "bluloco-light"
 # Browse flavors: https://github.com/yazi-rs/flavors
-theme = "default"
+theme = "tokyo-night"
 
 # Sort files by
 # Options: "alphabetical", "natural", "modified", "created", "size"

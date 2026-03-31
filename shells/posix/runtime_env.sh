@@ -1,6 +1,6 @@
 #!/bin/sh
 
-runtime_dir="$1"
+runtime_dir="${YAZELIX_BOOTSTRAP_RUNTIME_DIR:-$1}"
 
 if [ -z "$runtime_dir" ]; then
   echo "Error: missing Yazelix runtime directory" >&2

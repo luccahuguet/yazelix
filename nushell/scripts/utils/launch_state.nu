@@ -212,6 +212,7 @@ export def get_launch_env [config: record, profile_path: string] {
     mut launch_env = {
         DEVENV_PROFILE: $profile_path
         PATH: (([$profile_bin] | append $env.PATH | uniq))
+        YAZELIX_RUNTIME_DIR: $yazelix_dir
         YAZELIX_DIR: $yazelix_dir
         IN_YAZELIX_SHELL: "true"
         IN_NIX_SHELL: "impure"

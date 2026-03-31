@@ -9,6 +9,7 @@ use ../utils/nix_detector.nu ensure_nix_available
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [SUPPORTED_TERMINALS, TERMINAL_METADATA]
+use ../utils/common.nu [get_yazelix_runtime_dir]
 
 def validate_launch_working_dir [working_dir: string] {
     let resolved = ($working_dir | path expand)
@@ -149,20 +150,22 @@ def main [
         }
         let wrapper_cmd = $term_meta.wrapper
 
-        # Try wrapper first, then direct
-        if (command_exists $wrapper_cmd) {
-            {
-                terminal: $specified_terminal
-                name: $term_meta.name
-                command: $wrapper_cmd
-                use_wrapper: true
-            }
-        } else if (command_exists $specified_terminal) {
+        # Prefer the direct terminal binary first so source-tree launches do not
+        # depend on stale built wrapper scripts. Fall back to the wrapper when
+        # the direct binary is not available.
+        if (command_exists $specified_terminal) {
             {
                 terminal: $specified_terminal
                 name: $term_meta.name
                 command: $specified_terminal
                 use_wrapper: false
+            }
+        } else if (command_exists $wrapper_cmd) {
+            {
+                terminal: $specified_terminal
+                name: $term_meta.name
+                command: $wrapper_cmd
+                use_wrapper: true
             }
         } else {
             print $"Error: Specified terminal '($specified_terminal)' is not installed"
@@ -229,8 +232,11 @@ def main [
     # Launch terminal using bash to handle background processes properly
     # Preserve sweep/test env vars when present so the launched session can select
     # the test layout and write verification results.
+    let runtime_dir = (get_yazelix_runtime_dir)
     mut propagated_env = {
         YAZELIX_TERMINAL: $terminal_info.terminal
+        YAZELIX_RUNTIME_DIR: $runtime_dir
+        YAZELIX_DIR: $runtime_dir
     }
     if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) {
         $propagated_env = ($propagated_env | upsert YAZELIX_SWEEP_TEST_ID $env.YAZELIX_SWEEP_TEST_ID)
