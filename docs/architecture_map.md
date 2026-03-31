@@ -112,6 +112,7 @@ Current direction:
 See [Config Surface And Launch Profile Contract](./specs/config_surface_and_launch_profile_contract.md) for the concrete runtime ownership model.
 See [Runtime Root Contract](./specs/runtime_root_contract.md) for the concrete split between config-owned paths, shipped runtime assets, and generated state.
 See [One-Command Install UX](./specs/one_command_install_ux.md) for the planned first-class install front door and why it should be a thin `nix run` installer surface instead of a hosted shell script.
+See [Flake Interface Contract](./specs/flake_interface_contract.md) for the exact phase-1 flake outputs and the stable installed-runtime layout they should target.
 
 ### Workspace and Session Ownership
 
