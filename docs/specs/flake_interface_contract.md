@@ -134,3 +134,4 @@ If re-exporting the existing module at top level is cheap and clean, do it. If n
 
 - Bead: `yazelix-2ex.1.4.2`
 - Bead: `yazelix-2ex.1.4.2.1`
+- Defended by: `nu nushell/scripts/dev/validate_specs.nu` (structure and required fields check)
