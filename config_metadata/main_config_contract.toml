@@ -1,0 +1,421 @@
+# Canonical machine-readable metadata for the main Yazelix config surface.
+# This artifact is intentionally about semantics, not user-facing prose.
+#
+# Notes:
+# - It covers the main config surface only. Pack metadata lives separately.
+# - `parser_behavior` documents the parser-side transform when it differs from
+#   the raw TOML value shape.
+# - `home_manager_default_is_null` and `home_manager_can_omit` capture the main
+#   places where Home Manager semantics differ from the emitted TOML template.
+
+[contract]
+version = 1
+surface = "main"
+field_count = 43
+artifact_role = "canonical_machine_metadata"
+default_template = "yazelix_default.toml"
+home_manager_module = "home_manager/module.nix"
+loader_module = "nushell/scripts/utils/config_contract.nu"
+scope_note = "Pack-surface metadata is intentionally excluded from this artifact."
+
+[fields."core.recommended_deps"]
+kind = "bool"
+default = true
+parser_key = "recommended_deps"
+home_manager_option = "recommended_deps"
+parser_behavior = "direct"
+rebuild_required = true
+
+[fields."core.yazi_extensions"]
+kind = "bool"
+default = true
+parser_key = "yazi_extensions"
+home_manager_option = "yazi_extensions"
+parser_behavior = "direct"
+rebuild_required = true
+
+[fields."core.yazi_media"]
+kind = "bool"
+default = false
+parser_key = "yazi_media"
+home_manager_option = "yazi_media"
+parser_behavior = "direct"
+rebuild_required = true
+
+[fields."core.debug_mode"]
+kind = "bool"
+default = false
+parser_key = "debug_mode"
+home_manager_option = "debug_mode"
+parser_behavior = "direct"
+rebuild_required = false
+
+[fields."core.skip_welcome_screen"]
+kind = "bool"
+default = false
+parser_key = "skip_welcome_screen"
+home_manager_option = "skip_welcome_screen"
+parser_behavior = "direct"
+rebuild_required = false
+
+[fields."core.show_macchina_on_welcome"]
+kind = "bool"
+default = true
+parser_key = "show_macchina_on_welcome"
+home_manager_option = "show_macchina_on_welcome"
+parser_behavior = "direct"
+rebuild_required = false
+
+[fields."core.welcome_style"]
+kind = "string"
+default = "random"
+parser_key = "welcome_style"
+home_manager_option = "welcome_style"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["static", "logo", "boids", "game_of_life", "mandelbrot", "random"]
+rebuild_required = false
+
+[fields."core.welcome_duration_seconds"]
+kind = "float"
+default = 2.0
+parser_key = "welcome_duration_seconds"
+home_manager_option = "welcome_duration_seconds"
+parser_behavior = "direct"
+validation = "float_range"
+min = 0.2
+max = 8.0
+rebuild_required = false
+
+[fields."core.refresh_output"]
+kind = "string"
+default = "normal"
+parser_key = "refresh_output"
+home_manager_option = "refresh_output"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["quiet", "normal", "full"]
+rebuild_required = false
+
+[fields."core.max_jobs"]
+kind = "string"
+default = "half"
+parser_key = "max_jobs"
+home_manager_option = "max_jobs"
+parser_behavior = "direct"
+validation = "symbol_or_positive_int_string"
+allowed_symbols = ["auto", "max", "max_minus_one", "half", "quarter"]
+rebuild_required = true
+
+[fields."core.build_cores"]
+kind = "string"
+default = "2"
+parser_key = "build_cores"
+home_manager_option = "build_cores"
+parser_behavior = "direct"
+validation = "symbol_or_positive_int_string"
+allowed_symbols = ["max", "max_minus_one", "half", "quarter"]
+rebuild_required = true
+
+[fields."helix.mode"]
+kind = "string"
+default = "release"
+parser_key = "helix_mode"
+home_manager_option = "helix_mode"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["release", "source"]
+rebuild_required = true
+
+[fields."helix.runtime_path"]
+kind = "string"
+default = ""
+parser_key = "helix_runtime_path"
+home_manager_option = "helix_runtime_path"
+parser_behavior = "empty_string_to_null"
+nullable = true
+emit_in_default_template = false
+home_manager_default_is_null = true
+home_manager_can_omit = true
+rebuild_required = true
+
+[fields."editor.command"]
+kind = "string"
+default = ""
+parser_key = "editor_command"
+home_manager_option = "editor_command"
+parser_behavior = "empty_string_to_null"
+nullable = true
+home_manager_default_is_null = true
+rebuild_required = true
+
+[fields."editor.enable_sidebar"]
+kind = "bool"
+default = true
+parser_key = "enable_sidebar"
+home_manager_option = "enable_sidebar"
+parser_behavior = "direct"
+rebuild_required = false
+
+[fields."editor.sidebar_width_percent"]
+kind = "int"
+default = 20
+parser_key = "sidebar_width_percent"
+home_manager_option = "sidebar_width_percent"
+parser_behavior = "direct"
+validation = "int_range"
+min = 10
+max = 40
+rebuild_required = false
+
+[fields."shell.default_shell"]
+kind = "string"
+default = "nu"
+parser_key = "default_shell"
+home_manager_option = "default_shell"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["nu", "bash", "fish", "zsh"]
+rebuild_required = false
+
+[fields."shell.extra_shells"]
+kind = "string_list"
+default = []
+parser_key = "extra_shells"
+home_manager_option = "extra_shells"
+parser_behavior = "direct"
+validation = "enum_string_list"
+allowed_values = ["fish", "zsh"]
+rebuild_required = true
+
+[fields."terminal.terminals"]
+kind = "string_list"
+default = ["ghostty"]
+parser_key = "terminals"
+home_manager_option = "terminals"
+parser_behavior = "direct"
+validation = "enum_string_list"
+allowed_values = ["ghostty", "wezterm", "kitty", "alacritty", "foot"]
+rebuild_required = true
+
+[fields."terminal.manage_terminals"]
+kind = "bool"
+default = true
+parser_key = "manage_terminals"
+home_manager_option = "manage_terminals"
+parser_behavior = "direct"
+rebuild_required = false
+
+[fields."terminal.config_mode"]
+kind = "string"
+default = "yazelix"
+parser_key = "terminal_config_mode"
+home_manager_option = "terminal_config_mode"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["yazelix", "user"]
+rebuild_required = false
+
+[fields."terminal.ghostty_trail_color"]
+kind = "string"
+default = "random"
+parser_key = "ghostty_trail_color"
+home_manager_option = "ghostty_trail_color"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["none", "blaze", "snow", "cosmic", "ocean", "forest", "sunset", "neon", "party", "eclipse", "dusk", "orchid", "reef", "inferno", "random"]
+rebuild_required = false
+
+[fields."terminal.ghostty_trail_effect"]
+kind = "string"
+default = "random"
+parser_key = "ghostty_trail_effect"
+home_manager_option = "ghostty_trail_effect"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["tail", "warp", "sweep", "random"]
+home_manager_can_omit = true
+rebuild_required = false
+
+[fields."terminal.ghostty_mode_effect"]
+kind = "string"
+default = "random"
+parser_key = "ghostty_mode_effect"
+home_manager_option = "ghostty_mode_effect"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["ripple", "sonic_boom", "rectangle_boom", "ripple_rectangle", "random"]
+home_manager_can_omit = true
+rebuild_required = false
+
+[fields."terminal.ghostty_trail_glow"]
+kind = "string"
+default = "medium"
+parser_key = "ghostty_trail_glow"
+home_manager_option = "ghostty_trail_glow"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["none", "low", "medium", "high"]
+rebuild_required = false
+
+[fields."terminal.transparency"]
+kind = "string"
+default = "medium"
+parser_key = "transparency"
+home_manager_option = "transparency"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["none", "very_low", "low", "medium", "high", "very_high", "super_high"]
+rebuild_required = false
+
+[fields."zellij.disable_tips"]
+kind = "bool"
+default = true
+parser_key = "disable_zellij_tips"
+home_manager_option = "disable_zellij_tips"
+parser_behavior = "bool_to_string"
+rebuild_required = false
+
+[fields."zellij.rounded_corners"]
+kind = "bool"
+default = true
+parser_key = "zellij_rounded_corners"
+home_manager_option = "zellij_rounded_corners"
+parser_behavior = "bool_to_string"
+rebuild_required = false
+
+[fields."zellij.support_kitty_keyboard_protocol"]
+kind = "bool"
+default = false
+parser_key = "support_kitty_keyboard_protocol"
+home_manager_option = "support_kitty_keyboard_protocol"
+parser_behavior = "bool_to_string"
+rebuild_required = false
+
+[fields."zellij.theme"]
+kind = "string"
+default = "default"
+parser_key = "zellij_theme"
+home_manager_option = "zellij_theme"
+parser_behavior = "direct"
+rebuild_required = false
+
+[fields."zellij.widget_tray"]
+kind = "string_list"
+default = ["editor", "shell", "term", "cpu", "ram"]
+parser_key = "zellij_widget_tray"
+home_manager_option = "zellij_widget_tray"
+parser_behavior = "direct"
+validation = "enum_string_list"
+allowed_values = ["editor", "shell", "term", "cpu", "ram"]
+rebuild_required = false
+
+[fields."zellij.custom_text"]
+kind = "string"
+default = ""
+parser_key = "zellij_custom_text"
+home_manager_option = "zellij_custom_text"
+parser_behavior = "compact_badge_text"
+rebuild_required = false
+
+[fields."zellij.popup_program"]
+kind = "string_list"
+default = ["lazygit"]
+parser_key = "popup_program"
+home_manager_option = "popup_program"
+parser_behavior = "direct"
+rebuild_required = false
+
+[fields."zellij.popup_width_percent"]
+kind = "int"
+default = 90
+parser_key = "popup_width_percent"
+home_manager_option = "popup_width_percent"
+parser_behavior = "direct"
+validation = "int_range"
+min = 1
+max = 100
+rebuild_required = false
+
+[fields."zellij.popup_height_percent"]
+kind = "int"
+default = 90
+parser_key = "popup_height_percent"
+home_manager_option = "popup_height_percent"
+parser_behavior = "direct"
+validation = "int_range"
+min = 1
+max = 100
+rebuild_required = false
+
+[fields."zellij.persistent_sessions"]
+kind = "bool"
+default = false
+parser_key = "persistent_sessions"
+home_manager_option = "persistent_sessions"
+parser_behavior = "bool_to_string"
+rebuild_required = false
+
+[fields."zellij.session_name"]
+kind = "string"
+default = "yazelix"
+parser_key = "session_name"
+home_manager_option = "session_name"
+parser_behavior = "direct"
+rebuild_required = false
+
+[fields."zellij.default_mode"]
+kind = "string"
+default = "normal"
+parser_key = "zellij_default_mode"
+home_manager_option = "zellij_default_mode"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["normal", "locked"]
+rebuild_required = false
+
+[fields."yazi.command"]
+kind = "string"
+default = ""
+parser_key = "yazi_command"
+home_manager_option = "yazi_command"
+parser_behavior = "empty_string_to_null"
+nullable = true
+home_manager_default_is_null = true
+rebuild_required = false
+
+[fields."yazi.ya_command"]
+kind = "string"
+default = ""
+parser_key = "yazi_ya_command"
+home_manager_option = "yazi_ya_command"
+parser_behavior = "empty_string_to_null"
+nullable = true
+home_manager_default_is_null = true
+rebuild_required = false
+
+[fields."yazi.plugins"]
+kind = "string_list"
+default = ["git", "starship"]
+parser_key = "yazi_plugins"
+home_manager_option = "yazi_plugins"
+parser_behavior = "direct"
+rebuild_required = false
+
+[fields."yazi.theme"]
+kind = "string"
+default = "default"
+parser_key = "yazi_theme"
+home_manager_option = "yazi_theme"
+parser_behavior = "direct"
+rebuild_required = false
+
+[fields."yazi.sort_by"]
+kind = "string"
+default = "alphabetical"
+parser_key = "yazi_sort_by"
+home_manager_option = "yazi_sort_by"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["alphabetical", "natural", "modified", "created", "size"]
+rebuild_required = false
