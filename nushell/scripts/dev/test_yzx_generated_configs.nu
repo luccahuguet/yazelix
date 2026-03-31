@@ -111,6 +111,7 @@ terminals = ["ghostty", "kitty", "alacritty"]
             XDG_CONFIG_HOME: ($fake_home | path join ".config")
             YAZELIX_CONFIG_DIR: $fake_config_dir
             YAZELIX_DIR: $fake_runtime_root
+            YAZELIX_RUNTIME_DIR: $runtime_root
             YAZELIX_CONFIG_OVERRIDE: $config_path
         } {
             ^nu -c $"use \"($terminal_configs_script)\" [generate_all_terminal_configs]; generate_all_terminal_configs \"($runtime_root)\"" | complete

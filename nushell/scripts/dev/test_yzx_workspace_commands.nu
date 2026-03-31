@@ -34,7 +34,7 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
     mkdir $state_dir
     mkdir $fake_bin
 
-    for entry in ["nushell", "shells", "configs", "devenv.lock", "yazelix_default.toml", "docs", "CHANGELOG.md", "assets"] {
+    for entry in ["nushell", "shells", "configs", "config_metadata", "devenv.lock", "yazelix_default.toml", "docs", "CHANGELOG.md", "assets"] {
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
 

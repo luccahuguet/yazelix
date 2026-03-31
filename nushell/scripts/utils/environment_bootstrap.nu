@@ -31,6 +31,18 @@ def get_stderr_tail [stderr: string, max_lines: int = 5] {
     | str trim
 }
 
+def print_completed_output [result: record] {
+    let stdout_text = ($result.stdout | default "")
+    let stderr_text = ($result.stderr | default "")
+
+    if ($stdout_text | is-not-empty) {
+        print --raw $stdout_text
+    }
+    if ($stderr_text | is-not-empty) {
+        print --stderr --raw $stderr_text
+    }
+}
+
 export def format_command_failure_summary [
     label: string
     command_parts: list<string>
@@ -104,8 +116,8 @@ export def get_refresh_output_mode [config] {
 
 # Build a base devenv command from the canonical Yazelix directory
 export def get_devenv_base_command [
-    --max-jobs: string  # Concurrent build job strategy or explicit count from yazelix config
-    --build-cores: string  # Build core strategy or explicit count from yazelix config
+    --max-jobs: string = ""  # Concurrent build job strategy or explicit count from yazelix config
+    --build-cores: string = ""  # Build core strategy or explicit count from yazelix config
     --quiet             # Include --quiet in devenv arguments
     --devenv-verbose    # Include --verbose in devenv arguments
     --refresh-eval-cache  # Include --refresh-eval-cache in devenv arguments
@@ -113,8 +125,8 @@ export def get_devenv_base_command [
     let yazelix_dir = resolve_yazelix_dir
     let devenv_path = (resolve_preferred_devenv_path)
     let nix_config = get_yazelix_nix_config
-    let requested_max_jobs = ($max_jobs | default "")
-    let requested_build_cores = ($build_cores | default "")
+    let requested_max_jobs = $max_jobs
+    let requested_build_cores = $build_cores
     let resolved_max_jobs = if ($requested_max_jobs | is-not-empty) {
         get_max_jobs $requested_max_jobs
     } else {
@@ -152,14 +164,14 @@ export def get_devenv_base_command [
 }
 
 export def rebuild_yazelix_environment [
-    --max-jobs: string  # Concurrent build job strategy or explicit count from yazelix config
-    --build-cores: string  # Build core strategy or explicit count from yazelix config
+    --max-jobs: string = ""  # Concurrent build job strategy or explicit count from yazelix config
+    --build-cores: string = ""  # Build core strategy or explicit count from yazelix config
     --refresh-eval-cache  # Refresh devenv eval cache before rebuilding
     --output-mode: string = "normal"  # quiet | normal | full
 ] {
     let refresh_output = resolve_refresh_output_mode $output_mode
-    let requested_max_jobs = ($max_jobs | default "")
-    let requested_build_cores = ($build_cores | default "")
+    let requested_max_jobs = $max_jobs
+    let requested_build_cores = $build_cores
     let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --refresh-eval-cache=$refresh_eval_cache --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full")
     let devenv_cmd = ($devenv_base | append ["build", "shell"])
     let cmd_bin = ($devenv_cmd | first)
@@ -185,18 +197,20 @@ export def rebuild_yazelix_environment [
         }
     } else if (is_unfree_enabled) {
         with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
-            ^$cmd_bin ...$cmd_args
+            let result = (do { ^$cmd_bin ...$cmd_args } | complete)
+            print_completed_output $result
             {
-                exit_code: ($env.LAST_EXIT_CODE? | default 0)
-                stderr: ""
+                exit_code: $result.exit_code
+                stderr: ($result.stderr | default "")
                 stderr_streamed: true
             }
         }
     } else {
-        ^$cmd_bin ...$cmd_args
+        let result = (do { ^$cmd_bin ...$cmd_args } | complete)
+        print_completed_output $result
         {
-            exit_code: ($env.LAST_EXIT_CODE? | default 0)
-            stderr: ""
+            exit_code: $result.exit_code
+            stderr: ($result.stderr | default "")
             stderr_streamed: true
         }
     }
@@ -245,8 +259,8 @@ export def ensure_environment_available [] {
 # Run a command inside devenv shell
 export def run_in_devenv_shell [
     command: string
-    --max-jobs: string  # Concurrent build job strategy or explicit count from yazelix config
-    --build-cores: string  # Build core strategy or explicit count from yazelix config
+    --max-jobs: string = ""  # Concurrent build job strategy or explicit count from yazelix config
+    --build-cores: string = ""  # Build core strategy or explicit count from yazelix config
     --env-only          # Set YAZELIX_ENV_ONLY=true
     --verbose           # Enable verbose output
     --quiet             # Run devenv with --quiet flag
@@ -257,8 +271,8 @@ export def run_in_devenv_shell [
     let env_status = check_environment_status
     let verbose_mode = $verbose
     let refresh_output = resolve_refresh_output_mode $refresh_output_mode
-    let requested_max_jobs = ($max_jobs | default "")
-    let requested_build_cores = ($build_cores | default "")
+    let requested_max_jobs = $max_jobs
+    let requested_build_cores = $build_cores
 
     if $verbose_mode {
         print $"🔁 IN_NIX_SHELL? ($env_status.in_nix_shell) | IN_YAZELIX_SHELL? ($env_status.in_yazelix_shell)"
@@ -324,9 +338,9 @@ export def run_in_devenv_shell [
 export def run_in_devenv_shell_command [
     command: string
     ...args: string
-    --max-jobs: string  # Concurrent build job strategy or explicit count from yazelix config
-    --build-cores: string  # Build core strategy or explicit count from yazelix config
-    --cwd: string      # Run command in this directory
+    --max-jobs: string = ""  # Concurrent build job strategy or explicit count from yazelix config
+    --build-cores: string = ""  # Build core strategy or explicit count from yazelix config
+    --cwd: string = ""      # Run command in this directory
     --env-only         # Set YAZELIX_ENV_ONLY=true
     --verbose          # Enable verbose output
     --quiet            # Run devenv with --quiet flag
@@ -337,8 +351,8 @@ export def run_in_devenv_shell_command [
     let env_status = check_environment_status
     let verbose_mode = $verbose
     let refresh_output = resolve_refresh_output_mode $refresh_output_mode
-    let requested_max_jobs = ($max_jobs | default "")
-    let requested_build_cores = ($build_cores | default "")
+    let requested_max_jobs = $max_jobs
+    let requested_build_cores = $build_cores
 
     if ($command | is-empty) {
         print "Error: No command provided"
@@ -350,7 +364,7 @@ export def run_in_devenv_shell_command [
         exit 1
     }
 
-    let requested_cwd = ($cwd | default "")
+    let requested_cwd = $cwd
     let resolved_cwd = if ($requested_cwd | is-not-empty) { $requested_cwd | path expand } else { "" }
     let exec_cmd = if ($resolved_cwd | is-not-empty) {
         ["env", "-C", $resolved_cwd] | append $command | append $args
