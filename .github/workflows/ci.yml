@@ -63,3 +63,6 @@ jobs:
       - name: Check Home Manager flake
         shell: bash
         run: nix flake check ./home_manager --no-build
+
+      - name: Validate flake install smoke path
+        run: nu nushell/scripts/dev/validate_flake_install.nu

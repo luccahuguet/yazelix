@@ -128,7 +128,7 @@ If re-exporting the existing module at top level is cheap and clean, do it. If n
 - manual review against [one_command_install_ux.md](./one_command_install_ux.md)
 - manual review against [runtime_root_contract.md](./runtime_root_contract.md)
 - future flake-eval checks for required outputs
-- future install smoke check proving that `yzx` resolves through the stable runtime pointer
+- CI check: `nu nushell/scripts/dev/validate_flake_install.nu`
 
 ## Traceability
 
