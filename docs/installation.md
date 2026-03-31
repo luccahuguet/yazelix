@@ -126,12 +126,12 @@ Yazelix needs its shipped runtime assets available somewhere on disk.
 
 There is currently no separate `yzx install` or `yzx setup` command. Bootstrap still happens through the Yazelix runtime entrypoint itself.
 
-Today, the simplest concrete install path is still a source checkout:
+Today, the simplest concrete install path is still a cloned Yazelix repo on disk, but it does **not** have to live under `~/.config/yazelix`. Clone it anywhere convenient:
 ```bash
-git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
+git clone https://github.com/luccahuguet/yazelix ~/src/yazelix
 ```
 
-Normal usage should rely on the installed Yazelix runtime and `yzx` entrypoints. User configuration lives under `~/.config/yazelix/user_configs/`. The runtime/config model no longer requires that path to remain a live repo forever, but this guide still uses the source-checkout flow as the concrete way to put the runtime on disk.
+Normal usage should rely on the installed Yazelix runtime and `yzx` entrypoints. User configuration lives under `~/.config/yazelix/user_configs/`. That config root is separate from wherever your cloned repo lives.
 
 ### Step 5: Configure Your Installation (Optional)
 
@@ -140,7 +140,7 @@ Normal usage should rely on the installed Yazelix runtime and `yzx` entrypoints.
 ```bash
 # Create your personal config from the template
 mkdir -p ~/.config/yazelix/user_configs
-cp ~/.config/yazelix/yazelix_default.toml ~/.config/yazelix/user_configs/yazelix.toml
+cp ~/src/yazelix/yazelix_default.toml ~/.config/yazelix/user_configs/yazelix.toml
 
 # Edit the configuration to suit your needs
 # Use your preferred editor (hx, vim, etc.)
@@ -198,14 +198,14 @@ home.packages = with pkgs; [
 
 For the **first launch**:
 
-- source-checkout installs can run the repo script directly
+- cloned-repo installs can run the repo script directly
 - package-ready installs should run the shipped `start_yazelix.sh` from the installed runtime root instead
 - there is still no separate `yzx setup` command; this runtime entrypoint is the setup path
 
-Source-checkout example:
+Cloned-repo example:
 
 ```bash
-nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu --setup-only
+nu ~/src/yazelix/nushell/scripts/core/start_yazelix.nu --setup-only
 ```
 
 **What this does**:
@@ -227,10 +227,10 @@ yzx launch  # Opens in new terminal in current directory
 
 If you prefer to keep your existing terminal configuration unchanged, just run Yazelix once and it will automatically set up the `yzx` command for you. This is still runtime-entrypoint bootstrap, not a separate `yzx install` step.
 
-Source-checkout example:
+Cloned-repo example:
 
 ```bash
-nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
+nu ~/src/yazelix/nushell/scripts/core/start_yazelix.nu
 ```
 
 This will automatically configure your shell and then you can use:
@@ -257,10 +257,10 @@ For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.), use the installed Yazelix desktop launcher from your runtime:
 
 ```bash
-~/.config/yazelix/shells/posix/desktop_launcher.sh
+~/src/yazelix/shells/posix/desktop_launcher.sh
 ```
 
-This launches the same POSIX entrypoint used by the generated desktop entry. In package-ready installs, the same launcher should come from the installed runtime rather than a source checkout.
+This launches the same POSIX entrypoint used by the generated desktop entry. In package-ready installs, the same launcher should come from the installed runtime rather than a cloned repo path.
 
 ##### macOS (Spotlight, Launchpad, Dock)
 
@@ -268,10 +268,10 @@ To integrate Yazelix with macOS launchers:
 
 ```bash
 # Copy the app bundle to Applications
-cp -r ~/.config/yazelix/assets/macos/Yazelix.app /Applications/
+cp -r ~/src/yazelix/assets/macos/Yazelix.app /Applications/
 
 # Optional: Create high-quality icon
-nu ~/.config/yazelix/assets/macos/create_icns.nu
+nu ~/src/yazelix/assets/macos/create_icns.nu
 ```
 
 After installation, you can:
