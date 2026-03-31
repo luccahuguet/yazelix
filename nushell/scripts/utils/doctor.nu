@@ -181,9 +181,10 @@ export def check_helix_runtime_conflicts [] {
 }
 
 # Check effective Helix runtime health
-def detect_effective_helix_runtime [] {
+# Returns all valid runtime directories (Nix splits runtime across multiple paths)
+def detect_all_helix_runtimes [] {
     if (which hx | is-empty) {
-        return null
+        return []
     }
 
     try {
@@ -201,27 +202,27 @@ def detect_effective_helix_runtime [] {
             | where {|entry| $entry != ""}
         )
 
-        let detected_runtime = (
-            $runtime_candidates
-            | where {|candidate| $candidate | path exists}
-            | get -o 0
-        )
-
-        if ($detected_runtime | is-empty) {
-            null
-        } else {
-            $detected_runtime
-        }
+        $runtime_candidates
+        | where {|candidate| $candidate | path exists}
     } catch {
+        []
+    }
+}
+
+def detect_effective_helix_runtime [] {
+    let all_runtimes = (detect_all_helix_runtimes)
+    if ($all_runtimes | is-empty) {
         null
+    } else {
+        $all_runtimes | first
     }
 }
 
 export def check_helix_runtime_health [] {
-    let detected_runtime = (detect_effective_helix_runtime)
-    let runtime_path = $detected_runtime
+    let all_runtimes = (detect_all_helix_runtimes)
+    let primary_runtime = (detect_effective_helix_runtime)
 
-    if ($runtime_path | is-empty) {
+    if ($primary_runtime | is-empty) {
         return {
             status: "error"
             message: "Helix runtime could not be resolved"
@@ -230,25 +231,34 @@ export def check_helix_runtime_health [] {
         }
     }
 
-    # Check for essential directories
+    # Check for essential directories across ALL runtime directories
+    # (Nix splits runtime across multiple store paths)
     let required_dirs = ["grammars", "queries", "themes"]
-    let missing_dirs = ($required_dirs | where not ($"($runtime_path)/($it)" | path exists))
+    let missing_dirs = ($required_dirs | where {|required_dir|
+        # Check if this directory exists in ANY runtime path
+        let found_in_any = ($all_runtimes | any {|runtime_path|
+            $"($runtime_path)/($required_dir)" | path exists
+        })
+        not $found_in_any
+    })
     
     if not ($missing_dirs | is-empty) {
         return {
             status: "error"
             message: $"Missing required directories: ($missing_dirs | str join ', ')"
-            details: $"The effective Helix runtime at ($runtime_path) is incomplete"
+            details: $"The effective Helix runtime at ($primary_runtime) is incomplete (note: Nix may split runtime across multiple paths)"
             fix_available: false
         }
     }
 
-    # Count grammars
-    let grammar_count = try {
-        (ls $"($runtime_path)/grammars" | length)
-    } catch {
-        0
-    }
+    # Count grammars across all runtime paths
+    let grammar_count = ($all_runtimes | each {|runtime_path|
+        try {
+            (ls $"($runtime_path)/grammars" | length)
+        } catch {
+            0
+        }
+    } | math sum)
     
     if ($grammar_count < 200) {
         return {
@@ -259,8 +269,12 @@ export def check_helix_runtime_health [] {
         }
     }
 
-    # Check tutor file
-    if not ($"($runtime_path)/tutor" | path exists) {
+    # Check tutor file across all runtime paths
+    let tutor_exists = ($all_runtimes | any {|runtime_path|
+        $"($runtime_path)/tutor" | path exists
+    })
+    
+    if not $tutor_exists {
         return {
             status: "warning"
             message: "Helix tutor file missing"
@@ -272,7 +286,7 @@ export def check_helix_runtime_health [] {
     {
         status: "ok"
         message: $"Helix runtime healthy with ($grammar_count) grammars"
-        details: $"Effective runtime directory: ($runtime_path)"
+        details: $"Primary runtime directory: ($primary_runtime)"
         fix_available: false
     }
 }
