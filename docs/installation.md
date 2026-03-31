@@ -106,14 +106,14 @@ nu --version
 
 ### Step 3: Install devenv CLI
 
-Yazelix runs on the [`devenv`](https://devenv.sh) development environment. Install the CLI once so you can launch the Yazelix shell quickly:
+Yazelix runs on the [`devenv`](https://devenv.sh) development environment. Install the CLI once so you can launch the Yazelix shell quickly. Prefer the Yazelix-pinned revision so the standalone CLI matches the environment Yazelix was checked against:
 
 ```bash
-nix profile install github:cachix/devenv/latest
+nix profile install github:cachix/devenv/cfd12842b061f9df79e18375d93d72e41f1fbbdf#devenv
 ```
 
 **What this does:**
-- Installs the latest `devenv` CLI into your user profile (~5GB with all dependencies)
+- Installs the Yazelix-pinned `devenv` CLI into your user profile (~5GB with all dependencies)
 - Provides the `devenv shell` command that Yazelix uses for fast, cached launches
 - Verify installation:
 ```bash

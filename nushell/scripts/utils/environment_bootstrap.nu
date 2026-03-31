@@ -3,7 +3,7 @@
 # Used by both start_yazelix.nu and yzx env to avoid duplication
 
 use config_parser.nu parse_yazelix_config
-use devenv_cli.nu [is_preferred_devenv_available resolve_preferred_devenv_path]
+use devenv_cli.nu [get_pinned_devenv_installable is_preferred_devenv_available resolve_preferred_devenv_path]
 use nix_detector.nu ensure_nix_available
 use nix_env_helper.nu ensure_nix_in_environment
 use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config get_yazelix_dir require_yazelix_dir]
@@ -108,6 +108,16 @@ def resolve_refresh_output_mode [mode: string] {
     }
 
     $refresh_output
+}
+
+def print_pinned_devenv_install_hint [] {
+    let installable = try {
+        get_pinned_devenv_installable
+    } catch {|err|
+        print $"     Unable to derive the Yazelix-pinned devenv installable automatically: ($err.msg)"
+        return
+    }
+    print $"     nix profile install ($installable)"
 }
 
 export def get_refresh_output_mode [config] {
@@ -291,7 +301,7 @@ export def run_in_devenv_shell [
             print "❌ devenv command not found."
             print "   Yazelix v11+ moved from flake-based `nix develop` shells to devenv."
             print "   Install devenv with:"
-            print "     nix profile install github:cachix/devenv/latest"
+            print_pinned_devenv_install_hint
             print "   After installing, relaunch Yazelix (or run `devenv shell`)."
             print ""
             exit 1
@@ -387,7 +397,7 @@ export def run_in_devenv_shell_command [
         print "❌ devenv command not found."
         print "   Yazelix v11+ moved from flake-based `nix develop` shells to devenv."
         print "   Install devenv with:"
-        print "     nix profile install github:cachix/devenv/latest"
+        print_pinned_devenv_install_hint
         print "   After installing, relaunch Yazelix (or run `devenv shell`)."
         print ""
         exit 1

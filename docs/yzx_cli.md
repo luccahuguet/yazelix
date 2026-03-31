@@ -129,8 +129,8 @@ Run the user-facing update set
 - `--verbose`: show verbose output for both update steps
 
 ### `yzx update devenv [--verbose]`
-Update the devenv CLI in your Nix profile
-- `yzx update devenv`: Update the devenv CLI in your Nix profile (`--verbose` shows underlying commands)
+Update the devenv CLI in your Nix profile to the Yazelix-pinned revision
+- `yzx update devenv`: Install or update the devenv CLI in your Nix profile so it matches Yazelix’s locked/pinned version (`--verbose` shows the underlying install command)
 
 ### `yzx update nix [--yes] [--verbose]`
 Upgrade Determinate Nix

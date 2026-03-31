@@ -7,6 +7,7 @@ use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu [describe_build_parallelism get_yazelix_dir require_yazelix_dir]
+use ../utils/devenv_cli.nu [get_pinned_devenv_installable get_preferred_devenv_version_line is_preferred_devenv_available]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ./start_yazelix.nu [start_yazelix_session]
@@ -379,7 +380,7 @@ export def "yzx update" [
 
     print "User-facing updates:"
     print "  yzx update all        Update both the devenv CLI and the Yazelix repo"
-    print "  yzx update devenv     Update the devenv CLI in your Nix profile"
+    print "  yzx update devenv     Update the devenv CLI in your Nix profile to the Yazelix-pinned revision"
     print "  yzx update repo       Pull latest Yazelix repo changes"
     print "  yzx update nix        Upgrade Determinate Nix \(if installed\)"
     print ""
@@ -401,25 +402,44 @@ export def "yzx update devenv" [
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available --skip-devenv
 
+    let pinned_installable = try {
+        get_pinned_devenv_installable
+    } catch {|err|
+        print $"❌ Failed to resolve the Yazelix-pinned devenv installable: ($err.msg)"
+        exit 1
+    }
+
     if $verbose {
-        print "⚙️ Running: nix profile install github:cachix/devenv/latest"
-        print "⚙️ Running: nix profile upgrade devenv"
+        print $"⚙️ Running: nix profile install ($pinned_installable)"
     }
 
     let profile = try { ^nix profile list --json | from json } catch { null }
     let profile_entries = if $profile == null { [] } else { $profile.elements | columns }
     let profile_has_devenv = ($profile_entries | any { |name| $name == "devenv" })
 
+    let preferred_devenv_version = if $profile_has_devenv and (is_preferred_devenv_available) {
+        try { get_preferred_devenv_version_line } catch { "" }
+    } else {
+        ""
+    }
+    let current_version = (
+        $preferred_devenv_version
+        | parse --regex '(\d+\.\d+\.\d+)'
+        | get -o capture0
+        | first
+        | default ""
+    )
+
     if not $profile_has_devenv {
         if (which devenv | is-not-empty) {
             print "ℹ️ devenv found in PATH but not managed by your Nix profile."
-            print "   Installing into the profile so it can be updated with `yzx update devenv`."
+            print $"   Installing Yazelix-pinned devenv ($PINNED_DEVENV_VERSION) into the profile."
         }
 
-        print "🔄 Installing devenv CLI..."
+        print $"🔄 Installing Yazelix-pinned devenv CLI ($PINNED_DEVENV_VERSION)..."
 
         try {
-            let result = (^nix profile install "github:cachix/devenv/latest" | complete)
+            let result = (^nix profile install $pinned_installable | complete)
             if $result.exit_code != 0 {
                 print $"❌ devenv install failed: ($result.stderr | str trim)"
                 print "   Check your Nix setup and try again."
@@ -432,25 +452,24 @@ export def "yzx update devenv" [
             exit 1
         }
     } else {
-        print "🔄 Updating devenv CLI..."
+        if $current_version == $PINNED_DEVENV_VERSION {
+            print $"ℹ️ devenv CLI already matches the Yazelix-pinned version ($PINNED_DEVENV_VERSION)."
+            return
+        }
+
+        print $"🔄 Updating devenv CLI to Yazelix-pinned version ($PINNED_DEVENV_VERSION)..."
 
         try {
-            let result = (^nix profile upgrade "devenv" | complete)
+            let result = (^nix profile install $pinned_installable | complete)
             if $result.exit_code != 0 {
                 print $"❌ devenv update failed: ($result.stderr | str trim)"
-                print "   Try: nix profile install github:cachix/devenv/latest"
+                print $"   Try: nix profile install ($pinned_installable)"
                 exit 1
             }
-
-            let stderr = ($result.stderr | str trim)
-            if ($stderr | str contains "No packages to upgrade") or ($stderr | str contains "does not match") {
-                print "ℹ️ devenv CLI is already up to date."
-            } else {
-                print "✅ devenv CLI updated."
-            }
+            print "✅ devenv CLI updated."
         } catch {|err|
             print $"❌ devenv update failed: ($err.msg)"
-            print "   Try: nix profile install github:cachix/devenv/latest"
+            print $"   Try: nix profile install ($pinned_installable)"
             exit 1
         }
     }
