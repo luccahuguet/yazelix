@@ -119,9 +119,23 @@ def copy_plugins_directory [source_dir: string, merged_dir: string, --quiet] {
 
             # Remove existing yazelix plugin and copy fresh version
             if ($target | path exists) {
-                rm -rf $target
+                let chmod_result = (^chmod -R u+w $target | complete)
+                if ($chmod_result.exit_code != 0) and (($chmod_result.stderr | str trim) | is-not-empty) {
+                    print $"⚠ Failed to relax Yazi plugin permissions before cleanup: ($chmod_result.stderr | str trim)"
+                }
+                let remove_result = (^rm -rf $target | complete)
+                if $remove_result.exit_code != 0 {
+                    error make {msg: $"Failed to remove existing Yazelix Yazi plugin at ($target): ($remove_result.stderr | str trim)"}
+                }
             }
-            cp -r $plugin_path $target
+            let copy_result = (^cp -R $plugin_path $target | complete)
+            if $copy_result.exit_code != 0 {
+                error make {msg: $"Failed to copy Yazi plugin from ($plugin_path) to ($target): ($copy_result.stderr | str trim)"}
+            }
+            let chmod_result = (^chmod -R u+w $target | complete)
+            if $chmod_result.exit_code != 0 {
+                error make {msg: $"Failed to make generated Yazi plugin writable at ($target): ($chmod_result.stderr | str trim)"}
+            }
         }
 
         if not $quiet {
@@ -155,9 +169,23 @@ def copy_flavors_directory [source_dir: string, merged_dir: string, --quiet] {
 
             # Remove existing yazelix flavor and copy fresh version
             if ($target | path exists) {
-                rm -rf $target
+                let chmod_result = (^chmod -R u+w $target | complete)
+                if ($chmod_result.exit_code != 0) and (($chmod_result.stderr | str trim) | is-not-empty) {
+                    print $"⚠ Failed to relax Yazi flavor permissions before cleanup: ($chmod_result.stderr | str trim)"
+                }
+                let remove_result = (^rm -rf $target | complete)
+                if $remove_result.exit_code != 0 {
+                    error make {msg: $"Failed to remove existing Yazelix Yazi flavor at ($target): ($remove_result.stderr | str trim)"}
+                }
             }
-            cp -r $flavor_path $target
+            let copy_result = (^cp -R $flavor_path $target | complete)
+            if $copy_result.exit_code != 0 {
+                error make {msg: $"Failed to copy Yazi flavor from ($flavor_path) to ($target): ($copy_result.stderr | str trim)"}
+            }
+            let chmod_result = (^chmod -R u+w $target | complete)
+            if $chmod_result.exit_code != 0 {
+                error make {msg: $"Failed to make generated Yazi flavor writable at ($target): ($chmod_result.stderr | str trim)"}
+            }
         }
 
         if not $quiet {

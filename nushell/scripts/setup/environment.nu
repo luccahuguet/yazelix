@@ -21,6 +21,20 @@ def ensure_user_cli_wrapper [yazelix_dir: string] {
     ^ln -s $cli_target $cli_link
 }
 
+def ensure_runtime_scripts_executable [yazelix_dir: string] {
+    let runtime_root = ($yazelix_dir | path expand)
+    if ($runtime_root | str starts-with "/nix/store/") {
+        return
+    }
+
+    chmod +x $"($runtime_root)/shells/bash/start_yazelix.sh"
+    chmod +x $"($runtime_root)/shells/posix/start_yazelix.sh"
+    chmod +x $"($runtime_root)/shells/posix/desktop_launcher.sh"
+    chmod +x $"($runtime_root)/shells/posix/yzx_cli.sh"
+    chmod +x $"($runtime_root)/nushell/scripts/core/launch_yazelix.nu"
+    chmod +x $"($runtime_root)/nushell/scripts/core/start_yazelix.nu"
+}
+
 def main [--welcome-source: string, --skip-welcome] {
     # Read configuration directly from TOML - single source of truth!
     let config = parse_yazelix_config
@@ -133,14 +147,7 @@ def main [--welcome-source: string, --skip-welcome] {
 
     # Editor setup is now handled in the shellHook
 
-    # Set permissions
-    chmod +x $"($yazelix_dir)/shells/bash/start_yazelix.sh"
-    chmod +x $"($yazelix_dir)/shells/posix/start_yazelix.sh"
-    chmod +x $"($yazelix_dir)/shells/posix/desktop_launcher.sh"
-    chmod +x $"($yazelix_dir)/shells/posix/yzx_cli.sh"
-    chmod +x $"($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu"
-    chmod +x $"($yazelix_dir)/nushell/scripts/core/start_yazelix.nu"
-
+    ensure_runtime_scripts_executable $yazelix_dir
     ensure_user_cli_wrapper $yazelix_dir
 
     let zjstatus_target = $"($yazelix_dir)/configs/zellij/plugins/zjstatus.wasm"

@@ -105,6 +105,13 @@ EOF
             fi
             ${pkgs.coreutils}/bin/rm -f "$profile_json"
 
+            echo "🔄 Refreshing Yazelix shell hooks..."
+            YAZELIX_RUNTIME_DIR="$runtime_current" \
+            YAZELIX_DIR="$runtime_current" \
+            YAZELIX_STATE_DIR="$HOME/.local/share/yazelix" \
+            YAZELIX_LOGS_DIR="$HOME/.local/share/yazelix/logs" \
+            ${pkgs.nushell}/bin/nu "$runtime_current/nushell/scripts/setup/environment.nu" --skip-welcome
+
             echo "✅ Yazelix runtime installed."
             echo "   Runtime: $runtime_current -> $runtime_target"
             echo "   CLI: $yzx_link"
