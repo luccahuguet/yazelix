@@ -58,6 +58,7 @@ let
   homeDir = builtins.getEnv "HOME";
   configRoot = if homeDir != "" then "${homeDir}/.config/yazelix" else "";
   runtimeRoot = toString ./.;
+  runtimeRootRef = ''${YAZELIX_RUNTIME_DIR:-''${YAZELIX_DIR:-${runtimeRoot}}}'';
   userConfigDir = if configRoot != "" then "${configRoot}/user_configs" else "";
   tomlConfigFile = if userConfigDir != "" then "${userConfigDir}/yazelix.toml" else "";
   legacyTomlConfigFile = if configRoot != "" then "${configRoot}/yazelix.toml" else "";
@@ -236,11 +237,11 @@ let
   '';
 
   yazelixLayoutName = if enableSidebar then "yzx_side" else "yzx_no_side";
-  startupScriptPath = ''"''${YAZELIX_RUNTIME_DIR:-''${YAZELIX_DIR:-${runtimeRoot}}}/shells/posix/start_yazelix.sh"'';
+  startupScriptPath = ''"''${runtimeRootRef}/shells/posix/start_yazelix.sh"'';
   mkTerminalConfigResolver = terminalName:
     ''
       export YAZELIX_TERMINAL_CONFIG_MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
-      if ! CONF="$(${pkgs.nushell}/bin/nu -c "source \"''${YAZELIX_RUNTIME_DIR:-''${YAZELIX_DIR:-${runtimeRoot}}}/nushell/scripts/utils/terminal_launcher.nu\"; print (resolve_terminal_config_from_env \"${terminalName}\")")"; then
+      if ! CONF="$(${pkgs.nushell}/bin/nu -c "source \"''${runtimeRootRef}/nushell/scripts/utils/terminal_launcher.nu\"; print (resolve_terminal_config_from_env \"${terminalName}\")")"; then
         exit 1
       fi
     '';
@@ -373,7 +374,7 @@ let
   yazelixDesktopLauncher =
     if isLinux then
       pkgs.writeShellScriptBin "yazelix-desktop-launcher" ''
-        exec "''${YAZELIX_RUNTIME_DIR:-''${YAZELIX_DIR:-${runtimeRoot}}}/shells/posix/desktop_launcher.sh"
+        exec "''${runtimeRootRef}/shells/posix/desktop_launcher.sh"
       ''
     else
       null;

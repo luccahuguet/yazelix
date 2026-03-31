@@ -6,7 +6,9 @@ This guide covers recommended Helix keybindings that enhance your editing experi
 
 Yazelix does not ship a built-in Helix-local Yazi binding. The default workspace bindings live in Zellij: `Ctrl+y` toggles focus between the managed editor and sidebar, and `Alt+y` toggles the sidebar open or closed.
 
-If you want an editor-local reveal action, bind `reveal_in_yazi.nu` to `Alt+r`. Yazelix now reserves `Alt+r` globally and forwards it into the editor when the managed editor is focused; outside the editor, the same key falls back to the editor/sidebar focus flow.
+If you want an editor-local reveal action, bind `yzx reveal` to `Alt+r`. Yazelix now reserves `Alt+r` globally and forwards it into the editor when the managed editor is focused; outside the editor, the same key falls back to the editor/sidebar focus flow.
+
+This assumes the installed `~/.local/bin/yzx` wrapper is on your editor `PATH`.
 
 ## Additional Recommended Keybindings
 
@@ -33,7 +35,7 @@ C-j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
 
 # System integration
 C-r = [":config-reload", ":reload"]
-A-r = ":sh nu \"$YAZELIX_RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu\" \"%{buffer_name}\""
+A-r = ":sh yzx reveal \"%{buffer_name}\""
 
 # Git integration
 A-g.b = ":sh git blame -L %{cursor_line},+1 %{buffer_name}"
@@ -83,7 +85,7 @@ backspace.c = ":config-open"
 
 2. **File Picker Toggles**: Use `backspace.h` and `backspace.i` to quickly adjust what files are visible when using Helix's file picker.
 
-3. **Yazelix Integration**: `Alt+r` is a good fit for `reveal_in_yazi.nu` because Yazelix forwards it into the editor when the managed editor is focused, while the same key behaves like `Ctrl+y` outside the editor.
+3. **Yazelix Integration**: `Alt+r` is a good fit for `yzx reveal` because Yazelix forwards it into the editor when the managed editor is focused, while the same key behaves like `Ctrl+y` outside the editor.
 
 ## Customization
 

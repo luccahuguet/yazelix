@@ -194,7 +194,12 @@ home.packages = with pkgs; [
 
 #### Option A: Automatic Launch (Recommended for most users)
 
-For the **first launch**, run the setup entrypoint to install all dependencies and shell hooks:
+For the **first launch**:
+
+- source-checkout installs can run the repo script directly
+- package-ready installs should run the shipped `start_yazelix.sh` from the installed runtime root instead
+
+Source-checkout example:
 
 ```bash
 nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu --setup-only
@@ -203,6 +208,7 @@ nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu --setup-only
 **What this does**:
 - Bootstraps the devenv environment and installs all Yazelix packages (~2.2GB)
 - Sets up shell hooks (makes the `yzx` command available)
+- Installs a stable `~/.local/bin/yzx` wrapper for editor integrations and host-launched tools
 - Does NOT launch the UI (avoids terminal compatibility issues)
 
 **First run note**: The first launch will take several minutes to download and install all dependencies. Subsequent launches will be instant thanks to devenv's caching.
@@ -216,7 +222,9 @@ yzx launch  # Opens in new terminal in current directory
 
 #### Option B: Manual Launch (For users who don't want to modify terminal configs)
 
-If you prefer to keep your existing terminal configuration unchanged, just run Yazelix once and it will automatically set up the `yzx` command for you:
+If you prefer to keep your existing terminal configuration unchanged, just run Yazelix once and it will automatically set up the `yzx` command for you.
+
+Source-checkout example:
 
 ```bash
 nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
@@ -297,7 +305,7 @@ If you are maintaining Yazelix and rebuild the pane-orchestrator plugin, prefer 
 
 ### Step 9: Configure Helix Integration (Optional)
 
-If you want a Helix-local reveal action, bind `reveal_in_yazi.nu` to any editor-local shortcut that fits your setup. Yazelix recommends `Alt+r` for this; `Ctrl+y` and `Alt+y` are reserved for workspace navigation in Zellij.
+If you want a Helix-local reveal action, bind `yzx reveal` to any editor-local shortcut that fits your setup. Yazelix recommends `Alt+r` for this; `Ctrl+y` and `Alt+y` are reserved for workspace navigation in Zellij.
 
 For additional recommended Helix keybindings that enhance your editing experience with Yazelix, see [Helix Keybindings Configuration](./helix_keybindings.md).
 

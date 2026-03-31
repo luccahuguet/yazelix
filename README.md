@@ -23,7 +23,7 @@ Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://gith
   - **With other editors**: Opens the file in a new pane with your configured editor
   - It automatically renames the Zellij tab to the file's underlying Git repo or directory name
 - Features include:
-  - "Reveal file in sidebar" (bind `reveal_in_yazi.nu` to any editor-local shortcut you prefer in Helix/Neovim, and use `Ctrl y` to jump between the editor and sidebar, see [Keybindings](#keybindings))
+  - "Reveal file in sidebar" (bind `yzx reveal` to any editor-local shortcut you prefer in Helix/Neovim, and use `Ctrl y` to jump between the editor and sidebar, see [Keybindings](#keybindings))
   - A Yazi plugin to enhance the status bar in the sidebar pane, making it uncluttered, colorful, and showing file permissions
   - A [Git plugin](https://github.com/yazi-rs/plugins/tree/main/git.yazi) showing file changes in the Yazi sidebar
   - Dynamic column updates in Yazi (parent, current, preview) via the [auto-layout plugin](https://github.com/luccahuguet/auto-layout.yazi), perfect for sidebar use
@@ -89,19 +89,21 @@ For the longer project story, see [Version History](./docs/history.md).
 📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions
 
 ### Helix Integration
-Helix supports optional `reveal_in_yazi.nu` integration through `Alt+r`. Yazelix now reserves `Alt+r` globally: in the managed editor it forwards `Alt+r` into Helix for reveal, and outside the editor it falls back to the editor/sidebar focus flow. `Ctrl+y` and `Alt+y` remain the dedicated workspace navigation keys.
+Helix supports optional `yzx reveal` integration through `Alt+r`. Yazelix now reserves `Alt+r` globally: in the managed editor it forwards `Alt+r` into Helix for reveal, and outside the editor it falls back to the editor/sidebar focus flow. `Ctrl+y` and `Alt+y` remain the dedicated workspace navigation keys.
 
 📖 **[Complete Helix Keybindings Guide →](./docs/helix_keybindings.md)** - Recommended keybindings for enhanced editing experience
 
 ### Neovim Integration
-For Neovim-Yazi integration, bind `reveal_in_yazi.nu` to any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `<M-r>`:
+For Neovim-Yazi integration, bind `yzx reveal` to any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `<M-r>`:
+
+This assumes the installed `yzx` wrapper from `~/.local/bin` is on your editor `PATH`.
 
 ```lua
 -- Yazelix sidebar integration - reveal current file in Yazi sidebar
 vim.keymap.set('n', '<M-r>', function()
   local buffer_path = vim.fn.expand('%:p')
   if buffer_path ~= '' then
-    vim.fn.system('nu "$YAZELIX_RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu" "' .. buffer_path .. '"')
+    vim.fn.system({ 'yzx', 'reveal', buffer_path })
   end
 end, { desc = 'Reveal in Yazi sidebar' })
 ```

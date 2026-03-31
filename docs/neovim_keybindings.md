@@ -6,12 +6,14 @@ This document describes the recommended Neovim keybindings for full Yazelix inte
 
 The essential keybinding for Yazelix integration should be added to your Neovim config (usually `~/.config/nvim/init.lua`). Use any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `<M-r>`:
 
+This assumes the installed `~/.local/bin/yzx` wrapper is on your editor `PATH`.
+
 ```lua
 -- Yazelix sidebar integration - reveal current file in Yazi sidebar
 vim.keymap.set('n', '<M-r>', function()
   local buffer_path = vim.fn.expand('%:p')
   if buffer_path ~= '' then
-    vim.fn.system('nu "$YAZELIX_RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu" "' .. buffer_path .. '"')
+    vim.fn.system({ 'yzx', 'reveal', buffer_path })
   end
 end, { desc = 'Reveal in Yazi sidebar' })
 ```
@@ -22,7 +24,7 @@ If you use `init.vim` instead of `init.lua`:
 
 ```vim
 " Yazelix sidebar integration - reveal current file in Yazi sidebar
-nnoremap <M-r> :call system('nu "$YAZELIX_RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu" "' . expand('%:p') . '"')<CR>
+nnoremap <M-r> :call system(['yzx', 'reveal', expand('%:p')])<CR>
 ```
 
 ## Additional Recommended Keybindings
@@ -73,7 +75,7 @@ With Neovim configured for Yazelix, you get:
    - Run `echo $YAZELIX_ENABLE_SIDEBAR` - should show "true"
 
 2. **Verify you're inside Yazelix/Zellij with a sidebar open:**
-   - `reveal_in_yazi.nu` targets the managed sidebar in the current tab
+   - `yzx reveal` targets the managed sidebar in the current tab
    - If the sidebar is closed or the plugin state is not ready yet, the reveal action will fail clearly
 
 3. **Check the logs:**

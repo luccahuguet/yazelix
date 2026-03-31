@@ -7,6 +7,20 @@ use ../utils/config_state.nu compute_config_state
 use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/launch_state.nu [record_launch_state]
 
+def ensure_user_cli_wrapper [yazelix_dir: string] {
+    let local_bin_dir = ($env.HOME | path join ".local" "bin")
+    let cli_target = ($yazelix_dir | path join "shells" "posix" "yzx_cli.sh")
+    let cli_link = ($local_bin_dir | path join "yzx")
+
+    if not ($cli_target | path exists) {
+        error make {msg: $"Missing Yazelix CLI wrapper: ($cli_target)"}
+    }
+
+    mkdir $local_bin_dir
+    rm -f $cli_link
+    ^ln -s $cli_target $cli_link
+}
+
 def main [--welcome-source: string, --skip-welcome] {
     # Read configuration directly from TOML - single source of truth!
     let config = parse_yazelix_config
@@ -123,8 +137,11 @@ def main [--welcome-source: string, --skip-welcome] {
     chmod +x $"($yazelix_dir)/shells/bash/start_yazelix.sh"
     chmod +x $"($yazelix_dir)/shells/posix/start_yazelix.sh"
     chmod +x $"($yazelix_dir)/shells/posix/desktop_launcher.sh"
+    chmod +x $"($yazelix_dir)/shells/posix/yzx_cli.sh"
     chmod +x $"($yazelix_dir)/nushell/scripts/core/launch_yazelix.nu"
     chmod +x $"($yazelix_dir)/nushell/scripts/core/start_yazelix.nu"
+
+    ensure_user_cli_wrapper $yazelix_dir
 
     let zjstatus_target = $"($yazelix_dir)/configs/zellij/plugins/zjstatus.wasm"
     if not ($zjstatus_target | path exists) {

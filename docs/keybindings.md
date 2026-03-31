@@ -89,7 +89,7 @@ You can also print these Yazelix-owned bindings directly with `yzx keys`.
 
 ## Helix Custom Keybindings
 
-Yazelix does not ship a built-in Helix-local Yazi keybinding. If you want an editor-local reveal action, bind `reveal_in_yazi.nu` to any Helix shortcut that fits your setup and does not conflict with your own editor bindings. `Alt+r` is the recommended choice.
+Yazelix does not ship a built-in Helix-local Yazi keybinding. If you want an editor-local reveal action, bind `yzx reveal` to any Helix shortcut that fits your setup and does not conflict with your own editor bindings. `Alt+r` is the recommended choice.
 
 The shipped workspace keys are:
 

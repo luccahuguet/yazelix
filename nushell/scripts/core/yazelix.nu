@@ -9,7 +9,7 @@ use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_pr
 use ../utils/common.nu [describe_build_parallelism get_yazelix_dir require_yazelix_dir]
 use ../utils/devenv_cli.nu [get_pinned_devenv_installable get_preferred_devenv_version_line is_preferred_devenv_available]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
-use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
+use ../integrations/yazi.nu [reveal_in_yazi sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ./start_yazelix.nu [start_yazelix_session]
 use ../integrations/zellij.nu [set_tab_cwd resolve_tab_cwd_target]
 
@@ -165,6 +165,12 @@ export def "yzx cwd" [
             exit 1
         }
     }
+}
+
+export def "yzx reveal" [
+    target: string  # File or directory to reveal in the managed Yazi sidebar
+] {
+    reveal_in_yazi $target
 }
 
 # Canonical inspection command

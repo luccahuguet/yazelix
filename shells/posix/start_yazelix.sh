@@ -18,10 +18,14 @@ fi
 
 RUNTIME_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 startup_script="$RUNTIME_DIR/nushell/scripts/core/start_yazelix.nu"
+runtime_env_script="$RUNTIME_DIR/shells/posix/runtime_env.sh"
 
-export YAZELIX_RUNTIME_DIR="${YAZELIX_RUNTIME_DIR:-$RUNTIME_DIR}"
-export YAZELIX_DIR="$YAZELIX_RUNTIME_DIR"
-export YAZELIX_CONFIG_DIR="${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}"
+if [ ! -f "$runtime_env_script" ]; then
+  echo "Error: Missing Yazelix runtime env helper: $runtime_env_script" >&2
+  exit 1
+fi
+
+. "$runtime_env_script" "$RUNTIME_DIR"
 
 if [ ! -f "$startup_script" ]; then
   echo "Error: Missing Yazelix startup script: $startup_script" >&2

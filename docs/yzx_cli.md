@@ -75,6 +75,13 @@ Set the current tab workspace directory inside Zellij
 - Other existing panes keep their current working directories; new managed actions use the updated tab directory
 - Errors when run outside Zellij
 
+### `yzx reveal PATH`
+Reveal a file or directory in the managed Yazi sidebar
+- Targets the managed sidebar in the current Zellij tab
+- Focuses the sidebar after revealing the target when the sidebar is available
+- Intended as the stable editor-integration surface for Helix/Neovim keybindings
+- Errors clearly when run outside a Yazelix/Zellij session or when the managed sidebar is unavailable
+
 ### `yzx keys`
 Show Yazelix-owned keybindings and remaps
 - Default: print the small set of workspace-critical Yazelix bindings
