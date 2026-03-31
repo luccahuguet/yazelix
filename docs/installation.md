@@ -120,12 +120,16 @@ nix profile install github:cachix/devenv/cfd12842b061f9df79e18375d93d72e41f1fbbd
 devenv --version
 ```
 
-### Step 4: Clone Yazelix
+### Step 4: Install the Yazelix Runtime
 
-Clone the Yazelix repository to your system:
+Yazelix needs its shipped runtime assets available somewhere on disk. A source checkout still works, but it is only one possible runtime layout.
+
+For maintainer/source-checkout installs, clone the repository to your system:
 ```bash
 git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 ```
+
+Normal usage should rely on the installed Yazelix runtime and `yzx` entrypoints. User configuration still lives under `~/.config/yazelix/user_configs/`, but the shipped runtime assets do not need to come from a live git checkout forever.
 
 ### Step 5: Configure Your Installation (Optional)
 
@@ -190,7 +194,7 @@ home.packages = with pkgs; [
 
 #### Option A: Automatic Launch (Recommended for most users)
 
-For the **first launch**, run the setup script to install all dependencies and shell hooks:
+For the **first launch**, run the setup entrypoint to install all dependencies and shell hooks:
 
 ```bash
 nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu --setup-only
@@ -239,13 +243,13 @@ For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 
 **System Keybind for Launching Yazelix:**
 
-To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.):
+To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.), use the installed Yazelix desktop launcher from your runtime:
 
 ```bash
 ~/.config/yazelix/shells/posix/desktop_launcher.sh
 ```
 
-This launches the same POSIX entrypoint used by the generated desktop entry.
+This launches the same POSIX entrypoint used by the generated desktop entry. In package-ready installs, the same launcher should come from the installed runtime rather than a source checkout.
 
 ##### macOS (Spotlight, Launchpad, Dock)
 

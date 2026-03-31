@@ -101,7 +101,7 @@ For Neovim-Yazi integration, bind `reveal_in_yazi.nu` to any editor-local shortc
 vim.keymap.set('n', '<M-r>', function()
   local buffer_path = vim.fn.expand('%:p')
   if buffer_path ~= '' then
-    vim.fn.system('nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu "' .. buffer_path .. '"')
+    vim.fn.system('nu "$YAZELIX_RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu" "' .. buffer_path .. '"')
   end
 end, { desc = 'Reveal in Yazi sidebar' })
 ```

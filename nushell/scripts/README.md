@@ -46,15 +46,17 @@ Scripts for development, testing, and maintenance:
 
 ### Core Commands
 ```bash
-# Start Yazelix
+# Start Yazelix (source-checkout / maintainer path)
 nu ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
-# Launch terminal
+# Launch terminal (source-checkout / maintainer path)
 nu ~/.config/yazelix/nushell/scripts/core/launch_yazelix.nu
 
-# Use command suite
+# Use command suite (source-checkout / maintainer path)
 nu ~/.config/yazelix/nushell/scripts/core/yazelix.nu help
 ```
+
+For normal installed usage, prefer `yzx launch`, `yzx run`, and the shipped runtime entrypoints rather than calling repo paths directly.
 
 ### Development Tools
 ```bash
@@ -64,10 +66,10 @@ yzx dev test             # Run the default non-sweep regression suite (includes 
 yzx dev test --sweep     # Run only the config/shell sweep
 yzx dev test --visual    # Run only the visual terminal sweep
 
-# Record demos
+# Record demos (maintainer path)
 nu ~/.config/yazelix/nushell/scripts/dev/record_demo.nu quick
 
-# Test fonts
+# Test fonts (maintainer path)
 nu ~/.config/yazelix/nushell/scripts/dev/test_fonts.nu
 ```
 

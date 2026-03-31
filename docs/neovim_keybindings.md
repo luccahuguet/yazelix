@@ -11,7 +11,7 @@ The essential keybinding for Yazelix integration should be added to your Neovim 
 vim.keymap.set('n', '<M-r>', function()
   local buffer_path = vim.fn.expand('%:p')
   if buffer_path ~= '' then
-    vim.fn.system('nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu "' .. buffer_path .. '"')
+    vim.fn.system('nu "$YAZELIX_RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu" "' .. buffer_path .. '"')
   end
 end, { desc = 'Reveal in Yazi sidebar' })
 ```
@@ -22,7 +22,7 @@ If you use `init.vim` instead of `init.lua`:
 
 ```vim
 " Yazelix sidebar integration - reveal current file in Yazi sidebar
-nnoremap <M-r> :call system('nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu "' . expand('%:p') . '"')<CR>
+nnoremap <M-r> :call system('nu "$YAZELIX_RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu" "' . expand('%:p') . '"')<CR>
 ```
 
 ## Additional Recommended Keybindings

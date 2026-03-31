@@ -33,7 +33,7 @@ C-j = ["extend_to_line_bounds", "delete_selection", "paste_after"]
 
 # System integration
 C-r = [":config-reload", ":reload"]
-A-r = ":sh nu ~/.config/yazelix/nushell/scripts/integrations/reveal_in_yazi.nu \"%{buffer_name}\""
+A-r = ":sh nu \"$YAZELIX_RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu\" \"%{buffer_name}\""
 
 # Git integration
 A-g.b = ":sh git blame -L %{cursor_line},+1 %{buffer_name}"

@@ -68,7 +68,7 @@ See [examples/example.nix](./examples/example.nix) for all options. Minimal setu
 
 ### 3. Install and Use Yazelix
 
-Follow the [main Yazelix installation guide](https://github.com/luccahuguet/yazelix#installation) to clone the repository and set up the `yzx` command. Then run `home-manager switch` to apply your configuration.
+Follow the [main Yazelix installation guide](https://github.com/luccahuguet/yazelix#installation) to install the Yazelix runtime and set up the `yzx` command. A source checkout is still valid for maintainer workflows, but Home Manager usage should not depend on treating `~/.config/yazelix` as a live repo clone. Then run `home-manager switch` to apply your configuration.
 
 ## Example Configuration
 
