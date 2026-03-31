@@ -12,6 +12,7 @@ def classify_menu_command [cmd: string] {
         {tag: "session", color: (ansi green)}
     } else if (
         ($cmd | str starts-with "yzx config")
+        or ($cmd | str starts-with "yzx import")
         or ($cmd | str starts-with "yzx open")
         or ($cmd | str starts-with "yzx edit")
     ) {

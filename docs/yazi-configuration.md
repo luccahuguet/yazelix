@@ -156,6 +156,24 @@ Because `O` already exposes the practical "open outside the editor" flow, Yazeli
 
 This file is gitignored, so your keybindings persist across updates.
 
+### Import an Existing Native Yazi Config
+
+If you already have a native Yazi setup, import the supported override files into Yazelix-managed overrides:
+
+```bash
+yzx import yazi
+```
+
+This imports `yazi.toml`, `keymap.toml`, and `init.lua` from `~/.config/yazi/` into `~/.config/yazelix/user_configs/yazi/`.
+
+If you need to replace existing managed override files, use:
+
+```bash
+yzx import yazi --force
+```
+
+Yazelix writes backups before overwriting existing managed files. Plugin directories and other broader Yazi state are intentionally not imported by this command.
+
 ### Edit Source Configs
 
 For structural changes to the base configuration:
@@ -193,6 +211,10 @@ nu nushell/scripts/setup/yazi_config_merger.nu .
 - Check plugin name in `yazelix.toml` matches installed plugin (without `.yazi` extension)
 - Verify plugin exists: `ls ~/.local/share/yazelix/configs/yazi/plugins/`
 - Check for warnings during yazelix startup
+
+**Migrating from a native Yazi config?**
+- Run `yzx import yazi` to copy `yazi.toml`, `keymap.toml`, and `init.lua` into `~/.config/yazelix/user_configs/yazi/`
+- Use `yzx import yazi --force` to back up and replace existing managed override files
 
 **Want default settings?**
 ```bash

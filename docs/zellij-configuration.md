@@ -10,6 +10,12 @@ Edit your Yazelix-managed Zellij config:
 ~/.config/yazelix/user_configs/zellij/config.kdl
 ```
 
+If you already have a native Zellij config, import it into the managed path first:
+
+```bash
+yzx import zellij
+```
+
 ## How It Works
 
 The merger now prefers your **Yazelix-managed Zellij config** when present, then forcibly layers Yazelix requirements on top:
@@ -109,6 +115,8 @@ ui {
 - Zellij will show parsing errors on startup if KDL is invalid
 
 **Migrating from a native Zellij config?**
+- Preferred explicit path: run `yzx import zellij` to copy `~/.config/zellij/config.kdl` into `~/.config/yazelix/user_configs/zellij/config.kdl`
+- If you already have a managed override and want to replace it, use `yzx import zellij --force` so Yazelix writes a backup first
 - Yazelix relocates a legacy `~/.config/zellij/config.kdl` into `~/.config/yazelix/user_configs/zellij/config.kdl` when it first needs the managed file
 - If both files exist, Yazelix fails fast and asks you to keep only the `user_configs` copy
 
