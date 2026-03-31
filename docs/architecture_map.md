@@ -109,6 +109,8 @@ Current direction:
 - tests and helpers should not assume `~/.config/yazelix` is a repo checkout
 - package-ready work should keep clarifying what is shipped, user-owned, and generated
 
+See [Config Surface And Launch Profile Contract](./specs/config_surface_and_launch_profile_contract.md) for the concrete runtime ownership model.
+
 ### Workspace and Session Ownership
 
 The workspace model should have a narrow contract between Nushell and the pane orchestrator.
