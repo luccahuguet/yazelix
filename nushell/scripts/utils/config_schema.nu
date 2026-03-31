@@ -1,9 +1,9 @@
 #!/usr/bin/env nu
 # Dynamic Yazelix Config Schema Validator
-# Uses yazelix_default.toml as the reference for validation
+# Uses the canonical main-config contract plus the default config surfaces as the
+# reference for validation.
 
-use constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_SHADERS, GHOSTTY_TRAIL_EFFECTS, GHOSTTY_MODE_EFFECTS, GHOSTTY_TRAIL_GLOW_LEVELS]
-use ascii_art.nu [WELCOME_STYLE_VALUES]
+use config_contract.nu [load_main_config_contract]
 use config_surfaces.nu [load_config_surface_from_main get_main_user_config_path]
 
 const OPEN_RECORD_PATHS = [
@@ -160,64 +160,72 @@ def get_nested_value [data: any, path: list<string>] {
     $current
 }
 
+def set_nested_value [record: record, path: list<string>, value: any] {
+    if ($path | is-empty) {
+        return $record
+    }
+
+    let head = ($path | first)
+    if ($path | length) == 1 {
+        return ($record | upsert $head $value)
+    }
+
+    let tail = ($path | skip 1)
+    let nested = ($record | get -o $head | default {})
+    $record | upsert $head (set_nested_value $nested $tail $value)
+}
+
+export def apply_main_contract_to_reference_config [reference: record] {
+    let contract = (load_main_config_contract)
+    mut merged = $reference
+
+    for field_path in ($contract.fields | columns) {
+        let default_value = (($contract.fields | get $field_path).default? | default null)
+        $merged = (set_nested_value $merged ($field_path | split row ".") $default_value)
+    }
+
+    $merged
+}
+
 # Helper: Validate enum values for key fields
 export def validate_enum_values [user: record] {
+    let contract = (load_main_config_contract)
     mut findings = []
-    let ghostty_trail_color_allowed = (($CURSOR_TRAIL_SHADERS | columns) | append ["random"])
-    let ghostty_trail_effect_allowed = ($GHOSTTY_TRAIL_EFFECTS | append ["random"])
-    let ghostty_mode_effect_allowed = ($GHOSTTY_MODE_EFFECTS | append ["random"])
-    let enums = [
-        { path: ["shell", "default_shell"], label: "shell.default_shell", allowed: ["nu", "bash", "fish", "zsh"] },
-        { path: ["helix", "mode"], label: "helix.mode", allowed: ["release", "source"] },
-        { path: ["core", "refresh_output"], label: "core.refresh_output", allowed: ["quiet", "normal", "full"] },
-        { path: ["terminal", "terminals"], label: "terminal.terminals", allowed: $SUPPORTED_TERMINALS },
-        { path: ["terminal", "config_mode"], label: "terminal.config_mode", allowed: ["yazelix", "user"] },
-        { path: ["terminal", "ghostty_trail_color"], label: "terminal.ghostty_trail_color", allowed: $ghostty_trail_color_allowed },
-        { path: ["terminal", "ghostty_trail_effect"], label: "terminal.ghostty_trail_effect", allowed: $ghostty_trail_effect_allowed },
-        { path: ["terminal", "ghostty_mode_effect"], label: "terminal.ghostty_mode_effect", allowed: $ghostty_mode_effect_allowed },
-        { path: ["terminal", "ghostty_trail_glow"], label: "terminal.ghostty_trail_glow", allowed: $GHOSTTY_TRAIL_GLOW_LEVELS },
-        { path: ["core", "welcome_style"], label: "core.welcome_style", allowed: $WELCOME_STYLE_VALUES },
-        { path: ["zellij", "widget_tray"], label: "zellij.widget_tray", allowed: ["editor", "shell", "term", "cpu", "ram"] }
-    ]
-    for enum in $enums {
-        let value = (get_nested_value $user $enum.path)
+    for field_path in ($contract.fields | columns) {
+        let field = ($contract.fields | get $field_path)
+        let validation = ($field.validation? | default "")
+        if ($validation != "enum") and ($validation != "enum_string_list") {
+            continue
+        }
+
+        let path = ($field_path | split row ".")
+        let allowed = ($field.allowed_values? | default [])
+        let value = (get_nested_value $user $path)
         if $value == null {
             continue
         }
-        if ($enum.label == "terminal.terminals") and ($value | describe | str contains "list") {
+
+        if ($validation == "enum_string_list") and (($value | describe) | str contains "list") {
             for v in $value {
-                if not ($v in $enum.allowed) {
-                    let allowed_str = ($enum.allowed | str join ", ")
+                if not ($v in $allowed) {
+                    let allowed_str = ($allowed | str join ", ")
                     $findings = ($findings | append [
                         (make_finding
                             "invalid_enum"
-                            $enum.path
-                            ('Invalid value for terminal.terminals: ' + $v + ' (allowed: [' + $allowed_str + '])')
-                        )
-                    ])
-                }
-            }
-        } else if ($enum.label == "zellij.widget_tray") and ($value | describe | str contains "list") {
-            for v in $value {
-                if not ($v in $enum.allowed) {
-                    let allowed_str = ($enum.allowed | str join ", ")
-                    $findings = ($findings | append [
-                        (make_finding
-                            "invalid_enum"
-                            $enum.path
-                            ('Invalid value for zellij.widget_tray: ' + $v + ' (allowed: [' + $allowed_str + '])')
+                            $path
+                            ('Invalid value for ' + $field_path + ': ' + $v + ' (allowed: [' + $allowed_str + '])')
                         )
                     ])
                 }
             }
         } else {
-            if not ($value in $enum.allowed) {
-                let allowed_str = ($enum.allowed | str join ", ")
+            if not ($value in $allowed) {
+                let allowed_str = ($allowed | str join ", ")
                 $findings = ($findings | append [
                     (make_finding
                         "invalid_enum"
-                        $enum.path
-                        ('Invalid value for ' + $enum.label + ': ' + $value + ' (allowed: [' + $allowed_str + '])')
+                        $path
+                        ('Invalid value for ' + $field_path + ': ' + $value + ' (allowed: [' + $allowed_str + '])')
                     )
                 ])
             }
@@ -237,7 +245,7 @@ export def get_config_validation_findings [yazelix_dir: string] {
     if not ($user_path | path exists) {
         []
     } else {
-        let default_config = ((load_config_surface_from_main $default_path).merged_config)
+        let default_config = (apply_main_contract_to_reference_config ((load_config_surface_from_main $default_path).merged_config))
         let user_config = ((load_config_surface_from_main $user_path).merged_config)
         let schema_findings = (compare_configs $default_config $user_config)
         let enum_findings = (validate_enum_values $user_config)

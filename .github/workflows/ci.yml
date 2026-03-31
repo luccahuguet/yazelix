@@ -48,6 +48,9 @@ jobs:
       - name: Validate upgrade contract
         run: nu nushell/scripts/dev/validate_upgrade_contract.nu --ci
 
+      - name: Validate config surface and launch-profile contract
+        run: nu nushell/scripts/dev/validate_config_surface_contract.nu
+
       - name: Validate spec traceability
         run: nu nushell/scripts/dev/validate_specs.nu
 

@@ -18,6 +18,9 @@ home_manager_module = "home_manager/module.nix"
 loader_module = "nushell/scripts/utils/config_contract.nu"
 scope_note = "Pack-surface metadata is intentionally excluded from this artifact."
 
+[rebuild]
+extra_paths = ["packs.enabled", "packs.declarations", "packs.user_packages"]
+
 [fields."core.recommended_deps"]
 kind = "bool"
 default = true

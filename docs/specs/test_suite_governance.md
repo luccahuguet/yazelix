@@ -32,7 +32,7 @@ This spec defines:
 
 | Lane | Entrypoint | Purpose | Notes |
 | --- | --- | --- | --- |
-| Cheap validator lane | `nu nushell/scripts/dev/validate_syntax.nu`, `nu nushell/scripts/dev/validate_readme_version.nu` | Very fast structural or source-of-truth checks | Good fit for `prek` and direct CI steps |
+| Cheap validator lane | `nu nushell/scripts/dev/validate_syntax.nu`, `nu nushell/scripts/dev/validate_readme_version.nu`, `nu nushell/scripts/dev/validate_config_surface_contract.nu` | Very fast structural or source-of-truth checks | Good fit for `prek` and direct CI steps |
 | Default automated regression lane | `yzx dev test` | The normal non-sweep automated regression suite | Uses explicit membership |
 | Internal core regression bundle | `nu nushell/scripts/dev/test_yzx_commands.nu` | High-signal core launch/runtime/workspace/integration contracts | Internal organization detail |
 | Non-visual sweep lane | `yzx dev test --sweep` | Matrix coverage for config and supported shell/terminal combinations without opening windows | Environment-sensitive but still scriptable |
@@ -49,6 +49,7 @@ The current repo surface should be understood roughly as:
 - Cheap validators:
   - `validate_syntax.nu`
   - `validate_readme_version.nu`
+  - `validate_config_surface_contract.nu`
   - `validate_specs.nu`
 - Default automated lane:
   - `test_yzx_commands.nu` as the spec-backed core bundle
@@ -163,6 +164,7 @@ So the duplicate README-version assertion is removed from `nushell/scripts/dev/t
 - CI checks: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
 - CI checks: `nu nushell/scripts/dev/validate_default_test_budget.nu`
 - CI checks: `nu nushell/scripts/dev/validate_readme_version.nu`
+- CI checks: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
 - CI checks: `nu nushell/scripts/dev/validate_specs.nu`
 - manual verification: review `.github/workflows/ci.yml` and `.pre-commit-config.yaml` against the lane definitions in this spec
 
@@ -172,6 +174,7 @@ So the duplicate README-version assertion is removed from `nushell/scripts/dev/t
 - Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - Defended by: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
 - Defended by: `nu nushell/scripts/dev/validate_readme_version.nu`
+- Defended by: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Open Questions

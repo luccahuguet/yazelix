@@ -1,38 +1,59 @@
 #!/usr/bin/env nu
 # Configuration parser for yazelix TOML files
 
+use config_contract.nu [load_main_config_contract]
 use config_diagnostics.nu [build_config_diagnostic_report_from_records render_startup_config_error]
 use failure_classes.nu [format_failure_classification]
 use config_surfaces.nu [load_active_config_surface load_config_surface_from_main]
 
-def parse_refresh_output [raw_config: record] {
-    let refresh_output = ($raw_config.core?.refresh_output? | default "normal" | into string | str downcase)
-    let allowed = ["quiet", "normal", "full"]
-
-    if not ($refresh_output in $allowed) {
-        let allowed_text = ($allowed | str join ", ")
-        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset` to restore the template.")
-        error make {msg: $"Invalid core.refresh_output value '($refresh_output)'. Expected one of: ($allowed_text)\n($classification)"}
-    }
-
-    $refresh_output
+def bool_to_string [value: bool] {
+    if $value { "true" } else { "false" }
 }
 
-def parse_zellij_default_mode [raw_config: record] {
-    let default_mode = ($raw_config.zellij?.default_mode? | default "normal" | into string | str downcase)
-    let allowed = ["normal", "locked"]
-
-    if not ($default_mode in $allowed) {
-        let allowed_text = ($allowed | str join ", ")
-        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset` to restore the template.")
-        error make {msg: $"Invalid zellij.default_mode value '($default_mode)'. Expected one of: ($allowed_text)\n($classification)"}
-    }
-
-    $default_mode
+def get_contract_field [contract: record, field_path: string] {
+    $contract.fields | get $field_path
 }
 
-def parse_zjstatus_custom_text [raw_config: record] {
-    let raw_text = ($raw_config.zellij?.custom_text? | default "" | into string)
+def get_nested_config_value [raw_config: record, field_path: string] {
+    mut current = $raw_config
+    for segment in ($field_path | split row ".") {
+        $current = ($current | get -o $segment)
+        if $current == null {
+            return null
+        }
+    }
+    $current
+}
+
+def get_contract_value_or_default [contract: record, raw_config: record, field_path: string] {
+    let raw_value = (get_nested_config_value $raw_config $field_path)
+    if $raw_value == null {
+        (get_contract_field $contract $field_path).default? | default null
+    } else {
+        $raw_value
+    }
+}
+
+def make_contract_value_error [field_path: string, actual_value: string, expectation: string, remediation: string] {
+    let classification = (format_failure_classification "config" $remediation)
+    error make {msg: $"Invalid ($field_path) value '($actual_value)'. Expected ($expectation).\n($classification)"}
+}
+
+def parse_contract_enum_field [contract: record, raw_config: record, field_path: string, remediation: string] {
+    let field = (get_contract_field $contract $field_path)
+    let allowed = ($field.allowed_values? | default [])
+    let normalized = (get_contract_value_or_default $contract $raw_config $field_path | into string | str downcase)
+
+    if not ($normalized in $allowed) {
+        let allowed_text = ($allowed | str join ", ")
+        make_contract_value_error $field_path $normalized $"one of: ($allowed_text)" $remediation
+    }
+
+    $normalized
+}
+
+def parse_contract_badge_text [contract: record, raw_config: record, field_path: string] {
+    let raw_text = (get_contract_value_or_default $contract $raw_config $field_path | default "" | into string)
     let compact = (
         $raw_text
         | str replace -ar '\s+' ' '
@@ -51,8 +72,10 @@ def parse_zjstatus_custom_text [raw_config: record] {
     }
 }
 
-def parse_positive_parallel_setting [value: any, label: string, allowed_symbols: list<string>, default_value: string] {
-    let normalized = ($value | default $default_value | into string | str downcase)
+def parse_contract_symbol_or_positive_int_string [contract: record, raw_config: record, field_path: string, remediation: string] {
+    let field = (get_contract_field $contract $field_path)
+    let allowed_symbols = ($field.allowed_symbols? | default [])
+    let normalized = (get_contract_value_or_default $contract $raw_config $field_path | into string | str downcase)
 
     if $normalized in $allowed_symbols {
         return $normalized
@@ -61,91 +84,68 @@ def parse_positive_parallel_setting [value: any, label: string, allowed_symbols:
     let parsed = (try { $normalized | into int } catch { null })
     if $parsed == null {
         let allowed_text = ($allowed_symbols | str join ", ")
-        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset` to restore the template.")
-        error make {msg: $"Invalid ($label) value '($normalized)'. Expected one of: ($allowed_text), or a positive integer.\n($classification)"}
+        make_contract_value_error $field_path $normalized $"one of: ($allowed_text), or a positive integer" $remediation
     }
+
     if $parsed < 1 {
-        let classification = (format_failure_classification "config" "Update yazelix.toml with a supported value, or run `yzx config reset` to restore the template.")
-        error make {msg: $"Invalid ($label) value '($normalized)'. Expected a positive integer.\n($classification)"}
+        make_contract_value_error $field_path $normalized "a positive integer" $remediation
     }
+
     $normalized
 }
 
-def parse_percentage_setting [value: any, label: string, default_value: int] {
-    let normalized = ($value | default $default_value | into string | str trim)
+def parse_contract_int_range_field [contract: record, raw_config: record, field_path: string, remediation: string] {
+    let field = (get_contract_field $contract $field_path)
+    let min = ($field.min? | default 0)
+    let max = ($field.max? | default 0)
+    let normalized = (get_contract_value_or_default $contract $raw_config $field_path | into string | str trim)
     let parsed = (try { $normalized | into int } catch { null })
 
     if $parsed == null {
-        let classification = (format_failure_classification "config" "Update yazelix.toml with a value from 1 to 100, or run `yzx config reset` to restore the template.")
-        error make {msg: $"Invalid ($label) value '($normalized)'. Expected an integer from 1 to 100.\n($classification)"}
+        make_contract_value_error $field_path $normalized $"an integer from ($min) to ($max)" $remediation
     }
 
-    if ($parsed < 1) or ($parsed > 100) {
-        let classification = (format_failure_classification "config" "Update yazelix.toml with a value from 1 to 100, or run `yzx config reset` to restore the template.")
-        error make {msg: $"Invalid ($label) value '($normalized)'. Expected an integer from 1 to 100.\n($classification)"}
+    if ($parsed < $min) or ($parsed > $max) {
+        make_contract_value_error $field_path $normalized $"an integer from ($min) to ($max)" $remediation
     }
 
     $parsed
 }
 
-def parse_sidebar_width_percent [raw_config: record] {
-    let normalized = ($raw_config.editor?.sidebar_width_percent? | default 20 | into string | str trim)
-    let parsed = (try { $normalized | into int } catch { null })
-
-    if $parsed == null {
-        let classification = (format_failure_classification "config" "Update editor.sidebar_width_percent to an integer from 10 to 40, or run `yzx config reset` to restore the template.")
-        error make {msg: $"Invalid editor.sidebar_width_percent value '($normalized)'. Expected an integer from 10 to 40.\n($classification)"}
-    }
-
-    if ($parsed < 10) or ($parsed > 40) {
-        let classification = (format_failure_classification "config" "Update editor.sidebar_width_percent to an integer from 10 to 40, or run `yzx config reset` to restore the template.")
-        error make {msg: $"Invalid editor.sidebar_width_percent value '($normalized)'. Expected an integer from 10 to 40.\n($classification)"}
-    }
-
-    $parsed
-}
-
-def parse_terminal_config_mode [raw_config: record] {
-    let mode = ($raw_config.terminal?.config_mode? | default "yazelix" | into string | str downcase)
-    let allowed = ["yazelix", "user"]
-
-    if not ($mode in $allowed) {
-        let allowed_text = ($allowed | str join ", ")
-        let classification = (format_failure_classification "config" "Use `terminal.config_mode = \"yazelix\"` for the supported managed path, or `\"user\"` only when you want Yazelix to load the terminal's native config file.")
-        error make {msg: $"Invalid terminal.config_mode value '($mode)'. Expected one of: ($allowed_text)\n($classification)"}
-    }
-
-    $mode
-}
-
-def parse_welcome_style [raw_config: record] {
-    let style = ($raw_config.core?.welcome_style? | default "random" | into string | str downcase)
-    let allowed = ["static", "logo", "boids", "game_of_life", "mandelbrot", "random"]
-
-    if not ($style in $allowed) {
-        let allowed_text = ($allowed | str join ", ")
-        let classification = (format_failure_classification "config" "Update core.welcome_style with one of the supported values, or run `yzx config reset` to restore the template.")
-        error make {msg: $"Invalid core.welcome_style value '($style)'. Expected one of: ($allowed_text)\n($classification)"}
-    }
-
-    $style
-}
-
-def parse_welcome_duration_seconds [raw_config: record] {
-    let raw_value = ($raw_config.core?.welcome_duration_seconds? | default 2.0)
+def parse_contract_float_range_field [contract: record, raw_config: record, field_path: string, remediation: string] {
+    let field = (get_contract_field $contract $field_path)
+    let min = ($field.min? | default 0.0)
+    let max = ($field.max? | default 0.0)
+    let raw_value = (get_contract_value_or_default $contract $raw_config $field_path)
     let parsed = (try { $raw_value | into float } catch { null })
 
     if $parsed == null {
-        let classification = (format_failure_classification "config" "Update core.welcome_duration_seconds to a number from 0.2 to 8.0, or run `yzx config reset` to restore the template.")
-        error make {msg: $"Invalid core.welcome_duration_seconds value '($raw_value)'. Expected a number from 0.2 to 8.0.\n($classification)"}
+        make_contract_value_error $field_path ($raw_value | into string) $"a number from ($min) to ($max)" $remediation
     }
 
-    if ($parsed < 0.2) or ($parsed > 8.0) {
-        let classification = (format_failure_classification "config" "Update core.welcome_duration_seconds to a number from 0.2 to 8.0, or run `yzx config reset` to restore the template.")
-        error make {msg: $"Invalid core.welcome_duration_seconds value '($raw_value)'. Expected a number from 0.2 to 8.0.\n($classification)"}
+    if ($parsed < $min) or ($parsed > $max) {
+        make_contract_value_error $field_path ($raw_value | into string) $"a number from ($min) to ($max)" $remediation
     }
 
     $parsed
+}
+
+def parse_contract_nullable_string_field [contract: record, raw_config: record, field_path: string] {
+    let value = (get_contract_value_or_default $contract $raw_config $field_path | default "" | into string)
+    if ($value | is-empty) { null } else { $value }
+}
+
+def parse_contract_bool_to_string_field [contract: record, raw_config: record, field_path: string] {
+    bool_to_string (get_contract_value_or_default $contract $raw_config $field_path)
+}
+
+def parse_contract_direct_field [contract: record, raw_config: record, field_path: string] {
+    get_contract_value_or_default $contract $raw_config $field_path
+}
+
+def upsert_parsed_field [parsed: record, contract: record, field_path: string, value: any] {
+    let parser_key = ((get_contract_field $contract $field_path).parser_key? | default $field_path)
+    $parsed | upsert $parser_key $value
 }
 
 # Parse yazelix configuration file and extract settings
@@ -154,6 +154,7 @@ export def parse_yazelix_config [] {
     let config_to_read = $config_surface.config_file
     let raw_config = $config_surface.merged_config
     let default_config_path = $config_surface.default_config_path
+    let contract = (load_main_config_contract)
 
     if ($config_to_read | path basename) == "yazelix.toml" and ($default_config_path | path exists) {
         let default_surface = (load_config_surface_from_main $default_config_path)
@@ -171,61 +172,62 @@ export def parse_yazelix_config [] {
         }
     }
 
-    let editor_cmd = ($raw_config.editor?.command? | default "" | into string)
-    let editor_command = if ($editor_cmd | is-empty) { null } else { $editor_cmd }
-    let yazi_cmd = ($raw_config.yazi?.command? | default "" | into string)
-    let yazi_command = if ($yazi_cmd | is-empty) { null } else { $yazi_cmd }
-    let ya_cmd = ($raw_config.yazi?.ya_command? | default "" | into string)
-    let yazi_ya_command = if ($ya_cmd | is-empty) { null } else { $ya_cmd }
+    let generic_recovery = "Update yazelix.toml with a supported value, or run `yzx config reset` to restore the template."
+    mut parsed = {}
 
-    # Extract and return values
-    {
-        recommended_deps: ($raw_config.core?.recommended_deps? | default true),
-        yazi_extensions: ($raw_config.core?.yazi_extensions? | default true),
-        yazi_media: ($raw_config.core?.yazi_media? | default false),
-        debug_mode: ($raw_config.core?.debug_mode? | default false),
-        skip_welcome_screen: ($raw_config.core?.skip_welcome_screen? | default false),
-        show_macchina_on_welcome: ($raw_config.core?.show_macchina_on_welcome? | default true),
-        welcome_style: (parse_welcome_style $raw_config),
-        welcome_duration_seconds: (parse_welcome_duration_seconds $raw_config),
-        refresh_output: (parse_refresh_output $raw_config),
-        max_jobs: (parse_positive_parallel_setting $raw_config.core?.max_jobs? "core.max_jobs" ["auto", "max", "max_minus_one", "half", "quarter"] "half"),
-        build_cores: (parse_positive_parallel_setting $raw_config.core?.build_cores? "core.build_cores" ["max", "max_minus_one", "half", "quarter"] "2"),
-        persistent_sessions: ($raw_config.zellij?.persistent_sessions? | default false | into string),
-        session_name: ($raw_config.zellij?.session_name? | default "yazelix"),
-        zellij_default_mode: (parse_zellij_default_mode $raw_config),
-        zellij_theme: ($raw_config.zellij?.theme? | default "default"),
-        zellij_widget_tray: ($raw_config.zellij?.widget_tray? | default ["editor", "shell", "term", "cpu", "ram"]),
-        zellij_custom_text: (parse_zjstatus_custom_text $raw_config),
-        popup_program: ($raw_config.zellij?.popup_program? | default ["lazygit"]),
-        popup_width_percent: (parse_percentage_setting $raw_config.zellij?.popup_width_percent? "zellij.popup_width_percent" 90),
-        popup_height_percent: (parse_percentage_setting $raw_config.zellij?.popup_height_percent? "zellij.popup_height_percent" 90),
-        support_kitty_keyboard_protocol: ($raw_config.zellij?.support_kitty_keyboard_protocol? | default false | into string),
-        terminals: ($raw_config.terminal?.terminals? | default ["ghostty"]),
-        manage_terminals: ($raw_config.terminal?.manage_terminals? | default true),
-        terminal_config_mode: (parse_terminal_config_mode $raw_config),
-        ghostty_trail_color: ($raw_config.terminal?.ghostty_trail_color? | default "random"),
-        ghostty_trail_effect: ($raw_config.terminal?.ghostty_trail_effect? | default "random"),
-        ghostty_mode_effect: ($raw_config.terminal?.ghostty_mode_effect? | default "random"),
-        ghostty_trail_glow: ($raw_config.terminal?.ghostty_trail_glow? | default "medium"),
-        transparency: ($raw_config.terminal?.transparency? | default "medium"),
-        default_shell: ($raw_config.shell?.default_shell? | default "nu"),
-        extra_shells: ($raw_config.shell?.extra_shells? | default []),
-        helix_mode: ($raw_config.helix?.mode? | default "release"),
-        helix_runtime_path: ($raw_config.helix?.runtime_path? | default null),
-        editor_command: $editor_command,
-        enable_sidebar: ($raw_config.editor?.enable_sidebar? | default true),
-        sidebar_width_percent: (parse_sidebar_width_percent $raw_config),
-        disable_zellij_tips: ($raw_config.zellij?.disable_tips? | default true | into string),
-        zellij_rounded_corners: ($raw_config.zellij?.rounded_corners? | default true | into string),
-        yazi_command: $yazi_command,
-        yazi_ya_command: $yazi_ya_command,
-        yazi_plugins: ($raw_config.yazi?.plugins? | default ["git"]),
-        yazi_theme: ($raw_config.yazi?.theme? | default "default"),
-        yazi_sort_by: ($raw_config.yazi?.sort_by? | default "alphabetical"),
-        pack_names: ($raw_config.packs?.enabled? | default []),
-        pack_declarations: ($raw_config.packs?.declarations? | default {}),
-        user_packages: ($raw_config.packs?.user_packages? | default []),
-        config_file: $config_to_read
-    }
+    $parsed = (upsert_parsed_field $parsed $contract "core.recommended_deps" (parse_contract_direct_field $contract $raw_config "core.recommended_deps"))
+    $parsed = (upsert_parsed_field $parsed $contract "core.yazi_extensions" (parse_contract_direct_field $contract $raw_config "core.yazi_extensions"))
+    $parsed = (upsert_parsed_field $parsed $contract "core.yazi_media" (parse_contract_direct_field $contract $raw_config "core.yazi_media"))
+    $parsed = (upsert_parsed_field $parsed $contract "core.debug_mode" (parse_contract_direct_field $contract $raw_config "core.debug_mode"))
+    $parsed = (upsert_parsed_field $parsed $contract "core.skip_welcome_screen" (parse_contract_direct_field $contract $raw_config "core.skip_welcome_screen"))
+    $parsed = (upsert_parsed_field $parsed $contract "core.show_macchina_on_welcome" (parse_contract_direct_field $contract $raw_config "core.show_macchina_on_welcome"))
+    $parsed = (upsert_parsed_field $parsed $contract "core.welcome_style" (parse_contract_enum_field $contract $raw_config "core.welcome_style" "Update core.welcome_style with one of the supported values, or run `yzx config reset` to restore the template."))
+    $parsed = (upsert_parsed_field $parsed $contract "core.welcome_duration_seconds" (parse_contract_float_range_field $contract $raw_config "core.welcome_duration_seconds" "Update core.welcome_duration_seconds to a number from 0.2 to 8.0, or run `yzx config reset` to restore the template."))
+    $parsed = (upsert_parsed_field $parsed $contract "core.refresh_output" (parse_contract_enum_field $contract $raw_config "core.refresh_output" $generic_recovery))
+    $parsed = (upsert_parsed_field $parsed $contract "core.max_jobs" (parse_contract_symbol_or_positive_int_string $contract $raw_config "core.max_jobs" $generic_recovery))
+    $parsed = (upsert_parsed_field $parsed $contract "core.build_cores" (parse_contract_symbol_or_positive_int_string $contract $raw_config "core.build_cores" $generic_recovery))
+
+    $parsed = (upsert_parsed_field $parsed $contract "helix.mode" (parse_contract_enum_field $contract $raw_config "helix.mode" $generic_recovery))
+    $parsed = (upsert_parsed_field $parsed $contract "helix.runtime_path" (parse_contract_nullable_string_field $contract $raw_config "helix.runtime_path"))
+
+    $parsed = (upsert_parsed_field $parsed $contract "editor.command" (parse_contract_nullable_string_field $contract $raw_config "editor.command"))
+    $parsed = (upsert_parsed_field $parsed $contract "editor.enable_sidebar" (parse_contract_direct_field $contract $raw_config "editor.enable_sidebar"))
+    $parsed = (upsert_parsed_field $parsed $contract "editor.sidebar_width_percent" (parse_contract_int_range_field $contract $raw_config "editor.sidebar_width_percent" "Update editor.sidebar_width_percent to an integer from 10 to 40, or run `yzx config reset` to restore the template."))
+
+    $parsed = (upsert_parsed_field $parsed $contract "shell.default_shell" (parse_contract_direct_field $contract $raw_config "shell.default_shell"))
+    $parsed = (upsert_parsed_field $parsed $contract "shell.extra_shells" (parse_contract_direct_field $contract $raw_config "shell.extra_shells"))
+
+    $parsed = (upsert_parsed_field $parsed $contract "terminal.terminals" (parse_contract_direct_field $contract $raw_config "terminal.terminals"))
+    $parsed = (upsert_parsed_field $parsed $contract "terminal.manage_terminals" (parse_contract_direct_field $contract $raw_config "terminal.manage_terminals"))
+    $parsed = (upsert_parsed_field $parsed $contract "terminal.config_mode" (parse_contract_enum_field $contract $raw_config "terminal.config_mode" "Use `terminal.config_mode = \"yazelix\"` for the supported managed path, or `\"user\"` only when you want Yazelix to load the terminal's native config file."))
+    $parsed = (upsert_parsed_field $parsed $contract "terminal.ghostty_trail_color" (parse_contract_direct_field $contract $raw_config "terminal.ghostty_trail_color"))
+    $parsed = (upsert_parsed_field $parsed $contract "terminal.ghostty_trail_effect" (parse_contract_direct_field $contract $raw_config "terminal.ghostty_trail_effect"))
+    $parsed = (upsert_parsed_field $parsed $contract "terminal.ghostty_mode_effect" (parse_contract_direct_field $contract $raw_config "terminal.ghostty_mode_effect"))
+    $parsed = (upsert_parsed_field $parsed $contract "terminal.ghostty_trail_glow" (parse_contract_direct_field $contract $raw_config "terminal.ghostty_trail_glow"))
+    $parsed = (upsert_parsed_field $parsed $contract "terminal.transparency" (parse_contract_direct_field $contract $raw_config "terminal.transparency"))
+
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.disable_tips" (parse_contract_bool_to_string_field $contract $raw_config "zellij.disable_tips"))
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.rounded_corners" (parse_contract_bool_to_string_field $contract $raw_config "zellij.rounded_corners"))
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.support_kitty_keyboard_protocol" (parse_contract_bool_to_string_field $contract $raw_config "zellij.support_kitty_keyboard_protocol"))
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.theme" (parse_contract_direct_field $contract $raw_config "zellij.theme"))
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.widget_tray" (parse_contract_direct_field $contract $raw_config "zellij.widget_tray"))
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.custom_text" (parse_contract_badge_text $contract $raw_config "zellij.custom_text"))
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.popup_program" (parse_contract_direct_field $contract $raw_config "zellij.popup_program"))
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.popup_width_percent" (parse_contract_int_range_field $contract $raw_config "zellij.popup_width_percent" "Update yazelix.toml with a value from 1 to 100, or run `yzx config reset` to restore the template."))
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.popup_height_percent" (parse_contract_int_range_field $contract $raw_config "zellij.popup_height_percent" "Update yazelix.toml with a value from 1 to 100, or run `yzx config reset` to restore the template."))
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.persistent_sessions" (parse_contract_bool_to_string_field $contract $raw_config "zellij.persistent_sessions"))
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.session_name" (parse_contract_direct_field $contract $raw_config "zellij.session_name"))
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.default_mode" (parse_contract_enum_field $contract $raw_config "zellij.default_mode" $generic_recovery))
+
+    $parsed = (upsert_parsed_field $parsed $contract "yazi.command" (parse_contract_nullable_string_field $contract $raw_config "yazi.command"))
+    $parsed = (upsert_parsed_field $parsed $contract "yazi.ya_command" (parse_contract_nullable_string_field $contract $raw_config "yazi.ya_command"))
+    $parsed = (upsert_parsed_field $parsed $contract "yazi.plugins" (parse_contract_direct_field $contract $raw_config "yazi.plugins"))
+    $parsed = (upsert_parsed_field $parsed $contract "yazi.theme" (parse_contract_direct_field $contract $raw_config "yazi.theme"))
+    $parsed = (upsert_parsed_field $parsed $contract "yazi.sort_by" (parse_contract_direct_field $contract $raw_config "yazi.sort_by"))
+
+    $parsed
+        | upsert pack_names ($raw_config.packs?.enabled? | default [])
+        | upsert pack_declarations ($raw_config.packs?.declarations? | default {})
+        | upsert user_packages ($raw_config.packs?.user_packages? | default [])
+        | upsert config_file $config_to_read
 }

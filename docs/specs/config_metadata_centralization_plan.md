@@ -12,7 +12,7 @@ The current system repeats the same meaning in too many places:
 - `home_manager/module.nix` defines Nix-side defaults, types, and emits TOML again
 - `nushell/scripts/utils/config_parser.nu` repeats defaults and validation rules
 - `nushell/scripts/utils/config_schema.nu` repeats enum and schema rules
-- `nushell/scripts/utils/config_metadata.nu` separately lists rebuild-required keys
+- `config_metadata/main_config_contract.toml` is now the canonical artifact, but not every consumer has been migrated to it yet
 
 That repetition already drifts. One concrete example today is `yazi.plugins`:
 
@@ -45,10 +45,19 @@ This is the exact kind of subtle mismatch that a centralized contract should pre
   - Home Manager option name where it differs from the TOML path
   - serialization hints only where they are actually needed
 - The pack catalog should be treated as a separate canonical artifact instead of being folded into the same scalar-option table. Pack declarations are structured content, not just another primitive option default.
+- The canonical pack artifact now lives at `config_metadata/pack_catalog_contract.toml`.
+- The pack artifact should own:
+  - pack-sidecar defaults for `enabled` and `user_packages`
+  - the canonical `declarations` mapping
+  - the machine-readable boundary between pack-surface semantics and the main config contract
 - The first consumers of the canonical config contract should be:
   - Nushell parser defaults and validation metadata
   - rebuild-required key metadata
   - parity validation work in `yazelix-gcng`
+- The first consumers of the canonical pack artifact should be:
+  - future pack-template parity work
+  - Home Manager pack-declaration parity work
+  - future pack-surface validation without overloading the main config contract
 - Human-facing prose should remain intentionally duplicated where audiences differ:
   - explanatory comments in `yazelix_default.toml`
   - Home Manager option descriptions
@@ -83,13 +92,13 @@ This is the exact kind of subtle mismatch that a centralized contract should pre
 
 ## Verification
 
-- manual review: compare `yazelix_default.toml`, `home_manager/module.nix`, `nushell/scripts/utils/config_parser.nu`, `nushell/scripts/utils/config_schema.nu`, and `nushell/scripts/utils/config_metadata.nu`
+- manual review: compare `yazelix_default.toml`, `home_manager/module.nix`, `config_metadata/main_config_contract.toml`, `nushell/scripts/utils/config_parser.nu`, and `nushell/scripts/utils/config_schema.nu`
 - manual review: confirm the `yazi.plugins` default drift example in the current tree
 
 ## Traceability
 
 - Bead: `yazelix-0oj1`
-- Defended by: `manual comparison of current config metadata duplication sites in yazelix_default.toml, home_manager/module.nix, config_parser.nu, config_schema.nu, and config_metadata.nu`
+- Defended by: `manual comparison of current config metadata duplication sites in yazelix_default.toml, home_manager/module.nix, main_config_contract.toml, config_parser.nu, and config_schema.nu`
 
 ## Open Questions
 

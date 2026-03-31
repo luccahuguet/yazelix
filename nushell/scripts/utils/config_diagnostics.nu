@@ -3,7 +3,7 @@
 
 use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 use config_migrations.nu [apply_config_migration_plan build_config_migration_plan_from_record]
-use config_schema.nu [compare_configs validate_enum_values]
+use config_schema.nu [apply_main_contract_to_reference_config compare_configs validate_enum_values]
 use config_surfaces.nu [get_pack_sidecar_path load_config_surface_from_main get_main_user_config_path]
 use failure_classes.nu [format_failure_classification]
 
@@ -18,7 +18,8 @@ def format_release_context [result: record] {
 }
 
 def get_schema_findings [default_config: record, user_config: record, include_missing: bool] {
-    let schema_findings = (compare_configs $default_config $user_config)
+    let schema_reference = (apply_main_contract_to_reference_config $default_config)
+    let schema_findings = (compare_configs $schema_reference $user_config)
     let filtered_schema = if $include_missing {
         $schema_findings
     } else {

@@ -4,6 +4,7 @@
 use ./test_yzx_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
+use ../utils/config_diagnostics.nu [build_config_diagnostic_report]
 use ../utils/terminal_launcher.nu [resolve_terminal_config]
 use ../utils/terminal_configs.nu [
     generate_all_terminal_configs
@@ -476,6 +477,42 @@ def test_parse_yazelix_config_bootstraps_welcome_style_surface [] {
     $result
 }
 
+def test_parse_yazelix_config_falls_back_to_canonical_yazi_plugins_default [] {
+    print "🧪 Testing parse_yazelix_config uses the canonical yazi.plugins fallback when the field is omitted..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_yazi_plugins_fallback"
+        '[yazi]
+theme = "default"
+'
+    )
+
+    let result = (try {
+        let parsed = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+
+        if ($parsed.yazi_plugins == ["git", "starship"]) {
+            print "  ✅ Missing yazi.plugins now falls back to the canonical bundled plugin set"
+            true
+        } else {
+            print $"  ❌ Unexpected yazi plugin fallback: (($parsed.yazi_plugins | to json -r))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 def test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance [] {
     print "🧪 Testing parse_yazelix_config rejects legacy [packs] in yazelix.toml and points users at migrate..."
 
@@ -662,6 +699,38 @@ widget_tray = ["layout", "editor"]
     $result
 }
 
+def test_config_diagnostics_accept_supported_helix_runtime_path [] {
+    print "🧪 Testing config diagnostics accept the supported helix.runtime_path surface even though it is commented out in the template..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_helix_runtime_diag_XXXXXX | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        let default_path = (repo_path "yazelix_default.toml")
+
+        '[helix]
+runtime_path = "/tmp/custom-runtime"
+' | save --force --raw $config_path
+
+        let report = (build_config_diagnostic_report $config_path $default_path)
+        let runtime_path_findings = ($report.doctor_diagnostics | where path == "helix.runtime_path")
+
+        if ($runtime_path_findings | is-empty) {
+            print "  ✅ Diagnostics now treat helix.runtime_path as a supported config field"
+            true
+        } else {
+            print $"  ❌ Unexpected helix.runtime_path findings: (($runtime_path_findings | to json -r))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def write_minimal_user_zellij_config [fake_home: string] {
     let zellij_config_dir = ($fake_home | path join ".config" "yazelix" "user_configs" "zellij")
     let zellij_config_path = ($zellij_config_dir | path join "config.kdl")
@@ -836,6 +905,7 @@ export def run_generated_config_canonical_tests [] {
         (test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip)
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
         (test_parse_yazelix_config_bootstraps_welcome_style_surface)
+        (test_parse_yazelix_config_falls_back_to_canonical_yazi_plugins_default)
         (test_parse_yazelix_config_bootstraps_split_default_surfaces)
         (test_parse_yazelix_config_bootstraps_missing_pack_sidecar_for_existing_main_config)
         (test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation)
@@ -845,6 +915,7 @@ export def run_generated_config_canonical_tests [] {
         (test_user_mode_requires_real_terminal_config)
         (test_config_schema_rejects_removed_auto_terminal_config_mode)
         (test_config_schema_rejects_removed_layout_widget)
+        (test_config_diagnostics_accept_supported_helix_runtime_path)
         (test_generate_merged_yazi_config_relocates_legacy_user_overrides)
         (test_generate_merged_zellij_config_relocates_legacy_native_user_config)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)

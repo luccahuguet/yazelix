@@ -2,7 +2,7 @@
 # Config state tracking for Yazelix
 
 use ./config_parser.nu parse_yazelix_config
-use ./config_metadata.nu REBUILD_REQUIRED_KEYS
+use ./config_contract.nu [get_main_config_rebuild_required_paths]
 use ./common.nu [get_yazelix_runtime_dir]
 use ./config_surfaces.nu [load_active_config_surface get_main_user_config_path]
 use ./launch_state.nu [has_matching_launch_state]
@@ -37,8 +37,9 @@ def set_nested_key [record: record, key: string, value: any] {
 # Extract only rebuild-required keys from full config
 def extract_rebuild_config [config: record] {
     mut rebuild_config = {}
+    let rebuild_required_keys = (get_main_config_rebuild_required_paths)
 
-    for key in $REBUILD_REQUIRED_KEYS {
+    for key in $rebuild_required_keys {
         let value = (get_nested_key $config $key)
         if ($value != null) {
             $rebuild_config = (set_nested_key $rebuild_config $key $value)

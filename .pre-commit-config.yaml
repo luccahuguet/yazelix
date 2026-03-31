@@ -19,6 +19,12 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: yazelix-validate-config-surface-contract
+        name: validate config surface and launch-profile contract
+        entry: nu nushell/scripts/dev/validate_config_surface_contract.nu
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: yazelix-validate-specs
         name: validate spec traceability
         entry: nu nushell/scripts/dev/validate_specs.nu
