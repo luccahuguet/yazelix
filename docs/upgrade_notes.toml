@@ -1,8 +1,8 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = ""
-summary = []
+headline = "Pending changes"
+summary = ["No unreleased changes yet."]
 upgrade_impact = "no_user_action"
 acknowledged_guarded_changes = []
 migration_ids = []

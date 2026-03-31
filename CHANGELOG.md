@@ -17,6 +17,10 @@ Highlights:
 
 ## Unreleased
 
+Pending changes.
+
+No unreleased changes yet.
+
 ## v13.10 - 2026-03-30
 
 Automatic safe migrations, sidebar/layout polish, and cleaner config commands.
