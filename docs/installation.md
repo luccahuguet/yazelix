@@ -122,18 +122,20 @@ devenv --version
 
 ### Step 4: Install the Yazelix Runtime
 
-Yazelix needs its shipped runtime assets available somewhere on disk. A source checkout still works, but it is only one possible runtime layout.
+Yazelix needs its shipped runtime assets available somewhere on disk.
 
-For maintainer/source-checkout installs, clone the repository to your system:
+There is currently no separate `yzx install` or `yzx setup` command. Bootstrap still happens through the Yazelix runtime entrypoint itself.
+
+Today, the simplest concrete install path is still a source checkout:
 ```bash
 git clone https://github.com/luccahuguet/yazelix ~/.config/yazelix
 ```
 
-Normal usage should rely on the installed Yazelix runtime and `yzx` entrypoints. User configuration still lives under `~/.config/yazelix/user_configs/`, but the shipped runtime assets do not need to come from a live git checkout forever.
+Normal usage should rely on the installed Yazelix runtime and `yzx` entrypoints. User configuration lives under `~/.config/yazelix/user_configs/`. The runtime/config model no longer requires that path to remain a live repo forever, but this guide still uses the source-checkout flow as the concrete way to put the runtime on disk.
 
 ### Step 5: Configure Your Installation (Optional)
 
-**Before installing dependencies**, create and customize your configuration to control what gets downloaded (else, Yazelix will create a config for you based on `yazelix_default.toml`):
+**Before installing dependencies**, you can create and customize your configuration to control what gets downloaded. If you skip this step, the first Yazelix setup run will auto-create `user_configs/yazelix.toml` from the shipped defaults:
 
 ```bash
 # Create your personal config from the template
@@ -198,6 +200,7 @@ For the **first launch**:
 
 - source-checkout installs can run the repo script directly
 - package-ready installs should run the shipped `start_yazelix.sh` from the installed runtime root instead
+- there is still no separate `yzx setup` command; this runtime entrypoint is the setup path
 
 Source-checkout example:
 
@@ -222,7 +225,7 @@ yzx launch  # Opens in new terminal in current directory
 
 #### Option B: Manual Launch (For users who don't want to modify terminal configs)
 
-If you prefer to keep your existing terminal configuration unchanged, just run Yazelix once and it will automatically set up the `yzx` command for you.
+If you prefer to keep your existing terminal configuration unchanged, just run Yazelix once and it will automatically set up the `yzx` command for you. This is still runtime-entrypoint bootstrap, not a separate `yzx install` step.
 
 Source-checkout example:
 
