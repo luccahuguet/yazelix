@@ -112,6 +112,21 @@ EOF
             YAZELIX_LOGS_DIR="$HOME/.local/share/yazelix/logs" \
             ${pkgs.nushell}/bin/nu "$runtime_current/nushell/scripts/setup/environment.nu" --skip-welcome
 
+            echo "🔄 Rebuilding generated Yazelix runtime configs..."
+            ${pkgs.coreutils}/bin/rm -rf \
+              "$HOME/.local/share/yazelix/configs/yazi" \
+              "$HOME/.local/share/yazelix/configs/zellij"
+            YAZELIX_RUNTIME_DIR="$runtime_current" \
+            YAZELIX_DIR="$runtime_current" \
+            YAZELIX_STATE_DIR="$HOME/.local/share/yazelix" \
+            YAZELIX_LOGS_DIR="$HOME/.local/share/yazelix/logs" \
+            ${pkgs.nushell}/bin/nu "$runtime_current/nushell/scripts/setup/yazi_config_merger.nu" "$runtime_current" --quiet
+            YAZELIX_RUNTIME_DIR="$runtime_current" \
+            YAZELIX_DIR="$runtime_current" \
+            YAZELIX_STATE_DIR="$HOME/.local/share/yazelix" \
+            YAZELIX_LOGS_DIR="$HOME/.local/share/yazelix/logs" \
+            ${pkgs.nushell}/bin/nu -c "use '$runtime_current/nushell/scripts/setup/zellij_config_merger.nu' [generate_merged_zellij_config]; generate_merged_zellij_config '$runtime_current' | ignore"
+
             echo "✅ Yazelix runtime installed."
             echo "   Runtime: $runtime_current -> $runtime_target"
             echo "   CLI: $yzx_link"

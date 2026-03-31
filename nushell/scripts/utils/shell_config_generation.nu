@@ -8,6 +8,7 @@ use constants.nu [
     YAZELIX_REGENERATE_COMMENT
     YAZELIX_CONFIG_FILES
 ]
+use common.nu [get_yazelix_runtime_reference_dir]
 
 # Get the full start comment with regeneration instruction
 export def get_yazelix_start_comment [] {
@@ -28,8 +29,9 @@ export def get_yzx_cli_path [] {
 
 # Get the complete yazelix section content for a shell
 export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
-    let config_file = (get_yazelix_runtime_config_path $shell $yazelix_dir)
-    let yzx_core_path = ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu")
+    let runtime_ref = (get_yazelix_runtime_reference_dir)
+    let config_file = (get_yazelix_runtime_config_path $shell $runtime_ref)
+    let yzx_core_path = ($runtime_ref | path join "nushell" "scripts" "core" "yazelix.nu")
     let yzx_cli_path = (get_yzx_cli_path)
 
     # Generate shell-specific conditional loading + yzx function (always available)

@@ -4,7 +4,7 @@
 
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/common.nu [get_yazelix_user_config_dir]
+use ../utils/common.nu [get_yazelix_runtime_reference_dir get_yazelix_user_config_dir]
 use ../utils/layout_generator.nu [render_custom_text_segment render_widget_tray_segment]
 use ./zellij_plugin_paths.nu [PANE_ORCHESTRATOR_PLUGIN_ALIAS get_pane_orchestrator_wasm_path get_popup_runner_wasm_path]
 
@@ -298,10 +298,11 @@ def read_yazelix_overrides [
         error make {msg: $"Missing Yazelix Zellij overrides file: ($overrides_path)"}
     }
 
+    let runtime_ref = (get_yazelix_runtime_reference_dir)
     let resolved_overrides = (
         (open $overrides_path)
         | str replace -a "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" $pane_orchestrator_plugin_url
-        | str replace -a "__YAZELIX_RUNTIME_DIR__" ($yazelix_dir | path expand)
+        | str replace -a "__YAZELIX_RUNTIME_DIR__" $runtime_ref
     )
     let split_keybinds = (split_keybinds_block $resolved_overrides)
     {

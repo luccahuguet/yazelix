@@ -126,6 +126,15 @@ export def get_yazelix_runtime_project_dir [] {
     (get_yazelix_state_dir | path join "runtime" "project")
 }
 
+export def get_yazelix_runtime_reference_dir [] {
+    let state_runtime = (get_yazelix_state_dir | path join "runtime" "current")
+    if (is_valid_runtime_dir $state_runtime) {
+        $state_runtime
+    } else {
+        get_yazelix_runtime_dir
+    }
+}
+
 export def ensure_yazelix_runtime_project_dir [] {
     let runtime_root = (get_yazelix_runtime_dir)
     let project_root = (get_yazelix_runtime_project_dir)

@@ -3,7 +3,7 @@
 # Generates yazi configs from yazelix defaults + dynamic settings from yazelix.toml
 
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_state_dir get_yazelix_user_config_dir]
+use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_runtime_reference_dir get_yazelix_state_dir get_yazelix_user_config_dir]
 
 const runtime_dir_placeholder = "__YAZELIX_RUNTIME_DIR__"
 
@@ -20,7 +20,7 @@ def get_yazi_user_config_dir [] {
 }
 
 def render_runtime_root_placeholders [content: string] {
-    let runtime_dir = (get_yazelix_runtime_dir | path expand)
+    let runtime_dir = (get_yazelix_runtime_reference_dir)
     $content | str replace -a $runtime_dir_placeholder $runtime_dir
 }
 
