@@ -128,11 +128,8 @@ Complete toolchains you can declare:
 - [tru](https://github.com/Dicklesworthstone/toon_rust) — Compact structured output CLI used in agent/Beads workflows
 - [beads_rust](https://github.com/Dicklesworthstone/beads_rust) — Rust Beads tracker (`br`)
 - [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer) — Beads graph triage viewer (`bv`)
+- [nu-lint](https://github.com/nushell/nu-lint) — Nushell linter for explicit maintainer lint runs
 - `rust_wasi_toolchain` — Pinned Rust toolchain with `wasm32-wasip1` so maintainers can rebuild the Yazelix pane orchestrator wasm without enabling a separate pack
-
-### Nushell Pack (`nushell`)
-- [nufmt](https://github.com/nushell/nufmt) — Formatter for Nushell scripts and config files
-- [nu-lint](https://github.com/nushell/nu-lint) — Linter for Nushell scripts
 
 ### Rust Pack (`rust`)
 - `rust_toolchain` — Pinned stable Rust toolchain with `cargo`, `rustc`, `rustfmt`, and `clippy`
@@ -203,12 +200,7 @@ Tools for maintaining Yazelix itself without changing runtime behavior.
 - [tru](https://github.com/block/tru) — Compact structured output for Beads and agent workflows
 - [beads-rust](https://github.com/Dicklesworthstone/beads_rust) — Rust Beads tracker (`br`)
 - [beads-viewer](https://github.com/Dicklesworthstone/beads_viewer) — Graph-aware triage and visualization (`bv`)
-
-### Nushell Pack (`nushell`)
-Nushell-specific authoring tools kept separate from the maintainer workflow pack.
-
-- [nufmt](https://github.com/nushell/nufmt) — Formatter for Nushell scripts and configs
-- [nu-lint](https://github.com/nushell/nu-lint) — Linter for Nushell scripts
+- [nu-lint](https://github.com/nushell/nu-lint) — Optional Nushell linter for explicit repo-maintainer lint runs
 
 Use the repo's root [`../.pre-commit-config.yaml`](../.pre-commit-config.yaml) with `prek install`, then run `prek run --all-files` when you want the full fast maintainer checks on demand.
 

@@ -1,0 +1,45 @@
+# Yazelix nu-lint configuration
+# Run via: yzx dev lint_nu
+# Requires: `maintainer` pack or an explicit `nu-lint` user package
+#
+# Disables noisy groups and rules that conflict with Yazelix conventions.
+# Keeps ~15 high-signal rules for dead code, runtime safety, and correctness.
+#
+# Structural upstream blockers for CI gating:
+#   - nu_parse_error: false positives on relative `use` imports
+#   - redundant_nu_subprocess: intentional process isolation in tests/menus/runners
+#   - kebab_case_commands: Yazelix uses underscores everywhere
+
+skip_external_parse_errors = true
+
+# --- Disable noisy groups ---
+[groups]
+formatting = "off"
+naming = "off"
+documentation = "off"
+idioms = "off"
+posix = "off"
+external = "off"
+parsing = "off"
+effects = "off"
+iteration = "off"
+filtering = "off"
+upstream = "off"
+
+# --- Individual rule overrides ---
+[rules]
+
+# Suppress noisy rules from enabled groups (runtime-errors, type-safety, performance, dead-code)
+redundant_nu_subprocess = "off"      # intentional process isolation in tests/menus/runners
+catch_builtin_error_try = "off"      # too broad, flags normal pipeline usage
+exit_only_in_main = "off"            # scripts legitimately use exit
+try_instead_of_do = "off"            # stylistic, not a correctness issue
+wrap_external_with_complete = "off"  # too noisy for this codebase
+missing_output_type = "off"          # high-churn annotation requirement
+missing_in_type = "off"              # high-churn annotation requirement
+add_type_hints_arguments = "off"     # high-churn annotation requirement
+string_param_as_path = "off"         # too many false positives
+external_script_as_argument = "off"  # intentional pattern in Yazelix
+string_may_be_bare = "off"           # Yazelix quotes strings deliberately
+script_export_main = "off"           # not applicable to module-style scripts
+single_call_command = "off"          # intentional wrapper functions

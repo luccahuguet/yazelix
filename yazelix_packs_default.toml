@@ -14,7 +14,6 @@ enabled = [
   # "git",
   # "jj",
   # "maintainer",
-  # "nushell",
   # "python",
   # "rust",
   # "rust_maintainer",
@@ -96,12 +95,8 @@ maintainer = [
   "tru", # Compact Beads/agent structured output CLI
   "beads-rust", # Rust Beads tracker (br)
   "beads-viewer", # Beads Viewer (bv)
+  "nu-lint", # Nushell linter for maintainer workflows
   "rust_wasi_toolchain", # WASI-capable Rust toolchain for plugin rebuilds
-]
-
-nushell = [
-  "nufmt", # Nushell formatter
-  "nu-lint", # Nushell linter
 ]
 
 python = [

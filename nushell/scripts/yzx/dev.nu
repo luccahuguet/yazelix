@@ -3,6 +3,7 @@
 
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/common.nu [get_yazelix_dir]
+use ../utils/environment_bootstrap.nu [run_in_devenv_shell_command]
 use ../utils/config_surfaces.nu [copy_default_config_surfaces load_config_surface_from_main get_main_user_config_path]
 use ../utils/devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available resolve_preferred_devenv_path]
 use ../utils/readme_release_block.nu [sync_readme_surface]
@@ -1014,4 +1015,27 @@ export def "yzx dev profile" [
     } else {
         profile_launch
     }
+}
+
+# Lint Nushell scripts with repo-tuned nu-lint config from the maintainer tool surface
+export def "yzx dev lint_nu" [
+    --format(-f): string = "pretty"  # Output format: pretty or compact
+    ...paths: string                 # Specific files or directories (default: nushell/)
+] {
+    let yazelix_dir = get_yazelix_dir
+    let config_path = ($yazelix_dir | path join ".nu-lint.toml")
+
+    if not ($config_path | path exists) {
+        print $"Error: .nu-lint.toml not found at ($config_path)"
+        exit 1
+    }
+
+    let targets = if ($paths | is-empty) {
+        [($yazelix_dir | path join "nushell")]
+    } else {
+        $paths
+    }
+    let nu_lint_available = not (which nu-lint | is-empty)
+
+    run_in_devenv_shell_command "nu-lint" "--config" $config_path "--format" $format ...$targets --skip-welcome --quiet --force-refresh=(not $nu_lint_available)
 }

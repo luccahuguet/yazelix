@@ -548,11 +548,8 @@ in
           "tru"
           "beads-rust"
           "beads-viewer"
-          "rust_wasi_toolchain"
-        ];
-        nushell = [
-          "nufmt"
           "nu-lint"
+          "rust_wasi_toolchain"
         ];
         python = [
           "ruff"

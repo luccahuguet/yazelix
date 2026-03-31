@@ -1,5 +1,6 @@
 #!/usr/bin/env nu
 # Test runner for maintainer-only yzx checks
+use ../utils/config_parser.nu [parse_yazelix_config]
 
 def test_issue_bead_reconciliation_plan [] {
     print "🧪 Testing issue/bead reconciliation plans create, reopen, close, and reject duplicates..."
@@ -201,6 +202,89 @@ def test_nushell_initializer_restores_current_path_first [] {
     }
 }
 
+def test_lint_nu_config_exists_and_suppresses_noisy_rules [] {
+    print "🧪 Testing .nu-lint.toml exists and suppresses known noisy rules..."
+
+    try {
+        let config_path = ($env.PWD | path join ".nu-lint.toml")
+        if not ($config_path | path exists) {
+            print "  ❌ .nu-lint.toml not found at repo root"
+            return false
+        }
+
+        let content = (open --raw $config_path)
+        # Rules suppressed individually (kebab_case_commands is handled by naming group)
+        let noisy_rules = [
+            "string_may_be_bare"
+            "missing_output_type"
+            "redundant_nu_subprocess"
+        ]
+        let noisy_groups = [
+            "naming"
+            "formatting"
+            "documentation"
+        ]
+        let missing_rules = ($noisy_rules | where {|rule| not ($content | str contains $"($rule) = \"off\"") })
+        let missing_groups = ($noisy_groups | where {|group| not ($content | str contains $"($group) = \"off\"") })
+        let missing = ($missing_rules | append $missing_groups)
+        if ($missing | is-not-empty) {
+            print $"  ❌ Config does not suppress known noisy rules: ($missing | str join ', ')"
+            return false
+        }
+
+        print "  ✅ .nu-lint.toml exists and suppresses known noisy rules"
+        true
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+def test_lint_nu_invokes_through_devenv [] {
+    print "🧪 Testing yzx dev lint_nu resolves nu-lint through the devenv shell..."
+
+    let config = (parse_yazelix_config)
+    let maintainer_packages = ($config.pack_declarations.maintainer? | default [])
+    let user_packages = ($config.user_packages? | default [])
+    let nu_lint_requested = (
+        ($maintainer_packages | any { |pkg| $pkg == "nu-lint" })
+        or ($user_packages | any { |pkg| $pkg == "nu-lint" })
+    )
+
+    if not $nu_lint_requested {
+        print "  ⏭️ Skipped: effective config does not request nu-lint"
+        return true
+    }
+
+    try {
+        let command = 'source nushell/scripts/yzx/dev.nu; yzx dev lint_nu --format compact nushell/scripts/utils/constants.nu'
+        let output = if (which timeout | is-not-empty) {
+            ^timeout 60 nu -c $command | complete
+        } else {
+            ^nu -c $command | complete
+        }
+
+        if $output.exit_code == 124 {
+            print "  ❌ Timed out waiting for devenv shell"
+            return false
+        }
+
+        # nu-lint may return non-zero for lint findings; that is fine.
+        # The contract is that it does not fail with "not found".
+        let combined = $"($output.stdout)($output.stderr)"
+        if ($combined | str contains "not found") {
+            print "  ❌ nu-lint was not resolved through the devenv shell"
+            return false
+        }
+
+        print "  ✅ nu-lint resolved and executed through devenv"
+        true
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def main [] {
     print "=== Testing yzx Maintainer Commands ==="
     print ""
@@ -211,6 +295,8 @@ def main [] {
         (test_runtime_pin_versions_use_repo_shell)
         (test_preferred_devenv_resolution_uses_profile_entry)
         (test_nushell_initializer_restores_current_path_first)
+        (test_lint_nu_config_exists_and_suppresses_noisy_rules)
+        (test_lint_nu_invokes_through_devenv)
     ]
 
     let passed = ($results | where $it == true | length)
