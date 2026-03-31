@@ -203,7 +203,7 @@ export def show_welcome [
         } else {
             # Log welcome info
             let welcome_log_file = $"($log_dir)/welcome_(date now | format date '%Y%m%d_%H%M%S').log"
-            $welcome_message | str join "\n" | save $welcome_log_file
+            $welcome_message | str join "\n" | save -f $welcome_log_file
             print $"($colors.cyan)💡 Welcome screen skipped. Welcome info logged to: ($welcome_log_file)($colors.reset)"
         }
     } else {
