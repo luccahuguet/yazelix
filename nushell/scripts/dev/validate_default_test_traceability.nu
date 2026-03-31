@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
-const DEFAULT_SUITE_MAX_CANONICAL_TESTS = 54
+const DEFAULT_SUITE_MAX_CANONICAL_TESTS = 56
 
 def to_dev_relative_path [file_name: string] {
     $"nushell/scripts/dev/($file_name)"
