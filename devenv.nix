@@ -57,6 +57,7 @@ let
   # a separate --impure flag.
   homeDir = builtins.getEnv "HOME";
   configRoot = if homeDir != "" then "${homeDir}/.config/yazelix" else "";
+  runtimeRoot = toString ./.;
   userConfigDir = if configRoot != "" then "${configRoot}/user_configs" else "";
   tomlConfigFile = if userConfigDir != "" then "${userConfigDir}/yazelix.toml" else "";
   legacyTomlConfigFile = if configRoot != "" then "${configRoot}/yazelix.toml" else "";
@@ -235,11 +236,11 @@ let
   '';
 
   yazelixLayoutName = if enableSidebar then "yzx_side" else "yzx_no_side";
-  startupScriptPath = ''"''${YAZELIX_DIR:-$HOME/.config/yazelix}/shells/posix/start_yazelix.sh"'';
+  startupScriptPath = ''"''${YAZELIX_RUNTIME_DIR:-''${YAZELIX_DIR:-${runtimeRoot}}}/shells/posix/start_yazelix.sh"'';
   mkTerminalConfigResolver = terminalName:
     ''
       export YAZELIX_TERMINAL_CONFIG_MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
-      if ! CONF="$(${pkgs.nushell}/bin/nu -c "source \"''${YAZELIX_DIR:-$HOME/.config/yazelix}/nushell/scripts/utils/terminal_launcher.nu\"; print (resolve_terminal_config_from_env \"${terminalName}\")")"; then
+      if ! CONF="$(${pkgs.nushell}/bin/nu -c "source \"''${YAZELIX_RUNTIME_DIR:-''${YAZELIX_DIR:-${runtimeRoot}}}/nushell/scripts/utils/terminal_launcher.nu\"; print (resolve_terminal_config_from_env \"${terminalName}\")")"; then
         exit 1
       fi
     '';
@@ -372,7 +373,7 @@ let
   yazelixDesktopLauncher =
     if isLinux then
       pkgs.writeShellScriptBin "yazelix-desktop-launcher" ''
-        exec "$HOME/.config/yazelix/shells/posix/desktop_launcher.sh"
+        exec "''${YAZELIX_RUNTIME_DIR:-''${YAZELIX_DIR:-${runtimeRoot}}}/shells/posix/desktop_launcher.sh"
       ''
     else
       null;
@@ -620,7 +621,9 @@ in
   packages = allDeps;
 
   env = {
-    YAZELIX_DIR = "$HOME/.config/yazelix";
+    YAZELIX_CONFIG_DIR = "$HOME/.config/yazelix";
+    YAZELIX_RUNTIME_DIR = runtimeRoot;
+    YAZELIX_DIR = runtimeRoot;
     IN_YAZELIX_SHELL = "true";
     NIX_CONFIG = yazelixNixConfig;
     YAZELIX_DEBUG_MODE = boolToString debugMode;
@@ -641,7 +644,9 @@ in
       export HOME="$(dirname "$(dirname "$DEVENV_ROOT")")"
     fi
 
-    export YAZELIX_DIR="$HOME/.config/yazelix"
+    export YAZELIX_CONFIG_DIR="''${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}"
+    export YAZELIX_RUNTIME_DIR="''${YAZELIX_RUNTIME_DIR:-${runtimeRoot}}"
+    export YAZELIX_DIR="$YAZELIX_RUNTIME_DIR"
     export IN_YAZELIX_SHELL="true"
     export NIX_CONFIG='${yazelixNixConfig}'
     export YAZELIX_DEBUG_MODE="${boolToString debugMode}"
@@ -663,15 +668,15 @@ in
 
     # Environment setup now reads directly from yazelix.toml (single source of truth)
     if [ "$YAZELIX_SHELLHOOK_SKIP_WELCOME" = "true" ]; then
-      nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu" --skip-welcome
+      nu "$YAZELIX_RUNTIME_DIR/nushell/scripts/setup/environment.nu" --skip-welcome
       unset YAZELIX_SHELLHOOK_SKIP_WELCOME
     else
-      nu "$YAZELIX_DIR/nushell/scripts/setup/environment.nu"
+      nu "$YAZELIX_RUNTIME_DIR/nushell/scripts/setup/environment.nu"
     fi
 
     # Save config hash after successful environment setup
     if command -v nu >/dev/null 2>&1; then
-      nu -c "use \"$YAZELIX_DIR/nushell/scripts/utils/config_state.nu\" [compute_config_state mark_config_state_applied]; let state = compute_config_state; mark_config_state_applied \$state" 2>/dev/null || true
+      nu -c "use \"$YAZELIX_RUNTIME_DIR/nushell/scripts/utils/config_state.nu\" [compute_config_state mark_config_state_applied]; let state = compute_config_state; mark_config_state_applied \$state" 2>/dev/null || true
     fi
   '';
 }

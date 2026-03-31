@@ -127,7 +127,8 @@ export def "yzx launch" [
             pwd
         }
 
-        let launch_script = $"($env.HOME)/.config/yazelix/nushell/scripts/core/launch_yazelix.nu"
+        let runtime_dir = (get_yazelix_runtime_dir)
+        let launch_script = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
 
         if $in_yazelix_shell {
             # Already in Yazelix environment - run directly via bash

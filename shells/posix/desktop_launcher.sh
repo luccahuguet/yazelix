@@ -19,6 +19,10 @@ fi
 RUNTIME_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 launcher_script="$RUNTIME_DIR/nushell/scripts/core/desktop_launcher.nu"
 
+export YAZELIX_RUNTIME_DIR="${YAZELIX_RUNTIME_DIR:-$RUNTIME_DIR}"
+export YAZELIX_DIR="$YAZELIX_RUNTIME_DIR"
+export YAZELIX_CONFIG_DIR="${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}"
+
 if [ ! -f "$launcher_script" ]; then
   echo "Error: Missing Yazelix desktop launcher: $launcher_script" >&2
   echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
