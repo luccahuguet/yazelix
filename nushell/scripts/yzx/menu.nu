@@ -128,7 +128,7 @@ def run_menu_action [cmd: string] {
         return
     }
 
-    let yazelix_module = $"($env.HOME)/.config/yazelix/nushell/scripts/core/yazelix.nu"
+    let yazelix_module = ((get_yazelix_runtime_dir) | path join "nushell" "scripts" "core" "yazelix.nu")
     ^nu -c $"use ($yazelix_module) *; ($cmd)"
 }
 

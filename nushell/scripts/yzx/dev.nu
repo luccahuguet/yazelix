@@ -527,6 +527,7 @@ export def "yzx dev sync_terminal_configs" [] {
     let yazelix_dir = get_yazelix_dir
     let config_root = ($yazelix_dir | path join "configs/terminal_emulators")
     let generated_root = "~/.local/share/yazelix/configs/terminal_emulators" | path expand
+    let terminal_snapshot_override = (^mktemp /tmp/yazelix_terminal_snapshot_sync_XXXXXX.toml | str trim)
 
     if not ($config_root | path exists) {
         print $"❌ Configs directory not found: ($config_root)"
@@ -540,9 +541,12 @@ export def "yzx dev sync_terminal_configs" [] {
     }
 
     print "Generating terminal configs from defaults..."
-    with-env {YAZELIX_CONFIG_OVERRIDE: $default_config} {
+    "[terminal]\nterminals = [\"ghostty\", \"wezterm\", \"kitty\", \"alacritty\", \"foot\"]\n" | save --force --raw $terminal_snapshot_override
+
+    with-env {YAZELIX_CONFIG_OVERRIDE: $terminal_snapshot_override} {
         generate_all_terminal_configs
     }
+    rm -f $terminal_snapshot_override
 
     let generated_at = (date now | format date "%Y-%m-%d %H:%M:%S %Z")
     let header_lines = [
