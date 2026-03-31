@@ -11,6 +11,16 @@ def normalize_initializer_content [shell_name: string, init_content: string] {
     }
 }
 
+def describe_initializer_issue [result: record] {
+    if ("reason" in ($result | columns)) {
+        $result.reason
+    } else if ("error" in ($result | columns)) {
+        $result.error
+    } else {
+        "unknown failure"
+    }
+}
+
 def main [yazelix_dir: string, shells_to_configure_str: string] {
     # Import constants for XDG paths
     use ../utils/constants.nu *
@@ -80,10 +90,20 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
                 # Tool not found: record and remove any previous output
                 if $tool.required {
                     if ($output_file | path exists) { rm $output_file }
-                    { status: "required-missing", tool: $tool.name, shell: $shell.name, reason: "tool not found" }
+                    {
+                        status: "required-missing"
+                        tool: $tool.name
+                        shell: $shell.name
+                        reason: "tool not found"
+                    }
                 } else {
                     if ($output_file | path exists) { rm $output_file }
-                    { status: "missing", tool: $tool.name, shell: $shell.name, reason: "tool not found" }
+                    {
+                        status: "missing"
+                        tool: $tool.name
+                        shell: $shell.name
+                        reason: "tool not found"
+                    }
                 }
             } else {
                 try {
@@ -103,14 +123,29 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
                     }
                     let init_content = (normalize_initializer_content $shell.name $raw_init_content)
                     $init_content | save --force $output_file
-                    { status: "success", tool: $tool.name, shell: $shell.name, file: $output_file }
+                    {
+                        status: "success"
+                        tool: $tool.name
+                        shell: $shell.name
+                        file: $output_file
+                    }
                 } catch { |error|
                     # On failure, record and remove any previous output
                     if ($output_file | path exists) { rm $output_file }
                     if $tool.required {
-                        { status: "required-failed", tool: $tool.name, shell: $shell.name, error: $error.msg }
+                        {
+                            status: "required-failed"
+                            tool: $tool.name
+                            shell: $shell.name
+                            error: $error.msg
+                        }
                     } else {
-                        { status: "failed", tool: $tool.name, shell: $shell.name, error: $error.msg }
+                        {
+                            status: "failed"
+                            tool: $tool.name
+                            shell: $shell.name
+                            error: $error.msg
+                        }
                     }
                 }
             }
@@ -135,7 +170,7 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
 
         let required_issues = (
             $tool_results | where status in ["required-missing", "required-failed"]
-            | each {|r| $"# WARNING: required initializer not generated for ($r.tool): (($r.reason? | default $r.error))\n" }
+            | each {|r| $"# WARNING: required initializer not generated for ($r.tool): (describe_initializer_issue $r)\n" }
             | str join ""
         )
 
