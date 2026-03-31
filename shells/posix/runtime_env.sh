@@ -7,6 +7,6 @@ if [ -z "$runtime_dir" ]; then
   return 1 2>/dev/null || exit 1
 fi
 
-export YAZELIX_RUNTIME_DIR="${YAZELIX_RUNTIME_DIR:-$runtime_dir}"
-export YAZELIX_DIR="$YAZELIX_RUNTIME_DIR"
+export YAZELIX_RUNTIME_DIR="$runtime_dir"
+export YAZELIX_DIR="$runtime_dir"
 export YAZELIX_CONFIG_DIR="${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}"

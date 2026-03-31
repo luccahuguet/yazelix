@@ -6,7 +6,7 @@ use config_parser.nu parse_yazelix_config
 use devenv_cli.nu [get_pinned_devenv_installable is_preferred_devenv_available resolve_preferred_devenv_path]
 use nix_detector.nu ensure_nix_available
 use nix_env_helper.nu ensure_nix_in_environment
-use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config get_yazelix_dir require_yazelix_dir]
+use common.nu [ensure_yazelix_runtime_project_dir get_max_cores get_max_jobs get_yazelix_nix_config get_yazelix_dir require_yazelix_dir]
 use config_state.nu [compute_config_state mark_config_state_applied]
 
 def format_command_for_display [command_parts: list<string>] {
@@ -133,6 +133,7 @@ export def get_devenv_base_command [
     --refresh-eval-cache  # Include --refresh-eval-cache in devenv arguments
 ] {
     let yazelix_dir = resolve_yazelix_dir
+    let devenv_project_dir = (ensure_yazelix_runtime_project_dir)
     let devenv_path = (resolve_preferred_devenv_path)
     let nix_config = get_yazelix_nix_config
     let requested_max_jobs = $max_jobs
@@ -151,7 +152,7 @@ export def get_devenv_base_command [
     mut cmd = [
         "env"
         "-C"
-        $yazelix_dir
+        $devenv_project_dir
         $"NIX_CONFIG=($nix_config)"
         $devenv_path
         "--max-jobs"

@@ -3,7 +3,7 @@
 # Profiles launch sequence and environment setup to identify bottlenecks
 
 use logging.nu log_to_file
-use common.nu [get_max_cores get_max_jobs get_yazelix_dir get_yazelix_nix_config]
+use common.nu [ensure_yazelix_runtime_project_dir get_max_cores get_max_jobs get_yazelix_dir get_yazelix_nix_config]
 use config_parser.nu [parse_yazelix_config]
 use config_surfaces.nu get_main_user_config_path
 use devenv_cli.nu resolve_preferred_devenv_path
@@ -84,7 +84,7 @@ export def profile_cold_launch [
     # Clear cache if requested
     if $clear_cache {
         print "🗑️  Clearing .devenv cache...\n"
-        let devenv_cache = $"($yazelix_dir)/.devenv"
+        let devenv_cache = $"((ensure_yazelix_runtime_project_dir))/.devenv"
         if ($devenv_cache | path exists) {
             rm -rf $devenv_cache
         }

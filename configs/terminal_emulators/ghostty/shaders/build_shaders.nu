@@ -2,7 +2,15 @@
 # Build script to generate cursor trail shaders from common library + variants
 # This combines cursor_trail_common.glsl with each variant file to eliminate duplication
 
-use ../../../../nushell/scripts/utils/constants.nu [GHOSTTY_CURSOR_EFFECT_TEMPLATE_FILES, YAZELIX_GENERATED_CONFIGS_DIR]
+const GHOSTTY_CURSOR_EFFECT_TEMPLATE_FILES = {
+    cursor_trail: "cursor_tail.glsl"
+    cursor_smear: "cursor_warp.glsl"
+    cursor_bubble: "ripple_cursor.glsl"
+    cursor_boom: "rectangle_boom_cursor.glsl"
+    cursor_sonic: "sonic_boom_cursor.glsl"
+    cursor_sweep: "cursor_sweep.glsl"
+    cursor_ripple_rectangle: "ripple_rectangle_cursor.glsl"
+}
 
 const GHOSTTY_TRAIL_GLOW_LEVELS = ["none" "low" "medium" "high"]
 
@@ -216,7 +224,8 @@ export def build_ghostty_cursor_effect_shaders [shader_source_dir: path, glow_le
 # Default output is the generated runtime Ghostty shader directory, not the source tree.
 def main [glow_level: string = "medium", output_dir?: path] {
     let shader_source_dir = ($env.PWD | path expand)
-    let default_output_dir = (($YAZELIX_GENERATED_CONFIGS_DIR | str replace "~" $env.HOME) | path join "terminal_emulators" "ghostty" "shaders")
+    let state_dir = ($env.YAZELIX_STATE_DIR? | default "~/.local/share/yazelix" | path expand)
+    let default_output_dir = ($state_dir | path join "configs" "terminal_emulators" "ghostty" "shaders")
     let shader_output_dir = (($output_dir | default $default_output_dir) | path expand)
     print $"Building cursor trail shaders..."
     print $"Shader source directory: ($shader_source_dir)"

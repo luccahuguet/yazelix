@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Profile activation helpers for fast Yazelix launch/restart paths.
 
-use ./common.nu [get_yazelix_nix_config get_yazelix_dir get_yazelix_state_dir]
+use ./common.nu [ensure_yazelix_runtime_project_dir get_yazelix_nix_config get_yazelix_dir get_yazelix_state_dir]
 
 def bool_to_string [value] {
     if $value { "true" } else { "false" }
@@ -52,7 +52,7 @@ export def resolve_built_profile [] {
         return $resolved_env_profile
     }
 
-    let yazelix_dir = get_yazelix_dir
+    let yazelix_dir = (ensure_yazelix_runtime_project_dir)
     let candidates = [
         ($yazelix_dir | path join ".devenv/profile")
         ($yazelix_dir | path join ".devenv/gc/shell")

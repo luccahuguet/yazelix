@@ -9,6 +9,21 @@ const INFERRED_RUNTIME_DIR = (
     | path join ".." ".." ".."
     | path expand
 )
+const RUNTIME_PROJECT_ENTRIES = [
+    "assets"
+    "config_metadata"
+    "configs"
+    "docs"
+    "nushell"
+    "rust_plugins"
+    "shells"
+    "CHANGELOG.md"
+    "devenv.lock"
+    "devenv.nix"
+    "devenv.yaml"
+    "yazelix_default.toml"
+    "yazelix_packs_default.toml"
+]
 
 def is_valid_runtime_dir [candidate?: string] {
     if $candidate == null {
@@ -89,6 +104,29 @@ export def get_yazelix_state_dir [] {
     } else {
         "~/.local/share/yazelix" | path expand
     }
+}
+
+export def get_yazelix_runtime_project_dir [] {
+    (get_yazelix_state_dir | path join "runtime" "project")
+}
+
+export def ensure_yazelix_runtime_project_dir [] {
+    let runtime_root = (get_yazelix_runtime_dir)
+    let project_root = (get_yazelix_runtime_project_dir)
+
+    mkdir $project_root
+
+    for entry in $RUNTIME_PROJECT_ENTRIES {
+        let source = ($runtime_root | path join $entry)
+        if not ($source | path exists) {
+            continue
+        }
+
+        let target = ($project_root | path join $entry)
+        ^ln -sfn $source $target
+    }
+
+    $project_root
 }
 
 export def get_yazelix_dir [] {
