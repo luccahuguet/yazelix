@@ -6,6 +6,7 @@ use logging.nu log_to_file
 use common.nu [get_max_cores get_max_jobs get_yazelix_dir get_yazelix_nix_config]
 use config_parser.nu [parse_yazelix_config]
 use config_surfaces.nu get_main_user_config_path
+use devenv_cli.nu resolve_preferred_devenv_path
 
 # Profile a single step with timing
 def profile_step [name: string, code: closure] {
@@ -101,8 +102,16 @@ export def profile_cold_launch [
     let max_jobs = get_max_jobs ($config.max_jobs? | default "half" | into string)
     let max_cores = get_max_cores ($config.build_cores? | default "2" | into string)
     let nix_config = get_yazelix_nix_config
+    let devenv_path = (resolve_preferred_devenv_path)
     let shell_result = with-env {NIX_CONFIG: $nix_config} {
-        sh -c $"cd ($yazelix_dir) && echo 'exit' | timeout 15 devenv --max-jobs ($max_jobs) --cores ($max_cores) shell" | complete
+        do {
+            cd $yazelix_dir
+            if (which timeout | is-not-empty) {
+                print --raw "exit\n" | ^timeout 15 $devenv_path --max-jobs ($max_jobs | into string) --cores ($max_cores | into string) shell | complete
+            } else {
+                print --raw "exit\n" | ^$devenv_path --max-jobs ($max_jobs | into string) --cores ($max_cores | into string) shell | complete
+            }
+        }
     }
     let launch_end = (date now)
     let launch_ms = ((($launch_end - $launch_start) | into int) / 1000000)

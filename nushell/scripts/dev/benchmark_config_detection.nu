@@ -1,6 +1,8 @@
 #!/usr/bin/env nu
 # Benchmark different approaches for detecting yazelix.toml changes (legacy yazelix.nix fallback)
 
+use ../utils/devenv_cli.nu resolve_preferred_devenv_path
+
 def main [] {
     print "========================================="
     print "Yazelix Config Detection Benchmark"
@@ -78,21 +80,28 @@ def main [] {
 
     # Benchmark 3: Cached devenv shell
     print "3️⃣  Benchmarking: Cached devenv shell"
-    print "   Command: devenv shell -- bash -c 'true'"
+    print "   Command: <preferred devenv> shell -- bash -c 'true'"
 
     mut devenv_times = []
-    if (which devenv | length) == 0 {
-        print "   ⚠️  devenv not found in PATH, skipping..."
+    let devenv_path = (try { resolve_preferred_devenv_path } catch { null })
+    if $devenv_path == null {
+        print "   ⚠️  preferred devenv CLI not found, skipping..."
         print ""
     } else {
         # First run to ensure cache is warm
         print "   Warming cache..."
-        ^bash -c $"cd ($yazelix_dir) && devenv shell -- bash -c 'true'"
+        do {
+            cd $yazelix_dir
+            ^$devenv_path shell -- bash -c 'true'
+        }
 
         print "   Running benchmark..."
         $devenv_times = (seq 1 $iterations | each {|i|
             let start = (date now)
-            let _ = (^bash -c $"cd ($yazelix_dir) && devenv shell -- bash -c 'true'")
+            let _ = (do {
+                cd $yazelix_dir
+                ^$devenv_path shell -- bash -c 'true'
+            })
             let end = (date now)
             ($end - $start) | into int
         })
@@ -143,7 +152,7 @@ def main [] {
             print $"   Use hash checking with the fastest method: (if $fastest == $nushell_avg { 'Nushell hash' } else { 'Nix hash' })"
         }
     } else {
-        print "⚠️  devenv benchmarks skipped (devenv not in PATH)"
+        print "⚠️  devenv benchmarks skipped (preferred CLI not available)"
     }
 
     print ""

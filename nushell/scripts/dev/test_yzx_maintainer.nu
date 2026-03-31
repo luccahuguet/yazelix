@@ -188,7 +188,7 @@ def test_nushell_initializer_restores_current_path_first [] {
         let content = if ($aggregate | path exists) { open --raw $aggregate } else { "" }
         rm -rf $temp_home
 
-        if ($output.exit_code == 0) and ($content | str contains '$env.PATH = ($env.PATH | append $initial_path | uniq)') {
+        if ($output.exit_code == 0) and ($content | str contains '$env.PATH = ($current_path | append $initial_path | uniq)') {
             print "  ✅ Generated initializer keeps current PATH entries ahead of the saved PATH"
             true
         } else {

@@ -148,9 +148,9 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
                 ""
                 "# --- Tool initializers above ---"
                 ""
-                "# Restore devenv paths that may have been lost during initialization"
-                "# Merge initial_path with current PATH, preserving devenv store paths"
-                "$env.PATH = ($env.PATH | append $initial_path | uniq)"
+                "# Restore any PATH entries lost during initialization without letting stale saved entries outrank the current shell PATH"
+                "let current_path = $env.PATH"
+                "$env.PATH = ($current_path | append $initial_path | uniq)"
                 ""
             ] | str join "\n"
         } else {
