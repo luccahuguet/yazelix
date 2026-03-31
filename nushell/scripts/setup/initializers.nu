@@ -25,9 +25,9 @@ def make_initializer_result [
     status: string
     tool: string
     shell: string
-    reason?: string
-    error?: string
-    file?: string
+    reason: string = ""
+    error: string = ""
+    file: string = ""
 ] {
     mut result = {
         status: $status
@@ -35,13 +35,13 @@ def make_initializer_result [
         shell: $shell
     }
 
-    if $reason != null {
+    if ($reason | is-not-empty) {
         $result = ($result | upsert reason $reason)
     }
-    if $error != null {
+    if ($error | is-not-empty) {
         $result = ($result | upsert error $error)
     }
-    if $file != null {
+    if ($file | is-not-empty) {
         $result = ($result | upsert file $file)
     }
 
@@ -121,14 +121,14 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
                     }
                     let init_content = (normalize_initializer_content $shell.name $raw_init_content)
                     $init_content | save --force $output_file
-                    make_initializer_result "success" $tool.name $shell.name null null $output_file
+                    make_initializer_result "success" $tool.name $shell.name "" "" $output_file
                 } catch { |error|
                     # On failure, record and remove any previous output
                     if ($output_file | path exists) { rm $output_file }
                     if $tool.required {
-                        make_initializer_result "required-failed" $tool.name $shell.name null $error.msg
+                        make_initializer_result "required-failed" $tool.name $shell.name "" $error.msg
                     } else {
-                        make_initializer_result "failed" $tool.name $shell.name null $error.msg
+                        make_initializer_result "failed" $tool.name $shell.name "" $error.msg
                     }
                 }
             }
