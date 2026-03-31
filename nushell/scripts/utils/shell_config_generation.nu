@@ -22,10 +22,15 @@ export def get_yazelix_runtime_config_path [shell: string, yazelix_dir: string] 
     ($yazelix_dir | path join $relative_path)
 }
 
+export def get_yzx_cli_path [] {
+    ($env.HOME | path join ".local" "bin" "yzx")
+}
+
 # Get the complete yazelix section content for a shell
 export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
     let config_file = (get_yazelix_runtime_config_path $shell $yazelix_dir)
     let yzx_core_path = ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu")
+    let yzx_cli_path = (get_yzx_cli_path)
 
     # Generate shell-specific conditional loading + yzx function (always available)
     let section_body = if $shell == "bash" or $shell == "zsh" {
@@ -35,7 +40,7 @@ export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
             "fi"
             "# yzx command - always available for launching/managing yazelix"
             "yzx() {"
-            $"    nu -c \"use ($yzx_core_path) *; yzx $*\""
+            $"    \"($yzx_cli_path)\" \"$@\""
             "}"
         ] | str join "\n"
     } else if $shell == "fish" {
@@ -45,7 +50,7 @@ export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
             "end"
             "# yzx command - always available for launching/managing yazelix"
             "function yzx --description \"Yazelix command suite\""
-            $"    nu -c \"use ($yzx_core_path) *; yzx $argv\""
+            $"    \"($yzx_cli_path)\" $argv"
             "end"
         ] | str join "\n"
     } else {

@@ -90,7 +90,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
         print "🔧 Setting up Yazelix environment (installing shell hooks and dependencies)..."
         print "   This may take several minutes on first run."
 
-        run_in_devenv_shell_command "sh" "-c" "echo '✅ Setup complete! Shell hooks installed.'" --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --skip-welcome --verbose=$verbose_mode --force-refresh=$needs_refresh
+        run_in_devenv_shell_command "sh" "-c" "echo '✅ Setup complete! Shell hooks installed.'" --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --force-shell --verbose=$verbose_mode --force-refresh=$needs_refresh
 
         print ""
         print "📝 Next steps:"
@@ -162,7 +162,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
         }
 
         # Use shared devenv runner (consolidates with yzx env)
-        run_in_devenv_shell_command "nu" ...$inner_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --skip-welcome --verbose=$verbose_mode --force-refresh=($needs_refresh and (not $reuse_mode)) --refresh-output-mode $refresh_output
+        run_in_devenv_shell_command "nu" ...$inner_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --verbose=$verbose_mode --force-refresh=($needs_refresh and (not $reuse_mode)) --refresh-output-mode $refresh_output
     }
 }
 

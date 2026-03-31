@@ -3,7 +3,7 @@
 # Generic shell hook installation and migration for all supported shells
 
 use ../utils/constants_with_helpers.nu *
-use ../utils/config_manager.nu migrate_shell_hooks
+use ../utils/config_manager.nu [extract_yazelix_section migrate_shell_hooks rewrite_shell_hooks]
 
 # Setup yazelix hooks for a specific shell with automatic v1->v2 migration
 export def setup_shell_hooks [
@@ -73,11 +73,24 @@ export def setup_shell_hooks [
     }
 
     let config_content = (open $shell_config)
+    let existing_section = extract_yazelix_section $shell_config
 
-    # Check if v4 hooks already exist (current version)
+    # Check if v4 hooks already exist and still match the current generated content
     if ($config_content | str contains $YAZELIX_START_MARKER) {
-        if not $quiet_mode {
-            print $"✅ ($shell | str capitalize) config already sourced"
+        if $existing_section.exists and ($existing_section.version == 4) and ($config_content | str contains $section_content) {
+            if not $quiet_mode {
+                print $"✅ ($shell | str capitalize) config already sourced"
+            }
+            return
+        }
+
+        let rewrite = rewrite_shell_hooks $shell $shell_config $yazelix_dir
+        if $rewrite.rewritten {
+            if not $quiet_mode {
+                print $"🔄 Refreshed stale ($shell | str capitalize) hooks \(backup: ($rewrite.backup)\)"
+            }
+        } else if not $quiet_mode {
+            print $"⚠️  Refresh skipped: ($rewrite.reason)"
         }
         return
     }

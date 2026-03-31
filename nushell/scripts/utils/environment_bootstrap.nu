@@ -351,7 +351,9 @@ export def run_in_devenv_shell_command [
     --max-jobs: string = ""  # Concurrent build job strategy or explicit count from yazelix config
     --build-cores: string = ""  # Build core strategy or explicit count from yazelix config
     --cwd: string = ""      # Run command in this directory
+    --runtime-dir: string = ""  # Explicit Yazelix runtime root to expose inside devenv
     --env-only         # Set YAZELIX_ENV_ONLY=true
+    --force-shell      # Enter devenv shell even when already in an activated Yazelix environment
     --verbose          # Enable verbose output
     --quiet            # Run devenv with --quiet flag
     --skip-welcome     # Set shellhook-only welcome suppression for bootstrap entry
@@ -363,6 +365,7 @@ export def run_in_devenv_shell_command [
     let refresh_output = resolve_refresh_output_mode $refresh_output_mode
     let requested_max_jobs = $max_jobs
     let requested_build_cores = $build_cores
+    let requested_runtime_dir = $runtime_dir
 
     if ($command | is-empty) {
         print "Error: No command provided"
@@ -376,6 +379,7 @@ export def run_in_devenv_shell_command [
 
     let requested_cwd = $cwd
     let resolved_cwd = if ($requested_cwd | is-not-empty) { $requested_cwd | path expand } else { "" }
+    let resolved_runtime_dir = if ($requested_runtime_dir | is-not-empty) { $requested_runtime_dir | path expand } else { "" }
     let exec_cmd = if ($resolved_cwd | is-not-empty) {
         ["env", "-C", $resolved_cwd] | append $command | append $args
     } else {
@@ -384,7 +388,7 @@ export def run_in_devenv_shell_command [
     let exec_bin = ($exec_cmd | first)
     let exec_args = ($exec_cmd | skip 1)
 
-    if $env_status.already_in_env and (not $force_refresh) {
+    if $env_status.already_in_env and (not $force_refresh) and (not $force_shell) {
         if $verbose_mode {
             print "⚙️ Executing command directly in existing environment"
         }
@@ -427,6 +431,13 @@ export def run_in_devenv_shell_command [
     }
     if (is_unfree_enabled) {
         $env_vars = ($env_vars | insert NIXPKGS_ALLOW_UNFREE "1")
+    }
+    if ($resolved_runtime_dir | is-not-empty) {
+        $env_vars = (
+            $env_vars
+            | insert YAZELIX_RUNTIME_DIR $resolved_runtime_dir
+            | insert YAZELIX_DIR $resolved_runtime_dir
+        )
     }
 
     if ($env_vars | is-empty) {

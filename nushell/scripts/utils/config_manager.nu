@@ -106,10 +106,10 @@ export def check_config_versions [yazelix_dir: string] {
     use ./constants_with_helpers.nu *
 
     let configs = [
-        { name: "bash", file: ($SHELL_CONFIGS.bash | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "bash" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu") }
-        { name: "nushell", file: ($SHELL_CONFIGS.nushell | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "nushell" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu") }
-        { name: "fish", file: ($SHELL_CONFIGS.fish | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "fish" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu") }
-        { name: "zsh", file: ($SHELL_CONFIGS.zsh | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "zsh" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu") }
+        { name: "bash", file: ($SHELL_CONFIGS.bash | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "bash" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu"), expected_yzx_cli: (get_yzx_cli_path) }
+        { name: "nushell", file: ($SHELL_CONFIGS.nushell | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "nushell" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu"), expected_yzx_cli: (get_yzx_cli_path) }
+        { name: "fish", file: ($SHELL_CONFIGS.fish | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "fish" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu"), expected_yzx_cli: (get_yzx_cli_path) }
+        { name: "zsh", file: ($SHELL_CONFIGS.zsh | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "zsh" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu"), expected_yzx_cli: (get_yzx_cli_path) }
     ]
 
     $configs | each { |config|
@@ -131,9 +131,9 @@ export def check_config_versions [yazelix_dir: string] {
                 let expected_yzx_lines = if $config.name == "nushell" {
                     [ $"use ($config.expected_yzx_core) *" ]
                 } else if $config.name == "fish" {
-                    [ $"    nu -c \"use ($config.expected_yzx_core) *; yzx $argv\"" ]
+                    [ $"    \"($config.expected_yzx_cli)\" $argv" ]
                 } else {
-                    [ $"    nu -c \"use ($config.expected_yzx_core) *; yzx $*\"" ]
+                    [ $"    \"($config.expected_yzx_cli)\" \"$@\"" ]
                 }
                 if (
                     ($expected_source_lines | any { |line| $section.content | str contains $line })
@@ -144,6 +144,60 @@ export def check_config_versions [yazelix_dir: string] {
                     { shell: $config.name, status: "outdated", file: $config.file, current_content: $section.content }
                 }
             }
+        }
+    }
+}
+
+export def rewrite_shell_hooks [shell: string, config_file: string, yazelix_dir: string]: nothing -> record {
+    use ./constants_with_helpers.nu *
+
+    if not ($config_file | path exists) {
+        return { rewritten: false, reason: "config file not found" }
+    }
+
+    let section = extract_yazelix_section $config_file
+    if not $section.exists {
+        return { rewritten: false, reason: "no yazelix section found" }
+    }
+
+    let timestamp = (date now | format date "%Y%m%d_%H%M%S")
+    let backup_file = $"($config_file).yazelix-backup-($timestamp)"
+
+    try {
+        cp $config_file $backup_file
+
+        let content_lines = (open $config_file | lines)
+        let new_yazelix_section = get_yazelix_section_content $shell $yazelix_dir
+        let before_section = ($content_lines | take ($section.start_line))
+        let after_section = ($content_lines | skip ($section.end_line + 1))
+
+        let new_content = (
+            $before_section
+            | append ($new_yazelix_section | lines)
+            | append $after_section
+            | str join "\n"
+        )
+
+        $new_content | save -f $config_file
+
+        {
+            rewritten: true
+            backup: $backup_file
+            shell: $shell
+            config: $config_file
+            from_version: $section.version
+            to_version: 4
+        }
+    } catch { |err|
+        if ($backup_file | path exists) {
+            try {
+                cp $backup_file $config_file
+            }
+        }
+        {
+            rewritten: false
+            reason: $"rewrite failed: ($err.msg)"
+            error: $err
         }
     }
 }
@@ -174,53 +228,21 @@ export def migrate_shell_hooks [shell: string, config_file: string, yazelix_dir:
         return { migrated: false, reason: "unknown version" }
     }
 
-    # Create timestamped backup
-    let timestamp = (date now | format date "%Y%m%d_%H%M%S")
-    let backup_file = $"($config_file).yazelix-backup-($timestamp)"
-
-    try {
-        # Backup original file
-        cp $config_file $backup_file
-
-        # Read file content as lines
-        let content_lines = (open $config_file | lines)
-
-        # Generate new v4 section content (includes direnv integration)
-        let new_yazelix_section = get_yazelix_section_content $shell $yazelix_dir
-
-        # Replace old section with new v4 section
-        let before_section = ($content_lines | take ($section.start_line))
-        let after_section = ($content_lines | skip ($section.end_line + 1))
-
-        let new_content = (
-            $before_section
-            | append ($new_yazelix_section | lines)
-            | append $after_section
-            | str join "\n"
-        )
-
-        # Write new content
-        $new_content | save -f $config_file
-
+    let rewrite = rewrite_shell_hooks $shell $config_file $yazelix_dir
+    if $rewrite.rewritten {
         {
             migrated: true
-            backup: $backup_file
-            shell: $shell
-            config: $config_file
-            from_version: $section.version
-            to_version: 4
+            backup: $rewrite.backup
+            shell: $rewrite.shell
+            config: $rewrite.config
+            from_version: $rewrite.from_version
+            to_version: $rewrite.to_version
         }
-    } catch { |err|
-        # If something went wrong and backup exists, try to restore
-        if ($backup_file | path exists) {
-            try {
-                cp $backup_file $config_file
-            }
-        }
+    } else {
         {
             migrated: false
-            reason: $"migration failed: ($err.msg)"
-            error: $err
+            reason: $rewrite.reason
+            error: ($rewrite.error? | default null)
         }
     }
 }
