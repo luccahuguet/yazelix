@@ -125,6 +125,7 @@ When creating new files or directories, always use underscores to maintain consi
 
 - Prefer `yzx run ...` for project-scoped tool invocations instead of raw `devenv shell ...` when running tools provided by the Yazelix environment.
 - Use raw `devenv shell ...` only when `yzx run ...` is not a clean fit for the task, such as larger multi-command shell scripts or environment debugging.
+- For agent-driven Yazelix or `devenv` invocations, always suppress the welcome/UI path by default. Prefer entrypoints that already do this, such as `yzx run ...`, or pass the equivalent `--skip-welcome` flow when calling Yazelix bootstrap/runtime scripts through `devenv shell ...`. Do not launch the interactive welcome screen or its animations unless the task is explicitly about validating that UX.
 
 ## Command Surface Policy
 
