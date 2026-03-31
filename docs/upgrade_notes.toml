@@ -2,9 +2,12 @@
 version = "unreleased"
 date = ""
 headline = "Pending changes"
-summary = ["No unreleased changes yet."]
+summary = ["Choose nix run as the install front door."]
 upgrade_impact = "no_user_action"
-acknowledged_guarded_changes = []
+acknowledged_guarded_changes = [
+    "yazelix_default.toml",
+    "home_manager/module.nix",
+]
 migration_ids = []
 manual_actions = []
 

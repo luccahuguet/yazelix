@@ -17,9 +17,13 @@ Highlights:
 
 ## Unreleased
 
-Pending changes.
+Choose nix run as the install front door.
 
-No unreleased changes yet.
+Upgrade impact: no user action required
+
+Highlights:
+- Simplified installation instructions to use `nix run` as the default method.
+- Streamlined README quick-start for new users.
 
 ## v13.10 - 2026-03-30
 
