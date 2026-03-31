@@ -113,13 +113,15 @@ export def get_devenv_base_command [
     let yazelix_dir = resolve_yazelix_dir
     let devenv_path = (resolve_preferred_devenv_path)
     let nix_config = get_yazelix_nix_config
-    let resolved_max_jobs = if ($max_jobs | is-not-empty) {
-        get_max_jobs $max_jobs
+    let requested_max_jobs = ($max_jobs | default "")
+    let requested_build_cores = ($build_cores | default "")
+    let resolved_max_jobs = if ($requested_max_jobs | is-not-empty) {
+        get_max_jobs $requested_max_jobs
     } else {
         get_max_jobs
     }
-    let max_cores = if ($build_cores | is-not-empty) {
-        get_max_cores $build_cores
+    let max_cores = if ($requested_build_cores | is-not-empty) {
+        get_max_cores $requested_build_cores
     } else {
         get_max_cores
     }
@@ -156,7 +158,9 @@ export def rebuild_yazelix_environment [
     --output-mode: string = "normal"  # quiet | normal | full
 ] {
     let refresh_output = resolve_refresh_output_mode $output_mode
-    let devenv_base = get_devenv_base_command --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache=$refresh_eval_cache --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full")
+    let requested_max_jobs = ($max_jobs | default "")
+    let requested_build_cores = ($build_cores | default "")
+    let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --refresh-eval-cache=$refresh_eval_cache --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full")
     let devenv_cmd = ($devenv_base | append ["build", "shell"])
     let cmd_bin = ($devenv_cmd | first)
     let cmd_args = ($devenv_cmd | skip 1)
@@ -253,6 +257,8 @@ export def run_in_devenv_shell [
     let env_status = check_environment_status
     let verbose_mode = $verbose
     let refresh_output = resolve_refresh_output_mode $refresh_output_mode
+    let requested_max_jobs = ($max_jobs | default "")
+    let requested_build_cores = ($build_cores | default "")
 
     if $verbose_mode {
         print $"🔁 IN_NIX_SHELL? ($env_status.in_nix_shell) | IN_YAZELIX_SHELL? ($env_status.in_yazelix_shell)"
@@ -287,7 +293,7 @@ export def run_in_devenv_shell [
             $quiet
         }
         let devenv_verbose = $force_refresh and ($refresh_output == "full") and (not $quiet_devenv)
-        let devenv_base = get_devenv_base_command --max-jobs $max_jobs --build-cores $build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose
+        let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose
         let devenv_cmd = ($devenv_base | append ["shell", "--no-tui", "--no-reload", "--", "sh", "-c", $command])
         let devenv_bin = ($devenv_cmd | first)
         let devenv_args = ($devenv_cmd | skip 1)
@@ -331,6 +337,8 @@ export def run_in_devenv_shell_command [
     let env_status = check_environment_status
     let verbose_mode = $verbose
     let refresh_output = resolve_refresh_output_mode $refresh_output_mode
+    let requested_max_jobs = ($max_jobs | default "")
+    let requested_build_cores = ($build_cores | default "")
 
     if ($command | is-empty) {
         print "Error: No command provided"
@@ -342,7 +350,8 @@ export def run_in_devenv_shell_command [
         exit 1
     }
 
-    let resolved_cwd = if ($cwd | is-not-empty) { $cwd | path expand } else { "" }
+    let requested_cwd = ($cwd | default "")
+    let resolved_cwd = if ($requested_cwd | is-not-empty) { $requested_cwd | path expand } else { "" }
     let exec_cmd = if ($resolved_cwd | is-not-empty) {
         ["env", "-C", $resolved_cwd] | append $command | append $args
     } else {
@@ -380,7 +389,7 @@ export def run_in_devenv_shell_command [
         $quiet
     }
     let devenv_verbose = $force_refresh and ($refresh_output == "full") and (not $quiet_devenv)
-    let devenv_base = get_devenv_base_command --max-jobs $max_jobs --build-cores $build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose
+    let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose
     let devenv_cmd = ($devenv_base | append ["shell", "--no-tui", "--no-reload", "--"] | append $exec_cmd)
     let devenv_bin = ($devenv_cmd | first)
     let devenv_args = ($devenv_cmd | skip 1)

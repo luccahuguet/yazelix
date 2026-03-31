@@ -10,7 +10,8 @@ def test_popup_command_prefers_configured_default [] {
     print "🧪 Testing yzx popup uses the configured popup_program by default..."
 
     try {
-        let result = (resolve_yzx_popup_command ["lazygit"])
+        let configured_program = ["lazygit"]
+        let result = (resolve_yzx_popup_command $configured_program)
 
         if $result == ["lazygit"] {
             print "  ✅ yzx popup defaults to the configured popup_program"
@@ -70,7 +71,7 @@ def test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages [] {
         }
     ]
 
-    let result = (try {
+    try {
         let failures = (
             $cases
             | each {|case|
@@ -127,9 +128,7 @@ def test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages [] {
     } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
-    })
-
-    $result
+    }
 }
 
 def test_popup_toggle_wrapper_surfaces_permission_denials [] {
@@ -166,7 +165,7 @@ export def run_popup_tests [] {
 
 def main [] {
     let results = (run_popup_tests)
-    let passed = ($results | where $it == true | length)
+    let passed = ($results | where {|result| $result } | length)
     let total = ($results | length)
 
     print ""

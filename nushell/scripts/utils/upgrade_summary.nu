@@ -59,7 +59,10 @@ export def get_upgrade_note_entry [version: string = $YAZELIX_VERSION] {
         return null
     }
 
-    let entry = ($registry.releases | get $version)
+    let entry = ($registry.releases | get -o $version)
+    if $entry == null {
+        return null
+    }
     if not (($entry | describe) | str contains "record") {
         return null
     }

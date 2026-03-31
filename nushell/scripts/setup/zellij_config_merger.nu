@@ -10,14 +10,13 @@ use ./zellij_plugin_paths.nu [PANE_ORCHESTRATOR_PLUGIN_ALIAS get_pane_orchestrat
 
 # Fetch Zellij default configuration
 def get_zellij_defaults [] {
-    let result = (try { zellij setup --dump-config } catch {|err| 
+    try { zellij setup --dump-config } catch {|err| 
         print $"❌ CRITICAL ERROR: Cannot fetch Zellij defaults: ($err.msg)"
         print "   Zellij must be available in PATH for Yazelix to work properly."
         print "   This indicates the merger is running outside the Nix environment."
         print "   Yazelix cannot function without proper Zellij configuration."
         exit 1
-    })
-    $result
+    }
 }
 
 def get_zellij_user_config_path [] {

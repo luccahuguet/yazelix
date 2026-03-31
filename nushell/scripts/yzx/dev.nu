@@ -275,10 +275,6 @@ def resolve_update_canary_selection [requested: list<string>] {
     $normalized | uniq
 }
 
-def write_update_canary_config [config: record, output_path: string] {
-    ($config | to toml) | save --force --raw $output_path
-}
-
 def materialize_update_canaries [selected: list<string>] {
     let default_config_path = ((get_yazelix_dir) | path join "yazelix_default.toml")
     if not ($default_config_path | path exists) {
@@ -411,7 +407,7 @@ def print_update_canary_summary [results: list] {
 }
 
 def print_update_canary_failure_details [results: list] {
-    let failures = ($results | where ok == false)
+    let failures = ($results | where {|result| not $result.ok })
     if ($failures | is-empty) {
         return
     }
@@ -991,9 +987,10 @@ export def "yzx dev bench" [
     --verbose(-v)              # Show detailed output
 ] {
     mut args = ["--iterations", $iterations]
+    let requested_terminal = ($terminal | default "")
 
-    if ($terminal | is-not-empty) {
-        $args = ($args | append ["--terminal", $terminal])
+    if ($requested_terminal | is-not-empty) {
+        $args = ($args | append ["--terminal", $requested_terminal])
     }
 
     if $verbose {

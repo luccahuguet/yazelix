@@ -372,6 +372,11 @@ export def "yzx repair zellij-permissions" [] {
 export def "yzx update" [
     --verbose  # Show verbose output for update commands
 ] {
+    if $verbose {
+        print "Verbose mode is forwarded by the concrete update subcommands below."
+        print ""
+    }
+
     print "User-facing updates:"
     print "  yzx update all        Update both the devenv CLI and the Yazelix repo"
     print "  yzx update devenv     Update the devenv CLI in your Nix profile"

@@ -10,7 +10,7 @@ use sweep/sweep_process_manager.nu [get_terminal_pids, cleanup_visual_test]
 # Get terminals that are actually available in the current nix environment
 def get_available_terminals []: nothing -> list<string> {
     $SUPPORTED_TERMINALS | where {|term|
-        let meta = $TERMINAL_METADATA | get $term
+        let meta = ($TERMINAL_METADATA | get -o $term | default {})
         let wrapper = $meta.wrapper
         let direct = $term
         (command_exists $wrapper) or (command_exists $direct)
@@ -141,6 +141,7 @@ export def main [
     --terminal(-t): string     # Test only specific terminal
     --verbose(-v)              # Show detailed output
 ] {
+    let requested_terminal = ($terminal | default "")
     print "========================================="
     print "Yazelix Terminal Launch Benchmark"
     print "========================================="
@@ -177,20 +178,20 @@ export def main [
     }
 
     # Determine which terminals to test
-    let terminals_to_test = if ($terminal | is-not-empty) {
-        if $terminal in $available_terminals {
-            [$terminal]
-        } else if $terminal in $SUPPORTED_TERMINALS {
-            print $"❌ Terminal '($terminal)' is supported but not available in your environment"
+    let terminals_to_test = if ($requested_terminal | is-not-empty) {
+        if $requested_terminal in $available_terminals {
+            [$requested_terminal]
+        } else if $requested_terminal in $SUPPORTED_TERMINALS {
+            print $"❌ Terminal '($requested_terminal)' is supported but not available in your environment"
             print ""
             print "💡 To add it, edit ~/.config/yazelix/user_configs/yazelix.toml:"
             let config_dir = (get_yazelix_config_dir)
             print $"   config path: ($config_dir | path join \"yazelix.toml\")"
-            print $"   terminals = [\"($terminal)\"];"
+            print $"   terminals = [\"($requested_terminal)\"];"
             print "   Then reload: yzx launch --here"
             exit 1
         } else {
-            print $"❌ Terminal '($terminal)' is not supported"
+            print $"❌ Terminal '($requested_terminal)' is not supported"
             print $"   Supported terminals: (($SUPPORTED_TERMINALS | str join ', '))"
             exit 1
         }
@@ -200,6 +201,9 @@ export def main [
 
     print $"🔍 Benchmarking terminals: (($terminals_to_test | str join ', '))"
     print $"🔢 Iterations per terminal: ($iterations)"
+    if $verbose {
+        print $"🔎 Full available terminal set: (($available_terminals | str join ', '))"
+    }
     print ""
 
     # Run benchmarks
@@ -245,7 +249,7 @@ export def main [
     print ""
     print "📈 Rankings:"
     for i in 0..(($sorted_results | length) - 1) {
-        let result = ($sorted_results | get $i)
+        let result = ($sorted_results | get -o $i)
         let rank = $i + 1
         print $"   ($rank). ($result.terminal) - (format_time $result.avg_time) avg (format_time $result.min_time) min)"
     }

@@ -198,7 +198,7 @@ export def main [] {
         (run_ci_summary_without_changelog_case)
         (run_ci_series_only_notes_case)
     ]
-    let passed = ($results | where $it == true | length)
+    let passed = ($results | where {|result| $result } | length)
     let total = ($results | length)
 
     print ""

@@ -140,7 +140,7 @@ export def main [] {
         (run_known_migration_case)
         (run_unknown_invalid_case)
     ]
-    let passed = ($results | where $it == true | length)
+    let passed = ($results | where {|result| $result } | length)
     let total = ($results | length)
 
     print ""

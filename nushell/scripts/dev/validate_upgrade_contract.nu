@@ -357,8 +357,8 @@ export def main [
 ] {
     let changelog_path = ($REPO_ROOT | path join "CHANGELOG.md")
     let notes_path = ($REPO_ROOT | path join "docs" "upgrade_notes.toml")
+    let requested_diff_base = ($diff_base | default "")
     let changelog = (load_changelog)
-    let notes = (load_notes)
     let entries = (get_release_entries)
     let migration_ids = (get_config_migration_rules | get id)
     mut errors = []
@@ -390,7 +390,7 @@ export def main [
     }
 
     if $ci {
-        $errors = ($errors | append (validate_ci_rules $entries (get_diff_base $diff_base)))
+        $errors = ($errors | append (validate_ci_rules $entries (get_diff_base $requested_diff_base)))
     }
 
     if not ($errors | is-empty) {

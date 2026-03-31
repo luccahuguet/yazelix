@@ -6,6 +6,10 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
     # Import constants for XDG paths
     use ../utils/constants.nu *
 
+    if not ($yazelix_dir | path exists) {
+        error make {msg: $"Yazelix directory does not exist: ($yazelix_dir)"}
+    }
+
     # Parse shells to configure from comma-separated string
     let shells_to_configure = if ($shells_to_configure_str | is-empty) {
         ["nu", "bash", "fish", "zsh"]
@@ -76,7 +80,7 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
                 try {
                     # Use tool-specific shell name override if available
                     let effective_shell_name = if ($tool.name in $shell.tool_overrides) {
-                        $shell.tool_overrides | get $tool.name
+                        $shell.tool_overrides | get -o $tool.name
                     } else {
                         $shell.name
                     }

@@ -31,7 +31,11 @@ def main [--profile] {
     print ""
 
     let fixture = (setup_test_home)
-    let profiling = (test_profiling_enabled --profile=$profile)
+    let profiling = if $profile {
+        test_profiling_enabled --profile
+    } else {
+        test_profiling_enabled
+    }
     let suite_results = (with-env { HOME: $fixture.tmp_home, YAZELIX_DIR: $fixture.config_dir } {
         [
             (build_profiled_suite_result "core" { run_core_canonical_tests })
@@ -47,7 +51,7 @@ def main [--profile] {
     rm -rf $fixture.tmp_home
 
     let results = ($suite_results | each {|suite| $suite.results } | flatten)
-    let passed = ($results | where $it == true | length)
+    let passed = ($results | where {|result| $result } | length)
     let total = ($results | length)
 
     print ""

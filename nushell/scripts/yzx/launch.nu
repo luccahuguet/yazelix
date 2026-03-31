@@ -42,6 +42,8 @@ export def "yzx launch" [
     let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let show_refresh_notice = ($refresh_output != "quiet")
     let manage_terminals = ($config.manage_terminals? | default true)
+    let requested_path = ($path | default "")
+    let requested_terminal = ($terminal | default "")
     mut printed_refresh_notice = false
     if $verbose_mode {
         print $"🔍 Config hash changed? ($needs_refresh)"
@@ -75,8 +77,8 @@ export def "yzx launch" [
         # Determine directory override: explicit --home or --path, else let start_yazelix handle it
         let cwd_override = if $home {
             $env.HOME
-        } else if ($path != null) {
-            $path
+        } else if ($requested_path | is-not-empty) {
+            $requested_path
         } else {
             null
         }
@@ -119,8 +121,8 @@ export def "yzx launch" [
     # Launch new terminal
     let launch_cwd = if $home {
             $env.HOME
-        } else if ($path | is-not-empty) {
-            $path
+        } else if ($requested_path | is-not-empty) {
+            $requested_path
         } else {
             pwd
         }
@@ -135,8 +137,8 @@ export def "yzx launch" [
             } else {
                 $base_args
             }
-            let mut_args = if ($terminal | is-not-empty) {
-                $mut_args | append "--terminal" | append $terminal
+            let mut_args = if ($requested_terminal | is-not-empty) {
+                $mut_args | append "--terminal" | append $requested_terminal
             } else {
                 $mut_args
             }
@@ -189,8 +191,8 @@ export def "yzx launch" [
                 } else {
                     $base_args
                 }
-                let launch_args = if ($terminal | is-not-empty) {
-                    $launch_args | append "--terminal" | append $terminal
+                let launch_args = if ($requested_terminal | is-not-empty) {
+                    $launch_args | append "--terminal" | append $requested_terminal
                 } else {
                     $launch_args
                 }
@@ -219,8 +221,8 @@ export def "yzx launch" [
             if ($launch_cwd | is-not-empty) {
                 $launch_args = ($launch_args | append $launch_cwd)
             }
-            if ($terminal | is-not-empty) {
-                $launch_args = ($launch_args | append "--terminal" | append $terminal)
+            if ($requested_terminal | is-not-empty) {
+                $launch_args = ($launch_args | append "--terminal" | append $requested_terminal)
             }
             if $verbose_mode {
                 $launch_args = ($launch_args | append "--verbose")

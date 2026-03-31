@@ -56,7 +56,7 @@ def record_has_path [data: record, path: list<string>] {
             return false
         }
 
-        $current = ($current | get $segment)
+        $current = ($current | get -o $segment)
     }
 
     true

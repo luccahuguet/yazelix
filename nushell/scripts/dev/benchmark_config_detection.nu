@@ -25,7 +25,7 @@ def main [] {
     let config_basename = ($config_file | path basename)
 
     print $"📁 Config file: ($config_file)"
-    print $"📏 File size: (ls $config_file | get 0.size | into string)"
+    print $"📏 File size: (ls $config_file | get -o 0.size | default 0 | into string)"
     print ""
 
     let iterations = 10

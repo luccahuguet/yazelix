@@ -13,7 +13,7 @@ export def setup_shell_hooks [
     required: bool = false  # If true, error on missing config; if false, skip silently
 ]: nothing -> nothing {
     # Get shell-specific paths
-    let shell_config = ($SHELL_CONFIGS | get $shell | str replace "~" $env.HOME)
+    let shell_config = (($SHELL_CONFIGS | get -o $shell | default "") | str replace "~" $env.HOME)
 
     # Map shell to correct file extension
     let shell_ext = match $shell {

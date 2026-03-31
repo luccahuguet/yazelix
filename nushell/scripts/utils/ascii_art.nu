@@ -48,7 +48,7 @@ export def resolve_welcome_style [welcome_style: string, random_index?: int] {
         $provided mod ($pool | length)
     }
 
-    $pool | get $selected_index
+    $pool | get -o $selected_index
 }
 
 def trim_resting_frame [frames: list<list<string>>] {
@@ -215,14 +215,14 @@ def colorize_logo_text [text: string] {
         if $item.item == " " {
             " "
         } else {
-            let color = ($palette | get ($item.index mod ($palette | length)))
+            let color = ($palette | get -o ($item.index mod ($palette | length)) | default $colors.red)
             $"($color)($item.item)($reset)"
         }
     }
     | str join ""
 }
 
-def colorize_body_line [text: string, index: int] {
+def colorize_body_line [text: string] {
     let colors = get_yazelix_colors
     let base_color = $colors.green
     let accent_color = $colors.blue
@@ -249,14 +249,14 @@ def colorize_footer_text [text: string] {
 def colorize_boid_char [char: string, index: int] {
     let colors = get_yazelix_colors
     let palette = [$colors.cyan, $colors.blue, $colors.purple]
-    let color = ($palette | get ($index mod ($palette | length)))
+    let color = ($palette | get -o ($index mod ($palette | length)) | default $colors.cyan)
     $"($color)($char)($colors.reset)"
 }
 
 def colorize_game_of_life_char [x: int, y: int] {
     let colors = get_yazelix_colors
     let palette = [$colors.green, $colors.cyan, $colors.blue, $colors.purple]
-    let color = ($palette | get (($x + $y) mod ($palette | length)))
+    let color = ($palette | get -o (($x + $y) mod ($palette | length)) | default $colors.green)
     $"($color)█($colors.reset)"
 }
 
@@ -290,7 +290,7 @@ def build_logo_card_frame [spec: record, shown_body_count: int, accent: string =
             }
 
             if $item.index < $shown_body_count {
-                colorize_body_line $aligned_line $item.index
+                colorize_body_line $aligned_line
             } else {
                 $"($colors.faint)(pad_text_right "" $inner_width)($colors.reset)"
             }
@@ -538,7 +538,7 @@ def get_boid_positions [spec: record, phase: string] {
     }
 }
 
-def render_boid_row [width: int, row_index: int, points: list<record>, caption?: string] {
+def render_boid_row [width: int, row_index: int, points: list<record>] {
     0..($width - 1)
     | each {|x|
         let point = ($points | where x == $x and y == $row_index | get -o 0)
@@ -610,7 +610,15 @@ def unique_game_of_life_cells [cells: list<record>] {
 }
 
 def offset_game_of_life_shape [shape: list<list<int>>, offset_x: int, offset_y: int] {
-    $shape | each {|pair| make_game_of_life_cell ($pair.0 + $offset_x) ($pair.1 + $offset_y) }
+    $shape | each {|pair|
+        let x = ($pair | get -o 0)
+        let y = ($pair | get -o 1)
+        if ($x == null) or ($y == null) {
+            error make {msg: $"Invalid game-of-life shape pair: ($pair | to json -r)"}
+        }
+
+        make_game_of_life_cell ($x + $offset_x) ($y + $offset_y)
+    }
 }
 
 def get_right_glider_shape [] {
@@ -635,7 +643,13 @@ def add_neighbor_count [counts: record, x: int, y: int] {
 
 def split_game_of_life_key [key: string] {
     let parts = ($key | split row ",")
-    { x: ($parts | get 0 | into int), y: ($parts | get 1 | into int) }
+    let x_part = ($parts | get -o 0)
+    let y_part = ($parts | get -o 1)
+    if ($x_part == null) or ($y_part == null) {
+        error make {msg: $"Invalid game-of-life cell key: ($key)"}
+    }
+
+    { x: ($x_part | into int), y: ($y_part | into int) }
 }
 
 def count_game_of_life_neighbors_record [cells: list<record>, width: int, height: int] {
@@ -674,16 +688,6 @@ def step_game_of_life_cells_fast [cells: list<record>, width: int, height: int] 
     }
 
     unique_game_of_life_cells $next_cells
-}
-
-def step_game_of_life_cells_n_fast [cells: list<record>, width: int, height: int, generations: int] {
-    mut current = $cells
-
-    for _ in 1..$generations {
-        $current = (step_game_of_life_cells_fast $current $width $height)
-    }
-
-    $current
 }
 
 def build_live_game_of_life_seed [spec: record] {

@@ -85,7 +85,7 @@ export def infer_issue_type_from_body [body?: string] {
     } else {
         (
             $matches
-            | get 0.issue_type
+            | get -o 0.issue_type
             | into string
             | str trim
             | str downcase

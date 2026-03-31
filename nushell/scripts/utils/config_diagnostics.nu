@@ -156,7 +156,7 @@ export def build_config_diagnostic_report_from_records [
     let migration_diagnostics = ($migration_plan.results | each {|result| make_migration_diagnostic $result })
     let schema_diagnostics = ($schema_findings | each {|finding| make_schema_diagnostic $finding })
     let doctor_diagnostics = [$migration_diagnostics $schema_diagnostics] | flatten
-    let blocking_diagnostics = ($doctor_diagnostics | where blocking == true)
+    let blocking_diagnostics = ($doctor_diagnostics | where {|diagnostic| $diagnostic.blocking })
 
     {
         config_path: $config_path
@@ -167,9 +167,9 @@ export def build_config_diagnostic_report_from_records [
         blocking_diagnostics: $blocking_diagnostics
         issue_count: ($doctor_diagnostics | length)
         blocking_count: ($blocking_diagnostics | length)
-        fixable_count: ($migration_diagnostics | where fix_available == true | length)
+        fixable_count: ($migration_diagnostics | where {|diagnostic| $diagnostic.fix_available } | length)
         has_blocking: (not ($blocking_diagnostics | is-empty))
-        has_fixable_migrations: (($migration_diagnostics | where fix_available == true | is-not-empty))
+        has_fixable_migrations: (($migration_diagnostics | where {|diagnostic| $diagnostic.fix_available } | is-not-empty))
     }
 }
 

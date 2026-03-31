@@ -49,12 +49,6 @@ def extract_rebuild_config [config: record] {
     $rebuild_config
 }
 
-# Normalize TOML by parsing and re-serializing
-# This ignores comments, whitespace, and key ordering
-def normalize_toml [toml_string: string] {
-    $toml_string | from toml | to toml
-}
-
 # Compute active config hash and track whether devenv needs cache refresh.
 # Only hashes rebuild-required keys (ignoring comments and runtime settings).
 # Returns a record with:

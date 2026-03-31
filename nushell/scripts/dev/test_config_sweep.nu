@@ -27,13 +27,13 @@ def count_results_by_status [
     status_value: string
 ]: nothing -> int {
     let field = get_status_field $visual
-    $results | where ($it | get $field) == $status_value | length
+    $results | where {|result| (($result | get -o $field) == $status_value) } | length
 }
 
 # Helper: Get status value from a result
 def get_result_status [result: record, visual: bool]: nothing -> string {
     let field = get_status_field $visual
-    $result | get $field
+    $result | get -o $field
 }
 
 def get_launch_error_details [stdout: string, stderr: string]: nothing -> string {
@@ -192,7 +192,8 @@ export def run_all_sweep_tests [
     --visual(-w)            # Launch visual Yazelix windows for each test
     --visual-delay: int     # Delay between visual launches in seconds (default: 3)
 ]: nothing -> nothing {
-    let visual_delay = (($visual_delay | default 3) * 1sec)
+    let visual_delay_seconds = ($visual_delay | default 3)
+    let visual_delay = ($visual_delay_seconds * 1sec)
 
     if $visual {
         print "=== Visual Configuration Sweep Testing ==="

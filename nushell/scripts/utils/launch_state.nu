@@ -13,7 +13,11 @@ def resolve_profile_candidate [candidate: string] {
     }
 
     try {
-        let resolved = (^readlink -f $candidate | str trim)
+        let result = (^readlink -f $candidate | complete)
+        if $result.exit_code != 0 {
+            return ""
+        }
+        let resolved = ($result.stdout | str trim)
         if ($resolved | is-not-empty) and ($resolved | path exists) {
             $resolved
         } else {

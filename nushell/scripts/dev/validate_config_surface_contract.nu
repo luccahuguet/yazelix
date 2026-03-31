@@ -37,7 +37,7 @@ def get_nested_value_info [record: record, field_path: string] {
             return {exists: false, value: null}
         }
 
-        $current = ($current | get $part)
+        $current = ($current | get -o $part)
     }
 
     {exists: true, value: $current}
@@ -98,7 +98,7 @@ def validate_main_contract_parity [] {
     let declared_fields = ($contract.fields | columns | sort)
     let hm_option_names = (
         $declared_fields
-        | each { |field_path| ($contract.fields | get $field_path).home_manager_option }
+        | each { |field_path| (($contract.fields | get -o $field_path | default {}) | get -o home_manager_option | default "") }
     )
     let hm_defaults = (load_home_manager_defaults $hm_option_names)
 
@@ -109,7 +109,7 @@ def validate_main_contract_parity [] {
     }
 
     for field_path in $declared_fields {
-        let field = ($contract.fields | get $field_path)
+        let field = ($contract.fields | get -o $field_path | default {})
         let hm_option = ($field.home_manager_option | into string)
 
         if not ($hm_option in ($hm_defaults | columns)) {
@@ -122,7 +122,7 @@ def validate_main_contract_parity [] {
         } else {
             $field.default
         }
-        let actual_hm_default = ($hm_defaults | get $hm_option)
+        let actual_hm_default = ($hm_defaults | get -o $hm_option)
         if $actual_hm_default != $expected_hm_default {
             $errors = ($errors | append $"Home Manager default mismatch for `($field_path)` via `($hm_option)`: expected (format_value $expected_hm_default), got (format_value $actual_hm_default)")
         }
@@ -188,7 +188,8 @@ def validate_pack_contract_parity [] {
     }
 
     for pack_name in $declaration_names {
-        let expected_packages = (($contract.declarations | get $pack_name).packages? | default [])
+        let declaration = ($contract.declarations | get -o $pack_name | default {})
+        let expected_packages = ($declaration.packages? | default [])
         let template_packages = ($template_declarations | get -o $pack_name | default [])
         let hm_packages = ($hm_pack_declarations | get -o $pack_name | default [])
 

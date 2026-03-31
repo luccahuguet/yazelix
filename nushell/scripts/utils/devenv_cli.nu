@@ -12,7 +12,11 @@ def get_external_command_path [command_name: string] {
 
 def get_nix_profile_entry [entry_name: string] {
     let profile = try {
-        ^nix profile list --json | from json
+        let result = (^nix profile list --json | complete)
+        if $result.exit_code != 0 {
+            return null
+        }
+        $result.stdout | from json
     } catch {
         null
     }

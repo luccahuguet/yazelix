@@ -63,7 +63,7 @@ ya_command = "/opt/custom/ya"
         }
     ]
 
-    let result = (try {
+    try {
         let failures = (
             $cases
             | each {|case|
@@ -113,9 +113,7 @@ ya_command = "/opt/custom/ya"
     } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
-    })
-
-    $result
+    }
 }
 
 export def run_yazi_canonical_tests [] {

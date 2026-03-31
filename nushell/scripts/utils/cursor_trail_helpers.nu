@@ -27,7 +27,7 @@ export def select_random_ghostty_trail_effect [] {
     } else {
         let max_index = (($pool | length) - 1)
         let index = (random int 0..$max_index)
-        $pool | get $index
+        $pool | get -o $index
     }
 }
 
@@ -38,7 +38,7 @@ export def select_random_ghostty_mode_effect [] {
     } else {
         let max_index = (($pool | length) - 1)
         let index = (random int 0..$max_index)
-        $pool | get $index
+        $pool | get -o $index
     }
 }
 

@@ -15,13 +15,16 @@ def get_startup_script_path []: nothing -> string {
 }
 
 def get_terminal_title [terminal: string] {
-    $"Yazelix - (($TERMINAL_METADATA | get $terminal | get name))"
+    $"Yazelix - (($TERMINAL_METADATA | get -o $terminal | default {} | get -o name | default $terminal))"
 }
 
 # Resolve config path for a terminal based on mode
 export def resolve_terminal_config [terminal: string, mode: string] {
     let home = $env.HOME
-    let config_paths = $TERMINAL_CONFIG_PATHS | get $terminal
+    let config_paths = ($TERMINAL_CONFIG_PATHS | get -o $terminal)
+    if $config_paths == null {
+        error make {msg: $"Unsupported terminal config lookup: ($terminal)"}
+    }
 
     if $mode == "yazelix" {
         return ($config_paths.yazelix | str replace "~" $home)
@@ -78,7 +81,7 @@ export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
     for term_check in $terminals_to_check {
         let terminal = $term_check.terminal
         let use_wrapper = $term_check.use_wrapper
-        let term_meta = $TERMINAL_METADATA | get $terminal
+        let term_meta = ($TERMINAL_METADATA | get -o $terminal | default {})
 
         let command = if $use_wrapper { $term_meta.wrapper } else { $terminal }
 

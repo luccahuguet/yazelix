@@ -71,6 +71,7 @@ def main [
     }
 
     let verbose_mode = $verbose
+    let requested_terminal = ($terminal | default "")
     if $verbose_mode {
         print "🔍 launch_yazelix: verbose mode enabled"
         print $"Resolved HOME=($home)"
@@ -114,7 +115,7 @@ def main [
             let available = (
                 $SUPPORTED_TERMINALS
                 | where {|t|
-                    let meta = ($TERMINAL_METADATA | get $t)
+                    let meta = ($TERMINAL_METADATA | get -o $t | default {})
                     (which $meta.wrapper | is-not-empty) or (which $t | is-not-empty)
                 }
             )
@@ -137,9 +138,9 @@ def main [
 
     # Detect available terminal (wrappers preferred)
     # If terminal was explicitly specified via --terminal flag, force that specific terminal only
-    let terminal_info = if ($terminal | is-not-empty) {
+    let terminal_info = if ($requested_terminal | is-not-empty) {
         # Strict mode: only try the specified terminal, no fallbacks
-        let specified_terminal = $terminal  # Use the --terminal flag value
+        let specified_terminal = $requested_terminal  # Use the --terminal flag value
         let term_meta = ($TERMINAL_METADATA | get -o $specified_terminal)
         if $term_meta == null {
             print $"Error: Unsupported terminal '($specified_terminal)'"

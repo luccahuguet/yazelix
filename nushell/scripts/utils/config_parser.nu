@@ -11,7 +11,11 @@ def bool_to_string [value: bool] {
 }
 
 def get_contract_field [contract: record, field_path: string] {
-    $contract.fields | get $field_path
+    let field = ($contract.fields | get -o $field_path)
+    if $field == null {
+        error make {msg: $"Unknown config contract field: ($field_path)"}
+    }
+    $field
 }
 
 def get_nested_config_value [raw_config: record, field_path: string] {

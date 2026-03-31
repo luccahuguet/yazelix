@@ -24,18 +24,24 @@ def get_devenv_shell [] {
     let shell_link = ($yazelix_dir | path join ".devenv/gc/shell")
     
     if ($shell_link | path exists) {
-        let resolved = (^readlink -f $shell_link | str trim)
-        if ($resolved | path exists) {
-            return $resolved
+        let result = (^readlink -f $shell_link | complete)
+        if $result.exit_code == 0 {
+            let resolved = ($result.stdout | str trim)
+            if ($resolved | path exists) {
+                return $resolved
+            }
         }
     }
     
     # Fallback to .devenv/profile symlink
     let profile_link = ($yazelix_dir | path join ".devenv/profile")
     if ($profile_link | path exists) {
-        let resolved = (^readlink -f $profile_link | str trim)
-        if ($resolved | path exists) {
-            return $resolved
+        let result = (^readlink -f $profile_link | complete)
+        if $result.exit_code == 0 {
+            let resolved = ($result.stdout | str trim)
+            if ($resolved | path exists) {
+                return $resolved
+            }
         }
     }
     
@@ -57,21 +63,6 @@ def get_closure_size [path: string] {
     let result = (do { ^nix path-info --closure-size $path } | complete)
     if $result.exit_code == 0 {
         # Output format: "/nix/store/...\t<size>"
-        let parts = $result.stdout | str trim | split row "\t"
-        if ($parts | length) >= 2 {
-            $parts | last | str trim | into int
-        } else {
-            0
-        }
-    } else {
-        0
-    }
-}
-
-# Get NAR size (just this path, not closure) for a store path
-def get_nar_size [path: string] {
-    let result = (do { ^nix path-info --size $path } | complete)
-    if $result.exit_code == 0 {
         let parts = $result.stdout | str trim | split row "\t"
         if ($parts | length) >= 2 {
             $parts | last | str trim | into int
@@ -153,16 +144,6 @@ def matches_pkg [store_name: string, pkg: string] {
     }
 
     false
-}
-
-# Get all requisites (dependencies) of a store path
-def get_requisites [path: string] {
-    let result = (do { ^nix-store -qR $path } | complete)
-    if $result.exit_code == 0 {
-        $result.stdout | lines | where { |l| ($l | str trim) != "" }
-    } else {
-        []
-    }
 }
 
 # Show packs and their sizes
@@ -309,6 +290,10 @@ export def "yzx packs" [
     # Show yzx repo size
     print ""
     print $"(ansi green_bold)Local(ansi reset)"
-    let repo_size = (^du -sb $yazelix_dir | split row "\t" | first | into int)
+    let repo_size_result = (^du -sb $yazelix_dir | complete)
+    if $repo_size_result.exit_code != 0 {
+        error make {msg: "Failed to measure yzx repo size with du -sb"}
+    }
+    let repo_size = ($repo_size_result.stdout | split row "\t" | first | into int)
     print $"yzx repo: (ansi cyan)(format_size $repo_size)(ansi reset)"
 }

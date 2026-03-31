@@ -50,8 +50,9 @@ def parse_permission_blocks [content: string] {
 
         if $current_path == null {
             let parsed = ($trimmed | parse --regex '^"(?<path>.+)"\s*\{$')
-            if ($parsed | length) > 0 {
-                $current_path = ($parsed | get 0.path)
+            let parsed_path = ($parsed | get -o 0.path)
+            if $parsed_path != null {
+                $current_path = $parsed_path
                 $current_permissions = []
             }
             continue
@@ -101,9 +102,10 @@ def upsert_permission_blocks [blocks: list<string>] {
                 | lines
                 | first
                 | parse --regex '^"(?<path>.+)"\s*\{$'
-                | get 0.path
+                | get -o 0.path
             )
         }
+        | where {|path| $path != null }
     )
     let retained_text = (
         $existing_blocks

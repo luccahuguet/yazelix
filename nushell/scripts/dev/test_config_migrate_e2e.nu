@@ -305,7 +305,7 @@ export def main [] {
         )
         (run_game_of_life_style_rename_case)
     ]
-    let passed = ($results | where $it == true | length)
+    let passed = ($results | where {|result| $result } | length)
     let total = ($results | length)
 
     print ""

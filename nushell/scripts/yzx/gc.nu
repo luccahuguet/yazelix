@@ -91,7 +91,7 @@ def run_nix_gc [args: list<string>] {
 def print_gc_phase_output [phase_name: string, result: record, empty_message: string] {
     let duration = (format_duration_ms $result.duration_ms)
     if $result.exit_code == 0 {
-        print $"  Done in (ansi green)($duration)(ansi reset)"
+        print $"  ($phase_name) done in (ansi green)($duration)(ansi reset)"
         if ($result.lines | is-empty) {
             print $"  (ansi dark_gray)($empty_message)(ansi reset)"
         } else {

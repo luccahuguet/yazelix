@@ -151,7 +151,7 @@ terminals = ["ghostty", "kitty", "alacritty"]
 def test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip [] {
     print "🧪 Testing skipping game_of_life repaints the resting logo frame..."
 
-    let result = (try {
+    try {
         let art_script = (repo_path "nushell" "scripts" "utils" "ascii_art.nu")
         let output = (^nu -c $"use \"($art_script)\" [render_welcome_style_interruptibly]; render_welcome_style_interruptibly game_of_life 0.5 60 {|timeout| true } | ignore" | complete)
         let clean_stdout = (
@@ -175,9 +175,7 @@ def test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_ski
     } catch { |err|
         print $"  ❌ Exception: ($err.msg)"
         false
-    })
-
-    $result
+    }
 }
 
 def test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance [] {
@@ -237,7 +235,7 @@ enable_atuin = true
             ($parser_result.exit_code != 0)
             and ($stderr | str contains "Known migration at shell.enable_atuin")
             and ($stderr | str contains "yzx config migrate --apply")
-            and (($updated.shell.enable_atuin? | default false) == true)
+            and ($updated.shell.enable_atuin? | default false)
             and (($backups | length) == 0)
         ) {
             print "  ✅ parse_yazelix_config still fails cleanly without rewriting safe migration cases"

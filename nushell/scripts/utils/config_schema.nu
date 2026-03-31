@@ -116,7 +116,7 @@ export def compare_configs [default: any, user: any, path: list<string> = []] {
 
         for key in $default_keys {
             if $key in $user_keys {
-                let nested_findings = (compare_configs ($default | get $key) ($user | get $key) ($path | append $key))
+                let nested_findings = (compare_configs ($default | get -o $key) ($user | get -o $key) ($path | append $key))
                 if not ($nested_findings | is-empty) {
                     $findings = ($findings | append $nested_findings)
                 }
@@ -151,9 +151,8 @@ export def compare_configs [default: any, user: any, path: list<string> = []] {
 def get_nested_value [data: any, path: list<string>] {
     mut current = $data
     for segment in $path {
-        try {
-            $current = ($current | get $segment)
-        } catch {
+        $current = ($current | get -o $segment)
+        if $current == null {
             return null
         }
     }
@@ -180,7 +179,8 @@ export def apply_main_contract_to_reference_config [reference: record] {
     mut merged = $reference
 
     for field_path in ($contract.fields | columns) {
-        let default_value = (($contract.fields | get $field_path).default? | default null)
+        let field = ($contract.fields | get -o $field_path | default {})
+        let default_value = ($field.default? | default null)
         $merged = (set_nested_value $merged ($field_path | split row ".") $default_value)
     }
 
@@ -192,7 +192,7 @@ export def validate_enum_values [user: record] {
     let contract = (load_main_config_contract)
     mut findings = []
     for field_path in ($contract.fields | columns) {
-        let field = ($contract.fields | get $field_path)
+        let field = ($contract.fields | get -o $field_path | default {})
         let validation = ($field.validation? | default "")
         if ($validation != "enum") and ($validation != "enum_string_list") {
             continue

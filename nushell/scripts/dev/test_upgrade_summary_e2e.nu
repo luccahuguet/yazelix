@@ -35,7 +35,7 @@ enable_atuin = true
     let notes_path = ($runtime_dir | path join "docs" "upgrade_notes.toml")
     let notes = (open $notes_path)
     let updated_release = (
-        ($notes.releases | get $YAZELIX_VERSION)
+        ($notes.releases | get -o $YAZELIX_VERSION)
         | upsert headline $"Config migration follow-up after the ($YAZELIX_VERSION) upgrade"
         | upsert summary [
             "This fixture simulates a release that ships upgrade-summary migration guidance."

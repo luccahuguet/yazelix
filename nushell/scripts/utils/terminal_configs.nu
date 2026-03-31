@@ -8,7 +8,7 @@ use ./common.nu [get_yazelix_runtime_dir get_yazelix_user_config_dir]
 
 # Helpers
 def get_opacity_value [transparency: string] { $TRANSPARENCY_VALUES | get -o $transparency | default "1.0" }
-def get_terminal_title [terminal: string] { $"Yazelix - ($TERMINAL_METADATA | get $terminal | get name)" }
+def get_terminal_title [terminal: string] { $"Yazelix - (($TERMINAL_METADATA | get -o $terminal | default {} | get -o name | default $terminal))" }
 def get_cursor_trail_shader [color: string] { $CURSOR_TRAIL_SHADERS | get -o $color | default $CURSOR_TRAIL_SHADERS.blaze }
 
 def select_random_ghostty_trail_color [] {
@@ -18,7 +18,7 @@ def select_random_ghostty_trail_color [] {
     } else {
         let max_index = (($pool | length) - 1)
         let index = (random int 0..$max_index)
-        $pool | get $index
+        $pool | get -o $index
     }
 }
 

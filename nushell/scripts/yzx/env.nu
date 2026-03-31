@@ -38,7 +38,8 @@ def run_with_launch_profile [
     ...args: string
     --cwd: string
 ] {
-    let resolved_cwd = if ($cwd | is-not-empty) { $cwd | path expand } else { "" }
+    let requested_cwd = ($cwd | default "")
+    let resolved_cwd = if ($requested_cwd | is-not-empty) { $requested_cwd | path expand } else { "" }
     let exec_cmd = if ($resolved_cwd | is-not-empty) {
         ["env", "-C", $resolved_cwd] | append $command | append $args
     } else {
@@ -68,7 +69,6 @@ export def "yzx env" [
     let config = $env_prep.config
     let needs_refresh = $env_prep.needs_refresh
     let reuse_mode = $reuse
-    let should_refresh = ($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)
     let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
@@ -113,10 +113,10 @@ export def "yzx env" [
                 run_with_launch_profile $config $reused_launch_profile "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir
             }
         } else if $has_setpriv {
-            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
+            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
         } else {
             # macOS and other systems without setpriv use POSIX trap fallback.
-            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
+            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
         }
 
     } else {
@@ -135,9 +135,9 @@ export def "yzx env" [
                         run_with_launch_profile $config $reused_launch_profile "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir
                     }
                 } else if $has_setpriv {
-                    run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
+                    run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
                 } else {
-                    run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$should_refresh
+                    run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
                 }
             }
         } catch {|err|

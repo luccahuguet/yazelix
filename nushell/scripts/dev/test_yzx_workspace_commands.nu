@@ -6,18 +6,16 @@ use ../integrations/yazi.nu [resolve_reveal_target_path]
 use ./test_yzx_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path]
 
 def run_nu_snippet [snippet: string, extra_env?: record] {
-    let result = if ($extra_env | is-empty) {
+    if ($extra_env | is-empty) {
         ^nu -c $snippet | complete
     } else {
         with-env $extra_env {
             ^nu -c $snippet | complete
         }
     }
-    $result
 }
 
 def setup_launch_path_fixture [label: string, persistent_sessions: bool, existing_session: bool] {
-    let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let runtime_dir = ($tmp_home | path join "runtime")
     let config_dir = ($tmp_home | path join ".config" "yazelix")
@@ -26,7 +24,7 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
     let fake_bin = ($tmp_home | path join "bin")
     let zellij_log = ($tmp_home | path join "zellij.log")
     let existing_session_flag = if $existing_session { "true" } else { "false" }
-    let real_nu = (which nu | get 0.path)
+    let real_nu = (which nu | get -o 0.path)
 
     mkdir $runtime_dir
     mkdir ($tmp_home | path join ".config")

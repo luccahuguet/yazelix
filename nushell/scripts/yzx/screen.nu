@@ -74,7 +74,7 @@ export def "yzx screen" [
                     error make {msg: $"No frames available for yzx screen style: ($resolved_style)"}
                 }
 
-                render_screen_frame ($frames | get ($frame_index mod ($frames | length)))
+                render_screen_frame ($frames | get -o ($frame_index mod ($frames | length)))
             }
 
             if (poll_for_screen_keypress $frame_delay) {

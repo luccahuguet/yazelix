@@ -35,10 +35,6 @@ export def get_ya_command [] {
     resolve_optional_command ($config.yazi_ya_command? | default null) "ya"
 }
 
-def has_yazi_command [] {
-    command_is_available (get_yazi_command)
-}
-
 def has_ya_command [] {
     command_is_available (get_ya_command)
 }

@@ -79,7 +79,7 @@ def apply_static_fragments [
                 | lines
                 | each {|line|
                     if ($line | str contains $fragment.placeholder) {
-                        let indent = (($line | parse -r '^(?<indent>\s*).*') | get 0.indent)
+                        let indent = (($line | parse -r '^(?<indent>\s*).*') | get -o 0.indent | default "")
                         $fragment_lines
                         | each {|fragment_line| $"($indent)($fragment_line)"}
                         | str join "\n"

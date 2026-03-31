@@ -147,7 +147,7 @@ def maybe_get [data: any, path: list<string>] {
             return null
         }
 
-        $current = ($current | get $segment)
+        $current = ($current | get -o $segment)
     }
 
     $current
@@ -166,7 +166,7 @@ def has_path [data: any, path: list<string>] {
             return false
         }
 
-        $current = ($current | get $segment)
+        $current = ($current | get -o $segment)
     }
 
     true
@@ -603,7 +603,7 @@ export def validate_config_migration_rules [] {
                 continue
             }
 
-            let value = ($rule | get $field)
+            let value = ($rule | get -o $field)
             if ($field == "guarded_paths") and (($value | describe) | str contains "list") {
                 if ($value | is-empty) {
                     $errors = ($errors | append $"Config migration rule ($rule.id) must declare at least one guarded path")
@@ -628,7 +628,7 @@ export def validate_config_migration_rules [] {
             }
         }
 
-        if (($rule.auto_apply == true) and ($rule.kind == "manual_only")) or (($rule.auto_apply == false) and ($rule.kind != "manual_only") and ($rule.id != "review_legacy_cursor_trail_settings")) {
+        if (($rule.auto_apply and ($rule.kind == "manual_only")) or ((not $rule.auto_apply) and ($rule.kind != "manual_only") and ($rule.id != "review_legacy_cursor_trail_settings"))) {
             $errors = ($errors | append $"Config migration rule ($rule.id) has inconsistent kind/auto_apply metadata")
         }
 

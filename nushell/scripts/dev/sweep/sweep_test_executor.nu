@@ -92,9 +92,9 @@ export def run_demo_command [
 
         # Check if all tools were found
         let all_tools_ok = try {
-            (($content.tools.zellij.available == true) and
-             ($content.tools.yazi.available == true) and
-             ($content.tools.helix.available == true))
+            ($content.tools.zellij.available and
+             $content.tools.yazi.available and
+             $content.tools.helix.available)
         } catch { |err|
             print $"   ✗ Failed to check tool availability: ($err.msg)"
             return {status: "error", output: $"Check error: ($err.msg)", verified: false}
@@ -120,7 +120,7 @@ export def run_demo_command [
 }
 
 def terminal_available [terminal: string]: nothing -> bool {
-    let term_meta = $TERMINAL_METADATA | get $terminal
+    let term_meta = ($TERMINAL_METADATA | get -o $terminal | default {})
     let wrapper_cmd = $term_meta.wrapper
     (command_exists $wrapper_cmd) or (command_exists $terminal)
 }

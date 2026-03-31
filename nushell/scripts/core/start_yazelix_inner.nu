@@ -59,7 +59,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         }
         null
     })
-    if ($upgrade_summary != null) and (($upgrade_summary.shown? | default false) == true) {
+    if ($upgrade_summary != null) and ($upgrade_summary.shown? | default false) {
         print ""
     }
 

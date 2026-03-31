@@ -106,7 +106,7 @@ export def run_screen_canonical_tests [] {
 
 def main [] {
     let results = (run_screen_canonical_tests)
-    let passed = ($results | where $it == true | length)
+    let passed = ($results | where {|result| $result } | length)
     let total = ($results | length)
 
     if $passed == $total {

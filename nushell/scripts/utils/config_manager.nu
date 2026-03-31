@@ -112,7 +112,7 @@ export def check_config_versions [yazelix_dir: string] {
         { name: "zsh", file: ($SHELL_CONFIGS.zsh | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "zsh" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu") }
     ]
 
-    let results = ($configs | each { |config|
+    $configs | each { |config|
         if not ($config.file | path exists) {
             { shell: $config.name, status: "missing", file: $config.file }
         } else {
@@ -145,9 +145,7 @@ export def check_config_versions [yazelix_dir: string] {
                 }
             }
         }
-    })
-
-    $results
+    }
 }
 
 # Safely migrate hooks to latest version with backup

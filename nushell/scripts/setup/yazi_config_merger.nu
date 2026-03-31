@@ -61,8 +61,8 @@ def deep_merge [base: record, user: record] {
         let in_user = ($key in $user_keys)
 
         let value = if $in_base and $in_user {
-            let base_val = ($base | get $key)
-            let user_val = ($user | get $key)
+            let base_val = ($base | get -o $key)
+            let user_val = ($user | get -o $key)
             let base_type = ($base_val | describe)
             let user_type = ($user_val | describe)
             let base_is_array = ($base_type | str starts-with "list") or ($base_type | str starts-with "table")
@@ -78,28 +78,12 @@ def deep_merge [base: record, user: record] {
                 $user_val
             }
         } else if $in_user {
-            $user | get $key
+            $user | get -o $key
         } else {
-            $base | get $key
+            $base | get -o $key
         }
 
         $acc | insert $key $value
-    }
-}
-
-# Simple copy of config file
-def copy_config_file [source_dir: string, merged_dir: string, file_name: string, --quiet] {
-    let source_path = $"($source_dir)/yazelix_($file_name)"
-    let merged_path = $"($merged_dir)/($file_name)"
-
-    if not $quiet {
-        print $"   📄 Copying ($file_name)..."
-    }
-
-    cp $source_path $merged_path
-
-    if not $quiet {
-        print $"     ✅ ($file_name) copied"
     }
 }
 
@@ -176,7 +160,7 @@ def copy_flavors_directory [source_dir: string, merged_dir: string, --quiet] {
 }
 
 # Generate yazi.toml with dynamic settings from yazelix.toml
-def generate_yazi_toml [source_dir: string, merged_dir: string, theme: string, sort_by: string, user_plugins: list, --quiet] {
+def generate_yazi_toml [source_dir: string, merged_dir: string, sort_by: string, user_plugins: list, --quiet] {
     let base_path = $"($source_dir)/yazelix_yazi.toml"
     let user_path = (reconcile_yazi_user_file "yazi.toml")
     let merged_path = $"($merged_dir)/yazi.toml"
@@ -338,14 +322,14 @@ def generate_keymap_toml [source_dir: string, merged_dir: string, --quiet] {
         let sections = ($base_keymap | columns)
         $sections | reduce --fold $base_keymap {|section, acc|
             if ($section in ($user_keymap | columns)) {
-                let base_section = ($acc | get $section)
-                let user_section = ($user_keymap | get $section)
+                let base_section = ($acc | get -o $section)
+                let user_section = ($user_keymap | get -o $section)
                 let subsections = ($base_section | columns)
 
                 let merged_section = $subsections | reduce --fold $base_section {|sub, sec_acc|
                     if ($sub in ($user_section | columns)) {
-                        let base_arr = ($sec_acc | get $sub)
-                        let user_arr = ($user_section | get $sub)
+                        let base_arr = ($sec_acc | get -o $sub)
+                        let user_arr = ($user_section | get -o $sub)
                         $sec_acc | upsert $sub ($base_arr | append $user_arr)
                     } else {
                         $sec_acc
@@ -355,7 +339,7 @@ def generate_keymap_toml [source_dir: string, merged_dir: string, --quiet] {
                 # Also add any new subsections from user
                 let new_subsections = ($user_section | columns | where {|s| $s not-in $subsections})
                 let final_section = $new_subsections | reduce --fold $merged_section {|sub, sec_acc|
-                    $sec_acc | upsert $sub ($user_section | get $sub)
+                    $sec_acc | upsert $sub ($user_section | get -o $sub)
                 }
 
                 $acc | upsert $section $final_section
@@ -395,7 +379,7 @@ def generate_keymap_toml [source_dir: string, merged_dir: string, --quiet] {
 }
 
 # Generate init.lua dynamically based on plugin configuration
-def generate_init_lua [merged_dir: string, source_dir: string, user_plugins: list, --quiet] {
+def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
     let plugins_dir = $"($merged_dir)/plugins"
 
     # Core plugins - always loaded, cannot be disabled
@@ -535,7 +519,7 @@ export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
     ensure_dir $"($merged_config_dir)/yazi.toml"
 
     # Generate yazi.toml with dynamic settings from yazelix.toml
-    generate_yazi_toml $source_config_dir $merged_config_dir $theme $sort_by $user_plugins --quiet=$quiet
+    generate_yazi_toml $source_config_dir $merged_config_dir $sort_by $user_plugins --quiet=$quiet
 
     # Generate theme.toml with flavor configuration from yazelix.toml
     generate_theme_toml $source_config_dir $merged_config_dir $theme --quiet=$quiet
@@ -550,7 +534,7 @@ export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
     copy_flavors_directory $source_config_dir $merged_config_dir --quiet=$quiet
 
     # Generate init.lua dynamically based on plugin configuration
-    generate_init_lua $merged_config_dir $source_config_dir $user_plugins --quiet=$quiet
+    generate_init_lua $merged_config_dir $user_plugins --quiet=$quiet
 
     if not $quiet {
         print $"✅ Yazi configuration generated successfully!"

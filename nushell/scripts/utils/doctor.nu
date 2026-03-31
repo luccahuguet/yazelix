@@ -24,7 +24,10 @@ def get_runtime_tool_version [tool: string] {
     match $tool {
         "nix" => {
             if (which nix | is-empty) { "not installed" } else {
-                try { extract_last_semver (nix --version | lines | first) } catch { "error" }
+                try {
+                    let result = (^nix --version | complete)
+                    if $result.exit_code != 0 { "error" } else { extract_last_semver ($result.stdout | lines | first) }
+                } catch { "error" }
             }
         }
         "devenv" => {
@@ -688,8 +691,6 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
     # Display results
     let errors = ($all_results | where status == "error")
     let warnings = ($all_results | where status == "warning") 
-    let infos = ($all_results | where status == "info")
-    let oks = ($all_results | where status == "ok")
     
     # Show results
     for $result in $all_results {
@@ -776,7 +777,7 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
         }
 
         print "\n✅ Auto-fix completed. Run 'yzx doctor' again to verify."
-    } else if (($all_results | where fix_available == true) | is-not-empty) {
+    } else if (($all_results | where {|result| $result.fix_available } | is-not-empty)) {
         print "\n💡 Some issues can be auto-fixed. Run 'yzx doctor --fix' to resolve them."
     }
 }

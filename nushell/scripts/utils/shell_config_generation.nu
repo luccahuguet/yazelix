@@ -15,7 +15,10 @@ export def get_yazelix_start_comment [] {
 }
 
 export def get_yazelix_runtime_config_path [shell: string, yazelix_dir: string] {
-    let relative_path = ($YAZELIX_CONFIG_FILES | get $shell)
+    let relative_path = ($YAZELIX_CONFIG_FILES | get -o $shell)
+    if $relative_path == null {
+        error make {msg: $"Unsupported shell config path lookup: ($shell)"}
+    }
     ($yazelix_dir | path join $relative_path)
 }
 

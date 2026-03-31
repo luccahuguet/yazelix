@@ -117,15 +117,24 @@ def get_version [tool: string] {
             }
             "wezterm" => {
                 if (which wezterm | is-empty) { return "not installed" }
-                try { (wezterm --version | split column " " | get column2) } catch { "error" }
+                try {
+                    let result = (^wezterm --version | complete)
+                    if $result.exit_code != 0 { "error" } else { ($result.stdout | split column " " | get column2) }
+                } catch { "error" }
             }
             "ghostty" => {
                 if (which ghostty | is-empty) { return "not installed" }
-                try { (ghostty --version | lines | first | extract_first_semver) } catch { "error" }
+                try {
+                    let result = (^ghostty --version | complete)
+                    if $result.exit_code != 0 { "error" } else { ($result.stdout | lines | first | extract_first_semver) }
+                } catch { "error" }
             }
             "nix" => {
                 if (which nix | is-empty) { return "not installed" }
-                try { (nix --version | lines | first | extract_last_semver) } catch { "error" }
+                try {
+                    let result = (^nix --version | complete)
+                    if $result.exit_code != 0 { "error" } else { ($result.stdout | lines | first | extract_last_semver) }
+                } catch { "error" }
             }
             "devenv" => {
                 if not (is_preferred_devenv_available) { return "not installed" }
@@ -133,7 +142,10 @@ def get_version [tool: string] {
             }
             "kitty" => {
                 if (which kitty | is-empty) { return "not installed" }
-                try { (kitty --version | lines | first | extract_first_semver) } catch { "error" }
+                try {
+                    let result = (^kitty --version | complete)
+                    if $result.exit_code != 0 { "error" } else { ($result.stdout | lines | first | extract_first_semver) }
+                } catch { "error" }
             }
             "foot" => {
                 if (which foot | is-empty) { return "not installed" }

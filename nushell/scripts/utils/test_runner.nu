@@ -15,11 +15,17 @@ def run_syntax_validation [
     let syntax_log = "=== Syntax Validation ===\n"
     $syntax_log | save --append $log_file
 
-    # Run validate_syntax.nu quietly
+    # Run validate_syntax.nu, mirroring the caller's requested verbosity.
     let validate_script = ((get_yazelix_dir) | path join "nushell" "scripts" "dev" "validate_syntax.nu")
-    let result = (do {
-        nu $validate_script --quiet
-    } | complete)
+    let result = if $verbose {
+        do {
+            nu $validate_script --verbose
+        } | complete
+    } else {
+        do {
+            nu $validate_script --quiet
+        } | complete
+    }
 
     if $result.exit_code == 0 {
         print "✅ All scripts passed syntax validation"

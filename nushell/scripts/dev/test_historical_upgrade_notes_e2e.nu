@@ -64,7 +64,7 @@ export def main [] {
 
     let ok = (
         ($missing | is-empty)
-        and ($reports | all {|report| $report.found == true })
+        and ($reports | all {|report| $report.found })
         and (($reports | where version == "v12.10" | first).entry.upgrade_impact == "migration_available")
         and (($reports | where version == "v13.2" | first).entry.upgrade_impact == "manual_action_required")
         and (($reports | where version == "v13.3" | first).output | str contains "Restart workspace bootstrap follow-through")

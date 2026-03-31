@@ -105,8 +105,12 @@ def load_canonical_test_names [relative_path: string] {
         error make { msg: $"Could not find canonical test list in: ($relative_path)" }
     }
 
-    $matches
-    | get 0.capture0
+    let capture = ($matches | get -o 0.capture0)
+    if $capture == null {
+        error make { msg: $"Could not extract canonical test list capture from: ($relative_path)" }
+    }
+
+    $capture
     | parse --regex '\((test_[A-Za-z0-9_]+)\)'
     | get capture0
 }

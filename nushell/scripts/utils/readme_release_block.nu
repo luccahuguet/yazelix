@@ -105,13 +105,21 @@ export def extract_readme_latest_series_section [contents: string] {
         error make {msg: "README has an invalid generated latest-series start marker layout"}
     }
 
-    let rest = ($before_and_rest | get 1)
+    let rest = ($before_and_rest | get -o 1)
+    if $rest == null {
+        error make {msg: "README is missing the generated latest-series remainder block"}
+    }
     let block_and_after = ($rest | split row $README_LATEST_SERIES_END)
     if ($block_and_after | length) != 2 {
         error make {msg: "README has an invalid generated latest-series end marker layout"}
     }
 
-    $"($README_LATEST_SERIES_BEGIN)($block_and_after | get 0)($README_LATEST_SERIES_END)"
+    let block = ($block_and_after | get -o 0)
+    if $block == null {
+        error make {msg: "README is missing the generated latest-series block body"}
+    }
+
+    $"($README_LATEST_SERIES_BEGIN)($block)($README_LATEST_SERIES_END)"
 }
 
 export def sync_readme_latest_series_section [readme_path: string] {

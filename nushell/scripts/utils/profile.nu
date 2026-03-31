@@ -28,8 +28,6 @@ export def profile_environment_setup [] {
     print "📊 Profiling environment setup components..."
 
     let yazelix_dir = (get_yazelix_dir)
-    let log_file = "~/.local/share/yazelix/logs/profile.log" | path expand
-
     mut results = []
 
     # Profile initializers generation
@@ -82,16 +80,6 @@ export def profile_cold_launch [
 
     let yazelix_dir = (get_yazelix_dir)
 
-    # Determine which config file to use
-    let primary_config = (get_main_user_config_path $yazelix_dir)
-    let config_file = if ($primary_config | path exists) {
-        $primary_config
-    } else if ($"($yazelix_dir)/yazelix.nix" | path exists) {
-        $"($yazelix_dir)/yazelix.nix"
-    } else {
-        $"($yazelix_dir)/yazelix_default.toml"
-    }
-
     # Clear cache if requested
     if $clear_cache {
         print "🗑️  Clearing .devenv cache...\n"
@@ -113,11 +101,21 @@ export def profile_cold_launch [
     let max_jobs = get_max_jobs ($config.max_jobs? | default "half" | into string)
     let max_cores = get_max_cores ($config.build_cores? | default "2" | into string)
     let nix_config = get_yazelix_nix_config
-    let result = with-env {NIX_CONFIG: $nix_config} {
+    let shell_result = with-env {NIX_CONFIG: $nix_config} {
         sh -c $"cd ($yazelix_dir) && echo 'exit' | timeout 15 devenv --max-jobs ($max_jobs) --cores ($max_cores) shell" | complete
     }
     let launch_end = (date now)
     let launch_ms = ((($launch_end - $launch_start) | into int) / 1000000)
+
+    if $shell_result.exit_code != 0 {
+        error make {
+            msg: "Cold launch profiling failed"
+            label: {
+                text: ($shell_result.stderr | default $shell_result.stdout | default "devenv shell exited unsuccessfully")
+                span: (metadata $yazelix_dir).span
+            }
+        }
+    }
 
     $results = ($results | append {
         step: "Full devenv shell build"

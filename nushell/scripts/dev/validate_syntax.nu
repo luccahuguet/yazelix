@@ -85,15 +85,14 @@ export def main [
 
     # Summary
     let total = ($results | length)
-    let passed = ($results | where valid == true | length)
-    let failed = ($results | where valid == false | length)
+    let failed = ($results | where {|result| not $result.valid } | length)
 
     if $failed > 0 {
         if not $quiet {
             print ""
             if $verbose {
                 print "=== Syntax Validation Failed ==="
-                $results | where valid == false | each { |f|
+                $results | where {|result| not $result.valid } | each { |f|
                     print $"❌ ($f.file)"
                     if not ($f.error | is-empty) {
                         print $"   ($f.error)"
