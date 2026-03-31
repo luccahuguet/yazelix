@@ -361,7 +361,7 @@ export def check_configuration [] {
 
         let validation_result = (try {
             {
-                report: (build_config_diagnostic_report $yazelix_config $yazelix_default --include-missing)
+                report: (build_config_diagnostic_report $yazelix_config $yazelix_default)
                 error: null
             }
         } catch {|err|
