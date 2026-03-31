@@ -110,6 +110,7 @@ Current direction:
 - package-ready work should keep clarifying what is shipped, user-owned, and generated
 
 See [Config Surface And Launch Profile Contract](./specs/config_surface_and_launch_profile_contract.md) for the concrete runtime ownership model.
+See [Runtime Root Contract](./specs/runtime_root_contract.md) for the concrete split between config-owned paths, shipped runtime assets, and generated state.
 
 ### Workspace and Session Ownership
 
