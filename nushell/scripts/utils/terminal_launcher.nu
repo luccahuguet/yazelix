@@ -16,11 +16,7 @@ def get_startup_script_path []: nothing -> string {
 
 def get_runtime_terminal_launcher_path [terminal: string]: nothing -> string {
     let runtime_dir = (get_yazelix_runtime_dir)
-
-    match $terminal {
-        "ghostty" => ($runtime_dir | path join "shells" "posix" "yazelix_ghostty.sh"),
-        _ => ""
-    }
+    ($runtime_dir | path join "shells" "posix" "launch_managed_terminal.sh")
 }
 
 def get_terminal_title [terminal: string] {
@@ -168,7 +164,7 @@ export def build_launch_command [
         let runtime_launcher = (get_runtime_terminal_launcher_path $terminal)
 
         if ($runtime_launcher | is-not-empty) and ($runtime_launcher | path exists) {
-            build_detached_background_command $launch_prefix $"bash \"($runtime_launcher)\"($working_dir_arg)"
+            build_detached_background_command $launch_prefix $"bash \"($runtime_launcher)\" ($terminal)($working_dir_arg)"
         } else {
             # Wrappers handle config internally via environment variable
             build_detached_background_command $launch_prefix $"($command)($working_dir_arg)"

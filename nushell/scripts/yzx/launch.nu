@@ -8,6 +8,35 @@ use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../core/start_yazelix.nu [start_yazelix_session]
 use ../utils/common.nu [describe_build_parallelism get_yazelix_runtime_dir]
+use ../utils/constants.nu [TERMINAL_METADATA]
+
+def launch_profile_supports_configured_terminal [config: record, profile_path: string] {
+    let manage_terminals = ($config.manage_terminals? | default true)
+    if not $manage_terminals {
+        return true
+    }
+
+    let terminals = ($config.terminals? | default ["ghostty"] | uniq)
+    if ($terminals | is-empty) {
+        return true
+    }
+
+    let preferred_terminal = ($terminals | first | into string)
+    let terminal_meta = ($TERMINAL_METADATA | get -o $preferred_terminal | default {})
+    let wrapper_name = ($terminal_meta.wrapper? | default "")
+    let profile_bin_dir = ($profile_path | path join "bin")
+    let wrapper_path = if ($wrapper_name | is-not-empty) {
+        $profile_bin_dir | path join $wrapper_name
+    } else {
+        ""
+    }
+    let direct_terminal_path = ($profile_bin_dir | path join $preferred_terminal)
+
+    (
+        (($wrapper_path | is-not-empty) and ($wrapper_path | path exists))
+        or ($direct_terminal_path | path exists)
+    )
+}
 
 # Launch yazelix
 export def "yzx launch" [
@@ -183,6 +212,15 @@ export def "yzx launch" [
                 $reused_launch_profile
             } else {
                 get_launch_profile $fresh_state
+            }
+
+            let fresh_launch_profile = if ($fresh_launch_profile != null) and (not (launch_profile_supports_configured_terminal $config $fresh_launch_profile)) {
+                if $verbose_mode {
+                    print "⚠️  Cached Yazelix profile does not include the currently configured terminal; re-entering devenv instead."
+                }
+                null
+            } else {
+                $fresh_launch_profile
             }
 
             if $fresh_launch_profile != null {
