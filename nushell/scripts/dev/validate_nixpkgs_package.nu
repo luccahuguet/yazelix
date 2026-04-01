@@ -22,15 +22,29 @@ def build_yazelix_package [] {
     }
 }
 
-def run_yzx [package_root: string, temp_home: string, ...args: string] {
-    let yzx_path = ($package_root | path join "bin" "yzx")
-
-    with-env {
+def get_package_env [temp_home: string, package_root?: string] {
+    mut package_env = {
         HOME: $temp_home
         XDG_CONFIG_HOME: ($temp_home | path join ".config")
         XDG_DATA_HOME: ($temp_home | path join ".local" "share")
         SHELL: ($env.SHELL? | default "/bin/sh")
-    } {
+    }
+
+    if $package_root != null {
+        $package_env = (
+            $package_env
+            | insert YAZELIX_RUNTIME_DIR $package_root
+            | insert YAZELIX_DIR $package_root
+        )
+    }
+
+    $package_env
+}
+
+def run_yzx [package_root: string, temp_home: string, ...args: string] {
+    let yzx_path = ($package_root | path join "bin" "yzx")
+
+    with-env (get_package_env $temp_home) {
         ^$yzx_path ...$args | complete
     }
 }
@@ -38,13 +52,7 @@ def run_yzx [package_root: string, temp_home: string, ...args: string] {
 def run_package_nu [package_root: string, temp_home: string, command: string] {
     let nu_path = ($package_root | path join "bin" "nu")
 
-    with-env {
-        HOME: $temp_home
-        XDG_CONFIG_HOME: ($temp_home | path join ".config")
-        XDG_DATA_HOME: ($temp_home | path join ".local" "share")
-        YAZELIX_RUNTIME_DIR: $package_root
-        YAZELIX_DIR: $package_root
-    } {
+    with-env (get_package_env $temp_home $package_root) {
         ^$nu_path -c $command | complete
     }
 }
