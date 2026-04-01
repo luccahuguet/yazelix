@@ -1,7 +1,5 @@
 #!/usr/bin/env nu
 
-const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
-
 def make_temp_home [] {
     (^mktemp -d /tmp/yazelix_nixpkgs_package_XXXXXX | str trim)
 }
@@ -37,6 +35,20 @@ def run_yzx [package_root: string, temp_home: string, ...args: string] {
     }
 }
 
+def run_package_nu [package_root: string, temp_home: string, command: string] {
+    let nu_path = ($package_root | path join "bin" "nu")
+
+    with-env {
+        HOME: $temp_home
+        XDG_CONFIG_HOME: ($temp_home | path join ".config")
+        XDG_DATA_HOME: ($temp_home | path join ".local" "share")
+        YAZELIX_RUNTIME_DIR: $package_root
+        YAZELIX_DIR: $package_root
+    } {
+        ^$nu_path -c $command | complete
+    }
+}
+
 def verify_yazelix_package [package_root: string] {
     let temp_home = (make_temp_home)
 
@@ -49,6 +61,22 @@ def verify_yazelix_package [package_root: string] {
 
     let doctor_result = (run_yzx $package_root $temp_home "doctor" "--verbose")
     require_success $doctor_result "Packaged yzx doctor --verbose failed"
+
+    let expected_devenv = ($package_root | path join "bin" "devenv")
+    let devenv_result = (
+        run_package_nu
+            $package_root
+            $temp_home
+            ([
+                $"use '($package_root | path join "nushell" "scripts" "utils" "devenv_cli.nu")' *"
+                "print (resolve_preferred_devenv_path)"
+            ] | str join "\n")
+    )
+    require_success $devenv_result "Packaged resolve_preferred_devenv_path probe failed"
+    let resolved_devenv = ($devenv_result.stdout | str trim)
+    if $resolved_devenv != $expected_devenv {
+        error make { msg: $"Packaged Yazelix did not prefer its runtime-owned devenv. Expected ($expected_devenv), got ($resolved_devenv)" }
+    }
 
     let env_result = (run_yzx $package_root $temp_home "env" "--no-shell")
     require_success $env_result "Packaged yzx env --no-shell failed"

@@ -3,6 +3,16 @@
 
 use common.nu get_yazelix_dir
 
+def get_runtime_devenv_path [] {
+    let runtime_dir = (get_yazelix_dir)
+    let candidate = ($runtime_dir | path join "bin" "devenv")
+    if ($candidate | path exists) {
+        $candidate
+    } else {
+        null
+    }
+}
+
 def get_external_command_path [command_name: string] {
     let matches = (which $command_name | where type == "external")
     if ($matches | is-empty) {
@@ -36,6 +46,11 @@ def get_nix_profile_entry [entry_name: string] {
 }
 
 export def resolve_preferred_devenv_path [] {
+    let runtime_path = (get_runtime_devenv_path)
+    if $runtime_path != null {
+        return $runtime_path
+    }
+
     let profile_entry = (get_nix_profile_entry "devenv")
     if $profile_entry != null {
         let store_path = ($profile_entry | get -o storePaths.0 | default "")
@@ -52,7 +67,7 @@ export def resolve_preferred_devenv_path [] {
         return $path_match
     }
 
-    error make {msg: "devenv command not found in the active Nix profile or PATH"}
+    error make {msg: "devenv command not found in the Yazelix runtime, active Nix profile, or PATH"}
 }
 
 export def is_preferred_devenv_available [] {

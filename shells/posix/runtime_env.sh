@@ -10,6 +10,7 @@ fi
 export YAZELIX_RUNTIME_DIR="$runtime_dir"
 export YAZELIX_DIR="$runtime_dir"
 export YAZELIX_CONFIG_DIR="${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}"
+export PATH="$runtime_dir/bin:$PATH"
 
 runtime_nu="$runtime_dir/bin/nu"
 if [ -x "$runtime_nu" ]; then

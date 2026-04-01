@@ -20,6 +20,7 @@ pkgs.symlinkJoin {
   paths = [ runtime ];
 
   postBuild = ''
+    ln -s ${pkgs.devenv}/bin/devenv "$out/bin/devenv"
     rm -f "$out/bin/yzx"
     cat > "$out/bin/yzx" <<EOF
 #!/bin/sh
@@ -34,7 +35,7 @@ EOF
     description = "Reproducible terminal IDE built from Zellij, Yazi, and Helix";
     homepage = "https://github.com/luccahuguet/yazelix";
     license = licenses.mit;
-    platforms = platforms.linux ++ platforms.darwin;
+    platforms = platforms.linux;
     mainProgram = "yzx";
   };
 }
