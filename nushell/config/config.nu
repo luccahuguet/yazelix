@@ -53,8 +53,5 @@ if ($env.DEVENV_PROFILE? | is-not-empty) {
 export alias lg = lazygit
 export def clp [ ] { clip copy }
 
-# Note: yazelix commands are available directly from the script
-# Examples: yazelix help, yazelix get_config, yazelix versions, etc.
-
-# Yazelix command suite
-use ../scripts/core/yazelix.nu *
+# Use the stable external `yzx` CLI from PATH instead of importing the full
+# Yazelix Nushell command suite into every shell startup.
