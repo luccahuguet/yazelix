@@ -142,6 +142,22 @@ def split_top_level_block [config_content: string, block_name: string] {
             if ($trimmed | str starts-with $block_name) {
                 $in_named_block = true
                 $brace_depth = ($open_braces - $close_braces)
+
+                # Preserve compact one-line forms like:
+                # keybinds { normal { bind "f1" { WriteChars "fixture"; } } }
+                if $brace_depth <= 0 {
+                    let inline_body = (
+                        $trimmed
+                        | str replace -r $"^($block_name)\\s*\\{" ""
+                        | str replace -r "\\}\\s*$" ""
+                        | str trim
+                    )
+                    if ($inline_body | is-not-empty) {
+                        $block_lines = ($block_lines | append $inline_body)
+                    }
+                    $in_named_block = false
+                    $brace_depth = 0
+                }
             } else {
                 $stripped_lines = ($stripped_lines | append $line)
             }

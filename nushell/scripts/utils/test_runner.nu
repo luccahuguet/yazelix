@@ -2,7 +2,23 @@
 # Yazelix Test Runner
 # Runs all tests in the dev/ directory and reports results
 
-use ./common.nu [get_yazelix_dir]
+const TEST_RUNNER_MODULE_PATH = (path self)
+const TEST_RUNNER_REPO_ROOT = (
+    $TEST_RUNNER_MODULE_PATH
+    | path dirname
+    | path join ".." ".." ".."
+    | path expand
+)
+
+def get_test_runner_repo_root [] {
+    let cwd = (pwd | path expand)
+    let cwd_test_file = ($cwd | path join "nushell" "scripts" "dev" "test_yzx_commands.nu")
+    if ($cwd_test_file | path exists) {
+        $cwd
+    } else {
+        $TEST_RUNNER_REPO_ROOT
+    }
+}
 
 # Run syntax validation before tests
 def run_syntax_validation [
@@ -16,7 +32,7 @@ def run_syntax_validation [
     $syntax_log | save --append $log_file
 
     # Run validate_syntax.nu, mirroring the caller's requested verbosity.
-    let validate_script = ((get_yazelix_dir) | path join "nushell" "scripts" "dev" "validate_syntax.nu")
+    let validate_script = ((get_test_runner_repo_root) | path join "nushell" "scripts" "dev" "validate_syntax.nu")
     let result = if $verbose {
         do {
             nu $validate_script --verbose
@@ -153,7 +169,7 @@ export def run_all_tests [
             $test_args = ($test_args | append ["--delay", ($visual_delay | into string)])
         }
         let test_cmd = ($test_args | str join " ")
-        let logs_dir = ((get_yazelix_dir) | path join "logs")
+        let logs_dir = ((get_test_runner_repo_root) | path join "logs")
 
         # Launch Yazelix with skip welcome screen
         print $"💡 In the new window, run: ($test_cmd)"
@@ -161,14 +177,14 @@ export def run_all_tests [
         print ""
 
         with-env {YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"} {
-            nu ((get_yazelix_dir) | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+            nu ((get_test_runner_repo_root) | path join "nushell" "scripts" "core" "launch_yazelix.nu")
         }
 
         return
     }
 
     if $lint_only {
-        let log_dir = ((get_yazelix_dir) | path join "logs")
+        let log_dir = ((get_test_runner_repo_root) | path join "logs")
         mkdir $log_dir
         let timestamp = (date now | into int)
         let log_file = $"($log_dir)/test_run_($timestamp).log"
@@ -201,8 +217,9 @@ export def run_all_tests [
         return
     }
 
-    let test_dir = ((get_yazelix_dir) | path join "nushell" "scripts" "dev")
-    let log_dir = ((get_yazelix_dir) | path join "logs")
+    let repo_root = (get_test_runner_repo_root)
+    let test_dir = ($repo_root | path join "nushell" "scripts" "dev")
+    let log_dir = ($repo_root | path join "logs")
 
     # Create log directory if it doesn't exist
     mkdir $log_dir
