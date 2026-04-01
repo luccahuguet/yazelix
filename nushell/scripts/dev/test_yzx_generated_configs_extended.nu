@@ -3,7 +3,7 @@
 
 use ./test_yzx_helpers.nu [get_repo_config_dir get_repo_root repo_path]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
-use ../setup/helix_config_merger.nu [generate_managed_helix_config]
+use ../setup/helix_config_merger.nu [generate_managed_helix_config get_helix_import_notice_marker_path]
 use ../utils/launch_state.nu [get_launch_env]
 
 def test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip [] {
@@ -296,6 +296,79 @@ line-number = "relative"
     $result
 }
 
+def test_generate_managed_helix_config_shows_import_notice_once [] {
+    print "🧪 Testing managed Helix config generation shows a one-time import notice for personal Helix config..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_managed_helix_import_notice_XXXXXX | str trim)
+    let xdg_config_home = ($tmp_home | path join ".config")
+    let config_dir = ($xdg_config_home | path join "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
+    let native_helix_dir = ($xdg_config_home | path join "helix")
+
+    mkdir $xdg_config_home
+    mkdir $config_dir
+    mkdir $user_config_dir
+    mkdir $native_helix_dir
+
+    let result = (try {
+        '[editor]
+theme = "ayu_evolve"
+' | save --force --raw ($native_helix_dir | path join "config.toml")
+
+        let merger_script = ($repo_root | path join "nushell" "scripts" "setup" "helix_config_merger.nu")
+        let first_run = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+        } {
+            ^nu $merger_script --print-path | complete
+        })
+
+        let second_run = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+        } {
+            ^nu $merger_script --print-path | complete
+        })
+
+        let notice_marker_path = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+        } {
+            get_helix_import_notice_marker_path
+        })
+
+        if (
+            ($first_run.exit_code == 0)
+            and ($first_run.stderr | str contains "yzx import helix")
+            and ($second_run.exit_code == 0)
+            and (($second_run.stderr | str trim) == "")
+            and ($notice_marker_path | path exists)
+        ) {
+            print "  ✅ Managed Helix config generation shows the personal-config import guidance once and stays quiet after that"
+            true
+        } else {
+            print $"  ❌ Unexpected managed Helix import-notice behavior: first=(($first_run | to json -r)) second=(($second_run | to json -r)) marker_exists=(($notice_marker_path | path exists))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 export def run_generated_config_extended_tests [] {
     [
         (test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip)
@@ -303,6 +376,7 @@ export def run_generated_config_extended_tests [] {
         (test_generate_managed_helix_config_merges_user_config_and_enforces_reveal)
         (test_get_launch_env_wraps_helix_with_managed_wrapper)
         (test_devenv_shell_exports_managed_helix_wrapper)
+        (test_generate_managed_helix_config_shows_import_notice_once)
         (test_yzx_import_helix_copies_personal_config_with_force_backups)
     ]
 }

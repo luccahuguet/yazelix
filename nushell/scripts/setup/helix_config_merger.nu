@@ -40,6 +40,14 @@ export def get_generated_helix_config_path [] {
     (get_generated_helix_config_dir) | path join "config.toml"
 }
 
+def get_helix_notice_state_dir [] {
+    (get_yazelix_state_dir) | path join "state" "helix"
+}
+
+export def get_helix_import_notice_marker_path [] {
+    (get_helix_notice_state_dir) | path join "import_notice_seen"
+}
+
 def ensure_dir [path: string] {
     let dir = ($path | path dirname)
     if not ($dir | path exists) {
@@ -105,9 +113,35 @@ export def build_managed_helix_config [] {
     enforce_reveal_binding $merged_config
 }
 
+def maybe_show_helix_import_notice [] {
+    let native_config_path = (get_native_helix_config_path)
+    let managed_user_config_path = (get_managed_helix_user_config_path)
+    let notice_marker_path = (get_helix_import_notice_marker_path)
+
+    if not ($native_config_path | path exists) {
+        return
+    }
+
+    if ($managed_user_config_path | path exists) {
+        return
+    }
+
+    if ($notice_marker_path | path exists) {
+        return
+    }
+
+    ensure_dir $notice_marker_path
+    "" | save --force --raw $notice_marker_path
+
+    print --stderr "ℹ️  Yazelix is using its managed Helix config."
+    print --stderr $"   Personal Helix config detected at: ($native_config_path)"
+    print --stderr "   If you want Yazelix-managed Helix sessions to reuse it, run: yzx import helix"
+}
+
 export def generate_managed_helix_config [] {
     let output_path = (get_generated_helix_config_path)
     let final_config = (build_managed_helix_config)
+    maybe_show_helix_import_notice
     ensure_dir $output_path
     ($final_config | to toml) | save --force $output_path
     $output_path
