@@ -3,7 +3,7 @@
 
 use logging.nu log_to_file
 use constants.nu [PINNED_NIX_VERSION PINNED_DEVENV_VERSION]
-use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir]
+use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir get_yazelix_state_dir]
 use config_surfaces.nu [get_main_user_config_path reconcile_primary_config_surfaces]
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
@@ -439,6 +439,111 @@ export def check_shell_integration [] {
     }
 }
 
+def get_desktop_applications_dir [] {
+    let data_home = (
+        $env.XDG_DATA_HOME?
+        | default "~/.local/share"
+        | into string
+        | str trim
+    )
+
+    ($data_home | path expand | path join "applications")
+}
+
+def get_desktop_entry_path [] {
+    (get_desktop_applications_dir | path join "com.yazelix.Yazelix.desktop")
+}
+
+def resolve_realpath_or_null [target: string] {
+    let result = (^readlink -f $target | complete)
+    if $result.exit_code == 0 {
+        let resolved = ($result.stdout | str trim)
+        if ($resolved | is-empty) { null } else { $resolved }
+    } else {
+        null
+    }
+}
+
+def get_current_installed_runtime_target [] {
+    let runtime_link = (get_yazelix_state_dir | path join "runtime" "current")
+    resolve_realpath_or_null $runtime_link
+}
+
+def get_desktop_entry_runtime_target [desktop_path: string] {
+    if not ($desktop_path | path exists) {
+        return null
+    }
+
+    let entry = (open $desktop_path --raw)
+    let marker = (
+        $entry
+        | lines
+        | where {|line| $line | str starts-with "X-Yazelix-Runtime-Target="}
+        | get -o 0
+    )
+
+    if $marker == null {
+        null
+    } else {
+        (
+            $marker
+            | str replace 'X-Yazelix-Runtime-Target="' ""
+            | str replace '"' ""
+            | str trim
+        )
+    }
+}
+
+export def check_desktop_entry_freshness [] {
+    let desktop_path = (get_desktop_entry_path)
+
+    if not ($desktop_path | path exists) {
+        return {
+            status: "info"
+            message: "Yazelix desktop entry not installed"
+            details: "Run `yzx desktop install` if you want application-launcher integration."
+            fix_available: false
+        }
+    }
+
+    let current_runtime_target = (get_current_installed_runtime_target)
+    let desktop_runtime_target = (get_desktop_entry_runtime_target $desktop_path)
+
+    if $desktop_runtime_target == null {
+        return {
+            status: "warning"
+            message: "Yazelix desktop entry is stale or from a pre-contract install"
+            details: "The installed desktop entry has no runtime freshness metadata. Repair with `yzx desktop install`."
+            fix_available: false
+        }
+    }
+
+    if $current_runtime_target == null {
+        return {
+            status: "warning"
+            message: "Could not resolve the current installed Yazelix runtime"
+            details: "The desktop entry exists, but the installed runtime link is missing or broken. Reinstall Yazelix with `nix run github:luccahuguet/yazelix#install`."
+            fix_available: false
+        }
+    }
+
+    if $desktop_runtime_target != $current_runtime_target {
+        return {
+            status: "warning"
+            message: "Yazelix desktop entry is stale"
+            details: $"Desktop entry target: ($desktop_runtime_target)\nCurrent runtime target: ($current_runtime_target)\nRepair with `yzx desktop install`."
+            fix_available: false
+        }
+    }
+
+    {
+        status: "ok"
+        message: "Yazelix desktop entry matches the current installed runtime"
+        details: $desktop_path
+        fix_available: false
+    }
+}
+
 # Check log files
 export def check_log_files [] {
     let logs_dir = ((get_yazelix_dir) | path join "logs")
@@ -689,6 +794,9 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
 
     # Shell integration
     $all_results = ($all_results | append (check_shell_integration))
+
+    # Desktop entry freshness
+    $all_results = ($all_results | append (check_desktop_entry_freshness))
 
     # Log files
     $all_results = ($all_results | append (check_log_files))
