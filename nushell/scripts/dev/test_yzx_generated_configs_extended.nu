@@ -346,6 +346,7 @@ theme = "ayu_evolve"
         } {
             get_helix_import_notice_marker_path
         })
+        let generated_config_path = ($tmp_home | path join ".local" "share" "yazelix" "configs" "helix" "config.toml")
 
         if (
             ($first_run.exit_code == 0)
@@ -353,11 +354,12 @@ theme = "ayu_evolve"
             and ($second_run.exit_code == 0)
             and (($second_run.stderr | str trim) == "")
             and ($notice_marker_path | path exists)
+            and ($generated_config_path | path exists)
         ) {
             print "  ✅ Managed Helix config generation shows the personal-config import guidance once and stays quiet after that"
             true
         } else {
-            print $"  ❌ Unexpected managed Helix import-notice behavior: first=(($first_run | to json -r)) second=(($second_run | to json -r)) marker_exists=(($notice_marker_path | path exists))"
+            print $"  ❌ Unexpected managed Helix import-notice behavior: first=(($first_run | to json -r)) second=(($second_run | to json -r)) marker_exists=(($notice_marker_path | path exists)) generated_exists=(($generated_config_path | path exists))"
             false
         }
     } catch {|err|

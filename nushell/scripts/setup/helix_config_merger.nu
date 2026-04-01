@@ -127,23 +127,34 @@ def maybe_show_helix_import_notice [] {
     }
 
     if ($notice_marker_path | path exists) {
-        return
+        return null
     }
 
-    ensure_dir $notice_marker_path
-    "" | save --force --raw $notice_marker_path
-
-    print --stderr "ℹ️  Yazelix is using its managed Helix config."
-    print --stderr $"   Personal Helix config detected at: ($native_config_path)"
-    print --stderr "   If you want Yazelix-managed Helix sessions to reuse it, run: yzx import helix"
+    {
+        marker_path: $notice_marker_path
+        lines: [
+            "ℹ️  Yazelix is using its managed Helix config."
+            $"   Personal Helix config detected at: ($native_config_path)"
+            "   If you want Yazelix-managed Helix sessions to reuse it, run: yzx import helix"
+        ]
+    }
 }
 
 export def generate_managed_helix_config [] {
     let output_path = (get_generated_helix_config_path)
     let final_config = (build_managed_helix_config)
-    maybe_show_helix_import_notice
+    let notice = (maybe_show_helix_import_notice)
     ensure_dir $output_path
     ($final_config | to toml) | save --force $output_path
+
+    if $notice != null {
+        ensure_dir $notice.marker_path
+        "" | save --force --raw $notice.marker_path
+        for line in $notice.lines {
+            print --stderr $line
+        }
+    }
+
     $output_path
 }
 
