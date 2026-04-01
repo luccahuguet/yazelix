@@ -29,6 +29,7 @@ def ensure_runtime_scripts_executable [yazelix_dir: string] {
 
     chmod +x $"($runtime_root)/shells/bash/start_yazelix.sh"
     chmod +x $"($runtime_root)/shells/posix/start_yazelix.sh"
+    chmod +x $"($runtime_root)/shells/posix/yazelix_hx.sh"
     chmod +x $"($runtime_root)/shells/posix/yzx_cli.sh"
     chmod +x $"($runtime_root)/nushell/scripts/core/launch_yazelix.nu"
     chmod +x $"($runtime_root)/nushell/scripts/core/start_yazelix.nu"

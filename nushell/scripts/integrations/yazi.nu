@@ -57,6 +57,11 @@ def is_neovim_editor [editor: string] {
 }
 
 export def get_managed_editor_kind [] {
+    let env_editor_kind = ($env.YAZELIX_MANAGED_EDITOR_KIND? | default "" | into string | str trim)
+    if $env_editor_kind in ["helix", "neovim"] {
+        return $env_editor_kind
+    }
+
     let config = parse_yazelix_config
     let configured_editor = ($config.editor_command? | default null)
     let editor = if ($configured_editor != null) and (($configured_editor | into string | str trim) | is-not-empty) {
@@ -626,10 +631,12 @@ export def open_file_with_editor [file_path: path] {
     # Editor-local file pickers handle the "open in same pane" workflow outside the sidebar layout.
 
     # Dispatch to the appropriate editor handler
-    if (is_helix_editor $editor) {
+    let editor_kind = (get_managed_editor_kind)
+
+    if $editor_kind == "helix" {
         log_to_file "open_editor.log" "Detected Helix editor, using Helix-specific logic"
         open_with_helix $file_path $yazi_id
-    } else if (is_neovim_editor $editor) {
+    } else if $editor_kind == "neovim" {
         log_to_file "open_editor.log" "Detected Neovim editor, using Neovim-specific logic"
         open_with_neovim $file_path $yazi_id
     } else {

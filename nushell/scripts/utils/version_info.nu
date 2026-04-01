@@ -2,6 +2,7 @@
 # Simple version information for Yazelix tools
 
 use devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available]
+use helix_mode.nu [get_helix_binary]
 
 def extract_first_semver [] {
     let matches = ($in | parse --regex '(\d+\.\d+\.\d+)' | get -o capture0)
@@ -82,14 +83,11 @@ def get_version [tool: string] {
                 try { (zellij --version | lines | first | extract_first_semver) } catch { "error" }
             }
             "helix" => {
-                # Check if EDITOR is actually Helix before using it
-                let editor = $env.EDITOR
-                let is_helix = ($editor | str ends-with "/hx") or ($editor == "hx") or ($editor | str ends-with "/helix") or ($editor == "helix")
-                if $is_helix {
-                    try { (^$editor --version | lines | first | extract_first_semver) } catch { "error" }
-                } else {
-                    # Fallback to 'hx' for non-Helix editors
+                let helix_binary = (get_helix_binary)
+                if $helix_binary == "hx" {
                     try { (hx --version | lines | first | extract_first_semver) } catch { "not available" }
+                } else {
+                    try { (^$helix_binary --version | lines | first | extract_first_semver) } catch { "error" }
                 }
             }
             "nushell" => {

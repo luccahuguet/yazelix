@@ -203,6 +203,16 @@ def resolve_editor_command [config: record, profile_path: string] {
     }
 }
 
+def is_helix_editor_command [editor: string] {
+    let normalized = ($editor | str trim)
+    ($normalized | str ends-with "/hx") or ($normalized == "hx") or ($normalized | str ends-with "/helix") or ($normalized == "helix")
+}
+
+def is_neovim_editor_command [editor: string] {
+    let normalized = ($editor | str trim)
+    ($normalized | str ends-with "/nvim") or ($normalized == "nvim") or ($normalized | str ends-with "/neovim") or ($normalized == "neovim")
+}
+
 def resolve_helix_runtime [config: record] {
     let configured_runtime = ($config.helix_runtime_path? | default null)
     if $configured_runtime != null {
@@ -223,7 +233,19 @@ export def get_launch_env [config: record, profile_path: string] {
     let enable_sidebar = ($config.enable_sidebar? | default true)
     let terminals = ($config.terminals? | default ["ghostty"])
     let preferred_terminal = if ($terminals | is-empty) { "unknown" } else { ($terminals | first | into string) }
-    let editor_command = (resolve_editor_command $config $profile_path)
+    let resolved_editor_command = (resolve_editor_command $config $profile_path)
+    let editor_kind = if (is_helix_editor_command $resolved_editor_command) {
+        "helix"
+    } else if (is_neovim_editor_command $resolved_editor_command) {
+        "neovim"
+    } else {
+        ""
+    }
+    let editor_command = if $editor_kind == "helix" {
+        ($yazelix_dir | path join "shells" "posix" "yazelix_hx.sh")
+    } else {
+        $resolved_editor_command
+    }
     let helix_runtime = (resolve_helix_runtime $config)
     mut launch_env = {
         DEVENV_PROFILE: $profile_path
@@ -242,6 +264,14 @@ export def get_launch_env [config: record, profile_path: string] {
         YAZELIX_TERMINAL_CONFIG_MODE: ($config.terminal_config_mode? | default "yazelix" | into string)
         YAZELIX_WELCOME_STYLE: ($config.welcome_style? | default "random" | into string)
         EDITOR: $editor_command
+    }
+
+    if ($editor_kind | is-not-empty) {
+        $launch_env = ($launch_env | upsert YAZELIX_MANAGED_EDITOR_KIND $editor_kind)
+    }
+
+    if $editor_kind == "helix" {
+        $launch_env = ($launch_env | upsert YAZELIX_MANAGED_HELIX_BINARY $resolved_editor_command)
     }
 
     if ($helix_runtime | is-not-empty) {

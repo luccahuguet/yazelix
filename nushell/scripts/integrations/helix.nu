@@ -1,6 +1,8 @@
 #!/usr/bin/env nu
 # Helix integration utilities for Yazelix
 
+export use ../utils/helix_mode.nu [get_helix_binary]
+
 # Test if Helix is running and working properly
 export def is_helix_running_test [] {
     print "🔍 Testing Helix integration..."
@@ -23,16 +25,4 @@ export def is_helix_running_test [] {
     }
     
     print "✅ Helix integration test completed"
-}
-
-# Get the Helix binary path (both modes use hx from PATH)
-export def get_helix_binary [] {
-    # Only return EDITOR if it's actually Helix, fallback to 'hx' for safety
-    let editor = $env.EDITOR
-    let is_helix = ($editor | str ends-with "/hx") or ($editor == "hx") or ($editor | str ends-with "/helix") or ($editor == "helix")
-    if $is_helix {
-        $editor
-    } else {
-        "hx"  # Fallback for non-Helix editors
-    }
 }

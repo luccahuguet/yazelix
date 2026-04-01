@@ -6,6 +6,7 @@ use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_
 use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_user_config_dir]
 use ../utils/config_migrations.nu [apply_config_migration_plan get_config_migration_plan render_config_migration_plan validate_config_migration_rules]
 use ../utils/config_surfaces.nu [resolve_active_config_paths get_primary_config_paths reconcile_primary_config_surfaces]
+use ../setup/helix_config_merger.nu [get_generated_helix_config_path get_managed_helix_user_config_path]
 
 def classify_menu_command [cmd: string] {
     if ($cmd | str starts-with "yzx launch") or ($cmd == "yzx restart") {
@@ -197,16 +198,16 @@ export def "yzx config" [
 def show_config_section [section: string] {
     let yazi_config_path = ("~/.local/share/yazelix/configs/yazi/yazi.toml" | path expand)
     let zellij_config_path = ("~/.local/share/yazelix/configs/zellij/config.kdl" | path expand)
-    let helix_config_path = ("~/.config/helix/config.toml" | path expand)
-    let helix_languages_path = ("~/.config/helix/languages.toml" | path expand)
+    let helix_config_path = (get_managed_helix_user_config_path)
+    let generated_helix_config_path = (get_generated_helix_config_path)
 
     match $section {
         "hx" => {
             {
                 config_path: $helix_config_path
                 config: (if ($helix_config_path | path exists) { open $helix_config_path } else { null })
-                languages_path: $helix_languages_path
-                languages: (if ($helix_languages_path | path exists) { open $helix_languages_path } else { null })
+                generated_config_path: $generated_helix_config_path
+                generated_config: (if ($generated_helix_config_path | path exists) { open $generated_helix_config_path } else { null })
             }
         }
         "yazi" => {

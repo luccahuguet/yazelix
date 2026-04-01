@@ -1,0 +1,6 @@
+# Yazelix-managed Helix config.
+# This file is intentionally narrow: it only contains Yazelix-owned
+# editor-local integration that should not depend on personal ~/.config/helix.
+
+[keys.normal]
+A-r = ":sh yzx reveal \"%{buffer_name}\""

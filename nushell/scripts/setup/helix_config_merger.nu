@@ -1,0 +1,101 @@
+#!/usr/bin/env nu
+# Generate a Yazelix-managed Helix config.toml for Yazelix-managed Helix sessions.
+
+use ../utils/common.nu [get_yazelix_runtime_reference_dir get_yazelix_state_dir get_yazelix_user_config_dir]
+
+const MANAGED_REVEAL_COMMAND = ':sh yzx reveal "%{buffer_name}"'
+
+def get_helix_template_path [] {
+    (get_yazelix_runtime_reference_dir) | path join "configs" "helix" "yazelix_config.toml"
+}
+
+export def get_managed_helix_user_config_dir [] {
+    (get_yazelix_user_config_dir) | path join "helix"
+}
+
+export def get_managed_helix_user_config_path [] {
+    (get_managed_helix_user_config_dir) | path join "config.toml"
+}
+
+export def get_generated_helix_config_dir [] {
+    (get_yazelix_state_dir) | path join "configs" "helix"
+}
+
+export def get_generated_helix_config_path [] {
+    (get_generated_helix_config_dir) | path join "config.toml"
+}
+
+def ensure_dir [path: string] {
+    let dir = ($path | path dirname)
+    if not ($dir | path exists) {
+        mkdir $dir
+    }
+}
+
+def deep_merge [base: record, user: record] {
+    let base_keys = ($base | columns)
+    let user_keys = ($user | columns)
+    let all_keys = ($base_keys | append $user_keys | uniq)
+
+    $all_keys | reduce --fold {} {|key, acc|
+        let in_base = ($key in $base_keys)
+        let in_user = ($key in $user_keys)
+
+        let value = if $in_base and $in_user {
+            let base_val = ($base | get -o $key)
+            let user_val = ($user | get -o $key)
+            let base_type = ($base_val | describe)
+            let user_type = ($user_val | describe)
+
+            if ($base_type | str starts-with "record") and ($user_type | str starts-with "record") {
+                deep_merge $base_val $user_val
+            } else {
+                $user_val
+            }
+        } else if $in_user {
+            $user | get -o $key
+        } else {
+            $base | get -o $key
+        }
+
+        $acc | insert $key $value
+    }
+}
+
+def enforce_reveal_binding [config: record] {
+    let keys_config = ($config | get -o keys | default {})
+    let normal_keys = ($keys_config | get -o normal | default {})
+    let updated_normal_keys = ($normal_keys | upsert "A-r" $MANAGED_REVEAL_COMMAND)
+    let updated_keys = ($keys_config | upsert normal $updated_normal_keys)
+    $config | upsert keys $updated_keys
+}
+
+export def generate_managed_helix_config [] {
+    let template_path = (get_helix_template_path)
+    if not ($template_path | path exists) {
+        error make {msg: $"Missing Yazelix Helix template at: ($template_path)"}
+    }
+
+    let user_config_path = (get_managed_helix_user_config_path)
+    let output_path = (get_generated_helix_config_path)
+
+    let base_config = (open $template_path)
+    let merged_config = if ($user_config_path | path exists) {
+        let user_config = (open $user_config_path)
+        deep_merge $base_config $user_config
+    } else {
+        $base_config
+    }
+
+    let final_config = (enforce_reveal_binding $merged_config)
+    ensure_dir $output_path
+    ($final_config | to toml) | save --force $output_path
+    $output_path
+}
+
+export def main [--print-path] {
+    let output_path = (generate_managed_helix_config)
+    if $print_path {
+        print $output_path
+    }
+}
