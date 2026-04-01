@@ -9,6 +9,8 @@ with lib;
 
 let
   cfg = config.programs.yazelix;
+  runtimePackage = import ../yazelix_runtime_package.nix { inherit pkgs; };
+  runtimeCurrentPath = "${config.xdg.dataHome}/yazelix/runtime/current";
 
   boolToToml = value: if value then "true" else "false";
 
@@ -616,26 +618,37 @@ in
   };
 
   config = mkIf cfg.enable {
-    # Desktop integration - copy yazelix assets
-    xdg.configFile."yazelix/assets/logo.png".source = ../assets/logo.png;
-    xdg.configFile."yazelix/assets/icons/48x48/yazelix.png".source = ../assets/icons/48x48/yazelix.png;
-    xdg.configFile."yazelix/assets/icons/64x64/yazelix.png".source = ../assets/icons/64x64/yazelix.png;
-    xdg.configFile."yazelix/assets/icons/128x128/yazelix.png".source =
+    # Package-ready runtime owned by Home Manager.
+    xdg.dataFile."yazelix/runtime/current".source = runtimePackage;
+
+    # Stable yzx surface that targets the Home Manager-managed runtime.
+    home.file.".local/bin/yzx" = {
+      executable = true;
+      text = ''
+        #!/bin/sh
+        exec "${runtimeCurrentPath}/bin/yzx" "$@"
+      '';
+    };
+
+    # Desktop icon integration.
+    xdg.dataFile."icons/hicolor/48x48/apps/yazelix.png".source = ../assets/icons/48x48/yazelix.png;
+    xdg.dataFile."icons/hicolor/64x64/apps/yazelix.png".source = ../assets/icons/64x64/yazelix.png;
+    xdg.dataFile."icons/hicolor/128x128/apps/yazelix.png".source =
       ../assets/icons/128x128/yazelix.png;
-    xdg.configFile."yazelix/assets/icons/256x256/yazelix.png".source =
+    xdg.dataFile."icons/hicolor/256x256/apps/yazelix.png".source =
       ../assets/icons/256x256/yazelix.png;
-    xdg.configFile."yazelix/docs/desktop_icon_setup.md".source = ../docs/desktop_icon_setup.md;
 
     # Desktop entry for application launcher
     xdg.desktopEntries.yazelix = {
       name = "Yazelix";
       comment = "Yazi + Zellij + Helix integrated terminal environment";
-      exec = "${config.xdg.configHome}/yazelix/shells/posix/desktop_launcher.sh";
+      exec = "${runtimeCurrentPath}/shells/posix/desktop_launcher.sh";
       icon = "yazelix";
       categories = [ "Development" ];
       type = "Application";
       settings = {
         StartupWMClass = "com.yazelix.Yazelix";
+        X-Yazelix-Runtime-Target = "${runtimePackage}";
       };
     };
 

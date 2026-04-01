@@ -8,12 +8,6 @@
 { config, pkgs, ... }:
 
 {
-  # REQUIRED: Add nushell to your packages for terminal emulator compatibility
-  home.packages = with pkgs; [
-    nushell # Required for Yazelix terminal startup
-    # Add your other packages here
-  ];
-
   programs.yazelix = {
     enable = true;
 
@@ -117,4 +111,9 @@
       erdtree # Modern tree command
     ];
   };
+
+  # Optional: install Nushell as your normal interactive shell outside Yazelix.
+  # home.packages = with pkgs; [
+  #   nushell
+  # ];
 }

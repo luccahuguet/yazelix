@@ -1,21 +1,21 @@
 # Yazelix Home Manager Module
 
-A **configuration-only** Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that provides declarative configuration management while preserving the existing workflow.
+A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that declaratively manages the package-ready runtime surface alongside `yazelix.toml` and `yazelix_packs.toml`.
 
 ## What This Module Does
 
-- **Generates `yazelix.toml`** from Home Manager options
-- **Type-safe configuration** with validation
-- **Preserves existing workflow** - you still `git clone` and use `devenv shell`
-- **Zero file conflicts** - only manages configuration file
-- **Easy migration** - simple enable/disable in Home Manager
+- **Generates `yazelix.toml` and `yazelix_packs.toml`** from Home Manager options
+- **Installs the managed Yazelix runtime** at `~/.local/share/yazelix/runtime/current`
+- **Installs a stable `yzx` shim** at `~/.local/bin/yzx`
+- **Installs icons and a desktop entry** that target the managed runtime
+- **Keeps the config surface type-safe** with Home Manager validation
 
 ## What This Module Does NOT Do
 
-- Does not manage the Yazelix repository (you still clone it manually)
-- Does not install packages directly (packages installed via `devenv shell`)
-- Does not modify terminal configurations
-- Does not replace existing Yazelix functionality
+- Does not require or manage a live Yazelix git clone for normal usage
+- Does not replace Nix itself; you still need a flake-enabled Nix install
+- Does not install a separate host/global Nushell for your everyday shell usage
+- Does not auto-enter a Yazelix shell on `home-manager switch`
 
 ## Quick Start
 
@@ -54,11 +54,6 @@ See [examples/example.nix](./examples/example.nix) for all options. Minimal setu
 ```nix
 # ~/.config/home-manager/home.nix (or wherever your HM config is)
 {
-  # REQUIRED: Add nushell to your packages for terminal emulator compatibility
-  home.packages = with pkgs; [
-    nushell  # Required for Yazelix terminal startup
-  ];
-
   programs.yazelix = {
     enable = true;
     # Customize other options as needed - see example.nix
@@ -68,7 +63,26 @@ See [examples/example.nix](./examples/example.nix) for all options. Minimal setu
 
 ### 3. Install and Use Yazelix
 
-Follow the [main Yazelix installation guide](https://github.com/luccahuguet/yazelix#installation) to install the Yazelix runtime and set up the `yzx` command. A source checkout is still valid for maintainer workflows, but Home Manager usage should not depend on treating `~/.config/yazelix` as a live repo clone. Then run `home-manager switch` to apply your configuration.
+Run:
+
+```bash
+home-manager switch
+```
+
+This creates:
+- `~/.local/share/yazelix/runtime/current`
+- `~/.local/bin/yzx`
+- `~/.config/yazelix/user_configs/yazelix.toml`
+- `~/.config/yazelix/user_configs/yazelix_packs.toml`
+- a desktop entry that targets the managed runtime
+
+Then open a fresh shell and run:
+
+```bash
+yzx launch
+```
+
+For maintainer workflows, a cloned repo is still useful. Normal Home Manager usage should not depend on treating `~/.config/yazelix` as a live repo checkout.
 
 ## Example Configuration
 
@@ -99,19 +113,21 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
    home-manager switch
    ```
 
-3. **Restore manual config:** `cp ~/.config/yazelix/yazelix_default.toml ~/.config/yazelix/user_configs/yazelix.toml`
+3. **Restore manual config:** `cp ~/.local/share/yazelix/runtime/current/yazelix_default.toml ~/.config/yazelix/user_configs/yazelix.toml`
 
 ## Safety Features
 
 - **File collision detection** - Uses Home Manager's built-in collision prevention
 - **Atomic changes** - Configuration changes are atomic via Home Manager
 - **Easy rollback** - Disable module to revert to manual configuration
-- **No repository management** - Never touches the Yazelix git repository
+- **No repository management requirement** - Normal usage does not depend on a live Yazelix git repository
 
 ## Troubleshooting
 
 ### Configuration not applied
 - Check that `~/.config/yazelix/user_configs/yazelix.toml` was created
+- Check that `~/.local/share/yazelix/runtime/current` exists
+- Check that `~/.local/bin/yzx` exists and is on your `PATH`
 - Verify Home Manager configuration syntax
 - Run `home-manager switch` to apply changes
 
@@ -120,10 +136,10 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
 - Backup your manual configuration before enabling the module
 - See example.nix to recreate your settings declaratively
 
-### Nushell not found error
-- Terminal emulators need `nushell` available in PATH to launch Yazelix
-- Add `nushell` to your `home.packages` in Home Manager
-- This is required even though Yazelix installs its own nushell via Nix
+### Nushell expectations
+- Yazelix launchers use the runtime-local Nushell shipped with the managed runtime
+- You do **not** need to add `nushell` to `home.packages` just to make Yazelix launch
+- If you want Nushell as your normal interactive shell outside Yazelix, install it separately in your own Home Manager config
 
 ### Module not found
 - If you use Home Manager with flakes, check that the `yazelix-hm` input reference is correct in your own `flake.nix`
@@ -134,7 +150,7 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
 To work on this module:
 
 ```bash
-cd ~/.config/yazelix/home_manager
+cd /path/to/cloned/yazelix/home_manager
 devenv shell  # Provides nixpkgs-fmt, statix, deadnix
 ```
 

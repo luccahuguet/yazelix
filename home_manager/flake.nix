@@ -55,19 +55,53 @@
           { }
         else
           let
+            runtimeSource = hmConfig.config.xdg.dataFile."yazelix/runtime/current".source;
+            yzxShim = hmConfig.config.home.file.".local/bin/yzx".text;
             desktopExec = hmConfig.config.xdg.desktopEntries.yazelix.exec;
             startupWMClass = hmConfig.config.xdg.desktopEntries.yazelix.settings.StartupWMClass;
+            desktopRuntimeTarget =
+              hmConfig.config.xdg.desktopEntries.yazelix.settings.X-Yazelix-Runtime-Target;
             yazelixToml = hmConfig.config.xdg.configFile."yazelix/user_configs/yazelix.toml".text;
             yazelixPacksToml = hmConfig.config.xdg.configFile."yazelix/user_configs/yazelix_packs.toml".text;
+            expectedRuntimePath = "/home/test/.local/share/yazelix/runtime/current";
           in
           {
             desktop_entry_smoke = pkgs.runCommand "yazelix-home-manager-desktop-entry-smoke" {
+              passthru.runtimeSource = runtimeSource;
+              passthru.yzxShim = yzxShim;
               passthru.exec = desktopExec;
               passthru.startupWMClass = startupWMClass;
+              passthru.desktopRuntimeTarget = desktopRuntimeTarget;
               passthru.yazelixToml = yazelixToml;
               passthru.yazelixPacksToml = yazelixPacksToml;
             } ''
-              printf '%s' '${startupWMClass}' > "$out"
+              expected_runtime_path='${expectedRuntimePath}'
+              desktop_exec='${desktopExec}'
+              desktop_runtime_target='${desktopRuntimeTarget}'
+              runtime_source='${runtimeSource}'
+              yzx_shim='${yzxShim}'
+
+              if [ "$desktop_exec" != "$expected_runtime_path/shells/posix/desktop_launcher.sh" ]; then
+                echo "unexpected desktop exec: $desktop_exec" >&2
+                exit 1
+              fi
+
+              if [ "$desktop_runtime_target" != "$runtime_source" ]; then
+                echo "desktop runtime target drifted from managed runtime source" >&2
+                exit 1
+              fi
+
+              if ! printf '%s\n' "$yzx_shim" | grep -F "exec \"$expected_runtime_path/bin/yzx\" \"\$@\"" >/dev/null; then
+                echo "yzx shim does not target runtime/current" >&2
+                exit 1
+              fi
+
+              cat > "$out" <<EOF
+              StartupWMClass=${startupWMClass}
+              DesktopExec=$desktop_exec
+              RuntimeSource=$runtime_source
+              DesktopRuntimeTarget=$desktop_runtime_target
+              EOF
             '';
           }
       );
@@ -100,9 +134,7 @@
                 terminals = [ "ghostty" ];
                 manage_terminals = true;
                 
-                # Editor configuration (flat structure)
-                set_editor = true;
-                override_existing = true;
+                # Editor configuration
                 editor_command = "hx";
                 
                 # Display options
