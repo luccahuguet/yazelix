@@ -16,7 +16,7 @@ The old install story was honest but too maintainer-shaped:
 
 - clone the repo somewhere
 - install host Nushell separately
-- install the pinned `devenv` CLI separately
+- install the Yazelix runtime and its owned bootstrap tools separately
 - run `start_yazelix.nu --setup-only`
 
 That works, but it does not feel like a modern front door. The right improvement is not to hide the Nix basis of the product. The right improvement is to package that reality behind one obvious command.
@@ -38,8 +38,7 @@ nix run github:luccahuguet/yazelix#install
 The installer app should:
 
 1. validate that Nix itself is available
-2. install or refresh the Yazelix-pinned `devenv` CLI if needed
-3. materialize a persistent Yazelix runtime tree that includes the runtime's own `nu`
+2. materialize or refresh a persistent Yazelix runtime tree that includes Yazelix-owned `devenv` and `nu`
 4. initialize `~/.config/yazelix/user_configs/` if missing
 5. install the stable `yzx` executable entrypoint into `~/.local/bin/`
 6. leave desktop entry installation as an explicit follow-up command (`yzx desktop install`), not an automatic side effect of the installer
@@ -47,7 +46,7 @@ The installer app should:
 
 The installer should not mutate the user's global shell toolchain beyond the bootstrap tools Yazelix directly owns. In practice:
 - Nix remains the host prerequisite
-- the installer owns the pinned `devenv` CLI and the runtime-local `nu`
+- the installer owns the runtime-local `devenv` and `nu`
 - the installer does not promise to install a separate host/global Nushell for the user's normal shell sessions
 
 ## Ownership Model
@@ -84,7 +83,7 @@ So the installer must materialize or install a persistent runtime and then point
 
 - It creates a second trust surface immediately.
 - It adds release-hosting and installer-maintenance burden before the packaged/runtime path is mature.
-- It would still need to hand off to Nix and the pinned `devenv` story anyway.
+- It would still need to hand off to Nix and the owned-runtime dependency story anyway.
 - It risks hiding important constraints behind a deceptively simple command.
 
 `curl | sh` can be reconsidered later as a convenience wrapper around an already-solid packaged install path.

@@ -5,7 +5,7 @@ use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/common.nu [get_yazelix_dir]
 use ../utils/environment_bootstrap.nu [run_in_devenv_shell_command]
 use ../utils/config_surfaces.nu [copy_default_config_surfaces load_config_surface_from_main get_main_user_config_path]
-use ../utils/devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available resolve_preferred_devenv_path]
+use ../utils/devenv_cli.nu [get_preferred_devenv_version_line resolve_preferred_devenv_path]
 use ../utils/readme_release_block.nu [sync_readme_surface]
 use ../utils/issue_bead_contract.nu [
     build_imported_issue_description
@@ -33,69 +33,25 @@ def extract_version [value: string] {
     $value | parse --regex '(\d+\.\d+\.\d+)' | get capture0 | last | default ""
 }
 
-def get_runtime_version_lines_from_repo_shell [] {
-    let devenv_path = (resolve_preferred_devenv_path)
-    let devenv_version_raw = try {
-        get_preferred_devenv_version_line
-    } catch {|err|
-        print $"❌ Failed to resolve preferred devenv CLI version: ($err.msg)"
-        exit 1
-    }
-
-    let version_result = (do {
-        cd (get_yazelix_dir)
-        with-env {
-            YAZELIX_ENV_ONLY: "true"
-            YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
-        } {
-            ^$devenv_path shell --no-tui -- sh -c 'printf "__YZX_NIX__\n"; nix --version' | complete
-        }
-    })
-
-    if $version_result.exit_code != 0 {
-        let stderr = ($version_result.stderr | str trim)
-        print $"❌ Failed to resolve runtime versions from the repo shell: ($stderr)"
-        exit 1
-    }
-
-    let lines = (
-        $version_result.stdout
-        | lines
-        | where { |line|
-            let trimmed = ($line | str trim)
-            ($trimmed | is-not-empty) and not ($trimmed | str starts-with "Configuring shell") and not ($trimmed | str starts-with "Loading tasks") and not ($trimmed | str starts-with "Running tasks") and not ($trimmed | str starts-with "Running           ") and not ($trimmed | str starts-with "Succeeded         ") and not ($trimmed | str starts-with "No command") and not ($trimmed | str contains "Yazelix environment loaded!")
-        }
-    )
-
-    mut current_tool = ""
-    mut nix_version_raw = ""
-
-    for line in $lines {
-        let trimmed = ($line | str trim)
-        if $trimmed == "__YZX_NIX__" {
-            $current_tool = "nix"
-        } else if ($current_tool == "nix") and ($nix_version_raw | is-empty) {
-            $nix_version_raw = $trimmed
-        }
-    }
-
-    if ($nix_version_raw | is-empty) or ($devenv_version_raw | is-empty) {
-        print "❌ Failed to capture runtime versions from the repo shell and preferred devenv CLI."
-        exit 1
-    }
-
-    {
-        nix_raw: $nix_version_raw
-        devenv_raw: $devenv_version_raw
-    }
-}
-
 def get_tool_version_from_repo_shell [tool: string] {
-    let runtime_versions = get_runtime_version_lines_from_repo_shell
-
     match $tool {
-        "nix" => $runtime_versions.nix_raw
-        "devenv" => $runtime_versions.devenv_raw
+        "nix" => {
+            let result = (^nix --version | complete)
+            if $result.exit_code != 0 {
+                let stderr = ($result.stderr | str trim)
+                print $"❌ Failed to resolve nix version from the current environment: ($stderr)"
+                exit 1
+            }
+            $result.stdout | str trim
+        }
+        "devenv" => {
+            try {
+                get_preferred_devenv_version_line
+            } catch {|err|
+                print $"❌ Failed to resolve preferred devenv CLI version: ($err.msg)"
+                exit 1
+            }
+        }
         _ => {
             print $"❌ Unsupported runtime version request: ($tool)"
             exit 1
@@ -109,31 +65,17 @@ def get_runtime_pin_versions [] {
         exit 1
     }
 
-    if not (is_preferred_devenv_available) {
-        print "❌ devenv not found in PATH."
-        exit 1
-    }
-
-    print "   Resolving nix from the repo shell and devenv from the preferred CLI..."
-    let runtime_versions = (get_runtime_version_lines_from_repo_shell)
-    let nix_version_raw = $runtime_versions.nix_raw
-    let devenv_version_raw = $runtime_versions.devenv_raw
+    print "   Resolving nix from the current environment..."
+    let nix_version_raw = (get_tool_version_from_repo_shell "nix")
     let nix_version = (extract_version $nix_version_raw)
-    let devenv_version = (extract_version $devenv_version_raw)
 
     if ($nix_version | is-empty) {
         print $"❌ Failed to parse nix version from: ($nix_version_raw)"
         exit 1
     }
 
-    if ($devenv_version | is-empty) {
-        print $"❌ Failed to parse devenv version from: ($devenv_version_raw)"
-        exit 1
-    }
-
     {
         nix_version: $nix_version
-        devenv_version: $devenv_version
     }
 }
 
@@ -147,18 +89,16 @@ def sync_runtime_pins [] {
     let runtime_pins = get_runtime_pin_versions
     let contents = (open $constants_path)
     let updated = (
-        update_constant_value (
-            update_constant_value $contents "PINNED_NIX_VERSION" $runtime_pins.nix_version
-        ) "PINNED_DEVENV_VERSION" $runtime_pins.devenv_version
+        update_constant_value $contents "PINNED_NIX_VERSION" $runtime_pins.nix_version
     )
 
     if $updated == $contents {
-        print $"✅ Runtime pins unchanged: nix ($runtime_pins.nix_version), devenv ($runtime_pins.devenv_version)"
+        print $"✅ Runtime pins unchanged: nix ($runtime_pins.nix_version)"
         return
     }
 
     $updated | save $constants_path --force
-    print $"✅ Updated runtime pins: nix ($runtime_pins.nix_version), devenv ($runtime_pins.devenv_version)"
+    print $"✅ Updated runtime pins: nix ($runtime_pins.nix_version)"
 }
 
 def sync_vendored_zjstatus [] {

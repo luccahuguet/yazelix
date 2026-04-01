@@ -1,6 +1,9 @@
 #!/usr/bin/env nu
 # Test runner for maintainer-only yzx checks
 
+use ../utils/common.nu [get_yazelix_state_dir]
+use ../utils/devenv_cli.nu resolve_preferred_devenv_path
+
 def test_issue_bead_reconciliation_plan [] {
     print "🧪 Testing issue/bead reconciliation plans create, reopen, close, and reject duplicates..."
 
@@ -92,81 +95,22 @@ def test_issue_bead_comment_plan [] {
     }
 }
 
-def test_runtime_pin_versions_use_repo_shell [] {
-    print "🧪 Testing runtime pin versions use repo-shell nix and preferred devenv CLI..."
+def test_preferred_devenv_resolution_uses_runtime_owned_cli [] {
+    print "🧪 Testing preferred devenv resolution prefers the runtime-owned CLI over older profile entries..."
 
-    if (which nix | is-empty) {
-        print "  ❌ nix is required for maintainer tests"
-        return false
-    }
-
-    if (which devenv | is-empty) {
-        print "  ❌ devenv is required for maintainer tests"
+    let expected = (get_yazelix_state_dir | path join "runtime" "current" "bin" "devenv" | path expand)
+    if not ($expected | path exists) {
+        print "  ❌ installed runtime-owned devenv is required for this maintainer test"
         return false
     }
 
     try {
-        let command = 'source nushell/scripts/yzx/dev.nu; let versions = (get_runtime_pin_versions); print ({ nix_version: $versions.nix_version, devenv_version: $versions.devenv_version, nix_raw: (get_tool_version_from_repo_shell "nix"), devenv_raw: (get_tool_version_from_repo_shell "devenv") } | to json -r)'
-        let output = if (which timeout | is-not-empty) {
-            ^timeout 30 nu -c $command | complete
-        } else {
-            ^nu -c $command | complete
-        }
-        let stdout = ($output.stdout | str trim)
-        let resolved = ($stdout | lines | last | from json)
-
-        if ($output.exit_code == 0) and ($resolved.nix_raw | str contains $resolved.nix_version) and ($resolved.devenv_raw | str contains $resolved.devenv_version) {
-            print "  ✅ Runtime pins are derived from the repo shell versions"
-            true
-        } else if $output.exit_code == 124 {
-            print "  ❌ Timed out while resolving runtime pins from the repo shell"
-            false
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) resolved=($stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_preferred_devenv_resolution_uses_profile_entry [] {
-    print "🧪 Testing preferred devenv resolution uses the active Nix profile entry when available..."
-
-    if (which nix | is-empty) {
-        print "  ❌ nix is required for maintainer tests"
-        return false
-    }
-
-    try {
-        let command = '
-            source nushell/scripts/utils/devenv_cli.nu
-            let profile = (try { ^nix profile list --json | from json } catch { null })
-            let profile_store = if $profile == null {
-                ""
-            } else {
-                $profile | get -o elements.devenv.storePaths.0 | default ""
-            }
-            let expected = if ($profile_store | is-not-empty) {
-                $profile_store | path join "bin" "devenv"
-            } else {
-                which devenv | where type == "external" | get path | first
-            }
-            {
-                resolved: (resolve_preferred_devenv_path)
-                expected: $expected
-            } | to json -r
-        '
-        let output = (^nu -c $command | complete)
-        let stdout = ($output.stdout | str trim)
-        let resolved = ($stdout | lines | last | from json)
-
-        if ($output.exit_code == 0) and ($resolved.resolved == $resolved.expected) {
-            print "  ✅ Preferred devenv resolution matches the intended source of truth"
+        let resolved = (resolve_preferred_devenv_path | path expand)
+        if $resolved == $expected {
+            print "  ✅ Preferred devenv resolution now matches the runtime-owned source of truth"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) resolved=($stdout)"
+            print $"  ❌ Unexpected result: resolved=($resolved) expected=($expected)"
             false
         }
     } catch { |err|
@@ -208,8 +152,7 @@ def main [] {
     let results = [
         (test_issue_bead_reconciliation_plan)
         (test_issue_bead_comment_plan)
-        (test_runtime_pin_versions_use_repo_shell)
-        (test_preferred_devenv_resolution_uses_profile_entry)
+        (test_preferred_devenv_resolution_uses_runtime_owned_cli)
         (test_nushell_initializer_restores_current_path_first)
     ]
 

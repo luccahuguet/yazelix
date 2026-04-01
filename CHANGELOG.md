@@ -13,7 +13,7 @@ Highlights:
 - Added `nu-lint` to the `maintainer` pack and exposed the same maintainer-tooling surface through Home Manager's pack definitions.
 - Tuned the Ghostty neon cursor-trail base color from violet toward a brighter cyan-blue so the shipped neon variant matches its intended palette.
 - Clarified that custom Yazi plugin initialization lives in `user_configs/yazi/init.lua`, and updated user-facing docs to the current nested config shape and `user_configs/` paths.
-- Refreshed maintainer input pins and updated the tracked preferred `devenv` CLI version to `2.0.7`.
+- Refreshed maintainer input pins and updated the runtime-owned `devenv` CLI to `2.0.7`.
 
 ## Unreleased
 
@@ -22,9 +22,10 @@ Simpler runtime updates and stronger update-path hardening
 Upgrade impact: no user action required
 
 Highlights:
-- Replaced the clone-oriented `yzx update repo` flow with `yzx update runtime`, and redefined `yzx update all` around the packaged runtime plus the pinned `devenv` CLI.
+- Replaced the clone-oriented `yzx update repo` flow with `yzx update runtime`, and redefined `yzx update all` around the packaged runtime plus the runtime-owned `devenv` CLI.
 - Hardened `yzx launch` and `yzx restart` so they stop trusting stale current shells that do not contain the newly configured terminal.
 - Fixed `yzx dev update --canary-only` regressions around canary selection syntax and read-only temporary config copies.
+- Deleted the copied `PINNED_DEVENV_VERSION` contract so maintainer pins and doctor output stop pretending there is a third authoritative `devenv` version source.
 
 ## v13.10 - 2026-03-30
 

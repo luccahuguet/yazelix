@@ -2,7 +2,7 @@
 # Yazelix Doctor - Health check utilities
 
 use logging.nu log_to_file
-use constants.nu [PINNED_NIX_VERSION PINNED_DEVENV_VERSION]
+use constants.nu [PINNED_NIX_VERSION]
 use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir get_yazelix_state_dir get_yazelix_runtime_reference_dir]
 use config_surfaces.nu [get_main_user_config_path reconcile_primary_config_surfaces]
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
@@ -84,11 +84,9 @@ def build_version_drift_result [tool: string, pinned: string, runtime: string] {
 
 export def get_version_drift_results [] {
     let nix_runtime = get_runtime_tool_version "nix"
-    let devenv_runtime = get_runtime_tool_version "devenv"
 
     [
         (build_version_drift_result "nix" $PINNED_NIX_VERSION $nix_runtime)
-        (build_version_drift_result "devenv" $PINNED_DEVENV_VERSION $devenv_runtime)
     ]
 }
 
@@ -98,13 +96,8 @@ export def print_runtime_version_drift_warning [] {
         return
     }
 
-    let devenv_drift = ($drift_results | where message =~ '^devenv version drift' | get -o 0)
     let nix_drift = ($drift_results | where message =~ '^nix version drift' | get -o 0)
 
-    if ($devenv_drift != null) {
-        print $"⚠️  ($devenv_drift.message)"
-        print "   Yazelix may still work, but upstream devenv changes can break launch/rebuild flows."
-    }
     if ($nix_drift != null) {
         print $"⚠️  ($nix_drift.message)"
     }
