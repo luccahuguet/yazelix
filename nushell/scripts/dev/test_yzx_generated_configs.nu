@@ -713,6 +713,25 @@ def write_legacy_native_zellij_config [fake_home: string] {
         | save --force --raw $zellij_config_path
 }
 
+def run_merged_zellij_config_in_fake_home [tmpdir: string, extra_env: record = {}, extra_output?: closure] {
+    let out_dir = ($tmpdir | path join "out")
+    let fake_home = ($tmpdir | path join "home")
+    let fake_config_dir = ($fake_home | path join ".config" "yazelix")
+
+    with-env ({
+        HOME: $fake_home
+        XDG_CONFIG_HOME: ($fake_home | path join ".config")
+        YAZELIX_CONFIG_DIR: $fake_config_dir
+        YAZELIX_TEST_OUT_DIR: $out_dir
+    } | merge $extra_env) {
+        let root = (get_repo_config_dir)
+        generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
+        {
+            config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
+        } | merge (if $extra_output == null { {} } else { do $extra_output })
+    }
+}
+
 def test_generate_merged_yazi_config_relocates_legacy_user_overrides [] {
     print "🧪 Testing merged Yazi config relocates legacy user overrides into user_configs/yazi..."
 
@@ -864,21 +883,11 @@ def test_generate_merged_zellij_config_relocates_legacy_native_user_config [] {
     let tmpdir = (^mktemp -d /tmp/yazelix_zellij_user_cfg_relocate_XXXXXX | str trim)
 
     let result = (try {
-        let out_dir = ($tmpdir | path join "out")
         let fake_home = ($tmpdir | path join "home")
-        let fake_config_dir = ($fake_home | path join ".config" "yazelix")
         write_legacy_native_zellij_config $fake_home
 
-        let output = (with-env {
-            HOME: $fake_home
-            XDG_CONFIG_HOME: ($fake_home | path join ".config")
-            YAZELIX_CONFIG_DIR: $fake_config_dir
-            YAZELIX_TEST_OUT_DIR: $out_dir
-        } {
-            let root = (get_repo_config_dir)
-            generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
+        let output = (run_merged_zellij_config_in_fake_home $tmpdir {} {||
             {
-                config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
                 relocated_exists: ((($fake_home | path join ".config" "yazelix" "user_configs" "zellij" "config.kdl") | path exists))
                 legacy_exists: ((($fake_home | path join ".config" "zellij" "config.kdl") | path exists))
             }
@@ -911,22 +920,12 @@ def test_generate_merged_zellij_config_prefers_managed_user_config_when_native_c
     let tmpdir = (^mktemp -d /tmp/yazelix_zellij_dual_config_XXXXXX | str trim)
 
     let result = (try {
-        let out_dir = ($tmpdir | path join "out")
         let fake_home = ($tmpdir | path join "home")
-        let fake_config_dir = ($fake_home | path join ".config" "yazelix")
         write_minimal_user_zellij_config $fake_home
         write_legacy_native_zellij_config $fake_home
 
-        let output = (with-env {
-            HOME: $fake_home
-            XDG_CONFIG_HOME: ($fake_home | path join ".config")
-            YAZELIX_CONFIG_DIR: $fake_config_dir
-            YAZELIX_TEST_OUT_DIR: $out_dir
-        } {
-            let root = (get_repo_config_dir)
-            generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
+        let output = (run_merged_zellij_config_in_fake_home $tmpdir {} {||
             {
-                config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
                 managed_exists: ((($fake_home | path join ".config" "yazelix" "user_configs" "zellij" "config.kdl") | path exists))
                 native_exists: ((($fake_home | path join ".config" "zellij" "config.kdl") | path exists))
             }
