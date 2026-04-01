@@ -3,7 +3,7 @@
 
 use logging.nu log_to_file
 use constants.nu [PINNED_NIX_VERSION PINNED_DEVENV_VERSION]
-use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir get_yazelix_state_dir]
+use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir get_yazelix_state_dir get_yazelix_runtime_reference_dir]
 use config_surfaces.nu [get_main_user_config_path reconcile_primary_config_surfaces]
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
@@ -464,6 +464,11 @@ def resolve_realpath_or_null [target: string] {
     }
 }
 
+def path_is_symlink [target: string] {
+    let result = (^bash -lc $"test -L ($target | into string | to json -r)" | complete)
+    $result.exit_code == 0
+}
+
 def get_current_installed_runtime_target [] {
     let runtime_link = (get_yazelix_state_dir | path join "runtime" "current")
     resolve_realpath_or_null $runtime_link
@@ -542,6 +547,191 @@ export def check_desktop_entry_freshness [] {
         details: $desktop_path
         fix_available: false
     }
+}
+
+def get_user_yzx_cli_path [] {
+    ($env.HOME | path join ".local" "bin" "yzx")
+}
+
+def get_runtime_variants [current_runtime_target?: string] {
+    let runtime_ref = (get_yazelix_runtime_reference_dir)
+    if $current_runtime_target == null {
+        [$runtime_ref] | uniq
+    } else {
+        [$runtime_ref, $current_runtime_target] | uniq
+    }
+}
+
+def build_install_repair_hint [] {
+    "Repair with `nix run github:luccahuguet/yazelix#install`."
+}
+
+def get_required_shell_hook_checks [current_runtime_target?: string] {
+    let runtime_variants = (get_runtime_variants $current_runtime_target)
+    let yzx_cli_path = (get_user_yzx_cli_path)
+    [
+        {
+            shell: "bash"
+            file: ($env.HOME | path join ".bashrc")
+            acceptable_groups: (
+                $runtime_variants
+                | each {|runtime|
+                    [
+                        $"source \"($runtime | path join 'shells' 'bash' 'yazelix_bash_config.sh')\""
+                        $"    \"($yzx_cli_path)\" \"$@\""
+                    ]
+                }
+            )
+        }
+        {
+            shell: "nushell"
+            file: ($env.HOME | path join ".config" "nushell" "config.nu")
+            acceptable_groups: (
+                $runtime_variants
+                | each {|runtime|
+                    [
+                        $"source \"($runtime | path join 'nushell' 'config' 'config.nu')\""
+                        $"use ($runtime | path join 'nushell' 'scripts' 'core' 'yazelix.nu') *"
+                    ]
+                }
+            )
+        }
+    ]
+}
+
+def evaluate_required_shell_hook [hook: record] {
+    if not ($hook.file | path exists) {
+        return {
+            shell: $hook.shell
+            status: "missing"
+            file: $hook.file
+        }
+    }
+
+    let content = (open $hook.file --raw)
+    let matches_any_group = (
+        $hook.acceptable_groups
+        | any {|group|
+            $group | all {|line| $content | str contains $line }
+        }
+    )
+    if $matches_any_group {
+        {
+            shell: $hook.shell
+            status: "current"
+            file: $hook.file
+        }
+    } else {
+        {
+            shell: $hook.shell
+            status: "outdated"
+            file: $hook.file
+        }
+    }
+}
+
+export def check_install_artifact_staleness [] {
+    mut results = []
+
+    let runtime_link = (get_yazelix_state_dir | path join "runtime" "current")
+    let current_runtime_target = (get_current_installed_runtime_target)
+
+    if not ($runtime_link | path exists) and (not (path_is_symlink $runtime_link)) {
+        $results = ($results | append {
+            status: "warning"
+            message: "Installed Yazelix runtime link is missing"
+            details: $"Expected runtime link: ($runtime_link)\n(build_install_repair_hint)"
+            fix_available: false
+        })
+    } else if $current_runtime_target == null {
+        $results = ($results | append {
+            status: "warning"
+            message: "Installed Yazelix runtime link is broken"
+            details: $"Runtime link exists but does not resolve to a valid runtime: ($runtime_link)\n(build_install_repair_hint)"
+            fix_available: false
+        })
+    } else {
+        $results = ($results | append {
+            status: "ok"
+            message: "Installed Yazelix runtime link is healthy"
+            details: $"($runtime_link) -> ($current_runtime_target)"
+            fix_available: false
+        })
+    }
+
+    let yzx_cli_path = (get_user_yzx_cli_path)
+    let yzx_cli_target = (resolve_realpath_or_null $yzx_cli_path)
+    let expected_yzx_targets = (
+        get_runtime_variants $current_runtime_target
+        | each {|runtime| $runtime | path join "shells" "posix" "yzx_cli.sh" }
+    )
+    let expected_yzx_targets_resolved = (
+        $expected_yzx_targets
+        | each {|target| resolve_realpath_or_null $target }
+        | compact
+    )
+    let all_expected_yzx_targets = ($expected_yzx_targets | append $expected_yzx_targets_resolved | uniq)
+
+    if not ($yzx_cli_path | path exists) and (not (path_is_symlink $yzx_cli_path)) {
+        $results = ($results | append {
+            status: "warning"
+            message: "Installed yzx CLI shim is missing"
+            details: $"Expected CLI path: ($yzx_cli_path)\n(build_install_repair_hint)"
+            fix_available: false
+        })
+    } else if $yzx_cli_target == null {
+        $results = ($results | append {
+            status: "warning"
+            message: "Installed yzx CLI shim is broken"
+            details: $"The yzx shim exists but does not resolve cleanly: ($yzx_cli_path)\n(build_install_repair_hint)"
+            fix_available: false
+        })
+    } else if not ($all_expected_yzx_targets | any {|target| $yzx_cli_target == $target }) {
+        $results = ($results | append {
+            status: "warning"
+            message: "Installed yzx CLI shim is stale"
+            details: $"yzx target: ($yzx_cli_target)\nExpected one of: ($all_expected_yzx_targets | str join ', ')\n(build_install_repair_hint)"
+            fix_available: false
+        })
+    } else {
+        $results = ($results | append {
+            status: "ok"
+            message: "Installed yzx CLI shim matches the current runtime"
+            details: $"($yzx_cli_path) -> ($yzx_cli_target)"
+            fix_available: false
+        })
+    }
+
+    let shell_hook_results = (
+        get_required_shell_hook_checks $current_runtime_target
+        | each {|hook| evaluate_required_shell_hook $hook }
+    )
+    for hook in $shell_hook_results {
+        if $hook.status == "current" {
+            $results = ($results | append {
+                status: "ok"
+                message: $"Required ($hook.shell) Yazelix hook is current"
+                details: $hook.file
+                fix_available: false
+            })
+        } else if $hook.status == "outdated" {
+            $results = ($results | append {
+                status: "warning"
+                message: $"Required ($hook.shell) Yazelix hook is stale"
+                details: $"Config file: ($hook.file)\n(build_install_repair_hint)"
+                fix_available: false
+            })
+        } else if $hook.status == "missing" {
+            $results = ($results | append {
+                status: "warning"
+                message: $"Required ($hook.shell) Yazelix hook is missing"
+                details: $"Config file: ($hook.file)\n(build_install_repair_hint)"
+                fix_available: false
+            })
+        }
+    }
+
+    $results
 }
 
 # Check log files
@@ -797,6 +987,9 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
 
     # Desktop entry freshness
     $all_results = ($all_results | append (check_desktop_entry_freshness))
+
+    # Other repairable install artifacts
+    $all_results = ($all_results | append (check_install_artifact_staleness))
 
     # Log files
     $all_results = ($all_results | append (check_log_files))
