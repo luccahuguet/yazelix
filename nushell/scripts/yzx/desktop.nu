@@ -1,6 +1,5 @@
 #!/usr/bin/env nu
 
-use ../core/desktop_launcher.nu *
 use ../utils/common.nu [require_yazelix_runtime_dir]
 
 def get_desktop_applications_dir [] {
@@ -121,5 +120,16 @@ export def "yzx desktop uninstall" [
 }
 
 export def "yzx desktop launch" [] {
-    main
+    let runtime_dir = (require_yazelix_runtime_dir)
+    let launcher_script = ($runtime_dir | path join "nushell" "scripts" "core" "desktop_launcher.nu")
+
+    if not ($launcher_script | path exists) {
+        error make {msg: $"Missing Yazelix desktop launcher at ($launcher_script)"}
+    }
+
+    if ($env.YAZELIX_NU_BIN? | is-not-empty) {
+        ^$env.YAZELIX_NU_BIN $launcher_script
+    } else {
+        ^nu $launcher_script
+    }
 }

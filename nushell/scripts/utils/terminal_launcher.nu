@@ -14,6 +14,15 @@ def get_startup_script_path []: nothing -> string {
     $runtime_dir | path join "shells" "posix" "start_yazelix.sh"
 }
 
+def get_runtime_terminal_launcher_path [terminal: string]: nothing -> string {
+    let runtime_dir = (get_yazelix_runtime_dir)
+
+    match $terminal {
+        "ghostty" => ($runtime_dir | path join "shells" "posix" "yazelix_ghostty.sh"),
+        _ => ""
+    }
+}
+
 def get_terminal_title [terminal: string] {
     $"Yazelix - (($TERMINAL_METADATA | get -o $terminal | default {} | get -o name | default $terminal))"
 }
@@ -156,8 +165,14 @@ export def build_launch_command [
     let title = (get_terminal_title $terminal)
 
     if $use_wrapper {
-        # Wrappers handle config internally via environment variable
-        build_detached_background_command $launch_prefix $"($command)($working_dir_arg)"
+        let runtime_launcher = (get_runtime_terminal_launcher_path $terminal)
+
+        if ($runtime_launcher | is-not-empty) and ($runtime_launcher | path exists) {
+            build_detached_background_command $launch_prefix $"bash \"($runtime_launcher)\"($working_dir_arg)"
+        } else {
+            # Wrappers handle config internally via environment variable
+            build_detached_background_command $launch_prefix $"($command)($working_dir_arg)"
+        }
     } else {
         # Direct terminal launch with config
         # Prefer the generic nixGL wrapper when available. Fall back to the
