@@ -85,6 +85,7 @@ Model:
 - the installer materializes that runtime by pointing `~/.local/share/yazelix/runtime/current` at the packaged runtime target
 - `~/.local/bin/yzx` points at `~/.local/share/yazelix/runtime/current/shells/posix/yzx_cli.sh`
 - desktop entry assets should resolve the same stable runtime pointer, not a clone path and not the transient bootstrap flake path
+- phase 1 should keep desktop-entry installation explicit via `yzx desktop install`, not as an automatic side effect of `nix run ...#install`
 
 This keeps the user-facing paths stable while allowing the underlying packaged runtime to change on reinstall or update.
 
@@ -121,7 +122,8 @@ If re-exporting the existing module at top level is cheap and clean, do it. If n
 2. The install app targets a persistent installed runtime, not the flake source tree.
 3. The stable `yzx` command and desktop entry resolve through `~/.local/share/yazelix/runtime/current`.
 4. User config remains under `~/.config/yazelix/user_configs/`.
-5. The flake stays thin enough that `devenv.nix` remains the real runtime source of truth.
+5. Desktop-entry installation remains an explicit opt-in step instead of an automatic install side effect.
+6. The flake stays thin enough that `devenv.nix` remains the real runtime source of truth.
 
 ## Verification
 

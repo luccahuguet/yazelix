@@ -42,7 +42,7 @@ The installer app should:
 3. materialize a persistent Yazelix runtime tree
 4. initialize `~/.config/yazelix/user_configs/` if missing
 5. install the stable `yzx` executable entrypoint into `~/.local/bin/`
-6. optionally install the desktop entry
+6. leave desktop entry installation as an explicit follow-up command (`yzx desktop install`), not an automatic side effect of the installer
 7. print the next-step command, normally `yzx launch`
 
 ## Ownership Model

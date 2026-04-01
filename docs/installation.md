@@ -206,10 +206,10 @@ For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.), use the installed Yazelix desktop launcher from your runtime:
 
 ```bash
-~/src/yazelix/shells/posix/desktop_launcher.sh
+~/.local/share/yazelix/runtime/current/shells/posix/desktop_launcher.sh
 ```
 
-This launches the same POSIX entrypoint used by the generated desktop entry. In package-ready installs, the same launcher should come from the installed runtime rather than a cloned repo path.
+This launches the same POSIX entrypoint used by the generated desktop entry.
 
 ## Maintainer / Clone-Based Flow
 
