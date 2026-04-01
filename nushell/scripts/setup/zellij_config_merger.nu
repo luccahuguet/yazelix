@@ -6,7 +6,7 @@ use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [get_yazelix_runtime_reference_dir get_yazelix_user_config_dir resolve_zellij_default_shell]
 use ../utils/layout_generator.nu [render_custom_text_segment render_widget_tray_segment]
-use ./zellij_plugin_paths.nu [PANE_ORCHESTRATOR_PLUGIN_ALIAS get_pane_orchestrator_wasm_path get_popup_runner_wasm_path]
+use ./zellij_plugin_paths.nu [PANE_ORCHESTRATOR_PLUGIN_ALIAS get_pane_orchestrator_wasm_path get_popup_runner_wasm_path get_zjstatus_wasm_path]
 
 # Fetch Zellij default configuration
 def get_zellij_defaults [] {
@@ -337,6 +337,8 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     let pane_orchestrator_wasm_path = (get_pane_orchestrator_wasm_path $yazelix_dir)
     let pane_orchestrator_plugin_url = $PANE_ORCHESTRATOR_PLUGIN_ALIAS
     let popup_runner_wasm_path = (get_popup_runner_wasm_path $yazelix_dir)
+    let zjstatus_wasm_path = (get_zjstatus_wasm_path $yazelix_dir)
+    let zjstatus_plugin_url = $"file:($zjstatus_wasm_path)"
     let yazelix_overrides = (read_yazelix_overrides $yazelix_dir $pane_orchestrator_plugin_url)
     let widget_tray_segment = (render_widget_tray_segment $widget_tray)
     let custom_text_segment = (render_custom_text_segment $custom_text)
@@ -346,6 +348,9 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     }
     if not ($popup_runner_wasm_path | path exists) {
         error make {msg: $"Popup runner runtime wasm not found at: ($popup_runner_wasm_path)"}
+    }
+    if not ($zjstatus_wasm_path | path exists) {
+        error make {msg: $"zjstatus runtime wasm not found at: ($zjstatus_wasm_path)"}
     }
 
     # Copy layouts directory to merged config
@@ -357,7 +362,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         if ($custom_text | is-not-empty) {
             print $"ℹ️  zjstatus custom text badge: '($custom_text)'"
         }
-        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $custom_text $pane_orchestrator_plugin_url $yazelix_dir $sidebar_width_percent
+        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $custom_text $pane_orchestrator_plugin_url $zjstatus_plugin_url $yazelix_dir $sidebar_width_percent
     }
     
     # Generate configuration from user config or defaults

@@ -4,6 +4,7 @@
 const widget_tray_placeholder = "__YAZELIX_WIDGET_TRAY__"
 const custom_text_placeholder = "__YAZELIX_CUSTOM_TEXT_SEGMENT__"
 const pane_orchestrator_plugin_url_placeholder = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__"
+const zjstatus_plugin_url_placeholder = "__YAZELIX_ZJSTATUS_PLUGIN_URL__"
 const home_dir_placeholder = "__YAZELIX_HOME_DIR__"
 const runtime_dir_placeholder = "__YAZELIX_RUNTIME_DIR__"
 const sidebar_width_percent_placeholder = "__YAZELIX_SIDEBAR_WIDTH_PERCENT__"
@@ -129,6 +130,7 @@ export def generate_layout [
     custom_text: string
     static_fragments: list<record>
     pane_orchestrator_plugin_url: string
+    zjstatus_plugin_url: string
     runtime_dir: string
     sidebar_width_percent: int
 ]: nothing -> nothing {
@@ -165,6 +167,10 @@ export def generate_layout [
         $updated = ($updated | str replace -a $pane_orchestrator_plugin_url_placeholder $pane_orchestrator_plugin_url)
     }
 
+    if ($updated | str contains $zjstatus_plugin_url_placeholder) {
+        $updated = ($updated | str replace -a $zjstatus_plugin_url_placeholder $zjstatus_plugin_url)
+    }
+
     for placeholder in [
         {name: $sidebar_width_percent_placeholder, value: $layout_percentages.sidebar_width_percent}
         {name: $open_content_width_percent_placeholder, value: $layout_percentages.open_content_width_percent}
@@ -194,6 +200,7 @@ export def generate_all_layouts [
     widget_tray: list<string>
     custom_text: string
     pane_orchestrator_plugin_url: string
+    zjstatus_plugin_url: string
     runtime_dir: string
     sidebar_width_percent: int
 ]: nothing -> nothing {
@@ -228,7 +235,7 @@ export def generate_all_layouts [
         let target = ($layouts_target_dir | path join $file)
 
         if ($source | path exists) {
-            generate_layout $source $target $widget_tray $custom_text $static_fragments $pane_orchestrator_plugin_url $runtime_dir $sidebar_width_percent
+            generate_layout $source $target $widget_tray $custom_text $static_fragments $pane_orchestrator_plugin_url $zjstatus_plugin_url $runtime_dir $sidebar_width_percent
             print $"Generated layout: ($target)"
         }
     }

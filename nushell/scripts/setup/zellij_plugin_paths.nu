@@ -6,6 +6,7 @@ const pane_orchestrator_plugin_prefix = "yazelix_pane_orchestrator"
 const pane_orchestrator_wasm_name = "yazelix_pane_orchestrator.wasm"
 const popup_runner_plugin_prefix = "yazelix_popup_runner"
 const popup_runner_wasm_name = "yazelix_popup_runner.wasm"
+const zjstatus_wasm_name = "zjstatus.wasm"
 export const PANE_ORCHESTRATOR_PLUGIN_ALIAS = "yazelix_pane_orchestrator"
 const pane_orchestrator_required_permissions = [
     "ReadApplicationState"
@@ -18,6 +19,12 @@ const popup_runner_required_permissions = [
     "ReadApplicationState"
     "ChangeApplicationState"
     "ReadCliPipes"
+]
+const zjstatus_plugin_prefix = "zjstatus"
+const zjstatus_required_permissions = [
+    "ReadApplicationState"
+    "ChangeApplicationState"
+    "RunCommands"
 ]
 
 def atomic_copy [source_path: string, target_path: string] {
@@ -187,6 +194,10 @@ def preserve_popup_runner_permissions [tracked_path: string, runtime_path: strin
     preserve_plugin_permissions $popup_runner_plugin_prefix $tracked_path $runtime_path $popup_runner_required_permissions
 }
 
+def preserve_zjstatus_permissions [tracked_path: string, runtime_path: string] {
+    preserve_plugin_permissions $zjstatus_plugin_prefix $tracked_path $runtime_path $zjstatus_required_permissions
+}
+
 export def get_tracked_pane_orchestrator_wasm_path [yazelix_dir?: string] {
     let root = (($yazelix_dir | default (get_yazelix_runtime_dir)) | path expand)
     $root | path join "configs" "zellij" "plugins" $pane_orchestrator_wasm_name
@@ -195,6 +206,11 @@ export def get_tracked_pane_orchestrator_wasm_path [yazelix_dir?: string] {
 export def get_tracked_popup_runner_wasm_path [yazelix_dir?: string] {
     let root = (($yazelix_dir | default (get_yazelix_runtime_dir)) | path expand)
     $root | path join "configs" "zellij" "plugins" $popup_runner_wasm_name
+}
+
+export def get_tracked_zjstatus_wasm_path [yazelix_dir?: string] {
+    let root = (($yazelix_dir | default (get_yazelix_runtime_dir)) | path expand)
+    $root | path join "configs" "zellij" "plugins" $zjstatus_wasm_name
 }
 
 export def sync_pane_orchestrator_runtime_wasm [yazelix_dir?: string] {
@@ -277,6 +293,22 @@ export def sync_popup_runner_runtime_wasm [yazelix_dir?: string] {
     $runtime_path
 }
 
+export def sync_zjstatus_runtime_wasm [yazelix_dir?: string] {
+    let tracked_path = (get_tracked_zjstatus_wasm_path $yazelix_dir)
+    if not ($tracked_path | path exists) {
+        error make {msg: $"Tracked zjstatus wasm not found at: ($tracked_path)"}
+    }
+
+    let runtime_dir = (get_runtime_plugins_dir)
+    let runtime_path = ($runtime_dir | path join $zjstatus_wasm_name)
+
+    atomic_copy $tracked_path $runtime_path
+
+    preserve_zjstatus_permissions $tracked_path $runtime_path | ignore
+
+    $runtime_path
+}
+
 export def get_pane_orchestrator_wasm_path [yazelix_dir?: string] {
     sync_pane_orchestrator_runtime_wasm $yazelix_dir
 }
@@ -285,17 +317,25 @@ export def get_popup_runner_wasm_path [yazelix_dir?: string] {
     sync_popup_runner_runtime_wasm $yazelix_dir
 }
 
+export def get_zjstatus_wasm_path [yazelix_dir?: string] {
+    sync_zjstatus_runtime_wasm $yazelix_dir
+}
+
 export def seed_yazelix_plugin_permissions [yazelix_dir?: string] {
     let tracked_pane_orchestrator = (get_tracked_pane_orchestrator_wasm_path $yazelix_dir)
     let tracked_popup_runner = (get_tracked_popup_runner_wasm_path $yazelix_dir)
+    let tracked_zjstatus = (get_tracked_zjstatus_wasm_path $yazelix_dir)
     let runtime_pane_orchestrator = (sync_pane_orchestrator_runtime_wasm $yazelix_dir)
     let runtime_popup_runner = (sync_popup_runner_runtime_wasm $yazelix_dir)
+    let runtime_zjstatus = (sync_zjstatus_runtime_wasm $yazelix_dir)
 
     let blocks = [
         (build_permission_block $tracked_pane_orchestrator $pane_orchestrator_required_permissions)
         (build_permission_block $runtime_pane_orchestrator $pane_orchestrator_required_permissions)
         (build_permission_block $tracked_popup_runner $popup_runner_required_permissions)
         (build_permission_block $runtime_popup_runner $popup_runner_required_permissions)
+        (build_permission_block $tracked_zjstatus $zjstatus_required_permissions)
+        (build_permission_block $runtime_zjstatus $zjstatus_required_permissions)
     ]
     let permissions_cache_path = (upsert_permission_blocks $blocks)
 
@@ -305,5 +345,7 @@ export def seed_yazelix_plugin_permissions [yazelix_dir?: string] {
         runtime_pane_orchestrator: $runtime_pane_orchestrator
         tracked_popup_runner: $tracked_popup_runner
         runtime_popup_runner: $runtime_popup_runner
+        tracked_zjstatus: $tracked_zjstatus
+        runtime_zjstatus: $runtime_zjstatus
     }
 }

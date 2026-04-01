@@ -1,4 +1,4 @@
-plugin location="file:__YAZELIX_RUNTIME_DIR__/configs/zellij/plugins/zjstatus.wasm" {
+plugin location="__YAZELIX_ZJSTATUS_PLUGIN_URL__" {
     format_left   "{mode} {tabs}"
     format_center ""
     format_right  "#[fg=#ff0088,bold]{session} __YAZELIX_WIDGET_TRAY__ __YAZELIX_CUSTOM_TEXT_SEGMENT__#[fg=#00ccff,bold]YAZELIX {command_version} " // {datetime}
