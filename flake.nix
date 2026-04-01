@@ -126,6 +126,7 @@ EOF
             YAZELIX_DIR="$runtime_current" \
             YAZELIX_STATE_DIR="$HOME/.local/share/yazelix" \
             YAZELIX_LOGS_DIR="$HOME/.local/share/yazelix/logs" \
+            PATH="${pkgs.zellij}/bin:$PATH" \
             ${pkgs.nushell}/bin/nu -c "use '$runtime_current/nushell/scripts/setup/zellij_config_merger.nu' [generate_merged_zellij_config]; generate_merged_zellij_config '$runtime_current' | ignore"
 
             echo "✅ Yazelix runtime installed."
