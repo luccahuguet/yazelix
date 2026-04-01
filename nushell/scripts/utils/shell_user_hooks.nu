@@ -52,22 +52,17 @@ def format_nushell_source_literal [path: string] {
     $"source \"($escaped)\""
 }
 
-def get_nushell_user_hook_bridge_contents [user_hook_path: string] {
-    let escaped = ($user_hook_path | str replace -a "\\" "\\\\" | str replace -a "\"" "\\\"")
-    [
-        $"let user_hook_path = \"($escaped)\""
-        'if ($user_hook_path | path exists) and ((open --raw $user_hook_path | str trim | is-not-empty)) {'
-        $"    (format_nushell_source_literal $user_hook_path)"
-        "}"
-    ] | str join "\n"
-}
-
 export def sync_generated_nushell_user_hook_bridge [config_root?: string, state_root?: string] {
     let bridge_path = (get_generated_nushell_user_hook_bridge_path $state_root)
     let user_hook_path = (get_yazelix_shell_user_hook_path "nushell" $config_root)
 
     mkdir ($bridge_path | path dirname)
-    (get_nushell_user_hook_bridge_contents $user_hook_path) | save --force --raw $bridge_path
+
+    if ($user_hook_path | path exists) and ((open --raw $user_hook_path | str trim | is-not-empty)) {
+        (format_nushell_source_literal $user_hook_path) | save --force --raw $bridge_path
+    } else if ($bridge_path | path exists) {
+        rm -f $bridge_path
+    }
 
     $bridge_path
 }

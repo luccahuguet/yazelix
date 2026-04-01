@@ -367,8 +367,8 @@ def test_managed_nushell_config_sources_optional_user_hook [] {
     $result
 }
 
-def test_nushell_user_hook_bridge_notices_new_hook_without_resync [] {
-    print "🧪 Testing the managed Nushell user-hook bridge notices a newly created hook without another refresh..."
+def test_nushell_user_hook_bridge_is_removed_when_hook_is_absent [] {
+    print "🧪 Testing the managed Nushell user-hook bridge disappears when no managed Nushell hook exists..."
 
     let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_nu_user_hook_bridge_XXXXXX | str trim)
@@ -395,29 +395,46 @@ def test_nushell_user_hook_bridge_notices_new_hook_without_resync [] {
             sync_generated_nushell_user_hook_bridge
         })
 
-        mkdir ($hook_path | path dirname)
-        '$env.YAZELIX_TEST_NU_HOOK = "noticed_after_bridge_generation"' | save --force --raw $hook_path
+        let bridge_exists_after_empty_sync = ($bridge_path | path exists)
 
-        let output = (with-env {
-            HOME: $tmp_home
-            XDG_CONFIG_HOME: $xdg_config_home
-            YAZELIX_CONFIG_DIR: $config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-            YAZELIX_DIR: $repo_root
-            YAZELIX_STATE_DIR: $state_dir
-        } {
-            ^nu --config ($repo_root | path join "nushell" "config" "config.nu") -c 'print ($env.YAZELIX_TEST_NU_HOOK? | default "")' | complete
-        })
+        mkdir ($hook_path | path dirname)
+        '$env.YAZELIX_TEST_NU_HOOK = "bridge_created_after_hook_exists"' | save --force --raw $hook_path
+
+        let bridge_exists_after_hook = (
+            with-env {
+                HOME: $tmp_home
+                XDG_CONFIG_HOME: $xdg_config_home
+                YAZELIX_CONFIG_DIR: $config_dir
+                YAZELIX_STATE_DIR: $state_dir
+            } {
+                sync_generated_nushell_user_hook_bridge | ignore
+                $bridge_path | path exists
+            }
+        )
+
+        rm -f $hook_path
+
+        let bridge_exists_after_removal = (
+            with-env {
+                HOME: $tmp_home
+                XDG_CONFIG_HOME: $xdg_config_home
+                YAZELIX_CONFIG_DIR: $config_dir
+                YAZELIX_STATE_DIR: $state_dir
+            } {
+                sync_generated_nushell_user_hook_bridge | ignore
+                $bridge_path | path exists
+            }
+        )
 
         if (
-            ($bridge_path | path exists)
-            and ($output.exit_code == 0)
-            and (($output.stdout | str trim) == "noticed_after_bridge_generation")
+            (not $bridge_exists_after_empty_sync)
+            and $bridge_exists_after_hook
+            and (not $bridge_exists_after_removal)
         ) {
-            print "  ✅ The managed Nushell bridge can notice a new Yazelix-owned user hook without another refresh cycle"
+            print "  ✅ The managed Nushell bridge only exists when the Yazelix-owned hook exists, so startup never points at a missing file"
             true
         } else {
-            print $"  ❌ Unexpected managed Nushell bridge result: bridge_exists=(($bridge_path | path exists)) exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            print $"  ❌ Unexpected managed Nushell bridge lifecycle: empty_sync=($bridge_exists_after_empty_sync) after_hook=($bridge_exists_after_hook) after_removal=($bridge_exists_after_removal)"
             false
         }
     } catch {|err|
@@ -630,7 +647,7 @@ export def run_generated_config_extended_tests [] {
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
         (test_generate_nushell_initializer_removes_starship_right_prompt)
         (test_managed_nushell_config_sources_optional_user_hook)
-        (test_nushell_user_hook_bridge_notices_new_hook_without_resync)
+        (test_nushell_user_hook_bridge_is_removed_when_hook_is_absent)
         (test_managed_bash_config_sources_optional_user_hook)
         (test_generate_managed_helix_config_shows_import_notice_once)
         (test_yzx_import_helix_copies_personal_config_with_force_backups)
