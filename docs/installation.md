@@ -216,13 +216,13 @@ For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 
 **System Keybind for Launching Yazelix:**
 
-To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.), use the installed Yazelix desktop launcher from your runtime:
+To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.), use the stable installed Yazelix launcher:
 
 ```bash
-~/.local/share/yazelix/runtime/current/shells/posix/desktop_launcher.sh
+~/.local/bin/yzx desktop launch
 ```
 
-This launches the same POSIX entrypoint used by the generated desktop entry.
+This launches the same command surface used by the generated desktop entry.
 
 ## Maintainer / Clone-Based Flow
 

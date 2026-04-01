@@ -474,7 +474,7 @@ def get_current_installed_runtime_target [] {
     resolve_realpath_or_null $runtime_link
 }
 
-def get_desktop_entry_runtime_target [desktop_path: string] {
+def get_desktop_entry_exec [desktop_path: string] {
     if not ($desktop_path | path exists) {
         return null
     }
@@ -483,7 +483,7 @@ def get_desktop_entry_runtime_target [desktop_path: string] {
     let marker = (
         $entry
         | lines
-        | where {|line| $line | str starts-with "X-Yazelix-Runtime-Target="}
+        | where {|line| $line | str starts-with "Exec="}
         | get -o 0
     )
 
@@ -492,8 +492,7 @@ def get_desktop_entry_runtime_target [desktop_path: string] {
     } else {
         (
             $marker
-            | str replace 'X-Yazelix-Runtime-Target="' ""
-            | str replace '"' ""
+            | str replace 'Exec=' ""
             | str trim
         )
     }
@@ -511,39 +510,31 @@ export def check_desktop_entry_freshness [] {
         }
     }
 
-    let current_runtime_target = (get_current_installed_runtime_target)
-    let desktop_runtime_target = (get_desktop_entry_runtime_target $desktop_path)
+    let desktop_exec = (get_desktop_entry_exec $desktop_path)
+    let expected_yzx_path = (get_user_yzx_cli_path)
+    let expected_exec = $"\"($expected_yzx_path)\" desktop launch"
 
-    if $desktop_runtime_target == null {
+    if $desktop_exec == null {
         return {
             status: "warning"
-            message: "Yazelix desktop entry is stale or from a pre-contract install"
-            details: "The installed desktop entry has no runtime freshness metadata. Repair with `yzx desktop install`."
+            message: "Yazelix desktop entry is invalid"
+            details: "The installed desktop entry has no Exec line. Repair with `yzx desktop install`."
             fix_available: false
         }
     }
 
-    if $current_runtime_target == null {
+    if $desktop_exec != $expected_exec {
         return {
             status: "warning"
-            message: "Could not resolve the current installed Yazelix runtime"
-            details: "The desktop entry exists, but the installed runtime link is missing or broken. Reinstall Yazelix with `nix run github:luccahuguet/yazelix#install`."
-            fix_available: false
-        }
-    }
-
-    if $desktop_runtime_target != $current_runtime_target {
-        return {
-            status: "warning"
-            message: "Yazelix desktop entry is stale"
-            details: $"Desktop entry target: ($desktop_runtime_target)\nCurrent runtime target: ($current_runtime_target)\nRepair with `yzx desktop install`."
+            message: "Yazelix desktop entry does not use the stable launcher path"
+            details: $"Desktop entry Exec: ($desktop_exec)\nExpected Exec: ($expected_exec)\nRepair with `yzx desktop install`."
             fix_available: false
         }
     }
 
     {
         status: "ok"
-        message: "Yazelix desktop entry matches the current installed runtime"
+        message: "Yazelix desktop entry uses the stable launcher path"
         details: $desktop_path
         fix_available: false
     }

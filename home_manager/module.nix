@@ -642,13 +642,12 @@ in
     xdg.desktopEntries.yazelix = {
       name = "Yazelix";
       comment = "Yazi + Zellij + Helix integrated terminal environment";
-      exec = "${runtimeCurrentPath}/shells/posix/desktop_launcher.sh";
+      exec = "${config.home.homeDirectory}/.local/bin/yzx desktop launch";
       icon = "yazelix";
       categories = [ "Development" ];
       type = "Application";
       settings = {
         StartupWMClass = "com.yazelix.Yazelix";
-        X-Yazelix-Runtime-Target = "${runtimePackage}";
       };
     };
 

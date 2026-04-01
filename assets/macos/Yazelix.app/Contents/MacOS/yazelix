@@ -14,5 +14,5 @@ if [ -f "$HOME/.zprofile" ]; then
     source "$HOME/.zprofile"
 fi
 
-# Execute the desktop launcher script
-exec "$HOME/.config/yazelix/nushell/scripts/core/desktop_launcher.nu"
+# Execute the stable Yazelix desktop entrypoint
+exec "$HOME/.local/bin/yzx" desktop launch

@@ -17,7 +17,7 @@ def require_launch_script [script_path: string] {
     $resolved
 }
 
-def main [] {
+export def main [] {
     let runtime_dir = (get_yazelix_runtime_dir)
     let launch_script = (require_launch_script ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu"))
     let env_prep = prepare_environment

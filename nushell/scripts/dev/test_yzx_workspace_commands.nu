@@ -172,8 +172,8 @@ def test_launch_rejects_file_working_dir [] {
     $result
 }
 
-def test_posix_desktop_launcher_direct_exec_ignores_hostile_shell_env [] {
-    print "🧪 Testing POSIX desktop launcher direct exec ignores hostile shell env..."
+def test_yzx_cli_desktop_launch_ignores_hostile_shell_env [] {
+    print "🧪 Testing yzx CLI desktop launch ignores hostile shell env..."
 
     let tmpdir = (^mktemp -d /tmp/yazelix_posix_desktop_env_XXXXXX | str trim)
 
@@ -196,9 +196,9 @@ def test_posix_desktop_launcher_direct_exec_ignores_hostile_shell_env [] {
             "exit 94"
         ] | str join "\n" | save --force --raw $env_file
 
-        let launcher_script = (repo_path "shells" "posix" "desktop_launcher.sh")
+        let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
         let output = (with-env {HOME: $fake_home, BASH_ENV: $env_file, ENV: $env_file} {
-            ^$launcher_script | complete
+            ^$launcher_script desktop launch | complete
         })
         let stderr = ($output.stderr | str trim)
         let nu_invocation = if ($nu_log | path exists) {
@@ -207,8 +207,8 @@ def test_posix_desktop_launcher_direct_exec_ignores_hostile_shell_env [] {
             ""
         }
 
-        if ($output.exit_code == 0) and ($stderr == "") and ($nu_invocation | str ends-with "nushell/scripts/core/desktop_launcher.nu") {
-            print "  ✅ POSIX desktop launcher reaches Nushell without sourcing hostile shell env files"
+        if ($output.exit_code == 0) and ($stderr == "") and ($nu_invocation | str contains "yzx desktop launch") {
+            print "  ✅ yzx CLI reaches desktop launch without sourcing hostile shell env files"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr) nu=($nu_invocation)"
@@ -386,7 +386,7 @@ def test_yzx_cwd_resolves_zoxide_query [] {
 
 export def run_workspace_canonical_tests [] {
     [
-        (test_posix_desktop_launcher_direct_exec_ignores_hostile_shell_env)
+        (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
         (test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions)
         (test_launch_here_path_warns_when_existing_persistent_session_ignores_it)
         (test_startup_rejects_missing_working_dir)

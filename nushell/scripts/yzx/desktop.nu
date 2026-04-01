@@ -1,15 +1,7 @@
 #!/usr/bin/env nu
 
+use ../core/desktop_launcher.nu *
 use ../utils/common.nu [require_yazelix_runtime_dir]
-
-def get_runtime_target [runtime_dir: string] {
-    let result = (^readlink -f $runtime_dir | complete)
-    if $result.exit_code == 0 {
-        $result.stdout | str trim
-    } else {
-        $runtime_dir | path expand
-    }
-}
 
 def get_desktop_applications_dir [] {
     let data_home = (
@@ -34,7 +26,15 @@ def quote_desktop_exec_arg [value: string] {
     $"\"($escaped)\""
 }
 
-def render_desktop_entry [launcher_path: string, runtime_target: string] {
+def get_stable_yzx_path [] {
+    ($env.HOME | path join ".local" "bin" "yzx")
+}
+
+def render_desktop_exec [launcher_path: string] {
+    $"(quote_desktop_exec_arg $launcher_path) desktop launch"
+}
+
+def render_desktop_entry [launcher_path: string] {
     [
         "[Desktop Entry]"
         "Version=1.4"
@@ -43,8 +43,7 @@ def render_desktop_entry [launcher_path: string, runtime_target: string] {
         "Comment=Yazi + Zellij + Helix integrated terminal environment"
         "Icon=yazelix"
         "StartupWMClass=com.yazelix.Yazelix"
-        $"Exec=(quote_desktop_exec_arg $launcher_path)"
-        $"X-Yazelix-Runtime-Target=(quote_desktop_exec_arg $runtime_target)"
+        $"Exec=(render_desktop_exec $launcher_path)"
         "Categories=Development;"
     ] | str join "\n"
 }
@@ -77,16 +76,19 @@ export def "yzx desktop install" [
     --print-path(-p) # Print only the installed desktop-file path
 ] {
     let runtime_dir = (require_yazelix_runtime_dir)
-    let runtime_target = (get_runtime_target $runtime_dir)
-    let launcher_path = ($runtime_dir | path join "shells" "posix" "desktop_launcher.sh")
+    let launcher_path = (get_stable_yzx_path)
+
+    if not ($runtime_dir | path exists) {
+        error make {msg: $"Missing Yazelix runtime at ($runtime_dir)"}
+    }
 
     if not ($launcher_path | path exists) {
-        error make {msg: $"Missing Yazelix desktop launcher at ($launcher_path)"}
+        error make {msg: $"Missing stable Yazelix CLI at ($launcher_path)"}
     }
 
     let applications_dir = (get_desktop_applications_dir)
     let desktop_path = (get_desktop_entry_path)
-    let desktop_entry = (render_desktop_entry $launcher_path $runtime_target)
+    let desktop_entry = (render_desktop_entry $launcher_path)
 
     mkdir $applications_dir
     $desktop_entry | save --force --raw $desktop_path
@@ -116,4 +118,8 @@ export def "yzx desktop uninstall" [
     } else {
         print $"Removed Yazelix desktop entry: ($desktop_path)"
     }
+}
+
+export def "yzx desktop launch" [] {
+    main
 }

@@ -378,7 +378,7 @@ let
   yazelixDesktopLauncher =
     if isLinux then
       pkgs.writeShellScriptBin "yazelix-desktop-launcher" ''
-        exec "''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/shells/posix/desktop_launcher.sh"
+        exec "$HOME/.local/bin/yzx" desktop launch
       ''
     else
       null;

@@ -59,11 +59,10 @@
             yzxShim = hmConfig.config.home.file.".local/bin/yzx".text;
             desktopExec = hmConfig.config.xdg.desktopEntries.yazelix.exec;
             startupWMClass = hmConfig.config.xdg.desktopEntries.yazelix.settings.StartupWMClass;
-            desktopRuntimeTarget =
-              hmConfig.config.xdg.desktopEntries.yazelix.settings.X-Yazelix-Runtime-Target;
             yazelixToml = hmConfig.config.xdg.configFile."yazelix/user_configs/yazelix.toml".text;
             yazelixPacksToml = hmConfig.config.xdg.configFile."yazelix/user_configs/yazelix_packs.toml".text;
             expectedRuntimePath = "/home/test/.local/share/yazelix/runtime/current";
+            expectedYzxPath = "/home/test/.local/bin/yzx";
           in
           {
             desktop_entry_smoke = pkgs.runCommand "yazelix-home-manager-desktop-entry-smoke" {
@@ -71,23 +70,17 @@
               passthru.yzxShim = yzxShim;
               passthru.exec = desktopExec;
               passthru.startupWMClass = startupWMClass;
-              passthru.desktopRuntimeTarget = desktopRuntimeTarget;
               passthru.yazelixToml = yazelixToml;
               passthru.yazelixPacksToml = yazelixPacksToml;
             } ''
               expected_runtime_path='${expectedRuntimePath}'
+              expected_yzx_path='${expectedYzxPath}'
               desktop_exec='${desktopExec}'
-              desktop_runtime_target='${desktopRuntimeTarget}'
               runtime_source='${runtimeSource}'
               yzx_shim='${yzxShim}'
 
-              if [ "$desktop_exec" != "$expected_runtime_path/shells/posix/desktop_launcher.sh" ]; then
+              if [ "$desktop_exec" != "$expected_yzx_path desktop launch" ]; then
                 echo "unexpected desktop exec: $desktop_exec" >&2
-                exit 1
-              fi
-
-              if [ "$desktop_runtime_target" != "$runtime_source" ]; then
-                echo "desktop runtime target drifted from managed runtime source" >&2
                 exit 1
               fi
 
@@ -100,7 +93,6 @@
               StartupWMClass=${startupWMClass}
               DesktopExec=$desktop_exec
               RuntimeSource=$runtime_source
-              DesktopRuntimeTarget=$desktop_runtime_target
               EOF
             '';
           }

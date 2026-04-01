@@ -42,7 +42,7 @@ Contains app metadata:
 The `MacOS/yazelix` script:
 1. Sources shell profiles (.bash_profile, .profile, .zprofile)
 2. Ensures Nix and devenv are in PATH
-3. Executes the desktop launcher script
+3. Executes the stable `yzx desktop launch` entrypoint
 
 ## Icon Creation (Optional)
 
