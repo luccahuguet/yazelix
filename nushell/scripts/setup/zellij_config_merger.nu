@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 # Zellij Configuration Merger
-# Uses the Yazelix-managed user Zellij config when available, falls back to Zellij defaults
+# Uses the Yazelix-managed user Zellij config when available, then native Zellij config, then Zellij defaults
 
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
 use ../utils/config_parser.nu parse_yazelix_config
@@ -27,29 +27,25 @@ def get_legacy_native_zellij_config_path [] {
     ($env.HOME | path join ".config" "zellij" "config.kdl")
 }
 
-def reconcile_zellij_user_config_path [] {
-    let current_path = (get_zellij_user_config_path)
-    let legacy_path = (get_legacy_native_zellij_config_path)
-    let current_exists = ($current_path | path exists)
-    let legacy_exists = ($legacy_path | path exists)
-
-    if (not $current_exists) and $legacy_exists {
-        mkdir ($current_path | path dirname)
-        mv $legacy_path $current_path
-    }
-
-    $current_path
-}
-
-# Read the Yazelix-managed user Zellij config if it exists
+# Read the preferred user-owned Zellij config surface if it exists
 def read_user_zellij_config [] {
-    let user_config_path = (reconcile_zellij_user_config_path)
-    if ($user_config_path | path exists) {
+    let managed_path = (get_zellij_user_config_path)
+    let native_path = (get_legacy_native_zellij_config_path)
+
+    if ($managed_path | path exists) {
         try {
-            print $"📥 Using existing Zellij config from ($user_config_path)"
-            open $user_config_path
+            print $"📥 Using managed Zellij config from ($managed_path)"
+            open $managed_path
         } catch {|err|
-            print $"⚠️  Could not read user config: ($err.msg)"
+            print $"⚠️  Could not read managed Zellij config: ($err.msg)"
+            ""
+        }
+    } else if ($native_path | path exists) {
+        try {
+            print $"📥 Using native Zellij config from ($native_path)"
+            open $native_path
+        } catch {|err|
+            print $"⚠️  Could not read native Zellij config: ($err.msg)"
             ""
         }
     } else {
@@ -57,7 +53,7 @@ def read_user_zellij_config [] {
     }
 }
 
-# Choose the base config: Yazelix-managed user config if present, otherwise Zellij defaults
+# Choose the base config: Yazelix-managed user config if present, then native Zellij config, otherwise Zellij defaults
 def get_base_config [] {
     let user_config = read_user_zellij_config
     if ($user_config | is-not-empty) {

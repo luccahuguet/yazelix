@@ -61,6 +61,7 @@ When creating new files or directories, always use underscores to maintain consi
 3. **Universal robustness** - Yazelix must work reliably for all users, not just maintainers who can manually fix issues
 4. **Avoid redundant code** - Focus on elegant, concise code when possible; eliminate duplication and unnecessary complexity
 5. **Do not ship or rely on local-only host fixes** - Do not patch user-specific caches, local machine state, or other one-off environment artifacts as a substitute for a real Yazelix fix unless the user explicitly asks for a local recovery workaround. Temporary local probes are allowed for diagnosis or to test a hypothesis, but they must be treated as throwaway investigation steps and either reverted or replaced by a real repo fix before calling the work done.
+6. **Never automatically move, delete, or take ownership of user-managed config files outside Yazelix-owned paths** - In particular, do not automatically relocate files like `~/.config/zellij/config.kdl` into Yazelix-managed paths. If Yazelix wants to adopt an external user config, that must be an explicit user action such as an import command, not an implicit startup side effect.
 
 ### Error Handling Philosophy
 - **No silent failures** - Every error should be visible and actionable

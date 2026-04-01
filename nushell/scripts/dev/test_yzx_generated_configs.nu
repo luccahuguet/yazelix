@@ -877,8 +877,8 @@ sidebar_width_percent = 25
     $result
 }
 
-def test_generate_merged_zellij_config_relocates_legacy_native_user_config [] {
-    print "🧪 Testing merged Zellij config relocates legacy native user config into user_configs/zellij..."
+def test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it [] {
+    print "🧪 Testing merged Zellij config uses native Zellij config as a fallback without relocating it..."
 
     let tmpdir = (^mktemp -d /tmp/yazelix_zellij_user_cfg_relocate_XXXXXX | str trim)
 
@@ -888,7 +888,7 @@ def test_generate_merged_zellij_config_relocates_legacy_native_user_config [] {
 
         let output = (run_merged_zellij_config_in_fake_home $tmpdir {} {||
             {
-                relocated_exists: ((($fake_home | path join ".config" "yazelix" "user_configs" "zellij" "config.kdl") | path exists))
+                managed_exists: ((($fake_home | path join ".config" "yazelix" "user_configs" "zellij" "config.kdl") | path exists))
                 legacy_exists: ((($fake_home | path join ".config" "zellij" "config.kdl") | path exists))
             }
         })
@@ -896,13 +896,13 @@ def test_generate_merged_zellij_config_relocates_legacy_native_user_config [] {
 
         if (
             ($config_stdout | str contains 'scroll_buffer_size 12345')
-            and $output.relocated_exists
-            and (not $output.legacy_exists)
+            and (not $output.managed_exists)
+            and $output.legacy_exists
         ) {
-            print "  ✅ Merged Zellij config relocates the legacy native config into user_configs/zellij and uses it"
+            print "  ✅ Merged Zellij config uses the native Zellij config as a fallback without moving it"
             true
         } else {
-            print "  ❌ Unexpected result: legacy native Zellij config did not relocate or merge correctly"
+            print "  ❌ Unexpected result: native Zellij config was not preserved as a fallback correctly"
             false
         }
     } catch { |err|
@@ -973,7 +973,7 @@ export def run_generated_config_canonical_tests [] {
         (test_config_schema_rejects_removed_layout_widget)
         (test_generate_merged_yazi_config_relocates_legacy_user_overrides)
         (test_generate_merged_yazi_keymap_uses_zoxide_editor_plugin)
-        (test_generate_merged_zellij_config_relocates_legacy_native_user_config)
+        (test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it)
         (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
     ]
