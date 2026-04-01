@@ -10,11 +10,6 @@ for nix_profile in "$HOME/.nix-profile/etc/profile.d/nix.sh" "/nix/var/nix/profi
   fi
 done
 
-if ! command -v nu >/dev/null 2>&1; then
-  echo "Error: nu not found in PATH after loading Nix profile." >&2
-  exit 1
-fi
-
 SCRIPT_PATH="$0"
 if [ -L "$SCRIPT_PATH" ]; then
   LINK_TARGET="$(readlink "$SCRIPT_PATH")"
@@ -63,4 +58,4 @@ for arg in "$@"; do
   nu_command="$nu_command $(format_nu_token "$arg")"
 done
 
-exec nu -c "$nu_command"
+exec "$YAZELIX_NU_BIN" -c "$nu_command"

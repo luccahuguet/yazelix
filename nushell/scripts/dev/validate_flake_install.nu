@@ -44,6 +44,8 @@ def run_flake_install [temp_home: string] {
 
 def verify_installed_runtime [temp_home: string] {
     let runtime_current = ($temp_home | path join ".local" "share" "yazelix" "runtime" "current")
+    let runtime_nu = ($runtime_current | path join "bin" "nu")
+    let runtime_yzx_cli = ($runtime_current | path join "shells" "posix" "yzx_cli.sh")
     let yzx_path = ($temp_home | path join ".local" "bin" "yzx")
     let nushell_config = ($temp_home | path join ".config" "nushell" "config.nu")
     let user_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix.toml")
@@ -53,6 +55,8 @@ def verify_installed_runtime [temp_home: string] {
     let yazi_flavor = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors" "tokyo-night.yazi" "flavor.toml")
 
     require_path_exists $runtime_current "installed runtime symlink"
+    require_path_exists $runtime_nu "runtime-local Nushell binary"
+    require_path_exists $runtime_yzx_cli "runtime-local POSIX yzx launcher"
     require_path_exists $yzx_path "installed yzx wrapper"
     require_path_exists $nushell_config "generated Nushell hook config"
     require_path_exists $user_config "seeded user config"
@@ -86,6 +90,33 @@ def verify_installed_runtime [temp_home: string] {
     let version_text = ($version_result.stdout | str trim)
     if not ($version_text | str starts-with "Yazelix v") {
         error make { msg: $"Unexpected installed yzx version output: ($version_text)" }
+    }
+
+    let posix_launcher_result = (
+        ^env -i
+            HOME=$temp_home
+            PATH="/usr/bin:/bin"
+            XDG_CONFIG_HOME=($temp_home | path join ".config")
+            XDG_DATA_HOME=($temp_home | path join ".local" "share")
+            sh
+            $runtime_yzx_cli
+            --version-short
+        | complete
+    )
+
+    if $posix_launcher_result.exit_code != 0 {
+        if ($posix_launcher_result.stdout | is-not-empty) {
+            print $posix_launcher_result.stdout
+        }
+        if ($posix_launcher_result.stderr | is-not-empty) {
+            print $posix_launcher_result.stderr
+        }
+        error make { msg: "Runtime-local POSIX yzx launcher failed under minimal PATH during flake install smoke validation" }
+    }
+
+    let posix_version_text = ($posix_launcher_result.stdout | str trim)
+    if not ($posix_version_text | str starts-with "Yazelix v") {
+        error make { msg: $"Unexpected runtime-local POSIX yzx output: ($posix_version_text)" }
     }
 }
 

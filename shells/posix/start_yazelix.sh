@@ -11,11 +11,6 @@ for nix_profile in "$HOME/.nix-profile/etc/profile.d/nix.sh" "/nix/var/nix/profi
   fi
 done
 
-if ! command -v nu >/dev/null 2>&1; then
-  echo "Error: nu not found in PATH after loading Nix profile." >&2
-  exit 1
-fi
-
 RUNTIME_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 startup_script="$RUNTIME_DIR/nushell/scripts/core/start_yazelix.nu"
 runtime_env_script="$RUNTIME_DIR/shells/posix/runtime_env.sh"
@@ -37,4 +32,4 @@ if [ ! -f "$startup_script" ]; then
   exit 1
 fi
 
-exec nu "$startup_script"
+exec "$YAZELIX_NU_BIN" "$startup_script"

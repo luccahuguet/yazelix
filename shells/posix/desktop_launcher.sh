@@ -11,11 +11,6 @@ for nix_profile in "$HOME/.nix-profile/etc/profile.d/nix.sh" "/nix/var/nix/profi
   fi
 done
 
-if ! command -v nu >/dev/null 2>&1; then
-  echo "Error: nu not found in PATH. Install Nushell or restart your shell." >&2
-  exit 1
-fi
-
 RUNTIME_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 launcher_script="$RUNTIME_DIR/nushell/scripts/core/desktop_launcher.nu"
 runtime_env_script="$RUNTIME_DIR/shells/posix/runtime_env.sh"
@@ -37,4 +32,4 @@ if [ ! -f "$launcher_script" ]; then
   exit 1
 fi
 
-exec nu "$launcher_script"
+exec "$YAZELIX_NU_BIN" "$launcher_script"
