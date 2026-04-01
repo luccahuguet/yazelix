@@ -3,6 +3,7 @@
 # Defends: docs/specs/floating_tui_panes.md
 
 use ../yzx/popup.nu [resolve_yzx_popup_command resolve_yzx_popup_cwd]
+use ../integrations/zellij.nu [get_floating_wrapper_env]
 use ../utils/config_parser.nu [parse_yazelix_config]
 use ../../../configs/zellij/scripts/yzx_toggle_popup.nu [resolve_popup_toggle_action]
 
@@ -150,12 +151,80 @@ def test_popup_toggle_wrapper_surfaces_permission_denials [] {
     }
 }
 
+def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
+    print "🧪 Testing popup wrappers derive EDITOR from the canonical launch env, not a stale shell value..."
+
+    try {
+        let tmpdir = (^mktemp -d /tmp/yazelix_popup_env_XXXXXX | str trim)
+        mut success = false
+
+        try {
+            let profile_path = ($tmpdir | path join "profile")
+            let profile_bin = ($profile_path | path join "bin")
+            let profile_nvim = ($profile_bin | path join "nvim")
+            mkdir $profile_bin
+            "" | save --force --raw $profile_nvim
+            ^chmod +x $profile_nvim
+
+            let config_path = ($tmpdir | path join "yazelix.toml")
+            [
+                "[editor]"
+                "command = \"nvim\""
+            ] | str join "\n" | save --force --raw $config_path
+
+            let result = (with-env {
+                YAZELIX_CONFIG_OVERRIDE: $config_path
+                DEVENV_PROFILE: $profile_path
+                YAZELIX_RUNTIME_DIR: $env.PWD
+                YAZELIX_DIR: $env.PWD
+                PATH: $"($profile_bin):/usr/bin"
+                EDITOR: "/tmp/wrong-editor"
+            } {
+                get_floating_wrapper_env
+            })
+            let raw_path = ($result.PATH? | default [])
+            let path_entries = if (($raw_path | describe) | str starts-with "list") {
+                $raw_path | each {|entry| $entry | into string }
+            } else {
+                let path_text = ($raw_path | into string | str trim)
+                if ($path_text | is-empty) {
+                    []
+                } else {
+                    $path_text | split row (char esep)
+                }
+            }
+
+            let conditions = [
+                (($result.EDITOR? | default "") == $profile_nvim)
+                (($result.DEVENV_PROFILE? | default "") == $profile_path)
+                ($path_entries | any {|entry| $entry == $profile_bin })
+            ]
+
+            if ($conditions | all {|item| $item }) {
+                print "  ✅ popup wrappers resolve EDITOR from the current Yazelix profile instead of a stale shell value"
+                $success = true
+            } else {
+                print $"  ❌ Unexpected popup wrapper env: ($result | to json -r)"
+                $success = false
+            }
+        } finally {
+            rm -rf $tmpdir
+        }
+
+        $success
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 export def run_popup_canonical_tests [] {
     [
         (test_popup_command_prefers_configured_default)
         (test_popup_cwd_prefers_workspace_root)
         (test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages)
         (test_popup_toggle_wrapper_surfaces_permission_denials)
+        (test_popup_wrapper_uses_canonical_editor_for_current_profile)
     ]
 }
 

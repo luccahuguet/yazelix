@@ -7,6 +7,21 @@ def bool_to_string [value] {
     if $value { "true" } else { "false" }
 }
 
+def normalize_path_entries [value: any] {
+    let described = ($value | describe)
+
+    if ($described | str starts-with "list") {
+        $value | each {|entry| $entry | into string }
+    } else {
+        let text = ($value | into string | str trim)
+        if ($text | is-empty) {
+            []
+        } else {
+            $text | split row (char esep)
+        }
+    }
+}
+
 def resolve_profile_candidate [candidate: string] {
     if ($candidate | is-empty) or (not ($candidate | path exists)) {
         return ""
@@ -203,6 +218,7 @@ def resolve_helix_runtime [config: record] {
 export def get_launch_env [config: record, profile_path: string] {
     let yazelix_dir = get_yazelix_dir
     let profile_bin = ($profile_path | path join "bin")
+    let current_path_entries = (normalize_path_entries ($env.PATH? | default []))
     let nix_config = get_yazelix_nix_config
     let enable_sidebar = ($config.enable_sidebar? | default true)
     let terminals = ($config.terminals? | default ["ghostty"])
@@ -211,7 +227,7 @@ export def get_launch_env [config: record, profile_path: string] {
     let helix_runtime = (resolve_helix_runtime $config)
     mut launch_env = {
         DEVENV_PROFILE: $profile_path
-        PATH: (([$profile_bin] | append $env.PATH | uniq))
+        PATH: (([$profile_bin] | append $current_path_entries | uniq))
         YAZELIX_RUNTIME_DIR: $yazelix_dir
         YAZELIX_DIR: $yazelix_dir
         IN_YAZELIX_SHELL: "true"
