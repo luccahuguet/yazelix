@@ -60,8 +60,8 @@ export def sync_generated_nushell_user_hook_bridge [config_root?: string, state_
 
     if ($user_hook_path | path exists) and ((open --raw $user_hook_path | str trim | is-not-empty)) {
         (format_nushell_source_literal $user_hook_path) | save --force --raw $bridge_path
-    } else if ($bridge_path | path exists) {
-        rm -f $bridge_path
+    } else {
+        "# Yazelix managed Nushell user hook bridge (empty)" | save --force --raw $bridge_path
     }
 
     $bridge_path

@@ -367,8 +367,8 @@ def test_managed_nushell_config_sources_optional_user_hook [] {
     $result
 }
 
-def test_nushell_user_hook_bridge_is_removed_when_hook_is_absent [] {
-    print "🧪 Testing the managed Nushell user-hook bridge disappears when no managed Nushell hook exists..."
+def test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent [] {
+    print "🧪 Testing the managed Nushell user-hook bridge stays present and harmless when no managed Nushell hook exists..."
 
     let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_nu_user_hook_bridge_XXXXXX | str trim)
@@ -395,12 +395,16 @@ def test_nushell_user_hook_bridge_is_removed_when_hook_is_absent [] {
             sync_generated_nushell_user_hook_bridge
         })
 
-        let bridge_exists_after_empty_sync = ($bridge_path | path exists)
+        let bridge_contents_after_empty_sync = if ($bridge_path | path exists) {
+            open --raw $bridge_path
+        } else {
+            ""
+        }
 
         mkdir ($hook_path | path dirname)
         '$env.YAZELIX_TEST_NU_HOOK = "bridge_created_after_hook_exists"' | save --force --raw $hook_path
 
-        let bridge_exists_after_hook = (
+        let bridge_contents_after_hook = (
             with-env {
                 HOME: $tmp_home
                 XDG_CONFIG_HOME: $xdg_config_home
@@ -408,13 +412,13 @@ def test_nushell_user_hook_bridge_is_removed_when_hook_is_absent [] {
                 YAZELIX_STATE_DIR: $state_dir
             } {
                 sync_generated_nushell_user_hook_bridge | ignore
-                $bridge_path | path exists
+                open --raw $bridge_path
             }
         )
 
         rm -f $hook_path
 
-        let bridge_exists_after_removal = (
+        let bridge_contents_after_removal = (
             with-env {
                 HOME: $tmp_home
                 XDG_CONFIG_HOME: $xdg_config_home
@@ -422,19 +426,19 @@ def test_nushell_user_hook_bridge_is_removed_when_hook_is_absent [] {
                 YAZELIX_STATE_DIR: $state_dir
             } {
                 sync_generated_nushell_user_hook_bridge | ignore
-                $bridge_path | path exists
+                open --raw $bridge_path
             }
         )
 
         if (
-            (not $bridge_exists_after_empty_sync)
-            and $bridge_exists_after_hook
-            and (not $bridge_exists_after_removal)
+            (($bridge_contents_after_empty_sync | str trim) == "# Yazelix managed Nushell user hook bridge (empty)")
+            and ($bridge_contents_after_hook | str contains 'source "')
+            and (($bridge_contents_after_removal | str trim) == "# Yazelix managed Nushell user hook bridge (empty)")
         ) {
-            print "  ✅ The managed Nushell bridge only exists when the Yazelix-owned hook exists, so startup never points at a missing file"
+            print "  ✅ The managed Nushell bridge always exists, but becomes an empty no-op when no Yazelix-owned hook is present"
             true
         } else {
-            print $"  ❌ Unexpected managed Nushell bridge lifecycle: empty_sync=($bridge_exists_after_empty_sync) after_hook=($bridge_exists_after_hook) after_removal=($bridge_exists_after_removal)"
+            print $"  ❌ Unexpected managed Nushell bridge lifecycle: empty=(($bridge_contents_after_empty_sync | str trim)) after_hook=(($bridge_contents_after_hook | str trim)) after_removal=(($bridge_contents_after_removal | str trim))"
             false
         }
     } catch {|err|
@@ -647,7 +651,7 @@ export def run_generated_config_extended_tests [] {
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
         (test_generate_nushell_initializer_removes_starship_right_prompt)
         (test_managed_nushell_config_sources_optional_user_hook)
-        (test_nushell_user_hook_bridge_is_removed_when_hook_is_absent)
+        (test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent)
         (test_managed_bash_config_sources_optional_user_hook)
         (test_generate_managed_helix_config_shows_import_notice_once)
         (test_yzx_import_helix_copies_personal_config_with_force_backups)
