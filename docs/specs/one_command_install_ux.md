@@ -12,10 +12,10 @@ This command should become the canonical front door for new users once implement
 
 ## Why
 
-The current install story is honest but too maintainer-shaped:
+The old install story was honest but too maintainer-shaped:
 
 - clone the repo somewhere
-- install Nushell separately
+- install host Nushell separately
 - install the pinned `devenv` CLI separately
 - run `start_yazelix.nu --setup-only`
 
@@ -39,11 +39,16 @@ The installer app should:
 
 1. validate that Nix itself is available
 2. install or refresh the Yazelix-pinned `devenv` CLI if needed
-3. materialize a persistent Yazelix runtime tree
+3. materialize a persistent Yazelix runtime tree that includes the runtime's own `nu`
 4. initialize `~/.config/yazelix/user_configs/` if missing
 5. install the stable `yzx` executable entrypoint into `~/.local/bin/`
 6. leave desktop entry installation as an explicit follow-up command (`yzx desktop install`), not an automatic side effect of the installer
 7. print the next-step command, normally `yzx launch`
+
+The installer should not mutate the user's global shell toolchain beyond the bootstrap tools Yazelix directly owns. In practice:
+- Nix remains the host prerequisite
+- the installer owns the pinned `devenv` CLI and the runtime-local `nu`
+- the installer does not promise to install a separate host/global Nushell for the user's normal shell sessions
 
 ## Ownership Model
 
@@ -89,6 +94,7 @@ So the installer must materialize or install a persistent runtime and then point
 - making Git clones the canonical user-facing install path
 - making the GitHub flake source path the runtime root
 - designing a second environment definition separate from `devenv.nix`
+- silently taking over the user's global host shell toolchain
 - replacing maintainers' clone-based workflows
 
 ## Minimum Follow-On Implementation Work
@@ -107,6 +113,7 @@ So the installer must materialize or install a persistent runtime and then point
 3. User config still lives under `~/.config/yazelix/user_configs/`.
 4. Maintainer workflows can still use clone-based entrypoints without becoming the primary install story.
 5. The canonical install guide becomes shorter because the front door is real, not because it hides steps with vague prose.
+6. The onboarding contract clearly separates installer-managed bootstrap tools from host prerequisites.
 
 ## Verification
 

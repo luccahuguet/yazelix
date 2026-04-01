@@ -91,6 +91,8 @@ nix run github:luccahuguet/yazelix#install
 yzx launch
 ```
 
+Host prerequisite: Nix with flakes. The installer manages the Yazelix-pinned `devenv` CLI and the installed runtime's own `nu`; it does not promise to install a separate global Nushell for your normal host shell usage.
+
 📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions
 
 ### Helix Integration

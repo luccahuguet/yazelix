@@ -27,11 +27,15 @@ Responsibilities:
 
 1. verify that Nix is available
 2. install or refresh the Yazelix-pinned `devenv` CLI if needed
-3. materialize the persistent Yazelix runtime
+3. materialize the persistent Yazelix runtime, including the runtime-local `nu`
 4. initialize `~/.config/yazelix/user_configs/` if missing
 5. install or refresh the stable `yzx` executable in `~/.local/bin/`
-6. optionally install or refresh desktop assets
-7. print the next step, usually `yzx launch`
+6. print the next step, usually `yzx launch`
+
+Bootstrap-tool ownership in phase 1:
+- **Host prerequisite**: Nix with flakes enabled
+- **Installer-managed**: the pinned `devenv` CLI, the packaged runtime, and the runtime-local `nu` used by installed POSIX entrypoints
+- **Not installer-managed**: a separate host/global Nushell install for the user's everyday shell outside Yazelix
 
 ### `packages.<system>.runtime`
 
@@ -84,6 +88,7 @@ Model:
 - `packages.runtime` produces the immutable runtime tree
 - the installer materializes that runtime by pointing `~/.local/share/yazelix/runtime/current` at the packaged runtime target
 - `~/.local/bin/yzx` points at `~/.local/share/yazelix/runtime/current/shells/posix/yzx_cli.sh`
+- installed POSIX entrypoints prefer `~/.local/share/yazelix/runtime/current/bin/nu` over host `nu`
 - desktop entry assets should resolve the same stable runtime pointer, not a clone path and not the transient bootstrap flake path
 - phase 1 should keep desktop-entry installation explicit via `yzx desktop install`, not as an automatic side effect of `nix run ...#install`
 
@@ -109,6 +114,7 @@ Non-goals for phase 1:
 - a separate self-update product surface
 - preserving clone-oriented `yzx update repo` semantics for packaged installs
 - inventing a second runtime definition outside `devenv.nix`
+- automatically installing a separate host/global Nushell as part of bootstrap
 
 ## Home Manager Relationship
 
@@ -124,6 +130,7 @@ If re-exporting the existing module at top level is cheap and clean, do it. If n
 4. User config remains under `~/.config/yazelix/user_configs/`.
 5. Desktop-entry installation remains an explicit opt-in step instead of an automatic install side effect.
 6. The flake stays thin enough that `devenv.nix` remains the real runtime source of truth.
+7. The onboarding contract clearly distinguishes installer-managed bootstrap tools from host prerequisites.
 
 ## Verification
 

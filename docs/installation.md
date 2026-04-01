@@ -14,7 +14,7 @@ Nix is just a package manager that ensures reproducible, reliable software insta
 
 It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software. And it's way easier than having to install everything separately and manually.
 
-**Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix is the only real prerequisite. The installer will materialize the Yazelix runtime, install the pinned `devenv` CLI if needed, and install the stable `yzx` command for you.
+**Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The installer will materialize the Yazelix runtime, install the Yazelix-pinned `devenv` CLI if needed, ship the runtime's own `nu`, and install the stable `yzx` command for you.
 
 ## Supported Terminal Emulators
 Yazelix provides 5 terminal emulators built-in via Nix - set your `terminals` list in `yazelix.toml`:
@@ -64,10 +64,16 @@ yzx launch
 What this does:
 - installs or refreshes the Yazelix-pinned `devenv` CLI if needed
 - materializes the Yazelix runtime under `~/.local/share/yazelix/runtime/current`
+- ships a runtime-local `nu` used by the installed `yzx` and POSIX launchers
 - seeds `~/.config/yazelix/user_configs/` if missing
 - installs the stable `yzx` command into `~/.local/bin/yzx`
 
 You do **not** need to clone the repo for normal installation.
+
+What this does **not** do:
+- install Nix itself for you
+- install a separate global/host Nushell just for your normal shell usage
+- auto-install the desktop entry; that stays an explicit follow-up via `yzx desktop install`
 
 ## Step-by-Step Installation
 
@@ -118,6 +124,11 @@ yzx launch
 ```
 
 Normal usage relies on the installed runtime and `yzx` entrypoints. User configuration lives under `~/.config/yazelix/user_configs/`.
+
+Bootstrap-tool contract:
+- **Host prerequisite**: Nix with flakes enabled
+- **Installer-managed**: the Yazelix-pinned `devenv` CLI, the persistent Yazelix runtime, and the runtime-local `nu` used by installed launchers
+- **Not installer-managed**: a separate host Nushell install for your everyday shell outside Yazelix
 
 ### Step 3: Configure Your Installation (Optional)
 
@@ -186,6 +197,8 @@ Useful launch variants:
 - `yzx help` shows the command surface
 
 **First run note**: the first launch may take several minutes while Yazelix downloads and installs its environment. Subsequent launches are much faster because `devenv` caching is reused.
+
+If you want to use Nushell as your normal host shell outside Yazelix, install it separately in the way you prefer. Yazelix no longer requires that extra host `nu` install just to bootstrap or launch the installed runtime.
 
 #### Optional: Desktop/Application Launcher Integration
 
