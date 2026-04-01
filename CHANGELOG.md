@@ -17,13 +17,14 @@ Highlights:
 
 ## Unreleased
 
-Choose nix run as the install front door
+Simpler runtime updates and stronger update-path hardening
 
 Upgrade impact: no user action required
 
 Highlights:
-- Simplified installation instructions to use `nix run` as the default method.
-- Streamlined README quick-start for new users.
+- Replaced the clone-oriented `yzx update repo` flow with `yzx update runtime`, and redefined `yzx update all` around the packaged runtime plus the pinned `devenv` CLI.
+- Hardened `yzx launch` and `yzx restart` so they stop trusting stale current shells that do not contain the newly configured terminal.
+- Fixed `yzx dev update --canary-only` regressions around canary selection syntax and read-only temporary config copies.
 
 ## v13.10 - 2026-03-30
 
