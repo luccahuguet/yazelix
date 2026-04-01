@@ -8,43 +8,57 @@ if [ -z "$HOME" ] || [ ! -d "$HOME" ]; then
   exit 1
 fi
 
-PATH="$HOME/.local/state/nix/profile/bin:$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
-
-# Load Nix profile if available (mirrors login shell behavior)
-for nix_profile in "$HOME/.nix-profile/etc/profile.d/nix.sh" "/nix/var/nix/profiles/default/etc/profile.d/nix.sh"; do
-  if [ -f "$nix_profile" ]; then
-    . "$nix_profile"
-    break
-  fi
-done
-
-echo "Resolved HOME=$HOME"
-
 # Resolve Yazelix runtime root from this script location
 YAZELIX_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+runtime_env_script="$YAZELIX_DIR/shells/posix/runtime_env.sh"
+if [ ! -f "$runtime_env_script" ]; then
+  echo "Error: Missing Yazelix runtime env helper: $runtime_env_script"
+  exit 1
+fi
+
+export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$YAZELIX_DIR"
+. "$runtime_env_script" || exit 1
+unset YAZELIX_BOOTSTRAP_RUNTIME_DIR
+
+echo "Resolved HOME=$HOME"
 
 # Navigate to Yazelix directory
 # This is important for devenv to find devenv.nix in the current directory
 cd "$YAZELIX_DIR" || { echo "Error: Cannot cd to $YAZELIX_DIR"; exit 1; }
 
+# Prefer runtime-owned tools over host/profile PATH entries.
+DEVENV_BIN="$YAZELIX_DIR/bin/devenv"
+if [ ! -x "$DEVENV_BIN" ]; then
+  DEVENV_BIN="$(command -v devenv 2>/dev/null || true)"
+fi
+
 # Ensure devenv is available
-if ! DEVENV_BIN="$(command -v devenv)"; then
+if [ -z "$DEVENV_BIN" ] || [ ! -x "$DEVENV_BIN" ]; then
   echo ""
-  echo "❌ 'devenv' command not found."
-  echo "   Yazelix v11+ moved from flake-based 'nix develop' shells to devenv."
-  echo "   Install devenv with:"
-  echo "     nix profile install github:cachix/devenv/latest"
-  echo "   After installing, relaunch Yazelix (or run 'devenv shell')."
-  echo "   Old commands like 'nix develop' are no longer supported."
+  echo "❌ 'devenv' command not found in the installed Yazelix runtime."
+  echo "   Repair the runtime with:"
+  echo "     yzx update runtime"
+  echo "   Then rerun Yazelix."
+  echo ""
+  exit 1
+fi
+
+if [ -z "$YAZELIX_NU_BIN" ] || [ ! -x "$YAZELIX_NU_BIN" ]; then
+  echo ""
+  echo "❌ 'nu' command not found in the installed Yazelix runtime."
+  echo "   Repair the runtime with:"
+  echo "     yzx update runtime"
+  echo "   Then rerun Yazelix."
   echo ""
   exit 1
 fi
 
 # Detect configuration changes (requires Nushell)
-if command -v nu >/dev/null 2>&1; then
-  NEEDS_REFRESH=$(nu -c "use \"$YAZELIX_DIR/nushell/scripts/utils/config_state.nu\" compute_config_state; let state = compute_config_state; if \$state.needs_refresh { 'true' } else { '' }")
+if [ -x "$YAZELIX_NU_BIN" ]; then
+  NEEDS_REFRESH=$("$YAZELIX_NU_BIN" -c "use \"$YAZELIX_DIR/nushell/scripts/utils/config_state.nu\" compute_config_state; let state = compute_config_state; if \$state.needs_refresh { 'true' } else { '' }")
   if [ "$NEEDS_REFRESH" = "true" ]; then
-    REFRESH_REASON=$(nu -c "use \"$YAZELIX_DIR/nushell/scripts/utils/config_state.nu\" compute_config_state; let state = compute_config_state; if (\$state.refresh_reason? | is-not-empty) { \$state.refresh_reason } else { 'config or devenv inputs changed since last launch' }")
+    REFRESH_REASON=$("$YAZELIX_NU_BIN" -c "use \"$YAZELIX_DIR/nushell/scripts/utils/config_state.nu\" compute_config_state; let state = compute_config_state; if (\$state.refresh_reason? | is-not-empty) { \$state.refresh_reason } else { 'config or devenv inputs changed since last launch' }")
     echo "♻️  ${REFRESH_REASON} – rebuilding environment"
   fi
 fi
@@ -58,6 +72,6 @@ else
   MAX_CORES=$(sysctl -n hw.ncpu)  # macOS
 fi
 HOME="$HOME" "$DEVENV_BIN" --cores "$MAX_CORES" shell -- \
-  nu "$YAZELIX_DIR/nushell/scripts/core/start_yazelix_inner.nu"
+  "$YAZELIX_NU_BIN" "$YAZELIX_DIR/nushell/scripts/core/start_yazelix_inner.nu"
 
 # Hash is now saved during enterShell hook in devenv.nix
