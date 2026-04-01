@@ -905,6 +905,55 @@ def test_generate_merged_zellij_config_relocates_legacy_native_user_config [] {
     $result
 }
 
+def test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists [] {
+    print "🧪 Testing merged Zellij config prefers the managed user config and leaves native Zellij config alone..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_dual_config_XXXXXX | str trim)
+
+    let result = (try {
+        let out_dir = ($tmpdir | path join "out")
+        let fake_home = ($tmpdir | path join "home")
+        let fake_config_dir = ($fake_home | path join ".config" "yazelix")
+        write_minimal_user_zellij_config $fake_home
+        write_legacy_native_zellij_config $fake_home
+
+        let output = (with-env {
+            HOME: $fake_home
+            XDG_CONFIG_HOME: ($fake_home | path join ".config")
+            YAZELIX_CONFIG_DIR: $fake_config_dir
+            YAZELIX_TEST_OUT_DIR: $out_dir
+        } {
+            let root = (get_repo_config_dir)
+            generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
+            {
+                config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
+                managed_exists: ((($fake_home | path join ".config" "yazelix" "user_configs" "zellij" "config.kdl") | path exists))
+                native_exists: ((($fake_home | path join ".config" "zellij" "config.kdl") | path exists))
+            }
+        })
+        let config_stdout = ($output.config | str trim)
+
+        if (
+            ($config_stdout | str contains 'bind "f1" { WriteChars "fixture"; }')
+            and not ($config_stdout | str contains 'scroll_buffer_size 12345')
+            and $output.managed_exists
+            and $output.native_exists
+        ) {
+            print "  ✅ Merged Zellij config keeps the managed user config canonical without deleting the native Zellij config"
+            true
+        } else {
+            print "  ❌ Unexpected result: managed/native Zellij config ownership was not preserved correctly"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 export def run_generated_config_canonical_tests [] {
     [
         (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
@@ -926,6 +975,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_yazi_config_relocates_legacy_user_overrides)
         (test_generate_merged_yazi_keymap_uses_zoxide_editor_plugin)
         (test_generate_merged_zellij_config_relocates_legacy_native_user_config)
+        (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
     ]
 }

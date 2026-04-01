@@ -118,6 +118,7 @@ ui {
 - Preferred explicit path: run `yzx import zellij` to copy `~/.config/zellij/config.kdl` into `~/.config/yazelix/user_configs/zellij/config.kdl`
 - If you already have a managed override and want to replace it, use `yzx import zellij --force` so Yazelix writes a backup first
 - Yazelix relocates a legacy `~/.config/zellij/config.kdl` into `~/.config/yazelix/user_configs/zellij/config.kdl` when it first needs the managed file
-- If both files exist, Yazelix fails fast and asks you to keep only the `user_configs` copy
+- If both files exist, Yazelix keeps using the managed `user_configs` copy and leaves the native Zellij config alone for plain `zellij` launches
+- If you want changes from `~/.config/zellij/config.kdl` to become the managed Yazelix config, run `yzx import zellij` explicitly
 
 For complete Zellij configuration options: https://zellij.dev/documentation/

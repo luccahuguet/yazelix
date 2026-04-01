@@ -33,21 +33,7 @@ def reconcile_zellij_user_config_path [] {
     let current_exists = ($current_path | path exists)
     let legacy_exists = ($legacy_path | path exists)
 
-    if $current_exists and $legacy_exists {
-        error make {
-            msg: (
-                [
-                    "Yazelix found duplicate Zellij user config files in both user_configs and the native Zellij path."
-                    $"user_configs path: ($current_path)"
-                    $"native legacy path: ($legacy_path)"
-                    ""
-                    "Keep only the user_configs copy. Move or delete ~/.config/zellij/config.kdl so Yazelix has one clear managed owner."
-                ] | str join "\n"
-            )
-        }
-    }
-
-    if $legacy_exists {
+    if (not $current_exists) and $legacy_exists {
         mkdir ($current_path | path dirname)
         mv $legacy_path $current_path
     }
