@@ -13,9 +13,12 @@ export def get_generated_yzx_extern_path [state_root?: string] {
 
 def render_flag [parameter: record] {
     let name = ($parameter.parameter_name? | default "")
-    let short_flag = ($parameter.short_flag? | default null)
-    let suffix = if $short_flag == null { "" } else { $"(-($short_flag))" }
-    $"    --($name)($suffix)"
+    let short_flag = ($parameter.short_flag? | default "")
+    if ($short_flag | is-empty) {
+        $"    --($name)"
+    } else {
+        ("    --" + $name + "(-" + $short_flag + ")")
+    }
 }
 
 def normalize_shape [syntax_shape?: string] {
@@ -30,10 +33,13 @@ def normalize_shape [syntax_shape?: string] {
 
 def render_named [parameter: record] {
     let name = ($parameter.parameter_name? | default "")
-    let short_flag = ($parameter.short_flag? | default null)
-    let suffix = if $short_flag == null { "" } else { $"(-($short_flag))" }
+    let short_flag = ($parameter.short_flag? | default "")
     let shape = (normalize_shape ($parameter.syntax_shape? | default "string"))
-    $"    --($name)($suffix): ($shape)"
+    if ($short_flag | is-empty) {
+        $"    --($name): ($shape)"
+    } else {
+        ("    --" + $name + "(-" + $short_flag + "): " + $shape)
+    }
 }
 
 def render_positional [parameter: record] {
@@ -84,11 +90,10 @@ def render_extern_block [command: record] {
 
 def fetch_yzx_command_metadata [runtime_root: string] {
     let runtime_dir = ($runtime_root | path expand)
-    let probe = (
-        with-env {YAZELIX_RUNTIME_DIR: $runtime_dir} {
-            ^nu -c 'source ($env.YAZELIX_RUNTIME_DIR | path join "nushell" "scripts" "core" "yazelix.nu"); scope commands | where name =~ "^yzx( |$)" | sort-by name | to json -r' | complete
-        }
-    )
+    let probe = (do {
+        cd $runtime_dir
+        ^nu -c 'source nushell/scripts/core/yazelix.nu; scope commands | where name =~ "^yzx( |$)" | sort-by name | to json -r' | complete
+    })
 
     if $probe.exit_code != 0 {
         let stderr = ($probe.stderr | default "" | str trim)

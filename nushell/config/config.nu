@@ -58,6 +58,9 @@ export alias lg = lazygit
 export def clp [ ] { clip copy }
 
 # Use the stable external `yzx` CLI from PATH instead of importing the full
-# Yazelix Nushell command suite into every shell startup.
+# Yazelix Nushell command suite into every shell startup. A generated extern
+# bridge restores Nushell completion/signature knowledge without loading the
+# heavy command implementation path here.
+source ~/.local/share/yazelix/initializers/nushell/yazelix_extern.nu
 
 source ~/.local/share/yazelix/initializers/nushell/yazelix_user_hook.nu

@@ -212,9 +212,11 @@ export def show_welcome [
             print $line
         }
 
-        # Prompt for enter (if interactive)
+        # Prompt for a single key (if interactive)
         try {
-            input $"($colors.purple)Press Enter to launch Zellij and start your session... ($colors.reset)"
+            print -n $"($colors.purple)Press any key to launch Zellij and start your session... ($colors.reset)"
+            input listen --types [key] | ignore
+            print ""
         } catch {
             # Non-interactive shell, just continue
         }

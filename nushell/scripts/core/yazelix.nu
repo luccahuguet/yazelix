@@ -394,12 +394,14 @@ export def "yzx update" [
 
 export def "yzx update all" [
     --verbose  # Show verbose output for update commands
+    --restart(-r)  # Restart Yazelix after the runtime update succeeds
 ] {
-    yzx update runtime --verbose=$verbose
+    yzx update runtime --verbose=$verbose --restart=$restart
 }
 
 export def "yzx update runtime" [
     --verbose  # Show the underlying install command
+    --restart(-r)  # Restart Yazelix after the runtime update succeeds
 ] {
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available --skip-devenv
@@ -416,6 +418,10 @@ export def "yzx update runtime" [
         print "❌ Yazelix runtime update failed."
         print $"   Retry with: nix run --refresh ($YAZELIX_INSTALL_FLAKE_REF)"
         exit $exit_code
+    }
+
+    if $restart {
+        yzx restart
     }
 }
 

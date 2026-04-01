@@ -7,6 +7,7 @@ use ../setup/helix_config_merger.nu [generate_managed_helix_config get_helix_imp
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../setup/zellij_plugin_paths.nu [get_tracked_zjstatus_wasm_path get_zjstatus_wasm_path]
 use ../utils/launch_state.nu [get_launch_env]
+use ../utils/nushell_externs.nu [get_generated_yzx_extern_path sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [get_yazelix_shell_user_hook_path sync_generated_nushell_user_hook_bridge]
 
 def test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip [] {
@@ -439,6 +440,7 @@ def test_managed_nushell_config_sources_optional_user_hook [] {
         mkdir ($hook_path | path dirname)
         '$env.YAZELIX_TEST_NU_HOOK = "from_managed_nu_hook"' | save --force --raw $hook_path
         "" | save --force --raw ($state_dir | path join "initializers" "nushell" "yazelix_init.nu")
+        sync_generated_yzx_extern_bridge $repo_root $state_dir | ignore
         with-env {
             HOME: $tmp_home
             XDG_CONFIG_HOME: $xdg_config_home
@@ -547,6 +549,61 @@ def test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent [] 
             true
         } else {
             print $"  ❌ Unexpected managed Nushell bridge lifecycle: empty=(($bridge_contents_after_empty_sync | str trim)) after_hook=(($bridge_contents_after_hook | str trim)) after_removal=(($bridge_contents_after_removal | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_managed_nushell_config_loads_generated_yzx_extern_bridge [] {
+    print "🧪 Testing managed Nushell config loads the generated yzx extern bridge..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_nu_yzx_extern_XXXXXX | str trim)
+    let xdg_config_home = ($tmp_home | path join ".config")
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+    let init_dir = ($state_dir | path join "initializers" "nushell")
+
+    mkdir $xdg_config_home
+    mkdir $init_dir
+
+    let result = (try {
+        "" | save --force --raw ($init_dir | path join "yazelix_init.nu")
+        "" | save --force --raw ($init_dir | path join "yazelix_user_hook.nu")
+
+        let output = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_DIR: $repo_root
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            sync_generated_yzx_extern_bridge $repo_root $state_dir | ignore
+            ^nu -c $"source \"($repo_root | path join "nushell" "config" "config.nu")\"; scope commands | where name == \"yzx update runtime\" | to json -r" | complete
+        })
+
+        let stdout = ($output.stdout | default "")
+        let stderr_text = ($output.stderr | default "" | str trim)
+        let extern_path = (with-env {YAZELIX_STATE_DIR: $state_dir} { get_generated_yzx_extern_path $state_dir })
+        let extern_contents = (open --raw $extern_path)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "\"name\":\"yzx update runtime\"")
+            and ($stdout | str contains "\"type\":\"external\"")
+            and ($extern_contents | str contains 'export extern "yzx update runtime"')
+            and ($extern_contents | str contains '--restart(-r)')
+            and ($extern_contents | str contains '--verbose')
+        ) {
+            print "  ✅ Managed Nushell config now loads a generated yzx extern bridge built from the real command tree"
+            true
+        } else {
+            print $"  ❌ Unexpected managed Nushell extern bridge output: exit=($output.exit_code) stdout=($stdout) stderr=($stderr_text) extern_path=($extern_path)"
             false
         }
     } catch {|err|
@@ -762,6 +819,7 @@ export def run_generated_config_extended_tests [] {
         (test_generate_nushell_initializer_removes_starship_right_prompt)
         (test_managed_nushell_config_sources_optional_user_hook)
         (test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent)
+        (test_managed_nushell_config_loads_generated_yzx_extern_bridge)
         (test_managed_bash_config_sources_optional_user_hook)
         (test_generate_managed_helix_config_shows_import_notice_once)
         (test_yzx_import_helix_copies_personal_config_with_force_backups)
