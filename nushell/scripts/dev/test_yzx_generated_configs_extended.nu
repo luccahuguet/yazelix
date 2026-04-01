@@ -4,6 +4,7 @@
 use ./test_yzx_helpers.nu [get_repo_config_dir get_repo_root repo_path]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/helix_config_merger.nu [generate_managed_helix_config get_helix_import_notice_marker_path]
+use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/launch_state.nu [get_launch_env]
 
 def test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip [] {
@@ -225,6 +226,90 @@ def test_devenv_shell_exports_managed_helix_wrapper [] {
     }
 }
 
+def test_generate_merged_zellij_config_wraps_nu_default_shell [] {
+    print "🧪 Testing merged Zellij config rewrites default_shell = \"nu\" to the managed Nushell wrapper..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_managed_nu_zellij_XXXXXX | str trim)
+    let config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
+    let out_dir = ($tmp_home | path join "out")
+
+    mkdir ($tmp_home | path join ".config")
+    mkdir $config_dir
+    mkdir $user_config_dir
+
+    let result = (try {
+        '[shell]
+default_shell = "nu"
+' | save --force --raw ($user_config_dir | path join "yazelix.toml")
+
+        let generated = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+        } {
+            generate_merged_zellij_config $repo_root $out_dir | ignore
+            open --raw ($out_dir | path join "config.kdl")
+        })
+
+        let expected_shell = ($repo_root | path join "shells" "posix" "yazelix_nu.sh")
+
+        if (
+            ($generated | str contains $"default_shell \"($expected_shell)\"")
+            and not ($generated | str contains 'default_shell "nu"')
+        ) {
+            print "  ✅ Merged Zellij config now routes managed Nushell panes through the Yazelix wrapper"
+            true
+        } else {
+            print $"  ❌ Unexpected merged default_shell output: ($generated)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_generate_nushell_initializer_removes_starship_right_prompt [] {
+    print "🧪 Testing generated Nushell initializer removes the Starship right prompt path..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_nu_initializer_XXXXXX | str trim)
+
+    let result = (try {
+        let aggregate = (with-env {
+            HOME: $tmp_home
+            YAZELIX_QUIET_MODE: "true"
+        } {
+            ^nu (repo_path "nushell" "scripts" "setup" "initializers.nu") $repo_root "nu" | complete | ignore
+            open --raw ($tmp_home | path join ".local" "share" "yazelix" "initializers" "nushell" "yazelix_init.nu")
+        })
+
+        if (
+            not ($aggregate | str contains "PROMPT_COMMAND_RIGHT")
+            and not ($aggregate | str contains "render_right_prompt_on_last_line")
+            and ($aggregate | str contains "PROMPT_COMMAND:")
+        ) {
+            print "  ✅ Generated Nushell initializer keeps the main Starship prompt but removes the right-prompt path"
+            true
+        } else {
+            print $"  ❌ Unexpected generated Nushell initializer contents: ($aggregate)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_yzx_import_helix_copies_personal_config_with_force_backups [] {
     print "🧪 Testing yzx import helix copies personal Helix config and backs up managed overrides on --force..."
 
@@ -378,6 +463,8 @@ export def run_generated_config_extended_tests [] {
         (test_generate_managed_helix_config_merges_user_config_and_enforces_reveal)
         (test_get_launch_env_wraps_helix_with_managed_wrapper)
         (test_devenv_shell_exports_managed_helix_wrapper)
+        (test_generate_merged_zellij_config_wraps_nu_default_shell)
+        (test_generate_nushell_initializer_removes_starship_right_prompt)
         (test_generate_managed_helix_config_shows_import_notice_once)
         (test_yzx_import_helix_copies_personal_config_with_force_backups)
     ]
