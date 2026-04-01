@@ -241,11 +241,11 @@ let
   '';
 
   yazelixLayoutName = if enableSidebar then "yzx_side" else "yzx_no_side";
-  startupScriptPath = ''"''${runtimeRootRef}/shells/posix/start_yazelix.sh"'';
+  startupScriptPath = ''"''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/shells/posix/start_yazelix.sh"'';
   mkTerminalConfigResolver = terminalName:
     ''
       export YAZELIX_TERMINAL_CONFIG_MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
-      if ! CONF="$(${pkgs.nushell}/bin/nu -c "source \"''${runtimeRootRef}/nushell/scripts/utils/terminal_launcher.nu\"; print (resolve_terminal_config_from_env \"${terminalName}\")")"; then
+      if ! CONF="$(${pkgs.nushell}/bin/nu -c "source \"''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/nushell/scripts/utils/terminal_launcher.nu\"; print (resolve_terminal_config_from_env \"${terminalName}\")")"; then
         exit 1
       fi
     '';
@@ -378,7 +378,7 @@ let
   yazelixDesktopLauncher =
     if isLinux then
       pkgs.writeShellScriptBin "yazelix-desktop-launcher" ''
-        exec "''${runtimeRootRef}/shells/posix/desktop_launcher.sh"
+        exec "''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/shells/posix/desktop_launcher.sh"
       ''
     else
       null;

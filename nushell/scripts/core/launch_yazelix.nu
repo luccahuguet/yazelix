@@ -150,10 +150,9 @@ def main [
         }
         let wrapper_cmd = $term_meta.wrapper
 
-        # Prefer the Yazelix-managed wrapper when available. It carries the
-        # managed terminal integration path and only falls back to the direct
-        # binary when no wrapper exists.
-        if (command_exists $wrapper_cmd) {
+        # Ghostty currently uses the direct managed launch path as the
+        # canonical one. Other terminals still prefer their wrappers first.
+        if ($specified_terminal != "ghostty") and (command_exists $wrapper_cmd) {
             {
                 terminal: $specified_terminal
                 name: $term_meta.name
