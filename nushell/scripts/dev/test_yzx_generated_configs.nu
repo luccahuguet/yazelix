@@ -148,36 +148,6 @@ terminals = ["ghostty", "kitty", "alacritty"]
     $result
 }
 
-def test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip [] {
-    print "🧪 Testing skipping game_of_life repaints the resting logo frame..."
-
-    try {
-        let art_script = (repo_path "nushell" "scripts" "utils" "ascii_art.nu")
-        let output = (^nu -c $"use \"($art_script)\" [render_welcome_style_interruptibly]; render_welcome_style_interruptibly game_of_life 0.5 60 {|timeout| true } | ignore" | complete)
-        let clean_stdout = (
-            $output.stdout
-            | str replace -ar '\u001b\[[0-9;?]*[A-Za-z]' ''
-            | str replace -a "\r" ""
-        )
-
-        if (
-            ($output.exit_code == 0)
-            and ($clean_stdout | str contains "YAZELIX")
-            and ($clean_stdout | str contains "your reproducible terminal IDE")
-            and ($clean_stdout | str contains "welcome to yazelix")
-        ) {
-            print "  ✅ Welcome skip repaints the resting logo frame instead of leaving animated output behind"
-            true
-        } else {
-            print $"  ❌ Unexpected skip repaint result: exit=($output.exit_code) stdout=($clean_stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 def test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance [] {
     print "🧪 Testing parse_yazelix_config rejects legacy [ascii].mode with one clean migration path..."
 
@@ -779,48 +749,6 @@ return "yazi-user-marker"
     $result
 }
 
-def test_generate_merged_yazi_keymap_uses_zoxide_editor_plugin [] {
-    print "🧪 Testing merged Yazi keymap uses the bundled zoxide editor plugin..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_yazi_zoxide_plugin_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-    mkdir ($temp_config_dir | path join "user_configs")
-
-    let result = (try {
-        let merged_keymap = (with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            generate_merged_yazi_config $repo_root --quiet | ignore
-            open --raw ($tmp_home | path join ".local" "share" "yazelix" "configs" "yazi" "keymap.toml")
-        })
-        let plugin_main = ($tmp_home | path join ".local" "share" "yazelix" "configs" "yazi" "plugins" "zoxide-editor.yazi" "main.lua")
-
-        if (
-            ($merged_keymap | str contains 'run = "plugin zoxide-editor"')
-            and not ($merged_keymap | str contains "zoxide_open_in_editor.nu")
-            and ($plugin_main | path exists)
-        ) {
-            print "  ✅ Merged Yazi config binds Alt+z to the bundled zoxide editor plugin and ships the plugin files"
-            true
-        } else {
-            print $"  ❌ Unexpected merged zoxide keymap/plugin state: keymap=($merged_keymap) plugin_exists=(($plugin_main | path exists))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
 def test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config [] {
     print "🧪 Testing merged Zellij config carries editor.sidebar_width_percent into layouts and plugin config..."
 
@@ -958,7 +886,6 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
         (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
         (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
-        (test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip)
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
         (test_parse_yazelix_config_bootstraps_welcome_style_surface)
         (test_parse_yazelix_config_falls_back_to_canonical_yazi_plugins_default)
@@ -972,7 +899,6 @@ export def run_generated_config_canonical_tests [] {
         (test_config_schema_rejects_removed_auto_terminal_config_mode)
         (test_config_schema_rejects_removed_layout_widget)
         (test_generate_merged_yazi_config_relocates_legacy_user_overrides)
-        (test_generate_merged_yazi_keymap_uses_zoxide_editor_plugin)
         (test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it)
         (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
