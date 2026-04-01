@@ -68,11 +68,12 @@ export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
     }
 
     let terminals_to_check = if $prefer_wrappers {
-        # Prefer direct terminal binaries first so source-tree launches do not depend
-        # on stale built wrapper scripts. Fall back to wrappers when needed.
-        let direct = $ordered_terminals | each {|t| {terminal: $t, use_wrapper: false}}
+        # Prefer Yazelix-managed wrappers first when they exist. The wrappers carry
+        # terminal-specific integration such as embedded nixGL paths, config
+        # resolution, and platform-specific launch behavior.
         let wrappers = $ordered_terminals | each {|t| {terminal: $t, use_wrapper: true}}
-        $direct | append $wrappers
+        let direct = $ordered_terminals | each {|t| {terminal: $t, use_wrapper: false}}
+        $wrappers | append $direct
     } else {
         # Direct terminal only
         $ordered_terminals | each {|t| {terminal: $t, use_wrapper: false}}

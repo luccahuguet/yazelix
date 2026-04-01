@@ -150,22 +150,22 @@ def main [
         }
         let wrapper_cmd = $term_meta.wrapper
 
-        # Prefer the direct terminal binary first so source-tree launches do not
-        # depend on stale built wrapper scripts. Fall back to the wrapper when
-        # the direct binary is not available.
-        if (command_exists $specified_terminal) {
-            {
-                terminal: $specified_terminal
-                name: $term_meta.name
-                command: $specified_terminal
-                use_wrapper: false
-            }
-        } else if (command_exists $wrapper_cmd) {
+        # Prefer the Yazelix-managed wrapper when available. It carries the
+        # managed terminal integration path and only falls back to the direct
+        # binary when no wrapper exists.
+        if (command_exists $wrapper_cmd) {
             {
                 terminal: $specified_terminal
                 name: $term_meta.name
                 command: $wrapper_cmd
                 use_wrapper: true
+            }
+        } else if (command_exists $specified_terminal) {
+            {
+                terminal: $specified_terminal
+                name: $term_meta.name
+                command: $specified_terminal
+                use_wrapper: false
             }
         } else {
             print $"Error: Specified terminal '($specified_terminal)' is not installed"
