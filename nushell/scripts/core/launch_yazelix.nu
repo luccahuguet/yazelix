@@ -150,9 +150,9 @@ def main [
         }
         let wrapper_cmd = $term_meta.wrapper
 
-        # Ghostty currently uses the direct managed launch path as the
-        # canonical one. Other terminals still prefer their wrappers first.
-        if ($specified_terminal != "ghostty") and (command_exists $wrapper_cmd) {
+        # Prefer the Yazelix-managed wrapper when available. Ghostty's wrapper
+        # carries the managed IM and GPU-launch behavior we rely on.
+        if (command_exists $wrapper_cmd) {
             {
                 terminal: $specified_terminal
                 name: $term_meta.name

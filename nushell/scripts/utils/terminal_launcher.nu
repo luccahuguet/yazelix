@@ -68,14 +68,10 @@ export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
     }
 
     let terminals_to_check = if $prefer_wrappers {
-        # Prefer Yazelix-managed wrappers first when they exist.
-        # Ghostty is the exception: its direct managed launch path is the
-        # canonical one until the extra wrapper layer is proven reliable.
-        let wrappers = (
-            $ordered_terminals
-            | where $it != "ghostty"
-            | each {|t| {terminal: $t, use_wrapper: true}}
-        )
+        # Prefer Yazelix-managed wrappers first when they exist. Those wrappers
+        # carry terminal-specific integration such as IM normalization and GPU
+        # launch behavior.
+        let wrappers = $ordered_terminals | each {|t| {terminal: $t, use_wrapper: true}}
         let direct = $ordered_terminals | each {|t| {terminal: $t, use_wrapper: false}}
         $wrappers | append $direct
     } else {
