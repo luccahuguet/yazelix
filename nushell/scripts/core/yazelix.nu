@@ -7,8 +7,6 @@ use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu [describe_build_parallelism get_yazelix_dir]
-use ../utils/devenv_cli.nu [get_pinned_devenv_installable get_preferred_devenv_version_line is_preferred_devenv_available]
-use ../utils/shell_config_generation.nu [get_yzx_cli_path]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../integrations/yazi.nu [reveal_in_yazi sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ./start_yazelix.nu [start_yazelix_session]
@@ -386,9 +384,8 @@ export def "yzx update" [
     }
 
     print "User-facing updates:"
-    print "  yzx update all        Update the Yazelix runtime and the devenv CLI"
+    print "  yzx update all        Refresh the installed Yazelix runtime"
     print $"  yzx update runtime    Refresh the installed Yazelix runtime via ($YAZELIX_INSTALL_FLAKE_REF)"
-    print "  yzx update devenv     Update the devenv CLI in your Nix profile to the Yazelix-pinned revision"
     print "  yzx update nix        Upgrade Determinate Nix \(if installed\)"
     print ""
     print "Maintainer update:"
@@ -399,35 +396,6 @@ export def "yzx update all" [
     --verbose  # Show verbose output for update commands
 ] {
     yzx update runtime --verbose=$verbose
-
-    let yzx_cli = (get_yzx_cli_path)
-    if not ($yzx_cli | path exists) {
-        print $"❌ Missing Yazelix CLI at ($yzx_cli)."
-        print $"   Repair with: nix run ($YAZELIX_INSTALL_FLAKE_REF)"
-        exit 1
-    }
-
-    if $verbose {
-        print $"⚙️ Running refreshed CLI step: ($yzx_cli) update devenv --verbose"
-    }
-
-    let args = if $verbose {
-        ["update", "devenv", "--verbose"]
-    } else {
-        ["update", "devenv"]
-    }
-
-    let result = (^$yzx_cli ...$args | complete)
-    if ($result.stdout | str trim | is-not-empty) {
-        print ($result.stdout | str trim)
-    }
-    if ($result.stderr | str trim | is-not-empty) {
-        print --stderr ($result.stderr | str trim)
-    }
-    if $result.exit_code != 0 {
-        print $"❌ devenv update step failed after refreshing the Yazelix runtime: ($result.stderr | str trim)"
-        exit 1
-    }
 }
 
 export def "yzx update runtime" [
@@ -458,85 +426,6 @@ export def "yzx update runtime" [
         }
         print $"   Retry with: nix run --refresh ($YAZELIX_INSTALL_FLAKE_REF)"
         exit 1
-    }
-}
-
-export def "yzx update devenv" [
-    --verbose  # Show the underlying devenv command
-] {
-    use ../utils/nix_detector.nu ensure_nix_available
-    ensure_nix_available --skip-devenv
-
-    let pinned_installable = try {
-        get_pinned_devenv_installable
-    } catch {|err|
-        print $"❌ Failed to resolve the Yazelix-pinned devenv installable: ($err.msg)"
-        exit 1
-    }
-
-    if $verbose {
-        print $"⚙️ Running: nix profile install ($pinned_installable)"
-    }
-
-    let profile = try { ^nix profile list --json | from json } catch { null }
-    let profile_entries = if $profile == null { [] } else { $profile.elements | columns }
-    let profile_has_devenv = ($profile_entries | any { |name| $name == "devenv" })
-
-    let preferred_devenv_version = if $profile_has_devenv and (is_preferred_devenv_available) {
-        try { get_preferred_devenv_version_line } catch { "" }
-    } else {
-        ""
-    }
-    let current_version = (
-        $preferred_devenv_version
-        | parse --regex '(\d+\.\d+\.\d+)'
-        | get -o capture0
-        | first
-        | default ""
-    )
-
-    if not $profile_has_devenv {
-        if (which devenv | is-not-empty) {
-            print "ℹ️ devenv found in PATH but not managed by your Nix profile."
-            print $"   Installing Yazelix-pinned devenv ($PINNED_DEVENV_VERSION) into the profile."
-        }
-
-        print $"🔄 Installing Yazelix-pinned devenv CLI ($PINNED_DEVENV_VERSION)..."
-
-        try {
-            let result = (^nix profile install $pinned_installable | complete)
-            if $result.exit_code != 0 {
-                print $"❌ devenv install failed: ($result.stderr | str trim)"
-                print "   Check your Nix setup and try again."
-                exit 1
-            }
-            print "✅ devenv CLI installed."
-        } catch {|err|
-            print $"❌ devenv install failed: ($err.msg)"
-            print "   Check your Nix setup and try again."
-            exit 1
-        }
-    } else {
-        if $current_version == $PINNED_DEVENV_VERSION {
-            print $"ℹ️ devenv CLI already matches the Yazelix-pinned version ($PINNED_DEVENV_VERSION)."
-            return
-        }
-
-        print $"🔄 Updating devenv CLI to Yazelix-pinned version ($PINNED_DEVENV_VERSION)..."
-
-        try {
-            let result = (^nix profile install $pinned_installable | complete)
-            if $result.exit_code != 0 {
-                print $"❌ devenv update failed: ($result.stderr | str trim)"
-                print $"   Try: nix profile install ($pinned_installable)"
-                exit 1
-            }
-            print "✅ devenv CLI updated."
-        } catch {|err|
-            print $"❌ devenv update failed: ($err.msg)"
-            print $"   Try: nix profile install ($pinned_installable)"
-            exit 1
-        }
     }
 }
 

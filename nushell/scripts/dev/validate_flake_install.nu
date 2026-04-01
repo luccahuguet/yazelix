@@ -1,7 +1,5 @@
 #!/usr/bin/env nu
 
-const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
-
 def make_temp_home [] {
     (^mktemp -d /tmp/yazelix_flake_install_XXXXXX | str trim)
 }
@@ -36,7 +34,6 @@ def run_flake_install [temp_home: string] {
         HOME: $temp_home
         XDG_CONFIG_HOME: $config_root
         XDG_DATA_HOME: $state_root
-        YAZELIX_INSTALL_SKIP_DEVENV: "1"
     } {
         ^nix run .#install --extra-experimental-features "nix-command flakes" | complete
     }
@@ -44,8 +41,10 @@ def run_flake_install [temp_home: string] {
 
 def verify_installed_runtime [temp_home: string] {
     let runtime_current = ($temp_home | path join ".local" "share" "yazelix" "runtime" "current")
+    let runtime_devenv = ($runtime_current | path join "bin" "devenv")
     let runtime_nu = ($runtime_current | path join "bin" "nu")
     let runtime_yzx_cli = ($runtime_current | path join "shells" "posix" "yzx_cli.sh")
+    let devenv_cli_module = ($runtime_current | path join "nushell" "scripts" "utils" "devenv_cli.nu")
     let yzx_path = ($temp_home | path join ".local" "bin" "yzx")
     let nushell_config = ($temp_home | path join ".config" "nushell" "config.nu")
     let user_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix.toml")
@@ -55,6 +54,7 @@ def verify_installed_runtime [temp_home: string] {
     let yazi_flavor = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors" "tokyo-night.yazi" "flavor.toml")
 
     require_path_exists $runtime_current "installed runtime symlink"
+    require_path_exists $runtime_devenv "runtime-local devenv binary"
     require_path_exists $runtime_nu "runtime-local Nushell binary"
     require_path_exists $runtime_yzx_cli "runtime-local POSIX yzx launcher"
     require_path_exists $yzx_path "installed yzx wrapper"
@@ -117,6 +117,36 @@ def verify_installed_runtime [temp_home: string] {
     let posix_version_text = ($posix_launcher_result.stdout | str trim)
     if not ($posix_version_text | str starts-with "Yazelix v") {
         error make { msg: $"Unexpected runtime-local POSIX yzx output: ($posix_version_text)" }
+    }
+
+    let runtime_devenv_probe = (
+        ^env -i
+            HOME=$temp_home
+            PATH="/usr/bin:/bin"
+            XDG_CONFIG_HOME=($temp_home | path join ".config")
+            XDG_DATA_HOME=($temp_home | path join ".local" "share")
+            YAZELIX_RUNTIME_DIR=$runtime_current
+            YAZELIX_DIR=$runtime_current
+            $runtime_nu
+            -c
+            $"use ($devenv_cli_module | into string) *; print \(resolve_preferred_devenv_path\)"
+        | complete
+    )
+
+    if $runtime_devenv_probe.exit_code != 0 {
+        if ($runtime_devenv_probe.stdout | is-not-empty) {
+            print $runtime_devenv_probe.stdout
+        }
+        if ($runtime_devenv_probe.stderr | is-not-empty) {
+            print $runtime_devenv_probe.stderr
+        }
+        error make { msg: "Installed runtime failed to resolve its own runtime-local devenv path during flake install smoke validation" }
+    }
+
+    let selected_devenv = ($runtime_devenv_probe.stdout | str trim | path expand)
+    let expected_devenv = ($runtime_devenv | path expand)
+    if ($selected_devenv != $expected_devenv) {
+        error make { msg: $"Installed runtime selected the wrong devenv path: expected ($expected_devenv), got ($selected_devenv)" }
     }
 }
 

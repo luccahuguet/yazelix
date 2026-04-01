@@ -19,6 +19,7 @@ pkgs.runCommand "yazelix-runtime" { } ''
   ln -s ${./yazelix_packs_default.toml} "$out/yazelix_packs_default.toml"
 
   mkdir -p "$out/bin"
+  ln -s ${pkgs.devenv}/bin/devenv "$out/bin/devenv"
   ln -s ${pkgs.nushell}/bin/nu "$out/bin/nu"
   cat > "$out/bin/yzx" <<EOF
 #!/bin/sh

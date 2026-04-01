@@ -18,9 +18,6 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
-      devenvLock = builtins.fromJSON (builtins.readFile ./devenv.lock);
-      devenvNode = devenvLock.nodes.devenv.locked;
-      pinnedDevenvInstallable = "github:${devenvNode.owner}/${devenvNode.repo}/${devenvNode.rev}#devenv";
       mkPkgs = system: nixpkgs.legacyPackages.${system};
       runtimePackage = pkgs: import ./yazelix_runtime_package.nix { inherit pkgs; };
       yazelixPackage = pkgs: import ./yazelix_package.nix { inherit pkgs; };
@@ -49,7 +46,6 @@
             user_config_dir="$config_root/user_configs"
             main_config="$user_config_dir/yazelix.toml"
             pack_config="$user_config_dir/yazelix_packs.toml"
-            skip_devenv="''${YAZELIX_INSTALL_SKIP_DEVENV:-0}"
 
             ${pkgs.coreutils}/bin/mkdir -p "$runtime_root" "$bin_dir" "$user_config_dir"
             ${pkgs.coreutils}/bin/ln -sfn "$runtime_target" "$runtime_current"
@@ -62,18 +58,6 @@
             if [ ! -f "$pack_config" ]; then
               ${pkgs.coreutils}/bin/cp "$runtime_current/yazelix_packs_default.toml" "$pack_config"
             fi
-
-            profile_json="$(${pkgs.coreutils}/bin/mktemp)"
-            if [ "$skip_devenv" = "1" ]; then
-              echo "ℹ️ Skipping devenv installation because YAZELIX_INSTALL_SKIP_DEVENV=1."
-            elif nix profile list --json > "$profile_json" 2>/dev/null && ${pkgs.jq}/bin/jq -e '.elements | has("devenv")' "$profile_json" >/dev/null 2>&1; then
-              echo "ℹ️ devenv already present in your Nix profile."
-            else
-              echo "🔄 Installing Yazelix-pinned devenv CLI..."
-              nix profile install "${pinnedDevenvInstallable}"
-              echo "✅ devenv CLI installed."
-            fi
-            ${pkgs.coreutils}/bin/rm -f "$profile_json"
 
             echo "🔄 Refreshing Yazelix shell hooks..."
             YAZELIX_RUNTIME_DIR="$runtime_current" \

@@ -26,15 +26,14 @@ nix run github:luccahuguet/yazelix#install
 Responsibilities:
 
 1. verify that Nix is available
-2. install or refresh the Yazelix-pinned `devenv` CLI if needed
-3. materialize the persistent Yazelix runtime, including the runtime-local `nu`
-4. initialize `~/.config/yazelix/user_configs/` if missing
-5. install or refresh the stable `yzx` executable in `~/.local/bin/`
-6. print the next step, usually `yzx launch`
+2. materialize the persistent Yazelix runtime, including runtime-local `devenv` and `nu`
+3. initialize `~/.config/yazelix/user_configs/` if missing
+4. install or refresh the stable `yzx` executable in `~/.local/bin/`
+5. print the next step, usually `yzx launch`
 
 Bootstrap-tool ownership in phase 1:
 - **Host prerequisite**: Nix with flakes enabled
-- **Installer-managed**: the pinned `devenv` CLI, the packaged runtime, and the runtime-local `nu` used by installed POSIX entrypoints
+- **Installer-managed**: the packaged runtime, including runtime-local `devenv` and `nu`, plus the stable installed `yzx` launcher
 - **Not installer-managed**: a separate host/global Nushell install for the user's everyday shell outside Yazelix
 
 ### `packages.<system>.runtime`

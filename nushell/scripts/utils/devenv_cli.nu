@@ -87,39 +87,3 @@ export def get_preferred_devenv_version_line [] {
         error make {msg: $"Failed to read version from preferred devenv CLI: ($devenv_path)"}
     }
 }
-
-def load_yazelix_lockfile [] {
-    let lock_path = ((get_yazelix_dir) | path join "devenv.lock")
-    if not ($lock_path | path exists) {
-        error make {msg: $"Yazelix lockfile not found: ($lock_path)"}
-    }
-
-    try {
-        open --raw $lock_path | from json
-    } catch {|err|
-        error make {msg: $"Failed to read Yazelix lockfile: ($err.msg)"}
-    }
-}
-
-export def get_pinned_devenv_installable [] {
-    let lockfile = (load_yazelix_lockfile)
-    let node = ($lockfile | get -o nodes | get -o devenv)
-    if $node == null {
-        error make {msg: "Yazelix lockfile does not contain a devenv node"}
-    }
-
-    let locked = ($node | get -o locked)
-    if $locked == null {
-        error make {msg: "Yazelix lockfile is missing locked metadata for the devenv node"}
-    }
-
-    let owner = ($locked | get -o owner | default "")
-    let repo = ($locked | get -o repo | default "")
-    let rev = ($locked | get -o rev | default "")
-
-    if ($owner | is-empty) or ($repo | is-empty) or ($rev | is-empty) {
-        error make {msg: "Yazelix lockfile is missing owner/repo/rev metadata for the devenv node"}
-    }
-
-    $"github:($owner)/($repo)/($rev)#devenv"
-}

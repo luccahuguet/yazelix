@@ -131,16 +131,12 @@ Show available update targets
 
 ### `yzx update all [--verbose]`
 Run the user-facing update set
-- Refreshes the installed Yazelix runtime first, then runs the refreshed `yzx update devenv` step
-- `--verbose`: show verbose output for both update steps
+- Refreshes the installed Yazelix runtime
+- `--verbose`: show verbose output for the runtime refresh step
 
 ### `yzx update runtime [--verbose]`
 Refresh the installed Yazelix runtime
-- `yzx update runtime`: Rerun the flake installer via `nix run --refresh github:luccahuguet/yazelix#install` so `runtime/current`, `~/.local/bin/yzx`, shell hooks, and generated configs stay current
-
-### `yzx update devenv [--verbose]`
-Update the devenv CLI in your Nix profile to the Yazelix-pinned revision
-- `yzx update devenv`: Install or update the devenv CLI in your Nix profile so it matches Yazelix’s locked/pinned version (`--verbose` shows the underlying install command)
+- `yzx update runtime`: Rerun the flake installer via `nix run --refresh github:luccahuguet/yazelix#install` so `runtime/current`, `~/.local/bin/yzx`, runtime-local `devenv`/`nu`, shell hooks, and generated configs stay current
 
 ### `yzx update nix [--yes] [--verbose]`
 Upgrade Determinate Nix
@@ -298,9 +294,8 @@ yzx sponsor                   # Open the Yazelix sponsor page
 
 # Updates
 yzx update                    # Show update targets
-yzx update all               # Refresh the Yazelix runtime, then update devenv
+yzx update all               # Refresh the installed Yazelix runtime
 yzx update runtime            # Refresh the installed Yazelix runtime via the flake installer
-yzx update devenv             # Update devenv CLI
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
 yzx dev update --yes          # Refresh all inputs, run canaries, sync pins, and refresh vendored zjstatus
 yzx dev update devenv --yes   # Refresh only the devenv input, then sync the pinned devenv version

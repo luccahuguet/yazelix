@@ -3,7 +3,7 @@
 # Used by both start_yazelix.nu and yzx env to avoid duplication
 
 use config_parser.nu parse_yazelix_config
-use devenv_cli.nu [get_pinned_devenv_installable is_preferred_devenv_available resolve_preferred_devenv_path]
+use devenv_cli.nu [is_preferred_devenv_available resolve_preferred_devenv_path]
 use nix_detector.nu ensure_nix_available
 use nix_env_helper.nu ensure_nix_in_environment
 use common.nu [ensure_yazelix_runtime_project_dir get_max_cores get_max_jobs get_yazelix_nix_config get_yazelix_dir require_yazelix_dir]
@@ -110,14 +110,8 @@ def resolve_refresh_output_mode [mode: string] {
     $refresh_output
 }
 
-def print_pinned_devenv_install_hint [] {
-    let installable = try {
-        get_pinned_devenv_installable
-    } catch {|err|
-        print $"     Unable to derive the Yazelix-pinned devenv installable automatically: ($err.msg)"
-        return
-    }
-    print $"     nix profile install ($installable)"
+def print_runtime_devenv_repair_hint [] {
+    print "     yzx update runtime"
 }
 
 export def get_refresh_output_mode [config] {
@@ -301,11 +295,10 @@ export def run_in_devenv_shell [
         # Not in managed shell, enter devenv first
         if not (is_preferred_devenv_available) {
             print ""
-            print "❌ devenv command not found."
-            print "   Yazelix v11+ moved from flake-based `nix develop` shells to devenv."
-            print "   Install devenv with:"
-            print_pinned_devenv_install_hint
-            print "   After installing, relaunch Yazelix (or run `devenv shell`)."
+            print "❌ devenv command not found in the installed Yazelix runtime."
+            print "   Repair the runtime with:"
+            print_runtime_devenv_repair_hint
+            print "   Then rerun `yzx refresh` or relaunch Yazelix."
             print ""
             exit 1
         }
@@ -401,11 +394,10 @@ export def run_in_devenv_shell_command [
 
     if not (is_preferred_devenv_available) {
         print ""
-        print "❌ devenv command not found."
-        print "   Yazelix v11+ moved from flake-based `nix develop` shells to devenv."
-        print "   Install devenv with:"
-        print_pinned_devenv_install_hint
-        print "   After installing, relaunch Yazelix (or run `devenv shell`)."
+        print "❌ devenv command not found in the installed Yazelix runtime."
+        print "   Repair the runtime with:"
+        print_runtime_devenv_repair_hint
+        print "   Then rerun the command after the runtime refresh finishes."
         print ""
         exit 1
     }

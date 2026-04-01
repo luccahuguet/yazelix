@@ -7,7 +7,7 @@ use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir ge
 use config_surfaces.nu [get_main_user_config_path reconcile_primary_config_surfaces]
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
-use devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available]
+use devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available resolve_preferred_devenv_path]
 use ../setup/helix_config_merger.nu [build_managed_helix_config get_generated_helix_config_path get_managed_helix_user_config_path get_managed_reveal_command get_native_helix_config_path]
 use ../integrations/zellij.nu debug_editor_state
 
@@ -881,21 +881,22 @@ def is_devenv_installed [] {
     is_preferred_devenv_available
 }
 
-# Check devenv installation for performance boost
+# Check devenv availability inside the installed Yazelix runtime contract
 export def check_devenv_installation [] {
     if (is_devenv_installed) {
         let version = try { (get_preferred_devenv_version_line | str trim) } catch { "unknown" }
+        let path = try { resolve_preferred_devenv_path } catch { "unknown" }
         {
             status: "ok"
-            message: $"devenv installed: ($version)"
-            details: "Shell startup: ~0.3s (13x faster than without devenv)"
+            message: $"devenv available: ($version)"
+            details: $"Selected CLI: ($path)"
             fix_available: false
         }
     } else {
         {
             status: "warning"
-            message: "devenv not installed (optional)"
-            details: "Install devenv for 13x faster shell startup (~4-5s → ~0.3s). Desktop entries and terminal sessions will launch instantly."
+            message: "devenv missing from the installed Yazelix runtime"
+            details: "Repair with `yzx update runtime`, then rerun the affected launch or refresh command."
             fix_available: true
         }
     }

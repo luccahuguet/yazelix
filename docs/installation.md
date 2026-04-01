@@ -14,7 +14,7 @@ Nix is just a package manager that ensures reproducible, reliable software insta
 
 It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software. And it's way easier than having to install everything separately and manually.
 
-**Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The installer will materialize the Yazelix runtime, install the Yazelix-pinned `devenv` CLI if needed, ship the runtime's own `nu`, and install the stable `yzx` command for you.
+**Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The installer will materialize the Yazelix runtime, ship runtime-local `devenv` and `nu`, and install the stable `yzx` command for you.
 
 ## Supported Terminal Emulators
 Yazelix provides 5 terminal emulators built-in via Nix - set your `terminals` list in `yazelix.toml`:
@@ -62,9 +62,8 @@ yzx launch
 ```
 
 What this does:
-- installs or refreshes the Yazelix-pinned `devenv` CLI if needed
 - materializes the Yazelix runtime under `~/.local/share/yazelix/runtime/current`
-- ships a runtime-local `nu` used by the installed `yzx` and POSIX launchers
+- ships runtime-local `devenv` and `nu` used by the installed `yzx` and POSIX launchers
 - seeds `~/.config/yazelix/user_configs/` if missing
 - installs the stable `yzx` command into `~/.local/bin/yzx`
 
@@ -127,7 +126,7 @@ Normal usage relies on the installed runtime and `yzx` entrypoints. User configu
 
 Bootstrap-tool contract:
 - **Host prerequisite**: Nix with flakes enabled
-- **Installer-managed**: the Yazelix-pinned `devenv` CLI, the persistent Yazelix runtime, and the runtime-local `nu` used by installed launchers
+- **Installer-managed**: the persistent Yazelix runtime, including runtime-local `devenv` and `nu`, plus the stable installed `yzx` launcher
 - **Not installer-managed**: a separate host Nushell install for your everyday shell outside Yazelix
 
 ### Step 3: Configure Your Installation (Optional)
