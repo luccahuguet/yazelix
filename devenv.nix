@@ -215,6 +215,12 @@ let
       configuredEditor == "nvim"
       || configuredEditor == "neovim"
     );
+  isNamedHelixEditor =
+    configuredEditor == null
+    || configuredEditor == "hx"
+    || configuredEditor == "helix"
+    || lib.hasSuffix "/hx" configuredEditor
+    || lib.hasSuffix "/helix" configuredEditor;
 
   editorCommand =
     if configuredEditor == null then
@@ -223,6 +229,18 @@ let
       "${pkgs.neovim}/bin/nvim"
     else
       configuredEditor;
+  managedEditorKind =
+    if isNamedHelixEditor then
+      "helix"
+    else if isNamedNeovimEditor then
+      "neovim"
+    else
+      "";
+  shellEditorCommand =
+    if managedEditorKind == "helix" then
+      "$YAZELIX_RUNTIME_DIR/shells/posix/yazelix_hx.sh"
+    else
+      editorCommand;
 
   terminalList = lib.unique (userConfig.terminals or [ ]);
   manageTerminals = userConfig.manage_terminals or true;
@@ -637,8 +655,15 @@ in
     YAZELIX_PREFERRED_TERMINAL = preferredTerminal;
     YAZELIX_TERMINAL_CONFIG_MODE = terminalConfigMode;
     YAZELIX_WELCOME_STYLE = welcomeStyle;
-    EDITOR = editorCommand;
-  } // lib.optionalAttrs (helixRuntimePath != null) {
+    EDITOR = shellEditorCommand;
+  }
+  // lib.optionalAttrs (managedEditorKind != "") {
+    YAZELIX_MANAGED_EDITOR_KIND = managedEditorKind;
+  }
+  // lib.optionalAttrs (managedEditorKind == "helix") {
+    YAZELIX_MANAGED_HELIX_BINARY = editorCommand;
+  }
+  // lib.optionalAttrs (helixRuntimePath != null) {
     HELIX_RUNTIME = helixRuntimePath;
   };
 
@@ -660,13 +685,19 @@ in
     export YAZELIX_PREFERRED_TERMINAL="${preferredTerminal}"
     export YAZELIX_TERMINAL_CONFIG_MODE="${terminalConfigMode}"
     export YAZELIX_WELCOME_STYLE="${welcomeStyle}"
-    export EDITOR="${editorCommand}"
+    export EDITOR="${shellEditorCommand}"
+    ${lib.optionalString (managedEditorKind != "") ''
+      export YAZELIX_MANAGED_EDITOR_KIND="${managedEditorKind}"
+    ''}
+    ${lib.optionalString (managedEditorKind == "helix") ''
+      export YAZELIX_MANAGED_HELIX_BINARY="${editorCommand}"
+    ''}
     ${lib.optionalString (helixRuntimePath != null) ''
       export HELIX_RUNTIME="${helixRuntimePath}"
     ''}
 
     if [ "$YAZELIX_ENV_ONLY" != "true" ]; then
-      echo "📝 Set EDITOR to: ${editorCommand}"
+      echo "📝 Set EDITOR to: ${shellEditorCommand}"
     fi
 
     # Environment setup now reads directly from yazelix.toml (single source of truth)

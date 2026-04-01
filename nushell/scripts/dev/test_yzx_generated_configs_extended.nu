@@ -180,6 +180,51 @@ def test_get_launch_env_wraps_helix_with_managed_wrapper [] {
     $result
 }
 
+def test_devenv_shell_exports_managed_helix_wrapper [] {
+    print "🧪 Testing devenv shell exports the managed Helix wrapper contract..."
+
+    let repo_root = (get_repo_root)
+
+    try {
+        let output = (
+            with-env {
+                YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
+            } {
+                ^devenv shell --no-tui --no-reload -- sh -lc 'printf "EDITOR=%s\nKIND=%s\nBINARY=%s\n" "$EDITOR" "$YAZELIX_MANAGED_EDITOR_KIND" "$YAZELIX_MANAGED_HELIX_BINARY"' | complete
+            }
+        )
+
+        let stdout = ($output.stdout | default "")
+        let parsed = (
+            $stdout
+            | lines
+            | where {|line| $line =~ "^(EDITOR|KIND|BINARY)="}
+            | split column "=" key value
+            | reduce --fold {} {|entry, acc| $acc | upsert $entry.key $entry.value }
+        )
+
+        let editor = ($parsed.EDITOR? | default "")
+        let kind = ($parsed.KIND? | default "")
+        let binary = ($parsed.BINARY? | default "")
+
+        if (
+            ($output.exit_code == 0)
+            and ($editor | str ends-with "/shells/posix/yazelix_hx.sh")
+            and ($kind == "helix")
+            and ($binary | str ends-with "/bin/hx")
+        ) {
+            print "  ✅ devenv shell now exports the same managed Helix wrapper contract as the launch-profile path"
+            true
+        } else {
+            print $"  ❌ Unexpected devenv-shell Helix contract: exit=($output.exit_code) parsed=(($parsed | to json -r)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def test_yzx_import_helix_copies_personal_config_with_force_backups [] {
     print "🧪 Testing yzx import helix copies personal Helix config and backs up managed overrides on --force..."
 
@@ -257,6 +302,7 @@ export def run_generated_config_extended_tests [] {
         (test_generate_merged_yazi_keymap_uses_zoxide_editor_plugin)
         (test_generate_managed_helix_config_merges_user_config_and_enforces_reveal)
         (test_get_launch_env_wraps_helix_with_managed_wrapper)
+        (test_devenv_shell_exports_managed_helix_wrapper)
         (test_yzx_import_helix_copies_personal_config_with_force_backups)
     ]
 }
