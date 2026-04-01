@@ -42,5 +42,12 @@ alias lg='lazygit'
 
 # Note: yzx command is defined in ~/.bashrc (via v3 hooks) and is always available
 
+YAZELIX_USER_SHELL_HOOK_DIR="${YAZELIX_USER_SHELL_HOOK_DIR:-${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}/user_configs/shells}"
+YAZELIX_BASH_USER_HOOK="$YAZELIX_USER_SHELL_HOOK_DIR/bash.sh"
+if [ -f "$YAZELIX_BASH_USER_HOOK" ] && [ -s "$YAZELIX_BASH_USER_HOOK" ]; then
+  # shellcheck disable=SC1090
+  source "$YAZELIX_BASH_USER_HOOK"
+fi
+
 # Ensure this script doesn't produce output unless it's an error,
 # as it's sourced by .bashrc.

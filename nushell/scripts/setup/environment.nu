@@ -6,6 +6,7 @@ use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_state.nu compute_config_state
 use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/launch_state.nu [record_launch_state]
+use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 
 def ensure_user_cli_wrapper [yazelix_dir: string] {
     let local_bin_dir = ($env.HOME | path join ".local" "bin")
@@ -128,6 +129,7 @@ def main [--welcome-source: string, --skip-welcome] {
     with-env {YAZELIX_QUIET_MODE: (if $quiet_mode { "true" } else { "false" })} {
         nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir ($shells_to_configure | str join ",")
     }
+    sync_generated_nushell_user_hook_bridge
 
     # Setup shell hooks for configured shells
     use ./shell_hooks.nu setup_shell_hooks

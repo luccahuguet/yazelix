@@ -98,3 +98,16 @@ end
 
 # Detect Helix mode on config load
 detect_helix_mode
+
+set -l fish_user_hook_dir "$HOME/.config/yazelix/user_configs/shells"
+if set -q YAZELIX_USER_SHELL_HOOK_DIR; and test -n "$YAZELIX_USER_SHELL_HOOK_DIR"
+    set fish_user_hook_dir "$YAZELIX_USER_SHELL_HOOK_DIR"
+else if test -n "$YAZELIX_CONFIG_DIR"
+    set fish_user_hook_dir "$YAZELIX_CONFIG_DIR/user_configs/shells"
+end
+set -l YAZELIX_FISH_USER_HOOK "$fish_user_hook_dir/fish.fish"
+if test -f "$YAZELIX_FISH_USER_HOOK"
+    if test -s "$YAZELIX_FISH_USER_HOOK"
+        source "$YAZELIX_FISH_USER_HOOK"
+    end
+end

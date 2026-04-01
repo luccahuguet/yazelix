@@ -59,3 +59,7 @@ export def clp [ ] { clip copy }
 
 # Use the stable external `yzx` CLI from PATH instead of importing the full
 # Yazelix Nushell command suite into every shell startup.
+
+if ("~/.local/share/yazelix/initializers/nushell/yazelix_user_hook.nu" | path expand | path exists) {
+    source ~/.local/share/yazelix/initializers/nushell/yazelix_user_hook.nu
+}

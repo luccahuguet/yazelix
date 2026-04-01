@@ -32,6 +32,7 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
   - **Two layers**: Yazelix defaults + your personal overrides (highest priority)
   - **TOML merging**: Intelligent section merging prevents duplicate keys, personal configs are git ignored
 - **Helix Themes & Keybindings**: For Yazelix-managed Helix sessions, change Helix themes and keybindings in `~/.config/yazelix/user_configs/helix/config.toml`. If you want to start from an existing personal Helix config, run `yzx import helix`. See [Styling and Themes](./styling.md) and [Keybindings](./keybindings.md).
+- **Managed Shell Hooks**: Add Yazelix-only shell customizations under `~/.config/yazelix/user_configs/shells/` instead of personal dotfiles. Supported hook files are `bash.sh`, `zsh.zsh`, `fish.fish`, and `nu.nu`, and they are sourced at the end of the corresponding managed Yazelix shell startup.
 - **Keybindings**: Yazelix remaps conflicting keybindings and provides discoverable shortcuts. See [keybindings.md](./keybindings.md) for all details.
 - **Styling & Transparency**: Adjust terminal and editor appearance. See [styling.md](./styling.md).
 - **Editor Terminal Integration**: Use Yazelix tools in Zed, VS Code, or Cursor integrated terminals. See [editor_terminal_integration.md](./editor_terminal_integration.md).

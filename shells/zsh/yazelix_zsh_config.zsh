@@ -72,5 +72,11 @@ hx() {
 # For example, you could move environment variable exports specific to Zsh sessions here:
 # export SOME_ZSH_SPECIFIC_VAR="value"
 
+YAZELIX_USER_SHELL_HOOK_DIR="${YAZELIX_USER_SHELL_HOOK_DIR:-${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}/user_configs/shells}"
+YAZELIX_ZSH_USER_HOOK="$YAZELIX_USER_SHELL_HOOK_DIR/zsh.zsh"
+if [[ -f "$YAZELIX_ZSH_USER_HOOK" && -s "$YAZELIX_ZSH_USER_HOOK" ]]; then
+  source "$YAZELIX_ZSH_USER_HOOK"
+fi
+
 # Ensure this script doesn't produce output unless it's an error,
 # as it's sourced by .zshrc.

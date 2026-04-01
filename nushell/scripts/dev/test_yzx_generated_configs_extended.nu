@@ -6,6 +6,7 @@ use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/helix_config_merger.nu [generate_managed_helix_config get_helix_import_notice_marker_path]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/launch_state.nu [get_launch_env]
+use ../utils/shell_user_hooks.nu [get_yazelix_shell_user_hook_path sync_generated_nushell_user_hook_bridge]
 
 def test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip [] {
     print "🧪 Testing skipping game_of_life repaints the resting logo frame..."
@@ -310,6 +311,169 @@ def test_generate_nushell_initializer_removes_starship_right_prompt [] {
     $result
 }
 
+def test_managed_nushell_config_sources_optional_user_hook [] {
+    print "🧪 Testing managed Nushell config sources the optional Yazelix-owned user hook..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_nu_user_hook_XXXXXX | str trim)
+    let xdg_config_home = ($tmp_home | path join ".config")
+    let config_dir = ($xdg_config_home | path join "yazelix")
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+
+    mkdir $xdg_config_home
+    mkdir ($config_dir | path join "user_configs")
+    mkdir ($state_dir | path join "initializers" "nushell")
+
+    let result = (try {
+        let hook_path = (with-env {YAZELIX_CONFIG_DIR: $config_dir} {
+            get_yazelix_shell_user_hook_path "nushell"
+        })
+        mkdir ($hook_path | path dirname)
+        '$env.YAZELIX_TEST_NU_HOOK = "from_managed_nu_hook"' | save --force --raw $hook_path
+        "" | save --force --raw ($state_dir | path join "initializers" "nushell" "yazelix_init.nu")
+        with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            sync_generated_nushell_user_hook_bridge | ignore
+        }
+
+        let output = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_DIR: $repo_root
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            ^nu --config ($repo_root | path join "nushell" "config" "config.nu") -c 'print ($env.YAZELIX_TEST_NU_HOOK? | default "")' | complete
+        })
+
+        if ($output.exit_code == 0) and (($output.stdout | str trim) == "from_managed_nu_hook") {
+            print "  ✅ Managed Nushell config can source a Yazelix-owned user hook without touching personal config"
+            true
+        } else {
+            print $"  ❌ Unexpected managed Nushell user-hook result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_nushell_user_hook_bridge_notices_new_hook_without_resync [] {
+    print "🧪 Testing the managed Nushell user-hook bridge notices a newly created hook without another refresh..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_nu_user_hook_bridge_XXXXXX | str trim)
+    let xdg_config_home = ($tmp_home | path join ".config")
+    let config_dir = ($xdg_config_home | path join "yazelix")
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+
+    mkdir $xdg_config_home
+    mkdir ($config_dir | path join "user_configs")
+    mkdir ($state_dir | path join "initializers" "nushell")
+
+    let result = (try {
+        let hook_path = (with-env {YAZELIX_CONFIG_DIR: $config_dir} {
+            get_yazelix_shell_user_hook_path "nushell"
+        })
+        "" | save --force --raw ($state_dir | path join "initializers" "nushell" "yazelix_init.nu")
+
+        let bridge_path = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            sync_generated_nushell_user_hook_bridge
+        })
+
+        mkdir ($hook_path | path dirname)
+        '$env.YAZELIX_TEST_NU_HOOK = "noticed_after_bridge_generation"' | save --force --raw $hook_path
+
+        let output = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_DIR: $repo_root
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            ^nu --config ($repo_root | path join "nushell" "config" "config.nu") -c 'print ($env.YAZELIX_TEST_NU_HOOK? | default "")' | complete
+        })
+
+        if (
+            ($bridge_path | path exists)
+            and ($output.exit_code == 0)
+            and (($output.stdout | str trim) == "noticed_after_bridge_generation")
+        ) {
+            print "  ✅ The managed Nushell bridge can notice a new Yazelix-owned user hook without another refresh cycle"
+            true
+        } else {
+            print $"  ❌ Unexpected managed Nushell bridge result: bridge_exists=(($bridge_path | path exists)) exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+def test_managed_bash_config_sources_optional_user_hook [] {
+    print "🧪 Testing managed Bash config sources the optional Yazelix-owned user hook..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_bash_user_hook_XXXXXX | str trim)
+    let xdg_config_home = ($tmp_home | path join ".config")
+    let config_dir = ($xdg_config_home | path join "yazelix")
+
+    mkdir $xdg_config_home
+    mkdir ($config_dir | path join "user_configs")
+
+    let result = (try {
+        let hook_path = (with-env {YAZELIX_CONFIG_DIR: $config_dir} {
+            get_yazelix_shell_user_hook_path "bash"
+        })
+        mkdir ($hook_path | path dirname)
+        'export YAZELIX_TEST_BASH_HOOK="from_managed_bash_hook"' | save --force --raw $hook_path
+
+        let output = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_DIR: $repo_root
+            YAZELIX_HELIX_MODE: "release"
+        } {
+            ^bash --noprofile --norc -c $"source \"($repo_root | path join 'shells' 'bash' 'yazelix_bash_config.sh')\"; printf '%s' \"$YAZELIX_TEST_BASH_HOOK\"" | complete
+        })
+
+        if ($output.exit_code == 0) and (($output.stdout | str trim) == "from_managed_bash_hook") {
+            print "  ✅ Managed Bash config can source a Yazelix-owned user hook without touching personal dotfiles"
+            true
+        } else {
+            print $"  ❌ Unexpected managed Bash user-hook result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 def test_yzx_import_helix_copies_personal_config_with_force_backups [] {
     print "🧪 Testing yzx import helix copies personal Helix config and backs up managed overrides on --force..."
 
@@ -465,6 +629,9 @@ export def run_generated_config_extended_tests [] {
         (test_devenv_shell_exports_managed_helix_wrapper)
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
         (test_generate_nushell_initializer_removes_starship_right_prompt)
+        (test_managed_nushell_config_sources_optional_user_hook)
+        (test_nushell_user_hook_bridge_notices_new_hook_without_resync)
+        (test_managed_bash_config_sources_optional_user_hook)
         (test_generate_managed_helix_config_shows_import_notice_once)
         (test_yzx_import_helix_copies_personal_config_with_force_backups)
     ]
