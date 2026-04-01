@@ -1,18 +1,6 @@
 #!/usr/bin/env nu
 
-def get_runtime_script_path [relative_path: string] {
-    let runtime_dir = ($env.YAZELIX_RUNTIME_DIR? | default "" | str trim)
-    if ($runtime_dir | is-empty) {
-        error make {msg: "Missing YAZELIX_RUNTIME_DIR for Yazelix Zellij helper script."}
-    }
-
-    let expanded_runtime_dir = ($runtime_dir | path expand)
-    if not ($expanded_runtime_dir | path exists) {
-        error make {msg: $"Configured YAZELIX_RUNTIME_DIR does not exist: ($expanded_runtime_dir)"}
-    }
-
-    ($expanded_runtime_dir | path join $relative_path)
-}
+use runtime_helper.nu [get_runtime_script_path run_runtime_nu_command]
 
 def popup_plugin_toggle_result [] {
     let pipe_result = (^zellij pipe --name toggle_popup -- "" | complete)
@@ -44,7 +32,7 @@ def main [] {
             $"use '($core_script)' *"
             "yzx popup"
         ] | str join "\n")
-        run-external nu "-c" $command
+        run_runtime_nu_command $command
         return
     }
 
