@@ -176,6 +176,15 @@ export def get_yazelix_dir [] {
     get_yazelix_runtime_dir
 }
 
+export def resolve_zellij_default_shell [yazelix_dir: string, default_shell: string] {
+    let shell_name = ($default_shell | str downcase)
+    if $shell_name == "nu" {
+        ($yazelix_dir | path join "shells" "posix" "yazelix_nu.sh")
+    } else {
+        $default_shell
+    }
+}
+
 export def require_yazelix_config_dir [] {
     let yazelix_dir = (get_yazelix_config_dir)
     if not ($yazelix_dir | path exists) {

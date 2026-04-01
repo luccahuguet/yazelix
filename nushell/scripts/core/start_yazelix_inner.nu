@@ -5,7 +5,7 @@ use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
-use ../utils/common.nu [get_yazelix_runtime_dir]
+use ../utils/common.nu [get_yazelix_runtime_dir resolve_zellij_default_shell]
 use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/upgrade_summary.nu [maybe_show_first_run_upgrade_summary]
 use ../setup/welcome.nu [show_welcome build_welcome_message]
@@ -88,6 +88,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     }
     let session_default_cwd = $working_dir
     let launch_process_cwd = $working_dir
+    let zellij_default_shell = (resolve_zellij_default_shell $yazelix_dir $config.default_shell)
 
     let resolved_layout_path = if ($layout_override | is-not-empty) {
         $layout_override
@@ -153,9 +154,9 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
             ^zellij --config-dir $merged_zellij_dir attach $config.session_name
         } else {
             # Create new session with all options
-            ^zellij --config-dir $merged_zellij_dir attach -c $config.session_name options --default-cwd $session_default_cwd --default-layout $layout_path --pane-frames false --default-shell $config.default_shell
+            ^zellij --config-dir $merged_zellij_dir attach -c $config.session_name options --default-cwd $session_default_cwd --default-layout $layout_path --pane-frames false --default-shell $zellij_default_shell
         }
     } else {
-        ^zellij --config-dir $merged_zellij_dir options --default-cwd $session_default_cwd --default-layout $layout_path --pane-frames false --default-shell $config.default_shell
+        ^zellij --config-dir $merged_zellij_dir options --default-cwd $session_default_cwd --default-layout $layout_path --pane-frames false --default-shell $zellij_default_shell
     }
 }

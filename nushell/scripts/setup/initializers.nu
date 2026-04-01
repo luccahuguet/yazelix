@@ -2,10 +2,40 @@
 # Universal shell initializer generator for Yazelix
 # Generates initializer scripts for all supported shells
 
+def strip_nu_starship_right_prompt [] {
+    let lines = ($in | split row "\n")
+    mut filtered = []
+    mut skipping = false
+    mut skipping_config = false
+
+    for $line in $lines {
+        if (not $skipping) and ($line | str contains "PROMPT_COMMAND_RIGHT: {||") {
+            $skipping = true
+        } else if (not $skipping_config) and ($line | str contains "config: ($env.config? | default {} | merge {") {
+            $skipping_config = true
+        } else if $skipping {
+            if $line == "    }" {
+                $skipping = false
+            }
+        } else if $skipping_config {
+            if $line == "    })" {
+                $skipping_config = false
+            }
+        } else {
+            $filtered = ($filtered | append $line)
+        }
+    }
+
+    $filtered | str join "\n"
+}
+
 def normalize_initializer_content [shell_name: string, init_content: string] {
     if $shell_name == "nu" {
         $init_content
         | str replace -a "get $field --ignore-errors" "get --optional $field"
+        # Starship's right prompt triggers repeated cursor-position queries in
+        # interactive Nushell panes, which makes new Yazelix panes feel frozen.
+        | strip_nu_starship_right_prompt
     } else {
         $init_content
     }

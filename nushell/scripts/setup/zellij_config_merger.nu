@@ -4,7 +4,7 @@
 
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/common.nu [get_yazelix_runtime_reference_dir get_yazelix_user_config_dir]
+use ../utils/common.nu [get_yazelix_runtime_reference_dir get_yazelix_user_config_dir resolve_zellij_default_shell]
 use ../utils/layout_generator.nu [render_custom_text_segment render_widget_tray_segment]
 use ./zellij_plugin_paths.nu [PANE_ORCHESTRATOR_PLUGIN_ALIAS get_pane_orchestrator_wasm_path get_popup_runner_wasm_path]
 
@@ -324,6 +324,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     let kitty_protocol = ($config | get -o support_kitty_keyboard_protocol | default "true")
     let kitty_protocol_value = if ($kitty_protocol | str starts-with "false") { "false" } else { "true" }
     let default_shell = ($config.default_shell? | default "nu")
+    let resolved_default_shell = (resolve_zellij_default_shell $yazelix_dir $default_shell)
     let default_mode = ($config.zellij_default_mode? | default "normal")
     let default_layout_name = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
     let sidebar_width_percent = ($config.sidebar_width_percent? | default 20)
@@ -413,7 +414,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         "pane_frames false",
         $"support_kitty_keyboard_protocol ($kitty_protocol_value)",
         $"default_mode \"($default_mode)\"",
-        $"default_shell \"($default_shell)\"",
+        $"default_shell \"($resolved_default_shell)\"",
         $"default_layout \"($yazelix_layout_dir)/($default_layout_name).kdl\"",
         $"layout_dir \"($yazelix_layout_dir)\"",
         "",

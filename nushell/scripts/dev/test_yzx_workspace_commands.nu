@@ -252,8 +252,9 @@ def test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions []
         let restart_stderr = ($restart_output.stderr | str trim)
         let restart_zellij_log = if ($fixture.zellij_log | path exists) { open --raw $fixture.zellij_log | str trim } else { "" }
 
-        let launch_ok = ($launch_output.exit_code == 0) and ($launch_zellij_log | str contains $"options --default-cwd ($target_dir)") and (not ($launch_stdout | str contains "--path ignored"))
-        let restart_ok = ($restart_output.exit_code == 0) and ($restart_zellij_log | str contains $"options --default-cwd ($target_dir)") and (not ($restart_stdout | str contains "--path ignored"))
+        let expected_shell = ($fixture.runtime_dir | path join "shells" "posix" "yazelix_nu.sh")
+        let launch_ok = ($launch_output.exit_code == 0) and ($launch_zellij_log | str contains $"options --default-cwd ($target_dir)") and ($launch_zellij_log | str contains $"--default-shell ($expected_shell)") and (not ($launch_stdout | str contains "--path ignored"))
+        let restart_ok = ($restart_output.exit_code == 0) and ($restart_zellij_log | str contains $"options --default-cwd ($target_dir)") and ($restart_zellij_log | str contains $"--default-shell ($expected_shell)") and (not ($restart_stdout | str contains "--path ignored"))
 
         if $launch_ok and $restart_ok {
             print "  ✅ Non-persistent sessions keep the requested directory as Zellij's cwd, including restart bootstrap flows"
