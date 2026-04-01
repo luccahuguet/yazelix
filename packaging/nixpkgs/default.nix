@@ -5,6 +5,7 @@ let
   flake = builtins.getFlake (toString repoRoot);
   pkgs = flake.inputs.nixpkgs.legacyPackages.${system};
 in
-pkgs.callPackage ./yazelix_package.nix {
+import ./yazelix_package.nix {
+  inherit pkgs;
   src = repoRoot;
 }
