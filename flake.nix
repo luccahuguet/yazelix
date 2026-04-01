@@ -23,6 +23,7 @@
       pinnedDevenvInstallable = "github:${devenvNode.owner}/${devenvNode.repo}/${devenvNode.rev}#devenv";
       mkPkgs = system: nixpkgs.legacyPackages.${system};
       runtimePackage = pkgs: import ./yazelix_runtime_package.nix { inherit pkgs; };
+      yazelixPackage = pkgs: runtime: import ./yazelix_package.nix { inherit pkgs runtime; };
     in
     {
       packages = forAllSystems (
@@ -30,6 +31,7 @@
         let
           pkgs = mkPkgs system;
           runtime = runtimePackage pkgs;
+          yazelix = yazelixPackage pkgs runtime;
           install = pkgs.writeShellScriptBin "yazelix-install" ''
             set -eu
 
@@ -108,6 +110,7 @@
         {
           default = runtime;
           runtime = runtime;
+          yazelix = yazelix;
           install = install;
         }
       );
