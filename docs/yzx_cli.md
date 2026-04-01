@@ -188,10 +188,11 @@ Show the active Yazelix configuration via Nushell `open`
 - `--full`: include the `packs` section
 - `--path`: print the resolved config path
 
-### `yzx import zellij|yazi [--force]`
-Import native Zellij or Yazi config into Yazelix-managed overrides
+### `yzx import zellij|yazi|helix [--force]`
+Import native Zellij, Yazi, or Helix config into Yazelix-managed overrides
 - `yzx import zellij`: copies `~/.config/zellij/config.kdl` into `user_configs/zellij/config.kdl`
 - `yzx import yazi`: imports `yazi.toml`, `keymap.toml`, and `init.lua` from `~/.config/yazi/` into `user_configs/yazi/`
+- `yzx import helix`: copies `~/.config/helix/config.toml` into `user_configs/helix/config.toml`
 - Fails clearly when no native source files are available for the selected target
 - Refuses to overwrite existing managed destination files by default
 - `--force`: writes `*.backup-<timestamp>` backups before replacing managed destination files
@@ -278,6 +279,7 @@ yzx config --full             # Show the full config including packs
 yzx config --path             # Print the active config path
 yzx import zellij             # Import ~/.config/zellij/config.kdl into managed overrides
 yzx import yazi               # Import native Yazi override files into managed overrides
+yzx import helix              # Import ~/.config/helix/config.toml into managed overrides
 yzx import zellij --force     # Backup and replace the managed Zellij override
 yzx open hx                   # Show the Helix section only
 yzx open yazi                 # Show the Yazi section only

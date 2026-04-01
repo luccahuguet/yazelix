@@ -8,6 +8,7 @@ use config_surfaces.nu [get_main_user_config_path reconcile_primary_config_surfa
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
 use devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available]
+use ../setup/helix_config_merger.nu [build_managed_helix_config get_generated_helix_config_path get_managed_helix_user_config_path get_managed_reveal_command get_native_helix_config_path]
 use ../integrations/zellij.nu debug_editor_state
 
 def extract_first_semver [text: string] {
@@ -18,6 +19,16 @@ def extract_first_semver [text: string] {
 def extract_last_semver [text: string] {
     let matches = ($text | parse --regex '(\d+\.\d+\.\d+)' | get -o capture0)
     if ($matches | is-empty) { "unknown" } else { $matches | last }
+}
+
+def is_helix_editor_command [editor: string] {
+    let normalized = ($editor | str trim)
+    ($normalized | is-empty) or ($normalized | str ends-with "/hx") or ($normalized == "hx") or ($normalized | str ends-with "/helix") or ($normalized == "helix")
+}
+
+def managed_helix_config_has_reveal_binding [config: record] {
+    let normal_keys = ($config.keys? | default {} | get -o normal | default {})
+    (($normal_keys | get -o "A-r" | default "") == (get_managed_reveal_command))
 }
 
 def get_runtime_tool_version [tool: string] {
@@ -287,6 +298,109 @@ export def check_helix_runtime_health [] {
         status: "ok"
         message: $"Helix runtime healthy with ($grammar_count) grammars"
         details: $"Primary runtime directory: ($primary_runtime)"
+        fix_available: false
+    }
+}
+
+export def check_managed_helix_integration [] {
+    let config = (try {
+        parse_yazelix_config
+    } catch {
+        return []
+    })
+
+    let configured_editor = ($config.editor_command? | default "" | into string | str trim)
+    if not (is_helix_editor_command $configured_editor) {
+        return []
+    }
+
+    mut results = []
+
+    let managed_user_config = (get_managed_helix_user_config_path)
+    let native_helix_config = (get_native_helix_config_path)
+    if (not ($managed_user_config | path exists)) and ($native_helix_config | path exists) {
+        $results = ($results | append {
+            status: "info"
+            message: "Personal Helix config has not been imported into Yazelix-managed Helix"
+            details: $"Native config: ($native_helix_config)\nManaged config: ($managed_user_config)\nRun `yzx import helix` if you want Yazelix-managed Helix sessions to reuse that personal config."
+            fix_available: false
+        })
+    }
+
+    let expected_config_result = (try {
+        {
+            config: (build_managed_helix_config)
+            error: null
+        }
+    } catch {|err|
+        {
+            config: null
+            error: $err.msg
+        }
+    })
+    if ($expected_config_result.error | is-not-empty) {
+        return ($results | append {
+            status: "error"
+            message: "Managed Helix config contract could not be built"
+            details: $expected_config_result.error
+            fix_available: false
+        })
+    }
+    let expected_config = $expected_config_result.config
+
+    if not (managed_helix_config_has_reveal_binding $expected_config) {
+        return ($results | append {
+            status: "error"
+            message: "Managed Helix config contract lost the Yazelix reveal binding"
+            details: "The expected managed Helix config no longer enforces `A-r = :sh yzx reveal \"%{buffer_name}\"`."
+            fix_available: false
+        })
+    }
+
+    let generated_config_path = (get_generated_helix_config_path)
+    if not ($generated_config_path | path exists) {
+        return ($results | append {
+            status: "info"
+            message: "Managed Helix config has not been materialized yet"
+            details: $"Expected generated config: ($generated_config_path)\nThis is normal before the first managed Helix launch. Yazelix will generate it on demand."
+            fix_available: false
+        })
+    }
+
+    let generated_config_result = (try {
+        {
+            config: (open $generated_config_path)
+            error: null
+        }
+    } catch {|err|
+        {
+            config: null
+            error: $err.msg
+        }
+    })
+    if ($generated_config_result.error | is-not-empty) {
+        return ($results | append {
+            status: "warning"
+            message: "Managed Helix generated config could not be read"
+            details: $"Generated config: ($generated_config_path)\nUnderlying error: ($generated_config_result.error)"
+            fix_available: false
+        })
+    }
+    let generated_config = $generated_config_result.config
+
+    if not (managed_helix_config_has_reveal_binding $generated_config) {
+        return ($results | append {
+            status: "warning"
+            message: "Managed Helix generated config is stale or invalid"
+            details: $"Generated config: ($generated_config_path)\nExpected `A-r` to run `yzx reveal`.\nLaunch a managed Helix session again to regenerate it."
+            fix_available: false
+        })
+    }
+
+    $results | append {
+        status: "ok"
+        message: "Managed Helix reveal integration is healthy"
+        details: $"Generated config: ($generated_config_path)"
         fix_available: false
     }
 }
@@ -969,6 +1083,9 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
 
     # Environment variables
     $all_results = ($all_results | append (check_environment_variables))
+
+    # Managed Helix contract
+    $all_results = ($all_results | append (check_managed_helix_integration))
 
     # Configuration
     $all_results = ($all_results | append (check_configuration))

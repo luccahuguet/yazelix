@@ -1,7 +1,6 @@
 #!/usr/bin/env nu
-# Import native config files into Yazelix-managed override paths
-
 use ../utils/common.nu [get_yazelix_user_config_dir]
+use ../setup/helix_config_merger.nu [get_managed_helix_user_config_path get_native_helix_config_path]
 
 def get_xdg_config_home [] {
     let configured = (
@@ -66,6 +65,13 @@ def get_import_entries [target: string] {
                 }
             ]
         }
+        "helix" => [
+            {
+                name: "config.toml"
+                source: (get_native_helix_config_path)
+                destination: (get_managed_helix_user_config_path)
+            }
+        ]
         _ => {
             error make {msg: $"Unknown import target: ($target)"}
         }
@@ -93,6 +99,19 @@ def fail_if_no_import_sources [target: string, entries: list<record>] {
                     $"Native Zellij config not found at: ($source_path)"
                     ""
                     "Create it first, or copy the settings you want manually into ~/.config/yazelix/user_configs/zellij/config.kdl."
+                ] | str join "\n"
+            )
+        }
+    }
+
+    if $target == "helix" {
+        let source_path = (get_native_helix_config_path)
+        error make {
+            msg: (
+                [
+                    $"Native Helix config not found at: ($source_path)"
+                    ""
+                    "Create it first, or copy the settings you want manually into ~/.config/yazelix/user_configs/helix/config.toml."
                 ] | str join "\n"
             )
         }
@@ -168,6 +187,11 @@ def import_entries [target: string, entries: list<record>, force: bool] {
             print $"✅ Imported native Zellij config into: ($entry.destination)"
             print $"   Source: ($entry.source)"
         }
+        "helix" => {
+            let entry = ($existing_sources | first)
+            print $"✅ Imported native Helix config into: ($entry.destination)"
+            print $"   Source: ($entry.source)"
+        }
         "yazi" => {
             print $"✅ Imported native Yazi config into: (get_managed_yazi_config_dir)"
             print $"   Imported files: (($existing_sources | get name | str join ', '))"
@@ -203,4 +227,11 @@ export def "yzx import yazi" [
     --force  # Overwrite managed destination files after writing backups
 ] {
     import_entries "yazi" (get_import_entries "yazi") $force
+}
+
+# Import the native Helix config into Yazelix-managed overrides.
+export def "yzx import helix" [
+    --force  # Overwrite the managed destination after writing a backup
+] {
+    import_entries "helix" (get_import_entries "helix") $force
 }

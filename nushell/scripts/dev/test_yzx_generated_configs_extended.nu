@@ -180,12 +180,84 @@ def test_get_launch_env_wraps_helix_with_managed_wrapper [] {
     $result
 }
 
+def test_yzx_import_helix_copies_personal_config_with_force_backups [] {
+    print "🧪 Testing yzx import helix copies personal Helix config and backs up managed overrides on --force..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_import_helix_XXXXXX | str trim)
+    let xdg_config_home = ($tmp_home | path join ".config")
+    let native_helix_dir = ($xdg_config_home | path join "helix")
+    let yazelix_config_dir = ($xdg_config_home | path join "yazelix")
+    let managed_helix_dir = ($yazelix_config_dir | path join "user_configs" "helix")
+    mkdir $native_helix_dir
+    mkdir ($yazelix_config_dir | path join "user_configs")
+    mkdir $managed_helix_dir
+
+    let result = (try {
+        '[editor]
+cursorline = true
+' | save --force --raw ($native_helix_dir | path join "config.toml")
+
+        let import_script = ($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")
+        let first_import = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $yazelix_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+        } {
+            ^nu -c $"use \"($import_script)\" *; yzx import helix" | complete
+        })
+
+        '[editor]
+cursorline = false
+' | save --force --raw ($managed_helix_dir | path join "config.toml")
+        '[editor]
+line-number = "relative"
+' | save --force --raw ($native_helix_dir | path join "config.toml")
+
+        let forced_import = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $yazelix_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+        } {
+            ^nu -c $"use \"($import_script)\" *; yzx import helix --force" | complete
+        })
+
+        let managed_config_path = ($managed_helix_dir | path join "config.toml")
+        let managed_config = (open $managed_config_path)
+        let backups = (ls $managed_helix_dir | where name =~ 'config\.toml\.backup-')
+
+        if (
+            ($first_import.exit_code == 0)
+            and ($forced_import.exit_code == 0)
+            and (($managed_config.editor | get "line-number") == "relative")
+            and (($backups | length) == 1)
+        ) {
+            print "  ✅ yzx import helix copies personal Helix config into user_configs/helix and backs up the previous managed file on --force"
+            true
+        } else {
+            print $"  ❌ Unexpected helix import result: first_exit=($first_import.exit_code) force_exit=($forced_import.exit_code) managed=(($managed_config | to json -r)) backups=(($backups | length)) stderr=(($forced_import.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 export def run_generated_config_extended_tests [] {
     [
         (test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip)
         (test_generate_merged_yazi_keymap_uses_zoxide_editor_plugin)
         (test_generate_managed_helix_config_merges_user_config_and_enforces_reveal)
         (test_get_launch_env_wraps_helix_with_managed_wrapper)
+        (test_yzx_import_helix_copies_personal_config_with_force_backups)
     ]
 }
 

@@ -133,12 +133,13 @@ command = "vim"          # "nano", "emacs", etc.
 
 ### Helix-Specific Features (when using Helix)
 
-**Reveal in Yazi (custom binding):**
+**Reveal in Yazi (managed binding):**
 - Jump from Helix buffer to the same file in Yazi sidebar
 - Works against the managed sidebar in the current Yazelix tab
-- Recommended binding: `Alt+r`
-- Recommended command: `yzx reveal`
-- Setup: [Helix Keybindings](./helix_keybindings.md)
+- Default binding: `Alt+r`
+- Managed through Yazelix's Helix config surface instead of `~/.config/helix/config.toml`
+- If you want to adopt an existing personal Helix config, run `yzx import helix`
+- Details: [Helix Keybindings](./helix_keybindings.md)
 
 **File Picker:**
 - Native Helix file picker integration

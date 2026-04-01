@@ -5,6 +5,10 @@ use ../utils/common.nu [get_yazelix_runtime_reference_dir get_yazelix_state_dir 
 
 const MANAGED_REVEAL_COMMAND = ':sh yzx reveal "%{buffer_name}"'
 
+export def get_managed_reveal_command [] {
+    $MANAGED_REVEAL_COMMAND
+}
+
 def get_helix_template_path [] {
     (get_yazelix_runtime_reference_dir) | path join "configs" "helix" "yazelix_config.toml"
 }
@@ -15,6 +19,17 @@ export def get_managed_helix_user_config_dir [] {
 
 export def get_managed_helix_user_config_path [] {
     (get_managed_helix_user_config_dir) | path join "config.toml"
+}
+
+export def get_native_helix_config_path [] {
+    let xdg_config_home = (
+        $env.XDG_CONFIG_HOME?
+        | default ($env.HOME | path join ".config")
+        | into string
+        | str trim
+        | path expand
+    )
+    ($xdg_config_home | path join "helix" "config.toml")
 }
 
 export def get_generated_helix_config_dir [] {
@@ -70,7 +85,7 @@ def enforce_reveal_binding [config: record] {
     $config | upsert keys $updated_keys
 }
 
-export def generate_managed_helix_config [] {
+export def build_managed_helix_config [] {
     let template_path = (get_helix_template_path)
     if not ($template_path | path exists) {
         error make {msg: $"Missing Yazelix Helix template at: ($template_path)"}
@@ -87,7 +102,12 @@ export def generate_managed_helix_config [] {
         $base_config
     }
 
-    let final_config = (enforce_reveal_binding $merged_config)
+    enforce_reveal_binding $merged_config
+}
+
+export def generate_managed_helix_config [] {
+    let output_path = (get_generated_helix_config_path)
+    let final_config = (build_managed_helix_config)
     ensure_dir $output_path
     ($final_config | to toml) | save --force $output_path
     $output_path

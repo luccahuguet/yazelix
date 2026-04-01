@@ -13,7 +13,7 @@ Edit `~/.wezterm.lua` to customize (1.0 = opaque, 0.5 = very transparent, etc).
 
 Recommended transparent theme:
 ```toml
-# ~/.config/helix/config.toml
+# ~/.config/yazelix/user_configs/helix/config.toml
 theme = "term16_dark"
 ```
 
@@ -34,4 +34,3 @@ config.color_scheme = 'Tokyo Night'  -- or Nord, Dracula, etc.
 ## Tips
 
 - Disable transparency if performance issues arise: `window_background_opacity = 1.0`
-
