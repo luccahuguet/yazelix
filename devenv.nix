@@ -48,8 +48,13 @@ let
   # Packages explicitly blocked in Yazelix packs/user_packages.
   blockedPackageNames = [ ];
 
-  nixglIntel =
-    if nixglPackages != null && nixglPackages ? nixGLIntel then nixglPackages.nixGLIntel else null;
+  nixglDefault =
+    if nixglPackages != null && nixglPackages ? nixGLDefault then
+      nixglPackages.nixGLDefault
+    else if nixglPackages != null && nixglPackages ? nixGLIntel then
+      nixglPackages.nixGLIntel
+    else
+      null;
 
   # Import user configuration from TOML.
   # IMPORTANT: Yazelix now owns the managed config surfaces under user_configs/.
@@ -278,7 +283,7 @@ let
           export GTK_IM_MODULE="simple"
         fi
         exec ${
-          lib.optionalString (nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "
+          lib.optionalString (nixglDefault != null) "${nixglDefault}/bin/nixGLDefault "
         }${pkgs.ghostty}/bin/ghostty \
           --config-default-files=false \
           --config-file="$CONF" \
@@ -318,7 +323,7 @@ let
       pkgs.writeShellScriptBin "yazelix-kitty" ''
         ${mkTerminalConfigResolver "kitty"}
         exec ${
-          lib.optionalString (isLinux && nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "
+          lib.optionalString (isLinux && nixglDefault != null) "${nixglDefault}/bin/nixGLDefault "
         }${pkgs.kitty}/bin/kitty \
           --config="$CONF" \
           --class="com.yazelix.Yazelix" \
@@ -333,7 +338,7 @@ let
       pkgs.writeShellScriptBin "yazelix-wezterm" ''
         ${mkTerminalConfigResolver "wezterm"}
         exec ${
-          lib.optionalString (isLinux && nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "
+          lib.optionalString (isLinux && nixglDefault != null) "${nixglDefault}/bin/nixGLDefault "
         }${pkgs.wezterm}/bin/wezterm \
           --config-file="$CONF" \
           start --class=com.yazelix.Yazelix "$@" -- sh -c "exec ${startupScriptPath}"
@@ -346,7 +351,7 @@ let
       pkgs.writeShellScriptBin "yazelix-alacritty" ''
         ${mkTerminalConfigResolver "alacritty"}
         exec ${
-          lib.optionalString (isLinux && nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "
+          lib.optionalString (isLinux && nixglDefault != null) "${nixglDefault}/bin/nixGLDefault "
         }${pkgs.alacritty}/bin/alacritty \
           --config-file="$CONF" \
           --class="com.yazelix.Yazelix" \
@@ -361,7 +366,7 @@ let
       pkgs.writeShellScriptBin "yazelix-foot" ''
         ${mkTerminalConfigResolver "foot"}
         exec ${
-          lib.optionalString (nixglIntel != null) "${nixglIntel}/bin/nixGLIntel "
+          lib.optionalString (nixglDefault != null) "${nixglDefault}/bin/nixGLDefault "
         }${pkgs.foot}/bin/foot \
           --config="$CONF" \
           --app-id="com.yazelix.Yazelix" "$@" \
@@ -452,7 +457,7 @@ let
       yazelixDesktopLauncher
       yazelixDesktopEntry
     ]
-    ++ (if isLinux && nixglIntel != null then [ nixglIntel ] else [ ])
+    ++ (if isLinux && nixglDefault != null then [ nixglDefault ] else [ ])
     ++ ghosttyDeps
     ++ kittyDeps
     ++ weztermDeps

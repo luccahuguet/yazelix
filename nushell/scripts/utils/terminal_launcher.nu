@@ -160,8 +160,15 @@ export def build_launch_command [
         build_detached_background_command $launch_prefix $"($command)($working_dir_arg)"
     } else {
         # Direct terminal launch with config
-        # Check if nixGLIntel is available for GPU acceleration
-        let nixgl_prefix = if (which nixGLIntel | is-not-empty) { "nixGLIntel " } else { "" }
+        # Prefer the generic nixGL wrapper when available. Fall back to the
+        # older Intel-specific name only if the default wrapper is absent.
+        let nixgl_prefix = if (which nixGLDefault | is-not-empty) {
+            "nixGLDefault "
+        } else if (which nixGLIntel | is-not-empty) {
+            "nixGLIntel "
+        } else {
+            ""
+        }
         let terminal_cmd = match $terminal {
             "ghostty" => {
                 $"($nixgl_prefix)ghostty --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --class=\"($YAZELIX_WINDOW_CLASS)\" --x11-instance-name=\"($YAZELIX_X11_INSTANCE)\" --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
