@@ -410,22 +410,12 @@ export def "yzx update runtime" [
         print "🔄 Updating the installed Yazelix runtime..."
     }
 
-    let result = (^nix run --refresh $YAZELIX_INSTALL_FLAKE_REF | complete)
-    if ($result.stdout | str trim | is-not-empty) {
-        print ($result.stdout | str trim)
-    }
-    if ($result.stderr | str trim | is-not-empty) {
-        print --stderr ($result.stderr | str trim)
-    }
-    if $result.exit_code != 0 {
-        let stderr = ($result.stderr | str trim)
-        if ($stderr | is-empty) {
-            print "❌ Yazelix runtime update failed."
-        } else {
-            print $"❌ Yazelix runtime update failed: ($stderr)"
-        }
+    ^nix run --refresh $YAZELIX_INSTALL_FLAKE_REF
+    let exit_code = ($env.LAST_EXIT_CODE? | default 0)
+    if $exit_code != 0 {
+        print "❌ Yazelix runtime update failed."
         print $"   Retry with: nix run --refresh ($YAZELIX_INSTALL_FLAKE_REF)"
-        exit 1
+        exit $exit_code
     }
 }
 
