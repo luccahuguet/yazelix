@@ -38,6 +38,27 @@ def launch_profile_supports_configured_terminal [config: record, profile_path: s
     )
 }
 
+def current_environment_supports_configured_terminal [config: record] {
+    let manage_terminals = ($config.manage_terminals? | default true)
+    if not $manage_terminals {
+        return true
+    }
+
+    let terminals = ($config.terminals? | default ["ghostty"] | uniq)
+    if ($terminals | is-empty) {
+        return true
+    }
+
+    let preferred_terminal = ($terminals | first | into string)
+    let terminal_meta = ($TERMINAL_METADATA | get -o $preferred_terminal | default {})
+    let wrapper_name = ($terminal_meta.wrapper? | default "")
+
+    (
+        (($wrapper_name | is-not-empty) and (which $wrapper_name | is-not-empty))
+        or (which $preferred_terminal | is-not-empty)
+    )
+}
+
 # Launch yazelix
 export def "yzx launch" [
     --here             # Start in current terminal instead of launching new terminal
@@ -96,6 +117,12 @@ export def "yzx launch" [
         $in_yazelix_shell = false
     }
     if $force_reenter {
+        $in_yazelix_shell = false
+    }
+    if $in_yazelix_shell and (not (current_environment_supports_configured_terminal $config)) {
+        if $verbose_mode {
+            print "⚠️  Current Yazelix shell does not include the configured terminal; re-entering a fresh environment."
+        }
         $in_yazelix_shell = false
     }
 

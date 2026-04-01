@@ -6,8 +6,9 @@ use ../utils/config_manager.nu *
 use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/common.nu [describe_build_parallelism get_yazelix_dir require_yazelix_dir]
+use ../utils/common.nu [describe_build_parallelism get_yazelix_dir]
 use ../utils/devenv_cli.nu [get_pinned_devenv_installable get_preferred_devenv_version_line is_preferred_devenv_available]
+use ../utils/shell_config_generation.nu [get_yzx_cli_path]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../integrations/yazi.nu [reveal_in_yazi sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ./start_yazelix.nu [start_yazelix_session]
@@ -385,9 +386,9 @@ export def "yzx update" [
     }
 
     print "User-facing updates:"
-    print "  yzx update all        Update both the devenv CLI and the Yazelix repo"
+    print "  yzx update all        Update the Yazelix runtime and the devenv CLI"
+    print $"  yzx update runtime    Refresh the installed Yazelix runtime via ($YAZELIX_INSTALL_FLAKE_REF)"
     print "  yzx update devenv     Update the devenv CLI in your Nix profile to the Yazelix-pinned revision"
-    print "  yzx update repo       Pull latest Yazelix repo changes"
     print "  yzx update nix        Upgrade Determinate Nix \(if installed\)"
     print ""
     print "Maintainer update:"
@@ -395,11 +396,69 @@ export def "yzx update" [
 }
 
 export def "yzx update all" [
-    --stash  # Stash local changes when updating the repo
     --verbose  # Show verbose output for update commands
 ] {
-    yzx update devenv --verbose=$verbose
-    yzx update repo --stash=$stash --verbose=$verbose
+    yzx update runtime --verbose=$verbose
+
+    let yzx_cli = (get_yzx_cli_path)
+    if not ($yzx_cli | path exists) {
+        print $"❌ Missing Yazelix CLI at ($yzx_cli)."
+        print $"   Repair with: nix run ($YAZELIX_INSTALL_FLAKE_REF)"
+        exit 1
+    }
+
+    if $verbose {
+        print $"⚙️ Running refreshed CLI step: ($yzx_cli) update devenv --verbose"
+    }
+
+    let args = if $verbose {
+        ["update", "devenv", "--verbose"]
+    } else {
+        ["update", "devenv"]
+    }
+
+    let result = (^$yzx_cli ...$args | complete)
+    if ($result.stdout | str trim | is-not-empty) {
+        print ($result.stdout | str trim)
+    }
+    if ($result.stderr | str trim | is-not-empty) {
+        print --stderr ($result.stderr | str trim)
+    }
+    if $result.exit_code != 0 {
+        print $"❌ devenv update step failed after refreshing the Yazelix runtime: ($result.stderr | str trim)"
+        exit 1
+    }
+}
+
+export def "yzx update runtime" [
+    --verbose  # Show the underlying install command
+] {
+    use ../utils/nix_detector.nu ensure_nix_available
+    ensure_nix_available --skip-devenv
+
+    if $verbose {
+        print $"⚙️ Running: nix run --refresh ($YAZELIX_INSTALL_FLAKE_REF)"
+    } else {
+        print "🔄 Updating the installed Yazelix runtime..."
+    }
+
+    let result = (^nix run --refresh $YAZELIX_INSTALL_FLAKE_REF | complete)
+    if ($result.stdout | str trim | is-not-empty) {
+        print ($result.stdout | str trim)
+    }
+    if ($result.stderr | str trim | is-not-empty) {
+        print --stderr ($result.stderr | str trim)
+    }
+    if $result.exit_code != 0 {
+        let stderr = ($result.stderr | str trim)
+        if ($stderr | is-empty) {
+            print "❌ Yazelix runtime update failed."
+        } else {
+            print $"❌ Yazelix runtime update failed: ($stderr)"
+        }
+        print $"   Retry with: nix run --refresh ($YAZELIX_INSTALL_FLAKE_REF)"
+        exit 1
+    }
 }
 
 export def "yzx update devenv" [
@@ -521,92 +580,4 @@ export def "yzx update nix" [
         print $"❌ Determinate Nix upgrade failed: ($err.msg)"
         exit 1
     }
-}
-
-export def "yzx update repo" [
-    --stash  # Stash local changes, pull updates, then re-apply the stash
-    --verbose  # Show git commands
-] {
-    if (which git | is-empty) {
-        print "❌ git not found in PATH."
-        exit 1
-    }
-
-    let yazelix_dir = try {
-        require_yazelix_dir
-    } catch {|err|
-        print $"❌ ($err.msg)"
-        exit 1
-    }
-    let status = (do {
-        cd $yazelix_dir
-        ^git status --porcelain
-    } | complete)
-
-    if $status.exit_code != 0 {
-        print $"❌ Failed to check git status: ($status.stderr | str trim)"
-        exit 1
-    }
-
-    let is_dirty = ($status.stdout | str trim | is-not-empty)
-    let dirty_files = ($status.stdout | lines | each { |line| $line | str trim | split row " " | last })
-    let only_lock_dirty = ($dirty_files | length) == 1 and ($dirty_files | first) == "devenv.lock"
-
-    if $is_dirty and (not $stash) {
-        if $only_lock_dirty {
-            print "❌ Local devenv.lock changes detected."
-            print "   If you want upstream updates, delete it and rerun 'yzx update repo':"
-            print $"   rm ($yazelix_dir | path join "devenv.lock")"
-            exit 1
-        }
-        print "❌ Working tree is dirty. Please commit or stash changes first."
-        print "   Tip: rerun with 'yzx update repo --stash' to stash automatically."
-        exit 1
-    }
-
-    if $verbose {
-        print "⚙️ Running: git pull --rebase"
-    } else {
-        print "🔄 Updating Yazelix repository..."
-    }
-
-    if $stash {
-        let stash_result = (do {
-            cd $yazelix_dir
-            ^git stash push -u -m "yzx update repo"
-        } | complete)
-
-        if $stash_result.exit_code != 0 {
-            print $"❌ git stash failed: ($stash_result.stderr | str trim)"
-            exit 1
-        }
-    }
-
-    let pull_result = (do {
-        cd $yazelix_dir
-        ^git pull --rebase
-    } | complete)
-
-    if $pull_result.exit_code != 0 {
-        print $"❌ git pull failed: ($pull_result.stderr | str trim)"
-        if $stash {
-            print "   Your stash is still available. Run 'git stash list' to recover."
-        }
-        exit 1
-    }
-
-    if $stash {
-        let pop_result = (do {
-            cd $yazelix_dir
-            ^git stash pop
-        } | complete)
-
-        if $pop_result.exit_code != 0 {
-            print $"⚠️ git stash pop reported conflicts: ($pop_result.stderr | str trim)"
-            print "   Resolve conflicts and run 'git status' to verify."
-            exit 1
-        }
-    }
-
-    print "✅ Yazelix repository updated."
 }

@@ -111,7 +111,6 @@ That is enough for the first shipped flake surface.
 
 Non-goals for phase 1:
 
-- a separate self-update product surface
 - preserving clone-oriented `yzx update repo` semantics for packaged installs
 - inventing a second runtime definition outside `devenv.nix`
 - automatically installing a separate host/global Nushell as part of bootstrap

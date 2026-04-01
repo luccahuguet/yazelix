@@ -136,9 +136,11 @@ export def copy_default_config_surfaces [
 
     mkdir ($target_config_path | path dirname)
     cp $default_config_path $target_config_path
+    ^chmod u+w $target_config_path
 
     let pack_config_copied = if ($default_pack_path | path exists) and not ($target_pack_path | path exists) {
         cp $default_pack_path $target_pack_path
+        ^chmod u+w $target_pack_path
         true
     } else if ($target_pack_path | path exists) {
         false
@@ -172,6 +174,7 @@ def ensure_default_pack_sidecar_if_missing [default_config_path: string, target_
 
     mkdir ($target_pack_path | path dirname)
     cp $default_pack_path $target_pack_path
+    ^chmod u+w $target_pack_path
     true
 }
 

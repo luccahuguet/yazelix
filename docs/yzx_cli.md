@@ -129,11 +129,14 @@ Show available update targets
 - `--verbose`: accepted for consistency with subcommands
 - Bare `yzx update` prints the available user-facing and maintainer update commands
 
-### `yzx update all [--stash] [--verbose]`
+### `yzx update all [--verbose]`
 Run the user-facing update set
-- Updates the devenv CLI and then pulls the latest Yazelix repo changes
-- `--stash`: stash local changes before the repo update and re-apply them afterwards
+- Refreshes the installed Yazelix runtime first, then runs the refreshed `yzx update devenv` step
 - `--verbose`: show verbose output for both update steps
+
+### `yzx update runtime [--verbose]`
+Refresh the installed Yazelix runtime
+- `yzx update runtime`: Rerun the flake installer via `nix run --refresh github:luccahuguet/yazelix#install` so `runtime/current`, `~/.local/bin/yzx`, shell hooks, and generated configs stay current
 
 ### `yzx update devenv [--verbose]`
 Update the devenv CLI in your Nix profile to the Yazelix-pinned revision
@@ -142,10 +145,6 @@ Update the devenv CLI in your Nix profile to the Yazelix-pinned revision
 ### `yzx update nix [--yes] [--verbose]`
 Upgrade Determinate Nix
 - `yzx update nix`: Upgrade Determinate Nix via `determinate-nixd` (`--yes` skips prompt, `--verbose` shows command; sudo required; only works if Determinate Nix is installed)
-
-### `yzx update repo [--stash] [--verbose]`
-Pull latest Yazelix updates from git
-- `yzx update repo`: Pull latest Yazelix updates (`--stash` auto-stashes changes, `--verbose` shows git commands)
 
 Maintainer-only updates:
 - `yzx dev update [input]`: Refresh `devenv.lock` via `devenv update` (or `devenv update <input>` for a targeted input such as `devenv`), run canary refresh/build checks (`default`, `maximal`), then sync pinned runtime `nix`/`devenv` versions from the repo shell and refresh the vendored `configs/zellij/plugins/zjstatus.wasm` (verbose by default; `--quiet` restores the low-noise path, `--yes` skips prompt, `--no-canary` skips the gate, `--canary-only` runs the gate without updating)
@@ -297,10 +296,10 @@ yzx sponsor                   # Open the Yazelix sponsor page
 
 # Updates
 yzx update                    # Show update targets
-yzx update all               # Update devenv CLI + pull Yazelix repo
+yzx update all               # Refresh the Yazelix runtime, then update devenv
+yzx update runtime            # Refresh the installed Yazelix runtime via the flake installer
 yzx update devenv             # Update devenv CLI
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
-yzx update repo --stash       # Pull repo updates and reapply local changes
 yzx dev update --yes          # Refresh all inputs, run canaries, sync pins, and refresh vendored zjstatus
 yzx dev update devenv --yes   # Refresh only the devenv input, then sync the pinned devenv version
 yzx dev update --canary-only --canaries [default]  # Run only the default canary

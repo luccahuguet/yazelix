@@ -254,7 +254,7 @@ def print_rust_wasi_enable_hint [] {
 }
 
 def get_available_update_canaries [] {
-    ["default" "maximal"]
+    ["default", "maximal"]
 }
 
 def resolve_update_canary_selection [requested: list<string>] {

@@ -8,6 +8,7 @@
 
 export const YAZELIX_VERSION = "v13.11"
 export const YAZELIX_DESCRIPTION = "Yazi + Zellij + Helix integrated terminal environment"
+export const YAZELIX_INSTALL_FLAKE_REF = "github:luccahuguet/yazelix#install"
 export const PINNED_NIX_VERSION = "2.33.3"
 export const PINNED_DEVENV_VERSION = "2.0.7"
 
