@@ -1,17 +1,48 @@
 #!/usr/bin/env nu
-# Update zjstatus plugin (Zellij status bar) for Yazelix
-# Refreshes the vendored zjstatus wasm from the pinned `zjstatus` input in devenv.lock.
+# Update vendored zjstatus/zjframes plugins for Yazelix
+# Refreshes the vendored Zellij wasm plugins from the pinned `zjstatus` input in devenv.lock.
+
+const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
+
+def copy_wasm_from_store [
+  store_root: string
+  target_dir: string
+  wasm_name: string
+] {
+  let store_path = ($store_root | path join "bin" $wasm_name)
+  if not ($store_path | path exists) {
+    print $"Error: ($wasm_name) not found at: ($store_path)"
+    exit 5
+  }
+
+  let byte_len = (open --raw $store_path | length)
+  if $byte_len < 1024 {
+    print $"Error: Nix-provided wasm is too small to be valid \(file=($wasm_name), size=($byte_len) bytes\)"
+    exit 6
+  }
+
+  let target_path = ($target_dir | path join $wasm_name)
+  let tmp_path = $"($target_path).tmp"
+  try { cp --force $store_path $tmp_path } catch {|err|
+    print $"Error writing temporary file for ($wasm_name): ($err.msg)"
+    exit 7
+  }
+  mv --force $tmp_path $target_path
+
+  {
+    target_path: $target_path
+    byte_len: $byte_len
+  }
+}
 
 export def main [] {
-  let home = $env.HOME
-  if ($home | is-empty) or (not ($home | path exists)) {
-    print "Error: Cannot resolve HOME directory"
+  if not ($REPO_ROOT | path exists) {
+    print $"Error: Cannot resolve repo root from script path: ($REPO_ROOT)"
     exit 1
   }
 
-  let target_dir = $"($home)/.config/yazelix/configs/zellij/plugins"
-  let target_path = $"($target_dir)/zjstatus.wasm"
-  let lock_path = $"($home)/.config/yazelix/devenv.lock"
+  let target_dir = ($REPO_ROOT | path join "configs" "zellij" "plugins")
+  let lock_path = ($REPO_ROOT | path join "devenv.lock")
 
   if not ($lock_path | path exists) {
     print $"Error: devenv.lock not found at: ($lock_path)"
@@ -36,30 +67,13 @@ export def main [] {
 
   let flake_ref = $"github:($owner)/($repo)/($rev)#packages.($system).default"
   let store_root = (^nix build --no-link --print-out-paths $flake_ref | str trim)
-  let store_path = ($store_root | path join "bin" "zjstatus.wasm")
-  if not ($store_path | path exists) {
-    print $"Error: zjstatus wasm not found at: ($store_path)"
-    exit 5
-  }
-
-  # Minimal validation: check file size and extension hint
-  let byte_len = (open --raw $store_path | length)
-  if $byte_len < 1024 {
-    print $"Error: Nix-provided wasm is too small to be valid \(size=($byte_len) bytes\)"
-    exit 6
-  }
 
   # Prepare target directory
   if not ($target_dir | path exists) { mkdir $target_dir }
 
-  # No backup: overwrite atomically via temp file
+  let zjstatus = (copy_wasm_from_store $store_root $target_dir "zjstatus.wasm")
+  let zjframes = (copy_wasm_from_store $store_root $target_dir "zjframes.wasm")
 
-  # Atomic write: temp then move
-  let tmp_path = $"($target_path).tmp"
-  try { cp --force $store_path $tmp_path } catch {|err|
-    print $"Error writing temporary file: ($err.msg)"
-    exit 7
-  }
-  mv --force $tmp_path $target_path
-  print $"Updated vendored zjstatus at: ($target_path) \(size=($byte_len) bytes, source=($flake_ref)\)"
+  print $"Updated vendored zjstatus at: ($zjstatus.target_path) \(size=($zjstatus.byte_len) bytes, source=($flake_ref)\)"
+  print $"Updated vendored zjframes at: ($zjframes.target_path) \(size=($zjframes.byte_len) bytes, source=($flake_ref)\)"
 }

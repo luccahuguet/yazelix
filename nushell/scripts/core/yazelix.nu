@@ -389,7 +389,7 @@ export def "yzx update" [
     print "  yzx update nix        Upgrade Determinate Nix \(if installed\)"
     print ""
     print "Maintainer update:"
-    print "  yzx dev update        Refresh devenv.lock, run canaries, sync pins, and refresh vendored zjstatus"
+    print "  yzx dev update        Refresh devenv.lock, run canaries, sync pins, and refresh vendored Zellij plugins"
 }
 
 export def "yzx update all" [

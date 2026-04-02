@@ -160,6 +160,12 @@ def main [--welcome-source: string, --skip-welcome] {
         exit 1
     }
 
+    let zjframes_target = $"($yazelix_dir)/configs/zellij/plugins/zjframes.wasm"
+    if not ($zjframes_target | path exists) {
+        print $"❌ Error: Vendored zjframes wasm not found at: ($zjframes_target)"
+        exit 1
+    }
+
     if not $quiet_mode {
         print "✅ Yazelix environment setup complete!"
     }
