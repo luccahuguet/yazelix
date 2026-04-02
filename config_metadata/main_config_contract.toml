@@ -407,7 +407,7 @@ rebuild_required = false
 
 [fields."yazi.theme"]
 kind = "string"
-default = "tokyo-night"
+default = "default"
 parser_key = "yazi_theme"
 home_manager_option = "yazi_theme"
 parser_behavior = "direct"

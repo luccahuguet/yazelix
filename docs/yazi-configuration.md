@@ -66,6 +66,8 @@ theme = "dracula"
 
 For available themes, see: https://yazi-rs.github.io/docs/flavors/overview
 
+Leave the field unset, or set `theme = "default"`, to keep Yazi's upstream built-in theme.
+
 ### Sorting
 
 ```toml

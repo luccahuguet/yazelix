@@ -7,6 +7,7 @@ summary = [
     "Hardened `yzx launch` and `yzx restart` so they stop trusting stale current shells that do not contain the newly configured terminal.",
     "Fixed `yzx dev update --canary-only` regressions around canary selection syntax and read-only temporary config copies.",
     "Deleted the copied `PINNED_DEVENV_VERSION` contract so maintainer pins and doctor output stop pretending there is a third authoritative `devenv` version source.",
+    "Reverted the managed Yazi default theme to Yazi's upstream built-in default while keeping explicit flavor selection available through `[yazi].theme`.",
 ]
 upgrade_impact = "no_user_action"
 acknowledged_guarded_changes = [
