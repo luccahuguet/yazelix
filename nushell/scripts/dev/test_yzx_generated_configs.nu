@@ -704,10 +704,10 @@ return "yazi-user-marker"
     $result
 }
 
-# Regression: generated Yazi Starship plugin config must point at a managed config file that exists.
+# Regression: generated Yazi Starship plugin config must stay writable so repeated Yazi regeneration does not crash at startup.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generate_merged_yazi_config_syncs_starship_plugin_config [] {
-    print "🧪 Testing merged Yazi config syncs the bundled Starship plugin config into the managed Yazi surface..."
+    print "🧪 Testing merged Yazi config syncs the bundled Starship plugin config into the managed Yazi surface across repeated regenerations..."
 
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_yazi_starship_config_XXXXXX | str trim)
@@ -723,10 +723,12 @@ def test_generate_merged_yazi_config_syncs_starship_plugin_config [] {
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
             let merged_dir = (generate_merged_yazi_config $repo_root --quiet)
+            generate_merged_yazi_config $repo_root --quiet | ignore
             {
                 merged_dir: $merged_dir
                 init_lua: (open --raw ($merged_dir | path join "init.lua"))
                 starship_config: (open --raw ($merged_dir | path join "yazelix_starship.toml"))
+                starship_config_mode: (^stat -c '%A' ($merged_dir | path join "yazelix_starship.toml") | str trim)
             }
         })
 
@@ -736,11 +738,12 @@ def test_generate_merged_yazi_config_syncs_starship_plugin_config [] {
             ($expected_starship_config_path | path exists)
             and ($generated.init_lua | str contains $"config_file = \"($expected_starship_config_path)\"")
             and ($generated.starship_config | str contains "# YAZELIX STARSHIP CONFIG FOR YAZI SIDEBAR")
+            and ($generated.starship_config_mode != "-r--r--r--")
         ) {
-            print "  ✅ Yazi Starship plugin now points at a managed sidebar-specific config that exists"
+            print "  ✅ Yazi Starship plugin now points at a managed sidebar-specific config that survives repeated regeneration"
             true
         } else {
-            print $"  ❌ Missing managed Yazi Starship config wiring: path=($expected_starship_config_path) exists=(($expected_starship_config_path | path exists))"
+            print $"  ❌ Missing stable managed Yazi Starship config wiring: path=($expected_starship_config_path) exists=(($expected_starship_config_path | path exists)) mode=($generated.starship_config_mode)"
             false
         }
     } catch { |err|

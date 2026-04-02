@@ -202,9 +202,26 @@ def sync_starship_yazi_config [source_dir: string, merged_dir: string, --quiet] 
         error make {msg: $"Missing bundled Yazi Starship config at: ($source_config)"}
     }
 
+    if ($target_config | path exists) {
+        let chmod_result = (^chmod u+w $target_config | complete)
+        if ($chmod_result.exit_code != 0) and (($chmod_result.stderr | str trim) | is-not-empty) {
+            print $"⚠ Failed to relax Yazi Starship config permissions before refresh: ($chmod_result.stderr | str trim)"
+        }
+
+        let remove_result = (^rm -f $target_config | complete)
+        if $remove_result.exit_code != 0 {
+            error make {msg: $"Failed to remove existing bundled Yazi Starship config at ($target_config): ($remove_result.stderr | str trim)"}
+        }
+    }
+
     let copy_result = (^cp $source_config $target_config | complete)
     if $copy_result.exit_code != 0 {
         error make {msg: $"Failed to copy bundled Yazi Starship config from ($source_config) to ($target_config): ($copy_result.stderr | str trim)"}
+    }
+
+    let chmod_result = (^chmod u+w $target_config | complete)
+    if $chmod_result.exit_code != 0 {
+        error make {msg: $"Failed to make generated Yazi Starship config writable at ($target_config): ($chmod_result.stderr | str trim)"}
     }
 
     if not $quiet {
