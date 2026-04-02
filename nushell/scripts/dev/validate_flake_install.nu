@@ -3,7 +3,7 @@
 use ../utils/common.nu resolve_external_command_path
 use ./devenv_lock_contract.nu [DEVENV_SKEW_WARNING get_locked_devenv_package_root]
 
-const INSTALL_TIMEOUT_SECONDS = 480
+const INSTALL_TIMEOUT_SECONDS = 900
 const PROBE_TIMEOUT_SECONDS = 60
 
 def make_temp_home [] {

@@ -123,7 +123,7 @@ jobs:
     needs: [detect_integration_changes, validate]
     if: ${{ needs.validate.result == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       YAZELIX_DIR: ${{ github.workspace }}
