@@ -56,6 +56,24 @@ let
     else
       null;
 
+  nixglLaunchPrefixSnippet =
+    if isLinux then
+      ''
+        launch_prefix=()
+        runtime_nixgl="''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/bin/nixGLDefault"
+        if [ -x "$runtime_nixgl" ]; then
+          launch_prefix+=("$runtime_nixgl")
+        elif command -v nixGLDefault >/dev/null 2>&1; then
+          launch_prefix+=("$(command -v nixGLDefault)")
+        elif command -v nixGLIntel >/dev/null 2>&1; then
+          launch_prefix+=("$(command -v nixGLIntel)")
+        fi
+      ''
+    else
+      ''
+        launch_prefix=()
+      '';
+
   # Import user configuration from TOML.
   # IMPORTANT: Yazelix now owns the managed config surfaces under user_configs/.
   # Current devenv releases expose those paths to evaluation without requiring
@@ -273,6 +291,7 @@ let
     if isLinux then
       ''
         ${mkTerminalConfigResolver "ghostty"}
+        ${nixglLaunchPrefixSnippet}
         # On Wayland, stale IM variables (e.g. GTK_IM_MODULE=ibus without daemon)
         # can break dead-key/compose input in GTK terminals.
         if [ -n "''${WAYLAND_DISPLAY:-}" ]; then
@@ -300,9 +319,7 @@ let
           # X11 fallback when no IM is configured.
           export GTK_IM_MODULE="simple"
         fi
-        exec ${
-          lib.optionalString (nixglDefault != null) "${nixglDefault}/bin/nixGLDefault "
-        }${pkgs.ghostty}/bin/ghostty \
+        exec "''${launch_prefix[@]}" ${pkgs.ghostty}/bin/ghostty \
           --config-default-files=false \
           --config-file="$CONF" \
           --gtk-single-instance=false \
@@ -340,9 +357,8 @@ let
     if lib.elem "kitty" terminalList then
       pkgs.writeShellScriptBin "yazelix-kitty" ''
         ${mkTerminalConfigResolver "kitty"}
-        exec ${
-          lib.optionalString (isLinux && nixglDefault != null) "${nixglDefault}/bin/nixGLDefault "
-        }${pkgs.kitty}/bin/kitty \
+        ${nixglLaunchPrefixSnippet}
+        exec "''${launch_prefix[@]}" ${pkgs.kitty}/bin/kitty \
           --config="$CONF" \
           --class="com.yazelix.Yazelix" \
           --title="Yazelix - Kitty" "$@" \
@@ -355,9 +371,8 @@ let
     if lib.elem "wezterm" terminalList then
       pkgs.writeShellScriptBin "yazelix-wezterm" ''
         ${mkTerminalConfigResolver "wezterm"}
-        exec ${
-          lib.optionalString (isLinux && nixglDefault != null) "${nixglDefault}/bin/nixGLDefault "
-        }${pkgs.wezterm}/bin/wezterm \
+        ${nixglLaunchPrefixSnippet}
+        exec "''${launch_prefix[@]}" ${pkgs.wezterm}/bin/wezterm \
           --config-file="$CONF" \
           start --class=com.yazelix.Yazelix "$@" -- sh -c "exec ${startupScriptPath}"
       ''
@@ -368,9 +383,8 @@ let
     if lib.elem "alacritty" terminalList then
       pkgs.writeShellScriptBin "yazelix-alacritty" ''
         ${mkTerminalConfigResolver "alacritty"}
-        exec ${
-          lib.optionalString (isLinux && nixglDefault != null) "${nixglDefault}/bin/nixGLDefault "
-        }${pkgs.alacritty}/bin/alacritty \
+        ${nixglLaunchPrefixSnippet}
+        exec "''${launch_prefix[@]}" ${pkgs.alacritty}/bin/alacritty \
           --config-file="$CONF" \
           --class="com.yazelix.Yazelix" \
           --title="Yazelix - Alacritty" "$@" \
@@ -383,9 +397,8 @@ let
     if isLinux && (lib.elem "foot" terminalList) then
       pkgs.writeShellScriptBin "yazelix-foot" ''
         ${mkTerminalConfigResolver "foot"}
-        exec ${
-          lib.optionalString (nixglDefault != null) "${nixglDefault}/bin/nixGLDefault "
-        }${pkgs.foot}/bin/foot \
+        ${nixglLaunchPrefixSnippet}
+        exec "''${launch_prefix[@]}" ${pkgs.foot}/bin/foot \
           --config="$CONF" \
           --app-id="com.yazelix.Yazelix" "$@" \
           sh -c "exec ${startupScriptPath}"

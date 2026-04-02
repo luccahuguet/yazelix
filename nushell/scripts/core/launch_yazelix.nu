@@ -24,7 +24,7 @@ def validate_launch_working_dir [working_dir: string] {
     $resolved
 }
 
-def resolve_terminal_candidates [requested_terminal: string, terminals: list<string>] {
+def resolve_terminal_candidates [requested_terminal: string, terminals: list<string>, manage_terminals: bool] {
     if ($requested_terminal | is-not-empty) {
         let specified_terminal = $requested_terminal
         let term_meta = ($TERMINAL_METADATA | get -o $specified_terminal)
@@ -32,17 +32,35 @@ def resolve_terminal_candidates [requested_terminal: string, terminals: list<str
             error make {msg: $"Unsupported terminal '($specified_terminal)'\nSupported terminals: ($SUPPORTED_TERMINALS | str join ', ')"}
         }
 
-        let candidates = (detect_terminal_candidates [$specified_terminal] true)
+        let candidates = if $manage_terminals {
+            detect_terminal_wrapper_candidates [$specified_terminal]
+        } else {
+            detect_terminal_candidates [$specified_terminal] false
+        }
         if ($candidates | is-empty) {
-            error make {msg: $"Specified terminal '($specified_terminal)' is not installed\nPlease install it or choose a different terminal for testing"}
+            let reason = if $manage_terminals {
+                $"Specified terminal '($specified_terminal)' is not available in the current Yazelix environment.\nRun 'yzx refresh' or 'yzx restart' to rebuild the managed terminal wrappers, or choose a configured terminal that is present in the Yazelix profile."
+            } else {
+                $"Specified terminal '($specified_terminal)' is not installed\nPlease install it or choose a different terminal for testing"
+            }
+            error make {msg: $reason}
         }
 
         return $candidates
     }
 
-    let candidates = (detect_terminal_candidates $terminals true)
+    let candidates = if $manage_terminals {
+        detect_terminal_wrapper_candidates $terminals
+    } else {
+        detect_terminal_candidates $terminals false
+    }
     if ($candidates | is-empty) {
-        error make {msg: "None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty, Foot) are installed. Please install one of these terminals to use Yazelix.\n  - WezTerm: https://wezfurlong.org/wezterm/\n  - Ghostty: https://ghostty.org/\n  - Kitty: https://sw.kovidgoyal.net/kitty/\n  - Alacritty: https://alacritty.org/\n - Foot: https://codeberg.org/dnkl/foot"}
+        let msg = if $manage_terminals {
+            "None of the configured managed terminals are available in the current Yazelix environment.\nRun 'yzx refresh' or 'yzx restart' to rebuild the terminal wrappers, or adjust [terminal].terminals to terminals that Yazelix can manage."
+        } else {
+            "None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty, Foot) are installed. Please install one of these terminals to use Yazelix.\n  - WezTerm: https://wezfurlong.org/wezterm/\n  - Ghostty: https://ghostty.org/\n  - Kitty: https://sw.kovidgoyal.net/kitty/\n  - Alacritty: https://alacritty.org/\n - Foot: https://codeberg.org/dnkl/foot"
+        }
+        error make {msg: $msg}
     }
 
     $candidates
@@ -51,7 +69,7 @@ def resolve_terminal_candidates [requested_terminal: string, terminals: list<str
 def describe_terminal_invocation [terminal_info: record, terminal_config] {
     let terminal = $terminal_info.terminal
     if $terminal_info.use_wrapper {
-        $"Running: ($terminal_info.command) \(with nixGL auto-detection\)"
+        $"Running: ($terminal_info.command) \(managed Yazelix wrapper\)"
     } else if $terminal == "wezterm" {
         $"Running: wezterm --config-file ($terminal_config) start --class=com.yazelix.Yazelix"
     } else if $terminal == "ghostty" {
@@ -251,6 +269,6 @@ def main [
     generate_all_terminal_configs
 
     let runtime_dir = (get_yazelix_runtime_dir)
-    let terminal_candidates = (resolve_terminal_candidates $requested_terminal $terminals)
+    let terminal_candidates = (resolve_terminal_candidates $requested_terminal $terminals $manage_terminals)
     launch_terminal_candidates $terminal_candidates $terminal_config_mode $working_dir $needs_reload $runtime_dir $verbose_mode $requested_terminal | ignore
 }

@@ -3,25 +3,53 @@
 
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment run_in_devenv_shell_command get_refresh_output_mode]
-use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile]
+use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile resolve_built_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../core/start_yazelix.nu [start_yazelix_session]
 use ../utils/common.nu [describe_build_parallelism get_yazelix_runtime_dir]
 use ../utils/constants.nu [TERMINAL_METADATA]
 
-def launch_profile_supports_configured_terminal [config: record, profile_path: string] {
+def wrapper_store_paths_exist [wrapper_path: string] {
+    if not ($wrapper_path | path exists) {
+        return false
+    }
+
+    let store_paths = (
+        open --raw $wrapper_path
+        | parse -r '(?<path>/nix/store/[^" \n]+)'
+        | get -o path
+        | default []
+        | uniq
+    )
+
+    if ($store_paths | is-empty) {
+        true
+    } else {
+        $store_paths | all {|path_ref| $path_ref | path exists }
+    }
+}
+
+def resolve_terminal_for_support_check [config: record, requested_terminal: string] {
+    if ($requested_terminal | is-not-empty) {
+        return $requested_terminal
+    }
+
+    let terminals = ($config.terminals? | default ["ghostty"] | uniq)
+    if ($terminals | is-empty) {
+        "unknown"
+    } else {
+        ($terminals | first | into string)
+    }
+}
+
+def launch_profile_supports_configured_terminal [config: record, profile_path: string, requested_terminal: string] {
     let manage_terminals = ($config.manage_terminals? | default true)
     if not $manage_terminals {
         return true
     }
 
-    let terminals = ($config.terminals? | default ["ghostty"] | uniq)
-    if ($terminals | is-empty) {
-        return true
-    }
-
-    let preferred_terminal = ($terminals | first | into string)
+    let preferred_terminal = (resolve_terminal_for_support_check $config $requested_terminal)
     let terminal_meta = ($TERMINAL_METADATA | get -o $preferred_terminal | default {})
     let wrapper_name = ($terminal_meta.wrapper? | default "")
     let profile_bin_dir = ($profile_path | path join "bin")
@@ -30,33 +58,31 @@ def launch_profile_supports_configured_terminal [config: record, profile_path: s
     } else {
         ""
     }
-    let direct_terminal_path = ($profile_bin_dir | path join $preferred_terminal)
 
-    (
-        (($wrapper_path | is-not-empty) and ($wrapper_path | path exists))
-        or ($direct_terminal_path | path exists)
-    )
+    (($wrapper_path | is-not-empty) and (wrapper_store_paths_exist $wrapper_path))
 }
 
-def current_environment_supports_configured_terminal [config: record] {
+def current_environment_supports_configured_terminal [config: record, requested_terminal: string] {
     let manage_terminals = ($config.manage_terminals? | default true)
     if not $manage_terminals {
         return true
     }
 
-    let terminals = ($config.terminals? | default ["ghostty"] | uniq)
-    if ($terminals | is-empty) {
-        return true
-    }
-
-    let preferred_terminal = ($terminals | first | into string)
+    let preferred_terminal = (resolve_terminal_for_support_check $config $requested_terminal)
     let terminal_meta = ($TERMINAL_METADATA | get -o $preferred_terminal | default {})
     let wrapper_name = ($terminal_meta.wrapper? | default "")
 
-    (
-        (($wrapper_name | is-not-empty) and (which $wrapper_name | is-not-empty))
-        or (which $preferred_terminal | is-not-empty)
-    )
+    if ($wrapper_name | is-empty) {
+        return false
+    }
+
+    let current_profile = ($env.DEVENV_PROFILE? | default "" | into string | str trim)
+    let wrapper_path = if ($current_profile | is-empty) {
+        ""
+    } else {
+        $current_profile | path join "bin" $wrapper_name
+    }
+    (($wrapper_path | is-not-empty) and (wrapper_store_paths_exist $wrapper_path))
 }
 
 # Launch yazelix
@@ -85,7 +111,6 @@ export def "yzx launch" [
     let config_state = $env_prep.config_state
     mut needs_refresh = $env_prep.needs_refresh
     let reuse_mode = $reuse
-    let should_refresh = ($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
     let refresh_output = get_refresh_output_mode $config
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)
@@ -94,9 +119,21 @@ export def "yzx launch" [
     let manage_terminals = ($config.manage_terminals? | default true)
     let requested_path = ($path | default "")
     let requested_terminal = ($terminal | default "")
+    let built_profile = (resolve_built_profile)
+    let terminal_profile_needs_repair = (
+        $manage_terminals
+        and (not $skip_refresh)
+        and (not $reuse_mode)
+        and ($built_profile | is-not-empty)
+        and (not (launch_profile_supports_configured_terminal $config $built_profile $requested_terminal))
+    )
+    let should_refresh = (($needs_refresh or $terminal_profile_needs_repair) and (not $skip_refresh) and (not $reuse_mode))
     mut printed_refresh_notice = false
     if $verbose_mode {
         print $"🔍 Config hash changed? ($needs_refresh)"
+        if $terminal_profile_needs_repair {
+            print "🔍 Managed terminal wrapper repair needed: true"
+        }
     }
     if $reuse_mode and $needs_refresh {
         print "⚡ Reuse mode enabled - using the last built Yazelix profile without rebuild."
@@ -104,6 +141,10 @@ export def "yzx launch" [
     } else if $skip_refresh and $needs_refresh {
         print "⚠️  Skipping explicit refresh trigger; environment may be stale."
         print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
+    } else if $terminal_profile_needs_repair {
+        print "🔄 Managed terminal wrapper is stale or missing required runtime dependencies."
+        print $"   Rebuilding environment using ($build_parallelism_description)..."
+        $printed_refresh_notice = true
     }
 
     let force_reenter = $force_reenter
@@ -119,7 +160,7 @@ export def "yzx launch" [
     if $force_reenter {
         $in_yazelix_shell = false
     }
-    if $in_yazelix_shell and (not (current_environment_supports_configured_terminal $config)) {
+    if $in_yazelix_shell and (not (current_environment_supports_configured_terminal $config $requested_terminal)) {
         if $verbose_mode {
             print "⚠️  Current Yazelix shell does not include the configured terminal; re-entering a fresh environment."
         }
@@ -241,7 +282,7 @@ export def "yzx launch" [
                 get_launch_profile $fresh_state
             }
 
-            let fresh_launch_profile = if ($fresh_launch_profile != null) and (not (launch_profile_supports_configured_terminal $config $fresh_launch_profile)) {
+            let fresh_launch_profile = if ($fresh_launch_profile != null) and (not (launch_profile_supports_configured_terminal $config $fresh_launch_profile $requested_terminal)) {
                 if $verbose_mode {
                     print "⚠️  Cached Yazelix profile does not include the currently configured terminal; re-entering devenv instead."
                 }
@@ -309,7 +350,7 @@ export def "yzx launch" [
                 $env_block = ($env_block | upsert YAZELIX_TERMINAL $env.YAZELIX_TERMINAL)
             }
             with-env $env_block {
-                run_in_devenv_shell_command "nu" ...$final_launch_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode --refresh-output-mode $refresh_output
+                run_in_devenv_shell_command "nu" ...$final_launch_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --force-shell --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode --refresh-output-mode $refresh_output
             }
             if $should_refresh {
                 mark_config_state_applied $fresh_state

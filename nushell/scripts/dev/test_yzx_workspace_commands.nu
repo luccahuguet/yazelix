@@ -318,10 +318,10 @@ def test_launch_here_path_warns_when_existing_persistent_session_ignores_it [] {
     $result
 }
 
-# Regression: launch falls through to the next configured terminal when the first one crashes immediately.
+# Regression: launch falls through to the next managed terminal and ignores bare host terminal binaries.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_launch_falls_through_after_immediate_terminal_failure [] {
-    print "🧪 Testing terminal launch falls through after immediate failure..."
+    print "🧪 Testing managed terminal launch skips bare host binaries and falls through after immediate failure..."
 
     let tmpdir = (^mktemp -d /tmp/yazelix_terminal_fallback_XXXXXX | str trim)
 
@@ -345,29 +345,42 @@ def test_launch_falls_through_after_immediate_terminal_failure [] {
         [
             "#!/bin/sh"
             "sleep 2"
-        ] | str join "\n" | save --force --raw ($fake_bin | path join "yazelix-kitty")
-        ^chmod +x ($fake_bin | path join "yazelix-kitty")
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "yazelix-alacritty")
+        ^chmod +x ($fake_bin | path join "yazelix-alacritty")
 
         let fake_wezterm = ($fake_bin | path join "yazelix-wezterm")
-        let fake_kitty = ($fake_bin | path join "yazelix-kitty")
+        let fake_alacritty = ($fake_bin | path join "yazelix-alacritty")
+        [
+            "#!/bin/sh"
+            "echo raw-kitty-should-not-run >&2"
+            "exit 88"
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "kitty")
+        ^chmod +x ($fake_bin | path join "kitty")
         let launch_script = (repo_path "nushell" "scripts" "core" "launch_yazelix.nu")
         let snippet = ([
             $"source \"($launch_script)\""
-            $"let candidates = [{terminal: \"wezterm\", name: \"WezTerm\", command: \"($fake_wezterm)\", use_wrapper: true}, {terminal: \"kitty\", name: \"Kitty\", command: \"($fake_kitty)\", use_wrapper: true}]"
+            "let candidates = (resolve_terminal_candidates '' ['wezterm', 'kitty', 'alacritty'] true)"
+            "if (($candidates | length) != 2) { error make { msg: ($candidates | to json -r) } }"
+            "if (($candidates | get 0.command) != $env.FAKE_WEZTERM) { error make { msg: 'wezterm wrapper not selected first' } }"
+            "if (($candidates | get 1.command) != $env.FAKE_ALACRITTY) { error make { msg: 'bare kitty binary should not be treated as a managed candidate' } }"
             "let launched = (launch_terminal_candidates $candidates 'yazelix' $env.PWD false $env.YAZELIX_RUNTIME_DIR false '')"
             "print ($launched.terminal)"
         ] | str join "\n")
         let output = (with-env {
             YAZELIX_RUNTIME_DIR: $fake_runtime
+            DEVENV_PROFILE: $tmpdir
             YAZELIX_STATE_DIR: ($tmpdir | path join "state")
+            PATH: ([$fake_bin] | append $env.PATH)
+            FAKE_WEZTERM: $fake_wezterm
+            FAKE_ALACRITTY: $fake_alacritty
         } {
             run_nu_snippet $snippet
         })
         let stdout = ($output.stdout | str trim)
         let stderr = ($output.stderr | str trim)
 
-        if ($output.exit_code == 0) and ($stdout | str contains "failed to start; trying Yazelix - Kitty") and ($stdout | str ends-with "kitty") and ($stderr == "") {
-            print "  ✅ Immediate terminal crashes fall through to the next configured terminal"
+        if ($output.exit_code == 0) and ($stdout | str contains "failed to start; trying Yazelix - Alacritty") and ($stdout | str ends-with "alacritty") and ($stderr == "") {
+            print "  ✅ Managed launch ignores bare host binaries and falls through to the next Yazelix wrapper"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr)"

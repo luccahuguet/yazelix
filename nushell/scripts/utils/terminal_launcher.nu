@@ -14,13 +14,22 @@ def get_startup_script_path []: nothing -> string {
     $runtime_dir | path join "shells" "posix" "start_yazelix.sh"
 }
 
-def get_runtime_terminal_launcher_path [terminal: string]: nothing -> string {
-    let runtime_dir = (get_yazelix_runtime_dir)
-    ($runtime_dir | path join "shells" "posix" "launch_managed_terminal.sh")
-}
-
 def get_terminal_title [terminal: string] {
     $"Yazelix - (($TERMINAL_METADATA | get -o $terminal | default {} | get -o name | default $terminal))"
+}
+
+def get_current_profile_bin_dir [] {
+    let profile = ($env.DEVENV_PROFILE? | default "" | into string | str trim)
+    if ($profile | is-empty) {
+        return ""
+    }
+
+    let bin_dir = ($profile | path join "bin")
+    if ($bin_dir | path exists) {
+        $bin_dir
+    } else {
+        ""
+    }
 }
 
 # Resolve config path for a terminal based on mode
@@ -107,6 +116,45 @@ export def detect_terminal_candidates [preferred: any, prefer_wrappers: bool = t
     $available
 }
 
+export def detect_terminal_wrapper_candidates [preferred: any] {
+    let profile_bin_dir = (get_current_profile_bin_dir)
+    if ($profile_bin_dir | is-empty) {
+        return []
+    }
+
+    let ordered_terminals = if ($preferred | describe | str contains "list") {
+        $preferred | where $it in $SUPPORTED_TERMINALS
+    } else {
+        let other_terminals = $SUPPORTED_TERMINALS | where $it != $preferred
+        ([$preferred] | append $other_terminals)
+    }
+    if ($ordered_terminals | is-empty) {
+        return []
+    }
+
+    $ordered_terminals
+    | each {|terminal|
+        let term_meta = ($TERMINAL_METADATA | get -o $terminal | default {})
+        let wrapper = ($term_meta.wrapper? | default "")
+        let wrapper_path = if ($wrapper | is-not-empty) {
+            $profile_bin_dir | path join $wrapper
+        } else {
+            ""
+        }
+        if ($wrapper_path | is-not-empty) and ($wrapper_path | path exists) {
+            {
+                terminal: $terminal
+                name: $term_meta.name
+                command: $wrapper_path
+                use_wrapper: true
+            }
+        } else {
+            null
+        }
+    }
+    | compact
+}
+
 # Detect first available terminal (wrapper or direct)
 export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
     let candidates = (detect_terminal_candidates $preferred $prefer_wrappers)
@@ -186,14 +234,9 @@ export def build_launch_command [
     let title = (get_terminal_title $terminal)
 
     if $use_wrapper {
-        let runtime_launcher = (get_runtime_terminal_launcher_path $terminal)
-
-        if ($runtime_launcher | is-not-empty) and ($runtime_launcher | path exists) {
-            $"($launch_prefix)bash \"($runtime_launcher)\" ($terminal)($working_dir_arg)"
-        } else {
-            # Wrappers handle config internally via environment variable
-            $"($launch_prefix)($command)($working_dir_arg)"
-        }
+        # Managed wrapper binaries already bake the canonical terminal binary,
+        # config resolution, startup script, and nixGL path.
+        $"($launch_prefix)($command)($working_dir_arg)"
     } else {
         # Direct terminal launch with config
         # Prefer the generic nixGL wrapper when available. Fall back to the
@@ -234,7 +277,7 @@ export def build_launch_command [
 export def get_terminal_display_name [terminal_info: record]: nothing -> string {
     let name = $terminal_info.name
     if $terminal_info.use_wrapper {
-        $"Yazelix - ($name) \(with GPU acceleration\)"
+        $"Yazelix - ($name)"
     } else {
         $"($name)"
     }
