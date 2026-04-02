@@ -27,6 +27,7 @@ Highlights:
 - Fixed `yzx dev update --canary-only` regressions around canary selection syntax and read-only temporary config copies.
 - Deleted the copied `PINNED_DEVENV_VERSION` contract so maintainer pins and doctor output stop pretending there is a third authoritative `devenv` version source.
 - Reverted the managed Yazi default theme to Yazi's upstream built-in default instead of forcing the bundled `tokyo-night` flavor unless you opt into a flavor explicitly.
+- Fixed Home Manager runtime-source evaluation so the standalone `home_manager` flake can validate and install the lock-derived runtime without tripping invalid parent-source paths.
 
 ## v13.10 - 2026-03-30
 
