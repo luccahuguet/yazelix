@@ -13,10 +13,16 @@ if [ -z "$helix_binary" ]; then
   exit 1
 fi
 
-nu_bin="$runtime_dir/bin/nu"
+nu_bin="${YAZELIX_NU_BIN:-$runtime_dir/bin/nu}"
 if [ ! -x "$nu_bin" ]; then
-  printf '%s\n' "Error: missing runtime-local Nushell at $nu_bin" >&2
-  exit 1
+  if command -v "$nu_bin" >/dev/null 2>&1; then
+    nu_bin="$(command -v "$nu_bin")"
+  elif command -v nu >/dev/null 2>&1; then
+    nu_bin="$(command -v nu)"
+  else
+    printf '%s\n' "Error: missing usable Nushell binary for Helix config generation" >&2
+    exit 1
+  fi
 fi
 
 merger_script="$runtime_dir/nushell/scripts/setup/helix_config_merger.nu"

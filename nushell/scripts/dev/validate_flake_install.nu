@@ -19,6 +19,13 @@ def require_file_contains [path: string, needle: string, label: string] {
     }
 }
 
+def require_file_not_contains [path: string, needle: string, label: string] {
+    let content = (open --raw $path)
+    if ($content | str contains $needle) {
+        error make { msg: $"($label) unexpectedly contains text `($needle)`: ($path)" }
+    }
+}
+
 def run_flake_install [temp_home: string] {
     let state_root = ($temp_home | path join ".local" "share")
     let config_root = ($temp_home | path join ".config")
@@ -47,13 +54,15 @@ def verify_installed_runtime [temp_home: string] {
     let runtime_nu = ($runtime_current | path join "bin" "nu")
     let runtime_yzx_cli = ($runtime_current | path join "shells" "posix" "yzx_cli.sh")
     let devenv_cli_module = ($runtime_current | path join "nushell" "scripts" "utils" "devenv_cli.nu")
+    let runtime_helper_module = ($runtime_current | path join "configs" "zellij" "scripts" "runtime_helper.nu")
     let yzx_path = ($temp_home | path join ".local" "bin" "yzx")
     let nushell_config = ($temp_home | path join ".config" "nushell" "config.nu")
     let user_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix.toml")
     let pack_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix_packs.toml")
+    let config_root = ($temp_home | path join ".config" "yazelix")
     let zellij_config = ($temp_home | path join ".local" "share" "yazelix" "configs" "zellij" "config.kdl")
     let yazi_theme = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "theme.toml")
-    let yazi_flavor = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors" "tokyo-night.yazi" "flavor.toml")
+    let yazi_flavor_root = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors")
     let locked_package_root = (get_locked_devenv_package_root)
 
     require_path_exists $runtime_current "installed runtime symlink"
@@ -66,9 +75,14 @@ def verify_installed_runtime [temp_home: string] {
     require_path_exists $pack_config "seeded pack config"
     require_path_exists $zellij_config "generated Zellij config"
     require_path_exists $yazi_theme "generated Yazi theme config"
-    require_path_exists $yazi_flavor "generated Yazi flavor file"
+    require_path_exists $yazi_flavor_root "generated Yazi flavors directory"
 
     require_file_contains $nushell_config "/runtime/current/" "generated Nushell hook config"
+    require_file_not_contains $yazi_theme "[flavor]" "generated Yazi theme config"
+
+    if ((ls $yazi_flavor_root | where type == dir | length) < 1) {
+        error make { msg: $"Generated Yazi flavors directory is empty: ($yazi_flavor_root)" }
+    }
 
     let version_result = (
         with-env {
@@ -156,6 +170,36 @@ def verify_installed_runtime [temp_home: string] {
     let expected_locked_devenv = (^readlink -f ($locked_package_root | path join "bin" "devenv") | str trim)
     if ($resolved_runtime_devenv != $expected_locked_devenv) {
         error make { msg: $"Installed runtime devenv is not sourced from the locked package. Expected ($expected_locked_devenv), got ($resolved_runtime_devenv)" }
+    }
+
+    let stale_runtime_probe = (
+        ^env -i
+            HOME=$temp_home
+            PATH="/usr/bin:/bin"
+            XDG_CONFIG_HOME=($temp_home | path join ".config")
+            XDG_DATA_HOME=($temp_home | path join ".local" "share")
+            YAZELIX_RUNTIME_DIR=$config_root
+            YAZELIX_DIR=$config_root
+            $runtime_nu
+            -c
+            $"use '($runtime_helper_module | into string)' [get_runtime_nu_path]; print \(get_runtime_nu_path\)"
+        | complete
+    )
+
+    if $stale_runtime_probe.exit_code != 0 {
+        if ($stale_runtime_probe.stdout | is-not-empty) {
+            print $stale_runtime_probe.stdout
+        }
+        if ($stale_runtime_probe.stderr | is-not-empty) {
+            print $stale_runtime_probe.stderr
+        }
+        error make { msg: "Installed runtime failed to recover the canonical Nushell path when YAZELIX_RUNTIME_DIR still points at the config root" }
+    }
+
+    let recovered_runtime_nu = ($stale_runtime_probe.stdout | str trim | path expand)
+    let expected_runtime_nu = ($runtime_nu | path expand)
+    if ($recovered_runtime_nu != $expected_runtime_nu) {
+        error make { msg: $"Installed runtime recovered the wrong Nushell path from a stale config-root runtime env. Expected ($expected_runtime_nu), got ($recovered_runtime_nu)" }
     }
 
     let shell_probe_command = ([

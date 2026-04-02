@@ -72,6 +72,33 @@ def expand_user_path_string [value: string] {
     $expanded_home | path expand
 }
 
+export def resolve_external_command_path [command_name: string] {
+    let matches = (which $command_name | where type == "external")
+    if ($matches | is-empty) {
+        null
+    } else {
+        $matches | get 0.path
+    }
+}
+
+def normalize_command_candidate [candidate?: string] {
+    if $candidate == null {
+        return null
+    }
+
+    let trimmed = ($candidate | into string | str trim)
+    if ($trimmed | is-empty) {
+        return null
+    }
+
+    let expanded = (expand_user_path_string $trimmed)
+    if ($expanded | path exists) {
+        $expanded
+    } else {
+        resolve_external_command_path $trimmed
+    }
+}
+
 export def get_yazelix_config_dir [] {
     let configured = (
         $env.YAZELIX_CONFIG_DIR?
@@ -151,6 +178,25 @@ export def get_yazelix_runtime_reference_dir [] {
     } else {
         get_yazelix_runtime_dir
     }
+}
+
+export def resolve_yazelix_nu_bin [] {
+    let explicit_nu = (normalize_command_candidate ($env.YAZELIX_NU_BIN? | default null))
+    if $explicit_nu != null {
+        return $explicit_nu
+    }
+
+    let runtime_nu = ((get_yazelix_runtime_reference_dir) | path join "bin" "nu")
+    if ($runtime_nu | path exists) {
+        return $runtime_nu
+    }
+
+    let path_nu = (resolve_external_command_path "nu")
+    if $path_nu != null {
+        return $path_nu
+    }
+
+    error make {msg: "Could not resolve a usable Nushell binary for Yazelix. Checked YAZELIX_NU_BIN, runtime-local bin/nu, and PATH."}
 }
 
 export def ensure_yazelix_runtime_project_dir [] {

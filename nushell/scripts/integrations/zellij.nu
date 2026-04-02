@@ -3,7 +3,7 @@
 
 use ../utils/logging.nu *
 use ../setup/zellij_plugin_paths.nu PANE_ORCHESTRATOR_PLUGIN_ALIAS
-use ../utils/common.nu [get_yazelix_runtime_dir]
+use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/config_parser.nu [parse_yazelix_config]
 use ../utils/launch_state.nu [get_launch_env]
 
@@ -12,6 +12,7 @@ const FLOATING_WRAPPER_ENV_KEYS = [
     "PATH"
     "YAZELIX_RUNTIME_DIR"
     "YAZELIX_DIR"
+    "YAZELIX_NU_BIN"
     "IN_YAZELIX_SHELL"
     "IN_NIX_SHELL"
     "NIX_CONFIG"
@@ -101,12 +102,12 @@ export def open_floating_runtime_wrapper [
 ] {
     let runtime_dir = (get_yazelix_runtime_dir)
     let wrapper = ($runtime_dir | path join "configs" "zellij" "scripts" $wrapper_name)
-    let runtime_nu = ($runtime_dir | path join "bin" "nu")
+    let runtime_nu = (resolve_yazelix_nu_bin)
     if not ($wrapper | path exists) {
         error make {msg: $"Floating wrapper script not found at: ($wrapper)"}
     }
     if not ($runtime_nu | path exists) {
-        error make {msg: $"Runtime-local Nushell not found at: ($runtime_nu)"}
+        error make {msg: $"Resolved Yazelix Nushell binary not found at: ($runtime_nu)"}
     }
 
     let wrapper_env = ((get_floating_wrapper_env) | merge $extra_env)

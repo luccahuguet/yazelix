@@ -1,14 +1,11 @@
 #!/usr/bin/env nu
 
-export def get_runtime_dir [] {
-    let runtime_dir = ($env.YAZELIX_RUNTIME_DIR? | default "" | str trim)
-    if ($runtime_dir | is-empty) {
-        error make {msg: "Missing YAZELIX_RUNTIME_DIR for Yazelix Zellij helper script."}
-    }
+use ../../../nushell/scripts/utils/common.nu [get_yazelix_runtime_reference_dir resolve_yazelix_nu_bin]
 
-    let expanded_runtime_dir = ($runtime_dir | path expand)
+export def get_runtime_dir [] {
+    let expanded_runtime_dir = (get_yazelix_runtime_reference_dir | path expand)
     if not ($expanded_runtime_dir | path exists) {
-        error make {msg: $"Configured YAZELIX_RUNTIME_DIR does not exist: ($expanded_runtime_dir)"}
+        error make {msg: $"Resolved Yazelix runtime directory does not exist: ($expanded_runtime_dir)"}
     }
 
     $expanded_runtime_dir
@@ -19,9 +16,9 @@ export def get_runtime_script_path [relative_path: string] {
 }
 
 export def get_runtime_nu_path [] {
-    let runtime_nu = (get_runtime_script_path "bin/nu")
+    let runtime_nu = (resolve_yazelix_nu_bin)
     if not ($runtime_nu | path exists) {
-        error make {msg: $"Yazelix runtime-local nu is missing: ($runtime_nu)"}
+        error make {msg: $"Resolved Yazelix Nushell binary does not exist: ($runtime_nu)"}
     }
 
     $runtime_nu
