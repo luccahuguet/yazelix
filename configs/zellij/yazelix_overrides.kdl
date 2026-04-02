@@ -13,9 +13,6 @@
 session_serialization true
 pane_viewport_serialization true
 
-// Remove pane borders - required for zjstatus plugin to display properly
-pane_frames false
-
 keybinds {
     shared {
         // Use original Zellij keybinding but with Ctrl+Alt modifier

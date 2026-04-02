@@ -1,30 +1,26 @@
 #!/usr/bin/env nu
-# Update vendored zjstatus/zjframes plugins for Yazelix
-# Refreshes the vendored Zellij wasm plugins from the pinned `zjstatus` input in devenv.lock.
+# Update zjstatus plugin (Zellij status bar) for Yazelix
+# Refreshes the vendored zjstatus wasm from the pinned `zjstatus` input in devenv.lock.
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
 
-def copy_wasm_from_store [
-  store_root: string
-  target_dir: string
-  wasm_name: string
-] {
-  let store_path = ($store_root | path join "bin" $wasm_name)
+def copy_zjstatus_from_store [store_root: string, target_dir: string] {
+  let store_path = ($store_root | path join "bin" "zjstatus.wasm")
   if not ($store_path | path exists) {
-    print $"Error: ($wasm_name) not found at: ($store_path)"
+    print $"Error: zjstatus wasm not found at: ($store_path)"
     exit 5
   }
 
   let byte_len = (open --raw $store_path | length)
   if $byte_len < 1024 {
-    print $"Error: Nix-provided wasm is too small to be valid \(file=($wasm_name), size=($byte_len) bytes\)"
+    print $"Error: Nix-provided wasm is too small to be valid \(size=($byte_len) bytes\)"
     exit 6
   }
 
-  let target_path = ($target_dir | path join $wasm_name)
+  let target_path = ($target_dir | path join "zjstatus.wasm")
   let tmp_path = $"($target_path).tmp"
   try { cp --force $store_path $tmp_path } catch {|err|
-    print $"Error writing temporary file for ($wasm_name): ($err.msg)"
+    print $"Error writing temporary file: ($err.msg)"
     exit 7
   }
   mv --force $tmp_path $target_path
@@ -71,9 +67,6 @@ export def main [] {
   # Prepare target directory
   if not ($target_dir | path exists) { mkdir $target_dir }
 
-  let zjstatus = (copy_wasm_from_store $store_root $target_dir "zjstatus.wasm")
-  let zjframes = (copy_wasm_from_store $store_root $target_dir "zjframes.wasm")
-
+  let zjstatus = (copy_zjstatus_from_store $store_root $target_dir)
   print $"Updated vendored zjstatus at: ($zjstatus.target_path) \(size=($zjstatus.byte_len) bytes, source=($flake_ref)\)"
-  print $"Updated vendored zjframes at: ($zjframes.target_path) \(size=($zjframes.byte_len) bytes, source=($flake_ref)\)"
 }

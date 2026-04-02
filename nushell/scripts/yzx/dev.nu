@@ -85,18 +85,18 @@ def sync_runtime_pins [] {
     print $"✅ Updated runtime pins: nix ($runtime_pins.nix_version)"
 }
 
-def sync_vendored_zellij_plugins [] {
+def sync_vendored_zjstatus [] {
     let update_script = ((get_yazelix_dir) | path join "nushell" "scripts" "dev" "update_zjstatus.nu")
     if not ($update_script | path exists) {
-        print $"❌ Zellij plugin refresh helper not found: ($update_script)"
+        print $"❌ zjstatus refresh helper not found: ($update_script)"
         exit 1
     }
 
-    print "🔄 Refreshing vendored zjstatus/zjframes wasm plugins..."
+    print "🔄 Refreshing vendored zjstatus.wasm..."
     try {
         ^nu $update_script
     } catch {|err|
-        print $"❌ Failed to refresh vendored Zellij plugins: ($err.msg)"
+        print $"❌ Failed to refresh vendored zjstatus.wasm: ($err.msg)"
         exit 1
     }
 }
@@ -433,8 +433,8 @@ export def "yzx dev update" [
     print "🔄 Syncing pinned runtime expectations..."
     sync_runtime_pins
     sync_readme_version_marker
-    sync_vendored_zellij_plugins
-    print "✅ Inputs, canaries, runtime pins, README version marker, and vendored Zellij plugins are in sync. Review and commit the changes if everything looks good."
+    sync_vendored_zjstatus
+    print "✅ Inputs, canaries, runtime pins, README version marker, and vendored zjstatus are in sync. Review and commit the changes if everything looks good."
 }
 
 export def "yzx dev sync_terminal_configs" [] {

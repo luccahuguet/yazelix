@@ -263,15 +263,14 @@ For detailed macOS setup and troubleshooting, see [assets/macos/README.md](../as
 
 **First Run**: The first time you launch Yazelix, it will install all dependencies (Zellij, Yazi, Helix, etc.). This may take several minutes, but subsequent launches will be instant.
 
-**Zellij Plugin Permissions**: When you first run yazelix, you need to grant permissions for the Yazelix-managed Zellij plugins:
+**Zellij Plugin Permissions**: When you first run yazelix, you need to grant permissions for **both** Zellij plugins:
 
 - **zjstatus**: this can look like an "invisible pane" at the very top where the status bar should be. Focus that top bar area and press `y`.
-- **zjframes**: Yazelix also loads the background pane-frame helper plugin. If Zellij prompts for its permissions, answer **yes**.
 - **Yazelix pane-orchestrator plugin**: Yazelix should also open a popup asking for permission for its own orchestrator plugin. You need to answer **yes** to that popup too.
 
 `Alt+y` and `Ctrl+y` require the Yazelix pane-orchestrator plugin permissions. `Alt+m` opens a new terminal in the current tab workspace root.
 
-The Zellij plugin permission step may need to be repeated after plugin updates because the wasm file paths change. See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
+The `zjstatus` permission step must be repeated on `zjstatus` updates, since the file changes. See the [zjstatus permissions documentation](https://github.com/dj95/zjstatus/wiki/2-%E2%80%90-Permissions) for more details.
 
 If you are maintaining Yazelix and rebuild the pane-orchestrator plugin, prefer `yzx restart` after `yzx dev build_pane_orchestrator --sync` instead of reloading the plugin inside the current session.
 

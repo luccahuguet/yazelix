@@ -297,7 +297,7 @@ yzx update                    # Show update targets
 yzx update all               # Refresh the installed Yazelix runtime
 yzx update runtime            # Refresh the installed Yazelix runtime via the flake installer
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
-yzx dev update --yes          # Refresh all inputs, run canaries, sync pins, and refresh vendored Zellij plugins
+yzx dev update --yes          # Refresh all inputs, run canaries, sync pins, and refresh vendored zjstatus
 yzx dev update --canary-only --canaries [default]  # Run only the default canary
 yzx dev build_pane_orchestrator --sync  # Build and sync the pane orchestrator wasm (enable rust_wasi first)
 

@@ -154,9 +154,9 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
             ^zellij --config-dir $merged_zellij_dir attach $config.session_name
         } else {
             # Create new session with all options
-            ^zellij --config-dir $merged_zellij_dir attach -c $config.session_name options --default-cwd $session_default_cwd --default-layout $layout_path --pane-frames false --default-shell $zellij_default_shell
+            ^zellij --config-dir $merged_zellij_dir attach -c $config.session_name options --default-cwd $session_default_cwd --default-layout $layout_path --default-shell $zellij_default_shell
         }
     } else {
-        ^zellij --config-dir $merged_zellij_dir options --default-cwd $session_default_cwd --default-layout $layout_path --pane-frames false --default-shell $zellij_default_shell
+        ^zellij --config-dir $merged_zellij_dir options --default-cwd $session_default_cwd --default-layout $layout_path --default-shell $zellij_default_shell
     }
 }
