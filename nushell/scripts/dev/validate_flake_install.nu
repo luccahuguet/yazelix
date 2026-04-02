@@ -1,6 +1,10 @@
 #!/usr/bin/env nu
 
+use ../utils/common.nu resolve_external_command_path
 use ./devenv_lock_contract.nu [DEVENV_SKEW_WARNING get_locked_devenv_package_root]
+
+const INSTALL_TIMEOUT_SECONDS = 240
+const PROBE_TIMEOUT_SECONDS = 60
 
 def make_temp_home [] {
     (^mktemp -d /tmp/yazelix_flake_install_XXXXXX | str trim)
@@ -26,6 +30,37 @@ def require_file_not_contains [path: string, needle: string, label: string] {
     }
 }
 
+def run_completed_external [
+    label: string
+    cmd_bin: string
+    cmd_args: list<string>
+    timeout_seconds: int = $PROBE_TIMEOUT_SECONDS
+] {
+    print $"⏳ ($label) ..."
+
+    let timeout_bin = (resolve_external_command_path "timeout")
+    let result = if $timeout_bin == null {
+        ^$cmd_bin ...$cmd_args | complete
+    } else {
+        ^$timeout_bin -k "15" ($timeout_seconds | into string) $cmd_bin ...$cmd_args | complete
+    }
+
+    if $result.exit_code == 124 {
+        let stdout = ($result.stdout | default "" | str trim)
+        let stderr = ($result.stderr | default "" | str trim)
+        let detail = if ($stderr | is-not-empty) {
+            $stderr
+        } else if ($stdout | is-not-empty) {
+            $stdout
+        } else {
+            "No subprocess output was captured before timeout."
+        }
+        error make { msg: $"Timed out after ($timeout_seconds)s while ($label).\n($detail)" }
+    }
+
+    $result
+}
+
 def run_flake_install [temp_home: string] {
     let state_root = ($temp_home | path join ".local" "share")
     let config_root = ($temp_home | path join ".config")
@@ -44,11 +79,13 @@ def run_flake_install [temp_home: string] {
         XDG_CONFIG_HOME: $config_root
         XDG_DATA_HOME: $state_root
     } {
-        ^nix run .#install --extra-experimental-features "nix-command flakes" | complete
+        run_completed_external "running `nix run .#install` for flake install smoke validation" "nix" ["run" ".#install" "--extra-experimental-features" "nix-command flakes"] $INSTALL_TIMEOUT_SECONDS
     }
 }
 
 def verify_installed_runtime [temp_home: string] {
+    print "🔍 Verifying installed runtime layout ..."
+
     let runtime_current = ($temp_home | path join ".local" "share" "yazelix" "runtime" "current")
     let runtime_devenv = ($runtime_current | path join "bin" "devenv")
     let runtime_nu = ($runtime_current | path join "bin" "nu")
@@ -90,7 +127,7 @@ def verify_installed_runtime [temp_home: string] {
             XDG_CONFIG_HOME: ($temp_home | path join ".config")
             XDG_DATA_HOME: ($temp_home | path join ".local" "share")
         } {
-            ^$yzx_path --version-short | complete
+            run_completed_external "probing installed `yzx --version-short`" $yzx_path ["--version-short"]
         }
     )
 
@@ -110,15 +147,16 @@ def verify_installed_runtime [temp_home: string] {
     }
 
     let posix_launcher_result = (
-        ^env -i
-            HOME=$temp_home
-            PATH="/usr/bin:/bin"
-            XDG_CONFIG_HOME=($temp_home | path join ".config")
-            XDG_DATA_HOME=($temp_home | path join ".local" "share")
-            sh
+        run_completed_external "probing runtime-local POSIX yzx launcher" "env" [
+            "-i"
+            $"HOME=($temp_home)"
+            "PATH=/usr/bin:/bin"
+            $"XDG_CONFIG_HOME=($temp_home | path join '.config')"
+            $"XDG_DATA_HOME=($temp_home | path join '.local' 'share')"
+            "sh"
             $runtime_yzx_cli
-            --version-short
-        | complete
+            "--version-short"
+        ]
     )
 
     if $posix_launcher_result.exit_code != 0 {
@@ -137,17 +175,18 @@ def verify_installed_runtime [temp_home: string] {
     }
 
     let runtime_devenv_probe = (
-        ^env -i
-            HOME=$temp_home
-            PATH="/usr/bin:/bin"
-            XDG_CONFIG_HOME=($temp_home | path join ".config")
-            XDG_DATA_HOME=($temp_home | path join ".local" "share")
-            YAZELIX_RUNTIME_DIR=$runtime_current
-            YAZELIX_DIR=$runtime_current
+        run_completed_external "probing runtime-local devenv resolution" "env" [
+            "-i"
+            $"HOME=($temp_home)"
+            "PATH=/usr/bin:/bin"
+            $"XDG_CONFIG_HOME=($temp_home | path join '.config')"
+            $"XDG_DATA_HOME=($temp_home | path join '.local' 'share')"
+            $"YAZELIX_RUNTIME_DIR=($runtime_current)"
+            $"YAZELIX_DIR=($runtime_current)"
             $runtime_nu
-            -c
+            "-c"
             $"use ($devenv_cli_module | into string) *; print \(resolve_preferred_devenv_path\)"
-        | complete
+        ]
     )
 
     if $runtime_devenv_probe.exit_code != 0 {
@@ -173,17 +212,18 @@ def verify_installed_runtime [temp_home: string] {
     }
 
     let stale_runtime_probe = (
-        ^env -i
-            HOME=$temp_home
-            PATH="/usr/bin:/bin"
-            XDG_CONFIG_HOME=($temp_home | path join ".config")
-            XDG_DATA_HOME=($temp_home | path join ".local" "share")
-            YAZELIX_RUNTIME_DIR=$config_root
-            YAZELIX_DIR=$config_root
+        run_completed_external "probing stale config-root runtime recovery" "env" [
+            "-i"
+            $"HOME=($temp_home)"
+            "PATH=/usr/bin:/bin"
+            $"XDG_CONFIG_HOME=($temp_home | path join '.config')"
+            $"XDG_DATA_HOME=($temp_home | path join '.local' 'share')"
+            $"YAZELIX_RUNTIME_DIR=($config_root)"
+            $"YAZELIX_DIR=($config_root)"
             $runtime_nu
-            -c
+            "-c"
             $"use '($runtime_helper_module | into string)' [get_runtime_nu_path]; print \(get_runtime_nu_path\)"
-        | complete
+        ]
     )
 
     if $stale_runtime_probe.exit_code != 0 {
@@ -207,17 +247,18 @@ def verify_installed_runtime [temp_home: string] {
         "get_devenv_base_command | append [\"shell\" \"--\" \"true\"] | to json -r"
     ] | str join "\n")
     let shell_probe_resolution = (
-        ^env -i
-            HOME=$temp_home
-            PATH="/usr/bin:/bin"
-            XDG_CONFIG_HOME=($temp_home | path join ".config")
-            XDG_DATA_HOME=($temp_home | path join ".local" "share")
-            YAZELIX_RUNTIME_DIR=$runtime_current
-            YAZELIX_DIR=$runtime_current
+        run_completed_external "resolving installed runtime shell-enter command" "env" [
+            "-i"
+            $"HOME=($temp_home)"
+            "PATH=/usr/bin:/bin"
+            $"XDG_CONFIG_HOME=($temp_home | path join '.config')"
+            $"XDG_DATA_HOME=($temp_home | path join '.local' 'share')"
+            $"YAZELIX_RUNTIME_DIR=($runtime_current)"
+            $"YAZELIX_DIR=($runtime_current)"
             $runtime_nu
-            -c
+            "-c"
             $shell_probe_command
-        | complete
+        ]
     )
 
     if $shell_probe_resolution.exit_code != 0 {
@@ -233,7 +274,9 @@ def verify_installed_runtime [temp_home: string] {
     let shell_command = ($shell_probe_resolution.stdout | str trim | from json)
     let shell_bin = ($shell_command | first)
     let shell_args = ($shell_command | skip 1)
-    let shell_probe = (^$shell_bin ...$shell_args | complete)
+    let shell_probe = (
+        run_completed_external "running installed runtime shell-enter probe" $shell_bin $shell_args $INSTALL_TIMEOUT_SECONDS
+    )
 
     if $shell_probe.exit_code != 0 {
         if ($shell_probe.stdout | is-not-empty) {
