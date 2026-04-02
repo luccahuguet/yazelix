@@ -262,30 +262,35 @@ def get_edit_targets [] {
             id: "config"
             label: $"config  (ansi dark_gray)- main Yazelix config → ($paths.user_config)(ansi reset)"
             aliases: ["config", "main", "yazelix.toml"]
+            search: "config main yazelix yazelix.toml"
             path: $paths.user_config
         }
         {
             id: "packs"
             label: $"packs  (ansi dark_gray)- pack declarations → ($paths.user_pack_config)(ansi reset)"
             aliases: ["packs", "pack", "yazelix_packs.toml"]
+            search: "packs pack declarations yazelix_packs.toml"
             path: $paths.user_pack_config
         }
         {
             id: "helix"
             label: $"helix  (ansi dark_gray)- managed Helix user config → ($helix_path)(ansi reset)"
             aliases: ["helix", "hx", "editor"]
+            search: "helix hx editor config config.toml"
             path: $helix_path
         }
         {
             id: "zellij"
             label: $"zellij  (ansi dark_gray)- managed Zellij user config → ($zellij_path)(ansi reset)"
             aliases: ["zellij", "terminal", "config.kdl"]
+            search: "zellij terminal config.kdl multiplexer"
             path: $zellij_path
         }
         {
             id: "yazi"
             label: $"yazi  (ansi dark_gray)- managed Yazi main config \(yazi.toml\) → ($yazi_toml_path)(ansi reset)"
             aliases: ["yazi", "yazi.toml", "file-manager"]
+            search: "yazi yazi.toml file-manager file manager"
             path: $yazi_toml_path
         }
     ]
@@ -301,11 +306,30 @@ def filter_edit_targets [targets: list<record>, query_text: string] {
         return $targets
     }
 
+    let exact = (
+        $targets | where {|target|
+            (
+                (($target.id | str downcase) == $normalized)
+                or (($target.aliases? | default []) | any {|alias| ($alias | str downcase) == $normalized })
+            )
+        }
+    )
+    if not ($exact | is-empty) {
+        return $exact
+    }
+
+    let tokens = ($normalized | split row " " | where {|token| not ($token | is-empty) })
     $targets | where {|target|
-        (
-            (($target.id | str downcase) == $normalized)
-            or (($target.aliases? | default []) | any {|alias| ($alias | str downcase) == $normalized })
+        let haystack = (
+            [
+                $target.id
+                ...($target.aliases? | default [])
+                ($target.search? | default "")
+            ]
+            | str join " "
+            | str downcase
         )
+        $tokens | all {|token| $haystack | str contains $token }
     }
 }
 
@@ -320,7 +344,7 @@ def render_edit_target_error_choices [targets: list<record>] {
 }
 
 def choose_edit_target [targets: list<record>, prompt: string] {
-    let selected = (render_edit_target_choices $targets | input list $prompt)
+    let selected = (render_edit_target_choices $targets | input list --fuzzy $prompt)
     if ($selected | is-empty) {
         return null
     }
