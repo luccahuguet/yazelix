@@ -4,7 +4,6 @@
 
 use ../utils/config_state.nu compute_config_state
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/nix_detector.nu ensure_nix_available
 use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/terminal_launcher.nu *
@@ -23,36 +22,6 @@ def validate_launch_working_dir [working_dir: string] {
     }
 
     $resolved
-}
-
-def run_detached_terminal_launch [launch_cmd: string, terminal_name: string, --verbose] {
-    if (which bash | is-empty) {
-        let classification = (format_failure_classification "host-dependency" "Install bash or fix PATH, then retry the launch.")
-        error make {msg: $"Cannot launch ($terminal_name): bash is not available in PATH.\nYazelix uses bash to detach new terminal windows.\n($classification)"}
-    }
-
-    let output = (^bash -c $launch_cmd | complete)
-    if $output.exit_code != 0 {
-        let stderr_tail = (
-            $output.stderr
-            | default ""
-            | lines
-            | last 5
-            | str join "\n"
-            | str trim
-        )
-        let details = if ($stderr_tail | is-empty) {
-            "No stderr output was captured."
-        } else {
-            $stderr_tail
-        }
-
-        error make {msg: $"Failed to launch ($terminal_name) \(exit code: ($output.exit_code)\)\n($details)"}
-    }
-
-    if $verbose {
-        print $"✅ Launch request sent to ($terminal_name)"
-    }
 }
 
 def main [

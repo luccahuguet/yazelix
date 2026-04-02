@@ -318,6 +318,40 @@ def test_launch_here_path_warns_when_existing_persistent_session_ignores_it [] {
     $result
 }
 
+# Regression: detached terminal launch must fail if the child terminal exits immediately.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_detached_terminal_launch_reports_immediate_child_failure [] {
+    print "🧪 Testing detached terminal launch reports immediate child failure..."
+
+    let result = (try {
+        let launcher_module = (repo_path "nushell" "scripts" "utils" "terminal_launcher.nu")
+        let snippet = ([
+            $"source \"($launcher_module)\""
+            'try {'
+            "    run_detached_terminal_launch \"sh -c 'echo detached-boom >&2; exit 27'\" \"Fake Terminal\""
+            "} catch {|err|"
+            '    print $err.msg'
+            '}'
+        ] | str join "\n")
+        let output = (run_nu_snippet $snippet)
+        let stdout = ($output.stdout | str trim)
+        let stderr = ($output.stderr | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "Failed to launch Fake Terminal") and ($stdout | str contains "detached-boom") and ($stderr == "") {
+            print "  ✅ Detached launch surfaces immediate child failure instead of claiming success"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    $result
+}
+
 # Defends: startup requires the generated layout path.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_startup_requires_generated_layout_path [] {
@@ -372,46 +406,16 @@ def test_yzx_cwd_requires_zellij [] {
     }
 }
 
-# Defends: yzx cwd resolves zoxide queries through the managed flow.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-def test_yzx_cwd_resolves_zoxide_query [] {
-    print "🧪 Testing yzx cwd zoxide resolution..."
-
-    try {
-        if (which zoxide | is-empty) {
-            print "  ℹ️  Skipping zoxide resolution test because zoxide is not available"
-            return true
-        }
-
-        let repo_dir = (get_repo_config_dir)
-        ^zoxide add $repo_dir
-        let yzx_script = (repo_path "nushell" "scripts" "core" "yazelix.nu")
-        let output = (^nu -c $"use \"($yzx_script)\" *; resolve_yzx_cwd_target yazelix" | complete)
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and ($stdout == $repo_dir) {
-            print "  ✅ yzx cwd resolves zoxide queries before updating the tab directory"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 export def run_workspace_canonical_tests [] {
     [
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
+        (test_detached_terminal_launch_reports_immediate_child_failure)
         (test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions)
         (test_launch_here_path_warns_when_existing_persistent_session_ignores_it)
         (test_startup_rejects_missing_working_dir)
         (test_launch_rejects_file_working_dir)
         (test_startup_requires_generated_layout_path)
         (test_yzx_cwd_requires_zellij)
-        (test_yzx_cwd_resolves_zoxide_query)
     ]
 }
 

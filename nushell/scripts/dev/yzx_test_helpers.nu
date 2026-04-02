@@ -11,7 +11,7 @@ export def get_repo_config_dir [] {
 }
 
 export def repo_path [...parts: string] {
-    $parts | reduce -f (get_repo_config_dir) {|part, acc| $acc | path join $part }
+    $parts | reduce -f (get_repo_root) {|part, acc| $acc | path join $part }
 }
 
 export def setup_test_home [] {

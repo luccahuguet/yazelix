@@ -2,7 +2,7 @@
 # Terminal launcher utilities for Yazelix
 
 use constants.nu [SUPPORTED_TERMINALS, TERMINAL_CONFIG_PATHS, TERMINAL_METADATA, YAZELIX_WINDOW_CLASS, YAZELIX_X11_INSTANCE]
-use common.nu [get_yazelix_runtime_dir]
+use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 
 # Check if a command is available
 export def command_exists [cmd: string]: nothing -> bool {
@@ -125,8 +125,21 @@ def build_detached_launch_prefix [needs_reload: bool]: nothing -> string {
     $"env ($unset_flags) ($setsid_prefix)"
 }
 
-def build_detached_background_command [prefix: string, command: string]: nothing -> string {
-    $"nohup ($prefix)($command) >/dev/null 2>&1 < /dev/null &"
+def quote_for_bash_single_string [value: string] {
+    "'" + ($value | str replace -a "'" "'\"'\"'") + "'"
+}
+
+def get_launch_probe_log_path [terminal_name: string] {
+    let timestamp = (date now | format date "%Y%m%d_%H%M%S_%3f")
+    let sanitized_terminal = (
+        $terminal_name
+        | str downcase
+        | str replace -ra '[^a-z0-9]+' "_"
+        | str trim -c "_"
+    )
+    let log_dir = (get_yazelix_state_dir | path join "logs" "terminal_launch")
+    mkdir $log_dir
+    ($log_dir | path join $"($sanitized_terminal)_($timestamp).log")
 }
 
 def get_working_dir_arg [terminal: string, working_dir: string]: nothing -> string {
@@ -144,7 +157,8 @@ def get_working_dir_arg [terminal: string, working_dir: string]: nothing -> stri
     }
 }
 
-# Build launch command for a terminal
+# Build launch command for a terminal. The returned command is a foreground
+# terminal exec; detached/background handling is applied by run_detached_terminal_launch.
 export def build_launch_command [
     terminal_info: record
     config_path
@@ -164,10 +178,10 @@ export def build_launch_command [
         let runtime_launcher = (get_runtime_terminal_launcher_path $terminal)
 
         if ($runtime_launcher | is-not-empty) and ($runtime_launcher | path exists) {
-            build_detached_background_command $launch_prefix $"bash \"($runtime_launcher)\" ($terminal)($working_dir_arg)"
+            $"($launch_prefix)bash \"($runtime_launcher)\" ($terminal)($working_dir_arg)"
         } else {
             # Wrappers handle config internally via environment variable
-            build_detached_background_command $launch_prefix $"($command)($working_dir_arg)"
+            $"($launch_prefix)($command)($working_dir_arg)"
         }
     } else {
         # Direct terminal launch with config
@@ -201,7 +215,7 @@ export def build_launch_command [
             }
         }
 
-        build_detached_background_command $launch_prefix $terminal_cmd
+        $"($launch_prefix)($terminal_cmd)"
     }
 }
 
@@ -212,5 +226,55 @@ export def get_terminal_display_name [terminal_info: record]: nothing -> string 
         $"Yazelix - ($name) \(with GPU acceleration\)"
     } else {
         $"($name)"
+    }
+}
+
+export def run_detached_terminal_launch [launch_cmd: string, terminal_name: string, --verbose] {
+    if (which bash | is-empty) {
+        error make {msg: $"Cannot launch ($terminal_name): bash is not available in PATH.\nYazelix uses bash to detach new terminal windows."}
+    }
+
+    let launch_log = (get_launch_probe_log_path $terminal_name)
+    let quoted_launch_cmd = (quote_for_bash_single_string $launch_cmd)
+    let quoted_launch_log = (quote_for_bash_single_string $launch_log)
+    let probe_script = [
+        $"launch_log=($quoted_launch_log)"
+        ': > "$launch_log"'
+        $"nohup bash -lc ($quoted_launch_cmd) >\"$launch_log\" 2>&1 < /dev/null &"
+        'pid=$!'
+        'sleep 1'
+        'if kill -0 "$pid" 2>/dev/null; then'
+        '  rm -f "$launch_log"'
+        '  exit 0'
+        'fi'
+        'wait "$pid"'
+        'status=$?'
+        'echo "$launch_log"'
+        'exit "$status"'
+    ] | str join "\n"
+
+    let output = (^bash -lc $probe_script | complete)
+    if $output.exit_code != 0 {
+        let logged_path = ($output.stdout | lines | last | default "" | str trim)
+        let log_tail = if ($logged_path | is-not-empty) and ($logged_path | path exists) {
+            open --raw $logged_path
+            | default ""
+            | lines
+            | last 10
+            | str join "\n"
+            | str trim
+        } else {
+            ""
+        }
+        let details = if ($log_tail | is-empty) {
+            "No terminal stderr was captured."
+        } else {
+            $log_tail
+        }
+        error make {msg: $"Failed to launch ($terminal_name) \(exit code: ($output.exit_code)\)\n($details)"}
+    }
+
+    if $verbose {
+        print $"✅ Launch request sent to ($terminal_name)"
     }
 }
