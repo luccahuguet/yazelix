@@ -114,6 +114,7 @@ A test is a strong demotion candidate when it is:
   - a default-suite runtime budget
   - explicit `# Test lane:` declarations on all `test_*.nu` files
   - a nearby `# Defends:`, `# Regression:`, or `# Invariant:` marker for every canonical default-lane test entry
+  - a nearby `# Strength: N/10` marker for every canonical default-lane test entry
   - no new generic `_extended` overflow files
 
 ### Lane placement rules
@@ -144,7 +145,42 @@ Default-lane component files must also justify every canonical test entry with o
 - `# Regression: ...`
 - `# Invariant: ...`
 
-This is intentionally mechanical rather than philosophical. The validator cannot prove a test is wise, but it can make low-effort junk and generic overflow harder to land.
+Default-lane component files must also score every canonical test entry with:
+
+- `# Strength: N/10`
+
+### Default test strength rubric
+
+Score default-lane tests out of 10 using five `0-2` dimensions:
+
+1. `Failure significance`
+   - `0`: failing would barely matter
+   - `1`: catches some real drift
+   - `2`: catches a meaningful user-visible or contract regression
+2. `Behavior proximity`
+   - `0`: mostly implementation trivia
+   - `1`: mixed
+   - `2`: clearly checks supported behavior or invariant
+3. `Refactor resilience`
+   - `0`: likely to fail on harmless internal cleanup
+   - `1`: somewhat coupled
+   - `2`: should fail only when the real contract changes
+4. `Cost efficiency`
+   - `0`: expensive, flaky, or noisy for the value
+   - `1`: acceptable
+   - `2`: cheap and high-signal
+5. `Uniqueness`
+   - `0`: redundant with a cheaper check
+   - `1`: partially overlapping
+   - `2`: distinct useful coverage
+
+Interpretation:
+
+- `0-4`: weak, remove or demote
+- `5-6`: borderline, justify explicitly before keeping
+- `7-10`: strong enough for the default lane
+
+The validator enforces a minimum default-lane score of `7/10`. This is intentionally mechanical rather than philosophical. The validator still cannot prove a test is wise, but it can make low-effort junk and generic overflow harder to land.
 
 ### Concrete cleanup in this change
 

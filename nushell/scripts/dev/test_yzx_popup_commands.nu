@@ -221,14 +221,19 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
 
 export def run_popup_canonical_tests [] {
     [
+        # Strength: 7/10
         # Defends: popup command resolution prefers the configured default program.
         (test_popup_command_prefers_configured_default)
+        # Strength: 7/10
         # Defends: popup cwd resolution prefers the workspace root.
         (test_popup_cwd_prefers_workspace_root)
+        # Strength: 7/10
         # Defends: popup size parsing accepts valid percentages and rejects invalid ones.
         (test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages)
+        # Strength: 8/10
         # Regression: popup toggle wrapper surfaces permission denials instead of failing silently.
         (test_popup_toggle_wrapper_surfaces_permission_denials)
+        # Strength: 8/10
         # Regression: popup wrappers use the canonical editor for the current launch profile.
         (test_popup_wrapper_uses_canonical_editor_for_current_profile)
     ]

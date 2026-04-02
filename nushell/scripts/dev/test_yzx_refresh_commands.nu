@@ -39,6 +39,7 @@ def test_command_failure_summary_includes_command_tail_and_recovery [] {
 
 export def run_refresh_canonical_tests [] {
     [
+        # Strength: 8/10
         # Defends: refresh failures include command tail and recovery guidance.
         (test_command_failure_summary_includes_command_tail_and_recovery)
     ]
