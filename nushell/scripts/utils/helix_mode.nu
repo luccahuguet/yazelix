@@ -1,29 +1,16 @@
 #!/usr/bin/env nu
 # Helix mode detection utility for Yazelix
 
-# Get the current Helix mode from yazelix.toml configuration (falls back to legacy yazelix.nix)
+use common.nu get_yazelix_runtime_dir
+# Get the current Helix mode from the managed TOML surfaces.
 use config_surfaces.nu get_main_user_config_path
 export def get_helix_mode [] {
     let toml_config = (get_main_user_config_path)
-    let legacy_config = $"($env.HOME)/.config/yazelix/yazelix.nix"
-    let default_toml = $"($env.HOME)/.config/yazelix/yazelix_default.toml"
+    let default_toml = ((get_yazelix_runtime_dir) | path join "yazelix_default.toml")
 
     if ($toml_config | path exists) {
         try {
             open $toml_config | get helix.mode
-        } catch {
-            "release"
-        }
-    } else if ($legacy_config | path exists) {
-        try {
-            let config_content = (open $legacy_config)
-            let helix_mode_line = ($config_content | lines | where $it | str contains "helix_mode")
-
-            if not ($helix_mode_line | is-empty) {
-                $helix_mode_line | first | str replace "helix_mode = " "" | str replace "\"" "" | str replace ";" "" | str trim
-            } else {
-                "release"
-            }
         } catch {
             "release"
         }

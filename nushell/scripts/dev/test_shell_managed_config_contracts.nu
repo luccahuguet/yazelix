@@ -345,6 +345,105 @@ def test_managed_bash_config_sources_optional_user_hook [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+# Defends: Helix mode export ignores legacy yazelix.nix and uses the managed TOML/default surfaces only.
+def test_export_helix_env_ignores_legacy_yazelix_nix [] {
+    print "🧪 Testing Helix mode export ignores legacy yazelix.nix and uses the TOML contract..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_helix_mode_legacy_XXXXXX | str trim)
+    let xdg_config_home = ($tmp_home | path join ".config")
+    let config_dir = ($xdg_config_home | path join "yazelix")
+    let expected_mode = (open ($repo_root | path join "yazelix_default.toml") | get helix.mode)
+
+    mkdir $xdg_config_home
+    mkdir $config_dir
+    'helix_mode = "source";
+' | save --force --raw ($config_dir | path join "yazelix.nix")
+
+    let result = (try {
+        let output = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_DIR: $repo_root
+        } {
+            ^nu -c $"use \"($repo_root | path join 'nushell' 'scripts' 'utils' 'helix_mode.nu')\" export_helix_env; export_helix_env" | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let expected_export = $"export YAZELIX_HELIX_MODE=\"($expected_mode)\""
+
+        if ($output.exit_code == 0) and ($stdout == $expected_export) {
+            print "  ✅ Helix mode export now ignores legacy yazelix.nix and stays on the managed TOML/default path"
+            true
+        } else {
+            print $"  ❌ Unexpected Helix mode export result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim)) expected=($expected_export)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+# Defends: managed Fish config derives Helix mode from the shared TOML exporter without a shell-local fallback parser.
+def test_managed_fish_config_exports_helix_mode_from_toml [] {
+    print "🧪 Testing managed Fish config exports Helix mode from the shared TOML path..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_fish_helix_mode_XXXXXX | str trim)
+    let xdg_config_home = ($tmp_home | path join ".config")
+    let config_dir = ($xdg_config_home | path join "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
+
+    mkdir $xdg_config_home
+    mkdir $config_dir
+    mkdir $user_config_dir
+    '[helix]
+mode = "source"
+' | save --force --raw ($user_config_dir | path join "yazelix.toml")
+
+    let result = (try {
+        let fish_probe = ($tmp_home | path join "probe.fish")
+        [
+            $"source \"($repo_root | path join "shells" "fish" "yazelix_fish_config.fish")\""
+            "printf \"%s\" $YAZELIX_HELIX_MODE"
+            ""
+        ] | str join "\n" | save --force --raw $fish_probe
+
+        let output = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_DIR: $repo_root
+            YAZELIX_HELIX_MODE: ""
+        } {
+            ^fish --no-config $fish_probe | complete
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == "source") {
+            print "  ✅ Managed Fish config now exports Helix mode through the shared TOML-based helper"
+            true
+        } else {
+            print $"  ❌ Unexpected managed Fish Helix mode result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 export def run_shell_managed_config_contract_tests [] {
     [
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
@@ -353,6 +452,8 @@ export def run_shell_managed_config_contract_tests [] {
         (test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent)
         (test_managed_nushell_config_loads_generated_yzx_extern_bridge)
         (test_managed_bash_config_sources_optional_user_hook)
+        (test_export_helix_env_ignores_legacy_yazelix_nix)
+        (test_managed_fish_config_exports_helix_mode_from_toml)
     ]
 }
 

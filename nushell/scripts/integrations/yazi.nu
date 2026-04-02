@@ -603,7 +603,7 @@ export def open_file_with_editor [file_path: path] {
     }
 
     # Get the configured editor
-    let editor = $env.EDITOR
+    let editor = ($env.EDITOR? | default "")
     if ($editor | is-empty) {
         let error_msg = "EDITOR environment variable is not set"
         log_to_file "open_editor.log" $"ERROR: ($error_msg)"
