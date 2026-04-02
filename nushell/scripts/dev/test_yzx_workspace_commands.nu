@@ -318,27 +318,56 @@ def test_launch_here_path_warns_when_existing_persistent_session_ignores_it [] {
     $result
 }
 
-# Regression: detached terminal launch must fail if the child terminal exits immediately.
+# Regression: launch falls through to the next configured terminal when the first one crashes immediately.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_detached_terminal_launch_reports_immediate_child_failure [] {
-    print "🧪 Testing detached terminal launch reports immediate child failure..."
+def test_launch_falls_through_after_immediate_terminal_failure [] {
+    print "🧪 Testing terminal launch falls through after immediate failure..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_terminal_fallback_XXXXXX | str trim)
 
     let result = (try {
-        let launcher_module = (repo_path "nushell" "scripts" "utils" "terminal_launcher.nu")
+        let fake_bin = ($tmpdir | path join "bin")
+        let fake_runtime = ($tmpdir | path join "runtime")
+        let fake_shells = ($fake_runtime | path join "shells" "posix")
+        mkdir $fake_bin
+        mkdir $fake_runtime
+        mkdir ($fake_runtime | path join "shells")
+        mkdir $fake_shells
+        "" | save --force --raw ($fake_runtime | path join "yazelix_default.toml")
+
+        [
+            "#!/bin/sh"
+            "echo wezterm-boom >&2"
+            "exit 27"
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "yazelix-wezterm")
+        ^chmod +x ($fake_bin | path join "yazelix-wezterm")
+
+        [
+            "#!/bin/sh"
+            "sleep 2"
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "yazelix-kitty")
+        ^chmod +x ($fake_bin | path join "yazelix-kitty")
+
+        let fake_wezterm = ($fake_bin | path join "yazelix-wezterm")
+        let fake_kitty = ($fake_bin | path join "yazelix-kitty")
+        let launch_script = (repo_path "nushell" "scripts" "core" "launch_yazelix.nu")
         let snippet = ([
-            $"source \"($launcher_module)\""
-            'try {'
-            "    run_detached_terminal_launch \"sh -c 'echo detached-boom >&2; exit 27'\" \"Fake Terminal\""
-            "} catch {|err|"
-            '    print $err.msg'
-            '}'
+            $"source \"($launch_script)\""
+            $"let candidates = [{terminal: \"wezterm\", name: \"WezTerm\", command: \"($fake_wezterm)\", use_wrapper: true}, {terminal: \"kitty\", name: \"Kitty\", command: \"($fake_kitty)\", use_wrapper: true}]"
+            "let launched = (launch_terminal_candidates $candidates 'yazelix' $env.PWD false $env.YAZELIX_RUNTIME_DIR false '')"
+            "print ($launched.terminal)"
         ] | str join "\n")
-        let output = (run_nu_snippet $snippet)
+        let output = (with-env {
+            YAZELIX_RUNTIME_DIR: $fake_runtime
+            YAZELIX_STATE_DIR: ($tmpdir | path join "state")
+        } {
+            run_nu_snippet $snippet
+        })
         let stdout = ($output.stdout | str trim)
         let stderr = ($output.stderr | str trim)
 
-        if ($output.exit_code == 0) and ($stdout | str contains "Failed to launch Fake Terminal") and ($stdout | str contains "detached-boom") and ($stderr == "") {
-            print "  ✅ Detached launch surfaces immediate child failure instead of claiming success"
+        if ($output.exit_code == 0) and ($stdout | str contains "failed to start; trying Yazelix - Kitty") and ($stdout | str ends-with "kitty") and ($stderr == "") {
+            print "  ✅ Immediate terminal crashes fall through to the next configured terminal"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr)"
@@ -349,6 +378,7 @@ def test_detached_terminal_launch_reports_immediate_child_failure [] {
         false
     })
 
+    rm -rf $tmpdir
     $result
 }
 
@@ -409,7 +439,7 @@ def test_yzx_cwd_requires_zellij [] {
 export def run_workspace_canonical_tests [] {
     [
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
-        (test_detached_terminal_launch_reports_immediate_child_failure)
+        (test_launch_falls_through_after_immediate_terminal_failure)
         (test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions)
         (test_launch_here_path_warns_when_existing_persistent_session_ignores_it)
         (test_startup_rejects_missing_working_dir)

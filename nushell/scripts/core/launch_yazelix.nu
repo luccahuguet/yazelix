@@ -24,6 +24,150 @@ def validate_launch_working_dir [working_dir: string] {
     $resolved
 }
 
+def resolve_terminal_candidates [requested_terminal: string, terminals: list<string>] {
+    if ($requested_terminal | is-not-empty) {
+        let specified_terminal = $requested_terminal
+        let term_meta = ($TERMINAL_METADATA | get -o $specified_terminal)
+        if $term_meta == null {
+            error make {msg: $"Unsupported terminal '($specified_terminal)'\nSupported terminals: ($SUPPORTED_TERMINALS | str join ', ')"}
+        }
+
+        let candidates = (detect_terminal_candidates [$specified_terminal] true)
+        if ($candidates | is-empty) {
+            error make {msg: $"Specified terminal '($specified_terminal)' is not installed\nPlease install it or choose a different terminal for testing"}
+        }
+
+        return $candidates
+    }
+
+    let candidates = (detect_terminal_candidates $terminals true)
+    if ($candidates | is-empty) {
+        error make {msg: "None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty, Foot) are installed. Please install one of these terminals to use Yazelix.\n  - WezTerm: https://wezfurlong.org/wezterm/\n  - Ghostty: https://ghostty.org/\n  - Kitty: https://sw.kovidgoyal.net/kitty/\n  - Alacritty: https://alacritty.org/\n - Foot: https://codeberg.org/dnkl/foot"}
+    }
+
+    $candidates
+}
+
+def describe_terminal_invocation [terminal_info: record, terminal_config] {
+    let terminal = $terminal_info.terminal
+    if $terminal_info.use_wrapper {
+        $"Running: ($terminal_info.command) \(with nixGL auto-detection\)"
+    } else if $terminal == "wezterm" {
+        $"Running: wezterm --config-file ($terminal_config) start --class=com.yazelix.Yazelix"
+    } else if $terminal == "ghostty" {
+        $"Running: ghostty --config-file=($terminal_config)"
+    } else if $terminal == "kitty" {
+        $"Running: kitty --config=($terminal_config) --class=com.yazelix.Yazelix"
+    } else if $terminal == "alacritty" {
+        $"Running: alacritty --config-file=($terminal_config)"
+    } else if $terminal == "foot" {
+        $"Running: foot --config ($terminal_config) --app-id com.yazelix.Yazelix"
+    } else {
+        $"Running: ($terminal)"
+    }
+}
+
+def launch_terminal_candidates [
+    terminal_candidates: list<record>
+    terminal_config_mode: string
+    working_dir: string
+    needs_reload: bool
+    runtime_dir: string
+    verbose_mode: bool
+    requested_terminal: string
+] {
+    mut failures = []
+    mut index = 0
+
+    for terminal_info in $terminal_candidates {
+        let display_name = (get_terminal_display_name $terminal_info)
+        let terminal_config = if $terminal_info.use_wrapper {
+            null
+        } else {
+            resolve_terminal_config $terminal_info.terminal $terminal_config_mode
+        }
+
+        if ($terminal_config != null) and (not ($terminal_config | path exists)) {
+            let msg = $"($terminal_info.name) config not found at ($terminal_config)"
+            $failures = ($failures | append {name: $display_name, reason: $msg})
+            continue
+        }
+
+        let launch_cmd = (build_launch_command $terminal_info $terminal_config $working_dir $needs_reload)
+
+        if $verbose_mode {
+            print $"Using terminal: ($display_name)"
+            print (describe_terminal_invocation $terminal_info $terminal_config)
+        }
+
+        mut propagated_env = {
+            YAZELIX_TERMINAL: $terminal_info.terminal
+            YAZELIX_RUNTIME_DIR: $runtime_dir
+            YAZELIX_DIR: $runtime_dir
+        }
+        if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) {
+            $propagated_env = ($propagated_env | upsert YAZELIX_SWEEP_TEST_ID $env.YAZELIX_SWEEP_TEST_ID)
+        }
+        if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
+            $propagated_env = ($propagated_env | upsert YAZELIX_LAYOUT_OVERRIDE $env.YAZELIX_LAYOUT_OVERRIDE)
+        }
+
+        let env_block = if $terminal_info.use_wrapper {
+            $propagated_env | upsert YAZELIX_TERMINAL_CONFIG_MODE $terminal_config_mode
+        } else {
+            $propagated_env
+        }
+
+        if $verbose_mode {
+            let launch_label = if $terminal_info.use_wrapper { "Launching wrapper command" } else { "Launching command" }
+            print $"($launch_label): ($launch_cmd)"
+        }
+
+        let launch_attempt = (try {
+            with-env $env_block {
+                run_detached_terminal_launch $launch_cmd $display_name --verbose=$verbose_mode
+            }
+            {ok: true}
+        } catch {|err|
+            {ok: false, err: $err}
+        })
+
+        if $launch_attempt.ok {
+            return $terminal_info
+        }
+
+        let err_msg = ($launch_attempt.err.msg | default ($launch_attempt.err | to nuon))
+        $failures = ($failures | append {name: $display_name, reason: $err_msg})
+        $index = $index + 1
+
+        if ($requested_terminal | is-empty) and ($index < ($terminal_candidates | length)) {
+            let next_name = (get_terminal_display_name ($terminal_candidates | get $index))
+            print $"⚠️  ($display_name) failed to start; trying ($next_name)..."
+        }
+    }
+
+    let failure_summary = (
+        $failures
+        | each {|failure|
+            let tail = (
+                $failure.reason
+                | lines
+                | last 2
+                | str join " "
+                | str trim
+            )
+            $"  - ($failure.name): ($tail)"
+        }
+        | str join "\n"
+    )
+
+    if ($requested_terminal | is-not-empty) {
+        error make {msg: $"Failed to launch requested terminal '($requested_terminal)'.\n($failure_summary)"}
+    } else {
+        error make {msg: $"Failed to launch any configured terminal.\n($failure_summary)"}
+    }
+}
+
 def main [
     launch_cwd?: string
     --terminal(-t): string  # Override terminal selection (for sweep testing)
@@ -106,126 +250,7 @@ def main [
     # Generate all terminal configurations for safety and consistency
     generate_all_terminal_configs
 
-    # Detect available terminal (wrappers preferred)
-    # If terminal was explicitly specified via --terminal flag, force that specific terminal only
-    let terminal_info = if ($requested_terminal | is-not-empty) {
-        # Strict mode: only try the specified terminal, no fallbacks
-        let specified_terminal = $requested_terminal  # Use the --terminal flag value
-        let term_meta = ($TERMINAL_METADATA | get -o $specified_terminal)
-        if $term_meta == null {
-            print $"Error: Unsupported terminal '($specified_terminal)'"
-            print $"Supported terminals: ($SUPPORTED_TERMINALS | str join ', ')"
-            exit 1
-        }
-        let wrapper_cmd = $term_meta.wrapper
-
-        # Prefer the Yazelix-managed wrapper when available. Ghostty's wrapper
-        # carries the managed IM and GPU-launch behavior we rely on.
-        if (command_exists $wrapper_cmd) {
-            {
-                terminal: $specified_terminal
-                name: $term_meta.name
-                command: $wrapper_cmd
-                use_wrapper: true
-            }
-        } else if (command_exists $specified_terminal) {
-            {
-                terminal: $specified_terminal
-                name: $term_meta.name
-                command: $specified_terminal
-                use_wrapper: false
-            }
-        } else {
-            print $"Error: Specified terminal '($specified_terminal)' is not installed"
-            print "Please install it or choose a different terminal for testing"
-            exit 1
-        }
-    } else {
-        # Normal mode: use detect_terminal with fallbacks
-        detect_terminal $terminals true
-    }
-
-    if $terminal_info == null {
-        print "Error: None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty, Foot) are installed. Please install one of these terminals to use Yazelix."
-        print "  - WezTerm: https://wezfurlong.org/wezterm/"
-        print "  - Ghostty: https://ghostty.org/"
-        print "  - Kitty: https://sw.kovidgoyal.net/kitty/"
-        print "  - Alacritty: https://alacritty.org/"
-        print " - Foot: https://codeberg.org/dnkl/foot"
-        exit 1
-    }
-
-    # Get display name and print
-    let display_name = get_terminal_display_name $terminal_info
-    if $verbose_mode {
-        print $"Using terminal: ($display_name)"
-    }
-
-    # Resolve config path (skip for wrappers which handle internally)
-    let terminal_config = if $terminal_info.use_wrapper {
-        null
-    } else {
-        resolve_terminal_config $terminal_info.terminal $terminal_config_mode
-    }
-
-    # Check if terminal config exists (skip for wrappers)
-    if ($terminal_config != null) and (not ($terminal_config | path exists)) {
-        print $"Error: ($terminal_info.name) config not found at ($terminal_config)"
-        exit 1
-    }
-
-    # Build launch command (pass needs_reload to control env var clearing)
-    let launch_cmd = build_launch_command $terminal_info $terminal_config $working_dir $needs_reload
-
-    # Print what we're running
-    let terminal = $terminal_info.terminal
-    if $verbose_mode {
-        if $terminal_info.use_wrapper {
-            print $"Running: ($terminal_info.command) \(with nixGL auto-detection\)"
-        } else {
-            if $terminal == "wezterm" {
-                print $"Running: wezterm --config-file ($terminal_config) start --class=com.yazelix.Yazelix"
-            } else if $terminal == "ghostty" {
-                print $"Running: ghostty --config-file=($terminal_config)"
-            } else if $terminal == "kitty" {
-                print $"Running: kitty --config=($terminal_config) --class=com.yazelix.Yazelix"
-            } else if $terminal == "alacritty" {
-                print $"Running: alacritty --config-file=($terminal_config)"
-            } else if $terminal == "foot" {
-                print $"Running: foot --config ($terminal_config) --app-id com.yazelix.Yazelix"
-            }
-        }
-    }
-
-    # Launch terminal using bash to handle background processes properly
-    # Preserve sweep/test env vars when present so the launched session can select
-    # the test layout and write verification results.
     let runtime_dir = (get_yazelix_runtime_dir)
-    mut propagated_env = {
-        YAZELIX_TERMINAL: $terminal_info.terminal
-        YAZELIX_RUNTIME_DIR: $runtime_dir
-        YAZELIX_DIR: $runtime_dir
-    }
-    if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) {
-        $propagated_env = ($propagated_env | upsert YAZELIX_SWEEP_TEST_ID $env.YAZELIX_SWEEP_TEST_ID)
-    }
-    if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
-        $propagated_env = ($propagated_env | upsert YAZELIX_LAYOUT_OVERRIDE $env.YAZELIX_LAYOUT_OVERRIDE)
-    }
-    if $terminal_info.use_wrapper {
-        let env_block = ($propagated_env | upsert YAZELIX_TERMINAL_CONFIG_MODE $terminal_config_mode)
-        if $verbose_mode {
-            print $"Launching wrapper command: ($launch_cmd)"
-        }
-        with-env $env_block {
-            run_detached_terminal_launch $launch_cmd $display_name --verbose=$verbose_mode
-        }
-    } else {
-        if $verbose_mode {
-            print $"Launching command: ($launch_cmd)"
-        }
-        with-env $propagated_env {
-            run_detached_terminal_launch $launch_cmd $display_name --verbose=$verbose_mode
-        }
-    }
+    let terminal_candidates = (resolve_terminal_candidates $requested_terminal $terminals)
+    launch_terminal_candidates $terminal_candidates $terminal_config_mode $working_dir $needs_reload $runtime_dir $verbose_mode $requested_terminal | ignore
 }

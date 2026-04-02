@@ -59,8 +59,7 @@ export def resolve_terminal_config_from_env [terminal: string] {
     resolve_terminal_config $terminal $mode
 }
 
-# Detect available terminal (wrapper or direct)
-export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
+export def detect_terminal_candidates [preferred: any, prefer_wrappers: bool = true] {
     # Build list of terminals to check: use list order if provided, otherwise preferred first
     let ordered_terminals = if ($preferred | describe | str contains "list") {
         $preferred | where $it in $SUPPORTED_TERMINALS
@@ -69,22 +68,25 @@ export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
         ([$preferred] | append $other_terminals)
     }
     if ($ordered_terminals | is-empty) {
-        return null
+        return []
     }
 
-    let terminals_to_check = if $prefer_wrappers {
-        # Prefer Yazelix-managed wrappers first when they exist. Those wrappers
-        # carry terminal-specific integration such as IM normalization and GPU
-        # launch behavior.
-        let wrappers = $ordered_terminals | each {|t| {terminal: $t, use_wrapper: true}}
-        let direct = $ordered_terminals | each {|t| {terminal: $t, use_wrapper: false}}
-        $wrappers | append $direct
-    } else {
-        # Direct terminal only
-        $ordered_terminals | each {|t| {terminal: $t, use_wrapper: false}}
-    }
+    let terminals_to_check = (
+        $ordered_terminals
+        | each {|t|
+            if $prefer_wrappers {
+                [
+                    {terminal: $t, use_wrapper: true}
+                    {terminal: $t, use_wrapper: false}
+                ]
+            } else {
+                [{terminal: $t, use_wrapper: false}]
+            }
+        }
+        | flatten
+    )
 
-    # Find first available terminal
+    mut available = []
     for term_check in $terminals_to_check {
         let terminal = $term_check.terminal
         let use_wrapper = $term_check.use_wrapper
@@ -93,17 +95,26 @@ export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
         let command = if $use_wrapper { $term_meta.wrapper } else { $terminal }
 
         if (command_exists $command) {
-            return {
+            $available = ($available | append {
                 terminal: $terminal
                 name: $term_meta.name
                 command: $command
                 use_wrapper: $use_wrapper
-            }
+            })
         }
     }
 
-    # No terminal found
-    null
+    $available
+}
+
+# Detect first available terminal (wrapper or direct)
+export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
+    let candidates = (detect_terminal_candidates $preferred $prefer_wrappers)
+    if ($candidates | is-empty) {
+        null
+    } else {
+        $candidates | first
+    }
 }
 
 # Build a detached launch prefix for new terminal windows.
