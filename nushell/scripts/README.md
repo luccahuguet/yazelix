@@ -37,7 +37,7 @@ Reusable utility functions and helpers:
 Scripts for development, testing, and maintenance:
 - `validate_syntax.nu` - Validate syntax of all Nushell scripts using nu-check
 - `record_demo.nu` - VHS demo recording with font support
-- `test_fonts.nu` - Font testing for VHS recordings
+- `record_demo_fonts.nu` - Font testing for VHS recordings
 - `update_zjstatus.nu` - Maintainer helper to refresh the vendored zjstatus.wasm from the Nix store
 - `update_zellij_pane_orchestrator.nu` - Sync the locally built pane orchestrator wasm into the repo and runtime plugin paths
   - Pair with `yzx dev build_pane_orchestrator` after enabling the `rust_wasi` pack
@@ -70,7 +70,7 @@ yzx dev test --visual    # Run only the visual terminal sweep
 nu ~/.config/yazelix/nushell/scripts/dev/record_demo.nu quick
 
 # Test fonts (maintainer path)
-nu ~/.config/yazelix/nushell/scripts/dev/test_fonts.nu
+nu ~/.config/yazelix/nushell/scripts/dev/record_demo_fonts.nu
 ```
 
 ## File Naming Convention

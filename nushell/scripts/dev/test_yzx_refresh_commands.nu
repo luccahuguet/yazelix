@@ -2,7 +2,7 @@
 # Test lane: default
 # Defends: docs/specs/test_suite_governance.md
 
-use ./test_yzx_helpers.nu [repo_path]
+use ./yzx_test_helpers.nu [repo_path]
 
 def test_command_failure_summary_includes_command_tail_and_recovery [] {
     print "🧪 Testing refresh/rebuild failure summaries include command, stderr tail, and recovery..."

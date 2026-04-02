@@ -1,9 +1,8 @@
 #!/usr/bin/env nu
 # Test lane: maintainer
-# Grandfathered filename: retained legacy '_extended' name until the surrounding nondefault lane is renamed.
 # Defends: docs/specs/test_suite_governance.md
 
-use ./test_yzx_helpers.nu [get_repo_root setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [get_repo_root setup_managed_config_fixture]
 
 def pin_fixture_to_repo [fixture: record] {
     let repo_root = (get_repo_root)
@@ -100,7 +99,7 @@ A-r = ":noop"
     $result
 }
 
-export def run_doctor_extended_tests [] {
+export def run_helix_doctor_contract_tests [] {
     [
         (test_yzx_doctor_reports_helix_import_guidance_for_personal_config)
         (test_yzx_doctor_warns_when_generated_helix_config_is_stale)
@@ -108,13 +107,13 @@ export def run_doctor_extended_tests [] {
 }
 
 export def main [] {
-    let results = (run_doctor_extended_tests)
+    let results = (run_helix_doctor_contract_tests)
     let passed = ($results | where {|result| $result } | length)
     let total = ($results | length)
 
     if $passed == $total {
-        print $"✅ All extended doctor tests passed \(($passed)/($total)\)"
+        print $"✅ All Helix doctor contract tests passed \(($passed)/($total)\)"
     } else {
-        error make { msg: $"Extended doctor tests failed \(($passed)/($total)\)" }
+        error make { msg: $"Helix doctor contract tests failed \(($passed)/($total)\)" }
     }
 }

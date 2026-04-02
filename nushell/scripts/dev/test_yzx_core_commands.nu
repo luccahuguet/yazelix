@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ../core/yazelix.nu *
-use ./test_yzx_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
 
 def setup_config_migrate_fixture [label: string, raw_toml: string] {
     setup_managed_config_fixture $label $raw_toml

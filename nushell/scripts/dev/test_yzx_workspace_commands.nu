@@ -4,7 +4,7 @@
 # Defends: docs/workspace_session_contract.md
 
 use ../integrations/yazi.nu [resolve_reveal_target_path]
-use ./test_yzx_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path]
+use ./yzx_test_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path]
 
 def run_nu_snippet [snippet: string, extra_env?: record] {
     if ($extra_env | is-empty) {

@@ -5,7 +5,7 @@
 # Defends: docs/specs/floating_tui_panes.md
 # Defends: docs/workspace_session_contract.md
 
-use ./test_yzx_helpers.nu [format_test_profile_report setup_test_home test_profiling_enabled]
+use ./yzx_test_helpers.nu [format_test_profile_report setup_test_home test_profiling_enabled]
 use ./test_yzx_core_commands.nu [run_core_canonical_tests]
 use ./test_yzx_doctor_commands.nu [run_doctor_canonical_tests]
 use ./test_yzx_generated_configs.nu [run_generated_config_canonical_tests]

@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Test lane: maintainer
 
-use ./test_yzx_helpers.nu [add_fixture_log log_block log_line setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [add_fixture_log log_block log_line setup_managed_config_fixture]
 
 def setup_fixture [label: string, raw_toml: string] {
     add_fixture_log (setup_managed_config_fixture $label $raw_toml) "config_migrate_e2e.log"

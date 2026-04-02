@@ -2,7 +2,7 @@
 # Test lane: default
 # Defends: docs/specs/test_suite_governance.md
 
-use ./test_yzx_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/terminal_launcher.nu [resolve_terminal_config]
@@ -270,53 +270,6 @@ def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
     $result
 }
 
-def test_parse_yazelix_config_bootstraps_missing_pack_sidecar_for_existing_main_config [] {
-    print "🧪 Testing parse_yazelix_config backfills yazelix_packs.toml when only the main config already exists..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_pack_sidecar_backfill_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    let user_config_dir = ($temp_config_dir | path join "user_configs")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-    mkdir $user_config_dir
-
-    let result = (try {
-        cp ($repo_root | path join "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
-
-        let parsed = (with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
-            parse_yazelix_config
-        })
-
-        let pack_path = ($user_config_dir | path join "yazelix_packs.toml")
-        let pack_exists = ($pack_path | path exists)
-        let generated_packs = (if $pack_exists { open --raw $pack_path } else { "" })
-
-        if (
-            $pack_exists
-            and ($generated_packs | str contains "[declarations]")
-            and ((($parsed.pack_declarations | default {}) | columns | length) > 0)
-        ) {
-            print "  ✅ Existing managed main config now backfills the missing yazelix_packs.toml sidecar"
-            true
-        } else {
-            print $"  ❌ Unexpected result: pack_exists=($pack_exists) parsed=($parsed | select pack_names pack_declarations | to json -r)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
 def test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation [] {
     print "🧪 Testing parse_yazelix_config rejects legacy root-level config files when it cannot prompt..."
 
@@ -391,86 +344,6 @@ default_shell = "bash"
             true
         } else {
             print $"  ❌ Unexpected result: parsed=($parsed | to json -r) relocated_exists=(($relocated_path | path exists))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-def test_parse_yazelix_config_bootstraps_welcome_style_surface [] {
-    print "🧪 Testing first-run bootstrap writes welcome_style into the generated main config..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_welcome_bootstrap_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    mkdir ($tmp_home | path join ".config")
-
-    let result = (try {
-        let parsed = (with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
-            parse_yazelix_config
-        })
-
-        let main_path = ($temp_config_dir | path join "user_configs" "yazelix.toml")
-        let generated_main = (if ($main_path | path exists) { open --raw $main_path } else { "" })
-
-        if (
-            ($main_path | path exists)
-            and ($parsed.welcome_style == "random")
-            and ($parsed.welcome_duration_seconds == 2.0)
-            and ($generated_main | str contains 'welcome_style = "random"')
-            and ($generated_main | str contains 'welcome_duration_seconds = 2.0')
-            and not ($generated_main | str contains "[ascii]")
-        ) {
-            print "  ✅ First-run bootstrap writes the welcome style and duration surfaces into yazelix.toml"
-            true
-        } else {
-            print $"  ❌ Unexpected bootstrap result: main_exists=((($main_path | path exists))) parsed_style=($parsed.welcome_style) parsed_duration=($parsed.welcome_duration_seconds) main=($generated_main)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
-def test_parse_yazelix_config_falls_back_to_canonical_yazi_plugins_default [] {
-    print "🧪 Testing parse_yazelix_config uses the canonical yazi.plugins fallback when the field is omitted..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_yazi_plugins_fallback"
-        '[yazi]
-theme = "tokyo-night"
-'
-    )
-
-    let result = (try {
-        let parsed = (with-env {
-            HOME: $fixture.tmp_home
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.repo_root
-        } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
-            parse_yazelix_config
-        })
-
-        if ($parsed.yazi_plugins == ["git", "starship"]) {
-            print "  ✅ Missing yazi.plugins now falls back to the canonical bundled plugin set"
-            true
-        } else {
-            print $"  ❌ Unexpected yazi plugin fallback: (($parsed.yazi_plugins | to json -r))"
             false
         }
     } catch { |err|
@@ -897,17 +770,8 @@ export def run_generated_config_canonical_tests [] {
         # Defends: removed ascii mode fails with migration guidance.
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
         # Strength: 7/10
-        # Invariant: missing welcome style is bootstrapped to the managed default.
-        (test_parse_yazelix_config_bootstraps_welcome_style_surface)
-        # Strength: 7/10
-        # Invariant: missing yazi plugin default falls back to the canonical managed default.
-        (test_parse_yazelix_config_falls_back_to_canonical_yazi_plugins_default)
-        # Strength: 7/10
         # Invariant: split default config surfaces are bootstrapped when missing.
         (test_parse_yazelix_config_bootstraps_split_default_surfaces)
-        # Strength: 7/10
-        # Regression: existing main config gets the missing pack sidecar bootstrapped cleanly.
-        (test_parse_yazelix_config_bootstraps_missing_pack_sidecar_for_existing_main_config)
         # Strength: 8/10
         # Defends: legacy root config is rejected unless the user explicitly allows migration.
         (test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation)

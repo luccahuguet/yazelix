@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Test lane: maintainer
 
-use ./test_yzx_helpers.nu [get_repo_config_dir]
+use ./yzx_test_helpers.nu [get_repo_config_dir]
 use ../utils/upgrade_summary.nu [build_upgrade_summary_report]
 
 def log_line [log_file: string, line: string] {

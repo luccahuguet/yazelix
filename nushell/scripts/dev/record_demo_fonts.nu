@@ -1,8 +1,7 @@
 #!/usr/bin/env nu
-# Test lane: manual
 
 # Test 15 best fonts for VHS recording - each with separate output files
-def test_fonts [] {
+def record_demo_fonts [] {
     print "🎨 Testing 15 Best Fonts for VHS Recording"
     print "=========================================="
     print ""
@@ -127,9 +126,9 @@ def "main clean" [] {
 def "main help" [] {
     print "🎨 Font Testing Script for VHS"
     print "Usage:"
-    print "  nu test-fonts.nu        # Test all 15 fonts"
-    print "  nu test-fonts.nu clean  # Clean up old test files"
-    print "  nu test-fonts.nu help   # Show this help"
+    print "  nu record_demo_fonts.nu        # Test all 15 fonts"
+    print "  nu record_demo_fonts.nu clean  # Clean up old test files"
+    print "  nu record_demo_fonts.nu help   # Show this help"
     print ""
     print "This script tests 15 different Nerd Fonts and creates separate GIF files for each."
     print "Each font gets its own output file in assets/font-tests/ (e.g., jetbrains-mono-test.gif, etc.)"
@@ -137,5 +136,5 @@ def "main help" [] {
 
 # Default action
 def main [] {
-    test_fonts
+    record_demo_fonts
 }

@@ -1,5 +1,4 @@
 #!/usr/bin/env nu
-# Test lane: support
 
 export const CLEAN_ZELLIJ_ENV_PREFIX = "env -u ZELLIJ -u ZELLIJ_SESSION_NAME -u ZELLIJ_PANE_ID -u ZELLIJ_TAB_NAME -u ZELLIJ_TAB_POSITION"
 

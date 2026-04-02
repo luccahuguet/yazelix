@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Test lane: maintainer
 
-use ./test_yzx_helpers.nu [get_repo_root]
+use ./yzx_test_helpers.nu [get_repo_root]
 
 def log_line [log_file: string, line: string] {
     print $line

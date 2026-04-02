@@ -7,7 +7,6 @@ const ALLOWED_TEST_LANES = [
     "maintainer"
     "sweep"
     "manual"
-    "support"
 ]
 
 def to_dev_relative_path [file_name: string] {

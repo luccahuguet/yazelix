@@ -40,7 +40,7 @@ This spec defines:
 | Full lane | `yzx dev test --all` | Default automated suite + non-visual sweep + visual sweep | For broader release confidence |
 | Cheap maintainer hook lane | `prek run --all-files` | Fast always-on local hygiene | Should stay cheap enough to run often |
 | CI-only or CI-focused lane | `.github/workflows/ci.yml` | Cheap, reliable branch protection checks | Can be narrower than the full local suite when that keeps CI high-signal |
-| Manual / exploratory lane | `nushell/scripts/dev/test_fonts.nu`, benchmark and demo helpers | Human-observed or exploratory checks | Not part of the normal regression contract |
+| Manual / exploratory lane | `nushell/scripts/dev/record_demo_fonts.nu`, benchmark and demo helpers | Human-observed or exploratory checks | Not part of the normal regression contract |
 
 ### Current suite inventory
 
@@ -60,7 +60,7 @@ The current repo surface should be understood roughly as:
   - `sweep_verify.nu`
   - helper files under `nushell/scripts/dev/sweep/`
 - Manual / exploratory scripts:
-  - `test_fonts.nu`
+  - `record_demo_fonts.nu`
   - benchmark and demo helpers
 
 This inventory is intentionally at the suite or file-bucket level. It is enough to decide lane ownership without pretending every test needs its own long policy entry.
@@ -119,6 +119,20 @@ A test is a strong demotion candidate when it is:
 
 ### Lane placement rules
 
+Lane placement and per-test quality are separate decisions.
+
+- Use a per-test strength score to judge whether an individual test is worth keeping.
+- Use a separate lane-placement model to decide where the surviving test belongs.
+
+For Yazelix, lane placement should use suite-shape thinking similar to the Test Pyramid or Testing Trophy:
+
+- cheap structural checks belong in validator lanes
+- core user-visible regressions belong in the default lane
+- cross-matrix environment coverage belongs in sweep lanes
+- heavy visual or human-observed coverage belongs in visual or manual lanes
+
+Do not use the lane model as a substitute for judging whether a test is good. A badly chosen test can still be dead weight even if it sits in the "right" lane.
+
 - Put cheap structural validators in cheap validator lanes, not in the default `yzx` command bundle.
 - Keep the default automated suite small, spec-backed, and high-signal.
 - Remove weak, low-level, or packaging/config-sync checks instead of preserving them indefinitely in a public secondary lane.
@@ -137,7 +151,6 @@ Every `test_*.nu` file must declare one supported lane with a top-level header:
 - `# Test lane: maintainer`
 - `# Test lane: sweep`
 - `# Test lane: manual`
-- `# Test lane: support`
 
 Default-lane component files must also justify every canonical test entry with one nearby marker immediately above the test in the canonical list:
 
@@ -151,13 +164,15 @@ Default-lane component files must also score every canonical test entry with:
 
 ### Default test strength rubric
 
+Yazelix uses a small per-test scoring rubric for the default lane. This is intentionally closer to Google-style test-quality thinking and Tanzu's "Fast / Clean / Confidence / Freedom" goals than to suite-shape models like the Test Pyramid or Testing Trophy.
+
 Score default-lane tests out of 10 using five `0-2` dimensions:
 
-1. `Failure significance`
-   - `0`: failing would barely matter
+1. `Defect signal`
+   - `0`: failing would barely matter or would mostly catch noise
    - `1`: catches some real drift
    - `2`: catches a meaningful user-visible or contract regression
-2. `Behavior proximity`
+2. `Behavior closeness`
    - `0`: mostly implementation trivia
    - `1`: mixed
    - `2`: clearly checks supported behavior or invariant
@@ -165,7 +180,7 @@ Score default-lane tests out of 10 using five `0-2` dimensions:
    - `0`: likely to fail on harmless internal cleanup
    - `1`: somewhat coupled
    - `2`: should fail only when the real contract changes
-4. `Cost efficiency`
+4. `Cost`
    - `0`: expensive, flaky, or noisy for the value
    - `1`: acceptable
    - `2`: cheap and high-signal

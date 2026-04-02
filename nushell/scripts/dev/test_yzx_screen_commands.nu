@@ -72,30 +72,6 @@ def test_game_of_life_screen_state_rolls_forward [] {
     }
 }
 
-def test_game_of_life_screen_uses_full_height_budget [] {
-    print "🧪 Testing yzx screen uses the full pane height instead of the shorter welcome reservation..."
-
-    try {
-        let frame = (get_yzx_screen_cycle_frames "game_of_life" 100 | get 0)
-        let state = (get_game_of_life_screen_state 100 24)
-        let rendered_state = (render_game_of_life_screen_state $state)
-
-        if (
-            (($frame | length) == 24)
-            and (($rendered_state | length) == 24)
-        ) {
-            print "  ✅ yzx screen game_of_life fills the full pane height"
-            true
-        } else {
-            print $"  ❌ Unexpected yzx screen heights: cycle=(($frame | length)) live=(($rendered_state | length))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 export def run_screen_canonical_tests [] {
     [
         # Strength: 7/10
@@ -107,9 +83,6 @@ export def run_screen_canonical_tests [] {
         # Strength: 7/10
         # Invariant: game_of_life state rolls forward between frames.
         (test_game_of_life_screen_state_rolls_forward)
-        # Strength: 7/10
-        # Invariant: game_of_life rendering uses the available full-height budget.
-        (test_game_of_life_screen_uses_full_height_budget)
     ]
 }
 

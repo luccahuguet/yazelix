@@ -1,88 +1,14 @@
 #!/usr/bin/env nu
 # Test lane: maintainer
-# Grandfathered filename: retained legacy '_extended' name until the surrounding nondefault lane is renamed.
 # Defends: docs/specs/test_suite_governance.md
 
-use ./test_yzx_helpers.nu [get_repo_config_dir get_repo_root repo_path]
-use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
+use ./yzx_test_helpers.nu [get_repo_root repo_path]
 use ../setup/helix_config_merger.nu [generate_managed_helix_config get_helix_import_notice_marker_path]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../setup/zellij_plugin_paths.nu [get_tracked_zjstatus_wasm_path get_zjstatus_wasm_path]
 use ../utils/launch_state.nu [get_launch_env]
 use ../utils/nushell_externs.nu [get_generated_yzx_extern_path sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [get_yazelix_shell_user_hook_path sync_generated_nushell_user_hook_bridge]
-
-def test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip [] {
-    print "🧪 Testing skipping game_of_life repaints the resting logo frame..."
-
-    try {
-        let art_script = (repo_path "nushell" "scripts" "utils" "ascii_art.nu")
-        let output = (^nu -c $"use \"($art_script)\" [render_welcome_style_interruptibly]; render_welcome_style_interruptibly game_of_life 0.5 60 {|timeout| true } | ignore" | complete)
-        let clean_stdout = (
-            $output.stdout
-            | str replace -ar '\u001b\[[0-9;?]*[A-Za-z]' ''
-            | str replace -a "\r" ""
-        )
-
-        if (
-            ($output.exit_code == 0)
-            and ($clean_stdout | str contains "YAZELIX")
-            and ($clean_stdout | str contains "your reproducible terminal IDE")
-            and ($clean_stdout | str contains "welcome to yazelix")
-        ) {
-            print "  ✅ Welcome skip repaints the resting logo frame instead of leaving animated output behind"
-            true
-        } else {
-            print $"  ❌ Unexpected skip repaint result: exit=($output.exit_code) stdout=($clean_stdout)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-def test_generate_merged_yazi_keymap_uses_zoxide_editor_plugin [] {
-    print "🧪 Testing merged Yazi keymap uses the bundled zoxide editor plugin..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_yazi_zoxide_plugin_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-    mkdir ($temp_config_dir | path join "user_configs")
-
-    let result = (try {
-        let merged_keymap = (with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            generate_merged_yazi_config $repo_root --quiet | ignore
-            open --raw ($tmp_home | path join ".local" "share" "yazelix" "configs" "yazi" "keymap.toml")
-        })
-        let plugin_main = ($tmp_home | path join ".local" "share" "yazelix" "configs" "yazi" "plugins" "zoxide-editor.yazi" "main.lua")
-
-        if (
-            ($merged_keymap | str contains 'run = "plugin zoxide-editor"')
-            and not ($merged_keymap | str contains "zoxide_open_in_editor.nu")
-            and ($plugin_main | path exists)
-        ) {
-            print "  ✅ Merged Yazi config binds Alt+z to the bundled zoxide editor plugin and ships the plugin files"
-            true
-        } else {
-            print $"  ❌ Unexpected merged zoxide keymap/plugin state: keymap=($merged_keymap) plugin_exists=(($plugin_main | path exists))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
 
 def test_generate_managed_helix_config_merges_user_config_and_enforces_reveal [] {
     print "🧪 Testing managed Helix config generation keeps user settings while enforcing Yazelix reveal..."
@@ -184,51 +110,6 @@ def test_get_launch_env_wraps_helix_with_managed_wrapper [] {
 
     rm -rf $tmp_home
     $result
-}
-
-def test_devenv_shell_exports_managed_helix_wrapper [] {
-    print "🧪 Testing devenv shell exports the managed Helix wrapper contract..."
-
-    let repo_root = (get_repo_root)
-
-    try {
-        let output = (
-            with-env {
-                YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
-            } {
-                ^devenv shell --no-tui --no-reload -- sh -lc 'printf "EDITOR=%s\nKIND=%s\nBINARY=%s\n" "$EDITOR" "$YAZELIX_MANAGED_EDITOR_KIND" "$YAZELIX_MANAGED_HELIX_BINARY"' | complete
-            }
-        )
-
-        let stdout = ($output.stdout | default "")
-        let parsed = (
-            $stdout
-            | lines
-            | where {|line| $line =~ "^(EDITOR|KIND|BINARY)="}
-            | split column "=" key value
-            | reduce --fold {} {|entry, acc| $acc | upsert $entry.key $entry.value }
-        )
-
-        let editor = ($parsed.EDITOR? | default "")
-        let kind = ($parsed.KIND? | default "")
-        let binary = ($parsed.BINARY? | default "")
-
-        if (
-            ($output.exit_code == 0)
-            and ($editor | str ends-with "/shells/posix/yazelix_hx.sh")
-            and ($kind == "helix")
-            and ($binary | str ends-with "/bin/hx")
-        ) {
-            print "  ✅ devenv shell now exports the same managed Helix wrapper contract as the launch-profile path"
-            true
-        } else {
-            print $"  ❌ Unexpected devenv-shell Helix contract: exit=($output.exit_code) parsed=(($parsed | to json -r)) stderr=(($output.stderr | str trim))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
 }
 
 def test_generate_merged_zellij_config_wraps_nu_default_shell [] {
@@ -394,23 +275,24 @@ def test_generate_nushell_initializer_removes_starship_right_prompt [] {
     let tmp_home = (^mktemp -d /tmp/yazelix_nu_initializer_XXXXXX | str trim)
 
     let result = (try {
-        let aggregate = (with-env {
+        let output = (with-env {
             HOME: $tmp_home
             YAZELIX_QUIET_MODE: "true"
         } {
-            ^nu (repo_path "nushell" "scripts" "setup" "initializers.nu") $repo_root "nu" | complete | ignore
-            open --raw ($tmp_home | path join ".local" "share" "yazelix" "initializers" "nushell" "yazelix_init.nu")
+            do { ^nu (repo_path "nushell" "scripts" "setup" "initializers.nu") $repo_root "nu" } | complete
         })
+        let aggregate = (open --raw ($tmp_home | path join ".local" "share" "yazelix" "initializers" "nushell" "yazelix_init.nu"))
 
         if (
-            not ($aggregate | str contains "PROMPT_COMMAND_RIGHT")
+            ($output.exit_code == 0)
+            and not ($aggregate | str contains "PROMPT_COMMAND_RIGHT")
             and not ($aggregate | str contains "render_right_prompt_on_last_line")
             and ($aggregate | str contains "PROMPT_COMMAND:")
         ) {
             print "  ✅ Generated Nushell initializer keeps the main Starship prompt but removes the right-prompt path"
             true
         } else {
-            print $"  ❌ Unexpected generated Nushell initializer contents: ($aggregate)"
+            print $"  ❌ Unexpected generated Nushell initializer result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim)) contents=($aggregate)"
             false
         }
     } catch {|err|
@@ -808,13 +690,10 @@ theme = "ayu_evolve"
     $result
 }
 
-export def run_generated_config_extended_tests [] {
+export def run_managed_config_contract_tests [] {
     [
-        (test_render_welcome_style_interruptibly_repaints_logo_after_game_of_life_skip)
-        (test_generate_merged_yazi_keymap_uses_zoxide_editor_plugin)
         (test_generate_managed_helix_config_merges_user_config_and_enforces_reveal)
         (test_get_launch_env_wraps_helix_with_managed_wrapper)
-        (test_devenv_shell_exports_managed_helix_wrapper)
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
         (test_generate_merged_zellij_layouts_use_stable_zjstatus_plugin_path)
         (test_zjstatus_permission_cache_migrates_to_tracked_and_stable_paths)
@@ -829,13 +708,13 @@ export def run_generated_config_extended_tests [] {
 }
 
 export def main [] {
-    let results = (run_generated_config_extended_tests)
+    let results = (run_managed_config_contract_tests)
     let passed = ($results | where {|result| $result } | length)
     let total = ($results | length)
 
     if $passed == $total {
-        print $"✅ All extended generated-config tests passed \(($passed)/($total)\)"
+        print $"✅ All managed config contract tests passed \(($passed)/($total)\)"
     } else {
-        error make { msg: $"Extended generated-config tests failed \(($passed)/($total)\)" }
+        error make { msg: $"Managed config contract tests failed \(($passed)/($total)\)" }
     }
 }

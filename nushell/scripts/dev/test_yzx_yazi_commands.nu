@@ -2,7 +2,7 @@
 # Test lane: default
 # Defends: docs/specs/test_suite_governance.md
 
-use ./test_yzx_helpers.nu [setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [setup_managed_config_fixture]
 use ../integrations/yazi.nu [get_ya_command, get_yazi_command, resolve_managed_editor_open_strategy]
 
 def test_managed_editor_open_strategy_routes_missing_and_existing_states [] {
