@@ -3,13 +3,13 @@
 # This combines cursor_trail_common.glsl with each variant file to eliminate duplication
 
 const GHOSTTY_CURSOR_EFFECT_TEMPLATE_FILES = {
-    cursor_trail: "cursor_tail.glsl"
-    cursor_smear: "cursor_warp.glsl"
-    cursor_bubble: "ripple_cursor.glsl"
-    cursor_boom: "rectangle_boom_cursor.glsl"
-    cursor_sonic: "sonic_boom_cursor.glsl"
-    cursor_sweep: "cursor_sweep.glsl"
-    cursor_ripple_rectangle: "ripple_rectangle_cursor.glsl"
+    tail: "cursor_tail.glsl"
+    warp: "cursor_warp.glsl"
+    ripple: "ripple_cursor.glsl"
+    rectangle_boom: "rectangle_boom_cursor.glsl"
+    sonic_boom: "sonic_boom_cursor.glsl"
+    sweep: "cursor_sweep.glsl"
+    ripple_rectangle: "ripple_rectangle_cursor.glsl"
 }
 
 const GHOSTTY_TRAIL_GLOW_LEVELS = ["none" "low" "medium" "high"]
