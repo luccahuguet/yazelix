@@ -6,7 +6,7 @@
 [contract]
 version = 1
 surface = "packs"
-declaration_count = 17
+declaration_count = 18
 artifact_role = "canonical_pack_catalog"
 default_template = "yazelix_packs_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -64,6 +64,10 @@ package_source = "nixpkgs"
 [declarations.maintainer]
 packages = ["gh", "prek", "tru", "beads-rust", "beads-viewer", "nu-lint", "rust_wasi_toolchain"]
 package_source = "mixed"
+
+[declarations.misc]
+packages = ["tokei"]
+package_source = "nixpkgs"
 
 [declarations.python]
 packages = ["ruff", "uv", "ty", "python3Packages.ipython"]

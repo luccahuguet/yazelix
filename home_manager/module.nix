@@ -553,6 +553,9 @@ in
           "nu-lint"
           "rust_wasi_toolchain"
         ];
+        misc = [
+          "tokei"
+        ];
         python = [
           "ruff"
           "uv"

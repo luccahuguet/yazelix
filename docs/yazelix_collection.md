@@ -132,6 +132,9 @@ Complete toolchains you can declare:
 - [nu-lint](https://github.com/nushell/nu-lint) — Nushell linter for explicit maintainer lint runs
 - `rust_wasi_toolchain` — Pinned Rust toolchain with `wasm32-wasip1` so maintainers can rebuild the Yazelix pane orchestrator wasm without enabling a separate pack
 
+### Misc Pack (`misc`)
+- [tokei](https://github.com/XAMPPRocky/tokei) — Fast code statistics and line-count CLI for quick repo inspection as a general-purpose optional utility
+
 ### Rust Pack (`rust`)
 - `rust_toolchain` — Pinned stable Rust toolchain with `cargo`, `rustc`, `rustfmt`, and `clippy`
 - [cargo-edit](https://github.com/killercup/cargo-edit) — Add, remove, and upgrade dependencies from the command line (`cargo add`, `cargo rm`)
@@ -204,6 +207,9 @@ Tools for maintaining Yazelix itself without changing runtime behavior.
 - [nu-lint](https://github.com/nushell/nu-lint) — Optional Nushell linter for explicit repo-maintainer lint runs
 
 Use the repo's root [`../.pre-commit-config.yaml`](../.pre-commit-config.yaml) with `prek install`, then run `prek run --all-files` when you want the full fast maintainer checks on demand.
+
+### Misc Pack (`misc`)
+- [tokei](https://github.com/XAMPPRocky/tokei) — Fast code statistics and line-count CLI for quick repo inspection as a general-purpose optional utility
 
 ### AI Agents Pack (`ai_agents`)
 AI coding agents sourced from [llm-agents.nix](https://github.com/numtide/llm-agents.nix) with daily updates.
