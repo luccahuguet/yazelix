@@ -119,10 +119,10 @@ ya_command = "/opt/custom/ya"
 
 export def run_yazi_canonical_tests [] {
     [
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: managed editor open strategy routes missing and existing states correctly.
         (test_managed_editor_open_strategy_routes_missing_and_existing_states)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: Yazi command resolution honors defaults and user overrides.
         (test_yazi_command_resolvers_honor_defaults_and_overrides)
     ]

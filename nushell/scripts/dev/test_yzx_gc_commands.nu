@@ -6,7 +6,7 @@ def write_executable [path: string, body: string] {
     ^chmod +x $path
 }
 
-# Strength: 7/10
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Defends: yzx gc surfaces phase-by-phase progress and completion feedback.
 def test_yzx_gc_surfaces_phase_feedback [] {
     print "🧪 Testing yzx gc surfaces start/finish feedback for each phase..."
@@ -67,7 +67,7 @@ exit 0
     $result
 }
 
-# Strength: 6/10
+# Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=1 total=6/10
 # Regression: yzx gc still uses a valid du total even when du reports transient missing-path errors.
 def test_yzx_gc_accepts_du_totals_even_with_transient_errors [] {
     print "🧪 Testing yzx gc accepts a valid du total even when du exits nonzero..."
@@ -127,7 +127,7 @@ exit 0
     $result
 }
 
-# Strength: 7/10
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Defends: yzx gc fails loudly and stops early when devenv gc fails.
 def test_yzx_gc_fails_loudly_when_devenv_gc_fails [] {
     print "🧪 Testing yzx gc fails loudly when devenv gc fails..."

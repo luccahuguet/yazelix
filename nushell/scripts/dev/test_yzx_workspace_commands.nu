@@ -388,28 +388,28 @@ def test_yzx_cwd_resolves_zoxide_query [] {
 
 export def run_workspace_canonical_tests [] {
     [
-        # Strength: 9/10
+        # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
         # Regression: desktop launch ignores hostile inherited shell env.
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: nonpersistent launch --here uses the requested directory.
         (test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: persistent session reuse warns when it ignores the requested directory.
         (test_launch_here_path_warns_when_existing_persistent_session_ignores_it)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: startup rejects a missing working directory.
         (test_startup_rejects_missing_working_dir)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: launch rejects a file path as the working directory.
         (test_launch_rejects_file_working_dir)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: startup requires the generated layout path.
         (test_startup_requires_generated_layout_path)
-        # Strength: 7/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
         # Defends: yzx cwd fails clearly outside Zellij.
         (test_yzx_cwd_requires_zellij)
-        # Strength: 7/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
         # Defends: yzx cwd resolves zoxide queries through the managed flow.
         (test_yzx_cwd_resolves_zoxide_query)
     ]

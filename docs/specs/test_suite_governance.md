@@ -159,7 +159,7 @@ Every governed `def test_*` must carry one nearby justification marker:
 
 Every governed `def test_*` must also carry:
 
-- `# Strength: N/10`
+- `# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
 
 Default-lane component files may continue to keep that metadata next to canonical suite entries, because that is where default-lane admission is curated. Nondefault lanes should keep the metadata immediately above the `def test_*` definition.
 

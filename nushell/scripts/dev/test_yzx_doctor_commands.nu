@@ -190,16 +190,16 @@ git = ["gh", "prek"]
 
 export def run_doctor_canonical_tests [] {
     [
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: doctor warns on stale config fields with actionable guidance.
         (test_yzx_doctor_warns_on_stale_config_fields)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: doctor reports known migrations and the matching fix path.
         (test_yzx_doctor_reports_known_migration_with_fix_guidance)
-        # Strength: 9/10
+        # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
         # Defends: doctor fix applies safe config migrations.
         (test_yzx_doctor_fix_applies_safe_config_migrations)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Regression: doctor fix splits legacy pack config into the supported sidecar path.
         (test_yzx_doctor_fix_splits_legacy_pack_config)
     ]

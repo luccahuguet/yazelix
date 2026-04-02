@@ -215,20 +215,10 @@ def get_definition_test_strength [relative_path: string, test_name: string] {
     )
 
     if $strength_line == null {
-        error make { msg: $"Governed test is missing a nearby '# Strength: N/10' marker: ($relative_path) :: ($test_name)" }
+        error make { msg: $"Governed test is missing a nearby structured '# Strength:' marker: ($relative_path) :: ($test_name)" }
     }
 
-    let parsed = (
-        [$strength_line]
-        | parse --regex '# Strength:\s+([0-9]+)/10'
-        | get -o 0.capture0
-    )
-
-    if $parsed == null {
-        error make { msg: $"Could not parse '# Strength: N/10' marker near: ($relative_path) :: ($test_name)" }
-    }
-
-    $parsed | into int
+    parse_structured_strength_line $relative_path $test_name $strength_line
 }
 
 def has_valid_test_justification [relative_path: string, test_name: string] {
@@ -283,20 +273,36 @@ def get_default_test_strength [relative_path: string, test_name: string] {
     )
 
     if $strength_line == null {
-        error make { msg: $"Default-suite canonical test is missing a nearby '# Strength: N/10' marker: ($relative_path) :: ($test_name)" }
+        error make { msg: $"Default-suite canonical test is missing a nearby structured '# Strength:' marker: ($relative_path) :: ($test_name)" }
     }
 
+    parse_structured_strength_line $relative_path $test_name $strength_line
+}
+
+def parse_structured_strength_line [relative_path: string, test_name: string, strength_line: string] {
     let parsed = (
         [$strength_line]
-        | parse --regex '# Strength:\s+([0-9]+)/10'
-        | get -o 0.capture0
+        | parse --regex '# Strength:\s+defect=([0-2])\s+behavior=([0-2])\s+resilience=([0-2])\s+cost=([0-2])\s+uniqueness=([0-2])\s+total=([0-9]+)/10'
+        | get -o 0
     )
 
     if $parsed == null {
-        error make { msg: $"Could not parse '# Strength: N/10' marker near: ($relative_path) :: ($test_name)" }
+        error make { msg: $"Could not parse structured '# Strength:' marker near: ($relative_path) :: ($test_name) :: ($strength_line)" }
     }
 
-    $parsed | into int
+    let defect = ($parsed.capture0 | into int)
+    let behavior = ($parsed.capture1 | into int)
+    let resilience = ($parsed.capture2 | into int)
+    let cost = ($parsed.capture3 | into int)
+    let uniqueness = ($parsed.capture4 | into int)
+    let total = ($parsed.capture5 | into int)
+    let computed = ($defect + $behavior + $resilience + $cost + $uniqueness)
+
+    if $computed != $total {
+        error make { msg: $"Structured '# Strength:' marker total does not match component sum near: ($relative_path) :: ($test_name) :: expected=($computed)/10 declared=($total)/10" }
+    }
+
+    $total
 }
 
 export def main [] {

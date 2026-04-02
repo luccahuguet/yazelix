@@ -6,7 +6,7 @@ use ./yzx_test_helpers.nu get_repo_root
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../setup/zellij_plugin_paths.nu [get_tracked_zjstatus_wasm_path get_zjstatus_wasm_path]
 
-# Strength: 7/10
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Defends: generated Zellij layouts load zjstatus from a stable Yazelix plugin path instead of a store path.
 def test_generate_merged_zellij_layouts_use_stable_zjstatus_plugin_path [] {
     print "🧪 Testing generated Zellij layouts load zjstatus from the stable Yazelix plugin path..."
@@ -58,7 +58,7 @@ def test_generate_merged_zellij_layouts_use_stable_zjstatus_plugin_path [] {
     $result
 }
 
-# Strength: 7/10
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Regression: zjstatus permission grants migrate onto tracked and stable Yazelix plugin paths.
 def test_zjstatus_permission_cache_migrates_to_tracked_and_stable_paths [] {
     print "🧪 Testing zjstatus permission grants migrate onto the tracked and stable Yazelix plugin paths..."

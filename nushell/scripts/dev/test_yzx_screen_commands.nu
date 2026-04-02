@@ -74,13 +74,13 @@ def test_game_of_life_screen_state_rolls_forward [] {
 
 export def run_screen_canonical_tests [] {
     [
-        # Strength: 7/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
         # Defends: yzx screen rejects the unsupported static style.
         (test_screen_style_rejects_static)
-        # Strength: 7/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
         # Defends: game_of_life screen cycle stays bounded and omits the resting logo frame.
         (test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo)
-        # Strength: 7/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
         # Invariant: game_of_life state rolls forward between frames.
         (test_game_of_life_screen_state_rolls_forward)
     ]

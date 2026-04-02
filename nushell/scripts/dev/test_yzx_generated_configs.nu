@@ -757,52 +757,52 @@ def test_generate_merged_zellij_config_prefers_managed_user_config_when_native_c
 
 export def run_generated_config_canonical_tests [] {
     [
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: generated terminal configs do not silently take over user overrides.
         (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
-        # Strength: 7/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
         # Regression: terminal override imports must ignore Yazelix runtime roots.
         (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: config parsing stays read-only and does not auto-apply migrations.
         (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: removed ascii mode fails with migration guidance.
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
-        # Strength: 7/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
         # Invariant: split default config surfaces are bootstrapped when missing.
         (test_parse_yazelix_config_bootstraps_split_default_surfaces)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: legacy root config is rejected unless the user explicitly allows migration.
         (test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: explicit legacy-root migration uses the managed relocation path.
         (test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: legacy inline packs are rejected with migration guidance.
         (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: split pack ownership conflicts fail fast.
         (test_parse_yazelix_config_rejects_split_pack_ownership)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: user terminal mode requires a real terminal config path.
         (test_user_mode_requires_real_terminal_config)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: removed auto terminal config mode is rejected by schema validation.
         (test_config_schema_rejects_removed_auto_terminal_config_mode)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: removed layout widget config is rejected by schema validation.
         (test_config_schema_rejects_removed_layout_widget)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Regression: legacy Yazi overrides are relocated into the managed surface.
         (test_generate_merged_yazi_config_relocates_legacy_user_overrides)
-        # Strength: 9/10
+        # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
         # Defends: native Zellij config can still be used without Yazelix taking ownership of it.
         (test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it)
-        # Strength: 9/10
+        # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
         # Regression: managed Zellij config wins cleanly when both native and managed files exist.
         (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
-        # Strength: 8/10
+        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
         # Defends: sidebar width propagates into generated Zellij layouts and plugin config.
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
     ]

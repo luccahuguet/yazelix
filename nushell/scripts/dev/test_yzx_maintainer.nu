@@ -5,7 +5,7 @@
 use ../utils/common.nu [get_yazelix_state_dir]
 use ../utils/devenv_cli.nu resolve_preferred_devenv_path
 
-# Strength: 8/10
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Defends: issue/bead reconciliation planning catches create, reopen, close, and duplicate cases.
 def test_issue_bead_reconciliation_plan [] {
     print "🧪 Testing issue/bead reconciliation plans create, reopen, close, and reject duplicates..."
@@ -54,7 +54,7 @@ def test_issue_bead_reconciliation_plan [] {
     }
 }
 
-# Strength: 8/10
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Defends: issue/bead comment planning keeps one canonical Beads mapping comment.
 def test_issue_bead_comment_plan [] {
     print "🧪 Testing issue/bead comment planning creates, repairs legacy placeholders, updates stale comments, and accepts canonical comments..."
@@ -100,7 +100,7 @@ def test_issue_bead_comment_plan [] {
     }
 }
 
-# Strength: 7/10
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Defends: runtime-owned devenv resolution remains the maintainer source of truth.
 def test_preferred_devenv_resolution_uses_runtime_owned_cli [] {
     print "🧪 Testing preferred devenv resolution prefers the runtime-owned CLI over older profile entries..."
@@ -126,7 +126,7 @@ def test_preferred_devenv_resolution_uses_runtime_owned_cli [] {
     }
 }
 
-# Strength: 6/10
+# Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=1 total=6/10
 # Invariant: generated Nushell initializers restore current PATH entries ahead of the saved PATH.
 def test_nushell_initializer_restores_current_path_first [] {
     print "🧪 Testing the generated Nushell initializer preserves current PATH precedence..."

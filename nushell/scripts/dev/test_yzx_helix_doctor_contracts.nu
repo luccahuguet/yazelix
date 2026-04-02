@@ -23,7 +23,7 @@ def run_doctor_command [fixture: record] {
     }
 }
 
-# Strength: 7/10
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Defends: yzx doctor tells personal Helix users to run yzx import helix.
 def test_yzx_doctor_reports_helix_import_guidance_for_personal_config [] {
     print "🧪 Testing yzx doctor points personal Helix config users at `yzx import helix`..."
@@ -63,7 +63,7 @@ line-number = "relative"
     $result
 }
 
-# Strength: 7/10
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Defends: yzx doctor warns when the generated Helix config is stale or invalid.
 def test_yzx_doctor_warns_when_generated_helix_config_is_stale [] {
     print "🧪 Testing yzx doctor warns when the generated Helix config loses the Yazelix reveal binding..."

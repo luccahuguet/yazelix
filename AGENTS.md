@@ -197,7 +197,8 @@ When creating new files or directories, always use underscores to maintain consi
 - **Treat test strength and lane placement as separate decisions.** Use the repo's per-test strength rubric to decide whether a test is worth keeping, and use lane-placement thinking only to decide where a surviving test belongs.
 - **Do not create generic `_extended` test files as overflow.** If a nondefault lane needs more coverage, use a file or lane name that reflects its actual ownership.
 - **Every new governed `def test_*` must carry a nearby `# Defends:`, `# Regression:`, or `# Invariant:` marker.**
-- **Every new governed `def test_*` must also carry a nearby `# Strength: N/10` marker.**
+- **Every new governed `def test_*` must also carry a nearby structured strength marker.** Use:
+  - `# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
 - **Lane minimums are enforced mechanically.** Current minimums are:
   - `default`: `7/10`
   - `maintainer`: `6/10`
