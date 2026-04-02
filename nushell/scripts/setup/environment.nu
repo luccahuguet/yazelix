@@ -4,14 +4,19 @@
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_state.nu compute_config_state
-use ../utils/common.nu [get_yazelix_runtime_dir]
+use ../utils/common.nu [get_installed_yazelix_runtime_reference_dir get_yazelix_runtime_dir]
 use ../utils/launch_state.nu [record_launch_state]
 use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 
 def ensure_user_cli_wrapper [yazelix_dir: string] {
     let local_bin_dir = ($env.HOME | path join ".local" "bin")
-    let cli_target = ($yazelix_dir | path join "bin" "yzx")
+    let installed_runtime_reference = (get_installed_yazelix_runtime_reference_dir)
+    let cli_target = if ($installed_runtime_reference | path exists) {
+        ($installed_runtime_reference | path join "bin" "yzx")
+    } else {
+        ($yazelix_dir | path join "bin" "yzx")
+    }
     let cli_link = ($local_bin_dir | path join "yzx")
 
     if not ($cli_target | path exists) {

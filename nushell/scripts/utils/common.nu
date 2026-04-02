@@ -54,6 +54,10 @@ def get_installed_runtime_dir [] {
     }
 }
 
+export def get_installed_yazelix_runtime_reference_dir [] {
+    get_yazelix_state_dir | path join "runtime" "current"
+}
+
 export def get_installed_yazelix_runtime_dir [] {
     get_installed_runtime_dir
 }

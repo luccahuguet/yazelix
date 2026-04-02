@@ -121,6 +121,12 @@ def verify_installed_runtime [temp_home: string] {
         error make { msg: $"Generated Yazi flavors directory is empty: ($yazi_flavor_root)" }
     }
 
+    let wrapper_target = (^readlink $yzx_path | str trim)
+    let expected_wrapper_target = ($runtime_current | path join "bin" "yzx")
+    if ($wrapper_target != $expected_wrapper_target) {
+        error make { msg: $"Installed yzx wrapper should point at runtime/current, not a pinned store path. Expected ($expected_wrapper_target), got ($wrapper_target)" }
+    }
+
     let version_result = (
         with-env {
             HOME: $temp_home
