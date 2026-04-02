@@ -54,6 +54,18 @@ def get_installed_runtime_dir [] {
     }
 }
 
+export def get_installed_yazelix_runtime_dir [] {
+    get_installed_runtime_dir
+}
+
+export def require_installed_yazelix_runtime_dir [] {
+    let runtime_dir = (get_installed_runtime_dir)
+    if $runtime_dir == null {
+        error make {msg: $"Cannot find installed Yazelix runtime at ((get_yazelix_state_dir | path join 'runtime' 'current'))"}
+    }
+    $runtime_dir
+}
+
 def expand_user_path_string [value: string] {
     let trimmed = ($value | str trim)
     if ($trimmed | is-empty) {

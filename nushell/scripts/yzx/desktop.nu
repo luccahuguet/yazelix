@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use ../utils/common.nu [require_yazelix_runtime_dir]
+use ../utils/common.nu [require_installed_yazelix_runtime_dir]
 
 def get_desktop_applications_dir [] {
     let data_home = (
@@ -74,7 +74,7 @@ def get_desktop_entry_path [] {
 export def "yzx desktop install" [
     --print-path(-p) # Print only the installed desktop-file path
 ] {
-    let runtime_dir = (require_yazelix_runtime_dir)
+    let runtime_dir = (require_installed_yazelix_runtime_dir)
     let launcher_path = (get_stable_yzx_path)
 
     if not ($runtime_dir | path exists) {
@@ -120,7 +120,7 @@ export def "yzx desktop uninstall" [
 }
 
 export def "yzx desktop launch" [] {
-    let runtime_dir = (require_yazelix_runtime_dir)
+    let runtime_dir = (require_installed_yazelix_runtime_dir)
     let launcher_script = ($runtime_dir | path join "nushell" "scripts" "core" "desktop_launcher.nu")
 
     if not ($launcher_script | path exists) {
