@@ -229,7 +229,10 @@ export def ensure_yazelix_runtime_project_dir [] {
         }
 
         let target = ($project_root | path join $entry)
-        ^ln -sfn $source $target
+        if ($target | path exists) {
+            rm -rf $target
+        }
+        ^ln -s $source $target
     }
 
     $project_root

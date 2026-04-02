@@ -60,9 +60,23 @@ let
     if isLinux then
       ''
         launch_prefix=()
-        runtime_nixgl="''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/bin/nixGLDefault"
+        runtime_nixgl="''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/bin/nixGL"
+        runtime_nixgl_default="''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/bin/nixGLDefault"
+        profile_nixgl="''${DEVENV_PROFILE:-}/bin/nixGL"
+        profile_nixgl_default="''${DEVENV_PROFILE:-}/bin/nixGLDefault"
+        profile_nixgl_intel="''${DEVENV_PROFILE:-}/bin/nixGLIntel"
         if [ -x "$runtime_nixgl" ]; then
           launch_prefix+=("$runtime_nixgl")
+        elif [ -x "$runtime_nixgl_default" ]; then
+          launch_prefix+=("$runtime_nixgl_default")
+        elif [ -x "$profile_nixgl" ]; then
+          launch_prefix+=("$profile_nixgl")
+        elif [ -x "$profile_nixgl_default" ]; then
+          launch_prefix+=("$profile_nixgl_default")
+        elif [ -x "$profile_nixgl_intel" ]; then
+          launch_prefix+=("$profile_nixgl_intel")
+        elif command -v nixGL >/dev/null 2>&1; then
+          launch_prefix+=("$(command -v nixGL)")
         elif command -v nixGLDefault >/dev/null 2>&1; then
           launch_prefix+=("$(command -v nixGLDefault)")
         elif command -v nixGLIntel >/dev/null 2>&1; then

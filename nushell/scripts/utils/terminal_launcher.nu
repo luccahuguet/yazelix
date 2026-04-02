@@ -32,6 +32,50 @@ def get_current_profile_bin_dir [] {
     }
 }
 
+def resolve_nixgl_launch_prefix [] {
+    let runtime_nixgl = ((get_yazelix_runtime_dir) | path join "bin" "nixGL")
+    if ($runtime_nixgl | path exists) {
+        return $"($runtime_nixgl) "
+    }
+
+    let runtime_nixgl_default = ((get_yazelix_runtime_dir) | path join "bin" "nixGLDefault")
+    if ($runtime_nixgl_default | path exists) {
+        return $"($runtime_nixgl_default) "
+    }
+
+    let profile_bin_dir = (get_current_profile_bin_dir)
+    if ($profile_bin_dir | is-not-empty) {
+        let profile_nixgl = ($profile_bin_dir | path join "nixGL")
+        if ($profile_nixgl | path exists) {
+            return $"($profile_nixgl) "
+        }
+
+        let profile_nixgl_default = ($profile_bin_dir | path join "nixGLDefault")
+        if ($profile_nixgl_default | path exists) {
+            return $"($profile_nixgl_default) "
+        }
+
+        let profile_nixgl_intel = ($profile_bin_dir | path join "nixGLIntel")
+        if ($profile_nixgl_intel | path exists) {
+            return $"($profile_nixgl_intel) "
+        }
+    }
+
+    if (which nixGL | is-not-empty) {
+        return "nixGL "
+    }
+
+    if (which nixGLDefault | is-not-empty) {
+        return "nixGLDefault "
+    }
+
+    if (which nixGLIntel | is-not-empty) {
+        return "nixGLIntel "
+    }
+
+    ""
+}
+
 # Resolve config path for a terminal based on mode
 export def resolve_terminal_config [terminal: string, mode: string] {
     let home = $env.HOME
@@ -241,13 +285,7 @@ export def build_launch_command [
         # Direct terminal launch with config
         # Prefer the generic nixGL wrapper when available. Fall back to the
         # older Intel-specific name only if the default wrapper is absent.
-        let nixgl_prefix = if (which nixGLDefault | is-not-empty) {
-            "nixGLDefault "
-        } else if (which nixGLIntel | is-not-empty) {
-            "nixGLIntel "
-        } else {
-            ""
-        }
+        let nixgl_prefix = (resolve_nixgl_launch_prefix)
         let terminal_cmd = match $terminal {
             "ghostty" => {
                 $"($nixgl_prefix)ghostty --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --class=\"($YAZELIX_WINDOW_CLASS)\" --x11-instance-name=\"($YAZELIX_X11_INSTANCE)\" --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"

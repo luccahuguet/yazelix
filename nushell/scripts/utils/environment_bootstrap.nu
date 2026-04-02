@@ -313,7 +313,7 @@ export def run_in_devenv_shell [
             $quiet
         }
         let devenv_verbose = $force_refresh and ($refresh_output == "full") and (not $quiet_devenv)
-        let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose
+        let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose --refresh-eval-cache=$force_refresh
         let devenv_cmd = ($devenv_base | append ["shell", "--no-tui", "--no-reload", "--", "sh", "-c", $command])
         let devenv_bin = ($devenv_cmd | first)
         let devenv_args = ($devenv_cmd | skip 1)
@@ -412,7 +412,7 @@ export def run_in_devenv_shell_command [
         $quiet
     }
     let devenv_verbose = $force_refresh and ($refresh_output == "full") and (not $quiet_devenv)
-    let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose
+    let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose --refresh-eval-cache=$force_refresh
     let devenv_cmd = ($devenv_base | append ["shell", "--no-tui", "--no-reload", "--"] | append $exec_cmd)
     let devenv_bin = ($devenv_cmd | first)
     let devenv_args = ($devenv_cmd | skip 1)
