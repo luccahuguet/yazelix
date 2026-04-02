@@ -16,36 +16,9 @@ let
   ];
   runtimeBinPath = pkgs.lib.makeBinPath runtimeDeps;
 
-  runtime = pkgs.symlinkJoin {
+  runtime = import ./mk_runtime_tree.nix {
+    inherit pkgs src;
     name = "yazelix-runtime";
-    paths = [ ];
-
-    postBuild = ''
-      ln -s ${src}/assets "$out/assets"
-      ln -s ${src}/config_metadata "$out/config_metadata"
-      ln -s ${src}/configs "$out/configs"
-      ln -s ${src}/docs "$out/docs"
-      ln -s ${src}/nushell "$out/nushell"
-      ln -s ${src}/rust_plugins "$out/rust_plugins"
-      ln -s ${src}/shells "$out/shells"
-
-      ln -s ${src}/CHANGELOG.md "$out/CHANGELOG.md"
-      ln -s ${src}/devenv.lock "$out/devenv.lock"
-      ln -s ${src}/devenv.nix "$out/devenv.nix"
-      ln -s ${src}/devenv.yaml "$out/devenv.yaml"
-      ln -s ${src}/yazelix_default.toml "$out/yazelix_default.toml"
-      ln -s ${src}/yazelix_packs_default.toml "$out/yazelix_packs_default.toml"
-
-      mkdir -p "$out/bin"
-      ln -s ${pkgs.lib.getBin pkgs.nushell}/bin/nu "$out/bin/nu"
-      cat > "$out/bin/yzx" <<EOF
-#!/bin/sh
-PATH="${pkgs.lib.makeBinPath [ pkgs.nushell ]}:\$PATH"
-export PATH
-exec "\$(dirname "\$0")/../shells/posix/yzx_cli.sh" "\$@"
-EOF
-      chmod +x "$out/bin/yzx"
-    '';
   };
 in
 pkgs.symlinkJoin {
@@ -54,7 +27,6 @@ pkgs.symlinkJoin {
   nativeBuildInputs = [ pkgs.makeWrapper ];
 
   postBuild = ''
-    ln -s ${pkgs.lib.getBin lockedDevenv}/bin/devenv "$out/bin/devenv"
     rm -f "$out/bin/yzx"
     makeWrapper "$out/shells/posix/yzx_cli.sh" "$out/bin/yzx" \
       --prefix PATH : "${runtimeBinPath}"
