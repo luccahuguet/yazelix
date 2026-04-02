@@ -4,7 +4,7 @@
 # Defends: docs/specs/floating_tui_panes.md
 
 use ../yzx/popup.nu [resolve_yzx_popup_command resolve_yzx_popup_cwd]
-use ../integrations/zellij.nu [get_floating_wrapper_env]
+use ../integrations/zellij.nu [build_floating_wrapper_env_args get_floating_wrapper_env]
 use ../utils/config_parser.nu [parse_yazelix_config]
 use ../../../configs/zellij/scripts/yzx_toggle_popup.nu [resolve_popup_toggle_action]
 
@@ -229,6 +229,37 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
     }
 }
 
+# Regression: popup wrappers serialize PATH lists into real env strings for zellij run.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_popup_wrapper_serializes_path_list_for_env_command [] {
+    print "🧪 Testing popup wrappers serialize PATH lists into real env strings..."
+
+    try {
+        let result = (build_floating_wrapper_env_args {
+            PATH: ["/tmp/profile/bin", "/usr/bin", "/bin"]
+            EDITOR: "/tmp/profile/bin/hx"
+        })
+        let path_arg = ($result | where {|entry| $entry | str starts-with "PATH=" } | first)
+        let editor_arg = ($result | where {|entry| $entry | str starts-with "EDITOR=" } | first)
+
+        if (
+            ($path_arg == $"PATH=/tmp/profile/bin(char esep)/usr/bin(char esep)/bin")
+            and ($editor_arg == "EDITOR=/tmp/profile/bin/hx")
+            and (not ($path_arg | str contains "["))
+            and (not ($path_arg | str contains "]"))
+        ) {
+            print "  ✅ popup wrapper env args serialize PATH lists correctly for zellij run"
+            true
+        } else {
+            print $"  ❌ Unexpected popup wrapper env args: ($result | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 export def run_popup_canonical_tests [] {
     [
         (test_popup_command_prefers_configured_default)
@@ -236,6 +267,7 @@ export def run_popup_canonical_tests [] {
         (test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages)
         (test_popup_toggle_wrapper_surfaces_permission_denials)
         (test_popup_wrapper_uses_canonical_editor_for_current_profile)
+        (test_popup_wrapper_serializes_path_list_for_env_command)
     ]
 }
 

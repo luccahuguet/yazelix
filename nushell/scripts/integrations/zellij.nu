@@ -59,6 +59,22 @@ def get_current_shell_launch_profile [] {
     }
 }
 
+def serialize_wrapper_env_value [value: any] {
+    let described = ($value | describe)
+
+    if ($described | str starts-with "list") {
+        $value | each {|entry| $entry | into string } | str join (char esep)
+    } else {
+        $value | into string
+    }
+}
+
+export def build_floating_wrapper_env_args [wrapper_env: record] {
+    $wrapper_env
+    | transpose key value
+    | each {|row| $"($row.key)=(serialize_wrapper_env_value $row.value)" }
+}
+
 export def get_floating_wrapper_env [] {
     let current_shell_env = (get_current_shell_wrapper_env)
     let profile_path = (get_current_shell_launch_profile)
@@ -111,7 +127,7 @@ export def open_floating_runtime_wrapper [
     }
 
     let wrapper_env = ((get_floating_wrapper_env) | merge $extra_env)
-    let env_args = ($wrapper_env | transpose key value | each {|row| $"($row.key)=($row.value)" })
+    let env_args = (build_floating_wrapper_env_args $wrapper_env)
     let width_arg = $"($width_percent)%"
     let height_arg = $"($height_percent)%"
     let x_offset = (((100 - $width_percent) / 2) | math floor | into int)
