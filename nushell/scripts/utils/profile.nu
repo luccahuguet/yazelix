@@ -41,14 +41,8 @@ export def profile_environment_setup [] {
     # Profile config detection
     let config_result = (profile_step "Config hash computation" {
         let primary_config = (get_main_user_config_path $yazelix_dir)
-        let legacy_config = $"($yazelix_dir)/yazelix.nix"
-        let config_file = if ($primary_config | path exists) {
-            $primary_config
-        } else {
-            $legacy_config
-        }
-        if ($config_file | path exists) {
-            open --raw $config_file | hash sha256
+        if ($primary_config | path exists) {
+            open --raw $primary_config | hash sha256
         }
     })
     $results = ($results | append $config_result)
