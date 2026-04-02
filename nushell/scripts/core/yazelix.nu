@@ -6,7 +6,7 @@ use ../utils/config_manager.nu *
 use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/common.nu [describe_build_parallelism get_yazelix_dir]
+use ../utils/common.nu [describe_build_parallelism get_installed_yazelix_runtime_dir get_yazelix_dir]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../integrations/yazi.nu [reveal_in_yazi sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ./start_yazelix.nu [start_yazelix_session]
@@ -405,6 +405,7 @@ export def "yzx update runtime" [
 ] {
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available --skip-devenv
+    let previous_runtime = (get_installed_yazelix_runtime_dir)
 
     if $verbose {
         print $"⚙️ Running: nix run --refresh ($YAZELIX_INSTALL_FLAKE_REF)"
@@ -418,6 +419,15 @@ export def "yzx update runtime" [
         print "❌ Yazelix runtime update failed."
         print $"   Retry with: nix run --refresh ($YAZELIX_INSTALL_FLAKE_REF)"
         exit $exit_code
+    }
+
+    let installed_runtime = (get_installed_yazelix_runtime_dir)
+    if $verbose {
+        if $previous_runtime == $installed_runtime {
+            print $"ℹ️ Installed runtime path unchanged: ($installed_runtime)"
+        } else {
+            print $"✅ Installed runtime updated: ($previous_runtime) -> ($installed_runtime)"
+        }
     }
 
     if $restart {
