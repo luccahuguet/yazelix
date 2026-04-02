@@ -8,7 +8,60 @@ permissions:
   contents: read
 
 jobs:
+  # Keep change detection inside the workflow, not in top-level path filters.
+  # Required workflows that are skipped by path filters can leave checks pending.
+  detect_integration_changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run_flake_install: ${{ steps.detect.outputs.run_flake_install }}
+      changed_files: ${{ steps.detect.outputs.changed_files }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect runtime/install-impacting changes
+        id: detect
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          base="$BASE_SHA"
+          head="$HEAD_SHA"
+          integration_paths_regex='^(flake\.nix|\.github/workflows/ci\.yml|shells/|configs/|home_manager/|locked_devenv_package\.nix|mk_runtime_tree\.nix|mk_yazelix_package\.nix|yazelix_runtime_package\.nix|devenv\.lock|devenv\.nix|devenv\.yaml|yazelix_default\.toml|yazelix_packs_default\.toml|nushell/scripts/core/|nushell/scripts/setup/|nushell/scripts/utils/|nushell/scripts/dev/validate_flake_install\.nu|nushell/scripts/dev/devenv_lock_contract\.nu)'
+
+          if [ -z "${base:-}" ] || [ "$base" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            base="$(git rev-parse "$head^" 2>/dev/null || git rev-list --max-parents=0 "$head" | tail -n1)"
+          fi
+
+          changed="$(git diff --name-only "$base" "$head")"
+
+          echo "Changed files since $base..$head:"
+          if [ -n "$changed" ]; then
+            printf '%s\n' "$changed"
+          else
+            echo "(none)"
+          fi
+
+          run_flake_install=false
+          if printf '%s\n' "$changed" | grep -E "$integration_paths_regex" >/dev/null; then
+            run_flake_install=true
+          fi
+
+          {
+            echo "run_flake_install=$run_flake_install"
+            echo "changed_files<<EOF"
+            printf '%s\n' "$changed"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
   validate:
+    # Always-on fast lane. Keep this strong enough for branch protection and
+    # routine pushes, but do not make every commit pay for cold install/runtime smoke.
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -64,5 +117,57 @@ jobs:
         shell: bash
         run: nix flake check ./home_manager --no-build
 
+  integration:
+    # Heavier install/runtime lane. This still reports a concrete skip message
+    # in CI when no relevant files changed, instead of disappearing entirely.
+    needs: [detect_integration_changes, validate]
+    if: ${{ needs.validate.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      YAZELIX_DIR: ${{ github.workspace }}
+    defaults:
+      run:
+        shell: nu {0}
+    steps:
+      - name: Skip heavy flake install smoke
+        if: ${{ needs.detect_integration_changes.outputs.run_flake_install != 'true' }}
+        shell: bash
+        run: |
+          echo "Skipping heavy install/runtime integration lane: no relevant files changed."
+          echo "Changed files:"
+          if [ -n "${{ needs.detect_integration_changes.outputs.changed_files }}" ]; then
+            printf '%s\n' "${{ needs.detect_integration_changes.outputs.changed_files }}"
+          else
+            echo "(none)"
+          fi
+
+      - name: Check out repository
+        if: ${{ needs.detect_integration_changes.outputs.run_flake_install == 'true' }}
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        if: ${{ needs.detect_integration_changes.outputs.run_flake_install == 'true' }}
+        uses: DeterminateSystems/nix-installer-action@v22
+        with:
+          determinate: false
+
+      - name: Enable Nix cache
+        if: ${{ needs.detect_integration_changes.outputs.run_flake_install == 'true' }}
+        uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-gha-cache: true
+          use-flakehub: false
+
+      - name: Set up Nushell
+        if: ${{ needs.detect_integration_changes.outputs.run_flake_install == 'true' }}
+        uses: hustcer/setup-nu@v3
+        with:
+          version: "0.111.0"
+
       - name: Validate flake install smoke path
+        if: ${{ needs.detect_integration_changes.outputs.run_flake_install == 'true' }}
         run: nu nushell/scripts/dev/validate_flake_install.nu
