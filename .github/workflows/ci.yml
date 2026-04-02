@@ -29,7 +29,7 @@ jobs:
           determinate: false
 
       - name: Enable Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@v13
+        uses: DeterminateSystems/magic-nix-cache-action@main
         with:
           use-gha-cache: true
           use-flakehub: false
