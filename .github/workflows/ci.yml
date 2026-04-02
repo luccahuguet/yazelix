@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -121,7 +122,10 @@ jobs:
     # Heavier install/runtime lane. This still reports a concrete skip message
     # in CI when no relevant files changed, instead of disappearing entirely.
     needs: [detect_integration_changes, validate]
-    if: ${{ needs.validate.result == 'success' }}
+    # Cold flake-install validation is too expensive and substitution-sensitive
+    # for every direct push to main. Keep it in PR/manual validation where the
+    # signal is worth the runtime cost.
+    if: ${{ needs.validate.result == 'success' && github.event_name != 'push' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
