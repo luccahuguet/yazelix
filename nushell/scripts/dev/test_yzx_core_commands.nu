@@ -523,7 +523,7 @@ git = ["gh", "prek"]
     $result
 }
 
-# Defends: yzx edit fuzzy targets resolve to canonical managed config surfaces and reject ambiguous noninteractive use.
+# Defends: yzx edit supported targets resolve to canonical managed config surfaces and reject ambiguous noninteractive use.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_yzx_edit_targets_print_paths [] {
     print "🧪 Testing yzx edit resolves the supported managed config targets and rejects noninteractive ambiguity..."
@@ -555,14 +555,14 @@ def test_yzx_edit_targets_print_paths [] {
             YAZELIX_CONFIG_DIR: $temp_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            yzx edit hel --print
+            yzx edit helix --print
         }
         let zellij_stdout = with-env {
             HOME: $tmp_home
             YAZELIX_CONFIG_DIR: $temp_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            yzx edit zell --print
+            yzx edit zellij --print
         }
         let yazi_stdout = with-env {
             HOME: $tmp_home
@@ -605,7 +605,7 @@ def test_yzx_edit_targets_print_paths [] {
             and ($missing_subcommand_stderr | str contains "requires a target query")
             and ($invalid_stderr | str contains "No managed Yazelix config surface matched")
         ) {
-            print "  ✅ yzx edit resolves canonical managed surfaces through fuzzy queries and rejects unsupported noninteractive cases"
+            print "  ✅ yzx edit resolves canonical managed surfaces through supported target names and rejects unsupported noninteractive cases"
             true
         } else {
             print $"  ❌ Unexpected result: main=($main_stdout) packs=($packs_stdout) helix=($helix_stdout) zellij=($zellij_stdout) yazi=($yazi_stdout) missing_exit=($missing_subcommand_output.exit_code) missing_stderr=($missing_subcommand_stderr) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
