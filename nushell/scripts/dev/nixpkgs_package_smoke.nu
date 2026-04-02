@@ -1,5 +1,4 @@
-const REPO_ROOT = ((path self) | path dirname | path join ".." ".." ".." | path expand)
-const DEVENV_SKEW_WARNING = "is newer than devenv input"
+use ./devenv_lock_contract.nu [DEVENV_SKEW_WARNING get_locked_devenv_package_root]
 
 export def make_temp_home [] {
     (^mktemp -d /tmp/yazelix_nixpkgs_package_XXXXXX | str trim)
@@ -52,37 +51,31 @@ export def run_package_nu [package_root: string, temp_home: string, command: str
     }
 }
 
-def get_locked_devenv_package_root [] {
-    let helper_path = ($REPO_ROOT | path join "locked_devenv_package.nix")
-    let expr = $"let repo = builtins.toPath \"($REPO_ROOT)\"; flake = builtins.getFlake \(toString repo\); pkgs = flake.inputs.nixpkgs.legacyPackages.$\{builtins.currentSystem\}; in \(import \(repo + \"/($helper_path | path basename)\"\) { inherit pkgs; src = repo; }\).outPath"
-    let result = (^nix eval --impure --raw --expr $expr | complete)
-    require_success $result "Failed to resolve the locked devenv package path"
-    $result.stdout | str trim
-}
-
 def require_no_devenv_skew_warning [package_root: string, temp_home: string] {
-    let shell_probe = (
+    let shell_probe_resolution = (
         run_package_nu
             $package_root
             $temp_home
             ([
                 $"use '($package_root | path join "nushell" "scripts" "utils" "environment_bootstrap.nu")' get_devenv_base_command"
-                "let cmd = (get_devenv_base_command | append [\"shell\" \"--\" \"true\"])"
-                "let bin = ($cmd | first)"
-                "let args = ($cmd | skip 1)"
-                "^$bin ...$args | complete | to json -r"
+                "get_devenv_base_command | append [\"shell\" \"--\" \"true\"] | to json -r"
             ] | str join "\n")
     )
-    require_success $shell_probe "Packaged Yazelix failed to probe the shell-enter path"
+    require_success $shell_probe_resolution "Packaged Yazelix failed to resolve the shell-enter command"
 
-    let resolved = ($shell_probe.stdout | str trim | from json)
-    if $resolved.exit_code != 0 {
-        error make { msg: $"Packaged shell-enter probe failed: ($resolved | to json -r)" }
-    }
+    let shell_command = ($shell_probe_resolution.stdout | str trim | from json)
+    let shell_bin = ($shell_command | first)
+    let shell_args = ($shell_command | skip 1)
+    let shell_probe = (
+        with-env (get_package_env $temp_home $package_root) {
+            ^$shell_bin ...$shell_args | complete
+        }
+    )
+    require_success $shell_probe "Packaged Yazelix shell-enter probe failed"
 
-    let stderr_text = ($resolved.stderr | default "")
-    if ($stderr_text | str contains $DEVENV_SKEW_WARNING) {
-        error make { msg: $"Packaged Yazelix still emits the upstream devenv skew warning: ($stderr_text | str trim)" }
+    let combined_output = (($shell_probe.stderr | default "") + ($shell_probe.stdout | default ""))
+    if ($combined_output | str contains $DEVENV_SKEW_WARNING) {
+        error make { msg: $"Packaged Yazelix still emits the upstream devenv skew warning: ($combined_output | str trim)" }
     }
 }
 

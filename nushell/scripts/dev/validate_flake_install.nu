@@ -1,7 +1,6 @@
 #!/usr/bin/env nu
 
-const REPO_ROOT = ((path self) | path dirname | path join ".." ".." ".." | path expand)
-const DEVENV_SKEW_WARNING = "is newer than devenv input"
+use ./devenv_lock_contract.nu [DEVENV_SKEW_WARNING get_locked_devenv_package_root]
 
 def make_temp_home [] {
     (^mktemp -d /tmp/yazelix_flake_install_XXXXXX | str trim)
@@ -18,21 +17,6 @@ def require_file_contains [path: string, needle: string, label: string] {
     if not ($content | str contains $needle) {
         error make { msg: $"($label) does not contain expected text `($needle)`: ($path)" }
     }
-}
-
-def get_locked_devenv_package_root [] {
-    let expr = $"let repo = builtins.toPath \"($REPO_ROOT)\"; flake = builtins.getFlake \(toString repo\); pkgs = flake.inputs.nixpkgs.legacyPackages.$\{builtins.currentSystem\}; in \(import \(repo + \"/locked_devenv_package.nix\"\) { inherit pkgs; src = repo; }\).outPath"
-    let result = (^nix eval --impure --raw --expr $expr | complete)
-    if $result.exit_code != 0 {
-        if ($result.stdout | is-not-empty) {
-            print $result.stdout
-        }
-        if ($result.stderr | is-not-empty) {
-            print $result.stderr
-        }
-        error make { msg: "Failed to resolve the locked devenv package path during flake install smoke validation" }
-    }
-    $result.stdout | str trim
 }
 
 def run_flake_install [temp_home: string] {
