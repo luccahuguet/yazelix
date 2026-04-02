@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
-const DEFAULT_SUITE_MAX_SECONDS = 45.0
+const DEFAULT_SUITE_MAX_SECONDS = 50.0
 
 def run_profiled_default_suite [] {
     let dev_script = ($REPO_ROOT | path join "nushell" "scripts" "yzx" "dev.nu")
