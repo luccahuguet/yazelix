@@ -421,7 +421,20 @@ export def "yzx update runtime" [
     }
 
     if $restart {
-        yzx restart
+        let refreshed_yzx = ($env.HOME | path join ".local" "bin" "yzx")
+        if not ($refreshed_yzx | path exists) {
+            print $"❌ Runtime update succeeded, but the refreshed Yazelix CLI was not found at ($refreshed_yzx)."
+            print "   Run `~/.local/bin/yzx restart` after reinstalling the CLI wrapper, or rerun the update command."
+            exit 1
+        }
+
+        if $verbose {
+            print $"⚙️ Restarting via refreshed CLI: ($refreshed_yzx) restart"
+        } else {
+            print "🔄 Restarting via the refreshed Yazelix runtime..."
+        }
+
+        run-external $refreshed_yzx "restart"
     }
 }
 

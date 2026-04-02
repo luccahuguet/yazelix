@@ -97,8 +97,13 @@ export def compute_config_state [] {
     } else {
         ""
     }
+    let runtime_hash = (
+        $yazelix_dir
+        | path expand
+        | hash sha256
+    )
 
-    let combined_hash = [$config_hash, $lock_hash, $devenv_nix_hash, $devenv_yaml_hash]
+    let combined_hash = [$config_hash, $lock_hash, $devenv_nix_hash, $devenv_yaml_hash, $runtime_hash]
         | str join ":"
         | hash sha256
 
@@ -145,6 +150,11 @@ export def compute_config_state [] {
     } else {
         ""
     }
+    let cached_runtime_hash = if $has_structured_cache {
+        $cached_state | get -o runtime_hash | default ""
+    } else {
+        ""
+    }
     let config_changed = if $has_structured_cache {
         $config_hash != $cached_config_hash
     } else {
@@ -155,6 +165,7 @@ export def compute_config_state [] {
             ($lock_hash != $cached_lock_hash)
             or ($devenv_nix_hash != $cached_devenv_nix_hash)
             or ($devenv_yaml_hash != $cached_devenv_yaml_hash)
+            or ($runtime_hash != $cached_runtime_hash)
         )
     } else {
         false
@@ -173,17 +184,17 @@ export def compute_config_state [] {
     let refresh_reason = if not $needs_refresh {
         ""
     } else if $inputs_require_refresh and (not $has_structured_cache) {
-        "config or devenv inputs changed since last launch"
+        "config, runtime, or devenv inputs changed since last launch"
     } else if $inputs_require_refresh and $config_changed and $inputs_changed {
-        "config and devenv inputs changed since last launch"
+        "config and runtime/devenv inputs changed since last launch"
     } else if $inputs_require_refresh and $config_changed {
         "config changed since last launch"
     } else if $inputs_require_refresh and $inputs_changed {
-        "devenv inputs changed since last launch"
+        "runtime or devenv inputs changed since last launch"
     } else if not $has_verified_launch_profile {
         "verified launch profile missing for current config"
     } else {
-        "config or devenv inputs changed since last launch"
+        "config, runtime, or devenv inputs changed since last launch"
     }
 
     {
@@ -195,6 +206,7 @@ export def compute_config_state [] {
         lock_hash: $lock_hash
         devenv_nix_hash: $devenv_nix_hash
         devenv_yaml_hash: $devenv_yaml_hash
+        runtime_hash: $runtime_hash
         combined_hash: $combined_hash
         cached_hash: $cached_hash
         cache_file: $cache_file
@@ -222,6 +234,7 @@ export def mark_config_state_applied [state: record] {
         lock_hash: ($state.lock_hash? | default "")
         devenv_nix_hash: ($state.devenv_nix_hash? | default "")
         devenv_yaml_hash: ($state.devenv_yaml_hash? | default "")
+        runtime_hash: ($state.runtime_hash? | default "")
     }
     $cache_record | to json | save --force $cache_file
 }
