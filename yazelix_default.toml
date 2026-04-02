@@ -183,6 +183,9 @@ transparency = "medium"
 # It is recommended to set this to false, so you learn more about zellij
 disable_tips = true
 
+# Show Zellij pane frames (default: true)
+pane_frames = true
+
 # Enable rounded corners for Zellij pane frames (default: true)
 rounded_corners = true
 

@@ -26,6 +26,7 @@ Highlights:
 - Hardened `yzx launch` and `yzx restart` so they stop trusting stale current shells that do not contain the newly configured terminal.
 - Fixed `yzx dev update --canary-only` regressions around canary selection syntax and read-only temporary config copies.
 - Deleted the copied `PINNED_DEVENV_VERSION` contract so maintainer pins and doctor output stop pretending there is a third authoritative `devenv` version source.
+- Restored `[zellij].pane_frames` as a canonical managed config option while keeping direct Zellij pane-frame ownership and rounded-corner control.
 - Reverted the managed Yazi default theme to Yazi's upstream built-in default instead of forcing the bundled `tokyo-night` flavor unless you opt into a flavor explicitly.
 - Fixed Home Manager runtime-source evaluation so the standalone `home_manager` flake can validate and install the lock-derived runtime without tripping invalid parent-source paths.
 - Dropped the broken Home Manager source-input workaround and kept the simpler module wiring now that the lock-derived `devenv` source import is stable again.

@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 43
+field_count = 44
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -276,6 +276,14 @@ kind = "bool"
 default = true
 parser_key = "disable_zellij_tips"
 home_manager_option = "disable_zellij_tips"
+parser_behavior = "bool_to_string"
+rebuild_required = false
+
+[fields."zellij.pane_frames"]
+kind = "bool"
+default = true
+parser_key = "zellij_pane_frames"
+home_manager_option = "zellij_pane_frames"
 parser_behavior = "bool_to_string"
 rebuild_required = false
 

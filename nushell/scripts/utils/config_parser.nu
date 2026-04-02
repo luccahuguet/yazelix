@@ -211,6 +211,7 @@ export def parse_yazelix_config [] {
     $parsed = (upsert_parsed_field $parsed $contract "terminal.transparency" (parse_contract_direct_field $contract $raw_config "terminal.transparency"))
 
     $parsed = (upsert_parsed_field $parsed $contract "zellij.disable_tips" (parse_contract_bool_to_string_field $contract $raw_config "zellij.disable_tips"))
+    $parsed = (upsert_parsed_field $parsed $contract "zellij.pane_frames" (parse_contract_bool_to_string_field $contract $raw_config "zellij.pane_frames"))
     $parsed = (upsert_parsed_field $parsed $contract "zellij.rounded_corners" (parse_contract_bool_to_string_field $contract $raw_config "zellij.rounded_corners"))
     $parsed = (upsert_parsed_field $parsed $contract "zellij.support_kitty_keyboard_protocol" (parse_contract_bool_to_string_field $contract $raw_config "zellij.support_kitty_keyboard_protocol"))
     $parsed = (upsert_parsed_field $parsed $contract "zellij.theme" (parse_contract_direct_field $contract $raw_config "zellij.theme"))

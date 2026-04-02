@@ -303,6 +303,12 @@ in
       description = "Disable Zellij tips popup on startup for cleaner launches";
     };
 
+    zellij_pane_frames = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Show Zellij pane frames";
+    };
+
     zellij_rounded_corners = mkOption {
       type = types.bool;
       default = true;
@@ -725,6 +731,7 @@ in
             ""
             "[zellij]"
             "disable_tips = ${boolToToml cfg.disable_zellij_tips}"
+            "pane_frames = ${boolToToml cfg.zellij_pane_frames}"
             "rounded_corners = ${boolToToml cfg.zellij_rounded_corners}"
             "support_kitty_keyboard_protocol = ${boolToToml cfg.support_kitty_keyboard_protocol}"
             "theme = ${escapeString cfg.zellij_theme}"

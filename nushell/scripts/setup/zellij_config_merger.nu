@@ -69,8 +69,15 @@ def get_dynamic_overrides [] {
     let config = (try {
         parse_yazelix_config
     } catch {
-        {zellij_rounded_corners: "true", zellij_theme: "default", disable_zellij_tips: "true", zellij_default_mode: "normal"}
+        {disable_zellij_tips: "true", zellij_pane_frames: "true", zellij_rounded_corners: "true", zellij_theme: "default", zellij_default_mode: "normal"}
     })
+
+    let pane_frames = ($config | get -o zellij_pane_frames | default "true")
+    let pane_frames_value = if ($pane_frames | str starts-with "false") {
+        "false"
+    } else {
+        "true"
+    }
 
     let rounded = ($config | get -o zellij_rounded_corners | default "true")
     let rounded_value = if ($rounded | str starts-with "false") {
@@ -111,6 +118,7 @@ def get_dynamic_overrides [] {
         $"theme \"($theme)\"",
         $"show_startup_tips ($show_tips_value)",
         "show_release_notes false",
+        $"pane_frames ($pane_frames_value)",
         "ui {",
         "    pane_frames {",
         $"        rounded_corners ($rounded_value)",
@@ -416,7 +424,6 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         (get_dynamic_overrides),
         "",
         "// === YAZELIX ENFORCED SETTINGS ===",
-        "pane_frames true",
         $"support_kitty_keyboard_protocol ($kitty_protocol_value)",
         $"default_mode \"($default_mode)\"",
         $"default_shell \"($resolved_default_shell)\"",
