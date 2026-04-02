@@ -37,3 +37,9 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: yazelix-validate-default-test-count-budget
+        name: validate default-suite test-count budget
+        entry: nu nushell/scripts/dev/validate_default_test_count_budget.nu
+        language: system
+        pass_filenames: false
+        always_run: true

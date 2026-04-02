@@ -111,6 +111,7 @@ A test is a strong demotion candidate when it is:
 - If a regression matters enough for the default lane, it should be promoted into a spec-backed bundle or accompanied by a dedicated spec instead of living as a policy exception.
 - The default lane should also enforce mechanical anti-creep guardrails:
   - no dead noncanonical `def test_...` helpers inside default-lane component files
+  - a default-suite test-count budget
   - a default-suite runtime budget
   - explicit `# Test lane:` declarations on all `test_*.nu` files
   - universal per-test justification and strength scoring across governed lanes
@@ -140,6 +141,7 @@ Do not use the lane model as a substitute for judging whether a test is good. A 
 - Keep `prek` for checks maintainers can tolerate on frequent local runs.
 - CI may call a narrower set of high-signal commands than the full local suite if the tradeoff is explicit and documented.
 - Runtime-budget increases should be explicit. If a change needs more default-lane runtime, it should update the runtime validator budget in the same PR with a short justification.
+- Test-count increases should be explicit. If a change needs more default-lane tests, it should update the count-budget validator in the same PR with a short justification.
 - Do not create generic `_extended` test files as overflow. If a nondefault lane needs more coverage, put it in an explicitly named lane or file that matches its real ownership.
 
 ### Enforced test metadata
