@@ -1,5 +1,6 @@
 #!/usr/bin/env nu
 # Core regression runner for high-signal yzx CLI contracts
+# Test lane: default
 # Defends: docs/specs/test_suite_governance.md
 # Defends: docs/specs/floating_tui_panes.md
 # Defends: docs/workspace_session_contract.md

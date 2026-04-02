@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 # Configuration Sweep Testing Framework (Refactored)
 # Tests shell/terminal combinations and configuration variations
+# Test lane: sweep
 
 use ../utils/config_parser.nu parse_yazelix_config
 use sweep/sweep_config_generator.nu *

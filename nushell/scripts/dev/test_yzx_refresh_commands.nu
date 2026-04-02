@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Test lane: default
 # Defends: docs/specs/test_suite_governance.md
 
 use ./test_yzx_helpers.nu [repo_path]
@@ -38,6 +39,7 @@ def test_command_failure_summary_includes_command_tail_and_recovery [] {
 
 export def run_refresh_canonical_tests [] {
     [
+        # Defends: refresh failures include command tail and recovery guidance.
         (test_command_failure_summary_includes_command_tail_and_recovery)
     ]
 }

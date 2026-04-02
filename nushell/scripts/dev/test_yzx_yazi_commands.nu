@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Test lane: default
 # Defends: docs/specs/test_suite_governance.md
 
 use ./test_yzx_helpers.nu [setup_managed_config_fixture]
@@ -118,7 +119,9 @@ ya_command = "/opt/custom/ya"
 
 export def run_yazi_canonical_tests [] {
     [
+        # Defends: managed editor open strategy routes missing and existing states correctly.
         (test_managed_editor_open_strategy_routes_missing_and_existing_states)
+        # Defends: Yazi command resolution honors defaults and user overrides.
         (test_yazi_command_resolvers_honor_defaults_and_overrides)
     ]
 }

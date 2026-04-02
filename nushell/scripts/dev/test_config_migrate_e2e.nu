@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Test lane: maintainer
 
 use ./test_yzx_helpers.nu [add_fixture_log log_block log_line setup_managed_config_fixture]
 

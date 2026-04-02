@@ -1,5 +1,6 @@
 #!/usr/bin/env nu
 # Test runner for maintainer-only yzx checks
+# Test lane: maintainer
 
 use ../utils/common.nu [get_yazelix_state_dir]
 use ../utils/devenv_cli.nu resolve_preferred_devenv_path

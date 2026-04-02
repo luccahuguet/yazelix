@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Test lane: maintainer
 
 def write_executable [path: string, body: string] {
     $body | save --force --raw $path

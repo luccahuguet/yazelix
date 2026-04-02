@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Test lane: default
 # Defends: docs/specs/test_suite_governance.md
 
 use ../core/yazelix.nu *
@@ -189,9 +190,13 @@ git = ["gh", "prek"]
 
 export def run_doctor_canonical_tests [] {
     [
+        # Defends: doctor warns on stale config fields with actionable guidance.
         (test_yzx_doctor_warns_on_stale_config_fields)
+        # Defends: doctor reports known migrations and the matching fix path.
         (test_yzx_doctor_reports_known_migration_with_fix_guidance)
+        # Defends: doctor fix applies safe config migrations.
         (test_yzx_doctor_fix_applies_safe_config_migrations)
+        # Regression: doctor fix splits legacy pack config into the supported sidecar path.
         (test_yzx_doctor_fix_splits_legacy_pack_config)
     ]
 }

@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Test lane: maintainer
 
 use ./test_yzx_helpers.nu [get_repo_root]
 

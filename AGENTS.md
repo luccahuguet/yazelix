@@ -193,6 +193,9 @@ When creating new files or directories, always use underscores to maintain consi
 - **Prefer high-signal behavior and regression tests** over shallow command-discovery checks.
 - **Do not add weak tests that mostly create noise**, such as tests that only verify a command exists in help output, that a subcommand name is listed, or that implementation trivia appears in generated text without protecting meaningful behavior.
 - **Every new test should defend a real contract, regression, or failure mode**: user-visible behavior, config/state invariants, integration boundaries, or a bug that has already happened.
+- **Every new `test_*.nu` file must declare `# Test lane: ...` using an allowed lane** (`default`, `maintainer`, `sweep`, `manual`, or `support`).
+- **Do not create generic `_extended` test files as overflow.** If a nondefault lane needs more coverage, use a file or lane name that reflects its actual ownership.
+- **Every new canonical default-lane test entry must carry a nearby `# Defends:`, `# Regression:`, or `# Invariant:` marker.**
 - **Do not add packaging/config-sync tests by default** just because two files should match. Only keep them when they defend a maintained source-of-truth invariant in the right lane; otherwise prefer behavior tests, spec-backed validation, or cheaper dedicated validators.
 - When in doubt, **remove or avoid low-value tests** and spend the budget on fewer, stronger assertions.
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env nu
+# Test lane: maintainer
+# Grandfathered filename: retained legacy '_extended' name until the surrounding nondefault lane is renamed.
 # Defends: docs/specs/test_suite_governance.md
 
 use ./test_yzx_helpers.nu [get_repo_config_dir get_repo_root repo_path]

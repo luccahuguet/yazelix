@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Test lane: default
 # Defends: docs/specs/test_suite_governance.md
 
 use ./test_yzx_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
@@ -883,24 +884,43 @@ def test_generate_merged_zellij_config_prefers_managed_user_config_when_native_c
 
 export def run_generated_config_canonical_tests [] {
     [
+        # Defends: generated terminal configs do not silently take over user overrides.
         (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
+        # Regression: terminal override imports must ignore Yazelix runtime roots.
         (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
+        # Defends: config parsing stays read-only and does not auto-apply migrations.
         (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
+        # Defends: removed ascii mode fails with migration guidance.
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
+        # Invariant: missing welcome style is bootstrapped to the managed default.
         (test_parse_yazelix_config_bootstraps_welcome_style_surface)
+        # Invariant: missing yazi plugin default falls back to the canonical managed default.
         (test_parse_yazelix_config_falls_back_to_canonical_yazi_plugins_default)
+        # Invariant: split default config surfaces are bootstrapped when missing.
         (test_parse_yazelix_config_bootstraps_split_default_surfaces)
+        # Regression: existing main config gets the missing pack sidecar bootstrapped cleanly.
         (test_parse_yazelix_config_bootstraps_missing_pack_sidecar_for_existing_main_config)
+        # Defends: legacy root config is rejected unless the user explicitly allows migration.
         (test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation)
+        # Defends: explicit legacy-root migration uses the managed relocation path.
         (test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed)
+        # Defends: legacy inline packs are rejected with migration guidance.
         (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)
+        # Defends: split pack ownership conflicts fail fast.
         (test_parse_yazelix_config_rejects_split_pack_ownership)
+        # Defends: user terminal mode requires a real terminal config path.
         (test_user_mode_requires_real_terminal_config)
+        # Defends: removed auto terminal config mode is rejected by schema validation.
         (test_config_schema_rejects_removed_auto_terminal_config_mode)
+        # Defends: removed layout widget config is rejected by schema validation.
         (test_config_schema_rejects_removed_layout_widget)
+        # Regression: legacy Yazi overrides are relocated into the managed surface.
         (test_generate_merged_yazi_config_relocates_legacy_user_overrides)
+        # Defends: native Zellij config can still be used without Yazelix taking ownership of it.
         (test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it)
+        # Regression: managed Zellij config wins cleanly when both native and managed files exist.
         (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
+        # Defends: sidebar width propagates into generated Zellij layouts and plugin config.
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
     ]
 }

@@ -111,8 +111,10 @@ A test is a strong demotion candidate when it is:
 - If a regression matters enough for the default lane, it should be promoted into a spec-backed bundle or accompanied by a dedicated spec instead of living as a policy exception.
 - The default lane should also enforce mechanical anti-creep guardrails:
   - no dead noncanonical `def test_...` helpers inside default-lane component files
-  - a canonical test-count budget
   - a default-suite runtime budget
+  - explicit `# Test lane:` declarations on all `test_*.nu` files
+  - a nearby `# Defends:`, `# Regression:`, or `# Invariant:` marker for every canonical default-lane test entry
+  - no new generic `_extended` overflow files
 
 ### Lane placement rules
 
@@ -123,7 +125,26 @@ A test is a strong demotion candidate when it is:
 - Put true windowed or visual checks in the visual sweep lane or manual verification path.
 - Keep `prek` for checks maintainers can tolerate on frequent local runs.
 - CI may call a narrower set of high-signal commands than the full local suite if the tradeoff is explicit and documented.
-- Budget increases should be explicit. If a change needs more default-lane tests or more runtime, it should update the validator budget in the same PR with a short justification.
+- Runtime-budget increases should be explicit. If a change needs more default-lane runtime, it should update the runtime validator budget in the same PR with a short justification.
+- Do not create generic `_extended` test files as overflow. If a nondefault lane needs more coverage, put it in an explicitly named lane or file that matches its real ownership.
+
+### Enforced test metadata
+
+Every `test_*.nu` file must declare one supported lane with a top-level header:
+
+- `# Test lane: default`
+- `# Test lane: maintainer`
+- `# Test lane: sweep`
+- `# Test lane: manual`
+- `# Test lane: support`
+
+Default-lane component files must also justify every canonical test entry with one nearby marker immediately above the test in the canonical list:
+
+- `# Defends: ...`
+- `# Regression: ...`
+- `# Invariant: ...`
+
+This is intentionally mechanical rather than philosophical. The validator cannot prove a test is wise, but it can make low-effort junk and generic overflow harder to land.
 
 ### Concrete cleanup in this change
 

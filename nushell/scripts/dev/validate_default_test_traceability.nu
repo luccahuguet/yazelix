@@ -1,10 +1,50 @@
 #!/usr/bin/env nu
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
-const DEFAULT_SUITE_MAX_CANONICAL_TESTS = 56
+const ALLOWED_TEST_LANES = [
+    "default"
+    "maintainer"
+    "sweep"
+    "manual"
+    "support"
+]
 
 def to_dev_relative_path [file_name: string] {
     $"nushell/scripts/dev/($file_name)"
+}
+
+def load_all_test_file_paths [] {
+    glob (($REPO_ROOT | path join "nushell" "scripts" "dev" "test_*.nu"))
+}
+
+def get_test_lane_line [relative_path: string] {
+    let full_path = ($REPO_ROOT | path join $relative_path)
+
+    open --raw $full_path
+    | lines
+    | where { |line| ($line | str trim | str starts-with "# Test lane:") }
+    | get -o 0
+}
+
+def parse_test_lane [relative_path: string] {
+    let lane_line = (get_test_lane_line $relative_path)
+
+    if $lane_line == null {
+        null
+    } else {
+        $lane_line
+        | str trim
+        | str replace "# Test lane:" ""
+        | str trim
+    }
+}
+
+def has_grandfathered_extended_filename_marker [relative_path: string] {
+    let full_path = ($REPO_ROOT | path join $relative_path)
+
+    open --raw $full_path
+    | lines
+    | any { |line| ($line | str trim | str starts-with "# Grandfathered filename:") }
 }
 
 def get_traceability_section [content: string] {
@@ -123,12 +163,54 @@ def load_defined_test_names [relative_path: string] {
     | get capture0
 }
 
+def has_valid_test_justification [relative_path: string, test_name: string] {
+    let lines = (open --raw ($REPO_ROOT | path join $relative_path) | lines)
+    let canonical_entry = ("(" + $test_name + ")")
+    let test_line_index = (
+        $lines
+        | enumerate
+        | where { |entry| (($entry.item | str trim) == $canonical_entry) }
+        | get -o 0.index
+    )
+
+    if $test_line_index == null {
+        error make { msg: $"Could not find canonical test entry for ($test_name) in: ($relative_path)" }
+    }
+
+    let prior_nonempty_line = (
+        $lines
+        | first $test_line_index
+        | reverse
+        | where { |line| not (($line | str trim) | is-empty) }
+        | get -o 0
+        | default ""
+        | str trim
+    )
+
+    ["# Defends:", "# Regression:", "# Invariant:"]
+    | any { |prefix| $prior_nonempty_line | str starts-with $prefix }
+}
+
 export def main [] {
     let entrypoints = (load_default_suite_entrypoints)
     let component_files = (load_default_suite_component_files)
     let defended_by_lines = (load_spec_defended_by_lines)
     mut errors = []
-    mut canonical_test_count = 0
+
+    for test_path in (load_all_test_file_paths) {
+        let relative_path = ($test_path | path relative-to $REPO_ROOT)
+        let lane = (parse_test_lane $relative_path)
+
+        if $lane == null {
+            $errors = ($errors | append $"Missing '# Test lane:' declaration in: ($relative_path)")
+        } else if not ($ALLOWED_TEST_LANES | any { |allowed| $allowed == $lane }) {
+            $errors = ($errors | append $"Test file declares unsupported lane '($lane)': ($relative_path)")
+        }
+
+        if (($relative_path | str ends-with "_extended.nu") and not (has_grandfathered_extended_filename_marker $relative_path)) {
+            $errors = ($errors | append $"Generic '_extended' test filenames are no longer allowed without an explicit grandfather marker: ($relative_path)")
+        }
+    }
 
     for entrypoint in $entrypoints {
         if not (is_spec_backed $entrypoint $defended_by_lines) {
@@ -143,6 +225,11 @@ export def main [] {
             $errors = ($errors | append $"Default-suite component file is missing a valid '# Defends:' spec reference: ($dev_relative_path)")
         }
 
+        let lane = (parse_test_lane $dev_relative_path)
+        if $lane != "default" {
+            $errors = ($errors | append $"Default-suite component file must declare '# Test lane: default': ($dev_relative_path)")
+        }
+
         let canonical_tests = (load_canonical_test_names $dev_relative_path)
         let defined_tests = (load_defined_test_names $dev_relative_path)
         let dead_tests = (
@@ -150,15 +237,15 @@ export def main [] {
             | where { |name| not ($canonical_tests | any { |canonical| $canonical == $name }) }
         )
 
-        $canonical_test_count = ($canonical_test_count + ($canonical_tests | length))
-
         for dead_test in $dead_tests {
             $errors = ($errors | append $"Default-suite component file contains a noncanonical dead test: ($dev_relative_path) :: ($dead_test)")
         }
-    }
 
-    if $canonical_test_count > $DEFAULT_SUITE_MAX_CANONICAL_TESTS {
-        $errors = ($errors | append $"Default-suite canonical test count exceeded budget: ($canonical_test_count) > ($DEFAULT_SUITE_MAX_CANONICAL_TESTS)")
+        for canonical_test in $canonical_tests {
+            if not (has_valid_test_justification $dev_relative_path $canonical_test) {
+                $errors = ($errors | append $"Default-suite canonical test is missing a nearby '# Defends:', '# Regression:', or '# Invariant:' marker: ($dev_relative_path) :: ($canonical_test)")
+            }
+        }
     }
 
     if not ($errors | is-empty) {

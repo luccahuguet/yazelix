@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Test lane: default
 # Defends: docs/specs/test_suite_governance.md
 
 use ../core/yazelix.nu *
@@ -675,18 +676,31 @@ widget_tray = ["layout", "editor"]
 
 export def run_core_canonical_tests [] {
     [
+        # Defends: config migration preview surfaces known safe changes before writes.
         (test_yzx_config_migrate_preview_reports_known_migrations)
+        # Defends: applying config migrations rewrites user config with a backup.
         (test_yzx_config_migrate_apply_rewrites_config_with_backup)
+        # Defends: legacy inline pack ownership is split into the supported sidecar surface.
         (test_yzx_config_migrate_apply_splits_legacy_packs_into_sidecar)
+        # Invariant: current config shapes do not churn under migrate apply.
         (test_yzx_config_migrate_apply_noops_on_current_config)
+        # Defends: startup preflight auto-applies safe migrations before launch.
         (test_entrypoint_preflight_auto_applies_safe_migrations)
+        # Regression: legacy helix command strings are migrated during preflight.
         (test_entrypoint_preflight_migrates_legacy_helix_command)
+        # Defends: startup blocks on remaining manual config work after safe rewrites.
         (test_entrypoint_preflight_applies_auto_changes_then_blocks_on_manual_followup)
+        # Regression: legacy root config surfaces are detected and relocated only through the managed path.
         (test_entrypoint_preflight_relocates_legacy_root_config_surfaces)
+        # Defends: yzx config prints the active Yazelix configuration surface.
         (test_yzx_config_view)
+        # Invariant: pack sidecar config is merged into the full config view.
         (test_yzx_config_full_merges_pack_sidecar)
+        # Defends: yzx edit targets resolve to the supported managed config paths.
         (test_yzx_edit_targets_print_paths)
+        # Defends: invalid config is surfaced as a config problem, not a generic wrapper failure.
         (test_invalid_config_is_classified_as_config_problem)
+        # Regression: startup reports known migration needs before generic wrapper noise.
         (test_startup_reports_known_config_migration_before_generic_wrappers)
     ]
 }

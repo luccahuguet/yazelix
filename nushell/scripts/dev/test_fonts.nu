@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Test lane: manual
 
 # Test 15 best fonts for VHS recording - each with separate output files
 def test_fonts [] {

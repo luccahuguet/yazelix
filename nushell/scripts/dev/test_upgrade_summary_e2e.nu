@@ -1,4 +1,5 @@
 #!/usr/bin/env nu
+# Test lane: maintainer
 
 use ./test_yzx_helpers.nu [get_repo_config_dir log_block log_line repo_path]
 use ../utils/constants.nu [YAZELIX_VERSION]
