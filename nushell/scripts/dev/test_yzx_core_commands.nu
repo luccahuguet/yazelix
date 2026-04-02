@@ -523,10 +523,10 @@ git = ["gh", "prek"]
     $result
 }
 
-# Defends: yzx edit targets resolve to the supported managed config paths.
+# Defends: yzx edit fuzzy targets resolve to canonical managed config surfaces and reject ambiguous noninteractive use.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_yzx_edit_targets_print_paths [] {
-    print "🧪 Testing yzx edit config and yzx edit packs print the managed config paths..."
+    print "🧪 Testing yzx edit resolves the supported managed config targets and rejects noninteractive ambiguity..."
 
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_config_open_targets_XXXXXX | str trim)
@@ -550,6 +550,27 @@ def test_yzx_edit_targets_print_paths [] {
         } {
             yzx edit packs --print
         }
+        let helix_stdout = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            yzx edit hel --print
+        }
+        let zellij_stdout = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            yzx edit zell --print
+        }
+        let yazi_stdout = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            yzx edit yazi --print
+        }
         let missing_subcommand_output = with-env {
             HOME: $tmp_home
             YAZELIX_CONFIG_DIR: $temp_config_dir
@@ -567,6 +588,9 @@ def test_yzx_edit_targets_print_paths [] {
 
         let expected_main = ($temp_config_dir | path join "user_configs" "yazelix.toml")
         let expected_packs = ($temp_config_dir | path join "user_configs" "yazelix_packs.toml")
+        let expected_helix = ($temp_config_dir | path join "user_configs" "helix" "config.toml")
+        let expected_zellij = ($temp_config_dir | path join "user_configs" "zellij" "config.kdl")
+        let expected_yazi = ($temp_config_dir | path join "user_configs" "yazi" "yazi.toml")
         let missing_subcommand_stderr = ($missing_subcommand_output.stderr | str trim)
         let invalid_stderr = ($invalid_output.stderr | str trim)
 
@@ -575,13 +599,16 @@ def test_yzx_edit_targets_print_paths [] {
             and ($invalid_output.exit_code != 0)
             and ($main_stdout == $expected_main)
             and ($packs_stdout == $expected_packs)
-            and ($missing_subcommand_stderr | str contains "edit")
-            and ($invalid_stderr | str contains "edit")
+            and ($helix_stdout == $expected_helix)
+            and ($zellij_stdout == $expected_zellij)
+            and ($yazi_stdout == $expected_yazi)
+            and ($missing_subcommand_stderr | str contains "requires a target query")
+            and ($invalid_stderr | str contains "No managed Yazelix config surface matched")
         ) {
-            print "  ✅ yzx edit config and yzx edit packs resolve the managed config paths and reject unknown leaf commands"
+            print "  ✅ yzx edit resolves canonical managed surfaces through fuzzy queries and rejects unsupported noninteractive cases"
             true
         } else {
-            print $"  ❌ Unexpected result: main=($main_stdout) packs=($packs_stdout) missing_exit=($missing_subcommand_output.exit_code) missing_stderr=($missing_subcommand_stderr) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
+            print $"  ❌ Unexpected result: main=($main_stdout) packs=($packs_stdout) helix=($helix_stdout) zellij=($zellij_stdout) yazi=($yazi_stdout) missing_exit=($missing_subcommand_output.exit_code) missing_stderr=($missing_subcommand_stderr) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
             false
         }
     } catch {|err|

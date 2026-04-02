@@ -249,18 +249,144 @@ def open_config_surface_in_editor [config_path: string, --print] {
     }
 }
 
+def get_edit_targets [] {
+    let paths = get_primary_config_paths
+    let user_root = (get_yazelix_user_config_dir)
+    let helix_path = (get_managed_helix_user_config_path)
+    let zellij_path = ($user_root | path join "zellij" "config.kdl")
+    let yazi_toml_path = ($user_root | path join "yazi" "yazi.toml")
+
+    [
+        {
+            id: "config"
+            label: $"config  (ansi dark_gray)- main Yazelix config → ($paths.user_config)(ansi reset)"
+            search: "config main yazelix yazelix.toml"
+            path: $paths.user_config
+        }
+        {
+            id: "packs"
+            label: $"packs  (ansi dark_gray)- pack declarations → ($paths.user_pack_config)(ansi reset)"
+            search: "packs pack declarations yazelix_packs.toml"
+            path: $paths.user_pack_config
+        }
+        {
+            id: "helix"
+            label: $"helix  (ansi dark_gray)- managed Helix user config → ($helix_path)(ansi reset)"
+            search: "helix hx editor config config.toml"
+            path: $helix_path
+        }
+        {
+            id: "zellij"
+            label: $"zellij  (ansi dark_gray)- managed Zellij user config → ($zellij_path)(ansi reset)"
+            search: "zellij config.kdl terminal multiplexer"
+            path: $zellij_path
+        }
+        {
+            id: "yazi.toml"
+            label: $"yazi.toml  (ansi dark_gray)- managed Yazi main config → ($yazi_toml_path)(ansi reset)"
+            search: "yazi yazi.toml file manager manager config"
+            path: $yazi_toml_path
+        }
+    ]
+}
+
+def resolve_edit_target_by_id [target_id: string] {
+    get_edit_targets | where id == $target_id | first
+}
+
+def filter_edit_targets [targets: list<record>, query_text: string] {
+    let normalized = ($query_text | str downcase | str trim)
+    if ($normalized | is-empty) {
+        return $targets
+    }
+
+    let exact = ($targets | where {|target| ($target.id | str downcase) == $normalized })
+    if not ($exact | is-empty) {
+        return $exact
+    }
+
+    let tokens = ($normalized | split row " " | where {|token| not ($token | is-empty) })
+
+    $targets | where {|target|
+        let haystack = ($target.search | str downcase)
+        $tokens | all {|token| $haystack | str contains $token }
+    }
+}
+
+def render_edit_target_choices [targets: list<record>] {
+    $targets | get label
+}
+
+def render_edit_target_error_choices [targets: list<record>] {
+    $targets
+    | each {|target| $"  - ($target.id): ($target.path)" }
+    | str join "\n"
+}
+
+def choose_edit_target [targets: list<record>, prompt: string] {
+    let selected = (render_edit_target_choices $targets | input list --fuzzy $prompt)
+    if ($selected | is-empty) {
+        return null
+    }
+
+    $targets | where label == $selected | first
+}
+
+export def "yzx edit" [
+    ...query: string  # Optional fuzzy query for a managed config surface
+    --print  # Print the resolved config path without opening
+] {
+    let targets = (get_edit_targets)
+    let query_text = ($query | str join " " | str trim)
+
+    if ($query_text | is-empty) {
+        if $print {
+            error make {msg: $"yzx edit --print requires a target query. Supported managed surfaces:\n(render_edit_target_error_choices $targets)"}
+        }
+
+        let selected = (choose_edit_target $targets "yzx edit \(Esc to cancel\)> ")
+        if $selected == null {
+            return
+        }
+
+        return (open_config_surface_in_editor $selected.path)
+    }
+
+    let matches = (filter_edit_targets $targets $query_text)
+
+    if ($matches | is-empty) {
+        error make {msg: $"No managed Yazelix config surface matched `($query_text)`. Supported surfaces:\n(render_edit_target_error_choices $targets)"}
+    }
+
+    if (($matches | length) == 1) {
+        let match = ($matches | first)
+        return (open_config_surface_in_editor $match.path --print=$print)
+    }
+
+    if $print {
+        error make {msg: $"Query `($query_text)` matched multiple managed config surfaces. Refine it to one of:\n(render_edit_target_error_choices $matches)"}
+    }
+
+    let selected = (choose_edit_target $matches $"yzx edit \((query_text)\)> ")
+    if $selected == null {
+        return
+    }
+
+    open_config_surface_in_editor $selected.path
+}
+
 export def "yzx edit config" [
     --print  # Print the config path without opening
 ] {
-    let paths = get_primary_config_paths
-    open_config_surface_in_editor $paths.user_config --print=$print
+    let target = (resolve_edit_target_by_id "config")
+    open_config_surface_in_editor $target.path --print=$print
 }
 
 export def "yzx edit packs" [
     --print  # Print the config path without opening
 ] {
-    let paths = get_primary_config_paths
-    open_config_surface_in_editor $paths.user_pack_config --print=$print
+    let target = (resolve_edit_target_by_id "packs")
+    open_config_surface_in_editor $target.path --print=$print
 }
 
 def resolve_config_migration_context [] {
