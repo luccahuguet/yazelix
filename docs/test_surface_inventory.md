@@ -8,10 +8,10 @@ It exists to make pruning decisions from explicit current reality instead of mem
 
 ## Current Snapshot
 
-- Total `test_*.nu` files: `19`
+- Total `test_*.nu` files: `21`
 - Default-lane files: `8`
 - Default canonical tests: `52`
-- Maintainer-lane files: `8`
+- Maintainer-lane files: `10`
 - Sweep-lane files: `1`
 - Manual-lane files: `0`
 - Support files: `0`
@@ -31,8 +31,10 @@ It exists to make pruning decisions from explicit current reality instead of mem
 | `nushell/scripts/dev/test_yzx_yazi_commands.nu` | `default` | `2` | Yazi integration behavior | Audit test-by-test |
 | `nushell/scripts/dev/test_yzx_maintainer.nu` | `maintainer` | `4` | Maintainer workflow and repo-contract checks | Keep |
 | `nushell/scripts/dev/test_yzx_gc_commands.nu` | `maintainer` | `3` | `yzx gc` feedback/phase UX | Keep |
-| `nushell/scripts/dev/test_managed_config_contracts.nu` | `maintainer` | `12` | Managed Helix, shell-hook, Nushell bridge, and Zellij plugin-path contracts | Keep |
+| `nushell/scripts/dev/test_helix_managed_config_contracts.nu` | `maintainer` | `4` | Helix managed-config generation, import, and first-run notice contracts | Keep |
+| `nushell/scripts/dev/test_shell_managed_config_contracts.nu` | `maintainer` | `6` | Managed Nushell/Bash hook, extern bridge, and shell-wrapper contracts | Keep |
 | `nushell/scripts/dev/test_yzx_helix_doctor_contracts.nu` | `maintainer` | `2` | Helix-specific doctor guidance and stale-config diagnostics | Keep |
+| `nushell/scripts/dev/test_zellij_plugin_contracts.nu` | `maintainer` | `2` | Stable `zjstatus` plugin-path and permission-cache contracts | Keep |
 | `nushell/scripts/dev/test_config_migrate_e2e.nu` | `maintainer` | `0` | Dedicated migrate end-to-end runner | Keep |
 | `nushell/scripts/dev/test_historical_upgrade_notes_e2e.nu` | `maintainer` | `0` | Historical upgrade notes end-to-end runner | Keep |
 | `nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu` | `maintainer` | `0` | Stale-config startup diagnostics e2e runner | Keep |
@@ -46,7 +48,7 @@ It exists to make pruning decisions from explicit current reality instead of mem
 
 1. Audit the default lane test-by-test.
 2. Audit nondefault files with the highest likely dead-weight first:
-   - `test_managed_config_contracts.nu`
+   - `test_shell_managed_config_contracts.nu`
    - `test_yzx_helix_doctor_contracts.nu`
    - `test_yzx_maintainer.nu`
 3. Audit dedicated e2e runners file-by-file.
@@ -96,26 +98,23 @@ It exists to make pruning decisions from explicit current reality instead of mem
     - pack-sidecar bootstrap shape
     - possibly schema-only enum rejection checks if a cheaper validator can own them
 
-### Current borderline file shapes
-
-- `test_managed_config_contracts.nu`
-  - still broad enough that it may deserve a future split by subsystem
-
 ## Nondefault Lane Findings In Progress
 
 - `test_yzx_helix_doctor_contracts.nu`
   - Current verdict: `keep`
   - Reason: both tests defend real Helix-doctor behavior and now have an explicit ownership-based filename.
 
-- `test_managed_config_contracts.nu`
-  - Current verdict: `keep for now, still a future split candidate`
-  - Reason: it is still a mixed bucket containing:
-    - Helix managed-config contracts
-    - managed Nushell contracts
-    - Zellij `zjstatus` path/permission contracts
-    - managed Bash hook contracts
-    - Helix import and first-run notice contracts
-  - This is still broad, but it is no longer a generic overflow bucket.
+- `test_helix_managed_config_contracts.nu`
+  - Current verdict: `keep`
+  - Reason: Helix-specific managed-config behavior now has its own maintainer surface.
+
+- `test_shell_managed_config_contracts.nu`
+  - Current verdict: `keep`
+  - Reason: managed shell hooks, bridge generation, and shell-wrapper behavior now live together under one shell-focused file.
+
+- `test_zellij_plugin_contracts.nu`
+  - Current verdict: `keep`
+  - Reason: stable `zjstatus` path and permission-cache behavior now have a dedicated Zellij-plugin file.
 
 ### Early nondefault keep candidates
 
@@ -130,9 +129,9 @@ It exists to make pruning decisions from explicit current reality instead of mem
 ## Applied Audit Outcome
 
 - The default lane was pruned and now holds `52` canonical tests.
-- The governed `test_*.nu` surface was reduced to `19` files.
+- The governed `test_*.nu` surface was reduced to `21` real test entrypoints, with helpers and manual demo code moved out of that namespace.
 - Manual/demo and helper code were moved out of the governed `test_*.nu` namespace.
-- Nondefault file names now reflect current ownership instead of generic overflow naming.
+- Nondefault file names now reflect current ownership instead of generic overflow naming, and the broad managed-config bucket has been split by subsystem.
 
 ## Maintainer and E2E Keep Verdicts
 
