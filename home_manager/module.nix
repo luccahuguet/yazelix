@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  yazelixSrc ? ../.,
   ...
 }:
 
@@ -9,7 +10,10 @@ with lib;
 
 let
   cfg = config.programs.yazelix;
-  runtimePackage = import ../yazelix_runtime_package.nix { inherit pkgs; };
+  runtimePackage = import ../yazelix_runtime_package.nix {
+    inherit pkgs;
+    src = yazelixSrc;
+  };
   runtimeCurrentPath = "${config.xdg.dataHome}/yazelix/runtime/current";
 
   boolToToml = value: if value then "true" else "false";

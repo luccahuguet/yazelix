@@ -39,8 +39,21 @@
     "root": {
       "inputs": {
         "home-manager": "home-manager",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "yazelix-src": "yazelix-src"
       }
+    },
+    "yazelix-src": {
+      "flake": false,
+      "locked": {
+        "path": "../.",
+        "type": "path"
+      },
+      "original": {
+        "path": "../.",
+        "type": "path"
+      },
+      "parent": []
     }
   },
   "root": "root",

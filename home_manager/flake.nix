@@ -3,6 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    yazelix-src = {
+      url = "path:../.";
+      flake = false;
+    };
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -13,6 +17,7 @@
     {
       self,
       nixpkgs,
+      yazelix-src,
       home-manager,
     }:
     let
@@ -39,6 +44,9 @@
                 inherit pkgs;
                 modules = [
                   self.homeManagerModules.default
+                  {
+                    _module.args.yazelixSrc = yazelix-src;
+                  }
                   {
                     home.username = "test";
                     home.homeDirectory = "/home/test";

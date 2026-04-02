@@ -8,17 +8,12 @@ let
       lock.nodes.devenv.locked
     else
       throw "devenv.lock does not contain a locked devenv input";
-  lockedTree = builtins.fetchTree {
-    type = lockedNode.type;
+  lockedSource = pkgs.fetchFromGitHub {
     owner = lockedNode.owner;
     repo = lockedNode.repo;
     rev = lockedNode.rev;
-    narHash = lockedNode.narHash;
+    hash = lockedNode.narHash;
   };
-  lockedSource = builtins.path {
-    path = lockedTree.outPath;
-    name = "locked-devenv-source";
-  };
-  lockedCompat = import (lockedSource + "/default.nix");
+  lockedCompat = import (builtins.toPath "${lockedSource}/default.nix");
 in
 lockedCompat.packages.${system}.devenv
