@@ -6,6 +6,8 @@ use ../yzx/screen.nu [get_yzx_screen_cycle_frames resolve_yzx_screen_style]
 use ../utils/ascii_art.nu [get_logo_welcome_frame get_max_visible_width]
 use ../utils/ascii_art.nu [get_game_of_life_screen_state render_game_of_life_screen_state step_game_of_life_screen_state]
 
+# Defends: yzx screen rejects the unsupported static style.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_screen_style_rejects_static [] {
     print "🧪 Testing yzx screen rejects the non-animated static style..."
 
@@ -24,6 +26,8 @@ def test_screen_style_rejects_static [] {
     }
 }
 
+# Defends: game_of_life screen cycle stays bounded and omits the resting logo frame.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo [] {
     print "🧪 Testing yzx screen uses an animated game_of_life cycle instead of the resting welcome frame..."
 
@@ -50,6 +54,8 @@ def test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo [] {
     }
 }
 
+# Invariant: game_of_life state rolls forward between frames.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_game_of_life_screen_state_rolls_forward [] {
     print "🧪 Testing yzx screen keeps a live rolling game_of_life state instead of replaying a short canned cycle..."
 
@@ -74,14 +80,8 @@ def test_game_of_life_screen_state_rolls_forward [] {
 
 export def run_screen_canonical_tests [] {
     [
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-        # Defends: yzx screen rejects the unsupported static style.
         (test_screen_style_rejects_static)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-        # Defends: game_of_life screen cycle stays bounded and omits the resting logo frame.
         (test_game_of_life_screen_cycle_stays_bounded_and_omits_resting_logo)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-        # Invariant: game_of_life state rolls forward between frames.
         (test_game_of_life_screen_state_rolls_forward)
     ]
 }

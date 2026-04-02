@@ -161,8 +161,6 @@ Every governed `def test_*` must also carry:
 
 - `# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
 
-Default-lane component files may continue to keep that metadata next to canonical suite entries, because that is where default-lane admission is curated. Nondefault lanes should keep the metadata immediately above the `def test_*` definition.
-
 ### Governed test strength rubric
 
 Yazelix uses a small per-test scoring rubric across all governed lanes. This is intentionally closer to Google-style test-quality thinking and Tanzu's "Fast / Clean / Confidence / Freedom" goals than to suite-shape models like the Test Pyramid or Testing Trophy.

@@ -108,6 +108,8 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
     }
 }
 
+# Defends: startup rejects a missing working directory.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_startup_rejects_missing_working_dir [] {
     print "🧪 Testing startup rejects missing working directories..."
 
@@ -137,6 +139,8 @@ def test_startup_rejects_missing_working_dir [] {
     }
 }
 
+# Defends: launch rejects a file path as the working directory.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_launch_rejects_file_working_dir [] {
     print "🧪 Testing launch rejects file paths as working directories..."
 
@@ -173,6 +177,8 @@ def test_launch_rejects_file_working_dir [] {
     $result
 }
 
+# Regression: desktop launch ignores hostile inherited shell env.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_cli_desktop_launch_ignores_hostile_shell_env [] {
     print "🧪 Testing yzx CLI desktop launch ignores hostile shell env..."
 
@@ -224,6 +230,8 @@ def test_yzx_cli_desktop_launch_ignores_hostile_shell_env [] {
     $result
 }
 
+# Defends: nonpersistent launch --here uses the requested directory.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions [] {
     print "🧪 Testing non-persistent startup keeps the requested directory for both launch and restart..."
 
@@ -274,6 +282,8 @@ def test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions []
     $result
 }
 
+# Defends: persistent session reuse warns when it ignores the requested directory.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_launch_here_path_warns_when_existing_persistent_session_ignores_it [] {
     print "🧪 Testing yzx launch --here --path warns when an existing persistent session ignores the requested directory..."
 
@@ -308,6 +318,8 @@ def test_launch_here_path_warns_when_existing_persistent_session_ignores_it [] {
     $result
 }
 
+# Defends: startup requires the generated layout path.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_startup_requires_generated_layout_path [] {
     print "🧪 Testing startup requires an existing Zellij layout..."
 
@@ -337,6 +349,8 @@ def test_startup_requires_generated_layout_path [] {
     }
 }
 
+# Defends: yzx cwd fails clearly outside Zellij.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_yzx_cwd_requires_zellij [] {
     print "🧪 Testing yzx cwd outside Zellij..."
 
@@ -358,6 +372,8 @@ def test_yzx_cwd_requires_zellij [] {
     }
 }
 
+# Defends: yzx cwd resolves zoxide queries through the managed flow.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_yzx_cwd_resolves_zoxide_query [] {
     print "🧪 Testing yzx cwd zoxide resolution..."
 
@@ -388,29 +404,13 @@ def test_yzx_cwd_resolves_zoxide_query [] {
 
 export def run_workspace_canonical_tests [] {
     [
-        # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-        # Regression: desktop launch ignores hostile inherited shell env.
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Defends: nonpersistent launch --here uses the requested directory.
         (test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Defends: persistent session reuse warns when it ignores the requested directory.
         (test_launch_here_path_warns_when_existing_persistent_session_ignores_it)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Defends: startup rejects a missing working directory.
         (test_startup_rejects_missing_working_dir)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Defends: launch rejects a file path as the working directory.
         (test_launch_rejects_file_working_dir)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Defends: startup requires the generated layout path.
         (test_startup_requires_generated_layout_path)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-        # Defends: yzx cwd fails clearly outside Zellij.
         (test_yzx_cwd_requires_zellij)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-        # Defends: yzx cwd resolves zoxide queries through the managed flow.
         (test_yzx_cwd_resolves_zoxide_query)
     ]
 }

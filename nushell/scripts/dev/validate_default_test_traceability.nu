@@ -221,64 +221,6 @@ def get_definition_test_strength [relative_path: string, test_name: string] {
     parse_structured_strength_line $relative_path $test_name $strength_line
 }
 
-def has_valid_test_justification [relative_path: string, test_name: string] {
-    let lines = (open --raw ($REPO_ROOT | path join $relative_path) | lines)
-    let canonical_entry = ("(" + $test_name + ")")
-    let test_line_index = (
-        $lines
-        | enumerate
-        | where { |entry| (($entry.item | str trim) == $canonical_entry) }
-        | get -o 0.index
-    )
-
-    if $test_line_index == null {
-        error make { msg: $"Could not find canonical test entry for ($test_name) in: ($relative_path)" }
-    }
-
-    let prior_nonempty_lines = (
-        $lines
-        | first $test_line_index
-        | reverse
-        | where { |line| not (($line | str trim) | is-empty) }
-        | first 3
-        | each { |line| $line | str trim }
-    )
-
-    ["# Defends:", "# Regression:", "# Invariant:"]
-    | any { |prefix| $prior_nonempty_lines | any { |line| $line | str starts-with $prefix } }
-}
-
-def get_default_test_strength [relative_path: string, test_name: string] {
-    let lines = (open --raw ($REPO_ROOT | path join $relative_path) | lines)
-    let canonical_entry = ("(" + $test_name + ")")
-    let test_line_index = (
-        $lines
-        | enumerate
-        | where { |entry| (($entry.item | str trim) == $canonical_entry) }
-        | get -o 0.index
-    )
-
-    if $test_line_index == null {
-        error make { msg: $"Could not find canonical test entry for ($test_name) in: ($relative_path)" }
-    }
-
-    let strength_line = (
-        $lines
-        | first $test_line_index
-        | reverse
-        | where { |line| not (($line | str trim) | is-empty) }
-        | each { |line| $line | str trim }
-        | where { |line| $line | str starts-with "# Strength:" }
-        | get -o 0
-    )
-
-    if $strength_line == null {
-        error make { msg: $"Default-suite canonical test is missing a nearby structured '# Strength:' marker: ($relative_path) :: ($test_name)" }
-    }
-
-    parse_structured_strength_line $relative_path $test_name $strength_line
-}
-
 def parse_structured_strength_line [relative_path: string, test_name: string, strength_line: string] {
     let parsed = (
         [$strength_line]
@@ -356,11 +298,11 @@ export def main [] {
         }
 
         for canonical_test in $canonical_tests {
-            if not (has_valid_test_justification $dev_relative_path $canonical_test) {
-                $errors = ($errors | append $"Default-suite canonical test is missing a nearby '# Defends:', '# Regression:', or '# Invariant:' marker: ($dev_relative_path) :: ($canonical_test)")
+            if not (has_valid_definition_test_justification $dev_relative_path $canonical_test) {
+                $errors = ($errors | append $"Default-suite canonical test is missing a nearby '# Defends:', '# Regression:', or '# Invariant:' marker at the test definition: ($dev_relative_path) :: ($canonical_test)")
             }
 
-            let strength = (get_default_test_strength $dev_relative_path $canonical_test)
+            let strength = (get_definition_test_strength $dev_relative_path $canonical_test)
             let minimum_strength = ($MIN_STRENGTH_BY_LANE.default)
             if $strength < $minimum_strength {
                 $errors = ($errors | append $"Default-suite canonical test is below the minimum strength bar of ($minimum_strength)/10: ($dev_relative_path) :: ($canonical_test) :: ($strength)/10")

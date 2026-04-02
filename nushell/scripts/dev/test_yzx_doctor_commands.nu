@@ -15,6 +15,8 @@ def run_doctor_command_for_fixture [fixture: record, command: string] {
     }
 }
 
+# Defends: doctor warns on stale config fields with actionable guidance.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_yzx_doctor_warns_on_stale_config_fields [] {
     print "🧪 Testing yzx doctor warns about stale config fields..."
 
@@ -64,6 +66,8 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
     $result
 }
 
+# Defends: doctor reports known migrations and the matching fix path.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_yzx_doctor_reports_known_migration_with_fix_guidance [] {
     print "🧪 Testing yzx doctor reports known config migrations with fix guidance..."
 
@@ -98,6 +102,8 @@ widget_tray = ["layout", "editor"]
     $result
 }
 
+# Defends: doctor fix applies safe config migrations.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_doctor_fix_applies_safe_config_migrations [] {
     print "🧪 Testing yzx doctor --fix applies safe config migrations..."
 
@@ -138,6 +144,8 @@ enable_atuin = true
     $result
 }
 
+# Regression: doctor fix splits legacy pack config into the supported sidecar path.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_yzx_doctor_fix_splits_legacy_pack_config [] {
     print "🧪 Testing yzx doctor --fix relocates legacy pack config into user_configs/yazelix_packs.toml..."
 
@@ -190,17 +198,9 @@ git = ["gh", "prek"]
 
 export def run_doctor_canonical_tests [] {
     [
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Defends: doctor warns on stale config fields with actionable guidance.
         (test_yzx_doctor_warns_on_stale_config_fields)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Defends: doctor reports known migrations and the matching fix path.
         (test_yzx_doctor_reports_known_migration_with_fix_guidance)
-        # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-        # Defends: doctor fix applies safe config migrations.
         (test_yzx_doctor_fix_applies_safe_config_migrations)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Regression: doctor fix splits legacy pack config into the supported sidecar path.
         (test_yzx_doctor_fix_splits_legacy_pack_config)
     ]
 }

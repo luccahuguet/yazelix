@@ -4,6 +4,8 @@
 
 use ./yzx_test_helpers.nu [repo_path]
 
+# Defends: refresh failures include command tail and recovery guidance.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_command_failure_summary_includes_command_tail_and_recovery [] {
     print "🧪 Testing refresh/rebuild failure summaries include command, stderr tail, and recovery..."
 
@@ -39,8 +41,6 @@ def test_command_failure_summary_includes_command_tail_and_recovery [] {
 
 export def run_refresh_canonical_tests [] {
     [
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Defends: refresh failures include command tail and recovery guidance.
         (test_command_failure_summary_includes_command_tail_and_recovery)
     ]
 }

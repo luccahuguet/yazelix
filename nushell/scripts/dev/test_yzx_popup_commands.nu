@@ -8,6 +8,8 @@ use ../integrations/zellij.nu [get_floating_wrapper_env]
 use ../utils/config_parser.nu [parse_yazelix_config]
 use ../../../configs/zellij/scripts/yzx_toggle_popup.nu [resolve_popup_toggle_action]
 
+# Defends: popup command resolution prefers the configured default program.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_popup_command_prefers_configured_default [] {
     print "🧪 Testing yzx popup uses the configured popup_program by default..."
 
@@ -28,6 +30,8 @@ def test_popup_command_prefers_configured_default [] {
     }
 }
 
+# Defends: popup cwd resolution prefers the workspace root.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_popup_cwd_prefers_workspace_root [] {
     print "🧪 Testing yzx popup uses the tab workspace root for cwd..."
 
@@ -47,6 +51,8 @@ def test_popup_cwd_prefers_workspace_root [] {
     }
 }
 
+# Defends: popup size parsing accepts valid percentages and rejects invalid ones.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages [] {
     print "🧪 Testing popup size config accepts valid percentages and rejects invalid ones..."
 
@@ -133,6 +139,8 @@ def test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages [] {
     }
 }
 
+# Regression: popup toggle wrapper surfaces permission denials instead of failing silently.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_popup_toggle_wrapper_surfaces_permission_denials [] {
     print "🧪 Testing popup toggle wrapper surfaces popup-plugin permission denials..."
 
@@ -152,6 +160,8 @@ def test_popup_toggle_wrapper_surfaces_permission_denials [] {
     }
 }
 
+# Regression: popup wrappers use the canonical editor for the current launch profile.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
     print "🧪 Testing popup wrappers derive EDITOR from the canonical launch env, not a stale shell value..."
 
@@ -221,20 +231,10 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
 
 export def run_popup_canonical_tests [] {
     [
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-        # Defends: popup command resolution prefers the configured default program.
         (test_popup_command_prefers_configured_default)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-        # Defends: popup cwd resolution prefers the workspace root.
         (test_popup_cwd_prefers_workspace_root)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-        # Defends: popup size parsing accepts valid percentages and rejects invalid ones.
         (test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Regression: popup toggle wrapper surfaces permission denials instead of failing silently.
         (test_popup_toggle_wrapper_surfaces_permission_denials)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Regression: popup wrappers use the canonical editor for the current launch profile.
         (test_popup_wrapper_uses_canonical_editor_for_current_profile)
     ]
 }

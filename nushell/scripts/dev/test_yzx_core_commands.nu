@@ -63,6 +63,8 @@ def record_has_path [data: record, path: list<string>] {
     true
 }
 
+# Defends: config migration preview surfaces known safe changes before writes.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_config_migrate_preview_reports_known_migrations [] {
     print "🧪 Testing yzx config migrate preview reports safe and manual migrations..."
 
@@ -106,6 +108,8 @@ enable_atuin = true
     $result
 }
 
+# Defends: applying config migrations rewrites user config with a backup.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_config_migrate_apply_rewrites_config_with_backup [] {
     print "🧪 Testing yzx config migrate apply rewrites config with backup..."
 
@@ -157,6 +161,8 @@ enable_atuin = true
     $result
 }
 
+# Defends: legacy inline pack ownership is split into the supported sidecar surface.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_yzx_config_migrate_apply_splits_legacy_packs_into_sidecar [] {
     print "🧪 Testing yzx config migrate apply moves legacy [packs] into yazelix_packs.toml..."
 
@@ -209,6 +215,8 @@ go = ["gopls", "golangci-lint"]
     $result
 }
 
+# Invariant: current config shapes do not churn under migrate apply.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_yzx_config_migrate_apply_noops_on_current_config [] {
     print "🧪 Testing yzx config migrate apply noops on a current config..."
 
@@ -246,6 +254,8 @@ def test_yzx_config_migrate_apply_noops_on_current_config [] {
     $result
 }
 
+# Defends: startup preflight auto-applies safe migrations before launch.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_entrypoint_preflight_auto_applies_safe_migrations [] {
     print "🧪 Testing entrypoint migration preflight auto-applies deterministic rewrites..."
 
@@ -286,6 +296,8 @@ enable_atuin = true
     $result
 }
 
+# Regression: legacy helix command strings are migrated during preflight.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_entrypoint_preflight_migrates_legacy_helix_command [] {
     print "🧪 Testing entrypoint migration preflight rewrites legacy helix.command into editor.command..."
 
@@ -326,6 +338,8 @@ runtime_path = "/tmp/custom-runtime"
     $result
 }
 
+# Defends: startup blocks on remaining manual config work after safe rewrites.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_entrypoint_preflight_applies_auto_changes_then_blocks_on_manual_followup [] {
     print "🧪 Testing entrypoint migration preflight applies safe rewrites before blocking on manual follow-up..."
 
@@ -368,6 +382,8 @@ config_mode = "auto"
     $result
 }
 
+# Regression: legacy root config surfaces are detected and relocated only through the managed path.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_entrypoint_preflight_relocates_legacy_root_config_surfaces [] {
     print "🧪 Testing entrypoint migration preflight relocates legacy root config into user_configs..."
 
@@ -406,6 +422,8 @@ default_shell = "bash"
     $result
 }
 
+# Defends: yzx config prints the active Yazelix configuration surface.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_yzx_config_view [] {
     print "🧪 Testing yzx config..."
 
@@ -454,6 +472,8 @@ git = ["gh"]
     $result
 }
 
+# Invariant: pack sidecar config is merged into the full config view.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_yzx_config_full_merges_pack_sidecar [] {
     print "🧪 Testing yzx config --full merges the dedicated pack sidecar..."
 
@@ -503,6 +523,8 @@ git = ["gh", "prek"]
     $result
 }
 
+# Defends: yzx edit targets resolve to the supported managed config paths.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_yzx_edit_targets_print_paths [] {
     print "🧪 Testing yzx edit config and yzx edit packs print the managed config paths..."
 
@@ -571,6 +593,8 @@ def test_yzx_edit_targets_print_paths [] {
     $result
 }
 
+# Defends: invalid config is surfaced as a config problem, not a generic wrapper failure.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_invalid_config_is_classified_as_config_problem [] {
     print "🧪 Testing invalid config values are classified as config problems..."
 
@@ -625,6 +649,8 @@ def test_invalid_config_is_classified_as_config_problem [] {
     $result
 }
 
+# Regression: startup reports known migration needs before generic wrapper noise.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_startup_reports_known_config_migration_before_generic_wrappers [] {
     print "🧪 Testing startup reports known config migrations before generic wrappers..."
 
@@ -676,44 +702,18 @@ widget_tray = ["layout", "editor"]
 
 export def run_core_canonical_tests [] {
     [
-        # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-        # Defends: config migration preview surfaces known safe changes before writes.
         (test_yzx_config_migrate_preview_reports_known_migrations)
-        # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-        # Defends: applying config migrations rewrites user config with a backup.
         (test_yzx_config_migrate_apply_rewrites_config_with_backup)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Defends: legacy inline pack ownership is split into the supported sidecar surface.
         (test_yzx_config_migrate_apply_splits_legacy_packs_into_sidecar)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Invariant: current config shapes do not churn under migrate apply.
         (test_yzx_config_migrate_apply_noops_on_current_config)
-        # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-        # Defends: startup preflight auto-applies safe migrations before launch.
         (test_entrypoint_preflight_auto_applies_safe_migrations)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Regression: legacy helix command strings are migrated during preflight.
         (test_entrypoint_preflight_migrates_legacy_helix_command)
-        # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-        # Defends: startup blocks on remaining manual config work after safe rewrites.
         (test_entrypoint_preflight_applies_auto_changes_then_blocks_on_manual_followup)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Regression: legacy root config surfaces are detected and relocated only through the managed path.
         (test_entrypoint_preflight_relocates_legacy_root_config_surfaces)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-        # Defends: yzx config prints the active Yazelix configuration surface.
         (test_yzx_config_view)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-        # Invariant: pack sidecar config is merged into the full config view.
         (test_yzx_config_full_merges_pack_sidecar)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-        # Defends: yzx edit targets resolve to the supported managed config paths.
         (test_yzx_edit_targets_print_paths)
-        # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-        # Defends: invalid config is surfaced as a config problem, not a generic wrapper failure.
         (test_invalid_config_is_classified_as_config_problem)
-        # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-        # Regression: startup reports known migration needs before generic wrapper noise.
         (test_startup_reports_known_config_migration_before_generic_wrappers)
     ]
 }

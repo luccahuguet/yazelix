@@ -5,6 +5,8 @@
 use ./yzx_test_helpers.nu [setup_managed_config_fixture]
 use ../integrations/yazi.nu [get_ya_command, get_yazi_command, resolve_managed_editor_open_strategy]
 
+# Defends: managed editor open strategy routes missing and existing states correctly.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_managed_editor_open_strategy_routes_missing_and_existing_states [] {
     print "🧪 Testing managed editor open strategy routes both missing and existing states correctly..."
 
@@ -41,6 +43,8 @@ def test_managed_editor_open_strategy_routes_missing_and_existing_states [] {
     }
 }
 
+# Defends: Yazi command resolution honors defaults and user overrides.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_yazi_command_resolvers_honor_defaults_and_overrides [] {
     print "🧪 Testing Yazi command resolvers honor defaults and explicit overrides..."
 
@@ -119,11 +123,7 @@ ya_command = "/opt/custom/ya"
 
 export def run_yazi_canonical_tests [] {
     [
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Defends: managed editor open strategy routes missing and existing states correctly.
         (test_managed_editor_open_strategy_routes_missing_and_existing_states)
-        # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-        # Defends: Yazi command resolution honors defaults and user overrides.
         (test_yazi_command_resolvers_honor_defaults_and_overrides)
     ]
 }
