@@ -6,6 +6,8 @@ use ./yzx_test_helpers.nu [get_repo_root]
 use ../setup/helix_config_merger.nu [generate_managed_helix_config get_helix_import_notice_marker_path]
 use ../utils/launch_state.nu [get_launch_env]
 
+# Strength: 8/10
+# Defends: managed Helix config preserves user overrides while enforcing the Yazelix reveal binding.
 def test_generate_managed_helix_config_merges_user_config_and_enforces_reveal [] {
     print "🧪 Testing managed Helix config generation keeps user settings while enforcing Yazelix reveal..."
 
@@ -65,6 +67,8 @@ A-r = ":noop"
     $result
 }
 
+# Strength: 8/10
+# Defends: launch env wraps Helix with the managed Yazelix wrapper and preserves the real binary path.
 def test_get_launch_env_wraps_helix_with_managed_wrapper [] {
     print "🧪 Testing launch env wraps Helix with the Yazelix-managed wrapper and records the real binary..."
 
@@ -107,6 +111,8 @@ def test_get_launch_env_wraps_helix_with_managed_wrapper [] {
     $result
 }
 
+# Strength: 7/10
+# Defends: yzx import helix copies personal config into managed overrides and makes a backup on --force.
 def test_yzx_import_helix_copies_personal_config_with_force_backups [] {
     print "🧪 Testing yzx import helix copies personal Helix config and backs up managed overrides on --force..."
 
@@ -178,6 +184,8 @@ line-number = "relative"
     $result
 }
 
+# Strength: 6/10
+# Regression: managed Helix config generation shows personal-config import guidance once, then stays quiet.
 def test_generate_managed_helix_config_shows_import_notice_once [] {
     print "🧪 Testing managed Helix config generation shows a one-time import notice for personal Helix config..."
 

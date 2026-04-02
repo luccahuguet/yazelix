@@ -113,8 +113,7 @@ A test is a strong demotion candidate when it is:
   - no dead noncanonical `def test_...` helpers inside default-lane component files
   - a default-suite runtime budget
   - explicit `# Test lane:` declarations on all `test_*.nu` files
-  - a nearby `# Defends:`, `# Regression:`, or `# Invariant:` marker for every canonical default-lane test entry
-  - a nearby `# Strength: N/10` marker for every canonical default-lane test entry
+  - universal per-test justification and strength scoring across governed lanes
   - no new generic `_extended` overflow files
 
 ### Lane placement rules
@@ -152,21 +151,23 @@ Every `test_*.nu` file must declare one supported lane with a top-level header:
 - `# Test lane: sweep`
 - `# Test lane: manual`
 
-Default-lane component files must also justify every canonical test entry with one nearby marker immediately above the test in the canonical list:
+Every governed `def test_*` must carry one nearby justification marker:
 
 - `# Defends: ...`
 - `# Regression: ...`
 - `# Invariant: ...`
 
-Default-lane component files must also score every canonical test entry with:
+Every governed `def test_*` must also carry:
 
 - `# Strength: N/10`
 
-### Default test strength rubric
+Default-lane component files may continue to keep that metadata next to canonical suite entries, because that is where default-lane admission is curated. Nondefault lanes should keep the metadata immediately above the `def test_*` definition.
 
-Yazelix uses a small per-test scoring rubric for the default lane. This is intentionally closer to Google-style test-quality thinking and Tanzu's "Fast / Clean / Confidence / Freedom" goals than to suite-shape models like the Test Pyramid or Testing Trophy.
+### Governed test strength rubric
 
-Score default-lane tests out of 10 using five `0-2` dimensions:
+Yazelix uses a small per-test scoring rubric across all governed lanes. This is intentionally closer to Google-style test-quality thinking and Tanzu's "Fast / Clean / Confidence / Freedom" goals than to suite-shape models like the Test Pyramid or Testing Trophy.
+
+Score governed tests out of 10 using five `0-2` dimensions:
 
 1. `Defect signal`
    - `0`: failing would barely matter or would mostly catch noise
@@ -195,7 +196,14 @@ Interpretation:
 - `5-6`: borderline, justify explicitly before keeping
 - `7-10`: strong enough for the default lane
 
-The validator enforces a minimum default-lane score of `7/10`. This is intentionally mechanical rather than philosophical. The validator still cannot prove a test is wise, but it can make low-effort junk and generic overflow harder to land.
+Lane minimums:
+
+- `default`: `7/10`
+- `maintainer`: `6/10`
+- `sweep`: `6/10`
+- `manual`: `6/10` if a governed `def test_*` exists there at all
+
+The validator enforces these minimums mechanically. It still cannot prove a test is wise, but it can make low-effort junk and generic overflow much harder to land anywhere in the governed suite.
 
 ### Concrete cleanup in this change
 

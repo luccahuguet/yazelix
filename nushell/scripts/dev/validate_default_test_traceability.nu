@@ -1,7 +1,12 @@
 #!/usr/bin/env nu
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
-const MIN_DEFAULT_TEST_STRENGTH = 7
+const MIN_STRENGTH_BY_LANE = {
+    default: 7
+    maintainer: 6
+    sweep: 6
+    manual: 6
+}
 const ALLOWED_TEST_LANES = [
     "default"
     "maintainer"
@@ -163,6 +168,69 @@ def load_defined_test_names [relative_path: string] {
     | get capture0
 }
 
+def get_test_definition_line_index [relative_path: string, test_name: string] {
+    let lines = (open --raw ($REPO_ROOT | path join $relative_path) | lines)
+    let definition_line = ($"def ($test_name) [] {" | str trim)
+
+    let line_index = (
+        $lines
+        | enumerate
+        | where { |entry| (($entry.item | str trim) == $definition_line) }
+        | get -o 0.index
+    )
+
+    if $line_index == null {
+        error make { msg: $"Could not find definition for ($test_name) in: ($relative_path)" }
+    }
+
+    $line_index
+}
+
+def get_prior_nonempty_lines_before_index [relative_path: string, line_index: int] {
+    let lines = (open --raw ($REPO_ROOT | path join $relative_path) | lines)
+
+    $lines
+    | first $line_index
+    | reverse
+    | where { |line| not (($line | str trim) | is-empty) }
+    | first 4
+    | each { |line| $line | str trim }
+}
+
+def has_valid_definition_test_justification [relative_path: string, test_name: string] {
+    let line_index = (get_test_definition_line_index $relative_path $test_name)
+    let prior_nonempty_lines = (get_prior_nonempty_lines_before_index $relative_path $line_index)
+
+    ["# Defends:", "# Regression:", "# Invariant:"]
+    | any { |prefix| $prior_nonempty_lines | any { |line| $line | str starts-with $prefix } }
+}
+
+def get_definition_test_strength [relative_path: string, test_name: string] {
+    let line_index = (get_test_definition_line_index $relative_path $test_name)
+    let prior_nonempty_lines = (get_prior_nonempty_lines_before_index $relative_path $line_index)
+    let strength_line = (
+        $prior_nonempty_lines
+        | where { |line| $line | str starts-with "# Strength:" }
+        | get -o 0
+    )
+
+    if $strength_line == null {
+        error make { msg: $"Governed test is missing a nearby '# Strength: N/10' marker: ($relative_path) :: ($test_name)" }
+    }
+
+    let parsed = (
+        [$strength_line]
+        | parse --regex '# Strength:\s+([0-9]+)/10'
+        | get -o 0.capture0
+    )
+
+    if $parsed == null {
+        error make { msg: $"Could not parse '# Strength: N/10' marker near: ($relative_path) :: ($test_name)" }
+    }
+
+    $parsed | into int
+}
+
 def has_valid_test_justification [relative_path: string, test_name: string] {
     let lines = (open --raw ($REPO_ROOT | path join $relative_path) | lines)
     let canonical_entry = ("(" + $test_name + ")")
@@ -287,14 +355,42 @@ export def main [] {
             }
 
             let strength = (get_default_test_strength $dev_relative_path $canonical_test)
-            if $strength < $MIN_DEFAULT_TEST_STRENGTH {
-                $errors = ($errors | append $"Default-suite canonical test is below the minimum strength bar of ($MIN_DEFAULT_TEST_STRENGTH)/10: ($dev_relative_path) :: ($canonical_test) :: ($strength)/10")
+            let minimum_strength = ($MIN_STRENGTH_BY_LANE.default)
+            if $strength < $minimum_strength {
+                $errors = ($errors | append $"Default-suite canonical test is below the minimum strength bar of ($minimum_strength)/10: ($dev_relative_path) :: ($canonical_test) :: ($strength)/10")
+            }
+        }
+    }
+
+    let default_component_paths = ($component_files | each { |file| to_dev_relative_path $file })
+
+    for test_path in (load_all_test_file_paths) {
+        let relative_path = ($test_path | path relative-to $REPO_ROOT)
+        let lane = (parse_test_lane $relative_path)
+
+        if ($lane == null) or ($relative_path in $default_component_paths) {
+            continue
+        }
+
+        let minimum_strength = ($MIN_STRENGTH_BY_LANE | get -o $lane)
+        if $minimum_strength == null {
+            continue
+        }
+
+        for test_name in (load_defined_test_names $relative_path) {
+            if not (has_valid_definition_test_justification $relative_path $test_name) {
+                $errors = ($errors | append $"Governed test is missing a nearby '# Defends:', '# Regression:', or '# Invariant:' marker: ($relative_path) :: ($test_name)")
+            }
+
+            let strength = (get_definition_test_strength $relative_path $test_name)
+            if $strength < $minimum_strength {
+                $errors = ($errors | append $"Governed test is below the minimum strength bar of ($minimum_strength)/10 for lane '($lane)': ($relative_path) :: ($test_name) :: ($strength)/10")
             }
         }
     }
 
     if not ($errors | is-empty) {
         $errors | each { |line| print $"❌ ($line)" }
-        error make { msg: "Default test suite traceability validation failed" }
+        error make { msg: "Governed test traceability validation failed" }
     }
 }

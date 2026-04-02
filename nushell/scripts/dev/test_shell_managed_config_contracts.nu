@@ -7,6 +7,8 @@ use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/nushell_externs.nu [get_generated_yzx_extern_path sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [get_yazelix_shell_user_hook_path sync_generated_nushell_user_hook_bridge]
 
+# Strength: 7/10
+# Defends: merged Zellij config routes managed Nushell panes through the Yazelix wrapper.
 def test_generate_merged_zellij_config_wraps_nu_default_shell [] {
     print "🧪 Testing merged Zellij config rewrites default_shell = \"nu\" to the managed Nushell wrapper..."
 
@@ -57,6 +59,8 @@ default_shell = "nu"
 }
 
 
+# Strength: 6/10
+# Regression: generated Nushell initializer keeps Starship while removing the right-prompt path.
 def test_generate_nushell_initializer_removes_starship_right_prompt [] {
     print "🧪 Testing generated Nushell initializer removes the Starship right prompt path..."
 
@@ -93,6 +97,8 @@ def test_generate_nushell_initializer_removes_starship_right_prompt [] {
     $result
 }
 
+# Strength: 7/10
+# Defends: managed Nushell config sources the optional Yazelix-owned user hook without touching personal config.
 def test_managed_nushell_config_sources_optional_user_hook [] {
     print "🧪 Testing managed Nushell config sources the optional Yazelix-owned user hook..."
 
@@ -150,6 +156,8 @@ def test_managed_nushell_config_sources_optional_user_hook [] {
     $result
 }
 
+# Strength: 6/10
+# Invariant: the managed Nushell user-hook bridge stays present and harmless when no hook exists.
 def test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent [] {
     print "🧪 Testing the managed Nushell user-hook bridge stays present and harmless when no managed Nushell hook exists..."
 
@@ -233,6 +241,8 @@ def test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent [] 
     $result
 }
 
+# Strength: 7/10
+# Defends: managed Nushell config loads the generated yzx extern bridge built from the real command tree.
 def test_managed_nushell_config_loads_generated_yzx_extern_bridge [] {
     print "🧪 Testing managed Nushell config loads the generated yzx extern bridge..."
 
@@ -288,6 +298,8 @@ def test_managed_nushell_config_loads_generated_yzx_extern_bridge [] {
     $result
 }
 
+# Strength: 7/10
+# Defends: managed Bash config sources the optional Yazelix-owned user hook without touching personal dotfiles.
 def test_managed_bash_config_sources_optional_user_hook [] {
     print "🧪 Testing managed Bash config sources the optional Yazelix-owned user hook..."
 

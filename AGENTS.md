@@ -196,8 +196,13 @@ When creating new files or directories, always use underscores to maintain consi
 - **Every new `test_*.nu` file must declare `# Test lane: ...` using an allowed lane** (`default`, `maintainer`, `sweep`, or `manual`).
 - **Treat test strength and lane placement as separate decisions.** Use the repo's per-test strength rubric to decide whether a test is worth keeping, and use lane-placement thinking only to decide where a surviving test belongs.
 - **Do not create generic `_extended` test files as overflow.** If a nondefault lane needs more coverage, use a file or lane name that reflects its actual ownership.
-- **Every new canonical default-lane test entry must carry a nearby `# Defends:`, `# Regression:`, or `# Invariant:` marker.**
-- **Every new canonical default-lane test entry must also carry a nearby `# Strength: N/10` marker and meet the minimum `7/10` bar.**
+- **Every new governed `def test_*` must carry a nearby `# Defends:`, `# Regression:`, or `# Invariant:` marker.**
+- **Every new governed `def test_*` must also carry a nearby `# Strength: N/10` marker.**
+- **Lane minimums are enforced mechanically.** Current minimums are:
+  - `default`: `7/10`
+  - `maintainer`: `6/10`
+  - `sweep`: `6/10`
+  - `manual`: `6/10` if a governed `def test_*` exists there at all
 - **Do not add packaging/config-sync tests by default** just because two files should match. Only keep them when they defend a maintained source-of-truth invariant in the right lane; otherwise prefer behavior tests, spec-backed validation, or cheaper dedicated validators.
 - When in doubt, **remove or avoid low-value tests** and spend the budget on fewer, stronger assertions.
 
