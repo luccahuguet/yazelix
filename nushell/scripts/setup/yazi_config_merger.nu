@@ -194,6 +194,24 @@ def copy_flavors_directory [source_dir: string, merged_dir: string, --quiet] {
     }
 }
 
+def sync_starship_yazi_config [source_dir: string, merged_dir: string, --quiet] {
+    let source_config = ($source_dir | path join "yazelix_starship.toml")
+    let target_config = ($merged_dir | path join "yazelix_starship.toml")
+
+    if not ($source_config | path exists) {
+        error make {msg: $"Missing bundled Yazi Starship config at: ($source_config)"}
+    }
+
+    let copy_result = (^cp $source_config $target_config | complete)
+    if $copy_result.exit_code != 0 {
+        error make {msg: $"Failed to copy bundled Yazi Starship config from ($source_config) to ($target_config): ($copy_result.stderr | str trim)"}
+    }
+
+    if not $quiet {
+        print "     ✅ Bundled Yazi Starship config synced"
+    }
+}
+
 # Generate yazi.toml with dynamic settings from yazelix.toml
 def generate_yazi_toml [source_dir: string, merged_dir: string, sort_by: string, user_plugins: list, --quiet] {
     let base_path = $"($source_dir)/yazelix_yazi.toml"
@@ -447,7 +465,8 @@ def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
             $"-- Core plugin \(always loaded\)\nrequire\(\"($name)\"\):setup\(\)"
         } else if ($name == "starship") {
             # Starship plugin with custom sidebar-optimized config
-            $"-- User plugin \(from yazelix.toml\)\nrequire\(\"starship\"\):setup\({\n    config_file = \"~/.config/yazelix/configs/yazi/yazelix_starship.toml\"\n}\)"
+            let starship_config_path = ($merged_dir | path join "yazelix_starship.toml")
+            $"-- User plugin \(from yazelix.toml\)\nrequire\(\"starship\"\):setup\({\n    config_file = \"($starship_config_path)\"\n}\)"
         } else {
             # User plugins - check if setup\(\) exists before calling
             $"-- User plugin \(from yazelix.toml\)\nlocal _($name | str replace -a '-' '_') = require\(\"($name)\"\)\nif type\(_($name | str replace -a '-' '_').setup\) == \"function\" then _($name | str replace -a '-' '_'):setup\(\) end"
@@ -567,6 +586,9 @@ export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
 
     # Copy flavors (themes) directory
     copy_flavors_directory $source_config_dir $merged_config_dir --quiet=$quiet
+
+    # Sync bundled Yazi Starship config used by the starship.yazi plugin
+    sync_starship_yazi_config $source_config_dir $merged_config_dir --quiet=$quiet
 
     # Generate init.lua dynamically based on plugin configuration
     generate_init_lua $merged_config_dir $user_plugins --quiet=$quiet

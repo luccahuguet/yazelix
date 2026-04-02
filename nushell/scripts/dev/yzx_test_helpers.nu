@@ -7,7 +7,7 @@ export def get_repo_root [] {
 }
 
 export def get_repo_config_dir [] {
-    ($env.YAZELIX_DIR? | default "~/.config/yazelix") | path expand
+    get_repo_root
 }
 
 export def repo_path [...parts: string] {

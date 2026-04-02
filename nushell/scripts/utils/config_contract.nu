@@ -28,7 +28,13 @@ export def get_main_config_field_paths [] {
 
 export def get_main_config_field_contract [field_path: string] {
     let contract = (load_main_config_contract)
-    let field = ($contract.fields | get -o $field_path)
+    let field = (
+        $contract.fields
+        | transpose key value
+        | where key == $field_path
+        | get -o value.0
+        | default null
+    )
     if $field == null {
         error make {msg: $"Unknown main config contract field: ($field_path)"}
     }
@@ -40,7 +46,13 @@ export def get_main_config_rebuild_required_paths [] {
     mut rebuild_paths = []
 
     for field_path in ($contract.fields | columns) {
-        let field = ($contract.fields | get -o $field_path | default {})
+        let field = (
+            $contract.fields
+            | transpose key value
+            | where key == $field_path
+            | get -o value.0
+            | default {}
+        )
         let rebuild_required = ($field.rebuild_required? | default false)
         if $rebuild_required {
             $rebuild_paths = ($rebuild_paths | append $field_path)

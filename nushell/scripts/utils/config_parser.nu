@@ -11,7 +11,13 @@ def bool_to_string [value: bool] {
 }
 
 def get_contract_field [contract: record, field_path: string] {
-    let field = ($contract.fields | get -o $field_path)
+    let field = (
+        $contract.fields
+        | transpose key value
+        | where key == $field_path
+        | get -o value.0
+        | default null
+    )
     if $field == null {
         error make {msg: $"Unknown config contract field: ($field_path)"}
     }
