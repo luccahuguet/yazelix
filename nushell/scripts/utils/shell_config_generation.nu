@@ -31,7 +31,6 @@ export def get_yzx_cli_path [] {
 export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
     let runtime_ref = (get_yazelix_runtime_reference_dir)
     let config_file = (get_yazelix_runtime_config_path $shell $runtime_ref)
-    let yzx_core_path = ($runtime_ref | path join "nushell" "scripts" "core" "yazelix.nu")
     let yzx_cli_path = (get_yzx_cli_path)
 
     # Generate shell-specific conditional loading + yzx function (always available)
@@ -56,11 +55,12 @@ export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
             "end"
         ] | str join "\n"
     } else {
-        # Nushell - always source, conditional is inside the config file itself
-        # This works because sourcing inside an if block doesn't export aliases properly
+        # Nushell - always source, conditional is inside the config file itself.
+        # The managed config loads the generated extern bridge, which keeps the
+        # current shell on ~/.local/bin/yzx instead of pinning commands to the
+        # runtime store path imported at shell startup.
         [
             $"source \"($config_file)\""
-            $"use ($yzx_core_path) *"
         ] | str join "\n"
     }
 

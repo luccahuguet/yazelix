@@ -5,6 +5,7 @@
 use ./yzx_test_helpers.nu [get_repo_root repo_path]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/nushell_externs.nu [get_generated_yzx_extern_path sync_generated_yzx_extern_bridge]
+use ../utils/shell_config_generation.nu get_yazelix_section_content
 use ../utils/shell_user_hooks.nu [get_yazelix_shell_user_hook_path sync_generated_nushell_user_hook_bridge]
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
@@ -299,6 +300,42 @@ def test_managed_nushell_config_loads_generated_yzx_extern_bridge [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
+# Regression: generated Nushell shell hooks must not pin yzx to a runtime-store import after runtime updates.
+def test_generated_nushell_shell_hook_uses_managed_config_only [] {
+    print "🧪 Testing generated Nushell shell hooks source the managed config without importing a runtime-pinned yzx command..."
+
+    let repo_root = (get_repo_root)
+
+    let result = (try {
+        let section = (with-env {
+            HOME: "/tmp"
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_DIR: $repo_root
+        } {
+            get_yazelix_section_content "nushell" $repo_root
+        })
+
+        if (
+            ($section | str contains 'source "')
+            and ($section | str contains 'nushell/config/config.nu')
+            and not ($section | str contains 'scripts/core/yazelix.nu')
+            and not ($section | str contains 'use ')
+        ) {
+            print "  ✅ Generated Nushell shell hooks now rely on the managed config and extern bridge instead of importing a store-pinned yzx command"
+            true
+        } else {
+            print $"  ❌ Unexpected generated Nushell shell-hook section: ($section)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Defends: managed Bash config sources the optional Yazelix-owned user hook without touching personal dotfiles.
 def test_managed_bash_config_sources_optional_user_hook [] {
     print "🧪 Testing managed Bash config sources the optional Yazelix-owned user hook..."
@@ -451,6 +488,7 @@ export def run_shell_managed_config_contract_tests [] {
         (test_managed_nushell_config_sources_optional_user_hook)
         (test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent)
         (test_managed_nushell_config_loads_generated_yzx_extern_bridge)
+        (test_generated_nushell_shell_hook_uses_managed_config_only)
         (test_managed_bash_config_sources_optional_user_hook)
         (test_export_helix_env_ignores_legacy_yazelix_nix)
         (test_managed_fish_config_exports_helix_mode_from_toml)

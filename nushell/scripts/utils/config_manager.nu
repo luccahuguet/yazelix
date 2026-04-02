@@ -128,16 +128,21 @@ export def check_config_versions [yazelix_dir: string] {
                 } else {
                     [ $"source \"($config.expected_source)\"" ]
                 }
-                let expected_yzx_lines = if $config.name == "nushell" {
-                    [ $"use ($config.expected_yzx_core) *" ]
-                } else if $config.name == "fish" {
+                let expected_yzx_lines = if $config.name == "fish" {
                     [ $"    \"($config.expected_yzx_cli)\" $argv" ]
+                } else if $config.name == "nushell" {
+                    []
                 } else {
                     [ $"    \"($config.expected_yzx_cli)\" \"$@\"" ]
                 }
+                let yzx_line_ok = if $config.name == "nushell" {
+                    true
+                } else {
+                    ($expected_yzx_lines | any { |line| $section.content | str contains $line })
+                }
                 if (
                     ($expected_source_lines | any { |line| $section.content | str contains $line })
-                    and ($expected_yzx_lines | any { |line| $section.content | str contains $line })
+                    and $yzx_line_ok
                 ) {
                     { shell: $config.name, status: "current", file: $config.file }
                 } else {
