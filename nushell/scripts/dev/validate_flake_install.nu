@@ -1,5 +1,8 @@
 #!/usr/bin/env nu
 
+const REPO_ROOT = ((path self) | path dirname | path join ".." ".." ".." | path expand)
+const DEVENV_SKEW_WARNING = "is newer than devenv input"
+
 def make_temp_home [] {
     (^mktemp -d /tmp/yazelix_flake_install_XXXXXX | str trim)
 }
@@ -15,6 +18,21 @@ def require_file_contains [path: string, needle: string, label: string] {
     if not ($content | str contains $needle) {
         error make { msg: $"($label) does not contain expected text `($needle)`: ($path)" }
     }
+}
+
+def get_locked_devenv_package_root [] {
+    let expr = $"let repo = builtins.toPath \"($REPO_ROOT)\"; flake = builtins.getFlake \(toString repo\); pkgs = flake.inputs.nixpkgs.legacyPackages.$\{builtins.currentSystem\}; in \(import \(repo + \"/locked_devenv_package.nix\"\) { inherit pkgs; src = repo; }\).outPath"
+    let result = (^nix eval --impure --raw --expr $expr | complete)
+    if $result.exit_code != 0 {
+        if ($result.stdout | is-not-empty) {
+            print $result.stdout
+        }
+        if ($result.stderr | is-not-empty) {
+            print $result.stderr
+        }
+        error make { msg: "Failed to resolve the locked devenv package path during flake install smoke validation" }
+    }
+    $result.stdout | str trim
 }
 
 def run_flake_install [temp_home: string] {
@@ -52,6 +70,7 @@ def verify_installed_runtime [temp_home: string] {
     let zellij_config = ($temp_home | path join ".local" "share" "yazelix" "configs" "zellij" "config.kdl")
     let yazi_theme = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "theme.toml")
     let yazi_flavor = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors" "tokyo-night.yazi" "flavor.toml")
+    let locked_package_root = (get_locked_devenv_package_root)
 
     require_path_exists $runtime_current "installed runtime symlink"
     require_path_exists $runtime_devenv "runtime-local devenv binary"
@@ -147,6 +166,61 @@ def verify_installed_runtime [temp_home: string] {
     let expected_devenv = ($runtime_devenv | path expand)
     if ($selected_devenv != $expected_devenv) {
         error make { msg: $"Installed runtime selected the wrong devenv path: expected ($expected_devenv), got ($selected_devenv)" }
+    }
+
+    let resolved_runtime_devenv = (^readlink -f $runtime_devenv | str trim)
+    let expected_locked_devenv = (^readlink -f ($locked_package_root | path join "bin" "devenv") | str trim)
+    if ($resolved_runtime_devenv != $expected_locked_devenv) {
+        error make { msg: $"Installed runtime devenv is not sourced from the locked package. Expected ($expected_locked_devenv), got ($resolved_runtime_devenv)" }
+    }
+
+    let shell_probe_command = ([
+        $"use '($runtime_current | path join "nushell" "scripts" "utils" "environment_bootstrap.nu")' get_devenv_base_command"
+        "get_devenv_base_command | append [\"shell\" \"--\" \"true\"] | to json -r"
+    ] | str join "\n")
+    let shell_probe_resolution = (
+        ^env -i
+            HOME=$temp_home
+            PATH="/usr/bin:/bin"
+            XDG_CONFIG_HOME=($temp_home | path join ".config")
+            XDG_DATA_HOME=($temp_home | path join ".local" "share")
+            YAZELIX_RUNTIME_DIR=$runtime_current
+            YAZELIX_DIR=$runtime_current
+            $runtime_nu
+            -c
+            $shell_probe_command
+        | complete
+    )
+
+    if $shell_probe_resolution.exit_code != 0 {
+        if ($shell_probe_resolution.stdout | is-not-empty) {
+            print $shell_probe_resolution.stdout
+        }
+        if ($shell_probe_resolution.stderr | is-not-empty) {
+            print $shell_probe_resolution.stderr
+        }
+        error make { msg: "Installed runtime failed to resolve the shell-enter command during flake install smoke validation" }
+    }
+
+    let shell_command = ($shell_probe_resolution.stdout | str trim | from json)
+    let shell_bin = ($shell_command | first)
+    let shell_args = ($shell_command | skip 1)
+    let shell_probe = (^$shell_bin ...$shell_args | complete)
+
+    if $shell_probe.exit_code != 0 {
+        if ($shell_probe.stdout | is-not-empty) {
+            print $shell_probe.stdout
+        }
+        if ($shell_probe.stderr | is-not-empty) {
+            print $shell_probe.stderr
+        }
+        error make { msg: "Installed runtime shell-enter probe command failed during flake install smoke validation" }
+    }
+
+    let probe_stdout = ($shell_probe.stdout | default "")
+    let probe_stderr = ($shell_probe.stderr | default "")
+    if (($probe_stdout | str contains $DEVENV_SKEW_WARNING) or ($probe_stderr | str contains $DEVENV_SKEW_WARNING)) {
+        error make { msg: $"Installed runtime still emits the upstream devenv skew warning: (($probe_stderr + $probe_stdout) | str trim)" }
     }
 }
 

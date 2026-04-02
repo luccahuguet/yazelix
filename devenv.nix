@@ -634,6 +634,8 @@ let
 
 in
 {
+  devenv.warnOnNewVersion = false;
+
   # Pull binaries from caches to speed up builds
   cachix.pull = [
     "numtide"        # llm-agents.nix AI tools

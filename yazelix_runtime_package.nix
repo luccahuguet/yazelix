@@ -1,25 +1,28 @@
-{ pkgs }:
+{ pkgs, src ? ./. }:
 
+let
+  lockedDevenv = import ./locked_devenv_package.nix { inherit pkgs src; };
+in
 pkgs.runCommand "yazelix-runtime" { } ''
   mkdir -p "$out"
 
-  ln -s ${./assets} "$out/assets"
-  ln -s ${./config_metadata} "$out/config_metadata"
-  ln -s ${./configs} "$out/configs"
-  ln -s ${./docs} "$out/docs"
-  ln -s ${./nushell} "$out/nushell"
-  ln -s ${./rust_plugins} "$out/rust_plugins"
-  ln -s ${./shells} "$out/shells"
+  ln -s ${src}/assets "$out/assets"
+  ln -s ${src}/config_metadata "$out/config_metadata"
+  ln -s ${src}/configs "$out/configs"
+  ln -s ${src}/docs "$out/docs"
+  ln -s ${src}/nushell "$out/nushell"
+  ln -s ${src}/rust_plugins "$out/rust_plugins"
+  ln -s ${src}/shells "$out/shells"
 
-  ln -s ${./CHANGELOG.md} "$out/CHANGELOG.md"
-  ln -s ${./devenv.lock} "$out/devenv.lock"
-  ln -s ${./devenv.nix} "$out/devenv.nix"
-  ln -s ${./devenv.yaml} "$out/devenv.yaml"
-  ln -s ${./yazelix_default.toml} "$out/yazelix_default.toml"
-  ln -s ${./yazelix_packs_default.toml} "$out/yazelix_packs_default.toml"
+  ln -s ${src}/CHANGELOG.md "$out/CHANGELOG.md"
+  ln -s ${src}/devenv.lock "$out/devenv.lock"
+  ln -s ${src}/devenv.nix "$out/devenv.nix"
+  ln -s ${src}/devenv.yaml "$out/devenv.yaml"
+  ln -s ${src}/yazelix_default.toml "$out/yazelix_default.toml"
+  ln -s ${src}/yazelix_packs_default.toml "$out/yazelix_packs_default.toml"
 
   mkdir -p "$out/bin"
-  ln -s ${pkgs.devenv}/bin/devenv "$out/bin/devenv"
+  ln -s ${lockedDevenv}/bin/devenv "$out/bin/devenv"
   ln -s ${pkgs.nushell}/bin/nu "$out/bin/nu"
   cat > "$out/bin/yzx" <<EOF
 #!/bin/sh

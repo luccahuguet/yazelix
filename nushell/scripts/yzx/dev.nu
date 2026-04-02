@@ -5,7 +5,7 @@ use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/common.nu [get_yazelix_dir]
 use ../utils/environment_bootstrap.nu [run_in_devenv_shell_command]
 use ../utils/config_surfaces.nu [copy_default_config_surfaces load_config_surface_from_main get_main_user_config_path]
-use ../utils/devenv_cli.nu [get_preferred_devenv_version_line resolve_preferred_devenv_path]
+use ../utils/devenv_cli.nu resolve_preferred_devenv_path
 use ../utils/readme_release_block.nu [sync_readme_surface]
 use ../utils/issue_bead_contract.nu [
     build_imported_issue_description
@@ -33,30 +33,14 @@ def extract_version [value: string] {
     $value | parse --regex '(\d+\.\d+\.\d+)' | get capture0 | last | default ""
 }
 
-def get_tool_version_from_repo_shell [tool: string] {
-    match $tool {
-        "nix" => {
-            let result = (^nix --version | complete)
-            if $result.exit_code != 0 {
-                let stderr = ($result.stderr | str trim)
-                print $"❌ Failed to resolve nix version from the current environment: ($stderr)"
-                exit 1
-            }
-            $result.stdout | str trim
-        }
-        "devenv" => {
-            try {
-                get_preferred_devenv_version_line
-            } catch {|err|
-                print $"❌ Failed to resolve preferred devenv CLI version: ($err.msg)"
-                exit 1
-            }
-        }
-        _ => {
-            print $"❌ Unsupported runtime version request: ($tool)"
-            exit 1
-        }
+def get_nix_version_from_repo_shell [] {
+    let result = (^nix --version | complete)
+    if $result.exit_code != 0 {
+        let stderr = ($result.stderr | str trim)
+        print $"❌ Failed to resolve nix version from the current environment: ($stderr)"
+        exit 1
     }
+    $result.stdout | str trim
 }
 
 def get_runtime_pin_versions [] {
@@ -66,7 +50,7 @@ def get_runtime_pin_versions [] {
     }
 
     print "   Resolving nix from the current environment..."
-    let nix_version_raw = (get_tool_version_from_repo_shell "nix")
+    let nix_version_raw = (get_nix_version_from_repo_shell)
     let nix_version = (extract_version $nix_version_raw)
 
     if ($nix_version | is-empty) {
@@ -369,7 +353,6 @@ def print_update_canary_failure_details [results: list] {
 }
 
 export def "yzx dev update" [
-    input_name?: string  # Optional input name to pass through to `devenv update` (for example: devenv)
     --verbose  # Deprecated compatibility flag; maintainer update output is verbose by default
     --quiet  # Capture canary output and reduce update progress noise
     --yes      # Skip confirmation prompt
@@ -405,12 +388,7 @@ export def "yzx dev update" [
     if $canary_only {
         print $"🧪 Running update canaries only: ($selected_canaries | str join ', ')"
     } else if $verbose_mode {
-        let command_label = if ($input_name | is-not-empty) {
-            $"devenv update ($input_name)"
-        } else {
-            "devenv update"
-        }
-        print $"⚙️ Running: ($command_label) \(cwd: ($yazelix_dir)\)"
+        print $"⚙️ Running: devenv update \(cwd: ($yazelix_dir)\)"
     } else {
         print "🔄 Updating Yazelix inputs..."
     }
@@ -420,11 +398,7 @@ export def "yzx dev update" [
             do {
                 cd $yazelix_dir
                 let devenv_path = (resolve_preferred_devenv_path)
-                if ($input_name | is-not-empty) {
-                    ^$devenv_path update $input_name
-                } else {
-                    ^$devenv_path update
-                }
+                ^$devenv_path update
             }
         } catch {|err|
             print $"❌ devenv update failed: ($err.msg)"

@@ -1,9 +1,10 @@
 { pkgs, src }:
 
 let
+  lockedDevenv = import ./locked_devenv_package.nix { inherit pkgs src; };
   runtimeDeps = [
     pkgs.nushell
-    pkgs.devenv
+    lockedDevenv
     pkgs.nix
     pkgs.coreutils
     pkgs.findutils
@@ -53,7 +54,7 @@ pkgs.symlinkJoin {
   nativeBuildInputs = [ pkgs.makeWrapper ];
 
   postBuild = ''
-    ln -s ${pkgs.lib.getBin pkgs.devenv}/bin/devenv "$out/bin/devenv"
+    ln -s ${pkgs.lib.getBin lockedDevenv}/bin/devenv "$out/bin/devenv"
     rm -f "$out/bin/yzx"
     makeWrapper "$out/shells/posix/yzx_cli.sh" "$out/bin/yzx" \
       --prefix PATH : "${runtimeBinPath}"
