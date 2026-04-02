@@ -196,7 +196,12 @@ export def resolve_yazelix_nu_bin [] {
         return $path_nu
     }
 
-    error make {msg: "Could not resolve a usable Nushell binary for Yazelix. Checked YAZELIX_NU_BIN, runtime-local bin/nu, and PATH."}
+    let current_nu = (normalize_command_candidate ($nu.current-exe? | default null))
+    if $current_nu != null {
+        return $current_nu
+    }
+
+    error make {msg: "Could not resolve a usable Nushell binary for Yazelix. Checked YAZELIX_NU_BIN, runtime-local bin/nu, PATH, and $nu.current-exe."}
 }
 
 export def ensure_yazelix_runtime_project_dir [] {

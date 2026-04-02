@@ -674,6 +674,8 @@ return "yazi-user-marker"
 
         let merged_init = (with-env {
             HOME: $tmp_home
+            XDG_CONFIG_HOME: ($tmp_home | path join ".config")
+            XDG_DATA_HOME: ($tmp_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: $temp_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
