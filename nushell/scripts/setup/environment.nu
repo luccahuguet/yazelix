@@ -11,7 +11,7 @@ use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 
 def ensure_user_cli_wrapper [yazelix_dir: string] {
     let local_bin_dir = ($env.HOME | path join ".local" "bin")
-    let cli_target = ($yazelix_dir | path join "shells" "posix" "yzx_cli.sh")
+    let cli_target = ($yazelix_dir | path join "bin" "yzx")
     let cli_link = ($local_bin_dir | path join "yzx")
 
     if not ($cli_target | path exists) {
