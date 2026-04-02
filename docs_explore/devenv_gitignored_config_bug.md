@@ -531,7 +531,7 @@ This is already supported and doesn't require `--impure` mode.
 - **Issue:** Nix flakes and gitignored files (upstream Nix limitation)
 - **PR:** Switch to TOML/devenv workflow (commit 4c91eb3)
 - **PR:** Refresh devenv cache on config changes (commit fac84a8) - partially addressed this
-- **Docs:** See `boot_sequence.md` for how configuration flows through the system
+- **Docs:** See `../docs/architecture_map.md` for the maintained high-level system map
 
 ## References
 
