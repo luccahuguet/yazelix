@@ -3,7 +3,7 @@ name: Validate Bead Issue Contract
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 6 * * *"
+    - cron: "30 7 * * *"
 
 permissions:
   contents: read
