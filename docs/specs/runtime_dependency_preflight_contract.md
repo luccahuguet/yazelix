@@ -61,6 +61,22 @@ Without a written contract:
   - session-local plugin health
   - these may matter a lot, but they should not all be launch blockers by default
 
+### First-Pass Ownership Matrix
+
+This matrix is intentionally concrete. It exists to stop runtime checks from drifting between launch, doctor, config migration preflight, and install smoke.
+
+| Check or condition | Owner | Why |
+| --- | --- | --- |
+| Missing or nondirectory working directory for launch/startup | Launch preflight | The chosen entrypoint will fail immediately and the recovery is local and fast. |
+| Missing runtime entrypoint script such as `start_yazelix_inner.nu` or `launch_yazelix.nu` | Launch preflight | This is a hard runtime integrity blocker for the selected path, not a deep diagnostic. |
+| Missing generated layout required for startup | Launch preflight | Startup will fail immediately and the recovery is bounded: regenerate or fix the configured layout. |
+| No suitable configured/requested terminal available for new-window launch | Launch preflight | Detached launch should fail clearly before attempting terminal startup. |
+| Config migration follow-up before entrypoint execution | Adjacent config-migration preflight | This can block entrypoints, but it belongs to config-surface ownership rather than runtime dependency checking. |
+| Stale shell hooks or stale desktop entry | `yzx doctor` | Important health signal, but not a universal startup blocker for every entrypoint. |
+| Installed runtime pointer correctness or stable launcher shim correctness | Install/package validation and `yzx doctor` | These defend packaging/install integrity and may be inspected by doctor, but are too heavy for routine launch. |
+| Minimal-PATH POSIX launcher viability and shell-enter contract | Install/package validation | Heavy install-smoke concerns, not routine preflight checks. |
+| Version drift, Helix runtime conflicts, plugin/session-local health | `yzx doctor` | Rich diagnostics that should not silently expand launch into a slow environment audit. |
+
 ### Launch Preflight Scope
 
 - Launch preflight should be fast and bounded.
@@ -112,10 +128,11 @@ Without a written contract:
 ## Acceptance Cases
 
 1. When `yzx launch --path` receives a missing or nondirectory path, launch preflight fails before a deeper launch attempt with a direct recovery message.
-2. When startup depends on a missing runtime script or generated layout, launch fails clearly as a runtime/generated-state problem instead of surfacing a generic downstream tool failure.
+2. When startup or new-window launch depends on a missing runtime script, launch fails clearly as a runtime/generated-state problem instead of surfacing a generic downstream tool failure.
 3. When a new-terminal launch is requested and the configured terminal is unavailable for the current management mode, launch fails quickly with terminal-specific guidance instead of falling through into unrelated errors.
-4. When shell hooks, desktop entries, or installed runtime links are stale, `yzx doctor` may report them, but normal launch preflight does not have to run the full install-audit surface first.
-5. When a later Core discussion asks which dependencies are true launch blockers versus richer diagnostics, the answer can be taken from this contract instead of inferred ad hoc from current implementation details.
+4. When startup depends on a missing generated layout, startup fails clearly before asking Zellij to use that path.
+5. When shell hooks, desktop entries, or installed runtime links are stale, `yzx doctor` may report them, but normal launch preflight does not have to run the full install-audit surface first.
+6. When a later Core discussion asks which dependencies are true launch blockers versus richer diagnostics, the answer can be taken from this contract instead of inferred ad hoc from current implementation details.
 
 ## Verification
 

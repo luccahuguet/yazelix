@@ -6,6 +6,7 @@ use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_envir
 use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile resolve_built_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
+use ../utils/failure_classes.nu [format_failure_classification]
 use ../core/start_yazelix.nu [start_yazelix_session]
 use ../utils/common.nu [describe_build_parallelism get_yazelix_runtime_dir]
 use ../utils/constants.nu [TERMINAL_METADATA]
@@ -83,6 +84,21 @@ def current_environment_supports_configured_terminal [config: record, requested_
         $current_profile | path join "bin" $wrapper_name
     }
     (($wrapper_path | is-not-empty) and (wrapper_store_paths_exist $wrapper_path))
+}
+
+def require_launch_runtime_script [script_path: string] {
+    let resolved = ($script_path | path expand)
+    if not ($resolved | path exists) {
+        let recovery = "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again."
+        let classification = (format_failure_classification "generated-state" $recovery)
+        error make {msg: $"Missing Yazelix launch script: ($resolved)\n($recovery)\n($classification)"}
+    }
+
+    if (($resolved | path type) != "file") {
+        error make {msg: $"Yazelix launch script is not a file: ($resolved)"}
+    }
+
+    $resolved
 }
 
 # Launch yazelix
@@ -225,7 +241,7 @@ export def "yzx launch" [
         }
 
         let runtime_dir = (get_yazelix_runtime_dir)
-        let launch_script = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+        let launch_script = (require_launch_runtime_script ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu"))
 
         if $in_yazelix_shell {
             # Already in Yazelix environment - run directly via bash

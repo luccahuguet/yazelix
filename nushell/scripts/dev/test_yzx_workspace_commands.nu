@@ -426,6 +426,37 @@ def test_startup_requires_generated_layout_path [] {
     }
 }
 
+# Defends: new-window launch preflight requires the runtime launch script before deeper execution.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_launch_requires_runtime_launch_script [] {
+    print "🧪 Testing new-window launch preflight requires the runtime launch script..."
+
+    try {
+        let launch_script = (repo_path "nushell" "scripts" "yzx" "launch.nu")
+        let snippet = ([
+            $"source \"($launch_script)\""
+            'try {'
+            '    require_launch_runtime_script "/tmp/yazelix_missing_launch_yazelix.nu" | ignore'
+            '} catch {|err|'
+            '    print $err.msg'
+            '}'
+        ] | str join "\n")
+        let output = (run_nu_snippet $snippet)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout | str contains "Missing Yazelix launch script") and ($stdout | str contains "Reinstall/regenerate Yazelix") and ($stdout | str contains "Failure class: generated-state problem.") {
+            print "  ✅ New-window launch fails clearly when the runtime launch script is missing"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 # Defends: yzx cwd fails clearly outside Zellij.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_yzx_cwd_requires_zellij [] {
@@ -458,6 +489,7 @@ export def run_workspace_canonical_tests [] {
         (test_startup_rejects_missing_working_dir)
         (test_launch_rejects_file_working_dir)
         (test_startup_requires_generated_layout_path)
+        (test_launch_requires_runtime_launch_script)
         (test_yzx_cwd_requires_zellij)
     ]
 }
