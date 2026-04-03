@@ -1,0 +1,192 @@
+# yzx Command Surface Backend Coupling
+
+## Summary
+
+Yazelix should classify the public `yzx` command surface by primary ownership instead of treating every subcommand as equally backend-coupled. The important buckets are:
+
+- backend-required control-plane commands
+- backend-agnostic workspace/config UX
+- runtime-owned or distribution-owned surfaces
+- genuinely mixed seams that should be refactored before a future `Yazelix Core` boundary or backend experiment
+
+This audit is based on the real exported command surface from `nushell/scripts/core/yazelix.nu` and `nushell/scripts/yzx/*.nu`, not on docs text alone.
+
+## Why
+
+The recent backend and preflight contract work made one thing obvious: Yazelix does not have one flat CLI.
+
+Some commands are fundamentally about backend activation and rebuild semantics:
+
+- `yzx env`
+- `yzx run`
+- `yzx refresh`
+
+Some are mostly workspace or config UX:
+
+- `yzx cwd`
+- `yzx reveal`
+- `yzx edit`
+- `yzx import`
+
+Some are really about installed runtime or distribution state:
+
+- `yzx desktop install`
+- `yzx update runtime`
+
+And a few important families still braid multiple owners together:
+
+- `yzx launch`
+- `yzx restart`
+- `yzx status`
+- `yzx doctor`
+- `yzx menu`
+
+Without a written audit:
+
+- future `Yazelix Core` planning will stay fuzzy
+- backend experiments will keep arguing about the wrong command subset
+- later Rust migration work will have no clear first-class seam
+- commands like `status`, `doctor`, and `launch` will keep absorbing unrelated responsibilities
+
+## Scope
+
+- audit the public exported `yzx` command surface
+- fold aliases into canonical command families
+- classify each family as:
+  - backend-required
+  - backend-agnostic
+  - runtime-owned/distribution
+  - mixed/refactor-needed
+- identify the most important mixed seams for later refactor work
+- record likely keep/narrow/drop expectations for a future `Yazelix Core` discussion
+
+## Source Of Truth
+
+This audit uses the actual exported command surface from:
+
+- `nushell/scripts/core/yazelix.nu`
+- `nushell/scripts/yzx/*.nu`
+
+Sanity check command:
+
+```bash
+nu -c 'use nushell/scripts/core/yazelix.nu *; help commands | where name =~ "^yzx( |$)" | select name description | sort-by name'
+```
+
+The audit intentionally excludes:
+
+- maintainer-only `yzx dev *`
+- exported helper functions that are not user-facing commands, such as:
+  - `resolve_yzx_cwd_target`
+  - `resolve_yzx_popup_command`
+  - `resolve_yzx_popup_cwd`
+  - `resolve_yzx_screen_style`
+  - `get_yzx_screen_cycle_frames`
+
+## Behavior
+
+### Classification Rules
+
+- `backend-required`
+  - the command cannot honestly work without backend activation, rebuild, pack, or environment-materialization semantics
+- `backend-agnostic`
+  - the command primarily owns workspace UX or config-surface behavior and should survive a future backend swap with the same command meaning
+- `runtime-owned/distribution`
+  - the command primarily owns installed runtime state, generated runtime outputs, or distribution/integration surfaces rather than backend control-plane behavior
+- `mixed/refactor-needed`
+  - the command currently braids more than one of those owners together and should be treated as a refactor target rather than as a clean precedent
+
+### Command-Family Matrix
+
+| Family | Canonical commands \(aliases folded\) | Bucket | Why | Likely `Yazelix Core` disposition | Main code evidence |
+| --- | --- | --- | --- | --- | --- |
+| Root and informational surface | `yzx`, `yzx why`, `yzx sponsor`, `yzx whats_new` | backend-agnostic | These commands are informational, promotional, or release-summary surfaces. They do not depend on backend control-plane semantics. | Keep | `nushell/scripts/core/yazelix.nu`, `nushell/scripts/yzx/whats_new.nu` |
+| Workspace actions | `yzx cwd`, `yzx reveal`, `yzx popup`, `yzx screen` | backend-agnostic | These commands primarily act on the current workspace/session, managed sidebar, popup pane, or visual UX. They may rely on session state or configured tools, but not on backend activation semantics as their main owner. | Keep | `nushell/scripts/core/yazelix.nu`, `nushell/scripts/yzx/popup.nu`, `nushell/scripts/yzx/screen.nu` |
+| Discoverability and training | `yzx keys`, `yzx keys yzx`, `yzx keys yazi`, `yzx keys hx`, `yzx keys helix`, `yzx keys nu`, `yzx keys nushell`, `yzx tutor`, `yzx tutor hx`, `yzx tutor helix`, `yzx tutor nu`, `yzx tutor nushell` | backend-agnostic | These are educational and discoverability surfaces. Their meaning should survive any backend reshaping. | Keep | `nushell/scripts/yzx/keys.nu`, `nushell/scripts/yzx/tutor.nu` |
+| Config-surface management | `yzx config`, `yzx config migrate`, `yzx config reset`, `yzx edit`, `yzx edit config`, `yzx edit packs`, `yzx import`, `yzx import zellij`, `yzx import yazi`, `yzx import helix` | backend-agnostic | These commands primarily own user-managed config surfaces and migration/import flows. They may read shipped templates or migration metadata, but they are not backend control-plane commands. | Keep | `nushell/scripts/yzx/menu.nu`, `nushell/scripts/yzx/import.nu` |
+| Generated-surface inspection | `yzx open hx`, `yzx open yazi`, `yzx open zellij` | runtime-owned/distribution | These commands inspect generated or managed downstream config outputs under the Yazelix runtime/state tree. They are not backend control-plane commands, but they do depend on runtime-owned/generated artifacts. | Keep, possibly narrowed to the surfaces Core still generates | `nushell/scripts/yzx/menu.nu`, `nushell/scripts/setup/helix_config_merger.nu` |
+| Backend control plane | `yzx env`, `yzx run`, `yzx refresh` | backend-required | These commands directly own environment activation, rebuild, refresh, and re-entry semantics. Their behavior is defined by the backend contract. | Narrow, not drop | `nushell/scripts/yzx/env.nu`, `nushell/scripts/yzx/run.nu`, `nushell/scripts/yzx/refresh.nu`, `nushell/scripts/utils/environment_bootstrap.nu` |
+| Backend package and store surfaces | `yzx packs`, `yzx gc` | backend-required | These commands are tightly coupled to backend/package composition and current Nix/devenv store semantics. `packs` inspects pack-backed materialization; `gc` acts on backend-specific garbage-collection behavior. | Likely narrow sharply; `gc` only if Core stays Nix-backed | `nushell/scripts/yzx/packs.nu`, `nushell/scripts/yzx/gc.nu` |
+| Installed runtime and distribution maintenance | `yzx desktop install`, `yzx desktop uninstall`, `yzx desktop launch`, `yzx update`, `yzx update all`, `yzx update runtime`, `yzx update nix`, `yzx repair`, `yzx repair zellij-permissions` | runtime-owned/distribution | These commands own stable launcher/runtime identity, desktop-entry integration, runtime refresh/install flows, or adjacent install/runtime repair surfaces. They are about shipped/runtime distribution state more than backend activation semantics. | Keep selected surfaces; `update nix` depends on future product policy | `nushell/scripts/yzx/desktop.nu`, `nushell/scripts/core/yazelix.nu`, `nushell/scripts/setup/zellij_plugin_paths.nu` |
+| Session launch and restart | `yzx launch`, `yzx restart` | mixed/refactor-needed | These commands currently braid backend refresh/re-entry, runtime preflight, terminal dispatch, and workspace/session bootstrap. They are the clearest mixed owner seam in the public CLI. | Keep, but split internally | `nushell/scripts/yzx/launch.nu`, `nushell/scripts/core/start_yazelix.nu`, `nushell/scripts/core/yazelix.nu` |
+| Health and inspection | `yzx status`, `yzx doctor` | mixed/refactor-needed | `status` mixes config summary, shell-hook integration, and backend freshness. `doctor` mixes shared runtime preflight, install/distribution health, shell integration, version drift, and workspace/plugin diagnostics. | Keep, but split responsibilities more clearly | `nushell/scripts/core/yazelix.nu`, `nushell/scripts/utils/doctor.nu`, `nushell/scripts/utils/runtime_contract_checker.nu` |
+| Command palette | `yzx menu` | mixed/refactor-needed | The picker UI is backend-agnostic, but the command dispatch path shells back into the runtime command module and spans every other family. It is a thin mixed seam today. | Keep, but reduce dispatch coupling | `nushell/scripts/yzx/menu.nu` |
+
+### Alias Folding Notes
+
+- `yzx keys yzx` is the alias form of the default `yzx keys` view.
+- `yzx keys helix` is the alias of `yzx keys hx`.
+- `yzx keys nushell` is the alias of `yzx keys nu`.
+- `yzx tutor helix` is the alias of `yzx tutor hx`.
+- `yzx tutor nushell` is the alias of `yzx tutor nu`.
+- `yzx edit config` and `yzx edit packs` are specialized leaves of the same `yzx edit` family.
+- `yzx import zellij`, `yzx import yazi`, and `yzx import helix` are leaves of the same import family.
+- `yzx update all`, `yzx update runtime`, and `yzx update nix` are leaves of the same update/distribution family.
+
+### Mixed-Seam Shortlist
+
+The highest-value mixed families to refactor later are:
+
+1. `yzx launch` / `yzx restart`
+   - split backend refresh/re-entry from workspace bootstrap and terminal dispatch
+2. `yzx status` / `yzx doctor`
+   - split concise runtime status from heavier install/integration diagnostics
+3. `yzx menu`
+   - keep the picker UX backend-agnostic while making dispatch and family metadata more explicit
+
+### First-Pass Downstream Guidance
+
+- `yazelix-qv8c`
+  - should treat the `backend-agnostic` and selected `runtime-owned/distribution` families as the strongest `Yazelix Core` candidates
+- `yazelix-qow`
+  - should care primarily about the `backend-required` and `mixed/refactor-needed` families
+- later backend-adapter and Rust work
+  - should focus first on the mixed families rather than rewriting already-clean backend-agnostic surfaces
+
+## Non-goals
+
+- defining backend capability buckets again
+- defining launch-time dependency ownership again
+- promising final `Yazelix Core` command parity
+- auditing maintainer-only `yzx dev *` in the same matrix
+- rewriting the mixed seams yet
+
+## Acceptance Cases
+
+1. When a later bead asks whether a command family is fundamentally backend-bound, the answer can be taken from this matrix instead of guessed from implementation trivia.
+2. When a future `Yazelix Core` discussion asks which commands are the best keep candidates, the answer clearly favors backend-agnostic and selected runtime-owned/distribution families.
+3. When a later refactor asks which public commands still mix backend, runtime, and workspace concerns, the shortlist clearly identifies `launch`, `restart`, `status`, `doctor`, and `menu`.
+4. When a later backend experiment evaluates itself against the CLI, it does not need to treat the whole `yzx` surface as one undifferentiated requirement.
+
+## Verification
+
+- manual review against:
+  - [backend_capability_contract.md](./backend_capability_contract.md)
+  - [runtime_dependency_preflight_contract.md](./runtime_dependency_preflight_contract.md)
+  - [architecture_map.md](../architecture_map.md)
+- manual command-surface sanity check:
+  - `nu -c 'use nushell/scripts/core/yazelix.nu *; help commands | where name =~ "^yzx( |$)" | select name description | sort-by name'`
+- manual code review of the main family owners:
+  - `nushell/scripts/core/yazelix.nu`
+  - `nushell/scripts/yzx/launch.nu`
+  - `nushell/scripts/yzx/menu.nu`
+  - `nushell/scripts/yzx/env.nu`
+  - `nushell/scripts/yzx/run.nu`
+  - `nushell/scripts/yzx/refresh.nu`
+  - `nushell/scripts/yzx/packs.nu`
+  - `nushell/scripts/yzx/gc.nu`
+  - `nushell/scripts/yzx/desktop.nu`
+  - `nushell/scripts/utils/doctor.nu`
+- CI/spec check:
+  - `nu nushell/scripts/dev/validate_specs.nu`
+
+## Traceability
+
+- Bead: `yazelix-d4pw`
+- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+
+## Open Questions
+
+- Should `yzx packs` remain part of the long-term public product surface if `Yazelix Core` becomes a fixed default-stack bundle rather than a flexible pack-driven environment?
+- Should `yzx update nix` stay part of the main public surface, or should it eventually move behind a narrower Nix-distribution or maintainer boundary?
+- Should `yzx open` remain grouped with config-surface commands, or should it become a more explicit generated-state inspection family?
