@@ -11,6 +11,7 @@ Use Beads as the agent memory and triage layer for Yazelix work.
 - When token budget matters, prefer `bv --robot-triage --format toon`.
 - For bounded handoff context, use `bv --agent-brief <dir>` to export a compact bundle (`triage.json`, `insights.json`, `brief.md`, `helpers.md`).
 - Use `br` for issue mutations and sync: create, update, close, dependency management, and `br sync --flush-only`.
+- Never fire Beads commands in parallel. Do not run concurrent `br`/`bv` mutations or issue-creation flows from multiple tools or subshells at once; the Beads DB/JSONL path is not reliable under parallel agent writes and tends to produce `database is busy` failures or half-applied state.
 - Treat scope boundaries strictly:
   - `bv` decides what to work on.
   - `br` updates issue state.
