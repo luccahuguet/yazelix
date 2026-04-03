@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 # Simple version information for Yazelix tools
 
+use common.nu get_yazelix_runtime_dir
 use devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available]
 use helix_mode.nu [get_helix_binary]
 
@@ -53,11 +54,7 @@ def format_locked_entry [node: record] {
 }
 
 def load_lockfile [] {
-    let runtime_root = if ($env.YAZELIX_RUNTIME_DIR? | is-not-empty) {
-        $env.YAZELIX_RUNTIME_DIR
-    } else {
-        $"($env.HOME)/.config/yazelix"
-    }
+    let runtime_root = (get_yazelix_runtime_dir)
     let lock_path = ($runtime_root | path join "devenv.lock")
     if not ($lock_path | path exists) {
         return null

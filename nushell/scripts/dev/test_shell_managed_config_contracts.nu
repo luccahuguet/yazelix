@@ -98,8 +98,8 @@ def test_generate_nushell_initializer_removes_starship_right_prompt [] {
     $result
 }
 
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-# Defends: managed Nushell config sources the optional Yazelix-owned user hook without touching personal config.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Defends: managed Nushell config sources the Yazelix-owned user hook via YAZELIX_CONFIG_DIR instead of a legacy hook-dir env override.
 def test_managed_nushell_config_sources_optional_user_hook [] {
     print "🧪 Testing managed Nushell config sources the optional Yazelix-owned user hook..."
 
@@ -119,7 +119,15 @@ def test_managed_nushell_config_sources_optional_user_hook [] {
         '$env.YAZELIX_TEST_NU_HOOK = "from_managed_nu_hook"' | save --force --raw $hook_path
         "" | save --force --raw ($state_dir | path join "initializers" "nushell" "yazelix_init.nu")
         sync_generated_yzx_extern_bridge $repo_root $state_dir | ignore
-        sync_generated_nushell_user_hook_bridge $config_dir $state_dir | ignore
+        with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_USER_SHELL_HOOK_DIR: ($tmp_home | path join "bogus_shell_hooks")
+        } {
+            sync_generated_nushell_user_hook_bridge | ignore
+        }
 
         let output = (with-env {
             HOME: $tmp_home
@@ -133,7 +141,7 @@ def test_managed_nushell_config_sources_optional_user_hook [] {
         })
 
         if ($output.exit_code == 0) and (($output.stdout | str trim) == "from_managed_nu_hook") {
-            print "  ✅ Managed Nushell config can source a Yazelix-owned user hook without touching personal config"
+            print "  ✅ Managed Nushell config now sources the Yazelix-owned user hook from YAZELIX_CONFIG_DIR, even with a bogus legacy hook-dir env set"
             true
         } else {
             print $"  ❌ Unexpected managed Nushell user-hook result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
@@ -307,8 +315,8 @@ def test_generated_nushell_shell_hook_uses_managed_config_only [] {
     $result
 }
 
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-# Defends: managed Bash config sources the optional Yazelix-owned user hook without touching personal dotfiles.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Defends: managed Bash config sources the Yazelix-owned user hook from YAZELIX_CONFIG_DIR instead of a legacy hook-dir env override.
 def test_managed_bash_config_sources_optional_user_hook [] {
     print "🧪 Testing managed Bash config sources the optional Yazelix-owned user hook..."
 
@@ -329,6 +337,7 @@ def test_managed_bash_config_sources_optional_user_hook [] {
             HOME: $tmp_home
             XDG_CONFIG_HOME: $xdg_config_home
             YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_USER_SHELL_HOOK_DIR: ($tmp_home | path join "bogus_shell_hooks")
             YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_DIR: $repo_root
         } {
@@ -336,7 +345,7 @@ def test_managed_bash_config_sources_optional_user_hook [] {
         })
 
         if ($output.exit_code == 0) and (($output.stdout | str trim) == "from_managed_bash_hook|unset") {
-            print "  ✅ Managed Bash config can source a Yazelix-owned user hook without touching personal dotfiles or exporting Helix mode"
+            print "  ✅ Managed Bash config now sources the Yazelix-owned user hook from YAZELIX_CONFIG_DIR without exporting Helix mode"
             true
         } else {
             print $"  ❌ Unexpected managed Bash user-hook result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"

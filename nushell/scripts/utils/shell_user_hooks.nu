@@ -9,42 +9,9 @@ export const USER_SHELL_HOOK_FILENAMES = {
     zsh: "zsh.zsh"
 }
 
-def expand_shell_hook_path [value: string] {
-    let trimmed = ($value | str trim)
-    if ($trimmed | is-empty) {
-        return $trimmed
-    }
-
-    let home_dir = ($env.HOME? | default "" | into string | str trim)
-    let expanded_home = if ($home_dir | is-not-empty) and ($trimmed | str starts-with "$HOME/") {
-        $trimmed | str replace "$HOME" $home_dir
-    } else if ($home_dir | is-not-empty) and ($trimmed == "$HOME") {
-        $home_dir
-    } else {
-        $trimmed
-    }
-
-    $expanded_home | path expand
-}
-
 export def get_yazelix_shell_user_hook_dir [config_root?: string] {
-    if $config_root != null {
-        return ((get_yazelix_user_config_dir $config_root) | path join "shells")
-    }
-
-    let configured = (
-        $env.YAZELIX_USER_SHELL_HOOK_DIR?
-        | default ""
-        | into string
-        | str trim
-    )
-
-    if ($configured | is-not-empty) {
-        expand_shell_hook_path $configured
-    } else {
-        let user_config_dir = (get_yazelix_user_config_dir)
-        ($user_config_dir | path join "shells")
-    }
+    let user_config_dir = (get_yazelix_user_config_dir $config_root)
+    ($user_config_dir | path join "shells")
 }
 
 export def get_yazelix_shell_user_hook_path [shell: string, config_root?: string] {

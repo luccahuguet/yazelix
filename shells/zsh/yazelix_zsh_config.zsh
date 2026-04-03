@@ -68,15 +68,13 @@ hx() {
 # export SOME_ZSH_SPECIFIC_VAR="value"
 
 if [[ -n "${YAZELIX_CONFIG_DIR:-}" ]]; then
-  YAZELIX_USER_SHELL_HOOK_DIR="$YAZELIX_CONFIG_DIR/user_configs/shells"
-elif [[ -n "${YAZELIX_USER_SHELL_HOOK_DIR:-}" ]]; then
-  YAZELIX_USER_SHELL_HOOK_DIR="$YAZELIX_USER_SHELL_HOOK_DIR"
+  yazelix_user_shell_hook_dir="$YAZELIX_CONFIG_DIR/user_configs/shells"
 else
-  YAZELIX_USER_SHELL_HOOK_DIR="$HOME/.config/yazelix/user_configs/shells"
+  yazelix_user_shell_hook_dir="$HOME/.config/yazelix/user_configs/shells"
 fi
-YAZELIX_ZSH_USER_HOOK="$YAZELIX_USER_SHELL_HOOK_DIR/zsh.zsh"
-if [[ -f "$YAZELIX_ZSH_USER_HOOK" && -s "$YAZELIX_ZSH_USER_HOOK" ]]; then
-  source "$YAZELIX_ZSH_USER_HOOK"
+yazelix_zsh_user_hook="$yazelix_user_shell_hook_dir/zsh.zsh"
+if [[ -f "$yazelix_zsh_user_hook" && -s "$yazelix_zsh_user_hook" ]]; then
+  source "$yazelix_zsh_user_hook"
 fi
 
 # Ensure this script doesn't produce output unless it's an error,

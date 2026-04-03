@@ -29,7 +29,7 @@ Reusable utility functions and helpers:
 - `constants.nu` - Project constants and configuration
 - `version_info.nu` - Version information utilities
 - `config_manager.nu` - Configuration management utilities
-- `helix_mode.nu` - Helix mode detection and setup
+- `helix_mode.nu` - Helix binary resolution helpers
 - `common.nu` - Common utility functions
 - `logging.nu` - Logging utilities
 

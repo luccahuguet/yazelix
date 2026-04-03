@@ -52,8 +52,6 @@ end
 set -l fish_user_hook_dir "$HOME/.config/yazelix/user_configs/shells"
 if test -n "$YAZELIX_CONFIG_DIR"
     set fish_user_hook_dir "$YAZELIX_CONFIG_DIR/user_configs/shells"
-else if set -q YAZELIX_USER_SHELL_HOOK_DIR; and test -n "$YAZELIX_USER_SHELL_HOOK_DIR"
-    set fish_user_hook_dir "$YAZELIX_USER_SHELL_HOOK_DIR"
 end
 set -l YAZELIX_FISH_USER_HOOK "$fish_user_hook_dir/fish.fish"
 if test -f "$YAZELIX_FISH_USER_HOOK"

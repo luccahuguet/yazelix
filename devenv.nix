@@ -669,7 +669,6 @@ in
 
   env = {
     YAZELIX_CONFIG_DIR = "$HOME/.config/yazelix";
-    YAZELIX_USER_SHELL_HOOK_DIR = "$HOME/.config/yazelix/user_configs/shells";
     IN_YAZELIX_SHELL = "true";
     NIX_CONFIG = yazelixNixConfig;
     ZELLIJ_DEFAULT_LAYOUT = yazelixLayoutName;
@@ -693,7 +692,6 @@ in
     fi
 
     export YAZELIX_CONFIG_DIR="''${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}"
-    export YAZELIX_USER_SHELL_HOOK_DIR="''${YAZELIX_USER_SHELL_HOOK_DIR:-$YAZELIX_CONFIG_DIR/user_configs/shells}"
     export YAZELIX_RUNTIME_DIR="''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}"
     export YAZELIX_DIR="$YAZELIX_RUNTIME_DIR"
     export IN_YAZELIX_SHELL="true"
