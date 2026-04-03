@@ -3,6 +3,7 @@
 use failure_classes.nu [format_failure_classification]
 use terminal_launcher.nu [detect_terminal_candidates detect_terminal_wrapper_candidates]
 use constants.nu [SUPPORTED_TERMINALS TERMINAL_METADATA]
+use common.nu [get_yazelix_state_dir]
 
 def build_runtime_check [
     id: string
@@ -33,22 +34,7 @@ def build_runtime_check [
 }
 
 export def runtime_check_to_error [check: record] {
-    mut lines = [$check.message]
-
-    if (($check.details? | default "") | is-not-empty) {
-        $lines = ($lines | append $check.details)
-    }
-
-    let recovery = ($check.recovery? | default "" | into string | str trim)
-    let failure_class = ($check.failure_class? | default "" | into string | str trim)
-    if ($recovery | is-not-empty) {
-        $lines = ($lines | append $recovery)
-    }
-    if ($recovery | is-not-empty) and ($failure_class | is-not-empty) {
-        $lines = ($lines | append (format_failure_classification $failure_class $recovery))
-    }
-
-    $lines | str join "\n"
+    ([ $check.message ] | append (build_runtime_check_detail_lines $check) | str join "\n")
 }
 
 export def require_runtime_check [check: record] {
@@ -60,20 +46,7 @@ export def require_runtime_check [check: record] {
 }
 
 export def runtime_check_to_doctor_result [check: record] {
-    mut detail_lines = []
-
-    if (($check.details? | default "") | is-not-empty) {
-        $detail_lines = ($detail_lines | append $check.details)
-    }
-
-    let recovery = ($check.recovery? | default "" | into string | str trim)
-    let failure_class = ($check.failure_class? | default "" | into string | str trim)
-    if ($recovery | is-not-empty) {
-        $detail_lines = ($detail_lines | append $recovery)
-    }
-    if ($recovery | is-not-empty) and ($failure_class | is-not-empty) {
-        $detail_lines = ($detail_lines | append (format_failure_classification $failure_class $recovery))
-    }
+    let detail_lines = (build_runtime_check_detail_lines $check)
 
     {
         status: (if ($check.status == "ok") { "ok" } else { $check.severity })
@@ -82,6 +55,46 @@ export def runtime_check_to_doctor_result [check: record] {
         fix_available: false
         runtime_contract_check: $check.id
         owner_surface: $check.owner_surface
+    }
+}
+
+def build_runtime_check_detail_lines [check: record] {
+    mut detail_lines = []
+
+    if (($check.details? | default "") | is-not-empty) {
+        $detail_lines = ($detail_lines | append $check.details)
+    }
+
+    let recovery = ($check.recovery? | default "" | into string | str trim)
+    let failure_class = ($check.failure_class? | default "" | into string | str trim)
+    if ($recovery | is-not-empty) and ($failure_class | is-not-empty) {
+        $detail_lines = ($detail_lines | append (format_failure_classification $failure_class $recovery))
+    } else if ($recovery | is-not-empty) {
+        $detail_lines = ($detail_lines | append $recovery)
+    }
+
+    $detail_lines
+}
+
+export def resolve_expected_layout_path [config: record, layout_dir?: string] {
+    let configured_layout = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
+    let layout = if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
+        $env.YAZELIX_LAYOUT_OVERRIDE
+    } else if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) and ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
+        $env.ZELLIJ_DEFAULT_LAYOUT
+    } else {
+        $configured_layout
+    }
+    let resolved_layout_dir = if ($layout_dir | is-not-empty) {
+        $layout_dir
+    } else {
+        (get_yazelix_state_dir | path join "configs" "zellij" "layouts")
+    }
+
+    if ($layout | str contains "/") or ($layout | str ends-with ".kdl") {
+        $layout
+    } else {
+        $resolved_layout_dir | path join $"($layout).kdl"
     }
 }
 

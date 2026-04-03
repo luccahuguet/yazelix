@@ -303,6 +303,60 @@ terminals = ["ghostty"]
     $result
 }
 
+# Regression: doctor must resolve the same expected layout override path as startup.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_respects_layout_override_for_shared_preflight [] {
+    print "🧪 Testing yzx doctor respects YAZELIX_LAYOUT_OVERRIDE for shared layout preflight..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_layout_override"
+        '[terminal]
+manage_terminals = false
+terminals = ["ghostty"]
+'
+    )
+
+    let result = (try {
+        let fake_state_dir = ($fixture.tmp_home | path join ".local" "share" "yazelix")
+        let layouts_dir = ($fake_state_dir | path join "configs" "zellij" "layouts")
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        mkdir $layouts_dir
+        mkdir $fake_bin
+        "" | save --force --raw ($layouts_dir | path join "yzx_no_side.kdl")
+
+        [
+            "#!/bin/sh"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "ghostty")
+        ^chmod +x ($fake_bin | path join "ghostty")
+
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
+            YAZELIX_STATE_DIR: $fake_state_dir
+            YAZELIX_LAYOUT_OVERRIDE: "yzx_no_side"
+            PATH: ([$fake_bin] | append $env.PATH)
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Yazelix generated Zellij layout is present")
+            and not ($stdout | str contains $"Missing Yazelix generated Zellij layout: ($layouts_dir | path join 'yzx_side.kdl')")
+        ) {
+            print "  ✅ yzx doctor uses the same layout-override resolution as startup"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
@@ -311,6 +365,7 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_fix_splits_legacy_pack_config)
         (test_yzx_doctor_reports_stale_desktop_entry_exec)
         (test_yzx_doctor_reports_missing_runtime_launch_assets)
+        (test_yzx_doctor_respects_layout_override_for_shared_preflight)
     ]
 }
 

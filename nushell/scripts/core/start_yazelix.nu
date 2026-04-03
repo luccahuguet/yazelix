@@ -10,6 +10,7 @@ use ../utils/runtime_contract_checker.nu [
     check_runtime_script
     check_startup_working_dir
     require_runtime_check
+    resolve_expected_layout_path
 ]
 
 def validate_startup_working_dir [working_dir: string] {
@@ -112,20 +113,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     let working_dir = (validate_startup_working_dir $requested_working_dir)
 
     # Resolve layout from yazelix.toml; explicit override wins for sweep/test flows.
-    let configured_layout = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
-    let layout = if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
-        $env.YAZELIX_LAYOUT_OVERRIDE
-    } else if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) and ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
-        $env.ZELLIJ_DEFAULT_LAYOUT
-    } else {
-        $configured_layout
-    }
-    # Resolve layout to an absolute file path so it works even if user config overrides layout_dir
-    let layout_path = if ($layout | str contains "/") or ($layout | str ends-with ".kdl") {
-        $layout
-    } else {
-        $"($merged_zellij_dir)/layouts/($layout).kdl"
-    }
+    let layout_path = (resolve_expected_layout_path $config $"($merged_zellij_dir)/layouts")
     let resolved_layout_path = (require_generated_layout $layout_path)
 
     let inner_script = (require_runtime_script $"($yazelix_dir)/nushell/scripts/core/start_yazelix_inner.nu" "startup script")

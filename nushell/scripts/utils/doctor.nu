@@ -14,6 +14,7 @@ use runtime_contract_checker.nu [
     check_launch_terminal_support
     check_launch_working_dir
     check_runtime_script
+    resolve_expected_layout_path
     runtime_check_to_doctor_result
 ]
 use ../setup/helix_config_merger.nu [build_managed_helix_config get_generated_helix_config_path get_managed_helix_user_config_path get_managed_reveal_command get_native_helix_config_path]
@@ -554,11 +555,6 @@ export def check_shell_integration [] {
     }
 }
 
-def get_default_generated_layout_path [config: record] {
-    let layout_name = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
-    (get_yazelix_state_dir | path join "configs" "zellij" "layouts" $"($layout_name).kdl")
-}
-
 export def check_shared_runtime_preflight [] {
     let config_result = (try {
         {config: (parse_yazelix_config), error: null}
@@ -574,7 +570,7 @@ export def check_shared_runtime_preflight [] {
     let current_dir = (try { pwd } catch { null })
     let terminals = ($config.terminals? | default ["ghostty"] | uniq)
     let manage_terminals = ($config.manage_terminals? | default true)
-    let layout_path = (get_default_generated_layout_path $config)
+    let layout_path = (resolve_expected_layout_path $config)
     let built_profile = (resolve_built_profile)
     let terminal_check = if $manage_terminals and ($built_profile | is-not-empty) {
         with-env {DEVENV_PROFILE: $built_profile} {
