@@ -395,17 +395,17 @@ def test_launch_falls_through_after_immediate_terminal_failure [] {
     $result
 }
 
-# Defends: startup requires the generated layout path.
+# Defends: startup preflight requires the generated layout path before deeper launch work.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_startup_requires_generated_layout_path [] {
-    print "🧪 Testing startup requires an existing Zellij layout..."
+    print "🧪 Testing startup preflight requires an existing Zellij layout..."
 
     try {
-        let start_inner = (repo_path "nushell" "scripts" "core" "start_yazelix_inner.nu")
+        let start_script = (repo_path "nushell" "scripts" "core" "start_yazelix.nu")
         let snippet = ([
-            $"source \"($start_inner)\""
+            $"source \"($start_script)\""
             'try {'
-            '    require_existing_layout "/tmp/yazelix_missing_layout.kdl" | ignore'
+            '    require_generated_layout "/tmp/yazelix_missing_layout.kdl" | ignore'
             '} catch {|err|'
             '    print $err.msg'
             '}'
@@ -413,8 +413,8 @@ def test_startup_requires_generated_layout_path [] {
         let output = (run_nu_snippet $snippet)
         let stdout = ($output.stdout | str trim)
 
-        if ($output.exit_code == 0) and ($stdout | str contains "Zellij layout not found") and ($stdout | str contains "yzx refresh") and ($stdout | str contains "Failure class: generated-state problem.") {
-            print "  ✅ Startup fails clearly when the generated layout is missing"
+        if ($output.exit_code == 0) and ($stdout | str contains "Missing Yazelix generated Zellij layout") and ($stdout | str contains "yzx refresh") and ($stdout | str contains "Failure class: generated-state problem.") {
+            print "  ✅ Startup preflight fails clearly when the generated layout is missing"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"

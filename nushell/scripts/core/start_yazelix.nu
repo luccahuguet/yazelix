@@ -21,14 +21,26 @@ def validate_startup_working_dir [working_dir: string] {
     $resolved
 }
 
-def require_runtime_script [script_path: string, label: string] {
-    let resolved = ($script_path | path expand)
+def require_runtime_file [file_path: string, label: string, recovery: string] {
+    let resolved = ($file_path | path expand)
     if not ($resolved | path exists) {
-        let classification = (format_failure_classification "generated-state" "Restore the missing runtime asset, or reinstall/regenerate Yazelix and try again.")
-        error make {msg: $"Missing Yazelix ($label): ($resolved)\nYour runtime looks incomplete. Reinstall/regenerate Yazelix and try again.\n($classification)"}
+        let classification = (format_failure_classification "generated-state" $recovery)
+        error make {msg: $"Missing Yazelix ($label): ($resolved)\n($recovery)\n($classification)"}
+    }
+
+    if (($resolved | path type) != "file") {
+        error make {msg: $"Yazelix ($label) is not a file: ($resolved)"}
     }
 
     $resolved
+}
+
+def require_runtime_script [script_path: string, label: string] {
+    require_runtime_file $script_path $label "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again."
+}
+
+def require_generated_layout [layout_path: string] {
+    require_runtime_file $layout_path "generated Zellij layout" "Run `yzx refresh` to regenerate layouts, or check the configured layout name."
 }
 
 def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse] {
@@ -127,12 +139,13 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     } else {
         $"($merged_zellij_dir)/layouts/($layout).kdl"
     }
+    let resolved_layout_path = (require_generated_layout $layout_path)
 
     let inner_script = (require_runtime_script $"($yazelix_dir)/nushell/scripts/core/start_yazelix_inner.nu" "startup script")
     let base_args = if ($working_dir | is-not-empty) {
-        ["-i", $inner_script, $working_dir, $layout_path]
+        ["-i", $inner_script, $working_dir, $resolved_layout_path]
     } else {
-        ["-i", $inner_script, "", $layout_path]
+        ["-i", $inner_script, "", $resolved_layout_path]
     }
     let inner_args = if $verbose_mode {
         $base_args | append "--verbose"
@@ -166,25 +179,21 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     }
 }
 
-export def start_yazelix_session [cwd_override?: string, --verbose, --setup-only, --reuse] {
+def run_start_yazelix_entrypoint [cwd_override?: string, verbose: bool, setup_only: bool, reuse: bool] {
     if ($cwd_override | is-not-empty) {
-        if $setup_only {
-            if $verbose {
-                _start_yazelix_impl $cwd_override --verbose --setup-only --reuse=$reuse
-            } else {
-                _start_yazelix_impl $cwd_override --setup-only --reuse=$reuse
-            }
+        if $setup_only and $verbose {
+            _start_yazelix_impl $cwd_override --verbose --setup-only --reuse=$reuse
+        } else if $setup_only {
+            _start_yazelix_impl $cwd_override --setup-only --reuse=$reuse
         } else if $verbose {
             _start_yazelix_impl $cwd_override --verbose --reuse=$reuse
         } else {
             _start_yazelix_impl $cwd_override --reuse=$reuse
         }
+    } else if $setup_only and $verbose {
+        _start_yazelix_impl --verbose --setup-only --reuse=$reuse
     } else if $setup_only {
-        if $verbose {
-            _start_yazelix_impl --verbose --setup-only --reuse=$reuse
-        } else {
-            _start_yazelix_impl --setup-only --reuse=$reuse
-        }
+        _start_yazelix_impl --setup-only --reuse=$reuse
     } else if $verbose {
         _start_yazelix_impl --verbose --reuse=$reuse
     } else {
@@ -192,28 +201,10 @@ export def start_yazelix_session [cwd_override?: string, --verbose, --setup-only
     }
 }
 
+export def start_yazelix_session [cwd_override?: string, --verbose, --setup-only, --reuse] {
+    run_start_yazelix_entrypoint $cwd_override $verbose $setup_only $reuse
+}
+
 export def main [cwd_override?: string, --verbose, --setup-only, --reuse] {
-    if ($cwd_override | is-not-empty) {
-        if $setup_only {
-            if $verbose {
-                _start_yazelix_impl $cwd_override --verbose --setup-only --reuse=$reuse
-            } else {
-                _start_yazelix_impl $cwd_override --setup-only --reuse=$reuse
-            }
-        } else if $verbose {
-            _start_yazelix_impl $cwd_override --verbose --reuse=$reuse
-        } else {
-            _start_yazelix_impl $cwd_override --reuse=$reuse
-        }
-    } else if $setup_only {
-        if $verbose {
-            _start_yazelix_impl --verbose --setup-only --reuse=$reuse
-        } else {
-            _start_yazelix_impl --setup-only --reuse=$reuse
-        }
-    } else if $verbose {
-        _start_yazelix_impl --verbose --reuse=$reuse
-    } else {
-        _start_yazelix_impl --reuse=$reuse
-    }
+    run_start_yazelix_entrypoint $cwd_override $verbose $setup_only $reuse
 }
