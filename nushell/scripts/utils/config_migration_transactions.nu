@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use config_surfaces.nu [load_config_surface_pair]
+use config_surfaces.nu [load_config_surface_pair merge_pack_sidecar]
 
 export const MANAGED_CONFIG_TRANSACTION_DIRNAME = ".managed_config_transactions"
 export const MANAGED_CONFIG_TRANSACTION_SCHEMA_VERSION = 1
@@ -73,6 +73,13 @@ def make_target_record [
     }
 }
 
+def make_cleanup_source_record [source_path: string, archived_path: string] {
+    {
+        source_path: ($source_path | path expand)
+        archived_path: ($archived_path | path expand)
+    }
+}
+
 def remove_path_if_exists [path: string] {
     if ($path | path exists) {
         rm -rf $path
@@ -85,6 +92,15 @@ def cleanup_transaction_work_dir [work_dir: string] {
     let tx_root = ($work_dir | path dirname)
     if ($tx_root | path exists) and ((ls $tx_root | is-empty)) {
         remove_path_if_exists $tx_root
+    }
+}
+
+def restore_cleanup_source_from_manifest [cleanup_source: record] {
+    let source_path = $cleanup_source.source_path
+    let archived_path = $cleanup_source.archived_path
+
+    if ($archived_path | path exists) and not ($source_path | path exists) {
+        mv -f $archived_path $source_path
     }
 }
 
@@ -109,9 +125,14 @@ def restore_target_from_manifest [target: record] {
 def rollback_transaction_manifest [manifest_path: string] {
     let manifest = (open $manifest_path)
     let targets = ($manifest.targets | default [])
+    let cleanup_sources = ($manifest.cleanup_sources? | default [])
 
     for target in ($targets | reverse) {
         restore_target_from_manifest $target
+    }
+
+    for cleanup_source in ($cleanup_sources | reverse) {
+        restore_cleanup_source_from_manifest $cleanup_source
     }
 
     for target in $targets {
@@ -162,60 +183,93 @@ def ensure_no_interrupted_transactions [config_path: string] {
     error make {msg: $"Found ($count) unfinished managed config transaction\(s\) under ((get_managed_config_transaction_dir $config_path)). Recover them before applying a new config migration transaction."}
 }
 
-def validate_staged_pair [
-    main_staged_path: string
+def validate_staged_targets [
+    main_staged_path?: string
     pack_staged_path?: string
     existing_pack_path?: string
 ] {
+    let normalized_main_staged_path = (normalize_optional_value $main_staged_path)
     let normalized_pack_staged_path = (normalize_optional_value $pack_staged_path)
     let normalized_existing_pack_path = (normalize_optional_value $existing_pack_path)
-    let validation_pack_path = if $normalized_pack_staged_path != null {
-        $normalized_pack_staged_path
-    } else if ($normalized_existing_pack_path != null) and ($normalized_existing_pack_path | path exists) {
-        $normalized_existing_pack_path
-    } else {
-        null
+    if $normalized_main_staged_path != null {
+        let validation_pack_path = if $normalized_pack_staged_path != null {
+            $normalized_pack_staged_path
+        } else if ($normalized_existing_pack_path != null) and ($normalized_existing_pack_path | path exists) {
+            $normalized_existing_pack_path
+        } else {
+            null
+        }
+
+        if $validation_pack_path == null {
+            load_config_surface_pair $normalized_main_staged_path | ignore
+        } else {
+            load_config_surface_pair $normalized_main_staged_path $validation_pack_path | ignore
+        }
+        return
     }
 
-    if $validation_pack_path == null {
-        load_config_surface_pair $main_staged_path | ignore
-    } else {
-        load_config_surface_pair $main_staged_path $validation_pack_path | ignore
+    if $normalized_pack_staged_path != null {
+        merge_pack_sidecar {} "<staged-pack-only>" $normalized_pack_staged_path (open $normalized_pack_staged_path) | ignore
+        return
     }
+
+    error make {msg: "Managed config transaction has no staged targets to validate."}
 }
 
-export def apply_managed_config_transaction [
+def apply_managed_config_transaction_with_cleanup [
     caller: string
-    config_path: string
-    rewritten_main_toml: string
+    transaction_root_config_path: string
+    main_target_path?: string
+    rewritten_main_toml?: string
     pack_config_path?: string
     rewritten_pack_toml?: string
+    cleanup_source_paths: list<string> = []
 ] {
-    ensure_no_interrupted_transactions $config_path
+    ensure_no_interrupted_transactions $transaction_root_config_path
 
     let transaction_id = (make_transaction_id)
-    let work_dir = (get_transaction_work_dir $config_path $transaction_id)
+    let work_dir = (get_transaction_work_dir $transaction_root_config_path $transaction_id)
     let manifest_path = (get_transaction_manifest_path $work_dir)
     let backup_stamp = (date now | format date "%Y%m%d_%H%M%S_%3f")
+    let normalized_main_target_path = (normalize_optional_value $main_target_path)
+    let normalized_main_toml = (normalize_optional_value $rewritten_main_toml)
     let normalized_pack_config_path = (normalize_optional_value $pack_config_path)
     let normalized_pack_toml = (normalize_optional_value $rewritten_pack_toml)
-    let resolved_config_path = ($config_path | path expand)
+    let resolved_main_target_path = if $normalized_main_target_path == null {
+        null
+    } else {
+        $normalized_main_target_path | into string | path expand
+    }
     let resolved_pack_config_path = if $normalized_pack_config_path == null {
         null
     } else {
         $normalized_pack_config_path | into string | path expand
     }
 
-    let main_existed_before = ($resolved_config_path | path exists)
-    let main_backup_path = if $main_existed_before {
-        $"($resolved_config_path).backup-($backup_stamp)"
+    let has_main_target = ($normalized_main_toml != null) and ($resolved_main_target_path != null)
+    let has_pack_target = ($normalized_pack_toml != null) and ($resolved_pack_config_path != null)
+
+    if (not $has_main_target) and (not $has_pack_target) {
+        error make {msg: "Managed config transaction needs at least one staged target."}
+    }
+
+    let main_existed_before = if $has_main_target {
+        $resolved_main_target_path | path exists
+    } else {
+        false
+    }
+    let main_backup_path = if $has_main_target and $main_existed_before {
+        $"($resolved_main_target_path).backup-($backup_stamp)"
     } else {
         null
     }
-    let main_staged_path = ($work_dir | path join "yazelix.toml")
+    let main_staged_path = if $has_main_target {
+        $work_dir | path join "yazelix.toml"
+    } else {
+        null
+    }
 
-    let has_pack_target = ($normalized_pack_toml != null)
-    let pack_existed_before = if $has_pack_target and ($resolved_pack_config_path != null) {
+    let pack_existed_before = if $has_pack_target {
         $resolved_pack_config_path | path exists
     } else {
         false
@@ -232,9 +286,16 @@ export def apply_managed_config_transaction [
     }
 
     let targets = (
-        [
-            (make_target_record "main" $resolved_config_path $main_staged_path $main_backup_path $main_existed_before)
-        ]
+        []
+        | append (
+            if $has_main_target {
+                [
+                    (make_target_record "main" $resolved_main_target_path $main_staged_path $main_backup_path $main_existed_before)
+                ]
+            } else {
+                []
+            }
+        )
         | append (
             if $has_pack_target {
                 [
@@ -246,12 +307,23 @@ export def apply_managed_config_transaction [
         )
     )
 
+    let cleanup_sources = (
+        $cleanup_source_paths
+        | each {|source_path|
+            let normalized_source_path = ($source_path | path expand)
+            let archived_name = ($normalized_source_path | path basename)
+            make_cleanup_source_record $normalized_source_path ($work_dir | path join "cleanup_sources" $archived_name)
+        }
+        | where {|cleanup_source| $cleanup_source.source_path | path exists }
+    )
+
     let prepared_manifest = {
         schema_version: $MANAGED_CONFIG_TRANSACTION_SCHEMA_VERSION
         transaction_id: $transaction_id
         caller: $caller
         phase: "prepared"
         targets: $targets
+        cleanup_sources: $cleanup_sources
     }
 
     mkdir $work_dir
@@ -260,7 +332,7 @@ export def apply_managed_config_transaction [
     try {
         if $main_backup_path != null {
             try {
-                cp $resolved_config_path $main_backup_path
+                cp $resolved_main_target_path $main_backup_path
             } catch {|err|
                 error make {msg: $"Failed to create main config backup: ($err | to nuon)"}
             }
@@ -274,10 +346,12 @@ export def apply_managed_config_transaction [
             }
         }
 
-        try {
-            $rewritten_main_toml | save --force --raw $main_staged_path
-        } catch {|err|
-            error make {msg: $"Failed to write staged main config: ($err | to nuon)"}
+        if $has_main_target {
+            try {
+                $normalized_main_toml | save --force --raw $main_staged_path
+            } catch {|err|
+                error make {msg: $"Failed to write staged main config: ($err | to nuon)"}
+            }
         }
 
         if $has_pack_target {
@@ -289,7 +363,7 @@ export def apply_managed_config_transaction [
         }
 
         try {
-            validate_staged_pair $main_staged_path $pack_staged_path $resolved_pack_config_path
+            validate_staged_targets $main_staged_path $pack_staged_path $resolved_pack_config_path
         } catch {|err|
             error make {msg: $"Failed to validate the staged managed config pair: ($err | to nuon)"}
         }
@@ -298,6 +372,17 @@ export def apply_managed_config_transaction [
             save_manifest $manifest_path ($prepared_manifest | upsert phase "validated")
         } catch {|err|
             error make {msg: $"Failed to persist the validated transaction manifest: ($err | to nuon)"}
+        }
+
+        if not ($cleanup_sources | is-empty) {
+            mkdir ($work_dir | path join "cleanup_sources")
+            for cleanup_source in $cleanup_sources {
+                try {
+                    mv -f $cleanup_source.source_path $cleanup_source.archived_path
+                } catch {|err|
+                    error make {msg: $"Failed to stage managed config cleanup source: ($err | to nuon)"}
+                }
+            }
         }
 
         for target in $targets {
@@ -316,12 +401,12 @@ export def apply_managed_config_transaction [
 
         try {
             cleanup_transaction_work_dir $work_dir
-        }
+        } catch { }
 
         {
             status: "applied"
             transaction_id: $transaction_id
-            config_path: $resolved_config_path
+            config_path: ($resolved_main_target_path | default $transaction_root_config_path)
             backup_path: $main_backup_path
             pack_config_path: $resolved_pack_config_path
             pack_backup_path: $pack_backup_path
@@ -329,8 +414,54 @@ export def apply_managed_config_transaction [
     } catch {|err|
         try {
             rollback_transaction_manifest $manifest_path | ignore
-        }
+        } catch { }
         let details = (try { $err | to json -r } catch { $err | to nuon })
         error make {msg: $"Failed to apply managed config transaction: ($details)"}
     }
+}
+
+export def apply_managed_config_transaction [
+    caller: string
+    config_path: string
+    rewritten_main_toml: string
+    pack_config_path?: string
+    rewritten_pack_toml?: string
+] {
+    apply_managed_config_transaction_with_cleanup $caller $config_path $config_path $rewritten_main_toml $pack_config_path $rewritten_pack_toml []
+}
+
+export def apply_managed_config_relocation_transaction [caller: string, paths: record] {
+    let has_legacy_main = ($paths.legacy_user_config | path exists)
+    let has_legacy_pack = ($paths.legacy_pack_config | path exists)
+
+    if (not $has_legacy_main) and (not $has_legacy_pack) {
+        return {
+            status: "noop"
+            config_path: $paths.user_config
+            backup_path: null
+            pack_config_path: $paths.user_pack_config
+            pack_backup_path: null
+        }
+    }
+
+    let rewritten_main_toml = if ($paths.rewritten_main_toml? | default null) != null {
+        $paths.rewritten_main_toml
+    } else if $has_legacy_main {
+        open --raw $paths.legacy_user_config
+    } else {
+        null
+    }
+    let rewritten_pack_toml = if ($paths.rewritten_pack_toml? | default null) != null {
+        $paths.rewritten_pack_toml
+    } else if $has_legacy_pack {
+        open --raw $paths.legacy_pack_config
+    } else {
+        null
+    }
+    let cleanup_source_paths = (
+        [$paths.legacy_user_config $paths.legacy_pack_config]
+        | where {|path| $path | path exists }
+    )
+
+    apply_managed_config_transaction_with_cleanup $caller $paths.user_config $paths.user_config $rewritten_main_toml $paths.user_pack_config $rewritten_pack_toml $cleanup_source_paths
 }

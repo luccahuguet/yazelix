@@ -3,6 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ../core/yazelix.nu *
+use ../utils/config_migration_transactions.nu [get_managed_config_transaction_dir]
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
 
 def setup_config_migrate_fixture [label: string, raw_toml: string] {
@@ -411,6 +412,167 @@ default_shell = "bash"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) relocated_exists=(($relocated_main | path exists)) updated=($updated | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: pack-only legacy relocation should still be surfaced to the user.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_entrypoint_preflight_reports_pack_only_legacy_root_relocation [] {
+    print "🧪 Testing entrypoint migration preflight reports pack-only legacy-root relocation..."
+
+    let fixture = (setup_legacy_root_config_migrate_fixture
+        "yazelix_entrypoint_preflight_pack_only_relocate"
+        "[core]\nwelcome_style = \"random\"\n"
+    )
+
+    let result = (try {
+        rm $fixture.config_path
+        let legacy_pack = ($fixture.config_dir | path join "yazelix_packs.toml")
+        'enabled = ["git"]
+' | save --force --raw $legacy_pack
+
+        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
+        let stdout = ($output.stdout | str trim)
+        let relocated_pack = ($fixture.user_config_dir | path join "yazelix_packs.toml")
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "relocated the managed pack config into user_configs")
+            and ($relocated_pack | path exists)
+            and not ($legacy_pack | path exists)
+        ) {
+            print "  ✅ Entry-point preflight reports pack-only legacy relocation instead of moving it silently"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) relocated_pack_exists=(($relocated_pack | path exists)) legacy_pack_exists=(($legacy_pack | path exists))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: entrypoint preflight relocates legacy-root config and applies the deterministic subset before blocking.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_entrypoint_preflight_relocates_legacy_root_and_applies_safe_subset_before_manual_block [] {
+    print "🧪 Testing entrypoint migration preflight relocates legacy-root config and applies safe rewrites before blocking..."
+
+    let fixture = (setup_legacy_root_config_migrate_fixture
+        "yazelix_entrypoint_preflight_root_relocate_mixed"
+        '[zellij]
+widget_tray = ["layout", "editor"]
+
+[terminal]
+config_mode = "auto"
+'
+    )
+
+    let result = (try {
+        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
+        let stdout = ($output.stdout | str trim)
+        let stderr = ($output.stderr | str trim)
+        let relocated_main = ($fixture.user_config_dir | path join "yazelix.toml")
+        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
+        let updated = (open $relocated_main)
+
+        if (
+            ($output.exit_code != 0)
+            and ($stdout | str contains "relocated the managed config into user_configs")
+            and ($stdout | str contains "Yazelix auto-applied 1 safe config migration")
+            and ($stderr | str contains "[MANUAL] review_terminal_config_mode_auto")
+            and ($relocated_main | path exists)
+            and not ($fixture.config_path | path exists)
+            and (($updated | get zellij.widget_tray) == ["editor"])
+            and (($updated | get terminal.config_mode) == "auto")
+            and (($backups | length) == 0)
+        ) {
+            print "  ✅ Entry-point preflight now relocates legacy-root config and applies the deterministic subset inside the same managed transition"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr) relocated_exists=(($relocated_main | path exists)) updated=($updated | to json -r) backups=(($backups | length))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: interrupted relocation recovery must run before duplicate-surface validation.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_entrypoint_preflight_recovers_stale_relocation_before_duplicate_surface_error [] {
+    print "🧪 Testing entrypoint migration preflight recovers stale relocation state before duplicate-surface validation..."
+
+    let fixture = (setup_legacy_root_config_migrate_fixture
+        "yazelix_entrypoint_preflight_recover_stale_relocation"
+        '[shell]
+default_shell = "bash"
+'
+    )
+
+    let result = (try {
+        let relocated_main = ($fixture.user_config_dir | path join "yazelix.toml")
+        let transaction_root = (get_managed_config_transaction_dir $relocated_main)
+        let transaction_id = "txn_stale_entrypoint_relocation"
+        let work_dir = ($transaction_root | path join $transaction_id)
+        let manifest_path = ($work_dir | path join "manifest.json")
+        let staged_main = ($work_dir | path join "yazelix.toml")
+
+        mkdir $work_dir
+        '[core]
+welcome_style = "random"
+' | save --force --raw $relocated_main
+        '# stale staged main
+' | save --force --raw $staged_main
+        {
+            schema_version: 1
+            transaction_id: $transaction_id
+            caller: "entrypoint_preflight"
+            phase: "validated"
+            targets: [
+                {
+                    role: "main"
+                    target_path: $relocated_main
+                    staged_path: $staged_main
+                    backup_path: null
+                    existed_before: false
+                }
+            ]
+            cleanup_sources: []
+        } | to json | save --force --raw $manifest_path
+
+        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
+        let stdout = ($output.stdout | str trim)
+        let updated = (open $relocated_main)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Recovered 1 interrupted managed-config transaction")
+            and ($stdout | str contains "relocated the managed config into user_configs")
+            and ($relocated_main | path exists)
+            and not ($fixture.config_path | path exists)
+            and (($updated.shell.default_shell? | default "") == "bash")
+            and not ($manifest_path | path exists)
+        ) {
+            print "  ✅ Entry-point preflight recovers stale relocation state before validating duplicate config surfaces"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) relocated_exists=(($relocated_main | path exists)) updated=($updated | to json -r) manifest_exists=(($manifest_path | path exists))"
             false
         }
     } catch {|err|

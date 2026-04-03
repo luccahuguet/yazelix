@@ -178,7 +178,7 @@ def ensure_default_pack_sidecar_if_missing [default_config_path: string, target_
     true
 }
 
-def relocate_legacy_config_surfaces_if_needed [paths: record] {
+export def ensure_no_duplicate_primary_config_surfaces [paths: record] {
     let current_exists = ($paths.user_config | path exists)
     let current_pack_exists = ($paths.user_pack_config | path exists)
     let legacy_exists = ($paths.legacy_user_config | path exists)
@@ -196,6 +196,13 @@ def relocate_legacy_config_surfaces_if_needed [paths: record] {
             "Keep only the user_configs copies. Move or delete the legacy root-level config files so Yazelix has one clear config owner."
         )
     }
+}
+
+def relocate_legacy_config_surfaces_if_needed [paths: record] {
+    let legacy_exists = ($paths.legacy_user_config | path exists)
+    let legacy_pack_exists = ($paths.legacy_pack_config | path exists)
+
+    ensure_no_duplicate_primary_config_surfaces $paths
 
     if not ($legacy_exists or $legacy_pack_exists) {
         return
