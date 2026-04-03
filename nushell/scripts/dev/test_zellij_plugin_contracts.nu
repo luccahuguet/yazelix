@@ -117,8 +117,8 @@ def test_zjstatus_permission_cache_migrates_to_tracked_and_stable_paths [] {
     $result
 }
 
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-# Regression: zjstatus terminal widget falls back to configured terminals without relying on YAZELIX_PREFERRED_TERMINAL.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: zjstatus terminal widget falls back to configured terminals without relying on YAZELIX_PREFERRED_TERMINAL or parser/bootstrap noise.
 def test_zjstatus_terminal_widget_falls_back_to_configured_terminal_without_env_hint [] {
     print "🧪 Testing zjstatus terminal widget falls back to configured terminals without YAZELIX_PREFERRED_TERMINAL..."
 
@@ -151,12 +151,13 @@ terminals = ["kitty", "ghostty"]
             ^nu $widget_script terminal | complete
         })
         let widget_label = ($widget_output.stdout | str trim)
+        let widget_stderr = ($widget_output.stderr | str trim)
 
-        if ($widget_output.exit_code == 0) and ($widget_label == "kitty") {
+        if ($widget_output.exit_code == 0) and ($widget_label == "kitty") and ($widget_stderr | is-empty) {
             print "  ✅ zjstatus terminal widget now falls back to configured terminals without relying on YAZELIX_PREFERRED_TERMINAL or emitting config-bootstrap noise"
             true
         } else {
-            print $"  ❌ Unexpected zjstatus terminal widget output: exit=($widget_output.exit_code) label=($widget_label) stdout=(($widget_output.stdout | str trim)) stderr=(($widget_output.stderr | str trim))"
+            print $"  ❌ Unexpected zjstatus terminal widget output: exit=($widget_output.exit_code) label=($widget_label) stdout=(($widget_output.stdout | str trim)) stderr=($widget_stderr)"
             false
         }
     } catch {|err|

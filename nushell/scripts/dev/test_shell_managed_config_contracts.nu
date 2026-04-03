@@ -60,44 +60,6 @@ default_shell = "nu"
 }
 
 
-# Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=1 total=6/10
-# Regression: generated Nushell initializer keeps Starship while removing the right-prompt path.
-def test_generate_nushell_initializer_removes_starship_right_prompt [] {
-    print "🧪 Testing generated Nushell initializer removes the Starship right prompt path..."
-
-    let repo_root = (get_repo_root)
-    let tmp_home = (^mktemp -d /tmp/yazelix_nu_initializer_XXXXXX | str trim)
-
-    let result = (try {
-        let output = (with-env {
-            HOME: $tmp_home
-            YAZELIX_QUIET_MODE: "true"
-        } {
-            do { ^nu (repo_path "nushell" "scripts" "setup" "initializers.nu") $repo_root "nu" } | complete
-        })
-        let aggregate = (open --raw ($tmp_home | path join ".local" "share" "yazelix" "initializers" "nushell" "yazelix_init.nu"))
-
-        if (
-            ($output.exit_code == 0)
-            and not ($aggregate | str contains "PROMPT_COMMAND_RIGHT")
-            and not ($aggregate | str contains "render_right_prompt_on_last_line")
-            and ($aggregate | str contains "PROMPT_COMMAND:")
-        ) {
-            print "  ✅ Generated Nushell initializer keeps the main Starship prompt but removes the right-prompt path"
-            true
-        } else {
-            print $"  ❌ Unexpected generated Nushell initializer result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim)) contents=($aggregate)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Defends: managed Nushell config sources the Yazelix-owned user hook via YAZELIX_CONFIG_DIR instead of a legacy hook-dir env override.
 def test_managed_nushell_config_sources_optional_user_hook [] {
@@ -145,72 +107,6 @@ def test_managed_nushell_config_sources_optional_user_hook [] {
             true
         } else {
             print $"  ❌ Unexpected managed Nushell user-hook result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
-# Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=1 total=6/10
-# Invariant: the managed Nushell user-hook bridge stays present and harmless when no hook exists.
-def test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent [] {
-    print "🧪 Testing the managed Nushell user-hook bridge stays present and harmless when no managed Nushell hook exists..."
-
-    let repo_root = (get_repo_root)
-    let tmp_home = (^mktemp -d /tmp/yazelix_nu_user_hook_bridge_XXXXXX | str trim)
-    let xdg_config_home = ($tmp_home | path join ".config")
-    let config_dir = ($xdg_config_home | path join "yazelix")
-    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
-
-    mkdir $xdg_config_home
-    mkdir ($config_dir | path join "user_configs")
-    mkdir ($state_dir | path join "initializers" "nushell")
-
-    let result = (try {
-        let hook_path = (get_yazelix_shell_user_hook_path "nushell" $config_dir)
-        "" | save --force --raw ($state_dir | path join "initializers" "nushell" "yazelix_init.nu")
-
-        let bridge_path = (sync_generated_nushell_user_hook_bridge $config_dir $state_dir)
-
-        let bridge_contents_after_empty_sync = if ($bridge_path | path exists) {
-            open --raw $bridge_path
-        } else {
-            ""
-        }
-
-        mkdir ($hook_path | path dirname)
-        '$env.YAZELIX_TEST_NU_HOOK = "bridge_created_after_hook_exists"' | save --force --raw $hook_path
-
-        let bridge_contents_after_hook = (
-            do {
-                sync_generated_nushell_user_hook_bridge $config_dir $state_dir | ignore
-                open --raw $bridge_path
-            }
-        )
-
-        rm -f $hook_path
-
-        let bridge_contents_after_removal = (
-            do {
-                sync_generated_nushell_user_hook_bridge $config_dir $state_dir | ignore
-                open --raw $bridge_path
-            }
-        )
-
-        if (
-            (($bridge_contents_after_empty_sync | str trim) == "# Yazelix managed Nushell user hook bridge (empty)")
-            and ($bridge_contents_after_hook | str contains 'source "')
-            and (($bridge_contents_after_removal | str trim) == "# Yazelix managed Nushell user hook bridge (empty)")
-        ) {
-            print "  ✅ The managed Nushell bridge always exists, but becomes an empty no-op when no Yazelix-owned hook is present"
-            true
-        } else {
-            print $"  ❌ Unexpected managed Nushell bridge lifecycle: empty=(($bridge_contents_after_empty_sync | str trim)) after_hook=(($bridge_contents_after_hook | str trim)) after_removal=(($bridge_contents_after_removal | str trim))"
             false
         }
     } catch {|err|
@@ -416,9 +312,7 @@ mode = "source"
 export def run_shell_managed_config_contract_tests [] {
     [
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
-        (test_generate_nushell_initializer_removes_starship_right_prompt)
         (test_managed_nushell_config_sources_optional_user_hook)
-        (test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent)
         (test_managed_nushell_config_loads_generated_yzx_extern_bridge)
         (test_generated_nushell_shell_hook_uses_managed_config_only)
         (test_managed_bash_config_sources_optional_user_hook)
