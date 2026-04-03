@@ -276,14 +276,9 @@ let
 
   terminalList = lib.unique (userConfig.terminals or [ ]);
   manageTerminals = userConfig.manage_terminals or true;
-  preferredTerminal = if terminalList == [ ] then "unknown" else builtins.elemAt terminalList 0;
   terminalConfigMode = userConfig.terminal_config_mode or "yazelix";
 
-  debugMode = userConfig.debug_mode or false;
-  skipWelcomeScreen = userConfig.skip_welcome_screen or false;
-  welcomeStyle = userConfig.welcome_style or "random";
   enableSidebar = userConfig.enable_sidebar or true;
-  showMacchinaOnWelcome = userConfig.show_macchina_on_welcome or false;
   yazelixNixConfig = ''
     warn-dirty = false
     extra-substituters = https://cache.numtide.com
@@ -680,7 +675,6 @@ in
     ZELLIJ_DEFAULT_LAYOUT = yazelixLayoutName;
     YAZI_CONFIG_HOME = "$HOME/.local/share/yazelix/configs/yazi";
     YAZELIX_HELIX_MODE = helixMode;
-    YAZELIX_PREFERRED_TERMINAL = preferredTerminal;
     YAZELIX_TERMINAL_CONFIG_MODE = terminalConfigMode;
     EDITOR = shellEditorCommand;
   }
@@ -708,7 +702,6 @@ in
     export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
     export YAZI_CONFIG_HOME="$HOME/.local/share/yazelix/configs/yazi"
     export YAZELIX_HELIX_MODE="${helixMode}"
-    export YAZELIX_PREFERRED_TERMINAL="${preferredTerminal}"
     export YAZELIX_TERMINAL_CONFIG_MODE="${terminalConfigMode}"
     export EDITOR="${shellEditorCommand}"
     ${lib.optionalString (managedEditorKind != "") ''

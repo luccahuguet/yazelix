@@ -35,7 +35,18 @@ export def main [widget: string] {
             normalize_command_label $editor_command "hx"
         }
         "terminal" => {
-            detect_terminal_name
+            let detected_terminal = (detect_terminal_name)
+            if $detected_terminal != "unknown" {
+                $detected_terminal
+            } else {
+                let terminal_config = (parse_yazelix_config)
+                let configured_terminals = ($terminal_config.terminals? | default [])
+                if ($configured_terminals | is-empty) {
+                    "unknown"
+                } else {
+                    $configured_terminals | first | into string
+                }
+            }
         }
         _ => {
             error make {msg: $"Unknown zjstatus widget '($widget)'. Expected one of: shell, editor, terminal."}

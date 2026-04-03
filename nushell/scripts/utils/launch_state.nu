@@ -227,8 +227,6 @@ export def get_launch_env [config: record, profile_path: string] {
     let current_path_entries = (normalize_path_entries ($env.PATH? | default []))
     let nix_config = get_yazelix_nix_config
     let enable_sidebar = ($config.enable_sidebar? | default true)
-    let terminals = ($config.terminals? | default ["ghostty"])
-    let preferred_terminal = if ($terminals | is-empty) { "unknown" } else { ($terminals | first | into string) }
     let resolved_editor_command = (resolve_editor_command $config $profile_path)
     let editor_kind = if (is_helix_editor_command $resolved_editor_command) {
         "helix"
@@ -255,7 +253,6 @@ export def get_launch_env [config: record, profile_path: string] {
         ZELLIJ_DEFAULT_LAYOUT: (if $enable_sidebar { "yzx_side" } else { "yzx_no_side" })
         YAZI_CONFIG_HOME: ($env.HOME | path join ".local" "share" "yazelix" "configs" "yazi")
         YAZELIX_HELIX_MODE: ($config.helix_mode? | default "release" | into string)
-        YAZELIX_PREFERRED_TERMINAL: $preferred_terminal
         YAZELIX_TERMINAL_CONFIG_MODE: ($config.terminal_config_mode? | default "yazelix" | into string)
         EDITOR: $editor_command
     }

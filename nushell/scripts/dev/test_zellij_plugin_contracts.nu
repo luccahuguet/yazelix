@@ -117,10 +117,69 @@ def test_zjstatus_permission_cache_migrates_to_tracked_and_stable_paths [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Regression: zjstatus terminal widget falls back to configured terminals without relying on YAZELIX_PREFERRED_TERMINAL.
+def test_zjstatus_terminal_widget_falls_back_to_configured_terminal_without_env_hint [] {
+    print "🧪 Testing zjstatus terminal widget falls back to configured terminals without YAZELIX_PREFERRED_TERMINAL..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_zjstatus_terminal_widget_XXXXXX | str trim)
+    let config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
+    let widget_script = ($repo_root | path join "nushell" "scripts" "utils" "zjstatus_widget.nu")
+
+    mkdir ($tmp_home | path join ".config")
+    mkdir $config_dir
+    mkdir $user_config_dir
+
+    let result = (try {
+        '[terminal]
+terminals = ["kitty", "ghostty"]
+' | save --force --raw ($user_config_dir | path join "yazelix.toml")
+
+        let widget_output = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            XDG_CURRENT_DESKTOP: ""
+            TERM_PROGRAM: ""
+            KITTY_WINDOW_ID: ""
+            WEZTERM_EXECUTABLE: ""
+            ALACRITTY_SOCKET: ""
+            GHOSTTY_BIN_DIR: ""
+            TERM: ""
+        } {
+            ^nu $widget_script terminal | complete
+        })
+        let widget_label = (
+            $widget_output.stdout
+            | lines
+            | where {|line| ($line | str trim) != "" }
+            | last
+            | default ""
+            | str trim
+        )
+
+        if ($widget_output.exit_code == 0) and ($widget_label == "kitty") {
+            print "  ✅ zjstatus terminal widget now falls back to configured terminals without relying on YAZELIX_PREFERRED_TERMINAL"
+            true
+        } else {
+            print $"  ❌ Unexpected zjstatus terminal widget output: exit=($widget_output.exit_code) label=($widget_label) stdout=(($widget_output.stdout | str trim)) stderr=(($widget_output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 export def run_zellij_plugin_contract_tests [] {
     [
         (test_generate_merged_zellij_layouts_use_stable_zjstatus_plugin_path)
         (test_zjstatus_permission_cache_migrates_to_tracked_and_stable_paths)
+        (test_zjstatus_terminal_widget_falls_back_to_configured_terminal_without_env_hint)
     ]
 }
 

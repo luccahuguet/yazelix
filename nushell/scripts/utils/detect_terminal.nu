@@ -43,11 +43,6 @@ export def detect_terminal_name [] {
         }
     }
 
-    # Priority 5: Fallback to preferred
-    if ($env.YAZELIX_PREFERRED_TERMINAL? | is-not-empty) {
-        return $env.YAZELIX_PREFERRED_TERMINAL
-    }
-
     # Last resort
     "unknown"
 }
