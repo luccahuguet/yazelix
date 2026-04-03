@@ -90,7 +90,6 @@ def build_preflight_context [] {
             status: "skipped_override"
             paths: null
             had_relocation: false
-            config_path: null
         }
     }
 
@@ -99,19 +98,11 @@ def build_preflight_context [] {
         ($initial_paths.legacy_user_config | path exists)
         or ($initial_paths.legacy_pack_config | path exists)
     )
-    let config_path = if ($initial_paths.user_config | path exists) {
-        $initial_paths.user_config
-    } else if ($initial_paths.legacy_user_config | path exists) {
-        $initial_paths.user_config
-    } else {
-        null
-    }
 
     {
         status: "ready"
         paths: $initial_paths
         had_relocation: $had_legacy
-        config_path: $config_path
     }
 }
 
@@ -146,18 +137,10 @@ export def run_entrypoint_config_migration_preflight [
         ($refreshed_paths.legacy_user_config | path exists)
         or ($refreshed_paths.legacy_pack_config | path exists)
     )
-    let refreshed_config_path = if ($refreshed_paths.user_config | path exists) {
-        $refreshed_paths.user_config
-    } else if ($refreshed_paths.legacy_user_config | path exists) {
-        $refreshed_paths.user_config
-    } else {
-        null
-    }
     let context = (
         $context
         | upsert paths $refreshed_paths
         | upsert had_relocation $refreshed_had_legacy
-        | upsert config_path $refreshed_config_path
     )
 
     let relocation_result = if $context.had_relocation {
