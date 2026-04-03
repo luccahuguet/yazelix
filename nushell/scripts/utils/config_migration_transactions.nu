@@ -79,6 +79,15 @@ def remove_path_if_exists [path: string] {
     }
 }
 
+def cleanup_transaction_work_dir [work_dir: string] {
+    remove_path_if_exists $work_dir
+
+    let tx_root = ($work_dir | path dirname)
+    if ($tx_root | path exists) and ((ls $tx_root | is-empty)) {
+        remove_path_if_exists $tx_root
+    }
+}
+
 def restore_target_from_manifest [target: record] {
     let target_path = $target.target_path
     let backup_path = ($target.backup_path? | default null)
@@ -113,7 +122,7 @@ def rollback_transaction_manifest [manifest_path: string] {
     }
 
     let work_dir = ($manifest_path | path dirname)
-    remove_path_if_exists $work_dir
+    cleanup_transaction_work_dir $work_dir
 
     {
         transaction_id: ($manifest.transaction_id? | default "unknown")
@@ -299,8 +308,15 @@ export def apply_managed_config_transaction [
             }
         }
 
-        remove_path_if_exists $manifest_path
-        remove_path_if_exists $work_dir
+        try {
+            remove_path_if_exists $manifest_path
+        } catch {|err|
+            error make {msg: $"Failed to clear the committed transaction manifest: ($err | to nuon)"}
+        }
+
+        try {
+            cleanup_transaction_work_dir $work_dir
+        }
 
         {
             status: "applied"

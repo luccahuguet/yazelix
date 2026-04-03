@@ -168,7 +168,7 @@ export def run_entrypoint_config_migration_preflight [
     }
 
     let apply_result = if $initial_plan.has_auto_changes {
-        apply_config_migration_plan $initial_plan
+        apply_config_migration_plan $initial_plan "entrypoint_preflight"
     } else {
         {
             status: "relocated"

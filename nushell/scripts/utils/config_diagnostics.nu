@@ -270,5 +270,5 @@ export def apply_doctor_config_fixes [report: record] {
         }
     }
 
-    apply_config_migration_plan $report.migration_plan
+    apply_config_migration_plan $report.migration_plan "doctor_fix"
 }

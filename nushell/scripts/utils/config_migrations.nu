@@ -754,7 +754,7 @@ export def render_config_migration_plan [plan: record] {
     $rendered | str join "\n"
 }
 
-export def apply_config_migration_plan [plan: record] {
+export def apply_config_migration_plan [plan: record, caller: string] {
     if not $plan.has_auto_changes {
         return {
             status: "noop"
@@ -776,7 +776,7 @@ export def apply_config_migration_plan [plan: record] {
     }
     let transaction_result = (
         apply_managed_config_transaction
-            "config_migrate"
+            $caller
             $plan.config_path
             $rewritten
             $pack_config_path

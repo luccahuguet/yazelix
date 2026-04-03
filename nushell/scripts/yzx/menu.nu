@@ -537,7 +537,7 @@ export def "yzx config migrate" [
     }
 
     let apply_result = if $apply_plan.has_auto_changes {
-        apply_config_migration_plan $apply_plan
+        apply_config_migration_plan $apply_plan "config_migrate"
     } else {
         {
             status: "relocated"
