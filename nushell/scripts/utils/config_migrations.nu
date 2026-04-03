@@ -3,6 +3,11 @@
 
 use config_migration_transactions.nu apply_managed_config_transaction
 
+const CONFIG_MIGRATION_RETIREMENT_POLICIES = [
+    "demote_to_explicit_then_delete"
+    "review_then_delete_or_keep"
+]
+
 const CONFIG_MIGRATION_RULES = [
     {
         id: "remove_zellij_widget_tray_layout"
@@ -12,6 +17,8 @@ const CONFIG_MIGRATION_RULES = [
         introduced_after_version: "v13.7"
         introduced_on: "2026-03-27"
         review_after_days: 180
+        last_reviewed_on: null
+        retirement_policy: "demote_to_explicit_then_delete"
         auto_apply: true
         user_visible: true
         guarded_paths: ["zellij.widget_tray"]
@@ -26,6 +33,8 @@ const CONFIG_MIGRATION_RULES = [
         introduced_after_version: null
         introduced_on: "2026-01-03"
         review_after_days: 180
+        last_reviewed_on: null
+        retirement_policy: "demote_to_explicit_then_delete"
         auto_apply: true
         user_visible: true
         guarded_paths: ["terminal.preferred_terminal", "terminal.extra_terminals", "terminal.terminals"]
@@ -40,6 +49,8 @@ const CONFIG_MIGRATION_RULES = [
         introduced_after_version: null
         introduced_on: "2026-02-22"
         review_after_days: 180
+        last_reviewed_on: null
+        retirement_policy: "demote_to_explicit_then_delete"
         auto_apply: true
         user_visible: true
         guarded_paths: ["shell.enable_atuin"]
@@ -54,6 +65,8 @@ const CONFIG_MIGRATION_RULES = [
         introduced_after_version: "v13.10"
         introduced_on: "2026-03-30"
         review_after_days: 180
+        last_reviewed_on: null
+        retirement_policy: "demote_to_explicit_then_delete"
         auto_apply: true
         user_visible: true
         guarded_paths: ["helix.command", "editor.command"]
@@ -68,6 +81,8 @@ const CONFIG_MIGRATION_RULES = [
         introduced_after_version: null
         introduced_on: "2026-03-14"
         review_after_days: 365
+        last_reviewed_on: null
+        retirement_policy: "review_then_delete_or_keep"
         auto_apply: false
         user_visible: true
         guarded_paths: [
@@ -86,6 +101,8 @@ const CONFIG_MIGRATION_RULES = [
         introduced_after_version: null
         introduced_on: "2026-03-28"
         review_after_days: 365
+        last_reviewed_on: null
+        retirement_policy: "review_then_delete_or_keep"
         auto_apply: false
         user_visible: true
         guarded_paths: ["terminal.config_mode"]
@@ -100,6 +117,8 @@ const CONFIG_MIGRATION_RULES = [
         introduced_after_version: null
         introduced_on: "2026-03-29"
         review_after_days: 180
+        last_reviewed_on: null
+        retirement_policy: "demote_to_explicit_then_delete"
         auto_apply: true
         user_visible: true
         guarded_paths: ["ascii", "ascii.mode", "core.welcome_style"]
@@ -114,6 +133,8 @@ const CONFIG_MIGRATION_RULES = [
         introduced_after_version: null
         introduced_on: "2026-03-29"
         review_after_days: 180
+        last_reviewed_on: null
+        retirement_policy: "demote_to_explicit_then_delete"
         auto_apply: true
         user_visible: true
         guarded_paths: ["core.welcome_style"]
@@ -128,6 +149,8 @@ const CONFIG_MIGRATION_RULES = [
         introduced_after_version: null
         introduced_on: "2026-03-28"
         review_after_days: 180
+        last_reviewed_on: null
+        retirement_policy: "demote_to_explicit_then_delete"
         auto_apply: true
         user_visible: true
         guarded_paths: ["packs"]
@@ -570,6 +593,15 @@ export def get_config_migration_rules [] {
     $CONFIG_MIGRATION_RULES
 }
 
+def parse_rule_date [value: any] {
+    let normalized = ($value | default "" | into string | str trim)
+    if ($normalized | is-empty) {
+        return null
+    }
+
+    try { $normalized | into datetime } catch { null }
+}
+
 export def validate_config_migration_rules [] {
     let required_fields = [
         "id"
@@ -577,6 +609,8 @@ export def validate_config_migration_rules [] {
         "kind"
         "introduced_on"
         "review_after_days"
+        "last_reviewed_on"
+        "retirement_policy"
         "auto_apply"
         "user_visible"
         "guarded_paths"
@@ -621,6 +655,31 @@ export def validate_config_migration_rules [] {
                 continue
             }
 
+            if $field == "last_reviewed_on" {
+                if $value == null {
+                    continue
+                }
+
+                let normalized = ($value | into string | str trim)
+                if ($normalized | is-empty) {
+                    continue
+                }
+
+                let parsed = (try { $normalized | into datetime } catch { null })
+                if $parsed == null {
+                    $errors = ($errors | append $"Config migration rule ($rule.id) has invalid last_reviewed_on date: ($normalized)")
+                }
+                continue
+            }
+
+            if $field == "retirement_policy" {
+                let normalized = ($value | default "" | into string | str trim)
+                if not ($normalized in $CONFIG_MIGRATION_RETIREMENT_POLICIES) {
+                    $errors = ($errors | append $"Config migration rule ($rule.id) has invalid retirement_policy: ($normalized)")
+                }
+                continue
+            }
+
             if ($field == "auto_apply") or ($field == "user_visible") {
                 continue
             }
@@ -634,8 +693,47 @@ export def validate_config_migration_rules [] {
             $errors = ($errors | append $"Config migration rule ($rule.id) has inconsistent kind/auto_apply metadata")
         }
 
+        if $rule.auto_apply and ($rule.retirement_policy != "demote_to_explicit_then_delete") {
+            $errors = ($errors | append $"Config migration rule ($rule.id) must use retirement_policy = demote_to_explicit_then_delete because it still auto-applies")
+        }
+
+        if (not $rule.auto_apply) and ($rule.retirement_policy != "review_then_delete_or_keep") {
+            $errors = ($errors | append $"Config migration rule ($rule.id) must use retirement_policy = review_then_delete_or_keep because it is manual-only")
+        }
+
         if (($rule.introduced_in | is-empty) and ($rule.introduced_after_version | is-empty)) {
             $errors = ($errors | append $"Config migration rule ($rule.id) must declare introduced_in or introduced_after_version")
+        }
+
+        let introduced_on = (try {
+            parse_rule_date $rule.introduced_on
+        } catch { null })
+        let last_reviewed_on = (try {
+            parse_rule_date $rule.last_reviewed_on
+        } catch { null })
+
+        if (($rule.introduced_on | default "" | into string | str trim | is-not-empty) and ($introduced_on == null)) {
+            $errors = ($errors | append $"Config migration rule ($rule.id) has invalid introduced_on date: ($rule.introduced_on)")
+        }
+
+        let normalized_last_reviewed_on = ($rule.last_reviewed_on | default "" | into string | str trim)
+        if (($normalized_last_reviewed_on | is-not-empty) and ($last_reviewed_on == null)) {
+            $errors = ($errors | append $"Config migration rule ($rule.id) has invalid last_reviewed_on date: ($normalized_last_reviewed_on)")
+        }
+
+        if ($introduced_on != null) and ($last_reviewed_on != null) and ($last_reviewed_on < $introduced_on) {
+            $errors = ($errors | append $"Config migration rule ($rule.id) cannot have last_reviewed_on earlier than introduced_on")
+        }
+
+        if $introduced_on != null {
+            let review_anchor = if $last_reviewed_on != null { $last_reviewed_on } else { $introduced_on }
+            let elapsed_days = ((((date now) - $review_anchor) / 1day) | into int)
+            let review_after_days = ($rule.review_after_days | into int)
+            if $elapsed_days >= $review_after_days {
+                let overdue_days = ($elapsed_days - $review_after_days)
+                let anchor_label = if $last_reviewed_on != null { "last_reviewed_on" } else { "introduced_on" }
+                $errors = ($errors | append $"Config migration rule ($rule.id) is overdue for retirement review by ($overdue_days) day\(s\) \(anchor: ($anchor_label)=($review_anchor | format date '%Y-%m-%d'); policy: ($rule.retirement_policy)\)")
+            }
         }
     }
 

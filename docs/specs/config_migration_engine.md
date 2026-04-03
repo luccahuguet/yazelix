@@ -31,7 +31,13 @@ When a rule is ambiguous or lossy, the migration engine must not guess. It shoul
 
 ## Migration Retention Policy
 
-Migration rules should not accumulate forever without review. Every rule in the shared registry must declare a `review_after_days` horizon so maintainers can revisit whether the rule is still worth carrying.
+Migration rules should not accumulate forever without review. Every rule in the shared registry must declare:
+
+- a `review_after_days` horizon
+- a `retirement_policy`
+- an optional `last_reviewed_on` anchor
+
+The validator should treat that metadata as a maintained contract, not as advisory comments.
 
 The policy is review-based, not time-based auto-deletion:
 
@@ -40,6 +46,38 @@ The policy is review-based, not time-based auto-deletion:
 - especially dangerous legacy shapes may remain longer, but only by explicit maintainer choice after review
 
 The review question is whether the rule still pays for its complexity. Old low-value rewrites should be removed first. Manual-only guards may stay longer when they keep startup and doctor guidance humane for users who update infrequently.
+
+### Retirement Workflow
+
+The repo should follow a demote-before-delete policy for deterministic auto-apply rewrites:
+
+1. while a rule is current, it may participate fully in startup preflight, `yzx config migrate --apply`, and `yzx doctor --fix`
+2. once the review window is reached, maintainers must explicitly review the rule
+3. if the rule is still worth carrying but no longer worth automatic entrypoint application, it should first be demoted to explicit repair surfaces such as `yzx config migrate` and related diagnostics
+4. only after that demotion phase should the rule be deleted entirely, unless maintainers decide it still pays for itself and record that review
+
+Manual-only guards follow a slightly different policy:
+
+- they do not need a demotion phase because they are already explicit and non-mutating
+- at review time, maintainers should either keep them, rewrite them, or delete them
+
+This workflow is encoded in rule metadata:
+
+- `retirement_policy = "demote_to_explicit_then_delete"`
+  - required for auto-apply rules
+- `retirement_policy = "review_then_delete_or_keep"`
+  - required for manual-only rules
+
+`last_reviewed_on` should stay `null` until a human review actually happens. After review, maintainers should either:
+
+- delete the rule
+- demote or rewrite it and set a new `last_reviewed_on`
+- or explicitly keep it and set a new `last_reviewed_on`
+
+Validation should fail when a rule is overdue for review based on:
+
+- `last_reviewed_on`, when present
+- otherwise `introduced_on`
 
 See [Managed Config Migration Transaction Contract](./managed_config_migration_transaction_contract.md) for the narrower write/rollback model that defines how the managed config surfaces are staged and committed safely.
 
@@ -58,6 +96,7 @@ See [Managed Config Migration Transaction Contract](./managed_config_migration_t
 4. When a config is already current, preview says there are no known migrations and apply does not create a backup or rewrite the file.
 5. When the migration registry is malformed, validation fails loudly before the engine is trusted by higher-level UX.
 6. When a migration rule is added without a positive `review_after_days` value, validation fails loudly before the engine is trusted by higher-level UX.
+7. When a migration rule is missing `retirement_policy`, has an invalid `last_reviewed_on`, or is overdue for retirement review, validation fails loudly before the engine is trusted by higher-level UX.
 
 ## Verification
 
@@ -66,7 +105,7 @@ See [Managed Config Migration Transaction Contract](./managed_config_migration_t
 - e2e scripts: `nu nushell/scripts/dev/test_config_migrate_e2e.nu`
 - CI checks: `nu nushell/scripts/dev/validate_specs.nu` and `nu nushell/scripts/dev/validate_config_migration_rules.nu`
 - manual verification: run `yzx config migrate` and `yzx config migrate --apply` against temp config roots with known stale configs
-- metadata validation must also reject rules that do not declare a positive `review_after_days`
+- metadata validation must also reject rules that do not declare a positive `review_after_days`, valid retirement metadata, or a timely explicit review
 
 ## Traceability
 
