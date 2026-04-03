@@ -3,44 +3,31 @@
 
 use ../utils/environment_bootstrap.nu *
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile]
 use ../utils/common.nu [describe_build_parallelism require_yazelix_dir]
+use ../utils/runtime_contract_checker.nu [
+    check_generated_layout
+    check_runtime_script
+    check_startup_working_dir
+    require_runtime_check
+]
 
 def validate_startup_working_dir [working_dir: string] {
-    let resolved = ($working_dir | path expand)
-
-    if not ($resolved | path exists) {
-        error make {msg: $"Startup directory does not exist: ($resolved)\nUse an existing directory, or run yzx launch --home."}
-    }
-
-    if (($resolved | path type) != "dir") {
-        error make {msg: $"Startup path is not a directory: ($resolved)\nPass a directory to yzx launch --path."}
-    }
-
-    $resolved
-}
-
-def require_runtime_file [file_path: string, label: string, recovery: string] {
-    let resolved = ($file_path | path expand)
-    if not ($resolved | path exists) {
-        let classification = (format_failure_classification "generated-state" $recovery)
-        error make {msg: $"Missing Yazelix ($label): ($resolved)\n($recovery)\n($classification)"}
-    }
-
-    if (($resolved | path type) != "file") {
-        error make {msg: $"Yazelix ($label) is not a file: ($resolved)"}
-    }
-
-    $resolved
+    let check = (check_startup_working_dir $working_dir)
+    require_runtime_check $check | ignore
+    $check.path
 }
 
 def require_runtime_script [script_path: string, label: string] {
-    require_runtime_file $script_path $label "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again."
+    let check = (check_runtime_script $script_path "startup_runtime_script" $label "startup")
+    require_runtime_check $check | ignore
+    $check.path
 }
 
 def require_generated_layout [layout_path: string] {
-    require_runtime_file $layout_path "generated Zellij layout" "Run `yzx refresh` to regenerate layouts, or check the configured layout name."
+    let check = (check_generated_layout $layout_path "startup")
+    require_runtime_check $check | ignore
+    $check.path
 }
 
 def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse] {

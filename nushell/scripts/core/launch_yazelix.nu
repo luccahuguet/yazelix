@@ -9,61 +9,22 @@ use ../utils/terminal_configs.nu generate_all_terminal_configs
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [SUPPORTED_TERMINALS, TERMINAL_METADATA]
 use ../utils/common.nu [get_yazelix_runtime_dir]
+use ../utils/runtime_contract_checker.nu [
+    check_launch_terminal_support
+    check_launch_working_dir
+    require_runtime_check
+]
 
 def validate_launch_working_dir [working_dir: string] {
-    let resolved = ($working_dir | path expand)
-
-    if not ($resolved | path exists) {
-        error make {msg: $"Launch directory does not exist: ($resolved)\nUse an existing directory, or use --home to start from HOME."}
-    }
-
-    if (($resolved | path type) != "dir") {
-        error make {msg: $"Launch path is not a directory: ($resolved)\nPass a directory to yzx launch --path."}
-    }
-
-    $resolved
+    let check = (check_launch_working_dir $working_dir)
+    require_runtime_check $check | ignore
+    $check.path
 }
 
 def resolve_terminal_candidates [requested_terminal: string, terminals: list<string>, manage_terminals: bool] {
-    if ($requested_terminal | is-not-empty) {
-        let specified_terminal = $requested_terminal
-        let term_meta = ($TERMINAL_METADATA | get -o $specified_terminal)
-        if $term_meta == null {
-            error make {msg: $"Unsupported terminal '($specified_terminal)'\nSupported terminals: ($SUPPORTED_TERMINALS | str join ', ')"}
-        }
-
-        let candidates = if $manage_terminals {
-            detect_terminal_wrapper_candidates [$specified_terminal]
-        } else {
-            detect_terminal_candidates [$specified_terminal] false
-        }
-        if ($candidates | is-empty) {
-            let reason = if $manage_terminals {
-                $"Specified terminal '($specified_terminal)' is not available in the current Yazelix environment.\nRun 'yzx refresh' or 'yzx restart' to rebuild the managed terminal wrappers, or choose a configured terminal that is present in the Yazelix profile."
-            } else {
-                $"Specified terminal '($specified_terminal)' is not installed\nPlease install it or choose a different terminal for testing"
-            }
-            error make {msg: $reason}
-        }
-
-        return $candidates
-    }
-
-    let candidates = if $manage_terminals {
-        detect_terminal_wrapper_candidates $terminals
-    } else {
-        detect_terminal_candidates $terminals false
-    }
-    if ($candidates | is-empty) {
-        let msg = if $manage_terminals {
-            "None of the configured managed terminals are available in the current Yazelix environment.\nRun 'yzx refresh' or 'yzx restart' to rebuild the terminal wrappers, or adjust [terminal].terminals to terminals that Yazelix can manage."
-        } else {
-            "None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty, Foot) are installed. Please install one of these terminals to use Yazelix.\n  - WezTerm: https://wezfurlong.org/wezterm/\n  - Ghostty: https://ghostty.org/\n  - Kitty: https://sw.kovidgoyal.net/kitty/\n  - Alacritty: https://alacritty.org/\n - Foot: https://codeberg.org/dnkl/foot"
-        }
-        error make {msg: $msg}
-    }
-
-    $candidates
+    let check = (check_launch_terminal_support $requested_terminal $terminals $manage_terminals)
+    require_runtime_check $check | ignore
+    ($check.candidates? | default [])
 }
 
 def describe_terminal_invocation [terminal_info: record, terminal_config] {

@@ -1,0 +1,303 @@
+#!/usr/bin/env nu
+
+use failure_classes.nu [format_failure_classification]
+use terminal_launcher.nu [detect_terminal_candidates detect_terminal_wrapper_candidates]
+use constants.nu [SUPPORTED_TERMINALS TERMINAL_METADATA]
+
+def build_runtime_check [
+    id: string
+    status: string
+    severity: string
+    owner_surface: string
+    message: string
+    details?
+    recovery?
+    failure_class?
+    --blocking
+    --path: string
+    --candidates: any
+] {
+    {
+        id: $id
+        status: $status
+        severity: $severity
+        owner_surface: $owner_surface
+        message: $message
+        details: ($details | default null)
+        recovery: ($recovery | default null)
+        failure_class: ($failure_class | default null)
+        blocking: $blocking
+        path: ($path | default null)
+        candidates: ($candidates | default null)
+    }
+}
+
+export def runtime_check_to_error [check: record] {
+    mut lines = [$check.message]
+
+    if (($check.details? | default "") | is-not-empty) {
+        $lines = ($lines | append $check.details)
+    }
+
+    let recovery = ($check.recovery? | default "" | into string | str trim)
+    let failure_class = ($check.failure_class? | default "" | into string | str trim)
+    if ($recovery | is-not-empty) {
+        $lines = ($lines | append $recovery)
+    }
+    if ($recovery | is-not-empty) and ($failure_class | is-not-empty) {
+        $lines = ($lines | append (format_failure_classification $failure_class $recovery))
+    }
+
+    $lines | str join "\n"
+}
+
+export def require_runtime_check [check: record] {
+    if ($check.status == "ok") {
+        return $check
+    }
+
+    error make {msg: (runtime_check_to_error $check)}
+}
+
+export def runtime_check_to_doctor_result [check: record] {
+    mut detail_lines = []
+
+    if (($check.details? | default "") | is-not-empty) {
+        $detail_lines = ($detail_lines | append $check.details)
+    }
+
+    let recovery = ($check.recovery? | default "" | into string | str trim)
+    let failure_class = ($check.failure_class? | default "" | into string | str trim)
+    if ($recovery | is-not-empty) {
+        $detail_lines = ($detail_lines | append $recovery)
+    }
+    if ($recovery | is-not-empty) and ($failure_class | is-not-empty) {
+        $detail_lines = ($detail_lines | append (format_failure_classification $failure_class $recovery))
+    }
+
+    {
+        status: (if ($check.status == "ok") { "ok" } else { $check.severity })
+        message: $check.message
+        details: (if ($detail_lines | is-empty) { null } else { $detail_lines | str join "\n" })
+        fix_available: false
+        runtime_contract_check: $check.id
+        owner_surface: $check.owner_surface
+    }
+}
+
+def check_working_directory [
+    working_dir: string
+    id: string
+    owner_surface: string
+    missing_label: string
+    missing_guidance: string
+    invalid_label: string
+    invalid_guidance: string
+] {
+    let resolved = ($working_dir | path expand)
+
+    if not ($resolved | path exists) {
+        return (build_runtime_check
+            $id
+            "error"
+            "error"
+            $owner_surface
+            $"($missing_label): ($resolved)"
+            $missing_guidance
+            --blocking)
+    }
+
+    if (($resolved | path type) != "dir") {
+        return (build_runtime_check
+            $id
+            "error"
+            "error"
+            $owner_surface
+            $"($invalid_label): ($resolved)"
+            $invalid_guidance
+            --blocking)
+    }
+
+    build_runtime_check $id "ok" "info" $owner_surface $"Working directory is valid: ($resolved)" --path $resolved
+}
+
+def check_runtime_file [
+    file_path: string
+    id: string
+    owner_surface: string
+    missing_label: string
+    invalid_label: string
+    recovery: string
+] {
+    let resolved = ($file_path | path expand)
+
+    if not ($resolved | path exists) {
+        return (build_runtime_check
+            $id
+            "error"
+            "error"
+            $owner_surface
+            $"Missing Yazelix ($missing_label): ($resolved)"
+            null
+            $recovery
+            "generated-state"
+            --blocking
+            --path $resolved)
+    }
+
+    if (($resolved | path type) != "file") {
+        return (build_runtime_check
+            $id
+            "error"
+            "error"
+            $owner_surface
+            $"Yazelix ($invalid_label) is not a file: ($resolved)"
+            null
+            null
+            null
+            --blocking
+            --path $resolved)
+    }
+
+    build_runtime_check $id "ok" "info" $owner_surface $"Yazelix ($missing_label) is present" --path $resolved
+}
+
+export def check_startup_working_dir [working_dir: string] {
+    (check_working_directory
+        $working_dir
+        "startup_working_dir"
+        "startup"
+        "Startup directory does not exist"
+        "Use an existing directory, or run yzx launch --home."
+        "Startup path is not a directory"
+        "Pass a directory to yzx launch --path.")
+}
+
+export def check_launch_working_dir [working_dir: string] {
+    (check_working_directory
+        $working_dir
+        "launch_working_dir"
+        "launch"
+        "Launch directory does not exist"
+        "Use an existing directory, or use --home to start from HOME."
+        "Launch path is not a directory"
+        "Pass a directory to yzx launch --path.")
+}
+
+export def check_runtime_script [script_path: string, id: string, label: string, owner_surface: string] {
+    (check_runtime_file
+        $script_path
+        $id
+        $owner_surface
+        $label
+        $label
+        "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again.")
+}
+
+export def check_generated_layout [layout_path: string, owner_surface: string] {
+    (check_runtime_file
+        $layout_path
+        "generated_layout"
+        $owner_surface
+        "generated Zellij layout"
+        "generated Zellij layout"
+        "Run `yzx refresh` to regenerate layouts, or check the configured layout name.")
+}
+
+export def check_launch_terminal_support [requested_terminal: string, terminals: list<string>, manage_terminals: bool] {
+    if ($requested_terminal | is-not-empty) {
+        let specified_terminal = $requested_terminal
+        let term_meta = ($TERMINAL_METADATA | get -o $specified_terminal)
+        if $term_meta == null {
+            return (build_runtime_check
+                "launch_terminal_support"
+                "error"
+                "error"
+                "launch"
+                $"Unsupported terminal '($specified_terminal)'"
+                $"Supported terminals: ($SUPPORTED_TERMINALS | str join ', ')"
+                null
+                null
+                --blocking)
+        }
+
+        let candidates = if $manage_terminals {
+            detect_terminal_wrapper_candidates [$specified_terminal]
+        } else {
+            detect_terminal_candidates [$specified_terminal] false
+        }
+
+        if ($candidates | is-empty) {
+            let reason = if $manage_terminals {
+                $"Specified terminal '($specified_terminal)' is not available in the current Yazelix environment."
+            } else {
+                $"Specified terminal '($specified_terminal)' is not installed"
+            }
+            let recovery = if $manage_terminals {
+                "Run `yzx refresh` or `yzx restart` to rebuild the managed terminal wrappers, or choose a configured terminal that is present in the Yazelix profile."
+            } else {
+                "Please install it or choose a different terminal for testing."
+            }
+            return (build_runtime_check
+                "launch_terminal_support"
+                "error"
+                "error"
+                "launch"
+                $reason
+                null
+                $recovery
+                "host-dependency"
+                --blocking)
+        }
+
+        return (build_runtime_check
+            "launch_terminal_support"
+            "ok"
+            "info"
+            "launch"
+            $"Terminal launch support is available for ($specified_terminal)"
+            null
+            null
+            null
+            --candidates $candidates)
+    }
+
+    let candidates = if $manage_terminals {
+        detect_terminal_wrapper_candidates $terminals
+    } else {
+        detect_terminal_candidates $terminals false
+    }
+    if ($candidates | is-empty) {
+        let reason = if $manage_terminals {
+            "None of the configured managed terminals are available in the current Yazelix environment."
+        } else {
+            "None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty, Foot) are installed."
+        }
+        let recovery = if $manage_terminals {
+            "Run `yzx refresh` or `yzx restart` to rebuild the terminal wrappers, or adjust [terminal].terminals to terminals that Yazelix can manage."
+        } else {
+            "Please install one of these terminals to use Yazelix.\n  - WezTerm: https://wezfurlong.org/wezterm/\n  - Ghostty: https://ghostty.org/\n  - Kitty: https://sw.kovidgoyal.net/kitty/\n  - Alacritty: https://alacritty.org/\n  - Foot: https://codeberg.org/dnkl/foot"
+        }
+        return (build_runtime_check
+            "launch_terminal_support"
+            "error"
+            "error"
+            "launch"
+            $reason
+            null
+            $recovery
+            "host-dependency"
+            --blocking)
+    }
+
+    (build_runtime_check
+        "launch_terminal_support"
+        "ok"
+        "info"
+        "launch"
+        "Configured terminal launch support is available"
+        null
+        null
+        null
+        --candidates $candidates)
+}

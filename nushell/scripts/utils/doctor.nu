@@ -8,6 +8,14 @@ use config_surfaces.nu [get_main_user_config_path reconcile_primary_config_surfa
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
 use devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available resolve_preferred_devenv_path]
+use launch_state.nu [resolve_built_profile]
+use runtime_contract_checker.nu [
+    check_generated_layout
+    check_launch_terminal_support
+    check_launch_working_dir
+    check_runtime_script
+    runtime_check_to_doctor_result
+]
 use ../setup/helix_config_merger.nu [build_managed_helix_config get_generated_helix_config_path get_managed_helix_user_config_path get_managed_reveal_command get_native_helix_config_path]
 use ../integrations/zellij.nu debug_editor_state
 
@@ -544,6 +552,50 @@ export def check_shell_integration [] {
             fix_available: false
         }
     }
+}
+
+def get_default_generated_layout_path [config: record] {
+    let layout_name = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
+    (get_yazelix_state_dir | path join "configs" "zellij" "layouts" $"($layout_name).kdl")
+}
+
+export def check_shared_runtime_preflight [] {
+    let config_result = (try {
+        {config: (parse_yazelix_config), error: null}
+    } catch {|err|
+        {config: null, error: $err.msg}
+    })
+    if ($config_result.error | is-not-empty) {
+        return []
+    }
+
+    let config = $config_result.config
+    let runtime_dir = (get_yazelix_runtime_dir)
+    let current_dir = (try { pwd } catch { null })
+    let terminals = ($config.terminals? | default ["ghostty"] | uniq)
+    let manage_terminals = ($config.manage_terminals? | default true)
+    let layout_path = (get_default_generated_layout_path $config)
+    let built_profile = (resolve_built_profile)
+    let terminal_check = if $manage_terminals and ($built_profile | is-not-empty) {
+        with-env {DEVENV_PROFILE: $built_profile} {
+            check_launch_terminal_support "" $terminals $manage_terminals
+        }
+    } else {
+        check_launch_terminal_support "" $terminals $manage_terminals
+    }
+
+    mut checks = [
+        (check_runtime_script ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix_inner.nu") "startup_runtime_script" "startup script" "doctor")
+        (check_runtime_script ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu") "launch_runtime_script" "launch script" "doctor")
+        (check_generated_layout $layout_path "doctor")
+        $terminal_check
+    ]
+
+    if $current_dir != null {
+        $checks = ($checks | prepend (check_launch_working_dir $current_dir))
+    }
+
+    $checks | each {|check| runtime_check_to_doctor_result $check }
 }
 
 def get_desktop_applications_dir [] {
@@ -1083,6 +1135,9 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
 
     # Configuration
     $all_results = ($all_results | append (check_configuration))
+
+    # Shared runtime preflight overlap with launch-facing checks
+    $all_results = ($all_results | append (check_shared_runtime_preflight))
 
     # Shell integration
     $all_results = ($all_results | append (check_shell_integration))

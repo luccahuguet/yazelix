@@ -5,12 +5,19 @@
 use ../core/yazelix.nu *
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
 
-def run_doctor_command_for_fixture [fixture: record, command: string] {
-    with-env {
+def run_doctor_command_for_fixture [fixture: record, command: string, extra_env?: record] {
+    let base_env = {
         HOME: $fixture.tmp_home
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
-    } {
+    }
+    let merged_env = if ($extra_env | is-empty) {
+        $base_env
+    } else {
+        $base_env | merge $extra_env
+    }
+
+    with-env $merged_env {
         ^nu -c $"use \"($fixture.yzx_script)\" *; ($command)" | complete
     }
 }
@@ -240,6 +247,62 @@ def test_yzx_doctor_reports_stale_desktop_entry_exec [] {
     $result
 }
 
+# Defends: doctor surfaces shared runtime preflight failures for missing runtime launch assets.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_reports_missing_runtime_launch_assets [] {
+    print "🧪 Testing yzx doctor reports missing runtime launch assets through the shared runtime checker..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_runtime_preflight"
+        '[terminal]
+manage_terminals = false
+terminals = ["ghostty"]
+'
+    )
+
+    let result = (try {
+        let fake_runtime = ($fixture.tmp_home | path join "runtime")
+        let fake_state_dir = ($fixture.tmp_home | path join ".local" "share" "yazelix")
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        mkdir $fake_runtime
+        mkdir $fake_state_dir
+        mkdir $fake_bin
+        cp ($fixture.repo_root | path join "yazelix_default.toml") ($fake_runtime | path join "yazelix_default.toml")
+
+        [
+            "#!/bin/sh"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "ghostty")
+        ^chmod +x ($fake_bin | path join "ghostty")
+
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
+            YAZELIX_RUNTIME_DIR: $fake_runtime
+            YAZELIX_STATE_DIR: $fake_state_dir
+            PATH: ([$fake_bin] | append $env.PATH)
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Missing Yazelix launch script")
+            and ($stdout | str contains "Missing Yazelix generated Zellij layout")
+            and ($stdout | str contains "Run `yzx refresh` to regenerate layouts")
+        ) {
+            print "  ✅ yzx doctor reuses the shared runtime checker for missing launch assets"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
@@ -247,6 +310,7 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_fix_applies_safe_config_migrations)
         (test_yzx_doctor_fix_splits_legacy_pack_config)
         (test_yzx_doctor_reports_stale_desktop_entry_exec)
+        (test_yzx_doctor_reports_missing_runtime_launch_assets)
     ]
 }
 
