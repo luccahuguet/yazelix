@@ -1,0 +1,150 @@
+# Runtime Dependency And Launch Preflight Contract
+
+## Summary
+
+Yazelix should define one shared runtime dependency contract for normal user-facing entrypoints and a narrower launch-preflight scope that checks only the fast, actionable prerequisites needed before launch. The same dependency story should be reusable by `yzx launch`, startup, `yzx doctor`, install smoke, and a future `Yazelix Core` discussion without forcing all of them to perform the same depth of checks.
+
+## Why
+
+The current code already distinguishes several kinds of checks, but the boundary is implicit:
+
+- startup and launch fail fast on missing working directories, missing runtime scripts, missing generated layouts, and unavailable configured terminals
+- config migration preflight runs before launch, but it is a config-contract concern rather than a runtime dependency concern
+- `yzx doctor` performs much heavier checks such as shell-hook freshness, desktop-entry freshness, install-artifact staleness, version drift, Helix runtime conflicts, and plugin health
+- install smoke validates even heavier installed-runtime invariants that are useful for packaging confidence but too expensive for normal launch
+
+Without a written contract:
+
+- launch can grow into a slow mini-doctor
+- doctor can keep inventing checks that users assume launch will enforce
+- later Core work will keep guessing which missing tools are launch blockers versus optional diagnostics
+- error messages drift between launch, doctor, and install smoke
+
+## Scope
+
+- define the runtime dependency classes used by normal user-facing entrypoints
+- define which checks belong in lightweight launch preflight
+- define which checks belong in richer `yzx doctor` diagnostics
+- define which checks belong only in install/package validation
+- define how config-conditioned requirements should be expressed
+
+## Behavior
+
+- The runtime dependency contract is about what must be present or resolvable for a supported user-facing Yazelix entrypoint to work honestly.
+- This contract is downstream of the backend capability contract:
+  - the backend contract defines what the runtime/environment layer must make possible
+  - this contract defines what should be verified quickly before launch and what should remain in richer diagnostics
+- Config migration/stale-config blocking is adjacent but separate:
+  - entrypoint config migration preflight should still run before launch
+  - but config migration logic is not itself part of the runtime dependency checker scope
+
+### Dependency Classes
+
+- Always-required entrypoint prerequisites:
+  - a valid Yazelix runtime root
+  - required runtime scripts for the chosen entrypoint
+  - required generated layout/config paths for startup where those artifacts are part of the supported runtime model
+  - a valid working directory when the entrypoint accepts one
+- Config-conditioned requirements:
+  - the configured terminal must be available for `yzx launch` when launching a new terminal window
+  - terminal availability depends on whether Yazelix is managing terminals or relying on host-installed terminals
+  - entrypoints that stay in the current terminal, such as `yzx launch --here`, do not require a detached terminal candidate
+- Runtime-owned assets versus host tools:
+  - runtime-owned scripts, generated layouts, and shipped assets should be treated as runtime contract dependencies
+  - host or externally resolved tools should only be treated as required when the current entrypoint truly needs them to proceed
+- Optional or doctor-only diagnostics:
+  - version drift warnings
+  - shell-hook freshness
+  - desktop-entry freshness
+  - install-artifact staleness
+  - Helix runtime conflicts and deeper health checks
+  - session-local plugin health
+  - these may matter a lot, but they should not all be launch blockers by default
+
+### Launch Preflight Scope
+
+- Launch preflight should be fast and bounded.
+- It should check only the dependencies whose absence makes the selected launch path fail immediately or misleadingly.
+- For normal startup/launch flows, that includes at least:
+  - requested working directory exists and is a directory
+  - the active runtime root resolves
+  - entrypoint runtime scripts required for startup exist
+  - the selected layout path exists before asking Zellij to use it
+  - when launching a new terminal, at least one suitable configured/requested terminal candidate is available for the current terminal-management mode
+- Launch preflight should fail fast with explicit recovery guidance.
+- Launch preflight should not:
+  - perform deep freshness audits of shell hooks or desktop entries
+  - perform full install integrity checks
+  - perform slow environment-wide health analysis just because doctor can
+
+### Doctor Scope
+
+- `yzx doctor` should consume the same dependency story, but it may check more than launch preflight.
+- Doctor is the place for:
+  - stale or broken install artifacts
+  - shell-hook freshness
+  - desktop-entry freshness
+  - version drift reporting
+  - Helix runtime conflicts and deeper runtime health
+  - plugin/session-local health
+  - fixable repair surfaces such as `yzx doctor --fix`
+- Doctor may report warnings that launch tolerates, as long as that distinction is explicit.
+
+### Install-Smoke Scope
+
+- install/package smoke checks may validate heavier invariants than normal launch or doctor.
+- Examples:
+  - installed runtime pointer correctness
+  - installed `yzx` shim correctness
+  - POSIX launcher behavior under minimal environment
+  - runtime-local tool resolution
+  - shell-enter command viability
+- These checks defend packaging and install contracts, not the everyday preflight path.
+
+## Non-goals
+
+- redefining backend capabilities already covered by the backend capability contract
+- redefining config migration or stale-config rules
+- making `yzx doctor` and launch run the exact same set of checks
+- turning launch into a slow environment audit
+- deciding the final `Yazelix Core` product boundary in this spec
+
+## Acceptance Cases
+
+1. When `yzx launch --path` receives a missing or nondirectory path, launch preflight fails before a deeper launch attempt with a direct recovery message.
+2. When startup depends on a missing runtime script or generated layout, launch fails clearly as a runtime/generated-state problem instead of surfacing a generic downstream tool failure.
+3. When a new-terminal launch is requested and the configured terminal is unavailable for the current management mode, launch fails quickly with terminal-specific guidance instead of falling through into unrelated errors.
+4. When shell hooks, desktop entries, or installed runtime links are stale, `yzx doctor` may report them, but normal launch preflight does not have to run the full install-audit surface first.
+5. When a later Core discussion asks which dependencies are true launch blockers versus richer diagnostics, the answer can be taken from this contract instead of inferred ad hoc from current implementation details.
+
+## Verification
+
+- manual review against:
+  - [backend_capability_contract.md](./backend_capability_contract.md)
+  - [config_surface_and_launch_profile_contract.md](./config_surface_and_launch_profile_contract.md)
+  - [stale_config_diagnostics.md](./stale_config_diagnostics.md)
+- manual review of the current runtime-check code paths:
+  - `nushell/scripts/core/start_yazelix.nu`
+  - `nushell/scripts/core/start_yazelix_inner.nu`
+  - `nushell/scripts/core/launch_yazelix.nu`
+  - `nushell/scripts/utils/terminal_launcher.nu`
+  - `nushell/scripts/utils/doctor.nu`
+  - `nushell/scripts/utils/entrypoint_config_migrations.nu`
+  - `nushell/scripts/dev/validate_installed_runtime_contract.nu`
+  - `nushell/scripts/dev/validate_flake_install.nu`
+- integration tests:
+  - `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+  - `nu nushell/scripts/dev/test_yzx_doctor_commands.nu`
+  - `nu nushell/scripts/dev/test_yzx_core_commands.nu`
+- CI/spec check: `nu nushell/scripts/dev/validate_specs.nu`
+
+## Traceability
+
+- Bead: `yazelix-j4qv`
+- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+
+## Open Questions
+
+- Should generated Yazi config preparation remain implicitly part of normal startup readiness, or should some of that surface move into a narrower runtime preflight helper that can classify failures more explicitly?
+- Should launch preflight eventually expose structured failure classes directly so `yzx doctor`, install smoke, and CLI entrypoints stop duplicating recovery text?
+- For a future `Yazelix Core` edition, which host-managed tools should remain doctor-only warnings versus true launch blockers?
