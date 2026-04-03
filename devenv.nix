@@ -674,7 +674,6 @@ in
     NIX_CONFIG = yazelixNixConfig;
     ZELLIJ_DEFAULT_LAYOUT = yazelixLayoutName;
     YAZI_CONFIG_HOME = "$HOME/.local/share/yazelix/configs/yazi";
-    YAZELIX_HELIX_MODE = helixMode;
     YAZELIX_TERMINAL_CONFIG_MODE = terminalConfigMode;
     EDITOR = shellEditorCommand;
   }
@@ -701,7 +700,6 @@ in
     export NIX_CONFIG='${yazelixNixConfig}'
     export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
     export YAZI_CONFIG_HOME="$HOME/.local/share/yazelix/configs/yazi"
-    export YAZELIX_HELIX_MODE="${helixMode}"
     export YAZELIX_TERMINAL_CONFIG_MODE="${terminalConfigMode}"
     export EDITOR="${shellEditorCommand}"
     ${lib.optionalString (managedEditorKind != "") ''

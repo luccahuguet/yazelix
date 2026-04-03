@@ -252,7 +252,6 @@ export def get_launch_env [config: record, profile_path: string] {
         NIX_CONFIG: $nix_config
         ZELLIJ_DEFAULT_LAYOUT: (if $enable_sidebar { "yzx_side" } else { "yzx_no_side" })
         YAZI_CONFIG_HOME: ($env.HOME | path join ".local" "share" "yazelix" "configs" "yazi")
-        YAZELIX_HELIX_MODE: ($config.helix_mode? | default "release" | into string)
         YAZELIX_TERMINAL_CONFIG_MODE: ($config.terminal_config_mode? | default "yazelix" | into string)
         EDITOR: $editor_command
     }

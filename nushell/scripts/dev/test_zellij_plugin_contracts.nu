@@ -150,17 +150,10 @@ terminals = ["kitty", "ghostty"]
         } {
             ^nu $widget_script terminal | complete
         })
-        let widget_label = (
-            $widget_output.stdout
-            | lines
-            | where {|line| ($line | str trim) != "" }
-            | last
-            | default ""
-            | str trim
-        )
+        let widget_label = ($widget_output.stdout | str trim)
 
         if ($widget_output.exit_code == 0) and ($widget_label == "kitty") {
-            print "  ✅ zjstatus terminal widget now falls back to configured terminals without relying on YAZELIX_PREFERRED_TERMINAL"
+            print "  ✅ zjstatus terminal widget now falls back to configured terminals without relying on YAZELIX_PREFERRED_TERMINAL or emitting config-bootstrap noise"
             true
         } else {
             print $"  ❌ Unexpected zjstatus terminal widget output: exit=($widget_output.exit_code) label=($widget_label) stdout=(($widget_output.stdout | str trim)) stderr=(($widget_output.stderr | str trim))"

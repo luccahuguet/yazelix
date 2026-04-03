@@ -4,11 +4,6 @@
 
 YAZELIX_RUNTIME_DIR="$(cd "$(dirname "${(%):-%N}")/../.." && pwd)"
 
-# Source Helix mode detection using Nushell (essential dependency)
-if [[ -z "$YAZELIX_HELIX_MODE" ]]; then
-    eval "$(nu -c "use \"$YAZELIX_RUNTIME_DIR/nushell/scripts/utils/helix_mode.nu\" export_helix_env; export_helix_env")"
-fi
-
 # Define the directory where Yazelix generates individual initializer scripts.
 # Using XDG-compliant state directory (not config directory)
 YAZELIX_ZSH_INITIALIZERS_DIR="$HOME/.local/share/yazelix/initializers/zsh"
@@ -72,7 +67,13 @@ hx() {
 # For example, you could move environment variable exports specific to Zsh sessions here:
 # export SOME_ZSH_SPECIFIC_VAR="value"
 
-YAZELIX_USER_SHELL_HOOK_DIR="${YAZELIX_USER_SHELL_HOOK_DIR:-${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}/user_configs/shells}"
+if [[ -n "${YAZELIX_CONFIG_DIR:-}" ]]; then
+  YAZELIX_USER_SHELL_HOOK_DIR="$YAZELIX_CONFIG_DIR/user_configs/shells"
+elif [[ -n "${YAZELIX_USER_SHELL_HOOK_DIR:-}" ]]; then
+  YAZELIX_USER_SHELL_HOOK_DIR="$YAZELIX_USER_SHELL_HOOK_DIR"
+else
+  YAZELIX_USER_SHELL_HOOK_DIR="$HOME/.config/yazelix/user_configs/shells"
+fi
 YAZELIX_ZSH_USER_HOOK="$YAZELIX_USER_SHELL_HOOK_DIR/zsh.zsh"
 if [[ -f "$YAZELIX_ZSH_USER_HOOK" && -s "$YAZELIX_ZSH_USER_HOOK" ]]; then
   source "$YAZELIX_ZSH_USER_HOOK"

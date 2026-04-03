@@ -114,21 +114,12 @@ def test_managed_nushell_config_sources_optional_user_hook [] {
     mkdir ($state_dir | path join "initializers" "nushell")
 
     let result = (try {
-        let hook_path = (with-env {YAZELIX_CONFIG_DIR: $config_dir} {
-            get_yazelix_shell_user_hook_path "nushell"
-        })
+        let hook_path = (get_yazelix_shell_user_hook_path "nushell" $config_dir)
         mkdir ($hook_path | path dirname)
         '$env.YAZELIX_TEST_NU_HOOK = "from_managed_nu_hook"' | save --force --raw $hook_path
         "" | save --force --raw ($state_dir | path join "initializers" "nushell" "yazelix_init.nu")
         sync_generated_yzx_extern_bridge $repo_root $state_dir | ignore
-        with-env {
-            HOME: $tmp_home
-            XDG_CONFIG_HOME: $xdg_config_home
-            YAZELIX_CONFIG_DIR: $config_dir
-            YAZELIX_STATE_DIR: $state_dir
-        } {
-            sync_generated_nushell_user_hook_bridge | ignore
-        }
+        sync_generated_nushell_user_hook_bridge $config_dir $state_dir | ignore
 
         let output = (with-env {
             HOME: $tmp_home
@@ -173,19 +164,10 @@ def test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent [] 
     mkdir ($state_dir | path join "initializers" "nushell")
 
     let result = (try {
-        let hook_path = (with-env {YAZELIX_CONFIG_DIR: $config_dir} {
-            get_yazelix_shell_user_hook_path "nushell"
-        })
+        let hook_path = (get_yazelix_shell_user_hook_path "nushell" $config_dir)
         "" | save --force --raw ($state_dir | path join "initializers" "nushell" "yazelix_init.nu")
 
-        let bridge_path = (with-env {
-            HOME: $tmp_home
-            XDG_CONFIG_HOME: $xdg_config_home
-            YAZELIX_CONFIG_DIR: $config_dir
-            YAZELIX_STATE_DIR: $state_dir
-        } {
-            sync_generated_nushell_user_hook_bridge
-        })
+        let bridge_path = (sync_generated_nushell_user_hook_bridge $config_dir $state_dir)
 
         let bridge_contents_after_empty_sync = if ($bridge_path | path exists) {
             open --raw $bridge_path
@@ -197,13 +179,8 @@ def test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent [] 
         '$env.YAZELIX_TEST_NU_HOOK = "bridge_created_after_hook_exists"' | save --force --raw $hook_path
 
         let bridge_contents_after_hook = (
-            with-env {
-                HOME: $tmp_home
-                XDG_CONFIG_HOME: $xdg_config_home
-                YAZELIX_CONFIG_DIR: $config_dir
-                YAZELIX_STATE_DIR: $state_dir
-            } {
-                sync_generated_nushell_user_hook_bridge | ignore
+            do {
+                sync_generated_nushell_user_hook_bridge $config_dir $state_dir | ignore
                 open --raw $bridge_path
             }
         )
@@ -211,13 +188,8 @@ def test_nushell_user_hook_bridge_stays_present_and_safe_when_hook_is_absent [] 
         rm -f $hook_path
 
         let bridge_contents_after_removal = (
-            with-env {
-                HOME: $tmp_home
-                XDG_CONFIG_HOME: $xdg_config_home
-                YAZELIX_CONFIG_DIR: $config_dir
-                YAZELIX_STATE_DIR: $state_dir
-            } {
-                sync_generated_nushell_user_hook_bridge | ignore
+            do {
+                sync_generated_nushell_user_hook_bridge $config_dir $state_dir | ignore
                 open --raw $bridge_path
             }
         )
@@ -349,9 +321,7 @@ def test_managed_bash_config_sources_optional_user_hook [] {
     mkdir ($config_dir | path join "user_configs")
 
     let result = (try {
-        let hook_path = (with-env {YAZELIX_CONFIG_DIR: $config_dir} {
-            get_yazelix_shell_user_hook_path "bash"
-        })
+        let hook_path = (get_yazelix_shell_user_hook_path "bash" $config_dir)
         mkdir ($hook_path | path dirname)
         'export YAZELIX_TEST_BASH_HOOK="from_managed_bash_hook"' | save --force --raw $hook_path
 
@@ -361,13 +331,12 @@ def test_managed_bash_config_sources_optional_user_hook [] {
             YAZELIX_CONFIG_DIR: $config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_DIR: $repo_root
-            YAZELIX_HELIX_MODE: "release"
         } {
-            ^bash --noprofile --norc -c $"source \"($repo_root | path join 'shells' 'bash' 'yazelix_bash_config.sh')\"; printf '%s' \"$YAZELIX_TEST_BASH_HOOK\"" | complete
+            ^env -u YAZELIX_HELIX_MODE bash --noprofile --norc -c $"source \"($repo_root | path join 'shells' 'bash' 'yazelix_bash_config.sh')\"; printf '%s|%s' \"$YAZELIX_TEST_BASH_HOOK\" \"${YAZELIX_HELIX_MODE-unset}\"" | complete
         })
 
-        if ($output.exit_code == 0) and (($output.stdout | str trim) == "from_managed_bash_hook") {
-            print "  ✅ Managed Bash config can source a Yazelix-owned user hook without touching personal dotfiles"
+        if ($output.exit_code == 0) and (($output.stdout | str trim) == "from_managed_bash_hook|unset") {
+            print "  ✅ Managed Bash config can source a Yazelix-owned user hook without touching personal dotfiles or exporting Helix mode"
             true
         } else {
             print $"  ❌ Unexpected managed Bash user-hook result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
@@ -382,55 +351,10 @@ def test_managed_bash_config_sources_optional_user_hook [] {
     $result
 }
 
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-# Defends: Helix mode export ignores legacy yazelix.nix and uses the managed TOML/default surfaces only.
-def test_export_helix_env_ignores_legacy_yazelix_nix [] {
-    print "🧪 Testing Helix mode export ignores legacy yazelix.nix and uses the TOML contract..."
-
-    let repo_root = (get_repo_root)
-    let tmp_home = (^mktemp -d /tmp/yazelix_helix_mode_legacy_XXXXXX | str trim)
-    let xdg_config_home = ($tmp_home | path join ".config")
-    let config_dir = ($xdg_config_home | path join "yazelix")
-    let expected_mode = (open ($repo_root | path join "yazelix_default.toml") | get helix.mode)
-
-    mkdir $xdg_config_home
-    mkdir $config_dir
-    'helix_mode = "source";
-' | save --force --raw ($config_dir | path join "yazelix.nix")
-
-    let result = (try {
-        let output = (with-env {
-            HOME: $tmp_home
-            XDG_CONFIG_HOME: $xdg_config_home
-            YAZELIX_CONFIG_DIR: $config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-            YAZELIX_DIR: $repo_root
-        } {
-            ^nu -c $"use \"($repo_root | path join 'nushell' 'scripts' 'utils' 'helix_mode.nu')\" export_helix_env; export_helix_env" | complete
-        })
-        let stdout = ($output.stdout | str trim)
-        let expected_export = $"export YAZELIX_HELIX_MODE=\"($expected_mode)\""
-
-        if ($output.exit_code == 0) and ($stdout == $expected_export) {
-            print "  ✅ Helix mode export now ignores legacy yazelix.nix and stays on the managed TOML/default path"
-            true
-        } else {
-            print $"  ❌ Unexpected Helix mode export result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim)) expected=($expected_export)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-# Defends: managed Fish config derives Helix mode from the shared TOML exporter without a shell-local fallback parser.
-def test_managed_fish_config_exports_helix_mode_from_toml [] {
-    print "🧪 Testing managed Fish config exports Helix mode from the shared TOML path..."
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Regression: managed Fish config stays side-effect-free and does not export Helix mode on startup.
+def test_managed_fish_config_does_not_export_helix_mode_env [] {
+    print "🧪 Testing managed Fish config does not export Helix mode on startup..."
 
     let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_fish_helix_mode_XXXXXX | str trim)
@@ -449,7 +373,7 @@ mode = "source"
         let fish_probe = ($tmp_home | path join "probe.fish")
         [
             $"source \"($repo_root | path join "shells" "fish" "yazelix_fish_config.fish")\""
-            "printf \"%s\" $YAZELIX_HELIX_MODE"
+            'if set -q YAZELIX_HELIX_MODE; printf "set"; else printf "unset"; end'
             ""
         ] | str join "\n" | save --force --raw $fish_probe
 
@@ -459,14 +383,13 @@ mode = "source"
             YAZELIX_CONFIG_DIR: $config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_DIR: $repo_root
-            YAZELIX_HELIX_MODE: ""
         } {
-            ^fish --no-config $fish_probe | complete
+            ^env -u YAZELIX_HELIX_MODE fish --no-config $fish_probe | complete
         })
         let stdout = ($output.stdout | str trim)
 
-        if ($output.exit_code == 0) and ($stdout == "source") {
-            print "  ✅ Managed Fish config now exports Helix mode through the shared TOML-based helper"
+        if ($output.exit_code == 0) and ($stdout == "unset") {
+            print "  ✅ Managed Fish config now stays side-effect-free instead of exporting Helix mode"
             true
         } else {
             print $"  ❌ Unexpected managed Fish Helix mode result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
@@ -490,8 +413,7 @@ export def run_shell_managed_config_contract_tests [] {
         (test_managed_nushell_config_loads_generated_yzx_extern_bridge)
         (test_generated_nushell_shell_hook_uses_managed_config_only)
         (test_managed_bash_config_sources_optional_user_hook)
-        (test_export_helix_env_ignores_legacy_yazelix_nix)
-        (test_managed_fish_config_exports_helix_mode_from_toml)
+        (test_managed_fish_config_does_not_export_helix_mode_env)
     ]
 }
 

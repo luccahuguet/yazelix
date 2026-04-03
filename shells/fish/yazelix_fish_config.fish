@@ -3,11 +3,6 @@
 
 set -l YAZELIX_RUNTIME_DIR (path normalize (path dirname (status filename))/../..)
 
-# Source Helix mode detection using Nushell (essential dependency)
-if test -z $YAZELIX_HELIX_MODE
-    eval (nu -c "use \"$YAZELIX_RUNTIME_DIR/nushell/scripts/utils/helix_mode.nu\" export_helix_env; export_helix_env")
-end
-
 # Source generated initializers if they exist
 # Using XDG-compliant state directory (not config directory)
 set -l FISH_INITIALIZERS_DIR "$HOME/.local/share/yazelix/initializers/fish"
@@ -55,10 +50,10 @@ function hx --description "Helix editor with Yazelix mode support"
 end
 
 set -l fish_user_hook_dir "$HOME/.config/yazelix/user_configs/shells"
-if set -q YAZELIX_USER_SHELL_HOOK_DIR; and test -n "$YAZELIX_USER_SHELL_HOOK_DIR"
-    set fish_user_hook_dir "$YAZELIX_USER_SHELL_HOOK_DIR"
-else if test -n "$YAZELIX_CONFIG_DIR"
+if test -n "$YAZELIX_CONFIG_DIR"
     set fish_user_hook_dir "$YAZELIX_CONFIG_DIR/user_configs/shells"
+else if set -q YAZELIX_USER_SHELL_HOOK_DIR; and test -n "$YAZELIX_USER_SHELL_HOOK_DIR"
+    set fish_user_hook_dir "$YAZELIX_USER_SHELL_HOOK_DIR"
 end
 set -l YAZELIX_FISH_USER_HOOK "$fish_user_hook_dir/fish.fish"
 if test -f "$YAZELIX_FISH_USER_HOOK"
