@@ -179,7 +179,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     }
 }
 
-def run_start_yazelix_entrypoint [cwd_override?: string, verbose: bool, setup_only: bool, reuse: bool] {
+def run_start_yazelix_entrypoint [verbose: bool, setup_only: bool, reuse: bool, cwd_override?: string] {
     if ($cwd_override | is-not-empty) {
         if $setup_only and $verbose {
             _start_yazelix_impl $cwd_override --verbose --setup-only --reuse=$reuse
@@ -202,9 +202,9 @@ def run_start_yazelix_entrypoint [cwd_override?: string, verbose: bool, setup_on
 }
 
 export def start_yazelix_session [cwd_override?: string, --verbose, --setup-only, --reuse] {
-    run_start_yazelix_entrypoint $cwd_override $verbose $setup_only $reuse
+    run_start_yazelix_entrypoint $verbose $setup_only $reuse $cwd_override
 }
 
 export def main [cwd_override?: string, --verbose, --setup-only, --reuse] {
-    run_start_yazelix_entrypoint $cwd_override $verbose $setup_only $reuse
+    run_start_yazelix_entrypoint $verbose $setup_only $reuse $cwd_override
 }

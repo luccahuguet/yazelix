@@ -196,12 +196,57 @@ git = ["gh", "prek"]
     $result
 }
 
+# Defends: doctor reports stale desktop-entry launcher wiring as a diagnostic, not a launch blocker.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_yzx_doctor_reports_stale_desktop_entry_exec [] {
+    print "🧪 Testing yzx doctor reports stale desktop entry Exec wiring..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_desktop_entry"
+        ""
+    )
+
+    let result = (try {
+        let applications_dir = ($fixture.tmp_home | path join ".local" "share" "applications")
+        let desktop_path = ($applications_dir | path join "com.yazelix.Yazelix.desktop")
+        mkdir $applications_dir
+        [
+            "[Desktop Entry]"
+            "Type=Application"
+            "Name=Yazelix"
+            'Exec="/nix/store/old-yazelix-runtime/bin/yzx" desktop launch'
+        ] | str join "\n" | save --force --raw $desktop_path
+
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Yazelix desktop entry does not use the stable launcher path")
+            and ($stdout | str contains 'Repair with `yzx desktop install`.')
+        ) {
+            print "  ✅ yzx doctor reports stale desktop launcher wiring with focused repair guidance"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
         (test_yzx_doctor_reports_known_migration_with_fix_guidance)
         (test_yzx_doctor_fix_applies_safe_config_migrations)
         (test_yzx_doctor_fix_splits_legacy_pack_config)
+        (test_yzx_doctor_reports_stale_desktop_entry_exec)
     ]
 }
 
