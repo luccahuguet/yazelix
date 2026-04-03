@@ -187,7 +187,6 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
                 YAZELIX_CONFIG_OVERRIDE: $config_path
                 DEVENV_PROFILE: $profile_path
                 YAZELIX_RUNTIME_DIR: $env.PWD
-                YAZELIX_DIR: $env.PWD
                 PATH: $"($profile_bin):/usr/bin"
                 EDITOR: "/tmp/wrong-editor"
             } {
@@ -209,6 +208,7 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
                 (($result.EDITOR? | default "") == $profile_nvim)
                 (($result.DEVENV_PROFILE? | default "") == $profile_path)
                 ($path_entries | any {|entry| $entry == $profile_bin })
+                (not ($result | columns | any {|column| $column == "YAZELIX_DIR" }))
                 (not ($result | columns | any {|column| $column == "YAZELIX_TERMINAL_CONFIG_MODE" }))
             ]
 

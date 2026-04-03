@@ -82,7 +82,6 @@ def launch_terminal_candidates [
         mut propagated_env = {
             YAZELIX_TERMINAL: $terminal_info.terminal
             YAZELIX_RUNTIME_DIR: $runtime_dir
-            YAZELIX_DIR: $runtime_dir
         }
         if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) {
             $propagated_env = ($propagated_env | upsert YAZELIX_SWEEP_TEST_ID $env.YAZELIX_SWEEP_TEST_ID)

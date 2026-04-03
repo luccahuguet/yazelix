@@ -245,7 +245,6 @@ export def get_launch_env [config: record, profile_path: string] {
         DEVENV_PROFILE: $profile_path
         PATH: (([$profile_bin] | append $current_path_entries | uniq))
         YAZELIX_RUNTIME_DIR: $yazelix_dir
-        YAZELIX_DIR: $yazelix_dir
         YAZELIX_NU_BIN: (resolve_yazelix_nu_bin)
         IN_YAZELIX_SHELL: "true"
         IN_NIX_SHELL: "impure"

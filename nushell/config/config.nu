@@ -3,7 +3,7 @@
 
 # Guard: Only load if in a Yazelix environment
 # This prevents errors when opening Nushell outside of Yazelix
-if ($env.YAZELIX_DIR? | is-empty) {
+if ($env.YAZELIX_RUNTIME_DIR? | is-empty) {
     return
 }
 

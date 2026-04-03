@@ -96,7 +96,6 @@ def test_managed_nushell_config_sources_optional_user_hook [] {
             XDG_CONFIG_HOME: $xdg_config_home
             YAZELIX_CONFIG_DIR: $config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
-            YAZELIX_DIR: $repo_root
             YAZELIX_STATE_DIR: $state_dir
         } {
             ^nu --config ($repo_root | path join "nushell" "config" "config.nu") -c 'print ($env.YAZELIX_TEST_NU_HOOK? | default "")' | complete
@@ -139,7 +138,6 @@ def test_managed_nushell_config_loads_generated_yzx_extern_bridge [] {
         let output = (with-env {
             HOME: $tmp_home
             XDG_CONFIG_HOME: $xdg_config_home
-            YAZELIX_DIR: $repo_root
             YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_STATE_DIR: $state_dir
         } {
@@ -186,7 +184,6 @@ def test_generated_nushell_shell_hook_uses_managed_config_only [] {
         let section = (with-env {
             HOME: "/tmp"
             YAZELIX_RUNTIME_DIR: $repo_root
-            YAZELIX_DIR: $repo_root
         } {
             get_yazelix_section_content "nushell" $repo_root
         })
@@ -235,7 +232,6 @@ def test_managed_bash_config_sources_optional_user_hook [] {
             YAZELIX_CONFIG_DIR: $config_dir
             YAZELIX_USER_SHELL_HOOK_DIR: ($tmp_home | path join "bogus_shell_hooks")
             YAZELIX_RUNTIME_DIR: $repo_root
-            YAZELIX_DIR: $repo_root
         } {
             ^env -u YAZELIX_HELIX_MODE bash --noprofile --norc -c $"source \"($repo_root | path join 'shells' 'bash' 'yazelix_bash_config.sh')\"; printf '%s|%s' \"$YAZELIX_TEST_BASH_HOOK\" \"${YAZELIX_HELIX_MODE-unset}\"" | complete
         })
@@ -287,7 +283,6 @@ mode = "source"
             XDG_CONFIG_HOME: $xdg_config_home
             YAZELIX_CONFIG_DIR: $config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
-            YAZELIX_DIR: $repo_root
         } {
             ^env -u YAZELIX_HELIX_MODE fish --no-config $fish_probe | complete
         })
