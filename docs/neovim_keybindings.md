@@ -72,7 +72,7 @@ With Neovim configured for Yazelix, you get:
 
 1. **Check if you're in sidebar mode:**
    - Reveal in Yazi only works with `sidebar_enabled = true` (default)
-   - Run `echo $YAZELIX_ENABLE_SIDEBAR` - should show "true"
+   - Confirm `[zellij].sidebar_enabled` is still enabled in your Yazelix config
 
 2. **Verify you're inside Yazelix/Zellij with a sidebar open:**
    - `yzx reveal` targets the managed sidebar in the current tab

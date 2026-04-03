@@ -677,14 +677,11 @@ in
     YAZELIX_USER_SHELL_HOOK_DIR = "$HOME/.config/yazelix/user_configs/shells";
     IN_YAZELIX_SHELL = "true";
     NIX_CONFIG = yazelixNixConfig;
-    YAZELIX_DEBUG_MODE = boolToString debugMode;
     ZELLIJ_DEFAULT_LAYOUT = yazelixLayoutName;
-    YAZELIX_ENABLE_SIDEBAR = boolToString enableSidebar;
     YAZI_CONFIG_HOME = "$HOME/.local/share/yazelix/configs/yazi";
     YAZELIX_HELIX_MODE = helixMode;
     YAZELIX_PREFERRED_TERMINAL = preferredTerminal;
     YAZELIX_TERMINAL_CONFIG_MODE = terminalConfigMode;
-    YAZELIX_WELCOME_STYLE = welcomeStyle;
     EDITOR = shellEditorCommand;
   }
   // lib.optionalAttrs (managedEditorKind != "") {
@@ -708,14 +705,11 @@ in
     export YAZELIX_DIR="$YAZELIX_RUNTIME_DIR"
     export IN_YAZELIX_SHELL="true"
     export NIX_CONFIG='${yazelixNixConfig}'
-    export YAZELIX_DEBUG_MODE="${boolToString debugMode}"
     export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
-    export YAZELIX_ENABLE_SIDEBAR="${boolToString enableSidebar}"
     export YAZI_CONFIG_HOME="$HOME/.local/share/yazelix/configs/yazi"
     export YAZELIX_HELIX_MODE="${helixMode}"
     export YAZELIX_PREFERRED_TERMINAL="${preferredTerminal}"
     export YAZELIX_TERMINAL_CONFIG_MODE="${terminalConfigMode}"
-    export YAZELIX_WELCOME_STYLE="${welcomeStyle}"
     export EDITOR="${shellEditorCommand}"
     ${lib.optionalString (managedEditorKind != "") ''
       export YAZELIX_MANAGED_EDITOR_KIND="${managedEditorKind}"

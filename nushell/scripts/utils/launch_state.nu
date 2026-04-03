@@ -3,10 +3,6 @@
 
 use ./common.nu [ensure_yazelix_runtime_project_dir get_yazelix_nix_config get_yazelix_dir get_yazelix_state_dir resolve_yazelix_nu_bin]
 
-def bool_to_string [value] {
-    if $value { "true" } else { "false" }
-}
-
 def normalize_path_entries [value: any] {
     let described = ($value | describe)
 
@@ -256,14 +252,11 @@ export def get_launch_env [config: record, profile_path: string] {
         IN_YAZELIX_SHELL: "true"
         IN_NIX_SHELL: "impure"
         NIX_CONFIG: $nix_config
-        YAZELIX_DEBUG_MODE: (bool_to_string ($config.debug_mode? | default false))
         ZELLIJ_DEFAULT_LAYOUT: (if $enable_sidebar { "yzx_side" } else { "yzx_no_side" })
-        YAZELIX_ENABLE_SIDEBAR: (bool_to_string $enable_sidebar)
         YAZI_CONFIG_HOME: ($env.HOME | path join ".local" "share" "yazelix" "configs" "yazi")
         YAZELIX_HELIX_MODE: ($config.helix_mode? | default "release" | into string)
         YAZELIX_PREFERRED_TERMINAL: $preferred_terminal
         YAZELIX_TERMINAL_CONFIG_MODE: ($config.terminal_config_mode? | default "yazelix" | into string)
-        YAZELIX_WELCOME_STYLE: ($config.welcome_style? | default "random" | into string)
         EDITOR: $editor_command
     }
 

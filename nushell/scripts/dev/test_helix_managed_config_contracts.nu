@@ -91,12 +91,23 @@ def test_get_launch_env_wraps_helix_with_managed_wrapper [] {
         let expected_wrapper = ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
         let expected_binary = ($profile_bin | path join "hx")
 
+        let retired_env_keys = [
+            "YAZELIX_DEBUG_MODE"
+            "YAZELIX_ENABLE_SIDEBAR"
+            "YAZELIX_WELCOME_STYLE"
+        ]
+        let retired_keys_absent = (
+            $retired_env_keys
+            | all {|key| not ($launch_env | columns | any {|column| $column == $key }) }
+        )
+
         if (
             ($launch_env.EDITOR == $expected_wrapper)
             and (($launch_env | get YAZELIX_MANAGED_EDITOR_KIND) == "helix")
             and (($launch_env | get YAZELIX_MANAGED_HELIX_BINARY) == $expected_binary)
+            and $retired_keys_absent
         ) {
-            print "  ✅ Launch env now routes managed Helix sessions through the Yazelix wrapper while preserving the real Helix binary"
+            print "  ✅ Launch env routes managed Helix sessions through the Yazelix wrapper, preserves the real Helix binary, and omits dead export-only vars"
             true
         } else {
             print $"  ❌ Unexpected managed Helix launch env: (($launch_env | to json -r))"
