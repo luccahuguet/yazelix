@@ -114,6 +114,7 @@ See [Runtime Root Contract](./specs/runtime_root_contract.md) for the concrete s
 See [Backend Capability Contract](./specs/backend_capability_contract.md) for the concrete capability buckets Yazelix expects from its runtime/environment layer before any alternative backend evaluation.
 See [Runtime Dependency And Launch Preflight Contract](./specs/runtime_dependency_preflight_contract.md) for the narrower user-facing dependency story that separates fast launch blockers from heavier doctor and install-smoke diagnostics.
 See [yzx Command Surface Backend Coupling](./specs/yzx_command_surface_backend_coupling.md) for the command-family audit that separates backend-required control-plane commands from workspace/config UX, runtime/distribution surfaces, and mixed seams.
+See [Managed Config Migration Transaction Contract](./specs/managed_config_migration_transaction_contract.md) for the staged write and rollback model that keeps Yazelix-owned config migrations from landing in a half-applied state.
 See [One-Command Install UX](./specs/one_command_install_ux.md) for the planned first-class install front door and why it should be a thin `nix run` installer surface instead of a hosted shell script.
 See [Flake Interface Contract](./specs/flake_interface_contract.md) for the exact phase-1 flake outputs and the stable installed-runtime layout they should target.
 See [Nixpkgs Package Contract](./specs/nixpkgs_package_contract.md) for the simpler store-backed package shape Yazelix should target before preparing the upstream nixpkgs submission.

@@ -2,7 +2,7 @@
 
 ## Summary
 
-Yazelix should own a shared config-migration engine that can detect known stale `yazelix.toml` shapes, preview safe rewrites, apply only deterministic fixes with backup, and clearly separate manual-only migrations from blunt reset flows.
+Yazelix should own a shared config-migration engine that can detect known stale `yazelix.toml` shapes, preview safe rewrites, apply only deterministic fixes through the managed-config transaction contract, and clearly separate manual-only migrations from blunt reset flows.
 
 ## Why
 
@@ -25,7 +25,7 @@ This spec covers:
 
 The command must default to a read-only preview. The preview should enumerate safe rewrites in rule order, explain manual-only findings without touching them, and state clearly when no known migrations were detected.
 
-When the user reruns with `--apply`, Yazelix should write only the deterministic rewrites from the plan. Before writing, it must back up the original `yazelix.toml`. Because the file is rewritten from parsed TOML, comments and key ordering may be normalized; the command should say so explicitly.
+When the user reruns with `--apply`, Yazelix should stage only the deterministic rewrites from the plan and commit them through the managed-config migration transaction contract. That means the final managed config set is validated before commit, rollback artifacts are prepared before any canonical target is replaced, and partial writes must not leave the managed config surfaces in a half-applied state. Because the file set is rewritten from parsed TOML, comments and key ordering may be normalized; the command should say so explicitly.
 
 When a rule is ambiguous or lossy, the migration engine must not guess. It should leave the config unchanged for that rule and explain the manual follow-up needed.
 
@@ -40,6 +40,8 @@ The policy is review-based, not time-based auto-deletion:
 - especially dangerous legacy shapes may remain longer, but only by explicit maintainer choice after review
 
 The review question is whether the rule still pays for its complexity. Old low-value rewrites should be removed first. Manual-only guards may stay longer when they keep startup and doctor guidance humane for users who update infrequently.
+
+See [Managed Config Migration Transaction Contract](./managed_config_migration_transaction_contract.md) for the narrower write/rollback model that defines how the managed config surfaces are staged and committed safely.
 
 ## Non-goals
 
