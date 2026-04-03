@@ -107,11 +107,6 @@ export def resolve_terminal_config [terminal: string, mode: string] {
     error make {msg: $"Unsupported terminal.config_mode '($mode)'. Expected 'yazelix' or 'user'."}
 }
 
-export def resolve_terminal_config_from_env [terminal: string] {
-    let mode = ($env.YAZELIX_TERMINAL_CONFIG_MODE? | default "yazelix" | into string | str downcase)
-    resolve_terminal_config $terminal $mode
-}
-
 export def detect_terminal_candidates [preferred: any, prefer_wrappers: bool = true] {
     # Build list of terminals to check: use list order if provided, otherwise preferred first
     let ordered_terminals = if ($preferred | describe | str contains "list") {
@@ -265,6 +260,7 @@ def get_working_dir_arg [terminal: string, working_dir: string]: nothing -> stri
 export def build_launch_command [
     terminal_info: record
     config_path
+    terminal_config_mode: string
     working_dir: string
     needs_reload: bool = true  # Whether to force environment reload
 ]: nothing -> string {
@@ -280,7 +276,8 @@ export def build_launch_command [
     if $use_wrapper {
         # Managed wrapper binaries already bake the canonical terminal binary,
         # config resolution, startup script, and nixGL path.
-        $"($launch_prefix)($command)($working_dir_arg)"
+        let config_mode_arg = $" --config-mode=\"($terminal_config_mode)\""
+        $"($launch_prefix)($command)($config_mode_arg)($working_dir_arg)"
     } else {
         # Direct terminal launch with config
         # Prefer the generic nixGL wrapper when available. Fall back to the

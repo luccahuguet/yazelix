@@ -209,6 +209,7 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
                 (($result.EDITOR? | default "") == $profile_nvim)
                 (($result.DEVENV_PROFILE? | default "") == $profile_path)
                 ($path_entries | any {|entry| $entry == $profile_bin })
+                (not ($result | columns | any {|column| $column == "YAZELIX_TERMINAL_CONFIG_MODE" }))
             ]
 
             if ($conditions | all {|item| $item }) {

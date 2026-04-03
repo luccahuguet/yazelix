@@ -289,8 +289,16 @@ let
   startupScriptPath = ''"''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/shells/posix/start_yazelix.sh"'';
   mkTerminalConfigResolver = terminalName:
     ''
-      export YAZELIX_TERMINAL_CONFIG_MODE="''${YAZELIX_TERMINAL_CONFIG_MODE:-${terminalConfigMode}}"
-      if ! CONF="$(${pkgs.nushell}/bin/nu -c "source \"''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/nushell/scripts/utils/terminal_launcher.nu\"; print (resolve_terminal_config_from_env \"${terminalName}\")")"; then
+      terminal_config_mode="${terminalConfigMode}"
+      if [ "''${1:-}" = "--config-mode" ]; then
+        if [ "$#" -lt 2 ]; then
+          echo "Error: missing terminal config mode after --config-mode" >&2
+          exit 1
+        fi
+        terminal_config_mode="$2"
+        shift 2
+      fi
+      if ! CONF="$(${pkgs.nushell}/bin/nu -c "source \"''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/nushell/scripts/utils/terminal_launcher.nu\"; print (resolve_terminal_config \"${terminalName}\" \"''${terminal_config_mode}\")")"; then
         exit 1
       fi
     '';
@@ -673,7 +681,6 @@ in
     NIX_CONFIG = yazelixNixConfig;
     ZELLIJ_DEFAULT_LAYOUT = yazelixLayoutName;
     YAZI_CONFIG_HOME = "$HOME/.local/share/yazelix/configs/yazi";
-    YAZELIX_TERMINAL_CONFIG_MODE = terminalConfigMode;
     EDITOR = shellEditorCommand;
   }
   // lib.optionalAttrs (managedEditorKind != "") {
@@ -698,7 +705,6 @@ in
     export NIX_CONFIG='${yazelixNixConfig}'
     export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
     export YAZI_CONFIG_HOME="$HOME/.local/share/yazelix/configs/yazi"
-    export YAZELIX_TERMINAL_CONFIG_MODE="${terminalConfigMode}"
     export EDITOR="${shellEditorCommand}"
     ${lib.optionalString (managedEditorKind != "") ''
       export YAZELIX_MANAGED_EDITOR_KIND="${managedEditorKind}"

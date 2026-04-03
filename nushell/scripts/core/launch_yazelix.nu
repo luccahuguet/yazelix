@@ -72,7 +72,7 @@ def launch_terminal_candidates [
             continue
         }
 
-        let launch_cmd = (build_launch_command $terminal_info $terminal_config $working_dir $needs_reload)
+        let launch_cmd = (build_launch_command $terminal_info $terminal_config $terminal_config_mode $working_dir $needs_reload)
 
         if $verbose_mode {
             print $"Using terminal: ($display_name)"
@@ -91,11 +91,7 @@ def launch_terminal_candidates [
             $propagated_env = ($propagated_env | upsert YAZELIX_LAYOUT_OVERRIDE $env.YAZELIX_LAYOUT_OVERRIDE)
         }
 
-        let env_block = if $terminal_info.use_wrapper {
-            $propagated_env | upsert YAZELIX_TERMINAL_CONFIG_MODE $terminal_config_mode
-        } else {
-            $propagated_env
-        }
+        let env_block = $propagated_env
 
         if $verbose_mode {
             let launch_label = if $terminal_info.use_wrapper { "Launching wrapper command" } else { "Launching command" }

@@ -9,6 +9,16 @@ fi
 terminal_name="$1"
 shift
 
+terminal_config_mode="yazelix"
+if [ "${1:-}" = "--config-mode" ]; then
+  if [ "$#" -lt 2 ]; then
+    printf '%s\n' "Error: missing terminal config mode after --config-mode" >&2
+    exit 1
+  fi
+  terminal_config_mode="$2"
+  shift 2
+fi
+
 runtime_dir="${YAZELIX_RUNTIME_DIR:-}"
 if [ -z "$runtime_dir" ] || [ ! -d "$runtime_dir" ]; then
   printf '%s\n' "Error: missing Yazelix runtime directory" >&2
@@ -21,7 +31,7 @@ if ! command -v "$nu_bin" >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! CONF="$("$nu_bin" -c "source \"${runtime_dir}/nushell/scripts/utils/terminal_launcher.nu\"; print (resolve_terminal_config_from_env \"${terminal_name}\")")"; then
+if ! CONF="$("$nu_bin" -c "source \"${runtime_dir}/nushell/scripts/utils/terminal_launcher.nu\"; print (resolve_terminal_config \"${terminal_name}\" \"${terminal_config_mode}\")")"; then
   exit 1
 fi
 

@@ -95,6 +95,7 @@ def test_get_launch_env_wraps_helix_with_managed_wrapper [] {
             "YAZELIX_DEBUG_MODE"
             "YAZELIX_ENABLE_SIDEBAR"
             "YAZELIX_HELIX_MODE"
+            "YAZELIX_TERMINAL_CONFIG_MODE"
             "YAZELIX_WELCOME_STYLE"
         ]
         let retired_keys_absent = (

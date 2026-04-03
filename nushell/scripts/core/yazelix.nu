@@ -301,8 +301,8 @@ export def "yzx restart" [
         YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE: $restart_sidebar_cwd_file
     }
 
-    # Detect if we're in a Yazelix-controlled terminal (launched via wrapper)
-    let is_yazelix_terminal = ($env.YAZELIX_TERMINAL_CONFIG_MODE? | is-not-empty)
+    # Detect if we're in a Yazelix-controlled terminal.
+    let is_yazelix_terminal = ($env.YAZELIX_TERMINAL? | is-not-empty)
 
     # Provide appropriate messaging
     if $reuse_mode and $needs_refresh {
