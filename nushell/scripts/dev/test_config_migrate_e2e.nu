@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 # Test lane: maintainer
 
+use ../utils/config_migration_transactions.nu [get_managed_config_transaction_dir]
 use ./yzx_test_helpers.nu [add_fixture_log log_block log_line setup_managed_config_fixture]
 
 def setup_fixture [label: string, raw_toml: string] {
@@ -289,6 +290,114 @@ welcome_style = "life"
     $ok
 }
 
+def run_interrupted_pack_split_recovery_case [] {
+    let fixture = (setup_fixture
+        "yazelix_migrate_e2e_interrupted_pack_split"
+        '[packs]
+enabled = ["git", "go"]
+user_packages = ["docker"]
+
+[packs.declarations]
+git = ["gh", "prek"]
+go = ["gopls", "golangci-lint"]
+')
+    let log_file = $fixture.log_file
+    let pack_path = ($fixture.user_config_dir | path join "yazelix_packs.toml")
+    let transaction_root = (get_managed_config_transaction_dir $fixture.config_path)
+    let transaction_id = "txn_stale_pack_split"
+    let work_dir = ($transaction_root | path join $transaction_id)
+    let manifest_path = ($work_dir | path join "manifest.json")
+    let main_staged_path = ($work_dir | path join "yazelix.toml")
+    let pack_staged_path = ($work_dir | path join "yazelix_packs.toml")
+    let backup_path = $"($fixture.config_path).backup-stale"
+
+    log_line $log_file "Case: recover interrupted pack-split transaction before apply"
+    log_line $log_file $"Temp HOME: ($fixture.tmp_home)"
+    log_line $log_file $"Config path: ($fixture.config_path)"
+    log_line $log_file $"Pack path: ($pack_path)"
+    log_line $log_file ""
+    log_block $log_file "Original TOML" (open --raw $fixture.config_path)
+
+    mkdir $work_dir
+
+    cp $fixture.config_path $backup_path
+    '[core]
+welcome_style = "random"
+' | save --force --raw $fixture.config_path
+
+    'enabled = ["git", "go"]
+user_packages = ["docker"]
+
+[declarations]
+git = ["gh", "prek"]
+go = ["gopls", "golangci-lint"]
+' | save --force --raw $pack_path
+
+    '# stale staged main
+' | save --force --raw $main_staged_path
+    '# stale staged pack
+' | save --force --raw $pack_staged_path
+
+    {
+        schema_version: 1
+        transaction_id: $transaction_id
+        caller: "config_migrate"
+        phase: "validated"
+        targets: [
+            {
+                role: "main"
+                target_path: $fixture.config_path
+                staged_path: $main_staged_path
+                backup_path: $backup_path
+                existed_before: true
+            }
+            {
+                role: "packs"
+                target_path: $pack_path
+                staged_path: $pack_staged_path
+                backup_path: null
+                existed_before: false
+            }
+        ]
+    } | to json | save --force --raw $manifest_path
+
+    log_block $log_file "Interrupted main TOML" (open --raw $fixture.config_path)
+    log_block $log_file "Interrupted pack TOML" (open --raw $pack_path)
+    log_block $log_file "Interrupted manifest" (open --raw $manifest_path)
+
+    let apply = (run_migrate $fixture ["--apply", "--yes"])
+    log_block $log_file "Apply stdout" ($apply.stdout | str trim)
+    log_block $log_file "Apply stderr" ($apply.stderr | str trim)
+    log_block $log_file "Recovered main TOML" (open --raw $fixture.config_path)
+    log_block $log_file "Recovered pack TOML" (open --raw $pack_path)
+
+    let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
+    log_block $log_file "Backups" (($backups | get name | str join "\n"))
+
+    let parsed_main = (open $fixture.config_path)
+    let parsed_pack = (if ($pack_path | path exists) { open $pack_path } else { null })
+    let ok = (
+        ($apply.exit_code == 0)
+        and (($apply.stdout | str contains "Recovered 1 interrupted managed-config transaction"))
+        and (($apply.stdout | str contains "Applied 1 config migration"))
+        and not ("packs" in ($parsed_main | columns))
+        and ($parsed_pack.enabled == ["git", "go"])
+        and ($parsed_pack.user_packages == ["docker"])
+        and (($parsed_pack.declarations | get git) == ["gh", "prek"])
+        and (($backups | length) == 2)
+        and not ($manifest_path | path exists)
+    )
+
+    if $ok {
+        log_line $log_file "Result: PASS"
+    } else {
+        log_line $log_file "Result: FAIL"
+    }
+
+    rm -rf $fixture.tmp_home
+    $ok
+}
+
 export def main [] {
     let results = [
         (run_mixed_migration_case)
@@ -305,6 +414,7 @@ export def main [] {
             "Case: migrate legacy ascii.mode = static into core.welcome_style = random"
         )
         (run_game_of_life_style_rename_case)
+        (run_interrupted_pack_split_recovery_case)
     ]
     let passed = ($results | where {|result| $result } | length)
     let total = ($results | length)

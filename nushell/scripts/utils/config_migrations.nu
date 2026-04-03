@@ -1,6 +1,8 @@
 #!/usr/bin/env nu
 # Shared migration registry and preview/apply engine for Yazelix config migrations
 
+use config_migration_transactions.nu apply_managed_config_transaction
+
 const CONFIG_MIGRATION_RULES = [
     {
         id: "remove_zellij_widget_tray_layout"
@@ -765,52 +767,24 @@ export def apply_config_migration_plan [plan: record] {
         }
     }
 
-    let timestamp = (date now | format date "%Y%m%d_%H%M%S")
-    let backup_path = $"($plan.config_path).backup-($timestamp)"
     let pack_config_path = ($plan.pack_config_path? | default null)
-    let pack_backup_path = if ($pack_config_path != null) and ($pack_config_path | path exists) and $plan.has_pack_config_change {
-        let path = $"($pack_config_path).backup-($timestamp)"
-        cp $pack_config_path $path
-        $path
-    } else {
-        null
-    }
     let rewritten = ($plan.migrated_config | to toml)
     let pack_rewritten = if $plan.has_pack_config_change {
         $plan.migrated_pack_config | to toml
     } else {
         null
     }
+    let transaction_result = (
+        apply_managed_config_transaction
+            "config_migrate"
+            $plan.config_path
+            $rewritten
+            $pack_config_path
+            $pack_rewritten
+    )
 
-    cp $plan.config_path $backup_path
-
-    try {
-        $rewritten | save --force --raw $plan.config_path
-        if $pack_rewritten != null {
-            $pack_rewritten | save --force --raw $pack_config_path
-        }
-        {
-            status: "applied"
-            config_path: $plan.config_path
-            backup_path: $backup_path
-            pack_config_path: $pack_config_path
-            pack_backup_path: $pack_backup_path
-            applied_count: $plan.auto_count
-            manual_count: $plan.manual_count
-        }
-    } catch {|err|
-        try {
-            cp $backup_path $plan.config_path
-        }
-        if ($pack_backup_path != null) {
-            try {
-                cp $pack_backup_path $pack_config_path
-            }
-        } else if ($pack_rewritten != null) and ($pack_config_path != null) and ($pack_config_path | path exists) {
-            try {
-                rm $pack_config_path
-            }
-        }
-        error make {msg: $"Failed to apply config migrations: ($err.msg)"}
+    $transaction_result | merge {
+        applied_count: $plan.auto_count
+        manual_count: $plan.manual_count
     }
 }

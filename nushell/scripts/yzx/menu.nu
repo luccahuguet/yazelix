@@ -5,6 +5,7 @@ use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstra
 use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_user_config_dir]
 use ../utils/config_migrations.nu [apply_config_migration_plan get_config_migration_plan render_config_migration_plan validate_config_migration_rules]
+use ../utils/config_migration_transactions.nu [recover_stale_managed_config_transactions]
 use ../utils/config_surfaces.nu [resolve_active_config_paths get_primary_config_paths reconcile_primary_config_surfaces]
 use ../setup/helix_config_merger.nu [get_generated_helix_config_path get_managed_helix_user_config_path]
 
@@ -465,6 +466,14 @@ export def "yzx config migrate" [
     }
 
     let context = (resolve_config_migration_context)
+    let pre_apply_recovery = if $apply and (not $context.relocation_needed) {
+        recover_stale_managed_config_transactions $context.paths.user_config
+    } else {
+        {
+            recovered_count: 0
+            transaction_ids: []
+        }
+    }
     let preview_plan = (get_config_migration_plan $context.preview_config_path)
     if $context.relocation_needed {
         print "Yazelix config path migration preview"
@@ -489,6 +498,16 @@ export def "yzx config migrate" [
         with-env { YAZELIX_ACCEPT_USER_CONFIG_RELOCATION: "true" } {
             reconcile_primary_config_surfaces | ignore
         }
+    }
+
+    let recovery = if $had_path_relocation {
+        recover_stale_managed_config_transactions $context.paths.user_config
+    } else {
+        $pre_apply_recovery
+    }
+    if $recovery.recovered_count > 0 {
+        print ""
+        print $"ℹ️  Recovered ($recovery.recovered_count) interrupted managed-config transaction\(s\) before applying new migrations."
     }
 
     let apply_plan = (get_config_migration_plan $context.paths.user_config)

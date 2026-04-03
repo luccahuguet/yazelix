@@ -239,7 +239,7 @@ export def get_primary_config_paths [config_root?: string, runtime_root?: string
 export def merge_pack_sidecar [
     main_config: record
     config_path: string
-    pack_path: string
+    pack_path?: string
     pack_config?: any
 ] {
     if $pack_config == null {
@@ -276,31 +276,40 @@ export def merge_pack_sidecar [
     $main_config | upsert packs $validated_pack_config
 }
 
-export def load_config_surface_from_main [config_file: string] {
+export def load_config_surface_pair [config_file: string, pack_config_file?: string] {
     let main_config = (ensure_record_surface (open $config_file) "main config" $config_file)
-    let pack_config_file = (get_associated_pack_surface_path $config_file)
-    let pack_config = if ($pack_config_file | path exists) {
-        open $pack_config_file
+    let normalized_pack_config_file = if (($pack_config_file | describe) == "nothing") {
+        null
+    } else {
+        $pack_config_file
+    }
+    let pack_config = if ($normalized_pack_config_file != null) and ($normalized_pack_config_file | path exists) {
+        open $normalized_pack_config_file
     } else {
         null
     }
-    let merged_config = (merge_pack_sidecar $main_config $config_file $pack_config_file $pack_config)
+    let merged_config = (merge_pack_sidecar $main_config $config_file $normalized_pack_config_file $pack_config)
 
     {
         config_file: $config_file
-        pack_config_file: $pack_config_file
+        pack_config_file: $normalized_pack_config_file
         pack_config_exists: ($pack_config != null)
         main_config: $main_config
         pack_config: $pack_config
         merged_config: $merged_config
         display_config_path: (
             if ($pack_config != null) {
-                $"($config_file) + ($pack_config_file)"
+                $"($config_file) + ($normalized_pack_config_file)"
             } else {
                 $config_file
             }
         )
     }
+}
+
+export def load_config_surface_from_main [config_file: string] {
+    let pack_config_file = (get_associated_pack_surface_path $config_file)
+    load_config_surface_pair $config_file $pack_config_file
 }
 
 export def resolve_active_config_paths [] {

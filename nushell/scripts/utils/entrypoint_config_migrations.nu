@@ -6,6 +6,7 @@ use config_migrations.nu [
     render_config_migration_plan
     validate_config_migration_rules
 ]
+use config_migration_transactions.nu [recover_stale_managed_config_transactions]
 use config_surfaces.nu [get_primary_config_paths reconcile_primary_config_surfaces]
 
 def has_interactive_tty [] {
@@ -142,6 +143,12 @@ export def run_entrypoint_config_migration_preflight [
             pack_backup_path: null
             remaining_plan: null
         })
+    }
+
+    let recovery = (recover_stale_managed_config_transactions $context.config_path)
+    if $recovery.recovered_count > 0 {
+        print ""
+        print $"ℹ️  Recovered ($recovery.recovered_count) interrupted managed-config transaction\(s\) before ($entrypoint_label)."
     }
 
     let initial_plan = (get_config_migration_plan $context.config_path)
