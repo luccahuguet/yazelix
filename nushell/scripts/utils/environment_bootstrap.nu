@@ -7,7 +7,7 @@ use devenv_cli.nu [is_preferred_devenv_available resolve_preferred_devenv_path]
 use nix_detector.nu ensure_nix_available
 use nix_env_helper.nu ensure_nix_in_environment
 use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config get_yazelix_dir materialize_yazelix_runtime_project_dir require_yazelix_dir]
-use config_state.nu [compute_config_state mark_config_state_applied]
+use config_state.nu [compute_config_state record_materialized_state]
 
 def format_command_for_display [command_parts: list<string>] {
     $command_parts
@@ -233,7 +233,7 @@ export def rebuild_yazelix_environment [
         exit $rebuild_result.exit_code
     }
 
-    mark_config_state_applied (compute_config_state)
+    record_materialized_state (compute_config_state)
 }
 
 # Check if already in Yazelix or Nix environment

@@ -3,7 +3,7 @@
 
 use ./config_parser.nu parse_yazelix_config
 use ./config_contract.nu [get_main_config_rebuild_required_paths]
-use ./common.nu [get_yazelix_runtime_dir]
+use ./common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 use ./config_surfaces.nu [load_active_config_surface get_main_user_config_path]
 use ./launch_state.nu [has_matching_launch_state]
 
@@ -49,6 +49,28 @@ def extract_rebuild_config [config: record] {
     $rebuild_config
 }
 
+def get_materialized_state_path [] {
+    (get_yazelix_state_dir | path join "state" "rebuild_hash")
+}
+
+def load_recorded_materialized_state [] {
+    let materialized_state_path = (get_materialized_state_path)
+    if not ($materialized_state_path | path exists) {
+        return null
+    }
+
+    let raw_state = (open --raw $materialized_state_path | str trim)
+    if ($raw_state | is-empty) {
+        return null
+    }
+
+    try {
+        $raw_state | from json
+    } catch {
+        $raw_state
+    }
+}
+
 # Compute active config hash and track whether devenv needs cache refresh.
 # Only hashes rebuild-required keys (ignoring comments and runtime settings).
 # Returns a record with:
@@ -62,12 +84,12 @@ export def compute_config_state [] {
     let config = parse_yazelix_config
     let config_file = $config.config_file
 
-    let cache_dir = "~/.local/share/yazelix/state" | path expand
-    if not ($cache_dir | path exists) {
-        mkdir $cache_dir
+    let materialized_state_path = (get_materialized_state_path)
+    let materialized_state_dir = ($materialized_state_path | path dirname)
+    if not ($materialized_state_dir | path exists) {
+        mkdir $materialized_state_dir
     }
 
-    let cache_file = ($cache_dir | path join "rebuild_hash")
     let config_hash = if ($config_file | is-empty) or (not ($config_file | path exists)) {
         ""
     } else {
@@ -107,20 +129,7 @@ export def compute_config_state [] {
         | str join ":"
         | hash sha256
 
-    let cached_state = if ($cache_file | path exists) {
-        let raw_cache = (open --raw $cache_file | str trim)
-        if ($raw_cache | is-empty) {
-            null
-        } else {
-            try {
-                $raw_cache | from json
-            } catch {
-                $raw_cache
-            }
-        }
-    } else {
-        null
-    }
+    let cached_state = (load_recorded_materialized_state)
 
     let cached_state_type = ($cached_state | describe)
     let cached_hash = if $cached_state_type == "string" {
@@ -209,25 +218,22 @@ export def compute_config_state [] {
         runtime_hash: $runtime_hash
         combined_hash: $combined_hash
         cached_hash: $cached_hash
-        cache_file: $cache_file
     }
 }
 
-# Mark the current config hash as applied
-export def mark_config_state_applied [state: record] {
+# Record that the current config/runtime inputs have been materialized into the
+# canonical Yazelix build state for the default managed config surface.
+export def record_materialized_state [state: record] {
     let config_file = ($state.config_file? | default "")
     let default_config = (get_main_user_config_path)
     if ($config_file | is-not-empty) and ($config_file | path expand) != $default_config {
         return
     }
 
-    let cache_file = ($state.cache_file? | default null)
-    if ($cache_file == null) {
-        return
-    }
-    let cache_dir = ($cache_file | path dirname)
-    if not ($cache_dir | path exists) {
-        mkdir $cache_dir
+    let materialized_state_path = (get_materialized_state_path)
+    let materialized_state_dir = ($materialized_state_path | path dirname)
+    if not ($materialized_state_dir | path exists) {
+        mkdir $materialized_state_dir
     }
     let cache_record = {
         config_hash: ($state.config_hash? | default "")
@@ -236,5 +242,5 @@ export def mark_config_state_applied [state: record] {
         devenv_yaml_hash: ($state.devenv_yaml_hash? | default "")
         runtime_hash: ($state.runtime_hash? | default "")
     }
-    $cache_record | to json | save --force $cache_file
+    $cache_record | to json | save --force $materialized_state_path
 }

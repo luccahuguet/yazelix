@@ -79,12 +79,12 @@ def resolve_profile_candidate [candidate: string] {
     }
 }
 
-def get_launch_state_path [] {
+def get_recorded_launch_state_path [] {
     (get_yazelix_state_dir | path join "state" "launch_state.json")
 }
 
-def load_launch_state [] {
-    let state_path = (get_launch_state_path)
+def load_recorded_launch_state [] {
+    let state_path = (get_recorded_launch_state_path)
     if not ($state_path | path exists) {
         return null
     }
@@ -97,7 +97,7 @@ def load_launch_state [] {
 }
 
 def resolve_any_recorded_launch_profile [] {
-    let launch_state = (load_launch_state)
+    let launch_state = (load_recorded_launch_state)
     if $launch_state == null {
         return ""
     }
@@ -158,7 +158,7 @@ export def resolve_built_profile [] {
 }
 
 def resolve_recorded_launch_profile [config_state: record, --allow-stale] {
-    let launch_state = (load_launch_state)
+    let launch_state = (load_recorded_launch_state)
     if $launch_state == null {
         return null
     }
@@ -217,7 +217,7 @@ export def get_launch_profile [config_state: record, --allow-stale] {
     $profile_path
 }
 
-export def record_launch_state [config_state: record, profile_path?: string] {
+export def record_launch_profile_state [config_state: record, profile_path?: string] {
     let preferred_profile = if $profile_path == null {
         ($env.DEVENV_PROFILE? | default "")
     } else {
@@ -228,7 +228,7 @@ export def record_launch_state [config_state: record, profile_path?: string] {
         return
     }
 
-    let state_path = (get_launch_state_path)
+    let state_path = (get_recorded_launch_state_path)
     let state_dir = ($state_path | path dirname)
     if not ($state_dir | path exists) {
         mkdir $state_dir

@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # yzx launch command - Launch Yazelix in new or current terminal
 
-use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
+use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment run_in_devenv_shell_command get_refresh_output_mode]
 use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile resolve_built_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
@@ -217,7 +217,7 @@ export def "yzx launch" [
             }
         }
         if $should_refresh {
-            mark_config_state_applied $config_state
+            record_materialized_state $config_state
         }
         return
     }
@@ -357,7 +357,7 @@ export def "yzx launch" [
                 run_in_devenv_shell_command "nu" ...$final_launch_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --force-shell --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode --refresh-output-mode $refresh_output
             }
             if $should_refresh {
-                mark_config_state_applied $fresh_state
+                record_materialized_state $fresh_state
             }
         }
 }

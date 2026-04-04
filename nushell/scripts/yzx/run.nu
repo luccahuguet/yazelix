@@ -2,7 +2,7 @@
 # yzx run command - Run a command inside Yazelix environment without UI
 
 use ../utils/environment_bootstrap.nu [prepare_environment run_in_devenv_shell_command]
-use ../utils/config_state.nu [mark_config_state_applied]
+use ../utils/config_state.nu [record_materialized_state]
 
 # Run a command in the Yazelix environment and exit
 export def "yzx run" [
@@ -33,6 +33,6 @@ export def "yzx run" [
     }
 
     if $needs_refresh {
-        mark_config_state_applied $env_prep.config_state
+        record_materialized_state $env_prep.config_state
     }
 }

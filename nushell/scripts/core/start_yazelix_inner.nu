@@ -2,8 +2,8 @@
 # Interactive launch sequence (runs inside devenv shell)
 
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
-use ../utils/launch_state.nu [record_launch_state resolve_built_profile]
+use ../utils/config_state.nu [compute_config_state record_materialized_state]
+use ../utils/launch_state.nu [record_launch_profile_state resolve_built_profile]
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_zellij_default_shell]
@@ -113,10 +113,10 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     # once we are inside the prepared Yazelix runtime, and remember the live
     # built profile for later reuse/startup checks.
     let applied_state = (compute_config_state)
-    mark_config_state_applied $applied_state
+    record_materialized_state $applied_state
     let built_profile = (resolve_built_profile)
     if ($built_profile | is-not-empty) {
-        record_launch_state $applied_state $built_profile
+        record_launch_profile_state $applied_state $built_profile
     }
 
     cd $launch_process_cwd
