@@ -159,10 +159,28 @@ def setup_enter_forwarding_fixture [label: string] {
         "export def prepare_environment [--verbose] {"
         "    error make {msg: \"PREPARE_ENVIRONMENT_SHOULD_NOT_RUN\"}"
         "}"
-        "export def rebuild_yazelix_environment [...rest: string] {"
+        "export def rebuild_yazelix_environment ["
+        "    --max-jobs: string = \"\""
+        "    --build-cores: string = \"\""
+        "    --refresh-eval-cache"
+        "    --output-mode: string = \"normal\""
+        "] {"
         "    error make {msg: \"REBUILD_ENVIRONMENT_SHOULD_NOT_RUN\"}"
         "}"
-        "export def run_in_devenv_shell_command [command: string, ...args: string] {"
+        "export def run_in_devenv_shell_command ["
+        "    command: string"
+        "    ...args: string"
+        "    --max-jobs: string = \"\""
+        "    --build-cores: string = \"\""
+        "    --cwd: string = \"\""
+        "    --runtime-dir: string = \"\""
+        "    --env-only"
+        "    --force-shell"
+        "    --skip-welcome"
+        "    --force-refresh"
+        "    --verbose"
+        "    --refresh-output-mode: string = \"normal\""
+        "] {"
         "    error make {msg: \"DEVENV_RUNNER_SHOULD_NOT_RUN\"}"
         "}"
         "export def get_refresh_output_mode [config: any] {"
@@ -171,7 +189,7 @@ def setup_enter_forwarding_fixture [label: string] {
     ] | str join "\n" | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
 
     [
-        "export def get_launch_env [profile_path?: string] { {} }"
+        "export def get_launch_env [config: record, profile_path: string] { {} }"
         "export def get_launch_profile [config_state: record, --allow-stale] { null }"
         "export def require_reused_launch_profile [config_state: record, context: string] { \"/tmp/fake-profile\" }"
         "export def resolve_runtime_owned_profile [] { \"\" }"
@@ -618,14 +636,8 @@ def test_profile_resolution_policies_separate_runtime_owned_and_current_session_
         let state_dir = ($fake_home | path join ".local" "share" "yazelix")
         let runtime_dir = ($tmpdir | path join "runtime")
         let runtime_project = ($state_dir | path join "runtime" "project")
-        let gc_shell = ($runtime_project | path join ".devenv" "gc" "shell")
-        let embedded_runtime_profile = (
-            $env.DEVENV_PROFILE?
-            | default ""
-            | into string
-            | str trim
-            | path expand
-        )
+        let runtime_project_profile = ($runtime_project | path join ".devenv" "profile")
+        let embedded_runtime_profile = ($tmpdir | path join "runtime_owned_profile")
         let stale_env_profile = ($tmpdir | path join "stale_profile")
         let launch_state_path = ($state_dir | path join "state" "launch_state.json")
         let launch_state_profile = ($tmpdir | path join "recorded_profile")
@@ -643,15 +655,12 @@ def test_profile_resolution_policies_separate_runtime_owned_and_current_session_
         "" | save --force --raw ($runtime_dir | path join "devenv.yaml")
         "" | save --force --raw ($runtime_dir | path join "devenv.lock")
         "" | save --force --raw ($runtime_dir | path join "CHANGELOG.md")
-        mkdir ($runtime_project | path join ".devenv" "gc")
+        mkdir ($runtime_project | path join ".devenv")
         ^ln -s ($runtime_dir | path join "devenv.nix") ($runtime_project | path join "devenv.nix")
+        mkdir $embedded_runtime_profile
         mkdir $stale_env_profile
         mkdir $launch_state_profile
-        [
-            "#!/bin/sh"
-            $"declare -x DEVENV_PROFILE=\"($embedded_runtime_profile)\""
-        ] | str join "\n" | save --force --raw $gc_shell
-        ^chmod +x $gc_shell
+        ^ln -s $embedded_runtime_profile $runtime_project_profile
         {
             combined_hash: "ignored-for-resolve-built-profile"
             profile_path: $launch_state_profile
@@ -670,6 +679,8 @@ def test_profile_resolution_policies_separate_runtime_owned_and_current_session_
             YAZELIX_STATE_DIR: $state_dir
             YAZELIX_RUNTIME_DIR: $runtime_dir
             DEVENV_PROFILE: $stale_env_profile
+            IN_YAZELIX_SHELL: null
+            YAZELIX_TERMINAL: null
         } {
             ^nu -c $snippet | complete
         })
@@ -679,6 +690,8 @@ def test_profile_resolution_policies_separate_runtime_owned_and_current_session_
             YAZELIX_STATE_DIR: $state_dir
             YAZELIX_RUNTIME_DIR: $runtime_dir
             DEVENV_PROFILE: $stale_env_profile
+            IN_YAZELIX_SHELL: null
+            YAZELIX_TERMINAL: null
             ZELLIJ_SESSION_NAME: "not-yazelix"
         } {
             ^nu -c $snippet | complete
@@ -689,6 +702,7 @@ def test_profile_resolution_policies_separate_runtime_owned_and_current_session_
             YAZELIX_STATE_DIR: $state_dir
             YAZELIX_RUNTIME_DIR: $runtime_dir
             DEVENV_PROFILE: $stale_env_profile
+            IN_YAZELIX_SHELL: null
             YAZELIX_TERMINAL: "ghostty"
         } {
             ^nu -c $snippet | complete
@@ -1317,6 +1331,7 @@ export def run_workspace_canonical_tests [] {
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
         (test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env)
         (test_yzx_desktop_launch_falls_back_to_hidden_wait_when_no_visible_bootstrap_terminal_exists)
+        (test_desktop_fast_path_rejects_bootstrap_terminal_substitution_for_explicit_terminal)
         (test_profile_resolution_policies_separate_runtime_owned_and_current_session_state)
         (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
         (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
