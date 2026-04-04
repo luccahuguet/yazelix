@@ -193,10 +193,11 @@ jobs:
     needs: [detect_integration_changes, validate]
     if: ${{ needs.validate.result == 'success' && needs.detect_integration_changes.outputs.run_runtime_contract == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       YAZELIX_DIR: ${{ github.workspace }}
+      FLAKE_INSTALL_TEMP_HOME: ${{ runner.temp }}/yazelix_flake_install_smoke
     defaults:
       run:
         shell: nu {0}
@@ -222,5 +223,8 @@ jobs:
         with:
           version: "0.111.0"
 
-      - name: Validate cold flake install rebuild smoke
-        run: nu nushell/scripts/dev/validate_flake_install.nu
+      - name: Run cold flake install rebuild
+        run: nu nushell/scripts/dev/validate_flake_install.nu install $env.FLAKE_INSTALL_TEMP_HOME
+
+      - name: Verify cold flake installed runtime
+        run: nu nushell/scripts/dev/validate_flake_install.nu verify $env.FLAKE_INSTALL_TEMP_HOME

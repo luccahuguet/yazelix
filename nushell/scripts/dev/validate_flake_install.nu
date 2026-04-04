@@ -3,11 +3,20 @@
 use ../utils/common.nu resolve_external_command_path
 use ./devenv_lock_contract.nu [DEVENV_SKEW_WARNING get_locked_devenv_package_root]
 
-const INSTALL_TIMEOUT_SECONDS = 900
+const INSTALL_TIMEOUT_SECONDS = 1500
 const PROBE_TIMEOUT_SECONDS = 60
+const SHELL_ENTER_TIMEOUT_SECONDS = 120
 
 def make_temp_home [] {
     (^mktemp -d /tmp/yazelix_flake_install_XXXXXX | str trim)
+}
+
+def prepare_temp_home [temp_home: string] {
+    let parent = ($temp_home | path dirname)
+    mkdir $parent
+    if ($temp_home | path exists) {
+        rm -rf $temp_home
+    }
 }
 
 def require_path_exists [path: string, label: string] {
@@ -278,7 +287,7 @@ def verify_installed_runtime [temp_home: string] {
     let shell_bin = ($shell_command | first)
     let shell_args = ($shell_command | skip 1)
     let shell_probe = (
-        run_completed_external "running installed runtime shell-enter probe" $shell_bin $shell_args $INSTALL_TIMEOUT_SECONDS
+        run_completed_external "running installed runtime shell-enter probe" $shell_bin $shell_args $SHELL_ENTER_TIMEOUT_SECONDS
     )
 
     if $shell_probe.exit_code != 0 {
@@ -298,8 +307,8 @@ def verify_installed_runtime [temp_home: string] {
     }
 }
 
-export def main [] {
-    let temp_home = (make_temp_home)
+def run_install_phase [temp_home: string] {
+    prepare_temp_home $temp_home
 
     let install_result = (run_flake_install $temp_home)
     if $install_result.exit_code != 0 {
@@ -312,6 +321,45 @@ export def main [] {
         error make { msg: "Flake install smoke validation failed while running `nix run .#install`" }
     }
 
+    print "✅ Flake install smoke build phase passed"
+}
+
+def run_verify_phase [temp_home: string] {
+    require_path_exists $temp_home "flake install smoke temp home"
     verify_installed_runtime $temp_home
-    print "✅ Flake install smoke check passed"
+    print "✅ Flake install smoke verification phase passed"
+}
+
+export def main [phase?: string, temp_home?: string] {
+    let selected_phase = ($phase | default "all")
+
+    match $selected_phase {
+        "all" => {
+            let resolved_temp_home = if $temp_home == null {
+                make_temp_home
+            } else {
+                prepare_temp_home $temp_home
+                $temp_home
+            }
+
+            run_install_phase $resolved_temp_home
+            run_verify_phase $resolved_temp_home
+            print "✅ Flake install smoke check passed"
+        }
+        "install" => {
+            if $temp_home == null {
+                error make { msg: "The `install` phase requires an explicit temp_home path" }
+            }
+            run_install_phase $temp_home
+        }
+        "verify" => {
+            if $temp_home == null {
+                error make { msg: "The `verify` phase requires an explicit temp_home path" }
+            }
+            run_verify_phase $temp_home
+        }
+        _ => {
+            error make { msg: $"Unsupported flake install smoke phase `($selected_phase)`. Expected one of: all, install, verify" }
+        }
+    }
 }
