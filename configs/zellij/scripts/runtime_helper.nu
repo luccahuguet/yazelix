@@ -1,9 +1,9 @@
 #!/usr/bin/env nu
 
-use ../../../nushell/scripts/utils/common.nu [get_yazelix_runtime_reference_dir resolve_yazelix_nu_bin]
+use ../../../nushell/scripts/utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
 
 export def get_runtime_dir [] {
-    let expanded_runtime_dir = (get_yazelix_runtime_reference_dir | path expand)
+    let expanded_runtime_dir = (get_yazelix_runtime_dir | path expand)
     if not ($expanded_runtime_dir | path exists) {
         error make {msg: $"Resolved Yazelix runtime directory does not exist: ($expanded_runtime_dir)"}
     }

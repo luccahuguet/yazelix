@@ -785,6 +785,63 @@ def test_generate_merged_yazi_config_syncs_starship_plugin_config [] {
     $result
 }
 
+# Regression: source-checkout sessions must generate runtime-owned Yazi and Zellij artifacts against the active runtime, not runtime/current.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_generated_runtime_configs_prefer_active_runtime_over_installed_reference [] {
+    print "🧪 Testing generated Yazi and Zellij runtime configs prefer the active runtime over runtime/current..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmpdir = (^mktemp -d /tmp/yazelix_runtime_identity_split_XXXXXX | str trim)
+    let fake_home = ($tmpdir | path join "home")
+    let fake_state_dir = ($tmpdir | path join "state")
+    let fake_installed_runtime = ($tmpdir | path join "fake_installed_runtime")
+    let out_dir = ($tmpdir | path join "out")
+    mkdir ($fake_state_dir | path join "runtime")
+    mkdir ($fake_installed_runtime | path join "configs" "helix")
+    mkdir ($fake_home | path join ".config")
+    ^ln -s $fake_installed_runtime ($fake_state_dir | path join "runtime" "current")
+
+    let result = (try {
+        let generated = (with-env {
+            HOME: $fake_home
+            XDG_CONFIG_HOME: ($fake_home | path join ".config")
+            XDG_DATA_HOME: ($fake_home | path join ".local" "share")
+            YAZELIX_CONFIG_DIR: ($fake_home | path join ".config" "yazelix")
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_STATE_DIR: $fake_state_dir
+        } {
+            generate_merged_yazi_config $repo_root --quiet | ignore
+            generate_merged_zellij_config $repo_root $out_dir | ignore
+            {
+                yazi_toml: (open --raw ($fake_state_dir | path join "configs" "yazi" "yazi.toml"))
+                zellij_config: (open --raw ($out_dir | path join "config.kdl"))
+                zellij_layout: (open --raw ($out_dir | path join "layouts" "yzx_side.kdl"))
+            }
+        })
+
+        if (
+            ($generated.yazi_toml | str contains $"nu ($repo_root | path join "nushell" "scripts" "integrations" "open_file.nu")")
+            and not ($generated.yazi_toml | str contains $fake_installed_runtime)
+            and ($generated.zellij_config | str contains $repo_root)
+            and not ($generated.zellij_config | str contains $fake_installed_runtime)
+            and ($generated.zellij_layout | str contains $repo_root)
+            and not ($generated.zellij_layout | str contains $fake_installed_runtime)
+        ) {
+            print "  ✅ Generated runtime-owned configs now stay pinned to the active runtime in source-checkout sessions"
+            true
+        } else {
+            print $"  ❌ Runtime-owned generated configs still leaked runtime/current: fake_installed_runtime=($fake_installed_runtime)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Defends: sidebar width propagates into generated Zellij layouts and plugin config.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config [] {
@@ -941,6 +998,7 @@ export def run_generated_config_canonical_tests [] {
         (test_config_schema_rejects_removed_layout_widget)
         (test_generate_merged_yazi_config_relocates_legacy_user_overrides)
         (test_generate_merged_yazi_config_syncs_starship_plugin_config)
+        (test_generated_runtime_configs_prefer_active_runtime_over_installed_reference)
         (test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it)
         (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)

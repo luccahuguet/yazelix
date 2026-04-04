@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Generate a Yazelix-managed Helix config.toml for Yazelix-managed Helix sessions.
 
-use ../utils/common.nu [get_yazelix_runtime_reference_dir get_yazelix_state_dir get_yazelix_user_config_dir]
+use ../utils/common.nu [get_yazelix_runtime_dir get_yazelix_state_dir get_yazelix_user_config_dir]
 
 const MANAGED_REVEAL_COMMAND = ':sh yzx reveal "%{buffer_name}"'
 
@@ -10,7 +10,7 @@ export def get_managed_reveal_command [] {
 }
 
 def get_helix_template_path [] {
-    (get_yazelix_runtime_reference_dir) | path join "configs" "helix" "yazelix_config.toml"
+    (get_yazelix_runtime_dir) | path join "configs" "helix" "yazelix_config.toml"
 }
 
 export def get_managed_helix_user_config_dir [] {

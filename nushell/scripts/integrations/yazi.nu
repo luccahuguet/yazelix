@@ -588,7 +588,6 @@ def open_with_generic_editor [file_path: path, editor: string, yazi_id: string] 
 # Main file opening function - dispatches to appropriate editor handler
 export def open_file_with_editor [file_path: path] {
     log_to_file "open_editor.log" $"open_file_with_editor called with file_path: '($file_path)'"
-    print $"DEBUG: file_path received: ($file_path), type: ($file_path | path type)"
 
     if not ($file_path | path exists) {
         let error_msg = $"File path ($file_path) does not exist"
