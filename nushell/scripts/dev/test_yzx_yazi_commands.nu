@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ./yzx_test_helpers.nu [setup_managed_config_fixture]
-use ../integrations/yazi.nu [get_ya_command, get_yazi_command, resolve_managed_editor_open_strategy]
+use ../integrations/yazi.nu [get_managed_editor_kind, get_ya_command, get_yazi_command, resolve_managed_editor_open_strategy]
 
 # Defends: managed editor open strategy routes missing and existing states correctly.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
@@ -121,10 +121,51 @@ ya_command = "/opt/custom/ya"
     }
 }
 
+# Regression: managed Helix sessions expose a wrapper path in EDITOR, so Yazi-side editor detection must still resolve Helix.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_get_managed_editor_kind_accepts_managed_helix_wrapper_env [] {
+    print "🧪 Testing managed editor detection accepts the Yazelix Helix wrapper env..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_yazi_managed_helix_wrapper"
+        '[core]
+recommended_deps = true
+'
+    )
+
+    let result = (try {
+        let repo_root = $fixture.repo_root
+        let detected = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            EDITOR: ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
+            YAZELIX_MANAGED_HELIX_BINARY: ($repo_root | path join ".devenv" "profile" "bin" "hx")
+        } {
+            get_managed_editor_kind
+        })
+
+        if $detected == "helix" {
+            print "  ✅ Managed editor detection now treats the Yazelix Helix wrapper as a Helix session"
+            true
+        } else {
+            print $"  ❌ Unexpected detected editor kind: ($detected | to nuon)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 export def run_yazi_canonical_tests [] {
     [
         (test_managed_editor_open_strategy_routes_missing_and_existing_states)
         (test_yazi_command_resolvers_honor_defaults_and_overrides)
+        (test_get_managed_editor_kind_accepts_managed_helix_wrapper_env)
     ]
 }
 

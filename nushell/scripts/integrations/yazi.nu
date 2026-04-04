@@ -47,7 +47,13 @@ def run_ya_emit_to [yazi_id: string, action: string, ...args: string] {
 # Check if the editor command is Helix (supports both simple names and full paths)
 # This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
 def is_helix_editor [editor: string] {
-    ($editor | str ends-with "/hx") or ($editor == "hx") or ($editor | str ends-with "/helix") or ($editor == "helix")
+    let normalized = ($editor | str trim)
+    let basename = if ($normalized | is-empty) { "" } else { $normalized | path basename }
+    ($normalized | str ends-with "/hx")
+        or ($normalized == "hx")
+        or ($normalized | str ends-with "/helix")
+        or ($normalized == "helix")
+        or ($basename == "yazelix_hx.sh")
 }
 
 # Check if the editor command is Neovim (supports both simple names and full paths)
@@ -64,8 +70,9 @@ export def get_managed_editor_kind [] {
     } else {
         $env.EDITOR? | default ""
     }
+    let managed_helix_binary = ($env.YAZELIX_MANAGED_HELIX_BINARY? | default "" | into string | str trim)
 
-    if (is_helix_editor $editor) {
+    if ($managed_helix_binary | is-not-empty) or (is_helix_editor $editor) {
         "helix"
     } else if (is_neovim_editor $editor) {
         "neovim"
