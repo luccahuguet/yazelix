@@ -239,13 +239,17 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
 
     let result = (try {
         let fake_home = ($tmpdir | path join "home")
-        let runtime_dir = ($tmpdir | path join "runtime")
+        let runtime_store = ($tmpdir | path join "runtime_store")
+        let runtime_reference_root = ($fake_home | path join ".local" "share" "yazelix" "runtime")
+        let runtime_dir = ($runtime_store | path expand)
         let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
         let nu_log = ($tmpdir | path join "nu_invocation.txt")
         mkdir $fake_profile_bin
-        mkdir ($runtime_dir | path join "nushell" "scripts" "core")
+        mkdir ($runtime_dir | path join "nushell" "scripts" "yzx")
+        mkdir $runtime_reference_root
 
-        ^ln -s (repo_path "nushell" "scripts" "core" "launch_yazelix.nu") ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+        ^ln -s $runtime_dir ($runtime_reference_root | path join "current")
+        ^ln -s (repo_path "nushell" "scripts" "yzx" "launch.nu") ($runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
 
         [
             "#!/bin/sh"

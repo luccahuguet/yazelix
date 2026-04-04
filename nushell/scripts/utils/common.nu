@@ -30,13 +30,42 @@ def is_valid_runtime_dir [candidate?: string] {
         return false
     }
 
-    let candidate_path = ($candidate | path expand)
+    let candidate_path = (resolve_existing_path $candidate)
+    if $candidate_path == null {
+        return false
+    }
     let sentinel = ($candidate_path | path join "yazelix_default.toml")
     ($candidate_path | path exists) and ($sentinel | path exists)
 }
 
+def resolve_existing_path [candidate?: string] {
+    if $candidate == null {
+        return null
+    }
+
+    let expanded = ($candidate | path expand)
+    if not ($expanded | path exists) {
+        return null
+    }
+
+    try {
+        let result = (^readlink -f $expanded | complete)
+        if $result.exit_code == 0 {
+            let resolved = ($result.stdout | str trim)
+            if ($resolved | is-not-empty) and ($resolved | path exists) {
+                return $resolved
+            }
+        }
+    } catch {}
+
+    $expanded
+}
+
 def get_inferred_runtime_dir [] {
-    let candidate = ($INFERRED_RUNTIME_DIR | path expand)
+    let candidate = (resolve_existing_path $INFERRED_RUNTIME_DIR)
+    if $candidate == null {
+        return null
+    }
     let sentinel = ($candidate | path join "yazelix_default.toml")
     if ($candidate | path exists) and ($sentinel | path exists) {
         $candidate
@@ -48,7 +77,7 @@ def get_inferred_runtime_dir [] {
 def get_installed_runtime_dir [] {
     let candidate = (get_yazelix_state_dir | path join "runtime" "current")
     if (is_valid_runtime_dir $candidate) {
-        $candidate | path expand
+        resolve_existing_path $candidate
     } else {
         null
     }
@@ -151,16 +180,13 @@ export def get_yazelix_runtime_dir [] {
     )
     let installed_runtime = (get_installed_runtime_dir)
     let inferred_runtime = (get_inferred_runtime_dir)
-    let configured_path = if ($configured | is-not-empty) { $configured | path expand } else { "" }
-
-    if ($configured | is-not-empty) and ($configured_path | str starts-with "/nix/store/") and ($installed_runtime != null) and ($configured_path != $installed_runtime) {
-        $installed_runtime
-    } else if ($configured | is-not-empty) and (is_valid_runtime_dir $configured) {
-        if ($inferred_runtime != null) and ($installed_runtime != null) and ($configured_path == $installed_runtime) and ($configured_path != $inferred_runtime) {
-            $inferred_runtime
-        } else {
-            $configured_path
-        }
+    let configured_path = if ($configured | is-not-empty) {
+        resolve_existing_path $configured
+    } else {
+        null
+    }
+    if ($configured | is-not-empty) and ($configured_path != null) and (is_valid_runtime_dir $configured_path) {
+        $configured_path
     } else if $inferred_runtime != null {
         $inferred_runtime
     } else if $installed_runtime != null {

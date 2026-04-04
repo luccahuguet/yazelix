@@ -682,6 +682,7 @@ in
     fi
 
     runtime_root="$DEVENV_ROOT"
+    setup_runtime_root="''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}"
 
     unset YAZELIX_RUNTIME_DIR
     unset YAZELIX_DIR
@@ -712,15 +713,15 @@ in
 
     # Environment setup now reads directly from yazelix.toml (single source of truth)
     if [ "$YAZELIX_SHELLHOOK_SKIP_WELCOME" = "true" ]; then
-      ${pkgs.nushell}/bin/nu "$runtime_root/nushell/scripts/setup/environment.nu" --skip-welcome
+      YAZELIX_RUNTIME_DIR="$setup_runtime_root" ${pkgs.nushell}/bin/nu "$runtime_root/nushell/scripts/setup/environment.nu" --skip-welcome
       unset YAZELIX_SHELLHOOK_SKIP_WELCOME
     else
-      ${pkgs.nushell}/bin/nu "$runtime_root/nushell/scripts/setup/environment.nu"
+      YAZELIX_RUNTIME_DIR="$setup_runtime_root" ${pkgs.nushell}/bin/nu "$runtime_root/nushell/scripts/setup/environment.nu"
     fi
 
     # Save config hash after successful environment setup
     if command -v ${pkgs.nushell}/bin/nu >/dev/null 2>&1; then
-      ${pkgs.nushell}/bin/nu -c "use \"$runtime_root/nushell/scripts/utils/config_state.nu\" [compute_config_state mark_config_state_applied]; let state = compute_config_state; mark_config_state_applied \$state" 2>/dev/null || true
+      YAZELIX_RUNTIME_DIR="$setup_runtime_root" ${pkgs.nushell}/bin/nu -c "use \"$runtime_root/nushell/scripts/utils/config_state.nu\" [compute_config_state mark_config_state_applied]; let state = compute_config_state; mark_config_state_applied \$state" 2>/dev/null || true
     fi
   '';
 }
