@@ -22,7 +22,6 @@ fi
 RUNTIME_DIR="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
 runtime_env_script="$RUNTIME_DIR/shells/posix/runtime_env.sh"
 core_script="$RUNTIME_DIR/nushell/scripts/core/yazelix.nu"
-reveal_script="$RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu"
 
 if [ ! -f "$runtime_env_script" ]; then
   echo "Error: Missing Yazelix runtime env helper: $runtime_env_script" >&2
@@ -32,23 +31,6 @@ fi
 export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$RUNTIME_DIR"
 . "$runtime_env_script" || exit 1
 unset YAZELIX_BOOTSTRAP_RUNTIME_DIR
-
-if [ ! -f "$core_script" ]; then
-  echo "Error: Missing Yazelix CLI module: $core_script" >&2
-  echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
-  exit 1
-fi
-
-if [ "${1:-}" = "reveal" ]; then
-  if [ ! -f "$reveal_script" ]; then
-    echo "Error: Missing Yazelix reveal helper: $reveal_script" >&2
-    echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
-    exit 1
-  fi
-
-  shift
-  exec "$YAZELIX_NU_BIN" "$reveal_script" "$@"
-fi
 
 format_nu_token() {
   case "$1" in
@@ -63,6 +45,56 @@ format_nu_token() {
       ;;
   esac
 }
+
+exec_leaf_module_command() {
+  module_path="$1"
+  command_prefix="$2"
+  shift 2
+
+  if [ ! -f "$module_path" ]; then
+    echo "Error: Missing Yazelix leaf command module: $module_path" >&2
+    echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
+    exit 1
+  fi
+
+  nu_command="use $(format_nu_token "$module_path") *; $command_prefix"
+  for arg in "$@"; do
+    nu_command="$nu_command $(format_nu_token "$arg")"
+  done
+
+  exec "$YAZELIX_NU_BIN" -c "$nu_command"
+}
+
+dispatch_leaf_command() {
+  case "${1:-}" in
+    reveal)
+      reveal_script="$RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu"
+      shift
+      if [ ! -f "$reveal_script" ]; then
+        echo "Error: Missing Yazelix reveal helper: $reveal_script" >&2
+        echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
+        exit 1
+      fi
+      exec "$YAZELIX_NU_BIN" "$reveal_script" "$@"
+      ;;
+    menu)
+      shift
+      exec_leaf_module_command "$RUNTIME_DIR/nushell/scripts/yzx/menu.nu" "yzx menu" "$@"
+      ;;
+    popup)
+      shift
+      exec_leaf_module_command "$RUNTIME_DIR/nushell/scripts/yzx/popup.nu" "yzx popup" "$@"
+      ;;
+  esac
+}
+
+dispatch_leaf_command "$@"
+
+if [ ! -f "$core_script" ]; then
+  echo "Error: Missing Yazelix CLI module: $core_script" >&2
+  echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
+  exit 1
+fi
 
 nu_command="use $(format_nu_token "$core_script") *; yzx"
 

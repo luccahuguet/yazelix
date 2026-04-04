@@ -292,6 +292,66 @@ def test_yzx_cli_reveal_uses_lightweight_reveal_helper [] {
     $result
 }
 
+# Regression: yzx menu must use the lightweight menu module instead of bootstrapping the full command suite.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_cli_menu_uses_lightweight_menu_module [] {
+    print "🧪 Testing yzx CLI menu uses the lightweight menu module..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_posix_menu_cli_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
+        let nu_log = ($tmpdir | path join "nu_invocation.txt")
+        mkdir $fake_profile_bin
+
+        [
+            "#!/bin/sh"
+            ": > \"$NU_LOG\""
+            "for arg in \"$@\"; do"
+            "  printf '%s\n' \"$arg\" >> \"$NU_LOG\""
+            "done"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($fake_profile_bin | path join "nu")
+        ^chmod +x ($fake_profile_bin | path join "nu")
+
+        let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
+        let output = (with-env {
+            HOME: $fake_home
+            NU_LOG: $nu_log
+        } {
+            ^$launcher_script menu --popup | complete
+        })
+
+        let invocation = if ($nu_log | path exists) {
+            open --raw $nu_log | lines
+        } else {
+            []
+        }
+        let expected_menu_script = (repo_path "nushell" "scripts" "yzx" "menu.nu")
+
+        if (
+            ($output.exit_code == 0)
+            and (($invocation | get -o 0 | default "") == "-c")
+            and (($invocation | get -o 1 | default "") | str contains $expected_menu_script)
+            and (($invocation | get -o 1 | default "") | str contains "yzx menu --popup")
+            and not (($invocation | get -o 1 | default "") | str contains "core/yazelix.nu")
+        ) {
+            print "  ✅ yzx menu now dispatches through the lightweight menu module instead of the full command suite"
+            true
+        } else {
+            print $"  ❌ Unexpected yzx menu invocation: exit=($output.exit_code) args=($invocation | to json -r) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Defends: nonpersistent launch --here uses the requested directory.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions [] {
@@ -546,6 +606,7 @@ export def run_workspace_canonical_tests [] {
     [
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
         (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
+        (test_yzx_cli_menu_uses_lightweight_menu_module)
         (test_launch_falls_through_after_immediate_terminal_failure)
         (test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions)
         (test_launch_here_path_warns_when_existing_persistent_session_ignores_it)
