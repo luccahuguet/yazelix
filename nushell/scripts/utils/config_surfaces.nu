@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Shared helpers for loading Yazelix config surfaces.
 
-use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_user_config_dir]
+use common.nu [get_yazelix_config_dir get_yazelix_user_config_dir require_yazelix_runtime_dir]
 use failure_classes.nu [format_failure_classification]
 
 export const MAIN_CONFIG_FILENAME = "yazelix.toml"
@@ -228,7 +228,7 @@ export def reconcile_primary_config_surfaces [config_root?: string, runtime_root
 
 export def get_primary_config_paths [config_root?: string, runtime_root?: string] {
     let resolved_config_root = if $config_root == null { get_yazelix_config_dir } else { $config_root | path expand }
-    let resolved_runtime_root = if $runtime_root == null { get_yazelix_runtime_dir } else { $runtime_root | path expand }
+    let resolved_runtime_root = if $runtime_root == null { require_yazelix_runtime_dir } else { $runtime_root | path expand }
     let user_config_dir = (get_yazelix_user_config_dir $resolved_config_root)
 
     {

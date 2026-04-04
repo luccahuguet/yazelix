@@ -6,7 +6,7 @@ use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
 use ../utils/launch_state.nu [record_launch_state resolve_built_profile]
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
-use ../utils/common.nu [get_yazelix_runtime_dir resolve_zellij_default_shell]
+use ../utils/common.nu [require_yazelix_runtime_dir resolve_zellij_default_shell]
 use ../utils/failure_classes.nu [format_failure_classification]
 use ../utils/upgrade_summary.nu [maybe_show_first_run_upgrade_summary]
 use ../setup/welcome.nu [show_welcome build_welcome_message]
@@ -46,7 +46,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     let config = parse_yazelix_config
     let sidebar_enabled = ($config.enable_sidebar? | default true)
     let configured_layout = if $sidebar_enabled { "yzx_side" } else { "yzx_no_side" }
-    let yazelix_dir = (require_existing_directory (get_yazelix_runtime_dir) "Yazelix runtime directory")
+    let yazelix_dir = (require_existing_directory (require_yazelix_runtime_dir) "Yazelix runtime directory")
     let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
 
     let log_dir = ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)

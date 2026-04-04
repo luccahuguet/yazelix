@@ -384,6 +384,52 @@ def test_installed_runtime_resolution_prefers_runtime_current_over_nix_source_mi
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: runtime-root resolution must fail fast instead of silently falling back to the config root.
+def test_runtime_resolution_fails_fast_without_valid_runtime_root [] {
+    print "🧪 Testing runtime-root resolution fails fast without a valid runtime root..."
+
+    let tmp_root = (^mktemp -d /tmp/yazelix_missing_runtime_resolution_XXXXXX | str trim)
+    let fake_home = ($tmp_root | path join "home")
+    let fake_config_dir = ($fake_home | path join ".config" "yazelix")
+    let fake_state_dir = ($tmp_root | path join "state")
+    let fake_common_path = ($tmp_root | path join "common.nu")
+
+    mkdir ($fake_home | path join ".config")
+    mkdir $fake_config_dir
+    mkdir $fake_state_dir
+    cp ((get_repo_root) | path join "nushell" "scripts" "utils" "common.nu") $fake_common_path
+
+    let result = (try {
+        let output = (with-env {
+            HOME: $fake_home
+            YAZELIX_CONFIG_DIR: $fake_config_dir
+            YAZELIX_STATE_DIR: $fake_state_dir
+        } {
+            ^nu -c $"use \"($fake_common_path)\" [require_yazelix_runtime_dir]; require_yazelix_runtime_dir" | complete
+        })
+        let stderr = ($output.stderr | str trim)
+
+        if (
+            ($output.exit_code != 0)
+            and ($stderr | str contains "Could not resolve a valid Yazelix runtime root")
+            and not ($stderr | str contains $fake_config_dir)
+        ) {
+            print "  ✅ Runtime-root resolution now fails fast instead of silently treating the config root as runtime code"
+            true
+        } else {
+            print $"  ❌ Unexpected missing-runtime result: exit=($output.exit_code) stderr=($stderr)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 export def run_shell_managed_config_contract_tests [] {
     [
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
@@ -394,6 +440,7 @@ export def run_shell_managed_config_contract_tests [] {
         (test_managed_fish_config_does_not_export_helix_mode_env)
         (test_source_checkout_runtime_resolution_beats_installed_runtime)
         (test_installed_runtime_resolution_prefers_runtime_current_over_nix_source_mirror)
+        (test_runtime_resolution_fails_fast_without_valid_runtime_root)
     ]
 }
 

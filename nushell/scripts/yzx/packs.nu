@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # yzx packs - Show enabled packs and their sizes
 
-use ../utils/common.nu [ensure_yazelix_runtime_project_dir]
+use ../utils/common.nu [get_existing_yazelix_runtime_project_dir]
 use ../utils/config_parser.nu parse_yazelix_config
 
 # Format bytes to human readable
@@ -20,7 +20,10 @@ def format_size [bytes: int] {
 # Get the devenv shell derivation path (reliable source of truth)
 # Uses .devenv/gc/shell symlink which is the authoritative GC root for the current shell
 def get_devenv_shell [] {
-    let yazelix_dir = (ensure_yazelix_runtime_project_dir)
+    let yazelix_dir = (get_existing_yazelix_runtime_project_dir)
+    if $yazelix_dir == null {
+        return null
+    }
     let shell_link = ($yazelix_dir | path join ".devenv/gc/shell")
     
     if ($shell_link | path exists) {
@@ -156,8 +159,8 @@ export def "yzx packs" [
     --expand (-e)    # Show individual packages in each pack
     --all (-a)       # Show all declared packs, not just enabled
 ] {
-    let yazelix_dir = (ensure_yazelix_runtime_project_dir)
     let config = parse_yazelix_config
+    let runtime_project_dir = (get_existing_yazelix_runtime_project_dir)
 
     let enabled_packs = $config.pack_names? | default []
     let declarations = $config.pack_declarations? | default {}
@@ -287,13 +290,14 @@ export def "yzx packs" [
         print $"(ansi dark_gray_dimmed)Use --expand to see packages in each pack(ansi reset)"
     }
 
-    # Show yzx repo size
-    print ""
-    print $"(ansi green_bold)Local(ansi reset)"
-    let repo_size_result = (^du -sb $yazelix_dir | complete)
-    if $repo_size_result.exit_code != 0 {
-        error make {msg: "Failed to measure yzx repo size with du -sb"}
+    if $runtime_project_dir != null {
+        print ""
+        print $"(ansi green_bold)Local(ansi reset)"
+        let runtime_project_size_result = (^du -sb $runtime_project_dir | complete)
+        if $runtime_project_size_result.exit_code != 0 {
+            error make {msg: "Failed to measure local runtime project size with du -sb"}
+        }
+        let runtime_project_size = ($runtime_project_size_result.stdout | split row "\t" | first | into int)
+        print $"runtime project: (ansi cyan)(format_size $runtime_project_size)(ansi reset)"
     }
-    let repo_size = ($repo_size_result.stdout | split row "\t" | first | into int)
-    print $"yzx repo: (ansi cyan)(format_size $repo_size)(ansi reset)"
 }

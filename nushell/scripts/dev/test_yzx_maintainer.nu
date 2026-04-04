@@ -164,6 +164,77 @@ def test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env [] {
     }
 }
 
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Regression: runtime-project lookup must stay read-only while materialization remains explicit.
+def test_runtime_project_lookup_stays_read_only_until_materialized [] {
+    print "🧪 Testing runtime-project lookup stays read-only until materialized..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_runtime_project_split_XXXXXX | str trim)
+    let state_dir = ($tmp_root | path join "state")
+    let runtime_dir = ($tmp_root | path join "runtime")
+    let project_dir = ($state_dir | path join "runtime" "project")
+    let stale_runtime_dir = ($tmp_root | path join "stale_runtime")
+    let common_script = ($repo_root | path join "nushell" "scripts" "utils" "common.nu")
+
+    mkdir $state_dir
+    mkdir $runtime_dir
+    mkdir $project_dir
+    mkdir $stale_runtime_dir
+
+    for entry in ["assets", "config_metadata", "configs", "nushell", "rust_plugins", "shells", "CHANGELOG.md", "devenv.lock", "devenv.nix", "devenv.yaml", "yazelix_default.toml", "yazelix_packs_default.toml"] {
+        ^ln -s ($repo_root | path join $entry) ($runtime_dir | path join $entry)
+    }
+    "stale" | save --force ($stale_runtime_dir | path join "devenv.nix")
+    ^ln -s ($stale_runtime_dir | path join "devenv.nix") ($project_dir | path join "devenv.nix")
+    "stale-docs" | save --force ($project_dir | path join "docs")
+
+    let result = (try {
+        let snippet = (
+            [
+                $"use \"($common_script)\" [get_existing_yazelix_runtime_project_dir materialize_yazelix_runtime_project_dir]"
+                "print ((get_existing_yazelix_runtime_project_dir) | default '<missing>')"
+                "print (materialize_yazelix_runtime_project_dir)"
+                "print ((get_existing_yazelix_runtime_project_dir) | default '<missing>')"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            YAZELIX_RUNTIME_DIR: $runtime_dir
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            do { ^nu -c $snippet } | complete
+        })
+        let lines = ($output.stdout | lines)
+        let devenv_nix_target = ($project_dir | path join "devenv.nix")
+        let docs_target = ($project_dir | path join "docs")
+        let resolved_devenv_nix_target = (if ($devenv_nix_target | path exists) { ^readlink -f $devenv_nix_target | str trim } else { "" })
+        let resolved_runtime_devenv_nix = (^readlink -f ($runtime_dir | path join "devenv.nix") | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and (($lines | get -o 0 | default "") == "<missing>")
+            and (($lines | get -o 1 | default "") == $project_dir)
+            and (($lines | get -o 2 | default "") == $project_dir)
+            and ($devenv_nix_target | path exists)
+            and (($devenv_nix_target | path type) == "symlink")
+            and ($resolved_devenv_nix_target == $resolved_runtime_devenv_nix)
+            and not ($docs_target | path exists)
+        ) {
+            print "  ✅ Stale runtime-project state is ignored until explicit materialization replaces it"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) lines=(($lines | to json -r)) target_exists=(($devenv_nix_target | path exists)) target_type=(if ($devenv_nix_target | path exists) { $devenv_nix_target | path type } else { '<missing>' }) target_resolved=($resolved_devenv_nix_target) docs_exists=(($docs_target | path exists)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 # Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=1 total=6/10
 # Invariant: generated Nushell initializers restore current PATH entries ahead of the saved PATH.
 def test_nushell_initializer_restores_current_path_first [] {
@@ -201,6 +272,7 @@ def main [] {
         (test_issue_bead_comment_plan)
         (test_source_devenv_shell_clears_inherited_runtime_aliases)
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
+        (test_runtime_project_lookup_stays_read_only_until_materialized)
         (test_nushell_initializer_restores_current_path_first)
     ]
 

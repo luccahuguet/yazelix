@@ -3,7 +3,7 @@
 
 use logging.nu log_to_file
 use constants.nu [PINNED_NIX_VERSION]
-use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir get_yazelix_state_dir get_yazelix_runtime_reference_dir]
+use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir get_yazelix_state_dir get_yazelix_runtime_reference_dir require_yazelix_runtime_dir]
 use config_migration_transactions.nu [recover_stale_managed_config_transactions]
 use config_surfaces.nu [get_main_user_config_path reconcile_primary_config_surfaces]
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
@@ -440,7 +440,7 @@ export def check_environment_variables [] {
 # Check configuration files
 export def check_configuration [--recover-interrupted-transactions] {
     let config_dir = (get_yazelix_config_dir)
-    let runtime_dir = (get_yazelix_runtime_dir)
+    let runtime_dir = (require_yazelix_runtime_dir)
     let yazelix_legacy = ($config_dir | path join "yazelix.nix")
     let surface_paths = (try {
         {

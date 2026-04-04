@@ -19,7 +19,7 @@ The important architectural rule is that each subsystem should have a clear owne
 | Subsystem | Purpose | Examples | Main source of truth |
 | --- | --- | --- | --- |
 | Workspace | The terminal IDE experience users interact with directly | Zellij layouts, Yazi/editor flow, keybindings, managed panes, tab naming, workspace roots | Session and workspace state, pane orchestrator, workspace-focused commands |
-| Runtime | The environment and control plane that makes the workspace reproducible | `devenv`, packs, `yazelix.toml`, `yzx refresh`, `yzx restart`, `yzx run` | Dynamic user intent in managed TOML, deterministic shipped runtime code, and materialized generated state |
+| Runtime | The environment and control plane that makes the workspace reproducible | `devenv`, packs, `yazelix.toml`, `yzx refresh`, `yzx restart`, `yzx run` | Dynamic user intent in managed TOML, deterministic shipped runtime code, materialized/generated state, and live session activation state |
 | Integrations | Adapters between Yazelix and external systems | Home Manager, desktop entry, shell hooks, terminal-specific launchers, CI entrypoints | The supported contract of the subsystem being integrated, not ad hoc host assumptions |
 | Maintainer Workflow | The machinery that keeps the product evolving safely | Beads, CI, validators, release/version/update workflow, future specs | Beads graph, CI workflows, documented contracts, maintainer commands |
 
@@ -52,6 +52,7 @@ The runtime layer is what makes Yazelix reproducible and configurable:
 - shell and editor configuration in `yazelix.toml`
 - `devenv` evaluation and environment build logic
 - generated configs, cached launch state, and refresh/restart flows
+- live session activation state such as `DEVENV_PROFILE`, profile-derived `PATH`, and session markers
 
 This layer should answer questions like:
 
@@ -104,6 +105,7 @@ Each area should have one clear owner.
 - Dynamic user intent is one concern.
 - Deterministic runtime code is another concern.
 - Materialized/generated state is another concern.
+- Live session activation state is another concern.
 
 These should not be conflated.
 
@@ -112,10 +114,12 @@ Current direction:
 - code should resolve config root, runtime root, and state root through canonical helpers instead of treating one shell or checkout path as authoritative for everything
 - tests and helpers should not assume `~/.config/yazelix` is a repo checkout
 - setup and install flows may materialize generated state, but launch and refresh flows should own launch-profile recording
+- live session activation markers should be treated as process-local session state, not as persisted runtime truth
 - package-ready work should keep clarifying what is shipped, user-owned, and generated
 
 See [Config Surface And Launch Profile Contract](./specs/config_surface_and_launch_profile_contract.md) for the concrete runtime ownership model.
 See [Runtime Root Contract](./specs/runtime_root_contract.md) for the concrete split between config-owned paths, shipped runtime assets, and generated state.
+See [Runtime Activation State Contract](./specs/runtime_activation_state_contract.md) for the explicit fourth runtime layer that separates process-local activation markers from persisted launch/materialized state.
 See [Backend Capability Contract](./specs/backend_capability_contract.md) for the concrete capability buckets Yazelix expects from its runtime/environment layer before any alternative backend evaluation.
 See [Runtime Dependency And Launch Preflight Contract](./specs/runtime_dependency_preflight_contract.md) for the narrower user-facing dependency story that separates fast launch blockers from heavier doctor and install-smoke diagnostics.
 See [yzx Command Surface Backend Coupling](./specs/yzx_command_surface_backend_coupling.md) for the command-family audit that separates backend-required control-plane commands from workspace/config UX, runtime/distribution surfaces, and mixed seams.
@@ -193,6 +197,7 @@ For now, the right mental model is:
    - dynamic user intent
    - deterministic runtime code
    - materialized environment/generated state
+   - live session activation state
 3. Integrations connect Yazelix to external systems.
 4. Maintainer Workflow keeps the product coherent over time.
 

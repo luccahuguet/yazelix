@@ -7,7 +7,7 @@ use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_l
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../core/start_yazelix.nu [start_yazelix_session]
-use ../utils/common.nu [describe_build_parallelism get_yazelix_runtime_dir]
+use ../utils/common.nu [describe_build_parallelism require_yazelix_runtime_dir]
 use ../utils/constants.nu [TERMINAL_METADATA]
 use ../utils/runtime_contract_checker.nu [check_runtime_script require_runtime_check]
 
@@ -231,7 +231,7 @@ export def "yzx launch" [
             pwd
         }
 
-        let runtime_dir = (get_yazelix_runtime_dir)
+        let runtime_dir = (require_yazelix_runtime_dir)
         let launch_script = (require_launch_runtime_script ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu"))
 
         if $in_yazelix_shell {

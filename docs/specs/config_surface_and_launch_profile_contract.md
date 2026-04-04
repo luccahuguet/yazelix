@@ -2,9 +2,9 @@
 
 ## Summary
 
-Yazelix should treat configuration surfaces, generated runtime state, and cached launch profiles as three distinct concerns with explicit ownership. The canonical user-facing config surfaces are the managed TOML files under `~/.config/yazelix/user_configs/`, while Home Manager is an integration that renders the same user intent into those surfaces rather than inventing separate semantics. Generated runtime configs under `~/.local/share/yazelix/configs/` and cached launch-profile state under `~/.local/share/yazelix/state/` are derived artifacts, not user-owned sources of truth.
+Yazelix should treat configuration surfaces, generated runtime state, cached launch profiles, and live session activation as four distinct concerns with explicit ownership. The canonical user-facing config surfaces are the managed TOML files under `~/.config/yazelix/user_configs/`, while Home Manager is an integration that renders the same user intent into those surfaces rather than inventing separate semantics. Generated runtime configs under `~/.local/share/yazelix/configs/` and cached launch-profile state under `~/.local/share/yazelix/state/` are derived artifacts, not user-owned sources of truth. Process-local activation markers are a separate runtime layer again, not persisted launch truth.
 
-More concretely, Yazelix has three layers that should not collapse into one another:
+More concretely, Yazelix has four layers that should not collapse into one another:
 
 1. Dynamic user intent
    - `yazelix.toml`
@@ -17,8 +17,13 @@ More concretely, Yazelix has three layers that should not collapse into one anot
    - the `devenv` profile or shell that results from combining runtime code with user intent
    - generated configs under `~/.local/share/yazelix/configs/`
    - cached rebuild and launch state under `~/.local/share/yazelix/state/`
+4. Live session activation state
+   - `DEVENV_PROFILE`
+   - profile-derived `PATH` activation
+   - `IN_NIX_SHELL`, `IN_YAZELIX_SHELL`
+   - `YAZELIX_TERMINAL` and other session-local markers such as Zellij session state
 
-The config layer expresses what the user wants. The runtime layer expresses what Yazelix is. The materialized layer is the result of combining those two.
+The config layer expresses what the user wants. The runtime layer expresses what Yazelix is. The materialized layer is the result of combining those two. The activation layer is the process-local use of that result right now.
 
 ## Why
 
@@ -65,6 +70,10 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
   - shell-hook/setup work may materialize generated configs and mark rebuild inputs as applied
   - only real launch and refresh flows should record the active built launch profile
   - install/setup paths must not overwrite launch-profile state merely because they ran in some shell
+- Live session activation state is intentionally separate from launch-state recording:
+  - `launch_state.json` and rebuild hashes are persisted materialized state
+  - `DEVENV_PROFILE`, profile-derived `PATH`, `IN_NIX_SHELL`, `IN_YAZELIX_SHELL`, `YAZELIX_TERMINAL`, and Zellij session markers are activation-only markers
+  - activation markers may be stale without invalidating a newer recorded launch profile
 - Launch-profile validity is determined by:
   - the recorded profile path still existing
   - the recorded combined hash matching the current combined hash
@@ -77,7 +86,9 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
   - `devenv.yaml`
 - The current maintainer shell is not automatically the same thing as the current launch profile.
   - A repo-local or maintainer shell may still hold an older `DEVENV_PROFILE`.
+  - That older shell profile is stale live activation state, not proof that persisted launch state is wrong.
   - Launch/restart/refresh logic should prefer the runtime-owned recorded or freshly built profile unless it is already operating inside a live launched Yazelix session.
+- External launch helpers should clear inherited live activation markers before starting a new session, rather than treating the current shell as canonical launch truth.
 - Changes outside the rebuild-relevant config subset do not require a new `devenv` profile build, but they still remain part of the active Yazelix behavior and should apply through normal config parsing and runtime regeneration.
 - `yzx launch --reuse` is allowed to reuse the last recorded launch profile even when the current config/input hash is stale, but only when a cached profile actually exists. It does not promise that local config changes are applied.
 - Validators should defend explicit ownership and parity boundaries only:
@@ -105,7 +116,8 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
 7. When `yzx launch --reuse` is used, Yazelix may reuse the last recorded profile despite current config drift, but it fails clearly if no cached launch profile exists.
 8. When install or shell-hook setup runs from a stale maintainer shell, it must not overwrite `launch_state.json` with that stale shell profile. Real launch and refresh flows own launch-profile recording.
 9. When `yzx refresh` builds through `devenv build shell`, Yazelix records the embedded `DEVENV_PROFILE`, not the shell-script wrapper path and not an unrelated ambient maintainer-shell profile.
-10. When a validator is added for this contract, it checks maintained ownership and parity rules rather than noisy generated-output trivia.
+10. When a stale maintainer shell and a correct `launch_state.json` coexist, the docs and helpers treat that as a live-activation-versus-materialized-state split, not as contradictory runtime truth.
+11. When a validator is added for this contract, it checks maintained ownership and parity rules rather than noisy generated-output trivia.
 
 ## Verification
 
@@ -127,3 +139,4 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
 
 - Should Yazelix eventually centralize config metadata such as ownership, defaults, rebuild sensitivity, and Home Manager parity in one declarative table so parsing, validation, docs, and integration code stop repeating those rules?
 - Should launch-profile validity stay tied only to rebuild-relevant keys, or are there additional generated-runtime invariants that deserve to participate in the hash without creating unnecessary rebuild churn?
+- Should launch-profile helpers eventually stop inferring activation-vs-materialized precedence implicitly and instead use narrower resolvers for recorded state, runtime build artifacts, and live activation markers?

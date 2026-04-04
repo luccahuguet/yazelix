@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Profile activation helpers for fast Yazelix launch/restart paths.
 
-use ./common.nu [ensure_yazelix_runtime_project_dir get_yazelix_nix_config get_yazelix_dir get_yazelix_state_dir]
+use ./common.nu [get_existing_yazelix_runtime_project_dir get_yazelix_nix_config get_yazelix_dir get_yazelix_state_dir]
 
 def normalize_path_entries [value: any] {
     let described = ($value | describe)
@@ -128,11 +128,15 @@ export def resolve_built_profile [] {
         return $resolved_env_profile
     }
 
-    let yazelix_dir = (ensure_yazelix_runtime_project_dir)
-    let candidates = [
-        ($yazelix_dir | path join ".devenv/gc/shell")
-        ($yazelix_dir | path join ".devenv/profile")
-    ]
+    let yazelix_dir = (get_existing_yazelix_runtime_project_dir)
+    let candidates = if $yazelix_dir == null {
+        []
+    } else {
+        [
+            ($yazelix_dir | path join ".devenv/gc/shell")
+            ($yazelix_dir | path join ".devenv/profile")
+        ]
+    }
 
     for candidate in $candidates {
         let resolved = (resolve_profile_candidate $candidate)

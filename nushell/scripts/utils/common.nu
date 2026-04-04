@@ -220,7 +220,7 @@ export def get_yazelix_runtime_dir [] {
     } else if $inferred_runtime != null {
         $inferred_runtime
     } else {
-        get_yazelix_config_dir
+        null
     }
 }
 
@@ -244,6 +244,42 @@ export def get_yazelix_state_dir [] {
 
 export def get_yazelix_runtime_project_dir [] {
     (get_yazelix_state_dir | path join "runtime" "project")
+}
+
+def runtime_project_matches_runtime_root [project_root: string, runtime_root: string] {
+    let project_sentinel = ($project_root | path join "devenv.nix")
+    let runtime_sentinel = ($runtime_root | path join "devenv.nix")
+
+    if not ($project_sentinel | path exists) or not ($runtime_sentinel | path exists) {
+        return false
+    }
+
+    let resolved_project_sentinel = (resolve_existing_path $project_sentinel)
+    let resolved_runtime_sentinel = (resolve_existing_path $runtime_sentinel)
+
+    if ($resolved_project_sentinel == null) or ($resolved_runtime_sentinel == null) {
+        return false
+    }
+
+    $resolved_project_sentinel == $resolved_runtime_sentinel
+}
+
+export def get_existing_yazelix_runtime_project_dir [] {
+    let runtime_root = (get_yazelix_runtime_dir)
+    if $runtime_root == null {
+        return null
+    }
+
+    let project_root = (get_yazelix_runtime_project_dir)
+    if (
+        ($project_root | path exists)
+        and (($project_root | path type) == "dir")
+        and (runtime_project_matches_runtime_root $project_root $runtime_root)
+    ) {
+        $project_root
+    } else {
+        null
+    }
 }
 
 def resolve_git_repo_root_from_pwd [] {
@@ -335,21 +371,20 @@ export def resolve_yazelix_nu_bin [] {
     error make {msg: "Could not resolve a usable Nushell binary for Yazelix. Checked YAZELIX_NU_BIN, runtime-local bin/nu, PATH, and $nu.current-exe."}
 }
 
-export def ensure_yazelix_runtime_project_dir [] {
-    let runtime_root = (get_yazelix_runtime_dir)
+export def materialize_yazelix_runtime_project_dir [] {
+    let runtime_root = (require_yazelix_runtime_dir)
     let project_root = (get_yazelix_runtime_project_dir)
 
     mkdir $project_root
 
     for entry in $RUNTIME_PROJECT_ENTRIES {
         let source = ($runtime_root | path join $entry)
-        if not ($source | path exists) {
-            continue
-        }
-
         let target = ($project_root | path join $entry)
         if ($target | path exists) {
             rm -rf $target
+        }
+        if not ($source | path exists) {
+            continue
         }
         ^ln -s $source $target
     }
@@ -380,6 +415,15 @@ export def require_yazelix_config_dir [] {
 
 export def require_yazelix_runtime_dir [] {
     let yazelix_dir = (get_yazelix_runtime_dir)
+    if $yazelix_dir == null {
+        error make {
+            msg: (
+                "Could not resolve a valid Yazelix runtime root. "
+                + "Set YAZELIX_RUNTIME_DIR to a real runtime tree, reinstall Yazelix, "
+                + "or enter a valid repo/runtime environment."
+            )
+        }
+    }
     if not ($yazelix_dir | path exists) {
         error make {msg: $"Cannot find Yazelix runtime directory at ($yazelix_dir)"}
     }
