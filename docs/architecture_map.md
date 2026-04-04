@@ -19,7 +19,7 @@ The important architectural rule is that each subsystem should have a clear owne
 | Subsystem | Purpose | Examples | Main source of truth |
 | --- | --- | --- | --- |
 | Workspace | The terminal IDE experience users interact with directly | Zellij layouts, Yazi/editor flow, keybindings, managed panes, tab naming, workspace roots | Session and workspace state, pane orchestrator, workspace-focused commands |
-| Runtime | The environment and control plane that makes the workspace reproducible | `devenv`, packs, `yazelix.toml`, `yzx refresh`, `yzx restart`, `yzx run` | `yazelix.toml`, `yazelix_default.toml`, generated runtime config, `devenv.nix` |
+| Runtime | The environment and control plane that makes the workspace reproducible | `devenv`, packs, `yazelix.toml`, `yzx refresh`, `yzx restart`, `yzx run` | Dynamic user intent in managed TOML, deterministic shipped runtime code, and materialized generated state |
 | Integrations | Adapters between Yazelix and external systems | Home Manager, desktop entry, shell hooks, terminal-specific launchers, CI entrypoints | The supported contract of the subsystem being integrated, not ad hoc host assumptions |
 | Maintainer Workflow | The machinery that keeps the product evolving safely | Beads, CI, validators, release/version/update workflow, future specs | Beads graph, CI workflows, documented contracts, maintainer commands |
 
@@ -46,13 +46,17 @@ This layer should answer questions like:
 
 The runtime layer is what makes Yazelix reproducible and configurable:
 
+- dynamic user intent in `yazelix.toml` and `yazelix_packs.toml`
+- deterministic runtime code from the shipped runtime tree
 - package selection through packs
 - shell and editor configuration in `yazelix.toml`
 - `devenv` evaluation and environment build logic
-- generated configs and refresh/restart flows
+- generated configs, cached launch state, and refresh/restart flows
 
 This layer should answer questions like:
 
+- Which settings express user intent versus shipped defaults?
+- Which files are deterministic runtime code versus generated artifacts?
 - Which tools are installed?
 - Which shell/editor/terminal is configured?
 - Where do generated configs live?
@@ -97,16 +101,17 @@ Each area should have one clear owner.
 
 ### Runtime and Source Ownership
 
-- The runtime/source location is one concern.
-- User config is another concern.
-- Generated state is another concern.
+- Dynamic user intent is one concern.
+- Deterministic runtime code is another concern.
+- Materialized/generated state is another concern.
 
 These should not be conflated.
 
 Current direction:
 
-- code should resolve the Yazelix root through canonical helpers such as `get_yazelix_dir`
+- code should resolve config root, runtime root, and state root through canonical helpers instead of treating one shell or checkout path as authoritative for everything
 - tests and helpers should not assume `~/.config/yazelix` is a repo checkout
+- setup and install flows may materialize generated state, but launch and refresh flows should own launch-profile recording
 - package-ready work should keep clarifying what is shipped, user-owned, and generated
 
 See [Config Surface And Launch Profile Contract](./specs/config_surface_and_launch_profile_contract.md) for the concrete runtime ownership model.
@@ -184,7 +189,10 @@ It does not mean:
 For now, the right mental model is:
 
 1. Yazelix Workspace is the terminal IDE experience.
-2. Yazelix Runtime is the environment and control plane.
+2. Yazelix Runtime combines:
+   - dynamic user intent
+   - deterministic runtime code
+   - materialized environment/generated state
 3. Integrations connect Yazelix to external systems.
 4. Maintainer Workflow keeps the product coherent over time.
 

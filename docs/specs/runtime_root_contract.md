@@ -4,6 +4,15 @@
 
 Yazelix must treat the user config root, the shipped runtime root, and the generated state root as three separate locations with different owners. Normal usage must not require a source checkout living under `~/.config/yazelix`.
 
+These three roots line up with three different kinds of state:
+
+1. Dynamic user intent
+   - config under `~/.config/yazelix/user_configs/`
+2. Deterministic runtime code
+   - the shipped runtime tree from the flake, package, or repo checkout
+3. Materialized/generated state
+   - generated configs, cached hashes, launch state, and other derived artifacts under `~/.local/share/yazelix`
+
 ## Why
 
 Yazelix already has helpers for `YAZELIX_CONFIG_DIR`, `YAZELIX_RUNTIME_DIR`, and `YAZELIX_STATE_DIR`, but parts of the product still collapse those concerns back into one hardcoded path. That keeps the source checkout requirement alive in practice even when the intended architecture says otherwise.
@@ -37,10 +46,12 @@ Without a sharper contract:
     - a source checkout during maintainer work
     - an installed runtime tree from a package or generated deployment
   - Contents include shipped scripts, layouts, bundled plugins, templates, and other runtime assets Yazelix executes or reads directly.
+  - It is deterministic product code tied to the repo or packaged runtime revision, not mutable user config state.
 - The state root is the generated and cached Yazelix data surface.
   - Default location: `~/.local/share/yazelix`
   - Canonical environment variable: `YAZELIX_STATE_DIR`
-  - Contents include generated configs, cached launch-profile state, and other derived runtime artifacts.
+  - Contents include generated configs, cached launch-profile state, rebuild state, and other derived runtime artifacts.
+  - It is the materialized result of combining user intent with the shipped runtime.
 - `YAZELIX_DIR` is a legacy compatibility alias for the runtime root only.
   - New code should prefer `YAZELIX_RUNTIME_DIR` and `YAZELIX_CONFIG_DIR` explicitly.
   - Code must not treat `YAZELIX_DIR` as the user config root.
@@ -48,6 +59,9 @@ Without a sharper contract:
   - Examples: terminal wrappers, desktop launchers, `yzx` menu/popup helpers, bundled Yazi plugins, editor integration scripts.
 - User-facing config lookups must resolve through the config root, not through the runtime root.
 - Generated configs and cached state must resolve through the state root or the derived runtime config paths, not through the source checkout.
+- Runtime/profile identity should not be inferred from whichever shell the user happens to be sitting in.
+  - Maintainer shells may still hold an older `DEVENV_PROFILE`.
+  - Reusable launch state should be recorded from real launch/refresh flows against the runtime project state, not from shell-hook setup alone.
 - Maintainer-only workflows may still assume a source checkout when the task is explicitly about repository maintenance.
   - Examples: release automation, source validators, README syncing, issue/bead reconciliation, repo-local dev helpers.
   - Those assumptions should stay explicit instead of leaking into normal user entrypoints.
@@ -65,7 +79,8 @@ Without a sharper contract:
 2. Bundled runtime integrations invoke shipped scripts through the runtime root instead of hardcoded source-checkout paths under `~/.config/yazelix`.
 3. User config continues to load from the config root even when the runtime root is somewhere else.
 4. Maintainer-only commands that still require a source checkout are explicit about that requirement instead of being used silently by normal user entrypoints.
-5. New path-model work can classify each lookup as config-owned, runtime-owned, or state-owned without guessing.
+5. Reinstalling Yazelix from a repo shell does not silently redefine launch-profile ownership or treat the current maintainer shell as the launched runtime.
+6. New path-model work can classify each lookup as config-owned, runtime-owned, or state-owned without guessing.
 
 ## Verification
 
