@@ -917,6 +917,52 @@ def test_yzx_cli_menu_uses_lightweight_menu_module [] {
     $result
 }
 
+# Defends: docs/specs/yzx_command_palette_categories.md
+# Regression: yzx menu should include most user-facing commands while keeping explicit exclusions for the palette itself, maintainer commands, shell-control commands, and tab-scoped actions.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_yzx_menu_palette_eligibility_is_broad_but_explicit [] {
+    print "🧪 Testing yzx menu palette eligibility is broad but explicit..."
+
+    let result = (try {
+        let helper_module = (repo_path "nushell" "scripts" "yzx" "command_palette_catalog.nu")
+        let output = (^nu -c $"
+            use \"($helper_module)\" [get_palette_menu_items]
+            get_palette_menu_items | get id | to json -r
+        " | complete)
+
+        let ids = if $output.exit_code == 0 {
+            try { $output.stdout | from json } catch { [] }
+        } else {
+            []
+        }
+
+        if (
+            ($output.exit_code == 0)
+            and ("yzx" in $ids)
+            and ("yzx launch" in $ids)
+            and ("yzx doctor" in $ids)
+            and ("yzx update runtime" in $ids)
+            and ("yzx desktop launch" in $ids)
+            and (not ("yzx menu" in $ids))
+            and (not ("yzx dev update" in $ids))
+            and (not ("yzx env" in $ids))
+            and (not ("yzx run" in $ids))
+            and (not ("yzx cwd" in $ids))
+        ) {
+            print "  ✅ yzx menu now includes broad user-facing commands while explicitly excluding the palette itself, maintainer commands, shell-control commands, and tab-scoped actions"
+            true
+        } else {
+            print $"  ❌ Unexpected palette eligibility result: exit=($output.exit_code) ids=($ids | to json -r) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    $result
+}
+
 # Regression: yzx enter must use the lightweight enter module instead of bootstrapping the full command suite.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_cli_enter_uses_lightweight_enter_module [] {
@@ -1336,6 +1382,7 @@ export def run_workspace_canonical_tests [] {
         (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
         (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
         (test_yzx_cli_menu_uses_lightweight_menu_module)
+        (test_yzx_menu_palette_eligibility_is_broad_but_explicit)
         (test_yzx_cli_enter_uses_lightweight_enter_module)
         (test_launch_falls_through_after_immediate_terminal_failure)
         (test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions)

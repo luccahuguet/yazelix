@@ -782,6 +782,50 @@ def test_yzx_edit_targets_print_paths [] {
     $result
 }
 
+# Defends: yzx open hx reports the canonical managed and generated Helix config surfaces.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_yzx_open_hx_reports_managed_and_generated_surfaces [] {
+    print "🧪 Testing yzx open hx reports the managed and generated Helix config surfaces..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_open_hx_surfaces_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $temp_config_dir
+
+    let result = (try {
+        let rendered = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            yzx open hx
+        }
+
+        let expected_managed = ($temp_config_dir | path join "user_configs" "helix" "config.toml")
+        let expected_generated = ($tmp_home | path join ".local" "share" "yazelix" "configs" "helix" "config.toml")
+
+        if (
+            (($rendered.config_path? | default "") == $expected_managed)
+            and (($rendered.generated_config_path? | default "") == $expected_generated)
+            and (($rendered.config? | default null) == null)
+            and (($rendered.generated_config? | default null) == null)
+        ) {
+            print "  ✅ yzx open hx reports the canonical managed and generated Helix config surfaces before generation"
+            true
+        } else {
+            print $"  ❌ Unexpected result: ($rendered | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 # Defends: invalid config is surfaced as a config problem, not a generic wrapper failure.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_invalid_config_is_classified_as_config_problem [] {
@@ -905,6 +949,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_config_view)
         (test_yzx_config_full_merges_pack_sidecar)
         (test_yzx_edit_targets_print_paths)
+        (test_yzx_open_hx_reports_managed_and_generated_surfaces)
         (test_invalid_config_is_classified_as_config_problem)
         (test_startup_reports_known_config_migration_before_generic_wrappers)
     ]
