@@ -230,10 +230,10 @@ def test_yzx_cli_desktop_launch_ignores_hostile_shell_env [] {
     $result
 }
 
-# Regression: desktop launch no longer depends on the old hidden desktop launcher wrapper.
+# Regression: desktop launch must use the installed launch module with a clean external-launch environment.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_desktop_launch_uses_core_launch_script_directly [] {
-    print "🧪 Testing yzx desktop launch works without core/desktop_launcher.nu in the runtime..."
+def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
+    print "🧪 Testing yzx desktop launch uses the installed launch module with a clean external-launch env..."
 
     let tmpdir = (^mktemp -d /tmp/yazelix_desktop_leaf_runtime_XXXXXX | str trim)
 
@@ -249,7 +249,19 @@ def test_yzx_desktop_launch_uses_core_launch_script_directly [] {
 
         [
             "#!/bin/sh"
-            $"printf '%s\\n' \"$*\" > '($nu_log)'"
+            $"printf '%s\\n' \"$1\" > '($nu_log)'"
+            $"printf '%s\\n' \"$2\" >> '($nu_log)'"
+            $"printf 'YAZELIX_RUNTIME_DIR=%s\\n' \"${YAZELIX_RUNTIME_DIR-unset}\" >> '($nu_log)'"
+            $"printf 'YAZELIX_DIR=%s\\n' \"${YAZELIX_DIR-unset}\" >> '($nu_log)'"
+            $"printf 'DEVENV_PROFILE=%s\\n' \"${DEVENV_PROFILE-unset}\" >> '($nu_log)'"
+            $"printf 'DEVENV_ROOT=%s\\n' \"${DEVENV_ROOT-unset}\" >> '($nu_log)'"
+            $"printf 'IN_YAZELIX_SHELL=%s\\n' \"${IN_YAZELIX_SHELL-unset}\" >> '($nu_log)'"
+            $"printf 'IN_NIX_SHELL=%s\\n' \"${IN_NIX_SHELL-unset}\" >> '($nu_log)'"
+            $"printf 'YAZELIX_TERMINAL=%s\\n' \"${YAZELIX_TERMINAL-unset}\" >> '($nu_log)'"
+            $"printf 'YAZELIX_MENU_POPUP=%s\\n' \"${YAZELIX_MENU_POPUP-unset}\" >> '($nu_log)'"
+            $"printf 'YAZELIX_POPUP_PANE=%s\\n' \"${YAZELIX_POPUP_PANE-unset}\" >> '($nu_log)'"
+            $"printf 'ZELLIJ_SESSION_NAME=%s\\n' \"${ZELLIJ_SESSION_NAME-unset}\" >> '($nu_log)'"
+            $"printf 'YAZI_ID=%s\\n' \"${YAZI_ID-unset}\" >> '($nu_log)'"
             "exit 0"
         ] | str join "\n" | save --force --raw ($fake_profile_bin | path join "nu")
         ^chmod +x ($fake_profile_bin | path join "nu")
@@ -257,8 +269,18 @@ def test_yzx_desktop_launch_uses_core_launch_script_directly [] {
         let desktop_script = (repo_path "nushell" "scripts" "yzx" "desktop.nu")
         let output = (with-env {
             HOME: $fake_home
-            YAZELIX_RUNTIME_DIR: $runtime_dir
             YAZELIX_NU_BIN: ($fake_profile_bin | path join "nu")
+            YAZELIX_RUNTIME_DIR: ($tmpdir | path join "hostile_runtime")
+            YAZELIX_DIR: "/hostile/legacy_runtime"
+            DEVENV_PROFILE: ($tmpdir | path join "hostile_profile")
+            DEVENV_ROOT: (repo_path)
+            IN_YAZELIX_SHELL: "true"
+            IN_NIX_SHELL: "impure"
+            YAZELIX_TERMINAL: "ghostty"
+            YAZELIX_MENU_POPUP: "true"
+            YAZELIX_POPUP_PANE: "true"
+            ZELLIJ_SESSION_NAME: "yazelix"
+            YAZI_ID: "1234"
         } {
             ^nu -c $"use \"($desktop_script)\" *; yzx desktop launch" | complete
         })
@@ -268,15 +290,30 @@ def test_yzx_desktop_launch_uses_core_launch_script_directly [] {
         } else {
             []
         }
-        let expected_launch_script = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+        let expected_launch_module = ($runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
+        let expected_launch_command = $"use \"($expected_launch_module)\" *; yzx launch --home"
+        let expected_env = [
+            $"YAZELIX_RUNTIME_DIR=($runtime_dir)"
+            "YAZELIX_DIR=unset"
+            "DEVENV_PROFILE=unset"
+            "DEVENV_ROOT=unset"
+            "IN_YAZELIX_SHELL=unset"
+            "IN_NIX_SHELL=unset"
+            "YAZELIX_TERMINAL=unset"
+            "YAZELIX_MENU_POPUP=unset"
+            "YAZELIX_POPUP_PANE=unset"
+            "ZELLIJ_SESSION_NAME=unset"
+            "YAZI_ID=unset"
+        ]
 
         if (
             ($output.exit_code == 0)
             and ($stderr == "")
-            and (($invocation | get -o 0 | default "") == $expected_launch_script)
-            and (($invocation | get -o 1 | default "") == $fake_home)
+            and (($invocation | get -o 0 | default "") == "-c")
+            and (($invocation | get -o 1 | default "") == $expected_launch_command)
+            and (($invocation | skip 2) == $expected_env)
         ) {
-            print "  ✅ yzx desktop launch now calls launch_yazelix.nu directly without the hidden desktop launcher wrapper"
+            print "  ✅ yzx desktop launch uses the installed launch module and ignores inherited shell state"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr) invocation=(($invocation | to json -r))"
@@ -705,7 +742,7 @@ def test_yzx_cwd_requires_zellij [] {
 export def run_workspace_canonical_tests [] {
     [
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
-        (test_yzx_desktop_launch_uses_core_launch_script_directly)
+        (test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env)
         (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
         (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
         (test_yzx_cli_menu_uses_lightweight_menu_module)

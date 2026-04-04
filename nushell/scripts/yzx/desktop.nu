@@ -2,6 +2,24 @@
 
 use ../utils/common.nu [require_installed_yazelix_runtime_dir]
 
+const DESKTOP_LAUNCH_CLEARED_ENV_KEYS = [
+    "DEVENV_PROFILE"
+    "DEVENV_ROOT"
+    "IN_NIX_SHELL"
+    "IN_YAZELIX_SHELL"
+    "YAZELIX_DIR"
+    "YAZELIX_MENU_POPUP"
+    "YAZELIX_POPUP_PANE"
+    "YAZELIX_TERMINAL"
+    "YAZI_ID"
+    "ZELLIJ"
+    "ZELLIJ_DEFAULT_LAYOUT"
+    "ZELLIJ_PANE_ID"
+    "ZELLIJ_SESSION_NAME"
+    "ZELLIJ_TAB_NAME"
+    "ZELLIJ_TAB_POSITION"
+]
+
 def get_desktop_applications_dir [] {
     let data_home = (
         $env.XDG_DATA_HOME?
@@ -71,6 +89,17 @@ def get_desktop_entry_path [] {
     (get_desktop_applications_dir | path join "com.yazelix.Yazelix.desktop")
 }
 
+def get_desktop_launch_env [runtime_dir: string] {
+    $DESKTOP_LAUNCH_CLEARED_ENV_KEYS
+    | reduce -f {YAZELIX_RUNTIME_DIR: $runtime_dir} {|key, env_record|
+        $env_record | upsert $key null
+    }
+}
+
+def render_desktop_launch_command [launch_module: string] {
+    $"use \"($launch_module)\" *; yzx launch --home"
+}
+
 export def "yzx desktop install" [
     --print-path(-p) # Print only the installed desktop-file path
 ] {
@@ -121,15 +150,20 @@ export def "yzx desktop uninstall" [
 
 export def "yzx desktop launch" [] {
     let runtime_dir = (require_installed_yazelix_runtime_dir)
-    let launch_script = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+    let launch_module = ($runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
+    let launch_env = (get_desktop_launch_env $runtime_dir)
 
-    if not ($launch_script | path exists) {
-        error make {msg: $"Missing Yazelix launch script at ($launch_script)"}
+    if not ($launch_module | path exists) {
+        error make {msg: $"Missing Yazelix desktop launch module at ($launch_module)"}
     }
 
     if ($env.YAZELIX_NU_BIN? | is-not-empty) {
-        ^$env.YAZELIX_NU_BIN $launch_script $env.HOME
+        with-env $launch_env {
+            ^$env.YAZELIX_NU_BIN -c (render_desktop_launch_command $launch_module)
+        }
     } else {
-        ^nu $launch_script $env.HOME
+        with-env $launch_env {
+            ^nu -c (render_desktop_launch_command $launch_module)
+        }
     }
 }
