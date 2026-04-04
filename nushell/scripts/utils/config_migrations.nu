@@ -157,6 +157,25 @@ const CONFIG_MIGRATION_RULES = [
         rationale: "Yazelix now keeps pack declarations in a dedicated yazelix_packs.toml sidecar so the main config stays focused and pack ownership is unambiguous."
         manual_fix: "Move [packs] out of yazelix.toml into yazelix_packs.toml, then re-run with only the sidecar owning pack settings."
     }
+    {
+        id: "replace_removed_nodepackages_typescript_language_server"
+        title: "Replace the removed nodePackages.typescript-language-server package name"
+        kind: "removed_value"
+        introduced_in: null
+        introduced_after_version: "v13.11"
+        introduced_on: "2026-04-04"
+        review_after_days: 180
+        last_reviewed_on: null
+        retirement_policy: "demote_to_explicit_then_delete"
+        auto_apply: true
+        user_visible: true
+        guarded_paths: [
+            "yazelix_packs.toml.user_packages"
+            "yazelix_packs.toml.declarations"
+        ]
+        rationale: "nixpkgs removed the nodePackages namespace, so Yazelix-managed pack configs must now use the top-level typescript-language-server package name."
+        manual_fix: "Replace nodePackages.typescript-language-server with typescript-language-server in yazelix_packs.toml."
+    }
 ]
 
 def maybe_get [data: any, path: list<string>] {
@@ -215,6 +234,58 @@ def compact_string_list [values: list<any>] {
     }
 
     $compact
+}
+
+def rewrite_exact_string [data: any, old: string, new: string, path: list<string> = []] {
+    let description = ($data | describe)
+
+    if ($description | str contains "record") {
+        mut updated = $data
+        mut matched_paths = []
+
+        for key in ($data | columns) {
+            let child = ($data | get -o $key)
+            let result = (rewrite_exact_string $child $old $new ($path | append $key))
+            $updated = ($updated | upsert $key $result.value)
+            $matched_paths = ($matched_paths | append $result.matched_paths)
+        }
+
+        return {
+            value: $updated
+            matched_paths: $matched_paths
+        }
+    }
+
+    if ($description | str contains "list") {
+        mut updated = []
+        mut matched_paths = []
+        mut index = 0
+
+        for item in $data {
+            let result = (rewrite_exact_string $item $old $new ($path | append ($index | into string)))
+            $updated = ($updated | append $result.value)
+            $matched_paths = ($matched_paths | append $result.matched_paths)
+            $index = ($index + 1)
+        }
+
+        return {
+            value: $updated
+            matched_paths: $matched_paths
+        }
+    }
+
+    let normalized = (try { $data | into string } catch { null })
+    if $normalized == $old {
+        return {
+            value: $new
+            matched_paths: [(format_path $path)]
+        }
+    }
+
+    {
+        value: $data
+        matched_paths: []
+    }
 }
 
 def quoted_list [values: list<string>] {
@@ -574,6 +645,41 @@ def plan_split_legacy_pack_config_surface [config: record, pack_config: any, pac
     )
 }
 
+def plan_replace_removed_nodepackages_typescript_language_server [config: record, pack_config: any, pack_config_path: string] {
+    if $pack_config == null {
+        return null
+    }
+
+    let old_package = "nodePackages.typescript-language-server"
+    let new_package = "typescript-language-server"
+    let rewrite = (rewrite_exact_string $pack_config $old_package $new_package)
+
+    if ($rewrite.matched_paths | is-empty) {
+        return null
+    }
+
+    let matched_paths = (
+        $rewrite.matched_paths
+        | each {|path|
+            if ($path | is-empty) {
+                $pack_config_path
+            } else {
+                $"($pack_config_path).($path)"
+            }
+        }
+    )
+
+    (
+        make_result
+            "replace_removed_nodepackages_typescript_language_server"
+            "auto"
+            [$"Replace \"($old_package)\" with \"($new_package)\" in yazelix_packs.toml."]
+            $matched_paths
+            $config
+        | upsert pack_config_after $rewrite.value
+    )
+}
+
 def get_plan_step [rule_id: string, config: record, pack_config: any = null, pack_config_path: string = "yazelix_packs.toml"] {
     match $rule_id {
         "remove_zellij_widget_tray_layout" => (plan_remove_zellij_widget_tray_layout $config)
@@ -585,6 +691,7 @@ def get_plan_step [rule_id: string, config: record, pack_config: any = null, pac
         "replace_ascii_art_mode_with_welcome_style" => (plan_replace_ascii_art_mode_with_welcome_style $config)
         "rename_life_welcome_style_to_game_of_life" => (plan_rename_life_welcome_style_to_game_of_life $config)
         "split_legacy_pack_config_surface" => (plan_split_legacy_pack_config_surface $config $pack_config $pack_config_path)
+        "replace_removed_nodepackages_typescript_language_server" => (plan_replace_removed_nodepackages_typescript_language_server $config $pack_config $pack_config_path)
         _ => (error make {msg: $"Unknown config migration rule id: ($rule_id)"})
     }
 }

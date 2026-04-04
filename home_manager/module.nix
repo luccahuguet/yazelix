@@ -589,7 +589,7 @@ in
           "nixfmt"
         ];
         ts = [
-          "nodePackages.typescript-language-server"
+          "typescript-language-server"
           "tailwindcss-language-server"
           "biome"
           "oxlint"

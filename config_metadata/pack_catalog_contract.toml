@@ -90,7 +90,7 @@ packages = ["nil", "nixd", "nixfmt"]
 package_source = "nixpkgs"
 
 [declarations.ts]
-packages = ["nodePackages.typescript-language-server", "tailwindcss-language-server", "biome", "oxlint"]
+packages = ["typescript-language-server", "tailwindcss-language-server", "biome", "oxlint"]
 package_source = "nixpkgs"
 
 [declarations.modern_js]

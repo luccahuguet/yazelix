@@ -135,7 +135,7 @@ nix = [
 ]
 
 ts = [
-  "nodePackages.typescript-language-server", # TypeScript language server
+  "typescript-language-server", # TypeScript language server
   "tailwindcss-language-server", # Tailwind CSS language server
   "biome", # JS/TS formatter and linter
   "oxlint", # Fast JS/TS linter

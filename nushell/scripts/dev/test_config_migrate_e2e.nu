@@ -398,6 +398,64 @@ go = ["gopls", "golangci-lint"]
     $ok
 }
 
+def run_removed_nodepackages_package_rename_case [] {
+    let fixture = (setup_fixture
+        "yazelix_migrate_e2e_removed_nodepackages_tsls"
+        '[core]
+welcome_style = "static"
+')
+    let log_file = $fixture.log_file
+    let pack_path = ($fixture.user_config_dir | path join "yazelix_packs.toml")
+
+    'enabled = ["ts"]
+
+[declarations]
+ts = ["nodePackages.typescript-language-server", "biome"]
+' | save --force --raw $pack_path
+
+    log_line $log_file "Case: replace removed nodePackages.typescript-language-server package name"
+    log_line $log_file $"Temp HOME: ($fixture.tmp_home)"
+    log_line $log_file $"Config path: ($fixture.config_path)"
+    log_line $log_file $"Pack path: ($pack_path)"
+    log_line $log_file $"Log file: ($log_file)"
+    log_line $log_file ""
+    log_block $log_file "Input main TOML" (open --raw $fixture.config_path)
+    log_block $log_file "Input pack TOML" (open --raw $pack_path)
+
+    let preview = (run_migrate $fixture)
+    log_block $log_file "Preview stdout" ($preview.stdout | str trim)
+    log_block $log_file "Preview stderr" ($preview.stderr | str trim)
+
+    let apply = (run_migrate $fixture ["--apply", "--yes"])
+    log_block $log_file "Apply stdout" ($apply.stdout | str trim)
+    log_block $log_file "Apply stderr" ($apply.stderr | str trim)
+    log_block $log_file "Output pack TOML" (open --raw $pack_path)
+
+    let pack_backups = (ls $fixture.user_config_dir | where name =~ 'yazelix_packs\.toml\.backup-')
+    log_block $log_file "Pack backups" (($pack_backups | get name | str join "\n"))
+
+    let parsed_pack = (open $pack_path)
+    let rendered_pack = (open --raw $pack_path)
+    let ok = (
+        ($preview.exit_code == 0)
+        and ($apply.exit_code == 0)
+        and (($preview.stdout | str contains "[AUTO] replace_removed_nodepackages_typescript_language_server"))
+        and (($apply.stdout | str contains "Applied 1 config migration"))
+        and (($parsed_pack.declarations | get ts) == ["typescript-language-server", "biome"])
+        and not ($rendered_pack | str contains "nodePackages.typescript-language-server")
+        and (($pack_backups | length) == 1)
+    )
+
+    if $ok {
+        log_line $log_file "Result: PASS"
+    } else {
+        log_line $log_file "Result: FAIL"
+    }
+
+    rm -rf $fixture.tmp_home
+    $ok
+}
+
 export def main [] {
     let results = [
         (run_mixed_migration_case)
@@ -415,6 +473,7 @@ export def main [] {
         )
         (run_game_of_life_style_rename_case)
         (run_interrupted_pack_split_recovery_case)
+        (run_removed_nodepackages_package_rename_case)
     ]
     let passed = ($results | where {|result| $result } | length)
     let total = ($results | length)
