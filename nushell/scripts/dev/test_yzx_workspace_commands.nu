@@ -332,6 +332,98 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
     $result
 }
 
+# Regression: external launch helpers must ignore stale ambient DEVENV_PROFILE values and prefer the profile embedded in the runtime's latest built shell unless already inside a Yazelix shell.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_resolve_built_profile_prefers_runtime_profile_outside_yazelix_shell [] {
+    print "🧪 Testing built-profile resolution prefers the profile embedded in the runtime's latest built shell outside Yazelix shells..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_built_profile_runtime_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        let config_dir = ($fake_home | path join ".config" "yazelix")
+        let state_dir = ($fake_home | path join ".local" "share" "yazelix")
+        let runtime_dir = ($tmpdir | path join "runtime")
+        let runtime_project = ($state_dir | path join "runtime" "project")
+        let gc_shell = ($runtime_project | path join ".devenv" "gc" "shell")
+        let project_profile = ($runtime_project | path join ".devenv" "profile")
+        let stale_env_profile = ($tmpdir | path join "stale_profile")
+        let launch_state_path = ($state_dir | path join "state" "launch_state.json")
+        let launch_state_profile = ($tmpdir | path join "recorded_profile")
+        mkdir $config_dir
+        mkdir ($state_dir | path join "runtime")
+        mkdir ($state_dir | path join "state")
+        mkdir $runtime_dir
+        mkdir ($runtime_dir | path join "nushell")
+        mkdir ($runtime_dir | path join "shells")
+        mkdir ($runtime_dir | path join "configs")
+        mkdir ($runtime_dir | path join "docs")
+        mkdir ($runtime_dir | path join "assets")
+        "" | save --force --raw ($runtime_dir | path join "yazelix_default.toml")
+        "" | save --force --raw ($runtime_dir | path join "devenv.nix")
+        "" | save --force --raw ($runtime_dir | path join "devenv.yaml")
+        "" | save --force --raw ($runtime_dir | path join "devenv.lock")
+        "" | save --force --raw ($runtime_dir | path join "CHANGELOG.md")
+        mkdir ($runtime_project | path join ".devenv" "gc")
+        mkdir $project_profile
+        mkdir $stale_env_profile
+        mkdir $launch_state_profile
+        [
+            "#!/bin/sh"
+            $"declare -x DEVENV_PROFILE=\"($project_profile | path expand)\""
+        ] | str join "\n" | save --force --raw $gc_shell
+        ^chmod +x $gc_shell
+        {
+            combined_hash: "ignored-for-resolve-built-profile"
+            profile_path: $launch_state_profile
+        } | to json | save --force $launch_state_path
+
+        let launch_state_module = (repo_path "nushell" "scripts" "utils" "launch_state.nu")
+        let snippet = $"use \"($launch_state_module)\" [resolve_built_profile]; print \(resolve_built_profile\)"
+
+        let outside_result = (with-env {
+            HOME: $fake_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_RUNTIME_DIR: $runtime_dir
+            DEVENV_PROFILE: $stale_env_profile
+        } {
+            ^nu -c $snippet | complete
+        })
+        let inside_result = (with-env {
+            HOME: $fake_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_RUNTIME_DIR: $runtime_dir
+            DEVENV_PROFILE: $stale_env_profile
+            YAZELIX_TERMINAL: "ghostty"
+        } {
+            ^nu -c $snippet | complete
+        })
+        let outside_profile = ($outside_result.stdout | str trim)
+        let inside_profile = ($inside_result.stdout | str trim)
+
+        if (
+            ($outside_result.exit_code == 0)
+            and ($inside_result.exit_code == 0)
+            and ($outside_profile == ($project_profile | path expand))
+            and ($inside_profile == ($stale_env_profile | path expand))
+        ) {
+            print "  ✅ External launch helpers now prefer the profile embedded in the runtime's latest built shell, while in-shell helpers still honor the live Yazelix shell profile"
+            true
+        } else {
+            print $"  ❌ Unexpected result: outside=($outside_profile) inside=($inside_profile) outside_stderr=(($outside_result.stderr | str trim)) inside_stderr=(($inside_result.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Regression: yzx edit must ignore stale ambient Helix wrapper paths and derive the managed editor from the canonical launch env.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env [] {
@@ -747,6 +839,7 @@ export def run_workspace_canonical_tests [] {
     [
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
         (test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env)
+        (test_resolve_built_profile_prefers_runtime_profile_outside_yazelix_shell)
         (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
         (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
         (test_yzx_cli_menu_uses_lightweight_menu_module)

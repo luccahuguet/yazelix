@@ -5,7 +5,6 @@
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_state.nu compute_config_state
 use ../utils/common.nu [get_installed_yazelix_runtime_reference_dir get_yazelix_runtime_dir]
-use ../utils/launch_state.nu [record_launch_state]
 use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 
@@ -168,8 +167,6 @@ def main [--welcome-source: string, --skip-welcome] {
     if not $quiet_mode {
         print "✅ Yazelix environment setup complete!"
     }
-
-    record_launch_state (compute_config_state)
 
     # Import welcome module
     use ./welcome.nu *

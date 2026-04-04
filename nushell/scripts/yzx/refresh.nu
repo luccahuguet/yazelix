@@ -3,6 +3,7 @@
 
 use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled get_refresh_output_mode format_command_failure_summary]
 use ../utils/config_state.nu [compute_config_state mark_config_state_applied]
+use ../utils/launch_state.nu [record_launch_state resolve_built_profile]
 use ../utils/common.nu [describe_build_parallelism]
 
 def summarize_values [values max_items: int] {
@@ -149,7 +150,12 @@ export def "yzx refresh" [
             exit 1
         }
     }
-    mark_config_state_applied (compute_config_state)
+    let applied_state = (compute_config_state)
+    mark_config_state_applied $applied_state
+    let built_profile = (resolve_built_profile)
+    if ($built_profile | is-not-empty) {
+        record_launch_state $applied_state $built_profile
+    }
 
     print "✅ Refresh completed."
     print "⚠️  Your current Yazelix session keeps its existing environment."

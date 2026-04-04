@@ -18,9 +18,49 @@ def normalize_path_entries [value: any] {
     }
 }
 
+def resolve_profile_from_shell_script [candidate: string] {
+    if not ($candidate | path exists) or (($candidate | path type) != "file") {
+        return ""
+    }
+
+    let embedded_profile = (
+        open --raw $candidate
+        | parse -r 'declare -x DEVENV_PROFILE="(?<profile>/nix/store/[^"]+-devenv-profile)"'
+        | get -o 0.profile
+        | default ""
+        | into string
+        | str trim
+    )
+
+    if ($embedded_profile | is-empty) {
+        return ""
+    }
+
+    try {
+        let result = (^readlink -f $embedded_profile | complete)
+        if $result.exit_code != 0 {
+            return ""
+        }
+
+        let resolved = ($result.stdout | str trim)
+        if ($resolved | is-not-empty) and ($resolved | path exists) {
+            $resolved
+        } else {
+            ""
+        }
+    } catch {
+        ""
+    }
+}
+
 def resolve_profile_candidate [candidate: string] {
     if ($candidate | is-empty) or (not ($candidate | path exists)) {
         return ""
+    }
+
+    let embedded_profile = (resolve_profile_from_shell_script $candidate)
+    if ($embedded_profile | is-not-empty) {
+        return $embedded_profile
     }
 
     try {
@@ -56,17 +96,42 @@ def load_launch_state [] {
     }
 }
 
+def resolve_any_recorded_launch_profile [] {
+    let launch_state = (load_launch_state)
+    if $launch_state == null {
+        return ""
+    }
+
+    let recorded_profile = (
+        $launch_state
+        | get -o profile_path
+        | default ""
+        | into string
+    )
+
+    resolve_profile_candidate $recorded_profile
+}
+
+def is_live_yazelix_session [] {
+    let terminal = ($env.YAZELIX_TERMINAL? | default "" | into string | str trim)
+    let zellij = ($env.ZELLIJ? | default "" | into string | str trim)
+    let zellij_session = ($env.ZELLIJ_SESSION_NAME? | default "" | into string | str trim)
+
+    ($terminal | is-not-empty) or ($zellij | is-not-empty) or ($zellij_session | is-not-empty)
+}
+
 export def resolve_built_profile [] {
+    let in_live_session = (is_live_yazelix_session)
     let env_profile = ($env.DEVENV_PROFILE? | default "")
     let resolved_env_profile = (resolve_profile_candidate $env_profile)
-    if ($resolved_env_profile | is-not-empty) {
+    if $in_live_session and ($resolved_env_profile | is-not-empty) {
         return $resolved_env_profile
     }
 
     let yazelix_dir = (ensure_yazelix_runtime_project_dir)
     let candidates = [
-        ($yazelix_dir | path join ".devenv/profile")
         ($yazelix_dir | path join ".devenv/gc/shell")
+        ($yazelix_dir | path join ".devenv/profile")
     ]
 
     for candidate in $candidates {
@@ -74,6 +139,15 @@ export def resolve_built_profile [] {
         if ($resolved | is-not-empty) {
             return $resolved
         }
+    }
+
+    let recorded_profile = (resolve_any_recorded_launch_profile)
+    if ($recorded_profile | is-not-empty) {
+        return $recorded_profile
+    }
+
+    if ($resolved_env_profile | is-not-empty) {
+        return $resolved_env_profile
     }
 
     ""

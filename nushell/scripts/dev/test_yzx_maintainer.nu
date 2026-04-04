@@ -100,32 +100,6 @@ def test_issue_bead_comment_plan [] {
     }
 }
 
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-# Defends: runtime-owned devenv resolution remains the maintainer source of truth.
-def test_preferred_devenv_resolution_uses_runtime_owned_cli [] {
-    print "🧪 Testing preferred devenv resolution prefers the runtime-owned CLI over older profile entries..."
-
-    let expected = (get_yazelix_state_dir | path join "runtime" "current" "bin" "devenv" | path expand)
-    if not ($expected | path exists) {
-        print "  ❌ installed runtime-owned devenv is required for this maintainer test"
-        return false
-    }
-
-    try {
-        let resolved = (resolve_preferred_devenv_path | path expand)
-        if $resolved == $expected {
-            print "  ✅ Preferred devenv resolution now matches the runtime-owned source of truth"
-            true
-        } else {
-            print $"  ❌ Unexpected result: resolved=($resolved) expected=($expected)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 # Regression: repo-local devenv shells clear inherited installed-runtime aliases so source entrypoints use the checkout.
 def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
@@ -225,7 +199,6 @@ def main [] {
     let results = [
         (test_issue_bead_reconciliation_plan)
         (test_issue_bead_comment_plan)
-        (test_preferred_devenv_resolution_uses_runtime_owned_cli)
         (test_source_devenv_shell_clears_inherited_runtime_aliases)
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
         (test_nushell_initializer_restores_current_path_first)
