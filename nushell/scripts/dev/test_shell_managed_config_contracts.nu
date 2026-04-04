@@ -341,6 +341,49 @@ def test_source_checkout_runtime_resolution_beats_installed_runtime [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Regression: installed-runtime modules must not treat a Nix -source mirror as the active runtime when runtime/current exists.
+def test_installed_runtime_resolution_prefers_runtime_current_over_nix_source_mirror [] {
+    print "🧪 Testing installed-runtime resolution prefers runtime/current over a Nix -source mirror..."
+
+    let repo_root = (get_repo_root)
+    let tmp_root = (^mktemp -d /tmp/yazelix_installed_runtime_resolution_XXXXXX | str trim)
+    let fake_state_dir = ($tmp_root | path join "state")
+    let fake_installed_runtime = ($tmp_root | path join "installed_runtime")
+    let fake_source_root = ($tmp_root | path join "fake-runtime-source")
+    let fake_common_path = ($fake_source_root | path join "nushell" "scripts" "utils" "common.nu")
+
+    mkdir ($fake_state_dir | path join "runtime")
+    mkdir ($fake_installed_runtime | path join "nushell")
+    mkdir ($fake_source_root | path join "nushell" "scripts" "utils")
+    "" | save --force --raw ($fake_installed_runtime | path join "yazelix_default.toml")
+    ^ln -s $fake_installed_runtime ($fake_state_dir | path join "runtime" "current")
+    cp ($repo_root | path join "nushell" "scripts" "utils" "common.nu") $fake_common_path
+
+    let result = (try {
+        let output = (with-env {
+            YAZELIX_STATE_DIR: $fake_state_dir
+        } {
+            ^nu -c $"use \"($fake_common_path)\" [get_yazelix_runtime_dir]; print \(get_yazelix_runtime_dir\)" | complete
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == $fake_installed_runtime) {
+            print "  ✅ Installed-runtime resolution now prefers runtime/current over a Nix -source mirror"
+            true
+        } else {
+            print $"  ❌ Unexpected installed-runtime resolution result: exit=($output.exit_code) stdout=($stdout) expected=($fake_installed_runtime) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 export def run_shell_managed_config_contract_tests [] {
     [
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
@@ -350,6 +393,7 @@ export def run_shell_managed_config_contract_tests [] {
         (test_managed_bash_config_sources_optional_user_hook)
         (test_managed_fish_config_does_not_export_helix_mode_env)
         (test_source_checkout_runtime_resolution_beats_installed_runtime)
+        (test_installed_runtime_resolution_prefers_runtime_current_over_nix_source_mirror)
     ]
 }
 
