@@ -269,6 +269,7 @@ terminals = ["ghostty"]
         mkdir $fake_state_dir
         mkdir ($fake_state_dir | path join "runtime")
         mkdir $fake_bin
+        cp ($fixture.repo_root | path join ".taplo.toml") ($fake_runtime | path join ".taplo.toml")
         cp ($fixture.repo_root | path join "yazelix_default.toml") ($fake_runtime | path join "yazelix_default.toml")
         ^ln -s ($fixture.repo_root | path join "config_metadata") ($fake_runtime | path join "config_metadata")
         ^ln -s $fake_runtime $fake_runtime_link

@@ -21,7 +21,7 @@ def setup_shellhook_quiet_fixture [label: string] {
     mkdir $log_dir
     mkdir ($state_dir | path join "state")
 
-    for entry in ["nushell", "shells", "configs", "config_metadata", "assets", "yazelix_default.toml", "yazelix_packs_default.toml"] {
+    for entry in [".taplo.toml", "nushell", "shells", "configs", "config_metadata", "assets", "yazelix_default.toml", "yazelix_packs_default.toml"] {
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
     ^ln -s (repo_path "shells" "posix" "yzx_cli.sh") ($runtime_bin_dir | path join "yzx")

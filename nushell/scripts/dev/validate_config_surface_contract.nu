@@ -224,6 +224,7 @@ def setup_launch_profile_fixture [] {
     mkdir $home_root
 
     for relative_path in [
+        ".taplo.toml"
         "yazelix_default.toml"
         "yazelix_packs_default.toml"
         "devenv.lock"

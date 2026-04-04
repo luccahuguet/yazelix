@@ -21,7 +21,7 @@ def setup_fixture [] {
     mkdir ($tmp_home | path join ".local" "share")
     mkdir $state_dir
 
-    for entry in ["nushell", "shells", "configs", "devenv.lock", "yazelix_default.toml", "CHANGELOG.md"] {
+    for entry in [".taplo.toml", "nushell", "shells", "configs", "devenv.lock", "yazelix_default.toml", "CHANGELOG.md"] {
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
 

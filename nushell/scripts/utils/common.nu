@@ -10,6 +10,7 @@ const INFERRED_RUNTIME_DIR = (
     | path expand
 )
 const RUNTIME_PROJECT_ENTRIES = [
+    ".taplo.toml"
     "assets"
     "config_metadata"
     "configs"

@@ -182,7 +182,7 @@ def test_runtime_project_lookup_stays_read_only_until_materialized [] {
     mkdir $project_dir
     mkdir $stale_runtime_dir
 
-    for entry in ["assets", "config_metadata", "configs", "nushell", "rust_plugins", "shells", "CHANGELOG.md", "devenv.lock", "devenv.nix", "devenv.yaml", "yazelix_default.toml", "yazelix_packs_default.toml"] {
+    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "nushell", "rust_plugins", "shells", "CHANGELOG.md", "devenv.lock", "devenv.nix", "devenv.yaml", "yazelix_default.toml", "yazelix_packs_default.toml"] {
         ^ln -s ($repo_root | path join $entry) ($runtime_dir | path join $entry)
     }
     "stale" | save --force ($stale_runtime_dir | path join "devenv.nix")

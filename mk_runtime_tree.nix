@@ -15,6 +15,7 @@ pkgs.runCommand name { } ''
   ln -s ${src}/shells "$out/shells"
 
   ln -s ${src}/CHANGELOG.md "$out/CHANGELOG.md"
+  ln -s ${src}/.taplo.toml "$out/.taplo.toml"
   ln -s ${src}/devenv.lock "$out/devenv.lock"
   ln -s ${src}/devenv.nix "$out/devenv.nix"
   ln -s ${src}/devenv.yaml "$out/devenv.yaml"

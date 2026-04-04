@@ -69,7 +69,7 @@ def get_dynamic_overrides [] {
     let config = (try {
         parse_yazelix_config
     } catch {
-        {disable_zellij_tips: "true", zellij_pane_frames: "true", zellij_rounded_corners: "true", zellij_theme: "default", zellij_default_mode: "normal"}
+        {disable_zellij_tips: "true", zellij_pane_frames: "true", zellij_rounded_corners: "true", zellij_theme: "default", zellij_default_mode: "normal", persistent_sessions: "false"}
     })
 
     let pane_frames = ($config | get -o zellij_pane_frames | default "true")
@@ -113,11 +113,19 @@ def get_dynamic_overrides [] {
         "false"
     }
 
+    let persistent_sessions = ($config | get -o persistent_sessions | default "false")
+    let on_force_close_value = if ($persistent_sessions | str starts-with "true") {
+        "detach"
+    } else {
+        "quit"
+    }
+
     [
         "// === YAZELIX DYNAMIC SETTINGS (from yazelix.toml) ===",
         $"theme \"($theme)\"",
         $"show_startup_tips ($show_tips_value)",
         "show_release_notes false",
+        $"on_force_close \"($on_force_close_value)\"",
         $"pane_frames ($pane_frames_value)",
         "ui {",
         "    pane_frames {",

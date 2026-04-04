@@ -35,7 +35,7 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
     mkdir $state_dir
     mkdir $fake_bin
 
-    for entry in ["nushell", "shells", "configs", "config_metadata", "devenv.lock", "yazelix_default.toml", "docs", "CHANGELOG.md", "assets"] {
+    for entry in [".taplo.toml", "nushell", "shells", "configs", "config_metadata", "devenv.lock", "yazelix_default.toml", "docs", "CHANGELOG.md", "assets"] {
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
 
@@ -381,6 +381,7 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
 
         ^ln -s $runtime_dir ($runtime_reference_root | path join "current")
         ^ln -s (repo_path "nushell" "scripts" "core" "launch_yazelix.nu") ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+        ^ln -s (repo_path ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
         ^ln -s (repo_path "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
 
         [
@@ -489,6 +490,7 @@ def test_yzx_desktop_launch_falls_back_to_hidden_wait_when_no_visible_bootstrap_
         ^ln -s $runtime_dir ($runtime_reference_root | path join "current")
         ^ln -s (repo_path "nushell" "scripts" "core" "launch_yazelix.nu") ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
         ^ln -s (repo_path "nushell" "scripts" "yzx" "launch.nu") ($runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
+        ^ln -s (repo_path ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
         ^ln -s (repo_path "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
 
         let fast_launch_module = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
@@ -650,6 +652,7 @@ def test_profile_resolution_policies_separate_runtime_owned_and_current_session_
         mkdir ($runtime_dir | path join "configs")
         mkdir ($runtime_dir | path join "docs")
         mkdir ($runtime_dir | path join "assets")
+        ^ln -s (repo_path ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
         "" | save --force --raw ($runtime_dir | path join "yazelix_default.toml")
         "" | save --force --raw ($runtime_dir | path join "devenv.nix")
         "" | save --force --raw ($runtime_dir | path join "devenv.yaml")
@@ -1225,6 +1228,7 @@ def test_launch_falls_through_after_immediate_terminal_failure [] {
         mkdir $fake_runtime
         mkdir ($fake_runtime | path join "shells")
         mkdir $fake_shells
+        ^ln -s (repo_path ".taplo.toml") ($fake_runtime | path join ".taplo.toml")
         "" | save --force --raw ($fake_runtime | path join "yazelix_default.toml")
 
         [

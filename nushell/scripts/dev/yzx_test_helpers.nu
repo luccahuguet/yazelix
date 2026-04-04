@@ -35,6 +35,7 @@ export def setup_test_home [] {
         let name = ($entry.name | path basename)
         ^ln -s $entry.name ($config_dir | path join $name)
     }
+    ^ln -s ($repo_root | path join ".taplo.toml") ($config_dir | path join ".taplo.toml")
 
     cp ($repo_root | path join "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
 

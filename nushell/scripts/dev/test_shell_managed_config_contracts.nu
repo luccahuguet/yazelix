@@ -356,6 +356,7 @@ def test_installed_runtime_resolution_prefers_runtime_current_over_nix_source_mi
     mkdir ($fake_state_dir | path join "runtime")
     mkdir ($fake_installed_runtime | path join "nushell")
     mkdir ($fake_source_root | path join "nushell" "scripts" "utils")
+    cp ($repo_root | path join ".taplo.toml") ($fake_installed_runtime | path join ".taplo.toml")
     "" | save --force --raw ($fake_installed_runtime | path join "yazelix_default.toml")
     ^ln -s $fake_installed_runtime ($fake_state_dir | path join "runtime" "current")
     cp ($repo_root | path join "nushell" "scripts" "utils" "common.nu") $fake_common_path

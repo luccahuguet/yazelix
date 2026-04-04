@@ -25,6 +25,7 @@ The merger now prefers your **Yazelix-managed Zellij config** when present, then
 3. **Enforced Yazelix settings**: Always appended last to guarantee required behavior:
    - `pane_frames false` (needed for `zjstatus`)
    - `support_kitty_keyboard_protocol` set from `yazelix.toml` (default: false)
+   - `on_force_close` set from Yazelix session mode (`quit` for default non-persistent sessions, `detach` for persistent sessions)
    - `default_layout` set to Yazelix’s layout file (absolute path)
    - `layout_dir` set to Yazelix’s generated layouts directory
 
@@ -65,9 +66,6 @@ Comment out any line to hide that widget. Order matters. Restart Yazelix to rege
 // Show startup tips (Yazelix disables by default)
 show_startup_tips true
 
-// What to do when terminal closes
-on_force_close "quit"
-
 // Copy/paste settings
 copy_on_select false
 copy_clipboard "primary"
@@ -98,6 +96,7 @@ ui {
 - Copy command: `wl-copy` (Wayland clipboard)
 - Scrollback editor: `hx` (Helix)
 - Session serialization: enabled for persistence
+- `on_force_close`: `quit` for default non-persistent sessions, `detach` for persistent sessions
 - Startup tips: disabled
 
 ## Troubleshooting

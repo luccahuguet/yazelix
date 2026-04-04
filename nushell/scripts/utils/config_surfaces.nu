@@ -7,6 +7,7 @@ use failure_classes.nu [format_failure_classification]
 export const MAIN_CONFIG_FILENAME = "yazelix.toml"
 export const PACK_SIDECAR_FILENAME = "yazelix_packs.toml"
 export const PACK_DEFAULT_FILENAME = "yazelix_packs_default.toml"
+export const TAPLO_SUPPORT_FILENAME = ".taplo.toml"
 
 def make_surface_error [headline: string, details: list<string>, recovery_hint: string] {
     error make {
@@ -119,6 +120,15 @@ export def get_legacy_pack_sidecar_path [config_root?: string] {
     ($root | path join $PACK_SIDECAR_FILENAME)
 }
 
+export def get_managed_taplo_support_path [config_root?: string] {
+    let root = if $config_root == null { get_yazelix_config_dir } else { $config_root | path expand }
+    ($root | path join $TAPLO_SUPPORT_FILENAME)
+}
+
+def get_runtime_taplo_support_path [runtime_root: string] {
+    ($runtime_root | path join $TAPLO_SUPPORT_FILENAME)
+}
+
 def get_associated_pack_surface_path [config_file: string] {
     if ($config_file | path basename) == "yazelix_default.toml" {
         get_pack_default_path $config_file
@@ -223,6 +233,7 @@ def relocate_legacy_config_surfaces_if_needed [paths: record] {
 export def reconcile_primary_config_surfaces [config_root?: string, runtime_root?: string] {
     let paths = (get_primary_config_paths $config_root $runtime_root)
     relocate_legacy_config_surfaces_if_needed $paths
+    ensure_managed_taplo_support $paths.config_dir $paths.runtime_root | ignore
     $paths
 }
 
@@ -233,6 +244,7 @@ export def get_primary_config_paths [config_root?: string, runtime_root?: string
 
     {
         config_dir: $resolved_config_root
+        runtime_root: $resolved_runtime_root
         user_config_dir: $user_config_dir
         user_config: (get_main_user_config_path $resolved_config_root)
         user_pack_config: (get_pack_sidecar_path (get_main_user_config_path $resolved_config_root))
@@ -241,6 +253,41 @@ export def get_primary_config_paths [config_root?: string, runtime_root?: string
         default_config: ($resolved_runtime_root | path join "yazelix_default.toml")
         default_pack_config: ($resolved_runtime_root | path join $PACK_DEFAULT_FILENAME)
     }
+}
+
+export def ensure_managed_taplo_support [config_root?: string, runtime_root?: string] {
+    let resolved_config_root = if $config_root == null { get_yazelix_config_dir } else { $config_root | path expand }
+    let resolved_runtime_root = if $runtime_root == null { require_yazelix_runtime_dir } else { $runtime_root | path expand }
+    let source_path = (get_runtime_taplo_support_path $resolved_runtime_root)
+    let target_path = (get_managed_taplo_support_path $resolved_config_root)
+
+    if not ($source_path | path exists) {
+        (make_surface_error
+            "Yazelix runtime is missing the Taplo formatter config."
+            [
+                $"runtime support file: ($source_path)"
+            ]
+            "Reinstall Yazelix so the runtime includes the managed Taplo formatter config."
+        )
+    }
+
+    mkdir $resolved_config_root
+    let source_content = (open --raw $source_path)
+    let should_write = if ($target_path | path exists) {
+        (open --raw $target_path) != $source_content
+    } else {
+        true
+    }
+
+    if $should_write {
+        if ($target_path | path exists) {
+            ^chmod u+w $target_path
+        }
+        $source_content | save --force --raw $target_path
+        ^chmod u+w $target_path
+    }
+
+    $target_path
 }
 
 export def merge_pack_sidecar [

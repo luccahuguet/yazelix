@@ -363,6 +363,57 @@ def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
     $result
 }
 
+# Regression: managed config bootstrap must materialize Taplo support so formatting yazelix.toml keeps Yazelix array layout.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_parse_yazelix_config_bootstraps_taplo_formatter_support [] {
+    print "🧪 Testing parse_yazelix_config bootstraps Taplo formatter support for managed Yazelix TOML..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_taplo_support_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+
+    let result = (try {
+        with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config | ignore
+        }
+
+        let taplo_support_path = ($temp_config_dir | path join ".taplo.toml")
+        let expected_taplo_support = (open --raw (repo_path ".taplo.toml"))
+        let user_config_dir = ($temp_config_dir | path join "user_configs")
+        let user_config_path = ($user_config_dir | path join "yazelix.toml")
+        let format_result = (
+            ^bash -lc $"cd '($user_config_dir)' && taplo fmt - < '($user_config_path)'" | complete
+        )
+        let formatted = ($format_result.stdout | default "")
+
+        if (
+            ($taplo_support_path | path exists)
+            and ((open --raw $taplo_support_path) == $expected_taplo_support)
+            and ($format_result.exit_code == 0)
+            and ($formatted | str contains "popup_program = [\n  \"lazygit\",")
+            and not ($formatted | str contains 'popup_program = ["lazygit"]')
+        ) {
+            print "  ✅ Managed config bootstrap now materializes Taplo support so yazelix.toml formatting keeps multiline arrays"
+            true
+        } else {
+            print $"  ❌ Unexpected Taplo bootstrap result: support_exists=((($taplo_support_path | path exists))) exit=($format_result.exit_code) stdout=(($format_result.stdout | str trim)) stderr=(($format_result.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 # Defends: legacy root config is rejected unless the user explicitly allows migration.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation [] {
@@ -843,6 +894,8 @@ def test_generated_runtime_configs_prefer_active_runtime_over_installed_referenc
     ^ln -s $fake_installed_runtime ($fake_state_dir | path join "runtime" "current")
 
     let result = (try {
+        write_minimal_user_zellij_config $fake_home
+
         let generated = (with-env {
             HOME: $fake_home
             XDG_CONFIG_HOME: ($fake_home | path join ".config")
@@ -930,6 +983,54 @@ sidebar_width_percent = 25
             true
         } else {
             print "  ❌ Sidebar width did not propagate through merged Zellij config generation"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+# Regression: non-persistent Zellij sessions must quit on terminal close while persistent sessions may detach.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_generate_merged_zellij_config_sets_on_force_close_by_session_mode [] {
+    print "🧪 Testing merged Zellij config sets on_force_close from Yazelix session mode..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_force_close_mode_XXXXXX | str trim)
+
+    let result = (try {
+        let nonpersistent_config = ($tmpdir | path join "nonpersistent.toml")
+        let persistent_config = ($tmpdir | path join "persistent.toml")
+
+        '[zellij]
+persistent_sessions = false
+' | save --force --raw $nonpersistent_config
+
+        '[zellij]
+persistent_sessions = true
+session_name = "fixture"
+' | save --force --raw $persistent_config
+
+        let nonpersistent_output = (run_merged_zellij_config_in_fake_home ($tmpdir | path join "nonpersistent") {
+            YAZELIX_CONFIG_OVERRIDE: $nonpersistent_config
+        })
+        let persistent_output = (run_merged_zellij_config_in_fake_home ($tmpdir | path join "persistent") {
+            YAZELIX_CONFIG_OVERRIDE: $persistent_config
+        })
+
+        if (
+            (($nonpersistent_output.config | lines | where {|line| ($line | str trim) == 'on_force_close "quit"'} | length) == 1)
+            and (($nonpersistent_output.config | lines | where {|line| ($line | str trim) == 'on_force_close "detach"'} | length) == 0)
+            and (($persistent_output.config | lines | where {|line| ($line | str trim) == 'on_force_close "detach"'} | length) == 1)
+            and (($persistent_output.config | lines | where {|line| ($line | str trim) == 'on_force_close "quit"'} | length) == 0)
+        ) {
+            print "  ✅ Merged Zellij config now quits default sessions on terminal close while preserving detach semantics for persistent sessions"
+            true
+        } else {
+            print "  ❌ Unexpected on_force_close policy in generated Zellij config"
             false
         }
     } catch { |err|
@@ -1030,6 +1131,7 @@ export def run_generated_config_canonical_tests [] {
         (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
         (test_parse_yazelix_config_bootstraps_split_default_surfaces)
+        (test_parse_yazelix_config_bootstraps_taplo_formatter_support)
         (test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation)
         (test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed)
         (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)
@@ -1044,6 +1146,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it)
         (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
+        (test_generate_merged_zellij_config_sets_on_force_close_by_session_mode)
     ]
 }
 

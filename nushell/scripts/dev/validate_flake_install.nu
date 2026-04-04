@@ -99,6 +99,7 @@ def verify_installed_runtime [temp_home: string] {
     let runtime_devenv = ($runtime_current | path join "bin" "devenv")
     let runtime_nu = ($runtime_current | path join "bin" "nu")
     let runtime_yzx_cli = ($runtime_current | path join "shells" "posix" "yzx_cli.sh")
+    let runtime_taplo_config = ($runtime_current | path join ".taplo.toml")
     let devenv_cli_module = ($runtime_current | path join "nushell" "scripts" "utils" "devenv_cli.nu")
     let runtime_helper_module = ($runtime_current | path join "configs" "zellij" "scripts" "runtime_helper.nu")
     let yzx_path = ($temp_home | path join ".local" "bin" "yzx")
@@ -106,6 +107,7 @@ def verify_installed_runtime [temp_home: string] {
     let user_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix.toml")
     let pack_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix_packs.toml")
     let config_root = ($temp_home | path join ".config" "yazelix")
+    let managed_taplo_config = ($config_root | path join ".taplo.toml")
     let zellij_config = ($temp_home | path join ".local" "share" "yazelix" "configs" "zellij" "config.kdl")
     let yazi_theme = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "theme.toml")
     let yazi_flavor_root = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors")
@@ -115,10 +117,12 @@ def verify_installed_runtime [temp_home: string] {
     require_path_exists $runtime_devenv "runtime-local devenv binary"
     require_path_exists $runtime_nu "runtime-local Nushell binary"
     require_path_exists $runtime_yzx_cli "runtime-local POSIX yzx launcher"
+    require_path_exists $runtime_taplo_config "runtime-local Taplo formatter config"
     require_path_exists $yzx_path "installed yzx wrapper"
     require_path_exists $nushell_config "generated Nushell hook config"
     require_path_exists $user_config "seeded user config"
     require_path_exists $pack_config "seeded pack config"
+    require_path_exists $managed_taplo_config "managed Taplo formatter config"
     require_path_exists $zellij_config "generated Zellij config"
     require_path_exists $yazi_theme "generated Yazi theme config"
     require_path_exists $yazi_flavor_root "generated Yazi flavors directory"
