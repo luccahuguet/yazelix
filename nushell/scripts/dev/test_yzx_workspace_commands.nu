@@ -333,10 +333,10 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
     $result
 }
 
-# Regression: external launch helpers must ignore stale ambient DEVENV_PROFILE values and prefer the profile embedded in the runtime's latest built shell unless already inside a Yazelix shell.
+# Regression: current-session and runtime-owned profile policies must stay intentionally distinct and ignore unrelated Zellij activation.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_resolve_built_profile_prefers_runtime_profile_outside_yazelix_shell [] {
-    print "🧪 Testing built-profile resolution prefers the profile embedded in the runtime's latest built shell outside Yazelix shells..."
+def test_profile_resolution_policies_separate_runtime_owned_and_current_session_state [] {
+    print "🧪 Testing current-session and runtime-owned profile policies stay intentionally distinct..."
 
     let tmpdir = (^mktemp -d /tmp/yazelix_built_profile_runtime_XXXXXX | str trim)
 
@@ -372,6 +372,7 @@ def test_resolve_built_profile_prefers_runtime_profile_outside_yazelix_shell [] 
         "" | save --force --raw ($runtime_dir | path join "devenv.lock")
         "" | save --force --raw ($runtime_dir | path join "CHANGELOG.md")
         mkdir ($runtime_project | path join ".devenv" "gc")
+        ^ln -s ($runtime_dir | path join "devenv.nix") ($runtime_project | path join "devenv.nix")
         mkdir $stale_env_profile
         mkdir $launch_state_profile
         [
@@ -385,7 +386,11 @@ def test_resolve_built_profile_prefers_runtime_profile_outside_yazelix_shell [] 
         } | to json | save --force $launch_state_path
 
         let launch_state_module = (repo_path "nushell" "scripts" "utils" "launch_state.nu")
-        let snippet = $"use \"($launch_state_module)\" [resolve_built_profile]; print \(resolve_built_profile\)"
+        let snippet = ([
+            $"use \"($launch_state_module)\" [resolve_current_session_profile resolve_runtime_owned_profile]"
+            "print (resolve_runtime_owned_profile)"
+            "print (resolve_current_session_profile)"
+        ] | str join "\n")
 
         let outside_result = (with-env {
             HOME: $fake_home
@@ -393,6 +398,16 @@ def test_resolve_built_profile_prefers_runtime_profile_outside_yazelix_shell [] 
             YAZELIX_STATE_DIR: $state_dir
             YAZELIX_RUNTIME_DIR: $runtime_dir
             DEVENV_PROFILE: $stale_env_profile
+        } {
+            ^nu -c $snippet | complete
+        })
+        let zellij_only_result = (with-env {
+            HOME: $fake_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_RUNTIME_DIR: $runtime_dir
+            DEVENV_PROFILE: $stale_env_profile
+            ZELLIJ_SESSION_NAME: "not-yazelix"
         } {
             ^nu -c $snippet | complete
         })
@@ -406,20 +421,32 @@ def test_resolve_built_profile_prefers_runtime_profile_outside_yazelix_shell [] 
         } {
             ^nu -c $snippet | complete
         })
-        let outside_profile = ($outside_result.stdout | str trim)
-        let inside_profile = ($inside_result.stdout | str trim)
+        let outside_lines = ($outside_result.stdout | lines)
+        let zellij_only_lines = ($zellij_only_result.stdout | lines)
+        let inside_lines = ($inside_result.stdout | lines)
+        let outside_runtime_owned = ($outside_lines | get -o 0 | default "" | str trim)
+        let outside_current_session = ($outside_lines | get -o 1 | default "" | str trim)
+        let zellij_only_runtime_owned = ($zellij_only_lines | get -o 0 | default "" | str trim)
+        let zellij_only_current_session = ($zellij_only_lines | get -o 1 | default "" | str trim)
+        let inside_runtime_owned = ($inside_lines | get -o 0 | default "" | str trim)
+        let inside_current_session = ($inside_lines | get -o 1 | default "" | str trim)
 
         if (
             ($outside_result.exit_code == 0)
+            and ($zellij_only_result.exit_code == 0)
             and ($inside_result.exit_code == 0)
             and ($embedded_runtime_profile | is-not-empty)
-            and ($outside_profile == $embedded_runtime_profile)
-            and ($inside_profile == ($stale_env_profile | path expand))
+            and ($outside_runtime_owned == $embedded_runtime_profile)
+            and ($outside_current_session == $embedded_runtime_profile)
+            and ($zellij_only_runtime_owned == $embedded_runtime_profile)
+            and ($zellij_only_current_session == $embedded_runtime_profile)
+            and ($inside_runtime_owned == $embedded_runtime_profile)
+            and ($inside_current_session == ($stale_env_profile | path expand))
         ) {
-            print "  ✅ External launch helpers now prefer the profile embedded in the runtime's latest built shell, while in-shell helpers still honor the live Yazelix shell profile"
+            print "  ✅ Runtime-owned resolution ignores stale live activation, unrelated Zellij markers do not count as Yazelix sessions, and current-session resolution still honors the active Yazelix shell profile"
             true
         } else {
-            print $"  ❌ Unexpected result: outside=($outside_profile) inside=($inside_profile) outside_stderr=(($outside_result.stderr | str trim)) inside_stderr=(($inside_result.stderr | str trim))"
+            print $"  ❌ Unexpected result: outside_runtime=($outside_runtime_owned) outside_current=($outside_current_session) zellij_runtime=($zellij_only_runtime_owned) zellij_current=($zellij_only_current_session) inside_runtime=($inside_runtime_owned) inside_current=($inside_current_session) outside_stderr=(($outside_result.stderr | str trim)) zellij_stderr=(($zellij_only_result.stderr | str trim)) inside_stderr=(($inside_result.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -858,7 +885,7 @@ export def run_workspace_canonical_tests [] {
     [
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
         (test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env)
-        (test_resolve_built_profile_prefers_runtime_profile_outside_yazelix_shell)
+        (test_profile_resolution_policies_separate_runtime_owned_and_current_session_state)
         (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
         (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
         (test_yzx_cli_menu_uses_lightweight_menu_module)

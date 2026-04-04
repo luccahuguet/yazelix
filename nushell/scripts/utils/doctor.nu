@@ -9,7 +9,7 @@ use config_surfaces.nu [get_main_user_config_path reconcile_primary_config_surfa
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
 use devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available resolve_preferred_devenv_path]
-use launch_state.nu [resolve_built_profile]
+use launch_state.nu [resolve_runtime_owned_profile]
 use runtime_contract_checker.nu [
     check_generated_layout
     check_launch_terminal_support
@@ -584,7 +584,7 @@ export def check_shared_runtime_preflight [] {
     let terminals = ($config.terminals? | default ["ghostty"] | uniq)
     let manage_terminals = ($config.manage_terminals? | default true)
     let layout_path = (resolve_expected_layout_path $config)
-    let built_profile = (resolve_built_profile)
+    let built_profile = (resolve_runtime_owned_profile)
     let terminal_check = if $manage_terminals and ($built_profile | is-not-empty) {
         with-env {DEVENV_PROFILE: $built_profile} {
             check_launch_terminal_support "" $terminals $manage_terminals

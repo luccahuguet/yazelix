@@ -3,7 +3,7 @@
 
 use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled get_refresh_output_mode format_command_failure_summary]
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
-use ../utils/launch_state.nu [record_launch_profile_state resolve_built_profile]
+use ../utils/launch_state.nu [record_launch_profile_state resolve_current_session_profile]
 use ../utils/common.nu [describe_build_parallelism]
 
 def summarize_values [values max_items: int] {
@@ -152,7 +152,7 @@ export def "yzx refresh" [
     }
     let applied_state = (compute_config_state)
     record_materialized_state $applied_state
-    let built_profile = (resolve_built_profile)
+    let built_profile = (resolve_current_session_profile)
     if ($built_profile | is-not-empty) {
         record_launch_profile_state $applied_state $built_profile
     }

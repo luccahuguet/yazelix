@@ -96,7 +96,7 @@ def load_recorded_launch_state [] {
     }
 }
 
-def resolve_any_recorded_launch_profile [] {
+def resolve_recorded_launch_profile_evidence [] {
     let launch_state = (load_recorded_launch_state)
     if $launch_state == null {
         return ""
@@ -112,29 +112,35 @@ def resolve_any_recorded_launch_profile [] {
     resolve_profile_candidate $recorded_profile
 }
 
-def is_live_yazelix_session [] {
+export def is_live_yazelix_session [] {
+    let in_yazelix_shell = ($env.IN_YAZELIX_SHELL? | default "" | into string | str trim)
     let terminal = ($env.YAZELIX_TERMINAL? | default "" | into string | str trim)
-    let zellij = ($env.ZELLIJ? | default "" | into string | str trim)
-    let zellij_session = ($env.ZELLIJ_SESSION_NAME? | default "" | into string | str trim)
 
-    ($terminal | is-not-empty) or ($zellij | is-not-empty) or ($zellij_session | is-not-empty)
+    ($in_yazelix_shell == "true") or ($terminal | is-not-empty)
 }
 
-export def resolve_built_profile [] {
-    let in_live_session = (is_live_yazelix_session)
+def resolve_ambient_shell_profile [] {
     let env_profile = ($env.DEVENV_PROFILE? | default "")
-    let resolved_env_profile = (resolve_profile_candidate $env_profile)
-    if $in_live_session and ($resolved_env_profile | is-not-empty) {
-        return $resolved_env_profile
-    }
+    resolve_profile_candidate $env_profile
+}
 
-    let yazelix_dir = (get_existing_yazelix_runtime_project_dir)
-    let candidates = if $yazelix_dir == null {
+def resolve_live_session_profile [] {
+    let resolved_env_profile = (resolve_ambient_shell_profile)
+    if (is_live_yazelix_session) and ($resolved_env_profile | is-not-empty) {
+        $resolved_env_profile
+    } else {
+        ""
+    }
+}
+
+def resolve_runtime_project_profile [] {
+    let runtime_project_dir = (get_existing_yazelix_runtime_project_dir)
+    let candidates = if $runtime_project_dir == null {
         []
     } else {
         [
-            ($yazelix_dir | path join ".devenv/gc/shell")
-            ($yazelix_dir | path join ".devenv/profile")
+            ($runtime_project_dir | path join ".devenv/gc/shell")
+            ($runtime_project_dir | path join ".devenv/profile")
         ]
     }
 
@@ -145,16 +151,40 @@ export def resolve_built_profile [] {
         }
     }
 
-    let recorded_profile = (resolve_any_recorded_launch_profile)
+    ""
+}
+
+export def resolve_current_session_profile [] {
+    let live_session_profile = (resolve_live_session_profile)
+    if ($live_session_profile | is-not-empty) {
+        return $live_session_profile
+    }
+
+    let runtime_project_profile = (resolve_runtime_project_profile)
+    if ($runtime_project_profile | is-not-empty) {
+        return $runtime_project_profile
+    }
+
+    let recorded_profile = (resolve_recorded_launch_profile_evidence)
     if ($recorded_profile | is-not-empty) {
         return $recorded_profile
     }
 
-    if ($resolved_env_profile | is-not-empty) {
-        return $resolved_env_profile
+    resolve_ambient_shell_profile
+}
+
+export def resolve_runtime_owned_profile [] {
+    let runtime_project_profile = (resolve_runtime_project_profile)
+    if ($runtime_project_profile | is-not-empty) {
+        return $runtime_project_profile
     }
 
-    ""
+    let recorded_profile = (resolve_recorded_launch_profile_evidence)
+    if ($recorded_profile | is-not-empty) {
+        return $recorded_profile
+    }
+
+    resolve_ambient_shell_profile
 }
 
 def resolve_recorded_launch_profile [config_state: record, --allow-stale] {
@@ -217,13 +247,8 @@ export def get_launch_profile [config_state: record, --allow-stale] {
     $profile_path
 }
 
-export def record_launch_profile_state [config_state: record, profile_path?: string] {
-    let preferred_profile = if $profile_path == null {
-        ($env.DEVENV_PROFILE? | default "")
-    } else {
-        $profile_path
-    }
-    let resolved_profile = (resolve_profile_candidate $preferred_profile)
+export def record_launch_profile_state [config_state: record, profile_path: string] {
+    let resolved_profile = (resolve_profile_candidate $profile_path)
     if ($resolved_profile | is-empty) {
         return
     }

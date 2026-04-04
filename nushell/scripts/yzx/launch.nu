@@ -3,7 +3,7 @@
 
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment run_in_devenv_shell_command get_refresh_output_mode]
-use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile resolve_built_profile]
+use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile resolve_runtime_owned_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../core/start_yazelix.nu [start_yazelix_session]
@@ -126,7 +126,7 @@ export def "yzx launch" [
     let manage_terminals = ($config.manage_terminals? | default true)
     let requested_path = ($path | default "")
     let requested_terminal = ($terminal | default "")
-    let built_profile = (resolve_built_profile)
+    let built_profile = (resolve_runtime_owned_profile)
     let terminal_profile_needs_repair = (
         $manage_terminals
         and (not $skip_refresh)
