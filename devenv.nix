@@ -268,12 +268,6 @@ let
       "neovim"
     else
       "";
-  shellEditorCommand =
-    if managedEditorKind == "helix" then
-      "$YAZELIX_RUNTIME_DIR/shells/posix/yazelix_hx.sh"
-    else
-      editorCommand;
-
   terminalList = lib.unique (userConfig.terminals or [ ]);
   manageTerminals = userConfig.manage_terminals or true;
   terminalConfigMode = userConfig.terminal_config_mode or "yazelix";
@@ -673,7 +667,7 @@ in
     NIX_CONFIG = yazelixNixConfig;
     ZELLIJ_DEFAULT_LAYOUT = yazelixLayoutName;
     YAZI_CONFIG_HOME = "$HOME/.local/share/yazelix/configs/yazi";
-    EDITOR = shellEditorCommand;
+    EDITOR = editorCommand;
   }
   // lib.optionalAttrs (managedEditorKind == "helix") {
     YAZELIX_MANAGED_HELIX_BINARY = editorCommand;
@@ -696,7 +690,11 @@ in
     export NIX_CONFIG='${yazelixNixConfig}'
     export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
     export YAZI_CONFIG_HOME="$HOME/.local/share/yazelix/configs/yazi"
-    export EDITOR="${shellEditorCommand}"
+    if [ "${managedEditorKind}" = "helix" ]; then
+      export EDITOR="$runtime_root/shells/posix/yazelix_hx.sh"
+    else
+      export EDITOR="${editorCommand}"
+    fi
     ${lib.optionalString (managedEditorKind == "helix") ''
       export YAZELIX_MANAGED_HELIX_BINARY="${editorCommand}"
     ''}
@@ -705,7 +703,11 @@ in
     ''}
 
     if [ "$YAZELIX_ENV_ONLY" != "true" ]; then
-      echo "📝 Set EDITOR to: ${shellEditorCommand}"
+      if [ "${managedEditorKind}" = "helix" ]; then
+        echo "📝 Set EDITOR to: $runtime_root/shells/posix/yazelix_hx.sh"
+      else
+        echo "📝 Set EDITOR to: ${editorCommand}"
+      fi
     fi
 
     # Environment setup now reads directly from yazelix.toml (single source of truth)

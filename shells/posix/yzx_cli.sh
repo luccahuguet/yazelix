@@ -68,6 +68,10 @@ exec_leaf_module_command() {
 
 dispatch_leaf_command() {
   case "${1:-}" in
+    desktop)
+      shift
+      exec_leaf_module_command "$RUNTIME_DIR/nushell/scripts/yzx/desktop.nu" "yzx desktop" "$@"
+      ;;
     reveal)
       shift
       if [ ! -f "$reveal_script" ]; then

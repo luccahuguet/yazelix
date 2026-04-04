@@ -142,12 +142,13 @@ def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
             YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
             YAZELIX_ENV_ONLY: "true"
         } {
-            ^$devenv_bin --quiet shell -- bash -lc 'printf "%s|%s|%s\n" "$(printenv YAZELIX_RUNTIME_DIR 2>/dev/null || printf unset)" "$(printenv YAZELIX_DIR 2>/dev/null || printf unset)" "$DEVENV_ROOT"' | complete
+            ^$devenv_bin --quiet shell -- bash -lc 'printf "%s|%s|%s|%s\n" "$(printenv YAZELIX_RUNTIME_DIR 2>/dev/null || printf unset)" "$(printenv YAZELIX_DIR 2>/dev/null || printf unset)" "$DEVENV_ROOT" "$EDITOR"' | complete
         })
         let summary = ($output.stdout | lines | last | default "")
+        let expected_editor = ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
 
-        if ($output.exit_code == 0) and ($summary == $"unset|unset|($repo_root)") {
-            print "  ✅ Repo-local devenv shell now clears inherited runtime aliases and keeps DEVENV_ROOT as the source of truth"
+        if ($output.exit_code == 0) and ($summary == $"unset|unset|($repo_root)|($expected_editor)") {
+            print "  ✅ Repo-local devenv shell now clears inherited runtime aliases and exports an absolute managed Helix wrapper from DEVENV_ROOT"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) summary=($summary) stderr=(($output.stderr | str trim))"

@@ -3,6 +3,7 @@
 
 use ../utils/logging.nu log_to_file
 use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/editor_launch_context.nu [resolve_editor_launch_context]
 use zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, set_workspace_for_path, focus_managed_pane, set_managed_editor_cwd, debug_editor_state]
 
 def resolve_optional_command [configured: any, fallback: string] {
@@ -603,14 +604,15 @@ export def open_file_with_editor [file_path: path] {
         return
     }
 
-    # Get the configured editor
-    let editor = ($env.EDITOR? | default "")
-    if ($editor | is-empty) {
-        let error_msg = "EDITOR environment variable is not set"
+    let editor_context = try {
+        resolve_editor_launch_context
+    } catch {|err|
+        let error_msg = $err.msg
         log_to_file "open_editor.log" $"ERROR: ($error_msg)"
         print $"Error: ($error_msg)"
         return
     }
+    let editor = $editor_context.editor
 
     log_to_file "open_editor.log" $"Using editor: ($editor)"
 

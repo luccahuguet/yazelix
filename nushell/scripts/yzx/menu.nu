@@ -6,6 +6,7 @@ use ../integrations/yazi.nu [sync_active_sidebar_yazi_to_directory sync_managed_
 use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_user_config_dir]
 use ../utils/config_migrations.nu [apply_config_migration_plan get_config_migration_plan render_config_migration_plan validate_config_migration_rules]
 use ../utils/config_migration_transactions.nu [recover_stale_managed_config_transactions]
+use ../utils/editor_launch_context.nu [resolve_editor_launch_context]
 use ../utils/config_surfaces.nu [resolve_active_config_paths get_primary_config_paths reconcile_primary_config_surfaces]
 use ../setup/helix_config_merger.nu [get_generated_helix_config_path get_managed_helix_user_config_path]
 
@@ -242,12 +243,17 @@ export def "yzx open zellij" [] {
 def open_config_surface_in_editor [config_path: string, --print] {
     if $print {
         $config_path
-    } else if ($env.EDITOR? | is-empty) {
-        error make {msg: $"EDITOR is not set. Set it in yazelix.toml under [editor] command, or export EDITOR in your shell.\nConfig path: ($config_path)"}
     } else {
+        let editor_context = (resolve_editor_launch_context)
         mkdir ($config_path | path dirname)
         clear
-        exec $env.EDITOR $config_path
+        if ($editor_context.launch_env | columns | is-empty) {
+            exec $editor_context.editor $config_path
+        } else {
+            with-env $editor_context.launch_env {
+                exec $editor_context.editor $config_path
+            }
+        }
     }
 }
 

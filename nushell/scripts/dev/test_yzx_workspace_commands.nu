@@ -230,6 +230,108 @@ def test_yzx_cli_desktop_launch_ignores_hostile_shell_env [] {
     $result
 }
 
+# Regression: desktop launch no longer depends on core/yazelix.nu being present in the runtime.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_cli_desktop_launch_uses_leaf_module_without_core_suite [] {
+    print "🧪 Testing yzx CLI desktop launch works without core/yazelix.nu in the runtime..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_desktop_leaf_runtime_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        let runtime_dir = ($tmpdir | path join "runtime")
+        let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
+        let nu_log = ($tmpdir | path join "nu_invocation.txt")
+        mkdir $fake_profile_bin
+        mkdir ($runtime_dir | path join "shells" "posix")
+        mkdir ($runtime_dir | path join "nushell" "scripts" "yzx")
+        mkdir ($runtime_dir | path join "nushell" "scripts" "core")
+
+        ^cp (repo_path "shells" "posix" "yzx_cli.sh") ($runtime_dir | path join "shells" "posix" "yzx_cli.sh")
+        ^cp (repo_path "shells" "posix" "runtime_env.sh") ($runtime_dir | path join "shells" "posix" "runtime_env.sh")
+        ^chmod +x ($runtime_dir | path join "shells" "posix" "yzx_cli.sh")
+        ^chmod +x ($runtime_dir | path join "shells" "posix" "runtime_env.sh")
+
+        ^ln -s (repo_path "nushell" "scripts" "yzx" "desktop.nu") ($runtime_dir | path join "nushell" "scripts" "yzx" "desktop.nu")
+        ^ln -s (repo_path "nushell" "scripts" "core" "desktop_launcher.nu") ($runtime_dir | path join "nushell" "scripts" "core" "desktop_launcher.nu")
+
+        [
+            "#!/bin/sh"
+            $"printf '%s\\n' \"$*\" > '($nu_log)'"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($fake_profile_bin | path join "nu")
+        ^chmod +x ($fake_profile_bin | path join "nu")
+
+        let launcher_script = ($runtime_dir | path join "shells" "posix" "yzx_cli.sh")
+        let output = (with-env {HOME: $fake_home} {
+            ^$launcher_script desktop launch | complete
+        })
+        let stderr = ($output.stderr | str trim)
+        let nu_invocation = if ($nu_log | path exists) {
+            open --raw $nu_log | str trim
+        } else {
+            ""
+        }
+
+        if (
+            ($output.exit_code == 0)
+            and ($stderr == "")
+            and ($nu_invocation | str contains "yzx desktop launch")
+        ) {
+            print "  ✅ desktop launch reaches the desktop leaf module without core/yazelix.nu"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr) invocation=($nu_invocation)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+# Regression: yzx edit must ignore stale ambient Helix wrapper paths and derive the managed editor from the canonical launch env.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env [] {
+    print "🧪 Testing yzx edit resolves the managed Helix wrapper from the canonical launch env..."
+
+    try {
+        let helper_script = (repo_path "nushell" "scripts" "utils" "editor_launch_context.nu")
+        let repo_root = (repo_path)
+        let snippet = ([
+            $"source \"($helper_script)\""
+            $"with-env {{ EDITOR: \"/shells/posix/yazelix_hx.sh\", YAZELIX_RUNTIME_DIR: \"($repo_root)\" }} {{"
+            "    let context = (resolve_editor_launch_context)"
+            "    print ($context.editor)"
+            "    print ($context.launch_env.YAZELIX_MANAGED_HELIX_BINARY? | default \"\")"
+            "}"
+        ] | str join "\n")
+        let output = (run_nu_snippet $snippet)
+        let lines = ($output.stdout | lines)
+        let expected_editor = ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
+        let managed_binary = ($lines | get -o 1 | default "")
+
+        if (
+            ($output.exit_code == 0)
+            and (($lines | get -o 0 | default "") == $expected_editor)
+            and ($managed_binary | is-not-empty)
+            and ($managed_binary != "/shells/posix/yazelix_hx.sh")
+        ) {
+            print "  ✅ yzx edit now ignores stale ambient wrapper paths and resolves the canonical managed editor env"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 # Regression: yzx reveal must use the lightweight reveal helper instead of bootstrapping the full command suite.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_cli_reveal_uses_lightweight_reveal_helper [] {
@@ -605,6 +707,8 @@ def test_yzx_cwd_requires_zellij [] {
 export def run_workspace_canonical_tests [] {
     [
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
+        (test_yzx_cli_desktop_launch_uses_leaf_module_without_core_suite)
+        (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
         (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
         (test_yzx_cli_menu_uses_lightweight_menu_module)
         (test_launch_falls_through_after_immediate_terminal_failure)
