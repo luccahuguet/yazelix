@@ -325,7 +325,6 @@ export def "yzx launch" [
                 return
             }
 
-            let yazelix_dir = (get_yazelix_runtime_dir)
             if $should_refresh and $verbose_mode {
                 let reason = ($config_state.refresh_reason? | default "config or devenv inputs changed since last launch")
                 print $"♻️  Re-entering Yazelix after rebuild \(($reason), ($build_parallelism_description)\)"
@@ -354,7 +353,7 @@ export def "yzx launch" [
                 $env_block = ($env_block | upsert YAZELIX_SWEEP_TEST_ID $env.YAZELIX_SWEEP_TEST_ID)
             }
             with-env $env_block {
-                run_in_devenv_shell_command "nu" ...$final_launch_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --force-shell --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode --refresh-output-mode $refresh_output
+                run_in_devenv_shell_command "nu" ...$final_launch_args --max-jobs $max_jobs --build-cores $build_cores --cwd $runtime_dir --runtime-dir $runtime_dir --skip-welcome --force-shell --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode --refresh-output-mode $refresh_output
             }
             if $should_refresh {
                 record_materialized_state $fresh_state

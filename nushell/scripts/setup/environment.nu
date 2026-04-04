@@ -66,8 +66,14 @@ def main [--welcome-source: string, --skip-welcome] {
         print $"🔍 DEBUG: skip_welcome_screen from config = ($skip_welcome_screen)"
     }
 
-    # Detect quiet mode from environment
-    let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
+    # Noninteractive shellHook entry should stay quiet even when only the
+    # welcome UI is skipped, so launch/refresh rebuilds don't replay routine
+    # setup chatter in the caller terminal.
+    let quiet_mode = (
+        ($env.YAZELIX_ENV_ONLY? == "true")
+        or $skip_welcome
+        or ($env.YAZELIX_SHELLHOOK_SKIP_WELCOME? == "true")
+    )
 
     # Detect environment first
     let env_info = (detect_environment)

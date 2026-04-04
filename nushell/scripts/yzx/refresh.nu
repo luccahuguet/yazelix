@@ -130,7 +130,7 @@ export def "yzx refresh" [
     if $needs_refresh or $force {
         print $"♻️  Refreshing Yazelix environment \(($refresh_reason), using ($build_parallelism_description)\)..."
 
-        let devenv_base = (get_devenv_base_command --max-jobs $max_jobs --build-cores $build_cores --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full") --refresh-eval-cache)
+        let devenv_base = (get_devenv_base_command --max-jobs $max_jobs --build-cores $build_cores --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full") --refresh-eval-cache --skip-shellhook-welcome)
         let devenv_cmd = ($devenv_base | append ["build", "shell"])
 
         if $show_progress {

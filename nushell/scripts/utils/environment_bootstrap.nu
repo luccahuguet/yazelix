@@ -125,6 +125,7 @@ export def get_devenv_base_command [
     --quiet             # Include --quiet in devenv arguments
     --devenv-verbose    # Include --verbose in devenv arguments
     --refresh-eval-cache  # Include --refresh-eval-cache in devenv arguments
+    --skip-shellhook-welcome  # Keep noninteractive shellHook entry quiet
 ] {
     let yazelix_dir = resolve_yazelix_dir
     let devenv_project_dir = (materialize_yazelix_runtime_project_dir)
@@ -149,12 +150,21 @@ export def get_devenv_base_command [
         $devenv_project_dir
         $"NIX_CONFIG=($nix_config)"
         $"YAZELIX_RUNTIME_DIR=($yazelix_dir)"
+    ]
+
+    if $skip_shellhook_welcome {
+        $cmd = ($cmd | append "YAZELIX_SHELLHOOK_SKIP_WELCOME=true")
+    }
+
+    $cmd = (
+        $cmd
+        | append [
         $devenv_path
         "--max-jobs"
         ($resolved_max_jobs | into string)
         "--cores"
         ($max_cores | into string)
-    ]
+    ])
 
     if $quiet {
         $cmd = ($cmd | append "--quiet")
@@ -178,7 +188,7 @@ export def rebuild_yazelix_environment [
     let refresh_output = resolve_refresh_output_mode $output_mode
     let requested_max_jobs = $max_jobs
     let requested_build_cores = $build_cores
-    let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --refresh-eval-cache=$refresh_eval_cache --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full")
+    let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --refresh-eval-cache=$refresh_eval_cache --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full") --skip-shellhook-welcome
     let devenv_cmd = ($devenv_base | append ["build", "shell"])
     let cmd_bin = ($devenv_cmd | first)
     let cmd_args = ($devenv_cmd | skip 1)

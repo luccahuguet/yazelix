@@ -703,7 +703,7 @@ in
       export HELIX_RUNTIME="${helixRuntimePath}"
     ''}
 
-    if [ "$YAZELIX_ENV_ONLY" != "true" ]; then
+    if [ "$YAZELIX_ENV_ONLY" != "true" ] && [ "$YAZELIX_SHELLHOOK_SKIP_WELCOME" != "true" ]; then
       if [ "${managedEditorKind}" = "helix" ]; then
         echo "📝 Set EDITOR to: $runtime_root/shells/posix/yazelix_hx.sh"
       else
@@ -719,9 +719,5 @@ in
       YAZELIX_RUNTIME_DIR="$setup_runtime_root" ${pkgs.nushell}/bin/nu "$runtime_root/nushell/scripts/setup/environment.nu"
     fi
 
-    # Save config hash after successful environment setup
-    if command -v ${pkgs.nushell}/bin/nu >/dev/null 2>&1; then
-      YAZELIX_RUNTIME_DIR="$setup_runtime_root" ${pkgs.nushell}/bin/nu -c "use \"$runtime_root/nushell/scripts/utils/config_state.nu\" [compute_config_state mark_config_state_applied]; let state = compute_config_state; mark_config_state_applied \$state" 2>/dev/null || true
-    fi
   '';
 }
