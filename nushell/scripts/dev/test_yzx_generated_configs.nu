@@ -730,6 +730,106 @@ def run_merged_zellij_config_in_fake_home [tmpdir: string, extra_env: record = {
     }
 }
 
+# Regression: warm startup should reuse generated Zellij state when inputs are unchanged and invalidate cleanly when a real input changes.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_generate_merged_zellij_config_reuses_unchanged_state_and_invalidates_on_input_change [] {
+    print "🧪 Testing merged Zellij config reuses unchanged generated state and invalidates when a real input changes..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_generation_reuse_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        let fake_config_dir = ($fake_home | path join ".config" "yazelix")
+        let user_config_dir = ($fake_config_dir | path join "user_configs")
+        let user_config_path = ($user_config_dir | path join "yazelix.toml")
+        let out_dir = ($tmpdir | path join "out")
+        let metadata_path = ($out_dir | path join ".yazelix_generation.json")
+        let layout_path = ($out_dir | path join "layouts" "yzx_side.swap.kdl")
+
+        mkdir ($fake_home | path join ".config")
+        mkdir $user_config_dir
+        write_minimal_user_zellij_config $fake_home
+
+        '[editor]
+sidebar_width_percent = 25
+' | save --force --raw $user_config_path
+
+        let first_output = (with-env {
+            HOME: $fake_home
+            XDG_CONFIG_HOME: ($fake_home | path join ".config")
+            YAZELIX_CONFIG_DIR: $fake_config_dir
+            YAZELIX_TEST_OUT_DIR: $out_dir
+        } {
+            let root = (get_repo_config_dir)
+            generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
+            {
+                config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
+                metadata: (open --raw $metadata_path)
+                layout: (open --raw $layout_path)
+            }
+        })
+
+        sleep 10ms
+
+        let second_output = (with-env {
+            HOME: $fake_home
+            XDG_CONFIG_HOME: ($fake_home | path join ".config")
+            YAZELIX_CONFIG_DIR: $fake_config_dir
+            YAZELIX_TEST_OUT_DIR: $out_dir
+        } {
+            let root = (get_repo_config_dir)
+            generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
+            {
+                config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
+                metadata: (open --raw $metadata_path)
+                layout: (open --raw $layout_path)
+            }
+        })
+
+        sleep 10ms
+        '[editor]
+sidebar_width_percent = 35
+' | save --force --raw $user_config_path
+
+        let third_output = (with-env {
+            HOME: $fake_home
+            XDG_CONFIG_HOME: ($fake_home | path join ".config")
+            YAZELIX_CONFIG_DIR: $fake_config_dir
+            YAZELIX_TEST_OUT_DIR: $out_dir
+        } {
+            let root = (get_repo_config_dir)
+            generate_merged_zellij_config $root $env.YAZELIX_TEST_OUT_DIR | ignore
+            {
+                config: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "config.kdl"))
+                metadata: (open --raw $metadata_path)
+                layout: (open --raw $layout_path)
+            }
+        })
+
+        if (
+            ($second_output.config == $first_output.config)
+            and ($second_output.metadata == $first_output.metadata)
+            and ($second_output.layout == $first_output.layout)
+            and ($third_output.metadata != $first_output.metadata)
+            and ($third_output.config | str contains 'sidebar_width_percent "35"')
+            and ($third_output.layout | str contains 'size "35%"')
+            and not ($third_output.layout | str contains 'size "25%"')
+        ) {
+            print "  ✅ Merged Zellij config now reuses unchanged generated state and regenerates when a real config input changes"
+            true
+        } else {
+            print "  ❌ Unexpected reuse or invalidation behavior in generated Zellij state"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Regression: legacy Yazi overrides are relocated into the managed surface.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generate_merged_yazi_config_relocates_legacy_user_overrides [] {
@@ -1146,6 +1246,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generated_runtime_configs_prefer_active_runtime_over_installed_reference)
         (test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it)
         (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
+        (test_generate_merged_zellij_config_reuses_unchanged_state_and_invalidates_on_input_change)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
         (test_generate_merged_zellij_config_sets_on_force_close_by_session_mode)
     ]

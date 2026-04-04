@@ -4,9 +4,23 @@
 
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/common.nu [get_yazelix_runtime_dir get_yazelix_user_config_dir resolve_zellij_default_shell]
+use ../utils/common.nu [get_yazelix_user_config_dir resolve_zellij_default_shell]
 use ../utils/layout_generator.nu [render_custom_text_segment render_widget_tray_segment]
-use ./zellij_plugin_paths.nu [PANE_ORCHESTRATOR_PLUGIN_ALIAS get_pane_orchestrator_wasm_path get_popup_runner_wasm_path get_zjstatus_wasm_path]
+use ../utils/startup_profile.nu [profile_startup_step]
+use ./zellij_plugin_paths.nu [
+    PANE_ORCHESTRATOR_PLUGIN_ALIAS
+    get_runtime_pane_orchestrator_wasm_path
+    get_runtime_popup_runner_wasm_path
+    get_runtime_zjstatus_wasm_path
+    get_tracked_pane_orchestrator_wasm_path
+    get_tracked_popup_runner_wasm_path
+    get_tracked_zjstatus_wasm_path
+    sync_pane_orchestrator_runtime_wasm
+    sync_popup_runner_runtime_wasm
+    sync_zjstatus_runtime_wasm
+]
+
+const zellij_generation_metadata_name = ".yazelix_generation.json"
 
 # Fetch Zellij default configuration
 def get_zellij_defaults [] {
@@ -27,51 +41,250 @@ def get_legacy_native_zellij_config_path [] {
     ($env.HOME | path join ".config" "zellij" "config.kdl")
 }
 
-# Read the preferred user-owned Zellij config surface if it exists
-def read_user_zellij_config [] {
+def read_text_if_exists [path_value: string] {
+    if not ($path_value | path exists) {
+        return ""
+    }
+
+    open --raw $path_value
+}
+
+def hash_text [value: string] {
+    $value | hash sha256
+}
+
+def hash_file [path_value: string] {
+    open --raw $path_value | hash sha256
+}
+
+def get_zellij_generation_metadata_path [merged_config_dir: string] {
+    $merged_config_dir | path join $zellij_generation_metadata_name
+}
+
+def list_source_layout_files [source_layouts_dir: string] {
+    let source_root = ($source_layouts_dir | path expand)
+    if not ($source_root | path exists) {
+        return []
+    }
+    let fragment_dir = ($source_root | path join "fragments")
+    let top_level_files = (
+        ls $source_root
+        | where type == file
+        | get name
+        | where {|path_value| (($path_value | path parse | get extension | default "") == "kdl") }
+    )
+    let fragment_files = if ($fragment_dir | path exists) {
+        ls $fragment_dir
+        | where type == file
+        | get name
+        | where {|path_value| (($path_value | path parse | get extension | default "") == "kdl") }
+    } else {
+        []
+    }
+
+    ($top_level_files | append $fragment_files) | sort
+}
+
+def list_expected_layout_targets [source_layouts_dir: string, merged_config_dir: string] {
+    if not (($source_layouts_dir | path expand) | path exists) {
+        return []
+    }
+
+    let layout_names = (
+        ls ($source_layouts_dir | path expand)
+        | where type == file
+        | get name
+        | where {|path_value| (($path_value | path parse | get extension | default "") == "kdl") }
+        | each {|path_value| $path_value | path basename }
+        | sort
+    )
+
+    $layout_names | each {|layout_name| ($merged_config_dir | path join "layouts" $layout_name | path expand) }
+}
+
+def resolve_base_config_source [] {
     let managed_path = (get_zellij_user_config_path)
     let native_path = (get_legacy_native_zellij_config_path)
 
     if ($managed_path | path exists) {
-        try {
-            print $"📥 Using managed Zellij config from ($managed_path)"
-            open $managed_path
-        } catch {|err|
-            print $"⚠️  Could not read managed Zellij config: ($err.msg)"
-            ""
+        {
+            source: "managed"
+            path: $managed_path
+            content: (read_text_if_exists $managed_path)
         }
     } else if ($native_path | path exists) {
-        try {
-            print $"📥 Using native Zellij config from ($native_path)"
-            open $native_path
-        } catch {|err|
-            print $"⚠️  Could not read native Zellij config: ($err.msg)"
-            ""
+        {
+            source: "native"
+            path: $native_path
+            content: (read_text_if_exists $native_path)
         }
     } else {
+        {
+            source: "defaults"
+            path: ""
+            content: (get_zellij_defaults)
+        }
+    }
+}
+
+def describe_base_config_source [resolved: record] {
+    match $resolved.source {
+        "managed" => {
+            print $"📥 Using managed Zellij config from ($resolved.path)"
+        }
+        "native" => {
+            print $"📥 Using native Zellij config from ($resolved.path)"
+        }
+        _ => {
+            print "📥 No user Zellij config found, fetching defaults..."
+        }
+    }
+}
+
+def resolve_zellij_plugin_artifacts [yazelix_dir: string] {
+    let tracked_paths = [
+        {
+            name: "pane_orchestrator"
+            tracked_path: (get_tracked_pane_orchestrator_wasm_path $yazelix_dir)
+            runtime_path: (get_runtime_pane_orchestrator_wasm_path)
+            missing_label: "Tracked pane orchestrator wasm"
+        }
+        {
+            name: "popup_runner"
+            tracked_path: (get_tracked_popup_runner_wasm_path $yazelix_dir)
+            runtime_path: (get_runtime_popup_runner_wasm_path)
+            missing_label: "Tracked popup runner wasm"
+        }
+        {
+            name: "zjstatus"
+            tracked_path: (get_tracked_zjstatus_wasm_path $yazelix_dir)
+            runtime_path: (get_runtime_zjstatus_wasm_path)
+            missing_label: "Tracked zjstatus wasm"
+        }
+    ]
+
+    $tracked_paths | each {|artifact|
+        if not ($artifact.tracked_path | path exists) {
+            error make {msg: $"($artifact.missing_label) not found at: ($artifact.tracked_path)"}
+        }
+
+        {
+            name: $artifact.name
+            tracked_path: $artifact.tracked_path
+            tracked_hash: (hash_file $artifact.tracked_path)
+            runtime_path: $artifact.runtime_path
+        }
+    }
+}
+
+def build_zellij_generation_fingerprint [
+    config: record
+    yazelix_dir: string
+    base_config_source: record
+    resolved_default_shell: string
+    source_layouts_dir: string
+    plugin_artifacts: list<record>
+] {
+    let overrides_path = ($yazelix_dir | path join $ZELLIJ_CONFIG_PATHS.yazelix_overrides)
+    let relevant_config = {
+        zellij_widget_tray: ($config.zellij_widget_tray? | default ["editor", "shell", "term", "cpu", "ram"])
+        zellij_custom_text: ($config.zellij_custom_text? | default "")
+        support_kitty_keyboard_protocol: ($config.support_kitty_keyboard_protocol? | default "true")
+        default_shell: ($config.default_shell? | default "nu")
+        resolved_default_shell: $resolved_default_shell
+        zellij_default_mode: ($config.zellij_default_mode? | default "normal")
+        enable_sidebar: ($config.enable_sidebar? | default true)
+        sidebar_width_percent: ($config.sidebar_width_percent? | default 20)
+        disable_zellij_tips: ($config.disable_zellij_tips? | default "true")
+        zellij_pane_frames: ($config.zellij_pane_frames? | default "true")
+        zellij_rounded_corners: ($config.zellij_rounded_corners? | default "true")
+        zellij_theme: ($config.zellij_theme? | default "default")
+        persistent_sessions: ($config.persistent_sessions? | default "false")
+    }
+    let layout_sources = (
+        list_source_layout_files $source_layouts_dir
+        | each {|path_value|
+            {
+                path: $path_value
+                hash: (open --raw $path_value | hash sha256)
+            }
+        }
+    )
+
+    {
+        schema_version: 1
+        runtime_dir: ($yazelix_dir | path expand)
+        relevant_config: $relevant_config
+        base_config: {
+            source: $base_config_source.source
+            path: ($base_config_source.path? | default "")
+            hash: (hash_text $base_config_source.content)
+        }
+        overrides_hash: (hash_text (read_text_if_exists $overrides_path))
+        layout_sources: $layout_sources
+        plugins: (
+            $plugin_artifacts
+            | each {|artifact|
+                {
+                    name: $artifact.name
+                    tracked_path: ($artifact.tracked_path | path expand)
+                    tracked_hash: $artifact.tracked_hash
+                    runtime_path: ($artifact.runtime_path | path expand)
+                }
+            }
+        )
+    } | to json -r | hash sha256
+}
+
+def load_cached_generation_fingerprint [merged_config_dir: string] {
+    let metadata_path = (get_zellij_generation_metadata_path $merged_config_dir)
+    if not ($metadata_path | path exists) {
+        return ""
+    }
+
+    try {
+        open $metadata_path | get fingerprint | into string
+    } catch {
         ""
     }
 }
 
-# Choose the base config: Yazelix-managed user config if present, then native Zellij config, otherwise Zellij defaults
-def get_base_config [] {
-    let user_config = read_user_zellij_config
-    if ($user_config | is-not-empty) {
-        $user_config
-    } else {
-        print "📥 No user Zellij config found, fetching defaults..."
-        get_zellij_defaults
-    }
+def record_generation_fingerprint [merged_config_dir: string, fingerprint: string] {
+    let metadata_path = (get_zellij_generation_metadata_path $merged_config_dir)
+    let temp_path = $"($metadata_path).tmp"
+    {
+        fingerprint: $fingerprint
+        generated_at: (date now | format date "%Y-%m-%dT%H:%M:%S%.3f%:z")
+    } | to json | save --force $temp_path
+    mv --force $temp_path $metadata_path
+}
+
+def can_reuse_generated_zellij_state [
+    merged_config_dir: string
+    merged_config_path: string
+    source_layouts_dir: string
+    fingerprint: string
+    plugin_artifacts: list<record>
+] {
+    let expected_layout_targets = (list_expected_layout_targets $source_layouts_dir $merged_config_dir)
+    let cached_fingerprint = (load_cached_generation_fingerprint $merged_config_dir)
+    let required_paths = (
+        [$merged_config_path]
+        | append ($plugin_artifacts | get runtime_path)
+        | append $expected_layout_targets
+    )
+    let runtime_plugins_match = (
+        $plugin_artifacts
+        | all {|artifact|
+            ($artifact.runtime_path | path exists) and ((hash_file $artifact.runtime_path) == $artifact.tracked_hash)
+        }
+    )
+
+    ($cached_fingerprint == $fingerprint) and ($required_paths | all {|path_value| $path_value | path exists }) and $runtime_plugins_match
 }
 
 # Dynamic overrides sourced from yazelix.toml (takes precedence over user config)
-def get_dynamic_overrides [] {
-    let config = (try {
-        parse_yazelix_config
-    } catch {
-        {disable_zellij_tips: "true", zellij_pane_frames: "true", zellij_rounded_corners: "true", zellij_theme: "default", zellij_default_mode: "normal", persistent_sessions: "false"}
-    })
-
+def get_dynamic_overrides [config: record] {
     let pane_frames = ($config | get -o zellij_pane_frames | default "true")
     let pane_frames_value = if ($pane_frames | str starts-with "false") {
         "false"
@@ -312,7 +525,7 @@ def read_yazelix_overrides [
         error make {msg: $"Missing Yazelix Zellij overrides file: ($overrides_path)"}
     }
 
-    let runtime_ref = (get_yazelix_runtime_dir)
+    let runtime_ref = ($yazelix_dir | path expand)
     let resolved_overrides = (
         (open $overrides_path)
         | str replace -a "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" $pane_orchestrator_plugin_url
@@ -344,48 +557,92 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     let default_mode = ($config.zellij_default_mode? | default "normal")
     let default_layout_name = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
     let sidebar_width_percent = ($config.sidebar_width_percent? | default 20)
-    
+    let source_layouts_dir = $"($yazelix_dir)/($ZELLIJ_CONFIG_PATHS.layouts_dir)"
+    let pane_orchestrator_plugin_url = $PANE_ORCHESTRATOR_PLUGIN_ALIAS
+    let plugin_artifacts = (profile_startup_step "zellij_config" "resolve_plugin_artifacts" {
+        resolve_zellij_plugin_artifacts $yazelix_dir
+    })
+    let base_config_source = (profile_startup_step "zellij_config" "load_base_config" {
+        resolve_base_config_source
+    })
+    # `zellij_theme = "random"` is documented to pick a different theme on each
+    # Yazelix restart, so warm-state reuse must stay disabled for that mode.
+    let reuse_allowed = (($config.zellij_theme? | default "default") != "random")
+    let generation_fingerprint = (
+        profile_startup_step "zellij_config" "build_generation_fingerprint" {
+            (
+                build_zellij_generation_fingerprint
+                    $config
+                    $yazelix_dir
+                    $base_config_source
+                    $resolved_default_shell
+                    $source_layouts_dir
+                    $plugin_artifacts
+            )
+        }
+    )
+
+    if $reuse_allowed and (profile_startup_step "zellij_config" "check_generation_reuse" {
+        (
+            can_reuse_generated_zellij_state
+                $merged_config_dir
+                $merged_config_path
+                $source_layouts_dir
+                $generation_fingerprint
+                $plugin_artifacts
+        )
+    }) {
+        return $merged_config_path
+    }
+
+    describe_base_config_source $base_config_source
     print "🔄 Regenerating Zellij configuration..."
-    
+
     # Ensure output directory exists
     ensure_dir $merged_config_path
-    
-    let pane_orchestrator_wasm_path = (get_pane_orchestrator_wasm_path $yazelix_dir)
-    let pane_orchestrator_plugin_url = $PANE_ORCHESTRATOR_PLUGIN_ALIAS
-    let popup_runner_wasm_path = (get_popup_runner_wasm_path $yazelix_dir)
-    let zjstatus_wasm_path = (get_zjstatus_wasm_path $yazelix_dir)
+
+    let pane_orchestrator_wasm_path = (profile_startup_step "zellij_config" "sync_pane_orchestrator_plugin" {
+        sync_pane_orchestrator_runtime_wasm $yazelix_dir
+    })
+    let popup_runner_wasm_path = (profile_startup_step "zellij_config" "sync_popup_runner_plugin" {
+        sync_popup_runner_runtime_wasm $yazelix_dir
+    })
+    let zjstatus_wasm_path = (profile_startup_step "zellij_config" "sync_zjstatus_plugin" {
+        sync_zjstatus_runtime_wasm $yazelix_dir
+    })
     let zjstatus_plugin_url = $"file:($zjstatus_wasm_path)"
-    let yazelix_overrides = (read_yazelix_overrides $yazelix_dir $pane_orchestrator_plugin_url)
+
+    let yazelix_overrides = (profile_startup_step "zellij_config" "load_overrides" {
+        read_yazelix_overrides $yazelix_dir $pane_orchestrator_plugin_url
+    })
     let widget_tray_segment = (render_widget_tray_segment $widget_tray)
     let custom_text_segment = (render_custom_text_segment $custom_text)
 
-    if not ($pane_orchestrator_wasm_path | path exists) {
-        error make {msg: $"Pane orchestrator runtime wasm not found at: ($pane_orchestrator_wasm_path)"}
-    }
-    if not ($popup_runner_wasm_path | path exists) {
-        error make {msg: $"Popup runner runtime wasm not found at: ($popup_runner_wasm_path)"}
-    }
-    if not ($zjstatus_wasm_path | path exists) {
-        error make {msg: $"zjstatus runtime wasm not found at: ($zjstatus_wasm_path)"}
-    }
-
-    # Copy layouts directory to merged config
-    let source_layouts_dir = $"($yazelix_dir)/($ZELLIJ_CONFIG_PATHS.layouts_dir)"
     let target_layouts_dir = $"($merged_config_dir)/layouts"
     if ($source_layouts_dir | path exists) {
-        # Copy layouts to merged config directory
         use ../utils/layout_generator.nu
         if ($custom_text | is-not-empty) {
             print $"ℹ️  zjstatus custom text badge: '($custom_text)'"
         }
-        layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $custom_text $pane_orchestrator_plugin_url $zjstatus_plugin_url $yazelix_dir $sidebar_width_percent
+        profile_startup_step "zellij_config" "generate_layouts" {
+            layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $custom_text $pane_orchestrator_plugin_url $zjstatus_plugin_url $yazelix_dir $sidebar_width_percent
+        }
     }
-    
-    # Generate configuration from user config or defaults
-    let base_config_raw = get_base_config
-    let extracted_load_plugins = (split_load_plugins_block $base_config_raw)
-    let extracted_plugins = (split_plugins_block $extracted_load_plugins.config_without_load_plugins)
-    let extracted_keybinds = (split_keybinds_block $extracted_plugins.config_without_plugins)
+
+    let extracted_blocks = (profile_startup_step "zellij_config" "merge_config_blocks" {
+        let extracted_load_plugins = (split_load_plugins_block $base_config_source.content)
+        let extracted_plugins = (split_plugins_block $extracted_load_plugins.config_without_load_plugins)
+        let extracted_keybinds = (split_keybinds_block $extracted_plugins.config_without_plugins)
+        {
+            extracted_load_plugins: $extracted_load_plugins
+            extracted_plugins: $extracted_plugins
+            extracted_keybinds: $extracted_keybinds
+        }
+    })
+    let extracted_load_plugins = $extracted_blocks.extracted_load_plugins
+    let extracted_plugins = $extracted_blocks.extracted_plugins
+    let extracted_keybinds = $extracted_blocks.extracted_keybinds
+
     # Remove any settings we control from base config (yazelix.toml takes precedence)
     # This prevents conflicts when multiple declarations of the same setting exist
     let base_config = ($extracted_keybinds.config_without_keybinds | lines | where {|line|
@@ -429,7 +686,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
             $sidebar_width_percent
         ),
         "",
-        (get_dynamic_overrides),
+        (get_dynamic_overrides $config),
         "",
         "// === YAZELIX ENFORCED SETTINGS ===",
         $"support_kitty_keyboard_protocol ($kitty_protocol_value)",
@@ -447,6 +704,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     try {
         $merged_config | save $temp_path
         mv $temp_path $merged_config_path
+        record_generation_fingerprint $merged_config_dir $generation_fingerprint
         print $"✅ Zellij configuration generated successfully!"
         print $"   📁 Config saved to: ($merged_config_path)"
         print "   🔄 Config will auto-regenerate when source files change"

@@ -42,6 +42,18 @@ def get_runtime_plugins_dir [] {
     $env.HOME | path join ".local" "share" "yazelix" "configs" "zellij" "plugins"
 }
 
+def get_runtime_pane_orchestrator_target_path [] {
+    (get_runtime_plugins_dir) | path join $pane_orchestrator_wasm_name
+}
+
+def get_runtime_popup_runner_target_path [] {
+    (get_runtime_plugins_dir) | path join $popup_runner_wasm_name
+}
+
+def get_runtime_zjstatus_target_path [] {
+    (get_runtime_plugins_dir) | path join $zjstatus_wasm_name
+}
+
 def get_permissions_cache_path [] {
     $env.HOME | path join ".cache" "zellij" "permissions.kdl"
 }
@@ -220,8 +232,7 @@ export def sync_pane_orchestrator_runtime_wasm [yazelix_dir?: string] {
     }
 
     let runtime_dir = (get_runtime_plugins_dir)
-    let runtime_file_name = $pane_orchestrator_wasm_name
-    let runtime_path = ($runtime_dir | path join $runtime_file_name)
+    let runtime_path = (get_runtime_pane_orchestrator_target_path)
 
     atomic_copy $tracked_path $runtime_path
 
@@ -260,8 +271,7 @@ export def sync_popup_runner_runtime_wasm [yazelix_dir?: string] {
     }
 
     let runtime_dir = (get_runtime_plugins_dir)
-    let runtime_file_name = $popup_runner_wasm_name
-    let runtime_path = ($runtime_dir | path join $runtime_file_name)
+    let runtime_path = (get_runtime_popup_runner_target_path)
 
     atomic_copy $tracked_path $runtime_path
 
@@ -299,8 +309,7 @@ export def sync_zjstatus_runtime_wasm [yazelix_dir?: string] {
         error make {msg: $"Tracked zjstatus wasm not found at: ($tracked_path)"}
     }
 
-    let runtime_dir = (get_runtime_plugins_dir)
-    let runtime_path = ($runtime_dir | path join $zjstatus_wasm_name)
+    let runtime_path = (get_runtime_zjstatus_target_path)
 
     atomic_copy $tracked_path $runtime_path
 
@@ -319,6 +328,18 @@ export def get_popup_runner_wasm_path [yazelix_dir?: string] {
 
 export def get_zjstatus_wasm_path [yazelix_dir?: string] {
     sync_zjstatus_runtime_wasm $yazelix_dir
+}
+
+export def get_runtime_pane_orchestrator_wasm_path [] {
+    get_runtime_pane_orchestrator_target_path
+}
+
+export def get_runtime_popup_runner_wasm_path [] {
+    get_runtime_popup_runner_target_path
+}
+
+export def get_runtime_zjstatus_wasm_path [] {
+    get_runtime_zjstatus_target_path
 }
 
 export def seed_yazelix_plugin_permissions [yazelix_dir?: string] {
