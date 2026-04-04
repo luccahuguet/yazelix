@@ -40,8 +40,7 @@ function M:entry()
 end
 
 function M.open_in_editor(target_dir)
-	local runtime_dir = os.getenv("YAZELIX_RUNTIME_DIR") or "__YAZELIX_RUNTIME_DIR__"
-	local script = runtime_dir .. "/nushell/scripts/integrations/zoxide_open_in_editor.nu"
+	local script = "__YAZELIX_RUNTIME_DIR__/nushell/scripts/integrations/zoxide_open_in_editor.nu"
 	local child, err = Command("nu")
 		:arg({ script, target_dir })
 		:stdout(Command.PIPED)

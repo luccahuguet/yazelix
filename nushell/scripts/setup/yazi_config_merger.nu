@@ -24,6 +24,40 @@ def render_runtime_root_placeholders [content: string] {
     $content | str replace -a $runtime_dir_placeholder $runtime_dir
 }
 
+def render_runtime_root_placeholders_in_directory [root_dir: string] {
+    if not ($root_dir | path exists) {
+        return
+    }
+
+    let candidate_files = (
+        ls -la $root_dir
+        | where type == file
+        | get name
+    )
+
+    for file_path in $candidate_files {
+        let content = (open --raw $file_path)
+        if ($content | str contains $runtime_dir_placeholder) {
+            let chmod_result = (^chmod u+w $file_path | complete)
+            if ($chmod_result.exit_code != 0) {
+                error make {msg: $"Failed to make generated Yazi plugin file writable at ($file_path): ($chmod_result.stderr | str trim)"}
+            }
+            let rendered = (render_runtime_root_placeholders $content)
+            $rendered | save --force --raw $file_path
+        }
+    }
+
+    let child_dirs = (
+        ls -la $root_dir
+        | where type == dir
+        | get name
+    )
+
+    for child_dir in $child_dirs {
+        render_runtime_root_placeholders_in_directory $child_dir
+    }
+}
+
 def get_legacy_yazi_user_config_dir [] {
     (get_yazelix_config_dir) | path join "configs" "yazi" "user"
 }
@@ -132,6 +166,7 @@ def copy_plugins_directory [source_dir: string, merged_dir: string, --quiet] {
             if $copy_result.exit_code != 0 {
                 error make {msg: $"Failed to copy Yazi plugin from ($plugin_path) to ($target): ($copy_result.stderr | str trim)"}
             }
+            render_runtime_root_placeholders_in_directory $target
             let chmod_result = (^chmod -R u+w $target | complete)
             if $chmod_result.exit_code != 0 {
                 error make {msg: $"Failed to make generated Yazi plugin writable at ($target): ($chmod_result.stderr | str trim)"}

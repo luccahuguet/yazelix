@@ -785,6 +785,47 @@ def test_generate_merged_yazi_config_syncs_starship_plugin_config [] {
     $result
 }
 
+# Regression: generated bundled Yazi plugins must render the runtime root instead of leaking the template placeholder.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins [] {
+    print "🧪 Testing merged Yazi config renders runtime placeholders inside bundled plugins..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_yazi_plugin_runtime_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    mkdir ($tmp_home | path join ".config")
+
+    let result = (try {
+        let generated = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: ($tmp_home | path join ".config")
+            XDG_DATA_HOME: ($tmp_home | path join ".local" "share")
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            let merged_dir = (generate_merged_yazi_config $repo_root --quiet)
+            open --raw ($merged_dir | path join "plugins" "zoxide-editor.yazi" "main.lua")
+        })
+
+        if (
+            ($generated | str contains ($repo_root | path join "nushell" "scripts" "integrations" "zoxide_open_in_editor.nu"))
+            and not ($generated | str contains "__YAZELIX_RUNTIME_DIR__")
+        ) {
+            print "  ✅ Generated Yazi plugins now render a real runtime path instead of leaking the placeholder"
+            true
+        } else {
+            print "  ❌ Generated Zoxide Yazi plugin still leaked the runtime placeholder"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 # Regression: source-checkout sessions must generate runtime-owned Yazi and Zellij artifacts against the active runtime, not runtime/current.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generated_runtime_configs_prefer_active_runtime_over_installed_reference [] {
@@ -998,6 +1039,7 @@ export def run_generated_config_canonical_tests [] {
         (test_config_schema_rejects_removed_layout_widget)
         (test_generate_merged_yazi_config_relocates_legacy_user_overrides)
         (test_generate_merged_yazi_config_syncs_starship_plugin_config)
+        (test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins)
         (test_generated_runtime_configs_prefer_active_runtime_over_installed_reference)
         (test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it)
         (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
