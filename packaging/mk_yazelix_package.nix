@@ -1,4 +1,4 @@
-{ pkgs, src }:
+{ pkgs, src ? ../. }:
 
 let
   lockedDevenv = import ./locked_devenv_package.nix { inherit pkgs src; };

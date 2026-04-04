@@ -1,4 +1,4 @@
-{ pkgs, src ? ./. , name ? "yazelix-runtime" }:
+{ pkgs, src ? ../. , name ? "yazelix-runtime" }:
 
 let
   lockedDevenv = import ./locked_devenv_package.nix { inherit pkgs src; };

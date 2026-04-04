@@ -1,4 +1,4 @@
-{ pkgs, src ? ./. }:
+{ pkgs, src ? ../. }:
 
 let
   system = pkgs.stdenv.hostPlatform.system;

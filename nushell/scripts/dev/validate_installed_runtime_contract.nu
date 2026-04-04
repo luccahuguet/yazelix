@@ -67,7 +67,7 @@ export def main [] {
     let cli_wrapper = "shells/posix/yzx_cli.sh"
     let runtime_env = "shells/posix/runtime_env.sh"
     let environment_setup = "nushell/scripts/setup/environment.nu"
-    let runtime_tree = "mk_runtime_tree.nix"
+    let runtime_tree = "packaging/mk_runtime_tree.nix"
     let flake_path = "flake.nix"
 
     require_path_exists $flake_path "flake definition"
