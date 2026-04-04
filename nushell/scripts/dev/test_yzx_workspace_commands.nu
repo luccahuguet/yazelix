@@ -16,6 +16,79 @@ def run_nu_snippet [snippet: string, extra_env?: record] {
     }
 }
 
+def setup_cli_probe_fixture [label: string] {
+    let tmpdir = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
+    let fake_home = ($tmpdir | path join "home")
+    let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
+    let nu_log = ($tmpdir | path join "nu_invocation.txt")
+
+    mkdir $fake_profile_bin
+
+    {
+        tmpdir: $tmpdir
+        fake_home: $fake_home
+        fake_profile_bin: $fake_profile_bin
+        nu_log: $nu_log
+    }
+}
+
+def write_probe_nu [probe_path: string, script_lines: list<string>] {
+    $script_lines | str join "\n" | save --force --raw $probe_path
+    ^chmod +x $probe_path
+}
+
+def read_probe_lines [log_path: string] {
+    if ($log_path | path exists) {
+        open --raw $log_path | lines
+    } else {
+        []
+    }
+}
+
+def read_probe_string [log_path: string] {
+    if ($log_path | path exists) {
+        open --raw $log_path | str trim
+    } else {
+        ""
+    }
+}
+
+def install_argument_logging_probe [fixture: record] {
+    write_probe_nu ($fixture.fake_profile_bin | path join "nu") [
+        "#!/bin/sh"
+        ": > \"$NU_LOG\""
+        "for arg in \"$@\"; do"
+        "  printf '%s\n' \"$arg\" >> \"$NU_LOG\""
+        "done"
+        "exit 0"
+    ]
+}
+
+def setup_desktop_runtime_probe_fixture [label: string, --with_hidden_launch_module] {
+    let cli_fixture = (setup_cli_probe_fixture $label)
+    let runtime_store = ($cli_fixture.tmpdir | path join "runtime_store")
+    let runtime_reference_root = ($cli_fixture.fake_home | path join ".local" "share" "yazelix" "runtime")
+    let runtime_dir = ($runtime_store | path expand)
+
+    mkdir ($runtime_dir | path join "nushell" "scripts" "core")
+    mkdir $runtime_reference_root
+
+    ^ln -s $runtime_dir ($runtime_reference_root | path join "current")
+    ^ln -s (repo_path "nushell" "scripts" "core" "launch_yazelix.nu") ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+    if $with_hidden_launch_module {
+        mkdir ($runtime_dir | path join "nushell" "scripts" "yzx")
+        ^ln -s (repo_path "nushell" "scripts" "yzx" "launch.nu") ($runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
+    }
+    ^ln -s (repo_path ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
+    ^ln -s (repo_path "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
+
+    $cli_fixture | merge {
+        runtime_store: $runtime_store
+        runtime_reference_root: $runtime_reference_root
+        runtime_dir: $runtime_dir
+    }
+}
+
 def setup_launch_path_fixture [label: string, persistent_sessions: bool, existing_session: bool] {
     let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let runtime_dir = ($tmp_home | path join "runtime")
@@ -313,21 +386,16 @@ def test_launch_rejects_file_working_dir [] {
 def test_yzx_cli_desktop_launch_ignores_hostile_shell_env [] {
     print "🧪 Testing yzx CLI desktop launch ignores hostile shell env..."
 
-    let tmpdir = (^mktemp -d /tmp/yazelix_posix_desktop_env_XXXXXX | str trim)
+    let fixture = (setup_cli_probe_fixture "yazelix_posix_desktop_env")
 
     let result = (try {
-        let fake_home = ($tmpdir | path join "home")
-        let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
-        let nu_log = ($tmpdir | path join "nu_invocation.txt")
-        let env_file = ($tmpdir | path join "env.sh")
-        mkdir $fake_profile_bin
+        let env_file = ($fixture.tmpdir | path join "env.sh")
 
-        [
+        write_probe_nu ($fixture.fake_profile_bin | path join "nu") [
             "#!/bin/sh"
-            $"printf '%s\\n' \"$*\" > '($nu_log)'"
+            $"printf '%s\\n' \"$*\" > '($fixture.nu_log)'"
             "exit 0"
-        ] | str join "\n" | save --force --raw ($fake_profile_bin | path join "nu")
-        ^chmod +x ($fake_profile_bin | path join "nu")
+        ]
 
         [
             "echo SHOULD_NOT_SOURCE_ENV >&2"
@@ -335,15 +403,11 @@ def test_yzx_cli_desktop_launch_ignores_hostile_shell_env [] {
         ] | str join "\n" | save --force --raw $env_file
 
         let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
-        let output = (with-env {HOME: $fake_home, BASH_ENV: $env_file, ENV: $env_file} {
+        let output = (with-env {HOME: $fixture.fake_home, BASH_ENV: $env_file, ENV: $env_file} {
             ^$launcher_script desktop launch | complete
         })
         let stderr = ($output.stderr | str trim)
-        let nu_invocation = if ($nu_log | path exists) {
-            open --raw $nu_log | str trim
-        } else {
-            ""
-        }
+        let nu_invocation = (read_probe_string $fixture.nu_log)
 
         if ($output.exit_code == 0) and ($stderr == "") and ($nu_invocation | str contains "yzx desktop launch") {
             print "  ✅ yzx CLI reaches desktop launch without sourcing hostile shell env files"
@@ -357,7 +421,7 @@ def test_yzx_cli_desktop_launch_ignores_hostile_shell_env [] {
         false
     })
 
-    rm -rf $tmpdir
+    rm -rf $fixture.tmpdir
     $result
 }
 
@@ -366,53 +430,37 @@ def test_yzx_cli_desktop_launch_ignores_hostile_shell_env [] {
 def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
     print "🧪 Testing yzx desktop launch uses the installed core launch fast path with a clean external-launch env..."
 
-    let tmpdir = (^mktemp -d /tmp/yazelix_desktop_leaf_runtime_XXXXXX | str trim)
+    let fixture = (setup_desktop_runtime_probe_fixture "yazelix_desktop_leaf_runtime")
 
     let result = (try {
-        let fake_home = ($tmpdir | path join "home")
-        let runtime_store = ($tmpdir | path join "runtime_store")
-        let runtime_reference_root = ($fake_home | path join ".local" "share" "yazelix" "runtime")
-        let runtime_dir = ($runtime_store | path expand)
-        let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
-        let nu_log = ($tmpdir | path join "nu_invocation.txt")
-        mkdir $fake_profile_bin
-        mkdir ($runtime_dir | path join "nushell" "scripts" "core")
-        mkdir $runtime_reference_root
-
-        ^ln -s $runtime_dir ($runtime_reference_root | path join "current")
-        ^ln -s (repo_path "nushell" "scripts" "core" "launch_yazelix.nu") ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
-        ^ln -s (repo_path ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
-        ^ln -s (repo_path "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
-
-        [
+        write_probe_nu ($fixture.fake_profile_bin | path join "nu") [
             "#!/bin/sh"
-            $"printf '%s\\n' \"$1\" > '($nu_log)'"
+            $"printf '%s\\n' \"$1\" > '($fixture.nu_log)'"
             "shift"
             "for arg in \"$@\"; do"
-            $"  printf '%s\\n' \"$arg\" >> '($nu_log)'"
+            $"  printf '%s\\n' \"$arg\" >> '($fixture.nu_log)'"
             "done"
-            $"printf 'YAZELIX_RUNTIME_DIR=%s\\n' \"${YAZELIX_RUNTIME_DIR-unset}\" >> '($nu_log)'"
-            $"printf 'YAZELIX_DIR=%s\\n' \"${YAZELIX_DIR-unset}\" >> '($nu_log)'"
-            $"printf 'DEVENV_PROFILE=%s\\n' \"${DEVENV_PROFILE-unset}\" >> '($nu_log)'"
-            $"printf 'DEVENV_ROOT=%s\\n' \"${DEVENV_ROOT-unset}\" >> '($nu_log)'"
-            $"printf 'IN_YAZELIX_SHELL=%s\\n' \"${IN_YAZELIX_SHELL-unset}\" >> '($nu_log)'"
-            $"printf 'IN_NIX_SHELL=%s\\n' \"${IN_NIX_SHELL-unset}\" >> '($nu_log)'"
-            $"printf 'YAZELIX_TERMINAL=%s\\n' \"${YAZELIX_TERMINAL-unset}\" >> '($nu_log)'"
-            $"printf 'YAZELIX_MENU_POPUP=%s\\n' \"${YAZELIX_MENU_POPUP-unset}\" >> '($nu_log)'"
-            $"printf 'YAZELIX_POPUP_PANE=%s\\n' \"${YAZELIX_POPUP_PANE-unset}\" >> '($nu_log)'"
-            $"printf 'ZELLIJ_SESSION_NAME=%s\\n' \"${ZELLIJ_SESSION_NAME-unset}\" >> '($nu_log)'"
-            $"printf 'YAZI_ID=%s\\n' \"${YAZI_ID-unset}\" >> '($nu_log)'"
+            $"printf 'YAZELIX_RUNTIME_DIR=%s\\n' \"${YAZELIX_RUNTIME_DIR-unset}\" >> '($fixture.nu_log)'"
+            $"printf 'YAZELIX_DIR=%s\\n' \"${YAZELIX_DIR-unset}\" >> '($fixture.nu_log)'"
+            $"printf 'DEVENV_PROFILE=%s\\n' \"${DEVENV_PROFILE-unset}\" >> '($fixture.nu_log)'"
+            $"printf 'DEVENV_ROOT=%s\\n' \"${DEVENV_ROOT-unset}\" >> '($fixture.nu_log)'"
+            $"printf 'IN_YAZELIX_SHELL=%s\\n' \"${IN_YAZELIX_SHELL-unset}\" >> '($fixture.nu_log)'"
+            $"printf 'IN_NIX_SHELL=%s\\n' \"${IN_NIX_SHELL-unset}\" >> '($fixture.nu_log)'"
+            $"printf 'YAZELIX_TERMINAL=%s\\n' \"${YAZELIX_TERMINAL-unset}\" >> '($fixture.nu_log)'"
+            $"printf 'YAZELIX_MENU_POPUP=%s\\n' \"${YAZELIX_MENU_POPUP-unset}\" >> '($fixture.nu_log)'"
+            $"printf 'YAZELIX_POPUP_PANE=%s\\n' \"${YAZELIX_POPUP_PANE-unset}\" >> '($fixture.nu_log)'"
+            $"printf 'ZELLIJ_SESSION_NAME=%s\\n' \"${ZELLIJ_SESSION_NAME-unset}\" >> '($fixture.nu_log)'"
+            $"printf 'YAZI_ID=%s\\n' \"${YAZI_ID-unset}\" >> '($fixture.nu_log)'"
             "exit 0"
-        ] | str join "\n" | save --force --raw ($fake_profile_bin | path join "nu")
-        ^chmod +x ($fake_profile_bin | path join "nu")
+        ]
 
         let desktop_script = (repo_path "nushell" "scripts" "yzx" "desktop.nu")
         let output = (with-env {
-            HOME: $fake_home
-            YAZELIX_NU_BIN: ($fake_profile_bin | path join "nu")
-            YAZELIX_RUNTIME_DIR: ($tmpdir | path join "hostile_runtime")
+            HOME: $fixture.fake_home
+            YAZELIX_NU_BIN: ($fixture.fake_profile_bin | path join "nu")
+            YAZELIX_RUNTIME_DIR: ($fixture.tmpdir | path join "hostile_runtime")
             YAZELIX_DIR: "/hostile/legacy_runtime"
-            DEVENV_PROFILE: ($tmpdir | path join "hostile_profile")
+            DEVENV_PROFILE: ($fixture.tmpdir | path join "hostile_profile")
             DEVENV_ROOT: (repo_path)
             IN_YAZELIX_SHELL: "true"
             IN_NIX_SHELL: "impure"
@@ -425,14 +473,10 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
             ^nu -c $"use \"($desktop_script)\" *; yzx desktop launch" | complete
         })
         let stderr = ($output.stderr | str trim)
-        let invocation = if ($nu_log | path exists) {
-            open --raw $nu_log | lines
-        } else {
-            []
-        }
-        let expected_launch_module = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+        let invocation = (read_probe_lines $fixture.nu_log)
+        let expected_launch_module = ($fixture.runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
         let expected_env = [
-            $"YAZELIX_RUNTIME_DIR=($runtime_dir)"
+            $"YAZELIX_RUNTIME_DIR=($fixture.runtime_dir)"
             "YAZELIX_DIR=unset"
             "DEVENV_PROFILE=unset"
             "DEVENV_ROOT=unset"
@@ -449,7 +493,7 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
             ($output.exit_code == 0)
             and ($stderr == "")
             and (($invocation | get -o 0 | default "") == $expected_launch_module)
-            and (($invocation | get -o 1 | default "") == $fake_home)
+            and (($invocation | get -o 1 | default "") == $fixture.fake_home)
             and (($invocation | get -o 2 | default "") == "--desktop-fast-path")
             and (($invocation | skip 3) == $expected_env)
         ) {
@@ -464,7 +508,7 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
         false
     })
 
-    rm -rf $tmpdir
+    rm -rf $fixture.tmpdir
     $result
 }
 
@@ -473,67 +517,45 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
 def test_yzx_desktop_launch_falls_back_to_hidden_wait_when_no_visible_bootstrap_terminal_exists [] {
     print "🧪 Testing yzx desktop launch falls back to the hidden-wait path only after the fast path reports no visible bootstrap terminal..."
 
-    let tmpdir = (^mktemp -d /tmp/yazelix_desktop_fallback_runtime_XXXXXX | str trim)
+    let fixture = (setup_desktop_runtime_probe_fixture "yazelix_desktop_fallback_runtime" --with_hidden_launch_module)
 
     let result = (try {
-        let fake_home = ($tmpdir | path join "home")
-        let runtime_store = ($tmpdir | path join "runtime_store")
-        let runtime_reference_root = ($fake_home | path join ".local" "share" "yazelix" "runtime")
-        let runtime_dir = ($runtime_store | path expand)
-        let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
-        let nu_log = ($tmpdir | path join "nu_invocation.txt")
-        mkdir $fake_profile_bin
-        mkdir ($runtime_dir | path join "nushell" "scripts" "core")
-        mkdir ($runtime_dir | path join "nushell" "scripts" "yzx")
-        mkdir $runtime_reference_root
-
-        ^ln -s $runtime_dir ($runtime_reference_root | path join "current")
-        ^ln -s (repo_path "nushell" "scripts" "core" "launch_yazelix.nu") ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
-        ^ln -s (repo_path "nushell" "scripts" "yzx" "launch.nu") ($runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
-        ^ln -s (repo_path ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
-        ^ln -s (repo_path "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
-
-        let fast_launch_module = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
-        [
+        let fast_launch_module = ($fixture.runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+        write_probe_nu ($fixture.fake_profile_bin | path join "nu") [
             "#!/bin/sh"
             "call_type=unknown"
             $"if [ \"$1\" = \"($fast_launch_module)\" ]; then"
             "  call_type=fast"
             "fi"
-            $"printf '[%s]\\n' \"$call_type\" >> '($nu_log)'"
-            $"printf '%s\\n' \"$1\" >> '($nu_log)'"
+            $"printf '[%s]\\n' \"$call_type\" >> '($fixture.nu_log)'"
+            $"printf '%s\\n' \"$1\" >> '($fixture.nu_log)'"
             "shift"
             "for arg in \"$@\"; do"
-            $"  printf '%s\\n' \"$arg\" >> '($nu_log)'"
+            $"  printf '%s\\n' \"$arg\" >> '($fixture.nu_log)'"
             "done"
-            $"printf 'YAZELIX_RUNTIME_DIR=%s\\n' \"${YAZELIX_RUNTIME_DIR-unset}\" >> '($nu_log)'"
-            $"printf 'DEVENV_PROFILE=%s\\n' \"${DEVENV_PROFILE-unset}\" >> '($nu_log)'"
-            $"printf 'IN_YAZELIX_SHELL=%s\\n' \"${IN_YAZELIX_SHELL-unset}\" >> '($nu_log)'"
+            $"printf 'YAZELIX_RUNTIME_DIR=%s\\n' \"${YAZELIX_RUNTIME_DIR-unset}\" >> '($fixture.nu_log)'"
+            $"printf 'DEVENV_PROFILE=%s\\n' \"${DEVENV_PROFILE-unset}\" >> '($fixture.nu_log)'"
+            $"printf 'IN_YAZELIX_SHELL=%s\\n' \"${IN_YAZELIX_SHELL-unset}\" >> '($fixture.nu_log)'"
             "if [ \"$call_type\" = fast ]; then"
             "  printf 'Failure class: desktop-bootstrap-unavailable.\\n' >&2"
             "  exit 91"
             "fi"
             "exit 0"
-        ] | str join "\n" | save --force --raw ($fake_profile_bin | path join "nu")
-        ^chmod +x ($fake_profile_bin | path join "nu")
+        ]
 
         let desktop_script = (repo_path "nushell" "scripts" "yzx" "desktop.nu")
         let output = (with-env {
-            HOME: $fake_home
-            YAZELIX_NU_BIN: ($fake_profile_bin | path join "nu")
-            DEVENV_PROFILE: ($tmpdir | path join "hostile_profile")
+            HOME: $fixture.fake_home
+            YAZELIX_NU_BIN: ($fixture.fake_profile_bin | path join "nu")
+            DEVENV_PROFILE: ($fixture.tmpdir | path join "hostile_profile")
             IN_YAZELIX_SHELL: "true"
-            YAZELIX_RUNTIME_DIR: ($tmpdir | path join "hostile_runtime")
+            YAZELIX_RUNTIME_DIR: ($fixture.tmpdir | path join "hostile_runtime")
         } {
             ^nu -c $"use \"($desktop_script)\" *; yzx desktop launch" | complete
         })
         let stderr = ($output.stderr | str trim)
-        let invocation = if ($nu_log | path exists) {
-            open --raw $nu_log | lines
-        } else {
-            []
-        }
-        let expected_launch_module = ($runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
+        let invocation = (read_probe_lines $fixture.nu_log)
+        let expected_launch_module = ($fixture.runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
         let expected_launch_command = $"use \"($expected_launch_module)\" *; yzx launch --home"
 
         if (
@@ -541,15 +563,15 @@ def test_yzx_desktop_launch_falls_back_to_hidden_wait_when_no_visible_bootstrap_
             and ($stderr == "")
             and (($invocation | get -o 0 | default "") == "[fast]")
             and (($invocation | get -o 1 | default "") == $fast_launch_module)
-            and (($invocation | get -o 2 | default "") == $fake_home)
+            and (($invocation | get -o 2 | default "") == $fixture.fake_home)
             and (($invocation | get -o 3 | default "") == "--desktop-fast-path")
-            and (($invocation | get -o 4 | default "") == $"YAZELIX_RUNTIME_DIR=($runtime_dir)")
+            and (($invocation | get -o 4 | default "") == $"YAZELIX_RUNTIME_DIR=($fixture.runtime_dir)")
             and (($invocation | get -o 5 | default "") == "DEVENV_PROFILE=unset")
             and (($invocation | get -o 6 | default "") == "IN_YAZELIX_SHELL=unset")
             and (($invocation | get -o 7 | default "") == "[unknown]")
             and (($invocation | get -o 8 | default "") == "-c")
             and (($invocation | get -o 9 | default "") == $expected_launch_command)
-            and (($invocation | get -o 10 | default "") == $"YAZELIX_RUNTIME_DIR=($runtime_dir)")
+            and (($invocation | get -o 10 | default "") == $"YAZELIX_RUNTIME_DIR=($fixture.runtime_dir)")
             and (($invocation | get -o 11 | default "") == "DEVENV_PROFILE=unset")
             and (($invocation | get -o 12 | default "") == "IN_YAZELIX_SHELL=unset")
         ) {
@@ -564,7 +586,7 @@ def test_yzx_desktop_launch_falls_back_to_hidden_wait_when_no_visible_bootstrap_
         false
     })
 
-    rm -rf $tmpdir
+    rm -rf $fixture.tmpdir
     $result
 }
 
@@ -803,39 +825,23 @@ def test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env [] {
 def test_yzx_cli_reveal_uses_lightweight_reveal_helper [] {
     print "🧪 Testing yzx CLI reveal uses the lightweight reveal helper..."
 
-    let tmpdir = (^mktemp -d /tmp/yazelix_posix_reveal_cli_XXXXXX | str trim)
+    let fixture = (setup_cli_probe_fixture "yazelix_posix_reveal_cli")
 
     let result = (try {
-        let fake_home = ($tmpdir | path join "home")
-        let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
-        let nu_log = ($tmpdir | path join "nu_invocation.txt")
-        let target_path = ($tmpdir | path join "target.txt")
-        mkdir $fake_profile_bin
+        let target_path = ($fixture.tmpdir | path join "target.txt")
         "" | save --force --raw $target_path
 
-        [
-            "#!/bin/sh"
-            ": > \"$NU_LOG\""
-            "for arg in \"$@\"; do"
-            "  printf '%s\n' \"$arg\" >> \"$NU_LOG\""
-            "done"
-            "exit 0"
-        ] | str join "\n" | save --force --raw ($fake_profile_bin | path join "nu")
-        ^chmod +x ($fake_profile_bin | path join "nu")
+        install_argument_logging_probe $fixture
 
         let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
         let output = (with-env {
-            HOME: $fake_home
-            NU_LOG: $nu_log
+            HOME: $fixture.fake_home
+            NU_LOG: $fixture.nu_log
         } {
             ^$launcher_script reveal $target_path | complete
         })
 
-        let invocation = if ($nu_log | path exists) {
-            open --raw $nu_log | lines
-        } else {
-            []
-        }
+        let invocation = (read_probe_lines $fixture.nu_log)
         let expected_reveal_script = (repo_path "nushell" "scripts" "integrations" "reveal_in_yazi.nu")
 
         if (
@@ -856,7 +862,7 @@ def test_yzx_cli_reveal_uses_lightweight_reveal_helper [] {
         false
     })
 
-    rm -rf $tmpdir
+    rm -rf $fixture.tmpdir
     $result
 }
 
@@ -865,37 +871,20 @@ def test_yzx_cli_reveal_uses_lightweight_reveal_helper [] {
 def test_yzx_cli_menu_uses_lightweight_menu_module [] {
     print "🧪 Testing yzx CLI menu uses the lightweight menu module..."
 
-    let tmpdir = (^mktemp -d /tmp/yazelix_posix_menu_cli_XXXXXX | str trim)
+    let fixture = (setup_cli_probe_fixture "yazelix_posix_menu_cli")
 
     let result = (try {
-        let fake_home = ($tmpdir | path join "home")
-        let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
-        let nu_log = ($tmpdir | path join "nu_invocation.txt")
-        mkdir $fake_profile_bin
-
-        [
-            "#!/bin/sh"
-            ": > \"$NU_LOG\""
-            "for arg in \"$@\"; do"
-            "  printf '%s\n' \"$arg\" >> \"$NU_LOG\""
-            "done"
-            "exit 0"
-        ] | str join "\n" | save --force --raw ($fake_profile_bin | path join "nu")
-        ^chmod +x ($fake_profile_bin | path join "nu")
+        install_argument_logging_probe $fixture
 
         let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
         let output = (with-env {
-            HOME: $fake_home
-            NU_LOG: $nu_log
+            HOME: $fixture.fake_home
+            NU_LOG: $fixture.nu_log
         } {
             ^$launcher_script menu --popup | complete
         })
 
-        let invocation = if ($nu_log | path exists) {
-            open --raw $nu_log | lines
-        } else {
-            []
-        }
+        let invocation = (read_probe_lines $fixture.nu_log)
         let expected_menu_script = (repo_path "nushell" "scripts" "yzx" "menu.nu")
 
         if (
@@ -916,7 +905,7 @@ def test_yzx_cli_menu_uses_lightweight_menu_module [] {
         false
     })
 
-    rm -rf $tmpdir
+    rm -rf $fixture.tmpdir
     $result
 }
 
@@ -971,39 +960,23 @@ def test_yzx_menu_palette_eligibility_is_broad_but_explicit [] {
 def test_yzx_cli_enter_uses_lightweight_enter_module [] {
     print "🧪 Testing yzx CLI enter uses the lightweight enter module..."
 
-    let tmpdir = (^mktemp -d /tmp/yazelix_posix_enter_cli_XXXXXX | str trim)
+    let fixture = (setup_cli_probe_fixture "yazelix_posix_enter_cli")
 
     let result = (try {
-        let fake_home = ($tmpdir | path join "home")
-        let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
-        let nu_log = ($tmpdir | path join "nu_invocation.txt")
-        let target_dir = ($tmpdir | path join "project")
-        mkdir $fake_profile_bin
+        let target_dir = ($fixture.tmpdir | path join "project")
         mkdir $target_dir
 
-        [
-            "#!/bin/sh"
-            ": > \"$NU_LOG\""
-            "for arg in \"$@\"; do"
-            "  printf '%s\n' \"$arg\" >> \"$NU_LOG\""
-            "done"
-            "exit 0"
-        ] | str join "\n" | save --force --raw ($fake_profile_bin | path join "nu")
-        ^chmod +x ($fake_profile_bin | path join "nu")
+        install_argument_logging_probe $fixture
 
         let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
         let output = (with-env {
-            HOME: $fake_home
-            NU_LOG: $nu_log
+            HOME: $fixture.fake_home
+            NU_LOG: $fixture.nu_log
         } {
             ^$launcher_script enter --path $target_dir | complete
         })
 
-        let invocation = if ($nu_log | path exists) {
-            open --raw $nu_log | lines
-        } else {
-            []
-        }
+        let invocation = (read_probe_lines $fixture.nu_log)
         let expected_enter_script = (repo_path "nushell" "scripts" "yzx" "enter.nu")
 
         if (
@@ -1024,7 +997,7 @@ def test_yzx_cli_enter_uses_lightweight_enter_module [] {
         false
     })
 
-    rm -rf $tmpdir
+    rm -rf $fixture.tmpdir
     $result
 }
 
