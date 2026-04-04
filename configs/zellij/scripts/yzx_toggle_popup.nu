@@ -27,9 +27,9 @@ def main [] {
     let action = (resolve_popup_toggle_action (popup_plugin_toggle_result))
 
     if $action.action == "open" {
-        let core_script = (get_runtime_script_path "nushell/scripts/core/yazelix.nu")
+        let popup_script = (get_runtime_script_path "nushell/scripts/yzx/popup.nu")
         let command = ([
-            $"use '($core_script)' *"
+            $"use '($popup_script)' *"
             "yzx popup"
         ] | str join "\n")
         run_runtime_nu_command $command

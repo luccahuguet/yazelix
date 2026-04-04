@@ -22,6 +22,7 @@ fi
 RUNTIME_DIR="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
 runtime_env_script="$RUNTIME_DIR/shells/posix/runtime_env.sh"
 core_script="$RUNTIME_DIR/nushell/scripts/core/yazelix.nu"
+reveal_script="$RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu"
 
 if [ ! -f "$runtime_env_script" ]; then
   echo "Error: Missing Yazelix runtime env helper: $runtime_env_script" >&2
@@ -36,6 +37,17 @@ if [ ! -f "$core_script" ]; then
   echo "Error: Missing Yazelix CLI module: $core_script" >&2
   echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
   exit 1
+fi
+
+if [ "${1:-}" = "reveal" ]; then
+  if [ ! -f "$reveal_script" ]; then
+    echo "Error: Missing Yazelix reveal helper: $reveal_script" >&2
+    echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
+    exit 1
+  fi
+
+  shift
+  exec "$YAZELIX_NU_BIN" "$reveal_script" "$@"
 fi
 
 format_nu_token() {

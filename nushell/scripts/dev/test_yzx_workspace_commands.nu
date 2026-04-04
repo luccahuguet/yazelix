@@ -230,6 +230,68 @@ def test_yzx_cli_desktop_launch_ignores_hostile_shell_env [] {
     $result
 }
 
+# Regression: yzx reveal must use the lightweight reveal helper instead of bootstrapping the full command suite.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_cli_reveal_uses_lightweight_reveal_helper [] {
+    print "🧪 Testing yzx CLI reveal uses the lightweight reveal helper..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_posix_reveal_cli_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
+        let nu_log = ($tmpdir | path join "nu_invocation.txt")
+        let target_path = ($tmpdir | path join "target.txt")
+        mkdir $fake_profile_bin
+        "" | save --force --raw $target_path
+
+        [
+            "#!/bin/sh"
+            ": > \"$NU_LOG\""
+            "for arg in \"$@\"; do"
+            "  printf '%s\n' \"$arg\" >> \"$NU_LOG\""
+            "done"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($fake_profile_bin | path join "nu")
+        ^chmod +x ($fake_profile_bin | path join "nu")
+
+        let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
+        let output = (with-env {
+            HOME: $fake_home
+            NU_LOG: $nu_log
+        } {
+            ^$launcher_script reveal $target_path | complete
+        })
+
+        let invocation = if ($nu_log | path exists) {
+            open --raw $nu_log | lines
+        } else {
+            []
+        }
+        let expected_reveal_script = (repo_path "nushell" "scripts" "integrations" "reveal_in_yazi.nu")
+
+        if (
+            ($output.exit_code == 0)
+            and (($invocation | get -o 0 | default "") == $expected_reveal_script)
+            and (($invocation | get -o 1 | default "") == $target_path)
+            and not ($invocation | any {|arg| $arg == "-c" })
+            and not ($invocation | any {|arg| $arg | str contains "core/yazelix.nu" })
+        ) {
+            print "  ✅ yzx reveal now dispatches to the lightweight reveal helper instead of the full command suite"
+            true
+        } else {
+            print $"  ❌ Unexpected yzx reveal invocation: exit=($output.exit_code) args=($invocation | to json -r) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Defends: nonpersistent launch --here uses the requested directory.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions [] {
@@ -483,6 +545,7 @@ def test_yzx_cwd_requires_zellij [] {
 export def run_workspace_canonical_tests [] {
     [
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
+        (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
         (test_launch_falls_through_after_immediate_terminal_failure)
         (test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions)
         (test_launch_here_path_warns_when_existing_persistent_session_ignores_it)
