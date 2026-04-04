@@ -683,9 +683,6 @@ in
     YAZI_CONFIG_HOME = "$HOME/.local/share/yazelix/configs/yazi";
     EDITOR = shellEditorCommand;
   }
-  // lib.optionalAttrs (managedEditorKind != "") {
-    YAZELIX_MANAGED_EDITOR_KIND = managedEditorKind;
-  }
   // lib.optionalAttrs (managedEditorKind == "helix") {
     YAZELIX_MANAGED_HELIX_BINARY = editorCommand;
   }
@@ -706,9 +703,6 @@ in
     export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
     export YAZI_CONFIG_HOME="$HOME/.local/share/yazelix/configs/yazi"
     export EDITOR="${shellEditorCommand}"
-    ${lib.optionalString (managedEditorKind != "") ''
-      export YAZELIX_MANAGED_EDITOR_KIND="${managedEditorKind}"
-    ''}
     ${lib.optionalString (managedEditorKind == "helix") ''
       export YAZELIX_MANAGED_HELIX_BINARY="${editorCommand}"
     ''}

@@ -57,11 +57,6 @@ def is_neovim_editor [editor: string] {
 }
 
 export def get_managed_editor_kind [] {
-    let env_editor_kind = ($env.YAZELIX_MANAGED_EDITOR_KIND? | default "" | into string | str trim)
-    if $env_editor_kind in ["helix", "neovim"] {
-        return $env_editor_kind
-    }
-
     let config = parse_yazelix_config
     let configured_editor = ($config.editor_command? | default null)
     let editor = if ($configured_editor != null) and (($configured_editor | into string | str trim) | is-not-empty) {

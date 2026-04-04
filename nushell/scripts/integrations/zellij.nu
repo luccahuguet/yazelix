@@ -11,13 +11,11 @@ const FLOATING_WRAPPER_ENV_KEYS = [
     "DEVENV_PROFILE"
     "PATH"
     "YAZELIX_RUNTIME_DIR"
-    "YAZELIX_NU_BIN"
     "IN_YAZELIX_SHELL"
     "IN_NIX_SHELL"
     "NIX_CONFIG"
     "ZELLIJ_DEFAULT_LAYOUT"
     "YAZI_CONFIG_HOME"
-    "YAZELIX_MANAGED_EDITOR_KIND"
     "YAZELIX_MANAGED_HELIX_BINARY"
     "EDITOR"
     "HELIX_RUNTIME"
@@ -77,8 +75,7 @@ export def get_floating_wrapper_env [] {
     }
 
     let config = (parse_yazelix_config)
-    let canonical_env = (get_launch_env $config $profile_path)
-    $current_shell_env | merge $canonical_env
+    get_launch_env $config $profile_path
 }
 
 def run_pane_orchestrator_command [command_name: string, log_file: string, payload: string = ""] {

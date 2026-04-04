@@ -96,6 +96,8 @@ def test_get_launch_env_wraps_helix_with_managed_wrapper [] {
             "YAZELIX_DIR"
             "YAZELIX_ENABLE_SIDEBAR"
             "YAZELIX_HELIX_MODE"
+            "YAZELIX_MANAGED_EDITOR_KIND"
+            "YAZELIX_NU_BIN"
             "YAZELIX_TERMINAL_CONFIG_MODE"
             "YAZELIX_WELCOME_STYLE"
         ]
@@ -106,7 +108,6 @@ def test_get_launch_env_wraps_helix_with_managed_wrapper [] {
 
         if (
             ($launch_env.EDITOR == $expected_wrapper)
-            and (($launch_env | get YAZELIX_MANAGED_EDITOR_KIND) == "helix")
             and (($launch_env | get YAZELIX_MANAGED_HELIX_BINARY) == $expected_binary)
             and $retired_keys_absent
         ) {

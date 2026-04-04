@@ -353,9 +353,6 @@ export def "yzx launch" [
             if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) {
                 $env_block = ($env_block | upsert YAZELIX_SWEEP_TEST_ID $env.YAZELIX_SWEEP_TEST_ID)
             }
-            if ($env.YAZELIX_TERMINAL? | is-not-empty) {
-                $env_block = ($env_block | upsert YAZELIX_TERMINAL $env.YAZELIX_TERMINAL)
-            }
             with-env $env_block {
                 run_in_devenv_shell_command "nu" ...$final_launch_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --force-shell --force-refresh=($should_refresh or $force_reenter) --verbose=$verbose_mode --refresh-output-mode $refresh_output
             }

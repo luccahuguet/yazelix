@@ -189,6 +189,7 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
                 YAZELIX_RUNTIME_DIR: $env.PWD
                 PATH: $"($profile_bin):/usr/bin"
                 EDITOR: "/tmp/wrong-editor"
+                YAZELIX_MANAGED_HELIX_BINARY: "/tmp/stale-hx"
             } {
                 get_floating_wrapper_env
             })
@@ -209,6 +210,8 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
                 (($result.DEVENV_PROFILE? | default "") == $profile_path)
                 ($path_entries | any {|entry| $entry == $profile_bin })
                 (not ($result | columns | any {|column| $column == "YAZELIX_DIR" }))
+                (not ($result | columns | any {|column| $column == "YAZELIX_MANAGED_HELIX_BINARY" }))
+                (not ($result | columns | any {|column| $column == "YAZELIX_NU_BIN" }))
                 (not ($result | columns | any {|column| $column == "YAZELIX_TERMINAL_CONFIG_MODE" }))
             ]
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Profile activation helpers for fast Yazelix launch/restart paths.
 
-use ./common.nu [ensure_yazelix_runtime_project_dir get_yazelix_nix_config get_yazelix_dir get_yazelix_state_dir resolve_yazelix_nu_bin]
+use ./common.nu [ensure_yazelix_runtime_project_dir get_yazelix_nix_config get_yazelix_dir get_yazelix_state_dir]
 
 def normalize_path_entries [value: any] {
     let described = ($value | describe)
@@ -245,17 +245,12 @@ export def get_launch_env [config: record, profile_path: string] {
         DEVENV_PROFILE: $profile_path
         PATH: (([$profile_bin] | append $current_path_entries | uniq))
         YAZELIX_RUNTIME_DIR: $yazelix_dir
-        YAZELIX_NU_BIN: (resolve_yazelix_nu_bin)
         IN_YAZELIX_SHELL: "true"
         IN_NIX_SHELL: "impure"
         NIX_CONFIG: $nix_config
         ZELLIJ_DEFAULT_LAYOUT: (if $enable_sidebar { "yzx_side" } else { "yzx_no_side" })
         YAZI_CONFIG_HOME: ($env.HOME | path join ".local" "share" "yazelix" "configs" "yazi")
         EDITOR: $editor_command
-    }
-
-    if ($editor_kind | is-not-empty) {
-        $launch_env = ($launch_env | upsert YAZELIX_MANAGED_EDITOR_KIND $editor_kind)
     }
 
     if $editor_kind == "helix" {
