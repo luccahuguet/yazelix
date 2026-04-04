@@ -34,16 +34,26 @@ Profile launch sequence and identify performance bottlenecks
 - `--cold`: Profile cold start from vanilla terminal (emulates desktop entry or fresh terminal launch)
 - `--clear-cache`: Toggle yazelix.toml option and clear cache to force full Nix re-evaluation (simulates config change)
 
-### `yzx launch [--here] [--path DIR] [--home] [--terminal TERM] [--verbose] [--reuse] [--skip-refresh]`
+### `yzx launch [--path DIR] [--home] [--terminal TERM] [--verbose] [--reuse] [--skip-refresh] [--force-reenter]`
 Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
-- `--here`: Start in current terminal (instead of new terminal)
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
 - `--terminal TERM`: Override terminal selection (e.g., ghostty, wezterm, kitty)
 - `--verbose`: Print detailed launch diagnostics
 - `--reuse`: Reuse the last built Yazelix profile without rebuilding (errors if no cached profile exists)
 - `--skip-refresh, -s`: Skip explicit refresh trigger and allow potentially stale environment
+- `--force-reenter`: Force a fresh `devenv` re-entry before launch
+
+### `yzx enter [--path DIR] [--home] [--verbose] [--reuse] [--skip-refresh] [--force-reenter]`
+Start Yazelix in the current terminal
+- Default: Start in the current terminal and current directory
+- `--path DIR`: Start in specific directory
+- `--home`: Start in home directory
+- `--verbose`: Print detailed startup diagnostics
+- `--reuse`: Reuse the last built Yazelix profile without rebuilding (errors if no cached profile exists)
+- `--skip-refresh, -s`: Skip explicit refresh trigger and allow potentially stale environment
+- `--force-reenter`: Force a fresh `devenv` re-entry before startup
 
 ### `yzx env [--no-shell] [--reuse] [--skip-refresh]`
 Load Yazelix environment without UI
@@ -235,9 +245,9 @@ Show command reference
 ```bash
 # Launch Yazelix
 yzx launch                    # New terminal in current directory
-yzx launch --here             # Start in current terminal
+yzx enter                     # Start in current terminal
 yzx launch --home             # New terminal in home directory
-yzx launch --here --path ~/project  # Current terminal, specific directory
+yzx enter --path ~/project    # Current terminal, specific directory
 yzx launch --terminal wezterm # Force WezTerm for this launch
 yzx launch --verbose          # Detailed launch diagnostics
 yzx launch --reuse            # Reuse the last built profile without rebuilding
@@ -339,4 +349,4 @@ yzx dev profile --cold --clear-cache  # Profile after config change (toggles opt
 # 3. Config change (~3-8s): After clearing cache (full Nix re-evaluation)
 ```
 
-Note: if `zellij.persistent_sessions = true` and the named session already exists, Zellij reattaches to that session and `yzx launch --path ...` is ignored. Yazelix warns about this and tells you to kill the session first if you want a fresh working directory.
+Note: if `zellij.persistent_sessions = true` and the named session already exists, Zellij reattaches to that session and `yzx enter --path ...` is ignored. Yazelix warns about this and tells you to kill the session first if you want a fresh working directory.

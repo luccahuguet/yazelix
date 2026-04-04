@@ -36,6 +36,7 @@ Some are really about installed runtime or distribution state:
 And a few important families still braid multiple owners together:
 
 - `yzx launch`
+- `yzx enter`
 - `yzx restart`
 - `yzx status`
 - `yzx doctor`
@@ -108,7 +109,7 @@ The audit intentionally excludes:
 | Backend control plane | `yzx env`, `yzx run`, `yzx refresh` | backend-required | These commands directly own environment activation, rebuild, refresh, and re-entry semantics. Their behavior is defined by the backend contract. | Narrow, not drop | `nushell/scripts/yzx/env.nu`, `nushell/scripts/yzx/run.nu`, `nushell/scripts/yzx/refresh.nu`, `nushell/scripts/utils/environment_bootstrap.nu` |
 | Backend package and store surfaces | `yzx packs`, `yzx gc` | backend-required | These commands are tightly coupled to backend/package composition and current Nix/devenv store semantics. `packs` inspects pack-backed materialization; `gc` acts on backend-specific garbage-collection behavior. | Likely narrow sharply; `gc` only if Core stays Nix-backed | `nushell/scripts/yzx/packs.nu`, `nushell/scripts/yzx/gc.nu` |
 | Installed runtime and distribution maintenance | `yzx desktop install`, `yzx desktop uninstall`, `yzx desktop launch`, `yzx update`, `yzx update all`, `yzx update runtime`, `yzx update nix`, `yzx repair`, `yzx repair zellij-permissions` | runtime-owned/distribution | These commands own stable launcher/runtime identity, desktop-entry integration, runtime refresh/install flows, or adjacent install/runtime repair surfaces. They are about shipped/runtime distribution state more than backend activation semantics. | Keep selected surfaces; `update nix` depends on future product policy | `nushell/scripts/yzx/desktop.nu`, `nushell/scripts/core/yazelix.nu`, `nushell/scripts/setup/zellij_plugin_paths.nu` |
-| Session launch and restart | `yzx launch`, `yzx restart` | mixed/refactor-needed | These commands currently braid backend refresh/re-entry, runtime preflight, terminal dispatch, and workspace/session bootstrap. They are the clearest mixed owner seam in the public CLI. | Keep, but split internally | `nushell/scripts/yzx/launch.nu`, `nushell/scripts/core/start_yazelix.nu`, `nushell/scripts/core/yazelix.nu` |
+| Session launch and restart | `yzx launch`, `yzx enter`, `yzx restart` | mixed/refactor-needed | `yzx launch` owns new-window startup and terminal dispatch; `yzx enter` owns current-terminal startup. They still share backend refresh/re-entry and workspace/session bootstrap concerns with `yzx restart`, but the public command surface is clearer once current-terminal startup stops living under `launch`. | Keep, but split internally | `nushell/scripts/yzx/launch.nu`, `nushell/scripts/yzx/enter.nu`, `nushell/scripts/core/start_yazelix.nu`, `nushell/scripts/core/yazelix.nu` |
 | Health and inspection | `yzx status`, `yzx doctor` | mixed/refactor-needed | `status` mixes config summary, shell-hook integration, and backend freshness. `doctor` mixes shared runtime preflight, install/distribution health, shell integration, version drift, and workspace/plugin diagnostics. | Keep, but split responsibilities more clearly | `nushell/scripts/core/yazelix.nu`, `nushell/scripts/utils/doctor.nu`, `nushell/scripts/utils/runtime_contract_checker.nu` |
 | Command palette | `yzx menu` | mixed/refactor-needed | The picker UI is backend-agnostic, but the command dispatch path shells back into the runtime command module and spans every other family. It is a thin mixed seam today. | Keep, but reduce dispatch coupling | `nushell/scripts/yzx/menu.nu` |
 
@@ -127,8 +128,8 @@ The audit intentionally excludes:
 
 The highest-value mixed families to refactor later are:
 
-1. `yzx launch` / `yzx restart`
-   - split backend refresh/re-entry from workspace bootstrap and terminal dispatch
+1. `yzx launch` / `yzx enter` / `yzx restart`
+   - keep `launch` scoped to new-window behavior, `enter` scoped to current-terminal startup, and continue splitting backend refresh/re-entry from workspace bootstrap and terminal dispatch
 2. `yzx status` / `yzx doctor`
    - split concise runtime status from heavier install/integration diagnostics
 3. `yzx menu`
@@ -155,7 +156,7 @@ The highest-value mixed families to refactor later are:
 
 1. When a later bead asks whether a command family is fundamentally backend-bound, the answer can be taken from this matrix instead of guessed from implementation trivia.
 2. When a future `Yazelix Core` discussion asks which commands are the best keep candidates, the answer clearly favors backend-agnostic and selected runtime-owned/distribution families.
-3. When a later refactor asks which public commands still mix backend, runtime, and workspace concerns, the shortlist clearly identifies `launch`, `restart`, `status`, `doctor`, and `menu`.
+3. When a later refactor asks which public commands still mix backend, runtime, and workspace concerns, the shortlist clearly identifies `launch`, `enter`, `restart`, `status`, `doctor`, and `menu`.
 4. When a later backend experiment evaluates itself against the CLI, it does not need to treat the whole `yzx` surface as one undifferentiated requirement.
 
 ## Verification

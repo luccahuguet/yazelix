@@ -192,7 +192,7 @@ yzx launch
 
 Useful launch variants:
 - `yzx launch` opens Yazelix in a new terminal window
-- `yzx launch --here` starts Yazelix in the current terminal
+- `yzx enter` starts Yazelix in the current terminal
 - `yzx help` shows the command surface
 
 **First run note**: the first launch may take several minutes while Yazelix downloads and installs its environment. Subsequent launches are much faster because `devenv` caching is reused.
@@ -259,7 +259,7 @@ For detailed macOS setup and troubleshooting, see [assets/macos/README.md](../as
 ### Step 8: Using Yazelix
 
 **Option A users**: Simply open your terminal! Yazelix will automatically launch with the full environment.
-**Option B users**: Use `yzx launch` or `yzx launch --here` to launch Yazelix when needed.
+**Option B users**: Use `yzx launch` or `yzx enter` to launch Yazelix when needed.
 
 **First Run**: The first time you launch Yazelix, it will install all dependencies (Zellij, Yazi, Helix, etc.). This may take several minutes, but subsequent launches will be instant.
 

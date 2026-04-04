@@ -9,11 +9,11 @@ use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_pr
 use ../utils/common.nu [describe_build_parallelism get_installed_yazelix_runtime_dir get_yazelix_dir]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../integrations/yazi.nu [reveal_in_yazi sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
-use ./start_yazelix.nu [start_yazelix_session]
 use ../integrations/zellij.nu [set_tab_cwd resolve_tab_cwd_target]
 
 # Import modularized commands (export use to properly re-export subcommands)
 export use ../yzx/launch.nu *
+export use ../yzx/enter.nu *
 export use ../yzx/env.nu *
 export use ../yzx/refresh.nu *
 export use ../yzx/import.nu *
@@ -39,7 +39,8 @@ export use ../yzx/whats_new.nu *
 # Supports: bash, nushell, fish, zsh
 #
 # Common commands:
-#   yzx launch    - Start a new yazelix session
+#   yzx launch    - Start a new yazelix window
+#   yzx enter     - Start Yazelix in the current terminal
 #   yzx run       - Run a command inside the Yazelix environment
 #   yzx status    - Show current Yazelix status
 #   yzx doctor    - Run health checks

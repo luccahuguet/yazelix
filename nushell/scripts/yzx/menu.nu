@@ -11,7 +11,7 @@ use ../utils/config_surfaces.nu [resolve_active_config_paths get_primary_config_
 use ../setup/helix_config_merger.nu [get_generated_helix_config_path get_managed_helix_user_config_path]
 
 def classify_menu_command [cmd: string] {
-    if ($cmd | str starts-with "yzx launch") or ($cmd == "yzx restart") {
+    if ($cmd | str starts-with "yzx launch") or ($cmd | str starts-with "yzx enter") or ($cmd == "yzx restart") {
         {tag: "session", color: (ansi green)}
     } else if (
         ($cmd | str starts-with "yzx config")
@@ -58,6 +58,7 @@ def get_menu_items [] {
 def should_pause_in_popup [cmd: string] {
     not (
         ($cmd | str starts-with "yzx launch")
+        or ($cmd | str starts-with "yzx enter")
         or ($cmd | str starts-with "yzx env")
         or ($cmd | str starts-with "yzx restart")
     )

@@ -31,7 +31,7 @@ def require_generated_layout [layout_path: string] {
     $check.path
 }
 
-def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse] {
+def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse, --skip-refresh, --force-reenter] {
     # Capture original directory before any cd commands
     let original_dir = pwd
 
@@ -52,22 +52,28 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     let env_prep = prepare_environment --verbose=$verbose_mode
     let config = $env_prep.config
     let needs_refresh = $env_prep.needs_refresh
+    let should_refresh = ($needs_refresh and (not $reuse) and (not $skip_refresh))
     let refresh_output = get_refresh_output_mode $config
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)
     let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let env_status = check_environment_status
     let reuse_mode = $reuse
+    let skip_refresh_mode = $skip_refresh
+    let force_reenter_mode = $force_reenter
     mut activated_profile = false
 
     if $reuse_mode and $needs_refresh {
         print "⚡ Reuse mode enabled - using the last built Yazelix profile without rebuild."
         print "   Local config/input changes since the last refresh are not applied."
+    } else if $skip_refresh_mode and $needs_refresh {
+        print "⚠️  Skipping explicit refresh trigger; environment may be stale."
+        print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
     }
 
-    if (not $env_status.already_in_env) and ((not $needs_refresh) or $reuse_mode) {
+    if (not $env_status.already_in_env) and ((not $should_refresh) or $reuse_mode) and (not $force_reenter_mode) {
         let profile_path = if $reuse_mode {
-            require_reused_launch_profile $env_prep.config_state "yzx launch --here --reuse"
+            require_reused_launch_profile $env_prep.config_state "yzx enter --reuse"
         } else {
             get_launch_profile $env_prep.config_state
         }
@@ -90,12 +96,12 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
         print "🔧 Setting up Yazelix environment (installing shell hooks and dependencies)..."
         print "   This may take several minutes on first run."
 
-        run_in_devenv_shell_command "sh" "-c" "echo '✅ Setup complete! Shell hooks installed.'" --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --force-shell --verbose=$verbose_mode --force-refresh=$needs_refresh
+        run_in_devenv_shell_command "sh" "-c" "echo '✅ Setup complete! Shell hooks installed.'" --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --force-shell=true --verbose=$verbose_mode --force-refresh=$should_refresh
 
         print ""
         print "📝 Next steps:"
         print "   1. Restart your shell (or source your shell config)"
-        print "   2. Run 'yzx launch' to start Yazelix"
+        print "   2. Run 'yzx launch' to open Yazelix in a new window, or 'yzx enter' to start it here"
         print ""
         return
     }
@@ -141,7 +147,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
             nu $"($yazelix_dir)/nushell/scripts/setup/environment.nu" --welcome-source start
         }
 
-        if $needs_refresh {
+        if $should_refresh {
             if $verbose_mode {
                 print $"♻️  Config changed - rebuilding environment using ($build_parallelism_description)"
             } else if $refresh_output != "quiet" {
@@ -150,36 +156,22 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
         }
 
         # Use shared devenv runner (consolidates with yzx env)
-        run_in_devenv_shell_command "nu" ...$inner_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --verbose=$verbose_mode --force-refresh=($needs_refresh and (not $reuse_mode)) --refresh-output-mode $refresh_output
+        run_in_devenv_shell_command "nu" ...$inner_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --force-shell=$force_reenter_mode --verbose=$verbose_mode --force-refresh=$should_refresh --refresh-output-mode $refresh_output
     }
 }
 
-def run_start_yazelix_entrypoint [verbose: bool, setup_only: bool, reuse: bool, cwd_override?: string] {
+export def start_yazelix_session [cwd_override?: string, --verbose, --setup-only, --reuse, --skip-refresh, --force-reenter] {
     if ($cwd_override | is-not-empty) {
-        if $setup_only and $verbose {
-            _start_yazelix_impl $cwd_override --verbose --setup-only --reuse=$reuse
-        } else if $setup_only {
-            _start_yazelix_impl $cwd_override --setup-only --reuse=$reuse
-        } else if $verbose {
-            _start_yazelix_impl $cwd_override --verbose --reuse=$reuse
-        } else {
-            _start_yazelix_impl $cwd_override --reuse=$reuse
-        }
-    } else if $setup_only and $verbose {
-        _start_yazelix_impl --verbose --setup-only --reuse=$reuse
-    } else if $setup_only {
-        _start_yazelix_impl --setup-only --reuse=$reuse
-    } else if $verbose {
-        _start_yazelix_impl --verbose --reuse=$reuse
+        _start_yazelix_impl $cwd_override --verbose=$verbose --setup-only=$setup_only --reuse=$reuse --skip-refresh=$skip_refresh --force-reenter=$force_reenter
     } else {
-        _start_yazelix_impl --reuse=$reuse
+        _start_yazelix_impl --verbose=$verbose --setup-only=$setup_only --reuse=$reuse --skip-refresh=$skip_refresh --force-reenter=$force_reenter
     }
 }
 
-export def start_yazelix_session [cwd_override?: string, --verbose, --setup-only, --reuse] {
-    run_start_yazelix_entrypoint $verbose $setup_only $reuse $cwd_override
-}
-
-export def main [cwd_override?: string, --verbose, --setup-only, --reuse] {
-    run_start_yazelix_entrypoint $verbose $setup_only $reuse $cwd_override
+export def main [cwd_override?: string, --verbose, --setup-only, --reuse, --skip-refresh, --force-reenter] {
+    if ($cwd_override | is-not-empty) {
+        start_yazelix_session $cwd_override --verbose=$verbose --setup-only=$setup_only --reuse=$reuse --skip-refresh=$skip_refresh --force-reenter=$force_reenter
+    } else {
+        start_yazelix_session --verbose=$verbose --setup-only=$setup_only --reuse=$reuse --skip-refresh=$skip_refresh --force-reenter=$force_reenter
+    }
 }

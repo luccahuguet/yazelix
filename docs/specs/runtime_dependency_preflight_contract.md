@@ -48,7 +48,7 @@ Without a written contract:
 - Config-conditioned requirements:
   - the configured terminal must be available for `yzx launch` when launching a new terminal window
   - terminal availability depends on whether Yazelix is managing terminals or relying on host-installed terminals
-  - entrypoints that stay in the current terminal, such as `yzx launch --here`, do not require a detached terminal candidate
+  - entrypoints that stay in the current terminal, such as `yzx enter`, do not require a detached terminal candidate
 - Runtime-owned assets versus host tools:
   - runtime-owned scripts, generated layouts, and shipped assets should be treated as runtime contract dependencies
   - host or externally resolved tools should only be treated as required when the current entrypoint truly needs them to proceed

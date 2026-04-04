@@ -72,6 +72,10 @@ dispatch_leaf_command() {
       shift
       exec_leaf_module_command "$RUNTIME_DIR/nushell/scripts/yzx/desktop.nu" "yzx desktop" "$@"
       ;;
+    enter)
+      shift
+      exec_leaf_module_command "$RUNTIME_DIR/nushell/scripts/yzx/enter.nu" "yzx enter" "$@"
+      ;;
     reveal)
       shift
       if [ ! -f "$reveal_script" ]; then

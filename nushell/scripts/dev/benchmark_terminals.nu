@@ -159,7 +159,7 @@ export def main [
         print $"   config path: ($config_dir | path join \"yazelix.toml\")"
         print "   terminals = [\"ghostty\" \"wezterm\" \"kitty\" \"alacritty\" \"foot\"];"
         print ""
-        print "   Then reload: yzx launch --here"
+        print "   Then reload: yzx enter"
         exit 1
     }
 
@@ -173,7 +173,7 @@ export def main [
         print $"   config path: ($config_dir | path join \"yazelix.toml\")"
         let quoted_terminals = ($unavailable_terminals | each {|t| $'"($t)"'} | str join ' ')
         print $"   terminals = [($quoted_terminals)];"
-        print "   Then reload: yzx launch --here"
+        print "   Then reload: yzx enter"
         print ""
     }
 
@@ -188,7 +188,7 @@ export def main [
             let config_dir = (get_yazelix_config_dir)
             print $"   config path: ($config_dir | path join \"yazelix.toml\")"
             print $"   terminals = [\"($requested_terminal)\"];"
-            print "   Then reload: yzx launch --here"
+            print "   Then reload: yzx enter"
             exit 1
         } else {
             print $"❌ Terminal '($requested_terminal)' is not supported"

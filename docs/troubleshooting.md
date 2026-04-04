@@ -62,7 +62,7 @@ yzx restart
 **If you are already stuck with blank tabs or a broken permission popup:**
 ```bash
 zellij delete-all-sessions -f -y
-yzx launch --here
+yzx enter
 ```
 
 Yazelix now keeps the pane-orchestrator on a stable runtime plugin path so previously granted permissions can be preserved across rebuilds, but a clean restart is still safer than reloading the plugin inside the active session.

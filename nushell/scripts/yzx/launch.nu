@@ -1,12 +1,11 @@
 #!/usr/bin/env nu
-# yzx launch command - Launch Yazelix in new or current terminal
+# yzx launch command - Launch Yazelix in a new terminal window
 
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment run_in_devenv_shell_command get_refresh_output_mode]
 use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile resolve_runtime_owned_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../core/start_yazelix.nu [start_yazelix_session]
 use ../utils/common.nu [describe_build_parallelism require_yazelix_runtime_dir]
 use ../utils/constants.nu [TERMINAL_METADATA]
 use ../utils/runtime_contract_checker.nu [check_runtime_script require_runtime_check]
@@ -94,7 +93,6 @@ def require_launch_runtime_script [script_path: string] {
 
 # Launch yazelix
 export def "yzx launch" [
-    --here             # Start in current terminal instead of launching new terminal
     --path(-p): string # Start in specific directory
     --home             # Start in home directory
     --terminal(-t): string  # Override terminal selection (for sweep testing)
@@ -112,20 +110,20 @@ export def "yzx launch" [
     if $verbose_mode {
         print "🔍 yzx launch: verbose mode enabled"
     }
+    let reuse_mode = $reuse
+    let requested_path = ($path | default "")
+    let requested_terminal = ($terminal | default "")
 
     let env_prep = prepare_environment
     let config = $env_prep.config
     let config_state = $env_prep.config_state
     mut needs_refresh = $env_prep.needs_refresh
-    let reuse_mode = $reuse
     let refresh_output = get_refresh_output_mode $config
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)
     let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let show_refresh_notice = ($refresh_output != "quiet")
     let manage_terminals = ($config.manage_terminals? | default true)
-    let requested_path = ($path | default "")
-    let requested_terminal = ($terminal | default "")
     let built_profile = (resolve_runtime_owned_profile)
     let terminal_profile_needs_repair = (
         $manage_terminals
@@ -172,54 +170,6 @@ export def "yzx launch" [
             print "⚠️  Current Yazelix shell does not include the configured terminal; re-entering a fresh environment."
         }
         $in_yazelix_shell = false
-    }
-
-    if $here {
-        # Start in current terminal without spawning a new process
-        $env.YAZELIX_ENV_ONLY = "false"
-
-        # Determine directory override: explicit --home or --path, else let start_yazelix handle it
-        let cwd_override = if $home {
-            $env.HOME
-        } else if ($requested_path | is-not-empty) {
-            $requested_path
-        } else {
-            null
-        }
-
-        if $verbose_mode {
-            if $should_refresh {
-                if ($cwd_override != null) {
-                    start_yazelix_session $cwd_override --verbose --reuse=$reuse_mode
-                } else {
-                    start_yazelix_session --verbose --reuse=$reuse_mode
-                }
-            } else {
-                if ($cwd_override != null) {
-                    start_yazelix_session $cwd_override --verbose --reuse=$reuse_mode
-                } else {
-                    start_yazelix_session --verbose --reuse=$reuse_mode
-                }
-            }
-        } else {
-            if $should_refresh {
-                if ($cwd_override != null) {
-                    start_yazelix_session $cwd_override --reuse=$reuse_mode
-                } else {
-                    start_yazelix_session --reuse=$reuse_mode
-                }
-            } else {
-                if ($cwd_override != null) {
-                    start_yazelix_session $cwd_override --reuse=$reuse_mode
-                } else {
-                    start_yazelix_session --reuse=$reuse_mode
-                }
-            }
-        }
-        if $should_refresh {
-            record_materialized_state $config_state
-        }
-        return
     }
 
     # Launch new terminal
