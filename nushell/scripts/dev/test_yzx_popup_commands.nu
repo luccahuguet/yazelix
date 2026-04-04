@@ -4,7 +4,7 @@
 # Defends: docs/specs/floating_tui_panes.md
 
 use ../yzx/popup.nu [resolve_yzx_popup_command resolve_yzx_popup_cwd]
-use ../integrations/zellij.nu [build_floating_wrapper_env_args get_floating_wrapper_env]
+use ../integrations/zellij.nu [build_floating_wrapper_env_args get_floating_wrapper_env get_new_editor_pane_launch_env]
 use ../utils/config_parser.nu [parse_yazelix_config]
 use ../../../configs/zellij/scripts/yzx_toggle_popup.nu [resolve_popup_toggle_action]
 
@@ -233,6 +233,66 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
     }
 }
 
+# Regression: Yazi/Zoxide new-pane launches must canonicalize the managed editor env instead of trusting stale ambient EDITOR.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_new_editor_pane_launch_env_uses_canonical_editor_for_current_profile [] {
+    print "🧪 Testing new editor pane launches derive EDITOR from the canonical launch env..."
+
+    try {
+        let tmpdir = (^mktemp -d /tmp/yazelix_new_editor_pane_env_XXXXXX | str trim)
+        mut success = false
+
+        try {
+            let profile_path = ($tmpdir | path join "profile")
+            let profile_bin = ($profile_path | path join "bin")
+            let profile_hx = ($profile_bin | path join "hx")
+            mkdir $profile_bin
+            "" | save --force --raw $profile_hx
+            ^chmod +x $profile_hx
+
+            let config_path = ($tmpdir | path join "yazelix.toml")
+            [
+                "[editor]"
+                "command = \"hx\""
+            ] | str join "\n" | save --force --raw $config_path
+
+            let result = (with-env {
+                YAZELIX_CONFIG_OVERRIDE: $config_path
+                DEVENV_PROFILE: $profile_path
+                YAZELIX_RUNTIME_DIR: $env.PWD
+                PATH: $"($profile_bin):/usr/bin"
+                EDITOR: "/shells/posix/yazelix_hx.sh"
+                YAZELIX_MANAGED_HELIX_BINARY: "/tmp/stale-hx"
+            } {
+                get_new_editor_pane_launch_env "1234"
+            })
+
+            let expected_wrapper = ($env.PWD | path join "shells" "posix" "yazelix_hx.sh")
+            let managed_binary = ($result.YAZELIX_MANAGED_HELIX_BINARY? | default "")
+
+            if (
+                (($result.EDITOR? | default "") == $expected_wrapper)
+                and ($managed_binary | is-not-empty)
+                and ($managed_binary != "/tmp/stale-hx")
+                and (($result.YAZI_ID? | default "") == "1234")
+            ) {
+                print "  ✅ New editor pane launches now canonicalize the managed editor env before invoking Zellij"
+                $success = true
+            } else {
+                print $"  ❌ Unexpected new editor pane env: ($result | to json -r)"
+                $success = false
+            }
+        } finally {
+            rm -rf $tmpdir
+        }
+
+        $success
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 # Regression: popup wrappers serialize PATH lists into real env strings for zellij run.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_popup_wrapper_serializes_path_list_for_env_command [] {
@@ -271,6 +331,7 @@ export def run_popup_canonical_tests [] {
         (test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages)
         (test_popup_toggle_wrapper_surfaces_permission_denials)
         (test_popup_wrapper_uses_canonical_editor_for_current_profile)
+        (test_new_editor_pane_launch_env_uses_canonical_editor_for_current_profile)
         (test_popup_wrapper_serializes_path_list_for_env_command)
     ]
 }

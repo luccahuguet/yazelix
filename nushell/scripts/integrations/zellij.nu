@@ -78,6 +78,16 @@ export def get_floating_wrapper_env [] {
     get_launch_env $config $profile_path
 }
 
+export def get_new_editor_pane_launch_env [yazi_id: string = ""] {
+    mut pane_env = (get_floating_wrapper_env)
+
+    if ($yazi_id | str trim | is-not-empty) {
+        $pane_env = ($pane_env | upsert YAZI_ID $yazi_id)
+    }
+
+    $pane_env
+}
+
 def run_pane_orchestrator_command [command_name: string, log_file: string, payload: string = ""] {
     let plugin_target = (get_pane_orchestrator_plugin_target)
     let pipe_result = (^zellij action pipe --plugin $plugin_target --name $command_name -- $payload | complete)
@@ -439,16 +449,18 @@ export def open_in_existing_helix [file_path: path] {
 def open_new_editor_pane [file_path: path, yazi_id: string, log_file: string] {
     let expanded_file_path = ($file_path | path expand)
     let workspace = (get_workspace_context $expanded_file_path $log_file)
+    let pane_env = (get_new_editor_pane_launch_env $yazi_id)
+    let env_args = (build_floating_wrapper_env_args $pane_env)
+    let editor = ($pane_env.EDITOR? | default "" | str trim)
+    if ($editor | is-empty) {
+        error make {msg: "EDITOR environment variable is not set in the canonical launch env"}
+    }
 
     log_to_file $log_file $"Attempting to open new pane with YAZI_ID=($yazi_id) for file=($expanded_file_path)"
-
-    # Use the configured editor from environment, preserving YAZI_ID
-    let editor = $env.EDITOR
-    let yazi_env = $"YAZI_ID=($yazi_id)"
     log_to_file $log_file $"Launching editor pane with editor=($editor), workspace_root=($workspace.workspace_root), file=($expanded_file_path)"
 
     let pane_name = "editor"
-    zellij run --name $pane_name --cwd $workspace.workspace_root -- env $yazi_env $editor $expanded_file_path
+    zellij run --name $pane_name --cwd $workspace.workspace_root -- env ...$env_args $editor $expanded_file_path
     log_to_file $log_file $"Command executed successfully with pane name: ($pane_name)"
 }
 
@@ -469,15 +481,11 @@ export def open_new_managed_editor_in_cwd [
         $expanded_target_dir | path dirname
     }
 
-    let editor = ($env.EDITOR? | default "" | str trim)
+    let pane_env = (get_new_editor_pane_launch_env $yazi_id)
+    let env_args = (build_floating_wrapper_env_args $pane_env)
+    let editor = ($pane_env.EDITOR? | default "" | str trim)
     if ($editor | is-empty) {
-        error make {msg: "EDITOR environment variable is not set"}
-    }
-
-    let yazi_env = if ($yazi_id | str trim | is-empty) {
-        []
-    } else {
-        [$"YAZI_ID=($yazi_id)"]
+        error make {msg: "EDITOR environment variable is not set in the canonical launch env"}
     }
 
     let editor_args = if $editor_kind == "helix" {
@@ -487,7 +495,7 @@ export def open_new_managed_editor_in_cwd [
     }
 
     log_to_file $log_file $"Launching new managed editor pane in cwd=($working_dir) with editor=($editor), editor_kind=($editor_kind)"
-    zellij run --name "editor" --cwd $working_dir -- env ...$yazi_env $editor ...$editor_args
+    zellij run --name "editor" --cwd $working_dir -- env ...$env_args $editor ...$editor_args
     log_to_file $log_file "Command executed successfully with pane name: editor"
 }
 
