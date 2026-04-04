@@ -188,7 +188,6 @@ def verify_installed_runtime [temp_home: string] {
             $"XDG_CONFIG_HOME=($temp_home | path join '.config')"
             $"XDG_DATA_HOME=($temp_home | path join '.local' 'share')"
             $"YAZELIX_RUNTIME_DIR=($runtime_current)"
-            $"YAZELIX_DIR=($runtime_current)"
             $runtime_nu
             "-c"
             $"use ($devenv_cli_module | into string) *; print \(resolve_preferred_devenv_path\)"
@@ -225,7 +224,6 @@ def verify_installed_runtime [temp_home: string] {
             $"XDG_CONFIG_HOME=($temp_home | path join '.config')"
             $"XDG_DATA_HOME=($temp_home | path join '.local' 'share')"
             $"YAZELIX_RUNTIME_DIR=($config_root)"
-            $"YAZELIX_DIR=($config_root)"
             $runtime_nu
             "-c"
             $"use '($runtime_helper_module | into string)' [get_runtime_nu_path]; print \(get_runtime_nu_path\)"
@@ -260,7 +258,6 @@ def verify_installed_runtime [temp_home: string] {
             $"XDG_CONFIG_HOME=($temp_home | path join '.config')"
             $"XDG_DATA_HOME=($temp_home | path join '.local' 'share')"
             $"YAZELIX_RUNTIME_DIR=($runtime_current)"
-            $"YAZELIX_DIR=($runtime_current)"
             $runtime_nu
             "-c"
             $shell_probe_command

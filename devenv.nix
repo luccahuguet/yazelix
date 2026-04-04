@@ -697,7 +697,6 @@ in
 
     export YAZELIX_CONFIG_DIR="''${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}"
     export YAZELIX_RUNTIME_DIR="''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}"
-    export YAZELIX_DIR="$YAZELIX_RUNTIME_DIR"
     export IN_YAZELIX_SHELL="true"
     export NIX_CONFIG='${yazelixNixConfig}'
     export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"

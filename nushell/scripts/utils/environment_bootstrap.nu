@@ -149,7 +149,6 @@ export def get_devenv_base_command [
         $devenv_project_dir
         $"NIX_CONFIG=($nix_config)"
         $"YAZELIX_RUNTIME_DIR=($yazelix_dir)"
-        $"YAZELIX_DIR=($yazelix_dir)"
         $devenv_path
         "--max-jobs"
         ($resolved_max_jobs | into string)
@@ -431,7 +430,6 @@ export def run_in_devenv_shell_command [
         $env_vars = (
             $env_vars
             | insert YAZELIX_RUNTIME_DIR $resolved_runtime_dir
-            | insert YAZELIX_DIR $resolved_runtime_dir
         )
     }
 

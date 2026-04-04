@@ -15,6 +15,13 @@ def require_file_contains [path: string, needle: string, label: string] {
     }
 }
 
+def require_file_not_contains [path: string, needle: string, label: string] {
+    let content = (open --raw $path)
+    if ($content | str contains $needle) {
+        error make { msg: $"($label) still contains forbidden text `($needle)`: ($path)" }
+    }
+}
+
 def require_list_contains [items: list<string>, expected: string, label: string] {
     if not ($items | any {|item| $item == $expected }) {
         error make { msg: $"($label) is missing expected entry `($expected)`. Found: (($items | str join ', '))" }
@@ -58,6 +65,7 @@ export def main [] {
 
     let install_template = "shells/posix/install_yazelix.sh.in"
     let cli_wrapper = "shells/posix/yzx_cli.sh"
+    let runtime_env = "shells/posix/runtime_env.sh"
     let environment_setup = "nushell/scripts/setup/environment.nu"
     let runtime_tree = "mk_runtime_tree.nix"
     let flake_path = "flake.nix"
@@ -65,6 +73,7 @@ export def main [] {
     require_path_exists $flake_path "flake definition"
     require_path_exists $install_template "flake installer template"
     require_path_exists $cli_wrapper "stable POSIX CLI wrapper"
+    require_path_exists $runtime_env "runtime env helper"
     require_path_exists $environment_setup "environment setup script"
     require_path_exists $runtime_tree "runtime tree builder"
 
@@ -73,10 +82,12 @@ export def main [] {
     require_file_contains $install_template '@coreutils_bin@/ln -sfn "$runtime_current/bin/yzx" "$yzx_link"' "flake installer template"
     require_file_contains $install_template 'YAZELIX_RUNTIME_DIR="$runtime_current"' "flake installer template"
     require_file_contains $install_template '@nu_bin@ "$runtime_current/nushell/scripts/setup/environment.nu" --skip-welcome' "flake installer template"
+    require_file_not_contains $install_template 'YAZELIX_DIR="$runtime_current"' "flake installer template"
 
     require_file_contains $cli_wrapper 'export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$RUNTIME_DIR"' "stable POSIX CLI wrapper"
     require_file_contains $cli_wrapper 'runtime_env_script="$RUNTIME_DIR/shells/posix/runtime_env.sh"' "stable POSIX CLI wrapper"
     require_file_contains $cli_wrapper 'exec "$YAZELIX_NU_BIN" -c "$nu_command"' "stable POSIX CLI wrapper"
+    require_file_not_contains $runtime_env 'export YAZELIX_DIR=' "runtime env helper"
 
     require_file_contains $environment_setup "get_installed_yazelix_runtime_reference_dir" "environment setup script"
     require_file_contains $environment_setup 'path join "bin" "yzx"' "environment setup script"

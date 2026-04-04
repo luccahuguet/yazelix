@@ -31,7 +31,6 @@ fi
 
 echo "Refreshing Yazelix shell hooks..."
 YAZELIX_RUNTIME_DIR="$runtime_current" \
-YAZELIX_DIR="$runtime_current" \
 YAZELIX_STATE_DIR="$HOME/.local/share/yazelix" \
 YAZELIX_LOGS_DIR="$HOME/.local/share/yazelix/logs" \
 @nu_bin@ "$runtime_current/nushell/scripts/setup/environment.nu" --skip-welcome
@@ -41,12 +40,10 @@ echo "Rebuilding generated Yazelix runtime configs..."
   "$HOME/.local/share/yazelix/configs/yazi" \
   "$HOME/.local/share/yazelix/configs/zellij"
 YAZELIX_RUNTIME_DIR="$runtime_current" \
-YAZELIX_DIR="$runtime_current" \
 YAZELIX_STATE_DIR="$HOME/.local/share/yazelix" \
 YAZELIX_LOGS_DIR="$HOME/.local/share/yazelix/logs" \
 @nu_bin@ "$runtime_current/nushell/scripts/setup/yazi_config_merger.nu" "$runtime_current" --quiet
 YAZELIX_RUNTIME_DIR="$runtime_current" \
-YAZELIX_DIR="$runtime_current" \
 YAZELIX_STATE_DIR="$HOME/.local/share/yazelix" \
 YAZELIX_LOGS_DIR="$HOME/.local/share/yazelix/logs" \
 PATH="@zellij_bin@:$PATH" \

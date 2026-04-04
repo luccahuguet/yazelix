@@ -8,7 +8,6 @@ if [ -z "$runtime_dir" ]; then
 fi
 
 export YAZELIX_RUNTIME_DIR="$runtime_dir"
-export YAZELIX_DIR="$runtime_dir"
 export YAZELIX_CONFIG_DIR="${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}"
 export PATH="$runtime_dir/bin:$PATH"
 
