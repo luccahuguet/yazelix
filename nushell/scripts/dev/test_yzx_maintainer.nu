@@ -2,7 +2,7 @@
 # Test runner for maintainer-only yzx checks
 # Test lane: maintainer
 
-use ../utils/common.nu [get_yazelix_state_dir]
+use ../utils/common.nu [get_yazelix_state_dir require_yazelix_repo_root]
 use ../utils/devenv_cli.nu resolve_preferred_devenv_path
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
@@ -160,6 +160,36 @@ def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
     }
 }
 
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Regression: maintainer commands resolve a writable repo root even when the stable CLI carries an installed runtime env.
+def test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env [] {
+    print "🧪 Testing maintainer repo-root resolution prefers the checkout over installed runtime env..."
+
+    let repo_root = ($env.PWD | path expand)
+    let fake_runtime = (get_yazelix_state_dir | path join "runtime" "current" | path expand)
+
+    try {
+        let resolved = (with-env {
+            DEVENV_ROOT: $repo_root
+            YAZELIX_RUNTIME_DIR: $fake_runtime
+            YAZELIX_DIR: "/nix/store/fake-yazelix-runtime"
+        } {
+            require_yazelix_repo_root
+        })
+
+        if $resolved == $repo_root {
+            print "  ✅ Maintainer repo-root resolution now ignores the installed runtime env in repo shells"
+            true
+        } else {
+            print $"  ❌ Unexpected result: resolved=($resolved) expected=($repo_root)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 # Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=1 total=6/10
 # Invariant: generated Nushell initializers restore current PATH entries ahead of the saved PATH.
 def test_nushell_initializer_restores_current_path_first [] {
@@ -197,6 +227,7 @@ def main [] {
         (test_issue_bead_comment_plan)
         (test_preferred_devenv_resolution_uses_runtime_owned_cli)
         (test_source_devenv_shell_clears_inherited_runtime_aliases)
+        (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
         (test_nushell_initializer_restores_current_path_first)
     ]
 

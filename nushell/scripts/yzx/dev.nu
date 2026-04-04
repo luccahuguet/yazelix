@@ -2,7 +2,7 @@
 # Development helper commands for maintainers
 
 use ../utils/terminal_configs.nu generate_all_terminal_configs
-use ../utils/common.nu [get_yazelix_dir]
+use ../utils/common.nu [require_yazelix_repo_root]
 use ../utils/environment_bootstrap.nu [run_in_devenv_shell_command]
 use ../utils/config_surfaces.nu [copy_default_config_surfaces load_config_surface_from_main get_main_user_config_path]
 use ../utils/devenv_cli.nu resolve_preferred_devenv_path
@@ -43,6 +43,10 @@ def get_nix_version_from_repo_shell [] {
     $result.stdout | str trim
 }
 
+def get_dev_repo_root [] {
+    require_yazelix_repo_root
+}
+
 def get_runtime_pin_versions [] {
     if (which nix | is-empty) {
         print "❌ nix not found in PATH."
@@ -64,7 +68,7 @@ def get_runtime_pin_versions [] {
 }
 
 def sync_runtime_pins [] {
-    let constants_path = ((get_yazelix_dir) | path join "nushell" "scripts" "utils" "constants.nu")
+    let constants_path = ((get_dev_repo_root) | path join "nushell" "scripts" "utils" "constants.nu")
     if not ($constants_path | path exists) {
         print $"❌ Constants file not found: ($constants_path)"
         exit 1
@@ -86,7 +90,7 @@ def sync_runtime_pins [] {
 }
 
 def sync_vendored_zjstatus [] {
-    let update_script = ((get_yazelix_dir) | path join "nushell" "scripts" "dev" "update_zjstatus.nu")
+    let update_script = ((get_dev_repo_root) | path join "nushell" "scripts" "dev" "update_zjstatus.nu")
     if not ($update_script | path exists) {
         print $"❌ zjstatus refresh helper not found: ($update_script)"
         exit 1
@@ -102,7 +106,7 @@ def sync_vendored_zjstatus [] {
 }
 
 def get_declared_yazelix_version [] {
-    let constants_path = ((get_yazelix_dir) | path join "nushell" "scripts" "utils" "constants.nu")
+    let constants_path = ((get_dev_repo_root) | path join "nushell" "scripts" "utils" "constants.nu")
     let constants = (open --raw $constants_path)
     let version_match = (
         $constants
@@ -121,7 +125,7 @@ def get_declared_yazelix_version [] {
 }
 
 def sync_readme_version_marker [] {
-    let readme_path = ((get_yazelix_dir) | path join "README.md")
+    let readme_path = ((get_dev_repo_root) | path join "README.md")
     if not ($readme_path | path exists) {
         print $"❌ README not found: ($readme_path)"
         exit 1
@@ -141,7 +145,7 @@ def sync_readme_version_marker [] {
 }
 
 def get_pane_orchestrator_paths [] {
-    let yazelix_dir = get_yazelix_dir
+    let yazelix_dir = get_dev_repo_root
     let crate_dir = ($yazelix_dir | path join "rust_plugins" "zellij_pane_orchestrator")
     let build_target = "wasm32-wasip1"
     let wasm_path = ($crate_dir | path join "target" $build_target "release" "yazelix_pane_orchestrator.wasm")
@@ -157,7 +161,7 @@ def get_pane_orchestrator_paths [] {
 }
 
 def get_popup_runner_paths [] {
-    let yazelix_dir = get_yazelix_dir
+    let yazelix_dir = get_dev_repo_root
     let crate_dir = ($yazelix_dir | path join "rust_plugins" "zellij_popup_runner")
     let build_target = "wasm32-wasip1"
     let wasm_path = ($crate_dir | path join "target" $build_target "release" "yazelix_popup_runner.wasm")
@@ -200,7 +204,7 @@ def resolve_update_canary_selection [requested: list<string>] {
 }
 
 def materialize_update_canaries [selected: list<string>] {
-    let default_config_path = ((get_yazelix_dir) | path join "yazelix_default.toml")
+    let default_config_path = ((get_dev_repo_root) | path join "yazelix_default.toml")
     if not ($default_config_path | path exists) {
         error make {msg: $"Default config not found: ($default_config_path)"}
     }
@@ -273,7 +277,7 @@ def trim_output_tail [text: string, max_lines: int] {
 }
 
 def run_update_canary [canary: record, verbose: bool] {
-    let yzx_script = ((get_yazelix_dir) | path join "nushell" "scripts" "core" "yazelix.nu")
+    let yzx_script = ((get_dev_repo_root) | path join "nushell" "scripts" "core" "yazelix.nu")
     let refresh_command = if $verbose {
         $"use \"($yzx_script)\" *; yzx refresh --force --verbose"
     } else {
@@ -352,18 +356,57 @@ def print_update_canary_failure_details [results: list] {
     }
 }
 
+def install_updated_runtime [repo_root: string, quiet: bool] {
+    print "🔄 Installing updated local Yazelix runtime..."
+
+    let result = (do {
+        cd $repo_root
+        ^nix run .#install | complete
+    })
+
+    if $result.exit_code != 0 {
+        let stderr_tail = trim_output_tail ($result.stderr | default "") 25
+        let stdout_tail = trim_output_tail ($result.stdout | default "") 25
+
+        print "❌ nix run .#install failed."
+        if ($stderr_tail | is-not-empty) {
+            print "   stderr tail:"
+            print ($stderr_tail | lines | each { |line| $"     ($line)" } | str join "\n")
+        } else if ($stdout_tail | is-not-empty) {
+            print "   stdout tail:"
+            print ($stdout_tail | lines | each { |line| $"     ($line)" } | str join "\n")
+        }
+        print "   Recovery: Fix the install failure, rerun `nix run .#install`, then restart Yazelix."
+        exit $result.exit_code
+    }
+
+    if not $quiet {
+        let stdout_text = ($result.stdout | default "" | str trim)
+        let stderr_text = ($result.stderr | default "" | str trim)
+        if ($stdout_text | is-not-empty) {
+            print $stdout_text
+        }
+        if ($stderr_text | is-not-empty) {
+            print --stderr $stderr_text
+        }
+    }
+
+    print "✅ Installed runtime updated."
+}
+
 export def "yzx dev update" [
     --verbose  # Deprecated compatibility flag; maintainer update output is verbose by default
     --quiet  # Capture canary output and reduce update progress noise
     --yes      # Skip confirmation prompt
     --no-canary  # Skip canary refresh/build checks after updating devenv.lock
+    --no-install-runtime  # Leave the installed local runtime unchanged after the repo update
     --canary-only  # Run canary checks without updating devenv.lock or syncing pins
     --canaries: list<string> = []  # Canary subset: default, maximal
 ] {
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
 
-    let yazelix_dir = get_yazelix_dir
+    let yazelix_dir = get_dev_repo_root
     let selected_canaries = resolve_update_canary_selection $canaries
     let verbose_mode = (not $quiet)
 
@@ -434,11 +477,20 @@ export def "yzx dev update" [
     sync_runtime_pins
     sync_readme_version_marker
     sync_vendored_zjstatus
-    print "✅ Inputs, canaries, runtime pins, README version marker, and vendored zjstatus are in sync. Review and commit the changes if everything looks good."
+
+    if $no_install_runtime {
+        print "⚠️  Installed runtime unchanged \(--no-install-runtime\)."
+        print "   Run `nix run .#install` before restarting Yazelix if you want the updated maintainer inputs locally."
+        print "✅ Inputs, canaries, runtime pins, README version marker, and vendored zjstatus are in sync in the repo checkout. Review and commit the changes if everything looks good."
+        return
+    }
+
+    install_updated_runtime $yazelix_dir $quiet
+    print "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, and the local installed runtime are in sync. Review and commit the changes if everything looks good."
 }
 
 export def "yzx dev sync_terminal_configs" [] {
-    let yazelix_dir = get_yazelix_dir
+    let yazelix_dir = get_dev_repo_root
     let config_root = ($yazelix_dir | path join "configs/terminal_emulators")
     let generated_root = "~/.local/share/yazelix/configs/terminal_emulators" | path expand
     let terminal_snapshot_override = (^mktemp /tmp/yazelix_terminal_snapshot_sync_XXXXXX.toml | str trim)
@@ -734,7 +786,7 @@ export def "yzx dev sync_issues" [
         }
     }
 
-    let validator = (^nu ((get_yazelix_dir) | path join ".github" "scripts" "validate_issue_bead_contract.nu") | complete)
+    let validator = (^nu ((get_dev_repo_root) | path join ".github" "scripts" "validate_issue_bead_contract.nu") | complete)
     if $validator.exit_code != 0 {
         print ($validator.stdout | str trim)
         let stderr = ($validator.stderr | str trim)
@@ -915,7 +967,7 @@ export def "yzx dev bench" [
         $args = ($args | append "--verbose")
     }
 
-    nu ((get_yazelix_dir) | path join "nushell" "scripts" "dev" "benchmark_terminals.nu") ...$args
+    nu ((get_dev_repo_root) | path join "nushell" "scripts" "dev" "benchmark_terminals.nu") ...$args
 }
 
 # Profile launch sequence and identify bottlenecks
@@ -937,7 +989,7 @@ export def "yzx dev lint_nu" [
     --format(-f): string = "pretty"  # Output format: pretty or compact
     ...paths: string                 # Specific files or directories (default: nushell/)
 ] {
-    let yazelix_dir = get_yazelix_dir
+    let yazelix_dir = get_dev_repo_root
     let config_path = ($yazelix_dir | path join ".nu-lint.toml")
 
     if not ($config_path | path exists) {
