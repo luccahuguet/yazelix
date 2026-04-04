@@ -548,6 +548,63 @@ def test_yzx_desktop_launch_falls_back_to_hidden_wait_when_no_visible_bootstrap_
     $result
 }
 
+# Regression: desktop fast path must not silently swap an explicit requested terminal for a different bootstrap terminal.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_desktop_fast_path_rejects_bootstrap_terminal_substitution_for_explicit_terminal [] {
+    print "🧪 Testing desktop fast path refuses to substitute a different terminal when one was explicitly requested..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_desktop_terminal_override_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_bin = ($tmpdir | path join "bin")
+        let nu_bin_dir = ((which nu | get 0.path) | path dirname)
+        mkdir $fake_bin
+
+        [
+            "#!/bin/sh"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "ghostty")
+        ^chmod +x ($fake_bin | path join "ghostty")
+
+        let launch_script = (repo_path "nushell" "scripts" "core" "launch_yazelix.nu")
+        let snippet = ([
+            $"source \"($launch_script)\""
+            "try {"
+            "    resolve_desktop_fast_path_candidates 'kitty' ['ghostty', 'kitty'] true true | ignore"
+            "} catch {|err|"
+            "    print $err.msg"
+            "}"
+        ] | str join "\n")
+        let output = (with-env {
+            PATH: ([$fake_bin, $nu_bin_dir] | str join (char esep))
+        } {
+            run_nu_snippet $snippet
+        })
+        let stdout = ($output.stdout | str trim)
+        let stderr = ($output.stderr | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stderr == "")
+            and ($stdout | str contains "requested terminal 'kitty'")
+            and ($stdout | str contains "desktop-bootstrap-unavailable")
+            and (not ($stdout | str contains "ghostty"))
+        ) {
+            print "  ✅ Desktop fast path preserves an explicit terminal request instead of silently substituting another terminal"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Regression: current-session and runtime-owned profile policies must stay intentionally distinct and ignore unrelated Zellij activation.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_profile_resolution_policies_separate_runtime_owned_and_current_session_state [] {

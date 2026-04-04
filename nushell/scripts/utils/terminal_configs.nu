@@ -334,18 +334,14 @@ def save_config_with_backup [file_path: string, content: string] {
     $content | save $file_path --force
 }
 
-export def generate_all_terminal_configs [runtime_dir?: string] {
+export def generate_selected_terminal_configs [selected_terminals: list<string>, runtime_dir?: string] {
     let config = parse_yazelix_config
     let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
-    let manage_terminals = ($config.manage_terminals? | default true)
-    mut terminals = ($config.terminals? | default ["ghostty"])
+    let terminals = ($selected_terminals | where {|terminal| $terminal in $SUPPORTED_TERMINALS} | uniq)
     if ($terminals | is-empty) {
-        if $manage_terminals {
-            error make {msg: "terminal.terminals must include at least one terminal"}
-        } else {
-            $terminals = $SUPPORTED_TERMINALS
-        }
+        return
     }
+
     let should_generate_ghostty = ($terminals | any {|t| $t == "ghostty" })
     let should_generate_foot = ($terminals | any {|t| $t == "foot" })
     let should_generate_wezterm = ($terminals | any {|t| $t == "wezterm" })
@@ -432,4 +428,19 @@ export def generate_all_terminal_configs [runtime_dir?: string] {
     let generated_list = ($generated | str join ", ")
     print $"✓ Generated terminal configurations ($generated_list)"
     print "📋 Static example configs for other terminals in configs/terminal_emulators/"
+}
+
+export def generate_all_terminal_configs [runtime_dir?: string] {
+    let config = parse_yazelix_config
+    let manage_terminals = ($config.manage_terminals? | default true)
+    mut terminals = ($config.terminals? | default ["ghostty"])
+    if ($terminals | is-empty) {
+        if $manage_terminals {
+            error make {msg: "terminal.terminals must include at least one terminal"}
+        } else {
+            $terminals = $SUPPORTED_TERMINALS
+        }
+    }
+
+    generate_selected_terminal_configs $terminals $runtime_dir
 }

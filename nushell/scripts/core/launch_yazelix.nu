@@ -5,10 +5,11 @@
 use ../utils/config_state.nu compute_config_state
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/nix_detector.nu ensure_nix_available
-use ../utils/terminal_configs.nu generate_all_terminal_configs
+use ../utils/terminal_configs.nu [generate_all_terminal_configs generate_selected_terminal_configs]
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [SUPPORTED_TERMINALS, TERMINAL_METADATA]
 use ../utils/common.nu [get_yazelix_runtime_dir]
+use ../utils/launch_state.nu resolve_runtime_owned_profile
 use ../utils/runtime_contract_checker.nu [
     check_launch_terminal_support
     check_launch_working_dir
@@ -25,6 +26,107 @@ def resolve_terminal_candidates [requested_terminal: string, terminals: list<str
     let check = (check_launch_terminal_support $requested_terminal $terminals $manage_terminals)
     require_runtime_check $check | ignore
     ($check.candidates? | default [])
+}
+
+def get_launch_preference_order [requested_terminal: string, terminals: list<string>] {
+    if ($requested_terminal | is-not-empty) {
+        [$requested_terminal]
+    } else {
+        $terminals
+    }
+}
+
+def require_supported_requested_terminal [requested_terminal: string] {
+    if ($requested_terminal | is-empty) {
+        return
+    }
+
+    if (($TERMINAL_METADATA | get -o $requested_terminal) == null) {
+        error make {
+            msg: $"Unsupported terminal '($requested_terminal)'\nSupported terminals: ($SUPPORTED_TERMINALS | str join ', ')"
+        }
+    }
+}
+
+def resolve_desktop_fast_path_candidates [requested_terminal: string, terminals: list<string>, manage_terminals: bool, needs_reload: bool] {
+    let explicit_terminal_request = ($requested_terminal | is-not-empty)
+    require_supported_requested_terminal $requested_terminal
+    let preferred = (get_launch_preference_order $requested_terminal $terminals)
+    if $needs_reload {
+        let direct_candidates = (detect_terminal_candidates $preferred false)
+        if not ($direct_candidates | is-empty) {
+            return $direct_candidates
+        }
+
+        if $explicit_terminal_request {
+            error make {
+                msg: $"Desktop launch could not open requested terminal '($requested_terminal)' before rebuild.\nFailure class: desktop-bootstrap-unavailable.\nRecovery: Falling back to the standard desktop launch path is required because the requested terminal is not host-launchable before rebuild."
+            }
+        }
+
+        if $manage_terminals {
+            let bootstrap_terminals = (
+                $preferred
+                | append ($SUPPORTED_TERMINALS | where {|terminal| $terminal not-in $preferred})
+                | uniq
+            )
+            let bootstrap_candidates = (detect_terminal_candidates $bootstrap_terminals false)
+            if not ($bootstrap_candidates | is-empty) {
+                return $bootstrap_candidates
+            }
+
+            error make {
+                msg: "Desktop launch could not open any visible bootstrap terminal before rebuild.\nFailure class: desktop-bootstrap-unavailable.\nRecovery: Falling back to the standard desktop launch path is required because no host-launchable terminal is currently available."
+            }
+        }
+    }
+
+    if $manage_terminals {
+        let profile_path = (resolve_runtime_owned_profile)
+        if ($profile_path | is-not-empty) {
+            let wrapper_candidates = (detect_terminal_wrapper_candidates_from_profile $preferred $profile_path)
+            if not ($wrapper_candidates | is-empty) {
+                return $wrapper_candidates
+            }
+        }
+    }
+
+    let direct_candidates = (detect_terminal_candidates $preferred false)
+    if not ($direct_candidates | is-empty) {
+        return $direct_candidates
+    }
+
+    let reason = if ($requested_terminal | is-not-empty) {
+        $"Requested desktop terminal '($requested_terminal)' is not available on the host."
+    } else {
+        "None of the configured desktop terminal binaries are available on the host."
+    }
+    let recovery = if ($requested_terminal | is-not-empty) {
+        "Install the requested terminal binary on the host, or launch Yazelix from a shell with `yzx launch` to rebuild managed wrappers first."
+    } else {
+        "Install one of the configured terminal binaries on the host, or launch Yazelix from a shell with `yzx launch` to rebuild managed wrappers first."
+    }
+
+    error make {msg: $"($reason)\n($recovery)"}
+}
+
+def ensure_terminal_configs_available_for_candidates [terminal_candidates: list<record>, terminal_config_mode: string, runtime_dir: string] {
+    if $terminal_config_mode != "yazelix" {
+        return
+    }
+
+    let candidate_terminals = ($terminal_candidates | each {|candidate| $candidate.terminal } | uniq)
+    let needs_generation = (
+        $candidate_terminals
+        | any {|terminal|
+            let config_path = (resolve_terminal_config $terminal $terminal_config_mode)
+            not ($config_path | path exists)
+        }
+    )
+
+    if $needs_generation {
+        generate_selected_terminal_configs $candidate_terminals $runtime_dir
+    }
 }
 
 def describe_terminal_invocation [terminal_info: record, terminal_config] {
@@ -146,6 +248,7 @@ def main [
     launch_cwd?: string
     --terminal(-t): string  # Override terminal selection (for sweep testing)
     --verbose               # Enable verbose logging
+    --desktop-fast-path     # Launch the terminal immediately and let startup rebuild inside it
 ] {
     # Check if Nix is properly installed before proceeding
     ensure_nix_available
@@ -221,10 +324,17 @@ def main [
         }
     }
 
-    # Generate all terminal configurations for safety and consistency
-    generate_all_terminal_configs
-
     let runtime_dir = (get_yazelix_runtime_dir)
-    let terminal_candidates = (resolve_terminal_candidates $requested_terminal $terminals $manage_terminals)
+    let terminal_candidates = if $desktop_fast_path {
+        resolve_desktop_fast_path_candidates $requested_terminal $terminals $manage_terminals $needs_reload
+    } else {
+        resolve_terminal_candidates $requested_terminal $terminals $manage_terminals
+    }
+    if $desktop_fast_path {
+        ensure_terminal_configs_available_for_candidates $terminal_candidates $terminal_config_mode $runtime_dir
+    } else {
+        # Generate all terminal configurations for safety and consistency
+        generate_all_terminal_configs
+    }
     launch_terminal_candidates $terminal_candidates $terminal_config_mode $working_dir $needs_reload $runtime_dir $verbose_mode $requested_terminal | ignore
 }

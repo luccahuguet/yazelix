@@ -96,10 +96,6 @@ def get_desktop_launch_env [runtime_dir: string] {
     }
 }
 
-def render_desktop_launch_command [launch_module: string] {
-    $"use \"($launch_module)\" *; yzx launch --home"
-}
-
 export def "yzx desktop install" [
     --print-path(-p) # Print only the installed desktop-file path
 ] {
@@ -150,20 +146,39 @@ export def "yzx desktop uninstall" [
 
 export def "yzx desktop launch" [] {
     let runtime_dir = (require_installed_yazelix_runtime_dir)
-    let launch_module = ($runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
+    let fast_launch_module = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
     let launch_env = (get_desktop_launch_env $runtime_dir)
+    let resolved_nu_bin = (
+        $env.YAZELIX_NU_BIN?
+        | default "nu"
+        | into string
+        | str trim
+    )
+    let nu_bin = if ($resolved_nu_bin | is-empty) { "nu" } else { $resolved_nu_bin }
 
-    if not ($launch_module | path exists) {
-        error make {msg: $"Missing Yazelix desktop launch module at ($launch_module)"}
+    if not ($fast_launch_module | path exists) {
+        error make {msg: $"Missing Yazelix desktop launch module at ($fast_launch_module)"}
     }
 
-    if ($env.YAZELIX_NU_BIN? | is-not-empty) {
-        with-env $launch_env {
-            ^$env.YAZELIX_NU_BIN -c (render_desktop_launch_command $launch_module)
-        }
-    } else {
-        with-env $launch_env {
-            ^nu -c (render_desktop_launch_command $launch_module)
-        }
+    let fast_launch = with-env $launch_env {
+        ^$nu_bin $fast_launch_module $env.HOME --desktop-fast-path | complete
     }
+
+    if ($fast_launch.exit_code == 0) {
+        return
+    }
+
+    let stderr = ($fast_launch.stderr | str trim)
+    if ($stderr | str contains "Failure class: desktop-bootstrap-unavailable.") {
+        let launch_module = ($runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
+        if not ($launch_module | path exists) {
+            error make {msg: $"Missing Yazelix fallback launch module at ($launch_module)"}
+        }
+        with-env $launch_env {
+            ^$nu_bin -c $"use \"($launch_module)\" *; yzx launch --home"
+        }
+        return
+    }
+
+    error make {msg: (if ($stderr | is-not-empty) { $stderr } else { $fast_launch.stdout | str trim })}
 }

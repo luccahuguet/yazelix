@@ -18,8 +18,7 @@ def get_terminal_title [terminal: string] {
     $"Yazelix - (($TERMINAL_METADATA | get -o $terminal | default {} | get -o name | default $terminal))"
 }
 
-def get_current_profile_bin_dir [] {
-    let profile = ($env.DEVENV_PROFILE? | default "" | into string | str trim)
+def get_profile_bin_dir [profile: string] {
     if ($profile | is-empty) {
         return ""
     }
@@ -30,6 +29,11 @@ def get_current_profile_bin_dir [] {
     } else {
         ""
     }
+}
+
+def get_current_profile_bin_dir [] {
+    let profile = ($env.DEVENV_PROFILE? | default "" | into string | str trim)
+    get_profile_bin_dir $profile
 }
 
 def resolve_nixgl_launch_prefix [] {
@@ -167,8 +171,8 @@ export def detect_terminal_candidates [preferred: any, prefer_wrappers: bool = t
     $available
 }
 
-export def detect_terminal_wrapper_candidates [preferred: any] {
-    let profile_bin_dir = (get_current_profile_bin_dir)
+export def detect_terminal_wrapper_candidates_from_profile [preferred: any, profile_path: string] {
+    let profile_bin_dir = (get_profile_bin_dir $profile_path)
     if ($profile_bin_dir | is-empty) {
         return []
     }
@@ -204,6 +208,11 @@ export def detect_terminal_wrapper_candidates [preferred: any] {
         }
     }
     | compact
+}
+
+export def detect_terminal_wrapper_candidates [preferred: any] {
+    let current_profile = ($env.DEVENV_PROFILE? | default "" | into string | str trim)
+    detect_terminal_wrapper_candidates_from_profile $preferred $current_profile
 }
 
 # Detect first available terminal (wrapper or direct)
