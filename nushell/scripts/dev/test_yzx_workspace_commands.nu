@@ -230,10 +230,10 @@ def test_yzx_cli_desktop_launch_ignores_hostile_shell_env [] {
     $result
 }
 
-# Regression: desktop launch no longer depends on core/yazelix.nu being present in the runtime.
+# Regression: desktop launch no longer depends on the old hidden desktop launcher wrapper.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_cli_desktop_launch_uses_leaf_module_without_core_suite [] {
-    print "🧪 Testing yzx CLI desktop launch works without core/yazelix.nu in the runtime..."
+def test_yzx_desktop_launch_uses_core_launch_script_directly [] {
+    print "🧪 Testing yzx desktop launch works without core/desktop_launcher.nu in the runtime..."
 
     let tmpdir = (^mktemp -d /tmp/yazelix_desktop_leaf_runtime_XXXXXX | str trim)
 
@@ -243,17 +243,9 @@ def test_yzx_cli_desktop_launch_uses_leaf_module_without_core_suite [] {
         let fake_profile_bin = ($fake_home | path join ".local" "state" "nix" "profile" "bin")
         let nu_log = ($tmpdir | path join "nu_invocation.txt")
         mkdir $fake_profile_bin
-        mkdir ($runtime_dir | path join "shells" "posix")
-        mkdir ($runtime_dir | path join "nushell" "scripts" "yzx")
         mkdir ($runtime_dir | path join "nushell" "scripts" "core")
 
-        ^cp (repo_path "shells" "posix" "yzx_cli.sh") ($runtime_dir | path join "shells" "posix" "yzx_cli.sh")
-        ^cp (repo_path "shells" "posix" "runtime_env.sh") ($runtime_dir | path join "shells" "posix" "runtime_env.sh")
-        ^chmod +x ($runtime_dir | path join "shells" "posix" "yzx_cli.sh")
-        ^chmod +x ($runtime_dir | path join "shells" "posix" "runtime_env.sh")
-
-        ^ln -s (repo_path "nushell" "scripts" "yzx" "desktop.nu") ($runtime_dir | path join "nushell" "scripts" "yzx" "desktop.nu")
-        ^ln -s (repo_path "nushell" "scripts" "core" "desktop_launcher.nu") ($runtime_dir | path join "nushell" "scripts" "core" "desktop_launcher.nu")
+        ^ln -s (repo_path "nushell" "scripts" "core" "launch_yazelix.nu") ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
 
         [
             "#!/bin/sh"
@@ -262,26 +254,32 @@ def test_yzx_cli_desktop_launch_uses_leaf_module_without_core_suite [] {
         ] | str join "\n" | save --force --raw ($fake_profile_bin | path join "nu")
         ^chmod +x ($fake_profile_bin | path join "nu")
 
-        let launcher_script = ($runtime_dir | path join "shells" "posix" "yzx_cli.sh")
-        let output = (with-env {HOME: $fake_home} {
-            ^$launcher_script desktop launch | complete
+        let desktop_script = (repo_path "nushell" "scripts" "yzx" "desktop.nu")
+        let output = (with-env {
+            HOME: $fake_home
+            YAZELIX_RUNTIME_DIR: $runtime_dir
+            YAZELIX_NU_BIN: ($fake_profile_bin | path join "nu")
+        } {
+            ^nu -c $"use \"($desktop_script)\" *; yzx desktop launch" | complete
         })
         let stderr = ($output.stderr | str trim)
-        let nu_invocation = if ($nu_log | path exists) {
-            open --raw $nu_log | str trim
+        let invocation = if ($nu_log | path exists) {
+            open --raw $nu_log | lines
         } else {
-            ""
+            []
         }
+        let expected_launch_script = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
 
         if (
             ($output.exit_code == 0)
             and ($stderr == "")
-            and ($nu_invocation | str contains "yzx desktop launch")
+            and (($invocation | get -o 0 | default "") == $expected_launch_script)
+            and (($invocation | get -o 1 | default "") == $fake_home)
         ) {
-            print "  ✅ desktop launch reaches the desktop leaf module without core/yazelix.nu"
+            print "  ✅ yzx desktop launch now calls launch_yazelix.nu directly without the hidden desktop launcher wrapper"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr) invocation=($nu_invocation)"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr) invocation=(($invocation | to json -r))"
             false
         }
     } catch {|err|
@@ -707,7 +705,7 @@ def test_yzx_cwd_requires_zellij [] {
 export def run_workspace_canonical_tests [] {
     [
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
-        (test_yzx_cli_desktop_launch_uses_leaf_module_without_core_suite)
+        (test_yzx_desktop_launch_uses_core_launch_script_directly)
         (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
         (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
         (test_yzx_cli_menu_uses_lightweight_menu_module)

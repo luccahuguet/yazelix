@@ -121,15 +121,15 @@ export def "yzx desktop uninstall" [
 
 export def "yzx desktop launch" [] {
     let runtime_dir = (require_installed_yazelix_runtime_dir)
-    let launcher_script = ($runtime_dir | path join "nushell" "scripts" "core" "desktop_launcher.nu")
+    let launch_script = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
 
-    if not ($launcher_script | path exists) {
-        error make {msg: $"Missing Yazelix desktop launcher at ($launcher_script)"}
+    if not ($launch_script | path exists) {
+        error make {msg: $"Missing Yazelix launch script at ($launch_script)"}
     }
 
     if ($env.YAZELIX_NU_BIN? | is-not-empty) {
-        ^$env.YAZELIX_NU_BIN $launcher_script
+        ^$env.YAZELIX_NU_BIN $launch_script $env.HOME
     } else {
-        ^nu $launcher_script
+        ^nu $launch_script $env.HOME
     }
 }
