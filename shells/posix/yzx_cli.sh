@@ -22,6 +22,7 @@ fi
 RUNTIME_DIR="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
 runtime_env_script="$RUNTIME_DIR/shells/posix/runtime_env.sh"
 core_script="$RUNTIME_DIR/nushell/scripts/core/yazelix.nu"
+reveal_script="$RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu"
 
 if [ ! -f "$runtime_env_script" ]; then
   echo "Error: Missing Yazelix runtime env helper: $runtime_env_script" >&2
@@ -68,7 +69,6 @@ exec_leaf_module_command() {
 dispatch_leaf_command() {
   case "${1:-}" in
     reveal)
-      reveal_script="$RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu"
       shift
       if [ ! -f "$reveal_script" ]; then
         echo "Error: Missing Yazelix reveal helper: $reveal_script" >&2
