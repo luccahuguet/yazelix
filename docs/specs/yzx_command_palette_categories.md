@@ -119,16 +119,6 @@ Included:
 - `yzx import yazi`
 - `yzx import zellij`
 
-#### Generated Surfaces
-
-Commands that inspect generated or managed downstream outputs.
-
-Included:
-
-- `yzx open hx`
-- `yzx open yazi`
-- `yzx open zellij`
-
 #### Runtime And System
 
 Commands that inspect, update, repair, or maintain the installed/runtime surface.

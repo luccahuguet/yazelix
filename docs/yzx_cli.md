@@ -203,12 +203,6 @@ Import native Zellij, Yazi, or Helix config into Yazelix-managed overrides
 - Refuses to overwrite existing managed destination files by default
 - `--force`: writes `*.backup-<timestamp>` backups before replacing managed destination files
 
-### `yzx open hx|yazi|zellij`
-Inspect a focused downstream config surface
-- `yzx open hx`: show the Helix config view
-- `yzx open yazi`: show the merged Yazi config
-- `yzx open zellij`: show the merged Zellij config
-
 ### `yzx edit config [--print]`
 Open the main Yazelix config file in your editor
 - Uses `$EDITOR` (set by Yazelix from `[editor] command` in yazelix.toml)
@@ -287,9 +281,6 @@ yzx import zellij             # Import ~/.config/zellij/config.kdl into managed 
 yzx import yazi               # Import native Yazi override files into managed overrides
 yzx import helix              # Import ~/.config/helix/config.toml into managed overrides
 yzx import zellij --force     # Backup and replace the managed Zellij override
-yzx open hx                   # Show the Helix section only
-yzx open yazi                 # Show the Yazi section only
-yzx open zellij               # Show the Zellij section only
 yzx edit config               # Open the main managed config
 yzx edit packs                # Open the pack sidecar
 yzx config migrate            # Preview known config migrations

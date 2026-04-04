@@ -249,7 +249,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 
 **Quick Commands:**
 - `yzx launch` - Launch Yazelix in new terminal (current directory by default)
-- `yzx launch --here` - Start Yazelix in current terminal
+- `yzx enter` - Start Yazelix in current terminal
 - `yzx launch --path DIR` - Launch in specific directory
 - `yzx launch --home` - Launch in home directory
 - `yzx launch --terminal ghostty` - Force a particular terminal for this launch
@@ -259,7 +259,6 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx refresh [--force] [--verbose] [--very-verbose]` - Refresh devenv cache/environment without launching UI (`-v` shows configured package scope + concise build progress, `-V` shows full debug output)
 - `yzx run <command> [args...]` - Run a single command inside the Yazelix environment
 - `yzx config [--full] [--path]` - Show the active config, hiding `packs` by default
-- `yzx open hx|yazi|zellij` - Inspect a focused downstream config surface
 - `yzx edit config|packs` - Open managed Yazelix config files in your editor
 - `yzx restart --skip-refresh` - Restart while skipping explicit refresh trigger (may use stale env)
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics

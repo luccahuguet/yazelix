@@ -5,7 +5,6 @@ const PALETTE_CATEGORY_STYLE = {
     session: (ansi green)
     workspace: (ansi cyan)
     config: (ansi blue)
-    generated: (ansi magenta)
     system: (ansi yellow)
     help: (ansi purple)
 }
@@ -47,9 +46,6 @@ const PUBLIC_YZX_COMMAND_CATALOG = [
     {id: "yzx keys yzx", category: "help", description: "Alias for the default Yazelix keybinding view."}
     {id: "yzx launch", category: "session", description: "Launch yazelix"}
     {id: "yzx menu", category: "help", description: "Interactive command palette for Yazelix"}
-    {id: "yzx open hx", category: "generated", description: ""}
-    {id: "yzx open yazi", category: "generated", description: ""}
-    {id: "yzx open zellij", category: "generated", description: ""}
     {id: "yzx packs", category: "system", description: "Show packs and their sizes"}
     {id: "yzx popup", category: "workspace", description: ""}
     {id: "yzx repair", category: "system", description: ""}
