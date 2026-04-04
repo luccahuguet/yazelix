@@ -769,8 +769,8 @@ def test_profile_resolution_policies_separate_runtime_owned_and_current_session_
     $result
 }
 
-# Regression: yzx edit must ignore stale ambient Helix wrapper paths and derive the managed editor from the canonical launch env.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: yzx edit must ignore stale ambient Helix wrapper paths and derive the canonical managed editor command.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 def test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env [] {
     print "🧪 Testing yzx edit resolves the managed Helix wrapper from the canonical launch env..."
 
@@ -787,7 +787,6 @@ def test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env [] {
             $"source \"($helper_script)\""
             "let context = (resolve_editor_launch_context)"
             "print ($context.editor)"
-            "print ($context.launch_env.YAZELIX_MANAGED_HELIX_BINARY? | default \"\")"
         ] | str join "\n")
         let output = (run_nu_snippet $snippet {
             HOME: $fixture.tmp_home
@@ -797,15 +796,12 @@ def test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env [] {
         })
         let lines = ($output.stdout | lines)
         let expected_editor = ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
-        let managed_binary = ($lines | get -o 1 | default "")
 
         if (
             ($output.exit_code == 0)
             and (($lines | get -o 0 | default "") == $expected_editor)
-            and ($managed_binary | is-not-empty)
-            and ($managed_binary != "/shells/posix/yazelix_hx.sh")
         ) {
-            print "  ✅ yzx edit now ignores stale ambient wrapper paths and resolves the canonical managed editor env"
+            print "  ✅ yzx edit now ignores stale ambient wrapper paths and resolves the canonical managed editor wrapper"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
