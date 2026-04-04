@@ -1,7 +1,9 @@
 #!/usr/bin/env nu
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
-const DEFAULT_SUITE_MAX_SECONDS = 60.0
+# Raised after the runtime-state, desktop-launch, and shared-preflight regressions were promoted
+# into the default suite. Keep the cap explicit so future growth still has to justify itself.
+const DEFAULT_SUITE_MAX_SECONDS = 75.0
 
 def run_profiled_default_suite [] {
     let suite_script = ($REPO_ROOT | path join "nushell" "scripts" "dev" "test_yzx_commands.nu")

@@ -4,7 +4,7 @@
 # Defends: docs/workspace_session_contract.md
 
 use ../integrations/yazi.nu [resolve_reveal_target_path]
-use ./yzx_test_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path]
+use ./yzx_test_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path setup_managed_config_fixture]
 
 def run_nu_snippet [snippet: string, extra_env?: record] {
     if ($extra_env | is-empty) {
@@ -250,6 +250,7 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
 
         ^ln -s $runtime_dir ($runtime_reference_root | path join "current")
         ^ln -s (repo_path "nushell" "scripts" "yzx" "launch.nu") ($runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
+        ^ln -s (repo_path "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
 
         [
             "#!/bin/sh"
@@ -346,7 +347,13 @@ def test_resolve_built_profile_prefers_runtime_profile_outside_yazelix_shell [] 
         let runtime_dir = ($tmpdir | path join "runtime")
         let runtime_project = ($state_dir | path join "runtime" "project")
         let gc_shell = ($runtime_project | path join ".devenv" "gc" "shell")
-        let project_profile = ($runtime_project | path join ".devenv" "profile")
+        let embedded_runtime_profile = (
+            $env.DEVENV_PROFILE?
+            | default ""
+            | into string
+            | str trim
+            | path expand
+        )
         let stale_env_profile = ($tmpdir | path join "stale_profile")
         let launch_state_path = ($state_dir | path join "state" "launch_state.json")
         let launch_state_profile = ($tmpdir | path join "recorded_profile")
@@ -365,12 +372,11 @@ def test_resolve_built_profile_prefers_runtime_profile_outside_yazelix_shell [] 
         "" | save --force --raw ($runtime_dir | path join "devenv.lock")
         "" | save --force --raw ($runtime_dir | path join "CHANGELOG.md")
         mkdir ($runtime_project | path join ".devenv" "gc")
-        mkdir $project_profile
         mkdir $stale_env_profile
         mkdir $launch_state_profile
         [
             "#!/bin/sh"
-            $"declare -x DEVENV_PROFILE=\"($project_profile | path expand)\""
+            $"declare -x DEVENV_PROFILE=\"($embedded_runtime_profile)\""
         ] | str join "\n" | save --force --raw $gc_shell
         ^chmod +x $gc_shell
         {
@@ -406,7 +412,8 @@ def test_resolve_built_profile_prefers_runtime_profile_outside_yazelix_shell [] 
         if (
             ($outside_result.exit_code == 0)
             and ($inside_result.exit_code == 0)
-            and ($outside_profile == ($project_profile | path expand))
+            and ($embedded_runtime_profile | is-not-empty)
+            and ($outside_profile == $embedded_runtime_profile)
             and ($inside_profile == ($stale_env_profile | path expand))
         ) {
             print "  ✅ External launch helpers now prefer the profile embedded in the runtime's latest built shell, while in-shell helpers still honor the live Yazelix shell profile"
@@ -429,18 +436,27 @@ def test_resolve_built_profile_prefers_runtime_profile_outside_yazelix_shell [] 
 def test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env [] {
     print "🧪 Testing yzx edit resolves the managed Helix wrapper from the canonical launch env..."
 
-    try {
+    let fixture = (setup_managed_config_fixture
+        "yazelix_edit_canonical_launch_env"
+        (open --raw (repo_path "yazelix_default.toml"))
+    )
+
+    let result = (try {
         let helper_script = (repo_path "nushell" "scripts" "utils" "editor_launch_context.nu")
         let repo_root = (repo_path)
+        cp (repo_path "yazelix_packs_default.toml") ($fixture.user_config_dir | path join "yazelix_packs.toml")
         let snippet = ([
             $"source \"($helper_script)\""
-            $"with-env {{ EDITOR: \"/shells/posix/yazelix_hx.sh\", YAZELIX_RUNTIME_DIR: \"($repo_root)\" }} {{"
-            "    let context = (resolve_editor_launch_context)"
-            "    print ($context.editor)"
-            "    print ($context.launch_env.YAZELIX_MANAGED_HELIX_BINARY? | default \"\")"
-            "}"
+            "let context = (resolve_editor_launch_context)"
+            "print ($context.editor)"
+            "print ($context.launch_env.YAZELIX_MANAGED_HELIX_BINARY? | default \"\")"
         ] | str join "\n")
-        let output = (run_nu_snippet $snippet)
+        let output = (run_nu_snippet $snippet {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            EDITOR: "/shells/posix/yazelix_hx.sh"
+            YAZELIX_RUNTIME_DIR: $repo_root
+        })
         let lines = ($output.stdout | lines)
         let expected_editor = ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
         let managed_binary = ($lines | get -o 1 | default "")
@@ -460,7 +476,10 @@ def test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env [] {
     } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
-    }
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
 }
 
 # Regression: yzx reveal must use the lightweight reveal helper instead of bootstrapping the full command suite.
