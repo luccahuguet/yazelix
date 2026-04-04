@@ -55,7 +55,7 @@ If a refactor changes a boundary or supported behavior, it stops being "purely l
 
 Specs live under:
 
-- [`docs/specs/`](/home/lucca/.config/yazelix/docs/specs)
+- [`docs/specs/`](/home/lucca/pjs/yazelix/docs/specs)
 
 Each spec should be a small Markdown file with an underscore-based name that matches the repo convention.
 
@@ -65,7 +65,7 @@ Examples:
 - `docs/specs/home_manager_ownership.md`
 - `docs/specs/floating_tui_panes.md`
 
-Use [`docs/specs/template.md`](/home/lucca/.config/yazelix/docs/specs/template.md) as the starting point.
+Use [`docs/specs/template.md`](/home/lucca/pjs/yazelix/docs/specs/template.md) as the starting point.
 
 ## Relationship To Beads
 
