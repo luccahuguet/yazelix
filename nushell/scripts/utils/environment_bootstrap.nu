@@ -8,6 +8,7 @@ use nix_detector.nu ensure_nix_available
 use nix_env_helper.nu ensure_nix_in_environment
 use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config get_yazelix_dir materialize_yazelix_runtime_project_dir require_yazelix_dir]
 use config_state.nu [compute_config_state record_materialized_state]
+use startup_profile.nu [profile_startup_step]
 
 def format_command_for_display [command_parts: list<string>] {
     $command_parts
@@ -126,6 +127,7 @@ export def get_devenv_base_command [
     --devenv-verbose    # Include --verbose in devenv arguments
     --refresh-eval-cache  # Include --refresh-eval-cache in devenv arguments
     --skip-shellhook-welcome  # Keep noninteractive shellHook entry quiet
+    --startup-profile-phase: string = ""  # Optional shellHook phase tag for startup profiling
 ] {
     let yazelix_dir = resolve_yazelix_dir
     let devenv_project_dir = (materialize_yazelix_runtime_project_dir)
@@ -154,6 +156,9 @@ export def get_devenv_base_command [
 
     if $skip_shellhook_welcome {
         $cmd = ($cmd | append "YAZELIX_SHELLHOOK_SKIP_WELCOME=true")
+    }
+    if ($startup_profile_phase | is-not-empty) {
+        $cmd = ($cmd | append $"YAZELIX_STARTUP_PROFILE_PHASE=($startup_profile_phase)")
     }
 
     $cmd = (
@@ -188,14 +193,23 @@ export def rebuild_yazelix_environment [
     let refresh_output = resolve_refresh_output_mode $output_mode
     let requested_max_jobs = $max_jobs
     let requested_build_cores = $build_cores
-    let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --refresh-eval-cache=$refresh_eval_cache --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full") --skip-shellhook-welcome
+    let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --refresh-eval-cache=$refresh_eval_cache --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full") --skip-shellhook-welcome --startup-profile-phase "build_shell"
     let devenv_cmd = ($devenv_base | append ["build", "shell"])
     let cmd_bin = ($devenv_cmd | first)
     let cmd_args = ($devenv_cmd | skip 1)
 
-    let rebuild_result = if $refresh_output == "quiet" {
-        if (is_unfree_enabled) {
-            with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
+    let rebuild_result = (profile_startup_step "bootstrap" "devenv.build_shell" {
+        if $refresh_output == "quiet" {
+            if (is_unfree_enabled) {
+                with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
+                    let result = (^$cmd_bin ...$cmd_args | complete)
+                    {
+                        exit_code: $result.exit_code
+                        stderr: ($result.stderr | default "")
+                        stderr_streamed: false
+                    }
+                }
+            } else {
                 let result = (^$cmd_bin ...$cmd_args | complete)
                 {
                     exit_code: $result.exit_code
@@ -203,16 +217,17 @@ export def rebuild_yazelix_environment [
                     stderr_streamed: false
                 }
             }
-        } else {
-            let result = (^$cmd_bin ...$cmd_args | complete)
-            {
-                exit_code: $result.exit_code
-                stderr: ($result.stderr | default "")
-                stderr_streamed: false
+        } else if (is_unfree_enabled) {
+            with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
+                let result = (do { ^$cmd_bin ...$cmd_args } | complete)
+                print_completed_output $result
+                {
+                    exit_code: $result.exit_code
+                    stderr: ($result.stderr | default "")
+                    stderr_streamed: true
+                }
             }
-        }
-    } else if (is_unfree_enabled) {
-        with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
+        } else {
             let result = (do { ^$cmd_bin ...$cmd_args } | complete)
             print_completed_output $result
             {
@@ -221,15 +236,10 @@ export def rebuild_yazelix_environment [
                 stderr_streamed: true
             }
         }
-    } else {
-        let result = (do { ^$cmd_bin ...$cmd_args } | complete)
-        print_completed_output $result
-        {
-            exit_code: $result.exit_code
-            stderr: ($result.stderr | default "")
-            stderr_streamed: true
-        }
-    }
+    } {
+        command: ($devenv_cmd | str join " ")
+        refresh_output: $refresh_output
+    })
 
     if $rebuild_result.exit_code != 0 {
         print (format_command_failure_summary
@@ -322,7 +332,7 @@ export def run_in_devenv_shell [
             $quiet
         }
         let devenv_verbose = $force_refresh and ($refresh_output == "full") and (not $quiet_devenv)
-        let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose --refresh-eval-cache=$force_refresh
+        let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose --refresh-eval-cache=$force_refresh --startup-profile-phase "shell_entry"
         let devenv_cmd = ($devenv_base | append ["shell", "--no-tui", "--no-reload", "--", "sh", "-c", $command])
         let devenv_bin = ($devenv_cmd | first)
         let devenv_args = ($devenv_cmd | skip 1)
@@ -421,7 +431,7 @@ export def run_in_devenv_shell_command [
         $quiet
     }
     let devenv_verbose = $force_refresh and ($refresh_output == "full") and (not $quiet_devenv)
-    let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose --refresh-eval-cache=$force_refresh
+    let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --quiet=$quiet_devenv --devenv-verbose=$devenv_verbose --refresh-eval-cache=$force_refresh --startup-profile-phase "shell_entry"
     let devenv_cmd = ($devenv_base | append ["shell", "--no-tui", "--no-reload", "--"] | append $exec_cmd)
     let devenv_bin = ($devenv_cmd | first)
     let devenv_args = ($devenv_cmd | skip 1)
@@ -443,12 +453,20 @@ export def run_in_devenv_shell_command [
         )
     }
 
-    if ($env_vars | is-empty) {
-        ^$devenv_bin ...$devenv_args
-    } else {
-        with-env $env_vars {
+    let shell_entry_env_vars = $env_vars
+
+    profile_startup_step "bootstrap" "devenv.shell_entry" {
+        if ($shell_entry_env_vars | is-empty) {
             ^$devenv_bin ...$devenv_args
+        } else {
+            with-env $shell_entry_env_vars {
+                ^$devenv_bin ...$devenv_args
+            }
         }
+    } {
+        command: ($devenv_cmd | str join " ")
+        cwd: $resolved_cwd
+        force_refresh: $force_refresh
     }
 }
 
@@ -457,10 +475,14 @@ export def prepare_environment [--verbose] {
     let verbose_mode = $verbose
 
     # Parse configuration
-    let config = parse_yazelix_config
+    let config = (profile_startup_step "bootstrap" "prepare.parse_config" {
+        parse_yazelix_config
+    })
 
     # Compute config state
-    let config_state = compute_config_state
+    let config_state = (profile_startup_step "bootstrap" "prepare.compute_config_state" {
+        compute_config_state
+    })
 
     if $verbose_mode {
         print "🔍 Environment prepared"

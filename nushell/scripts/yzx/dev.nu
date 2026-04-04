@@ -973,7 +973,7 @@ export def "yzx dev bench" [
 # Profile launch sequence and identify bottlenecks
 export def "yzx dev profile" [
     --cold(-c)        # Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
-    --clear-cache     # Toggle yazelix.toml option and clear cache to force full Nix re-evaluation (simulates config change)
+    --clear-cache     # Clear recorded runtime/project cache state first so the profiled run exercises the rebuild-heavy path
 ] {
     use ../utils/profile.nu *
 

@@ -262,7 +262,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx edit config|packs` - Open managed Yazelix config files in your editor
 - `yzx restart --skip-refresh` - Restart while skipping explicit refresh trigger (may use stale env)
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
-- `yzx dev profile [--cold] [--clear-cache]` - Profile launch performance and identify bottlenecks
+- `yzx dev profile [--cold] [--clear-cache]` - Profile startup phases and write a structured report under `~/.local/share/yazelix/profiles/startup/`
 - `yzx status [--versions] [--verbose]` - Show current Yazelix status, tool versions, and shell hook details
 
 ## Troubleshooting

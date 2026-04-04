@@ -5,6 +5,7 @@ use ../utils/environment_bootstrap.nu *
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile]
 use ../utils/common.nu [describe_build_parallelism require_yazelix_dir]
+use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/runtime_contract_checker.nu [
     check_generated_layout
     check_runtime_script
@@ -47,7 +48,9 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
         exit 1
     }
 
-    run_entrypoint_config_migration_preflight "Yazelix startup" | ignore
+    profile_startup_step "startup" "entrypoint.config_migration_preflight" {
+        run_entrypoint_config_migration_preflight "Yazelix startup" | ignore
+    }
 
     let env_prep = prepare_environment --verbose=$verbose_mode
     let config = $env_prep.config

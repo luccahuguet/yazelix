@@ -7,6 +7,7 @@ use ../utils/config_state.nu compute_config_state
 use ../utils/common.nu [get_installed_yazelix_runtime_reference_dir get_yazelix_runtime_dir]
 use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
+use ../utils/startup_profile.nu [profile_startup_step]
 
 def ensure_user_cli_wrapper [yazelix_dir: string] {
     let local_bin_dir = ($env.HOME | path join ".local" "bin")
@@ -49,7 +50,10 @@ def main [--welcome-source: string, --skip-welcome] {
     let yazelix_dir = (get_yazelix_runtime_dir)
     let default_shell = ($config.default_shell? | default "nu")
     let debug_mode = ($config.debug_mode? | default false)
-    let skip_welcome_screen = ($config.skip_welcome_screen? | default false)
+    let skip_welcome_screen = (
+        ($config.skip_welcome_screen? | default false)
+        or ($env.YAZELIX_STARTUP_PROFILE_SKIP_WELCOME? == "true")
+    )
     let helix_mode = ($config.helix_mode? | default "release")
     let welcome_style = ($config.welcome_style? | default "random")
     let welcome_duration_seconds = ($config.welcome_duration_seconds? | default 2.0)
@@ -74,6 +78,21 @@ def main [--welcome-source: string, --skip-welcome] {
         or $skip_welcome
         or ($env.YAZELIX_SHELLHOOK_SKIP_WELCOME? == "true")
     )
+    let shellhook_phase = (
+        $env.YAZELIX_STARTUP_PROFILE_PHASE?
+        | default "shell_entry"
+        | into string
+        | str trim
+    )
+    let shellhook_pid = ($nu.pid | into string)
+
+    def profile_shellhook_step [step: string, code: closure, metadata?: record] {
+        profile_startup_step "shellhook" $step $code (
+            ($metadata | default {})
+            | upsert phase $shellhook_phase
+            | upsert pid $shellhook_pid
+        )
+    }
 
     # Detect environment first
     let env_info = (detect_environment)
@@ -137,32 +156,52 @@ def main [--welcome-source: string, --skip-welcome] {
     }
 
     # Generate shell initializers for configured shells only
-    with-env {YAZELIX_QUIET_MODE: (if $quiet_mode { "true" } else { "false" })} {
-        nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir ($shells_to_configure | str join ",")
+    profile_shellhook_step "generate_initializers" {
+        with-env {YAZELIX_QUIET_MODE: (if $quiet_mode { "true" } else { "false" })} {
+            nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir ($shells_to_configure | str join ",")
+        }
+    } {
+        shells: $shells_to_configure
     }
-    sync_generated_yzx_extern_bridge $yazelix_dir
-    sync_generated_nushell_user_hook_bridge
+    profile_shellhook_step "sync_yzx_extern_bridge" {
+        sync_generated_yzx_extern_bridge $yazelix_dir
+    }
+    profile_shellhook_step "sync_nushell_user_hook_bridge" {
+        sync_generated_nushell_user_hook_bridge
+    }
 
     # Setup shell hooks for configured shells
     use ./shell_hooks.nu setup_shell_hooks
 
     # Bash and Nushell are REQUIRED - error if config missing
-    setup_shell_hooks "bash" $yazelix_dir $quiet_mode true
-    setup_shell_hooks "nushell" $yazelix_dir $quiet_mode true
+    profile_shellhook_step "setup_bash_hooks" {
+        setup_shell_hooks "bash" $yazelix_dir $quiet_mode true
+    }
+    profile_shellhook_step "setup_nushell_hooks" {
+        setup_shell_hooks "nushell" $yazelix_dir $quiet_mode true
+    }
 
     # Fish and Zsh are optional - skip silently if not configured
     if ("fish" in $shells_to_configure) {
-        setup_shell_hooks "fish" $yazelix_dir $quiet_mode false
+        profile_shellhook_step "setup_fish_hooks" {
+            setup_shell_hooks "fish" $yazelix_dir $quiet_mode false
+        }
     }
 
     if ("zsh" in $shells_to_configure) {
-        setup_shell_hooks "zsh" $yazelix_dir $quiet_mode false
+        profile_shellhook_step "setup_zsh_hooks" {
+            setup_shell_hooks "zsh" $yazelix_dir $quiet_mode false
+        }
     }
 
     # Editor setup is now handled in the shellHook
 
-    ensure_runtime_scripts_executable $yazelix_dir
-    ensure_user_cli_wrapper $yazelix_dir
+    profile_shellhook_step "ensure_runtime_scripts_executable" {
+        ensure_runtime_scripts_executable $yazelix_dir
+    }
+    profile_shellhook_step "ensure_user_cli_wrapper" {
+        ensure_user_cli_wrapper $yazelix_dir
+    }
 
     let zjstatus_target = $"($yazelix_dir)/configs/zellij/plugins/zjstatus.wasm"
     if not ($zjstatus_target | path exists) {

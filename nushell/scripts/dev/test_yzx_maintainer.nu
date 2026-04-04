@@ -263,6 +263,155 @@ def test_nushell_initializer_restores_current_path_first [] {
     }
 }
 
+# Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=2 total=8/10
+# Defends: startup profiling writes a structured report with stable run and step records that can be summarized later.
+def test_startup_profile_report_schema_is_structured_and_summarizable [] {
+    print "🧪 Testing startup profiling writes a structured and summarizable report..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_startup_profile_schema_XXXXXX | str trim)
+    let state_dir = ($tmp_root | path join "state")
+    let profile_module = ($repo_root | path join "nushell" "scripts" "utils" "startup_profile.nu")
+
+    mkdir $state_dir
+
+    let result = (try {
+        let snippet = (
+            [
+                $"use \"($profile_module)\" [create_startup_profile_run profile_startup_step load_startup_profile_report]"
+                "let run = (create_startup_profile_run \"unit_test\" {mode: \"maintainer\"})"
+                "with-env $run.env {"
+                "    profile_startup_step \"bootstrap\" \"prepare.parse_config\" {"
+                "        sleep 5ms"
+                "        42"
+                "    } {phase: \"unit_test\"} | ignore"
+                "}"
+                "let summary = (load_startup_profile_report $run.report_path)"
+                "{"
+                "    report_path: $run.report_path"
+                "    run: $summary.run"
+                "    steps: $summary.steps"
+                "    total_duration_ms: $summary.total_duration_ms"
+                "} | to json -r"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            do { ^nu -c $snippet } | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let resolved = ($stdout | lines | last | from json)
+        let first_step = ($resolved.steps | get 0)
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved.report_path | path exists)
+            and ($resolved.run.type == "run")
+            and ($resolved.run.schema_version == 1)
+            and ($resolved.run.scenario == "unit_test")
+            and (($resolved.steps | length) == 1)
+            and ($first_step.type == "step")
+            and ($first_step.component == "bootstrap")
+            and ($first_step.step == "prepare.parse_config")
+            and (($first_step.metadata.phase? | default "") == "unit_test")
+            and (($first_step.duration_ms | into float) > 0.0)
+            and (($resolved.total_duration_ms | into float) >= ($first_step.duration_ms | into float))
+        ) {
+            print "  ✅ Startup profiling now writes a structured run header, stable step records, and a computable total wall time"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=0 uniqueness=2 total=8/10
+# Defends: the profiling harness runs the real startup path and records owned startup boundaries into a structured report.
+def test_startup_profile_harness_records_real_startup_boundaries [] {
+    print "🧪 Testing startup profiling harness records real startup boundaries..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_startup_profile_harness_XXXXXX | str trim)
+    let temp_home = ($tmp_root | path join "home")
+    let state_dir = ($tmp_root | path join "state")
+    let config_dir = ($temp_home | path join ".config" "yazelix")
+    let generated_layout_dir = ($temp_home | path join ".local" "share" "yazelix" "configs" "zellij" "layouts")
+    let profile_module = ($repo_root | path join "nushell" "scripts" "utils" "profile.nu")
+
+    mkdir $temp_home
+    mkdir $state_dir
+    mkdir ($config_dir | path dirname)
+    mkdir $generated_layout_dir
+    "layout { pane }" | save --force ($generated_layout_dir | path join "yzx_side.kdl")
+
+    let result = (try {
+        let snippet = (
+            [
+                $"use \"($profile_module)\" [run_profiled_startup_harness]"
+                "let summary = (run_profiled_startup_harness \"maintainer_e2e\" [\"--skip-refresh\"])"
+                "{"
+                "    report_path: $summary.report_path"
+                "    scenario: $summary.run.scenario"
+                "    steps: ($summary.steps | each {|step| {component: $step.component step: $step.step}})"
+                "} | to json -r"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            HOME: $temp_home
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_CONFIG_DIR: $config_dir
+            DEVENV_ROOT: $repo_root
+            IN_YAZELIX_SHELL: ""
+            YAZELIX_TERMINAL: ""
+            DEVENV_PROFILE: ""
+            IN_NIX_SHELL: ""
+        } {
+            do { ^nu -c $snippet } | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 {
+            $stdout | lines | last | from json
+        } else {
+            null
+        }
+        let steps = if $resolved == null {
+            []
+        } else {
+            ($resolved.steps | default [])
+        }
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved != null)
+            and ($resolved.report_path | path exists)
+            and ($resolved.scenario == "maintainer_e2e")
+            and ($steps | any {|step| $step.component == "startup" and $step.step == "entrypoint.config_migration_preflight" })
+            and ($steps | any {|step| $step.component == "bootstrap" and $step.step == "prepare.parse_config" })
+            and ($steps | any {|step| $step.component == "inner" and $step.step == "zellij_handoff_ready" })
+        ) {
+            print "  ✅ Profiling harness now records the real startup ownership boundaries"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 def main [] {
     print "=== Testing yzx Maintainer Commands ==="
     print ""
@@ -274,6 +423,8 @@ def main [] {
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
         (test_runtime_project_lookup_stays_read_only_until_materialized)
         (test_nushell_initializer_restores_current_path_first)
+        (test_startup_profile_report_schema_is_structured_and_summarizable)
+        (test_startup_profile_harness_records_real_startup_boundaries)
     ]
 
     let passed = ($results | where {|result| $result } | length)

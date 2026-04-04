@@ -8,6 +8,7 @@ use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_zellij_default_shell]
 use ../utils/failure_classes.nu [format_failure_classification]
+use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/upgrade_summary.nu [maybe_show_first_run_upgrade_summary]
 use ../setup/welcome.nu [show_welcome build_welcome_message]
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
@@ -48,13 +49,24 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     let configured_layout = if $sidebar_enabled { "yzx_side" } else { "yzx_no_side" }
     let yazelix_dir = (require_existing_directory (require_yazelix_runtime_dir) "Yazelix runtime directory")
     let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
+    let profile_exit_before_zellij = ($env.YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ? == "true")
+    let skip_welcome_screen = (
+        ($config.skip_welcome_screen? | default false)
+        or ($env.YAZELIX_STARTUP_PROFILE_SKIP_WELCOME? == "true")
+    )
 
     let log_dir = ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)
     mkdir $log_dir
     let colors = get_yazelix_colors
     let welcome_message = build_welcome_message $yazelix_dir $config.helix_mode $colors
-    show_welcome $config.skip_welcome_screen $quiet_mode $config.welcome_style $config.welcome_duration_seconds $config.show_macchina_on_welcome $welcome_message $log_dir $colors
-    let upgrade_summary = (try { maybe_show_first_run_upgrade_summary } catch {|err|
+    profile_startup_step "inner" "show_welcome" {
+        show_welcome $skip_welcome_screen $quiet_mode $config.welcome_style $config.welcome_duration_seconds $config.show_macchina_on_welcome $welcome_message $log_dir $colors
+    } {
+        skipped: ($skip_welcome_screen or $quiet_mode)
+    }
+    let upgrade_summary = (try { profile_startup_step "inner" "show_upgrade_summary" {
+        maybe_show_first_run_upgrade_summary
+    } } catch {|err|
         if $verbose {
             print $"⚠️ Failed to render upgrade summary: ($err.msg)"
         }
@@ -66,10 +78,12 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
 
     print "🔧 Preparing Yazi configuration..."
     try {
-        if $verbose {
-            generate_merged_yazi_config $yazelix_dir | ignore
-        } else {
-            generate_merged_yazi_config $yazelix_dir --quiet | ignore
+        profile_startup_step "inner" "generate_yazi_config" {
+            if $verbose {
+                generate_merged_yazi_config $yazelix_dir | ignore
+            } else {
+                generate_merged_yazi_config $yazelix_dir --quiet | ignore
+            }
         }
     } catch { |err|
         error make {msg: $"Failed to generate Yazi configuration: ($err.msg)\nRun `yzx doctor` to inspect the runtime, then rerun `yzx refresh` if needed."}
@@ -77,7 +91,9 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
 
     let merged_zellij_dir = ($ZELLIJ_CONFIG_PATHS.merged_config_dir | str replace "~" $env.HOME)
     try {
-        generate_merged_zellij_config $yazelix_dir | ignore
+        profile_startup_step "inner" "generate_zellij_config" {
+            generate_merged_zellij_config $yazelix_dir | ignore
+        }
     } catch { |err|
         error make {msg: $"Failed to generate Zellij configuration: ($err.msg)\nRun `yzx doctor` to inspect the runtime, then rerun `yzx refresh` if needed."}
     }
@@ -112,14 +128,28 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     # Record that the current config/input state has been successfully applied
     # once we are inside the prepared Yazelix runtime, and remember the live
     # built profile for later reuse/startup checks.
-    let applied_state = (compute_config_state)
-    record_materialized_state $applied_state
-    let built_profile = (resolve_current_session_profile)
-    if ($built_profile | is-not-empty) {
-        record_launch_profile_state $applied_state $built_profile
-    }
+    let applied_state = (profile_startup_step "inner" "record_runtime_state" {
+        let computed_state = (compute_config_state)
+        record_materialized_state $computed_state
+        let built_profile = (resolve_current_session_profile)
+        if ($built_profile | is-not-empty) {
+            record_launch_profile_state $computed_state $built_profile
+        }
+        $computed_state
+    })
 
     cd $launch_process_cwd
+
+    if $profile_exit_before_zellij {
+        profile_startup_step "inner" "zellij_handoff_ready" {
+            null
+        } {
+            layout_path: $layout_path
+            default_shell: $zellij_default_shell
+            persistent_sessions: ($config.persistent_sessions? | default "false")
+        } | ignore
+        return
+    }
 
     if ($config.persistent_sessions == "true") {
         # Check if session already exists
