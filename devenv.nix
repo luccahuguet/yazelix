@@ -290,14 +290,6 @@ let
   mkTerminalConfigResolver = terminalName:
     ''
       terminal_config_mode="${terminalConfigMode}"
-      if [ "''${1:-}" = "--config-mode" ]; then
-        if [ "$#" -lt 2 ]; then
-          echo "Error: missing terminal config mode after --config-mode" >&2
-          exit 1
-        fi
-        terminal_config_mode="$2"
-        shift 2
-      fi
       if ! CONF="$(${pkgs.nushell}/bin/nu -c "source \"''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/nushell/scripts/utils/terminal_launcher.nu\"; print (resolve_terminal_config \"${terminalName}\" \"''${terminal_config_mode}\")")"; then
         exit 1
       fi
@@ -695,8 +687,11 @@ in
       export HOME="$(dirname "$(dirname "$DEVENV_ROOT")")"
     fi
 
+    runtime_root="$DEVENV_ROOT"
+
+    unset YAZELIX_RUNTIME_DIR
+    unset YAZELIX_DIR
     export YAZELIX_CONFIG_DIR="''${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}"
-    export YAZELIX_RUNTIME_DIR="''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}"
     export IN_YAZELIX_SHELL="true"
     export NIX_CONFIG='${yazelixNixConfig}'
     export ZELLIJ_DEFAULT_LAYOUT="${yazelixLayoutName}"
@@ -715,15 +710,15 @@ in
 
     # Environment setup now reads directly from yazelix.toml (single source of truth)
     if [ "$YAZELIX_SHELLHOOK_SKIP_WELCOME" = "true" ]; then
-      ${pkgs.nushell}/bin/nu "''${YAZELIX_RUNTIME_DIR}/nushell/scripts/setup/environment.nu" --skip-welcome
+      ${pkgs.nushell}/bin/nu "$runtime_root/nushell/scripts/setup/environment.nu" --skip-welcome
       unset YAZELIX_SHELLHOOK_SKIP_WELCOME
     else
-      ${pkgs.nushell}/bin/nu "''${YAZELIX_RUNTIME_DIR}/nushell/scripts/setup/environment.nu"
+      ${pkgs.nushell}/bin/nu "$runtime_root/nushell/scripts/setup/environment.nu"
     fi
 
     # Save config hash after successful environment setup
     if command -v ${pkgs.nushell}/bin/nu >/dev/null 2>&1; then
-      ${pkgs.nushell}/bin/nu -c "use \"''${YAZELIX_RUNTIME_DIR}/nushell/scripts/utils/config_state.nu\" [compute_config_state mark_config_state_applied]; let state = compute_config_state; mark_config_state_applied \$state" 2>/dev/null || true
+      ${pkgs.nushell}/bin/nu -c "use \"$runtime_root/nushell/scripts/utils/config_state.nu\" [compute_config_state mark_config_state_applied]; let state = compute_config_state; mark_config_state_applied \$state" 2>/dev/null || true
     fi
   '';
 }

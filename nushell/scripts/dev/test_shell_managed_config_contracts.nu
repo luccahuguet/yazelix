@@ -304,6 +304,43 @@ mode = "source"
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: source-checkout runtime resolution must not be shadowed by an ambient installed-runtime env.
+def test_source_checkout_runtime_resolution_beats_installed_runtime [] {
+    print "🧪 Testing source-checkout runtime resolution beats an ambient installed runtime env..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_runtime_resolution_XXXXXX | str trim)
+    let fake_state_runtime = ($tmp_home | path join ".local" "share" "yazelix" "runtime" "current")
+
+    mkdir ($fake_state_runtime | path dirname)
+    ^ln -s $repo_root $fake_state_runtime
+
+    let result = (try {
+        let output = (with-env {
+            HOME: $tmp_home
+            YAZELIX_RUNTIME_DIR: $fake_state_runtime
+        } {
+            ^nu -c $"use \"($repo_root | path join 'nushell' 'scripts' 'utils' 'common.nu')\" [get_yazelix_runtime_dir]; print \(get_yazelix_runtime_dir\)" | complete
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == $repo_root) {
+            print "  ✅ Source-checkout runtime resolution now prefers the inferred repo runtime over an ambient installed runtime pointer"
+            true
+        } else {
+            print $"  ❌ Unexpected runtime resolution result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 export def run_shell_managed_config_contract_tests [] {
     [
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
@@ -312,6 +349,7 @@ export def run_shell_managed_config_contract_tests [] {
         (test_generated_nushell_shell_hook_uses_managed_config_only)
         (test_managed_bash_config_sources_optional_user_hook)
         (test_managed_fish_config_does_not_export_helix_mode_env)
+        (test_source_checkout_runtime_resolution_beats_installed_runtime)
     ]
 }
 

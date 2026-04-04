@@ -126,6 +126,39 @@ def test_preferred_devenv_resolution_uses_runtime_owned_cli [] {
     }
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: repo-local devenv shells clear inherited installed-runtime aliases so source entrypoints use the checkout.
+def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
+    print "🧪 Testing repo-local devenv shells clear inherited runtime aliases..."
+
+    let repo_root = ($env.PWD | path expand)
+    let fake_runtime = (get_yazelix_state_dir | path join "runtime" "current" | path expand)
+    let devenv_bin = (resolve_preferred_devenv_path)
+
+    try {
+        let output = (with-env {
+            YAZELIX_RUNTIME_DIR: $fake_runtime
+            YAZELIX_DIR: "/nix/store/fake-yazelix-runtime"
+            YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
+            YAZELIX_ENV_ONLY: "true"
+        } {
+            ^$devenv_bin --quiet shell -- bash -lc 'printf "%s|%s|%s\n" "$(printenv YAZELIX_RUNTIME_DIR 2>/dev/null || printf unset)" "$(printenv YAZELIX_DIR 2>/dev/null || printf unset)" "$DEVENV_ROOT"' | complete
+        })
+        let summary = ($output.stdout | lines | last | default "")
+
+        if ($output.exit_code == 0) and ($summary == $"unset|unset|($repo_root)") {
+            print "  ✅ Repo-local devenv shell now clears inherited runtime aliases and keeps DEVENV_ROOT as the source of truth"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) summary=($summary) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 # Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=1 total=6/10
 # Invariant: generated Nushell initializers restore current PATH entries ahead of the saved PATH.
 def test_nushell_initializer_restores_current_path_first [] {
@@ -162,6 +195,7 @@ def main [] {
         (test_issue_bead_reconciliation_plan)
         (test_issue_bead_comment_plan)
         (test_preferred_devenv_resolution_uses_runtime_owned_cli)
+        (test_source_devenv_shell_clears_inherited_runtime_aliases)
         (test_nushell_initializer_restores_current_path_first)
     ]
 

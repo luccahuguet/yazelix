@@ -5,7 +5,7 @@
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
-use ../utils/terminal_launcher.nu [resolve_terminal_config]
+use ../utils/terminal_launcher.nu [build_launch_command resolve_terminal_config]
 use ../utils/terminal_configs.nu [
     generate_all_terminal_configs
 ]
@@ -151,6 +151,36 @@ terminals = ["ghostty", "kitty", "alacritty"]
 
     rm -rf $tmpdir
     $result
+}
+
+# Regression: managed terminal wrappers must not leak Yazelix-only config-mode args into terminal binaries.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_managed_wrapper_launch_command_does_not_forward_config_mode_flag [] {
+    print "🧪 Testing managed terminal wrapper launch command keeps config-mode internal..."
+
+    try {
+        let launch_cmd = (build_launch_command {
+            terminal: "ghostty"
+            name: "Ghostty"
+            command: "yazelix-ghostty"
+            use_wrapper: true
+        } null "yazelix" "/tmp" false)
+
+        if (
+            ($launch_cmd | str contains 'yazelix-ghostty')
+            and not ($launch_cmd | str contains '--config-mode')
+            and ($launch_cmd | str contains '--working-directory="/tmp"')
+        ) {
+            print "  ✅ Managed wrapper launch command now keeps config-mode internal to the wrapper"
+            true
+        } else {
+            print $"  ❌ Unexpected managed wrapper launch command: ($launch_cmd)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
 }
 
 # Regression: Ghostty generated effect shader references must point at files the builder emits.
@@ -897,6 +927,7 @@ export def run_generated_config_canonical_tests [] {
     [
         (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
         (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
+        (test_managed_wrapper_launch_command_does_not_forward_config_mode_flag)
         (test_generate_ghostty_config_references_existing_effect_shaders)
         (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
