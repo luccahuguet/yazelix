@@ -3,7 +3,6 @@
 # Called from devenv.nix shellHook to reduce complexity
 
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/config_state.nu compute_config_state
 use ../utils/common.nu [get_installed_yazelix_runtime_reference_dir get_yazelix_runtime_dir]
 use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]

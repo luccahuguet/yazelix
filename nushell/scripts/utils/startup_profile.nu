@@ -12,6 +12,10 @@ def now_ns [] {
     date now | into int
 }
 
+def round_duration_ms [started_ns: int, ended_ns: int] {
+    (((($ended_ns - $started_ns) / 1000000.0) * 100.0) | math round | $in / 100.0)
+}
+
 def append_profile_record [report_path: string, record: record] {
     let report_dir = ($report_path | path dirname)
     if not ($report_dir | path exists) {
@@ -94,7 +98,7 @@ export def record_startup_profile_event [
         return
     }
 
-    let duration_ms = (((($ended_ns - $started_ns) / 1000000.0) * 100.0) | math round | $in / 100.0)
+    let duration_ms = (round_duration_ms $started_ns $ended_ns)
     append_profile_record $report_path {
         type: "step"
         schema_version: $STARTUP_PROFILE_SCHEMA_VERSION
@@ -138,7 +142,10 @@ export def load_startup_profile_report [report_path: string] {
         error make {msg: $"Startup profile report is empty: ($report_path)"}
     }
 
-    let run_record = ($records | where type == "run" | first)
+    let run_record = ($records | where type == "run" | get -o 0 | default null)
+    if $run_record == null {
+        error make {msg: $"Startup profile report is missing a run header: ($report_path)"}
+    }
     let step_records = ($records | where type == "step" | default [])
 
     let total_duration_ms = if ($step_records | is-empty) {
@@ -146,7 +153,7 @@ export def load_startup_profile_report [report_path: string] {
     } else {
         let started_ns = ($step_records | get started_ns | math min)
         let ended_ns = ($step_records | get ended_ns | math max)
-        (((($ended_ns - $started_ns) / 1000000.0) * 100.0) | math round | $in / 100.0)
+        round_duration_ms $started_ns $ended_ns
     }
 
     {

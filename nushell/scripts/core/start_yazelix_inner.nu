@@ -128,7 +128,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     # Record that the current config/input state has been successfully applied
     # once we are inside the prepared Yazelix runtime, and remember the live
     # built profile for later reuse/startup checks.
-    let applied_state = (profile_startup_step "inner" "record_runtime_state" {
+    profile_startup_step "inner" "record_runtime_state" {
         let computed_state = (compute_config_state)
         record_materialized_state $computed_state
         let built_profile = (resolve_current_session_profile)
@@ -136,7 +136,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
             record_launch_profile_state $computed_state $built_profile
         }
         $computed_state
-    })
+    } | ignore
 
     cd $launch_process_cwd
 

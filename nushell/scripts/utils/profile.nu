@@ -99,9 +99,9 @@ export def run_profiled_startup_harness [
 }
 
 export def profile_cold_launch [
-    --clear-cache  # Clear the runtime project cache before profiling to simulate a rebuild-heavy cold path
+    --clear-cache  # Clear runtime project and recorded state first to exercise the rebuild-heavy cold path
 ] {
-    if ($env.IN_YAZELIX_SHELL? | is-not-empty) {
+    if (($env.IN_YAZELIX_SHELL? | default "") == "true") {
         print "❌ Error: Cold launch profiling must be run from a vanilla terminal"
         print ""
         print "To profile a cold startup path:"
