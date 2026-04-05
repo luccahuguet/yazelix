@@ -68,7 +68,7 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
 - A launch profile is the cached `devenv` profile path plus the recorded config/input hash that proved that profile was built for the current rebuild-relevant configuration.
 - Launch-state ownership is intentionally narrow:
   - shell-hook/setup work may materialize generated configs and mark rebuild inputs as applied
-  - only real launch and refresh flows should record the active built launch profile
+  - only real runtime entry or refresh flows that own a successful built profile should record launch-profile state
   - install/setup paths must not overwrite launch-profile state merely because they ran in some shell
 - Live session activation state is intentionally separate from launch-state recording:
   - `launch_state.json` and rebuild hashes are persisted materialized state
@@ -81,6 +81,8 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
 - For `devenv build shell` flows, Yazelix should resolve the embedded `DEVENV_PROFILE` from the generated shell artifact instead of treating the shell script path itself as the reusable profile.
 - The `devenv build shell` command output is the canonical build-time evidence for the fresh reusable profile.
   - The shell path reported in build output must be resolved back to its embedded `DEVENV_PROFILE`.
+  - A successful build-owned refresh/startup/restart path may record that fresh profile before the current shell or window has activated it.
+  - In that case, `launch_state.json.profile_path` is allowed to be newer than the current process-local `DEVENV_PROFILE` until the explicit activation boundary happens.
   - Runtime-project `.devenv/profile` and `.devenv/gc/shell` entries under `~/.local/share/yazelix/runtime/project` are secondary build artifacts only.
   - Those runtime-project `.devenv` entries may be absent after a fresh build in a new state root, so launch correctness must not require them.
   - Helpers may use them as fallback evidence only when they already exist.
@@ -123,7 +125,8 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
 9. When `yzx refresh` builds through `devenv build shell`, Yazelix records the embedded `DEVENV_PROFILE`, not the shell-script wrapper path and not an unrelated ambient maintainer-shell profile.
 10. When a stale maintainer shell and a correct `launch_state.json` coexist, the docs and helpers treat that as a live-activation-versus-materialized-state split, not as contradictory runtime truth.
 11. When a fresh state root runs `devenv build shell`, Yazelix can still derive and record the reusable profile from build output even if `runtime/project/.devenv/profile` and `runtime/project/.devenv/gc/shell` do not exist yet.
-12. When a validator is added for this contract, it checks maintained ownership and parity rules rather than noisy generated-output trivia.
+12. When a startup, restart, or other runtime-entry rebuild succeeds, Yazelix may record the fresh reusable profile before the newly launched session has fully activated it.
+13. When a validator is added for this contract, it checks maintained ownership and parity rules rather than noisy generated-output trivia.
 
 ## Verification
 

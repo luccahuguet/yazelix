@@ -8,6 +8,7 @@ use nix_detector.nu ensure_nix_available
 use nix_env_helper.nu ensure_nix_in_environment
 use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config materialize_yazelix_runtime_project_dir require_yazelix_dir]
 use config_state.nu [compute_config_state record_materialized_state]
+use launch_state.nu [record_launch_profile_state resolve_profile_from_build_shell_output]
 use startup_profile.nu [profile_startup_step]
 
 def format_command_for_display [command_parts: list<string>] {
@@ -205,6 +206,7 @@ export def rebuild_yazelix_environment [
                     let result = (^$cmd_bin ...$cmd_args | complete)
                     {
                         exit_code: $result.exit_code
+                        stdout: ($result.stdout | default "")
                         stderr: ($result.stderr | default "")
                         stderr_streamed: false
                     }
@@ -213,6 +215,7 @@ export def rebuild_yazelix_environment [
                 let result = (^$cmd_bin ...$cmd_args | complete)
                 {
                     exit_code: $result.exit_code
+                    stdout: ($result.stdout | default "")
                     stderr: ($result.stderr | default "")
                     stderr_streamed: false
                 }
@@ -223,6 +226,7 @@ export def rebuild_yazelix_environment [
                 print_completed_output $result
                 {
                     exit_code: $result.exit_code
+                    stdout: ($result.stdout | default "")
                     stderr: ($result.stderr | default "")
                     stderr_streamed: true
                 }
@@ -232,6 +236,7 @@ export def rebuild_yazelix_environment [
             print_completed_output $result
             {
                 exit_code: $result.exit_code
+                stdout: ($result.stdout | default "")
                 stderr: ($result.stderr | default "")
                 stderr_streamed: true
             }
@@ -253,7 +258,16 @@ export def rebuild_yazelix_environment [
         exit $rebuild_result.exit_code
     }
 
-    record_materialized_state (compute_config_state)
+    let applied_state = (compute_config_state)
+    let built_profile = (resolve_profile_from_build_shell_output ($rebuild_result.stdout | default ""))
+    if ($built_profile | is-empty) {
+        print "❌ Environment rebuild completed but Yazelix could not resolve the resulting DEVENV_PROFILE from the build output."
+        print "   Recovery: rerun `yzx refresh --verbose` or `yzx restart --verbose`, and inspect the final `devenv build shell` result."
+        exit 1
+    }
+
+    record_materialized_state $applied_state
+    record_launch_profile_state $applied_state $built_profile
 }
 
 # Check if already in Yazelix or Nix environment

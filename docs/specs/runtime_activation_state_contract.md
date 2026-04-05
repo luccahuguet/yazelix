@@ -54,6 +54,12 @@ Without naming that split explicitly, helpers keep making the wrong leap:
 - The built `devenv` profile path is a materialized runtime artifact.
   - `DEVENV_PROFILE` is the live activation of that artifact in the current process.
   - `launch_state.json.profile_path` is the persisted recorded profile Yazelix may reuse later.
+- Successful Yazelix-owned `devenv build shell` flows should record the embedded `DEVENV_PROFILE` as materialized launch state.
+  - That recording belongs to the materialized/generated-state layer, not the live activation layer.
+  - It must use the fresh build result, not an ambient shell `DEVENV_PROFILE` and not the shell-wrapper path itself.
+- A successful rebuild may advance recorded launch state before the current shell or window has switched to the new profile.
+  - In that moment, `launch_state.json.profile_path` may legitimately be newer than the current process-local `DEVENV_PROFILE`.
+  - That is a normal materialized-state-versus-live-activation split, not contradictory runtime truth.
 - A stale maintainer shell can coexist with a correct `launch_state.json`.
   - That is not a contradiction.
   - It means the current shell activation is older than the recorded materialized launch state.
@@ -80,7 +86,8 @@ Without naming that split explicitly, helpers keep making the wrong leap:
 2. The docs state clearly that `launch_state.json`, rebuild hashes, and generated runtime assets belong to materialized/generated state, not live activation state.
 3. The docs state clearly that `DEVENV_PROFILE`, profile-derived `PATH`, `IN_YAZELIX_SHELL`, `YAZELIX_TERMINAL`, and Zellij session markers are activation-only markers rather than persisted runtime truth.
 4. The docs define that external launch helpers should clear inherited activation markers before starting a new Yazelix session, while in-session helpers may intentionally use the current live activation state.
-5. Later refactor beads can target the terms in this contract instead of continuing to treat activation state as an implicit side effect.
+5. The docs explain that a successful rebuild may update `launch_state.json.profile_path` before the current shell or window switches its own `DEVENV_PROFILE`, and that this is an expected layer split rather than a bug by itself.
+6. Later refactor beads can target the terms in this contract instead of continuing to treat activation state as an implicit side effect.
 
 ## Verification
 
