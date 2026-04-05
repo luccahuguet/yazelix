@@ -215,7 +215,7 @@ ya_command = "ya"
             ($refresh_result.status == "ok")
             and ($ya_args == [
                 "emit-to sidebar-yazi-123 refresh",
-                "emit-to sidebar-yazi-123 plugin git refresh-sidebar",
+                "emit-to sidebar-yazi-123 plugin git",
             ])
         ) {
             print "  ✅ active sidebar Yazi refresh emits both targeted refresh actions to the cached sidebar instance"

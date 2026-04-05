@@ -1,18 +1,20 @@
-diff --git a/main.lua b/main.lua
-index 44842f7..247562f 100644
 --- a/main.lua
 +++ b/main.lua
-@@ -95,6 +95,44 @@
- 	return new
- end
+@@ -152,6 +152,73 @@
+ 	st.repos[repo] = nil
+ end)
  
++---@param cwd Url
++---@param repo string
++---@param paths string[]
++---@param has_directories boolean
++---@return boolean, string?
 +local function update_changed_state(cwd, repo, paths, has_directories)
 +	-- stylua: ignore
 +	local output, err = Command("git")
 +		:cwd(tostring(cwd))
 +		:arg({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--porcelain", "-unormal", "--no-renames", "--ignored=matching" })
 +		:arg(paths)
-+		:stdout(Command.PIPED)
 +		:output()
 +	if not output then
 +		return false, Err("Cannot spawn `git` command, error: %s", err)
@@ -33,24 +35,18 @@ index 44842f7..247562f 100644
 +	end
 +	ya.dict_merge(changed, propagate_down(excluded, cwd, Url(repo)))
 +
-+	-- Reset the status of any files that don't appear in the output of `git status` to `unknown`,
++	-- Reset the status of any files that don't appear in the output of `git status` to `clean`,
 +	-- so that cleaning up outdated statuses from `st.repos`
 +	for _, path in ipairs(paths) do
 +		local s = path:sub(#repo + 2)
-+		changed[s] = changed[s] or CODES.unknown
++		changed[s] = changed[s] or CODES.clean
 +	end
 +
 +	add(tostring(cwd), repo, changed)
 +	return true
 +end
 +
- local add = ya.sync(function(st, cwd, repo, changed)
- 	st.dirs[cwd] = repo
- 	st.repos[repo] = st.repos[repo] or {}
-@@ -131,6 +169,29 @@
- 	st.repos[repo] = nil
- end)
- 
++---@return { cwd: string, paths: string[], has_directories: boolean }?
 +local snapshot_active_window = ya.sync(function()
 +	local current = cx and cx.active and cx.active.current
 +	if not current or not current.cwd then
@@ -70,23 +66,23 @@ index 44842f7..247562f 100644
 +	}
 +end)
 +
++---@param content string
 +local function fail(content)
 +	ya.notify { title = "Git", content = content, timeout = 5, level = "error" }
 +end
 +
+ ---@param st State
+ ---@param opts Options
  local function setup(st, opts)
- 	st.dirs = {} -- Mapping between a directory and its corresponding repository
- 	st.repos = {} -- Mapping between a repository and the status of each of its files
-@@ -187,42 +248,35 @@
+@@ -219,41 +286,31 @@
  		paths[#paths + 1] = tostring(file.url)
  	end
  
 -	-- stylua: ignore
 -	local output, err = Command("git")
 -		:cwd(tostring(cwd))
--		:args({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--porcelain", "-unormal", "--no-renames", "--ignored=matching" })
--		:args(paths)
--		:stdout(Command.PIPED)
+-		:arg({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--porcelain", "-unormal", "--no-renames", "--ignored=matching" })
+-		:arg(paths)
 -		:output()
 -	if not output then
 -		return true, Err("Cannot spawn `git` command, error: %s", err)
@@ -109,30 +105,27 @@ index 44842f7..247562f 100644
  
 -	if job.files[1].cha.is_dir then
 -		ya.dict_merge(changed, bubble_up(changed))
-+local function entry(job)
-+	if job.args[1] ~= "refresh-sidebar" then
-+		return
- 	end
--	ya.dict_merge(changed, propagate_down(excluded, cwd, Url(repo)))
- 
--	-- Reset the status of any files that don't appear in the output of `git status` to `unknown`,
--	-- so that cleaning up outdated statuses from `st.repos`
--	for _, path in ipairs(paths) do
--		local s = path:sub(#repo + 2)
--		changed[s] = changed[s] or CODES.unknown
++local function entry()
 +	local snapshot = snapshot_active_window()
 +	if not snapshot or #snapshot.paths == 0 then
 +		return
  	end
+-	ya.dict_merge(changed, propagate_down(excluded, cwd, Url(repo)))
  
--	add(tostring(cwd), repo, changed)
+-	-- Reset the status of any files that don't appear in the output of `git status` to `clean`,
+-	-- so that cleaning up outdated statuses from `st.repos`
+-	for _, path in ipairs(paths) do
+-		local s = path:sub(#repo + 2)
+-		changed[s] = changed[s] or CODES.clean
 +	local cwd = Url(snapshot.cwd)
 +	local repo = root(cwd)
 +	if not repo then
 +		remove(snapshot.cwd)
 +		return
-+	end
+ 	end
  
+-	add(tostring(cwd), repo, changed)
+-
 -	return false
 +	local ok, err = update_changed_state(cwd, repo, snapshot.paths, snapshot.has_directories)
 +	if not ok then
