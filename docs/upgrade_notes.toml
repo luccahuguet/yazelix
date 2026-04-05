@@ -1,12 +1,28 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = "Post-v13.12 work in progress"
+headline = "Post-v13.13 work in progress"
 summary = [
-    "Reserved for post-release changes after v13.12 lands.",
+    "Reserved for post-release changes after v13.13 lands.",
 ]
 upgrade_impact = "no_user_action"
 acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v13.13"]
+version = "v13.13"
+date = "2026-04-05"
+headline = "Yazi git refresh hardening, fresh launch-profile recording, and maintainer input updates"
+summary = [
+    "Refreshed Yazi sidebar git decorations more reliably on focus return, open, navigation, and explicit sidebar refresh so the managed sidebar stops carrying stale git state.",
+    "Recorded the fresh built launch profile after Yazelix-owned rebuilds so desktop-entry and restart flows stop reactivating stale `DEVENV_PROFILE` paths.",
+    "Updated maintainer inputs, including the packaged `beads-rust` build used for `br`, and verified the real issue-mutation path after the bump.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = [
+    "nushell/scripts/utils/constants.nu",
+]
 migration_ids = []
 manual_actions = []
 

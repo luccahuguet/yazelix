@@ -2,6 +2,17 @@
 
 Short, upgrade-facing release notes live here. The longer narrative history remains in [docs/history.md](./docs/history.md).
 
+## v13.13 - 2026-04-05
+
+Yazi git refresh hardening, fresh launch-profile recording, and maintainer input updates.
+
+Upgrade impact: no user action required
+
+Highlights:
+- Refreshed Yazi sidebar git decorations more reliably on focus return, open, navigation, and explicit sidebar refresh so the managed sidebar stops carrying stale git state.
+- Recorded the fresh built launch profile after Yazelix-owned rebuilds so desktop-entry and restart flows stop reactivating stale `DEVENV_PROFILE` paths.
+- Updated maintainer inputs, including the packaged `beads-rust` build used for `br`, and verified the real issue-mutation path after the bump.
+
 ## v13.12 - 2026-04-05
 
 Simpler runtime updates and stronger update-path hardening.
@@ -20,7 +31,7 @@ Highlights:
 
 ## Unreleased
 
-Post-v13.12 work in progress
+Post-v13.13 work in progress
 
 Upgrade impact: no user action required
 

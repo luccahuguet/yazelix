@@ -6,7 +6,7 @@
 # VERSION INFORMATION
 # ============================================================================
 
-export const YAZELIX_VERSION = "v13.12"
+export const YAZELIX_VERSION = "v13.13"
 export const YAZELIX_DESCRIPTION = "Yazi + Zellij + Helix integrated terminal environment"
 export const YAZELIX_INSTALL_FLAKE_REF = "github:luccahuguet/yazelix#install"
 export const PINNED_NIX_VERSION = "2.33.3"
