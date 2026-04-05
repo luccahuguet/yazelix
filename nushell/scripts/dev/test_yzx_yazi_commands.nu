@@ -444,6 +444,7 @@ export def run_yazi_canonical_tests [] {
         (test_yazi_command_resolvers_honor_defaults_and_overrides)
         (test_get_managed_editor_kind_accepts_managed_helix_wrapper_env)
         (test_refresh_active_sidebar_yazi_emits_refresh_to_cached_sidebar_instance)
+        (test_get_active_sidebar_yazi_id_prefers_exact_session_and_pane_match)
         (test_toggle_editor_sidebar_focus_reports_sidebar_target_from_plugin_response)
         (test_toggle_editor_sidebar_focus_wrapper_refreshes_only_when_sidebar_gains_focus)
     ]
