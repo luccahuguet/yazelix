@@ -12,7 +12,18 @@ export def get_runtime_dir [] {
 }
 
 export def get_runtime_script_path [relative_path: string] {
-    (get_runtime_dir | path join $relative_path)
+    let script_path = (get_runtime_dir | path join $relative_path)
+    let expanded_script_path = ($script_path | path expand)
+
+    if not ($expanded_script_path | path exists) {
+        error make {msg: $"Resolved Yazelix runtime script does not exist: ($expanded_script_path)"}
+    }
+
+    if (($expanded_script_path | path type) != "file") {
+        error make {msg: $"Resolved Yazelix runtime script is not a file: ($expanded_script_path)"}
+    }
+
+    $expanded_script_path
 }
 
 export def get_runtime_nu_path [] {
@@ -24,11 +35,15 @@ export def get_runtime_nu_path [] {
     $runtime_nu
 }
 
-export def run_runtime_nu_command [command: string, extra_env?: record] {
+export def run_runtime_nu_script [
+    relative_script_path: string
+    ...script_args: string
+    --extra-env: record = {}
+] {
     let runtime_nu = (get_runtime_nu_path)
-    let command_env = ($extra_env | default {})
+    let runtime_script = (get_runtime_script_path $relative_script_path)
 
-    with-env $command_env {
-        run-external $runtime_nu "-c" $command
+    with-env $extra_env {
+        run-external $runtime_nu $runtime_script ...$script_args
     }
 }

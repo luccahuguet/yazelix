@@ -368,10 +368,13 @@ def test_toggle_editor_sidebar_focus_wrapper_refreshes_only_when_sidebar_gains_f
     let result = (try {
         let runtime_dir = ($tmpdir | path join "runtime")
         let integrations_dir = ($runtime_dir | path join "nushell" "scripts" "integrations")
+        let wrapper_runtime_dir = ($runtime_dir | path join "nushell" "scripts" "zellij_wrappers")
         let refresh_log = ($tmpdir | path join "refresh.log")
         let real_nu = (which nu | get -o 0.path)
 
         mkdir $integrations_dir
+        mkdir $wrapper_runtime_dir
+        cp ($env.PWD | path join "nushell" "scripts" "zellij_wrappers" "toggle_editor_sidebar_focus.nu") ($wrapper_runtime_dir | path join "toggle_editor_sidebar_focus.nu")
         "" | save --force --raw ($runtime_dir | path join "yazelix_default.toml")
 
         [

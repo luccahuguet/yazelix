@@ -1,15 +1,7 @@
 #!/usr/bin/env nu
 
-use runtime_helper.nu [get_runtime_script_path run_runtime_nu_command]
+use runtime_helper.nu [run_runtime_nu_script]
 
-let zellij_integration = (get_runtime_script_path "nushell/scripts/integrations/zellij.nu")
-let command = ([
-    $"use '($zellij_integration)' *"
-    "let result = (toggle_sidebar_layout)"
-    "if $result.status != 'ok' {"
-    "    print $'Error: toggle sidebar failed \(status=($result.status)\)'"
-    "    exit 1"
-    "}"
-] | str join "\n")
-
-run_runtime_nu_command $command
+def main [] {
+    run_runtime_nu_script "nushell/scripts/zellij_wrappers/toggle_sidebar_layout.nu"
+}

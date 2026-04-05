@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use runtime_helper.nu [get_runtime_script_path run_runtime_nu_command]
+use runtime_helper.nu [run_runtime_nu_script]
 
 def popup_plugin_toggle_result [] {
     let pipe_result = (^zellij pipe --name toggle_popup -- "" | complete)
@@ -25,38 +25,18 @@ export def resolve_popup_toggle_action [toggle_result?: string] {
     }
 }
 
-def maybe_refresh_active_sidebar_yazi [action: record] {
-    if not ($action.refresh_sidebar? | default false) {
-        return
-    }
-
-    # Zellij reports popup closure before focus restoration fully settles.
-    # Give the sidebar instance a moment to become active again before emitting into Yazi.
-    sleep 150ms
-
-    let yazi_integration = (get_runtime_script_path "nushell/scripts/integrations/yazi.nu")
-    let command = ([
-        $"use '($yazi_integration)' [refresh_active_sidebar_yazi]"
-        "refresh_active_sidebar_yazi | ignore"
-    ] | str join "\n")
-    run_runtime_nu_command $command
-}
-
 def main [] {
     let action = (resolve_popup_toggle_action (popup_plugin_toggle_result))
 
     if $action.action == "open" {
-        let popup_script = (get_runtime_script_path "nushell/scripts/yzx/popup.nu")
-        let command = ([
-            $"use '($popup_script)' *"
-            "yzx popup"
-        ] | str join "\n")
-        run_runtime_nu_command $command
+        run_runtime_nu_script "nushell/scripts/zellij_wrappers/popup_open.nu"
         return
     }
 
     if $action.action == "handled" {
-        maybe_refresh_active_sidebar_yazi $action
+        if ($action.refresh_sidebar? | default false) {
+            run_runtime_nu_script "nushell/scripts/zellij_wrappers/popup_refresh_active_sidebar_yazi.nu"
+        }
         return
     }
 

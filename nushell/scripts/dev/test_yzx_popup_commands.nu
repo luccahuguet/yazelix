@@ -17,11 +17,13 @@ def setup_runtime_wrapper_fixture [label: string] {
     let tmpdir = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let runtime_dir = ($tmpdir | path join "runtime")
     let integrations_dir = ($runtime_dir | path join "nushell" "scripts" "integrations")
+    let wrapper_dir = ($runtime_dir | path join "nushell" "scripts" "zellij_wrappers")
     let fake_bin = ($tmpdir | path join "bin")
     let refresh_log = ($tmpdir | path join "refresh.log")
     let real_nu = (which nu | get -o 0.path)
 
     mkdir $integrations_dir
+    mkdir $wrapper_dir
     mkdir $fake_bin
     "" | save --force --raw ($runtime_dir | path join "yazelix_default.toml")
 
@@ -29,10 +31,15 @@ def setup_runtime_wrapper_fixture [label: string] {
         tmpdir: $tmpdir
         runtime_dir: $runtime_dir
         integrations_dir: $integrations_dir
+        wrapper_dir: $wrapper_dir
         fake_bin: $fake_bin
         refresh_log: $refresh_log
         real_nu: $real_nu
     }
+}
+
+def install_runtime_wrapper_script [fixture: record, script_name: string] {
+    cp ($env.PWD | path join "nushell" "scripts" "zellij_wrappers" $script_name) ($fixture.wrapper_dir | path join $script_name)
 }
 
 # Defends: popup command resolution prefers the configured default program.
@@ -211,6 +218,7 @@ def test_popup_toggle_wrapper_refreshes_sidebar_only_after_close [] {
             "    {status: 'ok'}"
             "}"
         ] | str join "\n" | save --force --raw ($fixture.integrations_dir | path join "yazi.nu")
+        install_runtime_wrapper_script $fixture "popup_refresh_active_sidebar_yazi.nu"
 
         let wrapper_script = ($env.PWD | path join "configs" "zellij" "scripts" "yzx_toggle_popup.nu")
         let closed_output = (with-env {
