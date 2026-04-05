@@ -134,6 +134,53 @@ def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
     }
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: managed Ghostty wrappers must find sibling nixGL even when desktop launch clears DEVENV_PROFILE.
+def test_managed_wrapper_prefers_sibling_nixgl_without_ambient_profile [] {
+    print "🧪 Testing managed Ghostty wrappers resolve sibling nixGL without ambient DEVENV_PROFILE..."
+
+    let repo_root = ($env.PWD | path expand)
+    let devenv_bin = (resolve_preferred_devenv_path)
+
+    try {
+        let output = (with-env {
+            YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
+            YAZELIX_ENV_ONLY: "true"
+        } {
+            ^$devenv_bin --quiet shell -- bash -lc 'expected="$DEVENV_PROFILE/bin/nixGL"; wrapper="$DEVENV_PROFILE/bin/yazelix-ghostty"; printf "__EXPECTED__%s\n" "$expected"; env -u DEVENV_PROFILE PATH=/usr/bin:/bin YAZELIX_RUNTIME_DIR="$DEVENV_ROOT" bash -x "$wrapper" --version >/dev/null' | complete
+        })
+        let expected_nixgl = (
+            $output.stdout
+            | lines
+            | where {|line| $line | str starts-with "__EXPECTED__" }
+            | get -o 0
+            | default ""
+            | str replace "__EXPECTED__" ""
+            | str trim
+        )
+        let trace = ($output.stderr | default "")
+        let expected_self_line = ('+ self_nixgl=' + $expected_nixgl)
+        let expected_exec_prefix = ('+ exec ' + $expected_nixgl + ' ')
+
+        if (
+            ($output.exit_code == 0)
+            and ($expected_nixgl | is-not-empty)
+            and ($trace | str contains $expected_self_line)
+            and ($trace | str contains $expected_exec_prefix)
+        ) {
+            print "  ✅ Managed Ghostty wrapper now finds sibling nixGL without relying on ambient DEVENV_PROFILE"
+            true
+        } else {
+            let trace_tail = ($trace | lines | last 20 | str join "\n")
+            print $"  ❌ Unexpected result: exit=($output.exit_code) expected_nixgl=($expected_nixgl) stderr=($trace_tail)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Regression: maintainer commands resolve a writable repo root even when the stable CLI carries an installed runtime env.
 def test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env [] {
@@ -420,6 +467,7 @@ def main [] {
         (test_issue_bead_reconciliation_plan)
         (test_issue_bead_comment_plan)
         (test_source_devenv_shell_clears_inherited_runtime_aliases)
+        (test_managed_wrapper_prefers_sibling_nixgl_without_ambient_profile)
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
         (test_runtime_project_lookup_stays_read_only_until_materialized)
         (test_nushell_initializer_restores_current_path_first)
