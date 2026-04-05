@@ -49,7 +49,7 @@ Without naming that split explicitly, helpers keep making the wrong leap:
   - `launch_state.json`
   - recorded rebuild hashes
   - generated configs under `~/.local/share/yazelix/configs/`
-  - the runtime project workspace under `~/.local/share/yazelix/runtime/project`
+  - the runtime project workspace under `~/.local/share/yazelix/runtime/project`, including optional `.devenv/profile` and `.devenv/gc/shell` helper artifacts
   - the shipped runtime tree itself
 - The built `devenv` profile path is a materialized runtime artifact.
   - `DEVENV_PROFILE` is the live activation of that artifact in the current process.

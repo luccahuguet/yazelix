@@ -53,6 +53,7 @@ Without a sharper contract:
   - Default location: `~/.local/share/yazelix`
   - Canonical environment variable: `YAZELIX_STATE_DIR`
   - Contents include generated configs, cached launch-profile state, rebuild state, and other derived runtime artifacts.
+  - The runtime-project workspace under `~/.local/share/yazelix/runtime/project` is part of this state root, including optional `.devenv` helper artifacts produced by `devenv`.
   - It is the materialized result of combining user intent with the shipped runtime.
 - Live session activation state has no canonical filesystem root.
   - It is the current process-local activation of a built profile and session.
@@ -66,6 +67,10 @@ Without a sharper contract:
   - Examples: terminal wrappers, desktop launchers, `yzx` menu/popup helpers, bundled Yazi plugins, editor integration scripts.
 - User-facing config lookups must resolve through the config root, not through the runtime root.
 - Generated configs and cached state must resolve through the state root or the derived runtime config paths, not through the source checkout.
+- Runtime-project `.devenv` helper artifacts are not canonical launch truth by themselves.
+  - `devenv build shell` output and recorded launch state are the stable reusable-profile evidence.
+  - `.devenv/profile` and `.devenv/gc/shell` under the runtime-project workspace may be absent in a fresh state root.
+  - Code may use those `.devenv` entries as fallback/bootstrap evidence only when they already exist.
 - Runtime/profile identity should not be inferred from whichever shell the user happens to be sitting in.
   - Maintainer shells may still hold an older `DEVENV_PROFILE`.
   - That older shell profile is stale live activation state, not necessarily stale materialized launch state.

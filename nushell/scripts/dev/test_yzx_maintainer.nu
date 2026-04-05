@@ -282,6 +282,97 @@ def test_runtime_project_lookup_stays_read_only_until_materialized [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=0 uniqueness=2 total=8/10
+# Regression: a successful build-shell keeps runtime-project profile artifacts aligned with the built profile.
+def test_build_shell_output_records_runtime_owned_profile_without_runtime_project_artifacts [] {
+    print "🧪 Testing build-shell output records the runtime-owned profile without requiring runtime-project .devenv artifacts..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_runtime_project_shell_align_XXXXXX | str trim)
+    let temp_home = ($tmp_root | path join "home")
+    let config_dir = ($temp_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
+    let state_dir = ($tmp_root | path join "state")
+    let bootstrap_module = ($repo_root | path join "nushell" "scripts" "utils" "environment_bootstrap.nu")
+    let launch_state_module = ($repo_root | path join "nushell" "scripts" "utils" "launch_state.nu")
+
+    mkdir $user_config_dir
+    mkdir $state_dir
+    cp ($repo_root | path join "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
+    cp ($repo_root | path join "yazelix_packs_default.toml") ($user_config_dir | path join "yazelix_packs.toml")
+
+    let result = (try {
+        let snippet = (
+            [
+                $"use \"($bootstrap_module)\" [get_devenv_base_command]"
+                $"use \"($launch_state_module)\" [record_launch_profile_state resolve_profile_from_build_shell_output resolve_runtime_owned_profile]"
+                "let base = (get_devenv_base_command --quiet --skip-shellhook-welcome)"
+                "let full = ($base | append [\"build\" \"shell\"])"
+                "let cmd_bin = ($full | first)"
+                "let cmd_args = ($full | skip 1)"
+                "let result = (^$cmd_bin ...$cmd_args | complete)"
+                "if $result.exit_code != 0 {"
+                "    print --raw ($result.stdout | default \"\")"
+                "    print --stderr --raw ($result.stderr | default \"\")"
+                "    exit 1"
+                "}"
+                "let built_profile = (resolve_profile_from_build_shell_output $result.stdout)"
+                "let project_root = ($env.YAZELIX_STATE_DIR | path join \"runtime\" \"project\")"
+                "let profile_link = ($project_root | path join \".devenv\" \"profile\")"
+                "let shell_link = ($project_root | path join \".devenv\" \"gc\" \"shell\")"
+                "if ($profile_link | path exists) { rm --force $profile_link }"
+                "if ($shell_link | path exists) { rm --force $shell_link }"
+                "record_launch_profile_state {combined_hash: \"probe-hash\"} $built_profile"
+                "let runtime_owned = (resolve_runtime_owned_profile)"
+                "let recorded_state = (open (($env.YAZELIX_STATE_DIR | path join \"state\" \"launch_state.json\")))"
+                "{"
+                "    built_profile: $built_profile"
+                "    runtime_owned: $runtime_owned"
+                "    recorded_profile: ($recorded_state.profile_path | into string)"
+                "    profile_link_exists: ($profile_link | path exists)"
+                "    shell_link_exists: ($shell_link | path exists)"
+                "} | to json -r"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            HOME: $temp_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            ^nu -c $snippet | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 {
+            $stdout | lines | last | from json
+        } else {
+            null
+        }
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved != null)
+            and (($resolved.built_profile? | default "") | is-not-empty)
+            and ($resolved.built_profile == $resolved.runtime_owned)
+            and ($resolved.built_profile == $resolved.recorded_profile)
+            and (not $resolved.profile_link_exists)
+            and (not $resolved.shell_link_exists)
+        ) {
+            print "  ✅ Build-shell output and recorded launch state are enough for runtime-owned profile resolution"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 # Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=1 total=6/10
 # Invariant: generated Nushell initializers restore current PATH entries ahead of the saved PATH.
 def test_nushell_initializer_restores_current_path_first [] {
@@ -470,6 +561,7 @@ def main [] {
         (test_managed_wrapper_prefers_sibling_nixgl_without_ambient_profile)
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
         (test_runtime_project_lookup_stays_read_only_until_materialized)
+        (test_build_shell_output_records_runtime_owned_profile_without_runtime_project_artifacts)
         (test_nushell_initializer_restores_current_path_first)
         (test_startup_profile_report_schema_is_structured_and_summarizable)
         (test_startup_profile_harness_records_real_startup_boundaries)

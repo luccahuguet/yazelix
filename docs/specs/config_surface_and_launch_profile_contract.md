@@ -79,6 +79,11 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
   - the recorded combined hash matching the current combined hash
   - the required synced runtime assets still existing
 - For `devenv build shell` flows, Yazelix should resolve the embedded `DEVENV_PROFILE` from the generated shell artifact instead of treating the shell script path itself as the reusable profile.
+- The `devenv build shell` command output is the canonical build-time evidence for the fresh reusable profile.
+  - The shell path reported in build output must be resolved back to its embedded `DEVENV_PROFILE`.
+  - Runtime-project `.devenv/profile` and `.devenv/gc/shell` entries under `~/.local/share/yazelix/runtime/project` are secondary build artifacts only.
+  - Those runtime-project `.devenv` entries may be absent after a fresh build in a new state root, so launch correctness must not require them.
+  - Helpers may use them as fallback evidence only when they already exist.
 - The current combined hash is derived from:
   - rebuild-relevant Yazelix config keys
   - `devenv.lock`
@@ -117,7 +122,8 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
 8. When install or shell-hook setup runs from a stale maintainer shell, it must not overwrite `launch_state.json` with that stale shell profile. Real launch and refresh flows own launch-profile recording.
 9. When `yzx refresh` builds through `devenv build shell`, Yazelix records the embedded `DEVENV_PROFILE`, not the shell-script wrapper path and not an unrelated ambient maintainer-shell profile.
 10. When a stale maintainer shell and a correct `launch_state.json` coexist, the docs and helpers treat that as a live-activation-versus-materialized-state split, not as contradictory runtime truth.
-11. When a validator is added for this contract, it checks maintained ownership and parity rules rather than noisy generated-output trivia.
+11. When a fresh state root runs `devenv build shell`, Yazelix can still derive and record the reusable profile from build output even if `runtime/project/.devenv/profile` and `runtime/project/.devenv/gc/shell` do not exist yet.
+12. When a validator is added for this contract, it checks maintained ownership and parity rules rather than noisy generated-output trivia.
 
 ## Verification
 
@@ -126,6 +132,7 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
 - unit tests: `nushell/scripts/utils/config_state.nu`
 - integration tests: `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
 - integration tests: `nu nushell/scripts/dev/test_yzx_core_commands.nu`
+- maintainer tests: `nu nushell/scripts/dev/test_yzx_maintainer.nu`
 - manual verification: inspect a manual TOML setup and a Home Manager setup to confirm they produce the same effective ownership model
 
 ## Traceability
@@ -134,6 +141,7 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
 - Defended by: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_core_commands.nu`
+- Defended by: `nu nushell/scripts/dev/test_yzx_maintainer.nu`
 
 ## Open Questions
 

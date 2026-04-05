@@ -17,8 +17,8 @@ def format_size [bytes: int] {
     }
 }
 
-# Get the devenv shell derivation path (reliable source of truth)
-# Uses .devenv/gc/shell symlink which is the authoritative GC root for the current shell
+# Get the best available runtime-project devenv shell/profile evidence
+# Runtime-project .devenv artifacts are best-effort helper state, not canonical launch truth
 def get_devenv_shell [] {
     let yazelix_dir = (get_existing_yazelix_runtime_project_dir)
     if $yazelix_dir == null {
