@@ -373,6 +373,101 @@ def test_build_shell_output_records_runtime_owned_profile_without_runtime_projec
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=0 uniqueness=2 total=8/10
+# Regression: vendored Yazi plugin refresh applies declared overlay patches and refuses dirty managed files.
+def test_vendored_yazi_plugin_refresh_applies_patch_and_refuses_dirty_targets [] {
+    print "🧪 Testing vendored Yazi plugin refresh applies overlay patches and refuses dirty targets..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_vendored_yazi_refresh_XXXXXX | str trim)
+    let upstream_dir = ($tmp_root | path join "upstream")
+    let target_repo = ($tmp_root | path join "repo")
+    let target_plugin_dir = ($target_repo | path join "configs" "yazi" "plugins" "demo.yazi")
+    let patch_dir = ($target_repo | path join "config_metadata" "vendored_yazi_plugin_patches")
+    let manifest_path = ($target_repo | path join "config_metadata" "vendored_yazi_plugins.toml")
+    let patch_path = ($patch_dir | path join "demo.patch")
+    let target_main = ($target_plugin_dir | path join "main.lua")
+    let update_script = ($repo_root | path join "nushell" "scripts" "dev" "update_yazi_plugins.nu")
+
+    mkdir $upstream_dir
+    mkdir $target_plugin_dir
+    mkdir $patch_dir
+
+    "return \"base\"\n" | save --force --raw ($upstream_dir | path join "main.lua")
+    do {
+        cd $upstream_dir
+        ^git init -q
+        ^git config user.email test@example.com
+        ^git config user.name "Yazelix Test"
+        ^git add main.lua
+        ^git commit -q -m "initial upstream"
+    }
+    let pinned_rev = (^git -C $upstream_dir rev-parse HEAD | str trim)
+
+    [
+        '[metadata]'
+        'description = "test vendored yazi plugin manifest"'
+        ''
+        '[[plugins]]'
+        'name = "demo.yazi"'
+        'ownership = "upstream"'
+        $"upstream_repo = \"($upstream_dir)\""
+        'tracking_ref = "main"'
+        $"pinned_rev = \"($pinned_rev)\""
+        'source_subdir = "."'
+        'target_dir = "configs/yazi/plugins/demo.yazi"'
+        'managed_files = ["main.lua"]'
+        'patch_file = "config_metadata/vendored_yazi_plugin_patches/demo.patch"'
+    ] | str join "\n" | save --force --raw $manifest_path
+
+    [
+        'diff --git a/main.lua b/main.lua'
+        '--- a/main.lua'
+        '+++ b/main.lua'
+        '@@ -1 +1 @@'
+        '-return "base"'
+        '+return "patched"'
+        ''
+    ] | str join "\n" | save --force --raw $patch_path
+
+    "return \"stale\"\n" | save --force --raw $target_main
+
+    do {
+        cd $target_repo
+        ^git init -q
+        ^git config user.email test@example.com
+        ^git config user.name "Yazelix Test"
+        ^git add config_metadata configs
+        ^git commit -q -m "seed vendored target"
+    }
+
+    let result = (try {
+        let first_run = (^nu $update_script --repo-root $target_repo --manifest $manifest_path --no-bump | complete)
+        let first_content = (open --raw $target_main | str trim)
+        let second_run = (^nu $update_script --repo-root $target_repo --manifest $manifest_path --no-bump | complete)
+        let second_text = ((($second_run.stdout | default "") + "\n" + ($second_run.stderr | default "")) | str trim)
+
+        if (
+            ($first_run.exit_code == 0)
+            and ($first_content == 'return "patched"')
+            and ($second_run.exit_code != 0)
+            and ($second_text | str contains "Local changes detected in managed vendored plugin files")
+        ) {
+            print "  ✅ Vendored Yazi plugin refresh applies overlay patches and protects dirty managed files"
+            true
+        } else {
+            print $"  ❌ Unexpected result: first_exit=($first_run.exit_code) first_content=($first_content) second_exit=($second_run.exit_code) second_output=($second_text)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 # Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=1 total=6/10
 # Invariant: generated Nushell initializers restore current PATH entries ahead of the saved PATH.
 def test_nushell_initializer_restores_current_path_first [] {
@@ -562,6 +657,7 @@ def main [] {
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
         (test_runtime_project_lookup_stays_read_only_until_materialized)
         (test_build_shell_output_records_runtime_owned_profile_without_runtime_project_artifacts)
+        (test_vendored_yazi_plugin_refresh_applies_patch_and_refuses_dirty_targets)
         (test_nushell_initializer_restores_current_path_first)
         (test_startup_profile_report_schema_is_structured_and_summarizable)
         (test_startup_profile_harness_records_real_startup_boundaries)

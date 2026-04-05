@@ -1,0 +1,43 @@
+[metadata]
+description = "Pinned source map for vendored Yazi plugin runtime files refreshed by maintainer tooling."
+
+[[plugins]]
+name = "auto-layout.yazi"
+ownership = "local_fork"
+upstream_repo = "https://github.com/luccahuguet/auto-layout.yazi.git"
+tracking_ref = "main"
+pinned_rev = "018ffe74561984b11669d5bb68bc0ffd142585d8"
+source_subdir = "."
+target_dir = "configs/yazi/plugins/auto-layout.yazi"
+managed_files = ["main.lua"]
+
+[[plugins]]
+name = "git.yazi"
+ownership = "upstream"
+upstream_repo = "https://github.com/yazi-rs/plugins.git"
+tracking_ref = "main"
+pinned_rev = "9a095057d698aaaedc4dd23d638285bd3fd647e9"
+source_subdir = "git.yazi"
+target_dir = "configs/yazi/plugins/git.yazi"
+managed_files = ["main.lua"]
+patch_file = "config_metadata/vendored_yazi_plugin_patches/git.yazi.patch"
+
+[[plugins]]
+name = "lazygit.yazi"
+ownership = "upstream"
+upstream_repo = "https://github.com/Lil-Dank/lazygit.yazi.git"
+tracking_ref = "main"
+pinned_rev = "afa5e881502bbd7a43dd410b55932e8e589c4452"
+source_subdir = "."
+target_dir = "configs/yazi/plugins/lazygit.yazi"
+managed_files = ["main.lua"]
+
+[[plugins]]
+name = "starship.yazi"
+ownership = "upstream"
+upstream_repo = "https://github.com/Rolv-Apneseth/starship.yazi.git"
+tracking_ref = "main"
+pinned_rev = "eca186171c5f2011ce62712f95f699308251c749"
+source_subdir = "."
+target_dir = "configs/yazi/plugins/starship.yazi"
+managed_files = ["main.lua"]

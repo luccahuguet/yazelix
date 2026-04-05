@@ -105,6 +105,26 @@ def sync_vendored_zjstatus [] {
     }
 }
 
+def sync_vendored_yazi_plugins [quiet: bool = false] {
+    let update_script = ((get_dev_repo_root) | path join "nushell" "scripts" "dev" "update_yazi_plugins.nu")
+    if not ($update_script | path exists) {
+        print $"❌ Vendored Yazi plugin refresh helper not found: ($update_script)"
+        exit 1
+    }
+
+    print "🔄 Refreshing vendored Yazi plugin runtime files..."
+    try {
+        if $quiet {
+            ^nu $update_script --quiet
+        } else {
+            ^nu $update_script
+        }
+    } catch {|err|
+        print $"❌ Failed to refresh vendored Yazi plugin runtime files: ($err.msg)"
+        exit 1
+    }
+}
+
 def get_declared_yazelix_version [] {
     let constants_path = ((get_dev_repo_root) | path join "nushell" "scripts" "utils" "constants.nu")
     let constants = (open --raw $constants_path)
@@ -477,16 +497,17 @@ export def "yzx dev update" [
     sync_runtime_pins
     sync_readme_version_marker
     sync_vendored_zjstatus
+    sync_vendored_yazi_plugins $quiet
 
     if $no_install_runtime {
         print "⚠️  Installed runtime unchanged \(--no-install-runtime\)."
         print "   Run `nix run .#install` before restarting Yazelix if you want the updated maintainer inputs locally."
-        print "✅ Inputs, canaries, runtime pins, README version marker, and vendored zjstatus are in sync in the repo checkout. Review and commit the changes if everything looks good."
+        print "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, and vendored Yazi plugin runtime files are in sync in the repo checkout. Review and commit the changes if everything looks good."
         return
     }
 
     install_updated_runtime $yazelix_dir $quiet
-    print "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, and the local installed runtime are in sync. Review and commit the changes if everything looks good."
+    print "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, vendored Yazi plugin runtime files, and the local installed runtime are in sync. Review and commit the changes if everything looks good."
 }
 
 export def "yzx dev sync_terminal_configs" [] {

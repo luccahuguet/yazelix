@@ -1,0 +1,15 @@
+diff --git a/main.lua b/main.lua
+index b80c183..0445ca9 100644
+--- a/main.lua
++++ b/main.lua
+@@ -190,8 +190,8 @@ local function status(cwd, paths)
+ 	-- stylua: ignore
+ 	local output, err = Command("git")
+ 		:cwd(tostring(cwd))
+-		:args({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--porcelain", "-unormal", "--no-renames", "--ignored=matching" })
+-		:args(paths)
++		:arg({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--porcelain", "-unormal", "--no-renames", "--ignored=matching" })
++		:arg(paths)
+ 		:stdout(Command.PIPED)
+ 		:output()
+ 	if not output then

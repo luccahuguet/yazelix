@@ -154,7 +154,7 @@ Upgrade Determinate Nix
 - `yzx update nix`: Upgrade Determinate Nix via `determinate-nixd` (`--yes` skips prompt, `--verbose` shows command; sudo required; only works if Determinate Nix is installed)
 
 Maintainer-only updates:
-- `yzx dev update`: Refresh `devenv.lock` via `devenv update`, run canary refresh/build checks (`default`, `maximal`), then sync pinned runtime expectations and refresh the vendored `configs/zellij/plugins/zjstatus.wasm` (verbose by default; `--quiet` restores the low-noise path, `--yes` skips prompt, `--no-canary` skips the gate, `--canary-only` runs the gate without updating)
+- `yzx dev update`: Refresh `devenv.lock` via `devenv update`, run canary refresh/build checks (`default`, `maximal`), then sync pinned runtime expectations, refresh the vendored `configs/zellij/plugins/zjstatus.wasm`, and refresh vendored Yazi plugin runtime files from the pinned source map in `config_metadata/vendored_yazi_plugins.toml` (verbose by default; `--quiet` restores the low-noise path, `--yes` skips prompt, `--no-canary` skips the gate, `--canary-only` runs the gate without updating)
 - `yzx dev sync_terminal_configs`: Regenerate terminal configs and sync snapshots into `configs/terminal_emulators/`
 - `yzx dev build_pane_orchestrator [--sync]`: Build the Zellij pane orchestrator wasm for `wasm32-wasip1`; `--sync` also updates the tracked/runtime plugin paths after a successful build, preserves previously granted plugin permissions onto the stable runtime path when possible, and regenerates Zellij config. After syncing, prefer restarting Yazelix over reloading the plugin in place. If the toolchain is missing, enable the `rust_wasi` pack.
 
@@ -299,7 +299,7 @@ yzx update                    # Show update targets
 yzx update all               # Refresh the installed Yazelix runtime
 yzx update runtime            # Refresh the installed Yazelix runtime via the flake installer
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
-yzx dev update --yes          # Refresh all inputs, run canaries, sync pins, and refresh vendored zjstatus
+yzx dev update --yes          # Refresh all inputs, run canaries, sync pins, refresh vendored zjstatus, and refresh vendored Yazi plugin runtime files
 yzx dev update --canary-only --canaries [default]  # Run only the default canary
 yzx dev build_pane_orchestrator --sync  # Build and sync the pane orchestrator wasm (enable rust_wasi first)
 
