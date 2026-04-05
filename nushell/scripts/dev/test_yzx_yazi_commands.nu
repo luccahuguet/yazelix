@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ./yzx_test_helpers.nu [setup_managed_config_fixture]
-use ../integrations/yazi.nu [get_managed_editor_kind, get_ya_command, get_yazi_command, refresh_active_sidebar_yazi, resolve_managed_editor_open_strategy]
+use ../integrations/yazi.nu [get_active_sidebar_yazi_id, get_managed_editor_kind, get_ya_command, get_yazi_command, refresh_active_sidebar_yazi, resolve_managed_editor_open_strategy]
 use ../integrations/zellij.nu toggle_editor_sidebar_focus
 
 def write_executable_fixture_file [path: string, lines: list<string>] {
@@ -167,10 +167,10 @@ recommended_deps = true
     $result
 }
 
-# Regression: sidebar refresh must refresh the folder and explicitly rerun git.yazi on the active sidebar instance.
+# Regression: sidebar refresh must refresh the folder and rerun both git and starship sidebar integrations for the active sidebar instance.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_refresh_active_sidebar_yazi_emits_refresh_to_cached_sidebar_instance [] {
-    print "🧪 Testing active sidebar Yazi refresh emits both folder and git refresh actions to the cached sidebar instance..."
+    print "🧪 Testing active sidebar Yazi refresh emits the folder refresh plus dedicated git and starship reruns to the cached sidebar instance..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_yazi_sidebar_refresh"
@@ -215,13 +215,75 @@ ya_command = "ya"
             ($refresh_result.status == "ok")
             and ($ya_args == [
                 "emit-to sidebar-yazi-123 refresh",
-                "emit-to sidebar-yazi-123 plugin git",
+                "emit-to sidebar-yazi-123 plugin git refresh-sidebar",
+                "emit-to sidebar-yazi-123 plugin starship /home/test/workspace",
             ])
         ) {
-            print "  ✅ active sidebar Yazi refresh emits both targeted refresh actions to the cached sidebar instance"
+            print "  ✅ active sidebar Yazi refresh emits the targeted folder refresh plus dedicated git and starship rerun signals"
             true
         } else {
             print $"  ❌ Unexpected sidebar refresh result: result=($refresh_result | to json -r) ya_args=($ya_args | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: active sidebar state lookup must prefer the current session's exact sidebar cache over a newer foreign session with the same pane id.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_get_active_sidebar_yazi_id_prefers_exact_session_and_pane_match [] {
+    print "🧪 Testing active sidebar Yazi lookup prefers the current session's exact sidebar state over foreign sessions with the same pane id..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_yazi_sidebar_state_exact_match"
+        '[yazi]
+ya_command = "ya"
+'
+    )
+
+    let result = (try {
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        let state_dir = ($fixture.tmp_home | path join ".local" "share" "yazelix" "state" "yazi" "sidebar")
+        mkdir $fake_bin
+        mkdir $state_dir
+
+        write_executable_fixture_file ($fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            "printf '%s\\n' '{\"sidebar_pane_id\":\"terminal:0\"}'"
+            "exit 0"
+        ]
+
+        let current_state = ($state_dir | path join "current-session__terminal_0.txt")
+        let foreign_state = ($state_dir | path join "foreign-session__terminal_0.txt")
+        "current-yazi-id\n/home/current\n" | save --force --raw $current_state
+        "foreign-yazi-id\n/home/foreign\n" | save --force --raw $foreign_state
+
+        # Make the foreign session file newer to defend the exact regression:
+        # same pane id, wrong session, higher mtime.
+        sleep 50ms
+        "foreign-yazi-id\n/home/foreign\n" | save --force --raw $foreign_state
+
+        let resolved = (with-env {
+            HOME: $fixture.tmp_home
+            PATH: ($env.PATH | prepend $fake_bin)
+            ZELLIJ: "1"
+            ZELLIJ_SESSION_NAME: "current-session"
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        } {
+            get_active_sidebar_yazi_id
+        })
+
+        if $resolved == "current-yazi-id" {
+            print "  ✅ active sidebar lookup now prefers the exact current session and pane cache"
+            true
+        } else {
+            print $"  ❌ Unexpected active sidebar id: ($resolved | to nuon)"
             false
         }
     } catch {|err|

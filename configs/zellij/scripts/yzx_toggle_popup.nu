@@ -30,6 +30,10 @@ def maybe_refresh_active_sidebar_yazi [action: record] {
         return
     }
 
+    # Zellij reports popup closure before focus restoration fully settles.
+    # Give the sidebar instance a moment to become active again before emitting into Yazi.
+    sleep 150ms
+
     let yazi_integration = (get_runtime_script_path "nushell/scripts/integrations/yazi.nu")
     let command = ([
         $"use '($yazi_integration)' [refresh_active_sidebar_yazi]"

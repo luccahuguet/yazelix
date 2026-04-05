@@ -1,6 +1,77 @@
+diff --git a/main.lua b/main.lua
+index dcb0ce1..07ab651 100644
 --- a/main.lua
 +++ b/main.lua
-@@ -152,6 +152,73 @@
+@@ -18,34 +18,45 @@ local CODES = {
+ 	clean = 0,
+ }
+ 
+-local PATTERNS = {
+-	{ "!$", CODES.ignored },
+-	{ "?$", CODES.untracked },
+-	{ "[MT]", CODES.modified },
+-	{ "[AC]", CODES.added },
+-	{ "D", CODES.deleted },
+-	{ "U", CODES.updated },
+-	{ "[AD][AD]", CODES.updated },
+-}
++---@param signs string
++---@return CODES?
++local function status_code(signs)
++	local index = signs:sub(1, 1)
++	local worktree = signs:sub(2, 2)
++
++	if signs == "!!" then
++		return CODES.ignored
++	elseif signs == "??" then
++		return CODES.untracked
++	elseif index == "U" or worktree == "U" or signs:find("[AD][AD]") then
++		return CODES.updated
++	elseif index == "D" or worktree == "D" then
++		return CODES.deleted
++	elseif index:find("[AC]") then
++		return CODES.added
++	elseif index:find("[MT]") then
++		return CODES.updated
++	elseif worktree:find("[MT]") then
++		return CODES.modified
++	end
++end
+ 
+ ---@param line string
+ ---@return CODES, string
+ local function match(line)
+ 	local signs = line:sub(1, 2)
+-	for _, p in ipairs(PATTERNS) do
+-		local path, pattern, code = nil, p[1], p[2]
+-		if signs:find(pattern) then
+-			path = line:sub(4, 4) == '"' and line:sub(5, -2) or line:sub(4)
+-			path = WINDOWS and path:gsub("/", "\\") or path
+-		end
+-		if not path then
+-		elseif path:find("[/\\]$") then
+-			-- Mark the ignored directory as `excluded`, so we can process it further within `propagate_down`
+-			return code == CODES.ignored and CODES.excluded or code, path:sub(1, -2)
+-		else
+-			return code, path
+-		end
+-		---@diagnostic disable-next-line: missing-return
++	local code = status_code(signs)
++	if not code then
++		return
++	end
++
++	local path = line:sub(4, 4) == '"' and line:sub(5, -2) or line:sub(4)
++	path = WINDOWS and path:gsub("/", "\\") or path
++	if path:find("[/\\]$") then
++		-- Mark the ignored directory as `excluded`, so we can process it further within `propagate_down`
++		return code == CODES.ignored and CODES.excluded or code, path:sub(1, -2)
++	else
++		return code, path
+ 	end
+ end
+ 
+@@ -152,6 +163,115 @@ local remove = ya.sync(function(st, cwd)
  	st.repos[repo] = nil
  end)
  
@@ -47,24 +118,66 @@
 +end
 +
 +---@return { cwd: string, paths: string[], has_directories: boolean }?
-+local snapshot_active_window = ya.sync(function()
++local snapshot_active_folder = ya.sync(function()
 +	local current = cx and cx.active and cx.active.current
-+	if not current or not current.cwd then
++	if not current or not current.files or #current.files == 0 then
 +		return nil
 +	end
 +
 +	local paths, has_directories = {}, false
-+	for _, file in ipairs(current.window) do
-+		paths[#paths + 1] = tostring(file.url)
-+		has_directories = has_directories or file.cha.is_dir
++	local first = current.files[1]
++	if not first or not first.url then
++		return nil
++	end
++
++	local cwd = first.url.base or first.url.parent
++	if not cwd then
++		return nil
++	end
++
++	for i = 1, #current.files do
++		local file = current.files[i]
++		if file then
++			paths[#paths + 1] = tostring(file.url)
++			has_directories = has_directories or file.cha.is_dir
++		end
 +	end
 +
 +	return {
-+		cwd = tostring(current.cwd),
++		cwd = tostring(cwd),
 +		paths = paths,
 +		has_directories = has_directories,
 +	}
 +end)
++
++---@param st State
++---@param file File
++---@return CODES
++local function code_for_file(st, file)
++	if not file.in_current then
++		return CODES.clean
++	end
++
++	local url = file.url
++	local cwd = url.base or url.parent
++	if not cwd then
++		return CODES.unknown
++	end
++
++	local repo = st.dirs[tostring(cwd)]
++	if not repo then
++		return CODES.unknown
++	elseif repo == CODES.excluded then
++		return CODES.ignored
++	end
++
++	local repo_state = st.repos[repo]
++	if not repo_state then
++		return CODES.clean
++	end
++
++	return repo_state[tostring(url):sub(#repo + 2)] or CODES.clean
++end
 +
 +---@param content string
 +local function fail(content)
@@ -74,7 +187,67 @@
  ---@param st State
  ---@param opts Options
  local function setup(st, opts)
-@@ -219,41 +286,31 @@
+@@ -169,7 +289,7 @@ local function setup(st, opts)
+ 		[CODES.modified] = t.modified or ui.Style():fg("yellow"),
+ 		[CODES.added] = t.added or ui.Style():fg("green"),
+ 		[CODES.deleted] = t.deleted or ui.Style():fg("red"),
+-		[CODES.updated] = t.updated or ui.Style():fg("yellow"),
++		[CODES.updated] = t.updated or ui.Style():fg("cyan"),
+ 		[CODES.clean] = t.clean or ui.Style(),
+ 	}
+ 	local signs = {
+@@ -179,21 +299,43 @@ local function setup(st, opts)
+ 		[CODES.modified] = t.modified_sign or " ",
+ 		[CODES.added] = t.added_sign or " ",
+ 		[CODES.deleted] = t.deleted_sign or " ",
+-		[CODES.updated] = t.updated_sign or " ",
++		[CODES.updated] = t.updated_sign or " ",
+ 		[CODES.clean] = t.clean_sign or "",
+ 	}
+ 
++	Entity._yazelix_git_text_styles = {
++		[CODES.untracked] = styles[CODES.untracked],
++		[CODES.modified] = styles[CODES.modified],
++		[CODES.added] = styles[CODES.added],
++		[CODES.deleted] = styles[CODES.deleted],
++		[CODES.updated] = styles[CODES.updated],
++	}
++	Entity._yazelix_git_code_for_file = function(file)
++		return code_for_file(st, file)
++	end
++
++	if not Entity._yazelix_git_style_patched then
++		local entity_style = Entity.style
++		Entity.style = function(self)
++			local style = entity_style(self)
++			local resolve_code = Entity._yazelix_git_code_for_file
++			local text_styles = Entity._yazelix_git_text_styles
++			if not resolve_code or not text_styles then
++				return style
++			end
++
++			local text_style = text_styles[resolve_code(self._file)]
++			return text_style and style:patch(text_style) or style
++		end
++		Entity._yazelix_git_style_patched = true
++	end
++
+ 	Linemode:children_add(function(self)
+ 		if not self._file.in_current then
+ 			return ""
+ 		end
+ 
+-		local url = self._file.url
+-		local repo = st.dirs[tostring(url.base or url.parent)]
+-		local code = CODES.unknown
+-		if repo then
+-			code = repo == CODES.excluded and CODES.ignored or st.repos[repo][tostring(url):sub(#repo + 2)] or CODES.clean
+-		end
++		local code = code_for_file(st, self._file)
+ 
+ 		if signs[code] == "" then
+ 			return ""
+@@ -219,41 +361,31 @@ local function fetch(_, job)
  		paths[#paths + 1] = tostring(file.url)
  	end
  
@@ -106,7 +279,7 @@
 -	if job.files[1].cha.is_dir then
 -		ya.dict_merge(changed, bubble_up(changed))
 +local function entry()
-+	local snapshot = snapshot_active_window()
++	local snapshot = snapshot_active_folder()
 +	if not snapshot or #snapshot.paths == 0 then
 +		return
  	end

@@ -61,11 +61,34 @@ local function write_sidebar_state()
 	file:close()
 end
 
+local function emit_sidebar_git_refresh()
+	local emit = ya.emit or ya.manager_emit
+	emit("plugin", { "git", "refresh-sidebar" })
+end
+
+local function emit_sidebar_starship_refresh()
+	local cwd = current_cwd()
+	if not cwd or cwd == "" then
+		return
+	end
+
+	local emit = ya.emit or ya.manager_emit
+	emit("plugin", { "starship", ya.quote(cwd, true) })
+end
+
 function M.setup()
 	write_sidebar_state()
-	ps.sub("cd", write_sidebar_state)
-	ps.sub("tab", write_sidebar_state)
-	ps.sub("hover", write_sidebar_state)
+	emit_sidebar_git_refresh()
+	emit_sidebar_starship_refresh()
+
+	ps.sub("cd", function()
+		write_sidebar_state()
+		emit_sidebar_git_refresh()
+	end)
+	ps.sub("tab", function()
+		write_sidebar_state()
+		emit_sidebar_git_refresh()
+	end)
 end
 
 return M

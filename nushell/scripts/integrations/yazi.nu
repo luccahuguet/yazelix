@@ -42,7 +42,19 @@ def has_ya_command [] {
 
 def run_ya_emit_to [yazi_id: string, action: string, ...args: string] {
     let ya_command = (get_ya_command)
-    run-external $ya_command "emit-to" $yazi_id $action ...$args
+    let result = (^$ya_command "emit-to" $yazi_id $action ...$args | complete)
+    if $result.exit_code != 0 {
+        let stderr = ($result.stderr | default "" | str trim)
+        let stdout = ($result.stdout | default "" | str trim)
+        let details = if ($stderr | is-not-empty) {
+            $stderr
+        } else if ($stdout | is-not-empty) {
+            $stdout
+        } else {
+            $"exit code ($result.exit_code)"
+        }
+        error make {msg: $"Failed to emit Yazi action `($action)` to instance `($yazi_id)`: ($details)"}
+    }
 }
 
 # Check if the editor command is Helix (supports both simple names and full paths)
@@ -251,17 +263,35 @@ def read_active_sidebar_state [] {
     )
 
     let session_name = (get_current_zellij_session_name)
-    let pane_paths = if ($sidebar_pane_id | is-not-empty) {
-        get_sidebar_pane_state_files $sidebar_pane_id
+    let exact_state_path = if (($session_name | is-not-empty) and ($sidebar_pane_id | is-not-empty)) {
+        let candidate = (get_sidebar_yazi_state_path $session_name $sidebar_pane_id)
+        if ($candidate | path exists) {
+            $candidate
+        } else {
+            null
+        }
     } else {
-        []
+        null
     }
+
+    if ($exact_state_path | is-not-empty) {
+        let exact_state = (read_sidebar_state_file $exact_state_path)
+        if ($exact_state | is-not-empty) {
+            return $exact_state
+        }
+    }
+
     let session_paths = if ($session_name | is-not-empty) {
         get_session_sidebar_state_files $session_name
     } else {
         []
     }
-    let candidate_paths = ($pane_paths ++ $session_paths | uniq)
+    let pane_paths = if ($sidebar_pane_id | is-not-empty) {
+        get_sidebar_pane_state_files $sidebar_pane_id
+    } else {
+        []
+    }
+    let candidate_paths = ($session_paths ++ $pane_paths | uniq)
 
     for state_path in $candidate_paths {
         let sidebar_state = (read_sidebar_state_file $state_path)
@@ -383,8 +413,12 @@ export def refresh_active_sidebar_yazi [log_file: string = "yazi_refresh.log"] {
 
     try {
         run_ya_emit_to $sidebar_state.yazi_id "refresh"
-        run_ya_emit_to $sidebar_state.yazi_id "plugin" "git"
-        log_to_file $log_file $"Refreshed active sidebar Yazi instance and reran git decorations: ($sidebar_state.yazi_id)"
+        run_ya_emit_to $sidebar_state.yazi_id "plugin" "git" "refresh-sidebar"
+        let sidebar_cwd = ($sidebar_state.cwd? | default "" | str trim)
+        if ($sidebar_cwd | is-not-empty) {
+            run_ya_emit_to $sidebar_state.yazi_id "plugin" "starship" $sidebar_cwd
+        }
+        log_to_file $log_file $"Refreshed active sidebar Yazi instance and reran sidebar integrations: ($sidebar_state.yazi_id)"
         {status: "ok", yazi_id: $sidebar_state.yazi_id}
     } catch {|err|
         log_to_file $log_file $"Failed to refresh active sidebar Yazi instance '($sidebar_state.yazi_id)': ($err.msg)"
