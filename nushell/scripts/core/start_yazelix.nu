@@ -3,8 +3,8 @@
 
 use ../utils/environment_bootstrap.nu *
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile]
-use ../utils/common.nu [describe_build_parallelism require_yazelix_dir]
+use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile resolve_runtime_owned_profile]
+use ../utils/common.nu [describe_build_parallelism require_yazelix_dir resolve_yazelix_nu_bin]
 use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/runtime_contract_checker.nu [
     check_generated_layout
@@ -30,6 +30,25 @@ def require_generated_layout [layout_path: string] {
     let check = (check_generated_layout $layout_path "startup")
     require_runtime_check $check | ignore
     $check.path
+}
+
+def run_startup_in_activated_profile [runtime_dir: string, inner_args: list<string>, --verbose, --skip-shellhook] {
+    let verbose_mode = $verbose
+    let nu_bin = (resolve_yazelix_nu_bin)
+
+    if $verbose_mode {
+        print "⚡ Starting directly from the activated Yazelix profile"
+    }
+
+    with-env {
+        HOME: $env.HOME
+        YAZELIX_STARTUP_PROFILE_PHASE: "activated_profile"
+    } {
+        if not $skip_shellhook {
+            ^$nu_bin $"($runtime_dir)/nushell/scripts/setup/environment.nu" --welcome-source start
+        }
+        ^$nu_bin ...$inner_args
+    }
 }
 
 def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse, --skip-refresh, --force-reenter] {
@@ -65,6 +84,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     let skip_refresh_mode = $skip_refresh
     let force_reenter_mode = $force_reenter
     mut activated_profile = false
+    mut shellhook_already_applied = false
 
     if $reuse_mode and $needs_refresh {
         print "⚡ Reuse mode enabled - using the last built Yazelix profile without rebuild."
@@ -137,27 +157,33 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
         $base_args
     }
 
+    if $should_refresh {
+        if $verbose_mode {
+            print $"♻️  Config changed - rebuilding environment using ($build_parallelism_description)"
+        } else if $refresh_output != "quiet" {
+            print $"♻️  Config changed - rebuilding environment using ($build_parallelism_description)"
+        }
+
+        if not $force_reenter_mode {
+            rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
+            let refreshed_profile = (resolve_runtime_owned_profile)
+            if ($refreshed_profile | is-not-empty) {
+                activate_launch_profile $config $refreshed_profile
+                $activated_profile = true
+                $shellhook_already_applied = true
+            }
+        }
+    }
+
+    if $activated_profile {
+        run_startup_in_activated_profile $yazelix_dir $inner_args --verbose=$verbose_mode --skip-shellhook=$shellhook_already_applied
+        return
+    }
+
     # Run devenv shell with explicit HOME.
     # The default shell is dynamically read from yazelix.toml configuration
     # and passed directly to the zellij command.
-    let use_activated_profile = $activated_profile
-
     with-env {HOME: $env.HOME} {
-        if $use_activated_profile {
-            if $verbose_mode {
-                print "⚡ Reusing activated profile without entering devenv shell"
-            }
-            nu $"($yazelix_dir)/nushell/scripts/setup/environment.nu" --welcome-source start
-        }
-
-        if $should_refresh {
-            if $verbose_mode {
-                print $"♻️  Config changed - rebuilding environment using ($build_parallelism_description)"
-            } else if $refresh_output != "quiet" {
-                print $"♻️  Config changed - rebuilding environment using ($build_parallelism_description)"
-            }
-        }
-
         # Use shared devenv runner (consolidates with yzx env)
         run_in_devenv_shell_command "nu" ...$inner_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --force-shell=$force_reenter_mode --verbose=$verbose_mode --force-refresh=$should_refresh --refresh-output-mode $refresh_output
     }

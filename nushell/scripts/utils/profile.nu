@@ -111,7 +111,7 @@ export def profile_cold_launch [
     }
 
     print "🚀 Profiling cold Yazelix startup..."
-    run_profiled_startup_harness "enter_cold" ["--force-reenter"] --clear-cache=$clear_cache | ignore
+    run_profiled_startup_harness "enter_cold" [] --clear-cache=$clear_cache | ignore
 }
 
 export def profile_launch [] {
