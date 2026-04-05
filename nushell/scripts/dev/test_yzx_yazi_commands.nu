@@ -167,10 +167,10 @@ recommended_deps = true
     $result
 }
 
-# Regression: sidebar refresh must target the active Yazi instance through `ya emit-to <id> refresh`.
+# Regression: sidebar refresh must refresh the folder and explicitly rerun git.yazi on the active sidebar instance.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_refresh_active_sidebar_yazi_emits_refresh_to_cached_sidebar_instance [] {
-    print "🧪 Testing active sidebar Yazi refresh emits to the cached sidebar instance..."
+    print "🧪 Testing active sidebar Yazi refresh emits both folder and git refresh actions to the cached sidebar instance..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_yazi_sidebar_refresh"
@@ -188,10 +188,7 @@ ya_command = "ya"
 
         write_executable_fixture_file ($fake_bin | path join "ya") [
             "#!/bin/sh"
-            ": > \"$YAZI_TEST_LOG\""
-            "for arg in \"$@\"; do"
-            "  printf '%s\\n' \"$arg\" >> \"$YAZI_TEST_LOG\""
-            "done"
+            "printf '%s\\n' \"$*\" >> \"$YAZI_TEST_LOG\""
             "exit 0"
         ]
 
@@ -216,9 +213,12 @@ ya_command = "ya"
 
         if (
             ($refresh_result.status == "ok")
-            and ($ya_args == ["emit-to", "sidebar-yazi-123", "refresh"])
+            and ($ya_args == [
+                "emit-to sidebar-yazi-123 refresh",
+                "emit-to sidebar-yazi-123 plugin git refresh-sidebar",
+            ])
         ) {
-            print "  ✅ active sidebar Yazi refresh emits a targeted refresh to the cached sidebar instance"
+            print "  ✅ active sidebar Yazi refresh emits both targeted refresh actions to the cached sidebar instance"
             true
         } else {
             print $"  ❌ Unexpected sidebar refresh result: result=($refresh_result | to json -r) ya_args=($ya_args | to json -r)"

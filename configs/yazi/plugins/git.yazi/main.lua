@@ -95,6 +95,44 @@ local function propagate_down(excluded, cwd, repo)
 	return new
 end
 
+local function update_changed_state(cwd, repo, paths, has_directories)
+	-- stylua: ignore
+	local output, err = Command("git")
+		:cwd(tostring(cwd))
+		:arg({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--porcelain", "-unormal", "--no-renames", "--ignored=matching" })
+		:arg(paths)
+		:stdout(Command.PIPED)
+		:output()
+	if not output then
+		return false, Err("Cannot spawn `git` command, error: %s", err)
+	end
+
+	local changed, excluded = {}, {}
+	for line in output.stdout:gmatch("[^\r\n]+") do
+		local code, path = match(line)
+		if code == CODES.excluded then
+			excluded[#excluded + 1] = path
+		else
+			changed[path] = code
+		end
+	end
+
+	if has_directories then
+		ya.dict_merge(changed, bubble_up(changed))
+	end
+	ya.dict_merge(changed, propagate_down(excluded, cwd, Url(repo)))
+
+	-- Reset the status of any files that don't appear in the output of `git status` to `unknown`,
+	-- so that cleaning up outdated statuses from `st.repos`
+	for _, path in ipairs(paths) do
+		local s = path:sub(#repo + 2)
+		changed[s] = changed[s] or CODES.unknown
+	end
+
+	add(tostring(cwd), repo, changed)
+	return true
+end
+
 local add = ya.sync(function(st, cwd, repo, changed)
 	st.dirs[cwd] = repo
 	st.repos[repo] = st.repos[repo] or {}
@@ -130,6 +168,29 @@ local remove = ya.sync(function(st, cwd)
 	end
 	st.repos[repo] = nil
 end)
+
+local snapshot_active_window = ya.sync(function()
+	local current = cx and cx.active and cx.active.current
+	if not current or not current.cwd then
+		return nil
+	end
+
+	local paths, has_directories = {}, false
+	for _, file in ipairs(current.window) do
+		paths[#paths + 1] = tostring(file.url)
+		has_directories = has_directories or file.cha.is_dir
+	end
+
+	return {
+		cwd = tostring(current.cwd),
+		paths = paths,
+		has_directories = has_directories,
+	}
+end)
+
+local function fail(content)
+	ya.notify { title = "Git", content = content, timeout = 5, level = "error" }
+end
 
 local function setup(st, opts)
 	st.dirs = {} -- Mapping between a directory and its corresponding repository
@@ -187,42 +248,35 @@ local function fetch(_, job)
 		paths[#paths + 1] = tostring(file.url)
 	end
 
-	-- stylua: ignore
-	local output, err = Command("git")
-		:cwd(tostring(cwd))
-		:arg({ "--no-optional-locks", "-c", "core.quotePath=", "status", "--porcelain", "-unormal", "--no-renames", "--ignored=matching" })
-		:arg(paths)
-		:stdout(Command.PIPED)
-		:output()
-	if not output then
-		return true, Err("Cannot spawn `git` command, error: %s", err)
+	local ok, err = update_changed_state(cwd, repo, paths, job.files[1].cha.is_dir)
+	if not ok then
+		return true, err
 	end
-
-	local changed, excluded = {}, {}
-	for line in output.stdout:gmatch("[^\r\n]+") do
-		local code, path = match(line)
-		if code == CODES.excluded then
-			excluded[#excluded + 1] = path
-		else
-			changed[path] = code
-		end
-	end
-
-	if job.files[1].cha.is_dir then
-		ya.dict_merge(changed, bubble_up(changed))
-	end
-	ya.dict_merge(changed, propagate_down(excluded, cwd, Url(repo)))
-
-	-- Reset the status of any files that don't appear in the output of `git status` to `unknown`,
-	-- so that cleaning up outdated statuses from `st.repos`
-	for _, path in ipairs(paths) do
-		local s = path:sub(#repo + 2)
-		changed[s] = changed[s] or CODES.unknown
-	end
-
-	add(tostring(cwd), repo, changed)
 
 	return false
 end
 
-return { setup = setup, fetch = fetch }
+local function entry(job)
+	if job.args[1] ~= "refresh-sidebar" then
+		return
+	end
+
+	local snapshot = snapshot_active_window()
+	if not snapshot or #snapshot.paths == 0 then
+		return
+	end
+
+	local cwd = Url(snapshot.cwd)
+	local repo = root(cwd)
+	if not repo then
+		remove(snapshot.cwd)
+		return
+	end
+
+	local ok, err = update_changed_state(cwd, repo, snapshot.paths, snapshot.has_directories)
+	if not ok then
+		fail(tostring(err))
+	end
+end
+
+return { setup = setup, fetch = fetch, entry = entry }

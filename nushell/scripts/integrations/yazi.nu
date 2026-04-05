@@ -383,7 +383,8 @@ export def refresh_active_sidebar_yazi [log_file: string = "yazi_refresh.log"] {
 
     try {
         run_ya_emit_to $sidebar_state.yazi_id "refresh"
-        log_to_file $log_file $"Refreshed active sidebar Yazi instance: ($sidebar_state.yazi_id)"
+        run_ya_emit_to $sidebar_state.yazi_id "plugin" "git" "refresh-sidebar"
+        log_to_file $log_file $"Refreshed active sidebar Yazi instance and reran git decorations: ($sidebar_state.yazi_id)"
         {status: "ok", yazi_id: $sidebar_state.yazi_id}
     } catch {|err|
         log_to_file $log_file $"Failed to refresh active sidebar Yazi instance '($sidebar_state.yazi_id)': ($err.msg)"
