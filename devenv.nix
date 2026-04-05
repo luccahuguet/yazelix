@@ -60,12 +60,22 @@ let
     if isLinux then
       ''
         launch_prefix=()
+        self_bin_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+        self_nixgl="$self_bin_dir/nixGL"
+        self_nixgl_default="$self_bin_dir/nixGLDefault"
+        self_nixgl_intel="$self_bin_dir/nixGLIntel"
         runtime_nixgl="''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/bin/nixGL"
         runtime_nixgl_default="''${YAZELIX_RUNTIME_DIR:-$DEVENV_ROOT}/bin/nixGLDefault"
         profile_nixgl="''${DEVENV_PROFILE:-}/bin/nixGL"
         profile_nixgl_default="''${DEVENV_PROFILE:-}/bin/nixGLDefault"
         profile_nixgl_intel="''${DEVENV_PROFILE:-}/bin/nixGLIntel"
-        if [ -x "$runtime_nixgl" ]; then
+        if [ -x "$self_nixgl" ]; then
+          launch_prefix+=("$self_nixgl")
+        elif [ -x "$self_nixgl_default" ]; then
+          launch_prefix+=("$self_nixgl_default")
+        elif [ -x "$self_nixgl_intel" ]; then
+          launch_prefix+=("$self_nixgl_intel")
+        elif [ -x "$runtime_nixgl" ]; then
           launch_prefix+=("$runtime_nixgl")
         elif [ -x "$runtime_nixgl_default" ]; then
           launch_prefix+=("$runtime_nixgl_default")

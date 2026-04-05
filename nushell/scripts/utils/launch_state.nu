@@ -19,13 +19,32 @@ def normalize_path_entries [value: any] {
 }
 
 def resolve_profile_from_shell_script [candidate: string] {
-    if not ($candidate | path exists) or (($candidate | path type) != "file") {
+    if not ($candidate | path exists) {
+        return ""
+    }
+
+    let shell_script = (try {
+        let result = (^readlink -f $candidate | complete)
+        if $result.exit_code == 0 {
+            ($result.stdout | str trim)
+        } else {
+            ($candidate | path expand)
+        }
+    } catch {
+        ($candidate | path expand)
+    })
+
+    if not ($shell_script | path exists) or (($shell_script | path type) != "file") {
         return ""
     }
 
     let embedded_profile = (
-        open --raw $candidate
-        | parse -r 'declare -x DEVENV_PROFILE="(?<profile>/nix/store/[^"]+-devenv-profile)"'
+        open --raw $shell_script
+        | lines
+        | where {|line| $line | str contains 'declare -x DEVENV_PROFILE=' }
+        | get -o 0
+        | default ""
+        | parse -r 'declare -x DEVENV_PROFILE="(?<profile>/[^"]+)"'
         | get -o 0.profile
         | default ""
         | into string
@@ -77,6 +96,24 @@ def resolve_profile_candidate [candidate: string] {
     } catch {
         ""
     }
+}
+
+export def resolve_profile_from_build_shell_output [stdout: string] {
+    let shell_path = (
+        $stdout
+        | default ""
+        | parse -r '"shell"\s*:\s*"(?<shell>/[^"]+)"'
+        | get -o 0.shell
+        | default ""
+        | into string
+        | str trim
+    )
+
+    if ($shell_path | is-empty) {
+        return ""
+    }
+
+    resolve_profile_candidate $shell_path
 }
 
 def get_recorded_launch_state_path [] {
@@ -174,14 +211,14 @@ export def resolve_current_session_profile [] {
 }
 
 export def resolve_runtime_owned_profile [] {
-    let runtime_project_profile = (resolve_runtime_project_profile)
-    if ($runtime_project_profile | is-not-empty) {
-        return $runtime_project_profile
-    }
-
     let recorded_profile = (resolve_recorded_launch_profile_evidence)
     if ($recorded_profile | is-not-empty) {
         return $recorded_profile
+    }
+
+    let runtime_project_profile = (resolve_runtime_project_profile)
+    if ($runtime_project_profile | is-not-empty) {
+        return $runtime_project_profile
     }
 
     resolve_ambient_shell_profile

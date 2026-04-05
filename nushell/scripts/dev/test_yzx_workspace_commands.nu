@@ -802,6 +802,102 @@ def test_desktop_fast_path_rejects_bootstrap_terminal_substitution_for_explicit_
     $result
 }
 
+# Regression: desktop fast path must not reuse stale managed wrappers when a rebuild is already needed.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_desktop_fast_path_uses_direct_host_terminal_during_reload_instead_of_stale_wrapper [] {
+    print "🧪 Testing desktop fast path uses a direct host terminal during reload instead of a stale managed wrapper..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_desktop_wrapper_preference_XXXXXX | str trim)
+    let real_nu = (which nu | get -o 0.path)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        let config_dir = ($fake_home | path join ".config" "yazelix")
+        let state_dir = ($fake_home | path join ".local" "share" "yazelix")
+        let runtime_dir = ($tmpdir | path join "runtime")
+        let fake_bin = ($tmpdir | path join "bin")
+        let profile_dir = ($tmpdir | path join "profile")
+        let profile_bin = ($profile_dir | path join "bin")
+        let launch_state_path = ($state_dir | path join "state" "launch_state.json")
+
+        mkdir $config_dir
+        mkdir ($state_dir | path join "state")
+        mkdir $runtime_dir
+        mkdir ($runtime_dir | path join "nushell")
+        mkdir ($runtime_dir | path join "shells")
+        mkdir ($runtime_dir | path join "configs")
+        mkdir ($runtime_dir | path join "docs")
+        mkdir ($runtime_dir | path join "assets")
+        mkdir $fake_bin
+        mkdir $profile_bin
+
+        ^ln -s (repo_path ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
+        "" | save --force --raw ($runtime_dir | path join "yazelix_default.toml")
+        "" | save --force --raw ($runtime_dir | path join "devenv.nix")
+        "" | save --force --raw ($runtime_dir | path join "devenv.yaml")
+        "" | save --force --raw ($runtime_dir | path join "devenv.lock")
+        "" | save --force --raw ($runtime_dir | path join "CHANGELOG.md")
+        {
+            combined_hash: "ignored-for-fast-path-resolution"
+            profile_path: $profile_dir
+        } | to json | save --force $launch_state_path
+
+        [
+            "#!/bin/sh"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "ghostty")
+        ^chmod +x ($fake_bin | path join "ghostty")
+
+        [
+            "#!/bin/sh"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($profile_bin | path join "yazelix-ghostty")
+        ^chmod +x ($profile_bin | path join "yazelix-ghostty")
+
+        let launch_script = (repo_path "nushell" "scripts" "core" "launch_yazelix.nu")
+        let snippet = ([
+            $"source \"($launch_script)\""
+            "let candidates = (resolve_desktop_fast_path_candidates '' ['ghostty'] true true)"
+            "print ($candidates | to json -r)"
+        ] | str join "\n")
+        let output = (with-env {
+            HOME: $fake_home
+            PATH: ([$fake_bin, "/usr/bin", "/bin"] | str join (char esep))
+            YAZELIX_RUNTIME_DIR: $runtime_dir
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_CONFIG_DIR: $config_dir
+        } {
+            ^$real_nu -c $snippet | complete
+        })
+        let candidates = ($output.stdout | from json)
+        let first_candidate = ($candidates | get -o 0 | default {})
+
+        let chosen_command = ($first_candidate.command? | default "" | into string)
+
+        if (
+            ($output.exit_code == 0)
+            and (($first_candidate.terminal? | default "") == "ghostty")
+            and (($first_candidate.use_wrapper? | default false) == false)
+            and (
+                ($chosen_command == "ghostty")
+                or ($chosen_command == ($fake_bin | path join "ghostty"))
+            )
+        ) {
+            print "  ✅ Desktop fast path now uses a visible host bootstrap terminal instead of reusing a stale managed wrapper during reload"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Regression: current-session and runtime-owned profile policies must stay intentionally distinct and ignore unrelated Zellij activation.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_profile_resolution_policies_separate_runtime_owned_and_current_session_state [] {
@@ -815,7 +911,8 @@ def test_profile_resolution_policies_separate_runtime_owned_and_current_session_
         let state_dir = ($fake_home | path join ".local" "share" "yazelix")
         let runtime_dir = ($tmpdir | path join "runtime")
         let runtime_project = ($state_dir | path join "runtime" "project")
-        let runtime_project_profile = ($runtime_project | path join ".devenv" "profile")
+        let runtime_project_gc = ($runtime_project | path join ".devenv" "gc")
+        let runtime_project_shell = ($runtime_project_gc | path join "shell")
         let embedded_runtime_profile = ($tmpdir | path join "runtime_owned_profile")
         let stale_env_profile = ($tmpdir | path join "stale_profile")
         let launch_state_path = ($state_dir | path join "state" "launch_state.json")
@@ -836,11 +933,15 @@ def test_profile_resolution_policies_separate_runtime_owned_and_current_session_
         "" | save --force --raw ($runtime_dir | path join "devenv.lock")
         "" | save --force --raw ($runtime_dir | path join "CHANGELOG.md")
         mkdir ($runtime_project | path join ".devenv")
+        mkdir $runtime_project_gc
         ^ln -s ($runtime_dir | path join "devenv.nix") ($runtime_project | path join "devenv.nix")
         mkdir $embedded_runtime_profile
         mkdir $stale_env_profile
         mkdir $launch_state_profile
-        ^ln -s $embedded_runtime_profile $runtime_project_profile
+        [
+            "#!/usr/bin/env bash"
+            $"declare -x DEVENV_PROFILE=\"($embedded_runtime_profile)\""
+        ] | str join "\n" | save --force --raw $runtime_project_shell
         {
             combined_hash: "ignored-for-resolve-built-profile"
             profile_path: $launch_state_profile
@@ -902,14 +1003,15 @@ def test_profile_resolution_policies_separate_runtime_owned_and_current_session_
             and ($zellij_only_result.exit_code == 0)
             and ($inside_result.exit_code == 0)
             and ($embedded_runtime_profile | is-not-empty)
-            and ($outside_runtime_owned == $embedded_runtime_profile)
+            and ($launch_state_profile | is-not-empty)
+            and ($outside_runtime_owned == ($launch_state_profile | path expand))
             and ($outside_current_session == $embedded_runtime_profile)
-            and ($zellij_only_runtime_owned == $embedded_runtime_profile)
+            and ($zellij_only_runtime_owned == ($launch_state_profile | path expand))
             and ($zellij_only_current_session == $embedded_runtime_profile)
-            and ($inside_runtime_owned == $embedded_runtime_profile)
+            and ($inside_runtime_owned == ($launch_state_profile | path expand))
             and ($inside_current_session == ($stale_env_profile | path expand))
         ) {
-            print "  ✅ Runtime-owned resolution ignores stale live activation, unrelated Zellij markers do not count as Yazelix sessions, and current-session resolution still honors the active Yazelix shell profile"
+            print "  ✅ Runtime-owned resolution now prefers the recorded launch profile over stale runtime-project shell artifacts, unrelated Zellij markers do not count as Yazelix sessions, and current-session resolution still honors the active Yazelix shell profile"
             true
         } else {
             print $"  ❌ Unexpected result: outside_runtime=($outside_runtime_owned) outside_current=($outside_current_session) zellij_runtime=($zellij_only_runtime_owned) zellij_current=($zellij_only_current_session) inside_runtime=($inside_runtime_owned) inside_current=($inside_current_session) outside_stderr=(($outside_result.stderr | str trim)) zellij_stderr=(($zellij_only_result.stderr | str trim)) inside_stderr=(($inside_result.stderr | str trim))"
@@ -1563,6 +1665,7 @@ export def run_workspace_canonical_tests [] {
         (test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env)
         (test_yzx_desktop_launch_falls_back_to_hidden_wait_when_no_visible_bootstrap_terminal_exists)
         (test_desktop_fast_path_rejects_bootstrap_terminal_substitution_for_explicit_terminal)
+        (test_desktop_fast_path_uses_direct_host_terminal_during_reload_instead_of_stale_wrapper)
         (test_profile_resolution_policies_separate_runtime_owned_and_current_session_state)
         (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
         (test_yzx_cli_reveal_uses_lightweight_reveal_helper)

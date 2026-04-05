@@ -183,6 +183,54 @@ def test_managed_wrapper_launch_command_does_not_forward_config_mode_flag [] {
     }
 }
 
+# Regression: managed terminal wrappers must find sibling nixGL even when desktop launch clears DEVENV_PROFILE.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_managed_wrapper_prefers_sibling_nixgl_without_ambient_profile [] {
+    print "🧪 Testing managed terminal wrappers resolve sibling nixGL without ambient DEVENV_PROFILE..."
+
+    try {
+        let profile_path = ($env.DEVENV_PROFILE? | default "" | into string | str trim)
+        let wrapper_path = if ($profile_path | is-empty) {
+            ""
+        } else {
+            $profile_path | path join "bin" "yazelix-ghostty"
+        }
+        if ($wrapper_path | is-empty) or (not ($wrapper_path | path exists)) {
+            print "  ❌ profile-local yazelix-ghostty wrapper is not available"
+            return false
+        }
+
+        let wrapper_bin_dir = ($wrapper_path | path dirname)
+        let expected_nixgl = ($wrapper_bin_dir | path join "nixGL")
+        let expected_self_line = ('+ self_nixgl=' + $expected_nixgl)
+        let expected_exec_prefix = ('+ exec ' + $expected_nixgl + ' ')
+        let result = (with-env {
+            PATH: "/usr/bin:/bin"
+            YAZELIX_RUNTIME_DIR: (pwd)
+            DEVENV_PROFILE: null
+        } {
+            ^bash -x $wrapper_path --version | complete
+        })
+        let trace = ($result.stderr | default "")
+
+        if (
+            ($result.exit_code == 0)
+            and ($trace | str contains $expected_self_line)
+            and ($trace | str contains $expected_exec_prefix)
+        ) {
+            print "  ✅ Managed Ghostty wrapper now finds sibling nixGL without relying on ambient DEVENV_PROFILE"
+            true
+        } else {
+            let trace_tail = ($trace | lines | last 20 | str join "\n")
+            print $"  ❌ Unexpected wrapper trace: exit=($result.exit_code) stderr=($trace_tail)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 # Regression: Ghostty generated effect shader references must point at files the builder emits.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generate_ghostty_config_references_existing_effect_shaders [] {
@@ -1228,6 +1276,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
         (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
         (test_managed_wrapper_launch_command_does_not_forward_config_mode_flag)
+        (test_managed_wrapper_prefers_sibling_nixgl_without_ambient_profile)
         (test_generate_ghostty_config_references_existing_effect_shaders)
         (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)

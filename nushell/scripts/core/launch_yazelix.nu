@@ -52,6 +52,17 @@ def resolve_desktop_fast_path_candidates [requested_terminal: string, terminals:
     let explicit_terminal_request = ($requested_terminal | is-not-empty)
     require_supported_requested_terminal $requested_terminal
     let preferred = (get_launch_preference_order $requested_terminal $terminals)
+
+    if $manage_terminals and (not $needs_reload) {
+        let profile_path = (resolve_runtime_owned_profile)
+        if ($profile_path | is-not-empty) {
+            let wrapper_candidates = (detect_terminal_wrapper_candidates_from_profile $preferred $profile_path)
+            if not ($wrapper_candidates | is-empty) {
+                return $wrapper_candidates
+            }
+        }
+    }
+
     if $needs_reload {
         let direct_candidates = (detect_terminal_candidates $preferred false)
         if not ($direct_candidates | is-empty) {
@@ -77,16 +88,6 @@ def resolve_desktop_fast_path_candidates [requested_terminal: string, terminals:
 
             error make {
                 msg: "Desktop launch could not open any visible bootstrap terminal before rebuild.\nFailure class: desktop-bootstrap-unavailable.\nRecovery: Falling back to the standard desktop launch path is required because no host-launchable terminal is currently available."
-            }
-        }
-    }
-
-    if $manage_terminals {
-        let profile_path = (resolve_runtime_owned_profile)
-        if ($profile_path | is-not-empty) {
-            let wrapper_candidates = (detect_terminal_wrapper_candidates_from_profile $preferred $profile_path)
-            if not ($wrapper_candidates | is-empty) {
-                return $wrapper_candidates
             }
         }
     }

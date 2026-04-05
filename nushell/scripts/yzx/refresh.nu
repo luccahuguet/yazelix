@@ -3,7 +3,7 @@
 
 use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled get_refresh_output_mode format_command_failure_summary]
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
-use ../utils/launch_state.nu [record_launch_profile_state resolve_current_session_profile]
+use ../utils/launch_state.nu [record_launch_profile_state resolve_profile_from_build_shell_output]
 use ../utils/common.nu [describe_build_parallelism]
 
 def summarize_values [values max_items: int] {
@@ -18,6 +18,18 @@ def summarize_values [values max_items: int] {
         let shown = ($normalized | first $max_items | str join ", ")
         let remaining = ($total - $max_items)
         $"($shown), +($remaining) more"
+    }
+}
+
+def print_refresh_command_output [result: record] {
+    let stdout_text = ($result.stdout | default "")
+    let stderr_text = ($result.stderr | default "")
+
+    if ($stdout_text | is-not-empty) {
+        print --raw $stdout_text
+    }
+    if ($stderr_text | is-not-empty) {
+        print --stderr --raw $stderr_text
     }
 }
 
@@ -44,36 +56,23 @@ def run_refresh_command [devenv_cmd allow_unfree --stream-output] {
     let cmd_bin = ($devenv_cmd | first)
     let cmd_args = ($devenv_cmd | skip 1)
 
-    if $stream_output {
-        let exit_code = if $allow_unfree {
-            with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
-                ^$cmd_bin ...$cmd_args
-                ($env.LAST_EXIT_CODE? | default 0)
-            }
-        } else {
-            ^$cmd_bin ...$cmd_args
-            ($env.LAST_EXIT_CODE? | default 0)
-        }
-
-        {
-            exit_code: $exit_code
-            stderr: ""
-            stderr_streamed: true
-        }
-    } else {
-        let result = if $allow_unfree {
-            with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
-                ^$cmd_bin ...$cmd_args | complete
-            }
-        } else {
+    let result = if $allow_unfree {
+        with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
             ^$cmd_bin ...$cmd_args | complete
         }
+    } else {
+        ^$cmd_bin ...$cmd_args | complete
+    }
 
-        {
-            exit_code: $result.exit_code
-            stderr: ($result.stderr | default "")
-            stderr_streamed: false
-        }
+    if $stream_output {
+        print_refresh_command_output $result
+    }
+
+    {
+        exit_code: $result.exit_code
+        stdout: ($result.stdout | default "")
+        stderr: ($result.stderr | default "")
+        stderr_streamed: $stream_output
     }
 }
 
@@ -127,6 +126,7 @@ export def "yzx refresh" [
     }
 
     let allow_unfree = is_unfree_enabled
+    mut built_profile = ""
     if $needs_refresh or $force {
         print $"♻️  Refreshing Yazelix environment \(($refresh_reason), using ($build_parallelism_description)\)..."
 
@@ -149,10 +149,16 @@ export def "yzx refresh" [
             )
             exit 1
         }
+
+        $built_profile = (resolve_profile_from_build_shell_output $refresh_result.stdout)
+        if ($built_profile | is-empty) {
+            print "❌ Refresh completed the build but Yazelix could not resolve the resulting DEVENV_PROFILE from the build output."
+            print "   Recovery: rerun `yzx refresh --verbose` and inspect the final `devenv build shell` result, or run `yzx doctor`."
+            exit 1
+        }
     }
     let applied_state = (compute_config_state)
     record_materialized_state $applied_state
-    let built_profile = (resolve_current_session_profile)
     if ($built_profile | is-not-empty) {
         record_launch_profile_state $applied_state $built_profile
     }
