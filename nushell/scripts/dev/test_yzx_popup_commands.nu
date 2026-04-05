@@ -8,6 +8,33 @@ use ../integrations/zellij.nu [build_floating_wrapper_env_args get_floating_wrap
 use ../utils/config_parser.nu [parse_yazelix_config]
 use ../../../configs/zellij/scripts/yzx_toggle_popup.nu [resolve_popup_toggle_action]
 
+def write_executable_fixture_file [path: string, lines: list<string>] {
+    $lines | str join "\n" | save --force --raw $path
+    ^chmod +x $path
+}
+
+def setup_runtime_wrapper_fixture [label: string] {
+    let tmpdir = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
+    let runtime_dir = ($tmpdir | path join "runtime")
+    let integrations_dir = ($runtime_dir | path join "nushell" "scripts" "integrations")
+    let fake_bin = ($tmpdir | path join "bin")
+    let refresh_log = ($tmpdir | path join "refresh.log")
+    let real_nu = (which nu | get -o 0.path)
+
+    mkdir $integrations_dir
+    mkdir $fake_bin
+    "" | save --force --raw ($runtime_dir | path join "yazelix_default.toml")
+
+    {
+        tmpdir: $tmpdir
+        runtime_dir: $runtime_dir
+        integrations_dir: $integrations_dir
+        fake_bin: $fake_bin
+        refresh_log: $refresh_log
+        real_nu: $real_nu
+    }
+}
+
 # Defends: popup command resolution prefers the configured default program.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_popup_command_prefers_configured_default [] {
@@ -158,6 +185,81 @@ def test_popup_toggle_wrapper_surfaces_permission_denials [] {
         print $"  ❌ Exception: ($err.msg)"
         false
     }
+}
+
+# Regression: popup toggle refreshes sidebar Yazi only after closing the popup back into the workspace.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_popup_toggle_wrapper_refreshes_sidebar_only_after_close [] {
+    print "🧪 Testing popup toggle refreshes sidebar Yazi only after popup close..."
+
+    let fixture = (setup_runtime_wrapper_fixture "yazelix_popup_toggle_refresh")
+
+    let result = (try {
+        write_executable_fixture_file ($fixture.fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            "printf '%s\\n' \"$YAZELIX_TEST_POPUP_RESULT\""
+            "exit 0"
+        ]
+
+        [
+            "export def refresh_active_sidebar_yazi [] {"
+            "    if ($env.YAZELIX_TEST_REFRESH_LOG | path exists) {"
+            "        'refresh' | save --append --raw $env.YAZELIX_TEST_REFRESH_LOG"
+            "    } else {"
+            "        'refresh' | save --force --raw $env.YAZELIX_TEST_REFRESH_LOG"
+            "    }"
+            "    {status: 'ok'}"
+            "}"
+        ] | str join "\n" | save --force --raw ($fixture.integrations_dir | path join "yazi.nu")
+
+        let wrapper_script = ($env.PWD | path join "configs" "zellij" "scripts" "yzx_toggle_popup.nu")
+        let closed_output = (with-env {
+            PATH: ($env.PATH | prepend $fixture.fake_bin)
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_NU_BIN: $fixture.real_nu
+            YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
+            YAZELIX_TEST_POPUP_RESULT: "closed"
+        } {
+            ^nu $wrapper_script | complete
+        })
+        let closed_refresh = if ($fixture.refresh_log | path exists) {
+            open --raw $fixture.refresh_log | str trim
+        } else {
+            ""
+        }
+
+        rm -f $fixture.refresh_log
+
+        let focused_output = (with-env {
+            PATH: ($env.PATH | prepend $fixture.fake_bin)
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_NU_BIN: $fixture.real_nu
+            YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
+            YAZELIX_TEST_POPUP_RESULT: "focused"
+        } {
+            ^nu $wrapper_script | complete
+        })
+        let focused_refresh_exists = ($fixture.refresh_log | path exists)
+
+        if (
+            ($closed_output.exit_code == 0)
+            and ($closed_refresh == "refresh")
+            and ($focused_output.exit_code == 0)
+            and (not $focused_refresh_exists)
+        ) {
+            print "  ✅ popup toggle now refreshes sidebar Yazi only after closing the popup"
+            true
+        } else {
+            print $"  ❌ Unexpected popup-toggle refresh behavior: closed_exit=($closed_output.exit_code) closed_refresh=($closed_refresh | to json -r) focused_exit=($focused_output.exit_code) focused_refresh_exists=($focused_refresh_exists) closed_stderr=(($closed_output.stderr | str trim)) focused_stderr=(($focused_output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmpdir
+    $result
 }
 
 # Regression: popup wrappers use the canonical editor for the current launch profile.
@@ -330,6 +432,7 @@ export def run_popup_canonical_tests [] {
         (test_popup_cwd_prefers_workspace_root)
         (test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages)
         (test_popup_toggle_wrapper_surfaces_permission_denials)
+        (test_popup_toggle_wrapper_refreshes_sidebar_only_after_close)
         (test_popup_wrapper_uses_canonical_editor_for_current_profile)
         (test_new_editor_pane_launch_env_uses_canonical_editor_for_current_profile)
         (test_popup_wrapper_serializes_path_list_for_env_command)

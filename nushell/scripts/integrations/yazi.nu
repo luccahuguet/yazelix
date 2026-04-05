@@ -364,6 +364,34 @@ export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: s
     }
 }
 
+export def refresh_active_sidebar_yazi [log_file: string = "yazi_refresh.log"] {
+    if not (is_sidebar_enabled) {
+        return {status: "skipped", reason: "sidebar_disabled"}
+    }
+
+    if ($env.ZELLIJ? | is-empty) {
+        return {status: "skipped", reason: "outside_zellij"}
+    }
+
+    if not (has_ya_command) {
+        return {status: "skipped", reason: "ya_missing"}
+    }
+
+    let sidebar_state = (read_active_sidebar_state)
+    if ($sidebar_state | is-empty) {
+        return {status: "skipped", reason: "sidebar_yazi_missing"}
+    }
+
+    try {
+        run_ya_emit_to $sidebar_state.yazi_id "refresh"
+        log_to_file $log_file $"Refreshed active sidebar Yazi instance: ($sidebar_state.yazi_id)"
+        {status: "ok", yazi_id: $sidebar_state.yazi_id}
+    } catch {|err|
+        log_to_file $log_file $"Failed to refresh active sidebar Yazi instance '($sidebar_state.yazi_id)': ($err.msg)"
+        {status: "error", reason: $err.msg, yazi_id: $sidebar_state.yazi_id}
+    }
+}
+
 export def sync_managed_editor_cwd [target_path: path, log_file: string = "editor_sync.log"] {
     if ($env.ZELLIJ? | is-empty) {
         return {status: "skipped", reason: "outside_zellij"}

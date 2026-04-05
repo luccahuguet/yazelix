@@ -3,7 +3,8 @@ use std::collections::{BTreeMap, HashMap};
 use yazelix_popup_runner::popup_pane_contract::{select_popup_pane, PopupPaneState};
 use zellij_tile::prelude::*;
 
-const RESULT_OK: &str = "ok";
+const RESULT_FOCUSED: &str = "focused";
+const RESULT_CLOSED: &str = "closed";
 const RESULT_MISSING: &str = "missing";
 const RESULT_NOT_READY: &str = "not_ready";
 const RESULT_DENIED: &str = "permissions_denied";
@@ -79,11 +80,11 @@ impl State {
 
         if popup_pane.is_focused {
             close_pane_with_id(popup_pane.pane_id);
+            self.respond(pipe_message, RESULT_CLOSED);
         } else {
             focus_pane_with_id(popup_pane.pane_id, true, false);
+            self.respond(pipe_message, RESULT_FOCUSED);
         }
-
-        self.respond(pipe_message, RESULT_OK);
     }
 
     fn ensure_action_ready(&self, pipe_message: &PipeMessage) -> Option<usize> {

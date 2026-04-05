@@ -3,7 +3,13 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ./yzx_test_helpers.nu [setup_managed_config_fixture]
-use ../integrations/yazi.nu [get_managed_editor_kind, get_ya_command, get_yazi_command, resolve_managed_editor_open_strategy]
+use ../integrations/yazi.nu [get_managed_editor_kind, get_ya_command, get_yazi_command, refresh_active_sidebar_yazi, resolve_managed_editor_open_strategy]
+use ../integrations/zellij.nu toggle_editor_sidebar_focus
+
+def write_executable_fixture_file [path: string, lines: list<string>] {
+    $lines | str join "\n" | save --force --raw $path
+    ^chmod +x $path
+}
 
 # Defends: managed editor open strategy routes missing and existing states correctly.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
@@ -161,11 +167,223 @@ recommended_deps = true
     $result
 }
 
+# Regression: sidebar refresh must target the active Yazi instance through `ya emit-to <id> refresh`.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_refresh_active_sidebar_yazi_emits_refresh_to_cached_sidebar_instance [] {
+    print "🧪 Testing active sidebar Yazi refresh emits to the cached sidebar instance..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_yazi_sidebar_refresh"
+        '[yazi]
+ya_command = "ya"
+'
+    )
+
+    let result = (try {
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        let state_dir = ($fixture.tmp_home | path join ".local" "share" "yazelix" "state" "yazi" "sidebar")
+        let ya_log = ($fixture.tmp_home | path join "ya.log")
+        mkdir $fake_bin
+        mkdir $state_dir
+
+        write_executable_fixture_file ($fake_bin | path join "ya") [
+            "#!/bin/sh"
+            ": > \"$YAZI_TEST_LOG\""
+            "for arg in \"$@\"; do"
+            "  printf '%s\\n' \"$arg\" >> \"$YAZI_TEST_LOG\""
+            "done"
+            "exit 0"
+        ]
+
+        "sidebar-yazi-123\n/home/test/workspace\n" | save --force --raw ($state_dir | path join "testsession__terminal_5.txt")
+
+        let refresh_result = (with-env {
+            HOME: $fixture.tmp_home
+            PATH: ($env.PATH | prepend $fake_bin)
+            ZELLIJ: "1"
+            ZELLIJ_SESSION_NAME: "testsession"
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZI_TEST_LOG: $ya_log
+        } {
+            refresh_active_sidebar_yazi
+        })
+        let ya_args = if ($ya_log | path exists) {
+            open --raw $ya_log | lines
+        } else {
+            []
+        }
+
+        if (
+            ($refresh_result.status == "ok")
+            and ($ya_args == ["emit-to", "sidebar-yazi-123", "refresh"])
+        ) {
+            print "  ✅ active sidebar Yazi refresh emits a targeted refresh to the cached sidebar instance"
+            true
+        } else {
+            print $"  ❌ Unexpected sidebar refresh result: result=($refresh_result | to json -r) ya_args=($ya_args | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: sidebar focus toggles must expose when the sidebar gained focus so refresh hooks can stay exact.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_toggle_editor_sidebar_focus_reports_sidebar_target_from_plugin_response [] {
+    print "🧪 Testing sidebar focus toggles report when the sidebar gained focus..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_yazi_sidebar_focus_target"
+        '[core]
+recommended_deps = true
+'
+    )
+
+    let result = (try {
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        mkdir $fake_bin
+
+        write_executable_fixture_file ($fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            "printf '%s\\n' \"$YAZELIX_TEST_PANE_RESULT\""
+            "exit 0"
+        ]
+
+        let sidebar_result = (with-env {
+            HOME: $fixture.tmp_home
+            PATH: ($env.PATH | prepend $fake_bin)
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZELIX_TEST_PANE_RESULT: "focused_sidebar"
+        } {
+            toggle_editor_sidebar_focus
+        })
+
+        let editor_result = (with-env {
+            HOME: $fixture.tmp_home
+            PATH: ($env.PATH | prepend $fake_bin)
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZELIX_TEST_PANE_RESULT: "focused_editor"
+        } {
+            toggle_editor_sidebar_focus
+        })
+
+        if (
+            ($sidebar_result.status == "ok")
+            and (($sidebar_result.target? | default "") == "sidebar")
+            and ($editor_result.status == "ok")
+            and (($editor_result.target? | default "") == "editor")
+        ) {
+            print "  ✅ sidebar focus toggles now preserve the focus target so refresh hooks can stay exact"
+            true
+        } else {
+            print $"  ❌ Unexpected focus-toggle parse results: sidebar=($sidebar_result | to json -r) editor=($editor_result | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: the Ctrl+y wrapper should refresh Yazi only when the sidebar gains focus.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_toggle_editor_sidebar_focus_wrapper_refreshes_only_when_sidebar_gains_focus [] {
+    print "🧪 Testing the sidebar focus wrapper refreshes Yazi only when the sidebar gains focus..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_yazi_sidebar_wrapper_XXXXXX | str trim)
+
+    let result = (try {
+        let runtime_dir = ($tmpdir | path join "runtime")
+        let integrations_dir = ($runtime_dir | path join "nushell" "scripts" "integrations")
+        let refresh_log = ($tmpdir | path join "refresh.log")
+        let real_nu = (which nu | get -o 0.path)
+
+        mkdir $integrations_dir
+        "" | save --force --raw ($runtime_dir | path join "yazelix_default.toml")
+
+        [
+            "export def toggle_editor_sidebar_focus [] {"
+            "    $env.YAZELIX_TEST_TOGGLE_RESULT | from json"
+            "}"
+        ] | str join "\n" | save --force --raw ($integrations_dir | path join "zellij.nu")
+        [
+            "export def refresh_active_sidebar_yazi [] {"
+            "    if ($env.YAZELIX_TEST_REFRESH_LOG | path exists) {"
+            "        'refresh' | save --append --raw $env.YAZELIX_TEST_REFRESH_LOG"
+            "    } else {"
+            "        'refresh' | save --force --raw $env.YAZELIX_TEST_REFRESH_LOG"
+            "    }"
+            "    {status: 'ok'}"
+            "}"
+        ] | str join "\n" | save --force --raw ($integrations_dir | path join "yazi.nu")
+
+        let wrapper_script = ($env.PWD | path join "configs" "zellij" "scripts" "toggle_editor_sidebar_focus.nu")
+        let sidebar_output = (with-env {
+            YAZELIX_RUNTIME_DIR: $runtime_dir
+            YAZELIX_NU_BIN: $real_nu
+            YAZELIX_TEST_REFRESH_LOG: $refresh_log
+            YAZELIX_TEST_TOGGLE_RESULT: '{"status":"ok","target":"sidebar"}'
+        } {
+            ^nu $wrapper_script | complete
+        })
+        let sidebar_refresh = if ($refresh_log | path exists) {
+            open --raw $refresh_log | str trim
+        } else {
+            ""
+        }
+
+        rm -f $refresh_log
+
+        let editor_output = (with-env {
+            YAZELIX_RUNTIME_DIR: $runtime_dir
+            YAZELIX_NU_BIN: $real_nu
+            YAZELIX_TEST_REFRESH_LOG: $refresh_log
+            YAZELIX_TEST_TOGGLE_RESULT: '{"status":"ok","target":"editor"}'
+        } {
+            ^nu $wrapper_script | complete
+        })
+        let editor_refresh_exists = ($refresh_log | path exists)
+
+        if (
+            ($sidebar_output.exit_code == 0)
+            and ($sidebar_refresh == "refresh")
+            and ($editor_output.exit_code == 0)
+            and (not $editor_refresh_exists)
+        ) {
+            print "  ✅ the sidebar focus wrapper now refreshes Yazi only when focus moves into the sidebar"
+            true
+        } else {
+            print $"  ❌ Unexpected sidebar-wrapper refresh behavior: sidebar_exit=($sidebar_output.exit_code) sidebar_refresh=($sidebar_refresh | to json -r) editor_exit=($editor_output.exit_code) editor_refresh_exists=($editor_refresh_exists) sidebar_stderr=(($sidebar_output.stderr | str trim)) editor_stderr=(($editor_output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 export def run_yazi_canonical_tests [] {
     [
         (test_managed_editor_open_strategy_routes_missing_and_existing_states)
         (test_yazi_command_resolvers_honor_defaults_and_overrides)
         (test_get_managed_editor_kind_accepts_managed_helix_wrapper_env)
+        (test_refresh_active_sidebar_yazi_emits_refresh_to_cached_sidebar_instance)
+        (test_toggle_editor_sidebar_focus_reports_sidebar_target_from_plugin_response)
+        (test_toggle_editor_sidebar_focus_wrapper_refreshes_only_when_sidebar_gains_focus)
     ]
 }
 

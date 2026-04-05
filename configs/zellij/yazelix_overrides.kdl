@@ -118,8 +118,9 @@ keybinds {
 
         // Toggle focus between the managed sidebar and the managed editor.
         bind "Ctrl y" {
-            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+            Run "nu" "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/toggle_editor_sidebar_focus.nu" {
                 name "toggle_editor_sidebar_focus"
+                close_on_exit true
             }
         }
 

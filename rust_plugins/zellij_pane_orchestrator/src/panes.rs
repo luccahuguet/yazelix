@@ -13,7 +13,10 @@ use yazelix_pane_orchestrator::sidebar_contract::{
 use zellij_tile::prelude::*;
 
 use crate::workspace::WorkspaceStateSource;
-use crate::{State, RESULT_INVALID_PAYLOAD, RESULT_MISSING, RESULT_OK};
+use crate::{
+    State, RESULT_FOCUSED_EDITOR, RESULT_FOCUSED_SIDEBAR, RESULT_INVALID_PAYLOAD, RESULT_MISSING,
+    RESULT_OK, RESULT_OPENED_SIDEBAR,
+};
 
 pub(crate) const EDITOR_TITLE: &str = "editor";
 pub(crate) const SIDEBAR_TITLE: &str = "sidebar";
@@ -270,7 +273,7 @@ impl State {
             SidebarFocusTogglePlan::FocusEditor => {
                 if let Some(target_pane) = managed_tab_panes.editor {
                     focus_pane_with_id(target_pane.pane_id, false, false);
-                    self.respond(pipe_message, RESULT_OK);
+                    self.respond(pipe_message, RESULT_FOCUSED_EDITOR);
                 } else {
                     self.respond(pipe_message, RESULT_MISSING);
                 }
@@ -278,7 +281,7 @@ impl State {
             SidebarFocusTogglePlan::FocusSidebar => {
                 if let Some(target_pane) = managed_tab_panes.sidebar {
                     focus_pane_with_id(target_pane.pane_id, false, false);
-                    self.respond(pipe_message, RESULT_OK);
+                    self.respond(pipe_message, RESULT_FOCUSED_SIDEBAR);
                 } else {
                     self.respond(pipe_message, RESULT_MISSING);
                 }
@@ -286,7 +289,7 @@ impl State {
             SidebarFocusTogglePlan::OpenAndFocusSidebar => {
                 if managed_tab_panes.sidebar.is_some() {
                     self.open_sidebar_and_focus_after_layout_settle();
-                    self.respond(pipe_message, RESULT_OK);
+                    self.respond(pipe_message, RESULT_OPENED_SIDEBAR);
                 } else {
                     self.respond(pipe_message, RESULT_MISSING);
                 }

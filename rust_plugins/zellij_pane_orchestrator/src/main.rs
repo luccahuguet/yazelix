@@ -12,6 +12,9 @@ use yazelix_pane_orchestrator::horizontal_focus_contract::HorizontalDirection;
 use zellij_tile::prelude::*;
 
 pub(crate) const RESULT_OK: &str = "ok";
+pub(crate) const RESULT_FOCUSED_EDITOR: &str = "focused_editor";
+pub(crate) const RESULT_FOCUSED_SIDEBAR: &str = "focused_sidebar";
+pub(crate) const RESULT_OPENED_SIDEBAR: &str = "opened_sidebar";
 pub(crate) const RESULT_MISSING: &str = "missing";
 pub(crate) const RESULT_NOT_READY: &str = "not_ready";
 pub(crate) const RESULT_DENIED: &str = "permissions_denied";

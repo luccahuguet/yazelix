@@ -167,6 +167,9 @@ export def toggle_editor_sidebar_focus [log_file: string = "zellij_plugin.log"] 
 def parse_pane_orchestrator_response [response: string] {
     match $response {
         "ok" => {status: "ok"}
+        "focused_editor" => {status: "ok", target: "editor"}
+        "focused_sidebar" => {status: "ok", target: "sidebar"}
+        "opened_sidebar" => {status: "ok", target: "sidebar", opened: true}
         "missing" => {status: "missing"}
         "missing_workspace" => {status: "missing_workspace"}
         "not_ready" => {status: "not_ready"}
