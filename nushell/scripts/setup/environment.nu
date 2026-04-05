@@ -3,7 +3,7 @@
 # Called from devenv.nix shellHook to reduce complexity
 
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/common.nu [get_installed_yazelix_runtime_reference_dir get_yazelix_runtime_dir]
+use ../utils/common.nu [get_installed_yazelix_runtime_reference_dir get_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 use ../utils/startup_profile.nu [profile_startup_step]
@@ -49,6 +49,7 @@ def main [--welcome-source: string, --skip-welcome] {
     let yazelix_dir = (get_yazelix_runtime_dir)
     let default_shell = ($config.default_shell? | default "nu")
     let debug_mode = ($config.debug_mode? | default false)
+    let runtime_nu = (resolve_yazelix_nu_bin)
     let skip_welcome_screen = (
         ($config.skip_welcome_screen? | default false)
         or ($env.YAZELIX_STARTUP_PROFILE_SKIP_WELCOME? == "true")
@@ -157,7 +158,7 @@ def main [--welcome-source: string, --skip-welcome] {
     # Generate shell initializers for configured shells only
     profile_shellhook_step "generate_initializers" {
         with-env {YAZELIX_QUIET_MODE: (if $quiet_mode { "true" } else { "false" })} {
-            nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir ($shells_to_configure | str join ",")
+            ^$runtime_nu $"($yazelix_dir)/nushell/scripts/setup/initializers.nu" $yazelix_dir ($shells_to_configure | str join ",")
         }
     } {
         shells: $shells_to_configure

@@ -349,6 +349,10 @@ export def run_in_devenv_shell [
             $env_vars = ($env_vars | insert NIXPKGS_ALLOW_UNFREE "1")
         }
 
+        # Keep the live devenv shell handoff direct. Wrapping this interactive
+        # external transition in a profiling closure interferes with TTY
+        # ownership and can leave env/launch paths stalled after the rebuild
+        # completes.
         if ($env_vars | is-empty) {
             ^$devenv_bin ...$devenv_args
         } else {
@@ -453,20 +457,14 @@ export def run_in_devenv_shell_command [
         )
     }
 
-    let shell_entry_env_vars = $env_vars
-
-    profile_startup_step "bootstrap" "devenv.shell_entry" {
-        if ($shell_entry_env_vars | is-empty) {
+    # Keep the interactive shell handoff direct. Startup profiling should cover
+    # owned preparation steps, not wrap the external TTY transfer itself.
+    if ($env_vars | is-empty) {
+        ^$devenv_bin ...$devenv_args
+    } else {
+        with-env $env_vars {
             ^$devenv_bin ...$devenv_args
-        } else {
-            with-env $shell_entry_env_vars {
-                ^$devenv_bin ...$devenv_args
-            }
         }
-    } {
-        command: ($devenv_cmd | str join " ")
-        cwd: $resolved_cwd
-        force_refresh: $force_refresh
     }
 }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
+use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir resolve_yazelix_nu_bin]
 
 export def get_generated_yzx_extern_path [state_root?: string] {
     let state_dir = if $state_root == null {
@@ -90,9 +90,10 @@ def render_extern_block [command: record] {
 
 def fetch_yzx_command_metadata [runtime_root: string] {
     let runtime_dir = ($runtime_root | path expand)
+    let nu_bin = (resolve_yazelix_nu_bin)
     let probe = (do {
         cd $runtime_dir
-        ^nu -c 'source nushell/scripts/core/yazelix.nu; scope commands | where name =~ "^yzx( |$)" | sort-by name | to json -r' | complete
+        ^$nu_bin -c 'source nushell/scripts/core/yazelix.nu; scope commands | where name =~ "^yzx( |$)" | sort-by name | to json -r' | complete
     })
 
     if $probe.exit_code != 0 {

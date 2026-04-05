@@ -101,9 +101,9 @@ def test_issue_bead_comment_plan [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Regression: repo-local devenv shells clear inherited installed-runtime aliases so source entrypoints use the checkout.
+# Regression: repo-local devenv shells clear inherited installed-runtime aliases but still expose the checkout runtime root.
 def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
-    print "🧪 Testing repo-local devenv shells clear inherited runtime aliases..."
+    print "🧪 Testing repo-local devenv shells sanitize inherited runtime aliases to the checkout root..."
 
     let repo_root = ($env.PWD | path expand)
     let fake_runtime = (get_yazelix_state_dir | path join "runtime" "current" | path expand)
@@ -121,8 +121,8 @@ def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
         let summary = ($output.stdout | lines | last | default "")
         let expected_editor = ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
 
-        if ($output.exit_code == 0) and ($summary == $"unset|unset|($repo_root)|($expected_editor)") {
-            print "  ✅ Repo-local devenv shell now clears inherited runtime aliases and exports an absolute managed Helix wrapper from DEVENV_ROOT"
+        if ($output.exit_code == 0) and ($summary == $"($repo_root)|unset|($repo_root)|($expected_editor)") {
+            print "  ✅ Repo-local devenv shell now replaces inherited runtime aliases with DEVENV_ROOT and exports an absolute managed Helix wrapper"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) summary=($summary) stderr=(($output.stderr | str trim))"
