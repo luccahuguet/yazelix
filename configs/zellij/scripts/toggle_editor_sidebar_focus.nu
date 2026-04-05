@@ -2,11 +2,10 @@
 
 use runtime_helper.nu [get_runtime_script_path run_runtime_nu_command]
 
-export def build_toggle_editor_sidebar_focus_command [] {
+def main [] {
     let zellij_integration = (get_runtime_script_path "nushell/scripts/integrations/zellij.nu")
     let yazi_integration = (get_runtime_script_path "nushell/scripts/integrations/yazi.nu")
-
-    [
+    let command = ([
         $"use '($zellij_integration)' [toggle_editor_sidebar_focus]"
         $"use '($yazi_integration)' [refresh_active_sidebar_yazi]"
         "let result = (toggle_editor_sidebar_focus)"
@@ -20,9 +19,6 @@ export def build_toggle_editor_sidebar_focus_command [] {
         "if (($result.target? | default '') == 'sidebar') {"
         "    refresh_active_sidebar_yazi | ignore"
         "}"
-    ] | str join "\n"
-}
-
-def main [] {
-    run_runtime_nu_command (build_toggle_editor_sidebar_focus_command)
+    ] | str join "\n")
+    run_runtime_nu_command $command
 }

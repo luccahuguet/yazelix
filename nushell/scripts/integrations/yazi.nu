@@ -325,23 +325,33 @@ export def resolve_reveal_target_path [buffer_name: string] {
     $full_path
 }
 
-export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: string = "yazi_sync.log"] {
+def get_active_sidebar_yazi_action_context [] {
     if not (is_sidebar_enabled) {
-        return {status: "skipped", reason: "sidebar_disabled"}
+        return {status: "skipped", reason: "sidebar_disabled", sidebar_state: null}
     }
 
     if ($env.ZELLIJ? | is-empty) {
-        return {status: "skipped", reason: "outside_zellij"}
+        return {status: "skipped", reason: "outside_zellij", sidebar_state: null}
     }
 
     if not (has_ya_command) {
-        return {status: "skipped", reason: "ya_missing"}
+        return {status: "skipped", reason: "ya_missing", sidebar_state: null}
     }
 
     let sidebar_state = (read_active_sidebar_state)
     if ($sidebar_state | is-empty) {
-        return {status: "skipped", reason: "sidebar_yazi_missing"}
+        return {status: "skipped", reason: "sidebar_yazi_missing", sidebar_state: null}
     }
+
+    {status: "ok", sidebar_state: $sidebar_state}
+}
+
+export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: string = "yazi_sync.log"] {
+    let action_context = (get_active_sidebar_yazi_action_context)
+    if $action_context.status != "ok" {
+        return ($action_context | reject sidebar_state)
+    }
+    let sidebar_state = $action_context.sidebar_state
 
     let expanded_target_path = ($target_path | path expand)
     let target_dir = if (($expanded_target_path | path type) == "dir") {
@@ -365,22 +375,11 @@ export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: s
 }
 
 export def refresh_active_sidebar_yazi [log_file: string = "yazi_refresh.log"] {
-    if not (is_sidebar_enabled) {
-        return {status: "skipped", reason: "sidebar_disabled"}
+    let action_context = (get_active_sidebar_yazi_action_context)
+    if $action_context.status != "ok" {
+        return ($action_context | reject sidebar_state)
     }
-
-    if ($env.ZELLIJ? | is-empty) {
-        return {status: "skipped", reason: "outside_zellij"}
-    }
-
-    if not (has_ya_command) {
-        return {status: "skipped", reason: "ya_missing"}
-    }
-
-    let sidebar_state = (read_active_sidebar_state)
-    if ($sidebar_state | is-empty) {
-        return {status: "skipped", reason: "sidebar_yazi_missing"}
-    }
+    let sidebar_state = $action_context.sidebar_state
 
     try {
         run_ya_emit_to $sidebar_state.yazi_id "refresh"
