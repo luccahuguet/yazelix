@@ -442,9 +442,9 @@ def test_vendored_yazi_plugin_refresh_applies_patch_and_refuses_dirty_targets []
     }
 
     let result = (try {
-        let first_run = (^nu $update_script --repo-root $target_repo --manifest $manifest_path --no-bump | complete)
+        let first_run = (^nu $update_script --repo-root $target_repo --manifest $manifest_path | complete)
         let first_content = (open --raw $target_main | str trim)
-        let second_run = (^nu $update_script --repo-root $target_repo --manifest $manifest_path --no-bump | complete)
+        let second_run = (^nu $update_script --repo-root $target_repo --manifest $manifest_path | complete)
         let second_text = ((($second_run.stdout | default "") + "\n" + ($second_run.stderr | default "")) | str trim)
 
         if (

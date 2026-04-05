@@ -33,21 +33,6 @@ def load_manifest [manifest_path: string] {
   }
 }
 
-def resolve_latest_rev [repo_url: string, tracking_ref: string] {
-  let ref = $"refs/heads/($tracking_ref)"
-  let result = (^git ls-remote $repo_url $ref | complete)
-  if $result.exit_code != 0 {
-    fail $"Failed to resolve latest revision for ($repo_url) \((($result.stderr | str trim))\)" 5
-  }
-
-  let line = ($result.stdout | lines | get -o 0 | default "" | str trim)
-  if ($line | is-empty) {
-    fail $"No revision found for ($repo_url) ref ($ref)" 6
-  }
-
-  $line | split row (char tab) | get 0 | str trim
-}
-
 def ensure_clean_managed_targets [repo_root: string, entry: record] {
   let target_dir = ($repo_root | path join ($entry.target_dir | into string))
   let managed_files = ($entry.managed_files? | default [])
@@ -168,15 +153,9 @@ def refresh_plugin [repo_root: string, entry: record, rev: string, --quiet] {
   }
 }
 
-def maybe_update_manifest_revs [manifest_path: string, manifest: record, updated_plugins: list<record>] {
-  let updated_manifest = ($manifest | upsert plugins $updated_plugins)
-  ($updated_manifest | to toml) | save --force --raw $manifest_path
-}
-
 export def main [
   --repo-root: string = $REPO_ROOT
   --manifest: string = $DEFAULT_MANIFEST
-  --no-bump
   --quiet
 ] {
   ensure_git_available
@@ -184,33 +163,22 @@ export def main [
   let repo_root = ($repo_root | path expand)
   let manifest_path = ($manifest | path expand)
   let loaded = (load_manifest $manifest_path)
-  let manifest = $loaded.manifest
   let plugins = $loaded.plugins
 
-  mut updated_plugins = []
   for entry in $plugins {
     ensure_clean_managed_targets $repo_root $entry
 
-    let chosen_rev = if $no_bump {
-      ($entry.pinned_rev | into string)
-    } else {
-      resolve_latest_rev ($entry.upstream_repo | into string) ($entry.tracking_ref | into string)
-    }
+    let chosen_rev = ($entry.pinned_rev | into string)
 
     if ($chosen_rev | str trim | is-empty) {
-      fail $"Vendored Yazi plugin entry is missing a usable revision: ($entry.name)" 15
+      fail $"Vendored Yazi plugin entry is missing a pinned revision: ($entry.name)" 15
     }
 
     refresh_plugin $repo_root $entry $chosen_rev --quiet=$quiet
-    $updated_plugins = ($updated_plugins | append ($entry | upsert pinned_rev $chosen_rev))
-  }
-
-  if not $no_bump {
-    maybe_update_manifest_revs $manifest_path $manifest $updated_plugins
   }
 
   if not $quiet {
-    let names = ($updated_plugins | each {|entry| $entry.name | into string } | str join ", ")
+    let names = ($plugins | each {|entry| $entry.name | into string } | str join ", ")
     print $"Vendored Yazi plugin runtime files are in sync: ($names)"
   }
 }
