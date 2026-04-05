@@ -1,4 +1,4 @@
-# Yazelix v13.11
+# Yazelix v13.12
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
@@ -70,7 +70,7 @@ Plugin-managed workspaces, migration-aware upgrades, and a cleaner runtime story
 - Upgrade and recovery UX improved with structured release notes, migration-aware diagnostics, `yzx config migrate`, and `yzx doctor --fix`.
 - Later v13 releases hardened popup flows, startup recovery, desktop integration, and the move to Zellij 0.44.
 
-For exact v13.11 upgrade notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new`.
+For exact v13.12 upgrade notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new`.
 For the longer project story, see [Version History](./docs/history.md).
 <!-- END GENERATED README LATEST SERIES -->
 

@@ -2,22 +2,9 @@
 
 Short, upgrade-facing release notes live here. The longer narrative history remains in [docs/history.md](./docs/history.md).
 
-## v13.11 - 2026-03-31
+## v13.12 - 2026-04-05
 
-Configurable Yazi command overrides, Ghostty neon tuning, and maintainer tooling polish.
-
-Upgrade impact: no user action required
-
-Highlights:
-- Added `[yazi].command` and `[yazi].ya_command` so managed Yazi launches and sidebar/reveal actions can use explicit binaries instead of only relying on `PATH`.
-- Added `nu-lint` to the `maintainer` pack and exposed the same maintainer-tooling surface through Home Manager's pack definitions.
-- Tuned the Ghostty neon cursor-trail base color from violet toward a brighter cyan-blue so the shipped neon variant matches its intended palette.
-- Clarified that custom Yazi plugin initialization lives in `user_configs/yazi/init.lua`, and updated user-facing docs to the current nested config shape and `user_configs/` paths.
-- Refreshed maintainer input pins and updated the runtime-owned `devenv` CLI to `2.0.7`.
-
-## Unreleased
-
-Simpler runtime updates and stronger update-path hardening
+Simpler runtime updates and stronger update-path hardening.
 
 Upgrade impact: no user action required
 
@@ -30,6 +17,28 @@ Highlights:
 - Reverted the managed Yazi default theme to Yazi's upstream built-in default instead of forcing the bundled `tokyo-night` flavor unless you opt into a flavor explicitly.
 - Fixed Home Manager runtime-source evaluation so the standalone `home_manager` flake can validate and install the lock-derived runtime without tripping invalid parent-source paths.
 - Dropped the broken Home Manager source-input workaround and kept the simpler module wiring now that the lock-derived `devenv` source import is stable again.
+
+## Unreleased
+
+Post-v13.12 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v13.12 lands.
+
+## v13.11 - 2026-03-31
+
+Configurable Yazi command overrides, Ghostty neon tuning, and maintainer tooling polish.
+
+Upgrade impact: no user action required
+
+Highlights:
+- Added `[yazi].command` and `[yazi].ya_command` so managed Yazi launches and sidebar/reveal actions can use explicit binaries instead of only relying on `PATH`.
+- Added `nu-lint` to the `maintainer` pack and exposed the same maintainer-tooling surface through Home Manager's pack definitions.
+- Tuned the Ghostty neon cursor-trail base color from violet toward a brighter cyan-blue so the shipped neon variant matches its intended palette.
+- Clarified that custom Yazi plugin initialization lives in `user_configs/yazi/init.lua`, and updated user-facing docs to the current nested config shape and `user_configs/` paths.
+- Refreshed maintainer input pins and updated the runtime-owned `devenv` CLI to `2.0.7`.
 
 ## v13.10 - 2026-03-30
 

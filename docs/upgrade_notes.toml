@@ -1,6 +1,18 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
+headline = "Post-v13.12 work in progress"
+summary = [
+    "Reserved for post-release changes after v13.12 lands.",
+]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v13.12"]
+version = "v13.12"
+date = "2026-04-05"
 headline = "Simpler runtime updates and stronger update-path hardening"
 summary = [
     "Replaced the clone-oriented `yzx update repo` flow with `yzx update runtime`, and redefined `yzx update all` around the packaged runtime plus the runtime-owned `devenv` CLI.",
