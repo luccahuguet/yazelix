@@ -763,7 +763,7 @@ def test_dev_update_home_manager_activation_refreshes_input_and_switches_request
         let snippet = (
             [
                 $"source \"($dev_module)\""
-                "let result = (activate_updated_home_manager_runtime $env.YZX_TEST_FLAKE_DIR \"yazelix-hm\" \"lucca@loqness\" true)"
+                "let result = (activate_updated_home_manager_runtime $env.YZX_TEST_FLAKE_DIR \"yazelix-hm\" \"lucca@loqness\")"
                 "$result | to json -r"
             ] | str join "\n"
         )

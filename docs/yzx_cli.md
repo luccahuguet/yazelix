@@ -135,9 +135,8 @@ Show the current Yazelix release summary on demand
 - Marks the current version as seen so startup does not need to repeat the same note
 - Reuses the same migration-aware guidance shown on first interactive run after an upgrade
 
-### `yzx update [--verbose]`
+### `yzx update`
 Show available update targets
-- `--verbose`: accepted for consistency with subcommands
 - Bare `yzx update` prints the available user-facing and maintainer update commands
 
 ### `yzx update all [--verbose]`

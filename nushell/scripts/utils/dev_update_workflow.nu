@@ -83,7 +83,7 @@ def sync_vendored_zjstatus [] {
     }
 }
 
-def sync_vendored_yazi_plugins [quiet: bool = false] {
+def sync_vendored_yazi_plugins [] {
     let update_script = ((require_yazelix_repo_root) | path join "nushell" "scripts" "dev" "update_yazi_plugins.nu")
     if not ($update_script | path exists) {
         print $"❌ Vendored Yazi plugin refresh helper not found: ($update_script)"
@@ -92,11 +92,7 @@ def sync_vendored_yazi_plugins [quiet: bool = false] {
 
     print "🔄 Refreshing vendored Yazi plugin runtime files..."
     try {
-        if $quiet {
-            ^nu $update_script --quiet
-        } else {
-            ^nu $update_script
-        }
+        ^nu $update_script
     } catch {|err|
         print $"❌ Failed to refresh vendored Yazi plugin runtime files: ($err.msg)"
         exit 1
@@ -233,13 +229,9 @@ def trim_output_tail [text: string, max_lines: int] {
     }
 }
 
-def run_update_canary [canary: record, verbose: bool] {
+def run_update_canary [canary: record] {
     let yzx_script = ((require_yazelix_repo_root) | path join "nushell" "scripts" "core" "yazelix.nu")
-    let refresh_command = if $verbose {
-        $"use \"($yzx_script)\" *; yzx refresh --force --verbose"
-    } else {
-        $"use \"($yzx_script)\" *; yzx refresh --force"
-    }
+    let refresh_command = $"use \"($yzx_script)\" *; yzx refresh --force --verbose"
 
     let result = (do {
         with-env {YAZELIX_CONFIG_OVERRIDE: $canary.config_path} {
@@ -261,17 +253,14 @@ def run_update_canary [canary: record, verbose: bool] {
     }
 }
 
-def run_update_canaries [selected: list<string>, verbose: bool] {
+def run_update_canaries [selected: list<string>] {
     let context = materialize_update_canaries $selected
     let results = try {
         (
             $context.canaries
             | each { |canary|
                 print $"🧪 Canary: ($canary.name) — ($canary.description)"
-                if not $verbose {
-                    print "   This might take a while. Canary output is captured unless you use --verbose."
-                }
-                run_update_canary $canary $verbose
+                run_update_canary $canary
             }
         )
     } catch { |err|
@@ -368,7 +357,7 @@ def build_home_manager_switch_ref [flake_dir: string, attr: string = ""] {
     }
 }
 
-def activate_updated_installer_runtime [repo_root: string, quiet: bool] {
+def activate_updated_installer_runtime [repo_root: string] {
     print "🔄 Installing updated local Yazelix runtime..."
 
     let result = (do {
@@ -392,21 +381,19 @@ def activate_updated_installer_runtime [repo_root: string, quiet: bool] {
         exit $result.exit_code
     }
 
-    if not $quiet {
-        let stdout_text = ($result.stdout | default "" | str trim)
-        let stderr_text = ($result.stderr | default "" | str trim)
-        if ($stdout_text | is-not-empty) {
-            print $stdout_text
-        }
-        if ($stderr_text | is-not-empty) {
-            print --stderr $stderr_text
-        }
+    let stdout_text = ($result.stdout | default "" | str trim)
+    let stderr_text = ($result.stderr | default "" | str trim)
+    if ($stdout_text | is-not-empty) {
+        print $stdout_text
+    }
+    if ($stderr_text | is-not-empty) {
+        print --stderr $stderr_text
     }
 
     print "✅ Installed runtime updated."
 }
 
-def refresh_home_manager_input_lock [flake_dir: string, input_name: string, quiet: bool] {
+def refresh_home_manager_input_lock [flake_dir: string, input_name: string] {
     let normalized_input = ($input_name | default "" | into string | str trim)
 
     if ($normalized_input | is-empty) {
@@ -432,21 +419,19 @@ def refresh_home_manager_input_lock [flake_dir: string, input_name: string, quie
         exit $result.exit_code
     }
 
-    if not $quiet {
-        let stdout_text = ($result.stdout | default "" | str trim)
-        let stderr_text = ($result.stderr | default "" | str trim)
-        if ($stdout_text | is-not-empty) {
-            print $stdout_text
-        }
-        if ($stderr_text | is-not-empty) {
-            print --stderr $stderr_text
-        }
+    let stdout_text = ($result.stdout | default "" | str trim)
+    let stderr_text = ($result.stderr | default "" | str trim)
+    if ($stdout_text | is-not-empty) {
+        print $stdout_text
+    }
+    if ($stderr_text | is-not-empty) {
+        print --stderr $stderr_text
     }
 
     print "✅ Home Manager flake input updated."
 }
 
-export def activate_updated_home_manager_runtime [flake_dir: string, input_name: string, attr: string = "", quiet: bool = false] {
+export def activate_updated_home_manager_runtime [flake_dir: string, input_name: string, attr: string = ""] {
     if (which home-manager | is-empty) {
         print "❌ home-manager not found in PATH."
         print "   Recovery: Install Home Manager first, or use `yzx dev update --activate installer` or `--activate none`."
@@ -455,7 +440,7 @@ export def activate_updated_home_manager_runtime [flake_dir: string, input_name:
 
     let resolved_dir = (resolve_home_manager_flake_dir $flake_dir)
     let switch_ref = (build_home_manager_switch_ref $resolved_dir $attr)
-    refresh_home_manager_input_lock $resolved_dir $input_name $quiet
+    refresh_home_manager_input_lock $resolved_dir $input_name
 
     print "🔄 Applying updated Home Manager Yazelix configuration..."
     let result = (^home-manager switch --flake $switch_ref | complete)
@@ -474,15 +459,13 @@ export def activate_updated_home_manager_runtime [flake_dir: string, input_name:
         exit $result.exit_code
     }
 
-    if not $quiet {
-        let stdout_text = ($result.stdout | default "" | str trim)
-        let stderr_text = ($result.stderr | default "" | str trim)
-        if ($stdout_text | is-not-empty) {
-            print $stdout_text
-        }
-        if ($stderr_text | is-not-empty) {
-            print --stderr $stderr_text
-        }
+    let stdout_text = ($result.stdout | default "" | str trim)
+    let stderr_text = ($result.stderr | default "" | str trim)
+    if ($stdout_text | is-not-empty) {
+        print $stdout_text
+    }
+    if ($stderr_text | is-not-empty) {
+        print --stderr $stderr_text
     }
 
     print "✅ Home Manager configuration applied."
@@ -494,8 +477,6 @@ export def activate_updated_home_manager_runtime [flake_dir: string, input_name:
 }
 
 export def run_dev_update_workflow [
-    verbose: bool = false
-    quiet: bool = false
     yes: bool = false
     no_canary: bool = false
     activate: string = ""
@@ -509,7 +490,6 @@ export def run_dev_update_workflow [
 
     let yazelix_dir = require_yazelix_repo_root
     let selected_canaries = resolve_update_canary_selection $canaries
-    let verbose_mode = (not $quiet)
 
     if $no_canary and $canary_only {
         print "❌ --no-canary and --canary-only cannot be used together."
@@ -538,10 +518,8 @@ export def run_dev_update_workflow [
 
     if $canary_only {
         print $"🧪 Running update canaries only: ($selected_canaries | str join ', ')"
-    } else if $verbose_mode {
-        print $"⚙️ Running: devenv update \(cwd: ($yazelix_dir)\)"
     } else {
-        print "🔄 Updating Yazelix inputs..."
+        print $"⚙️ Running: devenv update \(cwd: ($yazelix_dir)\)"
     }
 
     if not $canary_only {
@@ -562,7 +540,7 @@ export def run_dev_update_workflow [
     if $no_canary {
         print "⚠️  Canary checks were skipped."
     } else {
-        let canary_results = run_update_canaries $selected_canaries $verbose_mode
+        let canary_results = run_update_canaries $selected_canaries
         print_update_canary_summary $canary_results
         if ($canary_results | any { |result| not $result.ok }) {
             print_update_canary_failure_details $canary_results
@@ -585,7 +563,7 @@ export def run_dev_update_workflow [
     sync_runtime_pins
     sync_readme_version_marker
     sync_vendored_zjstatus
-    sync_vendored_yazi_plugins $quiet
+    sync_vendored_yazi_plugins
 
     match $activation_mode {
         "none" => {
@@ -593,11 +571,11 @@ export def run_dev_update_workflow [
             print "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, and vendored Yazi plugin runtime files are in sync in the repo checkout. Review and commit the changes if everything looks good."
         }
         "installer" => {
-            activate_updated_installer_runtime $yazelix_dir $quiet
+            activate_updated_installer_runtime $yazelix_dir
             print "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, vendored Yazi plugin runtime files, and the local installer-owned runtime are in sync. Review and commit the changes if everything looks good."
         }
         "home_manager" => {
-            let activation = (activate_updated_home_manager_runtime $home_manager_dir $home_manager_input $home_manager_attr $quiet)
+            let activation = (activate_updated_home_manager_runtime $home_manager_dir $home_manager_input $home_manager_attr)
             print $"✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, vendored Yazi plugin runtime files, and the Home Manager activation at ($activation.switch_ref) are in sync. Review and commit the changes if everything looks good."
         }
     }

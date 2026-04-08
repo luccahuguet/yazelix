@@ -4,6 +4,7 @@
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [get_installed_yazelix_runtime_reference_dir get_yazelix_runtime_dir resolve_yazelix_nu_bin]
+use ../utils/environment_detection.nu [detect_environment]
 use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 use ../utils/startup_profile.nu [profile_startup_step]
@@ -61,9 +62,6 @@ def main [--welcome-source: string, --skip-welcome] {
 
     # Parse extra shells from config
     let extra_shells = ($config.extra_shells? | default [])
-
-    # Import constants and helper functions
-    use ../utils/constants_with_helpers.nu *
 
     # DEBUG: Print skip_welcome_screen value
     if $debug_mode {
@@ -124,8 +122,8 @@ def main [--welcome-source: string, --skip-welcome] {
     let shells_to_configure = (["nu", "bash"] ++ [$default_shell] ++ $extra_shells) | uniq
 
     # Setup logging in state directory (XDG-compliant)
-    let state_dir = ($YAZELIX_STATE_DIR | str replace "~" $env.HOME)
-    let log_dir = ($YAZELIX_LOGS_DIR | str replace "~" $env.HOME)
+    let state_dir = ($env.YAZELIX_STATE_DIR | str replace "~" $env.HOME)
+    let log_dir = ($env.YAZELIX_LOGS_DIR | str replace "~" $env.HOME)
     mkdir $state_dir
     mkdir $log_dir
 

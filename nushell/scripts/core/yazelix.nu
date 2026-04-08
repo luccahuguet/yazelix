@@ -382,14 +382,7 @@ export def "yzx repair zellij-permissions" [] {
 }
 
 # Update dependencies and inputs
-export def "yzx update" [
-    --verbose  # Show verbose output for update commands
-] {
-    if $verbose {
-        print "Verbose mode is forwarded by the concrete update subcommands below."
-        print ""
-    }
-
+export def "yzx update" [] {
     print "User-facing updates:"
     print "  yzx update all        Refresh the installed Yazelix runtime"
     print $"  yzx update runtime    Refresh the installed Yazelix runtime via ($YAZELIX_INSTALL_FLAKE_REF)"

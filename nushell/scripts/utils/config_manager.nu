@@ -2,10 +2,25 @@
 # Yazelix Configuration Manager
 # Utilities for reading, updating, and managing yazelix configuration sections in user shell configs
 
+use ./constants.nu [
+    YAZELIX_START_MARKER
+    YAZELIX_END_MARKER
+    YAZELIX_START_MARKER_V1
+    YAZELIX_END_MARKER_V1
+    YAZELIX_START_MARKER_V2
+    YAZELIX_END_MARKER_V2
+    YAZELIX_START_MARKER_V3
+    YAZELIX_END_MARKER_V3
+    SHELL_CONFIGS
+]
+use ./shell_config_generation.nu [
+    get_yazelix_runtime_config_path
+    get_yzx_cli_path
+    get_yazelix_section_content
+]
+
 # Extract yazelix configuration section from a shell config file
 export def extract_yazelix_section [config_file: string] {
-    use ./constants_with_helpers.nu *
-
     if not ($config_file | path exists) {
         return { exists: false, content: "", start_line: -1, end_line: -1, full_content: "", version: 0 }
     }
@@ -103,8 +118,6 @@ export def extract_yazelix_section [config_file: string] {
 
 # Check if yazelix configuration sections are up to date
 export def check_config_versions [yazelix_dir: string] {
-    use ./constants_with_helpers.nu *
-
     let configs = [
         { name: "bash", file: ($SHELL_CONFIGS.bash | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "bash" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu"), expected_yzx_cli: (get_yzx_cli_path) }
         { name: "nushell", file: ($SHELL_CONFIGS.nushell | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "nushell" $yazelix_dir), expected_yzx_core: ($yazelix_dir | path join "nushell" "scripts" "core" "yazelix.nu"), expected_yzx_cli: (get_yzx_cli_path) }
@@ -154,8 +167,6 @@ export def check_config_versions [yazelix_dir: string] {
 }
 
 export def rewrite_shell_hooks [shell: string, config_file: string, yazelix_dir: string]: nothing -> record {
-    use ./constants_with_helpers.nu *
-
     if not ($config_file | path exists) {
         return { rewritten: false, reason: "config file not found" }
     }
@@ -209,8 +220,6 @@ export def rewrite_shell_hooks [shell: string, config_file: string, yazelix_dir:
 
 # Safely migrate hooks to latest version with backup
 export def migrate_shell_hooks [shell: string, config_file: string, yazelix_dir: string]: nothing -> record {
-    use ./constants_with_helpers.nu *
-
     if not ($config_file | path exists) {
         return { migrated: false, reason: "config file not found" }
     }

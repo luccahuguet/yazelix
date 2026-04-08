@@ -2,7 +2,14 @@
 # Shell Hook Setup Module
 # Generic shell hook installation and migration for all supported shells
 
-use ../utils/constants_with_helpers.nu *
+use ../utils/constants.nu [
+    SHELL_CONFIGS
+    YAZELIX_START_MARKER
+    YAZELIX_START_MARKER_V1
+    YAZELIX_START_MARKER_V2
+    YAZELIX_START_MARKER_V3
+]
+use ../utils/shell_config_generation.nu [get_yazelix_section_content]
 use ../utils/config_manager.nu [extract_yazelix_section migrate_shell_hooks rewrite_shell_hooks]
 
 # Setup yazelix hooks for a specific shell with automatic v1->v2 migration

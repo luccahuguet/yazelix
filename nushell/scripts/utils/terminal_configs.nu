@@ -2,9 +2,14 @@
 # Modular terminal configuration generator for yazelix
 
 use config_parser.nu parse_yazelix_config
-use ./constants_with_helpers.nu *
-use ./constants.nu [SUPPORTED_TERMINALS, CURSOR_TRAIL_COLOR_HEX]
+use ./constants.nu *
 use ./common.nu [get_yazelix_runtime_dir get_yazelix_user_config_dir]
+use ./cursor_trail_helpers.nu [
+    get_cursor_trail_random_pool
+    select_random_ghostty_trail_effect
+    select_random_ghostty_mode_effect
+    ghostty_effect_requires_always_animation
+]
 
 # Helpers
 def get_opacity_value [transparency: string] { $TRANSPARENCY_VALUES | get -o $transparency | default "1.0" }

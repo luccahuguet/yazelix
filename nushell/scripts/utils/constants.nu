@@ -325,6 +325,3 @@ export const GHOSTTY_CONFIG_HEADER = "# This is the configuration file for Ghost
 # - cursor_trail_helpers.nu - Cursor trail management
 # - environment_detection.nu - Environment detection
 # - shell_config_generation.nu - Shell configuration generation
-#
-# To use all constants AND helpers in one import, use:
-#   use constants_with_helpers.nu *

@@ -15,8 +15,6 @@ export def "yzx dev" [] {
 }
 
 export def "yzx dev update" [
-    --verbose  # Deprecated compatibility flag; maintainer update output is verbose by default
-    --quiet  # Capture canary output and reduce update progress noise
     --yes      # Skip confirmation prompt
     --no-canary  # Skip canary refresh/build checks after updating devenv.lock
     --activate: string = ""  # Required unless --canary-only: installer, home_manager, or none
@@ -26,7 +24,7 @@ export def "yzx dev update" [
     --canary-only  # Run canary checks without updating devenv.lock or syncing pins
     --canaries: list<string> = []  # Canary subset: default, maximal
 ] {
-    run_dev_update_workflow $verbose $quiet $yes $no_canary $activate $home_manager_dir $home_manager_input $home_manager_attr $canary_only $canaries
+    run_dev_update_workflow $yes $no_canary $activate $home_manager_dir $home_manager_input $home_manager_attr $canary_only $canaries
 }
 
 export def "yzx dev sync_terminal_configs" [] {
