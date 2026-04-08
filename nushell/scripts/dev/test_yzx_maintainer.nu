@@ -679,7 +679,7 @@ def test_dev_update_requires_explicit_activation_for_real_updates [] {
     print "🧪 Testing yzx dev update requires an explicit activation target unless canary-only is requested..."
 
     let repo_root = ($env.PWD | path expand)
-    let dev_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
+    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
 
     try {
         let snippet = (
@@ -730,7 +730,7 @@ def test_dev_update_home_manager_activation_refreshes_input_and_switches_request
     print "🧪 Testing yzx dev update Home Manager activation refreshes the input lock and switches the requested ref..."
 
     let repo_root = ($env.PWD | path expand)
-    let dev_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
+    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
     let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_home_manager_activation_XXXXXX | str trim)
     let bin_dir = ($tmp_root | path join "bin")
     let flake_dir = ($tmp_root | path join "home-manager")
@@ -819,7 +819,7 @@ def test_dev_update_activation_mode_rejects_unknown_values [] {
     print "🧪 Testing yzx dev update activation parsing rejects unknown mode names..."
 
     let repo_root = ($env.PWD | path expand)
-    let dev_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
+    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
 
     try {
         let snippet = (
