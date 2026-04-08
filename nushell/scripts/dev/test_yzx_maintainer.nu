@@ -2,7 +2,8 @@
 # Test runner for maintainer-only yzx checks
 # Test lane: maintainer
 
-use ../utils/common.nu [get_yazelix_state_dir require_yazelix_repo_root]
+use ../utils/common.nu [get_yazelix_state_dir]
+use ../utils/repo_checkout.nu [require_yazelix_repo_root]
 use ../utils/devenv_cli.nu resolve_preferred_devenv_path
 use ./validate_default_test_budget.nu [profile_suite_runner]
 

@@ -9,7 +9,8 @@ use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_envir
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu [get_installed_yazelix_runtime_dir get_yazelix_runtime_dir]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
-use ../integrations/yazi.nu [reveal_in_yazi sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
+use ../integrations/managed_editor.nu sync_managed_editor_cwd
+use ../integrations/yazi.nu [reveal_in_yazi sync_active_sidebar_yazi_to_directory]
 use ../integrations/zellij.nu [set_tab_cwd resolve_tab_cwd_target]
 
 # Import modularized commands (export use to properly re-export subcommands)

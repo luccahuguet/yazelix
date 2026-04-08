@@ -4,7 +4,8 @@
 
 use ../utils/logging.nu log_to_file
 use ./zellij.nu [set_managed_editor_cwd, set_workspace_for_path, open_new_managed_editor_in_cwd]
-use ./yazi.nu [get_managed_editor_kind, sync_active_sidebar_yazi_to_directory, is_sidebar_enabled]
+use ./managed_editor.nu get_managed_editor_kind
+use ./yazi.nu [sync_active_sidebar_yazi_to_directory, is_sidebar_enabled]
 
 const LOG = "zoxide_open_in_editor.log"
 

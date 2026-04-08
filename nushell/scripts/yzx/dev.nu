@@ -2,7 +2,7 @@
 # Development helper commands for maintainers
 
 use ../utils/terminal_configs.nu generate_all_terminal_configs
-use ../utils/common.nu [require_yazelix_repo_root]
+use ../utils/repo_checkout.nu [require_yazelix_repo_root]
 use ../utils/dev_issue_sync.nu run_dev_issue_sync
 use ../utils/dev_plugin_build.nu [build_pane_orchestrator_wasm build_popup_plugin_wasm]
 use ../utils/environment_bootstrap.nu [run_in_devenv_shell_command]

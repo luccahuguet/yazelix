@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use common.nu require_yazelix_repo_root
+use repo_checkout.nu require_yazelix_repo_root
 
 def get_pane_orchestrator_paths [] {
     let yazelix_dir = require_yazelix_repo_root

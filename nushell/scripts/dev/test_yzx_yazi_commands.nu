@@ -3,7 +3,9 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ./yzx_test_helpers.nu [setup_managed_config_fixture]
-use ../integrations/yazi.nu [get_active_sidebar_yazi_id, get_managed_editor_kind, get_ya_command, get_yazi_command, refresh_active_sidebar_yazi, resolve_managed_editor_open_strategy]
+use ../integrations/managed_editor.nu [get_managed_editor_kind, resolve_managed_editor_open_strategy]
+use ../integrations/yazi.nu [get_ya_command, get_yazi_command, refresh_active_sidebar_yazi]
+use ../integrations/yazi_sidebar_state.nu get_active_sidebar_yazi_id
 use ../integrations/zellij.nu toggle_editor_sidebar_focus
 
 def write_executable_fixture_file [path: string, lines: list<string>] {

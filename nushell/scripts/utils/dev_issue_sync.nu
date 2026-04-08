@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use common.nu require_yazelix_repo_root
+use repo_checkout.nu require_yazelix_repo_root
 use issue_bead_contract.nu [
     build_imported_issue_description
     find_issue_bead_comment
