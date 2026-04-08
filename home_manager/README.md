@@ -16,6 +16,7 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 - Does not replace Nix itself; you still need a flake-enabled Nix install
 - Does not install a separate host/global Nushell for your everyday shell usage
 - Does not auto-enter a Yazelix shell on `home-manager switch`
+- Does not manage or require host shell-hook injection for the Home Manager-owned `yzx` launcher path
 
 ## Quick Start
 
@@ -74,7 +75,7 @@ This creates:
 - `~/.local/bin/yzx`
 - `~/.config/yazelix/user_configs/yazelix.toml`
 - `~/.config/yazelix/user_configs/yazelix_packs.toml`
-- a desktop entry that targets the managed runtime
+- a Home Manager profile desktop entry, typically `~/.nix-profile/share/applications/yazelix.desktop`
 
 Then open a fresh shell and run:
 
@@ -83,6 +84,16 @@ yzx launch
 ```
 
 For maintainer workflows, a cloned repo is still useful. Normal Home Manager usage should not depend on treating `~/.config/yazelix` as a live repo checkout.
+
+## Validated Behavior
+
+Manual validation on April 8, 2026 covered both a lived-in account and a throwaway clean-room Home Manager activation.
+
+- Home Manager owns `runtime/current`, `~/.local/bin/yzx`, and the generated `user_configs/` TOML files through symlinks into the Home Manager profile.
+- The managed `yzx` wrapper resolves through `~/.local/share/yazelix/runtime/current/bin/yzx`, not the manual installer's `shells/posix/yzx_cli.sh` wrapper.
+- The Home Manager desktop entry comes from the Home Manager profile, typically `~/.nix-profile/share/applications/yazelix.desktop`, rather than from `yzx desktop install`.
+- Old manual desktop-entry files under `~/.local/share/applications/` can linger after migration; they are not Home Manager-owned and will shadow the Home Manager profile entry until you remove them.
+- Host shell hooks are optional for the Home Manager path. Launch through `yzx` or the Home Manager desktop entry; do not expect `home-manager switch` to rewrite `.bashrc` or `~/.config/nushell/config.nu`.
 
 ## Example Configuration
 
@@ -99,7 +110,31 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
 
 2. **Configure the Home Manager module** (see example.nix)
 
-3. **Apply:** `home-manager switch`
+3. **Apply with collision backups:**
+   ```bash
+   home-manager switch -b hm-backup
+   ```
+
+Manual installs commonly already own:
+- `~/.local/bin/yzx`
+- `~/.local/share/yazelix/runtime/current`
+- `~/.config/yazelix/user_configs/yazelix.toml`
+- `~/.config/yazelix/user_configs/yazelix_packs.toml`
+
+Using `-b hm-backup` lets Home Manager move those pre-existing unmanaged files aside instead of aborting the switch.
+
+4. **Verify the Home Manager-owned surfaces:**
+   ```bash
+   readlink -f ~/.local/bin/yzx
+   readlink -f ~/.local/share/yazelix/runtime/current
+   ls ~/.nix-profile/share/applications/yazelix.desktop
+   yzx --version-short
+   ```
+
+5. **Launch Yazelix:**
+   ```bash
+   yzx launch
+   ```
 
 ### From Home Manager back to Manual
 
@@ -128,18 +163,21 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
 - Check that `~/.config/yazelix/user_configs/yazelix.toml` was created
 - Check that `~/.local/share/yazelix/runtime/current` exists
 - Check that `~/.local/bin/yzx` exists and is on your `PATH`
+- Check that `~/.nix-profile/share/applications/yazelix.desktop` exists if you expect desktop-launcher integration through Home Manager
 - Verify Home Manager configuration syntax
 - Run `home-manager switch` to apply changes
 
-### Conflicts with existing yazelix.toml
-- The module will overwrite existing `yazelix.toml`
-- Backup your manual configuration before enabling the module
-- See example.nix to recreate your settings declaratively
+### Conflicts with an existing manual install
+- Existing manual Yazelix files can cause `home-manager switch` to stop with collision errors
+- Prefer `home-manager switch -b hm-backup` for the first takeover
+- The most common collision paths are `~/.local/bin/yzx`, `~/.local/share/yazelix/runtime/current`, and the generated TOML files under `~/.config/yazelix/user_configs/`
+- See example.nix to recreate your settings declaratively instead of editing the generated TOML files directly
 
 ### Nushell expectations
 - Yazelix launchers use the runtime-local Nushell shipped with the managed runtime
 - You do **not** need to add `nushell` to `home.packages` just to make Yazelix launch
 - If you want Nushell as your normal interactive shell outside Yazelix, install it separately in your own Home Manager config
+- Home Manager does **not** rewrite your personal Bash or Nushell startup files for Yazelix; the managed `yzx` launcher works without those host-shell hooks
 
 ### Module not found
 - If you use Home Manager with flakes, check that the `yazelix-hm` input reference is correct in your own `flake.nix`

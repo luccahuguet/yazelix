@@ -622,8 +622,22 @@ def get_desktop_entry_path [] {
     (get_desktop_applications_dir | path join "com.yazelix.Yazelix.desktop")
 }
 
+def get_home_manager_profile_desktop_entry_path [] {
+    ($env.HOME | path join ".nix-profile" "share" "applications" "yazelix.desktop")
+}
+
 def resolve_realpath_or_null [target: string] {
     let result = (^readlink -f $target | complete)
+    if $result.exit_code == 0 {
+        let resolved = ($result.stdout | str trim)
+        if ($resolved | is-empty) { null } else { $resolved }
+    } else {
+        null
+    }
+}
+
+def get_symlink_target_or_null [target: string] {
+    let result = (^readlink $target | complete)
     if $result.exit_code == 0 {
         let resolved = ($result.stdout | str trim)
         if ($resolved | is-empty) { null } else { $resolved }
@@ -635,6 +649,29 @@ def resolve_realpath_or_null [target: string] {
 def path_is_symlink [target: string] {
     let result = (^bash -lc $"test -L ($target | into string | to json -r)" | complete)
     $result.exit_code == 0
+}
+
+def path_is_home_manager_managed [target: string] {
+    let symlink_target = (get_symlink_target_or_null $target)
+    if $symlink_target == null {
+        false
+    } else {
+        $symlink_target | str contains "home-manager-files/"
+    }
+}
+
+def detect_install_owner [] {
+    let probes = [
+        (get_yazelix_state_dir | path join "runtime" "current")
+        (get_user_yzx_cli_path)
+        (get_main_user_config_path)
+    ]
+
+    if ($probes | any {|probe| path_is_home_manager_managed $probe }) {
+        "home-manager"
+    } else {
+        "installer"
+    }
 }
 
 def get_current_installed_runtime_target [] {
@@ -666,36 +703,98 @@ def get_desktop_entry_exec [desktop_path: string] {
     }
 }
 
-export def check_desktop_entry_freshness [] {
-    let desktop_path = (get_desktop_entry_path)
+def desktop_entry_exec_matches_expected [desktop_exec, expected_execs: list<string>] {
+    if $desktop_exec == null {
+        false
+    } else {
+        $expected_execs | any {|expected_exec| $desktop_exec == $expected_exec }
+    }
+}
 
-    if not ($desktop_path | path exists) {
+export def check_desktop_entry_freshness [] {
+    let install_owner = (detect_install_owner)
+    let local_desktop_path = (get_desktop_entry_path)
+    let profile_desktop_path = (get_home_manager_profile_desktop_entry_path)
+    let local_desktop_exists = ($local_desktop_path | path exists)
+    let profile_desktop_exists = ($profile_desktop_path | path exists)
+    let desktop_path = if $local_desktop_exists {
+        $local_desktop_path
+    } else if $profile_desktop_exists {
+        $profile_desktop_path
+    } else {
+        null
+    }
+    let expected_yzx_path = (get_user_yzx_cli_path)
+    let expected_execs = [
+        $"\"($expected_yzx_path)\" desktop launch"
+        $"($expected_yzx_path) desktop launch"
+    ]
+
+    if $desktop_path == null {
+        let details = if $install_owner == "home-manager" {
+            $"Home Manager-managed desktop entries usually resolve through ($profile_desktop_path). Reapply your Home Manager configuration if it is missing."
+        } else {
+            "Run `yzx desktop install` if you want application-launcher integration."
+        }
         return {
             status: "info"
             message: "Yazelix desktop entry not installed"
-            details: "Run `yzx desktop install` if you want application-launcher integration."
+            details: $details
             fix_available: false
         }
     }
 
-    let desktop_exec = (get_desktop_entry_exec $desktop_path)
-    let expected_yzx_path = (get_user_yzx_cli_path)
-    let expected_exec = $"\"($expected_yzx_path)\" desktop launch"
+    let local_desktop_exec = if $local_desktop_exists {
+        get_desktop_entry_exec $local_desktop_path
+    } else {
+        null
+    }
+    let profile_desktop_exec = if $profile_desktop_exists {
+        get_desktop_entry_exec $profile_desktop_path
+    } else {
+        null
+    }
+
+    if (
+        $install_owner == "home-manager"
+        and $local_desktop_exists
+        and $profile_desktop_exists
+        and (not (desktop_entry_exec_matches_expected $local_desktop_exec $expected_execs))
+        and (desktop_entry_exec_matches_expected $profile_desktop_exec $expected_execs)
+    ) {
+        return {
+            status: "warning"
+            message: "A stale user-local Yazelix desktop entry shadows the Home Manager desktop entry"
+            details: $"Shadowing local entry: ($local_desktop_path)\nLocal Exec: ($local_desktop_exec | default '<missing>')\nHome Manager entry: ($profile_desktop_path)\nProfile Exec: ($profile_desktop_exec)\nRemove the shadowing local entry with `yzx desktop uninstall` or refresh it with `yzx desktop install`."
+            fix_available: false
+        }
+    }
+
+    let desktop_exec = if $desktop_path == $local_desktop_path {
+        $local_desktop_exec
+    } else {
+        $profile_desktop_exec
+    }
+    let repair_hint = if $desktop_path == $profile_desktop_path {
+        "Repair by reapplying your Home Manager configuration."
+    } else {
+        "Repair with `yzx desktop install`."
+    }
 
     if $desktop_exec == null {
         return {
             status: "warning"
             message: "Yazelix desktop entry is invalid"
-            details: "The installed desktop entry has no Exec line. Repair with `yzx desktop install`."
+            details: $"The installed desktop entry has no Exec line. ($repair_hint)"
             fix_available: false
         }
     }
 
-    if $desktop_exec != $expected_exec {
+    if not (desktop_entry_exec_matches_expected $desktop_exec $expected_execs) {
         return {
             status: "warning"
             message: "Yazelix desktop entry does not use the stable launcher path"
-            details: $"Desktop entry Exec: ($desktop_exec)\nExpected Exec: ($expected_exec)\nRepair with `yzx desktop install`."
+            details: $"Desktop entry Exec: ($desktop_exec)\nExpected one of: ($expected_execs | str join ', ')\n($repair_hint)"
             fix_available: false
         }
     }
@@ -719,10 +818,6 @@ def get_runtime_variants [current_runtime_target?: string] {
     } else {
         [$runtime_ref, $current_runtime_target] | uniq
     }
-}
-
-def build_install_repair_hint [] {
-    "Repair with `nix run github:luccahuguet/yazelix#install`."
 }
 
 def get_required_shell_hook_checks [current_runtime_target?: string] {
@@ -791,6 +886,12 @@ def evaluate_required_shell_hook [hook: record] {
 
 export def check_install_artifact_staleness [] {
     mut results = []
+    let install_owner = (detect_install_owner)
+    let repair_hint = if $install_owner == "home-manager" {
+        "Repair by reapplying your Home Manager configuration (for example `home-manager switch`)."
+    } else {
+        "Repair with `nix run github:luccahuguet/yazelix#install`."
+    }
 
     let runtime_link = (get_yazelix_state_dir | path join "runtime" "current")
     let current_runtime_target = (get_current_installed_runtime_target)
@@ -799,14 +900,14 @@ export def check_install_artifact_staleness [] {
         $results = ($results | append {
             status: "warning"
             message: "Installed Yazelix runtime link is missing"
-            details: $"Expected runtime link: ($runtime_link)\n(build_install_repair_hint)"
+            details: $"Expected runtime link: ($runtime_link)\n($repair_hint)"
             fix_available: false
         })
     } else if $current_runtime_target == null {
         $results = ($results | append {
             status: "warning"
             message: "Installed Yazelix runtime link is broken"
-            details: $"Runtime link exists but does not resolve to a valid runtime: ($runtime_link)\n(build_install_repair_hint)"
+            details: $"Runtime link exists but does not resolve to a valid runtime: ($runtime_link)\n($repair_hint)"
             fix_available: false
         })
     } else {
@@ -820,73 +921,130 @@ export def check_install_artifact_staleness [] {
 
     let yzx_cli_path = (get_user_yzx_cli_path)
     let yzx_cli_target = (resolve_realpath_or_null $yzx_cli_path)
-    let expected_yzx_targets = (
-        get_runtime_variants $current_runtime_target
-        | each {|runtime| $runtime | path join "shells" "posix" "yzx_cli.sh" }
-    )
-    let expected_yzx_targets_resolved = (
-        $expected_yzx_targets
-        | each {|target| resolve_realpath_or_null $target }
-        | compact
-    )
-    let all_expected_yzx_targets = ($expected_yzx_targets | append $expected_yzx_targets_resolved | uniq)
 
     if not ($yzx_cli_path | path exists) and (not (path_is_symlink $yzx_cli_path)) {
         $results = ($results | append {
             status: "warning"
             message: "Installed yzx CLI shim is missing"
-            details: $"Expected CLI path: ($yzx_cli_path)\n(build_install_repair_hint)"
+            details: $"Expected CLI path: ($yzx_cli_path)\n($repair_hint)"
             fix_available: false
         })
     } else if $yzx_cli_target == null {
         $results = ($results | append {
             status: "warning"
             message: "Installed yzx CLI shim is broken"
-            details: $"The yzx shim exists but does not resolve cleanly: ($yzx_cli_path)\n(build_install_repair_hint)"
-            fix_available: false
-        })
-    } else if not ($all_expected_yzx_targets | any {|target| $yzx_cli_target == $target }) {
-        $results = ($results | append {
-            status: "warning"
-            message: "Installed yzx CLI shim is stale"
-            details: $"yzx target: ($yzx_cli_target)\nExpected one of: ($all_expected_yzx_targets | str join ', ')\n(build_install_repair_hint)"
+            details: $"The yzx shim exists but does not resolve cleanly: ($yzx_cli_path)\n($repair_hint)"
             fix_available: false
         })
     } else {
-        $results = ($results | append {
-            status: "ok"
-            message: "Installed yzx CLI shim matches the current runtime"
-            details: $"($yzx_cli_path) -> ($yzx_cli_target)"
-            fix_available: false
-        })
+        if $install_owner == "home-manager" {
+            let expected_wrapper_exec = $"exec \"($env.HOME | path join '.local' 'share' 'yazelix' 'runtime' 'current' 'bin' 'yzx')\" \"$@\""
+            let expected_runtime_bin_targets = (
+                get_runtime_variants $current_runtime_target
+                | each {|runtime| $runtime | path join "bin" "yzx" }
+            )
+            let expected_runtime_bin_targets_resolved = (
+                $expected_runtime_bin_targets
+                | each {|target| resolve_realpath_or_null $target }
+                | compact
+            )
+            let all_expected_runtime_bin_targets = ($expected_runtime_bin_targets | append $expected_runtime_bin_targets_resolved | uniq)
+            let direct_runtime_match = ($all_expected_runtime_bin_targets | any {|target| $yzx_cli_target == $target })
+            let wrapper_matches = if $direct_runtime_match {
+                false
+            } else {
+                try {
+                    let wrapper_content = (open --raw $yzx_cli_target)
+                    $wrapper_content | str contains $expected_wrapper_exec
+                } catch {
+                    false
+                }
+            }
+            if $direct_runtime_match or $wrapper_matches {
+                $results = ($results | append {
+                    status: "ok"
+                    message: "Installed yzx CLI shim matches the current runtime"
+                    details: $"($yzx_cli_path) -> ($yzx_cli_target)"
+                    fix_available: false
+                })
+            } else {
+                $results = ($results | append {
+                    status: "warning"
+                    message: "Installed yzx CLI shim is stale"
+                    details: $"yzx target: ($yzx_cli_target)\nExpected Home Manager wrapper exec: ($expected_wrapper_exec)\nExpected runtime targets: ($all_expected_runtime_bin_targets | str join ', ')\n($repair_hint)"
+                    fix_available: false
+                })
+            }
+        } else {
+            let expected_yzx_targets = (
+                get_runtime_variants $current_runtime_target
+                | each {|runtime|
+                    [
+                        ($runtime | path join "shells" "posix" "yzx_cli.sh")
+                        ($runtime | path join "bin" "yzx")
+                    ]
+                }
+                | flatten
+            )
+            let expected_yzx_targets_resolved = (
+                $expected_yzx_targets
+                | each {|target| resolve_realpath_or_null $target }
+                | compact
+            )
+            let all_expected_yzx_targets = ($expected_yzx_targets | append $expected_yzx_targets_resolved | uniq)
+            if not ($all_expected_yzx_targets | any {|target| $yzx_cli_target == $target }) {
+                $results = ($results | append {
+                    status: "warning"
+                    message: "Installed yzx CLI shim is stale"
+                    details: $"yzx target: ($yzx_cli_target)\nExpected one of: ($all_expected_yzx_targets | str join ', ')\n($repair_hint)"
+                    fix_available: false
+                })
+            } else {
+                $results = ($results | append {
+                    status: "ok"
+                    message: "Installed yzx CLI shim matches the current runtime"
+                    details: $"($yzx_cli_path) -> ($yzx_cli_target)"
+                    fix_available: false
+                })
+            }
+        }
     }
 
-    let shell_hook_results = (
-        get_required_shell_hook_checks $current_runtime_target
-        | each {|hook| evaluate_required_shell_hook $hook }
-    )
-    for hook in $shell_hook_results {
-        if $hook.status == "current" {
-            $results = ($results | append {
-                status: "ok"
-                message: $"Required ($hook.shell) Yazelix hook is current"
-                details: $hook.file
-                fix_available: false
-            })
-        } else if $hook.status == "outdated" {
-            $results = ($results | append {
-                status: "warning"
-                message: $"Required ($hook.shell) Yazelix hook is stale"
-                details: $"Config file: ($hook.file)\n(build_install_repair_hint)"
-                fix_available: false
-            })
-        } else if $hook.status == "missing" {
-            $results = ($results | append {
-                status: "warning"
-                message: $"Required ($hook.shell) Yazelix hook is missing"
-                details: $"Config file: ($hook.file)\n(build_install_repair_hint)"
-                fix_available: false
-            })
+    if $install_owner == "home-manager" {
+        $results = ($results | append {
+            status: "info"
+            message: "Shell-hook freshness checks skipped for Home Manager-managed Yazelix install"
+            details: "Home Manager owns the stable `yzx` launcher and runtime/current directly. Host shell hooks are optional for this install path and may be managed separately."
+            fix_available: false
+        })
+    } else {
+        let shell_hook_results = (
+            get_required_shell_hook_checks $current_runtime_target
+            | each {|hook| evaluate_required_shell_hook $hook }
+        )
+        for hook in $shell_hook_results {
+            if $hook.status == "current" {
+                $results = ($results | append {
+                    status: "ok"
+                    message: $"Required ($hook.shell) Yazelix hook is current"
+                    details: $hook.file
+                    fix_available: false
+                })
+            } else if $hook.status == "outdated" {
+                $results = ($results | append {
+                    status: "warning"
+                    message: $"Required ($hook.shell) Yazelix hook is stale"
+                    details: $"Config file: ($hook.file)\n($repair_hint)"
+                    fix_available: false
+                })
+            } else if $hook.status == "missing" {
+                $results = ($results | append {
+                    status: "warning"
+                    message: $"Required ($hook.shell) Yazelix hook is missing"
+                    details: $"Config file: ($hook.file)\n($repair_hint)"
+                    fix_available: false
+                })
+            }
         }
     }
 
