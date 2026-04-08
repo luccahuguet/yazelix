@@ -224,6 +224,7 @@ def test_runtime_project_lookup_stays_read_only_until_materialized [] {
     let project_dir = ($state_dir | path join "runtime" "project")
     let stale_runtime_dir = ($tmp_root | path join "stale_runtime")
     let common_script = ($repo_root | path join "nushell" "scripts" "utils" "common.nu")
+    let runtime_project_script = ($repo_root | path join "nushell" "scripts" "utils" "runtime_project.nu")
 
     mkdir $state_dir
     mkdir $runtime_dir
@@ -240,7 +241,7 @@ def test_runtime_project_lookup_stays_read_only_until_materialized [] {
     let result = (try {
         let snippet = (
             [
-                $"use \"($common_script)\" [get_existing_yazelix_runtime_project_dir materialize_yazelix_runtime_project_dir]"
+                $"use \"($runtime_project_script)\" [get_existing_yazelix_runtime_project_dir materialize_yazelix_runtime_project_dir]"
                 "print ((get_existing_yazelix_runtime_project_dir) | default '<missing>')"
                 "print (materialize_yazelix_runtime_project_dir)"
                 "print ((get_existing_yazelix_runtime_project_dir) | default '<missing>')"

@@ -1,10 +1,11 @@
 #!/usr/bin/env nu
 # yzx refresh command - Refresh Yazelix devenv cache/environment without launching UI
 
+use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled get_refresh_output_mode format_command_failure_summary]
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ../utils/launch_state.nu [record_launch_profile_state resolve_profile_from_build_shell_output]
-use ../utils/common.nu [describe_build_parallelism require_yazelix_runtime_dir]
+use ../utils/common.nu [require_yazelix_runtime_dir]
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 

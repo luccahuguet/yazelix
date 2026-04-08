@@ -2,11 +2,11 @@
 # Yazelix startup profiling harness
 
 use common.nu [
-    get_existing_yazelix_runtime_project_dir
     get_yazelix_state_dir
     require_yazelix_repo_root
     resolve_yazelix_nu_bin
 ]
+use runtime_project.nu [get_existing_yazelix_runtime_project_dir]
 use startup_profile.nu [
     create_startup_profile_run
     load_startup_profile_report

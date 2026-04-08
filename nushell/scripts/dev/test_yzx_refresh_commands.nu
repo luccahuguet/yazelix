@@ -130,11 +130,14 @@ def setup_refresh_profile_recording_fixture [label: string] {
     ] | str join "\n" | save --force --raw ($utils_dir | path join "launch_state.nu")
 
     [
+        ("export def require_yazelix_runtime_dir [] { \"" + $runtime_dir + "\" }")
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
+
+    [
         "export def describe_build_parallelism [build_cores_config?: string, max_jobs_config?: string] {"
         "    '8 jobs x 2 cores/job'"
         "}"
-        ("export def require_yazelix_runtime_dir [] { \"" + $runtime_dir + "\" }")
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "build_policy.nu")
 
     [
         "export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {"
@@ -216,12 +219,18 @@ def setup_rebuild_profile_recording_fixture [label: string] {
     ] | str join "\n" | save --force --raw ($utils_dir | path join "nix_env_helper.nu")
 
     [
+        ("export def require_yazelix_runtime_dir [] { \"" + $runtime_dir + "\" }")
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
+
+    [
+        ("export def materialize_yazelix_runtime_project_dir [] { \"" + $runtime_project_dir + "\" }")
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "runtime_project.nu")
+
+    [
         "export def get_max_cores [build_cores?: string] { 1 }"
         "export def get_max_jobs [max_jobs?: string] { 1 }"
         "export def get_yazelix_nix_config [] { \"test-nix-config\" }"
-        ("export def materialize_yazelix_runtime_project_dir [] { \"" + $runtime_project_dir + "\" }")
-        ("export def require_yazelix_runtime_dir [] { \"" + $runtime_dir + "\" }")
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "build_policy.nu")
 
     [
         "export def compute_config_state [] {"

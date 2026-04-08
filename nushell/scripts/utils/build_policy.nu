@@ -1,0 +1,80 @@
+#!/usr/bin/env nu
+
+def get_total_cores [] {
+    let total_cores = (sys cpu | length)
+    if $total_cores > 0 { $total_cores } else { 1 }
+}
+
+export def get_yazelix_nix_config [] {
+    [
+        "warn-dirty = false"
+        "extra-substituters = https://cache.numtide.com"
+        "extra-trusted-public-keys = niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
+    ] | str join "\n"
+}
+
+def parse_parallelism_setting [setting_value: string, default_value: string, kind: string] {
+    let total_cores = get_total_cores
+    let resolved_value = if ($setting_value | is-not-empty) {
+        $setting_value
+    } else {
+        $default_value
+    }
+
+    match $resolved_value {
+        "auto" => {
+            if $kind != "max_jobs" {
+                error make {msg: "Invalid build_cores value 'auto'. Allowed symbolic values: max, max_minus_one, half, quarter, or a positive integer."}
+            }
+            if $total_cores >= 4 { (($total_cores / 4) | math floor | into int) } else { 1 }
+        }
+        "max" => $total_cores,
+        "max_minus_one" => (if $total_cores > 1 { $total_cores - 1 } else { 1 }),
+        "half" => (if $total_cores >= 2 { (($total_cores / 2) | math floor | into int) } else { 1 }),
+        "quarter" => (if $total_cores >= 4 { (($total_cores / 4) | math floor | into int) } else { 1 }),
+        _ => {
+            let parsed = (try { $resolved_value | into int } catch { null })
+            if $parsed == null {
+                if $kind == "max_jobs" {
+                    error make {msg: $"Invalid max_jobs value '($resolved_value)'. Allowed symbolic values: auto, max, max_minus_one, half, quarter, or a positive integer."}
+                } else {
+                    error make {msg: $"Invalid build_cores value '($resolved_value)'. Allowed symbolic values: max, max_minus_one, half, quarter, or a positive integer."}
+                }
+            }
+            if $parsed < 1 {
+                error make {msg: $"Invalid ($kind) value '($resolved_value)'. Expected a positive integer."}
+            }
+            $parsed
+        }
+    }
+}
+
+export def get_max_jobs [max_jobs_config?: string] {
+    parse_parallelism_setting ($max_jobs_config | default "") "half" "max_jobs"
+}
+
+export def get_max_cores [build_cores_config?: string] {
+    parse_parallelism_setting ($build_cores_config | default "") "2" "build_cores"
+}
+
+export def describe_build_parallelism [build_cores_config?: string, max_jobs_config?: string] {
+    let resolved_build_cores = if ($build_cores_config | is-not-empty) {
+        $build_cores_config
+    } else {
+        "2"
+    }
+    let resolved_max_jobs = if ($max_jobs_config | is-not-empty) {
+        $max_jobs_config
+    } else {
+        "half"
+    }
+    let per_job_cores = (get_max_cores $resolved_build_cores)
+    let max_jobs = (get_max_jobs $resolved_max_jobs)
+    let total_budget = ($per_job_cores * $max_jobs)
+
+    if ($resolved_build_cores == ($per_job_cores | into string)) and ($resolved_max_jobs == ($max_jobs | into string)) {
+        $"($max_jobs) jobs x ($per_job_cores) cores/job \(~($total_budget) total\)"
+    } else {
+        $"($max_jobs) jobs x ($per_job_cores) cores/job \(~($total_budget) total, max_jobs=($resolved_max_jobs), build_cores=($resolved_build_cores)\)"
+    }
+}

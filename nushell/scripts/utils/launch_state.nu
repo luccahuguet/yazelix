@@ -1,7 +1,9 @@
 #!/usr/bin/env nu
 # Profile activation helpers for fast Yazelix launch/restart paths.
 
-use ./common.nu [get_existing_yazelix_runtime_project_dir get_yazelix_nix_config get_yazelix_runtime_dir get_yazelix_state_dir]
+use ./build_policy.nu [get_yazelix_nix_config]
+use ./common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
+use ./runtime_project.nu [get_existing_yazelix_runtime_project_dir]
 
 def normalize_path_entries [value: any] {
     let described = ($value | describe)

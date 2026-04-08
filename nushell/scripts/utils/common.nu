@@ -9,23 +9,6 @@ const INFERRED_RUNTIME_DIR = (
     | path join ".." ".." ".."
     | path expand
 )
-const RUNTIME_PROJECT_ENTRIES = [
-    ".taplo.toml"
-    "assets"
-    "config_metadata"
-    "configs"
-    "docs"
-    "nushell"
-    "rust_plugins"
-    "shells"
-    "CHANGELOG.md"
-    "devenv.lock"
-    "devenv.nix"
-    "devenv.yaml"
-    "yazelix_default.toml"
-    "yazelix_packs_default.toml"
-]
-
 def is_valid_repo_root [candidate?: string] {
     if $candidate == null {
         return false
@@ -243,46 +226,6 @@ export def get_yazelix_state_dir [] {
     }
 }
 
-def get_yazelix_runtime_project_dir [] {
-    (get_yazelix_state_dir | path join "runtime" "project")
-}
-
-def runtime_project_matches_runtime_root [project_root: string, runtime_root: string] {
-    let project_sentinel = ($project_root | path join "devenv.nix")
-    let runtime_sentinel = ($runtime_root | path join "devenv.nix")
-
-    if not ($project_sentinel | path exists) or not ($runtime_sentinel | path exists) {
-        return false
-    }
-
-    let resolved_project_sentinel = (resolve_existing_path $project_sentinel)
-    let resolved_runtime_sentinel = (resolve_existing_path $runtime_sentinel)
-
-    if ($resolved_project_sentinel == null) or ($resolved_runtime_sentinel == null) {
-        return false
-    }
-
-    $resolved_project_sentinel == $resolved_runtime_sentinel
-}
-
-export def get_existing_yazelix_runtime_project_dir [] {
-    let runtime_root = (get_yazelix_runtime_dir)
-    if $runtime_root == null {
-        return null
-    }
-
-    let project_root = (get_yazelix_runtime_project_dir)
-    if (
-        ($project_root | path exists)
-        and (($project_root | path type) == "dir")
-        and (runtime_project_matches_runtime_root $project_root $runtime_root)
-    ) {
-        $project_root
-    } else {
-        null
-    }
-}
-
 def resolve_git_repo_root_from_pwd [] {
     let pwd = ($env.PWD? | default "" | into string | str trim)
     if ($pwd | is-empty) {
@@ -372,27 +315,6 @@ export def resolve_yazelix_nu_bin [] {
     error make {msg: "Could not resolve a usable Nushell binary for Yazelix. Checked YAZELIX_NU_BIN, runtime-local bin/nu, PATH, and $nu.current-exe."}
 }
 
-export def materialize_yazelix_runtime_project_dir [] {
-    let runtime_root = (require_yazelix_runtime_dir)
-    let project_root = (get_yazelix_runtime_project_dir)
-
-    mkdir $project_root
-
-    for entry in $RUNTIME_PROJECT_ENTRIES {
-        let source = ($runtime_root | path join $entry)
-        let target = ($project_root | path join $entry)
-        if ($target | path exists) {
-            rm -rf $target
-        }
-        if not ($source | path exists) {
-            continue
-        }
-        ^ln -s $source $target
-    }
-
-    $project_root
-}
-
 export def resolve_zellij_default_shell [yazelix_dir: string, default_shell: string] {
     let shell_name = ($default_shell | str downcase)
     if $shell_name == "nu" {
@@ -417,84 +339,4 @@ export def require_yazelix_runtime_dir [] {
         error make {msg: $"Cannot find Yazelix runtime directory at ($yazelix_dir)"}
     }
     $yazelix_dir
-}
-
-def get_total_cores [] {
-    let total_cores = (sys cpu | length)
-    if $total_cores > 0 { $total_cores } else { 1 }
-}
-
-export def get_yazelix_nix_config [] {
-    [
-        "warn-dirty = false"
-        "extra-substituters = https://cache.numtide.com"
-        "extra-trusted-public-keys = niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
-    ] | str join "\n"
-}
-
-def parse_parallelism_setting [setting_value: string, default_value: string, kind: string] {
-    let total_cores = get_total_cores
-    let resolved_value = if ($setting_value | is-not-empty) {
-        $setting_value
-    } else {
-        $default_value
-    }
-
-    match $resolved_value {
-        "auto" => {
-            if $kind != "max_jobs" {
-                error make {msg: "Invalid build_cores value 'auto'. Allowed symbolic values: max, max_minus_one, half, quarter, or a positive integer."}
-            }
-            if $total_cores >= 4 { (($total_cores / 4) | math floor | into int) } else { 1 }
-        }
-        "max" => $total_cores,
-        "max_minus_one" => (if $total_cores > 1 { $total_cores - 1 } else { 1 }),
-        "half" => (if $total_cores >= 2 { (($total_cores / 2) | math floor | into int) } else { 1 }),
-        "quarter" => (if $total_cores >= 4 { (($total_cores / 4) | math floor | into int) } else { 1 }),
-        _ => {
-            let parsed = (try { $resolved_value | into int } catch { null })
-            if $parsed == null {
-                if $kind == "max_jobs" {
-                    error make {msg: $"Invalid max_jobs value '($resolved_value)'. Allowed symbolic values: auto, max, max_minus_one, half, quarter, or a positive integer."}
-                } else {
-                    error make {msg: $"Invalid build_cores value '($resolved_value)'. Allowed symbolic values: max, max_minus_one, half, quarter, or a positive integer."}
-                }
-            }
-            if $parsed < 1 {
-                error make {msg: $"Invalid ($kind) value '($resolved_value)'. Expected a positive integer."}
-            }
-            $parsed
-        }
-    }
-}
-
-export def get_max_jobs [max_jobs_config?: string] {
-    parse_parallelism_setting ($max_jobs_config | default "") "half" "max_jobs"
-}
-
-# Get the number of CPU cores to use per build based on configuration
-export def get_max_cores [build_cores_config?: string] {
-    parse_parallelism_setting ($build_cores_config | default "") "2" "build_cores"
-}
-
-export def describe_build_parallelism [build_cores_config?: string, max_jobs_config?: string] {
-    let resolved_build_cores = if ($build_cores_config | is-not-empty) {
-        $build_cores_config
-    } else {
-        "2"
-    }
-    let resolved_max_jobs = if ($max_jobs_config | is-not-empty) {
-        $max_jobs_config
-    } else {
-        "half"
-    }
-    let per_job_cores = (get_max_cores $resolved_build_cores)
-    let max_jobs = (get_max_jobs $resolved_max_jobs)
-    let total_budget = ($per_job_cores * $max_jobs)
-
-    if ($resolved_build_cores == ($per_job_cores | into string)) and ($resolved_max_jobs == ($max_jobs | into string)) {
-        $"($max_jobs) jobs x ($per_job_cores) cores/job \(~($total_budget) total\)"
-    } else {
-        $"($max_jobs) jobs x ($per_job_cores) cores/job \(~($total_budget) total, max_jobs=($resolved_max_jobs), build_cores=($resolved_build_cores)\)"
-    }
 }

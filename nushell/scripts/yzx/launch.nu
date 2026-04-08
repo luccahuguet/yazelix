@@ -2,11 +2,12 @@
 # yzx launch command - Launch Yazelix in a new terminal window
 
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
+use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment run_in_devenv_shell_command get_refresh_output_mode]
 use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile resolve_runtime_owned_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/common.nu [describe_build_parallelism require_yazelix_runtime_dir]
+use ../utils/common.nu [require_yazelix_runtime_dir]
 use ../utils/constants.nu [TERMINAL_METADATA]
 use ../utils/runtime_contract_checker.nu [check_runtime_script require_runtime_check]
 

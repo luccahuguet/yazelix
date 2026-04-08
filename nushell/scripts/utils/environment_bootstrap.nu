@@ -3,12 +3,14 @@
 # Used by both start_yazelix.nu and yzx env to avoid duplication
 
 use config_parser.nu parse_yazelix_config
+use build_policy.nu [get_max_cores get_max_jobs get_yazelix_nix_config]
 use devenv_cli.nu [is_preferred_devenv_available resolve_preferred_devenv_path]
 use nix_detector.nu ensure_nix_available
 use nix_env_helper.nu ensure_nix_in_environment
-use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config materialize_yazelix_runtime_project_dir require_yazelix_runtime_dir]
+use common.nu [require_yazelix_runtime_dir]
 use config_state.nu [compute_config_state record_materialized_state]
 use launch_state.nu [record_launch_profile_state resolve_profile_from_build_shell_output]
+use runtime_project.nu [materialize_yazelix_runtime_project_dir]
 use startup_profile.nu [profile_startup_step]
 
 def format_command_for_display [command_parts: list<string>] {

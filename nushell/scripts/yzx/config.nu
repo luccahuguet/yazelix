@@ -1,7 +1,8 @@
 #!/usr/bin/env nu
 # yzx config - Show, migrate, and reset Yazelix config surfaces
 
-use ../utils/config_migrations.nu [apply_config_migration_plan get_config_migration_plan render_config_migration_plan validate_config_migration_rules]
+use ../utils/config_migration_preview.nu [get_config_migration_plan render_config_migration_plan]
+use ../utils/config_migrations.nu [apply_config_migration_plan validate_config_migration_rules]
 use ../utils/config_migration_transactions.nu recover_stale_managed_config_transactions
 use ../utils/config_surfaces.nu [copy_default_config_surfaces get_primary_config_paths load_active_config_surface reconcile_primary_config_surfaces]
 

@@ -277,13 +277,16 @@ def setup_enter_forwarding_fixture [label: string] {
     ] | str join "\n" | save --force --raw ($utils_dir | path join "entrypoint_config_migrations.nu")
 
     [
-        "export def describe_build_parallelism [build_cores: string, max_jobs: string] {"
-        "    \"1 job x 1 core/job\""
-        "}"
         "export def require_yazelix_runtime_dir [] {"
         "    $env.YAZELIX_RUNTIME_DIR"
         "}"
     ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
+
+    [
+        "export def describe_build_parallelism [build_cores: string, max_jobs: string] {"
+        "    \"1 job x 1 core/job\""
+        "}"
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "build_policy.nu")
 
     [
         "export const TERMINAL_METADATA = {}"
@@ -420,9 +423,6 @@ def setup_refresh_activation_fixture [label: string] {
     ] | str join "\n" | save --force --raw ($utils_dir | path join "launch_state.nu")
 
     [
-        "export def describe_build_parallelism [build_cores: string, max_jobs: string] {"
-        "    \"1 job x 1 core/job\""
-        "}"
         "export def require_yazelix_runtime_dir [] {"
         "    $env.YAZELIX_RUNTIME_DIR"
         "}"
@@ -430,6 +430,12 @@ def setup_refresh_activation_fixture [label: string] {
         "    $env.YAZELIX_TEST_NU_BIN"
         "}"
     ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
+
+    [
+        "export def describe_build_parallelism [build_cores: string, max_jobs: string] {"
+        "    \"1 job x 1 core/job\""
+        "}"
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "build_policy.nu")
 
     [
         "export def profile_startup_step [phase: string, step: string, code: closure, metadata?: record] {"

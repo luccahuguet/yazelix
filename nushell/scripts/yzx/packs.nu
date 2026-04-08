@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # yzx packs - Show enabled packs and their sizes
 
-use ../utils/common.nu [get_existing_yazelix_runtime_project_dir]
+use ../utils/runtime_project.nu [get_existing_yazelix_runtime_project_dir]
 use ../utils/config_parser.nu parse_yazelix_config
 
 # Format bytes to human readable

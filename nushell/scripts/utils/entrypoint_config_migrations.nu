@@ -3,10 +3,9 @@
 use config_migrations.nu [
     apply_config_migration_plan
     build_config_migration_plan_from_record
-    get_config_migration_plan
-    render_config_migration_plan
     validate_config_migration_rules
 ]
+use config_migration_preview.nu [get_config_migration_plan render_config_migration_plan]
 use config_migration_transactions.nu [
     apply_managed_config_relocation_transaction
     recover_stale_managed_config_transactions

@@ -1,10 +1,10 @@
 #!/usr/bin/env nu
 # yzx env command - Load Yazelix environment without UI
 
+use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/environment_bootstrap.nu *
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/common.nu [describe_build_parallelism]
 use ../utils/launch_state.nu [get_launch_env require_reused_launch_profile]
 
 # Build shell command from shell name.
