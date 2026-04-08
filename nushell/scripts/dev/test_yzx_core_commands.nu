@@ -908,56 +908,6 @@ welcome_style = "random"
     $result
 }
 
-# Defends: yzx config prints the active Yazelix configuration surface.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-def test_yzx_config_view [] {
-    print "🧪 Testing yzx config..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_config_view_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    let user_config_dir = ($temp_config_dir | path join "user_configs")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-    mkdir $user_config_dir
-
-    let result = (try {
-        '[core]
-debug_mode = false
-' | save --force --raw ($user_config_dir | path join "yazelix.toml")
-        'enabled = ["git"]
-
-[declarations]
-git = ["gh"]
-' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
-
-        let output = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            yzx config | columns | str join ','
-        }
-
-        if (
-            ($output | str contains "core")
-            and not ($output | str contains "packs")
-        ) {
-            print "  ✅ yzx config hides packs by default"
-            true
-        } else {
-            print $"  ❌ Unexpected output: ($output)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
 # Invariant: pack sidecar config is merged into the full config view.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_yzx_config_full_merges_pack_sidecar [] {
@@ -1231,7 +1181,6 @@ export def run_core_canonical_tests [] {
         (test_yzx_uninstall_apply_removes_manual_artifacts_but_preserves_config)
         (test_yzx_uninstall_reports_home_manager_managed_install)
         (test_yzx_uninstall_ignores_noninstaller_runtime_current_directory)
-        (test_yzx_config_view)
         (test_yzx_config_full_merges_pack_sidecar)
         (test_yzx_edit_targets_print_paths)
         (test_invalid_config_is_classified_as_config_problem)

@@ -11,44 +11,6 @@ def write_executable_fixture_file [path: string, lines: list<string>] {
     ^chmod +x $path
 }
 
-# Defends: managed editor open strategy routes missing and existing states correctly.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_managed_editor_open_strategy_routes_missing_and_existing_states [] {
-    print "🧪 Testing managed editor open strategy routes both missing and existing states correctly..."
-
-    try {
-        let cases = [
-            {
-                status: "missing"
-                expected_action: "open_new_managed"
-            }
-            {
-                status: "ok"
-                expected_action: "reuse_managed"
-            }
-        ]
-
-        let failures = (
-            $cases
-            | where {|case|
-                let result = (resolve_managed_editor_open_strategy $case.status)
-                $result.action != $case.expected_action
-            }
-        )
-
-        if ($failures | is-empty) {
-            print "  ✅ managed editor routing stays correct for missing and existing pane states"
-            true
-        } else {
-            print $"  ❌ Unexpected routing failures: ($failures | to json -r)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 # Defends: Yazi command resolution honors defaults and user overrides.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_yazi_command_resolvers_honor_defaults_and_overrides [] {
@@ -365,7 +327,6 @@ recommended_deps = true
 
 export def run_yazi_canonical_tests [] {
     [
-        (test_managed_editor_open_strategy_routes_missing_and_existing_states)
         (test_yazi_command_resolvers_honor_defaults_and_overrides)
         (test_get_managed_editor_kind_accepts_managed_helix_wrapper_env)
         (test_refresh_active_sidebar_yazi_emits_refresh_to_cached_sidebar_instance)

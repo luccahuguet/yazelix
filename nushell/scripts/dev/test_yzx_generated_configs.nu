@@ -68,6 +68,9 @@ def test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in [] {
     let result = (try {
         '[terminal]
 terminals = ["ghostty", "kitty", "alacritty", "wezterm", "foot"]
+ghostty_trail_color = "reef"
+ghostty_trail_effect = "tail"
+ghostty_mode_effect = "ripple_rectangle"
 ' | save --force --raw $config_path
 
         with-env {
@@ -84,10 +87,15 @@ terminals = ["ghostty", "kitty", "alacritty", "wezterm", "foot"]
         let alacritty_entrypoint = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "alacritty" "alacritty.toml"))
         let wezterm_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "wezterm" ".wezterm.lua"))
         let foot_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "foot" "foot.ini"))
+        let ghostty_root = ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty")
+        let tail_shader = ($ghostty_root | path join "shaders" "generated_effects" "tail.glsl")
+        let ripple_shader = ($ghostty_root | path join "shaders" "generated_effects" "ripple_rectangle.glsl")
 
         if (
             not ($override_root | path exists)
             and ($ghostty_config | str contains $"config-file = ?\"($override_root | path join "ghostty")\"")
+            and ($ghostty_config | str contains "custom-shader = ./shaders/generated_effects/tail.glsl")
+            and ($ghostty_config | str contains "custom-shader = ./shaders/generated_effects/ripple_rectangle.glsl")
             and not ($kitty_config | str contains "include ~/.config/yazelix")
             and ($kitty_config | str contains $"Create ($override_root | path join "kitty.conf") if you want terminal-native Kitty tweaks.")
             and ($alacritty_entrypoint | str contains $"\"($fake_home)/.local/share/yazelix/configs/terminal_emulators/alacritty/alacritty_base.toml\"")
@@ -100,8 +108,10 @@ terminals = ["ghostty", "kitty", "alacritty", "wezterm", "foot"]
             and not ($foot_config | str contains "start_yazelix.sh")
             and ($foot_config | str contains "[colors-dark]")
             and not ($foot_config | str contains "[colors]\n")
+            and ($tail_shader | path exists)
+            and ($ripple_shader | path exists)
         ) {
-            print "  ✅ Terminal config generation keeps user terminal overrides opt-in and keeps startup out of generated terminal configs"
+            print "  ✅ Terminal config generation keeps user terminal overrides opt-in, keeps startup out of generated terminal configs, and points Ghostty at real generated shaders"
             true
         } else {
             print "  ❌ Terminal config generation still scaffolded or imported unexpected user override files"
@@ -215,59 +225,6 @@ def test_managed_wrapper_launch_command_does_not_forward_config_mode_flag [] {
         print $"  ❌ Exception: ($err.msg)"
         false
     }
-}
-
-# Regression: Ghostty generated effect shader references must point at files the builder emits.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_generate_ghostty_config_references_existing_effect_shaders [] {
-    print "🧪 Testing Ghostty generated effect shader references match emitted files..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_ghostty_effect_shaders_XXXXXX | str trim)
-    let fake_home = ($tmpdir | path join "home")
-    let config_path = ($tmpdir | path join "yazelix.toml")
-    let runtime_root = (pwd)
-    mkdir $fake_home
-
-    let result = (try {
-        '[terminal]
-terminals = ["ghostty"]
-ghostty_trail_color = "reef"
-ghostty_trail_effect = "tail"
-ghostty_mode_effect = "ripple_rectangle"
-' | save --force --raw $config_path
-
-        with-env {
-            HOME: $fake_home
-            YAZELIX_CONFIG_DIR: ($fake_home | path join ".config" "yazelix")
-            YAZELIX_CONFIG_OVERRIDE: $config_path
-        } {
-            generate_all_terminal_configs $runtime_root
-        }
-
-        let ghostty_root = ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty")
-        let ghostty_config = (open --raw ($ghostty_root | path join "config"))
-        let tail_shader = ($ghostty_root | path join "shaders" "generated_effects" "tail.glsl")
-        let ripple_shader = ($ghostty_root | path join "shaders" "generated_effects" "ripple_rectangle.glsl")
-
-        if (
-            ($ghostty_config | str contains "custom-shader = ./shaders/generated_effects/tail.glsl")
-            and ($ghostty_config | str contains "custom-shader = ./shaders/generated_effects/ripple_rectangle.glsl")
-            and ($tail_shader | path exists)
-            and ($ripple_shader | path exists)
-        ) {
-            print "  ✅ Ghostty generated config now points at generated effect shader filenames that exist"
-            true
-        } else {
-            print $"  ❌ Missing Ghostty effect shader wiring: tail_exists=(($tail_shader | path exists)) ripple_exists=(($ripple_shader | path exists))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
 }
 
 # Defends: removed ascii mode fails with migration guidance.
@@ -1436,7 +1393,6 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
         (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
         (test_managed_wrapper_launch_command_does_not_forward_config_mode_flag)
-        (test_generate_ghostty_config_references_existing_effect_shaders)
         (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
         (test_parse_yazelix_config_bootstraps_split_default_surfaces)

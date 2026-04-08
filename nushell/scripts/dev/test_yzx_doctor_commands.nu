@@ -128,42 +128,6 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
     $result
 }
 
-# Defends: doctor reports known migrations and the matching fix path.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_yzx_doctor_reports_known_migration_with_fix_guidance [] {
-    print "🧪 Testing yzx doctor reports known config migrations with fix guidance..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_doctor_migration"
-        '[zellij]
-widget_tray = ["layout", "editor"]
-')
-
-    let result = (try {
-        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose")
-        let stdout = ($output.stdout | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Known migration at zellij.widget_tray")
-            and ($stdout | str contains "Safe preview: `yzx config migrate`")
-            and ($stdout | str contains "Safe apply: `yzx config migrate --apply` or `yzx doctor --fix`")
-        ) {
-            print "  ✅ yzx doctor reports known migrations with the shared recovery guidance"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
 # Regression: doctor must still report config migrations when the Zellij plugin-health branch runs.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_doctor_reports_known_migration_inside_zellij_session [] {
@@ -194,12 +158,14 @@ widget_tray = ["layout", "editor"]
         if (
             ($output.exit_code == 0)
             and ($stdout | str contains "Known migration at zellij.widget_tray")
+            and ($stdout | str contains "Safe preview: `yzx config migrate`")
+            and ($stdout | str contains "Safe apply: `yzx config migrate --apply` or `yzx doctor --fix`")
             and (
                 ($stdout | str contains "Yazelix pane-orchestrator")
                 or ($stdout | str contains "Could not contact the Yazelix pane-orchestrator plugin")
             )
         ) {
-            print "  ✅ yzx doctor reports config migrations even when plugin health executes inside Zellij"
+            print "  ✅ yzx doctor reports config migrations with shared fix guidance even when plugin health executes inside Zellij"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
@@ -549,7 +515,6 @@ terminals = ["ghostty"]
 export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
-        (test_yzx_doctor_reports_known_migration_with_fix_guidance)
         (test_yzx_doctor_reports_known_migration_inside_zellij_session)
         (test_yzx_doctor_fix_applies_safe_config_migrations)
         (test_yzx_doctor_fix_splits_legacy_pack_config)
