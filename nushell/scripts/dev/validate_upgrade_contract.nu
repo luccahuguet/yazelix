@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use ../utils/constants.nu [YAZELIX_VERSION]
-use ../utils/config_migrations.nu [get_config_migration_rules]
+use ../utils/config_migration_rules.nu get_config_migration_rules
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
 const GUARDED_FILES = [

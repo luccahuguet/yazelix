@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use ../utils/config_migrations.nu validate_config_migration_rules
+use ../utils/config_migration_rules.nu validate_config_migration_rules
 
 export def main [] {
     let errors = (validate_config_migration_rules)
