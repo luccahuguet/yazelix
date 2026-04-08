@@ -14,22 +14,7 @@ export const PINNED_NIX_VERSION = "2.33.3"
 # ============================================================================
 # CONFIGURATION SECTION MARKERS (Shell Hook Management)
 # ============================================================================
-# These markers are used to manage yazelix sections in user shell configs
-# Multiple versions exist to detect and migrate old configurations
-
-# v1 markers (for detecting old hooks)
-export const YAZELIX_START_MARKER_V1 = "# YAZELIX START - Yazelix managed configuration (do not modify this comment)"
-export const YAZELIX_END_MARKER_V1 = "# YAZELIX END - Yazelix managed configuration (do not modify this comment)"
-
-# v2 markers (for detecting old hooks with bash wrapper alias)
-export const YAZELIX_START_MARKER_V2 = "# YAZELIX START v2 - Yazelix managed configuration (do not modify this comment)"
-export const YAZELIX_END_MARKER_V2 = "# YAZELIX END v2 - Yazelix managed configuration (do not modify this comment)"
-
-# v3 markers (yzx function in shell configs)
-export const YAZELIX_START_MARKER_V3 = "# YAZELIX START v3 - Yazelix managed configuration (do not modify this comment)"
-export const YAZELIX_END_MARKER_V3 = "# YAZELIX END v3 - Yazelix managed configuration (do not modify this comment)"
-
-# v4 markers (current version - same as v3, version bump for yzx profile)
+# These markers are used to manage the current yazelix section in user shell configs.
 export const YAZELIX_START_MARKER = "# YAZELIX START v4 - Yazelix managed configuration (do not modify this comment)"
 export const YAZELIX_END_MARKER = "# YAZELIX END v4 - Yazelix managed configuration (do not modify this comment)"
 

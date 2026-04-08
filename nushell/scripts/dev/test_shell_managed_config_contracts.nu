@@ -4,6 +4,7 @@
 
 use ./yzx_test_helpers.nu [get_repo_root repo_path]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
+use ../setup/shell_hooks.nu [setup_shell_hooks]
 use ../utils/nushell_externs.nu [get_generated_yzx_extern_path sync_generated_yzx_extern_bridge]
 use ../utils/shell_config_generation.nu get_yazelix_section_content
 use ../utils/shell_user_hooks.nu [get_yazelix_shell_user_hook_path sync_generated_nushell_user_hook_bridge]
@@ -504,6 +505,73 @@ def test_home_manager_shellhook_setup_skips_host_shell_surfaces [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: legacy pre-v4 shell hook blocks are rejected with one explicit manual recovery path instead of being duplicated or auto-migrated silently.
+def test_setup_shell_hooks_rejects_legacy_generations [] {
+    print "🧪 Testing shell hook setup rejects legacy pre-v4 managed sections with manual recovery guidance..."
+
+    let repo_root = (get_repo_root)
+    let legacy_cases = [
+        {generation: "v1", marker: "# YAZELIX START - Yazelix managed configuration (do not modify this comment)", end_marker: "# YAZELIX END - Yazelix managed configuration (do not modify this comment)"}
+        {generation: "v2", marker: "# YAZELIX START v2 - Yazelix managed configuration (do not modify this comment)", end_marker: "# YAZELIX END v2 - Yazelix managed configuration (do not modify this comment)"}
+        {generation: "v3", marker: "# YAZELIX START v3 - Yazelix managed configuration (do not modify this comment)", end_marker: "# YAZELIX END v3 - Yazelix managed configuration (do not modify this comment)"}
+    ]
+
+    let results = ($legacy_cases | each {|legacy|
+        let tmp_root = (^mktemp -d /tmp/yazelix_legacy_shell_hook_XXXXXX | str trim)
+        let tmp_home = ($tmp_root | path join "home")
+        let bashrc_path = ($tmp_home | path join ".bashrc")
+        let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+
+        mkdir $tmp_home
+        mkdir ($tmp_home | path join ".local" "share")
+        mkdir $state_dir
+
+        [
+            $legacy.marker
+            "# old generated shell hook body"
+            $legacy.end_marker
+        ] | str join "\n" | save --force --raw $bashrc_path
+
+        let outcome = (with-env {
+            HOME: $tmp_home
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            try {
+                setup_shell_hooks "bash" $repo_root true true
+                {ok: false, message: "setup_shell_hooks succeeded unexpectedly"}
+            } catch {|err|
+                {ok: true, message: ($err.msg | default "")}
+            }
+        })
+
+        let bashrc_contents = (open --raw $bashrc_path)
+        let passed = (
+            $outcome.ok
+            and ($outcome.message | str contains $"no longer auto-migrates ($legacy.generation)")
+            and ($outcome.message | str contains "delete the old Yazelix-managed section")
+            and ($outcome.message | str contains "yzx refresh")
+            and ($bashrc_contents | str contains $legacy.marker)
+            and not ($bashrc_contents | str contains "# YAZELIX START v4")
+        )
+
+        if not $passed {
+            print $"  ❌ Unexpected legacy shell-hook result for ($legacy.generation): message=($outcome.message) contents=($bashrc_contents)"
+        }
+
+        rm -rf $tmp_root
+        $passed
+    })
+
+    if ($results | all {|result| $result}) {
+        print "  ✅ Legacy pre-v4 shell hook generations now fail fast with one explicit cleanup path"
+        true
+    } else {
+        false
+    }
+}
+
 export def run_shell_managed_config_contract_tests [] {
     [
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
@@ -516,6 +584,7 @@ export def run_shell_managed_config_contract_tests [] {
         (test_installed_runtime_resolution_prefers_runtime_current_over_nix_source_mirror)
         (test_runtime_resolution_fails_fast_without_valid_runtime_root)
         (test_home_manager_shellhook_setup_skips_host_shell_surfaces)
+        (test_setup_shell_hooks_rejects_legacy_generations)
     ]
 }
 

@@ -5,12 +5,22 @@
 use ../utils/constants.nu [
     SHELL_CONFIGS
     YAZELIX_START_MARKER
-    YAZELIX_START_MARKER_V1
-    YAZELIX_START_MARKER_V2
-    YAZELIX_START_MARKER_V3
 ]
 use ../utils/shell_config_generation.nu [get_yazelix_section_content]
-use ../utils/config_manager.nu [extract_yazelix_section migrate_shell_hooks rewrite_shell_hooks]
+use ../utils/config_manager.nu [extract_yazelix_section rewrite_shell_hooks]
+
+def get_legacy_yazelix_shell_hook_generation [config_content: string] {
+    let legacy_markers = [
+        {generation: "v1", marker: "# YAZELIX START - Yazelix managed configuration (do not modify this comment)"}
+        {generation: "v2", marker: "# YAZELIX START v2 - Yazelix managed configuration (do not modify this comment)"}
+        {generation: "v3", marker: "# YAZELIX START v3 - Yazelix managed configuration (do not modify this comment)"}
+    ]
+
+    $legacy_markers
+    | where {|entry| $config_content | str contains $entry.marker}
+    | get -o 0.generation
+    | default null
+}
 
 # Setup yazelix hooks for a specific shell with automatic v1->v2 migration
 export def setup_shell_hooks [
@@ -82,9 +92,8 @@ export def setup_shell_hooks [
     let config_content = (open $shell_config)
     let existing_section = extract_yazelix_section $shell_config
 
-    # Check if v4 hooks already exist and still match the current generated content
     if ($config_content | str contains $YAZELIX_START_MARKER) {
-        if $existing_section.exists and ($existing_section.version == 4) and ($config_content | str contains $section_content) {
+        if $existing_section.exists and ($config_content | str contains $section_content) {
             if not $quiet_mode {
                 print $"✅ ($shell | str capitalize) config already sourced"
             }
@@ -102,46 +111,17 @@ export def setup_shell_hooks [
         return
     }
 
-    # Check for v3 hooks and migrate to v4
-    if ($config_content | str contains $YAZELIX_START_MARKER_V3) {
-        let migration = migrate_shell_hooks $shell $shell_config $yazelix_dir
-        if $migration.migrated {
-            if not $quiet_mode {
-                print $"🔄 Migrated ($shell | str capitalize) hooks from v($migration.from_version) to v($migration.to_version) \(backup: ($migration.backup)\)"
+    let legacy_generation = (get_legacy_yazelix_shell_hook_generation $config_content)
+    if $legacy_generation != null {
+        error make {
+            msg: $"Legacy Yazelix shell hooks detected in ($shell_config).\n   Yazelix no longer auto-migrates ($legacy_generation) shell hook generations.\n   Recovery: delete the old Yazelix-managed section from ($shell_config), then rerun `yzx refresh` to generate the current hooks."
+            label: {
+                text: $"Manual shell-hook cleanup required for ($legacy_generation)"
+                span: (metadata $shell).span
             }
-        } else if not $quiet_mode {
-            print $"⚠️  Migration skipped: ($migration.reason)"
         }
-        return
     }
 
-    # Check for v2 hooks and migrate to v4
-    if ($config_content | str contains $YAZELIX_START_MARKER_V2) {
-        let migration = migrate_shell_hooks $shell $shell_config $yazelix_dir
-        if $migration.migrated {
-            if not $quiet_mode {
-                print $"🔄 Migrated ($shell | str capitalize) hooks from v($migration.from_version) to v($migration.to_version) \(backup: ($migration.backup)\)"
-            }
-        } else if not $quiet_mode {
-            print $"⚠️  Migration skipped: ($migration.reason)"
-        }
-        return
-    }
-
-    # Check for v1 hooks and migrate to v4
-    if ($config_content | str contains $YAZELIX_START_MARKER_V1) {
-        let migration = migrate_shell_hooks $shell $shell_config $yazelix_dir
-        if $migration.migrated {
-            if not $quiet_mode {
-                print $"🔄 Migrated ($shell | str capitalize) hooks from v($migration.from_version) to v($migration.to_version) \(backup: ($migration.backup)\)"
-            }
-        } else if not $quiet_mode {
-            print $"⚠️  Migration skipped: ($migration.reason)"
-        }
-        return
-    }
-
-    # No existing hooks, add new v4 hooks
     if not $quiet_mode {
         print $"🐚 Adding Yazelix ($shell | str capitalize) config to ($shell_config)"
     }
