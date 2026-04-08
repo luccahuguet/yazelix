@@ -96,6 +96,7 @@ def main [--welcome-source: string, --skip-welcome] {
 
     # Detect environment first
     let env_info = (detect_environment)
+    let home_manager_managed = ($env_info.environment_type == "home-manager")
     if $debug_mode {
         print $"🔍 Environment detection: ($env_info)"
     }
@@ -170,27 +171,31 @@ def main [--welcome-source: string, --skip-welcome] {
         sync_generated_nushell_user_hook_bridge
     }
 
-    # Setup shell hooks for configured shells
-    use ./shell_hooks.nu setup_shell_hooks
+    # Home Manager owns the profile command and runtime/current directly, so
+    # first-use startup must not require or rewrite host shell dotfiles.
+    if not $home_manager_managed {
+        # Setup shell hooks for configured shells
+        use ./shell_hooks.nu setup_shell_hooks
 
-    # Bash and Nushell are REQUIRED - error if config missing
-    profile_shellhook_step "setup_bash_hooks" {
-        setup_shell_hooks "bash" $yazelix_dir $quiet_mode true
-    }
-    profile_shellhook_step "setup_nushell_hooks" {
-        setup_shell_hooks "nushell" $yazelix_dir $quiet_mode true
-    }
-
-    # Fish and Zsh are optional - skip silently if not configured
-    if ("fish" in $shells_to_configure) {
-        profile_shellhook_step "setup_fish_hooks" {
-            setup_shell_hooks "fish" $yazelix_dir $quiet_mode false
+        # Bash and Nushell are REQUIRED - error if config missing
+        profile_shellhook_step "setup_bash_hooks" {
+            setup_shell_hooks "bash" $yazelix_dir $quiet_mode true
         }
-    }
+        profile_shellhook_step "setup_nushell_hooks" {
+            setup_shell_hooks "nushell" $yazelix_dir $quiet_mode true
+        }
 
-    if ("zsh" in $shells_to_configure) {
-        profile_shellhook_step "setup_zsh_hooks" {
-            setup_shell_hooks "zsh" $yazelix_dir $quiet_mode false
+        # Fish and Zsh are optional - skip silently if not configured
+        if ("fish" in $shells_to_configure) {
+            profile_shellhook_step "setup_fish_hooks" {
+                setup_shell_hooks "fish" $yazelix_dir $quiet_mode false
+            }
+        }
+
+        if ("zsh" in $shells_to_configure) {
+            profile_shellhook_step "setup_zsh_hooks" {
+                setup_shell_hooks "zsh" $yazelix_dir $quiet_mode false
+            }
         }
     }
 
@@ -199,8 +204,10 @@ def main [--welcome-source: string, --skip-welcome] {
     profile_shellhook_step "ensure_runtime_scripts_executable" {
         ensure_runtime_scripts_executable $yazelix_dir
     }
-    profile_shellhook_step "ensure_user_cli_wrapper" {
-        ensure_user_cli_wrapper $yazelix_dir
+    if not $home_manager_managed {
+        profile_shellhook_step "ensure_user_cli_wrapper" {
+            ensure_user_cli_wrapper $yazelix_dir
+        }
     }
 
     let zjstatus_target = $"($yazelix_dir)/configs/zellij/plugins/zjstatus.wasm"

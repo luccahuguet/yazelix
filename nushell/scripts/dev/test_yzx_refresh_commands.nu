@@ -47,15 +47,18 @@ def setup_refresh_profile_recording_fixture [label: string] {
     let runtime_dir = ($tmp_root | path join "runtime")
     let yzx_dir = ($runtime_dir | path join "nushell" "scripts" "yzx")
     let utils_dir = ($runtime_dir | path join "nushell" "scripts" "utils")
+    let setup_dir = ($runtime_dir | path join "nushell" "scripts" "setup")
     let fake_bin = ($tmp_root | path join "bin")
     let state_dir = ($tmp_root | path join "state")
     let materialized_log = ($tmp_root | path join "materialized.json")
     let launch_log = ($tmp_root | path join "launch.json")
+    let generation_log = ($tmp_root | path join "generation.log")
     let fresh_profile = ($tmp_root | path join "fresh-profile")
     let real_nu = (which nu | get -o 0.path | default "nu")
 
     mkdir $yzx_dir
     mkdir $utils_dir
+    mkdir $setup_dir
     mkdir $fake_bin
     mkdir $state_dir
     mkdir $fresh_profile
@@ -130,7 +133,22 @@ def setup_refresh_profile_recording_fixture [label: string] {
         "export def describe_build_parallelism [build_cores_config?: string, max_jobs_config?: string] {"
         "    '8 jobs x 2 cores/job'"
         "}"
+        ("export def require_yazelix_dir [] { \"" + $runtime_dir + "\" }")
     ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
+
+    [
+        "export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {"
+        ("    $\"yazi:($yazelix_dir):" + '($quiet)' + "\\n\" | save --append --raw \"" + $generation_log + "\"")
+        "    null"
+        "}"
+    ] | str join "\n" | save --force --raw ($setup_dir | path join "yazi_config_merger.nu")
+
+    [
+        "export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir_override?: string] {"
+        ("    $\"zellij:($yazelix_dir)\\n\" | save --append --raw \"" + $generation_log + "\"")
+        "    null"
+        "}"
+    ] | str join "\n" | save --force --raw ($setup_dir | path join "zellij_config_merger.nu")
 
     [
         "#!/bin/sh"
@@ -147,6 +165,7 @@ def setup_refresh_profile_recording_fixture [label: string] {
         fresh_profile: $fresh_profile
         materialized_log: $materialized_log
         launch_log: $launch_log
+        generation_log: $generation_log
         refresh_script: ($yzx_dir | path join "refresh.nu")
     }
 }
@@ -434,12 +453,58 @@ def test_refresh_records_profile_from_build_shell_output [] {
     $result
 }
 
+# Regression: refresh must regenerate runtime-owned Yazi and Zellij configs, not just the build profile state.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_refresh_regenerates_runtime_owned_configs [] {
+    print "🧪 Testing yzx refresh regenerates runtime-owned Yazi and Zellij configs..."
+
+    let fixture = (setup_refresh_profile_recording_fixture "yazelix_refresh_runtime_configs")
+
+    let result = (try {
+        let command = $"use \"($fixture.refresh_script)\" *; yzx refresh --force"
+        let output = (with-env {
+            PATH: ([$fixture.fake_bin, "/usr/bin", "/bin"] | str join (char esep))
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_STATE_DIR: $fixture.state_dir
+        } {
+            ^$fixture.real_nu -c $command | complete
+        })
+
+        let generation_lines = if ($fixture.generation_log | path exists) {
+            open --raw $fixture.generation_log | lines | where {|line| $line | is-not-empty }
+        } else {
+            []
+        }
+
+        if (
+            ($output.exit_code == 0)
+            and ($generation_lines == [
+                $"yazi:($fixture.runtime_dir):false"
+                $"zellij:($fixture.runtime_dir)"
+            ])
+        ) {
+            print "  ✅ yzx refresh now regenerates the runtime-owned Yazi and Zellij config surfaces after rebuilding"
+            true
+        } else {
+            print $"  ❌ Unexpected refresh generation result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim)) generation=(($generation_lines | to json -r))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_root
+    $result
+}
+
 export def run_refresh_canonical_tests [] {
     [
         (test_command_failure_summary_includes_command_tail_and_recovery)
         (test_skip_welcome_shellhook_setup_stays_quiet)
         (test_rebuild_yazelix_environment_records_fresh_launch_profile)
         (test_refresh_records_profile_from_build_shell_output)
+        (test_refresh_regenerates_runtime_owned_configs)
     ]
 }
 

@@ -4,7 +4,9 @@
 use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled get_refresh_output_mode format_command_failure_summary]
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ../utils/launch_state.nu [record_launch_profile_state resolve_profile_from_build_shell_output]
-use ../utils/common.nu [describe_build_parallelism]
+use ../utils/common.nu [describe_build_parallelism require_yazelix_dir]
+use ../setup/yazi_config_merger.nu generate_merged_yazi_config
+use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
 def summarize_values [values max_items: int] {
     let normalized = ($values | each { |value| $value | into string })
@@ -76,6 +78,30 @@ def run_refresh_command [devenv_cmd allow_unfree --stream-output] {
     }
 }
 
+def regenerate_runtime_configs [runtime_dir: string, --quiet] {
+    let quiet_mode = $quiet
+
+    try {
+        if $quiet_mode {
+            generate_merged_yazi_config $runtime_dir --quiet | ignore
+        } else {
+            print "🔧 Regenerating managed Yazi configuration..."
+            generate_merged_yazi_config $runtime_dir | ignore
+        }
+    } catch {|err|
+        error make {msg: $"Failed to regenerate Yazi configuration during refresh: ($err.msg)"}
+    }
+
+    try {
+        if not $quiet_mode {
+            print "🔧 Regenerating managed Zellij configuration..."
+        }
+        generate_merged_zellij_config $runtime_dir | ignore
+    } catch {|err|
+        error make {msg: $"Failed to regenerate Zellij configuration during refresh: ($err.msg)"}
+    }
+}
+
 # Refresh devenv evaluation cache without launching Yazelix UI
 export def "yzx refresh" [
     --force(-f)    # Force refresh even when no config/input changes are detected
@@ -88,6 +114,7 @@ export def "yzx refresh" [
     let env_prep = prepare_environment
     let config = $env_prep.config
     let config_state = $env_prep.config_state
+    let runtime_dir = (require_yazelix_dir)
     let needs_refresh = $config_state.needs_refresh
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)
@@ -158,6 +185,7 @@ export def "yzx refresh" [
         }
     }
     let applied_state = (compute_config_state)
+    regenerate_runtime_configs $runtime_dir --quiet=($refresh_output == "quiet")
     record_materialized_state $applied_state
     if ($built_profile | is-not-empty) {
         record_launch_profile_state $applied_state $built_profile

@@ -10,7 +10,15 @@ with lib;
 let
   cfg = config.programs.yazelix;
   runtimePackage = import ../yazelix_runtime_package.nix { inherit pkgs; };
+  runtimeNu = "${runtimePackage}/bin/nu";
   runtimeCurrentPath = "${config.xdg.dataHome}/yazelix/runtime/current";
+  stateRoot = "${config.xdg.dataHome}/yazelix";
+  logsPath = "${stateRoot}/logs";
+  managedConfigRoot = "${config.xdg.configHome}/yazelix";
+  runtimeConfigGenerationPath = lib.makeBinPath [
+    pkgs.coreutils
+    pkgs.zellij
+  ];
 
   boolToToml = value: if value then "true" else "false";
 
@@ -654,6 +662,17 @@ in
         StartupWMClass = "com.yazelix.Yazelix";
       };
     };
+
+    home.activation.yazelixGeneratedRuntimeConfigs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      export PATH="${runtimeConfigGenerationPath}:$PATH"
+      export YAZELIX_RUNTIME_DIR="${runtimeCurrentPath}"
+      export YAZELIX_CONFIG_DIR="${managedConfigRoot}"
+      export YAZELIX_STATE_DIR="${stateRoot}"
+      export YAZELIX_LOGS_DIR="${logsPath}"
+
+      $DRY_RUN_CMD ${runtimeNu} "${runtimePackage}/nushell/scripts/setup/yazi_config_merger.nu" "${runtimeCurrentPath}" --quiet
+      $DRY_RUN_CMD ${runtimeNu} "${runtimePackage}/nushell/scripts/setup/zellij_config_merger.nu" "${runtimeCurrentPath}"
+    '';
 
     # Generate yazelix.toml configuration file
     xdg.configFile."yazelix/user_configs/yazelix.toml" = {

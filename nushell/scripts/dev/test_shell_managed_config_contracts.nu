@@ -431,6 +431,79 @@ def test_runtime_resolution_fails_fast_without_valid_runtime_root [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: Home Manager shellhook setup must not require host dotfiles or recreate the legacy ~/.local/bin/yzx wrapper.
+def test_home_manager_shellhook_setup_skips_host_shell_surfaces [] {
+    print "🧪 Testing Home Manager shellhook setup skips host dotfiles and the legacy yzx wrapper..."
+
+    let repo_root = (get_repo_root)
+    let tmp_root = (^mktemp -d /tmp/yazelix_hm_shellhook_surfaces_XXXXXX | str trim)
+    let tmp_home = ($tmp_root | path join "home")
+    let xdg_config_home = ($tmp_home | path join ".config")
+    let config_dir = ($xdg_config_home | path join "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+    let log_dir = ($state_dir | path join "logs")
+    let runtime_dir = ($tmp_root | path join "runtime")
+    let runtime_bin_dir = ($runtime_dir | path join "bin")
+    let hm_marker = ($tmp_home | path join ".nix-profile" "etc" "profile.d" "hm-session-vars.sh")
+    let bashrc_path = ($tmp_home | path join ".bashrc")
+    let nushell_host_config = ($xdg_config_home | path join "nushell" "config.nu")
+    let local_yzx = ($tmp_home | path join ".local" "bin" "yzx")
+    let runtime_nu = (which nu | get -o 0.path | default "nu")
+
+    mkdir $xdg_config_home
+    mkdir $user_config_dir
+    mkdir $state_dir
+    mkdir $log_dir
+    mkdir ($hm_marker | path dirname)
+    mkdir $runtime_dir
+    mkdir $runtime_bin_dir
+
+    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "docs", "nushell", "rust_plugins", "shells", "CHANGELOG.md", "devenv.lock", "devenv.nix", "devenv.yaml", "yazelix_default.toml", "yazelix_packs_default.toml"] {
+        ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
+    }
+    ^ln -s $runtime_nu ($runtime_bin_dir | path join "nu")
+    cp (repo_path "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
+    cp (repo_path "yazelix_packs_default.toml") ($user_config_dir | path join "yazelix_packs.toml")
+    "" | save --force --raw $hm_marker
+
+    let result = (try {
+        let output = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_RUNTIME_DIR: $runtime_dir
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_LOGS_DIR: $log_dir
+        } {
+            ^$runtime_nu ($runtime_dir | path join "nushell" "scripts" "setup" "environment.nu") --skip-welcome | complete
+        })
+
+        let generated_nushell_init = ($state_dir | path join "initializers" "nushell" "yazelix_init.nu")
+
+        if (
+            ($output.exit_code == 0)
+            and not ($bashrc_path | path exists)
+            and not ($nushell_host_config | path exists)
+            and not ($local_yzx | path exists)
+            and ($generated_nushell_init | path exists)
+        ) {
+            print "  ✅ Home Manager shellhook setup now stays self-contained instead of requiring host dotfiles or recreating ~/.local/bin/yzx"
+            true
+        } else {
+            print $"  ❌ Unexpected Home Manager shellhook result: exit=($output.exit_code) bashrc_exists=(($bashrc_path | path exists)) nushell_config_exists=(($nushell_host_config | path exists)) local_yzx_exists=(($local_yzx | path exists)) init_exists=(($generated_nushell_init | path exists)) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 export def run_shell_managed_config_contract_tests [] {
     [
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
@@ -442,6 +515,7 @@ export def run_shell_managed_config_contract_tests [] {
         (test_source_checkout_runtime_resolution_beats_installed_runtime)
         (test_installed_runtime_resolution_prefers_runtime_current_over_nix_source_mirror)
         (test_runtime_resolution_fails_fast_without_valid_runtime_root)
+        (test_home_manager_shellhook_setup_skips_host_shell_surfaces)
     ]
 }
 
