@@ -4,6 +4,7 @@
 
 use ../utils/common.nu [get_yazelix_state_dir require_yazelix_repo_root]
 use ../utils/devenv_cli.nu resolve_preferred_devenv_path
+use ./validate_default_test_budget.nu [profile_suite_runner]
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Defends: issue/bead reconciliation planning catches create, reopen, close, and duplicate cases.
@@ -280,6 +281,32 @@ def test_runtime_project_lookup_stays_read_only_until_materialized [] {
 
     rm -rf $tmp_root
     $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: default-suite budget profiling must not wait for leaked background children from the runner.
+def test_default_budget_profiler_does_not_wait_on_background_children [] {
+    print "🧪 Testing default budget profiling returns promptly even when the runner leaves a background child alive..."
+
+    try {
+        let started = (date now)
+        let profiled = (profile_suite_runner {
+            ^bash -lc 'sleep 3 &'
+            [true]
+        })
+        let wall_seconds = (((date now) - $started) / 1sec | into float)
+
+        if ($wall_seconds < 1.5) and ($profiled.elapsed_seconds < 1.5) {
+            print "  ✅ Budget profiling now measures the runner directly instead of waiting on a leaked background child subprocess"
+            true
+        } else {
+            print $"  ❌ Budget profiling still waited too long: wall=($wall_seconds)s profiled=($profiled.elapsed_seconds)s"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=0 uniqueness=2 total=8/10
@@ -836,6 +863,7 @@ def main [] {
         (test_managed_wrapper_prefers_sibling_nixgl_without_ambient_profile)
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
         (test_runtime_project_lookup_stays_read_only_until_materialized)
+        (test_default_budget_profiler_does_not_wait_on_background_children)
         (test_build_shell_output_records_runtime_owned_profile_without_runtime_project_artifacts)
         (test_vendored_yazi_plugin_refresh_applies_patch_and_refuses_dirty_targets)
         (test_nushell_initializer_restores_current_path_first)

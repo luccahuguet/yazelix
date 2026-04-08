@@ -1,38 +1,45 @@
 #!/usr/bin/env nu
 
+use ./test_yzx_commands.nu [run_default_canonical_suite]
+use ./yzx_test_helpers.nu [format_test_profile_report]
+
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
 # Raised after the runtime-state, desktop-launch, and shared-preflight regressions were promoted
 # into the default suite. Keep the cap explicit so future growth still has to justify itself.
 const DEFAULT_SUITE_MAX_SECONDS = 75.0
 
-def run_profiled_default_suite [] {
-    let suite_script = ($REPO_ROOT | path join "nushell" "scripts" "dev" "test_yzx_commands.nu")
+export def profile_suite_runner [runner: closure] {
     let started = (date now)
+    let result = (do $runner)
+    let elapsed_seconds = (((date now) - $started) / 1sec | into float)
 
-    with-env { YAZELIX_DIR: $REPO_ROOT } {
-        let output = (^nu $suite_script --profile | complete)
-        let elapsed_seconds = (((date now) - $started) / 1sec | into float)
-        $output | upsert elapsed_seconds $elapsed_seconds
+    {
+        result: $result
+        elapsed_seconds: $elapsed_seconds
+    }
+}
+
+def run_profiled_default_suite [] {
+    do {
+        cd $REPO_ROOT
+        with-env { YAZELIX_DIR: $REPO_ROOT } {
+            profile_suite_runner { run_default_canonical_suite --profile }
+        }
     }
 }
 
 export def main [] {
     let result = (run_profiled_default_suite)
-
-    if $result.exit_code != 0 {
-        if not ($result.stdout | is-empty) {
-            print $result.stdout
-        }
-        if not ($result.stderr | is-empty) {
-            print $result.stderr
-        }
-        error make { msg: "Default suite failed while collecting the runtime budget profile" }
-    }
+    let suite_run = $result.result
 
     let elapsed_seconds = $result.elapsed_seconds
 
+    if $suite_run.passed != $suite_run.total {
+        error make { msg: "Default suite failed while collecting the runtime budget profile" }
+    }
+
     if $elapsed_seconds > $DEFAULT_SUITE_MAX_SECONDS {
-        print $result.stdout
+        print (format_test_profile_report $suite_run.suite_results "=== test_yzx_commands.nu profile ===")
         error make { msg: $"Default-suite runtime budget exceeded: ($elapsed_seconds)s > ($DEFAULT_SUITE_MAX_SECONDS)s" }
     }
 

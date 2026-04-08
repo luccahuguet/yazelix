@@ -27,10 +27,7 @@ def build_profiled_suite_result [name: string, runner: closure] {
     }
 }
 
-def main [--profile] {
-    print "=== Testing core yzx contracts ==="
-    print ""
-
+export def run_default_canonical_suite [--profile] {
     let fixture = (setup_test_home)
     let profiling = if $profile {
         test_profiling_enabled --profile
@@ -55,16 +52,35 @@ def main [--profile] {
     let passed = ($results | where {|result| $result } | length)
     let total = ($results | length)
 
+    {
+        profiling: $profiling
+        suite_results: $suite_results
+        results: $results
+        passed: $passed
+        total: $total
+    }
+}
+
+def main [--profile] {
+    print "=== Testing core yzx contracts ==="
     print ""
-    if $profiling {
-        print (format_test_profile_report $suite_results "=== test_yzx_commands.nu profile ===")
+
+    let suite_run = if $profile {
+        run_default_canonical_suite --profile
+    } else {
+        run_default_canonical_suite
+    }
+
+    print ""
+    if $suite_run.profiling {
+        print (format_test_profile_report $suite_run.suite_results "=== test_yzx_commands.nu profile ===")
         print ""
     }
 
-    if $passed == $total {
-        print $"✅ All core yzx tests passed \(($passed)/($total)\)"
+    if $suite_run.passed == $suite_run.total {
+        print $"✅ All core yzx tests passed \(($suite_run.passed)/($suite_run.total)\)"
     } else {
-        print $"❌ Some core yzx tests failed \(($passed)/($total)\)"
+        print $"❌ Some core yzx tests failed \(($suite_run.passed)/($suite_run.total)\)"
         error make { msg: "core yzx tests failed" }
     }
 }

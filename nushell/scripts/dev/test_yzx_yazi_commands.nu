@@ -191,6 +191,11 @@ ya_command = "ya"
             "printf '%s\\n' \"$*\" >> \"$YAZI_TEST_LOG\""
             "exit 0"
         ]
+        write_executable_fixture_file ($fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            "printf '%s\\n' '{\"sidebar_pane_id\":\"5\"}'"
+            "exit 0"
+        ]
 
         "sidebar-yazi-123\n/home/test/workspace\n" | save --force --raw ($state_dir | path join "testsession__terminal_5.txt")
 

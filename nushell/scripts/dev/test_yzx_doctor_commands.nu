@@ -176,8 +176,18 @@ widget_tray = ["layout", "editor"]
 ')
 
     let result = (try {
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        mkdir $fake_bin
+        [
+            "#!/bin/sh"
+            "printf '%s\\n' 'fake-zellij-no-session' >&2"
+            "exit 1"
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "zellij")
+        ^chmod +x ($fake_bin | path join "zellij")
+
         let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
             ZELLIJ: "0"
+            PATH: ([$fake_bin] | append $env.PATH)
         })
         let stdout = ($output.stdout | str trim)
 
