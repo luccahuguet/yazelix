@@ -3,10 +3,10 @@
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
 
 export def main [] {
-    let repo_root = ($REPO_ROOT | into string)
+    let repo_root_literal = (($REPO_ROOT | into string) | to json -r)
     let expr = (
         "let\n"
-        + "  flake = builtins.getFlake (toString " + $repo_root + ");\n"
+        + "  flake = builtins.getFlake " + $repo_root_literal + ";\n"
         + "  system = builtins.currentSystem;\n"
         + "in\n"
         + "  builtins.hasAttr \"packages\" flake &&\n"
