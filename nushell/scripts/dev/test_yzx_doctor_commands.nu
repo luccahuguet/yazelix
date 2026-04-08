@@ -22,14 +22,14 @@ def run_doctor_command_for_fixture [fixture: record, command: string, extra_env?
     }
 }
 
-def setup_fake_home_manager_install_artifacts [fixture: record, shape: string = "store_wrapper"] {
+def setup_fake_home_manager_install_artifacts [fixture: record] {
     let fake_runtime = ($fixture.tmp_home | path join "fake_runtime")
     let fake_runtime_shells = ($fake_runtime | path join "shells" "posix")
     let fake_runtime_bin = ($fake_runtime | path join "bin")
     let hm_store = ($fixture.tmp_home | path join "home-manager-files")
     let hm_runtime = ($hm_store | path join ".local" "share" "yazelix" "runtime" "current")
     let runtime_link = ($fixture.tmp_home | path join ".local" "share" "yazelix" "runtime" "current")
-    let yzx_link = ($fixture.tmp_home | path join ".local" "bin" "yzx")
+    let profile_yzx = ($fixture.tmp_home | path join ".nix-profile" "bin" "yzx")
     let profile_desktop_path = ($fixture.tmp_home | path join ".nix-profile" "share" "applications" "yazelix.desktop")
 
     mkdir $fake_runtime
@@ -37,7 +37,7 @@ def setup_fake_home_manager_install_artifacts [fixture: record, shape: string = 
     mkdir $fake_runtime_bin
     mkdir ($hm_runtime | path dirname)
     mkdir ($runtime_link | path dirname)
-    mkdir ($yzx_link | path dirname)
+    mkdir ($profile_yzx | path dirname)
     mkdir ($profile_desktop_path | path dirname)
 
     cp ($fixture.repo_root | path join "yazelix_default.toml") ($fake_runtime | path join "yazelix_default.toml")
@@ -56,33 +56,22 @@ def setup_fake_home_manager_install_artifacts [fixture: record, shape: string = 
 
     ^ln -s $fake_runtime $hm_runtime
     ^ln -s $hm_runtime $runtime_link
-
-    if $shape == "direct_runtime_symlink" {
-        ^ln -s ($runtime_link | path join "bin" "yzx") $yzx_link
-    } else {
-        let hm_wrapper = ($fixture.tmp_home | path join "hm_.localbinyzx")
-        [
-            "#!/bin/sh"
-            $"exec \"($fixture.tmp_home | path join '.local' 'share' 'yazelix' 'runtime' 'current' 'bin' 'yzx')\" \"$@\""
-        ] | str join "\n" | save --force --raw $hm_wrapper
-        ^chmod +x $hm_wrapper
-        ^ln -s $hm_wrapper $yzx_link
-    }
+    ^ln -s ($runtime_link | path join "bin" "yzx") $profile_yzx
 
     [
         "[Desktop Entry]"
         "Type=Application"
         "Name=Yazelix"
-        $"Exec=\"($fixture.tmp_home | path join '.local' 'bin' 'yzx')\" desktop launch"
+        $"Exec=\"($fixture.tmp_home | path join '.nix-profile' 'bin' 'yzx')\" desktop launch"
     ] | str join "\n" | save --force --raw $profile_desktop_path
 }
 
 def doctor_output_reports_current_home_manager_install [stdout: string] {
     (
         ($stdout | str contains "Yazelix desktop entry uses the stable launcher path")
-        and ($stdout | str contains "Installed yzx CLI shim matches the current runtime")
+        and ($stdout | str contains "Installed yzx command matches the current runtime")
         and ($stdout | str contains "Shell-hook freshness checks skipped for Home Manager-managed Yazelix install")
-        and not ($stdout | str contains "Installed yzx CLI shim is stale")
+        and not ($stdout | str contains "Installed yzx command is stale")
         and not ($stdout | str contains "Required bash Yazelix hook is")
         and not ($stdout | str contains "Required nushell Yazelix hook is")
     )
@@ -353,10 +342,10 @@ def test_yzx_doctor_reports_stale_desktop_entry_exec [] {
     $result
 }
 
-# Regression: Home Manager installs use the runtime/bin/yzx shim, profile desktop entries, and optional host shell hooks.
+# Regression: Home Manager installs use the profile yzx command, profile desktop entries, and optional host shell hooks.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_doctor_accepts_home_manager_install_artifacts [] {
-    print "🧪 Testing yzx doctor accepts Home Manager-managed Yazelix install artifacts..."
+    print "🧪 Testing yzx doctor accepts the Home Manager profile yzx command and desktop entry..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_doctor_home_manager_install"
@@ -370,39 +359,7 @@ def test_yzx_doctor_accepts_home_manager_install_artifacts [] {
         let stdout = ($output.stdout | str trim)
 
         if (($output.exit_code == 0) and (doctor_output_reports_current_home_manager_install $stdout)) {
-            print "  ✅ yzx doctor accepts the Home Manager wrapper, profile desktop entry, and optional host shell hooks"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Regression: Home Manager installs may also link ~/.local/bin/yzx directly to runtime/current/bin/yzx.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_doctor_accepts_home_manager_direct_runtime_symlink [] {
-    print "🧪 Testing yzx doctor accepts the direct Home Manager runtime/bin/yzx shim..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_doctor_home_manager_direct_runtime_symlink"
-        ""
-    )
-
-    let result = (try {
-        setup_fake_home_manager_install_artifacts $fixture "direct_runtime_symlink"
-
-        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose")
-        let stdout = ($output.stdout | str trim)
-
-        if (($output.exit_code == 0) and (doctor_output_reports_current_home_manager_install $stdout)) {
-            print "  ✅ yzx doctor accepts the Home Manager direct runtime/bin/yzx shim"
+            print "  ✅ yzx doctor accepts the Home Manager profile yzx command, profile desktop entry, and optional host shell hooks"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
@@ -588,7 +545,6 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_fix_splits_legacy_pack_config)
         (test_yzx_doctor_reports_stale_desktop_entry_exec)
         (test_yzx_doctor_accepts_home_manager_install_artifacts)
-        (test_yzx_doctor_accepts_home_manager_direct_runtime_symlink)
         (test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager)
         (test_yzx_doctor_reports_missing_runtime_launch_assets)
         (test_yzx_doctor_respects_layout_override_for_shared_preflight)

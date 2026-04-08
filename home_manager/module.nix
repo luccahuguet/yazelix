@@ -631,14 +631,8 @@ in
     # Package-ready runtime owned by Home Manager.
     xdg.dataFile."yazelix/runtime/current".source = runtimePackage;
 
-    # Stable yzx surface that targets the Home Manager-managed runtime.
-    home.file.".local/bin/yzx" = {
-      executable = true;
-      text = ''
-        #!/bin/sh
-        exec "${runtimeCurrentPath}/bin/yzx" "$@"
-      '';
-    };
+    # Expose the runtime package through the Home Manager profile.
+    home.packages = [ runtimePackage ];
 
     # Desktop icon integration.
     xdg.dataFile."icons/hicolor/48x48/apps/yazelix.png".source = ../assets/icons/48x48/yazelix.png;
@@ -652,7 +646,7 @@ in
     xdg.desktopEntries.yazelix = {
       name = "Yazelix";
       comment = "Yazi + Zellij + Helix integrated terminal environment";
-      exec = "${config.home.homeDirectory}/.local/bin/yzx desktop launch";
+      exec = "${config.home.profileDirectory}/bin/yzx desktop launch";
       icon = "yazelix";
       categories = [ "Development" ];
       type = "Application";

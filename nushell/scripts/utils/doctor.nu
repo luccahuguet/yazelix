@@ -711,6 +711,38 @@ def desktop_entry_exec_matches_expected [desktop_exec, expected_execs: list<stri
     }
 }
 
+def get_home_manager_yzx_profile_paths [] {
+    mut candidates = [
+        ($env.HOME | path join ".nix-profile" "bin" "yzx")
+    ]
+
+    if ("USER" in $env) and (($env.USER | default "") != "") {
+        $candidates = ($candidates | append ("/etc/profiles/per-user" | path join $env.USER "bin" "yzx"))
+    }
+
+    $candidates | uniq
+}
+
+def get_expected_desktop_entry_execs [install_owner: string] {
+    let launcher_paths = if $install_owner == "home-manager" {
+        get_home_manager_yzx_profile_paths
+    } else {
+        [ (get_user_yzx_cli_path) ]
+    }
+
+    (
+        $launcher_paths
+        | each {|launcher_path|
+            [
+                $"\"($launcher_path)\" desktop launch"
+                $"($launcher_path) desktop launch"
+            ]
+        }
+        | flatten
+        | uniq
+    )
+}
+
 export def check_desktop_entry_freshness [] {
     let install_owner = (detect_install_owner)
     let local_desktop_path = (get_desktop_entry_path)
@@ -724,11 +756,7 @@ export def check_desktop_entry_freshness [] {
     } else {
         null
     }
-    let expected_yzx_path = (get_user_yzx_cli_path)
-    let expected_execs = [
-        $"\"($expected_yzx_path)\" desktop launch"
-        $"($expected_yzx_path) desktop launch"
-    ]
+    let expected_execs = (get_expected_desktop_entry_execs $install_owner)
 
     if $desktop_path == null {
         let details = if $install_owner == "home-manager" {
@@ -809,6 +837,14 @@ export def check_desktop_entry_freshness [] {
 
 def get_user_yzx_cli_path [] {
     ($env.HOME | path join ".local" "bin" "yzx")
+}
+
+def get_home_manager_profile_yzx_path [] {
+    (
+        get_home_manager_yzx_profile_paths
+        | where {|path| ($path | path exists) or (path_is_symlink $path) }
+        | get -o 0
+    )
 }
 
 def get_runtime_variants [current_runtime_target?: string] {
@@ -919,26 +955,39 @@ export def check_install_artifact_staleness [] {
         })
     }
 
-    let yzx_cli_path = (get_user_yzx_cli_path)
-    let yzx_cli_target = (resolve_realpath_or_null $yzx_cli_path)
+    let yzx_cli_path = if $install_owner == "home-manager" {
+        get_home_manager_profile_yzx_path
+    } else {
+        get_user_yzx_cli_path
+    }
+    let yzx_cli_target = if $yzx_cli_path == null {
+        null
+    } else {
+        resolve_realpath_or_null $yzx_cli_path
+    }
 
-    if not ($yzx_cli_path | path exists) and (not (path_is_symlink $yzx_cli_path)) {
+    if $yzx_cli_path == null {
+        let missing_yzx_details = if $install_owner == "home-manager" {
+            let hm_paths = (get_home_manager_yzx_profile_paths)
+            $"Expected Home Manager profile command at one of: ($hm_paths | str join ', ')\n($repair_hint)"
+        } else {
+            $"Expected CLI path: ((get_user_yzx_cli_path))\n($repair_hint)"
+        }
         $results = ($results | append {
             status: "warning"
-            message: "Installed yzx CLI shim is missing"
-            details: $"Expected CLI path: ($yzx_cli_path)\n($repair_hint)"
+            message: "Installed yzx command is missing"
+            details: $missing_yzx_details
             fix_available: false
         })
     } else if $yzx_cli_target == null {
         $results = ($results | append {
             status: "warning"
-            message: "Installed yzx CLI shim is broken"
-            details: $"The yzx shim exists but does not resolve cleanly: ($yzx_cli_path)\n($repair_hint)"
+            message: "Installed yzx command is broken"
+            details: $"The yzx command exists but does not resolve cleanly: ($yzx_cli_path)\n($repair_hint)"
             fix_available: false
         })
     } else {
         if $install_owner == "home-manager" {
-            let expected_wrapper_exec = $"exec \"($env.HOME | path join '.local' 'share' 'yazelix' 'runtime' 'current' 'bin' 'yzx')\" \"$@\""
             let expected_runtime_bin_targets = (
                 get_runtime_variants $current_runtime_target
                 | each {|runtime| $runtime | path join "bin" "yzx" }
@@ -949,29 +998,18 @@ export def check_install_artifact_staleness [] {
                 | compact
             )
             let all_expected_runtime_bin_targets = ($expected_runtime_bin_targets | append $expected_runtime_bin_targets_resolved | uniq)
-            let direct_runtime_match = ($all_expected_runtime_bin_targets | any {|target| $yzx_cli_target == $target })
-            let wrapper_matches = if $direct_runtime_match {
-                false
-            } else {
-                try {
-                    let wrapper_content = (open --raw $yzx_cli_target)
-                    $wrapper_content | str contains $expected_wrapper_exec
-                } catch {
-                    false
-                }
-            }
-            if $direct_runtime_match or $wrapper_matches {
+            if ($all_expected_runtime_bin_targets | any {|target| $yzx_cli_target == $target }) {
                 $results = ($results | append {
                     status: "ok"
-                    message: "Installed yzx CLI shim matches the current runtime"
+                    message: "Installed yzx command matches the current runtime"
                     details: $"($yzx_cli_path) -> ($yzx_cli_target)"
                     fix_available: false
                 })
             } else {
                 $results = ($results | append {
                     status: "warning"
-                    message: "Installed yzx CLI shim is stale"
-                    details: $"yzx target: ($yzx_cli_target)\nExpected Home Manager wrapper exec: ($expected_wrapper_exec)\nExpected runtime targets: ($all_expected_runtime_bin_targets | str join ', ')\n($repair_hint)"
+                    message: "Installed yzx command is stale"
+                    details: $"yzx target: ($yzx_cli_target)\nExpected runtime targets: ($all_expected_runtime_bin_targets | str join ', ')\n($repair_hint)"
                     fix_available: false
                 })
             }
@@ -995,14 +1033,14 @@ export def check_install_artifact_staleness [] {
             if not ($all_expected_yzx_targets | any {|target| $yzx_cli_target == $target }) {
                 $results = ($results | append {
                     status: "warning"
-                    message: "Installed yzx CLI shim is stale"
+                    message: "Installed yzx command is stale"
                     details: $"yzx target: ($yzx_cli_target)\nExpected one of: ($all_expected_yzx_targets | str join ', ')\n($repair_hint)"
                     fix_available: false
                 })
             } else {
                 $results = ($results | append {
                     status: "ok"
-                    message: "Installed yzx CLI shim matches the current runtime"
+                    message: "Installed yzx command matches the current runtime"
                     details: $"($yzx_cli_path) -> ($yzx_cli_target)"
                     fix_available: false
                 })
@@ -1014,7 +1052,7 @@ export def check_install_artifact_staleness [] {
         $results = ($results | append {
             status: "info"
             message: "Shell-hook freshness checks skipped for Home Manager-managed Yazelix install"
-            details: "Home Manager owns the stable `yzx` launcher and runtime/current directly. Host shell hooks are optional for this install path and may be managed separately."
+            details: "Home Manager owns the profile-provided `yzx` command and runtime/current directly. Host shell hooks are optional for this install path and may be managed separately."
             fix_available: false
         })
     } else {
