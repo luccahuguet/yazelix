@@ -1222,6 +1222,46 @@ sidebar_width_percent = 25
     $result
 }
 
+# Regression: generated zjstatus tab bars must cap the rendered tab window and show overflow markers before the bar breaks.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers [] {
+    print "🧪 Testing merged Zellij layouts cap the zjstatus tab window and keep visible tab indexes..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_tab_window_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        write_minimal_user_zellij_config $fake_home
+
+        let output = (run_merged_zellij_config_in_fake_home $tmpdir {} {
+            {
+                layout: (open --raw ($env.YAZELIX_TEST_OUT_DIR | path join "layouts" "yzx_side.kdl"))
+            }
+        })
+        let generated_layout = ($output.layout | str trim)
+
+        if (
+            ($generated_layout | str contains 'tab_display_count "5"')
+            and ($generated_layout | str contains 'tab_truncate_start_format "#[fg=#ff6600,bold]< +{count} ... "')
+            and ($generated_layout | str contains 'tab_truncate_end_format   "#[fg=#ff6600,bold]... +{count} > "')
+            and ($generated_layout | str contains 'tab_normal   "#[fg=#ffff00] [{index}] {name} "')
+            and ($generated_layout | str contains 'tab_active   "#[bg=#ff6600,fg=#000000,bold] [{index}] {name} {floating_indicator}"')
+        ) {
+            print "  ✅ Generated zjstatus layouts now keep visible tab indexes while truncating overflowing tab windows"
+            true
+        } else {
+            print $"  ❌ Generated layout is missing the compact zjstatus tab-window policy: ($generated_layout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Regression: non-persistent Zellij sessions must quit on terminal close while persistent sessions may detach.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_generate_merged_zellij_config_sets_on_force_close_by_session_mode [] {
@@ -1382,6 +1422,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
         (test_generate_merged_zellij_config_reuses_unchanged_state_and_invalidates_on_input_change)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
+        (test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers)
         (test_generate_merged_zellij_config_sets_on_force_close_by_session_mode)
     ]
 }

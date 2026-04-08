@@ -29,6 +29,9 @@ layout {
                 tab_sync_indicator       "<> "
                 tab_fullscreen_indicator "[] "
                 tab_floating_indicator   "⬚ "
+                tab_display_count "5"
+                tab_truncate_start_format "#[fg=#ff6600,bold]< +{count} ... "
+                tab_truncate_end_format   "#[fg=#ff6600,bold]... +{count} > "
 
                 datetime        "#[fg=#bb88ff,bold] {format} "
                 datetime_format "%H:%M %d/%m"
@@ -93,6 +96,9 @@ layout {
                tab_sync_indicator       "<> "
                tab_fullscreen_indicator "[] "
                tab_floating_indicator   "⬚ "
+               tab_display_count "5"
+               tab_truncate_start_format "#[fg=#ff6600,bold]< +{count} ... "
+               tab_truncate_end_format   "#[fg=#ff6600,bold]... +{count} > "
 
                command_terminal_command "bash -c 'echo ${YAZELIX_TERMINAL:-unknown}'"
                command_terminal_format "#[fg=#ffff00,bold]{stdout}"
