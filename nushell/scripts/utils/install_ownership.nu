@@ -93,6 +93,21 @@ export def is_home_manager_owned_surface [path: string] {
     is_home_manager_symlink_target (read_symlink_target $path)
 }
 
+def is_manual_runtime_reference_path [path?: string] {
+    let candidate = if $path == null {
+        get_manual_runtime_reference_path
+    } else {
+        $path | path expand --no-symlink
+    }
+
+    let target = (read_symlink_target $candidate)
+    if $target == null {
+        return false
+    }
+
+    not (is_home_manager_symlink_target $target)
+}
+
 export def is_manual_yzx_cli_path [path?: string] {
     let candidate = if $path == null {
         get_manual_yzx_cli_path
@@ -144,7 +159,7 @@ export def collect_manual_uninstall_artifacts [] {
     }
 
     let runtime_reference = (get_manual_runtime_reference_path)
-    if ($runtime_reference | path exists) and not (is_home_manager_owned_surface $runtime_reference) {
+    if (is_manual_runtime_reference_path $runtime_reference) {
         $artifacts = ($artifacts | append {
             id: "runtime_current"
             label: "installed runtime/current reference"
@@ -187,7 +202,7 @@ export def collect_home_manager_prepare_artifacts [] {
     mut artifacts = []
 
     let runtime_reference = (get_manual_runtime_reference_path)
-    if ($runtime_reference | path exists) and not (is_home_manager_owned_surface $runtime_reference) {
+    if (is_manual_runtime_reference_path $runtime_reference) {
         $artifacts = ($artifacts | append {
             id: "runtime_current"
             class: "blocker"

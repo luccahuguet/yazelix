@@ -147,6 +147,23 @@ git = ["gh"]
     }
 }
 
+def setup_noninstaller_runtime_reference_fixture [label: string] {
+    let fixture = (setup_managed_config_fixture
+        $label
+        '[core]
+welcome_style = "random"
+'
+    )
+
+    let runtime_reference = ($fixture.tmp_home | path join ".local" "share" "yazelix" "runtime" "current")
+    mkdir $runtime_reference
+    "# not an installer symlink\n" | save --force --raw ($runtime_reference | path join "README")
+
+    $fixture | merge {
+        runtime_reference: $runtime_reference
+    }
+}
+
 def run_entrypoint_preflight_command [fixture: record, entrypoint_label: string, --allow-noninteractive] {
     let helper_script = (repo_path "nushell" "scripts" "utils" "entrypoint_config_migrations.nu")
     let allow_suffix = if $allow_noninteractive { " --allow-noninteractive" } else { "" }
@@ -516,6 +533,38 @@ def test_yzx_uninstall_reports_home_manager_managed_install [] {
             and ($fixture.pack_config_path | path exists)
         ) {
             print "  ✅ yzx uninstall leaves Home Manager-owned surfaces alone and points users at home-manager switch"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: uninstall must not claim a plain runtime/current directory as installer-owned.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_uninstall_ignores_noninstaller_runtime_current_directory [] {
+    print "🧪 Testing yzx uninstall ignores a non-installer runtime/current directory..."
+
+    let fixture = (setup_noninstaller_runtime_reference_fixture "yazelix_uninstall_noninstaller_runtime_current")
+
+    let result = (try {
+        let output = (run_yzx_command_for_fixture $fixture "yzx uninstall")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "No manual installer-owned Yazelix artifacts were found.")
+            and not ($stdout | str contains $fixture.runtime_reference)
+            and ($fixture.runtime_reference | path exists)
+        ) {
+            print "  ✅ yzx uninstall now ignores runtime/current paths that do not match the installer-owned symlink shape"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
@@ -1181,6 +1230,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
         (test_yzx_uninstall_apply_removes_manual_artifacts_but_preserves_config)
         (test_yzx_uninstall_reports_home_manager_managed_install)
+        (test_yzx_uninstall_ignores_noninstaller_runtime_current_directory)
         (test_yzx_config_view)
         (test_yzx_config_full_merges_pack_sidecar)
         (test_yzx_edit_targets_print_paths)
