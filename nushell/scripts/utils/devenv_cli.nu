@@ -1,10 +1,10 @@
 #!/usr/bin/env nu
 # Shared resolution logic for the preferred standalone devenv CLI.
 
-use common.nu [get_yazelix_dir resolve_external_command_path]
+use common.nu [get_yazelix_runtime_dir resolve_external_command_path]
 
 def get_runtime_devenv_path [] {
-    let runtime_dir = (get_yazelix_dir)
+    let runtime_dir = (get_yazelix_runtime_dir)
     let candidate = ($runtime_dir | path join "bin" "devenv")
     if ($candidate | path exists) {
         $candidate

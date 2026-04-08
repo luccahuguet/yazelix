@@ -398,7 +398,7 @@ def run_nonvisual_sweep_tests [verbose: bool] {
     print ""
 
     let verbose_arg = if $verbose { " --verbose" } else { "" }
-    let sweep_script = ((get_yazelix_dir) | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
+    let sweep_script = ((get_yazelix_runtime_dir) | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
     nu -c $"use \"($sweep_script)\" run_all_sweep_tests; run_all_sweep_tests($verbose_arg)"
 }
 
@@ -408,6 +408,6 @@ def run_visual_sweep_tests [verbose: bool, delay: int] {
     print ""
 
     let verbose_arg = if $verbose { " --verbose" } else { "" }
-    let sweep_script = ((get_yazelix_dir) | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
+    let sweep_script = ((get_yazelix_runtime_dir) | path join "nushell" "scripts" "dev" "test_config_sweep.nu")
     nu -c $"use \"($sweep_script)\" run_all_sweep_tests; run_all_sweep_tests --visual --visual-delay ($delay)($verbose_arg)"
 }

@@ -133,7 +133,7 @@ def setup_refresh_profile_recording_fixture [label: string] {
         "export def describe_build_parallelism [build_cores_config?: string, max_jobs_config?: string] {"
         "    '8 jobs x 2 cores/job'"
         "}"
-        ("export def require_yazelix_dir [] { \"" + $runtime_dir + "\" }")
+        ("export def require_yazelix_runtime_dir [] { \"" + $runtime_dir + "\" }")
     ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
 
     [
@@ -220,7 +220,7 @@ def setup_rebuild_profile_recording_fixture [label: string] {
         "export def get_max_jobs [max_jobs?: string] { 1 }"
         "export def get_yazelix_nix_config [] { \"test-nix-config\" }"
         ("export def materialize_yazelix_runtime_project_dir [] { \"" + $runtime_project_dir + "\" }")
-        ("export def require_yazelix_dir [] { \"" + $runtime_dir + "\" }")
+        ("export def require_yazelix_runtime_dir [] { \"" + $runtime_dir + "\" }")
     ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
 
     [

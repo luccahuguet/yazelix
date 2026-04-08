@@ -243,7 +243,7 @@ export def get_yazelix_state_dir [] {
     }
 }
 
-export def get_yazelix_runtime_project_dir [] {
+def get_yazelix_runtime_project_dir [] {
     (get_yazelix_state_dir | path join "runtime" "project")
 }
 
@@ -306,7 +306,7 @@ def resolve_git_repo_root_from_pwd [] {
     }
 }
 
-export def get_yazelix_repo_root [] {
+def get_yazelix_repo_root [] {
     let raw_devenv_root = ($env.DEVENV_ROOT? | default null)
     let devenv_root = if $raw_devenv_root == null {
         null
@@ -393,10 +393,6 @@ export def materialize_yazelix_runtime_project_dir [] {
     $project_root
 }
 
-export def get_yazelix_dir [] {
-    get_yazelix_runtime_dir
-}
-
 export def resolve_zellij_default_shell [yazelix_dir: string, default_shell: string] {
     let shell_name = ($default_shell | str downcase)
     if $shell_name == "nu" {
@@ -404,14 +400,6 @@ export def resolve_zellij_default_shell [yazelix_dir: string, default_shell: str
     } else {
         $default_shell
     }
-}
-
-export def require_yazelix_config_dir [] {
-    let yazelix_dir = (get_yazelix_config_dir)
-    if not ($yazelix_dir | path exists) {
-        error make {msg: $"Cannot find Yazelix config directory at ($yazelix_dir)"}
-    }
-    $yazelix_dir
 }
 
 export def require_yazelix_runtime_dir [] {
@@ -429,10 +417,6 @@ export def require_yazelix_runtime_dir [] {
         error make {msg: $"Cannot find Yazelix runtime directory at ($yazelix_dir)"}
     }
     $yazelix_dir
-}
-
-export def require_yazelix_dir [] {
-    require_yazelix_runtime_dir
 }
 
 def get_total_cores [] {
@@ -513,16 +497,4 @@ export def describe_build_parallelism [build_cores_config?: string, max_jobs_con
     } else {
         $"($max_jobs) jobs x ($per_job_cores) cores/job \(~($total_budget) total, max_jobs=($resolved_max_jobs), build_cores=($resolved_build_cores)\)"
     }
-}
-
-# Check if Helix (hx or helix) is running in a Zellij pane based on client output
-export def is_hx_running [list_clients_output: string] {
-    let cmd = $list_clients_output | str trim | str downcase
-    let parts = $cmd | split row " "
-    let has_hx_paths = ($parts | any {|part| $part | str ends-with "/hx"})
-    let has_helix_paths = ($parts | any {|part| $part | str ends-with "/helix"})
-    let is_hx_cmd = ($parts | any {|part| $part == "hx"})
-    let is_helix_cmd = ($parts | any {|part| $part == "helix"})
-
-    $has_hx_paths or $has_helix_paths or $is_hx_cmd or $is_helix_cmd
 }

@@ -1,17 +1,17 @@
 #!/usr/bin/env nu
 
-use common.nu [get_yazelix_dir]
+use common.nu [get_yazelix_runtime_dir]
 use constants.nu [YAZELIX_VERSION]
 
 export const README_LATEST_SERIES_BEGIN = "<!-- BEGIN GENERATED README LATEST SERIES -->"
 export const README_LATEST_SERIES_END = "<!-- END GENERATED README LATEST SERIES -->"
 
 def get_upgrade_notes_path [] {
-    (get_yazelix_dir | path join "docs" "upgrade_notes.toml")
+    (get_yazelix_runtime_dir | path join "docs" "upgrade_notes.toml")
 }
 
 def get_readme_path [] {
-    (get_yazelix_dir | path join "README.md")
+    (get_yazelix_runtime_dir | path join "README.md")
 }
 
 def as_string_list [value: any] {

@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Profile activation helpers for fast Yazelix launch/restart paths.
 
-use ./common.nu [get_existing_yazelix_runtime_project_dir get_yazelix_nix_config get_yazelix_dir get_yazelix_state_dir]
+use ./common.nu [get_existing_yazelix_runtime_project_dir get_yazelix_nix_config get_yazelix_runtime_dir get_yazelix_state_dir]
 
 def normalize_path_entries [value: any] {
     let described = ($value | describe)
@@ -275,7 +275,7 @@ export def get_launch_profile [config_state: record, --allow-stale] {
         return null
     }
 
-    let yazelix_dir = get_yazelix_dir
+    let yazelix_dir = get_yazelix_runtime_dir
     let synced_zjstatus = ($yazelix_dir | path join "configs" "zellij" "plugins" "zjstatus.wasm")
     if not ($synced_zjstatus | path exists) {
         return null
@@ -362,7 +362,7 @@ def resolve_helix_runtime [config: record] {
 }
 
 export def get_launch_env [config: record, profile_path: string] {
-    let yazelix_dir = get_yazelix_dir
+    let yazelix_dir = get_yazelix_runtime_dir
     let profile_bin = ($profile_path | path join "bin")
     let current_path_entries = (normalize_path_entries ($env.PATH? | default []))
     let nix_config = get_yazelix_nix_config

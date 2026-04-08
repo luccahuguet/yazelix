@@ -6,7 +6,7 @@ use ../utils/config_manager.nu *
 use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/common.nu [describe_build_parallelism get_installed_yazelix_runtime_dir get_yazelix_dir]
+use ../utils/common.nu [describe_build_parallelism get_installed_yazelix_runtime_dir get_yazelix_runtime_dir]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../integrations/yazi.nu [reveal_in_yazi sync_active_sidebar_yazi_to_directory sync_managed_editor_cwd]
 use ../integrations/zellij.nu [set_tab_cwd resolve_tab_cwd_target]
@@ -185,7 +185,7 @@ export def "yzx status" [
     let env_prep = prepare_environment
     let config = $env_prep.config
     let config_state = $env_prep.config_state
-    let yazelix_dir = (get_yazelix_dir)
+    let yazelix_dir = (get_yazelix_runtime_dir)
     let shell_status = check_config_versions $yazelix_dir
 
     print "=== Yazelix Status ==="

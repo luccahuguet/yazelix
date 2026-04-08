@@ -4,7 +4,7 @@
 use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled get_refresh_output_mode format_command_failure_summary]
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ../utils/launch_state.nu [record_launch_profile_state resolve_profile_from_build_shell_output]
-use ../utils/common.nu [describe_build_parallelism require_yazelix_dir]
+use ../utils/common.nu [describe_build_parallelism require_yazelix_runtime_dir]
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
@@ -114,7 +114,7 @@ export def "yzx refresh" [
     let env_prep = prepare_environment
     let config = $env_prep.config
     let config_state = $env_prep.config_state
-    let runtime_dir = (require_yazelix_dir)
+    let runtime_dir = (require_yazelix_runtime_dir)
     let needs_refresh = $config_state.needs_refresh
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)

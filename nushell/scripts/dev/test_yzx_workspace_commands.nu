@@ -423,7 +423,7 @@ def setup_refresh_activation_fixture [label: string] {
         "export def describe_build_parallelism [build_cores: string, max_jobs: string] {"
         "    \"1 job x 1 core/job\""
         "}"
-        "export def require_yazelix_dir [] {"
+        "export def require_yazelix_runtime_dir [] {"
         "    $env.YAZELIX_RUNTIME_DIR"
         "}"
         "export def resolve_yazelix_nu_bin [] {"

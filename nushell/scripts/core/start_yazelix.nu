@@ -4,7 +4,7 @@
 use ../utils/environment_bootstrap.nu *
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile resolve_runtime_owned_profile]
-use ../utils/common.nu [describe_build_parallelism require_yazelix_dir resolve_yazelix_nu_bin]
+use ../utils/common.nu [describe_build_parallelism require_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/runtime_contract_checker.nu [
     check_generated_layout
@@ -61,7 +61,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     }
 
     let yazelix_dir = try {
-        require_yazelix_dir
+        require_yazelix_runtime_dir
     } catch {|err|
         print $"Error: ($err.msg)"
         exit 1

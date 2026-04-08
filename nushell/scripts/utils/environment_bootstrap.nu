@@ -6,7 +6,7 @@ use config_parser.nu parse_yazelix_config
 use devenv_cli.nu [is_preferred_devenv_available resolve_preferred_devenv_path]
 use nix_detector.nu ensure_nix_available
 use nix_env_helper.nu ensure_nix_in_environment
-use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config materialize_yazelix_runtime_project_dir require_yazelix_dir]
+use common.nu [get_max_cores get_max_jobs get_yazelix_nix_config materialize_yazelix_runtime_project_dir require_yazelix_runtime_dir]
 use config_state.nu [compute_config_state record_materialized_state]
 use launch_state.nu [record_launch_profile_state resolve_profile_from_build_shell_output]
 use startup_profile.nu [profile_startup_step]
@@ -93,7 +93,7 @@ export def is_unfree_enabled [] {
 # Resolve absolute Yazelix directory from HOME
 def resolve_yazelix_dir [] {
     try {
-        require_yazelix_dir
+        require_yazelix_runtime_dir
     } catch {|err|
         print $"Error: ($err.msg)"
         exit 1

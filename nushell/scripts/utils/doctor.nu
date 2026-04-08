@@ -3,7 +3,7 @@
 
 use logging.nu log_to_file
 use constants.nu [PINNED_NIX_VERSION]
-use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir get_yazelix_state_dir get_yazelix_runtime_reference_dir require_yazelix_runtime_dir]
+use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_state_dir get_yazelix_runtime_reference_dir require_yazelix_runtime_dir]
 use config_migration_transactions.nu [recover_stale_managed_config_transactions]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface reconcile_primary_config_surfaces]
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
@@ -1066,7 +1066,7 @@ export def check_install_artifact_staleness [] {
 
 # Check log files
 export def check_log_files [] {
-    let logs_dir = ((get_yazelix_dir) | path join "logs")
+    let logs_dir = ((get_yazelix_runtime_dir) | path join "logs")
     let logs_path = ($logs_dir | path expand)
 
     if not ($logs_path | path exists) {
@@ -1260,7 +1260,7 @@ export def fix_helix_runtime_conflicts [conflicts: list] {
 
 # Clean large log files
 export def fix_large_logs [] {
-    let logs_dir = ((get_yazelix_dir) | path join "logs")
+    let logs_dir = ((get_yazelix_runtime_dir) | path join "logs")
     let logs_path = ($logs_dir | path expand)
     
     if not ($logs_path | path exists) {
