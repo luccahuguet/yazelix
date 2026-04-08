@@ -785,7 +785,7 @@ def test_dev_update_home_manager_activation_refreshes_input_and_switches_request
         }
         let expected_switch_ref = $"($flake_dir)#lucca@loqness"
         let expected_log = [
-            $"nix:flake lock --update-input yazelix-hm ($flake_dir)"
+            $"nix:flake update yazelix-hm --flake ($flake_dir)"
             $"home-manager:switch --flake ($expected_switch_ref)"
         ]
 

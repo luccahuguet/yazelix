@@ -487,7 +487,7 @@ def refresh_home_manager_input_lock [flake_dir: string, input_name: string, quie
 
     print "🔄 Refreshing Home Manager Yazelix input..."
 
-    let result = (^nix flake lock --update-input $normalized_input $flake_dir | complete)
+    let result = (^nix flake update $normalized_input --flake $flake_dir | complete)
     if $result.exit_code != 0 {
         let stderr_tail = trim_output_tail ($result.stderr | default "") 25
         let stdout_tail = trim_output_tail ($result.stdout | default "") 25
@@ -499,7 +499,7 @@ def refresh_home_manager_input_lock [flake_dir: string, input_name: string, quie
             print "   stdout tail:"
             print ($stdout_tail | lines | each { |line| $"     ($line)" } | str join "\n")
         }
-        print $"   Recovery: Rerun `nix flake lock --update-input ($normalized_input) (format_activation_command_arg $flake_dir)` after fixing the Home Manager flake."
+        print $"   Recovery: Rerun `nix flake update ($normalized_input) --flake (format_activation_command_arg $flake_dir)` after fixing the Home Manager flake."
         exit $result.exit_code
     }
 

@@ -183,9 +183,13 @@ When creating new files or directories, always use underscores to maintain consi
 
 ### Delete-First Protocol
 
-1. Make the requirements less "dumb": Question every requirement, especially those from smart people, to ensure they are not illogical or based on flawed assumptions.
-2. Delete the part or process: Actively remove unnecessary steps, components, or processes. If you are not occasionally adding parts back in, you are not deleting enough.
-3. Simplify or optimize: Streamline the remaining essential components. Never optimize a part or process that should have been deleted.
+Use this as the default refactor and audit method in Yazelix, especially before packaging, upstreaming, or broad architecture work:
+
+1. Make the requirements less "dumb": Question every requirement, especially inherited ones. Ask whether the behavior is truly needed, whether the current scope is too broad, and whether two different responsibilities have been bundled together by accident.
+2. Delete the part or process: Remove unnecessary steps, compatibility paths, duplicate ownership layers, stale surfaces, or helper indirection before introducing new abstractions. If nothing can be deleted, be explicit about why.
+3. Simplify or optimize only what survives: After deletion, make the remaining path smaller, clearer, and more DRY. Never optimize a part that should have been removed.
+4. Verify the simpler contract: Test the exact user-visible behavior or subsystem contract that remains after the deletion/simplification. Prefer focused behavior checks and regressions over broad noise.
+5. Record the decision and the new seam: When the work changes future planning, capture the outcome in Beads/specs/notes so later refactors build on the clarified boundary instead of reopening the same ambiguity.
 
 ## Verification Requirements
 

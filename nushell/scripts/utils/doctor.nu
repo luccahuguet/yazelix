@@ -543,31 +543,6 @@ export def check_configuration [--recover-interrupted-transactions] {
     $results
 }
 
-# Check shell integration
-export def check_shell_integration [] {
-    let yzx_available = try {
-        (which yzx | is-not-empty)
-    } catch {
-        false
-    }
-    
-    if $yzx_available {
-        {
-            status: "ok"
-            message: "yzx commands available"
-            details: "Shell integration working properly"
-            fix_available: false
-        }
-    } else {
-        {
-            status: "warning"
-            message: "yzx commands not found in PATH"
-            details: "Shell integration may not be properly configured"
-            fix_available: false
-        }
-    }
-}
-
 export def check_shared_runtime_preflight [] {
     let config_result = (try {
         {config: (parse_yazelix_config), error: null}
@@ -1347,9 +1322,6 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
 
     # Shared runtime preflight overlap with launch-facing checks
     $all_results = ($all_results | append (check_shared_runtime_preflight))
-
-    # Shell integration
-    $all_results = ($all_results | append (check_shell_integration))
 
     # Desktop entry freshness
     $all_results = ($all_results | append (check_desktop_entry_freshness))

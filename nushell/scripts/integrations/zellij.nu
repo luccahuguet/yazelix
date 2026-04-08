@@ -404,30 +404,6 @@ export def set_managed_editor_cwd [editor_kind: string, target_path: path, log_f
     }
 }
 
-export def debug_write_literal [text: string = "__YZX__"] {
-    let response = (run_pane_orchestrator_command_raw "debug_write_literal" $text)
-    parse_pane_orchestrator_response $response
-}
-
-export def debug_send_escape [] {
-    let response = (run_pane_orchestrator_command_raw "debug_send_escape")
-    parse_pane_orchestrator_response $response
-}
-
-export def debug_open_file_via_plugin [editor_kind: string, file_path: path] {
-    let expanded_file_path = ($file_path | path expand)
-    let workspace = (get_workspace_context $expanded_file_path "zellij_plugin_debug.log")
-
-    let payload = {
-        editor: $editor_kind
-        file_path: $expanded_file_path
-        working_dir: $workspace.workspace_root
-    } | to json -r
-
-    let response = (run_pane_orchestrator_command_raw "open_file" $payload)
-    parse_pane_orchestrator_response $response
-}
-
 export def next_layout_family [] {
     let response = (run_pane_orchestrator_command_raw "next_family")
     parse_pane_orchestrator_response $response
