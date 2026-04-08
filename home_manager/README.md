@@ -110,19 +110,27 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
 
 2. **Configure the Home Manager module** (see example.nix)
 
-3. **Apply with collision backups:**
+3. **Prepare the existing manual install for takeover:**
    ```bash
-   home-manager switch -b hm-backup
+   yzx home_manager prepare
+   yzx home_manager prepare --apply
    ```
 
-Manual installs commonly already own:
+The prepare command archives the common manual-install takeover blockers and handoff cleanup paths:
 - `~/.local/share/yazelix/runtime/current`
 - `~/.config/yazelix/user_configs/yazelix.toml`
 - `~/.config/yazelix/user_configs/yazelix_packs.toml`
+- `~/.local/bin/yzx`
+- `~/.local/share/applications/com.yazelix.Yazelix.desktop`
 
-Using `-b hm-backup` lets Home Manager move those remaining unmanaged files aside instead of aborting the switch. It is a takeover aid for `runtime/current` and generated config collisions, not the main launcher story.
+4. **Apply the Home Manager configuration:**
+   ```bash
+   home-manager switch
+   ```
 
-4. **Verify the Home Manager-owned surfaces:**
+If Home Manager still reports an unexpected unmanaged-file collision outside those paths, `home-manager switch -b hm-backup` remains a fallback aid. It is no longer the primary Yazelix migration story.
+
+5. **Verify the Home Manager-owned surfaces:**
    ```bash
    readlink -f ~/.nix-profile/bin/yzx
    readlink -f ~/.local/share/yazelix/runtime/current
@@ -130,7 +138,7 @@ Using `-b hm-backup` lets Home Manager move those remaining unmanaged files asid
    yzx --version-short
    ```
 
-5. **Launch Yazelix:**
+6. **Launch Yazelix:**
    ```bash
    yzx launch
    ```
@@ -168,9 +176,9 @@ Using `-b hm-backup` lets Home Manager move those remaining unmanaged files asid
 
 ### Conflicts with an existing manual install
 - Existing manual Yazelix files can cause `home-manager switch` to stop with collision errors
-- Prefer `home-manager switch -b hm-backup` for the first takeover
+- Prefer `yzx home_manager prepare --apply` before the first takeover
 - The most common collision paths are `~/.local/share/yazelix/runtime/current` and the generated TOML files under `~/.config/yazelix/user_configs/`
-- A leftover manual `~/.local/bin/yzx` does not belong to the Home Manager path anymore; remove it if you want a pure Home Manager-owned launcher surface
+- `home-manager switch -b hm-backup` is now the fallback aid if you still hit an unexpected unmanaged-file collision after the prepare step
 - See example.nix to recreate your settings declaratively instead of editing the generated TOML files directly
 
 ### Nushell expectations
