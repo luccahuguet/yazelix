@@ -56,12 +56,12 @@ Alias to `packages.<system>.runtime`.
 
 This keeps the flake predictable for users and tools without requiring them to guess the package name.
 
-## Phase 1 Optional Outputs
-
-These are useful but should not block the first shipped front door:
+## Additional Outputs
 
 - `homeManagerModules.default`
-  - top-level re-export of the existing Home Manager module
+  - canonical top-level Home Manager module surface
+- `homeManagerModules.yazelix`
+  - named alias for the same canonical module
 - `apps.<system>.launch`
   - a direct launcher app if it falls out naturally from the runtime package
 - `checks.<system>.*`
@@ -118,7 +118,7 @@ Non-goals for phase 1:
 
 Home Manager should remain a supported integration path, but it should not block the first flake install surface.
 
-If re-exporting the existing module at top level is cheap and clean, do it. If not, land the installer and runtime package first and re-export the module as a follow-on slice.
+Home Manager should use the same top-level flake as the install/runtime story. Do not keep a second `?dir=home_manager` flake surface as the primary integration path.
 
 ## Acceptance Cases
 
@@ -135,6 +135,7 @@ If re-exporting the existing module at top level is cheap and clean, do it. If n
 - manual review against [one_command_install_ux.md](./one_command_install_ux.md)
 - manual review against [runtime_root_contract.md](./runtime_root_contract.md)
 - future flake-eval checks for required outputs
+- CI check: `nu nushell/scripts/dev/validate_flake_interface.nu`
 - CI check: `nu nushell/scripts/dev/validate_flake_install.nu`
 
 ## Traceability

@@ -29,7 +29,7 @@ Add this to your `flake.nix` inputs:
   inputs = {
     # ... your existing inputs
     yazelix-hm = {
-      url = "github:luccahuguet/yazelix?dir=home_manager";
+      url = "github:luccahuguet/yazelix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -46,7 +46,7 @@ Add this to your `flake.nix` inputs:
 ```
 
 This example assumes you use Home Manager with flakes.
-It pins the Home Manager module as a normal flake input instead of referencing a user-specific checkout path.
+It pins the Home Manager module from the top-level Yazelix flake instead of the old `?dir=home_manager` subflake path.
 
 ### 2. Configure Yazelix in Your Home Manager Configuration
 
@@ -94,6 +94,9 @@ Manual validation on April 8, 2026 covered both a lived-in account and a throwaw
 - The Home Manager desktop entry comes from the Home Manager profile, typically `~/.nix-profile/share/applications/yazelix.desktop`, rather than from `yzx desktop install`.
 - Old manual desktop-entry files under `~/.local/share/applications/` can linger after migration; they are not Home Manager-owned and will shadow the Home Manager profile entry until you remove them.
 - Host shell hooks are optional for the Home Manager path. Launch through `yzx` or the Home Manager desktop entry; do not expect `home-manager switch` to rewrite `.bashrc` or `~/.config/nushell/config.nu`.
+
+Migration note for older setups:
+- Replace `github:luccahuguet/yazelix?dir=home_manager` with `github:luccahuguet/yazelix` in your Home Manager flake inputs.
 
 ## Example Configuration
 
@@ -196,16 +199,11 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 To work on this module:
 
 ```bash
-cd /path/to/cloned/yazelix/home_manager
-devenv shell  # Provides nixpkgs-fmt, statix, deadnix
+cd /path/to/cloned/yazelix
+devenv shell
 ```
 
-Format and check the code:
-```bash
-nixpkgs-fmt *.nix examples/*.nix
-statix check .
-deadnix .
-```
+Use the repo root environment and your preferred Nix formatting/lint tools as needed.
 
 ## Contributing
 

@@ -301,7 +301,7 @@ devenv shell
 ```
 
 ### Home Manager Integration
-Yazelix includes optional Home Manager support for declarative configuration management. See [home_manager/README.md](../home_manager/README.md) for setup instructions.
+Yazelix includes optional Home Manager support for declarative configuration management through the top-level flake's `homeManagerModules.default` output. See [home_manager/README.md](../home_manager/README.md) for setup instructions.
 
 ## What Gets Installed
 

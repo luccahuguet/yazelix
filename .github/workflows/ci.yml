@@ -127,9 +127,8 @@ jobs:
       - name: Validate default-suite runtime budget
         run: nu nushell/scripts/dev/validate_default_test_budget.nu
 
-      - name: Check Home Manager flake
-        shell: bash
-        run: nix flake check ./home_manager --no-build
+      - name: Validate top-level flake interface
+        run: nu nushell/scripts/dev/validate_flake_interface.nu
 
   integration:
     # Medium-cost installed-runtime contract lane. Keep this path-gated so
