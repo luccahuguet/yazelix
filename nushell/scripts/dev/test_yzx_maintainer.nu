@@ -645,6 +645,183 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Defends: maintainer update requires an explicit activation target for real updates instead of silently falling through to installer behavior.
+def test_dev_update_requires_explicit_activation_for_real_updates [] {
+    print "🧪 Testing yzx dev update requires an explicit activation target unless canary-only is requested..."
+
+    let repo_root = ($env.PWD | path expand)
+    let dev_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
+
+    try {
+        let snippet = (
+            [
+                $"source \"($dev_module)\""
+                "let canary_only = (try {"
+                "    resolve_requested_update_activation_mode \"\" true | ignore"
+                "    \"canary-ok\""
+                "} catch {|err|"
+                "    $err.msg"
+                "})"
+                "try {"
+                "    resolve_requested_update_activation_mode \"\" false | ignore"
+                "    print \"unexpected-success\""
+                "} catch {|err|"
+                "    {"
+                "        canary_only: $canary_only"
+                "        missing_error: $err.msg"
+                "    } | to json -r | print"
+                "}"
+            ] | str join "\n"
+        )
+        let output = (^nu -c $snippet | complete)
+        let stdout = ($output.stdout | str trim)
+        let resolved = ($stdout | from json)
+        let expected = "yzx dev update now requires --activate installer|home_manager|none unless you are using --canary-only."
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved.canary_only == "canary-ok")
+            and ($resolved.missing_error == $expected)
+        ) {
+            print "  ✅ Real maintainer updates now fail fast until an activation target is chosen explicitly, while canary-only stays exempt"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Defends: Home Manager activation refreshes the configured flake input and switches the requested flake ref instead of falling back to the installer path.
+def test_dev_update_home_manager_activation_refreshes_input_and_switches_requested_ref [] {
+    print "🧪 Testing yzx dev update Home Manager activation refreshes the input lock and switches the requested ref..."
+
+    let repo_root = ($env.PWD | path expand)
+    let dev_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
+    let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_home_manager_activation_XXXXXX | str trim)
+    let bin_dir = ($tmp_root | path join "bin")
+    let flake_dir = ($tmp_root | path join "home-manager")
+    let log_path = ($tmp_root | path join "activation.log")
+    let nix_script = ($bin_dir | path join "nix")
+    let home_manager_script = ($bin_dir | path join "home-manager")
+    let current_path = if (($env.PATH | describe) | str contains "list") {
+        $env.PATH | str join (char esep)
+    } else {
+        $env.PATH | into string
+    }
+
+    mkdir $bin_dir
+    mkdir $flake_dir
+    "{ }\n" | save --force --raw ($flake_dir | path join "flake.nix")
+    [
+        "#!/usr/bin/env bash"
+        "printf 'nix:%s\\n' \"$*\" >> \"$YZX_TEST_LOG\""
+        "exit 0"
+    ] | str join "\n" | save --force --raw $nix_script
+    [
+        "#!/usr/bin/env bash"
+        "printf 'home-manager:%s\\n' \"$*\" >> \"$YZX_TEST_LOG\""
+        "exit 0"
+    ] | str join "\n" | save --force --raw $home_manager_script
+    ^chmod +x $nix_script $home_manager_script
+
+    let result = (try {
+        let snippet = (
+            [
+                $"source \"($dev_module)\""
+                "let result = (activate_updated_home_manager_runtime $env.YZX_TEST_FLAKE_DIR \"yazelix-hm\" \"lucca@loqness\" true)"
+                "$result | to json -r"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            PATH: $"($bin_dir)(char esep)($current_path)"
+            YZX_TEST_LOG: $log_path
+            YZX_TEST_FLAKE_DIR: $flake_dir
+        } {
+            ^nu -c $snippet | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 {
+            $stdout | lines | last | from json
+        } else {
+            null
+        }
+        let log_lines = if ($log_path | path exists) {
+            open --raw $log_path | lines
+        } else {
+            []
+        }
+        let expected_switch_ref = $"($flake_dir)#lucca@loqness"
+        let expected_log = [
+            $"nix:flake lock --update-input yazelix-hm ($flake_dir)"
+            $"home-manager:switch --flake ($expected_switch_ref)"
+        ]
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved != null)
+            and ($resolved.flake_dir == $flake_dir)
+            and ($resolved.input_name == "yazelix-hm")
+            and ($resolved.switch_ref == $expected_switch_ref)
+            and ($log_lines == $expected_log)
+        ) {
+            print "  ✅ Home Manager activation now refreshes the configured input and switches the exact requested ref"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) log=(($log_lines | to json -r)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Defends: maintainer update activation rejects unknown mode names instead of accepting ambiguous shorthand.
+def test_dev_update_activation_mode_rejects_unknown_values [] {
+    print "🧪 Testing yzx dev update activation parsing rejects unknown mode names..."
+
+    let repo_root = ($env.PWD | path expand)
+    let dev_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
+
+    try {
+        let snippet = (
+            [
+                $"source \"($dev_module)\""
+                "try {"
+                "    resolve_requested_update_activation_mode \"hm\" false | ignore"
+                "    print \"unexpected-success\""
+                "} catch {|err|"
+                "    print $err.msg"
+                "}"
+            ] | str join "\n"
+        )
+        let output = (^nu -c $snippet | complete)
+        let stdout = ($output.stdout | str trim)
+        let expected = "Unknown activation mode: hm. Expected one of: installer, home_manager, none"
+
+        if ($output.exit_code == 0) and ($stdout == $expected) {
+            print "  ✅ Unknown maintainer activation names now fail fast with the supported mode list"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 def main [] {
     print "=== Testing yzx Maintainer Commands ==="
     print ""
@@ -652,6 +829,9 @@ def main [] {
     let results = [
         (test_issue_bead_reconciliation_plan)
         (test_issue_bead_comment_plan)
+        (test_dev_update_requires_explicit_activation_for_real_updates)
+        (test_dev_update_activation_mode_rejects_unknown_values)
+        (test_dev_update_home_manager_activation_refreshes_input_and_switches_requested_ref)
         (test_source_devenv_shell_clears_inherited_runtime_aliases)
         (test_managed_wrapper_prefers_sibling_nixgl_without_ambient_profile)
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
