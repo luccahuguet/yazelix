@@ -119,7 +119,10 @@ keybinds {
         // Toggle focus between the managed sidebar and the managed editor.
         bind "Ctrl y" {
             Run "nu" "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/toggle_editor_sidebar_focus.nu" {
-                name "toggle_editor_sidebar_focus"
+                // Keep the helper pane under the yzx_* prefix so the pane orchestrator
+                // preserves the previous editor/sidebar focus context while this transient
+                // wrapper pane is focused.
+                name "yzx_toggle_editor_sidebar_focus"
                 close_on_exit true
             }
         }

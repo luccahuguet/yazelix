@@ -1262,6 +1262,40 @@ def test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_ma
     $result
 }
 
+# Regression: Ctrl+y helper panes must preserve the previous managed focus context while the transient wrapper runs.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_generate_merged_zellij_config_gives_ctrl_y_helper_a_yzx_prefixed_pane_name [] {
+    print "🧪 Testing merged Zellij config gives the Ctrl+y helper a yzx_-prefixed transient pane name..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_ctrl_y_helper_name_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        write_minimal_user_zellij_config $fake_home
+
+        let output = (run_merged_zellij_config_in_fake_home $tmpdir {})
+        let generated_config = ($output.config | str trim)
+
+        if (
+            ($generated_config | str contains 'bind "Ctrl y" {')
+            and ($generated_config | str contains 'name "yzx_toggle_editor_sidebar_focus"')
+            and not ($generated_config | str contains 'name "toggle_editor_sidebar_focus"')
+        ) {
+            print "  ✅ The Ctrl+y helper pane now keeps the yzx_ prefix that preserves prior focus context during the transient wrapper run"
+            true
+        } else {
+            print $"  ❌ Generated Zellij config is missing the Ctrl+y helper-pane naming contract: ($generated_config)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Regression: non-persistent Zellij sessions must quit on terminal close while persistent sessions may detach.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_generate_merged_zellij_config_sets_on_force_close_by_session_mode [] {
@@ -1423,6 +1457,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_zellij_config_reuses_unchanged_state_and_invalidates_on_input_change)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
         (test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers)
+        (test_generate_merged_zellij_config_gives_ctrl_y_helper_a_yzx_prefixed_pane_name)
         (test_generate_merged_zellij_config_sets_on_force_close_by_session_mode)
     ]
 }
