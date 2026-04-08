@@ -109,6 +109,46 @@ widget_tray = ["layout", "editor"]
     $result
 }
 
+# Regression: doctor must still report config migrations when the Zellij plugin-health branch runs.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_reports_known_migration_inside_zellij_session [] {
+    print "🧪 Testing yzx doctor still reports known migrations from inside a Zellij session..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_migration_zellij"
+        '[zellij]
+widget_tray = ["layout", "editor"]
+')
+
+    let result = (try {
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
+            ZELLIJ: "0"
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Known migration at zellij.widget_tray")
+            and (
+                ($stdout | str contains "Yazelix pane-orchestrator")
+                or ($stdout | str contains "Could not contact the Yazelix pane-orchestrator plugin")
+            )
+        ) {
+            print "  ✅ yzx doctor reports config migrations even when plugin health executes inside Zellij"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 # Defends: doctor fix applies safe config migrations.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_doctor_fix_applies_safe_config_migrations [] {
@@ -366,6 +406,7 @@ export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
         (test_yzx_doctor_reports_known_migration_with_fix_guidance)
+        (test_yzx_doctor_reports_known_migration_inside_zellij_session)
         (test_yzx_doctor_fix_applies_safe_config_migrations)
         (test_yzx_doctor_fix_splits_legacy_pack_config)
         (test_yzx_doctor_reports_stale_desktop_entry_exec)

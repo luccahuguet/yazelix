@@ -11,7 +11,7 @@ def main [] {
     }
 
     if $result.status != "ok" {
-        print $\"Error: toggle editor/sidebar focus failed \\(status=($result.status)\\)\"
+        print $"Error: toggle editor/sidebar focus failed \(status=($result.status)\)"
         exit 1
     }
 

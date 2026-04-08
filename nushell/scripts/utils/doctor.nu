@@ -5,7 +5,7 @@ use logging.nu log_to_file
 use constants.nu [PINNED_NIX_VERSION]
 use common.nu [get_yazelix_config_dir get_yazelix_dir get_yazelix_runtime_dir get_yazelix_state_dir get_yazelix_runtime_reference_dir require_yazelix_runtime_dir]
 use config_migration_transactions.nu [recover_stale_managed_config_transactions]
-use config_surfaces.nu [get_main_user_config_path reconcile_primary_config_surfaces]
+use config_surfaces.nu [get_main_user_config_path load_active_config_surface reconcile_primary_config_surfaces]
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
 use devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available resolve_preferred_devenv_path]
@@ -966,6 +966,13 @@ export def check_zellij_plugin_health [] {
         }]
     }
 
+    let sidebar_enabled = (try {
+        let config_surface = (load_active_config_surface)
+        (($config_surface.merged_config.editor? | default {}) | get -o enable_sidebar | default true)
+    } catch {
+        true
+    })
+
     let plugin_state = try {
         debug_editor_state
     } catch {|err|
@@ -985,9 +992,6 @@ export def check_zellij_plugin_health [] {
             fix_available: false
         }]
     }
-
-    let config = parse_yazelix_config
-    let sidebar_enabled = ($config.enable_sidebar? | default true)
     build_zellij_plugin_health_results $plugin_state $sidebar_enabled
 }
 
