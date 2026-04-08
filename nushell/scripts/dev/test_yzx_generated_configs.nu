@@ -1241,7 +1241,7 @@ def test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_ma
         let generated_layout = ($output.layout | str trim)
 
         if (
-            ($generated_layout | str contains 'tab_display_count "5"')
+            ($generated_layout | str contains 'tab_display_count "6"')
             and ($generated_layout | str contains 'tab_truncate_start_format "#[fg=#ff6600,bold]< +{count} ... "')
             and ($generated_layout | str contains 'tab_truncate_end_format   "#[fg=#ff6600,bold]... +{count} > "')
             and ($generated_layout | str contains 'tab_normal   "#[fg=#ffff00] [{index}] {name} "')

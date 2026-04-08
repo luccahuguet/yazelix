@@ -29,7 +29,7 @@ layout {
                 tab_sync_indicator       "<> "
                 tab_fullscreen_indicator "[] "
                 tab_floating_indicator   "⬚ "
-                tab_display_count "5"
+                tab_display_count "6"
                 tab_truncate_start_format "#[fg=#ff6600,bold]< +{count} ... "
                 tab_truncate_end_format   "#[fg=#ff6600,bold]... +{count} > "
 
@@ -96,7 +96,7 @@ layout {
                tab_sync_indicator       "<> "
                tab_fullscreen_indicator "[] "
                tab_floating_indicator   "⬚ "
-               tab_display_count "5"
+               tab_display_count "6"
                tab_truncate_start_format "#[fg=#ff6600,bold]< +{count} ... "
                tab_truncate_end_format   "#[fg=#ff6600,bold]... +{count} > "
 
