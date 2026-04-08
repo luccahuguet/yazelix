@@ -44,6 +44,7 @@ def print_yazelix_keys [] {
     ]
     heading "Tab and pane movement"
     print_table [
+        {keybinding: (accent_key "Alt+1..9"), action: "Go directly to tab 1-9"}
         {keybinding: (accent_key "Alt+h / Alt+l"), action: "Walk left/right across visible panes, falling back to previous/next tab"}
         {keybinding: (accent_key "Alt+w / Alt+q"), action: "Walk next/previous tab"}
         {keybinding: (accent_key "Alt+Shift+H / Alt+Shift+L"), action: "Move current tab left/right"}
