@@ -663,7 +663,7 @@ in
       };
     };
 
-    home.activation.yazelixGeneratedRuntimeConfigs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    home.activation.yazelixGeneratedRuntimeConfigs = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
       export PATH="${runtimeConfigGenerationPath}:$PATH"
       export YAZELIX_RUNTIME_DIR="${runtimeCurrentPath}"
       export YAZELIX_CONFIG_DIR="${managedConfigRoot}"

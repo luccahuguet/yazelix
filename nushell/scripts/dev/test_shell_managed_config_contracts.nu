@@ -460,7 +460,7 @@ def test_home_manager_shellhook_setup_skips_host_shell_surfaces [] {
     mkdir $runtime_dir
     mkdir $runtime_bin_dir
 
-    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "docs", "nushell", "rust_plugins", "shells", "CHANGELOG.md", "devenv.lock", "devenv.nix", "devenv.yaml", "yazelix_default.toml", "yazelix_packs_default.toml"] {
+    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "nushell", "shells", "yazelix_default.toml", "yazelix_packs_default.toml"] {
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
     ^ln -s $runtime_nu ($runtime_bin_dir | path join "nu")
