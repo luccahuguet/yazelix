@@ -93,12 +93,21 @@ export def get_main_user_config_path [config_root?: string] {
     (get_yazelix_user_config_dir $config_root) | path join $MAIN_CONFIG_FILENAME
 }
 
+export def normalize_config_surface_path [surface_path: string] {
+    $surface_path | path expand --no-symlink
+}
+
 export def get_pack_sidecar_path [config_file_or_root?: string] {
     if $config_file_or_root == null {
         return ((get_yazelix_user_config_dir) | path join $PACK_SIDECAR_FILENAME)
     }
 
-    let candidate = ($config_file_or_root | path expand)
+    # Preserve the logical config path when deriving sibling surfaces. Home
+    # Manager exposes user config files as symlinks into the Nix store, and
+    # resolving the symlink here would make Yazelix look for
+    # `<store-file>/yazelix_packs.toml` instead of the real sibling sidecar in
+    # `user_configs/`.
+    let candidate = (normalize_config_surface_path $config_file_or_root)
     if ($candidate | path basename) == $MAIN_CONFIG_FILENAME {
         ($candidate | path dirname | path join $PACK_SIDECAR_FILENAME)
     } else {

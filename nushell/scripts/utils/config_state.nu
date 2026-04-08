@@ -4,7 +4,7 @@
 use ./config_parser.nu parse_yazelix_config
 use ./config_contract.nu [get_main_config_rebuild_required_paths]
 use ./common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
-use ./config_surfaces.nu [load_active_config_surface get_main_user_config_path]
+use ./config_surfaces.nu [load_active_config_surface get_main_user_config_path normalize_config_surface_path]
 use ./launch_state.nu [has_matching_launch_state]
 
 # Extract a nested key from a record using dot notation (e.g., "core.recommended_deps")
@@ -225,8 +225,8 @@ export def compute_config_state [] {
 # canonical Yazelix build state for the default managed config surface.
 export def record_materialized_state [state: record] {
     let config_file = ($state.config_file? | default "")
-    let default_config = (get_main_user_config_path)
-    if ($config_file | is-not-empty) and ($config_file | path expand) != $default_config {
+    let default_config = (normalize_config_surface_path (get_main_user_config_path))
+    if ($config_file | is-not-empty) and ((normalize_config_surface_path $config_file) != $default_config) {
         return
     }
 

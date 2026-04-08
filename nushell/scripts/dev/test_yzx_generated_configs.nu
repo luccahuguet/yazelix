@@ -5,6 +5,7 @@
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
+use ../utils/config_state.nu [record_materialized_state]
 use ../utils/terminal_launcher.nu [build_launch_command resolve_terminal_config]
 use ../utils/terminal_configs.nu [
     generate_all_terminal_configs
@@ -17,6 +18,39 @@ def run_parse_yazelix_config_probe [fixture: record, extra_env: record = {}] {
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
     } | merge $extra_env) {
         ^nu -c $"use \"($fixture.repo_root | path join "nushell" "scripts" "utils" "config_parser.nu")\" [parse_yazelix_config]; parse_yazelix_config" | complete
+    }
+}
+
+def setup_home_manager_symlinked_main_config_fixture [label: string] {
+    let repo_root = (get_repo_config_dir)
+    let tmpdir = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
+    let fake_home = ($tmpdir | path join "home")
+    let config_dir = ($fake_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
+    let hm_store_dir = ($tmpdir | path join "hm-store")
+    let symlinked_main = ($user_config_dir | path join "yazelix.toml")
+    let pack_path = ($user_config_dir | path join "yazelix_packs.toml")
+    let state_path = ($fake_home | path join ".local" "share" "yazelix" "state" "rebuild_hash")
+    let store_main = ($hm_store_dir | path join "yazelix.toml")
+
+    mkdir $fake_home
+    mkdir ($fake_home | path join ".config")
+    mkdir $config_dir
+    mkdir $user_config_dir
+    mkdir $hm_store_dir
+
+    cp (repo_path "yazelix_default.toml") $store_main
+    ^ln -s $store_main $symlinked_main
+
+    {
+        repo_root: $repo_root
+        tmpdir: $tmpdir
+        fake_home: $fake_home
+        config_dir: $config_dir
+        user_config_dir: $user_config_dir
+        symlinked_main: $symlinked_main
+        pack_path: $pack_path
+        state_path: $state_path
     }
 }
 
@@ -582,6 +616,104 @@ enabled = ["git"]
     })
 
     rm -rf $tmpdir
+    $result
+}
+
+# Regression: Home Manager symlinked main configs must still discover the sibling pack sidecar.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_parse_yazelix_config_reads_pack_sidecar_next_to_symlinked_main_config [] {
+    print "🧪 Testing parse_yazelix_config keeps pack sidecar ownership next to a symlinked Home Manager main config..."
+
+    let fixture = (setup_home_manager_symlinked_main_config_fixture "yazelix_hm_symlink_pack_surface")
+
+    let result = (try {
+        let parser_script = (repo_path "nushell" "scripts" "utils" "config_parser.nu")
+
+        'enabled = ["misc"]
+' | save --force --raw $fixture.pack_path
+
+        let output = (with-env {
+            HOME: $fixture.fake_home
+            XDG_CONFIG_HOME: ($fixture.fake_home | path join ".config")
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        } {
+            ^nu --no-config-file -c $"use \"($parser_script)\" [parse_yazelix_config]; parse_yazelix_config | get pack_names | to json -r" | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let stderr = ($output.stderr | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout == '["misc"]')
+            and not ($stderr | str contains "Already exists")
+        ) {
+            print "  ✅ Symlinked Home Manager main configs still read the sibling yazelix_packs.toml sidecar"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmpdir
+    $result
+}
+
+# Regression: Home Manager symlinked managed configs must still record canonical rebuild state.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_record_materialized_state_accepts_symlinked_managed_main_config [] {
+    print "🧪 Testing record_materialized_state treats a symlinked Home Manager main config as the canonical managed surface..."
+
+    let fixture = (setup_home_manager_symlinked_main_config_fixture "yazelix_hm_symlink_state_recording")
+
+    let result = (try {
+        with-env {
+            HOME: $fixture.fake_home
+            XDG_CONFIG_HOME: ($fixture.fake_home | path join ".config")
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        } {
+            record_materialized_state {
+                config_file: $fixture.symlinked_main
+                config_hash: "cfg"
+                lock_hash: "lock"
+                devenv_nix_hash: "nix"
+                devenv_yaml_hash: "yaml"
+                runtime_hash: "runtime"
+            }
+        }
+
+        let recorded = if ($fixture.state_path | path exists) {
+            open --raw $fixture.state_path | from json
+        } else {
+            null
+        }
+        let recorded_config_hash = if $recorded == null { "" } else { $recorded | get -o config_hash | default "" }
+        let recorded_lock_hash = if $recorded == null { "" } else { $recorded | get -o lock_hash | default "" }
+        let recorded_runtime_hash = if $recorded == null { "" } else { $recorded | get -o runtime_hash | default "" }
+
+        if (
+            ($recorded != null)
+            and ($recorded_config_hash == "cfg")
+            and ($recorded_lock_hash == "lock")
+            and ($recorded_runtime_hash == "runtime")
+        ) {
+            print "  ✅ Symlinked Home Manager managed configs still record canonical rebuild state"
+            true
+        } else {
+            print $"  ❌ Unexpected result: state_exists=(($fixture.state_path | path exists)) recorded=($recorded)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmpdir
     $result
 }
 
@@ -1237,6 +1369,8 @@ export def run_generated_config_canonical_tests [] {
         (test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed)
         (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)
         (test_parse_yazelix_config_rejects_split_pack_ownership)
+        (test_parse_yazelix_config_reads_pack_sidecar_next_to_symlinked_main_config)
+        (test_record_materialized_state_accepts_symlinked_managed_main_config)
         (test_user_mode_requires_real_terminal_config)
         (test_config_schema_rejects_removed_auto_terminal_config_mode)
         (test_config_schema_rejects_removed_layout_widget)
