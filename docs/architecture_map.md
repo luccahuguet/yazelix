@@ -127,6 +127,7 @@ See [yzx Command Surface Backend Coupling](./specs/yzx_command_surface_backend_c
 See [Backend-Free Workspace Slice](./specs/backend_free_workspace_slice.md) for the concrete proof slice that already works in runtime-root-only mode with host-provided tools.
 See [Cross-Language Runtime Ownership](./specs/cross_language_runtime_ownership.md) for the current language/runtime ownership map across Nushell, Rust plugins, Lua Yazi code, POSIX shell, and Zellij transport.
 See [Yazelix Core Boundary](./specs/yazelix_core_boundary.md) for the current recommendation on whether a separate Core edition should exist and what it would keep or drop if revisited later.
+See [v14 Boundary-Hardening Gate](./specs/v14_boundary_hardening_gate.md) for the explicit technical gate that defines when a `v14` major bump is actually earned.
 See [Managed Config Migration Transaction Contract](./specs/managed_config_migration_transaction_contract.md) for the staged write and rollback model that keeps Yazelix-owned config migrations from landing in a half-applied state.
 See [One-Command Install UX](./specs/one_command_install_ux.md) for the planned first-class install front door and why it should be a thin `nix run` installer surface instead of a hosted shell script.
 See [Flake Interface Contract](./specs/flake_interface_contract.md) for the exact phase-1 flake outputs and the stable installed-runtime layout they should target.
