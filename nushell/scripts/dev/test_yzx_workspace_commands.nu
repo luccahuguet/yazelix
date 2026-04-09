@@ -88,6 +88,42 @@ def setup_desktop_runtime_probe_fixture [label: string, --with_hidden_launch_mod
     }
 }
 
+def setup_startup_bootstrap_probe_fixture [label: string] {
+    let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
+    let runtime_dir = ($tmp_home | path join "runtime")
+    let probe_log = ($tmp_home | path join "bootstrap_probe.log")
+    let start_script = ($runtime_dir | path join "shells" "posix" "start_yazelix.sh")
+    let runtime_env_script = ($runtime_dir | path join "shells" "posix" "runtime_env.sh")
+    let startup_nu = ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix.nu")
+    let fake_nu = ($runtime_dir | path join "bin" "nu")
+
+    mkdir ($runtime_dir | path join "shells" "posix")
+    mkdir ($runtime_dir | path join "nushell" "scripts" "core")
+    mkdir ($runtime_dir | path join "bin")
+
+    ^ln -s (repo_path "shells" "posix" "start_yazelix.sh") $start_script
+    ^ln -s (repo_path "shells" "posix" "runtime_env.sh") $runtime_env_script
+    "" | save --force --raw $startup_nu
+
+    write_probe_nu $fake_nu [
+        "#!/bin/sh"
+        ": > \"$YAZELIX_BOOTSTRAP_PROBE_LOG\""
+        "printf 'YAZELIX_RUNTIME_DIR=%s\\n' \"${YAZELIX_RUNTIME_DIR-unset}\" >> \"$YAZELIX_BOOTSTRAP_PROBE_LOG\""
+        "printf 'YAZELIX_CONFIG_DIR=%s\\n' \"${YAZELIX_CONFIG_DIR-unset}\" >> \"$YAZELIX_BOOTSTRAP_PROBE_LOG\""
+        "printf 'YAZELIX_STATE_DIR=%s\\n' \"${YAZELIX_STATE_DIR-unset}\" >> \"$YAZELIX_BOOTSTRAP_PROBE_LOG\""
+        "printf 'YAZELIX_LOGS_DIR=%s\\n' \"${YAZELIX_LOGS_DIR-unset}\" >> \"$YAZELIX_BOOTSTRAP_PROBE_LOG\""
+        "printf 'ARG1=%s\\n' \"$1\" >> \"$YAZELIX_BOOTSTRAP_PROBE_LOG\""
+        "exit 0"
+    ]
+
+    {
+        tmp_home: $tmp_home
+        runtime_dir: $runtime_dir
+        probe_log: $probe_log
+        start_script: $start_script
+    }
+}
+
 def setup_launch_path_fixture [label: string, persistent_sessions: bool, existing_session: bool] {
     let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let runtime_dir = ($tmp_home | path join "runtime")
@@ -740,6 +776,62 @@ def test_startup_rejects_missing_working_dir [] {
         print $"  ❌ Exception: ($err.msg)"
         false
     }
+}
+
+# Regression: startup bootstrap must export writable Yazelix state and logs dirs before entering Nushell.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_startup_bootstrap_runtime_env_exports_state_and_logs_dirs [] {
+    print "🧪 Testing startup bootstrap runtime env exports Yazelix state and logs dirs..."
+
+    let fixture = (setup_startup_bootstrap_probe_fixture "yazelix_startup_bootstrap_env")
+
+    let result = (try {
+        let xdg_config_home = ($fixture.tmp_home | path join "xdg_config")
+        let xdg_data_home = ($fixture.tmp_home | path join "xdg_data")
+        mkdir $xdg_config_home
+        mkdir $xdg_data_home
+
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            XDG_DATA_HOME: $xdg_data_home
+            PATH: "/usr/bin:/bin"
+            YAZELIX_CONFIG_DIR: null
+            YAZELIX_STATE_DIR: null
+            YAZELIX_LOGS_DIR: null
+            YAZELIX_BOOTSTRAP_PROBE_LOG: $fixture.probe_log
+        } {
+            ^$fixture.start_script | complete
+        })
+
+        let lines = (read_probe_lines $fixture.probe_log)
+        let expected_runtime = $"YAZELIX_RUNTIME_DIR=($fixture.runtime_dir)"
+        let expected_config = $"YAZELIX_CONFIG_DIR=($xdg_config_home | path join "yazelix")"
+        let expected_state = $"YAZELIX_STATE_DIR=($xdg_data_home | path join "yazelix")"
+        let expected_logs = $"YAZELIX_LOGS_DIR=($xdg_data_home | path join "yazelix" "logs")"
+        let expected_arg = $"ARG1=($fixture.runtime_dir | path join "nushell" "scripts" "core" "start_yazelix.nu")"
+
+        if (
+            ($output.exit_code == 0)
+            and ($lines | any {|line| $line == $expected_runtime })
+            and ($lines | any {|line| $line == $expected_config })
+            and ($lines | any {|line| $line == $expected_state })
+            and ($lines | any {|line| $line == $expected_logs })
+            and ($lines | any {|line| $line == $expected_arg })
+        ) {
+            print "  ✅ Startup bootstrap now exports Yazelix config, state, and logs dirs before entering Nushell"
+            true
+        } else {
+            print $"  ❌ Unexpected bootstrap result: exit=($output.exit_code) lines=($lines | to json -r) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
 }
 
 # Defends: launch rejects a file path as the working directory.
@@ -2190,6 +2282,7 @@ export def run_workspace_canonical_tests [] {
         (test_yzx_enter_forwards_refresh_intent_to_startup_entrypoint)
         (test_startup_refresh_activates_built_profile_without_second_shell_entry)
         (test_yzx_launch_refresh_uses_fresh_launch_profile_after_rebuild)
+        (test_startup_bootstrap_runtime_env_exports_state_and_logs_dirs)
         (test_runtime_entry_context_samples_environment_once)
         (test_runtime_entry_state_models_live_session_refresh_intent)
         (test_startup_transition_prefers_fresh_runtime_profile_after_rebuild)
