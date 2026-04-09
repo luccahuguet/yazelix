@@ -31,17 +31,13 @@ def load_upgrade_notes [] {
     open $notes_path
 }
 
-export def get_current_major_series_key [version: string = $YAZELIX_VERSION] {
-    (
+export def get_current_major_series_entry [version: string = $YAZELIX_VERSION] {
+    let series_key = (
         $version
         | parse --regex '^(?<major>v\d+)'
         | get -o 0.major
         | default null
     )
-}
-
-export def get_current_major_series_entry [version: string = $YAZELIX_VERSION] {
-    let series_key = (get_current_major_series_key $version)
     if $series_key == null {
         error make {msg: $"failed to derive a major series key from version `($version)`"}
     }
@@ -122,7 +118,7 @@ export def extract_readme_latest_series_section [contents: string] {
     $"($README_LATEST_SERIES_BEGIN)($block)($README_LATEST_SERIES_END)"
 }
 
-export def sync_readme_latest_series_section [readme_path: string] {
+def sync_readme_latest_series_section [readme_path: string] {
     let contents = (open --raw $readme_path)
     let normalized = ($contents | str replace -a "\r\n" "\n")
     let rendered = (render_readme_latest_series_section)

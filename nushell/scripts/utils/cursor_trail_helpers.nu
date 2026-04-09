@@ -12,16 +12,8 @@ export def get_cursor_trail_random_pool [] {
         | where $it != "none" and $it != "party"
 }
 
-export def get_ghostty_trail_effect_random_pool [] {
-    $GHOSTTY_TRAIL_EFFECTS
-}
-
-export def get_ghostty_mode_effect_random_pool [] {
-    $GHOSTTY_MODE_EFFECTS
-}
-
 export def select_random_ghostty_trail_effect [] {
-    let pool = (get_ghostty_trail_effect_random_pool)
+    let pool = $GHOSTTY_TRAIL_EFFECTS
     if ($pool | is-empty) {
         null
     } else {
@@ -32,7 +24,7 @@ export def select_random_ghostty_trail_effect [] {
 }
 
 export def select_random_ghostty_mode_effect [] {
-    let pool = (get_ghostty_mode_effect_random_pool)
+    let pool = $GHOSTTY_MODE_EFFECTS
     if ($pool | is-empty) {
         null
     } else {

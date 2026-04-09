@@ -32,7 +32,7 @@ export def startup_profile_enabled [] {
     ($report_path | is-not-empty) or ($enabled == "true")
 }
 
-export def get_startup_profile_report_path [] {
+def get_startup_profile_report_path [] {
     let configured = ($env.YAZELIX_STARTUP_PROFILE_REPORT? | default "" | into string | str trim)
     if ($configured | is-not-empty) {
         return ($configured | path expand)
@@ -82,7 +82,7 @@ export def create_startup_profile_run [
     }
 }
 
-export def record_startup_profile_event [
+def record_startup_profile_event [
     component: string
     step: string
     started_ns: int

@@ -2,7 +2,7 @@
 # Helper script to set up Nix environment
 
 # Attempt to source Nix profile and make it available
-export def setup_nix_environment [] {
+def setup_nix_environment [] {
     # Common Nix profile locations
     let nix_profiles = [
         "~/.nix-profile/etc/profile.d/nix.sh"

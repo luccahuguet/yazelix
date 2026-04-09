@@ -9,27 +9,14 @@ export const USER_SHELL_HOOK_FILENAMES = {
     zsh: "zsh.zsh"
 }
 
-export def get_yazelix_shell_user_hook_dir [config_root?: string] {
-    let user_config_dir = (get_yazelix_user_config_dir $config_root)
-    ($user_config_dir | path join "shells")
-}
-
 export def get_yazelix_shell_user_hook_path [shell: string, config_root?: string] {
     let filename = ($USER_SHELL_HOOK_FILENAMES | get -o $shell)
     if $filename == null {
         error make {msg: $"Unsupported managed shell hook surface: ($shell)"}
     }
 
-    get_yazelix_shell_user_hook_dir $config_root | path join $filename
-}
-
-export def get_generated_nushell_user_hook_bridge_path [state_root?: string] {
-    let state_dir = if $state_root == null {
-        get_yazelix_state_dir
-    } else {
-        $state_root | path expand
-    }
-    ($state_dir | path join "initializers" "nushell" "yazelix_user_hook.nu")
+    let user_config_dir = (get_yazelix_user_config_dir $config_root)
+    ($user_config_dir | path join "shells" $filename)
 }
 
 def format_nushell_source_literal [path: string] {
@@ -38,7 +25,12 @@ def format_nushell_source_literal [path: string] {
 }
 
 export def sync_generated_nushell_user_hook_bridge [config_root?: string, state_root?: string] {
-    let bridge_path = (get_generated_nushell_user_hook_bridge_path $state_root)
+    let state_dir = if $state_root == null {
+        get_yazelix_state_dir
+    } else {
+        $state_root | path expand
+    }
+    let bridge_path = ($state_dir | path join "initializers" "nushell" "yazelix_user_hook.nu")
     let user_hook_path = (get_yazelix_shell_user_hook_path "nushell" $config_root)
 
     mkdir ($bridge_path | path dirname)

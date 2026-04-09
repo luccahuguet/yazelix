@@ -108,12 +108,6 @@ export def "yzx sponsor" [] {
     print $sponsor_url
 }
 
-export def resolve_yzx_cwd_target [
-    target?: string  # Directory path or zoxide query for the current tab (defaults to the current directory)
-] {
-    resolve_tab_cwd_target $target
-}
-
 export def "yzx cwd" [
     target?: string  # Directory path or zoxide query for the current tab (defaults to the current directory)
 ] {
@@ -124,7 +118,7 @@ export def "yzx cwd" [
     }
 
     let resolved_dir = try {
-        resolve_yzx_cwd_target $target
+        resolve_tab_cwd_target $target
     } catch {|err|
         print $"❌ ($err.msg)"
         exit 1

@@ -234,7 +234,7 @@ export def validate_enum_values [user: record] {
     $findings
 }
 
-export def get_config_validation_findings [yazelix_dir: string] {
+def get_config_validation_findings [yazelix_dir: string] {
     let default_path = ($yazelix_dir | path expand | path join "yazelix_default.toml")
     let user_path = (get_main_user_config_path $yazelix_dir)
 

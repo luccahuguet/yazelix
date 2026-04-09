@@ -78,7 +78,7 @@ export def check_nix_installation [
 }
 
 # Display helpful error message and installation instructions
-export def show_nix_installation_help [error_type: string] {
+def show_nix_installation_help [error_type: string] {
     let colors = {
         red: $"\u{1b}[31m"
         yellow: $"\u{1b}[33m"

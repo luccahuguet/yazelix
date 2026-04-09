@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-export def contract_start [] {
+def contract_start [] {
     "2026-03-22T00:00:00Z" | into datetime
 }
 
@@ -8,7 +8,7 @@ export def canonical_issue_bead_comment_body [bead_id: string] {
     $"Automated: Tracked in Beads as `($bead_id)`."
 }
 
-export def parse_json_output [] {
+def parse_json_output [] {
     let value = $in
     if ($value | is-empty) {
         return []
@@ -31,7 +31,7 @@ export def parse_json_output [] {
     $parsed
 }
 
-export def issue_is_in_contract [issue: record] {
+def issue_is_in_contract [issue: record] {
     let created_at = ($issue.createdAt | into datetime)
     $created_at >= (contract_start)
 }

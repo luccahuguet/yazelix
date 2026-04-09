@@ -11,7 +11,7 @@ use constants.nu [
 use common.nu [get_yazelix_runtime_reference_dir]
 
 # Get the full start comment with regeneration instruction
-export def get_yazelix_start_comment [] {
+def get_yazelix_start_comment [] {
     $YAZELIX_START_MARKER + "\n" + $YAZELIX_REGENERATE_COMMENT
 }
 

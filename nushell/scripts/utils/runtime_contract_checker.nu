@@ -33,7 +33,7 @@ def build_runtime_check [
     }
 }
 
-export def runtime_check_to_error [check: record] {
+def runtime_check_to_error [check: record] {
     ([ $check.message ] | append (build_runtime_check_detail_lines $check) | str join "\n")
 }
 
