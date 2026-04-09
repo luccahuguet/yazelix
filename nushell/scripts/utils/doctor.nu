@@ -4,6 +4,7 @@
 use logging.nu log_to_file
 use constants.nu [PINNED_NIX_VERSION]
 use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir require_yazelix_runtime_dir]
+use config_state.nu compute_config_state
 use config_migration_transactions.nu [recover_stale_managed_config_transactions]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface reconcile_primary_config_surfaces]
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
@@ -16,7 +17,7 @@ use doctor_helix.nu [
     fix_helix_runtime_conflicts
 ]
 use doctor_install_artifacts.nu [check_desktop_entry_freshness check_install_artifact_staleness]
-use launch_state.nu [resolve_runtime_owned_profile]
+use launch_state.nu [describe_launch_profile_freshness resolve_runtime_owned_profile]
 use runtime_contract_checker.nu [
     check_generated_layout
     check_launch_terminal_support
@@ -283,6 +284,74 @@ def check_shared_runtime_preflight [] {
     $checks | each {|check| runtime_check_to_doctor_result $check }
 }
 
+def check_launch_profile_freshness [] {
+    let config_state_result = (try {
+        {state: (compute_config_state), error: ""}
+    } catch {|err|
+        {state: null, error: $err.msg}
+    })
+    if ($config_state_result.error | is-not-empty) {
+        return {
+            status: "info"
+            message: "Launch-profile freshness check skipped until the active config parses cleanly"
+            details: $config_state_result.error
+            fix_available: false
+        }
+    }
+
+    let config_state = $config_state_result.state
+    let freshness = (describe_launch_profile_freshness $config_state)
+    let recorded_profile = ($freshness.recorded_profile | default "")
+    let recovery = "Run `yzx refresh` before relying on `yzx enter --reuse` or other cached launch-profile flows."
+
+    match $freshness.kind {
+        "healthy" => {
+            {
+                status: "ok"
+                message: "Cached launch profile matches the current rebuild-relevant config and tracked inputs"
+                details: (if ($recorded_profile | is-not-empty) {
+                    $"Recorded profile: ($recorded_profile)"
+                } else {
+                    null
+                })
+                fix_available: false
+            }
+        }
+        "stale_config_and_inputs" => {
+            {
+                status: "warning"
+                message: "Cached launch profile is stale because rebuild-relevant config and tracked runtime/devenv inputs changed"
+                details: $"($recovery)\nRecorded profile: ($recorded_profile | default '<missing>')"
+                fix_available: false
+            }
+        }
+        "stale_config" => {
+            {
+                status: "warning"
+                message: "Cached launch profile is stale because rebuild-relevant config changed"
+                details: $"($recovery)\nRecorded profile: ($recorded_profile | default '<missing>')"
+                fix_available: false
+            }
+        }
+        "stale_inputs" => {
+            {
+                status: "warning"
+                message: "Cached launch profile is stale because tracked runtime/devenv inputs changed"
+                details: $"($recovery)\nRecorded profile: ($recorded_profile | default '<missing>')"
+                fix_available: false
+            }
+        }
+        _ => {
+            {
+                status: "warning"
+                message: "No verified cached launch profile exists for the current rebuild-relevant config and tracked inputs"
+                details: $"($recovery)\nRecorded profile: ($recorded_profile | default '<missing>')"
+                fix_available: false
+            }
+        }
+    }
+}
+
 def get_desktop_applications_dir [] {
 }
 
@@ -518,6 +587,9 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
 
     # Shared runtime preflight overlap with launch-facing checks
     $all_results = ($all_results | append (check_shared_runtime_preflight))
+
+    # Launch-profile freshness
+    $all_results = ($all_results | append (check_launch_profile_freshness))
 
     # Desktop entry freshness
     $all_results = ($all_results | append (check_desktop_entry_freshness))

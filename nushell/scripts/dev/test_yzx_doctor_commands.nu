@@ -77,6 +77,45 @@ def doctor_output_reports_current_home_manager_install [stdout: string] {
     )
 }
 
+def seed_launch_profile_fixture_state [fixture: record, profile_path: string] {
+    let state_dir = ($fixture.tmp_home | path join ".local" "share" "yazelix")
+    let config_state_module = (repo_path "nushell" "scripts" "utils" "config_state.nu")
+    let launch_state_module = (repo_path "nushell" "scripts" "utils" "launch_state.nu")
+
+    let output = (with-env {
+        HOME: $fixture.tmp_home
+        YAZELIX_CONFIG_DIR: $fixture.config_dir
+        YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        YAZELIX_STATE_DIR: $state_dir
+    } {
+        let snippet = ([
+            $"use \"($config_state_module)\" [compute_config_state record_materialized_state]"
+            $"use \"($launch_state_module)\" [record_launch_profile_state]"
+            "let state = (compute_config_state)"
+            "record_materialized_state $state"
+            $"record_launch_profile_state $state \"($profile_path)\""
+            "{"
+            "    combined_hash: $state.combined_hash"
+            "    config_hash: $state.config_hash"
+            "    lock_hash: $state.lock_hash"
+            "    devenv_nix_hash: ($state.devenv_nix_hash? | default '')"
+            "    devenv_yaml_hash: ($state.devenv_yaml_hash? | default '')"
+            "    runtime_hash: ($state.runtime_hash? | default '')"
+            "} | to json -r"
+        ] | str join "\n")
+        ^nu -c $snippet | complete
+    })
+
+    if $output.exit_code != 0 {
+        error make {msg: $"Failed to seed launch-profile fixture state: (($output.stderr | default $output.stdout | str trim))"}
+    }
+
+    {
+        state_dir: $state_dir
+        state: ($output.stdout | lines | last | str trim | from json)
+    }
+}
+
 # Defends: doctor warns on stale config fields with actionable guidance.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_yzx_doctor_warns_on_stale_config_fields [] {
@@ -512,6 +551,88 @@ terminals = ["ghostty"]
     $result
 }
 
+# Defends: launch-profile freshness diagnostics use the canonical config-state and launch-state contract.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_reports_launch_profile_freshness_states [] {
+    print "🧪 Testing yzx doctor reports healthy, stale, and missing cached launch-profile states..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_launch_profile"
+        '[terminal]
+terminals = ["ghostty"]
+'
+    )
+
+    let result = (try {
+        let state_dir = ($fixture.tmp_home | path join ".local" "share" "yazelix")
+        let profile_dir = ($fixture.tmp_home | path join "cached_profile")
+        let launch_state_path = ($state_dir | path join "state" "launch_state.json")
+        let rebuild_state_path = ($state_dir | path join "state" "rebuild_hash")
+        mkdir $profile_dir
+
+        let seeded = (seed_launch_profile_fixture_state $fixture $profile_dir)
+        let doctor_env = {YAZELIX_STATE_DIR: $state_dir}
+
+        let healthy_output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" $doctor_env)
+        let healthy_stdout = ($healthy_output.stdout | str trim)
+
+        '[terminal]
+terminals = ["kitty"]
+' | save --force --raw $fixture.config_path
+        let stale_config_output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" $doctor_env)
+        let stale_config_stdout = ($stale_config_output.stdout | str trim)
+
+        '[terminal]
+terminals = ["ghostty"]
+' | save --force --raw $fixture.config_path
+        {
+            config_hash: $seeded.state.config_hash
+            lock_hash: "stale-lock-hash"
+            devenv_nix_hash: $seeded.state.devenv_nix_hash
+            devenv_yaml_hash: $seeded.state.devenv_yaml_hash
+            runtime_hash: $seeded.state.runtime_hash
+        } | to json | save --force $rebuild_state_path
+        let stale_inputs_output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" $doctor_env)
+        let stale_inputs_stdout = ($stale_inputs_output.stdout | str trim)
+
+        {
+            config_hash: $seeded.state.config_hash
+            lock_hash: $seeded.state.lock_hash
+            devenv_nix_hash: $seeded.state.devenv_nix_hash
+            devenv_yaml_hash: $seeded.state.devenv_yaml_hash
+            runtime_hash: $seeded.state.runtime_hash
+        } | to json | save --force $rebuild_state_path
+        rm --force $launch_state_path
+        let missing_output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" $doctor_env)
+        let missing_stdout = ($missing_output.stdout | str trim)
+
+        if (
+            ($healthy_output.exit_code == 0)
+            and ($healthy_stdout | str contains "Cached launch profile matches the current rebuild-relevant config and tracked inputs")
+            and ($healthy_stdout | str contains $profile_dir)
+            and ($stale_config_output.exit_code == 0)
+            and ($stale_config_stdout | str contains "Cached launch profile is stale because rebuild-relevant config changed")
+            and ($stale_config_stdout | str contains "Run `yzx refresh` before relying on `yzx enter --reuse`")
+            and ($stale_inputs_output.exit_code == 0)
+            and ($stale_inputs_stdout | str contains "Cached launch profile is stale because tracked runtime/devenv inputs changed")
+            and ($missing_output.exit_code == 0)
+            and ($missing_stdout | str contains "No verified cached launch profile exists for the current rebuild-relevant config and tracked inputs")
+        ) {
+            print "  ✅ yzx doctor now classifies cached launch-profile health across healthy, stale-config, stale-input, and missing-profile states"
+            true
+        } else {
+            print $"  ❌ Unexpected launch-profile doctor output:\nHEALTHY:\n($healthy_stdout)\n\nSTALE CONFIG:\n($stale_config_stdout)\n\nSTALE INPUTS:\n($stale_inputs_stdout)\n\nMISSING:\n($missing_stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
@@ -523,5 +644,6 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager)
         (test_yzx_doctor_reports_missing_runtime_launch_assets)
         (test_yzx_doctor_respects_layout_override_for_shared_preflight)
+        (test_yzx_doctor_reports_launch_profile_freshness_states)
     ]
 }

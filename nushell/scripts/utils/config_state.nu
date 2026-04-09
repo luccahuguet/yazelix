@@ -211,6 +211,10 @@ export def compute_config_state [] {
         config_file: $config_file
         needs_refresh: $needs_refresh
         refresh_reason: $refresh_reason
+        config_changed: $config_changed
+        inputs_changed: $inputs_changed
+        inputs_require_refresh: $inputs_require_refresh
+        has_verified_launch_profile: $has_verified_launch_profile
         config_hash: $config_hash
         lock_hash: $lock_hash
         devenv_nix_hash: $devenv_nix_hash

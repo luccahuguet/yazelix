@@ -267,6 +267,63 @@ export def has_matching_launch_state [config_state: record, --allow-stale] {
     (resolve_recorded_launch_profile $config_state --allow-stale=$allow_stale) != null
 }
 
+export def describe_launch_profile_freshness [config_state: record] {
+    let launch_state = (load_recorded_launch_state)
+    let recorded_profile = (
+        resolve_profile_candidate (
+            $launch_state
+            | get -o profile_path
+            | default ""
+            | into string
+        )
+    )
+    let recorded_hash = (
+        $launch_state
+        | get -o combined_hash
+        | default ""
+        | into string
+    )
+    let current_hash = (
+        $config_state
+        | get -o combined_hash
+        | default ""
+        | into string
+    )
+    let hash_matches = (
+        ($recorded_hash | is-not-empty)
+        and ($current_hash | is-not-empty)
+        and ($recorded_hash == $current_hash)
+    )
+    let profile_exists = ($recorded_profile | is-not-empty) and ($recorded_profile | path exists)
+    let verified_profile = (resolve_recorded_launch_profile $config_state --allow-stale=false)
+    let verified = ($verified_profile != null) and ($verified_profile | path exists)
+    let config_changed = ($config_state.config_changed? | default false)
+    let inputs_changed = ($config_state.inputs_changed? | default false)
+
+    let kind = if $config_changed and $inputs_changed {
+        "stale_config_and_inputs"
+    } else if $config_changed {
+        "stale_config"
+    } else if $inputs_changed {
+        "stale_inputs"
+    } else if $verified {
+        "healthy"
+    } else {
+        "missing_verified"
+    }
+
+    {
+        kind: $kind
+        recorded_profile: $recorded_profile
+        recorded_hash: $recorded_hash
+        current_hash: $current_hash
+        hash_matches: $hash_matches
+        profile_exists: $profile_exists
+        verified: $verified
+        has_launch_state: ($launch_state != null)
+    }
+}
+
 export def get_launch_profile [config_state: record, --allow-stale] {
     if (($config_state.needs_refresh? | default false) and (not $allow_stale)) {
         return null
