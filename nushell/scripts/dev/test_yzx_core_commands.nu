@@ -16,12 +16,19 @@ def setup_legacy_root_config_migrate_fixture [label: string, raw_toml: string] {
     setup_managed_config_fixture $label $raw_toml --legacy-root
 }
 
-def run_yzx_command_for_fixture [fixture: record, command: string] {
-    with-env {
+def run_yzx_command_for_fixture [fixture: record, command: string, extra_env?: record] {
+    let base_env = {
         HOME: $fixture.tmp_home
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
-    } {
+    }
+    let merged_env = if ($extra_env | is-empty) {
+        $base_env
+    } else {
+        $base_env | merge $extra_env
+    }
+
+    with-env $merged_env {
         ^nu -c $"use \"($fixture.yzx_script)\" *; ($command)" | complete
     }
 }
@@ -220,6 +227,37 @@ welcome_style = "random"
 
     $fixture | merge {
         runtime_reference: $runtime_reference
+    }
+}
+
+def setup_package_runtime_fixture [label: string] {
+    let fixture = (setup_managed_config_fixture
+        $label
+        '[core]
+welcome_style = "random"
+'
+    )
+
+    let package_root = ($fixture.tmp_home | path join "package_runtime")
+    let package_bin = ($package_root | path join "bin")
+
+    mkdir $package_bin
+    cp ($fixture.repo_root | path join "yazelix_default.toml") ($package_root | path join "yazelix_default.toml")
+
+    [
+        "#!/bin/sh"
+        "echo 'Yazelix test package runtime'"
+    ] | str join "\n" | save --force --raw ($package_bin | path join "yzx")
+    ^chmod +x ($package_bin | path join "yzx")
+
+    [
+        "#!/bin/sh"
+        "echo 'Nu 0.0-test'"
+    ] | str join "\n" | save --force --raw ($package_bin | path join "nu")
+    ^chmod +x ($package_bin | path join "nu")
+
+    $fixture | merge {
+        package_root: $package_root
     }
 }
 
@@ -678,6 +716,74 @@ def test_yzx_uninstall_ignores_noninstaller_runtime_current_directory [] {
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: runtime updates must be delegated to Home Manager when it owns the runtime surface.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_update_runtime_rejects_home_manager_managed_mode [] {
+    print "🧪 Testing yzx update runtime rejects Home Manager-managed installs with explicit guidance..."
+
+    let fixture = (setup_home_manager_owned_install_fixture "yazelix_update_runtime_home_manager")
+
+    let result = (try {
+        let output = (run_yzx_command_for_fixture $fixture "yzx update runtime")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 1)
+            and ($stdout | str contains "yzx update runtime is unavailable in Home Manager-managed full runtime")
+            and ($stdout | str contains "Home Manager owns Yazelix updates in this mode.")
+            and ($stdout | str contains "home-manager switch")
+            and not ($stdout | str contains "Running: nix run --refresh")
+        ) {
+            print "  ✅ yzx update runtime now refuses the installer path when Home Manager owns the runtime"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: packaged runtimes must not pretend they own the mutable installer update surface.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_update_runtime_rejects_package_runtime_mode [] {
+    print "🧪 Testing yzx update runtime rejects package-runtime mode with package-manager guidance..."
+
+    let fixture = (setup_package_runtime_fixture "yazelix_update_runtime_package")
+
+    let result = (try {
+        let output = (run_yzx_command_for_fixture $fixture "yzx update runtime" {
+            YAZELIX_RUNTIME_DIR: $fixture.package_root
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 1)
+            and ($stdout | str contains "yzx update runtime is unavailable in store/package runtime")
+            and ($stdout | str contains "does not own a mutable installed runtime")
+            and ($stdout | str contains "nix profile upgrade")
+            and not ($stdout | str contains "Running: nix run --refresh")
+        ) {
+            print "  ✅ yzx update runtime now points packaged runtimes at the package-manager update path instead of the installer"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -1310,6 +1416,8 @@ export def run_core_canonical_tests [] {
         (test_yzx_uninstall_apply_removes_manual_artifacts_but_preserves_config)
         (test_yzx_uninstall_reports_home_manager_managed_install)
         (test_yzx_uninstall_ignores_noninstaller_runtime_current_directory)
+        (test_yzx_update_runtime_rejects_home_manager_managed_mode)
+        (test_yzx_update_runtime_rejects_package_runtime_mode)
         (test_yzx_config_full_merges_pack_sidecar)
         (test_yzx_edit_targets_print_paths)
         (test_invalid_config_is_classified_as_config_problem)

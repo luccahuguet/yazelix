@@ -9,6 +9,7 @@ use ../utils/environment_bootstrap.nu [prepare_environment]
 use ../utils/devenv_backend.nu [get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu [get_installed_yazelix_runtime_dir get_yazelix_runtime_dir]
+use ../utils/runtime_distribution_capabilities.nu [get_runtime_distribution_capability_profile]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../setup/shell_hooks.nu [check_shell_hook_versions]
 use ../integrations/managed_editor.nu get_managed_editor_kind
@@ -62,6 +63,53 @@ def format_shell_hook_summary [shell_status] {
 
 def has_external_command [command_name: string] {
     (which $command_name | where type == "external" | is-not-empty)
+}
+
+def print_runtime_update_surface_summary [profile: record] {
+    print $"Yazelix runtime/distribution mode: ($profile.title)"
+    print ""
+
+    match $profile.mode {
+        "installer_managed" => {
+            print "User-facing runtime updates:"
+            print "  yzx update all        Refresh the installed Yazelix runtime"
+            print $"  yzx update runtime    Refresh the installed Yazelix runtime via ($YAZELIX_INSTALL_FLAKE_REF)"
+        }
+        "home_manager_managed" => {
+            print "User-facing runtime updates:"
+            print "  Reapply the Home Manager configuration that provides Yazelix."
+            print "  `yzx update runtime` is intentionally unavailable in this mode."
+            print $"  ($profile.runtime_update_guidance)"
+        }
+        "package_runtime" => {
+            print "User-facing runtime updates:"
+            print "  Update Yazelix through the package manager or rebuild flow that provides this runtime."
+            print "  `yzx update runtime` is intentionally unavailable in this mode."
+            print $"  ($profile.runtime_update_guidance)"
+        }
+        _ => {
+            print "User-facing runtime updates:"
+            print "  This runtime root does not own a mutable installed-runtime update surface."
+            print "  `yzx update runtime` is intentionally unavailable in this mode."
+            print $"  ($profile.runtime_update_guidance)"
+        }
+    }
+
+    print ""
+    print "Other updates:"
+    print "  yzx update nix        Upgrade Determinate Nix \(if installed\)"
+    print ""
+    print "Maintainer update:"
+    print "  yzx dev update        Refresh devenv.lock, run canaries, sync pins, and refresh vendored zjstatus and Yazi plugin runtime files"
+}
+
+def exit_runtime_update_unavailable [profile: record] {
+    print $"❌ yzx update runtime is unavailable in ($profile.title)."
+    if ($profile.runtime_update_unavailable_reason | is-not-empty) {
+        print $"   ($profile.runtime_update_unavailable_reason)"
+    }
+    print $"   ($profile.runtime_update_guidance)"
+    exit 1
 }
 
 export def yzx [
@@ -379,19 +427,18 @@ export def "yzx repair zellij-permissions" [] {
 
 # Update dependencies and inputs
 export def "yzx update" [] {
-    print "User-facing updates:"
-    print "  yzx update all        Refresh the installed Yazelix runtime"
-    print $"  yzx update runtime    Refresh the installed Yazelix runtime via ($YAZELIX_INSTALL_FLAKE_REF)"
-    print "  yzx update nix        Upgrade Determinate Nix \(if installed\)"
-    print ""
-    print "Maintainer update:"
-    print "  yzx dev update        Refresh devenv.lock, run canaries, sync pins, and refresh vendored zjstatus and Yazi plugin runtime files"
+    let profile = (get_runtime_distribution_capability_profile)
+    print_runtime_update_surface_summary $profile
 }
 
 export def "yzx update all" [
     --verbose  # Show verbose output for update commands
     --restart(-r)  # Restart Yazelix after the runtime update succeeds
 ] {
+    let profile = (get_runtime_distribution_capability_profile)
+    if not ($profile.supports_runtime_update? | default false) {
+        exit_runtime_update_unavailable $profile
+    }
     yzx update runtime --verbose=$verbose --restart=$restart
 }
 
@@ -400,6 +447,10 @@ export def "yzx update runtime" [
     --restart(-r)  # Restart Yazelix after the runtime update succeeds
 ] {
     use ../utils/nix_detector.nu ensure_nix_available
+    let profile = (get_runtime_distribution_capability_profile)
+    if not ($profile.supports_runtime_update? | default false) {
+        exit_runtime_update_unavailable $profile
+    }
     ensure_nix_available --skip-devenv
     let previous_runtime = (get_installed_yazelix_runtime_dir)
 

@@ -98,7 +98,7 @@ export def is_home_manager_owned_surface [path: string] {
     is_home_manager_symlink_target (read_symlink_target $path)
 }
 
-def is_manual_runtime_reference_path [path?: string] {
+export def is_manual_runtime_reference_path [path?: string] {
     let candidate = if $path == null {
         get_manual_runtime_reference_path
     } else {

@@ -18,6 +18,7 @@ use doctor_helix.nu [
 ]
 use doctor_install_artifacts.nu [check_desktop_entry_freshness check_install_artifact_staleness]
 use launch_state.nu [describe_launch_profile_freshness resolve_runtime_owned_profile]
+use runtime_distribution_capabilities.nu get_runtime_distribution_capability_profile
 use runtime_contract_checker.nu [
     check_generated_layout
     check_launch_terminal_support
@@ -107,6 +108,17 @@ export def print_runtime_version_drift_warning [] {
 
     if ($nix_drift != null) {
         print $"⚠️  ($nix_drift.message)"
+    }
+}
+
+def build_runtime_distribution_doctor_result [profile: record] {
+    {
+        status: "info"
+        message: $profile.doctor_message
+        details: $profile.doctor_details
+        fix_available: false
+        capability_tier: $profile.tier
+        capability_mode: $profile.mode
     }
 }
 
@@ -398,7 +410,13 @@ def is_devenv_installed [] {
 }
 
 # Check devenv availability inside the installed Yazelix runtime contract
-def check_devenv_installation [] {
+def check_devenv_installation [capability_profile?: record] {
+    let profile = if $capability_profile == null {
+        get_runtime_distribution_capability_profile
+    } else {
+        $capability_profile
+    }
+
     if (is_devenv_installed) {
         let version = try { (get_preferred_devenv_version_line | str trim) } catch { "unknown" }
         let path = try { resolve_preferred_devenv_path } catch { "unknown" }
@@ -409,12 +427,42 @@ def check_devenv_installation [] {
             fix_available: false
         }
     } else {
-        {
-            status: "warning"
-            message: "devenv missing from the installed Yazelix runtime"
-            details: "Repair with `yzx update runtime`, then rerun the affected launch or refresh command."
-            fix_available: true
+        let missing_result = match $profile.mode {
+            "installer_managed" => {
+                {
+                    status: "warning"
+                    message: "devenv missing from the installed Yazelix runtime"
+                    details: "Repair with `yzx update runtime`, then rerun the affected launch or refresh command."
+                    fix_available: false
+                }
+            }
+            "home_manager_managed" => {
+                {
+                    status: "warning"
+                    message: "devenv missing from the Home Manager-provided Yazelix runtime"
+                    details: "Repair by reapplying or upgrading the Home Manager configuration that provides Yazelix, then rerun the affected launch or refresh command."
+                    fix_available: false
+                }
+            }
+            "package_runtime" => {
+                {
+                    status: "warning"
+                    message: "devenv missing from the packaged Yazelix runtime"
+                    details: "Repair by upgrading or reinstalling the package that provides Yazelix, then rerun the affected launch or refresh command."
+                    fix_available: false
+                }
+            }
+            _ => {
+                {
+                    status: "warning"
+                    message: "devenv not available for this runtime-root-only Yazelix session"
+                    details: "This mode does not own runtime repair. Provide `devenv` through the current runtime or PATH, or materialize a full install with `nix run github:luccahuguet/yazelix#install`."
+                    fix_available: false
+                }
+            }
         }
+
+        $missing_result
     }
 }
 
@@ -572,6 +620,9 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
     
     # Collect all checks
     mut all_results = []
+    let runtime_distribution_profile = (get_runtime_distribution_capability_profile)
+
+    $all_results = ($all_results | append (build_runtime_distribution_doctor_result $runtime_distribution_profile))
 
     # Runtime conflicts check
     $all_results = ($all_results | append (check_helix_runtime_conflicts))
@@ -595,13 +646,13 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
     $all_results = ($all_results | append (check_desktop_entry_freshness))
 
     # Other repairable install artifacts
-    $all_results = ($all_results | append (check_install_artifact_staleness))
+    $all_results = ($all_results | append (check_install_artifact_staleness $runtime_distribution_profile))
 
     # Log files
     $all_results = ($all_results | append (check_log_files))
 
     # devenv installation (performance optimization)
-    $all_results = ($all_results | append (check_devenv_installation))
+    $all_results = ($all_results | append (check_devenv_installation $runtime_distribution_profile))
 
     # Runtime drift against Yazelix pinned expectations
     $all_results = ($all_results | append (get_version_drift_results))

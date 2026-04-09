@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
 use common.nu get_yazelix_runtime_reference_dir
+use runtime_distribution_capabilities.nu get_runtime_distribution_capability_profile
 use install_ownership.nu [
     get_manual_desktop_entry_path
     get_manual_runtime_reference_path
@@ -282,7 +283,22 @@ def evaluate_required_shell_hook [hook: record] {
     }
 }
 
-export def check_install_artifact_staleness [] {
+export def check_install_artifact_staleness [capability_profile?: record] {
+    let profile = if $capability_profile == null {
+        get_runtime_distribution_capability_profile
+    } else {
+        $capability_profile
+    }
+
+    if not ($profile.supports_install_artifact_checks? | default false) {
+        return [{
+            status: "info"
+            message: $"Installer-owned runtime artifact checks skipped in ($profile.title)"
+            details: $"Current runtime root: (($profile.runtime_dir? | default '<unknown>'))\n($profile.runtime_update_guidance)"
+            fix_available: false
+        }]
+    }
+
     mut results = []
     let install_owner = (detect_install_owner)
     let repair_hint = if $install_owner == "home-manager" {

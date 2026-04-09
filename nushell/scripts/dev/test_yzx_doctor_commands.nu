@@ -633,6 +633,43 @@ terminals = ["ghostty"]
     $result
 }
 
+# Defends: doctor must not pretend runtime-root-only sessions own installer repair surfaces.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_skips_installer_artifact_checks_in_runtime_root_only_mode [] {
+    print "🧪 Testing yzx doctor skips installer-owned artifact checks in runtime-root-only mode..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_runtime_root_only"
+        ""
+    )
+
+    let result = (try {
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Runtime/distribution capability: runtime-root-only mode")
+            and ($stdout | str contains "Installer-owned runtime artifact checks skipped in runtime-root-only mode")
+            and ($stdout | str contains "nix run github:luccahuguet/yazelix#install")
+            and not ($stdout | str contains "Installed Yazelix runtime link is missing")
+            and not ($stdout | str contains "Installed yzx command is missing")
+        ) {
+            print "  ✅ yzx doctor now reports the narrowed runtime-root-only tier without implying installer-owned repair"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
@@ -645,5 +682,6 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_reports_missing_runtime_launch_assets)
         (test_yzx_doctor_respects_layout_override_for_shared_preflight)
         (test_yzx_doctor_reports_launch_profile_freshness_states)
+        (test_yzx_doctor_skips_installer_artifact_checks_in_runtime_root_only_mode)
     ]
 }
