@@ -10,6 +10,7 @@ use ../utils/repo_checkout.nu [require_yazelix_repo_root]
 use ../utils/dev_issue_sync.nu run_dev_issue_sync
 use ../utils/dev_plugin_build.nu [build_pane_orchestrator_wasm build_popup_plugin_wasm]
 use ../utils/devenv_backend.nu [run_in_devenv_shell_command]
+use ../utils/dev_bump_workflow.nu perform_version_bump
 use ../utils/config_surfaces.nu [copy_default_config_surfaces get_main_user_config_path]
 use ../utils/dev_update_workflow.nu run_dev_update_workflow
 use ../utils/runtime_project.nu [get_existing_yazelix_runtime_project_dir]
@@ -35,6 +36,15 @@ export def "yzx dev update" [
     --canaries: list<string> = []  # Canary subset: default, maximal
 ] {
     run_dev_update_workflow $yes $no_canary $activate $home_manager_dir $home_manager_input $home_manager_attr $canary_only $canaries
+}
+
+export def "yzx dev bump" [
+    version: string  # Version tag to release, for example v13.14
+] {
+    let result = (perform_version_bump (require_yazelix_repo_root) $version)
+    print $"✅ Bumped Yazelix from ($result.previous_version) to ($result.target_version)"
+    print $"   commit: ($result.commit_sha)"
+    print $"   tag: ($result.tag)"
 }
 
 export def "yzx dev sync_terminal_configs" [] {

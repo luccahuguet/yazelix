@@ -118,6 +118,64 @@ def test_managed_nushell_config_sources_optional_user_hook [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Regression: repo-local devenv shells must still load the managed Nushell config when runtime identity is no longer exported ambiently.
+def test_managed_nushell_config_loads_in_repo_shell_without_runtime_env [] {
+    print "🧪 Testing managed Nushell config still loads in repo shells without ambient YAZELIX_RUNTIME_DIR..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_nu_repo_shell_guard_XXXXXX | str trim)
+    let xdg_config_home = ($tmp_home | path join ".config")
+    let config_dir = ($xdg_config_home | path join "yazelix")
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+
+    mkdir $xdg_config_home
+    mkdir ($config_dir | path join "user_configs")
+    mkdir ($state_dir | path join "initializers" "nushell")
+
+    let result = (try {
+        let hook_path = (get_yazelix_shell_user_hook_path "nushell" $config_dir)
+        mkdir ($hook_path | path dirname)
+        '$env.YAZELIX_TEST_NU_HOOK = "from_repo_shell_guard"' | save --force --raw $hook_path
+        "" | save --force --raw ($state_dir | path join "initializers" "nushell" "yazelix_init.nu")
+
+        with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_STATE_DIR: $state_dir
+            IN_YAZELIX_SHELL: "true"
+        } {
+            sync_generated_yzx_extern_bridge $repo_root $state_dir | ignore
+            sync_generated_nushell_user_hook_bridge | ignore
+        }
+
+        let output = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_STATE_DIR: $state_dir
+            IN_YAZELIX_SHELL: "true"
+        } {
+            ^nu --config ($repo_root | path join "nushell" "config" "config.nu") -c 'print ($env.YAZELIX_TEST_NU_HOOK? | default "")' | complete
+        })
+
+        if ($output.exit_code == 0) and (($output.stdout | str trim) == "from_repo_shell_guard") {
+            print "  ✅ Managed Nushell config now loads in repo shells via IN_YAZELIX_SHELL without requiring ambient runtime-root export"
+            true
+        } else {
+            print $"  ❌ Unexpected repo-shell managed Nushell result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Defends: managed Nushell config loads the generated yzx extern bridge built from the real command tree.
 def test_managed_nushell_config_loads_generated_yzx_extern_bridge [] {
@@ -576,6 +634,7 @@ export def run_shell_managed_config_contract_tests [] {
     [
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
         (test_managed_nushell_config_sources_optional_user_hook)
+        (test_managed_nushell_config_loads_in_repo_shell_without_runtime_env)
         (test_managed_nushell_config_loads_generated_yzx_extern_bridge)
         (test_generated_nushell_shell_hook_uses_managed_config_only)
         (test_managed_bash_config_sources_optional_user_hook)

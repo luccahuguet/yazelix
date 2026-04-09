@@ -1,9 +1,10 @@
 # Minimal Nushell config for Yazelix
 # Location: ~/.config/yazelix/nushell/config.nu
 
-# Guard: Only load if in a Yazelix environment
-# This prevents errors when opening Nushell outside of Yazelix
-if ($env.YAZELIX_RUNTIME_DIR? | is-empty) {
+# Guard: Only load if in a Yazelix environment.
+# Repo-local devenv shells rely on IN_YAZELIX_SHELL, while installed runtime
+# entrypoints provide an explicit YAZELIX_RUNTIME_DIR.
+if (($env.IN_YAZELIX_SHELL? | is-empty) and ($env.YAZELIX_RUNTIME_DIR? | is-empty)) {
     return
 }
 

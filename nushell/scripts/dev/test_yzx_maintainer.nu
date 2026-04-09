@@ -17,6 +17,67 @@ def profile_suite_runner [runner: closure] {
     }
 }
 
+def setup_dev_bump_fixture [] {
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_dev_bump_XXXXXX | str trim)
+    let fixture_root = ($tmp_root | path join "repo")
+    let utils_dir = ($fixture_root | path join "nushell" "scripts" "utils")
+    let docs_dir = ($fixture_root | path join "docs")
+
+    mkdir $fixture_root
+    mkdir ($fixture_root | path join "nushell")
+    mkdir ($fixture_root | path join "nushell" "scripts")
+    mkdir $utils_dir
+    mkdir $docs_dir
+
+    ^cp ($repo_root | path join "README.md") ($fixture_root | path join "README.md")
+    ^cp ($repo_root | path join "CHANGELOG.md") ($fixture_root | path join "CHANGELOG.md")
+    ^cp ($repo_root | path join "docs" "upgrade_notes.toml") ($docs_dir | path join "upgrade_notes.toml")
+    ^cp ($repo_root | path join "nushell" "scripts" "utils" "constants.nu") ($utils_dir | path join "constants.nu")
+    ^cp ($repo_root | path join "nushell" "scripts" "utils" "readme_release_block.nu") ($utils_dir | path join "readme_release_block.nu")
+    ^cp ($repo_root | path join "nushell" "scripts" "utils" "dev_bump_workflow.nu") ($utils_dir | path join "dev_bump_workflow.nu")
+
+    ^git -C $fixture_root init --quiet
+    ^git -C $fixture_root config user.email "codex@example.com"
+    ^git -C $fixture_root config user.name "Codex"
+    ^git -C $fixture_root add -A
+    ^git -C $fixture_root commit --quiet -m "Fixture baseline"
+
+    {
+        repo_root: $fixture_root
+        helper_module: ($utils_dir | path join "dev_bump_workflow.nu")
+        constants_path: ($utils_dir | path join "constants.nu")
+        notes_path: ($docs_dir | path join "upgrade_notes.toml")
+        changelog_path: ($fixture_root | path join "CHANGELOG.md")
+        readme_path: ($fixture_root | path join "README.md")
+    }
+}
+
+def commit_dev_bump_fixture_change [fixture: record, message: string] {
+    ^git -C $fixture.repo_root add -A
+    ^git -C $fixture.repo_root commit --quiet -m $message
+}
+
+def prepare_releasable_unreleased_fixture [fixture: record] {
+    let updated_notes = (
+        open $fixture.notes_path
+        | upsert releases.unreleased.headline "Backend seam cleanup and release automation"
+        | upsert releases.unreleased.summary [
+            "Finalized the source-vs-installed runtime identity cleanup so repo shells stop exporting a fake installed runtime root."
+            "Added `yzx dev bump` to rotate release metadata, update `YAZELIX_VERSION`, and create the matching release tag."
+        ]
+    )
+    $updated_notes | to toml | save --force --raw $fixture.notes_path
+
+    let changelog = (open --raw $fixture.changelog_path)
+    let updated_changelog = (
+        $changelog
+        | str replace "Post-v13.13 work in progress" "Backend seam cleanup and release automation"
+        | str replace "- Reserved for post-release changes after v13.13 lands." "- Finalized the source-vs-installed runtime identity cleanup and added `yzx dev bump`."
+    )
+    $updated_changelog | save --force --raw $fixture.changelog_path
+}
+
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Defends: issue/bead reconciliation planning catches create, reopen, close, and duplicate cases.
 def test_issue_bead_reconciliation_plan [] {
@@ -113,9 +174,9 @@ def test_issue_bead_comment_plan [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Regression: repo-local devenv shells clear inherited installed-runtime aliases but still expose the checkout runtime root.
+# Regression: repo-local devenv shells clear inherited installed-runtime aliases without exporting a fake runtime root.
 def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
-    print "🧪 Testing repo-local devenv shells sanitize inherited runtime aliases to the checkout root..."
+    print "🧪 Testing repo-local devenv shells sanitize inherited runtime aliases without exporting a fake runtime root..."
 
     let repo_root = ($env.PWD | path expand)
     let fake_runtime = (get_yazelix_state_dir | path join "runtime" "current" | path expand)
@@ -133,8 +194,8 @@ def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
         let summary = ($output.stdout | lines | last | default "")
         let expected_editor = ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
 
-        if ($output.exit_code == 0) and ($summary == $"($repo_root)|unset|($repo_root)|($expected_editor)") {
-            print "  ✅ Repo-local devenv shell now replaces inherited runtime aliases with DEVENV_ROOT and exports an absolute managed Helix wrapper"
+        if ($output.exit_code == 0) and ($summary == $"unset|unset|($repo_root)|($expected_editor)") {
+            print "  ✅ Repo-local devenv shell now clears inherited runtime aliases, relies on DEVENV_ROOT as the live checkout identity, and exports an absolute managed Helix wrapper"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) summary=($summary) stderr=(($output.stderr | str trim))"
@@ -861,6 +922,147 @@ def test_dev_update_activation_mode_rejects_unknown_values [] {
     }
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Defends: yzx dev bump rotates Unreleased metadata, updates YAZELIX_VERSION, creates a dedicated commit, and creates the matching tag.
+def test_dev_bump_rotates_release_metadata_and_tags_the_repo [] {
+    print "🧪 Testing yzx dev bump rotates release metadata and creates the matching tag..."
+
+    let fixture = (setup_dev_bump_fixture)
+    prepare_releasable_unreleased_fixture $fixture
+    commit_dev_bump_fixture_change $fixture "Prepare unreleased release notes"
+
+    let result = (try {
+        let snippet = (
+            [
+                $"use \"($fixture.helper_module)\" [perform_version_bump]"
+                $"perform_version_bump \"($fixture.repo_root)\" \"v13.14\" | to json -r"
+            ] | str join "\n"
+        )
+        let output = (^nu -c $snippet | complete)
+        let stdout = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 {
+            $stdout | lines | last | from json
+        } else {
+            null
+        }
+        let constants = (open --raw $fixture.constants_path)
+        let notes = (open $fixture.notes_path)
+        let changelog = (open --raw $fixture.changelog_path)
+        let readme = (open --raw $fixture.readme_path)
+        let commit_subject = (^git -C $fixture.repo_root log -1 --pretty=%s | str trim)
+        let tags = (^git -C $fixture.repo_root tag --list | lines)
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved != null)
+            and ($resolved.previous_version == "v13.13")
+            and ($resolved.target_version == "v13.14")
+            and ($constants | str contains 'export const YAZELIX_VERSION = "v13.14"')
+            and (($notes.releases | columns) | any {|column| $column == "v13.14" })
+            and ($notes.releases.unreleased.headline == "Post-v13.14 work in progress")
+            and ($notes.releases.unreleased.summary == ["Reserved for post-release changes after v13.14 lands."])
+            and ($changelog | str contains "## v13.14 - ")
+            and ($changelog | str contains "## Unreleased")
+            and ($changelog | str contains "Backend seam cleanup and release automation")
+            and ($readme | lines | first) == "# Yazelix v13.14"
+            and ($commit_subject == "Bump version to v13.14")
+            and ("v13.14" in $tags)
+        ) {
+            print "  ✅ yzx dev bump now rotates release metadata, updates the version constant, commits, and tags deterministically"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) commit_subject=($commit_subject) tags=(($tags | to json -r))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf ($fixture.repo_root | path dirname)
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Defends: yzx dev bump refuses to run on a dirty worktree instead of mixing release automation with unrelated edits.
+def test_dev_bump_rejects_dirty_worktrees [] {
+    print "🧪 Testing yzx dev bump rejects dirty worktrees..."
+
+    let fixture = (setup_dev_bump_fixture)
+    "dirty\n" | save --append --raw $fixture.readme_path
+
+    let result = (try {
+        let snippet = (
+            [
+                $"use \"($fixture.helper_module)\" [perform_version_bump]"
+                "try {"
+                $"    perform_version_bump \"($fixture.repo_root)\" \"v13.14\" | ignore"
+                "    print \"unexpected-success\""
+                "} catch {|err|"
+                "    print $err.msg"
+                "}"
+            ] | str join "\n"
+        )
+        let output = (^nu -c $snippet | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == "yzx dev bump requires a clean git worktree.") {
+            print "  ✅ yzx dev bump now fails fast on a dirty worktree"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf ($fixture.repo_root | path dirname)
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Defends: yzx dev bump refuses to reuse an existing release tag.
+def test_dev_bump_rejects_existing_target_tags [] {
+    print "🧪 Testing yzx dev bump rejects existing target tags..."
+
+    let fixture = (setup_dev_bump_fixture)
+    prepare_releasable_unreleased_fixture $fixture
+    commit_dev_bump_fixture_change $fixture "Prepare unreleased release notes"
+    ^git -C $fixture.repo_root tag -a v13.14 -m "Existing tag"
+
+    let result = (try {
+        let snippet = (
+            [
+                $"use \"($fixture.helper_module)\" [perform_version_bump]"
+                "try {"
+                $"    perform_version_bump \"($fixture.repo_root)\" \"v13.14\" | ignore"
+                "    print \"unexpected-success\""
+                "} catch {|err|"
+                "    print $err.msg"
+                "}"
+            ] | str join "\n"
+        )
+        let output = (^nu -c $snippet | complete)
+        let stdout = ($output.stdout | str trim)
+
+        if ($output.exit_code == 0) and ($stdout == "Tag already exists: v13.14") {
+            print "  ✅ yzx dev bump now refuses to reuse an existing git tag"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf ($fixture.repo_root | path dirname)
+    $result
+}
+
 def main [] {
     print "=== Testing yzx Maintainer Commands ==="
     print ""
@@ -871,6 +1073,9 @@ def main [] {
         (test_dev_update_requires_explicit_activation_for_real_updates)
         (test_dev_update_activation_mode_rejects_unknown_values)
         (test_dev_update_home_manager_activation_refreshes_input_and_switches_requested_ref)
+        (test_dev_bump_rotates_release_metadata_and_tags_the_repo)
+        (test_dev_bump_rejects_dirty_worktrees)
+        (test_dev_bump_rejects_existing_target_tags)
         (test_source_devenv_shell_clears_inherited_runtime_aliases)
         (test_managed_wrapper_prefers_sibling_nixgl_without_ambient_profile)
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)

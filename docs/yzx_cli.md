@@ -35,6 +35,14 @@ Profile launch sequence and identify performance bottlenecks
 - `--clear-cache`: Clear the runtime project cache plus recorded materialized/launch state first so the profiled run exercises the rebuild-heavy path
 - The summary breaks out real startup phases such as preflight, config-state checks, `devenv` shell entry, shellHook setup, and inner startup work
 
+### `yzx dev bump VERSION`
+Automate the version bump, release commit, and matching git tag
+- Requires a clean git worktree
+- Fails if `VERSION` is not a real Yazelix tag like `v13.14`
+- Refuses to reuse an existing git tag
+- Rotates the current `Unreleased` release notes into the requested version, resets a fresh `Unreleased` placeholder, updates `YAZELIX_VERSION`, syncs the README title/version marker, creates a dedicated commit, and creates the matching annotated tag
+- Refuses to run if `CHANGELOG.md` or `docs/upgrade_notes.toml` still contain the untouched default `Unreleased` placeholder text
+
 ### `yzx launch [--path DIR] [--home] [--terminal TERM] [--verbose] [--reuse] [--skip-refresh] [--force-reenter]`
 Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory

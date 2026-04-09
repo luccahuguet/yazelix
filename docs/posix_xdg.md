@@ -29,10 +29,11 @@ Yazelix follows the XDG Base Directory Specification and respects these variable
 
 ## Environment Variables
 
-Set by the dev shell (flake `shellHook`) to wire integrations:
+Set by Yazelix entrypoints to wire integrations:
 
-- `YAZELIX_RUNTIME_DIR` – points at the active Yazelix runtime root
-- `YAZELIX_DIR` – legacy compatibility alias for the runtime root; new code should prefer `YAZELIX_RUNTIME_DIR`
+- Repo-local `devenv` shells use `DEVENV_ROOT` as the live checkout identity and set `IN_YAZELIX_SHELL=true`.
+- Installed/runtime-owned launch paths export `YAZELIX_RUNTIME_DIR` to point at the active Yazelix runtime root.
+- `YAZELIX_DIR` remains a legacy compatibility alias for the runtime root in installed/runtime contexts; new code should prefer `YAZELIX_RUNTIME_DIR`.
 - `ZELLIJ_DEFAULT_LAYOUT` – chosen layout name (`yzx_side` or `yzx_no_side`)
 - `YAZI_CONFIG_HOME` – `~/.local/share/yazelix/configs/yazi` for consistent Yazi behavior
 - `EDITOR` – your configured editor command or Yazelix Helix

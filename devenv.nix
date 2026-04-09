@@ -696,7 +696,6 @@ in
 
     unset YAZELIX_RUNTIME_DIR
     unset YAZELIX_DIR
-    export YAZELIX_RUNTIME_DIR="$runtime_root"
     export YAZELIX_CONFIG_DIR="''${YAZELIX_CONFIG_DIR:-$HOME/.config/yazelix}"
     export IN_YAZELIX_SHELL="true"
     export NIX_CONFIG='${yazelixNixConfig}'
