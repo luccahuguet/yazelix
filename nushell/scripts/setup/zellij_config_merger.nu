@@ -21,6 +21,20 @@ use ./zellij_plugin_paths.nu [
 ]
 
 const zellij_generation_metadata_name = ".yazelix_generation.json"
+const zellij_owned_top_level_setting_prefixes = [
+    "theme "
+    "pane_frames "
+    "support_kitty_keyboard_protocol "
+    "default_mode "
+    "default_layout "
+    "layout_dir "
+    "on_force_close "
+    "session_serialization "
+    "serialize_pane_viewport "
+    "show_startup_tips "
+    "show_release_notes "
+    "default_shell "
+]
 
 # Fetch Zellij default configuration
 def get_zellij_defaults [] {
@@ -350,6 +364,18 @@ def build_yazelix_ui_block [existing_ui_lines: list<string>, rounded_value: stri
     ] | str join "\n"
 }
 
+def strip_yazelix_owned_top_level_settings [config_content: string] {
+    (
+        $config_content
+        | lines
+        | where {|line|
+            let trimmed = ($line | str trim)
+            not ($zellij_owned_top_level_setting_prefixes | any {|prefix| $trimmed | str starts-with $prefix })
+        }
+        | str join "\n"
+    )
+}
+
 # Ensure directory exists
 def ensure_dir [path: string] {
     let dir = ($path | path dirname)
@@ -649,25 +675,9 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         extract_semantic_config_blocks $base_config_source.content
     })
 
-    # Remove any settings we control from base config (yazelix.toml takes precedence)
-    # This prevents conflicts when multiple declarations of the same setting exist
-    let base_config = ($extracted_blocks.config_without_semantic_blocks | lines | where {|line|
-        let trimmed = ($line | str trim)
-        not (
-            ($trimmed | str starts-with "theme ") or
-            ($trimmed | str starts-with "pane_frames ") or
-            ($trimmed | str starts-with "support_kitty_keyboard_protocol ") or
-            ($trimmed | str starts-with "default_mode ") or
-            ($trimmed | str starts-with "default_layout ") or
-            ($trimmed | str starts-with "layout_dir ") or
-            ($trimmed | str starts-with "on_force_close ") or
-            ($trimmed | str starts-with "session_serialization ") or
-            ($trimmed | str starts-with "serialize_pane_viewport ") or
-            ($trimmed | str starts-with "show_startup_tips ") or
-            ($trimmed | str starts-with "show_release_notes ") or
-            ($trimmed | str starts-with "default_shell ")
-        )
-    } | str join "\n")
+    # Current upstream Zellij config parsing is first-match for these top-level
+    # options, so Yazelix must strip and replace the settings it owns.
+    let base_config = (strip_yazelix_owned_top_level_settings $extracted_blocks.config_without_semantic_blocks)
     let merged_keybinds_block = (build_merged_keybinds_block $extracted_blocks.keybind_lines $yazelix_override_keybinds)
     let merged_ui_block = (build_yazelix_ui_block $extracted_blocks.ui_lines $rounded_value)
     let merged_config = [
