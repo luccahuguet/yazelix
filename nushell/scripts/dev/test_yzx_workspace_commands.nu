@@ -1174,9 +1174,9 @@ def test_yzx_menu_palette_eligibility_is_broad_but_explicit [] {
     print "🧪 Testing yzx menu palette eligibility is broad but explicit..."
 
     let result = (try {
-        let helper_module = (repo_path "nushell" "scripts" "yzx" "command_palette_catalog.nu")
+        let helper_module = (repo_path "nushell" "scripts" "yzx" "menu.nu")
         let output = (^nu -c $"
-            use \"($helper_module)\" [get_palette_menu_items]
+            source \"($helper_module)\"
             get_palette_menu_items | get id | to json -r
         " | complete)
 

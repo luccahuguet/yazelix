@@ -4,10 +4,41 @@
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [get_installed_yazelix_runtime_reference_dir get_yazelix_runtime_dir resolve_yazelix_nu_bin]
-use ../utils/environment_detection.nu [detect_environment]
 use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 use ../utils/startup_profile.nu [profile_startup_step]
+
+def detect_environment [] {
+    let config_dir = ($env.YAZELIX_CONFIG_DIR | str replace "~" $env.HOME)
+    let read_only_config = (try {
+        let test_file = ($config_dir | path join ".yazelix_write_test")
+        touch $test_file
+        rm $test_file
+        false
+    } catch {
+        true
+    })
+    let home_manager_indicators = [
+        ($env.HOME | path join ".local" "state" "nix" "profiles" "home-manager")
+        ($env.HOME | path join ".nix-profile" "etc" "profile.d" "hm-session-vars.sh")
+        ($env.NIX_PROFILE? | default null)
+    ]
+    let home_manager = (
+        $home_manager_indicators
+        | where {|path| $path != null }
+        | any {|path| $path | path exists }
+    )
+
+    {
+        read_only_config: $read_only_config
+        home_manager: $home_manager
+        environment_type: (
+            if $home_manager { "home-manager" }
+            else if $read_only_config { "read-only" }
+            else { "standard" }
+        )
+    }
+}
 
 def ensure_user_cli_wrapper [yazelix_dir: string] {
     let local_bin_dir = ($env.HOME | path join ".local" "bin")

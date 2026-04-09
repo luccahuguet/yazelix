@@ -2,7 +2,42 @@
 
 use ./common.nu get_yazelix_runtime_dir
 use ./config_surfaces.nu get_main_user_config_path
-use ./detect_terminal.nu detect_terminal_name
+
+def detect_terminal_name [] {
+    if ($env.YAZELIX_TERMINAL? | is-not-empty) {
+        return $env.YAZELIX_TERMINAL
+    }
+
+    if ($env.TERM_PROGRAM? | is-not-empty) {
+        return ($env.TERM_PROGRAM | str downcase)
+    }
+
+    if ($env.KITTY_WINDOW_ID? | is-not-empty) {
+        return "kitty"
+    }
+
+    if ($env.WEZTERM_EXECUTABLE? | is-not-empty) {
+        return "wezterm"
+    }
+
+    if ($env.ALACRITTY_SOCKET? | is-not-empty) {
+        return "alacritty"
+    }
+
+    if ($env.GHOSTTY_BIN_DIR? | is-not-empty) {
+        return "ghostty"
+    }
+
+    if ($env.TERM? | is-not-empty) and ($env.TERM | str starts-with "foot") {
+        return "foot"
+    }
+
+    if ($env.XDG_CURRENT_DESKTOP? | is-not-empty) and ($env.XDG_CURRENT_DESKTOP | str contains -i "cosmic") {
+        return "cosmic-term"
+    }
+
+    "unknown"
+}
 
 def load_widget_main_config [] {
     let configured_override = (

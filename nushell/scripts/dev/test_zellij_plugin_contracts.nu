@@ -140,6 +140,7 @@ terminals = ["kitty", "ghostty"]
         let widget_output = (with-env {
             HOME: $tmp_home
             YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_TERMINAL: ""
             XDG_CURRENT_DESKTOP: ""
             TERM_PROGRAM: ""
             KITTY_WINDOW_ID: ""
