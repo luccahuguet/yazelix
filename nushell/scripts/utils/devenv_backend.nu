@@ -177,6 +177,161 @@ export def resolve_refresh_request [
     }
 }
 
+export def resolve_runtime_entry_state [
+    refresh_request: record
+    --already-in-env
+    --in-yazelix-shell
+    --force-reenter
+] {
+    let should_refresh = ($refresh_request.should_refresh? | default false)
+    let refresh_mode = (
+        $refresh_request
+        | get -o mode
+        | default (if $should_refresh { "refresh" } else { "noop" })
+        | into string
+    )
+    let activation_surface = if $in_yazelix_shell {
+        "live_yazelix_session"
+    } else if $already_in_env {
+        "ambient_backend_shell"
+    } else {
+        "external_process"
+    }
+    let profile_request = if $force_reenter {
+        "none"
+    } else {
+        match $refresh_mode {
+            "reuse" => "reused_recorded_profile"
+            "noop" => "verified_recorded_profile"
+            _ => "none"
+        }
+    }
+
+    {
+        activation_surface: $activation_surface
+        refresh_mode: $refresh_mode
+        refresh_transition: (if $should_refresh { "rebuild" } else { "none" })
+        profile_request: $profile_request
+        should_refresh: $should_refresh
+        force_reenter: $force_reenter
+        already_in_env: $already_in_env
+        in_yazelix_shell: $in_yazelix_shell
+    }
+}
+
+export def advance_runtime_state_after_rebuild [runtime_state: record] {
+    $runtime_state
+    | upsert refresh_mode "noop"
+    | upsert refresh_transition "none"
+    | upsert should_refresh false
+    | upsert profile_request (
+        if ($runtime_state.force_reenter? | default false) {
+            "none"
+        } else {
+            "verified_recorded_profile"
+        }
+    )
+}
+
+export def resolve_startup_transition [
+    runtime_state: record
+    --profile-available
+] {
+    if ($runtime_state.refresh_transition? | default "none") == "rebuild" {
+        if ($runtime_state.force_reenter? | default false) {
+            return {
+                execution: "backend_shell"
+                profile_source: "none"
+                rebuild_before_exec: true
+            }
+        }
+
+        return {
+            execution: "activated_profile"
+            profile_source: "fresh_runtime_profile"
+            rebuild_before_exec: true
+        }
+    }
+
+    if (
+        ($runtime_state.activation_surface? | default "external_process") == "external_process"
+        and $profile_available
+        and (($runtime_state.profile_request? | default "none") != "none")
+    ) {
+        return {
+            execution: "activated_profile"
+            profile_source: ($runtime_state.profile_request | into string)
+            rebuild_before_exec: false
+        }
+    }
+
+    {
+        execution: "backend_shell"
+        profile_source: "none"
+        rebuild_before_exec: false
+    }
+}
+
+export def resolve_env_transition [
+    runtime_state: record
+    --profile-available
+] {
+    if (
+        ($runtime_state.activation_surface? | default "external_process") == "external_process"
+        and (($runtime_state.profile_request? | default "none") == "reused_recorded_profile")
+        and $profile_available
+    ) {
+        return {
+            execution: "launch_profile"
+            profile_source: "reused_recorded_profile"
+            rebuild_before_exec: (($runtime_state.refresh_transition? | default "none") == "rebuild")
+        }
+    }
+
+    {
+        execution: "backend_shell"
+        profile_source: "none"
+        rebuild_before_exec: (($runtime_state.refresh_transition? | default "none") == "rebuild")
+    }
+}
+
+export def resolve_launch_transition [
+    runtime_state: record
+    --current-session-eligible
+    --profile-available
+] {
+    if (
+        ($runtime_state.activation_surface? | default "external_process") == "live_yazelix_session"
+        and $current_session_eligible
+        and (not ($runtime_state.force_reenter? | default false))
+        and (($runtime_state.refresh_transition? | default "none") == "none")
+    ) {
+        return {
+            execution: "current_session"
+            profile_source: "live_session"
+            rebuild_before_exec: false
+        }
+    }
+
+    if (
+        $profile_available
+        and (($runtime_state.profile_request? | default "none") != "none")
+        and (not ($runtime_state.force_reenter? | default false))
+    ) {
+        return {
+            execution: "launch_profile"
+            profile_source: ($runtime_state.profile_request | into string)
+            rebuild_before_exec: (($runtime_state.refresh_transition? | default "none") == "rebuild")
+        }
+    }
+
+    {
+        execution: "backend_shell"
+        profile_source: "none"
+        rebuild_before_exec: (($runtime_state.refresh_transition? | default "none") == "rebuild")
+    }
+}
+
 export def print_refresh_request_guidance [refresh_request: record] {
     match ($refresh_request.mode | default "noop") {
         "reuse" => {

@@ -3,7 +3,7 @@
 
 use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/environment_bootstrap.nu [prepare_environment]
-use ../utils/devenv_backend.nu [check_environment_status print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request run_in_devenv_shell_command]
+use ../utils/devenv_backend.nu [check_environment_status print_refresh_request_guidance rebuild_yazelix_environment resolve_env_transition resolve_refresh_request resolve_runtime_entry_state run_in_devenv_shell_command]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/launch_state.nu [get_launch_env require_reused_launch_profile]
@@ -77,11 +77,13 @@ export def "yzx env" [
 
     let original_dir = (pwd)
     let env_status = check_environment_status
-    let reused_launch_profile = if $reuse_mode and (not $env_status.already_in_env) {
+    let runtime_state = (resolve_runtime_entry_state $refresh_request --already-in-env=$env_status.already_in_env --in-yazelix-shell=$env_status.in_yazelix_shell --force-reenter=false)
+    let reused_launch_profile = if ($runtime_state.profile_request == "reused_recorded_profile") and (($runtime_state.activation_surface | default "external_process") == "external_process") {
         require_reused_launch_profile $env_prep.config_state "yzx env --reuse"
     } else {
         null
     }
+    let env_transition = (resolve_env_transition $runtime_state --profile-available=($reused_launch_profile != null))
 
     let has_setpriv = (which setpriv | is-not-empty)
     let trap_supervisor = "trap 'kill 0' HUP TERM; exec \"$@\""
@@ -95,7 +97,7 @@ export def "yzx env" [
     )
 
     print_refresh_request_guidance $refresh_request
-    if $refresh_request.should_refresh {
+    if $env_transition.rebuild_before_exec {
         print $"🔄 Configuration changed - rebuilding environment using ($build_parallelism_description)..."
         rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache
     }
@@ -103,17 +105,17 @@ export def "yzx env" [
     if $no_shell {
         # For --no-shell, preserve the invoking shell when possible.
         let shell_command = (resolve_shell_command $invoking_shell_name)
-        if $reused_launch_profile != null {
+        if $env_transition.execution == "launch_profile" {
             if $has_setpriv {
                 run_with_launch_profile $config $reused_launch_profile "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --cwd $original_dir
             } else {
                 run_with_launch_profile $config $reused_launch_profile "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir
             }
         } else if $has_setpriv {
-            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$refresh_request.should_refresh
+            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$env_transition.rebuild_before_exec
         } else {
             # macOS and other systems without setpriv use POSIX trap fallback.
-            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$refresh_request.should_refresh
+            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$env_transition.rebuild_before_exec
         }
 
     } else {
@@ -125,16 +127,16 @@ export def "yzx env" [
 
         try {
             with-env {SHELL: $shell_exec} {
-                if $reused_launch_profile != null {
+                if $env_transition.execution == "launch_profile" {
                     if $has_setpriv {
                         run_with_launch_profile $config $reused_launch_profile "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --cwd $original_dir
                     } else {
                         run_with_launch_profile $config $reused_launch_profile "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir
                     }
                 } else if $has_setpriv {
-                    run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$refresh_request.should_refresh
+                    run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$env_transition.rebuild_before_exec
                 } else {
-                    run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$refresh_request.should_refresh
+                    run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$env_transition.rebuild_before_exec
                 }
             }
         } catch {|err|

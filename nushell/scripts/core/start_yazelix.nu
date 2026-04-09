@@ -2,7 +2,7 @@
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 use ../utils/environment_bootstrap.nu [ensure_environment_available prepare_environment]
-use ../utils/devenv_backend.nu [check_environment_status get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request run_in_devenv_shell_command]
+use ../utils/devenv_backend.nu [check_environment_status get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request resolve_runtime_entry_state resolve_startup_transition run_in_devenv_shell_command]
 use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile resolve_runtime_owned_profile]
@@ -83,25 +83,27 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     let build_cores = ($config.build_cores? | default "2" | into string)
     let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let env_status = check_environment_status
-    let reuse_mode = $reuse
-    let skip_refresh_mode = $skip_refresh
+    let runtime_state = (resolve_runtime_entry_state $refresh_request --already-in-env=$env_status.already_in_env --in-yazelix-shell=$env_status.in_yazelix_shell --force-reenter=$force_reenter)
     let force_reenter_mode = $force_reenter
     mut activated_profile = false
     mut shellhook_already_applied = false
+    let cached_profile = if (($runtime_state.profile_request? | default "none") == "reused_recorded_profile") and (($runtime_state.activation_surface? | default "external_process") == "external_process") {
+        require_reused_launch_profile $env_prep.config_state "yzx enter --reuse"
+    } else if (($runtime_state.profile_request? | default "none") == "verified_recorded_profile") and (($runtime_state.activation_surface? | default "external_process") == "external_process") {
+        get_launch_profile $env_prep.config_state
+    } else {
+        null
+    }
+    let startup_transition = (resolve_startup_transition $runtime_state --profile-available=($cached_profile != null))
 
     print_refresh_request_guidance $refresh_request
 
-    if (not $env_status.already_in_env) and ((not $should_refresh) or $reuse_mode) and (not $force_reenter_mode) {
-        let profile_path = if $reuse_mode {
-            require_reused_launch_profile $env_prep.config_state "yzx enter --reuse"
-        } else {
-            get_launch_profile $env_prep.config_state
-        }
-        if $profile_path != null {
+    if ($startup_transition.execution == "activated_profile") and ($startup_transition.profile_source != "fresh_runtime_profile") {
+        if $cached_profile != null {
             if $verbose_mode {
-                print $"⚡ Activating Yazelix profile: ($profile_path)"
+                print $"⚡ Activating Yazelix profile: ($cached_profile)"
             }
-            activate_launch_profile $config $profile_path
+            activate_launch_profile $config $cached_profile
             $activated_profile = true
         }
     }
@@ -154,14 +156,14 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
         $base_args
     }
 
-    if $should_refresh {
+    if $startup_transition.rebuild_before_exec {
         if $verbose_mode {
             print $"♻️  Config changed - rebuilding environment using ($build_parallelism_description)"
         } else if $refresh_output != "quiet" {
             print $"♻️  Config changed - rebuilding environment using ($build_parallelism_description)"
         }
 
-        if not $force_reenter_mode {
+        if $startup_transition.execution == "activated_profile" {
             rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
             let refreshed_profile = (resolve_runtime_owned_profile)
             if ($refreshed_profile | is-not-empty) {
@@ -182,7 +184,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     # and passed directly to the zellij command.
     with-env {HOME: $env.HOME} {
         # Use shared devenv runner (consolidates with yzx env)
-        run_in_devenv_shell_command "nu" ...$inner_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --force-shell=$force_reenter_mode --verbose=$verbose_mode --force-refresh=$should_refresh --refresh-output-mode $refresh_output
+        run_in_devenv_shell_command "nu" ...$inner_args --max-jobs $max_jobs --build-cores $build_cores --cwd $yazelix_dir --runtime-dir $yazelix_dir --skip-welcome --force-shell=$force_reenter_mode --verbose=$verbose_mode --force-refresh=$startup_transition.rebuild_before_exec --refresh-output-mode $refresh_output
     }
 }
 

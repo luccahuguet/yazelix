@@ -238,6 +238,12 @@ def setup_enter_forwarding_fixture [label: string] {
     $bootstrap_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
 
     let backend_stub = ([
+        "export def check_environment_status [] {"
+        "    {already_in_env: false, in_nix_shell: false, in_yazelix_shell: false}"
+        "}"
+        "export def advance_runtime_state_after_rebuild [runtime_state: record] {"
+        "    $runtime_state"
+        "}"
         "export def rebuild_yazelix_environment ["
         "    --max-jobs: string = \"\""
         "    --build-cores: string = \"\""
@@ -267,6 +273,17 @@ def setup_enter_forwarding_fixture [label: string] {
         "}"
         "export def resolve_refresh_request [needs_refresh: bool, --reuse, --skip-refresh] {"
         "    { should_refresh: ($needs_refresh and (not $reuse) and (not $skip_refresh)), mode: \"noop\" }"
+        "}"
+        "export def resolve_runtime_entry_state [refresh_request: record, --already-in-env, --in-yazelix-shell, --force-reenter] {"
+        "    {"
+        "        activation_surface: (if $in_yazelix_shell { \"live_yazelix_session\" } else if $already_in_env { \"ambient_backend_shell\" } else { \"external_process\" })"
+        "        refresh_transition: (if ($refresh_request.should_refresh? | default false) { \"rebuild\" } else { \"none\" })"
+        "        profile_request: \"none\""
+        "        force_reenter: $force_reenter"
+        "    }"
+        "}"
+        "export def resolve_launch_transition [runtime_state: record, --current-session-eligible, --profile-available] {"
+        "    { execution: \"backend_shell\", profile_source: \"none\", rebuild_before_exec: false }"
         "}"
         "export def print_refresh_request_guidance [refresh_request: record] { null }"
     ] | str join "\n")
@@ -422,6 +439,23 @@ def setup_refresh_activation_fixture [label: string] {
         "}"
         "export def resolve_refresh_request [needs_refresh: bool, --reuse, --skip-refresh] {"
         "    { should_refresh: ($needs_refresh and (not $reuse) and (not $skip_refresh)), mode: \"noop\" }"
+        "}"
+        "export def resolve_runtime_entry_state [refresh_request: record, --already-in-env, --in-yazelix-shell, --force-reenter] {"
+        "    {"
+        "        activation_surface: (if $in_yazelix_shell { \"live_yazelix_session\" } else if $already_in_env { \"ambient_backend_shell\" } else { \"external_process\" })"
+        "        refresh_transition: (if ($refresh_request.should_refresh? | default false) { \"rebuild\" } else { \"none\" })"
+        "        profile_request: (if $force_reenter { \"none\" } else { \"verified_recorded_profile\" })"
+        "        force_reenter: $force_reenter"
+        "    }"
+        "}"
+        "export def resolve_startup_transition [runtime_state: record, --profile-available] {"
+        "    if (($runtime_state.refresh_transition? | default \"none\") == \"rebuild\") {"
+        "        { execution: \"activated_profile\", profile_source: \"fresh_runtime_profile\", rebuild_before_exec: true }"
+        "    } else if $profile_available {"
+        "        { execution: \"activated_profile\", profile_source: ($runtime_state.profile_request? | default \"verified_recorded_profile\"), rebuild_before_exec: false }"
+        "    } else {"
+        "        { execution: \"backend_shell\", profile_source: \"none\", rebuild_before_exec: false }"
+        "    }"
         "}"
         "export def print_refresh_request_guidance [refresh_request: record] { null }"
     ] | str join "\n")
@@ -1486,6 +1520,153 @@ def test_yzx_launch_rejects_removed_here_flag [] {
     $result
 }
 
+# Invariant: runtime entry state keeps activation surface, refresh transition, and profile intent explicit.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_runtime_entry_state_models_live_session_refresh_intent [] {
+    print "🧪 Testing runtime entry state models live-session refresh intent explicitly..."
+
+    try {
+        use ../utils/devenv_backend.nu [resolve_runtime_entry_state]
+
+        let runtime_state = (
+            resolve_runtime_entry_state
+            {should_refresh: true, mode: "refresh"}
+            --already-in-env
+            --in-yazelix-shell
+        )
+
+        if (
+            ($runtime_state.activation_surface == "live_yazelix_session")
+            and ($runtime_state.refresh_transition == "rebuild")
+            and ($runtime_state.profile_request == "none")
+            and ($runtime_state.should_refresh == true)
+        ) {
+            print "  ✅ Runtime state now names live activation and rebuild intent separately"
+            true
+        } else {
+            print $"  ❌ Unexpected runtime state: ($runtime_state | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+# Regression: startup rebuilds should activate the fresh runtime-owned profile unless force-reenter is requested.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_startup_transition_prefers_fresh_runtime_profile_after_rebuild [] {
+    print "🧪 Testing startup transition prefers the fresh runtime profile after rebuild..."
+
+    try {
+        use ../utils/devenv_backend.nu [resolve_runtime_entry_state resolve_startup_transition]
+
+        let runtime_state = (
+            resolve_runtime_entry_state
+            {should_refresh: true, mode: "refresh"}
+        )
+        let transition = (resolve_startup_transition $runtime_state)
+
+        if (
+            ($transition.execution == "activated_profile")
+            and ($transition.profile_source == "fresh_runtime_profile")
+            and ($transition.rebuild_before_exec == true)
+        ) {
+            print "  ✅ Startup transition now records rebuild-then-activate explicitly"
+            true
+        } else {
+            print $"  ❌ Unexpected startup transition: ($transition | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+# Regression: launch must not keep the live-session fast path when a rebuild is pending.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_launch_transition_blocks_live_session_fast_path_during_refresh [] {
+    print "🧪 Testing launch transition blocks the live-session fast path during refresh..."
+
+    try {
+        use ../utils/devenv_backend.nu [resolve_launch_transition resolve_runtime_entry_state]
+
+        let runtime_state = (
+            resolve_runtime_entry_state
+            {should_refresh: true, mode: "refresh"}
+            --already-in-env
+            --in-yazelix-shell
+        )
+        let transition = (
+            resolve_launch_transition
+            $runtime_state
+            --current-session-eligible
+            --profile-available
+        )
+
+        if (
+            ($transition.execution == "backend_shell")
+            and ($transition.rebuild_before_exec == true)
+        ) {
+            print "  ✅ Launch transition now forces rebuild ownership instead of reusing the live shell fast path"
+            true
+        } else {
+            print $"  ❌ Unexpected launch transition: ($transition | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+# Invariant: env only reuses a cached launch profile from an external process when reuse is explicit.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_env_transition_keeps_cached_profile_reuse_explicit [] {
+    print "🧪 Testing env transition keeps cached-profile reuse explicit..."
+
+    try {
+        use ../utils/devenv_backend.nu [resolve_env_transition resolve_runtime_entry_state]
+
+        let reused_state = (
+            resolve_runtime_entry_state
+            {should_refresh: false, mode: "reuse"}
+        )
+        let reused_transition = (
+            resolve_env_transition
+            $reused_state
+            --profile-available
+        )
+
+        let ambient_state = (
+            resolve_runtime_entry_state
+            {should_refresh: false, mode: "reuse"}
+            --already-in-env
+        )
+        let ambient_transition = (
+            resolve_env_transition
+            $ambient_state
+            --profile-available
+        )
+
+        if (
+            ($reused_transition.execution == "launch_profile")
+            and ($ambient_transition.execution == "backend_shell")
+            and ($ambient_transition.rebuild_before_exec == false)
+        ) {
+            print "  ✅ Env transition only reuses cached profiles from the external entry surface"
+            true
+        } else {
+            print $"  ❌ Unexpected env transitions: reused=($reused_transition | to json -r) ambient=($ambient_transition | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 # Defends: persistent-session reuse warns when current-terminal startup ignores the requested directory.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_launch_here_path_warns_when_existing_persistent_session_ignores_it [] {
@@ -1702,6 +1883,10 @@ export def run_workspace_canonical_tests [] {
         (test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions)
         (test_yzx_enter_forwards_refresh_intent_to_startup_entrypoint)
         (test_startup_refresh_activates_built_profile_without_second_shell_entry)
+        (test_runtime_entry_state_models_live_session_refresh_intent)
+        (test_startup_transition_prefers_fresh_runtime_profile_after_rebuild)
+        (test_launch_transition_blocks_live_session_fast_path_during_refresh)
+        (test_env_transition_keeps_cached_profile_reuse_explicit)
         (test_yzx_launch_rejects_removed_here_flag)
         (test_launch_here_path_warns_when_existing_persistent_session_ignores_it)
         (test_startup_rejects_missing_working_dir)
