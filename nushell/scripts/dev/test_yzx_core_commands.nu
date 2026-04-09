@@ -6,6 +6,8 @@ use ../core/yazelix.nu *
 use ../utils/config_migration_transactions.nu [get_managed_config_transaction_dir]
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
 
+const DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
+
 def setup_config_migrate_fixture [label: string, raw_toml: string] {
     setup_managed_config_fixture $label $raw_toml
 }
@@ -41,6 +43,22 @@ def run_config_migrate_command [fixture: record, args: list<string> = []] {
     }
 }
 
+def manual_desktop_icon_records [tmp_home: string, source_root: string] {
+    $DESKTOP_ICON_SIZES
+    | each {|size|
+        {
+            size: $size
+            source: ($source_root | path join "assets" "icons" $size "yazelix.png")
+            path: ($tmp_home | path join ".local" "share" "icons" "hicolor" $size "apps" "yazelix.png")
+        }
+    }
+}
+
+def files_match [left: string, right: string] {
+    let result = (^cmp -s $left $right | complete)
+    $result.exit_code == 0
+}
+
 def setup_manual_install_takeover_fixture [label: string] {
     let fixture = (setup_managed_config_fixture
         $label
@@ -54,6 +72,7 @@ welcome_style = "random"
     let runtime_reference = ($fixture.tmp_home | path join ".local" "share" "yazelix" "runtime" "current")
     let local_yzx = ($fixture.tmp_home | path join ".local" "bin" "yzx")
     let desktop_path = ($fixture.tmp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")
+    let desktop_icons = (manual_desktop_icon_records $fixture.tmp_home $fixture.repo_root)
     let taplo_path = ($fixture.config_dir | path join ".taplo.toml")
     let generated_yazi = ($fixture.tmp_home | path join ".local" "share" "yazelix" "configs" "yazi")
     let generated_zellij = ($fixture.tmp_home | path join ".local" "share" "yazelix" "configs" "zellij")
@@ -74,6 +93,14 @@ welcome_style = "random"
 
     ^ln -s $runtime_target $runtime_reference
     ^ln -s ($runtime_reference | path join "bin" "yzx") $local_yzx
+
+    for icon in $desktop_icons {
+        let runtime_icon = ($runtime_target | path join "assets" "icons" $icon.size "yazelix.png")
+        mkdir ($runtime_icon | path dirname)
+        mkdir ($icon.path | path dirname)
+        ^cp $icon.source $runtime_icon
+        ^cp $icon.source $icon.path
+    }
 
     [
         "[Desktop Entry]"
@@ -96,10 +123,42 @@ git = ["gh"]
         runtime_reference: $runtime_reference
         local_yzx: $local_yzx
         desktop_path: $desktop_path
+        desktop_icons: $desktop_icons
         taplo_path: $taplo_path
         generated_yazi: $generated_yazi
         generated_zellij: $generated_zellij
         pack_config_path: $pack_config_path
+    }
+}
+
+def setup_manual_desktop_install_fixture [label: string] {
+    let fixture = (setup_managed_config_fixture
+        $label
+        '[core]
+welcome_style = "random"
+'
+    )
+
+    let runtime_reference = ($fixture.tmp_home | path join ".local" "share" "yazelix" "runtime" "current")
+    let local_yzx = ($fixture.tmp_home | path join ".local" "bin" "yzx")
+    let desktop_path = ($fixture.tmp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")
+    let desktop_icons = (manual_desktop_icon_records $fixture.tmp_home $fixture.repo_root)
+
+    mkdir ($runtime_reference | path dirname)
+    mkdir ($local_yzx | path dirname)
+
+    ^ln -s $fixture.repo_root $runtime_reference
+    [
+        "#!/bin/sh"
+        "exit 0"
+    ] | str join "\n" | save --force --raw $local_yzx
+    ^chmod +x $local_yzx
+
+    $fixture | merge {
+        runtime_reference: $runtime_reference
+        local_yzx: $local_yzx
+        desktop_path: $desktop_path
+        desktop_icons: $desktop_icons
     }
 }
 
@@ -387,6 +446,44 @@ def test_yzx_config_migrate_apply_noops_on_current_config [] {
     $result
 }
 
+# Regression: `yzx desktop install` must install the icon assets needed by the manual desktop entry.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_desktop_install_writes_entry_and_icon_assets [] {
+    print "🧪 Testing yzx desktop install writes the desktop entry and icon assets..."
+
+    let fixture = (setup_manual_desktop_install_fixture "yazelix_desktop_install_icons")
+
+    let result = (try {
+        let output = (run_yzx_command_for_fixture $fixture "yzx desktop install")
+        let stdout = ($output.stdout | str trim)
+        let desktop_entry = (open --raw $fixture.desktop_path)
+        let icons_ok = (
+            $fixture.desktop_icons
+            | all {|icon| ($icon.path | path exists) and (files_match $icon.source $icon.path) }
+        )
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Installed Yazelix desktop entry")
+            and ($stdout | str contains $fixture.desktop_path)
+            and ($desktop_entry | str contains 'Icon=yazelix')
+            and $icons_ok
+        ) {
+            print "  ✅ yzx desktop install now writes the manual desktop entry and its icon assets together"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) desktop_exists=(($fixture.desktop_path | path exists)) icons_ok=($icons_ok)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 # Defends: Home Manager takeover preview surfaces both blocking and cleanup-only manual artifacts.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts [] {
@@ -407,6 +504,7 @@ def test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts [] {
             and ($stdout | str contains "Cleanup-only manual-install artifacts:")
             and ($stdout | str contains $fixture.local_yzx)
             and ($stdout | str contains $fixture.desktop_path)
+            and ($stdout | str contains (($fixture.desktop_icons | first).path))
             and ($fixture.runtime_reference | path exists)
             and ($fixture.config_path | path exists)
             and ($fixture.pack_config_path | path exists)
@@ -443,6 +541,15 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
         let launcher_backups = (ls ($fixture.local_yzx | path dirname) | where name =~ 'yzx\.home-manager-prepare-backup-')
         let desktop_backups = (ls ($fixture.desktop_path | path dirname) | where name =~ 'com\.yazelix\.Yazelix\.desktop\.home-manager-prepare-backup-')
         let runtime_backups = (ls ($fixture.runtime_reference | path dirname) | where name =~ 'current\.home-manager-prepare-backup-')
+        let icon_backup_count = (
+            $fixture.desktop_icons
+            | each {|icon|
+                ls ($icon.path | path dirname)
+                | where name =~ 'yazelix\.png\.home-manager-prepare-backup-'
+                | length
+            }
+            | math sum
+        )
 
         if (
             ($output.exit_code == 0)
@@ -458,11 +565,12 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
             and (($launcher_backups | length) == 1)
             and (($desktop_backups | length) == 1)
             and (($runtime_backups | length) == 1)
+            and ($icon_backup_count == ($fixture.desktop_icons | length))
         ) {
             print "  ✅ yzx home_manager prepare --apply archives the real takeover blockers and cleanup-only manual artifacts, then points users at home-manager switch"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main_backups=(($main_backups | length)) pack_backups=(($pack_backups | length)) launcher_backups=(($launcher_backups | length)) desktop_backups=(($desktop_backups | length)) runtime_backups=(($runtime_backups | length))"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main_backups=(($main_backups | length)) pack_backups=(($pack_backups | length)) launcher_backups=(($launcher_backups | length)) desktop_backups=(($desktop_backups | length)) runtime_backups=(($runtime_backups | length)) icon_backups=($icon_backup_count)"
             false
         }
     } catch {|err|
@@ -484,6 +592,7 @@ def test_yzx_uninstall_apply_removes_manual_artifacts_but_preserves_config [] {
     let result = (try {
         let output = (run_yzx_command_for_fixture $fixture "yzx uninstall --apply --yes")
         let stdout = ($output.stdout | str trim)
+        let icons_removed = ($fixture.desktop_icons | all {|icon| not ($icon.path | path exists) })
 
         if (
             ($output.exit_code == 0)
@@ -495,13 +604,14 @@ def test_yzx_uninstall_apply_removes_manual_artifacts_but_preserves_config [] {
             and not ($fixture.taplo_path | path exists)
             and not ($fixture.generated_yazi | path exists)
             and not ($fixture.generated_zellij | path exists)
+            and $icons_removed
             and ($fixture.config_path | path exists)
             and ($fixture.pack_config_path | path exists)
         ) {
             print "  ✅ yzx uninstall removes manual installer-owned artifacts while preserving the managed Yazelix config surfaces"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) icons_removed=($icons_removed)"
             false
         }
     } catch {|err|
@@ -1194,6 +1304,7 @@ export def run_core_canonical_tests [] {
         (test_entrypoint_preflight_reports_pack_only_legacy_root_relocation)
         (test_entrypoint_preflight_relocates_legacy_root_and_applies_safe_subset_before_manual_block)
         (test_entrypoint_preflight_recovers_stale_relocation_before_duplicate_surface_error)
+        (test_yzx_desktop_install_writes_entry_and_icon_assets)
         (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)
         (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
         (test_yzx_uninstall_apply_removes_manual_artifacts_but_preserves_config)

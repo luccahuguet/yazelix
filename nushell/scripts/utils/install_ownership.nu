@@ -4,6 +4,7 @@ use common.nu [get_yazelix_state_dir]
 use config_surfaces.nu [get_main_user_config_path get_pack_sidecar_path get_managed_taplo_support_path]
 
 const HOME_MANAGER_FILES_MARKER = "-home-manager-files/"
+const MANUAL_DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
 
 def get_xdg_data_home [] {
     let configured = (
@@ -68,6 +69,10 @@ export def get_manual_yzx_cli_path [] {
 
 export def get_manual_desktop_entry_path [] {
     (get_xdg_data_home | path join "applications" "com.yazelix.Yazelix.desktop")
+}
+
+def get_manual_desktop_icon_path [size: string] {
+    (get_xdg_data_home | path join "icons" "hicolor" $size "apps" "yazelix.png")
 }
 
 export def get_manual_main_config_path [] {
@@ -146,6 +151,50 @@ export def is_manual_desktop_entry_path [path?: string] {
     (($raw | str contains "Name=Yazelix") and ($raw | lines | any {|line| $line in $exec_variants }))
 }
 
+def files_have_same_content [left: string, right?: string] {
+    if $right == null {
+        return false
+    }
+
+    if (not ($left | path exists)) or (not ($right | path exists)) {
+        return false
+    }
+
+    try {
+        let result = (^cmp -s $left $right | complete)
+        $result.exit_code == 0
+    } catch {
+        false
+    }
+}
+
+def get_manual_runtime_icon_source_path [size: string] {
+    let runtime_target = (read_symlink_target (get_manual_runtime_reference_path))
+    if $runtime_target == null {
+        return null
+    }
+
+    ($runtime_target | path join "assets" "icons" $size "yazelix.png")
+}
+
+def collect_manual_desktop_icon_artifacts [] {
+    $MANUAL_DESKTOP_ICON_SIZES
+    | each {|size|
+        let icon_path = (get_manual_desktop_icon_path $size)
+        let source_path = (get_manual_runtime_icon_source_path $size)
+        if (files_have_same_content $icon_path $source_path) {
+            {
+                id: $"desktop_icon_($size)"
+                label: $"manual desktop icon \(($size)\)"
+                path: $icon_path
+            }
+        } else {
+            null
+        }
+    }
+    | compact
+}
+
 export def collect_manual_uninstall_artifacts [] {
     mut artifacts = []
 
@@ -174,6 +223,10 @@ export def collect_manual_uninstall_artifacts [] {
             label: "manual desktop entry"
             path: $desktop_entry
         })
+    }
+
+    for icon_artifact in (collect_manual_desktop_icon_artifacts) {
+        $artifacts = ($artifacts | append $icon_artifact)
     }
 
     let taplo_support = (get_manual_taplo_support_path)
@@ -249,6 +302,10 @@ export def collect_home_manager_prepare_artifacts [] {
             label: "manual desktop entry"
             path: $desktop_entry
         })
+    }
+
+    for icon_artifact in (collect_manual_desktop_icon_artifacts) {
+        $artifacts = ($artifacts | append ($icon_artifact | upsert class "cleanup"))
     }
 
     $artifacts

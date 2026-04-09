@@ -20,8 +20,9 @@ const DESKTOP_LAUNCH_CLEARED_ENV_KEYS = [
     "ZELLIJ_TAB_NAME"
     "ZELLIJ_TAB_POSITION"
 ]
+const DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
 
-def get_desktop_applications_dir [] {
+def get_xdg_data_home [] {
     let data_home = (
         $env.XDG_DATA_HOME?
         | default "~/.local/share"
@@ -29,7 +30,23 @@ def get_desktop_applications_dir [] {
         | str trim
     )
 
-    ($data_home | path expand | path join "applications")
+    ($data_home | path expand)
+}
+
+def get_desktop_applications_dir [] {
+    (get_xdg_data_home | path join "applications")
+}
+
+def get_desktop_icons_root [] {
+    (get_xdg_data_home | path join "icons" "hicolor")
+}
+
+def get_desktop_icon_path [size: string] {
+    (get_desktop_icons_root | path join $size "apps" "yazelix.png")
+}
+
+def get_runtime_icon_source_path [runtime_dir: string, size: string] {
+    ($runtime_dir | path join "assets" "icons" $size "yazelix.png")
 }
 
 def quote_desktop_exec_arg [value: string] {
@@ -86,8 +103,54 @@ def refresh_desktop_database [applications_dir: string] {
     ^update-desktop-database $applications_dir | complete | ignore
 }
 
+def refresh_icon_cache [icons_root: string] {
+    if (which gtk-update-icon-cache | is-empty) {
+        return
+    }
+
+    ^gtk-update-icon-cache --force --ignore-theme-index $icons_root | complete | ignore
+}
+
 def get_desktop_entry_path [] {
     (get_desktop_applications_dir | path join "com.yazelix.Yazelix.desktop")
+}
+
+def get_desktop_icon_entries [runtime_dir: string] {
+    $DESKTOP_ICON_SIZES
+    | each {|size|
+        {
+            size: $size
+            source: (get_runtime_icon_source_path $runtime_dir $size)
+            destination: (get_desktop_icon_path $size)
+        }
+    }
+}
+
+def install_desktop_icons [runtime_dir: string] {
+    let icon_entries = (get_desktop_icon_entries $runtime_dir)
+    let missing_sources = (
+        $icon_entries
+        | where {|entry| not ($entry.source | path exists) }
+        | each {|entry| $entry.source }
+    )
+    if not ($missing_sources | is-empty) {
+        let missing_text = ($missing_sources | str join "\n")
+        error make {msg: $"Missing Yazelix desktop icon assets:\n($missing_text)"}
+    }
+
+    for entry in $icon_entries {
+        mkdir ($entry.destination | path dirname)
+        ^cp --force $entry.source $entry.destination
+    }
+}
+
+def uninstall_desktop_icons [] {
+    for size in $DESKTOP_ICON_SIZES {
+        let icon_path = (get_desktop_icon_path $size)
+        if ($icon_path | path exists) {
+            rm $icon_path
+        }
+    }
 }
 
 def get_desktop_launch_env [runtime_dir: string] {
@@ -112,13 +175,16 @@ export def "yzx desktop install" [
     }
 
     let applications_dir = (get_desktop_applications_dir)
+    let icons_root = (get_desktop_icons_root)
     let desktop_path = (get_desktop_entry_path)
     let desktop_entry = (render_desktop_entry $launcher_path)
 
     mkdir $applications_dir
+    install_desktop_icons $runtime_dir
     write_text_atomic $desktop_path $desktop_entry --raw | ignore
     validate_desktop_entry $desktop_path
     refresh_desktop_database $applications_dir
+    refresh_icon_cache $icons_root
 
     if $print_path {
         print $desktop_path
@@ -131,12 +197,15 @@ export def "yzx desktop uninstall" [
     --print-path(-p) # Print only the desktop-file path that was removed or would be removed
 ] {
     let applications_dir = (get_desktop_applications_dir)
+    let icons_root = (get_desktop_icons_root)
     let desktop_path = (get_desktop_entry_path)
 
     if ($desktop_path | path exists) {
         rm $desktop_path
-        refresh_desktop_database $applications_dir
     }
+    uninstall_desktop_icons
+    refresh_desktop_database $applications_dir
+    refresh_icon_cache $icons_root
 
     if $print_path {
         print $desktop_path
