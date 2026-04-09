@@ -4,9 +4,10 @@ use ./test_yzx_commands.nu [run_default_canonical_suite]
 use ./yzx_test_helpers.nu [format_test_profile_report]
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
-# Raised after the runtime-state, desktop-launch, and shared-preflight regressions were promoted
-# into the default suite. Keep the cap explicit so future growth still has to justify itself.
-const DEFAULT_SUITE_MAX_SECONDS = 75.0
+# Raised after the runtime-state, desktop-launch, flake-interface, Home Manager,
+# and launch-profile/runtime-repair regressions were promoted into the default suite.
+# Keep the cap explicit so future growth still has to justify itself.
+const DEFAULT_SUITE_MAX_SECONDS = 105.0
 
 export def profile_suite_runner [runner: closure] {
     let started = (date now)
