@@ -20,11 +20,11 @@ export def get_yazelix_colors [] {
     }
 }
 
-export def get_welcome_style_random_pool [] {
+def get_welcome_style_random_pool [] {
     $ANIMATED_WELCOME_STYLE_VALUES
 }
 
-export def resolve_welcome_style [welcome_style: string, random_index?: int] {
+def resolve_welcome_style [welcome_style: string, random_index?: int] {
     let normalized = ($welcome_style | into string | str downcase)
 
     if $normalized != "random" {
@@ -148,7 +148,7 @@ export def get_terminal_height [] {
     }
 }
 
-export def get_logo_welcome_variant [width?: int] {
+def get_logo_welcome_variant [width?: int] {
     let resolved_width = ($width | default (get_terminal_width) | into int)
 
     if $resolved_width < 44 {
@@ -825,7 +825,7 @@ export def get_game_of_life_welcome_frame_delay [] {
     220ms
 }
 
-export def get_game_of_life_animation_frames [width?: int, duration_seconds: float = 2.0] {
+def get_game_of_life_animation_frames [width?: int, duration_seconds: float = 2.0] {
     let resolved_width = ($width | default (get_terminal_width) | into int)
     let resolved_height = (get_terminal_height)
     let variant = (get_logo_welcome_variant $resolved_width)
@@ -849,7 +849,7 @@ export def get_game_of_life_animation_frames [width?: int, duration_seconds: flo
     ]
 }
 
-export def get_game_of_life_screen_cycle_frames [width?: int, height?: int, duration_seconds: float = 2.0] {
+def get_game_of_life_screen_cycle_frames [width?: int, height?: int, duration_seconds: float = 2.0] {
     let resolved_width = ($width | default (get_terminal_width) | into int)
     let resolved_height = ($height | default (get_terminal_height) | into int)
     let variant = (get_logo_welcome_variant $resolved_width)
@@ -896,7 +896,7 @@ export def render_game_of_life_screen_state [state: record] {
     build_game_of_life_screen_lines $state.spec $state.cells ($state.resolved_width | into int)
 }
 
-export def get_welcome_ascii_art [width?: int] {
+def get_welcome_ascii_art [width?: int] {
     get_logo_welcome_frame $width
 }
 
@@ -904,7 +904,7 @@ export def get_animated_ascii_art [width?: int] {
     get_logo_animation_frames $width
 }
 
-export def play_frames [frames: list<list<string>>, duration: duration] {
+def play_frames [frames: list<list<string>>, duration: duration] {
     if ($frames | is-empty) {
         return
     }
@@ -991,12 +991,12 @@ def repaint_resting_logo_after_skip [width?] {
     }
 }
 
-export def play_animation [duration: duration, width?: int] {
+def play_animation [duration: duration, width?: int] {
     let frames = (get_animated_ascii_art $width)
     play_frames $frames $duration
 }
 
-export def get_welcome_playback_duration [welcome_style: string, duration_seconds: float] {
+def get_welcome_playback_duration [welcome_style: string, duration_seconds: float] {
     if $welcome_style == "logo" {
         0.5sec
     } else {

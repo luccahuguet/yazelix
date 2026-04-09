@@ -88,7 +88,7 @@ def format_palette_item [entry: record] {
     }
 }
 
-export def is_palette_eligible_command [cmd: string] {
+def is_palette_eligible_command [cmd: string] {
     let normalized = ($cmd | into string | str trim)
     not (
         ($normalized in $PALETTE_EXCLUDED_COMMANDS)
