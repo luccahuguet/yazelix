@@ -322,7 +322,7 @@ def test_build_shell_output_records_runtime_owned_profile_without_runtime_projec
     let config_dir = ($temp_home | path join ".config" "yazelix")
     let user_config_dir = ($config_dir | path join "user_configs")
     let state_dir = ($tmp_root | path join "state")
-    let bootstrap_module = ($repo_root | path join "nushell" "scripts" "utils" "environment_bootstrap.nu")
+    let bootstrap_module = ($repo_root | path join "nushell" "scripts" "utils" "devenv_backend.nu")
     let launch_state_module = ($repo_root | path join "nushell" "scripts" "utils" "launch_state.nu")
 
     mkdir $user_config_dir

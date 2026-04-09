@@ -2,7 +2,8 @@
 # yzx refresh command - Refresh Yazelix devenv cache/environment without launching UI
 
 use ../utils/build_policy.nu [describe_build_parallelism]
-use ../utils/environment_bootstrap.nu [prepare_environment get_devenv_base_command is_unfree_enabled get_refresh_output_mode format_command_failure_summary]
+use ../utils/environment_bootstrap.nu [prepare_environment]
+use ../utils/devenv_backend.nu [format_command_failure_summary get_devenv_base_command get_refresh_output_mode is_unfree_enabled]
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ../utils/launch_state.nu [record_launch_profile_state resolve_profile_from_build_shell_output]
 use ../utils/common.nu [require_yazelix_runtime_dir]

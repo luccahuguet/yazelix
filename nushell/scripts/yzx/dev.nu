@@ -9,7 +9,7 @@ use ../utils/common.nu [
 use ../utils/repo_checkout.nu [require_yazelix_repo_root]
 use ../utils/dev_issue_sync.nu run_dev_issue_sync
 use ../utils/dev_plugin_build.nu [build_pane_orchestrator_wasm build_popup_plugin_wasm]
-use ../utils/environment_bootstrap.nu [run_in_devenv_shell_command]
+use ../utils/devenv_backend.nu [run_in_devenv_shell_command]
 use ../utils/config_surfaces.nu [copy_default_config_surfaces get_main_user_config_path]
 use ../utils/dev_update_workflow.nu run_dev_update_workflow
 use ../utils/runtime_project.nu [get_existing_yazelix_runtime_project_dir]

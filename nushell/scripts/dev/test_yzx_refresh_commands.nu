@@ -69,7 +69,7 @@ def setup_refresh_profile_recording_fixture [label: string] {
         "export def ensure_nix_available [] {}"
     ] | str join "\n" | save --force --raw ($utils_dir | path join "nix_detector.nu")
 
-    [
+    let backend_stub = ([
         "export def prepare_environment [] {"
         "    {"
         "        config: {"
@@ -105,7 +105,9 @@ def setup_refresh_profile_recording_fixture [label: string] {
         "export def format_command_failure_summary [label, command_parts, exit_code, stderr, recovery_hint, --stderr-streamed] {"
         "    $\"($label)\""
         "}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
+    ] | str join "\n")
+    $backend_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
+    $backend_stub | save --force --raw ($utils_dir | path join "devenv_backend.nu")
 
     [
         "export def compute_config_state [] {"
@@ -188,6 +190,7 @@ def setup_rebuild_profile_recording_fixture [label: string] {
     let fake_devenv = ($fake_bin | path join "fake-devenv")
     let real_nu = (which nu | get -o 0.path | default "nu")
     let bootstrap_script = ($utils_dir | path join "environment_bootstrap.nu")
+    let backend_script = ($utils_dir | path join "devenv_backend.nu")
 
     mkdir $utils_dir
     mkdir $fake_bin
@@ -198,6 +201,7 @@ def setup_rebuild_profile_recording_fixture [label: string] {
     mkdir $stale_profile
 
     cp (repo_path "nushell" "scripts" "utils" "environment_bootstrap.nu") $bootstrap_script
+    cp (repo_path "nushell" "scripts" "utils" "devenv_backend.nu") $backend_script
 
     [
         "export def parse_yazelix_config [] {"

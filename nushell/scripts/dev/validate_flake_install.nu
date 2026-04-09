@@ -260,7 +260,7 @@ def verify_installed_runtime [temp_home: string] {
     }
 
     let shell_probe_command = ([
-        $"use '($runtime_current | path join "nushell" "scripts" "utils" "environment_bootstrap.nu")' get_devenv_base_command"
+        $"use '($runtime_current | path join "nushell" "scripts" "utils" "devenv_backend.nu")' get_devenv_base_command"
         "get_devenv_base_command | append [\"shell\" \"--\" \"true\"] | to json -r"
     ] | str join "\n")
     let shell_probe_resolution = (

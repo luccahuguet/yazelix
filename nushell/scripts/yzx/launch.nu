@@ -3,7 +3,8 @@
 
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ../utils/build_policy.nu [describe_build_parallelism]
-use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment run_in_devenv_shell_command get_refresh_output_mode]
+use ../utils/environment_bootstrap.nu [prepare_environment]
+use ../utils/devenv_backend.nu [get_refresh_output_mode rebuild_yazelix_environment run_in_devenv_shell_command]
 use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile resolve_runtime_owned_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]

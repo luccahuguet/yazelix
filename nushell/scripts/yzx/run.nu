@@ -1,7 +1,8 @@
 #!/usr/bin/env nu
 # yzx run command - Run a command inside Yazelix environment without UI
 
-use ../utils/environment_bootstrap.nu [prepare_environment run_in_devenv_shell_command]
+use ../utils/environment_bootstrap.nu [prepare_environment]
+use ../utils/devenv_backend.nu [run_in_devenv_shell_command]
 use ../utils/config_state.nu [record_materialized_state]
 
 # Run a command in the Yazelix environment and exit

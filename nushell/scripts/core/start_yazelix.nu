@@ -1,7 +1,8 @@
 #!/usr/bin/env nu
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
-use ../utils/environment_bootstrap.nu *
+use ../utils/environment_bootstrap.nu [ensure_environment_available prepare_environment]
+use ../utils/devenv_backend.nu [check_environment_status get_refresh_output_mode rebuild_yazelix_environment run_in_devenv_shell_command]
 use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile resolve_runtime_owned_profile]

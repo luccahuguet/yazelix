@@ -57,7 +57,7 @@ def require_no_devenv_skew_warning [package_root: string, temp_home: string] {
             $package_root
             $temp_home
             ([
-                $"use '($package_root | path join "nushell" "scripts" "utils" "environment_bootstrap.nu")' get_devenv_base_command"
+                $"use '($package_root | path join "nushell" "scripts" "utils" "devenv_backend.nu")' get_devenv_base_command"
                 "get_devenv_base_command | append [\"shell\" \"--\" \"true\"] | to json -r"
             ] | str join "\n")
     )

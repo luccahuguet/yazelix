@@ -227,7 +227,7 @@ def setup_enter_forwarding_fixture [label: string] {
         "export def record_materialized_state [state: record] {}"
     ] | str join "\n" | save --force --raw ($utils_dir | path join "config_state.nu")
 
-    [
+    let backend_stub = ([
         "export def prepare_environment [--verbose] {"
         "    error make {msg: \"PREPARE_ENVIRONMENT_SHOULD_NOT_RUN\"}"
         "}"
@@ -258,7 +258,9 @@ def setup_enter_forwarding_fixture [label: string] {
         "export def get_refresh_output_mode [config: any] {"
         "    \"normal\""
         "}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
+    ] | str join "\n")
+    $backend_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
+    $backend_stub | save --force --raw ($utils_dir | path join "devenv_backend.nu")
 
     [
         "export def get_launch_env [config: record, profile_path: string] { {} }"
@@ -364,7 +366,7 @@ def setup_refresh_activation_fixture [label: string] {
     ] | str join "\n" | save --force --raw $fake_nu
     ^chmod +x $fake_nu
 
-    [
+    let backend_stub = ([
         "export def prepare_environment [--verbose] {"
         "    {"
         "        config: {max_jobs: \"half\", build_cores: \"2\", refresh_output: \"normal\"}"
@@ -404,7 +406,9 @@ def setup_refresh_activation_fixture [label: string] {
         "export def get_refresh_output_mode [config: any] {"
         "    \"normal\""
         "}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
+    ] | str join "\n")
+    $backend_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
+    $backend_stub | save --force --raw ($utils_dir | path join "devenv_backend.nu")
 
     [
         "export def run_entrypoint_config_migration_preflight [entrypoint_label: string, --allow-noninteractive] { null }"

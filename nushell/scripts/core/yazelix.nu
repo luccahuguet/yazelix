@@ -5,7 +5,8 @@
 use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/constants.nu *
-use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
+use ../utils/environment_bootstrap.nu [prepare_environment]
+use ../utils/devenv_backend.nu [get_refresh_output_mode rebuild_yazelix_environment]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu [get_installed_yazelix_runtime_dir get_yazelix_runtime_dir]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
