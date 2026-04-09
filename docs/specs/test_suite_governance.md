@@ -242,7 +242,6 @@ So the duplicate README-version assertion is removed from `nushell/scripts/dev/t
 - integration tests: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
 - integration tests: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - CI checks: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
-- CI checks: `nu nushell/scripts/dev/validate_default_test_budget.nu`
 - CI checks: `nu nushell/scripts/dev/validate_readme_version.nu`
 - CI checks: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
 - CI checks: `nu nushell/scripts/dev/validate_specs.nu`

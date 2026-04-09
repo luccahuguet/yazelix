@@ -5,7 +5,17 @@
 use ../utils/common.nu [get_yazelix_state_dir]
 use ../utils/repo_checkout.nu [require_yazelix_repo_root]
 use ../utils/devenv_cli.nu resolve_preferred_devenv_path
-use ./validate_default_test_budget.nu [profile_suite_runner]
+
+def profile_suite_runner [runner: closure] {
+    let started = (date now)
+    let result = (do $runner)
+    let elapsed_seconds = (((date now) - $started) / 1sec | into float)
+
+    {
+        result: $result
+        elapsed_seconds: $elapsed_seconds
+    }
+}
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Defends: issue/bead reconciliation planning catches create, reopen, close, and duplicate cases.

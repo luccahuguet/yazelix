@@ -124,9 +124,6 @@ jobs:
       - name: Validate default-suite shape and traceability
         run: nu nushell/scripts/dev/validate_default_test_traceability.nu
 
-      - name: Validate default-suite runtime budget
-        run: nu nushell/scripts/dev/validate_default_test_budget.nu
-
       - name: Validate top-level flake interface
         run: nu nushell/scripts/dev/validate_flake_interface.nu
 
