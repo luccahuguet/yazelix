@@ -111,7 +111,7 @@ export def "yzx sponsor" [] {
 }
 
 export def "yzx cwd" [
-    target?: string  # Directory path or zoxide query for the current tab (defaults to the current directory)
+    target?: string  # Directory path or zoxide query for the current tab workspace root (defaults to the current directory)
 ] {
     if ($env.ZELLIJ? | is-empty) {
         print "❌ yzx cwd only works inside Zellij."

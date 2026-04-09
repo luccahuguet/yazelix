@@ -37,7 +37,7 @@ def print_yazelix_tutor [] {
     heading "Start here"
     print $"1. Launch a session with (command_label 'yzx launch') or start it in the current terminal with (command_label 'yzx enter')."
     print $"2. Learn the workspace-critical bindings with (command_label 'yzx keys')."
-    print $"3. Use (command_label 'yzx cwd <dir>') when you want to retarget the current tab manually. Opening a file from Yazi into the managed editor also moves the workspace root to that file's directory."
+    print $"3. Use (command_label 'yzx cwd <dir>') when you want to retarget the current tab workspace root manually. Opening a file from Yazi into the managed editor also moves the workspace root to that file's directory."
     print $"4. Use (command_label 'yzx menu') for fuzzy command discovery \(or (command_label 'Alt+Shift+M') inside Yazelix\) and (command_label 'yzx doctor') when behavior looks wrong."
     print ""
     heading "Mental model"

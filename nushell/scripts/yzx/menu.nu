@@ -26,7 +26,7 @@ const PUBLIC_YZX_COMMAND_CATALOG = [
     {id: "yzx config", category: "config", description: "Show the active Yazelix configuration"}
     {id: "yzx config migrate", category: "config", description: "Preview or apply known Yazelix config migrations"}
     {id: "yzx config reset", category: "config", description: ""}
-    {id: "yzx cwd", category: "workspace", description: ""}
+    {id: "yzx cwd", category: "workspace", description: "Retarget the current tab workspace root via a path or zoxide query."}
     {id: "yzx desktop install", category: "system", description: ""}
     {id: "yzx desktop launch", category: "system", description: ""}
     {id: "yzx desktop uninstall", category: "system", description: ""}

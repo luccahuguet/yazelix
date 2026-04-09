@@ -76,10 +76,10 @@ Run a single command in the Yazelix environment and exit
 - Quote args that start with `-` to avoid flag parsing (e.g., `"-lc"`)
 
 ### `yzx cwd [DIR]`
-Set the current tab workspace directory inside Zellij
+Retarget the current tab workspace root inside Zellij
 - Default: use the current directory when `DIR` is omitted
 - When `DIR` is not an existing path, Yazelix resolves it with `zoxide query`
-- Updates the current tab's Yazelix workspace directory and renames the tab
+- Updates the current tab's Yazelix workspace root and renames the tab
 - Also applies the directory change to the current pane after the command returns
 - When a managed Helix or Neovim editor pane is present, its cwd is also updated
 - When sidebar mode is enabled, the managed Yazi sidebar also follows the updated directory
