@@ -5,7 +5,7 @@
 use ./yzx_test_helpers.nu [setup_managed_config_fixture]
 use ../integrations/managed_editor.nu [get_managed_editor_kind, resolve_managed_editor_open_strategy]
 use ../integrations/yazi.nu [get_ya_command, get_yazi_command, refresh_active_sidebar_yazi]
-use ../integrations/yazi_sidebar_state.nu get_active_sidebar_yazi_id
+use ../integrations/yazi_sidebar_state.nu get_active_sidebar_state
 use ../integrations/zellij.nu toggle_editor_sidebar_focus
 
 def write_executable_fixture_file [path: string, lines: list<string>] {
@@ -245,7 +245,8 @@ ya_command = "ya"
             YAZELIX_CONFIG_DIR: $fixture.config_dir
             YAZELIX_RUNTIME_DIR: $fixture.repo_root
         } {
-            get_active_sidebar_yazi_id
+            let sidebar_state = (get_active_sidebar_state)
+            $sidebar_state.yazi_id? | default null
         })
 
         if $resolved == "current-yazi-id" {

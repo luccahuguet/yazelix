@@ -175,17 +175,3 @@ export def get_active_sidebar_state [] {
 
     null
 }
-
-export def get_active_sidebar_yazi_id [] {
-    let sidebar_state = (get_active_sidebar_state)
-    if ($sidebar_state | is-empty) {
-        null
-    } else {
-        let yazi_id = ($sidebar_state.yazi_id? | default "" | str trim)
-        if ($yazi_id | is-empty) {
-            null
-        } else {
-            $yazi_id
-        }
-    }
-}

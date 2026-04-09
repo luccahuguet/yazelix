@@ -3,7 +3,7 @@
 
 use ../utils/logging.nu log_to_file
 use ../utils/config_parser.nu parse_yazelix_config
-use ./yazi_sidebar_state.nu [get_active_sidebar_state get_active_sidebar_yazi_id]
+use ./yazi_sidebar_state.nu get_active_sidebar_state
 use zellij.nu focus_managed_pane
 
 def resolve_optional_command [configured: any, fallback: string] {
@@ -225,7 +225,8 @@ export def reveal_in_yazi [buffer_name: string] {
 
     log_to_file "reveal_in_yazi.log" $"Resolved full path: '($full_path)'"
 
-    let sidebar_yazi_id = (get_active_sidebar_yazi_id)
+    let sidebar_state = (get_active_sidebar_state)
+    let sidebar_yazi_id = ($sidebar_state.yazi_id? | default "" | str trim)
     if ($sidebar_yazi_id | is-empty) {
         let error_msg = "Managed sidebar Yazi is not available in the current tab. Open the sidebar and try again."
         log_to_file "reveal_in_yazi.log" $"ERROR: ($error_msg)"
