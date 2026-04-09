@@ -1,5 +1,7 @@
 #!/usr/bin/env nu
 
+use safe_remove.nu remove_path_within_root
+
 export def sync_generated_ghostty_shader_assets [
     runtime_dir: string
     ghostty_dir: string
@@ -14,9 +16,10 @@ export def sync_generated_ghostty_shader_assets [
         if ($chmod_result.exit_code != 0) and (($chmod_result.stderr | str trim) | is-not-empty) {
             print $"⚠ Failed to relax Ghostty shader permissions before cleanup: ($chmod_result.stderr | str trim)"
         }
-        let remove_result = (^rm -rf $shaders_dest | complete)
-        if $remove_result.exit_code != 0 {
-            error make {msg: $"Failed to remove previous Ghostty shader assets at ($shaders_dest): ($remove_result.stderr | str trim)"}
+        try {
+            remove_path_within_root $shaders_dest $ghostty_dir "generated Ghostty shaders" --recursive
+        } catch {|err|
+            error make {msg: $"Failed to remove previous Ghostty shader assets at ($shaders_dest): ($err.msg)"}
         }
     }
 

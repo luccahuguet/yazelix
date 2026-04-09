@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
 use common.nu [get_yazelix_state_dir get_yazelix_runtime_dir require_yazelix_runtime_dir]
+use safe_remove.nu remove_path_within_root
 
 const RUNTIME_PROJECT_ENTRIES = [
     ".taplo.toml"
@@ -92,7 +93,7 @@ export def materialize_yazelix_runtime_project_dir [] {
         let source = ($runtime_root | path join $entry)
         let target = ($project_root | path join $entry)
         if ($target | path exists) {
-            rm -rf $target
+            remove_path_within_root $target $project_root $"runtime project entry ($entry)" --recursive
         }
         if not ($source | path exists) {
             continue

@@ -2,6 +2,7 @@
 
 use ../utils/common.nu get_yazelix_runtime_dir
 use ../utils/atomic_writes.nu write_text_atomic
+use ../utils/safe_remove.nu remove_path_within_root
 
 const runtime_dir_placeholder = "__YAZELIX_RUNTIME_DIR__"
 
@@ -68,9 +69,10 @@ def copy_plugins_directory [source_dir: string, merged_dir: string, --quiet] {
                 if ($chmod_result.exit_code != 0) and (($chmod_result.stderr | str trim) | is-not-empty) {
                     print $"⚠ Failed to relax Yazi plugin permissions before cleanup: ($chmod_result.stderr | str trim)"
                 }
-                let remove_result = (^rm -rf $target | complete)
-                if $remove_result.exit_code != 0 {
-                    error make {msg: $"Failed to remove existing Yazelix Yazi plugin at ($target): ($remove_result.stderr | str trim)"}
+                try {
+                    remove_path_within_root $target $merged_plugins $"bundled Yazi plugin ($plugin_name)" --recursive
+                } catch {|err|
+                    error make {msg: $"Failed to remove existing Yazelix Yazi plugin at ($target): ($err.msg)"}
                 }
             }
 
@@ -117,9 +119,10 @@ def copy_flavors_directory [source_dir: string, merged_dir: string, --quiet] {
                 if ($chmod_result.exit_code != 0) and (($chmod_result.stderr | str trim) | is-not-empty) {
                     print $"⚠ Failed to relax Yazi flavor permissions before cleanup: ($chmod_result.stderr | str trim)"
                 }
-                let remove_result = (^rm -rf $target | complete)
-                if $remove_result.exit_code != 0 {
-                    error make {msg: $"Failed to remove existing Yazelix Yazi flavor at ($target): ($remove_result.stderr | str trim)"}
+                try {
+                    remove_path_within_root $target $merged_flavors $"bundled Yazi flavor ($flavor_name)" --recursive
+                } catch {|err|
+                    error make {msg: $"Failed to remove existing Yazelix Yazi flavor at ($target): ($err.msg)"}
                 }
             }
 
@@ -154,9 +157,10 @@ def sync_starship_yazi_config [source_dir: string, merged_dir: string, --quiet] 
             print $"⚠ Failed to relax Yazi Starship config permissions before refresh: ($chmod_result.stderr | str trim)"
         }
 
-        let remove_result = (^rm -f $target_config | complete)
-        if $remove_result.exit_code != 0 {
-            error make {msg: $"Failed to remove existing bundled Yazi Starship config at ($target_config): ($remove_result.stderr | str trim)"}
+        try {
+            remove_path_within_root $target_config $merged_dir "bundled Yazi Starship config"
+        } catch {|err|
+            error make {msg: $"Failed to remove existing bundled Yazi Starship config at ($target_config): ($err.msg)"}
         }
     }
 

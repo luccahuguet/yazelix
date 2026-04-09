@@ -2,6 +2,7 @@
 # Copy Zellij layouts to merged config directory
 
 use atomic_writes.nu write_text_atomic
+use safe_remove.nu remove_path_within_root
 
 const widget_tray_placeholder = "__YAZELIX_WIDGET_TRAY__"
 const custom_text_placeholder = "__YAZELIX_CUSTOM_TEXT_SEGMENT__"
@@ -228,7 +229,7 @@ export def generate_all_layouts [
         | where { |file| (($file | path parse | get extension | default "") == "kdl") and ($file not-in $expected_targets) }
     )
     for stale_target in $stale_targets {
-        rm --force $stale_target
+        remove_path_within_root $stale_target $layouts_target_dir "generated layout"
     }
 
     # Copy each layout file

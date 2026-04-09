@@ -6,6 +6,7 @@ use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fi
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/config_state.nu [record_materialized_state]
+use ../utils/safe_remove.nu remove_path_within_root
 use ../utils/terminal_launcher.nu [build_launch_command resolve_terminal_config]
 use ../utils/terminal_configs.nu [
     generate_all_terminal_configs
@@ -956,6 +957,80 @@ sidebar_width_percent = 35
     $result
 }
 
+# Defends: bounded generated-artifact cleanup refuses root and outside targets while still deleting managed children.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_remove_path_within_root_refuses_root_and_outside_targets [] {
+    print "🧪 Testing bounded generated-artifact cleanup refuses root and outside targets..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_safe_remove_XXXXXX | str trim)
+    let managed_root = ($tmpdir | path join "managed")
+    let managed_child = ($managed_root | path join "child.txt")
+    let external_root = ($tmpdir | path join "external")
+    let external_file = ($external_root | path join "external.txt")
+    let managed_symlink = ($managed_root | path join "child-link.txt")
+    let outside_file = ($tmpdir | path join "outside.txt")
+
+    let result = (try {
+        mkdir $managed_root
+        mkdir $external_root
+        "child" | save --force --raw $managed_child
+        "external" | save --force --raw $external_file
+        ^ln -s $external_file $managed_symlink
+        "outside" | save --force --raw $outside_file
+
+        let remove_child = (try {
+            remove_path_within_root $managed_child $managed_root "managed child"
+            {ok: true, msg: ""}
+        } catch {|err|
+            {ok: false, msg: $err.msg}
+        })
+        let remove_symlink = (try {
+            remove_path_within_root $managed_symlink $managed_root "managed symlink"
+            {ok: true, msg: ""}
+        } catch {|err|
+            {ok: false, msg: $err.msg}
+        })
+        let remove_root = (try {
+            remove_path_within_root $managed_root $managed_root "managed root" --recursive
+            {ok: true, msg: ""}
+        } catch {|err|
+            {ok: false, msg: $err.msg}
+        })
+        let remove_outside = (try {
+            remove_path_within_root $outside_file $managed_root "outside target"
+            {ok: true, msg: ""}
+        } catch {|err|
+            {ok: false, msg: $err.msg}
+        })
+
+        if (
+            $remove_child.ok
+            and (not ($managed_child | path exists))
+            and $remove_symlink.ok
+            and (not ($managed_symlink | path exists))
+            and ($external_file | path exists)
+            and (not $remove_root.ok)
+            and ($remove_root.msg | str contains "Refusing to remove")
+            and ($managed_root | path exists)
+            and (not $remove_outside.ok)
+            and ($remove_outside.msg | str contains "Refusing to remove")
+            and ($outside_file | path exists)
+        ) {
+            print "  ✅ Managed cleanup now deletes bounded children and managed symlinks while refusing root or outside targets"
+            true
+        } else {
+            print $"  ❌ Unexpected bounded cleanup result: child=($remove_child | to json -r) symlink=($remove_symlink | to json -r) root=($remove_root | to json -r) outside=($remove_outside | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Regression: legacy Yazi override paths now fail fast instead of being relocated during generation.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generate_merged_yazi_config_rejects_legacy_user_overrides [] {
@@ -1507,6 +1582,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it)
         (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
         (test_generate_merged_zellij_config_reuses_unchanged_state_and_invalidates_on_input_change)
+        (test_remove_path_within_root_refuses_root_and_outside_targets)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
         (test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers)
         (test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrator_toggle)
