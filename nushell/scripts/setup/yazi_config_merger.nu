@@ -3,274 +3,15 @@
 # Generates yazi configs from yazelix defaults + dynamic settings from yazelix.toml
 
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_state_dir get_yazelix_user_config_dir]
-
-const runtime_dir_placeholder = "__YAZELIX_RUNTIME_DIR__"
+use ../utils/common.nu get_yazelix_state_dir
+use ./yazi_bundled_assets.nu [render_runtime_root_placeholders sync_bundled_yazi_assets]
+use ./yazi_user_overrides.nu [merge_yazi_keymap merge_yazi_toml_config resolve_yazi_user_file]
 
 # Ensure directory exists
 def ensure_dir [path: string] {
     let dir = ($path | path dirname)
     if not ($dir | path exists) {
         mkdir $dir
-    }
-}
-
-def get_yazi_user_config_dir [] {
-    (get_yazelix_user_config_dir) | path join "yazi"
-}
-
-def render_runtime_root_placeholders [content: string] {
-    let runtime_dir = (get_yazelix_runtime_dir)
-    $content | str replace -a $runtime_dir_placeholder $runtime_dir
-}
-
-def render_runtime_root_placeholders_in_directory [root_dir: string] {
-    if not ($root_dir | path exists) {
-        return
-    }
-
-    let candidate_files = (
-        ls -la $root_dir
-        | where type == file
-        | get name
-    )
-
-    for file_path in $candidate_files {
-        let content = (open --raw $file_path)
-        if ($content | str contains $runtime_dir_placeholder) {
-            let chmod_result = (^chmod u+w $file_path | complete)
-            if ($chmod_result.exit_code != 0) {
-                error make {msg: $"Failed to make generated Yazi plugin file writable at ($file_path): ($chmod_result.stderr | str trim)"}
-            }
-            let rendered = (render_runtime_root_placeholders $content)
-            $rendered | save --force --raw $file_path
-        }
-    }
-
-    let child_dirs = (
-        ls -la $root_dir
-        | where type == dir
-        | get name
-    )
-
-    for child_dir in $child_dirs {
-        render_runtime_root_placeholders_in_directory $child_dir
-    }
-}
-
-def get_legacy_yazi_user_config_dir [] {
-    (get_yazelix_config_dir) | path join "configs" "yazi" "user"
-}
-
-def resolve_yazi_user_file [file_name: string] {
-    let current_dir = (get_yazi_user_config_dir)
-    let current_path = ($current_dir | path join $file_name)
-    let legacy_path = ((get_legacy_yazi_user_config_dir) | path join $file_name)
-    let current_exists = ($current_path | path exists)
-    let legacy_exists = ($legacy_path | path exists)
-
-    if $current_exists and $legacy_exists {
-        error make {
-            msg: (
-                [
-                    $"Yazelix found duplicate Yazi user config files for ($file_name)."
-                    $"user_configs path: ($current_path)"
-                    $"legacy path: ($legacy_path)"
-                    ""
-                    "Keep only the user_configs copy. Move or delete the legacy configs/yazi/user file so Yazelix has one clear owner."
-                ] | str join "\n"
-            )
-        }
-    }
-
-    if $legacy_exists {
-        error make {
-            msg: (
-                [
-                    $"Yazelix found a legacy Yazi user config file for ($file_name)."
-                    $"legacy path: ($legacy_path)"
-                    $"managed path: ($current_path)"
-                    ""
-                    "Yazelix no longer relocates legacy Yazi overrides during normal config generation."
-                    "Use `yzx import yazi` to move native or legacy overrides into `~/.config/yazelix/user_configs/yazi/`, or move the file manually."
-                ] | str join "\n"
-            )
-        }
-    }
-
-    $current_path
-}
-
-# Deep merge two TOML records (user values override base, arrays are concatenated)
-def deep_merge [base: record, user: record] {
-    let base_keys = ($base | columns)
-    let user_keys = ($user | columns)
-    let all_keys = ($base_keys | append $user_keys | uniq)
-
-    $all_keys | reduce --fold {} {|key, acc|
-        let in_base = ($key in $base_keys)
-        let in_user = ($key in $user_keys)
-
-        let value = if $in_base and $in_user {
-            let base_val = ($base | get -o $key)
-            let user_val = ($user | get -o $key)
-            let base_type = ($base_val | describe)
-            let user_type = ($user_val | describe)
-            let base_is_array = ($base_type | str starts-with "list") or ($base_type | str starts-with "table")
-            let user_is_array = ($user_type | str starts-with "list") or ($user_type | str starts-with "table")
-            # If both are records, merge recursively
-            if ($base_type | str starts-with "record") and ($user_type | str starts-with "record") {
-                deep_merge $base_val $user_val
-            } else if $base_is_array and $user_is_array {
-                # Concatenate arrays (base first, then user)
-                $base_val | append $user_val
-            } else {
-                # For other types, user wins
-                $user_val
-            }
-        } else if $in_user {
-            $user | get -o $key
-        } else {
-            $base | get -o $key
-        }
-
-        $acc | insert $key $value
-    }
-}
-
-# Copy plugins directory (preserves user-installed plugins)
-def copy_plugins_directory [source_dir: string, merged_dir: string, --quiet] {
-    let source_plugins = $"($source_dir)/plugins"
-    let merged_plugins = $"($merged_dir)/plugins"
-
-    if not $quiet {
-        print "   📁 Copying plugins directory..."
-    }
-
-    # Ensure plugins directory exists
-    if not ($merged_plugins | path exists) {
-        mkdir $merged_plugins
-    }
-
-    # Copy yazelix bundled plugins (overwrites if they exist)
-    # This preserves user-installed plugins that yazelix doesn't provide
-    if ($source_plugins | path exists) {
-        let bundled_plugins = (ls $source_plugins | where type == dir | get name)
-
-        for plugin_path in $bundled_plugins {
-            let plugin_name = ($plugin_path | path basename)
-            let target = $"($merged_plugins)/($plugin_name)"
-
-            # Remove existing yazelix plugin and copy fresh version
-            if ($target | path exists) {
-                let chmod_result = (^chmod -R u+w $target | complete)
-                if ($chmod_result.exit_code != 0) and (($chmod_result.stderr | str trim) | is-not-empty) {
-                    print $"⚠ Failed to relax Yazi plugin permissions before cleanup: ($chmod_result.stderr | str trim)"
-                }
-                let remove_result = (^rm -rf $target | complete)
-                if $remove_result.exit_code != 0 {
-                    error make {msg: $"Failed to remove existing Yazelix Yazi plugin at ($target): ($remove_result.stderr | str trim)"}
-                }
-            }
-            let copy_result = (^cp -R $plugin_path $target | complete)
-            if $copy_result.exit_code != 0 {
-                error make {msg: $"Failed to copy Yazi plugin from ($plugin_path) to ($target): ($copy_result.stderr | str trim)"}
-            }
-            render_runtime_root_placeholders_in_directory $target
-            let chmod_result = (^chmod -R u+w $target | complete)
-            if $chmod_result.exit_code != 0 {
-                error make {msg: $"Failed to make generated Yazi plugin writable at ($target): ($chmod_result.stderr | str trim)"}
-            }
-        }
-
-        if not $quiet {
-            print "     ✅ Yazelix plugins copied (user plugins preserved)"
-        }
-    }
-}
-
-# Copy bundled flavors (themes) directory
-def copy_flavors_directory [source_dir: string, merged_dir: string, --quiet] {
-    let source_flavors = $"($source_dir)/flavors"
-    let merged_flavors = $"($merged_dir)/flavors"
-
-    if not $quiet {
-        print "   🎨 Copying flavor themes..."
-    }
-
-    # Ensure flavors directory exists
-    if not ($merged_flavors | path exists) {
-        mkdir $merged_flavors
-    }
-
-    # Copy yazelix bundled flavors (overwrites if they exist)
-    # This preserves user-installed flavors that yazelix doesn't provide
-    if ($source_flavors | path exists) {
-        let bundled_flavors = (ls $source_flavors | where type == dir | get name)
-
-        for flavor_path in $bundled_flavors {
-            let flavor_name = ($flavor_path | path basename)
-            let target = $"($merged_flavors)/($flavor_name)"
-
-            # Remove existing yazelix flavor and copy fresh version
-            if ($target | path exists) {
-                let chmod_result = (^chmod -R u+w $target | complete)
-                if ($chmod_result.exit_code != 0) and (($chmod_result.stderr | str trim) | is-not-empty) {
-                    print $"⚠ Failed to relax Yazi flavor permissions before cleanup: ($chmod_result.stderr | str trim)"
-                }
-                let remove_result = (^rm -rf $target | complete)
-                if $remove_result.exit_code != 0 {
-                    error make {msg: $"Failed to remove existing Yazelix Yazi flavor at ($target): ($remove_result.stderr | str trim)"}
-                }
-            }
-            let copy_result = (^cp -R $flavor_path $target | complete)
-            if $copy_result.exit_code != 0 {
-                error make {msg: $"Failed to copy Yazi flavor from ($flavor_path) to ($target): ($copy_result.stderr | str trim)"}
-            }
-            let chmod_result = (^chmod -R u+w $target | complete)
-            if $chmod_result.exit_code != 0 {
-                error make {msg: $"Failed to make generated Yazi flavor writable at ($target): ($chmod_result.stderr | str trim)"}
-            }
-        }
-
-        if not $quiet {
-            print $"     ✅ ($bundled_flavors | length) flavor themes copied \(user flavors preserved\)"
-        }
-    }
-}
-
-def sync_starship_yazi_config [source_dir: string, merged_dir: string, --quiet] {
-    let source_config = ($source_dir | path join "yazelix_starship.toml")
-    let target_config = ($merged_dir | path join "yazelix_starship.toml")
-
-    if not ($source_config | path exists) {
-        error make {msg: $"Missing bundled Yazi Starship config at: ($source_config)"}
-    }
-
-    if ($target_config | path exists) {
-        let chmod_result = (^chmod u+w $target_config | complete)
-        if ($chmod_result.exit_code != 0) and (($chmod_result.stderr | str trim) | is-not-empty) {
-            print $"⚠ Failed to relax Yazi Starship config permissions before refresh: ($chmod_result.stderr | str trim)"
-        }
-
-        let remove_result = (^rm -f $target_config | complete)
-        if $remove_result.exit_code != 0 {
-            error make {msg: $"Failed to remove existing bundled Yazi Starship config at ($target_config): ($remove_result.stderr | str trim)"}
-        }
-    }
-
-    let copy_result = (^cp $source_config $target_config | complete)
-    if $copy_result.exit_code != 0 {
-        error make {msg: $"Failed to copy bundled Yazi Starship config from ($source_config) to ($target_config): ($copy_result.stderr | str trim)"}
-    }
-
-    let chmod_result = (^chmod u+w $target_config | complete)
-    if $chmod_result.exit_code != 0 {
-        error make {msg: $"Failed to make generated Yazi Starship config writable at ($target_config): ($chmod_result.stderr | str trim)"}
-    }
-
-    if not $quiet {
-        print "     ✅ Bundled Yazi Starship config synced"
     }
 }
 
@@ -291,7 +32,7 @@ def generate_yazi_toml [source_dir: string, merged_dir: string, sort_by: string,
     let has_user_config = ($user_path | path exists)
     let merged_config = if $has_user_config {
         let user_config = open $user_path
-        deep_merge $base_config $user_config
+        merge_yazi_toml_config $base_config $user_config
     } else {
         $base_config
     }
@@ -431,37 +172,7 @@ def generate_keymap_toml [source_dir: string, merged_dir: string, --quiet] {
     let has_user_keymap = ($user_path | path exists)
     let final_keymap = if $has_user_keymap {
         let user_keymap = open $user_path
-
-        # Merge keymaps by concatenating arrays in each section
-        # Structure: { mgr: { append_keymap: [...], prepend_keymap: [...] }, ... }
-        let sections = ($base_keymap | columns)
-        $sections | reduce --fold $base_keymap {|section, acc|
-            if ($section in ($user_keymap | columns)) {
-                let base_section = ($acc | get -o $section)
-                let user_section = ($user_keymap | get -o $section)
-                let subsections = ($base_section | columns)
-
-                let merged_section = $subsections | reduce --fold $base_section {|sub, sec_acc|
-                    if ($sub in ($user_section | columns)) {
-                        let base_arr = ($sec_acc | get -o $sub)
-                        let user_arr = ($user_section | get -o $sub)
-                        $sec_acc | upsert $sub ($base_arr | append $user_arr)
-                    } else {
-                        $sec_acc
-                    }
-                }
-
-                # Also add any new subsections from user
-                let new_subsections = ($user_section | columns | where {|s| $s not-in $subsections})
-                let final_section = $new_subsections | reduce --fold $merged_section {|sub, sec_acc|
-                    $sec_acc | upsert $sub ($user_section | get -o $sub)
-                }
-
-                $acc | upsert $section $final_section
-            } else {
-                $acc
-            }
-        }
+        merge_yazi_keymap $base_keymap $user_keymap
     } else {
         $base_keymap
     }
@@ -643,14 +354,8 @@ export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
     # Generate keymap.toml with optional user keymap merging
     generate_keymap_toml $source_config_dir $merged_config_dir --quiet=$quiet
 
-    # Copy plugins directory
-    copy_plugins_directory $source_config_dir $merged_config_dir --quiet=$quiet
-
-    # Copy flavors (themes) directory
-    copy_flavors_directory $source_config_dir $merged_config_dir --quiet=$quiet
-
-    # Sync bundled Yazi Starship config used by the starship.yazi plugin
-    sync_starship_yazi_config $source_config_dir $merged_config_dir --quiet=$quiet
+    # Sync bundled Yazi runtime assets
+    sync_bundled_yazi_assets $source_config_dir $merged_config_dir --quiet=$quiet
 
     # Generate init.lua dynamically based on plugin configuration
     generate_init_lua $merged_config_dir $user_plugins --quiet=$quiet
