@@ -119,12 +119,12 @@ export def get_pack_default_path [default_config_path: string] {
     ($default_config_path | path dirname | path join $PACK_DEFAULT_FILENAME)
 }
 
-export def get_legacy_main_config_path [config_root?: string] {
+def get_legacy_main_config_path [config_root?: string] {
     let root = if $config_root == null { get_yazelix_config_dir } else { $config_root | path expand }
     ($root | path join $MAIN_CONFIG_FILENAME)
 }
 
-export def get_legacy_pack_sidecar_path [config_root?: string] {
+def get_legacy_pack_sidecar_path [config_root?: string] {
     let root = if $config_root == null { get_yazelix_config_dir } else { $config_root | path expand }
     ($root | path join $PACK_SIDECAR_FILENAME)
 }
@@ -264,7 +264,7 @@ export def get_primary_config_paths [config_root?: string, runtime_root?: string
     }
 }
 
-export def ensure_managed_taplo_support [config_root?: string, runtime_root?: string] {
+def ensure_managed_taplo_support [config_root?: string, runtime_root?: string] {
     let resolved_config_root = if $config_root == null { get_yazelix_config_dir } else { $config_root | path expand }
     let resolved_runtime_root = if $runtime_root == null { require_yazelix_runtime_dir } else { $runtime_root | path expand }
     let source_path = (get_runtime_taplo_support_path $resolved_runtime_root)
@@ -375,7 +375,7 @@ export def load_config_surface_from_main [config_file: string] {
     load_config_surface_pair $config_file $pack_config_file
 }
 
-export def resolve_active_config_paths [] {
+def resolve_active_config_paths [] {
     let paths = (reconcile_primary_config_surfaces)
 
     let config_file = if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) {
