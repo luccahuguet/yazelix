@@ -123,7 +123,7 @@ def compute_sidebar_layout_percentages [sidebar_width_percent: int]: nothing -> 
 # Parameters:
 #   source_layout: path to the template layout file
 #   target_layout: path to the output layout file
-export def generate_layout [
+def generate_layout [
     source_layout: string
     target_layout: string
     widget_tray: list<string>

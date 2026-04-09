@@ -88,7 +88,7 @@ def build_version_drift_result [tool: string, pinned: string, runtime: string] {
     }
 }
 
-export def get_version_drift_results [] {
+def get_version_drift_results [] {
     let nix_runtime = get_runtime_tool_version "nix"
 
     [
@@ -110,7 +110,7 @@ export def print_runtime_version_drift_warning [] {
 }
 
 # Check environment variables
-export def check_environment_variables [] {
+def check_environment_variables [] {
     mut results = []
     
     # Check EDITOR
@@ -139,7 +139,7 @@ export def check_environment_variables [] {
 }
 
 # Check configuration files
-export def check_configuration [--recover-interrupted-transactions] {
+def check_configuration [--recover-interrupted-transactions] {
     let config_dir = (get_yazelix_config_dir)
     let runtime_dir = (require_yazelix_runtime_dir)
     let yazelix_legacy = ($config_dir | path join "yazelix.nix")
@@ -244,7 +244,7 @@ export def check_configuration [--recover-interrupted-transactions] {
     $results
 }
 
-export def check_shared_runtime_preflight [] {
+def check_shared_runtime_preflight [] {
     let config_result = (try {
         {config: (parse_yazelix_config), error: null}
     } catch {|err|
@@ -287,7 +287,7 @@ def get_desktop_applications_dir [] {
 }
 
 # Check log files
-export def check_log_files [] {
+def check_log_files [] {
     let logs_dir = ((get_yazelix_runtime_dir) | path join "logs")
     let logs_path = ($logs_dir | path expand)
 
@@ -329,7 +329,7 @@ def is_devenv_installed [] {
 }
 
 # Check devenv availability inside the installed Yazelix runtime contract
-export def check_devenv_installation [] {
+def check_devenv_installation [] {
     if (is_devenv_installed) {
         let version = try { (get_preferred_devenv_version_line | str trim) } catch { "unknown" }
         let path = try { resolve_preferred_devenv_path } catch { "unknown" }
@@ -349,7 +349,7 @@ export def check_devenv_installation [] {
     }
 }
 
-export def check_zellij_plugin_health [] {
+def check_zellij_plugin_health [] {
     if ($env.ZELLIJ? | is-empty) {
         return [{
             status: "info"
@@ -388,7 +388,7 @@ export def check_zellij_plugin_health [] {
     build_zellij_plugin_health_results $plugin_state $sidebar_enabled
 }
 
-export def build_zellij_plugin_health_results [plugin_state: record, sidebar_enabled: bool] {
+def build_zellij_plugin_health_results [plugin_state: record, sidebar_enabled: bool] {
     mut results = []
 
     if not ($plugin_state.permissions_granted? | default false) {
@@ -455,7 +455,7 @@ export def build_zellij_plugin_health_results [plugin_state: record, sidebar_ena
 }
 
 # Clean large log files
-export def fix_large_logs [] {
+def fix_large_logs [] {
     let logs_dir = ((get_yazelix_runtime_dir) | path join "logs")
     let logs_path = ($logs_dir | path expand)
     
@@ -479,7 +479,7 @@ export def fix_large_logs [] {
 }
 
 # Create yazelix.toml from default
-export def fix_create_config [] {
+def fix_create_config [] {
     use ./config_surfaces.nu [copy_default_config_surfaces]
     let yazelix_config_dir = (get_yazelix_config_dir)
     let yazelix_runtime_dir = (get_yazelix_runtime_dir)

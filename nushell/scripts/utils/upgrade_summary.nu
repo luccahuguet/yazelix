@@ -134,7 +134,7 @@ def get_upgrade_summary_state_path [] {
     ($summary_dir | path join "last_seen_version.txt")
 }
 
-export def read_last_seen_upgrade_version [] {
+def read_last_seen_upgrade_version [] {
     let state_path = (get_upgrade_summary_state_path)
     if not ($state_path | path exists) {
         return null
@@ -148,13 +148,13 @@ export def read_last_seen_upgrade_version [] {
     }
 }
 
-export def write_last_seen_upgrade_version [version: string] {
+def write_last_seen_upgrade_version [version: string] {
     let state_path = (get_upgrade_summary_state_path)
     $version | save --force --raw $state_path
     $state_path
 }
 
-export def render_upgrade_summary [entry: record, matching_migrations: list<record> = []] {
+def render_upgrade_summary [entry: record, matching_migrations: list<record> = []] {
     let release_date = ($entry.date? | default "" | into string | str trim)
     let headline = ($entry.headline? | default "" | into string | str trim)
     let summary_items = (normalize_string_list ($entry.summary? | default []))
