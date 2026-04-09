@@ -78,11 +78,11 @@ export def get_manual_pack_config_path [] {
     get_pack_sidecar_path (get_main_user_config_path)
 }
 
-export def get_manual_taplo_support_path [] {
+def get_manual_taplo_support_path [] {
     get_managed_taplo_support_path
 }
 
-export def get_manual_generated_config_paths [] {
+def get_manual_generated_config_paths [] {
     [
         (get_yazelix_state_dir | path join "configs" "yazi")
         (get_yazelix_state_dir | path join "configs" "zellij")
