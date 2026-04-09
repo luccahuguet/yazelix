@@ -10,6 +10,18 @@ with lib;
 let
   cfg = config.programs.yazelix;
   runtimePackage = import ../yazelix_runtime_package.nix { inherit pkgs; };
+  mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
+  packCatalogContract = builtins.fromTOML (builtins.readFile ../config_metadata/pack_catalog_contract.toml);
+  mainContractFields = mainConfigContract.fields;
+  mainConfigSectionOrder = [
+    "core"
+    "helix"
+    "editor"
+    "shell"
+    "terminal"
+    "zellij"
+    "yazi"
+  ];
   runtimeNu = "${runtimePackage}/bin/nu";
   runtimeCurrentPath = "${config.xdg.dataHome}/yazelix/runtime/current";
   stateRoot = "${config.xdg.dataHome}/yazelix";
@@ -19,6 +31,7 @@ let
     pkgs.coreutils
     pkgs.zellij
   ];
+  packDeclarationsDefault = lib.mapAttrs (_: declaration: declaration.packages) packCatalogContract.declarations;
 
   boolToToml = value: if value then "true" else "false";
 
@@ -40,6 +53,117 @@ let
     in
     listToToml names;
 
+  attrOr =
+    attrs: name: fallback:
+    if builtins.hasAttr name attrs then builtins.getAttr name attrs else fallback;
+
+  getMainField = fieldPath: builtins.getAttr fieldPath mainContractFields;
+
+  mainFieldAllowsNull =
+    field:
+    (attrOr field "nullable" false)
+    || (attrOr field "home_manager_default_is_null" false)
+    || (attrOr field "home_manager_can_omit" false);
+
+  mainFieldDefault =
+    field:
+    if attrOr field "home_manager_default_is_null" false then null else field.default;
+
+  mainFieldType =
+    field:
+    let
+      validation = attrOr field "validation" "";
+      baseType =
+        if validation == "enum" then
+          types.enum field.allowed_values
+        else if validation == "enum_string_list" then
+          types.listOf (types.enum field.allowed_values)
+        else if validation == "int_range" then
+          types.ints.between field.min field.max
+        else if validation == "float_range" then
+          types.addCheck (types.either types.int types.float) (
+            value: value >= field.min && value <= field.max
+          )
+        else if field.kind == "bool" then
+          types.bool
+        else if field.kind == "string" then
+          types.str
+        else if field.kind == "string_list" then
+          types.listOf types.str
+        else if field.kind == "int" then
+          types.int
+        else if field.kind == "float" then
+          types.either types.int types.float
+        else
+          throw "Unsupported main config contract kind for Home Manager: ${field.kind}";
+    in
+    if mainFieldAllowsNull field then types.nullOr baseType else baseType;
+
+  mkMainContractOption =
+    fieldPath: extra:
+    let
+      field = getMainField fieldPath;
+    in
+    mkOption (
+      {
+        type = mainFieldType field;
+        default = mainFieldDefault field;
+      }
+      // extra
+    );
+
+  mainConfigFieldPaths = lib.sort builtins.lessThan (builtins.attrNames mainContractFields);
+
+  fieldSection = fieldPath: builtins.head (lib.splitString "." fieldPath);
+
+  fieldTomlKey = fieldPath: builtins.elemAt (lib.splitString "." fieldPath) 1;
+
+  mainFieldsForSection =
+    section:
+    builtins.filter (fieldPath: fieldSection fieldPath == section) mainConfigFieldPaths;
+
+  configValueForField =
+    fieldPath:
+    let
+      field = getMainField fieldPath;
+    in
+    builtins.getAttr field.home_manager_option cfg;
+
+  renderTomlValue =
+    value:
+    if builtins.isBool value then
+      boolToToml value
+    else if builtins.isInt value || builtins.isFloat value then
+      toString value
+    else if builtins.isList value then
+      listToToml value
+    else
+      escapeString value;
+
+  renderMainConfigField =
+    fieldPath:
+    let
+      field = getMainField fieldPath;
+      value = configValueForField fieldPath;
+      tomlKey = fieldTomlKey fieldPath;
+    in
+    if value == null then
+      if attrOr field "home_manager_can_omit" false then
+        null
+      else if (attrOr field "parser_behavior" "") == "empty_string_to_null" then
+        "${tomlKey} = ${escapeString ""}"
+      else
+        throw "Null Home Manager value is not renderable for ${fieldPath}"
+    else
+      "${tomlKey} = ${renderTomlValue value}";
+
+  renderMainConfigSection =
+    section:
+    let
+      lines = lib.filter (line: line != null) (map renderMainConfigField (mainFieldsForSection section));
+    in
+    if lines == [ ] then [ ] else [ "" "[${section}]" ] ++ lines;
+
   packDeclarationsToToml =
     declarations:
     let
@@ -53,47 +177,31 @@ in
     enable = mkEnableOption "Yazelix terminal environment";
 
     # Configuration options (mirrors yazelix_default.toml structure)
-    recommended_deps = mkOption {
-      type = types.bool;
-      default = true;
+    recommended_deps = mkMainContractOption "core.recommended_deps" {
       description = "Install recommended productivity tools (~350MB)";
     };
 
-    yazi_extensions = mkOption {
-      type = types.bool;
-      default = true;
+    yazi_extensions = mkMainContractOption "core.yazi_extensions" {
       description = "Install Yazi file preview extensions (~125MB)";
     };
 
-    yazi_media = mkOption {
-      type = types.bool;
-      default = false;
+    yazi_media = mkMainContractOption "core.yazi_media" {
       description = "Install Yazi media processing tools (~1GB)";
     };
 
-    build_cores = mkOption {
-      type = types.str;
-      default = "2";
+    build_cores = mkMainContractOption "core.build_cores" {
       description = ''
         CPU cores per Nix build: "max", "max_minus_one", "half", "quarter", or a custom number like "2"
       '';
     };
 
-    max_jobs = mkOption {
-      type = types.str;
-      default = "half";
+    max_jobs = mkMainContractOption "core.max_jobs" {
       description = ''
         Concurrent Nix build jobs: "auto", "max", "max_minus_one", "half", "quarter", or a custom number like "8"
       '';
     };
 
-    refresh_output = mkOption {
-      type = types.enum [
-        "quiet"
-        "normal"
-        "full"
-      ];
-      default = "normal";
+    refresh_output = mkMainContractOption "core.refresh_output" {
       description = ''
         Refresh output level for launch/restart/refresh flows.
         - "quiet": suppress routine rebuild output
@@ -102,63 +210,27 @@ in
       '';
     };
 
-    helix_mode = mkOption {
-      type = types.enum [
-        "release"
-        "source"
-      ];
-      default = "release";
+    helix_mode = mkMainContractOption "helix.mode" {
       description = "Helix build mode: release (nixpkgs) or source (flake)";
     };
 
-    default_shell = mkOption {
-      type = types.enum [
-        "nu"
-        "bash"
-        "fish"
-        "zsh"
-      ];
-      default = "nu";
+    default_shell = mkMainContractOption "shell.default_shell" {
       description = "Default shell for Zellij sessions";
     };
 
-    extra_shells = mkOption {
-      type = types.listOf (
-        types.enum [
-          "fish"
-          "zsh"
-        ]
-      );
-      default = [ ];
+    extra_shells = mkMainContractOption "shell.extra_shells" {
       description = "Additional shells to install beyond nu/bash";
     };
 
-    terminals = mkOption {
-      type = types.listOf (
-        types.enum [
-          "wezterm"
-          "ghostty"
-          "kitty"
-          "alacritty"
-          "foot"
-        ]
-      );
-      default = [ "ghostty" ];
+    terminals = mkMainContractOption "terminal.terminals" {
       description = "Ordered terminal emulator list (first is primary, rest are fallbacks)";
     };
 
-    manage_terminals = mkOption {
-      type = types.bool;
-      default = true;
+    manage_terminals = mkMainContractOption "terminal.manage_terminals" {
       description = "Manage terminal emulators via Nix (disable to use system-installed terminals only)";
     };
 
-    terminal_config_mode = mkOption {
-      type = types.enum [
-        "yazelix"
-        "user"
-      ];
-      default = "yazelix";
+    terminal_config_mode = mkMainContractOption "terminal.config_mode" {
       description = ''
         How Yazelix selects terminal configs:
         - "yazelix": use Yazelix-managed configs in ~/.local/share/yazelix (default)
@@ -166,25 +238,7 @@ in
       '';
     };
 
-    ghostty_trail_color = mkOption {
-      type = types.enum [
-        "none"
-        "blaze"
-        "snow"
-        "cosmic"
-        "ocean"
-        "forest"
-        "sunset"
-        "neon"
-        "party"
-        "eclipse"
-        "dusk"
-        "orchid"
-        "reef"
-        "inferno"
-        "random"
-      ];
-      default = "random";
+    ghostty_trail_color = mkMainContractOption "terminal.ghostty_trail_color" {
       description = ''
         Ghostty cursor color palette and Kitty cursor-trail fallback preset.
         Disable the palette and fallback trail: "none"
@@ -194,14 +248,7 @@ in
       '';
     };
 
-    ghostty_trail_effect = mkOption {
-      type = types.nullOr (types.enum [
-        "tail"
-        "warp"
-        "sweep"
-        "random"
-      ]);
-      default = "random";
+    ghostty_trail_effect = mkMainContractOption "terminal.ghostty_trail_effect" {
       description = ''
         Ghostty trail effect for cursor movement.
         Set to null to disable extra tail effects.
@@ -209,15 +256,7 @@ in
       '';
     };
 
-    ghostty_mode_effect = mkOption {
-      type = types.nullOr (types.enum [
-        "ripple"
-        "sonic_boom"
-        "rectangle_boom"
-        "ripple_rectangle"
-        "random"
-      ]);
-      default = "random";
+    ghostty_mode_effect = mkMainContractOption "terminal.ghostty_mode_effect" {
       description = ''
         Ghostty mode-change effect, triggered when the editor changes cursor mode
         such as Neovim switching between normal and insert.
@@ -226,14 +265,7 @@ in
       '';
     };
 
-    ghostty_trail_glow = mkOption {
-      type = types.enum [
-        "none"
-        "low"
-        "medium"
-        "high"
-      ];
-      default = "medium";
+    ghostty_trail_glow = mkMainContractOption "terminal.ghostty_trail_glow" {
       description = ''
         Glow level around Ghostty cursor trails and related cursor effects.
 
@@ -244,17 +276,7 @@ in
       '';
     };
 
-    transparency = mkOption {
-      type = types.enum [
-        "none"
-        "very_low"
-        "low"
-        "medium"
-        "high"
-        "very_high"
-        "super_high"
-      ];
-      default = "medium";
+    transparency = mkMainContractOption "terminal.transparency" {
       description = ''
         Terminal transparency level for all terminals.
 
@@ -269,9 +291,7 @@ in
     };
 
     # Editor configuration
-    editor_command = mkOption {
-      type = types.nullOr types.str;
-      default = null;
+    editor_command = mkMainContractOption "editor.command" {
       description = ''
         Editor command - yazelix will always set this as EDITOR.
 
@@ -282,9 +302,7 @@ in
       '';
     };
 
-    helix_runtime_path = mkOption {
-      type = types.nullOr types.str;
-      default = null;
+    helix_runtime_path = mkMainContractOption "helix.runtime_path" {
       description = ''
         Custom Helix runtime path - only set this if editor_command points to a custom Helix build.
 
@@ -293,45 +311,31 @@ in
       '';
     };
 
-    enable_sidebar = mkOption {
-      type = types.bool;
-      default = true;
+    enable_sidebar = mkMainContractOption "editor.enable_sidebar" {
       description = "Enable or disable the Yazi sidebar";
     };
 
-    sidebar_width_percent = mkOption {
-      type = types.ints.between 10 40;
-      default = 20;
+    sidebar_width_percent = mkMainContractOption "editor.sidebar_width_percent" {
       description = "Width of the open Yazi sidebar as a percentage of the tab.";
     };
 
-    disable_zellij_tips = mkOption {
-      type = types.bool;
-      default = true;
+    disable_zellij_tips = mkMainContractOption "zellij.disable_tips" {
       description = "Disable Zellij tips popup on startup for cleaner launches";
     };
 
-    zellij_pane_frames = mkOption {
-      type = types.bool;
-      default = true;
+    zellij_pane_frames = mkMainContractOption "zellij.pane_frames" {
       description = "Show Zellij pane frames";
     };
 
-    zellij_rounded_corners = mkOption {
-      type = types.bool;
-      default = true;
+    zellij_rounded_corners = mkMainContractOption "zellij.rounded_corners" {
       description = "Enable rounded corners for Zellij pane frames";
     };
 
-    support_kitty_keyboard_protocol = mkOption {
-      type = types.bool;
-      default = false;
+    support_kitty_keyboard_protocol = mkMainContractOption "zellij.support_kitty_keyboard_protocol" {
       description = "Enable Kitty keyboard protocol in Zellij (disable if dead keys stop working)";
     };
 
-    zellij_theme = mkOption {
-      type = types.str;
-      default = "default";
+    zellij_theme = mkMainContractOption "zellij.theme" {
       description = ''
         Zellij color theme (37 built-in themes available).
 
@@ -346,69 +350,42 @@ in
       '';
     };
 
-    zellij_widget_tray = mkOption {
-      type = types.listOf types.str;
-      default = [
-        "editor"
-        "shell"
-        "term"
-        "cpu"
-        "ram"
-      ];
+    zellij_widget_tray = mkMainContractOption "zellij.widget_tray" {
       description = "Zjstatus widget tray order (editor/shell/term/cpu/ram)";
     };
 
-    zellij_custom_text = mkOption {
-      type = types.str;
-      default = "";
+    zellij_custom_text = mkMainContractOption "zellij.custom_text" {
       description = "Optional short zjstatus badge shown before YAZELIX. Trimmed and capped at 8 characters.";
     };
 
-    popup_program = mkOption {
-      type = types.listOf types.str;
-      default = [ "lazygit" ];
+    popup_program = mkMainContractOption "zellij.popup_program" {
       description = ''
         Default transient popup command for `yzx popup` and the default popup keybinding.
         Use an argv-style list, eg. [ "lazygit" ] or [ "claude-code" "--continue" ].
       '';
     };
 
-    popup_width_percent = mkOption {
-      type = types.ints.between 1 100;
-      default = 90;
+    popup_width_percent = mkMainContractOption "zellij.popup_width_percent" {
       description = "Width of the managed popup as a percentage of the current tab.";
     };
 
-    popup_height_percent = mkOption {
-      type = types.ints.between 1 100;
-      default = 90;
+    popup_height_percent = mkMainContractOption "zellij.popup_height_percent" {
       description = "Height of the managed popup as a percentage of the current tab.";
     };
 
-    yazi_plugins = mkOption {
-      type = types.listOf types.str;
-      default = [
-        "git"
-        "starship"
-      ];
+    yazi_plugins = mkMainContractOption "yazi.plugins" {
       description = "Yazi plugins to load (core plugins auto_layout and sidebar_status are always loaded)";
     };
 
-    yazi_command = mkOption {
-      type = types.nullOr types.str;
-      default = null;
+    yazi_command = mkMainContractOption "yazi.command" {
       description = "Custom Yazi binary for Yazelix-managed Yazi launches. Null uses `yazi` from PATH.";
     };
 
-    yazi_ya_command = mkOption {
-      type = types.nullOr types.str;
-      default = null;
+    yazi_ya_command = mkMainContractOption "yazi.ya_command" {
       description = "Custom `ya` CLI for Yazelix-managed reveal and sidebar-sync actions. Null uses `ya` from PATH.";
     };
 
-    yazi_theme = mkOption {
-      type = types.str;
-      default = "default";
+    yazi_theme = mkMainContractOption "yazi.theme" {
       description = ''
         Yazi color theme (flavor). 25 built-in flavors available (19 dark + 5 light + default).
         Use "default" to keep Yazi's upstream built-in theme.
@@ -417,40 +394,19 @@ in
       '';
     };
 
-    yazi_sort_by = mkOption {
-      type = types.enum [
-        "alphabetical"
-        "natural"
-        "modified"
-        "created"
-        "size"
-      ];
-      default = "alphabetical";
+    yazi_sort_by = mkMainContractOption "yazi.sort_by" {
       description = "Default file sorting method";
     };
 
-    debug_mode = mkOption {
-      type = types.bool;
-      default = false;
+    debug_mode = mkMainContractOption "core.debug_mode" {
       description = "Enable verbose debug logging";
     };
 
-    skip_welcome_screen = mkOption {
-      type = types.bool;
-      default = false;
+    skip_welcome_screen = mkMainContractOption "core.skip_welcome_screen" {
       description = "Skip the welcome screen on startup";
     };
 
-    welcome_style = mkOption {
-      type = types.enum [
-        "static"
-        "logo"
-        "boids"
-        "game_of_life"
-        "mandelbrot"
-        "random"
-      ];
-      default = "random";
+    welcome_style = mkMainContractOption "core.welcome_style" {
       description = ''
         Welcome screen style.
         - "static": show the resting Yazelix logo frame only
@@ -462,9 +418,7 @@ in
       '';
     };
 
-    welcome_duration_seconds = mkOption {
-      type = types.addCheck (types.either types.int types.float) (value: value >= 0.2 && value <= 8.0);
-      default = 2.0;
+    welcome_duration_seconds = mkMainContractOption "core.welcome_duration_seconds" {
       description = ''
         Welcome animation duration in seconds for animated styles.
         The logo style keeps its fixed timing and ignores this value.
@@ -472,30 +426,19 @@ in
       '';
     };
 
-    show_macchina_on_welcome = mkOption {
-      type = types.bool;
-      default = true;
+    show_macchina_on_welcome = mkMainContractOption "core.show_macchina_on_welcome" {
       description = "Show macchina system info on welcome screen";
     };
 
-    persistent_sessions = mkOption {
-      type = types.bool;
-      default = false;
+    persistent_sessions = mkMainContractOption "zellij.persistent_sessions" {
       description = "Enable persistent Zellij sessions";
     };
 
-    session_name = mkOption {
-      type = types.str;
-      default = "yazelix";
+    session_name = mkMainContractOption "zellij.session_name" {
       description = "Session name for persistent sessions";
     };
 
-    zellij_default_mode = mkOption {
-      type = types.enum [
-        "normal"
-        "locked"
-      ];
-      default = "normal";
+    zellij_default_mode = mkMainContractOption "zellij.default_mode" {
       description = ''
         Startup mode for new Zellij sessions.
         - "normal": Yazelix default, starts unlocked
@@ -505,132 +448,19 @@ in
 
     pack_names = mkOption {
       type = types.listOf types.str;
-      default = [ ];
+      default = packCatalogContract.surface.enabled.default;
       description = "Packs to enable (must match pack_declarations keys)";
     };
 
     pack_declarations = mkOption {
       type = types.attrsOf (types.listOf types.str);
-      default = {
-        # AI coding agents (from llm-agents.nix)
-        ai_agents = [
-          "claude-code"
-          "codex"
-          "justcode"
-          "gemini-cli"
-          "pi"
-          "opencode"
-          "amp"
-          "cursor-agent"
-          "goose-cli"
-          "tru"
-        ];
-        # AI support tools (from llm-agents.nix)
-        ai_tools = [
-          "coderabbit-cli"
-          "ccusage"
-          "ccusage-amp"
-          "ccusage-codex"
-          "ccusage-opencode"
-          "beads"
-          "beads-rust"
-          "beads-viewer"
-          "openclaw"
-          "picoclaw"
-          "zeroclaw"
-        ];
-        # unfree = []; # For unfree nixpkgs packages
-        config = [
-          "mpls"
-          "yaml-language-server"
-        ];
-        file-management = [
-          "ouch"
-          "erdtree"
-          "serpl"
-        ];
-        git = [
-          "onefetch"
-          "gh"
-          "prek"
-        ];
-        jj = [
-          "jujutsu"
-          "lazyjj"
-          "jjui"
-        ];
-        maintainer = [
-          "gh"
-          "prek"
-          "tru"
-          "beads-rust"
-          "beads-viewer"
-          "nu-lint"
-          "rust_wasi_toolchain"
-        ];
-        misc = [
-          "tokei"
-        ];
-        python = [
-          "ruff"
-          "uv"
-          "ty"
-          "python3Packages.ipython"
-        ];
-        rust = [
-          "rust_toolchain"
-          "cargo-edit"
-          "cargo-watch"
-          "cargo-nextest"
-          "cargo-audit"
-        ];
-        rust_maintainer = [
-          "cargo-update"
-          "cargo-binstall"
-        ];
-        rust_wasi = [
-          "rust_wasi_toolchain"
-        ];
-        nix = [
-          "nil"
-          "nixd"
-          "nixfmt"
-        ];
-        ts = [
-          "typescript-language-server"
-          "tailwindcss-language-server"
-          "biome"
-          "oxlint"
-        ];
-        modern_js = [
-          "bun"
-          "deno"
-        ];
-        go = [
-          "gopls"
-          "golangci-lint"
-          "delve"
-          "govulncheck"
-        ];
-        kotlin = [
-          "kotlin-language-server"
-          "ktlint"
-          "detekt"
-          "gradle"
-        ];
-        writing = [
-          "typst"
-          "tinymist"
-          "pandoc"
-          "markdown-oxide"
-        ];
-      };
+      default = packDeclarationsDefault;
       description = "Pack declarations mapping names to nixpkgs package strings (supports dotted paths)";
     };
 
     user_packages = mkOption {
       type = types.listOf types.package;
-      default = [ ];
+      default = packCatalogContract.surface.user_packages.default;
       description = "Additional packages to install in Yazelix environment";
     };
   };
@@ -677,93 +507,12 @@ in
     # Generate yazelix.toml configuration file
     xdg.configFile."yazelix/user_configs/yazelix.toml" = {
       text =
-        let
-          editorCommand = if cfg.editor_command != null then cfg.editor_command else "";
-          yaziCommand = if cfg.yazi_command != null then cfg.yazi_command else "";
-          yaziYaCommand = if cfg.yazi_ya_command != null then cfg.yazi_ya_command else "";
-          ghosttyTrailEffectLine =
-            if cfg.ghostty_trail_effect != null then
-              [ "ghostty_trail_effect = ${escapeString cfg.ghostty_trail_effect}" ]
-            else
-              [ ];
-          ghosttyModeEffectLine =
-            if cfg.ghostty_mode_effect != null then
-              [ "ghostty_mode_effect = ${escapeString cfg.ghostty_mode_effect}" ]
-            else
-              [ ];
-          helixRuntimeLine =
-            if cfg.helix_runtime_path != null then
-              [ "runtime_path = ${escapeString cfg.helix_runtime_path}" ]
-            else
-              [ ];
-        in
         lib.concatStringsSep "\n" (
           [
             "# Generated by the Yazelix Home Manager module."
             "# Edit your Home Manager configuration instead of this file."
-            ""
-            "[core]"
-            "recommended_deps = ${boolToToml cfg.recommended_deps}"
-            "yazi_extensions = ${boolToToml cfg.yazi_extensions}"
-            "yazi_media = ${boolToToml cfg.yazi_media}"
-            "debug_mode = ${boolToToml cfg.debug_mode}"
-            "skip_welcome_screen = ${boolToToml cfg.skip_welcome_screen}"
-            "show_macchina_on_welcome = ${boolToToml cfg.show_macchina_on_welcome}"
-            "welcome_style = ${escapeString cfg.welcome_style}"
-            "welcome_duration_seconds = ${toString cfg.welcome_duration_seconds}"
-            "refresh_output = ${escapeString cfg.refresh_output}"
-            "max_jobs = ${escapeString cfg.max_jobs}"
-            "build_cores = ${escapeString cfg.build_cores}"
-            ""
-            "[helix]"
-            "mode = ${escapeString cfg.helix_mode}"
           ]
-          ++ helixRuntimeLine
-          ++ [
-            ""
-            "[editor]"
-            "command = ${escapeString editorCommand}"
-            "enable_sidebar = ${boolToToml cfg.enable_sidebar}"
-            "sidebar_width_percent = ${toString cfg.sidebar_width_percent}"
-            ""
-            "[shell]"
-            "default_shell = ${escapeString cfg.default_shell}"
-            "extra_shells = ${listToToml cfg.extra_shells}"
-            ""
-            "[terminal]"
-            "terminals = ${listToToml cfg.terminals}"
-            "manage_terminals = ${boolToToml cfg.manage_terminals}"
-            "config_mode = ${escapeString cfg.terminal_config_mode}"
-            "ghostty_trail_color = ${escapeString cfg.ghostty_trail_color}"
-          ]
-          ++ ghosttyTrailEffectLine
-          ++ ghosttyModeEffectLine
-          ++ [
-            "ghostty_trail_glow = ${escapeString cfg.ghostty_trail_glow}"
-            "transparency = ${escapeString cfg.transparency}"
-            ""
-            "[zellij]"
-            "disable_tips = ${boolToToml cfg.disable_zellij_tips}"
-            "pane_frames = ${boolToToml cfg.zellij_pane_frames}"
-            "rounded_corners = ${boolToToml cfg.zellij_rounded_corners}"
-            "support_kitty_keyboard_protocol = ${boolToToml cfg.support_kitty_keyboard_protocol}"
-            "theme = ${escapeString cfg.zellij_theme}"
-            "widget_tray = ${listToToml cfg.zellij_widget_tray}"
-            "custom_text = ${escapeString cfg.zellij_custom_text}"
-            "popup_program = ${listToToml cfg.popup_program}"
-            "popup_width_percent = ${toString cfg.popup_width_percent}"
-            "popup_height_percent = ${toString cfg.popup_height_percent}"
-            "persistent_sessions = ${boolToToml cfg.persistent_sessions}"
-            "session_name = ${escapeString cfg.session_name}"
-            "default_mode = ${escapeString cfg.zellij_default_mode}"
-            ""
-            "[yazi]"
-            "command = ${escapeString yaziCommand}"
-            "ya_command = ${escapeString yaziYaCommand}"
-            "plugins = ${listToToml cfg.yazi_plugins}"
-            "theme = ${escapeString cfg.yazi_theme}"
-            "sort_by = ${escapeString cfg.yazi_sort_by}"
-          ]
+          ++ lib.concatLists (map renderMainConfigSection mainConfigSectionOrder)
           ++ [
             ""
             "# Pack configuration lives in user_configs/yazelix_packs.toml."
