@@ -1,10 +1,9 @@
 #!/usr/bin/env nu
 # Shared config diagnostics for startup, refresh, and doctor.
 
-use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 use config_migrations.nu [apply_config_migration_plan build_config_migration_plan_from_record]
 use config_schema.nu [apply_main_contract_to_reference_config compare_configs validate_enum_values]
-use config_surfaces.nu [get_pack_sidecar_path load_config_surface_from_main get_main_user_config_path]
+use config_surfaces.nu [get_pack_sidecar_path load_config_surface_from_main]
 use failure_classes.nu [format_failure_classification]
 
 def format_release_context [result: record] {
@@ -191,23 +190,6 @@ export def build_config_diagnostic_report [
             --include-missing=$include_missing
         | upsert config_path $config_surface.display_config_path
     )
-}
-
-export def build_active_config_diagnostic_report [--include-missing] {
-    let config_dir = (get_yazelix_config_dir)
-    let runtime_dir = (get_yazelix_runtime_dir)
-    let config_path = (get_main_user_config_path $config_dir)
-    let default_path = ($runtime_dir | path join "yazelix_default.toml")
-
-    if not ($default_path | path exists) {
-        error make {msg: $"yazelix_default.toml not found at ($default_path)"}
-    }
-
-    if not ($config_path | path exists) {
-        return null
-    }
-
-    build_config_diagnostic_report $config_path $default_path --include-missing=$include_missing
 }
 
 export def render_startup_config_error [report: record] {

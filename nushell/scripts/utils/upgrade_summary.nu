@@ -275,10 +275,6 @@ export def build_upgrade_summary_report [version: string = $YAZELIX_VERSION] {
     }
 }
 
-export def build_current_upgrade_summary_report [] {
-    build_upgrade_summary_report $YAZELIX_VERSION
-}
-
 export def maybe_show_first_run_upgrade_summary [] {
     let report = (build_upgrade_summary_report $YAZELIX_VERSION)
 

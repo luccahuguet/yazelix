@@ -22,25 +22,6 @@ export def load_pack_catalog_contract [] {
     open (get_pack_catalog_contract_path)
 }
 
-export def get_main_config_field_paths [] {
-    (load_main_config_contract).fields | columns
-}
-
-export def get_main_config_field_contract [field_path: string] {
-    let contract = (load_main_config_contract)
-    let field = (
-        $contract.fields
-        | transpose key value
-        | where key == $field_path
-        | get -o value.0
-        | default null
-    )
-    if $field == null {
-        error make {msg: $"Unknown main config contract field: ($field_path)"}
-    }
-    $field
-}
-
 export def get_main_config_rebuild_required_paths [] {
     let contract = (load_main_config_contract)
     mut rebuild_paths = []
@@ -61,26 +42,4 @@ export def get_main_config_rebuild_required_paths [] {
 
     let extra_paths = ($contract.rebuild?.extra_paths? | default [])
     [$rebuild_paths, $extra_paths] | flatten
-}
-
-export def get_pack_catalog_pack_names [] {
-    (load_pack_catalog_contract).declarations | columns
-}
-
-export def get_pack_catalog_declarations [] {
-    let contract = (load_pack_catalog_contract)
-
-    $contract.declarations
-    | transpose pack_name declaration
-    | reduce --fold {} { |row, acc|
-        $acc | upsert $row.pack_name $row.declaration.packages
-    }
-}
-
-export def get_pack_catalog_enabled_default [] {
-    (load_pack_catalog_contract).surface.enabled.default
-}
-
-export def get_pack_catalog_user_packages_default [] {
-    (load_pack_catalog_contract).surface.user_packages.default
 }
