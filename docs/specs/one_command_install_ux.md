@@ -10,6 +10,8 @@ nix run github:luccahuguet/yazelix#install
 
 This command should become the canonical front door for new users once implemented.
 
+This spec documents the installer-first phase-1 front door. For the later package-runtime-first target after installer-owned runtime management is demoted, see [Package-Runtime-First User And Maintainer UX](./package_runtime_first_user_and_maintainer_ux.md).
+
 ## Why
 
 The old install story was honest but too maintainer-shaped:

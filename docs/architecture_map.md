@@ -14,6 +14,8 @@ The two supporting subsystems are:
 
 The important architectural rule is that each subsystem should have a clear owner and a clear source of truth. Modularity in Yazelix does not mean adding abstraction for its own sake. It means removing hidden ownership, stale path assumptions, and accidental cross-layer state.
 
+See [Subsystem Code Inventory](./subsystem_code_inventory.md) for the current maintainer-facing LOC snapshot by subsystem family.
+
 ## Subsystems
 
 | Subsystem | Purpose | Examples | Main source of truth |
@@ -123,13 +125,15 @@ See [Runtime Activation State Contract](./specs/runtime_activation_state_contrac
 See [Backend Capability Contract](./specs/backend_capability_contract.md) for the concrete capability buckets Yazelix expects from its runtime/environment layer before any alternative backend evaluation.
 See [Runtime Dependency And Launch Preflight Contract](./specs/runtime_dependency_preflight_contract.md) for the narrower user-facing dependency story that separates fast launch blockers from heavier doctor and install-smoke diagnostics.
 See [Runtime Distribution Capability Tiers](./specs/runtime_distribution_capability_tiers.md) for the user-facing install/update/doctor tier split between installer-managed, Home Manager-managed, packaged, and runtime-root-only modes.
+See [Runtime Ownership Reduction Matrix](./specs/runtime_ownership_reduction_matrix.md) for the explicit distinction between deleting installer/distribution ownership and deleting backend/environment ownership.
+See [Package-Runtime-First User And Maintainer UX](./specs/package_runtime_first_user_and_maintainer_ux.md) for the concrete target user and maintainer flow once the product stops centering the installer-managed runtime model.
 See [yzx Command Surface Backend Coupling](./specs/yzx_command_surface_backend_coupling.md) for the command-family audit that separates backend-required control-plane commands from workspace/config UX, runtime/distribution surfaces, and mixed seams.
 See [Backend-Free Workspace Slice](./specs/backend_free_workspace_slice.md) for the concrete proof slice that already works in runtime-root-only mode with host-provided tools.
 See [Cross-Language Runtime Ownership](./specs/cross_language_runtime_ownership.md) for the current language/runtime ownership map across Nushell, Rust plugins, Lua Yazi code, POSIX shell, and Zellij transport.
 See [Yazelix Core Boundary](./specs/yazelix_core_boundary.md) for the current recommendation on whether a separate Core edition should exist and what it would keep or drop if revisited later.
 See [v14 Boundary-Hardening Gate](./specs/v14_boundary_hardening_gate.md) for the explicit technical gate that defines when a `v14` major bump is actually earned.
 See [Managed Config Migration Transaction Contract](./specs/managed_config_migration_transaction_contract.md) for the staged write and rollback model that keeps Yazelix-owned config migrations from landing in a half-applied state.
-See [One-Command Install UX](./specs/one_command_install_ux.md) for the planned first-class install front door and why it should be a thin `nix run` installer surface instead of a hosted shell script.
+See [One-Command Install UX](./specs/one_command_install_ux.md) for the installer-first phase-1 front door and why it was a thin `nix run` installer surface instead of a hosted shell script.
 See [Flake Interface Contract](./specs/flake_interface_contract.md) for the exact phase-1 flake outputs and the stable installed-runtime layout they should target.
 See [Nixpkgs Package Contract](./specs/nixpkgs_package_contract.md) for the simpler store-backed package shape Yazelix should target before preparing the upstream nixpkgs submission.
 See [Helix Managed Config Contract](./specs/helix_managed_config_contract.md) for the phase-1 boundary that makes Helix reveal integration self-contained without taking ownership of the user's full Helix config tree.
