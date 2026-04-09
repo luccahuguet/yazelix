@@ -7,26 +7,31 @@ use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [get_yazelix_user_config_dir resolve_zellij_default_shell]
 use ../utils/layout_generator.nu [render_custom_text_segment render_widget_tray_segment]
 use ../utils/startup_profile.nu [profile_startup_step]
+use ./zellij_generation_state.nu [
+    build_zellij_generation_fingerprint
+    can_reuse_generated_zellij_state
+    record_generation_fingerprint
+    resolve_zellij_plugin_artifacts
+]
 use ./zellij_owned_settings.nu [
     build_yazelix_ui_block
     render_yazelix_top_level_settings_block
     resolve_yazelix_owned_zellij_settings
     strip_yazelix_owned_top_level_settings
 ]
+use ./zellij_semantic_blocks.nu [
+    build_merged_keybinds_block
+    build_yazelix_load_plugins_block
+    build_yazelix_plugins_block
+    extract_semantic_config_blocks
+    read_yazelix_override_keybinds
+]
 use ./zellij_plugin_paths.nu [
     PANE_ORCHESTRATOR_PLUGIN_ALIAS
-    get_runtime_pane_orchestrator_wasm_path
-    get_runtime_popup_runner_wasm_path
-    get_runtime_zjstatus_wasm_path
-    get_tracked_pane_orchestrator_wasm_path
-    get_tracked_popup_runner_wasm_path
-    get_tracked_zjstatus_wasm_path
     sync_pane_orchestrator_runtime_wasm
     sync_popup_runner_runtime_wasm
     sync_zjstatus_runtime_wasm
 ]
-
-const zellij_generation_metadata_name = ".yazelix_generation.json"
 
 # Fetch Zellij default configuration
 def get_zellij_defaults [] {
@@ -53,59 +58,6 @@ def read_text_if_exists [path_value: string] {
     }
 
     open --raw $path_value
-}
-
-def hash_text [value: string] {
-    $value | hash sha256
-}
-
-def hash_file [path_value: string] {
-    open --raw $path_value | hash sha256
-}
-
-def get_zellij_generation_metadata_path [merged_config_dir: string] {
-    $merged_config_dir | path join $zellij_generation_metadata_name
-}
-
-def list_source_layout_files [source_layouts_dir: string] {
-    let source_root = ($source_layouts_dir | path expand)
-    if not ($source_root | path exists) {
-        return []
-    }
-    let fragment_dir = ($source_root | path join "fragments")
-    let top_level_files = (
-        ls $source_root
-        | where type == file
-        | get name
-        | where {|path_value| (($path_value | path parse | get extension | default "") == "kdl") }
-    )
-    let fragment_files = if ($fragment_dir | path exists) {
-        ls $fragment_dir
-        | where type == file
-        | get name
-        | where {|path_value| (($path_value | path parse | get extension | default "") == "kdl") }
-    } else {
-        []
-    }
-
-    ($top_level_files | append $fragment_files) | sort
-}
-
-def list_expected_layout_targets [source_layouts_dir: string, merged_config_dir: string] {
-    if not (($source_layouts_dir | path expand) | path exists) {
-        return []
-    }
-
-    let layout_names = (
-        ls ($source_layouts_dir | path expand)
-        | where type == file
-        | get name
-        | where {|path_value| (($path_value | path parse | get extension | default "") == "kdl") }
-        | each {|path_value| $path_value | path basename }
-        | sort
-    )
-
-    $layout_names | each {|layout_name| ($merged_config_dir | path join "layouts" $layout_name | path expand) }
 }
 
 def resolve_base_config_source [] {
@@ -147,348 +99,12 @@ def describe_base_config_source [resolved: record] {
     }
 }
 
-def resolve_zellij_plugin_artifacts [yazelix_dir: string] {
-    let tracked_paths = [
-        {
-            name: "pane_orchestrator"
-            tracked_path: (get_tracked_pane_orchestrator_wasm_path $yazelix_dir)
-            runtime_path: (get_runtime_pane_orchestrator_wasm_path)
-            missing_label: "Tracked pane orchestrator wasm"
-        }
-        {
-            name: "popup_runner"
-            tracked_path: (get_tracked_popup_runner_wasm_path $yazelix_dir)
-            runtime_path: (get_runtime_popup_runner_wasm_path)
-            missing_label: "Tracked popup runner wasm"
-        }
-        {
-            name: "zjstatus"
-            tracked_path: (get_tracked_zjstatus_wasm_path $yazelix_dir)
-            runtime_path: (get_runtime_zjstatus_wasm_path)
-            missing_label: "Tracked zjstatus wasm"
-        }
-    ]
-
-    $tracked_paths | each {|artifact|
-        if not ($artifact.tracked_path | path exists) {
-            error make {msg: $"($artifact.missing_label) not found at: ($artifact.tracked_path)"}
-        }
-
-        {
-            name: $artifact.name
-            tracked_path: $artifact.tracked_path
-            tracked_hash: (hash_file $artifact.tracked_path)
-            runtime_path: $artifact.runtime_path
-        }
-    }
-}
-
-def build_zellij_generation_fingerprint [
-    config: record
-    yazelix_dir: string
-    base_config_source: record
-    resolved_default_shell: string
-    source_layouts_dir: string
-    plugin_artifacts: list<record>
-] {
-    let overrides_path = ($yazelix_dir | path join $ZELLIJ_CONFIG_PATHS.yazelix_overrides)
-    let relevant_config = {
-        zellij_widget_tray: ($config.zellij_widget_tray? | default ["editor", "shell", "term", "cpu", "ram"])
-        zellij_custom_text: ($config.zellij_custom_text? | default "")
-        support_kitty_keyboard_protocol: ($config.support_kitty_keyboard_protocol? | default "true")
-        default_shell: ($config.default_shell? | default "nu")
-        resolved_default_shell: $resolved_default_shell
-        zellij_default_mode: ($config.zellij_default_mode? | default "normal")
-        enable_sidebar: ($config.enable_sidebar? | default true)
-        sidebar_width_percent: ($config.sidebar_width_percent? | default 20)
-        disable_zellij_tips: ($config.disable_zellij_tips? | default "true")
-        zellij_pane_frames: ($config.zellij_pane_frames? | default "true")
-        zellij_rounded_corners: ($config.zellij_rounded_corners? | default "true")
-        zellij_theme: ($config.zellij_theme? | default "default")
-        persistent_sessions: ($config.persistent_sessions? | default "false")
-    }
-    let layout_sources = (
-        list_source_layout_files $source_layouts_dir
-        | each {|path_value|
-            {
-                path: $path_value
-                hash: (open --raw $path_value | hash sha256)
-            }
-        }
-    )
-
-    {
-        schema_version: 1
-        runtime_dir: ($yazelix_dir | path expand)
-        relevant_config: $relevant_config
-        base_config: {
-            source: $base_config_source.source
-            path: ($base_config_source.path? | default "")
-            hash: (hash_text $base_config_source.content)
-        }
-        overrides_hash: (hash_text (read_text_if_exists $overrides_path))
-        layout_sources: $layout_sources
-        plugins: (
-            $plugin_artifacts
-            | each {|artifact|
-                {
-                    name: $artifact.name
-                    tracked_path: ($artifact.tracked_path | path expand)
-                    tracked_hash: $artifact.tracked_hash
-                    runtime_path: ($artifact.runtime_path | path expand)
-                }
-            }
-        )
-    } | to json -r | hash sha256
-}
-
-def load_cached_generation_fingerprint [merged_config_dir: string] {
-    let metadata_path = (get_zellij_generation_metadata_path $merged_config_dir)
-    if not ($metadata_path | path exists) {
-        return ""
-    }
-
-    try {
-        open $metadata_path | get fingerprint | into string
-    } catch {
-        ""
-    }
-}
-
-def record_generation_fingerprint [merged_config_dir: string, fingerprint: string] {
-    let metadata_path = (get_zellij_generation_metadata_path $merged_config_dir)
-    let temp_path = $"($metadata_path).tmp"
-    {
-        fingerprint: $fingerprint
-        generated_at: (date now | format date "%Y-%m-%dT%H:%M:%S%.3f%:z")
-    } | to json | save --force $temp_path
-    mv --force $temp_path $metadata_path
-}
-
-def can_reuse_generated_zellij_state [
-    merged_config_dir: string
-    merged_config_path: string
-    source_layouts_dir: string
-    fingerprint: string
-    plugin_artifacts: list<record>
-] {
-    let expected_layout_targets = (list_expected_layout_targets $source_layouts_dir $merged_config_dir)
-    let cached_fingerprint = (load_cached_generation_fingerprint $merged_config_dir)
-    let required_paths = (
-        [$merged_config_path]
-        | append ($plugin_artifacts | get runtime_path)
-        | append $expected_layout_targets
-    )
-    let runtime_plugins_match = (
-        $plugin_artifacts
-        | all {|artifact|
-            ($artifact.runtime_path | path exists) and ((hash_file $artifact.runtime_path) == $artifact.tracked_hash)
-        }
-    )
-
-    ($cached_fingerprint == $fingerprint) and ($required_paths | all {|path_value| $path_value | path exists }) and $runtime_plugins_match
-}
-
 # Ensure directory exists
 def ensure_dir [path: string] {
     let dir = ($path | path dirname)
     if not ($dir | path exists) {
         mkdir $dir
     }
-}
-
-def extract_semantic_config_blocks [config_content: string] {
-    mut stripped_lines = []
-    mut load_plugin_lines = []
-    mut plugin_lines = []
-    mut keybind_lines = []
-    mut ui_lines = []
-    mut active_block = ""
-    mut brace_depth = 0
-
-    for line in ($config_content | lines) {
-        let trimmed = ($line | str trim)
-        let open_braces = (($line | split chars | where {|char| $char == "{"}) | length)
-        let close_braces = (($line | split chars | where {|char| $char == "}"}) | length)
-
-        if ($active_block | is-empty) {
-            let matched_block = (
-                ["load_plugins", "plugins", "keybinds", "ui"]
-                | where {|block_name| $trimmed | str starts-with $block_name }
-                | get 0?
-                | default ""
-            )
-
-            if ($matched_block | is-not-empty) {
-                $active_block = $matched_block
-                $brace_depth = ($open_braces - $close_braces)
-
-                # Preserve compact one-line forms like:
-                # keybinds { normal { bind "f1" { WriteChars "fixture"; } } }
-                if $brace_depth <= 0 {
-                    let inline_body = (
-                        $trimmed
-                        | str replace -r $"^($matched_block)\\s*\\{" ""
-                        | str replace -r "\\}\\s*$" ""
-                        | str trim
-                    )
-                    if ($inline_body | is-not-empty) {
-                        match $matched_block {
-                            "load_plugins" => {
-                                $load_plugin_lines = ($load_plugin_lines | append $inline_body)
-                            }
-                            "plugins" => {
-                                $plugin_lines = ($plugin_lines | append $inline_body)
-                            }
-                            "keybinds" => {
-                                $keybind_lines = ($keybind_lines | append $inline_body)
-                            }
-                            "ui" => {
-                                $ui_lines = ($ui_lines | append $inline_body)
-                            }
-                        }
-                    }
-                    $active_block = ""
-                    $brace_depth = 0
-                }
-            } else {
-                $stripped_lines = ($stripped_lines | append $line)
-            }
-        } else {
-            $brace_depth = ($brace_depth + $open_braces - $close_braces)
-            if $brace_depth > 0 {
-                match $active_block {
-                    "load_plugins" => {
-                        $load_plugin_lines = ($load_plugin_lines | append $line)
-                    }
-                    "plugins" => {
-                        $plugin_lines = ($plugin_lines | append $line)
-                    }
-                    "keybinds" => {
-                        $keybind_lines = ($keybind_lines | append $line)
-                    }
-                    "ui" => {
-                        $ui_lines = ($ui_lines | append $line)
-                    }
-                }
-            } else {
-                $active_block = ""
-            }
-        }
-    }
-
-    {
-        config_without_semantic_blocks: ($stripped_lines | str join "\n")
-        load_plugin_lines: $load_plugin_lines
-        plugin_lines: $plugin_lines
-        keybind_lines: $keybind_lines
-        ui_lines: $ui_lines
-    }
-}
-
-def build_yazelix_load_plugins_block [
-    existing_load_plugin_lines: list<string>
-    pane_orchestrator_alias: string
-    popup_runner_wasm_path: string
-] {
-    mut merged_plugin_lines = ($existing_load_plugin_lines | flatten)
-    let pane_orchestrator_entry = $"  ($pane_orchestrator_alias)"
-    let pane_orchestrator_present = ($merged_plugin_lines | any {|line| ($line | str trim) == $pane_orchestrator_alias })
-    if not $pane_orchestrator_present {
-        $merged_plugin_lines = ($merged_plugin_lines | append $pane_orchestrator_entry)
-    }
-
-    let popup_runner_entry = $"  \"file:($popup_runner_wasm_path)\""
-    let popup_runner_present = ($merged_plugin_lines | any {|line| $line | str contains $popup_runner_wasm_path })
-    if not $popup_runner_present {
-        $merged_plugin_lines = ($merged_plugin_lines | append $popup_runner_entry)
-    }
-
-    (
-        [
-            "load_plugins {"
-            ...($merged_plugin_lines | flatten)
-            "}"
-        ]
-        | str join "\n"
-    )
-}
-
-def build_yazelix_plugins_block [
-    existing_plugin_lines: list<string>
-    pane_orchestrator_alias: string
-    pane_orchestrator_wasm_path: string
-    widget_tray_segment: string
-    custom_text_segment: string
-    sidebar_width_percent: int
-] {
-    let escaped_widget_tray = ($widget_tray_segment | to json -r)
-    let escaped_custom_text = ($custom_text_segment | to json -r)
-    let escaped_sidebar_width_percent = ($sidebar_width_percent | into string | to json -r)
-    let pane_alias_present = ($existing_plugin_lines | any {|line| $line | str contains $"($pane_orchestrator_alias) location=" })
-    mut merged_plugin_lines = $existing_plugin_lines
-
-    if not $pane_alias_present {
-        $merged_plugin_lines = ($merged_plugin_lines | append [
-            $"    ($pane_orchestrator_alias) location=\"file:($pane_orchestrator_wasm_path)\" {"
-            $"        widget_tray_segment ($escaped_widget_tray)"
-            $"        custom_text_segment ($escaped_custom_text)"
-            $"        sidebar_width_percent ($escaped_sidebar_width_percent)"
-            "    }"
-        ])
-    }
-
-    if ($merged_plugin_lines | is-empty) {
-        ""
-    } else {
-        (
-            [
-                "plugins {"
-                ...($merged_plugin_lines | flatten)
-                "}"
-            ]
-            | str join "\n"
-        )
-    }
-}
-
-def build_merged_keybinds_block [
-    existing_keybind_lines: list<string>
-    yazelix_keybind_lines: list<string>
-] {
-    let merged_keybind_lines = ($existing_keybind_lines | append $yazelix_keybind_lines | flatten)
-    if ($merged_keybind_lines | is-empty) {
-        ""
-    } else {
-        (
-            [
-                "keybinds {"
-                ...$merged_keybind_lines
-                "}"
-            ]
-            | str join "\n"
-        )
-    }
-}
-
-def read_yazelix_override_keybinds [
-    yazelix_dir: string
-    pane_orchestrator_plugin_url: string
-]: nothing -> list<string> {
-    let overrides_path = ($yazelix_dir | path join $ZELLIJ_CONFIG_PATHS.yazelix_overrides)
-
-    if not ($overrides_path | path exists) {
-        error make {msg: $"Missing Yazelix Zellij overrides file: ($overrides_path)"}
-    }
-
-    let runtime_ref = ($yazelix_dir | path expand)
-    let resolved_overrides = (
-        (open $overrides_path)
-        | str replace -a "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" $pane_orchestrator_plugin_url
-        | str replace -a "__YAZELIX_RUNTIME_DIR__" $runtime_ref
-    )
-    let extracted_blocks = (extract_semantic_config_blocks $resolved_overrides)
-    $extracted_blocks.keybind_lines
 }
 
 # Main function: Generate merged Zellij configuration
