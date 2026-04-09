@@ -33,6 +33,26 @@ def run_yzx_command_for_fixture [fixture: record, command: string, extra_env?: r
     }
 }
 
+def run_yzx_command_for_fixture_in_dir [fixture: record, working_dir: string, command: string, extra_env?: record] {
+    let base_env = {
+        HOME: $fixture.tmp_home
+        YAZELIX_CONFIG_DIR: $fixture.config_dir
+        YAZELIX_RUNTIME_DIR: $fixture.repo_root
+    }
+    let merged_env = if ($extra_env | is-empty) {
+        $base_env
+    } else {
+        $base_env | merge $extra_env
+    }
+
+    with-env $merged_env {
+        do {
+            cd $working_dir
+            ^nu -c $"use \"($fixture.yzx_script)\" *; ($command)" | complete
+        }
+    }
+}
+
 def run_config_migrate_command [fixture: record, args: list<string> = []] {
     let migrate_command = if ($args | is-empty) {
         "yzx config migrate"
@@ -64,6 +84,11 @@ def manual_desktop_icon_records [tmp_home: string, source_root: string] {
 def files_match [left: string, right: string] {
     let result = (^cmp -s $left $right | complete)
     $result.exit_code == 0
+}
+
+def write_test_executable [path: string, lines: list<string>] {
+    ($lines | str join "\n") | save --force --raw $path
+    ^chmod +x $path
 }
 
 def setup_manual_install_takeover_fixture [label: string] {
@@ -186,6 +211,39 @@ welcome_style = "random"
 
     $fixture | merge {
         package_root: $package_root
+    }
+}
+
+def setup_update_wrapper_fixture [label: string] {
+    let fixture = (setup_managed_config_fixture
+        $label
+        '[core]
+welcome_style = "random"
+'
+    )
+
+    let bin_dir = ($fixture.tmp_home | path join "bin")
+    let command_log = ($fixture.tmp_home | path join "update_wrapper_commands.log")
+    let flake_dir = ($fixture.tmp_home | path join "home_manager_flake")
+
+    mkdir $bin_dir
+    mkdir $flake_dir
+    "" | save --force --raw $command_log
+    "{ description = \"test flake\"; outputs = { self }: {}; }\n" | save --force --raw ($flake_dir | path join "flake.nix")
+
+    write_test_executable ($bin_dir | path join "nix") [
+        "#!/bin/sh"
+        "printf 'nix:%s\\n' \"$*\" >> \"$YZX_TEST_LOG\""
+    ]
+    write_test_executable ($bin_dir | path join "home-manager") [
+        "#!/bin/sh"
+        "printf 'home-manager:%s\\n' \"$*\" >> \"$YZX_TEST_LOG\""
+    ]
+
+    $fixture | merge {
+        bin_dir: $bin_dir
+        command_log: $command_log
+        flake_dir: $flake_dir
     }
 }
 
@@ -576,42 +634,34 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
     $result
 }
 
-# Defends: the public update surface must give mode-specific owner guidance without exposing removed runtime subcommands.
+# Defends: bare yzx update must be an explicit owner chooser instead of reviving runtime-tier update semantics.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_update_reports_mode_specific_owner_guidance_without_runtime_subcommands [] {
-    print "🧪 Testing yzx update reports owner guidance without exposing removed runtime subcommands..."
+def test_yzx_update_reports_explicit_owner_choices [] {
+    print "🧪 Testing yzx update reports explicit owner choices without reviving runtime-tier update guidance..."
 
-    let home_manager_fixture = (setup_home_manager_owned_install_fixture "yazelix_update_home_manager")
-    let package_fixture = (setup_package_runtime_fixture "yazelix_update_package")
+    let fixture = (setup_package_runtime_fixture "yazelix_update_owner_choices")
 
     let result = (try {
-        let home_manager_output = (run_yzx_command_for_fixture $home_manager_fixture "yzx update")
-        let home_manager_stdout = ($home_manager_output.stdout | str trim)
-        let package_output = (run_yzx_command_for_fixture $package_fixture "yzx update" {
-            YAZELIX_RUNTIME_DIR: $package_fixture.package_root
+        let output = (run_yzx_command_for_fixture $fixture "yzx update" {
+            YAZELIX_RUNTIME_DIR: $fixture.package_root
         })
-        let package_stdout = ($package_output.stdout | str trim)
+        let stdout = ($output.stdout | str trim)
 
         if (
-            ($home_manager_output.exit_code == 0)
-            and ($home_manager_stdout | str contains "Yazelix runtime/distribution mode: Home Manager-managed full runtime")
-            and ($home_manager_stdout | str contains "Yazelix no longer owns runtime updates.")
-            and ($home_manager_stdout | str contains "home-manager switch")
-            and ($home_manager_stdout | str contains "yzx update nix")
-            and not ($home_manager_stdout | str contains "yzx update runtime")
-            and not ($home_manager_stdout | str contains "yzx update all")
-            and ($package_output.exit_code == 0)
-            and ($package_stdout | str contains "Yazelix runtime/distribution mode: store/package runtime")
-            and ($package_stdout | str contains "Yazelix no longer owns runtime updates.")
-            and ($package_stdout | str contains "nix profile upgrade")
-            and ($package_stdout | str contains "yzx update nix")
-            and not ($package_stdout | str contains "yzx update runtime")
-            and not ($package_stdout | str contains "yzx update all")
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Choose one update owner for this Yazelix install.")
+            and ($stdout | str contains "yzx update upstream")
+            and ($stdout | str contains "yzx update home_manager")
+            and ($stdout | str contains "yzx update nix")
+            and ($stdout | str contains "Do not use both update paths for the same installed Yazelix runtime.")
+            and not ($stdout | str contains "Yazelix runtime/distribution mode:")
+            and not ($stdout | str contains "yzx update runtime")
+            and not ($stdout | str contains "yzx update all")
         ) {
-            print "  ✅ yzx update now reports the owning update path without exposing removed runtime subcommands"
+            print "  ✅ yzx update now acts as an explicit owner chooser instead of a runtime-tier summary"
             true
         } else {
-            print $"  ❌ Unexpected result:\nHM exit=($home_manager_output.exit_code)\nHM stdout=($home_manager_stdout)\nHM stderr=(($home_manager_output.stderr | str trim))\nPKG exit=($package_output.exit_code)\nPKG stdout=($package_stdout)\nPKG stderr=(($package_output.stderr | str trim))"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -619,8 +669,83 @@ def test_yzx_update_reports_mode_specific_owner_guidance_without_runtime_subcomm
         false
     })
 
-    rm -rf $home_manager_fixture.tmp_home
-    rm -rf $package_fixture.tmp_home
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: yzx update upstream must print and run the exact upstream installer command.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_update_upstream_runs_exact_installer_command [] {
+    print "🧪 Testing yzx update upstream prints and runs the exact upstream installer command..."
+
+    let fixture = (setup_update_wrapper_fixture "yazelix_update_upstream_wrapper")
+    let result = (try {
+        let output = (run_yzx_command_for_fixture $fixture "yzx update upstream" {
+            PATH: ($env.PATH | prepend $fixture.bin_dir)
+            YZX_TEST_LOG: $fixture.command_log
+        })
+        let stdout = ($output.stdout | str trim)
+        let log_text = (open --raw $fixture.command_log | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Choose one update owner for this Yazelix install.")
+            and ($stdout | str contains "Running:")
+            and ($stdout | str contains "nix run github:luccahuguet/yazelix#install")
+            and ($log_text | str contains "nix:run github:luccahuguet/yazelix#install")
+            and not ($log_text | str contains "home-manager:")
+        ) {
+            print "  ✅ yzx update upstream now transparently wraps the exact upstream installer command"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) log=($log_text) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: yzx update home_manager must update only the current flake input and print the manual switch step.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step [] {
+    print "🧪 Testing yzx update home_manager updates only the current flake input and prints the manual switch step..."
+
+    let fixture = (setup_update_wrapper_fixture "yazelix_update_home_manager_wrapper")
+    let result = (try {
+        let output = (run_yzx_command_for_fixture_in_dir $fixture $fixture.flake_dir "yzx update home_manager" {
+            PATH: ($env.PATH | prepend $fixture.bin_dir)
+            YZX_TEST_LOG: $fixture.command_log
+        })
+        let stdout = ($output.stdout | str trim)
+        let log_text = (open --raw $fixture.command_log | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Choose one update owner for this Yazelix install.")
+            and ($stdout | str contains "Running:")
+            and ($stdout | str contains "nix flake update yazelix")
+            and ($stdout | str contains "Next step:")
+            and ($stdout | str contains "home-manager switch")
+            and ($log_text | str contains "nix:flake update yazelix")
+            and not ($log_text | str contains "home-manager:")
+        ) {
+            print "  ✅ yzx update home_manager now refreshes only the current flake input and leaves the switch step to the user"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) log=($log_text) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
     $result
 }
 
@@ -1243,7 +1368,9 @@ export def run_core_canonical_tests [] {
         (test_yzx_desktop_uninstall_removes_manual_entry_and_icons)
         (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)
         (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
-        (test_yzx_update_reports_mode_specific_owner_guidance_without_runtime_subcommands)
+        (test_yzx_update_reports_explicit_owner_choices)
+        (test_yzx_update_upstream_runs_exact_installer_command)
+        (test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step)
         (test_yzx_config_full_merges_pack_sidecar)
         (test_yzx_edit_targets_print_paths)
         (test_invalid_config_is_classified_as_config_problem)

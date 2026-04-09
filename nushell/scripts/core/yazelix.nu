@@ -9,7 +9,6 @@ use ../utils/environment_bootstrap.nu [prepare_environment]
 use ../utils/devenv_backend.nu [get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu get_yazelix_runtime_dir
-use ../utils/runtime_distribution_capabilities.nu [get_runtime_distribution_capability_profile]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../setup/shell_hooks.nu [check_shell_hook_versions]
 use ../integrations/managed_editor.nu get_managed_editor_kind
@@ -64,18 +63,41 @@ def has_external_command [command_name: string] {
     (which $command_name | where type == "external" | is-not-empty)
 }
 
-def print_runtime_update_surface_summary [profile: record] {
-    print $"Yazelix runtime/distribution mode: ($profile.title)"
+def print_update_owner_warning [] {
+    print "Choose one update owner for this Yazelix install."
     print ""
-    print "Yazelix no longer owns runtime updates."
-    print $"  ($profile.update_guidance)"
+    print "  Use `yzx update upstream` if this install is driven by the upstream installer."
+    print "  Use `yzx update home_manager` if Home Manager owns this install."
+    print ""
+    print "Do not use both update paths for the same installed Yazelix runtime."
+}
 
-    print ""
-    print "Other updates:"
-    print "  yzx update nix        Upgrade Determinate Nix \(if installed\)"
-    print ""
-    print "Maintainer update:"
-    print "  yzx dev update        Refresh devenv.lock, run canaries, sync pins, and refresh vendored zjstatus and Yazi plugin runtime files"
+def print_exact_command [command: string] {
+    print "Running:"
+    print $"  ($command)"
+}
+
+def print_completed_output [result: record] {
+    let stdout_text = ($result.stdout | default "")
+    let stderr_text = ($result.stderr | default "")
+
+    if ($stdout_text | is-not-empty) {
+        print --raw $stdout_text
+    }
+
+    if ($stderr_text | is-not-empty) {
+        print --stderr --raw $stderr_text
+    }
+}
+
+def require_current_working_flake [] {
+    let flake_file = ((pwd) | path join "flake.nix")
+
+    if not ($flake_file | path exists) {
+        print "❌ yzx update home_manager must be run from the Home Manager flake directory that owns this install."
+        print $"   Missing flake.nix in the current directory: ($flake_file)"
+        exit 1
+    }
 }
 
 export def yzx [
@@ -393,8 +415,12 @@ export def "yzx repair zellij-permissions" [] {
 
 # Update dependencies and inputs
 export def "yzx update" [] {
-    let profile = (get_runtime_distribution_capability_profile)
-    print_runtime_update_surface_summary $profile
+    print_update_owner_warning
+    print ""
+    print "Available update commands:"
+    print "  yzx update upstream      Refresh Yazelix from the upstream installer surface"
+    print "  yzx update home_manager  Refresh the current Home Manager flake input, then print `home-manager switch`"
+    print "  yzx update nix           Upgrade Determinate Nix \(if installed\)"
 }
 
 export def "yzx update nix" [
@@ -437,4 +463,52 @@ export def "yzx update nix" [
         print $"❌ Determinate Nix upgrade failed: ($err.msg)"
         exit 1
     }
+}
+
+export def "yzx update upstream" [] {
+    if not (has_external_command "nix") {
+        print "❌ nix not found in PATH."
+        print "   Install Nix first, then try again."
+        exit 1
+    }
+
+    print_update_owner_warning
+    print ""
+    let command = "nix run github:luccahuguet/yazelix#install"
+    print_exact_command $command
+
+    let result = (^nix run github:luccahuguet/yazelix#install | complete)
+    print_completed_output $result
+
+    if $result.exit_code != 0 {
+        print "❌ Upstream Yazelix update failed."
+        exit 1
+    }
+}
+
+export def "yzx update home_manager" [] {
+    if not (has_external_command "nix") {
+        print "❌ nix not found in PATH."
+        print "   Install Nix first, then try again."
+        exit 1
+    }
+
+    require_current_working_flake
+
+    print_update_owner_warning
+    print ""
+    let command = "nix flake update yazelix"
+    print_exact_command $command
+
+    let result = (^nix flake update yazelix | complete)
+    print_completed_output $result
+
+    if $result.exit_code != 0 {
+        print "❌ Home Manager flake input update failed."
+        exit 1
+    }
+
+    print ""
+    print "Next step:"
+    print "  home-manager switch"
 }

@@ -67,7 +67,9 @@ const PUBLIC_YZX_COMMAND_CATALOG = [
     {id: "yzx tutor hx", category: "help", description: "Launch Helix's built-in tutorial."}
     {id: "yzx tutor nu", category: "help", description: "Launch Nushell's built-in tutorial in a fresh Nushell process."}
     {id: "yzx tutor nushell", category: "help", description: "Alias for `yzx tutor nu`."}
-    {id: "yzx update", category: "system", description: "Update dependencies and inputs"}
+    {id: "yzx update", category: "system", description: "Choose the Yazelix update owner path"}
+    {id: "yzx update upstream", category: "system", description: "Refresh Yazelix from the upstream installer surface"}
+    {id: "yzx update home_manager", category: "system", description: "Refresh the current Home Manager flake input and print the switch step"}
     {id: "yzx update nix", category: "system", description: ""}
     {id: "yzx whats_new", category: "help", description: ""}
     {id: "yzx why", category: "help", description: "Elevator pitch: Why Yazelix"}

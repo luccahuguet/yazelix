@@ -1567,6 +1567,8 @@ def test_yzx_menu_palette_eligibility_is_broad_but_explicit [] {
             and ("yzx launch" in $ids)
             and ("yzx doctor" in $ids)
             and ("yzx update" in $ids)
+            and ("yzx update upstream" in $ids)
+            and ("yzx update home_manager" in $ids)
             and ("yzx update nix" in $ids)
             and ("yzx desktop launch" in $ids)
             and (not ("yzx update runtime" in $ids))
