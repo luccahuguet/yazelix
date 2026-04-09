@@ -606,7 +606,7 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
     let state_dir = ($tmp_root | path join "state")
     let config_dir = ($temp_home | path join ".config" "yazelix")
     let generated_layout_dir = ($temp_home | path join ".local" "share" "yazelix" "configs" "zellij" "layouts")
-    let profile_module = ($repo_root | path join "nushell" "scripts" "utils" "profile.nu")
+    let profile_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
 
     mkdir $temp_home
     mkdir $state_dir
@@ -617,8 +617,8 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
     let result = (try {
         let snippet = (
             [
-                $"use \"($profile_module)\" [run_profiled_startup_harness]"
-                "let summary = (run_profiled_startup_harness \"maintainer_e2e\" [\"--skip-refresh\"])"
+                $"source \"($profile_module)\""
+                "let summary = (run_dev_profile_harness \"maintainer_e2e\" [\"--skip-refresh\"])"
                 "{"
                 "    report_path: $summary.report_path"
                 "    scenario: $summary.run.scenario"
