@@ -1499,6 +1499,49 @@ def test_yzx_cli_menu_uses_lightweight_menu_module [] {
     $result
 }
 
+# Regression: yzx popup must use the lightweight popup module instead of bootstrapping the full command suite.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_cli_popup_uses_lightweight_popup_module [] {
+    print "🧪 Testing yzx CLI popup uses the lightweight popup module..."
+
+    let fixture = (setup_cli_probe_fixture "yazelix_posix_popup_cli")
+
+    let result = (try {
+        install_argument_logging_probe $fixture
+
+        let launcher_script = (repo_path "shells" "posix" "yzx_cli.sh")
+        let output = (with-env {
+            HOME: $fixture.fake_home
+            NU_LOG: $fixture.nu_log
+        } {
+            ^$launcher_script popup lazygit | complete
+        })
+
+        let invocation = (read_probe_lines $fixture.nu_log)
+        let expected_popup_script = (repo_path "nushell" "scripts" "yzx" "popup.nu")
+
+        if (
+            ($output.exit_code == 0)
+            and (($invocation | get -o 0 | default "") == "-c")
+            and (($invocation | get -o 1 | default "") | str contains $expected_popup_script)
+            and (($invocation | get -o 1 | default "") | str contains "yzx popup lazygit")
+            and not (($invocation | get -o 1 | default "") | str contains "core/yazelix.nu")
+        ) {
+            print "  ✅ yzx popup now dispatches through the lightweight popup module instead of the full command suite"
+            true
+        } else {
+            print $"  ❌ Unexpected yzx popup invocation: exit=($output.exit_code) args=($invocation | to json -r) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmpdir
+    $result
+}
+
 # Defends: docs/specs/yzx_command_palette_categories.md
 # Regression: yzx menu should include most user-facing commands while keeping explicit exclusions for the palette itself, maintainer commands, shell-control commands, and tab-scoped actions.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
@@ -2337,6 +2380,7 @@ export def run_workspace_canonical_tests [] {
         (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
         (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
         (test_yzx_cli_menu_uses_lightweight_menu_module)
+        (test_yzx_cli_popup_uses_lightweight_popup_module)
         (test_yzx_menu_palette_eligibility_is_broad_but_explicit)
         (test_yzx_cli_enter_uses_lightweight_enter_module)
         (test_launch_falls_through_after_immediate_terminal_failure)

@@ -4,7 +4,7 @@
 # Defends: docs/specs/floating_tui_panes.md
 
 use ../yzx/popup.nu [resolve_yzx_popup_command resolve_yzx_popup_cwd]
-use ../integrations/zellij_runtime_wrappers.nu [build_floating_wrapper_env_args get_floating_wrapper_env get_new_editor_pane_launch_env]
+use ../integrations/zellij_runtime_wrappers.nu [build_floating_wrapper_env_args get_floating_wrapper_env get_new_editor_pane_launch_env open_floating_runtime_wrapper]
 use ../utils/config_parser.nu [parse_yazelix_config]
 use ../../../configs/zellij/scripts/yzx_toggle_popup.nu [resolve_popup_toggle_action]
 
@@ -434,6 +434,71 @@ def test_popup_wrapper_serializes_path_list_for_env_command [] {
     }
 }
 
+# Regression: popup wrappers must fall back to a host-provided Nushell binary when the runtime root does not ship bin/nu.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_popup_wrapper_falls_back_to_host_nu_without_runtime_owned_nu [] {
+    print "🧪 Testing popup wrappers fall back to host-provided nu without a runtime-owned bin/nu..."
+
+    let fixture = (setup_runtime_wrapper_fixture "yazelix_popup_host_nu")
+    let zellij_log = ($fixture.tmpdir | path join "zellij_args.log")
+
+    let result = (try {
+        let wrapper_root = ($fixture.runtime_dir | path join "configs" "zellij" "scripts")
+        let wrapper_path = ($wrapper_root | path join "proof_popup.nu")
+        let fake_path_nu = ($fixture.fake_bin | path join "nu")
+        let host_nu_candidates = [
+            $fake_path_nu
+            ($nu.current-exe? | default "")
+            (which nu | get -o 0.path | default "")
+        ] | where {|candidate| ($candidate | str trim | is-not-empty) } | uniq
+
+        mkdir $wrapper_root
+        "" | save --force --raw $wrapper_path
+
+        write_executable_fixture_file ($fixture.fake_bin | path join "nu") [
+            "#!/bin/sh"
+            "exit 0"
+        ]
+        write_executable_fixture_file ($fixture.fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            ": > \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "for arg in \"$@\"; do"
+            "  printf '%s\\n' \"$arg\" >> \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "done"
+            "exit 0"
+        ]
+
+        with-env {
+            PATH: ($env.PATH | prepend $fixture.fake_bin)
+            DEVENV_PROFILE: ""
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_TEST_ZELLIJ_LOG: $zellij_log
+        } {
+            open_floating_runtime_wrapper "proof_popup" "proof_popup.nu" "/tmp/workspace"
+        }
+
+        let invocation = (open --raw $zellij_log | lines)
+
+        if (
+            ($invocation | any {|arg| $arg in $host_nu_candidates })
+            and ($invocation | any {|arg| $arg == $wrapper_path })
+            and not ($invocation | any {|arg| $arg == ($fixture.runtime_dir | path join "bin" "nu") })
+        ) {
+            print "  ✅ popup wrappers now fall back to host-provided nu when the runtime root does not ship one"
+            true
+        } else {
+            print $"  ❌ Unexpected popup wrapper invocation: ($invocation | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmpdir
+    $result
+}
+
 export def run_popup_canonical_tests [] {
     [
         (test_popup_command_prefers_configured_default)
@@ -444,6 +509,7 @@ export def run_popup_canonical_tests [] {
         (test_popup_wrapper_uses_canonical_editor_for_current_profile)
         (test_new_editor_pane_launch_env_uses_canonical_editor_for_current_profile)
         (test_popup_wrapper_serializes_path_list_for_env_command)
+        (test_popup_wrapper_falls_back_to_host_nu_without_runtime_owned_nu)
     ]
 }
 
