@@ -282,6 +282,11 @@ def setup_enter_forwarding_fixture [label: string] {
         "        force_reenter: $force_reenter"
         "    }"
         "}"
+        "export def resolve_runtime_entry_context [refresh_request: record, --force-reenter] {"
+        "    let env_status = (check_environment_status)"
+        "    let runtime_state = (resolve_runtime_entry_state $refresh_request --already-in-env=$env_status.already_in_env --in-yazelix-shell=$env_status.in_yazelix_shell --force-reenter=$force_reenter)"
+        "    { refresh_request: $refresh_request, env_status: $env_status, runtime_state: $runtime_state }"
+        "}"
         "export def resolve_launch_transition [runtime_state: record, --current-session-eligible, --profile-available] {"
         "    { execution: \"backend_shell\", profile_source: \"none\", rebuild_before_exec: false }"
         "}"
@@ -293,6 +298,7 @@ def setup_enter_forwarding_fixture [label: string] {
         "export def get_launch_env [config: record, profile_path: string] { {} }"
         "export def get_launch_profile [config_state: record, --allow-stale] { null }"
         "export def require_reused_launch_profile [config_state: record, context: string] { \"/tmp/fake-profile\" }"
+        "export def resolve_requested_launch_profile [runtime_state: record, config_state: record, command_name: string] { null }"
         "export def resolve_runtime_owned_profile [] { \"\" }"
     ] | str join "\n" | save --force --raw ($utils_dir | path join "launch_state.nu")
 
@@ -448,6 +454,11 @@ def setup_refresh_activation_fixture [label: string] {
         "        force_reenter: $force_reenter"
         "    }"
         "}"
+        "export def resolve_runtime_entry_context [refresh_request: record, --force-reenter] {"
+        "    let env_status = (check_environment_status)"
+        "    let runtime_state = (resolve_runtime_entry_state $refresh_request --already-in-env=$env_status.already_in_env --in-yazelix-shell=$env_status.in_yazelix_shell --force-reenter=$force_reenter)"
+        "    { refresh_request: $refresh_request, env_status: $env_status, runtime_state: $runtime_state }"
+        "}"
         "export def resolve_startup_transition [runtime_state: record, --profile-available] {"
         "    if (($runtime_state.refresh_transition? | default \"none\") == \"rebuild\") {"
         "        { execution: \"activated_profile\", profile_source: \"fresh_runtime_profile\", rebuild_before_exec: true }"
@@ -473,6 +484,7 @@ def setup_refresh_activation_fixture [label: string] {
         "}"
         "export def get_launch_profile [config_state: record, --allow-stale] { null }"
         "export def require_reused_launch_profile [config_state: record, context: string] { \"/tmp/reused-profile\" }"
+        "export def resolve_requested_launch_profile [runtime_state: record, config_state: record, command_name: string] { null }"
         "export def resolve_runtime_owned_profile [] { \"/tmp/fresh-profile\" }"
     ] | str join "\n" | save --force --raw ($utils_dir | path join "launch_state.nu")
 
@@ -1553,6 +1565,39 @@ def test_runtime_entry_state_models_live_session_refresh_intent [] {
     }
 }
 
+# Invariant: runtime entry context owns environment-status sampling plus shared runtime-state derivation.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_runtime_entry_context_samples_environment_once [] {
+    print "🧪 Testing runtime entry context samples environment status and derives runtime state together..."
+
+    try {
+        use ../utils/devenv_backend.nu [resolve_runtime_entry_context]
+
+        with-env {
+            IN_NIX_SHELL: "impure"
+            IN_YAZELIX_SHELL: "true"
+        } {
+            let context = (resolve_runtime_entry_context {should_refresh: false, mode: "noop"})
+
+            if (
+                ($context.env_status.already_in_env == true)
+                and ($context.env_status.in_yazelix_shell == true)
+                and ($context.runtime_state.activation_surface == "live_yazelix_session")
+                and ($context.runtime_state.refresh_transition == "none")
+            ) {
+                print "  ✅ Runtime entry context now owns the shared environment-status and runtime-state derivation"
+                return true
+            }
+
+            print $"  ❌ Unexpected runtime entry context: ($context | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 # Regression: startup rebuilds should activate the fresh runtime-owned profile unless force-reenter is requested.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_startup_transition_prefers_fresh_runtime_profile_after_rebuild [] {
@@ -1919,6 +1964,7 @@ export def run_workspace_canonical_tests [] {
         (test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions)
         (test_yzx_enter_forwards_refresh_intent_to_startup_entrypoint)
         (test_startup_refresh_activates_built_profile_without_second_shell_entry)
+        (test_runtime_entry_context_samples_environment_once)
         (test_runtime_entry_state_models_live_session_refresh_intent)
         (test_startup_transition_prefers_fresh_runtime_profile_after_rebuild)
         (test_launch_transition_blocks_live_session_fast_path_during_refresh)

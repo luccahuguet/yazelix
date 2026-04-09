@@ -215,6 +215,12 @@ Open the Yazelix pack sidecar in your editor
 - Targets `user_configs/yazelix_packs.toml`
 - `--print`: print the resolved config path without opening
 
+### `yzx edit <target> [--print]`
+Open one of the managed config surfaces through explicit or fuzzy target selection
+- Supported targets include `config`, `packs`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
+- Yazi targets stay inside `user_configs/yazi/` and do not expose host-owned `~/.config/yazi/` files
+- `--print`: print the resolved managed path without opening
+
 ### `yzx config migrate [--apply] [--yes]`
 Preview or apply known Yazelix config migrations
 - Default: preview known safe rewrites and manual-only follow-up without changing the file
@@ -283,6 +289,8 @@ yzx import helix              # Import ~/.config/helix/config.toml into managed 
 yzx import zellij --force     # Backup and replace the managed Zellij override
 yzx edit config               # Open the main managed config
 yzx edit packs                # Open the pack sidecar
+yzx edit keymap               # Open managed Yazi keymap.toml
+yzx edit init                 # Open managed Yazi init.lua
 yzx config migrate            # Preview known config migrations
 yzx config migrate --apply --yes  # Apply safe migrations with backup
 yzx config reset              # Replace both config surfaces with fresh templates after confirmation

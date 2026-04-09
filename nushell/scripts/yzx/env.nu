@@ -3,10 +3,10 @@
 
 use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/environment_bootstrap.nu [prepare_environment]
-use ../utils/devenv_backend.nu [check_environment_status print_refresh_request_guidance rebuild_yazelix_environment resolve_env_transition resolve_refresh_request resolve_runtime_entry_state run_in_devenv_shell_command]
+use ../utils/devenv_backend.nu [print_refresh_request_guidance rebuild_yazelix_environment resolve_env_transition resolve_refresh_request resolve_runtime_entry_context run_in_devenv_shell_command]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/launch_state.nu [get_launch_env require_reused_launch_profile]
+use ../utils/launch_state.nu [get_launch_env resolve_requested_launch_profile]
 
 # Build shell command from shell name.
 # --login keeps existing behavior for default yzx env mode.
@@ -76,14 +76,9 @@ export def "yzx env" [
     let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
 
     let original_dir = (pwd)
-    let env_status = check_environment_status
-    let runtime_state = (resolve_runtime_entry_state $refresh_request --already-in-env=$env_status.already_in_env --in-yazelix-shell=$env_status.in_yazelix_shell --force-reenter=false)
-    let reused_launch_profile = if ($runtime_state.profile_request == "reused_recorded_profile") and (($runtime_state.activation_surface | default "external_process") == "external_process") {
-        require_reused_launch_profile $env_prep.config_state "yzx env --reuse"
-    } else {
-        null
-    }
-    let env_transition = (resolve_env_transition $runtime_state --profile-available=($reused_launch_profile != null))
+    let entry_context = (resolve_runtime_entry_context $refresh_request)
+    let reused_launch_profile = (resolve_requested_launch_profile $entry_context.runtime_state $env_prep.config_state "yzx env --reuse")
+    let env_transition = (resolve_env_transition $entry_context.runtime_state --profile-available=($reused_launch_profile != null))
 
     let has_setpriv = (which setpriv | is-not-empty)
     let trap_supervisor = "trap 'kill 0' HUP TERM; exec \"$@\""

@@ -2,10 +2,10 @@
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 use ../utils/environment_bootstrap.nu [ensure_environment_available prepare_environment]
-use ../utils/devenv_backend.nu [check_environment_status get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request resolve_runtime_entry_state resolve_startup_transition run_in_devenv_shell_command]
+use ../utils/devenv_backend.nu [get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request resolve_runtime_entry_context resolve_startup_transition run_in_devenv_shell_command]
 use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile resolve_runtime_owned_profile]
+use ../utils/launch_state.nu [activate_launch_profile resolve_requested_launch_profile resolve_runtime_owned_profile]
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/runtime_contract_checker.nu [
@@ -82,18 +82,12 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)
     let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
-    let env_status = check_environment_status
-    let runtime_state = (resolve_runtime_entry_state $refresh_request --already-in-env=$env_status.already_in_env --in-yazelix-shell=$env_status.in_yazelix_shell --force-reenter=$force_reenter)
+    let entry_context = (resolve_runtime_entry_context $refresh_request --force-reenter=$force_reenter)
+    let runtime_state = $entry_context.runtime_state
     let force_reenter_mode = $force_reenter
     mut activated_profile = false
     mut shellhook_already_applied = false
-    let cached_profile = if (($runtime_state.profile_request? | default "none") == "reused_recorded_profile") and (($runtime_state.activation_surface? | default "external_process") == "external_process") {
-        require_reused_launch_profile $env_prep.config_state "yzx enter --reuse"
-    } else if (($runtime_state.profile_request? | default "none") == "verified_recorded_profile") and (($runtime_state.activation_surface? | default "external_process") == "external_process") {
-        get_launch_profile $env_prep.config_state
-    } else {
-        null
-    }
+    let cached_profile = (resolve_requested_launch_profile $runtime_state $env_prep.config_state "yzx enter --reuse")
     let startup_transition = (resolve_startup_transition $runtime_state --profile-available=($cached_profile != null))
 
     print_refresh_request_guidance $refresh_request

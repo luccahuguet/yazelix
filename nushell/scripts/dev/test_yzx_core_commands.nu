@@ -1007,6 +1007,20 @@ def test_yzx_edit_targets_print_paths [] {
         } {
             yzx edit yazi --print
         }
+        let yazi_keymap_stdout = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            yzx edit keymap --print
+        }
+        let yazi_init_stdout = with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            yzx edit init --print
+        }
         let missing_subcommand_output = with-env {
             HOME: $tmp_home
             YAZELIX_CONFIG_DIR: $temp_config_dir
@@ -1027,6 +1041,8 @@ def test_yzx_edit_targets_print_paths [] {
         let expected_helix = ($temp_config_dir | path join "user_configs" "helix" "config.toml")
         let expected_zellij = ($temp_config_dir | path join "user_configs" "zellij" "config.kdl")
         let expected_yazi = ($temp_config_dir | path join "user_configs" "yazi" "yazi.toml")
+        let expected_yazi_keymap = ($temp_config_dir | path join "user_configs" "yazi" "keymap.toml")
+        let expected_yazi_init = ($temp_config_dir | path join "user_configs" "yazi" "init.lua")
         let missing_subcommand_stderr = ($missing_subcommand_output.stderr | str trim)
         let invalid_stderr = ($invalid_output.stderr | str trim)
 
@@ -1038,13 +1054,15 @@ def test_yzx_edit_targets_print_paths [] {
             and ($helix_stdout == $expected_helix)
             and ($zellij_stdout == $expected_zellij)
             and ($yazi_stdout == $expected_yazi)
+            and ($yazi_keymap_stdout == $expected_yazi_keymap)
+            and ($yazi_init_stdout == $expected_yazi_init)
             and ($missing_subcommand_stderr | str contains "requires a target query")
             and ($invalid_stderr | str contains "No managed Yazelix config surface matched")
         ) {
             print "  ✅ yzx edit resolves canonical managed surfaces through permissive target queries and rejects unsupported noninteractive cases"
             true
         } else {
-            print $"  ❌ Unexpected result: main=($main_stdout) packs=($packs_stdout) helix=($helix_stdout) zellij=($zellij_stdout) yazi=($yazi_stdout) missing_exit=($missing_subcommand_output.exit_code) missing_stderr=($missing_subcommand_stderr) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
+            print $"  ❌ Unexpected result: main=($main_stdout) packs=($packs_stdout) helix=($helix_stdout) zellij=($zellij_stdout) yazi=($yazi_stdout) yazi_keymap=($yazi_keymap_stdout) yazi_init=($yazi_init_stdout) missing_exit=($missing_subcommand_output.exit_code) missing_stderr=($missing_subcommand_stderr) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
             false
         }
     } catch {|err|

@@ -371,6 +371,22 @@ export def require_reused_launch_profile [config_state: record, command_name: st
     $profile_path
 }
 
+export def resolve_requested_launch_profile [
+    runtime_state: record
+    config_state: record
+    command_name: string
+] {
+    if (($runtime_state.activation_surface? | default "external_process") != "external_process") {
+        return null
+    }
+
+    match ($runtime_state.profile_request? | default "none") {
+        "reused_recorded_profile" => (require_reused_launch_profile $config_state $command_name)
+        "verified_recorded_profile" => (get_launch_profile $config_state)
+        _ => null
+    }
+}
+
 def resolve_editor_command [config: record, profile_path: string] {
     let configured_editor = ($config.editor_command? | default null)
     if $configured_editor != null {

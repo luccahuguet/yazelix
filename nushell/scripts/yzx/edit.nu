@@ -29,6 +29,8 @@ def get_edit_targets [] {
     let helix_path = (get_managed_helix_user_config_path)
     let zellij_path = ($user_root | path join "zellij" "config.kdl")
     let yazi_toml_path = ($user_root | path join "yazi" "yazi.toml")
+    let yazi_keymap_path = ($user_root | path join "yazi" "keymap.toml")
+    let yazi_init_path = ($user_root | path join "yazi" "init.lua")
 
     [
         {
@@ -65,6 +67,20 @@ def get_edit_targets [] {
             aliases: ["yazi", "yazi.toml", "file-manager"]
             search: "yazi yazi.toml file-manager file manager"
             path: $yazi_toml_path
+        }
+        {
+            id: "yazi-keymap"
+            label: $"yazi-keymap  (ansi dark_gray)- managed Yazi keymap \(keymap.toml\) → ($yazi_keymap_path)(ansi reset)"
+            aliases: ["yazi-keymap", "keymap", "keymap.toml", "yazi keymap"]
+            search: "yazi keymap keymap.toml file-manager bindings"
+            path: $yazi_keymap_path
+        }
+        {
+            id: "yazi-init"
+            label: $"yazi-init  (ansi dark_gray)- managed Yazi init.lua → ($yazi_init_path)(ansi reset)"
+            aliases: ["yazi-init", "init", "init.lua", "yazi init", "lua"]
+            search: "yazi init init.lua lua file-manager plugins"
+            path: $yazi_init_path
         }
     ]
 }

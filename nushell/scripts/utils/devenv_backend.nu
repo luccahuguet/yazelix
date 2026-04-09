@@ -177,6 +177,26 @@ export def resolve_refresh_request [
     }
 }
 
+export def resolve_runtime_entry_context [
+    refresh_request: record
+    --force-reenter
+] {
+    let env_status = (check_environment_status)
+    let runtime_state = (
+        resolve_runtime_entry_state
+        $refresh_request
+        --already-in-env=$env_status.already_in_env
+        --in-yazelix-shell=$env_status.in_yazelix_shell
+        --force-reenter=$force_reenter
+    )
+
+    {
+        refresh_request: $refresh_request
+        env_status: $env_status
+        runtime_state: $runtime_state
+    }
+}
+
 export def resolve_runtime_entry_state [
     refresh_request: record
     --already-in-env

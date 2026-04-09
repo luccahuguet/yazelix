@@ -4,8 +4,8 @@
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/environment_bootstrap.nu [prepare_environment]
-use ../utils/devenv_backend.nu [advance_runtime_state_after_rebuild check_environment_status get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_launch_transition resolve_refresh_request resolve_runtime_entry_state run_in_devenv_shell_command]
-use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile resolve_runtime_owned_profile]
+use ../utils/devenv_backend.nu [advance_runtime_state_after_rebuild get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_launch_transition resolve_refresh_request resolve_runtime_entry_context run_in_devenv_shell_command]
+use ../utils/launch_state.nu [get_launch_env resolve_requested_launch_profile resolve_runtime_owned_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu [require_yazelix_runtime_dir]
@@ -142,16 +142,9 @@ export def "yzx launch" [
     } else {
         $refresh_request
     }
-    let should_refresh = ($launch_refresh_request.should_refresh? | default false)
-    let env_status = (check_environment_status)
     let force_reenter = $force_reenter
-    let runtime_state = (
-        resolve_runtime_entry_state
-        $launch_refresh_request
-        --already-in-env=$env_status.already_in_env
-        --in-yazelix-shell=$env_status.in_yazelix_shell
-        --force-reenter=$force_reenter
-    )
+    let entry_context = (resolve_runtime_entry_context $launch_refresh_request --force-reenter=$force_reenter)
+    let runtime_state = $entry_context.runtime_state
     mut printed_refresh_notice = false
     if $verbose_mode {
         print $"🔍 Config hash changed? ($needs_refresh)"
@@ -175,13 +168,7 @@ export def "yzx launch" [
             print "⚠️  Current Yazelix shell does not include the configured terminal; re-entering a fresh environment."
         }
     }
-    let cached_launch_profile = if (($runtime_state.profile_request | default "none") == "reused_recorded_profile") {
-        require_reused_launch_profile $config_state "yzx launch --reuse"
-    } else if (($runtime_state.profile_request | default "none") == "verified_recorded_profile") {
-        get_launch_profile $config_state
-    } else {
-        null
-    }
+    let cached_launch_profile = (resolve_requested_launch_profile $runtime_state $config_state "yzx launch --reuse")
     let cached_launch_profile = if ($cached_launch_profile != null) and (not (launch_profile_supports_configured_terminal $config $cached_launch_profile $requested_terminal)) {
         if $verbose_mode {
             print "⚠️  Cached Yazelix profile does not include the currently configured terminal; re-entering devenv instead."
