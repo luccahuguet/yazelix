@@ -292,13 +292,6 @@ def get_dynamic_overrides [config: record] {
         "true"
     }
 
-    let rounded = ($config | get -o zellij_rounded_corners | default "true")
-    let rounded_value = if ($rounded | str starts-with "false") {
-        "false"
-    } else {
-        "true"
-    }
-
     # Zellij built-in themes (37 total: 28 dark + 9 light)
     let zellij_themes = [
         "ansi", "ao", "atelier-sulphurpool", "ayu_mirage", "ayu_dark",
@@ -339,11 +332,20 @@ def get_dynamic_overrides [config: record] {
         $"show_startup_tips ($show_tips_value)",
         "show_release_notes false",
         $"on_force_close \"($on_force_close_value)\"",
-        $"pane_frames ($pane_frames_value)",
-        "ui {",
-        "    pane_frames {",
-        $"        rounded_corners ($rounded_value)",
-        "    }",
+        $"pane_frames ($pane_frames_value)"
+    ] | str join "\n"
+}
+
+def build_yazelix_ui_block [existing_ui_lines: list<string>, rounded_value: string] {
+    let existing_ui_text = ($existing_ui_lines | str join "\n")
+    let hide_session_name = ($existing_ui_text | str contains "hide_session_name true")
+
+    [
+        "ui {"
+        "    pane_frames {"
+        $"        rounded_corners ($rounded_value)"
+        ...(if $hide_session_name { ["        hide_session_name true"] } else { [] })
+        "    }"
         "}"
     ] | str join "\n"
 }
@@ -361,6 +363,7 @@ def extract_semantic_config_blocks [config_content: string] {
     mut load_plugin_lines = []
     mut plugin_lines = []
     mut keybind_lines = []
+    mut ui_lines = []
     mut active_block = ""
     mut brace_depth = 0
 
@@ -371,7 +374,7 @@ def extract_semantic_config_blocks [config_content: string] {
 
         if ($active_block | is-empty) {
             let matched_block = (
-                ["load_plugins", "plugins", "keybinds"]
+                ["load_plugins", "plugins", "keybinds", "ui"]
                 | where {|block_name| $trimmed | str starts-with $block_name }
                 | get 0?
                 | default ""
@@ -401,6 +404,9 @@ def extract_semantic_config_blocks [config_content: string] {
                             "keybinds" => {
                                 $keybind_lines = ($keybind_lines | append $inline_body)
                             }
+                            "ui" => {
+                                $ui_lines = ($ui_lines | append $inline_body)
+                            }
                         }
                     }
                     $active_block = ""
@@ -422,6 +428,9 @@ def extract_semantic_config_blocks [config_content: string] {
                     "keybinds" => {
                         $keybind_lines = ($keybind_lines | append $line)
                     }
+                    "ui" => {
+                        $ui_lines = ($ui_lines | append $line)
+                    }
                 }
             } else {
                 $active_block = ""
@@ -434,6 +443,7 @@ def extract_semantic_config_blocks [config_content: string] {
         load_plugin_lines: $load_plugin_lines
         plugin_lines: $plugin_lines
         keybind_lines: $keybind_lines
+        ui_lines: $ui_lines
     }
 }
 
@@ -522,10 +532,10 @@ def build_merged_keybinds_block [
     }
 }
 
-def read_yazelix_overrides [
+def read_yazelix_override_keybinds [
     yazelix_dir: string
     pane_orchestrator_plugin_url: string
-]: nothing -> record {
+]: nothing -> list<string> {
     let overrides_path = ($yazelix_dir | path join $ZELLIJ_CONFIG_PATHS.yazelix_overrides)
 
     if not ($overrides_path | path exists) {
@@ -539,10 +549,7 @@ def read_yazelix_overrides [
         | str replace -a "__YAZELIX_RUNTIME_DIR__" $runtime_ref
     )
     let extracted_blocks = (extract_semantic_config_blocks $resolved_overrides)
-    {
-        overrides_without_keybinds: $extracted_blocks.config_without_semantic_blocks
-        keybind_lines: $extracted_blocks.keybind_lines
-    }
+    $extracted_blocks.keybind_lines
 }
 
 # Main function: Generate merged Zellij configuration
@@ -564,6 +571,8 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     let default_mode = ($config.zellij_default_mode? | default "normal")
     let default_layout_name = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
     let sidebar_width_percent = ($config.sidebar_width_percent? | default 20)
+    let rounded = ($config | get -o zellij_rounded_corners | default "true")
+    let rounded_value = if ($rounded | str starts-with "false") { "false" } else { "true" }
     let source_layouts_dir = $"($yazelix_dir)/($ZELLIJ_CONFIG_PATHS.layouts_dir)"
     let pane_orchestrator_plugin_url = $PANE_ORCHESTRATOR_PLUGIN_ALIAS
     let plugin_artifacts = (profile_startup_step "zellij_config" "resolve_plugin_artifacts" {
@@ -619,8 +628,8 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     })
     let zjstatus_plugin_url = $"file:($zjstatus_wasm_path)"
 
-    let yazelix_overrides = (profile_startup_step "zellij_config" "load_overrides" {
-        read_yazelix_overrides $yazelix_dir $pane_orchestrator_plugin_url
+    let yazelix_override_keybinds = (profile_startup_step "zellij_config" "load_override_keybinds" {
+        read_yazelix_override_keybinds $yazelix_dir $pane_orchestrator_plugin_url
     })
     let widget_tray_segment = (render_widget_tray_segment $widget_tray)
     let custom_text_segment = (render_custom_text_segment $custom_text)
@@ -652,11 +661,15 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
             ($trimmed | str starts-with "default_layout ") or
             ($trimmed | str starts-with "layout_dir ") or
             ($trimmed | str starts-with "on_force_close ") or
+            ($trimmed | str starts-with "session_serialization ") or
+            ($trimmed | str starts-with "serialize_pane_viewport ") or
             ($trimmed | str starts-with "show_startup_tips ") or
+            ($trimmed | str starts-with "show_release_notes ") or
             ($trimmed | str starts-with "default_shell ")
         )
     } | str join "\n")
-    let merged_keybinds_block = (build_merged_keybinds_block $extracted_blocks.keybind_lines $yazelix_overrides.keybind_lines)
+    let merged_keybinds_block = (build_merged_keybinds_block $extracted_blocks.keybind_lines $yazelix_override_keybinds)
+    let merged_ui_block = (build_yazelix_ui_block $extracted_blocks.ui_lines $rounded_value)
     let merged_config = [
         "// ========================================",
         "// GENERATED ZELLIJ CONFIG (YAZELIX)",
@@ -671,8 +684,6 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         "",
         $base_config,
         "",
-        $yazelix_overrides.overrides_without_keybinds,
-        "",
         $merged_keybinds_block,
         "",
         (build_yazelix_plugins_block
@@ -684,9 +695,13 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
             $sidebar_width_percent
         ),
         "",
+        $merged_ui_block,
+        "",
         (get_dynamic_overrides $config),
         "",
         "// === YAZELIX ENFORCED SETTINGS ===",
+        "session_serialization true",
+        "serialize_pane_viewport true",
         $"support_kitty_keyboard_protocol ($kitty_protocol_value)",
         $"default_mode \"($default_mode)\"",
         $"default_shell \"($resolved_default_shell)\"",

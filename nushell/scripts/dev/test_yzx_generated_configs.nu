@@ -792,6 +792,23 @@ def write_minimal_user_zellij_config [fake_home: string] {
         | save --force --raw $zellij_config_path
 }
 
+def write_conflicting_user_zellij_config [fake_home: string] {
+    let zellij_config_dir = ($fake_home | path join ".config" "yazelix" "user_configs" "zellij")
+    let zellij_config_path = ($zellij_config_dir | path join "config.kdl")
+    mkdir $zellij_config_dir
+    'show_release_notes true
+session_serialization false
+serialize_pane_viewport false
+ui {
+    pane_frames {
+        rounded_corners false
+        hide_session_name true
+    }
+}
+keybinds { normal { bind "f1" { WriteChars "fixture"; } } }'
+        | save --force --raw $zellij_config_path
+}
+
 def write_legacy_native_zellij_config [fake_home: string] {
     let zellij_config_dir = ($fake_home | path join ".config" "zellij")
     let zellij_config_path = ($zellij_config_dir | path join "config.kdl")
@@ -1308,6 +1325,54 @@ session_name = "fixture"
     $result
 }
 
+# Regression: first-match KDL parsing must not let earlier user ui/serialization/release-note settings override Yazelix-owned output.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_generate_merged_zellij_config_replaces_conflicting_ui_and_serialization_settings [] {
+    print "🧪 Testing merged Zellij config replaces conflicting user ui and serialization settings before first-match parsing can ignore Yazelix overrides..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_first_match_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        write_conflicting_user_zellij_config $fake_home
+
+        '[zellij]
+rounded_corners = true
+' | save --force --raw $config_path
+
+        let output = (run_merged_zellij_config_in_fake_home $tmpdir {
+            YAZELIX_CONFIG_OVERRIDE: $config_path
+        })
+        let generated_config = ($output.config | str trim)
+
+        if (
+            (($generated_config | lines | where {|line| ($line | str trim) == 'show_release_notes false'} | length) == 1)
+            and (($generated_config | lines | where {|line| ($line | str trim) == 'show_release_notes true'} | length) == 0)
+            and (($generated_config | lines | where {|line| ($line | str trim) == 'session_serialization true'} | length) == 1)
+            and (($generated_config | lines | where {|line| ($line | str trim) == 'session_serialization false'} | length) == 0)
+            and (($generated_config | lines | where {|line| ($line | str trim) == 'serialize_pane_viewport true'} | length) == 1)
+            and (($generated_config | lines | where {|line| ($line | str trim) == 'serialize_pane_viewport false'} | length) == 0)
+            and not ($generated_config | str contains 'pane_viewport_serialization')
+            and (($generated_config | lines | where {|line| ($line | str trim) == 'rounded_corners true'} | length) == 1)
+            and (($generated_config | lines | where {|line| ($line | str trim) == 'rounded_corners false'} | length) == 0)
+            and (($generated_config | lines | where {|line| ($line | str trim) == 'hide_session_name true'} | length) == 1)
+        ) {
+            print "  ✅ Merged Zellij config now replaces conflicting user ui and serialization settings before Zellij first-match parsing can ignore Yazelix-owned values"
+            true
+        } else {
+            print "  ❌ Generated Zellij config still leaves conflicting first-match settings ahead of Yazelix-owned output"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Defends: native Zellij config can still be used without Yazelix taking ownership of it.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it [] {
@@ -1417,6 +1482,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers)
         (test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrator_toggle)
         (test_generate_merged_zellij_config_sets_on_force_close_by_session_mode)
+        (test_generate_merged_zellij_config_replaces_conflicting_ui_and_serialization_settings)
     ]
 }
 
