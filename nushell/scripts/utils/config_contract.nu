@@ -6,7 +6,7 @@ use ./common.nu [get_yazelix_runtime_dir]
 export const MAIN_CONFIG_CONTRACT_RELATIVE_PATH = "config_metadata/main_config_contract.toml"
 export const PACK_CATALOG_CONTRACT_RELATIVE_PATH = "config_metadata/pack_catalog_contract.toml"
 
-export def get_main_config_contract_path [] {
+def get_main_config_contract_path [] {
     (get_yazelix_runtime_dir | path join $MAIN_CONFIG_CONTRACT_RELATIVE_PATH)
 }
 
@@ -14,7 +14,7 @@ export def load_main_config_contract [] {
     open (get_main_config_contract_path)
 }
 
-export def get_pack_catalog_contract_path [] {
+def get_pack_catalog_contract_path [] {
     (get_yazelix_runtime_dir | path join $PACK_CATALOG_CONTRACT_RELATIVE_PATH)
 }
 
