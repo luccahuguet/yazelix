@@ -24,10 +24,6 @@ export def get_welcome_style_random_pool [] {
     $ANIMATED_WELCOME_STYLE_VALUES
 }
 
-export def get_screen_style_random_pool [] {
-    get_welcome_style_random_pool
-}
-
 export def resolve_welcome_style [welcome_style: string, random_index?: int] {
     let normalized = ($welcome_style | into string | str downcase)
 
@@ -995,36 +991,6 @@ def repaint_resting_logo_after_skip [width?] {
     }
 }
 
-export def play_frames_with_delay [frames: list<list<string>>, frame_delay: duration] {
-    if ($frames | is-empty) {
-        return
-    }
-
-    let max_frame_height = ($frames | each {|frame| $frame | length } | math max)
-    let last_index = (($frames | length) - 1)
-
-    for item in ($frames | enumerate) {
-        let frame = $item.item
-        let padded_frame = if (($frame | length) < $max_frame_height) {
-            let filler = (0..(($max_frame_height - ($frame | length)) - 1) | each { "" })
-            ($frame | append $filler)
-        } else {
-            $frame
-        }
-
-        for line in $padded_frame {
-            print $"\r\u{1b}[2K($line)"
-        }
-
-        if $item.index < $last_index {
-            sleep $frame_delay
-            print ("\u{1b}[" + (($max_frame_height + 1) | into string) + "A")
-        } else {
-            print ("\u{1b}[" + (($max_frame_height - ($frame | length)) | into string) + "A")
-        }
-    }
-}
-
 export def play_animation [duration: duration, width?: int] {
     let frames = (get_animated_ascii_art $width)
     play_frames $frames $duration
@@ -1036,10 +1002,6 @@ export def get_welcome_playback_duration [welcome_style: string, duration_second
     } else {
         ($duration_seconds * 1sec)
     }
-}
-
-export def render_welcome_style [welcome_style: string, duration_seconds: float = 2.0, width?: int] {
-    render_welcome_style_interruptibly $welcome_style $duration_seconds $width | ignore
 }
 
 export def render_welcome_style_interruptibly [welcome_style: string, duration_seconds: float = 2.0, width?, poller?: closure] {

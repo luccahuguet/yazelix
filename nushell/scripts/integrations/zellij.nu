@@ -296,10 +296,6 @@ export def set_tab_cwd [target_path: path, log_file: string = "zellij_plugin.log
     update_tab_workspace "set_workspace_root_and_cd_focused_pane" $target_path $log_file
 }
 
-export def set_tab_workspace_root [target_path: path, log_file: string = "zellij_plugin.log"] {
-    update_tab_workspace "set_workspace_root" $target_path $log_file
-}
-
 export def set_workspace_for_path [target_path: path, log_file: string = "zellij_plugin.log"] {
     let workspace = (get_workspace_context $target_path $log_file)
     let payload = {
