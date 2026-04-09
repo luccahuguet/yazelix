@@ -3,7 +3,7 @@
 # Called from devenv.nix shellHook to reduce complexity
 
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/common.nu [get_installed_yazelix_runtime_reference_dir get_yazelix_runtime_dir resolve_yazelix_nu_bin]
+use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 use ../utils/startup_profile.nu [profile_startup_step]
@@ -38,25 +38,6 @@ def detect_environment [] {
             else { "standard" }
         )
     }
-}
-
-def ensure_user_cli_wrapper [yazelix_dir: string] {
-    let local_bin_dir = ($env.HOME | path join ".local" "bin")
-    let installed_runtime_reference = (get_installed_yazelix_runtime_reference_dir)
-    let cli_target = if ($installed_runtime_reference | path exists) {
-        ($installed_runtime_reference | path join "bin" "yzx")
-    } else {
-        ($yazelix_dir | path join "bin" "yzx")
-    }
-    let cli_link = ($local_bin_dir | path join "yzx")
-
-    if not ($cli_target | path exists) {
-        error make {msg: $"Missing Yazelix CLI wrapper: ($cli_target)"}
-    }
-
-    mkdir $local_bin_dir
-    rm -f $cli_link
-    ^ln -s $cli_target $cli_link
 }
 
 def ensure_runtime_scripts_executable [yazelix_dir: string] {
@@ -200,8 +181,8 @@ def main [--welcome-source: string, --skip-welcome] {
         sync_generated_nushell_user_hook_bridge
     }
 
-    # Home Manager owns the profile command and runtime/current directly, so
-    # first-use startup must not require or rewrite host shell dotfiles.
+    # Home Manager owns the profile command directly, so first-use startup must
+    # not require or rewrite host shell dotfiles.
     if not $home_manager_managed {
         # Setup shell hooks for configured shells
         use ./shell_hooks.nu setup_shell_hooks
@@ -232,11 +213,6 @@ def main [--welcome-source: string, --skip-welcome] {
 
     profile_shellhook_step "ensure_runtime_scripts_executable" {
         ensure_runtime_scripts_executable $yazelix_dir
-    }
-    if not $home_manager_managed {
-        profile_shellhook_step "ensure_user_cli_wrapper" {
-            ensure_user_cli_wrapper $yazelix_dir
-        }
     }
 
     let zjstatus_target = $"($yazelix_dir)/configs/zellij/plugins/zjstatus.wasm"

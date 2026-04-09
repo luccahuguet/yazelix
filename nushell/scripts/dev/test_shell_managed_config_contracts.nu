@@ -400,51 +400,6 @@ def test_source_checkout_runtime_resolution_beats_installed_runtime [] {
     $result
 }
 
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-# Regression: installed-runtime modules must not treat a Nix -source mirror as the active runtime when runtime/current exists.
-def test_installed_runtime_resolution_prefers_runtime_current_over_nix_source_mirror [] {
-    print "🧪 Testing installed-runtime resolution prefers runtime/current over a Nix -source mirror..."
-
-    let repo_root = (get_repo_root)
-    let tmp_root = (^mktemp -d /tmp/yazelix_installed_runtime_resolution_XXXXXX | str trim)
-    let fake_state_dir = ($tmp_root | path join "state")
-    let fake_installed_runtime = ($tmp_root | path join "installed_runtime")
-    let fake_source_root = ($tmp_root | path join "fake-runtime-source")
-    let fake_common_path = ($fake_source_root | path join "nushell" "scripts" "utils" "common.nu")
-
-    mkdir ($fake_state_dir | path join "runtime")
-    mkdir ($fake_installed_runtime | path join "nushell")
-    mkdir ($fake_source_root | path join "nushell" "scripts" "utils")
-    cp ($repo_root | path join ".taplo.toml") ($fake_installed_runtime | path join ".taplo.toml")
-    "" | save --force --raw ($fake_installed_runtime | path join "yazelix_default.toml")
-    ^ln -s $fake_installed_runtime ($fake_state_dir | path join "runtime" "current")
-    cp ($repo_root | path join "nushell" "scripts" "utils" "common.nu") $fake_common_path
-
-    let result = (try {
-        let output = (with-env {
-            YAZELIX_STATE_DIR: $fake_state_dir
-        } {
-            ^nu -c $"use \"($fake_common_path)\" [get_yazelix_runtime_dir]; print \(get_yazelix_runtime_dir\)" | complete
-        })
-        let stdout = ($output.stdout | str trim)
-
-        if ($output.exit_code == 0) and ($stdout == $fake_installed_runtime) {
-            print "  ✅ Installed-runtime resolution now prefers runtime/current over a Nix -source mirror"
-            true
-        } else {
-            print $"  ❌ Unexpected installed-runtime resolution result: exit=($output.exit_code) stdout=($stdout) expected=($fake_installed_runtime) stderr=(($output.stderr | str trim))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_root
-    $result
-}
-
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 # Regression: runtime-root resolution must fail fast instead of silently falling back to the config root.
 def test_runtime_resolution_fails_fast_without_valid_runtime_root [] {
     print "🧪 Testing runtime-root resolution fails fast without a valid runtime root..."
@@ -465,20 +420,94 @@ def test_runtime_resolution_fails_fast_without_valid_runtime_root [] {
             HOME: $fake_home
             YAZELIX_CONFIG_DIR: $fake_config_dir
             YAZELIX_STATE_DIR: $fake_state_dir
+            YAZELIX_RUNTIME_DIR: null
         } {
             ^nu -c $"use \"($fake_common_path)\" [require_yazelix_runtime_dir]; require_yazelix_runtime_dir" | complete
         })
-        let stderr = ($output.stderr | str trim)
+        let detail = (([$output.stderr $output.stdout] | compact | str join "\n") | str trim)
 
         if (
             ($output.exit_code != 0)
-            and ($stderr | str contains "Could not resolve a valid Yazelix runtime root")
-            and not ($stderr | str contains $fake_config_dir)
+            and ($detail | str contains "Could not resolve a valid Yazelix runtime root")
+            and not ($detail | str contains $fake_config_dir)
         ) {
             print "  ✅ Runtime-root resolution now fails fast instead of silently treating the config root as runtime code"
             true
         } else {
-            print $"  ❌ Unexpected missing-runtime result: exit=($output.exit_code) stderr=($stderr)"
+            print $"  ❌ Unexpected missing-runtime result: exit=($output.exit_code) detail=($detail)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: standard shellhook setup must not recreate the legacy ~/.local/bin/yzx wrapper.
+def test_standard_shellhook_setup_skips_legacy_yzx_wrapper [] {
+    print "🧪 Testing standard shellhook setup skips the legacy yzx wrapper..."
+
+    let repo_root = (get_repo_root)
+    let tmp_root = (^mktemp -d /tmp/yazelix_standard_shellhook_surfaces_XXXXXX | str trim)
+    let tmp_home = ($tmp_root | path join "home")
+    let xdg_config_home = ($tmp_home | path join ".config")
+    let config_dir = ($xdg_config_home | path join "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+    let log_dir = ($state_dir | path join "logs")
+    let runtime_dir = ($tmp_root | path join "runtime")
+    let runtime_bin_dir = ($runtime_dir | path join "bin")
+    let bashrc_path = ($tmp_home | path join ".bashrc")
+    let nushell_host_config = ($xdg_config_home | path join "nushell" "config.nu")
+    let local_yzx = ($tmp_home | path join ".local" "bin" "yzx")
+    let runtime_nu = (which nu | get -o 0.path | default "nu")
+
+    mkdir $xdg_config_home
+    mkdir $user_config_dir
+    mkdir $state_dir
+    mkdir $log_dir
+    mkdir $runtime_dir
+    mkdir $runtime_bin_dir
+
+    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "nushell", "shells", "yazelix_default.toml", "yazelix_packs_default.toml"] {
+        ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
+    }
+    ^ln -s $runtime_nu ($runtime_bin_dir | path join "nu")
+    "" | save --force --raw $bashrc_path
+    mkdir ($nushell_host_config | path dirname)
+    "" | save --force --raw $nushell_host_config
+    cp (repo_path "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
+    cp (repo_path "yazelix_packs_default.toml") ($user_config_dir | path join "yazelix_packs.toml")
+
+    let result = (try {
+        let output = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_RUNTIME_DIR: $runtime_dir
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_LOGS_DIR: $log_dir
+        } {
+            ^$runtime_nu ($runtime_dir | path join "nushell" "scripts" "setup" "environment.nu") --skip-welcome | complete
+        })
+        let bashrc_contents = (open --raw $bashrc_path)
+        let expected_launcher = ($runtime_dir | path join "shells" "posix" "yzx_cli.sh")
+
+        if (
+            ($output.exit_code == 0)
+            and ($bashrc_path | path exists)
+            and not ($local_yzx | path exists)
+            and ($bashrc_contents | str contains $expected_launcher)
+            and not ($bashrc_contents | str contains "/.local/bin/yzx")
+        ) {
+            print "  ✅ Standard shellhook setup now updates host shell hooks with the active runtime launcher instead of recreating the legacy ~/.local/bin/yzx shim"
+            true
+        } else {
+            print $"  ❌ Unexpected standard shellhook result: exit=($output.exit_code) bashrc_exists=(($bashrc_path | path exists)) local_yzx_exists=(($local_yzx | path exists)) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -640,8 +669,8 @@ export def run_shell_managed_config_contract_tests [] {
         (test_managed_bash_config_sources_optional_user_hook)
         (test_managed_fish_config_does_not_export_helix_mode_env)
         (test_source_checkout_runtime_resolution_beats_installed_runtime)
-        (test_installed_runtime_resolution_prefers_runtime_current_over_nix_source_mirror)
         (test_runtime_resolution_fails_fast_without_valid_runtime_root)
+        (test_standard_shellhook_setup_skips_legacy_yzx_wrapper)
         (test_home_manager_shellhook_setup_skips_host_shell_surfaces)
         (test_setup_shell_hooks_rejects_legacy_generations)
     ]

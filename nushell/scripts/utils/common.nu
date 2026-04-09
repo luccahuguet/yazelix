@@ -77,10 +77,6 @@ def get_installed_runtime_dir [] {
     }
 }
 
-export def get_installed_yazelix_runtime_reference_dir [] {
-    get_yazelix_state_dir | path join "runtime" "current"
-}
-
 export def get_installed_yazelix_runtime_dir [] {
     get_installed_runtime_dir
 }
@@ -172,7 +168,6 @@ export def get_yazelix_runtime_dir [] {
         | into string
         | str trim
     )
-    let installed_runtime = (get_installed_runtime_dir)
     let inferred_runtime = (get_inferred_runtime_dir)
     let configured_path = if ($configured | is-not-empty) {
         resolve_existing_path $configured
@@ -183,8 +178,6 @@ export def get_yazelix_runtime_dir [] {
         $configured_path
     } else if ($inferred_runtime != null) and (not (is_nix_store_source_runtime $inferred_runtime)) {
         $inferred_runtime
-    } else if $installed_runtime != null {
-        $installed_runtime
     } else if $inferred_runtime != null {
         $inferred_runtime
     } else {
@@ -210,24 +203,18 @@ export def get_yazelix_state_dir [] {
     }
 }
 
-export def get_yazelix_runtime_reference_dir [] {
-    let state_runtime = (get_yazelix_state_dir | path join "runtime" "current")
-    if (is_valid_runtime_dir $state_runtime) {
-        $state_runtime
-    } else {
-        get_yazelix_runtime_dir
-    }
-}
-
 export def resolve_yazelix_nu_bin [] {
     let explicit_nu = (normalize_command_candidate ($env.YAZELIX_NU_BIN? | default null))
     if $explicit_nu != null {
         return $explicit_nu
     }
 
-    let runtime_nu = ((get_yazelix_runtime_reference_dir) | path join "bin" "nu")
-    if ($runtime_nu | path exists) {
-        return $runtime_nu
+    let runtime_dir = (get_yazelix_runtime_dir)
+    if $runtime_dir != null {
+        let runtime_nu = ($runtime_dir | path join "bin" "nu")
+        if ($runtime_nu | path exists) {
+            return $runtime_nu
+        }
     }
 
     let path_nu = (resolve_external_command_path "nu")

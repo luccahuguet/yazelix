@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use common.nu get_yazelix_runtime_reference_dir
+use common.nu get_yazelix_runtime_dir
 use runtime_distribution_capabilities.nu get_runtime_distribution_capability_profile
 use install_ownership.nu [
     get_manual_desktop_entry_path
@@ -211,11 +211,11 @@ def get_home_manager_profile_yzx_path [] {
 }
 
 def get_runtime_variants [current_runtime_target?: string] {
-    let runtime_ref = (get_yazelix_runtime_reference_dir)
+    let runtime_ref = (get_yazelix_runtime_dir)
     if $current_runtime_target == null {
-        [$runtime_ref] | uniq
+        [$runtime_ref] | compact | uniq
     } else {
-        [$runtime_ref, $current_runtime_target] | uniq
+        [$runtime_ref, $current_runtime_target] | compact | uniq
     }
 }
 
@@ -309,7 +309,7 @@ export def check_install_artifact_staleness [capability_profile?: record] {
 
     let runtime_link = (get_manual_runtime_reference_path)
     let current_runtime_target = if $install_owner == "home-manager" {
-        resolve_realpath_or_null (get_yazelix_runtime_reference_dir)
+        resolve_realpath_or_null (get_yazelix_runtime_dir)
     } else {
         get_current_installed_runtime_target
     }

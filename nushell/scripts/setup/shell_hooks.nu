@@ -7,8 +7,11 @@ use ../utils/constants.nu [
     YAZELIX_START_MARKER
     YAZELIX_END_MARKER
 ]
-use ../utils/shell_config_generation.nu [get_yazelix_section_content]
-use ../utils/shell_config_generation.nu [get_yazelix_runtime_config_path get_yzx_cli_path]
+use ../utils/shell_config_generation.nu [
+    get_yazelix_runtime_config_path
+    get_yazelix_section_content
+    get_yzx_cli_path
+]
 
 def extract_yazelix_section [config_file: string] {
     if not ($config_file | path exists) {
@@ -113,10 +116,10 @@ def get_legacy_yazelix_shell_hook_generation [config_content: string] {
 
 export def check_shell_hook_versions [yazelix_dir: string] {
     let configs = [
-        { name: "bash", file: ($SHELL_CONFIGS.bash | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "bash" $yazelix_dir), expected_yzx_cli: (get_yzx_cli_path) }
-        { name: "nushell", file: ($SHELL_CONFIGS.nushell | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "nushell" $yazelix_dir), expected_yzx_cli: (get_yzx_cli_path) }
-        { name: "fish", file: ($SHELL_CONFIGS.fish | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "fish" $yazelix_dir), expected_yzx_cli: (get_yzx_cli_path) }
-        { name: "zsh", file: ($SHELL_CONFIGS.zsh | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "zsh" $yazelix_dir), expected_yzx_cli: (get_yzx_cli_path) }
+        { name: "bash", file: ($SHELL_CONFIGS.bash | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "bash" $yazelix_dir), expected_yzx_cli: (get_yzx_cli_path $yazelix_dir) }
+        { name: "nushell", file: ($SHELL_CONFIGS.nushell | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "nushell" $yazelix_dir), expected_yzx_cli: (get_yzx_cli_path $yazelix_dir) }
+        { name: "fish", file: ($SHELL_CONFIGS.fish | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "fish" $yazelix_dir), expected_yzx_cli: (get_yzx_cli_path $yazelix_dir) }
+        { name: "zsh", file: ($SHELL_CONFIGS.zsh | str replace "~" $env.HOME), expected_source: (get_yazelix_runtime_config_path "zsh" $yazelix_dir), expected_yzx_cli: (get_yzx_cli_path $yazelix_dir) }
     ]
 
     $configs | each { |config|

@@ -89,8 +89,8 @@ export def main [] {
     require_file_contains $cli_wrapper 'exec "$YAZELIX_NU_BIN" -c "$nu_command"' "stable POSIX CLI wrapper"
     require_file_not_contains $runtime_env 'export YAZELIX_DIR=' "runtime env helper"
 
-    require_file_contains $environment_setup "get_installed_yazelix_runtime_reference_dir" "environment setup script"
-    require_file_contains $environment_setup 'path join "bin" "yzx"' "environment setup script"
+    require_file_not_contains $environment_setup "get_installed_yazelix_runtime_reference_dir" "environment setup script"
+    require_file_not_contains $environment_setup "ensure_user_cli_wrapper" "environment setup script"
 
     require_file_contains $runtime_tree "import ./locked_devenv_package.nix" "runtime tree builder"
     require_file_contains $runtime_tree 'ln -s ${lockedDevenv}/bin/devenv "$out/bin/devenv"' "runtime tree builder"

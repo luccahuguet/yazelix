@@ -8,7 +8,6 @@ use constants.nu [
     YAZELIX_REGENERATE_COMMENT
     YAZELIX_CONFIG_FILES
 ]
-use common.nu [get_yazelix_runtime_reference_dir]
 
 # Get the full start comment with regeneration instruction
 def get_yazelix_start_comment [] {
@@ -23,15 +22,19 @@ export def get_yazelix_runtime_config_path [shell: string, yazelix_dir: string] 
     ($yazelix_dir | path join $relative_path)
 }
 
-export def get_yzx_cli_path [] {
-    ($env.HOME | path join ".local" "bin" "yzx")
+export def get_yzx_cli_path [yazelix_dir: string] {
+    let packaged_yzx = ($yazelix_dir | path join "bin" "yzx")
+    if ($packaged_yzx | path exists) {
+        $packaged_yzx
+    } else {
+        ($yazelix_dir | path join "shells" "posix" "yzx_cli.sh")
+    }
 }
 
 # Get the complete yazelix section content for a shell
 export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
-    let runtime_ref = (get_yazelix_runtime_reference_dir)
-    let config_file = (get_yazelix_runtime_config_path $shell $runtime_ref)
-    let yzx_cli_path = (get_yzx_cli_path)
+    let config_file = (get_yazelix_runtime_config_path $shell $yazelix_dir)
+    let yzx_cli_path = (get_yzx_cli_path $yazelix_dir)
 
     # Generate shell-specific conditional loading + yzx function (always available)
     let section_body = if $shell == "bash" or $shell == "zsh" {
@@ -56,9 +59,8 @@ export def get_yazelix_section_content [shell: string, yazelix_dir: string] {
         ] | str join "\n"
     } else {
         # Nushell - always source, conditional is inside the config file itself.
-        # The managed config loads the generated extern bridge, which keeps the
-        # current shell on ~/.local/bin/yzx instead of pinning commands to the
-        # runtime store path imported at shell startup.
+        # The managed config loads the generated extern bridge instead of
+        # importing a runtime-pinned command tree at shell startup.
         [
             $"source \"($config_file)\""
         ] | str join "\n"

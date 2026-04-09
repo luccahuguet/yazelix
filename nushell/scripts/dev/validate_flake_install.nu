@@ -112,6 +112,7 @@ def verify_installed_runtime [temp_home: string] {
     let yazi_theme = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "theme.toml")
     let yazi_flavor_root = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors")
     let locked_package_root = (get_locked_devenv_package_root)
+    let resolved_runtime_current = (^readlink -f $runtime_current | str trim)
 
     require_path_exists $runtime_current "installed runtime symlink"
     require_path_exists $runtime_devenv "runtime-local devenv binary"
@@ -127,7 +128,8 @@ def verify_installed_runtime [temp_home: string] {
     require_path_exists $yazi_theme "generated Yazi theme config"
     require_path_exists $yazi_flavor_root "generated Yazi flavors directory"
 
-    require_file_contains $nushell_config "/runtime/current/" "generated Nushell hook config"
+    require_file_contains $nushell_config $resolved_runtime_current "generated Nushell hook config"
+    require_file_not_contains $nushell_config "/runtime/current/" "generated Nushell hook config"
     require_file_not_contains $yazi_theme "[flavor]" "generated Yazi theme config"
 
     if ((ls $yazi_flavor_root | where type == dir | length) < 1) {
