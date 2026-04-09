@@ -7,6 +7,12 @@ use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [get_yazelix_user_config_dir resolve_zellij_default_shell]
 use ../utils/layout_generator.nu [render_custom_text_segment render_widget_tray_segment]
 use ../utils/startup_profile.nu [profile_startup_step]
+use ./zellij_owned_settings.nu [
+    build_yazelix_ui_block
+    render_yazelix_top_level_settings_block
+    resolve_yazelix_owned_zellij_settings
+    strip_yazelix_owned_top_level_settings
+]
 use ./zellij_plugin_paths.nu [
     PANE_ORCHESTRATOR_PLUGIN_ALIAS
     get_runtime_pane_orchestrator_wasm_path
@@ -281,138 +287,6 @@ def can_reuse_generated_zellij_state [
     )
 
     ($cached_fingerprint == $fingerprint) and ($required_paths | all {|path_value| $path_value | path exists }) and $runtime_plugins_match
-}
-
-def resolve_yazelix_owned_zellij_settings [
-    config: record
-    resolved_default_shell: string
-    yazelix_layout_dir: string
-    default_layout_name: string
-] {
-    # Zellij built-in themes (37 total: 28 dark + 9 light)
-    let zellij_themes = [
-        "ansi", "ao", "atelier-sulphurpool", "ayu_mirage", "ayu_dark",
-        "catppuccin-frappe", "catppuccin-macchiato", "cyber-noir", "blade-runner",
-        "retro-wave", "dracula", "everforest-dark", "gruvbox-dark", "iceberg-dark",
-        "kanagawa", "lucario", "menace", "molokai-dark", "night-owl", "nightfox",
-        "nord", "one-half-dark", "onedark", "solarized-dark", "tokyo-night-dark",
-        "tokyo-night-storm", "tokyo-night", "vesper",
-        "ayu_light", "catppuccin-latte", "everforest-light", "gruvbox-light",
-        "iceberg-light", "dayfox", "pencil-light", "solarized-light", "tokyo-night-light"
-    ]
-
-    let theme_config = ($config | get -o zellij_theme | default "default")
-    let theme = if $theme_config == "random" {
-        $zellij_themes | shuffle | first
-    } else {
-        $theme_config
-    }
-
-    let pane_frames = ($config | get -o zellij_pane_frames | default "true")
-    let pane_frames_value = if ($pane_frames | str starts-with "false") {
-        "false"
-    } else {
-        "true"
-    }
-
-    let rounded = ($config | get -o zellij_rounded_corners | default "true")
-    let rounded_value = if ($rounded | str starts-with "false") {
-        "false"
-    } else {
-        "true"
-    }
-
-    # disable_tips in yazelix.toml → show_startup_tips in Zellij config (inverted logic)
-    let disable_tips = ($config | get -o disable_zellij_tips | default "true")
-    let show_tips_value = if ($disable_tips | str starts-with "false") {
-        "true"
-    } else {
-        "false"
-    }
-
-    let persistent_sessions = ($config | get -o persistent_sessions | default "false")
-    let on_force_close_value = if ($persistent_sessions | str starts-with "true") {
-        "detach"
-    } else {
-        "quit"
-    }
-
-    let kitty_protocol = ($config | get -o support_kitty_keyboard_protocol | default "true")
-    let kitty_protocol_value = if ($kitty_protocol | str starts-with "false") {
-        "false"
-    } else {
-        "true"
-    }
-
-    let default_mode = ($config.zellij_default_mode? | default "normal")
-
-    {
-        theme: $theme
-        pane_frames_value: $pane_frames_value
-        rounded_value: $rounded_value
-        show_tips_value: $show_tips_value
-        on_force_close_value: $on_force_close_value
-        kitty_protocol_value: $kitty_protocol_value
-        default_mode: $default_mode
-        resolved_default_shell: $resolved_default_shell
-        yazelix_layout_dir: $yazelix_layout_dir
-        default_layout_name: $default_layout_name
-    }
-}
-
-def build_yazelix_dynamic_top_level_settings [resolved: record] {
-    [
-        {name: "theme", value: $"\"($resolved.theme)\""}
-        {name: "show_startup_tips", value: $resolved.show_tips_value}
-        {name: "show_release_notes", value: "false"}
-        {name: "on_force_close", value: $"\"($resolved.on_force_close_value)\""}
-        {name: "pane_frames", value: $resolved.pane_frames_value}
-    ]
-}
-
-def build_yazelix_ui_block [existing_ui_lines: list<string>, rounded_value: string] {
-    let existing_ui_text = ($existing_ui_lines | str join "\n")
-    let hide_session_name = ($existing_ui_text | str contains "hide_session_name true")
-
-    [
-        "ui {"
-        "    pane_frames {"
-        $"        rounded_corners ($rounded_value)"
-        ...(if $hide_session_name { ["        hide_session_name true"] } else { [] })
-        "    }"
-        "}"
-    ] | str join "\n"
-}
-
-def build_yazelix_enforced_top_level_settings [resolved: record] {
-    [
-        {name: "session_serialization", value: "true"}
-        {name: "serialize_pane_viewport", value: "true"}
-        {name: "support_kitty_keyboard_protocol", value: $resolved.kitty_protocol_value}
-        {name: "default_mode", value: $"\"($resolved.default_mode)\""}
-        {name: "default_shell", value: $"\"($resolved.resolved_default_shell)\""}
-        {name: "default_layout", value: $"\"($resolved.yazelix_layout_dir)/($resolved.default_layout_name).kdl\""}
-        {name: "layout_dir", value: $"\"($resolved.yazelix_layout_dir)\""}
-    ]
-}
-
-def render_yazelix_top_level_settings_block [header: string, settings: list<record>] {
-    [
-        $header
-        ...($settings | each {|setting| $"($setting.name) ($setting.value)" })
-    ] | str join "\n"
-}
-
-def strip_yazelix_owned_top_level_settings [config_content: string, owned_setting_names: list<string>] {
-    (
-        $config_content
-        | lines
-        | where {|line|
-            let trimmed = ($line | str trim)
-            not ($owned_setting_names | any {|name| $trimmed | str starts-with $"($name) " })
-        }
-        | str join "\n"
-    )
 }
 
 # Ensure directory exists
@@ -718,8 +592,8 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
 
     # Current upstream Zellij config parsing is first-match for these top-level
     # options, so Yazelix must strip and replace the settings it owns.
-    let dynamic_top_level_settings = (build_yazelix_dynamic_top_level_settings $resolved_owned_settings)
-    let enforced_top_level_settings = (build_yazelix_enforced_top_level_settings $resolved_owned_settings)
+    let dynamic_top_level_settings = $resolved_owned_settings.dynamic_top_level_settings
+    let enforced_top_level_settings = $resolved_owned_settings.enforced_top_level_settings
     let owned_top_level_setting_names = (
         $dynamic_top_level_settings
         | append $enforced_top_level_settings
