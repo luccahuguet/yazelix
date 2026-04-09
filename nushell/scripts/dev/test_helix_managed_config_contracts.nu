@@ -126,6 +126,81 @@ def test_get_launch_env_wraps_helix_with_managed_wrapper [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Regression: the managed Helix wrapper must ignore legacy YAZELIX_DIR and infer its runtime from the wrapper path.
+def test_yazelix_hx_ignores_legacy_runtime_alias_and_uses_wrapper_runtime_root [] {
+    print "🧪 Testing yazelix_hx ignores legacy YAZELIX_DIR and uses the wrapper runtime root..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_hx_runtime_root_XXXXXX | str trim)
+    let fake_bin = ($tmp_home | path join "fake_bin")
+    let nu_log = ($tmp_home | path join "nu.log")
+    let hx_log = ($tmp_home | path join "hx.log")
+    let managed_config_path = ($tmp_home | path join "managed_config.toml")
+    mkdir $fake_bin
+    mkdir ($tmp_home | path join ".config" "yazelix" "user_configs")
+    mkdir ($tmp_home | path join ".local" "share" "yazelix")
+    "" | save --force --raw $managed_config_path
+
+    let fake_nu = ($fake_bin | path join "nu")
+    [
+        "#!/bin/sh"
+        $"printf '%s\\n' \"$1\" > '($nu_log)'"
+        $"printf '%s\\n' \"$2\" >> '($nu_log)'"
+        $"printf '%s\\n' '($managed_config_path)'"
+    ] | str join "\n" | save --force --raw $fake_nu
+    chmod +x $fake_nu
+
+    let fake_hx = ($fake_bin | path join "hx")
+    [
+        "#!/bin/sh"
+        $"printf '%s\\n' \"$1\" > '($hx_log)'"
+        $"printf '%s\\n' \"$2\" >> '($hx_log)'"
+        $"printf '%s\\n' \"$3\" >> '($hx_log)'"
+        "exit 0"
+    ] | str join "\n" | save --force --raw $fake_hx
+    chmod +x $fake_hx
+
+    let result = (try {
+        let wrapper_path = ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
+        let output = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: ($tmp_home | path join ".config")
+            XDG_DATA_HOME: ($tmp_home | path join ".local" "share")
+            YAZELIX_CONFIG_DIR: ($tmp_home | path join ".config" "yazelix")
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_RUNTIME_DIR: null
+            YAZELIX_DIR: "/hostile/legacy_runtime"
+            YAZELIX_MANAGED_HELIX_BINARY: $fake_hx
+            YAZELIX_NU_BIN: $fake_nu
+        } {
+            ^$wrapper_path "file.txt" | complete
+        })
+
+        let expected_merger_script = ($repo_root | path join "nushell" "scripts" "setup" "helix_config_merger.nu")
+        let nu_lines = if ($nu_log | path exists) { open $nu_log | lines } else { [] }
+        let hx_lines = if ($hx_log | path exists) { open $hx_log | lines } else { [] }
+
+        if (
+            ($output.exit_code == 0)
+            and ($nu_lines == [$expected_merger_script, "--print-path"])
+            and ($hx_lines == ["-c", $managed_config_path, "file.txt"])
+        ) {
+            print "  ✅ yazelix_hx now ignores legacy YAZELIX_DIR and resolves Helix config generation from the wrapper runtime root"
+            true
+        } else {
+            print $"  ❌ Unexpected wrapper result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim)) nu=(($nu_lines | to json -r)) hx=(($hx_lines | to json -r))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Defends: yzx import helix copies personal config into managed overrides and makes a backup on --force.
 def test_yzx_import_helix_copies_personal_config_with_force_backups [] {
@@ -203,6 +278,7 @@ export def run_helix_managed_config_contract_tests [] {
     [
         (test_generate_managed_helix_config_merges_user_config_and_enforces_reveal)
         (test_get_launch_env_wraps_helix_with_managed_wrapper)
+        (test_yazelix_hx_ignores_legacy_runtime_alias_and_uses_wrapper_runtime_root)
         (test_yzx_import_helix_copies_personal_config_with_force_backups)
     ]
 }

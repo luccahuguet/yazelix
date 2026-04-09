@@ -11,7 +11,7 @@ if [ -L "$script_path" ]; then
 fi
 
 inferred_runtime_dir="$(cd "$(dirname "$script_path")/../.." && pwd)"
-runtime_dir="${YAZELIX_RUNTIME_DIR:-${YAZELIX_DIR:-$inferred_runtime_dir}}"
+runtime_dir="${YAZELIX_RUNTIME_DIR:-$inferred_runtime_dir}"
 if [ -z "$runtime_dir" ]; then
   printf '%s\n' "Error: missing Yazelix runtime directory" >&2
   exit 1

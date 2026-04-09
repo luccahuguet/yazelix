@@ -33,7 +33,7 @@ Set by Yazelix entrypoints to wire integrations:
 
 - Repo-local `devenv` shells use `DEVENV_ROOT` as the live checkout identity and set `IN_YAZELIX_SHELL=true`.
 - Installed/runtime-owned launch paths export `YAZELIX_RUNTIME_DIR` to point at the active Yazelix runtime root.
-- `YAZELIX_DIR` remains a legacy compatibility alias for the runtime root in installed/runtime contexts; new code should prefer `YAZELIX_RUNTIME_DIR`.
+- `YAZELIX_DIR` is a legacy runtime-root compatibility alias that older external wrappers may still carry, but maintained Yazelix entrypoints do not export or require it. New code should use `YAZELIX_RUNTIME_DIR`.
 - `ZELLIJ_DEFAULT_LAYOUT` – chosen layout name (`yzx_side` or `yzx_no_side`)
 - `YAZI_CONFIG_HOME` – `~/.local/share/yazelix/configs/yazi` for consistent Yazi behavior
 - `EDITOR` – your configured editor command or Yazelix Helix

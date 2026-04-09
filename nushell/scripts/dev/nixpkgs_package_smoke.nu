@@ -22,13 +22,13 @@ export def get_package_env [temp_home: string, package_root?: string] {
         XDG_CONFIG_HOME: ($temp_home | path join ".config")
         XDG_DATA_HOME: ($temp_home | path join ".local" "share")
         SHELL: ($env.SHELL? | default "/bin/sh")
+        YAZELIX_DIR: null
     }
 
     if $package_root != null {
         $package_env = (
             $package_env
             | insert YAZELIX_RUNTIME_DIR $package_root
-            | insert YAZELIX_DIR $package_root
         )
     }
 

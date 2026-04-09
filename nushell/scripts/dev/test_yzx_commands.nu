@@ -34,7 +34,11 @@ export def run_default_canonical_suite [--profile] {
     } else {
         test_profiling_enabled
     }
-    let suite_results = (with-env { HOME: $fixture.tmp_home, YAZELIX_DIR: $fixture.config_dir } {
+    let suite_results = (with-env {
+        HOME: $fixture.tmp_home
+        YAZELIX_RUNTIME_DIR: null
+        YAZELIX_DIR: null
+    } {
         [
             (build_profiled_suite_result "core" { run_core_canonical_tests })
             (build_profiled_suite_result "doctor" { run_doctor_canonical_tests })

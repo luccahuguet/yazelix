@@ -168,7 +168,7 @@ export def get_yazelix_user_config_dir [config_root?: string] {
 export def get_yazelix_runtime_dir [] {
     let configured = (
         $env.YAZELIX_RUNTIME_DIR?
-        | default ($env.YAZELIX_DIR? | default "")
+        | default ""
         | into string
         | str trim
     )
