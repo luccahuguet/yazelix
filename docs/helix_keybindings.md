@@ -8,7 +8,7 @@ The default workspace bindings live in Zellij: `Ctrl+y` toggles focus between th
 
 Yazelix-managed Helix sessions now ship the `Alt+r` reveal binding by default through the managed Helix config surface. If you want to start from an existing personal Helix `config.toml`, run `yzx import helix` to copy it into `~/.config/yazelix/user_configs/helix/config.toml`.
 
-This assumes the installed `~/.local/bin/yzx` wrapper is on your editor `PATH`.
+This assumes `yzx` is on your editor `PATH`.
 
 ## Additional Recommended Keybindings
 

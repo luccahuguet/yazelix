@@ -52,7 +52,7 @@
           );
         in
         {
-          default = runtime;
+          default = yazelix;
           locked_devenv = lockedDevenv;
           runtime = runtime;
           yazelix = yazelix;
@@ -61,6 +61,14 @@
       );
 
       apps = forAllSystems (system: {
+        default = {
+          type = "app";
+          program = "${self.packages.${system}.yazelix}/bin/yzx";
+        };
+        yazelix = {
+          type = "app";
+          program = "${self.packages.${system}.yazelix}/bin/yzx";
+        };
         install = {
           type = "app";
           program = "${self.packages.${system}.install}/bin/yazelix-install";

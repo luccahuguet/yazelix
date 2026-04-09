@@ -28,7 +28,7 @@ yzx doctor --fix              # Auto-fix safe issues
 If you have an older Yazelix setup:
 - Configuration is now in `~/.config/yazelix/user_configs/yazelix.toml` (not `yazelix.nix`)
 - The runtime environment is defined in `devenv.nix`
-- A thin top-level flake now exists as the install front door: `nix run github:luccahuguet/yazelix#install`
+- The top-level flake now exposes the package-first product surface: `nix run github:luccahuguet/yazelix#yazelix -- launch`
 - The default template is `yazelix_default.toml`
 
 **Migration steps:**

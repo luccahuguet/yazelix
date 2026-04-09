@@ -12,7 +12,7 @@ The repo keeps one maintained static preview. Add richer demos only when there i
 ## Overview
 Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://github.com/zellij-org/zellij), and [Helix](https://helix-editor.com) (hence the name!), with first-class support for [Neovim](https://neovim.io) too.
 
-- Yazelix now uses the devenv-based runtime (`devenv.nix`) and `yazelix.toml`. The legacy `yazelix.nix` config is gone, but Yazelix now also ships a thin top-level flake front door for installation via `nix run github:luccahuguet/yazelix#install`.
+- Yazelix now uses the devenv-based runtime (`devenv.nix`) and `yazelix.toml`. The legacy `yazelix.nix` config is gone, and the normal flake surface is now the `yazelix` package plus the top-level Home Manager module.
 
 - **Use your preferred shell**: Bash, Fish, Zsh, or Nushell - Yazelix works with all of them
 - Zellij orchestrates everything, with Yazi as a sidebar and your chosen editor (Helix by default)
@@ -87,11 +87,17 @@ For the longer project story, see [Version History](./docs/history.md).
 ## Installation
 
 ```bash
-nix run github:luccahuguet/yazelix#install
+nix profile install github:luccahuguet/yazelix#yazelix
 yzx launch
 ```
 
-Host prerequisite: Nix with flakes. The installer manages the runtime-owned `devenv` CLI and the installed runtime's own `nu`; it does not promise to install a separate global Nushell for your normal host shell usage.
+One-off use without installing also works:
+
+```bash
+nix run github:luccahuguet/yazelix#yazelix -- launch
+```
+
+Prefer declarative installs? Use the top-level Home Manager module in [home_manager/README.md](home_manager/README.md). The legacy `#install` app remains only as a compatibility/bootstrap surface.
 
 📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions
 
@@ -103,7 +109,7 @@ Helix supports optional `yzx reveal` integration through `Alt+r`. Yazelix now re
 ### Neovim Integration
 For Neovim-Yazi integration, bind `yzx reveal` to any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `<M-r>`:
 
-This assumes the installed `yzx` wrapper from `~/.local/bin` is on your editor `PATH`.
+This assumes `yzx` is on your editor `PATH`.
 
 ```lua
 -- Yazelix sidebar integration - reveal current file in Yazi sidebar

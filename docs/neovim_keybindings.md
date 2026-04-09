@@ -6,7 +6,7 @@ This document describes the recommended Neovim keybindings for full Yazelix inte
 
 The essential keybinding for Yazelix integration should be added to your Neovim config (usually `~/.config/nvim/init.lua`). Use any editor-local shortcut that does not conflict with your terminal or Zellij bindings. A good default is `<M-r>`:
 
-This assumes the installed `~/.local/bin/yzx` wrapper is on your editor `PATH`.
+This assumes `yzx` is on your editor `PATH`.
 
 ```lua
 -- Yazelix sidebar integration - reveal current file in Yazi sidebar

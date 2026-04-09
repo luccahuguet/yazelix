@@ -114,6 +114,11 @@ export def main [] {
         require_list_contains $package_keys $expected "x86_64-linux package outputs"
     }
 
+    let app_keys = ($flake | get apps."x86_64-linux" | columns)
+    for expected in ["default" "install" "yazelix"] {
+        require_list_contains $app_keys $expected "x86_64-linux app outputs"
+    }
+
     let install_app_type = ($flake | get apps."x86_64-linux".install.type)
     if $install_app_type != "app" {
         error make { msg: $"Unexpected flake install app type: ($install_app_type)" }

@@ -14,7 +14,7 @@ Nix is just a package manager that ensures reproducible, reliable software insta
 
 It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij, Helix, etc.) that work perfectly together, regardless of your operating system or existing software. And it's way easier than having to install everything separately and manually.
 
-**Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The installer will materialize the Yazelix runtime, ship runtime-local `devenv` and `nu`, and install the stable `yzx` command for you.
+**Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
 Yazelix provides 5 terminal emulators built-in via Nix - set your `terminals` list in `yazelix.toml`:
@@ -57,22 +57,17 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 If you already have Nix with flakes enabled, the canonical install flow is:
 
 ```bash
-nix run github:luccahuguet/yazelix#install
+nix profile install github:luccahuguet/yazelix#yazelix
 yzx launch
 ```
 
-What this does:
-- materializes the Yazelix runtime under `~/.local/share/yazelix/runtime/current`
-- ships runtime-local `devenv` and `nu` used by the installed `yzx` and POSIX launchers
-- seeds `~/.config/yazelix/user_configs/` if missing
-- installs the stable `yzx` command into `~/.local/bin/yzx`
+One-off use without installing also works:
 
-You do **not** need to clone the repo for normal installation.
+```bash
+nix run github:luccahuguet/yazelix#yazelix -- launch
+```
 
-What this does **not** do:
-- install Nix itself for you
-- install a separate global/host Nushell just for your normal shell usage
-- auto-install the desktop entry; that stays an explicit follow-up via `yzx desktop install`
+Declarative users can install through the top-level Home Manager module instead of `nix profile install`.
 
 ## Step-by-Step Installation
 
@@ -110,10 +105,10 @@ Set `eval-cores` to 0 to use all cores, or 1 to disable.
 
 ### Step 2: Install Yazelix
 
-Run the installer app exposed by the top-level Yazelix flake:
+Install the Yazelix package exposed by the top-level flake:
 
 ```bash
-nix run github:luccahuguet/yazelix#install
+nix profile install github:luccahuguet/yazelix#yazelix
 ```
 
 After it finishes:
@@ -122,12 +117,18 @@ After it finishes:
 yzx launch
 ```
 
-Normal usage relies on the installed runtime and `yzx` entrypoints. User configuration lives under `~/.config/yazelix/user_configs/`.
+If you only want to try Yazelix without installing it persistently:
 
-Bootstrap-tool contract:
+```bash
+nix run github:luccahuguet/yazelix#yazelix -- launch
+```
+
+Normal usage relies on the package-provided `yzx` entrypoint or the Home Manager module. User configuration lives under `~/.config/yazelix/user_configs/`.
+
+Host prerequisite contract:
 - **Host prerequisite**: Nix with flakes enabled
-- **Installer-managed**: the persistent Yazelix runtime, including runtime-local `devenv` and `nu`, plus the stable installed `yzx` launcher
-- **Not installer-managed**: a separate host Nushell install for your everyday shell outside Yazelix
+- **Package-provided**: the Yazelix runtime, including runtime-local `devenv` and `nu`, plus `bin/yzx`
+- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix
 
 ### Step 3: Configure Your Installation (Optional)
 
@@ -184,7 +185,7 @@ home.packages = with pkgs; [
 
 ### Step 5: Launch and Shell Integration
 
-For most users, the installer is enough. After `nix run ...#install`, open a fresh shell if `~/.local/bin` is not already on your `PATH`, then use:
+For most users, a profile or Home Manager install is enough. After installing `#yazelix`, open a fresh shell if your profile `bin` dir is not already on your `PATH`, then use:
 
 ```bash
 yzx launch
@@ -215,23 +216,33 @@ For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 
 **System Keybind for Launching Yazelix:**
 
-To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.), use the stable installed Yazelix launcher:
+To bind a system keyboard shortcut (in GNOME, KDE, Hyprland, etc.), use the `yzx` command from your profile or Home Manager PATH:
 
 ```bash
-~/.local/bin/yzx desktop launch
+yzx desktop launch
 ```
 
 This launches the same command surface used by the generated desktop entry.
 
+## Compatibility Bootstrap Path
+
+If you are migrating from the older installer-managed model or want the legacy bootstrap helper, the flake still exposes:
+
+```bash
+nix run github:luccahuguet/yazelix#install
+```
+
+That path is compatibility-oriented now. Normal install, update, and dogfooding flows should prefer the `yazelix` package or the Home Manager module.
+
 ## Maintainer / Clone-Based Flow
 
-Normal users should prefer `nix run github:luccahuguet/yazelix#install`.
+Normal users should prefer the `#yazelix` package or the Home Manager module.
 
 If you are doing maintainer work or explicitly want to run from a cloned repo, that still works, and the clone can live anywhere:
 
 ```bash
 git clone https://github.com/luccahuguet/yazelix ~/src/yazelix
-nu ~/src/yazelix/nushell/scripts/core/start_yazelix.nu --setup-only
+nix run ~/src/yazelix#yazelix -- launch
 ```
 
 That is now the advanced/maintainer path, not the primary install story.
