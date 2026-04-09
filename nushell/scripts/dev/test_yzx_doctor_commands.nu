@@ -78,7 +78,7 @@ def doctor_output_reports_current_home_manager_install [stdout: string] {
     (
         ($stdout | str contains "Runtime/distribution capability: Home Manager-managed full runtime")
         and ($stdout | str contains "Home Manager owns the packaged Yazelix runtime path and update transition in this mode.")
-        and ($stdout | str contains "Yazelix desktop entry uses the stable launcher path")
+        and ($stdout | str contains "Yazelix desktop entry uses the expected launcher path")
         and not ($stdout | str contains "Installed Yazelix runtime link is missing")
         and not ($stdout | str contains "Installed yzx command is missing")
         and not ($stdout | str contains "Installed yzx command is stale")
@@ -347,7 +347,7 @@ def test_yzx_doctor_reports_stale_desktop_entry_exec [] {
 
         if (
             ($output.exit_code == 0)
-            and ($stdout | str contains "Yazelix desktop entry does not use the stable launcher path")
+            and ($stdout | str contains "Yazelix desktop entry does not use the expected launcher path")
             and ($stdout | str contains 'Repair with `yzx desktop install`.')
         ) {
             print "  ✅ yzx doctor reports stale desktop launcher wiring with focused repair guidance"
@@ -431,7 +431,7 @@ def test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager [] {
             and ($stdout | str contains "A stale user-local Yazelix desktop entry shadows the Home Manager desktop entry")
             and ($stdout | str contains "yzx desktop uninstall")
             and ($stdout | str contains "yzx desktop install")
-            and not ($stdout | str contains "Yazelix desktop entry uses the stable launcher path")
+            and not ($stdout | str contains "Yazelix desktop entry uses the expected launcher path")
         ) {
             print "  ✅ yzx doctor flags a stale manual desktop entry that would shadow the Home Manager launcher"
             true

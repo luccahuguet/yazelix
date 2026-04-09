@@ -201,7 +201,7 @@ def test_managed_nushell_config_loads_generated_yzx_extern_bridge [] {
             YAZELIX_STATE_DIR: $state_dir
         } {
             sync_generated_yzx_extern_bridge $repo_root $state_dir | ignore
-            ^nu -c $"source \"($repo_root | path join "nushell" "config" "config.nu")\"; scope commands | where name in [\"yzx update\", \"yzx update nix\", \"yzx update runtime\"] | sort-by name | to json -r" | complete
+            ^nu -c $"source \"($repo_root | path join "nushell" "config" "config.nu")\"; scope commands | where name in [\"yzx update\", \"yzx update nix\", \"yzx update runtime\", \"yzx uninstall\"] | sort-by name | to json -r" | complete
         })
 
         let stdout = ($output.stdout | default "")
@@ -214,10 +214,12 @@ def test_managed_nushell_config_loads_generated_yzx_extern_bridge [] {
             and ($stdout | str contains "\"name\":\"yzx update\"")
             and ($stdout | str contains "\"name\":\"yzx update nix\"")
             and not ($stdout | str contains "\"name\":\"yzx update runtime\"")
+            and not ($stdout | str contains "\"name\":\"yzx uninstall\"")
             and ($stdout | str contains "\"type\":\"external\"")
             and ($extern_contents | str contains 'export extern "yzx update nix"')
             and not ($extern_contents | str contains 'export extern "yzx update runtime"')
             and not ($extern_contents | str contains 'export extern "yzx update all"')
+            and not ($extern_contents | str contains 'export extern "yzx uninstall"')
         ) {
             print "  ✅ Managed Nushell config now loads a generated yzx extern bridge built from the real command tree"
             true

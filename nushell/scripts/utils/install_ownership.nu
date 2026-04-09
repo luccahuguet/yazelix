@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use common.nu [get_yazelix_state_dir]
-use config_surfaces.nu [get_main_user_config_path get_pack_sidecar_path get_managed_taplo_support_path]
+use config_surfaces.nu [get_main_user_config_path get_pack_sidecar_path]
 
 const HOME_MANAGER_FILES_MARKER = "-home-manager-files/"
 const MANUAL_DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
@@ -48,23 +48,8 @@ def is_home_manager_symlink_target [target?: string] {
     $normalized | str contains $HOME_MANAGER_FILES_MARKER
 }
 
-def manual_yzx_launcher_target [] {
-    (get_manual_runtime_reference_path | path join "bin" "yzx")
-}
-
-def manual_desktop_exec_variants [launcher_path: string] {
-    [
-        $"Exec=\"($launcher_path)\" desktop launch"
-        $"Exec=($launcher_path) desktop launch"
-    ]
-}
-
 export def get_manual_runtime_reference_path [] {
     get_yazelix_state_dir | path join "runtime" "current"
-}
-
-export def get_manual_yzx_cli_path [] {
-    ($env.HOME | path join ".local" "bin" "yzx")
 }
 
 export def get_manual_desktop_entry_path [] {
@@ -81,17 +66,6 @@ export def get_manual_main_config_path [] {
 
 export def get_manual_pack_config_path [] {
     get_pack_sidecar_path (get_main_user_config_path)
-}
-
-def get_manual_taplo_support_path [] {
-    get_managed_taplo_support_path
-}
-
-def get_manual_generated_config_paths [] {
-    [
-        (get_yazelix_state_dir | path join "configs" "yazi")
-        (get_yazelix_state_dir | path join "configs" "zellij")
-    ]
 }
 
 export def is_home_manager_owned_surface [path: string] {
@@ -113,21 +87,6 @@ export def is_manual_runtime_reference_path [path?: string] {
     not (is_home_manager_symlink_target $target)
 }
 
-export def is_manual_yzx_cli_path [path?: string] {
-    let candidate = if $path == null {
-        get_manual_yzx_cli_path
-    } else {
-        $path | path expand --no-symlink
-    }
-
-    let target = (read_symlink_target $candidate)
-    if $target == null {
-        return false
-    }
-
-    $target == (manual_yzx_launcher_target)
-}
-
 export def is_manual_desktop_entry_path [path?: string] {
     let candidate = if $path == null {
         get_manual_desktop_entry_path
@@ -145,44 +104,27 @@ export def is_manual_desktop_entry_path [path?: string] {
         return false
     }
 
-    let launcher_path = (get_manual_yzx_cli_path)
-    let exec_variants = (manual_desktop_exec_variants $launcher_path)
-
-    (($raw | str contains "Name=Yazelix") and ($raw | lines | any {|line| $line in $exec_variants }))
-}
-
-def files_have_same_content [left: string, right?: string] {
-    if $right == null {
-        return false
-    }
-
-    if (not ($left | path exists)) or (not ($right | path exists)) {
-        return false
-    }
-
-    try {
-        let result = (^cmp -s $left $right | complete)
-        $result.exit_code == 0
-    } catch {
-        false
-    }
-}
-
-def get_manual_runtime_icon_source_path [size: string] {
-    let runtime_target = (read_symlink_target (get_manual_runtime_reference_path))
-    if $runtime_target == null {
-        return null
-    }
-
-    ($runtime_target | path join "assets" "icons" $size "yazelix.png")
+    (
+        ($raw | str contains "Name=Yazelix")
+        and (
+            ($raw | str contains "X-Yazelix-Managed=true")
+            or (
+                $raw
+                | lines
+                | any {|line|
+                    ($line | str starts-with "Exec=")
+                    and ($line | str contains " desktop launch")
+                }
+            )
+        )
+    )
 }
 
 def collect_manual_desktop_icon_artifacts [] {
     $MANUAL_DESKTOP_ICON_SIZES
     | each {|size|
         let icon_path = (get_manual_desktop_icon_path $size)
-        let source_path = (get_manual_runtime_icon_source_path $size)
-        if (files_have_same_content $icon_path $source_path) {
+        if ($icon_path | path exists) {
             {
                 id: $"desktop_icon_($size)"
                 label: $"manual desktop icon \(($size)\)"
@@ -193,62 +135,6 @@ def collect_manual_desktop_icon_artifacts [] {
         }
     }
     | compact
-}
-
-export def collect_manual_uninstall_artifacts [] {
-    mut artifacts = []
-
-    let manual_cli = (get_manual_yzx_cli_path)
-    if (is_manual_yzx_cli_path $manual_cli) {
-        $artifacts = ($artifacts | append {
-            id: "launcher"
-            label: "manual stable yzx shim"
-            path: $manual_cli
-        })
-    }
-
-    let runtime_reference = (get_manual_runtime_reference_path)
-    if (is_manual_runtime_reference_path $runtime_reference) {
-        $artifacts = ($artifacts | append {
-            id: "runtime_current"
-            label: "installed runtime/current reference"
-            path: $runtime_reference
-        })
-    }
-
-    let desktop_entry = (get_manual_desktop_entry_path)
-    if (is_manual_desktop_entry_path $desktop_entry) {
-        $artifacts = ($artifacts | append {
-            id: "desktop_entry"
-            label: "manual desktop entry"
-            path: $desktop_entry
-        })
-    }
-
-    for icon_artifact in (collect_manual_desktop_icon_artifacts) {
-        $artifacts = ($artifacts | append $icon_artifact)
-    }
-
-    let taplo_support = (get_manual_taplo_support_path)
-    if ($taplo_support | path exists) and not (is_home_manager_owned_surface $taplo_support) {
-        $artifacts = ($artifacts | append {
-            id: "taplo_support"
-            label: "managed Taplo support file"
-            path: $taplo_support
-        })
-    }
-
-    for generated_path in (get_manual_generated_config_paths) {
-        if ($generated_path | path exists) {
-            $artifacts = ($artifacts | append {
-                id: ($generated_path | path basename)
-                label: $"generated (($generated_path | path basename)) config tree"
-                path: $generated_path
-            })
-        }
-    }
-
-    $artifacts
 }
 
 export def collect_home_manager_prepare_artifacts [] {
@@ -274,16 +160,6 @@ export def collect_home_manager_prepare_artifacts [] {
         })
     }
 
-    let manual_cli = (get_manual_yzx_cli_path)
-    if (is_manual_yzx_cli_path $manual_cli) {
-        $artifacts = ($artifacts | append {
-            id: "launcher"
-            class: "cleanup"
-            label: "manual stable yzx shim"
-            path: $manual_cli
-        })
-    }
-
     let desktop_entry = (get_manual_desktop_entry_path)
     if (is_manual_desktop_entry_path $desktop_entry) {
         $artifacts = ($artifacts | append {
@@ -302,13 +178,11 @@ export def collect_home_manager_prepare_artifacts [] {
 }
 
 export def has_home_manager_managed_install [] {
-    let runtime_reference = (get_manual_runtime_reference_path)
     let main_config = (get_manual_main_config_path)
     let pack_config = (get_manual_pack_config_path)
 
     (
-        (is_home_manager_owned_surface $runtime_reference)
-        or (is_home_manager_owned_surface $main_config)
+        (is_home_manager_owned_surface $main_config)
         or (is_home_manager_owned_surface $pack_config)
     )
 }

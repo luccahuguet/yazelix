@@ -123,12 +123,12 @@ The updated launcher uses POSIX `sh` with explicit Nix paths, bypassing bash pro
 
 If clicking Yazelix in your application menu does nothing:
 
-1. **Check if `nu` is installed:** Run `nu --version` in a terminal
-2. **Reinstall the desktop entry:** The launcher may be outdated
+1. **Reinstall the desktop entry:** The launcher may be outdated or still point at an older runtime path
    ```bash
    yzx desktop install
    ```
-3. **Verify Nix paths:** Ensure `~/.nix-profile/bin` or `~/.local/state/nix/profile/bin` exists
+2. **Verify your package/profile path:** Ensure the package or Home Manager profile that provides `yzx` is still present
+3. **If you no longer want local desktop integration:** remove the user-local entry with `yzx desktop uninstall`
 
 ## Editor Issues
 

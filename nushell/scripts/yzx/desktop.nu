@@ -1,7 +1,8 @@
 #!/usr/bin/env nu
 
 use ../utils/atomic_writes.nu write_text_atomic
-use ../utils/common.nu [require_installed_yazelix_runtime_dir]
+use ../utils/common.nu get_yazelix_runtime_dir
+use ../utils/shell_config_generation.nu get_yzx_cli_path
 
 const DESKTOP_LAUNCH_CLEARED_ENV_KEYS = [
     "DEVENV_PROFILE"
@@ -61,10 +62,6 @@ def quote_desktop_exec_arg [value: string] {
     $"\"($escaped)\""
 }
 
-def get_stable_yzx_path [] {
-    ($env.HOME | path join ".local" "bin" "yzx")
-}
-
 def render_desktop_exec [launcher_path: string] {
     $"(quote_desktop_exec_arg $launcher_path) desktop launch"
 }
@@ -78,6 +75,7 @@ def render_desktop_entry [launcher_path: string] {
         "Comment=Yazi + Zellij + Helix integrated terminal environment"
         "Icon=yazelix"
         "StartupWMClass=com.yazelix.Yazelix"
+        "X-Yazelix-Managed=true"
         $"Exec=(render_desktop_exec $launcher_path)"
         "Categories=Development;"
     ] | str join "\n"
@@ -163,8 +161,11 @@ def get_desktop_launch_env [runtime_dir: string] {
 export def "yzx desktop install" [
     --print-path(-p) # Print only the installed desktop-file path
 ] {
-    let runtime_dir = (require_installed_yazelix_runtime_dir)
-    let launcher_path = (get_stable_yzx_path)
+    let runtime_dir = (get_yazelix_runtime_dir)
+    if $runtime_dir == null {
+        error make {msg: "Cannot resolve a Yazelix runtime root for desktop integration."}
+    }
+    let launcher_path = (get_yzx_cli_path $runtime_dir)
 
     if not ($runtime_dir | path exists) {
         error make {msg: $"Missing Yazelix runtime at ($runtime_dir)"}
@@ -215,7 +216,10 @@ export def "yzx desktop uninstall" [
 }
 
 export def "yzx desktop launch" [] {
-    let runtime_dir = (require_installed_yazelix_runtime_dir)
+    let runtime_dir = (get_yazelix_runtime_dir)
+    if $runtime_dir == null {
+        error make {msg: "Cannot resolve a Yazelix runtime root for desktop launch."}
+    }
     let fast_launch_module = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
     let launch_env = (get_desktop_launch_env $runtime_dir)
     let resolved_nu_bin = (

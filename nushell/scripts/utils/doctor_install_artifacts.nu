@@ -1,10 +1,11 @@
 #!/usr/bin/env nu
 
+use common.nu get_yazelix_runtime_dir
 use install_ownership.nu [
     get_manual_desktop_entry_path
-    get_manual_yzx_cli_path
     has_home_manager_managed_install
 ]
+use shell_config_generation.nu get_yzx_cli_path
 
 def resolve_realpath_or_null [target: string] {
     let result = (^readlink -f $target | complete)
@@ -30,7 +31,7 @@ def detect_install_owner [] {
     ) {
         "home-manager"
     } else {
-        "installer"
+        "manual"
     }
 }
 
@@ -86,7 +87,12 @@ def get_expected_desktop_entry_execs [install_owner: string] {
     let launcher_paths = if $install_owner == "home-manager" {
         get_home_manager_yzx_profile_paths
     } else {
-        [ (get_manual_yzx_cli_path) ]
+        let runtime_dir = (get_yazelix_runtime_dir)
+        if $runtime_dir == null {
+            []
+        } else {
+            [ (get_yzx_cli_path $runtime_dir) ]
+        }
     }
 
     (
@@ -180,7 +186,7 @@ export def check_desktop_entry_freshness [] {
     if not (desktop_entry_exec_matches_expected $desktop_exec $expected_execs) {
         return {
             status: "warning"
-            message: "Yazelix desktop entry does not use the stable launcher path"
+            message: "Yazelix desktop entry does not use the expected launcher path"
             details: $"Desktop entry Exec: ($desktop_exec)\nExpected one of: ($expected_execs | str join ', ')\n($repair_hint)"
             fix_available: false
         }
@@ -188,7 +194,7 @@ export def check_desktop_entry_freshness [] {
 
     {
         status: "ok"
-        message: "Yazelix desktop entry uses the stable launcher path"
+        message: "Yazelix desktop entry uses the expected launcher path"
         details: $desktop_path
         fix_available: false
     }

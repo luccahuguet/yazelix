@@ -121,8 +121,8 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
 The prepare command archives the common manual-install takeover blockers and handoff cleanup paths:
 - `~/.config/yazelix/user_configs/yazelix.toml`
 - `~/.config/yazelix/user_configs/yazelix_packs.toml`
-- `~/.local/bin/yzx`
 - `~/.local/share/applications/com.yazelix.Yazelix.desktop`
+- `~/.local/share/icons/hicolor/*/apps/yazelix.png`
 
 4. **Apply the Home Manager configuration:**
    ```bash

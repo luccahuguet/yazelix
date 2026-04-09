@@ -68,27 +68,6 @@ def is_nix_store_source_runtime [candidate?: string] {
     ($normalized | str starts-with "/nix/store/") and ($normalized | str ends-with "-source")
 }
 
-def get_installed_runtime_dir [] {
-    let candidate = (get_yazelix_state_dir | path join "runtime" "current")
-    if (is_valid_runtime_dir $candidate) {
-        resolve_existing_path $candidate
-    } else {
-        null
-    }
-}
-
-export def get_installed_yazelix_runtime_dir [] {
-    get_installed_runtime_dir
-}
-
-export def require_installed_yazelix_runtime_dir [] {
-    let runtime_dir = (get_installed_runtime_dir)
-    if $runtime_dir == null {
-        error make {msg: $"Cannot find installed Yazelix runtime at ((get_yazelix_state_dir | path join 'runtime' 'current'))"}
-    }
-    $runtime_dir
-}
-
 def expand_user_path_string [value: string] {
     let trimmed = ($value | str trim)
     if ($trimmed | is-empty) {

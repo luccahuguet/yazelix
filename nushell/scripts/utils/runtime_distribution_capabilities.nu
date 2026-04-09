@@ -3,10 +3,8 @@
 use common.nu get_yazelix_runtime_dir
 use install_ownership.nu [
     get_manual_runtime_reference_path
-    get_manual_yzx_cli_path
     has_home_manager_managed_install
     is_manual_runtime_reference_path
-    is_manual_yzx_cli_path
 ]
 
 def is_package_runtime_root [runtime_dir?: string] {
@@ -45,12 +43,8 @@ def build_profile [
 export def get_runtime_distribution_capability_profile [] {
     let runtime_dir = (get_yazelix_runtime_dir)
     let manual_runtime_reference = (get_manual_runtime_reference_path)
-    let manual_yzx_cli = (get_manual_yzx_cli_path)
     let home_manager_managed = (has_home_manager_managed_install)
-    let installer_managed = (
-        (is_manual_runtime_reference_path $manual_runtime_reference)
-        or (is_manual_yzx_cli_path $manual_yzx_cli)
-    )
+    let installer_managed = (is_manual_runtime_reference_path $manual_runtime_reference)
 
     if $home_manager_managed {
         return (build_profile

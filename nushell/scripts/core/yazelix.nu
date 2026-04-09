@@ -36,7 +36,6 @@ export use ../yzx/keys.nu *
 export use ../yzx/tutor.nu *
 export use ../yzx/whats_new.nu *
 export use ../yzx/home_manager.nu *
-export use ../yzx/uninstall.nu *
 
 # =============================================================================
 # YAZELIX COMMANDS WITH NATIVE SUBCOMMAND SUPPORT
