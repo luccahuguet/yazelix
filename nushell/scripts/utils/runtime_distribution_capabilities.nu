@@ -68,7 +68,7 @@ export def get_runtime_distribution_capability_profile [] {
             "full"
             "Home Manager-managed full runtime"
             "Runtime/distribution capability: Home Manager-managed full runtime"
-            "Home Manager owns the stable Yazelix runtime identity, profile launcher, and runtime repair/update path in this mode. `yzx update runtime` is intentionally unavailable here because Home Manager owns the update transition."
+            "Home Manager owns the packaged Yazelix runtime path, profile launcher, and runtime repair/update path in this mode. `yzx update runtime` is intentionally unavailable here because Home Manager owns the update transition."
             "Reapply or upgrade the Home Manager configuration that provides Yazelix \(for example `home-manager switch`\)."
             "Home Manager owns Yazelix updates in this mode."
             $runtime_dir

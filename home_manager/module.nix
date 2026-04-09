@@ -9,7 +9,7 @@ with lib;
 
 let
   cfg = config.programs.yazelix;
-  runtimePackage = import ../yazelix_runtime_package.nix { inherit pkgs; };
+  yazelixPackage = import ../yazelix_package.nix { inherit pkgs; };
   mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
   packCatalogContract = builtins.fromTOML (builtins.readFile ../config_metadata/pack_catalog_contract.toml);
   mainContractFields = mainConfigContract.fields;
@@ -22,8 +22,7 @@ let
     "zellij"
     "yazi"
   ];
-  runtimeNu = "${runtimePackage}/bin/nu";
-  runtimeCurrentPath = "${config.xdg.dataHome}/yazelix/runtime/current";
+  runtimeNu = "${yazelixPackage}/bin/nu";
   stateRoot = "${config.xdg.dataHome}/yazelix";
   logsPath = "${stateRoot}/logs";
   managedConfigRoot = "${config.xdg.configHome}/yazelix";
@@ -466,11 +465,8 @@ in
   };
 
   config = mkIf cfg.enable {
-    # Package-ready runtime owned by Home Manager.
-    xdg.dataFile."yazelix/runtime/current".source = runtimePackage;
-
-    # Expose the runtime package through the Home Manager profile.
-    home.packages = [ runtimePackage ];
+    # Expose the packaged Yazelix runtime through the Home Manager profile.
+    home.packages = [ yazelixPackage ];
 
     # Desktop icon integration.
     xdg.dataFile."icons/hicolor/48x48/apps/yazelix.png".source = ../assets/icons/48x48/yazelix.png;
@@ -495,13 +491,13 @@ in
 
     home.activation.yazelixGeneratedRuntimeConfigs = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
       export PATH="${runtimeConfigGenerationPath}:$PATH"
-      export YAZELIX_RUNTIME_DIR="${runtimeCurrentPath}"
+      export YAZELIX_RUNTIME_DIR="${yazelixPackage}"
       export YAZELIX_CONFIG_DIR="${managedConfigRoot}"
       export YAZELIX_STATE_DIR="${stateRoot}"
       export YAZELIX_LOGS_DIR="${logsPath}"
 
-      $DRY_RUN_CMD ${runtimeNu} "${runtimePackage}/nushell/scripts/setup/yazi_config_merger.nu" "${runtimeCurrentPath}" --quiet
-      $DRY_RUN_CMD ${runtimeNu} "${runtimePackage}/nushell/scripts/setup/zellij_config_merger.nu" "${runtimeCurrentPath}"
+      $DRY_RUN_CMD ${runtimeNu} "${yazelixPackage}/nushell/scripts/setup/yazi_config_merger.nu" "${yazelixPackage}" --quiet
+      $DRY_RUN_CMD ${runtimeNu} "${yazelixPackage}/nushell/scripts/setup/zellij_config_merger.nu" "${yazelixPackage}"
     '';
 
     # Generate yazelix.toml configuration file

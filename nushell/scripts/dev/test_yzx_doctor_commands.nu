@@ -23,40 +23,46 @@ def run_doctor_command_for_fixture [fixture: record, command: string, extra_env?
 }
 
 def setup_fake_home_manager_install_artifacts [fixture: record] {
-    let fake_runtime = ($fixture.tmp_home | path join "fake_runtime")
-    let fake_runtime_shells = ($fake_runtime | path join "shells" "posix")
+    let fake_runtime = ($fixture.tmp_home | path join "fake_home_manager_package")
     let fake_runtime_bin = ($fake_runtime | path join "bin")
-    let hm_store = ($fixture.tmp_home | path join "home-manager-files")
-    let hm_runtime = ($hm_store | path join ".local" "share" "yazelix" "runtime" "current")
-    let runtime_link = ($fixture.tmp_home | path join ".local" "share" "yazelix" "runtime" "current")
+    let hm_store = ($fixture.tmp_home | path join "fake-home-manager-files")
+    let hm_main = ($hm_store | path join ".config" "yazelix" "user_configs" "yazelix.toml")
+    let hm_pack = ($hm_store | path join ".config" "yazelix" "user_configs" "yazelix_packs.toml")
+    let pack_config_path = ($fixture.user_config_dir | path join "yazelix_packs.toml")
     let profile_yzx = ($fixture.tmp_home | path join ".nix-profile" "bin" "yzx")
     let profile_desktop_path = ($fixture.tmp_home | path join ".nix-profile" "share" "applications" "yazelix.desktop")
 
     mkdir $fake_runtime
-    mkdir $fake_runtime_shells
     mkdir $fake_runtime_bin
-    mkdir ($hm_runtime | path dirname)
-    mkdir ($runtime_link | path dirname)
+    mkdir ($hm_main | path dirname)
     mkdir ($profile_yzx | path dirname)
     mkdir ($profile_desktop_path | path dirname)
 
     cp ($fixture.repo_root | path join "yazelix_default.toml") ($fake_runtime | path join "yazelix_default.toml")
+    cp ($fixture.repo_root | path join ".taplo.toml") ($fake_runtime | path join ".taplo.toml")
+    ^ln -s ($fixture.repo_root | path join "config_metadata") ($fake_runtime | path join "config_metadata")
+    cp ($fixture.repo_root | path join "yazelix_default.toml") $hm_main
+    'enabled = ["git"]
 
-    [
-        "#!/bin/sh"
-        "exit 0"
-    ] | str join "\n" | save --force --raw ($fake_runtime_shells | path join "yzx_cli.sh")
-    ^chmod +x ($fake_runtime_shells | path join "yzx_cli.sh")
+[declarations]
+git = ["gh"]
+' | save --force --raw $hm_pack
 
     [
         "#!/bin/sh"
         "exit 0"
     ] | str join "\n" | save --force --raw ($fake_runtime_bin | path join "yzx")
     ^chmod +x ($fake_runtime_bin | path join "yzx")
+    [
+        "#!/bin/sh"
+        "exit 0"
+    ] | str join "\n" | save --force --raw ($fake_runtime_bin | path join "nu")
+    ^chmod +x ($fake_runtime_bin | path join "nu")
 
-    ^ln -s $fake_runtime $hm_runtime
-    ^ln -s $hm_runtime $runtime_link
-    ^ln -s ($runtime_link | path join "bin" "yzx") $profile_yzx
+    ^ln -s ($fake_runtime | path join "bin" "yzx") $profile_yzx
+    rm -f $fixture.config_path
+    ^ln -s $hm_main $fixture.config_path
+    ^ln -s $hm_pack $pack_config_path
 
     [
         "[Desktop Entry]"
@@ -64,6 +70,8 @@ def setup_fake_home_manager_install_artifacts [fixture: record] {
         "Name=Yazelix"
         $"Exec=\"($fixture.tmp_home | path join '.nix-profile' 'bin' 'yzx')\" desktop launch"
     ] | str join "\n" | save --force --raw $profile_desktop_path
+
+    { runtime_root: $fake_runtime }
 }
 
 def doctor_output_reports_current_home_manager_install [stdout: string] {
@@ -368,9 +376,11 @@ def test_yzx_doctor_accepts_home_manager_install_artifacts [] {
     )
 
     let result = (try {
-        setup_fake_home_manager_install_artifacts $fixture
+        let hm_install = (setup_fake_home_manager_install_artifacts $fixture)
 
-        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose")
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
+            YAZELIX_RUNTIME_DIR: $hm_install.runtime_root
+        })
         let stdout = ($output.stdout | str trim)
 
         if (($output.exit_code == 0) and (doctor_output_reports_current_home_manager_install $stdout)) {
@@ -400,7 +410,7 @@ def test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager [] {
     )
 
     let result = (try {
-        setup_fake_home_manager_install_artifacts $fixture
+        let hm_install = (setup_fake_home_manager_install_artifacts $fixture)
 
         let local_desktop_path = ($fixture.tmp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")
         mkdir ($local_desktop_path | path dirname)
@@ -411,7 +421,9 @@ def test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager [] {
             'Exec="/nix/store/old-yazelix-runtime/bin/yzx" desktop launch'
         ] | str join "\n" | save --force --raw $local_desktop_path
 
-        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose")
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
+            YAZELIX_RUNTIME_DIR: $hm_install.runtime_root
+        })
         let stdout = ($output.stdout | str trim)
 
         if (

@@ -178,7 +178,6 @@ welcome_style = "random"
     )
 
     let hm_store = ($fixture.tmp_home | path join "fake-home-manager-files")
-    let hm_runtime = ($hm_store | path join ".local" "share" "yazelix" "runtime" "current")
     let runtime_reference = ($fixture.tmp_home | path join ".local" "share" "yazelix" "runtime" "current")
     let hm_main = ($hm_store | path join ".config" "yazelix" "user_configs" "yazelix.toml")
     let hm_pack = ($hm_store | path join ".config" "yazelix" "user_configs" "yazelix_packs.toml")
@@ -186,9 +185,7 @@ welcome_style = "random"
 
     rm -f $fixture.config_path
 
-    mkdir ($hm_runtime | path dirname)
     mkdir ($hm_main | path dirname)
-    mkdir ($runtime_reference | path dirname)
 
     cp ($fixture.repo_root | path join "yazelix_default.toml") $hm_main
     'enabled = ["git"]
@@ -196,14 +193,6 @@ welcome_style = "random"
 [declarations]
 git = ["gh"]
 ' | save --force --raw $hm_pack
-    mkdir ($hm_runtime | path join "bin")
-    [
-        "#!/bin/sh"
-        "exit 0"
-    ] | str join "\n" | save --force --raw ($hm_runtime | path join "bin" "yzx")
-    ^chmod +x ($hm_runtime | path join "bin" "yzx")
-
-    ^ln -s $hm_runtime $runtime_reference
     ^ln -s $hm_main $fixture.config_path
     ^ln -s $hm_pack $pack_config_path
 
@@ -536,7 +525,6 @@ def test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts [] {
         if (
             ($output.exit_code == 0)
             and ($stdout | str contains "Blocking manual-install artifacts:")
-            and ($stdout | str contains $fixture.runtime_reference)
             and ($stdout | str contains $fixture.config_path)
             and ($stdout | str contains $fixture.pack_config_path)
             and ($stdout | str contains "Cleanup-only manual-install artifacts:")
@@ -578,7 +566,6 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
         let pack_backups = (ls $fixture.user_config_dir | where name =~ 'yazelix_packs\.toml\.home-manager-prepare-backup-')
         let launcher_backups = (ls ($fixture.local_yzx | path dirname) | where name =~ 'yzx\.home-manager-prepare-backup-')
         let desktop_backups = (ls ($fixture.desktop_path | path dirname) | where name =~ 'com\.yazelix\.Yazelix\.desktop\.home-manager-prepare-backup-')
-        let runtime_backups = (ls ($fixture.runtime_reference | path dirname) | where name =~ 'current\.home-manager-prepare-backup-')
         let icon_backup_count = (
             $fixture.desktop_icons
             | each {|icon|
@@ -593,7 +580,7 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
             ($output.exit_code == 0)
             and ($stdout | str contains "Archived manual-install artifacts for Home Manager takeover")
             and ($stdout | str contains "home-manager switch")
-            and not ($fixture.runtime_reference | path exists)
+            and ($fixture.runtime_reference | path exists)
             and not ($fixture.config_path | path exists)
             and not ($fixture.pack_config_path | path exists)
             and not ($fixture.local_yzx | path exists)
@@ -602,13 +589,12 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
             and (($pack_backups | length) == 1)
             and (($launcher_backups | length) == 1)
             and (($desktop_backups | length) == 1)
-            and (($runtime_backups | length) == 1)
             and ($icon_backup_count == ($fixture.desktop_icons | length))
         ) {
             print "  ✅ yzx home_manager prepare --apply archives the real takeover blockers and cleanup-only manual artifacts, then points users at home-manager switch"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main_backups=(($main_backups | length)) pack_backups=(($pack_backups | length)) launcher_backups=(($launcher_backups | length)) desktop_backups=(($desktop_backups | length)) runtime_backups=(($runtime_backups | length)) icon_backups=($icon_backup_count)"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main_backups=(($main_backups | length)) pack_backups=(($pack_backups | length)) launcher_backups=(($launcher_backups | length)) desktop_backups=(($desktop_backups | length)) icon_backups=($icon_backup_count)"
             false
         }
     } catch {|err|
@@ -676,7 +662,7 @@ def test_yzx_uninstall_reports_home_manager_managed_install [] {
             ($output.exit_code == 0)
             and ($stdout | str contains "No manual installer-owned Yazelix artifacts were found.")
             and ($stdout | str contains "Home Manager-managed Yazelix surfaces are present.")
-            and ($fixture.runtime_reference | path exists)
+            and not ($fixture.runtime_reference | path exists)
             and ($fixture.config_path | path exists)
             and ($fixture.pack_config_path | path exists)
         ) {

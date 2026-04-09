@@ -5,8 +5,7 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 ## What This Module Does
 
 - **Generates `yazelix.toml` and `yazelix_packs.toml`** from Home Manager options
-- **Installs the managed Yazelix runtime** at `~/.local/share/yazelix/runtime/current`
-- **Adds `yzx` to the Home Manager profile** through the managed runtime package
+- **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
 - **Installs icons and a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
 
@@ -71,7 +70,6 @@ home-manager switch
 ```
 
 This creates:
-- `~/.local/share/yazelix/runtime/current`
 - the `yzx` command in your Home Manager profile, typically `~/.nix-profile/bin/yzx`
 - `~/.config/yazelix/user_configs/yazelix.toml`
 - `~/.config/yazelix/user_configs/yazelix_packs.toml`
@@ -89,8 +87,9 @@ For maintainer workflows, a cloned repo is still useful. Normal Home Manager usa
 
 Manual validation on April 8, 2026 covered both a lived-in account and a throwaway clean-room Home Manager activation.
 
-- Home Manager owns `runtime/current`, the profile-provided `yzx` command, and the generated `user_configs/` TOML files through symlinks into the Home Manager profile.
+- Home Manager owns the profile-provided `yzx` command and the generated `user_configs/` TOML files through symlinks into the Home Manager profile.
 - The managed `yzx` command resolves through the Home Manager profile, typically `~/.nix-profile/bin/yzx`, rather than through the manual installer's `~/.local/bin/yzx` path.
+- The active runtime root resolves directly from the packaged Yazelix runtime in the Home Manager profile/store path, not through `~/.local/share/yazelix/runtime/current`.
 - The Home Manager desktop entry comes from the Home Manager profile, typically `~/.nix-profile/share/applications/yazelix.desktop`, rather than from `yzx desktop install`.
 - Old manual desktop-entry files under `~/.local/share/applications/` can linger after migration; they are not Home Manager-owned and will shadow the Home Manager profile entry until you remove them.
 - Host shell hooks are optional for the Home Manager path. Launch through `yzx` or the Home Manager desktop entry; do not expect `home-manager switch` to rewrite `.bashrc` or `~/.config/nushell/config.nu`.
@@ -120,7 +119,6 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
    ```
 
 The prepare command archives the common manual-install takeover blockers and handoff cleanup paths:
-- `~/.local/share/yazelix/runtime/current`
 - `~/.config/yazelix/user_configs/yazelix.toml`
 - `~/.config/yazelix/user_configs/yazelix_packs.toml`
 - `~/.local/bin/yzx`
@@ -136,7 +134,6 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 5. **Verify the Home Manager-owned surfaces:**
    ```bash
    readlink -f ~/.nix-profile/bin/yzx
-   readlink -f ~/.local/share/yazelix/runtime/current
    ls ~/.nix-profile/share/applications/yazelix.desktop
    yzx --version-short
    ```
@@ -158,7 +155,7 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
    home-manager switch
    ```
 
-3. **Restore manual config:** `cp ~/.local/share/yazelix/runtime/current/yazelix_default.toml ~/.config/yazelix/user_configs/yazelix.toml`
+3. **Restore manual config:** recreate `~/.config/yazelix/user_configs/yazelix.toml` from your backup or from the shipped default template in the Yazelix package/repo you install manually.
 
 ## Safety Features
 
@@ -171,7 +168,6 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 
 ### Configuration not applied
 - Check that `~/.config/yazelix/user_configs/yazelix.toml` was created
-- Check that `~/.local/share/yazelix/runtime/current` exists
 - Check that `~/.nix-profile/bin/yzx` exists and that your Home Manager profile bin dir is on your `PATH`
 - Check that `~/.nix-profile/share/applications/yazelix.desktop` exists if you expect desktop-launcher integration through Home Manager
 - Verify Home Manager configuration syntax
@@ -180,7 +176,7 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 ### Conflicts with an existing manual install
 - Existing manual Yazelix files can cause `home-manager switch` to stop with collision errors
 - Prefer `yzx home_manager prepare --apply` before the first takeover
-- The most common collision paths are `~/.local/share/yazelix/runtime/current` and the generated TOML files under `~/.config/yazelix/user_configs/`
+- The most common collision paths are the generated TOML files under `~/.config/yazelix/user_configs/`
 - `home-manager switch -b hm-backup` is now the fallback aid if you still hit an unexpected unmanaged-file collision after the prepare step
 - See example.nix to recreate your settings declaratively instead of editing the generated TOML files directly
 

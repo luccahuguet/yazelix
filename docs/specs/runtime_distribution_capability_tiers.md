@@ -44,7 +44,7 @@ Yazelix currently recognizes four concrete runtime/distribution tiers:
    - `yzx update runtime` is valid here
 2. `home_manager_managed`
    - full runtime/distribution tier
-   - Home Manager owns the stable runtime identity and launcher/update transition
+   - Home Manager owns the packaged runtime path and launcher/update transition
    - `yzx update runtime` is intentionally unavailable here because Home Manager owns the update path
 3. `package_runtime`
    - narrowed runtime/distribution tier

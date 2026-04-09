@@ -254,16 +254,6 @@ export def collect_manual_uninstall_artifacts [] {
 export def collect_home_manager_prepare_artifacts [] {
     mut artifacts = []
 
-    let runtime_reference = (get_manual_runtime_reference_path)
-    if (is_manual_runtime_reference_path $runtime_reference) {
-        $artifacts = ($artifacts | append {
-            id: "runtime_current"
-            class: "blocker"
-            label: "installed runtime/current reference"
-            path: $runtime_reference
-        })
-    }
-
     let main_config = (get_manual_main_config_path)
     if ($main_config | path exists) and not (is_home_manager_owned_surface $main_config) {
         $artifacts = ($artifacts | append {

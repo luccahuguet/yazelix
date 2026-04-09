@@ -308,23 +308,27 @@ export def check_install_artifact_staleness [capability_profile?: record] {
     }
 
     let runtime_link = (get_manual_runtime_reference_path)
-    let current_runtime_target = (get_current_installed_runtime_target)
+    let current_runtime_target = if $install_owner == "home-manager" {
+        resolve_realpath_or_null (get_yazelix_runtime_reference_dir)
+    } else {
+        get_current_installed_runtime_target
+    }
 
-    if not ($runtime_link | path exists) and (not (path_is_symlink $runtime_link)) {
+    if ($install_owner != "home-manager") and (not ($runtime_link | path exists)) and (not (path_is_symlink $runtime_link)) {
         $results = ($results | append {
             status: "warning"
             message: "Installed Yazelix runtime link is missing"
             details: $"Expected runtime link: ($runtime_link)\n($repair_hint)"
             fix_available: false
         })
-    } else if $current_runtime_target == null {
+    } else if ($install_owner != "home-manager") and ($current_runtime_target == null) {
         $results = ($results | append {
             status: "warning"
             message: "Installed Yazelix runtime link is broken"
             details: $"Runtime link exists but does not resolve to a valid runtime: ($runtime_link)\n($repair_hint)"
             fix_available: false
         })
-    } else {
+    } else if $install_owner != "home-manager" {
         $results = ($results | append {
             status: "ok"
             message: "Installed Yazelix runtime link is healthy"
@@ -430,7 +434,7 @@ export def check_install_artifact_staleness [capability_profile?: record] {
         $results = ($results | append {
             status: "info"
             message: "Shell-hook freshness checks skipped for Home Manager-managed Yazelix install"
-            details: "Home Manager owns the profile-provided `yzx` command and runtime/current directly. Host shell hooks are optional for this install path and may be managed separately."
+            details: "Home Manager owns the profile-provided `yzx` command directly. Host shell hooks are optional for this install path and may be managed separately."
             fix_available: false
         })
     } else {
