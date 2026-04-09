@@ -76,12 +76,12 @@ git = ["gh"]
 
 def doctor_output_reports_current_home_manager_install [stdout: string] {
     (
-        ($stdout | str contains "Yazelix desktop entry uses the stable launcher path")
-        and ($stdout | str contains "Installed yzx command matches the current runtime")
-        and ($stdout | str contains "Shell-hook freshness checks skipped for Home Manager-managed Yazelix install")
+        ($stdout | str contains "Runtime/distribution capability: Home Manager-managed full runtime")
+        and ($stdout | str contains "Home Manager owns the packaged Yazelix runtime path and update transition in this mode.")
+        and ($stdout | str contains "Yazelix desktop entry uses the stable launcher path")
+        and not ($stdout | str contains "Installed Yazelix runtime link is missing")
+        and not ($stdout | str contains "Installed yzx command is missing")
         and not ($stdout | str contains "Installed yzx command is stale")
-        and not ($stdout | str contains "Required bash Yazelix hook is")
-        and not ($stdout | str contains "Required nushell Yazelix hook is")
     )
 }
 
@@ -645,10 +645,10 @@ terminals = ["ghostty"]
     $result
 }
 
-# Defends: doctor must not pretend runtime-root-only sessions own installer repair surfaces.
+# Defends: doctor must not imply runtime-root-only sessions own installer artifact checks or installer repair surfaces.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_doctor_skips_installer_artifact_checks_in_runtime_root_only_mode [] {
-    print "🧪 Testing yzx doctor skips installer-owned artifact checks in runtime-root-only mode..."
+def test_yzx_doctor_omits_installer_artifact_checks_in_runtime_root_only_mode [] {
+    print "🧪 Testing yzx doctor omits installer-owned artifact checks in runtime-root-only mode..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_doctor_runtime_root_only"
@@ -662,12 +662,12 @@ def test_yzx_doctor_skips_installer_artifact_checks_in_runtime_root_only_mode []
         if (
             ($output.exit_code == 0)
             and ($stdout | str contains "Runtime/distribution capability: runtime-root-only mode")
-            and ($stdout | str contains "Installer-owned runtime artifact checks skipped in runtime-root-only mode")
-            and ($stdout | str contains "nix run github:luccahuguet/yazelix#install")
+            and ($stdout | str contains "This Yazelix session has a runtime root but no package-manager-owned distribution surface.")
             and not ($stdout | str contains "Installed Yazelix runtime link is missing")
             and not ($stdout | str contains "Installed yzx command is missing")
+            and not ($stdout | str contains "Installer-owned runtime artifact checks skipped")
         ) {
-            print "  ✅ yzx doctor now reports the narrowed runtime-root-only tier without implying installer-owned repair"
+            print "  ✅ yzx doctor now reports the narrowed runtime-root-only tier without implying installer-owned repair or installer artifact checks"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
@@ -694,6 +694,6 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_reports_missing_runtime_launch_assets)
         (test_yzx_doctor_respects_layout_override_for_shared_preflight)
         (test_yzx_doctor_reports_launch_profile_freshness_states)
-        (test_yzx_doctor_skips_installer_artifact_checks_in_runtime_root_only_mode)
+        (test_yzx_doctor_omits_installer_artifact_checks_in_runtime_root_only_mode)
     ]
 }

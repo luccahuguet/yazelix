@@ -31,7 +31,6 @@ Some are mostly workspace or config UX:
 Some are really about installed runtime or distribution state:
 
 - `yzx desktop install`
-- `yzx update runtime`
 
 And a few important families still braid multiple owners together:
 
@@ -107,7 +106,7 @@ The audit intentionally excludes:
 | Config-surface management | `yzx config`, `yzx config migrate`, `yzx config reset`, `yzx edit`, `yzx edit config`, `yzx edit packs`, `yzx import`, `yzx import zellij`, `yzx import yazi`, `yzx import helix` | backend-agnostic | These commands primarily own user-managed config surfaces and migration/import flows. They may read shipped templates or migration metadata, but they are not backend control-plane commands. | Keep | `nushell/scripts/yzx/config.nu`, `nushell/scripts/yzx/edit.nu`, `nushell/scripts/yzx/import.nu` |
 | Backend control plane | `yzx env`, `yzx run`, `yzx refresh` | backend-required | These commands directly own environment activation, rebuild, refresh, and re-entry semantics. Their behavior is defined by the backend contract. | Narrow, not drop | `nushell/scripts/yzx/env.nu`, `nushell/scripts/yzx/run.nu`, `nushell/scripts/yzx/refresh.nu`, `nushell/scripts/utils/environment_bootstrap.nu` |
 | Backend package and store surfaces | `yzx packs`, `yzx gc` | backend-required | These commands are tightly coupled to backend/package composition and current Nix/devenv store semantics. `packs` inspects pack-backed materialization; `gc` acts on backend-specific garbage-collection behavior. | Likely narrow sharply; `gc` only if Core stays Nix-backed | `nushell/scripts/yzx/packs.nu`, `nushell/scripts/yzx/gc.nu` |
-| Installed runtime and distribution maintenance | `yzx desktop install`, `yzx desktop uninstall`, `yzx desktop launch`, `yzx update`, `yzx update all`, `yzx update runtime`, `yzx update nix`, `yzx repair`, `yzx repair zellij-permissions` | runtime-owned/distribution | These commands own stable launcher/runtime identity, desktop-entry integration, runtime refresh/install flows, or adjacent install/runtime repair surfaces. They are about shipped/runtime distribution state more than backend activation semantics. | Keep selected surfaces; `update nix` depends on future product policy | `nushell/scripts/yzx/desktop.nu`, `nushell/scripts/core/yazelix.nu`, `nushell/scripts/setup/zellij_plugin_paths.nu` |
+| Installed runtime and distribution maintenance | `yzx desktop install`, `yzx desktop uninstall`, `yzx desktop launch`, `yzx update`, `yzx update nix`, `yzx repair`, `yzx repair zellij-permissions` | runtime-owned/distribution | These commands own desktop-entry integration, runtime/distribution guidance, or adjacent repair surfaces. They are about shipped/runtime distribution state more than backend activation semantics. | Keep selected surfaces; `update nix` depends on future product policy | `nushell/scripts/yzx/desktop.nu`, `nushell/scripts/core/yazelix.nu`, `nushell/scripts/setup/zellij_plugin_paths.nu` |
 | Session launch and restart | `yzx launch`, `yzx enter`, `yzx restart` | mixed/refactor-needed | `yzx launch` owns new-window startup and terminal dispatch; `yzx enter` owns current-terminal startup. They still share backend refresh/re-entry and workspace/session bootstrap concerns with `yzx restart`, but the public command surface is clearer once current-terminal startup stops living under `launch`. | Keep, but split internally | `nushell/scripts/yzx/launch.nu`, `nushell/scripts/yzx/enter.nu`, `nushell/scripts/core/start_yazelix.nu`, `nushell/scripts/core/yazelix.nu` |
 | Health and inspection | `yzx status`, `yzx doctor` | mixed/refactor-needed | `status` mixes config summary, shell-hook integration, and backend freshness. `doctor` mixes shared runtime preflight, install/distribution health, shell integration, version drift, and workspace/plugin diagnostics. | Keep, but split responsibilities more clearly | `nushell/scripts/core/yazelix.nu`, `nushell/scripts/utils/doctor.nu`, `nushell/scripts/utils/runtime_contract_checker.nu` |
 | Command palette | `yzx menu` | mixed/refactor-needed | The picker UI is backend-agnostic, but the command dispatch path shells back into the runtime command module and spans every other family. It is a thin mixed seam today. | Keep, but reduce dispatch coupling | `nushell/scripts/yzx/menu.nu` |
@@ -121,7 +120,7 @@ The audit intentionally excludes:
 - `yzx tutor nushell` is the alias of `yzx tutor nu`.
 - `yzx edit config` and `yzx edit packs` are specialized leaves of the same `yzx edit` family.
 - `yzx import zellij`, `yzx import yazi`, and `yzx import helix` are leaves of the same import family.
-- `yzx update all`, `yzx update runtime`, and `yzx update nix` are leaves of the same update/distribution family.
+- `yzx update nix` is the only remaining concrete update leaf under the broader `yzx update` distribution-guidance family.
 
 ### Mixed-Seam Shortlist
 

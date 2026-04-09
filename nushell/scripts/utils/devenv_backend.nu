@@ -404,7 +404,7 @@ def resolve_refresh_output_mode [mode: string] {
 }
 
 def print_runtime_devenv_repair_hint [] {
-    print "     yzx update runtime"
+    print "     yzx update"
 }
 
 export def get_refresh_output_mode [config] {
@@ -581,9 +581,9 @@ export def run_in_devenv_shell_command [
     if not (is_preferred_devenv_available) {
         print ""
         print "❌ devenv command not found in the installed Yazelix runtime."
-        print "   Repair the runtime with:"
+        print "   Check the owning update path with:"
         print_runtime_devenv_repair_hint
-        print "   Then rerun the command after the runtime refresh finishes."
+        print "   Then rerun the command after the runtime has been updated."
         print ""
         exit 1
     }

@@ -56,7 +56,7 @@ Satisfied by:
 ### 3. Honest Runtime/Distribution Capability Tiers
 
 - install/update/doctor no longer assume every mode owns a mutable installer-managed runtime
-- `yzx update runtime` is only available where that promise is real
+- `yzx update` reports the owning update path instead of promising a Yazelix-owned runtime updater
 - doctor no longer warns about missing installer-owned runtime artifacts in narrowed modes that intentionally do not own them
 
 Satisfied by:

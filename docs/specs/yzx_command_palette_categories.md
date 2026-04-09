@@ -130,9 +130,7 @@ Included:
 - `yzx packs`
 - `yzx gc`
 - `yzx update`
-- `yzx update all`
 - `yzx update nix`
-- `yzx update runtime`
 - `yzx repair`
 - `yzx repair zellij-permissions`
 - `yzx desktop install`

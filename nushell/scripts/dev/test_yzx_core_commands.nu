@@ -713,63 +713,42 @@ def test_yzx_uninstall_ignores_noninstaller_runtime_current_directory [] {
     $result
 }
 
-# Defends: runtime updates must be delegated to Home Manager when it owns the runtime surface.
+# Defends: the public update surface must give mode-specific owner guidance without exposing removed runtime subcommands.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_update_runtime_rejects_home_manager_managed_mode [] {
-    print "🧪 Testing yzx update runtime rejects Home Manager-managed installs with explicit guidance..."
+def test_yzx_update_reports_mode_specific_owner_guidance_without_runtime_subcommands [] {
+    print "🧪 Testing yzx update reports owner guidance without exposing removed runtime subcommands..."
 
-    let fixture = (setup_home_manager_owned_install_fixture "yazelix_update_runtime_home_manager")
+    let home_manager_fixture = (setup_home_manager_owned_install_fixture "yazelix_update_home_manager")
+    let package_fixture = (setup_package_runtime_fixture "yazelix_update_package")
 
     let result = (try {
-        let output = (run_yzx_command_for_fixture $fixture "yzx update runtime")
-        let stdout = ($output.stdout | str trim)
-
-        if (
-            ($output.exit_code == 1)
-            and ($stdout | str contains "yzx update runtime is unavailable in Home Manager-managed full runtime")
-            and ($stdout | str contains "Home Manager owns Yazelix updates in this mode.")
-            and ($stdout | str contains "home-manager switch")
-            and not ($stdout | str contains "Running: nix run --refresh")
-        ) {
-            print "  ✅ yzx update runtime now refuses the installer path when Home Manager owns the runtime"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: packaged runtimes must not pretend they own the mutable installer update surface.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_update_runtime_rejects_package_runtime_mode [] {
-    print "🧪 Testing yzx update runtime rejects package-runtime mode with package-manager guidance..."
-
-    let fixture = (setup_package_runtime_fixture "yazelix_update_runtime_package")
-
-    let result = (try {
-        let output = (run_yzx_command_for_fixture $fixture "yzx update runtime" {
-            YAZELIX_RUNTIME_DIR: $fixture.package_root
+        let home_manager_output = (run_yzx_command_for_fixture $home_manager_fixture "yzx update")
+        let home_manager_stdout = ($home_manager_output.stdout | str trim)
+        let package_output = (run_yzx_command_for_fixture $package_fixture "yzx update" {
+            YAZELIX_RUNTIME_DIR: $package_fixture.package_root
         })
-        let stdout = ($output.stdout | str trim)
+        let package_stdout = ($package_output.stdout | str trim)
 
         if (
-            ($output.exit_code == 1)
-            and ($stdout | str contains "yzx update runtime is unavailable in store/package runtime")
-            and ($stdout | str contains "does not own a mutable installed runtime")
-            and ($stdout | str contains "nix profile upgrade")
-            and not ($stdout | str contains "Running: nix run --refresh")
+            ($home_manager_output.exit_code == 0)
+            and ($home_manager_stdout | str contains "Yazelix runtime/distribution mode: Home Manager-managed full runtime")
+            and ($home_manager_stdout | str contains "Yazelix no longer owns runtime updates.")
+            and ($home_manager_stdout | str contains "home-manager switch")
+            and ($home_manager_stdout | str contains "yzx update nix")
+            and not ($home_manager_stdout | str contains "yzx update runtime")
+            and not ($home_manager_stdout | str contains "yzx update all")
+            and ($package_output.exit_code == 0)
+            and ($package_stdout | str contains "Yazelix runtime/distribution mode: store/package runtime")
+            and ($package_stdout | str contains "Yazelix no longer owns runtime updates.")
+            and ($package_stdout | str contains "nix profile upgrade")
+            and ($package_stdout | str contains "yzx update nix")
+            and not ($package_stdout | str contains "yzx update runtime")
+            and not ($package_stdout | str contains "yzx update all")
         ) {
-            print "  ✅ yzx update runtime now points packaged runtimes at the package-manager update path instead of the installer"
+            print "  ✅ yzx update now reports the owning update path without exposing removed runtime subcommands"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            print $"  ❌ Unexpected result:\nHM exit=($home_manager_output.exit_code)\nHM stdout=($home_manager_stdout)\nHM stderr=(($home_manager_output.stderr | str trim))\nPKG exit=($package_output.exit_code)\nPKG stdout=($package_stdout)\nPKG stderr=(($package_output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -777,7 +756,8 @@ def test_yzx_update_runtime_rejects_package_runtime_mode [] {
         false
     })
 
-    rm -rf $fixture.tmp_home
+    rm -rf $home_manager_fixture.tmp_home
+    rm -rf $package_fixture.tmp_home
     $result
 }
 
@@ -1402,8 +1382,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_uninstall_apply_removes_manual_artifacts_but_preserves_config)
         (test_yzx_uninstall_reports_home_manager_managed_install)
         (test_yzx_uninstall_ignores_noninstaller_runtime_current_directory)
-        (test_yzx_update_runtime_rejects_home_manager_managed_mode)
-        (test_yzx_update_runtime_rejects_package_runtime_mode)
+        (test_yzx_update_reports_mode_specific_owner_guidance_without_runtime_subcommands)
         (test_yzx_config_full_merges_pack_sidecar)
         (test_yzx_edit_targets_print_paths)
         (test_invalid_config_is_classified_as_config_problem)

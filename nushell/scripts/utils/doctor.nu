@@ -16,7 +16,7 @@ use doctor_helix.nu [
     check_managed_helix_integration
     fix_helix_runtime_conflicts
 ]
-use doctor_install_artifacts.nu [check_desktop_entry_freshness check_install_artifact_staleness]
+use doctor_install_artifacts.nu check_desktop_entry_freshness
 use launch_state.nu [describe_launch_profile_freshness resolve_runtime_owned_profile]
 use runtime_distribution_capabilities.nu get_runtime_distribution_capability_profile
 use runtime_contract_checker.nu [
@@ -432,7 +432,7 @@ def check_devenv_installation [capability_profile?: record] {
                 {
                     status: "warning"
                     message: "devenv missing from the installed Yazelix runtime"
-                    details: "Repair with `yzx update runtime`, then rerun the affected launch or refresh command."
+                    details: "Repair by rerunning `nix run github:luccahuguet/yazelix#install` or by switching to a package-managed update flow, then rerun the affected launch or refresh command."
                     fix_available: false
                 }
             }
@@ -644,9 +644,6 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
 
     # Desktop entry freshness
     $all_results = ($all_results | append (check_desktop_entry_freshness))
-
-    # Other repairable install artifacts
-    $all_results = ($all_results | append (check_install_artifact_staleness $runtime_distribution_profile))
 
     # Log files
     $all_results = ($all_results | append (check_log_files))

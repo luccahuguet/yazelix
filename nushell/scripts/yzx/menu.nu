@@ -69,9 +69,7 @@ const PUBLIC_YZX_COMMAND_CATALOG = [
     {id: "yzx tutor nushell", category: "help", description: "Alias for `yzx tutor nu`."}
     {id: "yzx uninstall", category: "system", description: "Remove manual installer-owned Yazelix artifacts while preserving managed config."}
     {id: "yzx update", category: "system", description: "Update dependencies and inputs"}
-    {id: "yzx update all", category: "system", description: ""}
     {id: "yzx update nix", category: "system", description: ""}
-    {id: "yzx update runtime", category: "system", description: ""}
     {id: "yzx whats_new", category: "help", description: ""}
     {id: "yzx why", category: "help", description: "Elevator pitch: Why Yazelix"}
 ]
