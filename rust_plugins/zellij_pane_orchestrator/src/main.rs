@@ -1,6 +1,7 @@
 mod editor;
 mod layout;
 mod panes;
+mod sidebar_yazi;
 mod workspace;
 
 use std::cell::RefCell;
@@ -36,6 +37,7 @@ struct State {
     terminal_panes_by_tab: HashMap<usize, Vec<panes::TerminalPaneLayout>>,
     user_pane_count_by_tab: HashMap<usize, usize>,
     workspace_state_by_tab: HashMap<usize, WorkspaceState>,
+    sidebar_yazi_state_by_tab: HashMap<usize, sidebar_yazi::SidebarYaziState>,
     seen_tab_positions: HashSet<usize>,
     initial_workspace_state: Option<WorkspaceState>,
     override_layout_config: layout::OverrideLayoutConfig,
@@ -115,6 +117,7 @@ impl ZellijPlugin for State {
                     panes::build_fallback_terminal_pane_by_tab(&pane_manifest);
                 self.terminal_panes_by_tab = panes::build_terminal_panes_by_tab(&pane_manifest);
                 self.user_pane_count_by_tab = panes::build_user_pane_count_by_tab(&pane_manifest);
+                self.reconcile_sidebar_yazi_state();
             }
             Event::PermissionRequestResult(status) => {
                 self.permissions_granted = status == PermissionStatus::Granted;
@@ -168,6 +171,14 @@ impl ZellijPlugin for State {
             }
             "toggle_sidebar" => {
                 self.toggle_sidebar(&pipe_message);
+                false
+            }
+            "register_sidebar_yazi_state" => {
+                self.register_sidebar_yazi_state(&pipe_message);
+                false
+            }
+            "get_active_sidebar_yazi_state" => {
+                self.get_active_sidebar_yazi_state(&pipe_message);
                 false
             }
             "set_workspace_root" => {

@@ -226,6 +226,20 @@ export def debug_editor_state [] {
     }
 }
 
+export def get_active_sidebar_yazi_state_from_plugin [log_file: string = "zellij_plugin.log"] {
+    try {
+        let response = (run_pane_orchestrator_command "get_active_sidebar_yazi_state" $log_file)
+        let trimmed = ($response | str trim)
+        if ($trimmed | is-empty) or ($trimmed in ["missing", "not_ready", "permissions_denied", "invalid_payload"]) {
+            null
+        } else {
+            $trimmed | from json
+        }
+    } catch {
+        null
+    }
+}
+
 def read_current_tab_workspace_root [--include-bootstrap] {
     let state = try {
         debug_editor_state

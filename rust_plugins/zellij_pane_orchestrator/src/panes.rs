@@ -66,6 +66,8 @@ struct DebugEditorState {
     workspace_root_source: Option<String>,
     editor_pane_id: Option<String>,
     sidebar_pane_id: Option<String>,
+    sidebar_yazi_id: Option<String>,
+    sidebar_yazi_cwd: Option<String>,
     sidebar_is_collapsed: Option<bool>,
 }
 
@@ -384,6 +386,8 @@ impl State {
         let sidebar_pane = active_tab_position
             .and_then(|tab_position| self.managed_panes_by_tab.get(&tab_position))
             .and_then(|managed_tab_panes| managed_tab_panes.sidebar);
+        let sidebar_yazi_state = active_tab_position
+            .and_then(|tab_position| self.get_active_sidebar_yazi_state_snapshot(tab_position));
 
         let state = DebugEditorState {
             permissions_granted: self.permissions_granted,
@@ -393,6 +397,8 @@ impl State {
             workspace_root_source,
             editor_pane_id: pane_id_to_string(editor_pane.map(|pane| pane.pane_id)),
             sidebar_pane_id: pane_id_to_string(sidebar_pane.map(|pane| pane.pane_id)),
+            sidebar_yazi_id: sidebar_yazi_state.map(|state| state.yazi_id.clone()),
+            sidebar_yazi_cwd: sidebar_yazi_state.map(|state| state.cwd.clone()),
             sidebar_is_collapsed: layout_variant.map(|variant| variant.is_sidebar_closed()),
         };
 
@@ -470,7 +476,7 @@ fn select_managed_terminal_pane(
     })
 }
 
-fn pane_id_to_string(pane_id: Option<PaneId>) -> Option<String> {
+pub(crate) fn pane_id_to_string(pane_id: Option<PaneId>) -> Option<String> {
     match pane_id {
         Some(PaneId::Terminal(id)) => Some(format!("terminal:{id}")),
         Some(PaneId::Plugin(id)) => Some(format!("plugin:{id}")),

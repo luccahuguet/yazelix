@@ -141,9 +141,7 @@ impl State {
             SidebarVisibilityTogglePlan::OpenPreservingFocus => {
                 self.run_previous_swap_layout_steps(1)
             }
-            SidebarVisibilityTogglePlan::ClosePreservingFocus => {
-                self.run_next_swap_layout_steps(1)
-            }
+            SidebarVisibilityTogglePlan::ClosePreservingFocus => self.run_next_swap_layout_steps(1),
             SidebarVisibilityTogglePlan::CloseAndFocusEditor => {
                 self.run_next_swap_layout_steps(1);
                 self.move_focus_right_after_layout_settle();

@@ -261,11 +261,11 @@ These are honest gaps in the current design.
 The plugin currently seeds new tabs from `HOME` bootstrap state.
 That is coherent, but it is still a product decision, not just an implementation detail.
 
-### Yazi Identity Still Lives Outside The Plugin
+### Sidebar Cache Is Telemetry, Not Truth
 
-The plugin knows which pane is the sidebar, but Yazi instance identity and cwd still live in separate state files.
+The Yazi sidebar plugin may still write cache files under `~/.local/share/yazelix/state/yazi/sidebar`, but active-tab sidebar targeting now comes from pane-orchestrator state keyed by the managed sidebar pane id.
 
-That is workable, but it means the full workspace model is not yet owned by one subsystem.
+That cache is for debugging or external inspection only. Active-tab reveal, refresh, and sidebar sync must not depend on scanning it for correctness.
 
 ### Workspace Root Naming Is Based On Explicit Updates
 

@@ -131,10 +131,10 @@ recommended_deps = true
     $result
 }
 
-# Regression: sidebar refresh must refresh the folder and rerun both git and starship sidebar integrations for the active sidebar instance.
+# Regression: sidebar refresh must use the pane-orchestrator-owned sidebar Yazi identity instead of the cache.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_refresh_active_sidebar_yazi_emits_refresh_to_cached_sidebar_instance [] {
-    print "🧪 Testing active sidebar Yazi refresh emits the folder refresh plus dedicated git and starship reruns to the cached sidebar instance..."
+def test_refresh_active_sidebar_yazi_emits_refresh_to_plugin_sidebar_instance [] {
+    print "🧪 Testing active sidebar Yazi refresh uses the plugin-owned sidebar instance and ignores stale cache state..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_yazi_sidebar_refresh"
@@ -157,11 +157,15 @@ ya_command = "ya"
         ]
         write_executable_fixture_file ($fake_bin | path join "zellij") [
             "#!/bin/sh"
-            "printf '%s\\n' '{\"sidebar_pane_id\":\"5\"}'"
-            "exit 0"
+            "if [ \"$6\" = \"get_active_sidebar_yazi_state\" ]; then"
+            "  printf '%s\\n' '{\"pane_id\":\"terminal:5\",\"yazi_id\":\"plugin-sidebar-yazi-123\",\"cwd\":\"/home/test/workspace\"}'"
+            "  exit 0"
+            "fi"
+            "printf '%s\\n' \"unexpected zellij args: $*\" >&2"
+            "exit 1"
         ]
 
-        "sidebar-yazi-123\n/home/test/workspace\n" | save --force --raw ($state_dir | path join "testsession__terminal_5.txt")
+        "stale-cache-yazi-id\n/home/stale\n" | save --force --raw ($state_dir | path join "testsession__terminal_5.txt")
 
         let refresh_result = (with-env {
             HOME: $fixture.tmp_home
@@ -183,12 +187,12 @@ ya_command = "ya"
         if (
             ($refresh_result.status == "ok")
             and ($ya_args == [
-                "emit-to sidebar-yazi-123 refresh",
-                "emit-to sidebar-yazi-123 plugin git refresh-sidebar",
-                "emit-to sidebar-yazi-123 plugin starship /home/test/workspace",
+                "emit-to plugin-sidebar-yazi-123 refresh",
+                "emit-to plugin-sidebar-yazi-123 plugin git refresh-sidebar",
+                "emit-to plugin-sidebar-yazi-123 plugin starship /home/test/workspace",
             ])
         ) {
-            print "  ✅ active sidebar Yazi refresh emits the targeted folder refresh plus dedicated git and starship rerun signals"
+            print "  ✅ active sidebar Yazi refresh now uses the plugin-owned sidebar identity and ignores stale cache entries"
             true
         } else {
             print $"  ❌ Unexpected sidebar refresh result: result=($refresh_result | to json -r) ya_args=($ya_args | to json -r)"
@@ -203,13 +207,13 @@ ya_command = "ya"
     $result
 }
 
-# Regression: active sidebar state lookup must prefer the current session's exact sidebar cache over a newer foreign session with the same pane id.
+# Regression: active sidebar state lookup must use the pane-orchestrator-owned sidebar identity instead of filesystem cache selection.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_get_active_sidebar_yazi_id_prefers_exact_session_and_pane_match [] {
-    print "🧪 Testing active sidebar Yazi lookup prefers the current session's exact sidebar state over foreign sessions with the same pane id..."
+def test_get_active_sidebar_state_uses_plugin_owned_sidebar_identity_instead_of_cache [] {
+    print "🧪 Testing active sidebar Yazi lookup uses the plugin-owned sidebar identity instead of stale cache files..."
 
     let fixture = (setup_managed_config_fixture
-        "yazelix_yazi_sidebar_state_exact_match"
+        "yazelix_yazi_sidebar_state_plugin_owned"
         '[yazi]
 ya_command = "ya"
 '
@@ -223,8 +227,12 @@ ya_command = "ya"
 
         write_executable_fixture_file ($fake_bin | path join "zellij") [
             "#!/bin/sh"
-            "printf '%s\\n' '{\"sidebar_pane_id\":\"terminal:0\"}'"
-            "exit 0"
+            "if [ \"$6\" = \"get_active_sidebar_yazi_state\" ]; then"
+            "  printf '%s\\n' '{\"pane_id\":\"terminal:0\",\"yazi_id\":\"plugin-yazi-id\",\"cwd\":\"/home/plugin\"}'"
+            "  exit 0"
+            "fi"
+            "printf '%s\\n' \"unexpected zellij args: $*\" >&2"
+            "exit 1"
         ]
 
         let current_state = ($state_dir | path join "current-session__terminal_0.txt")
@@ -245,15 +253,17 @@ ya_command = "ya"
             YAZELIX_CONFIG_DIR: $fixture.config_dir
             YAZELIX_RUNTIME_DIR: $fixture.repo_root
         } {
-            let sidebar_state = (get_active_sidebar_state)
-            $sidebar_state.yazi_id? | default null
+            get_active_sidebar_state
         })
 
-        if $resolved == "current-yazi-id" {
-            print "  ✅ active sidebar lookup now prefers the exact current session and pane cache"
+        if (
+            (($resolved.yazi_id? | default null) == "plugin-yazi-id")
+            and (($resolved.cwd? | default null) == "/home/plugin")
+        ) {
+            print "  ✅ active sidebar lookup now uses the plugin-owned sidebar identity instead of cache selection"
             true
         } else {
-            print $"  ❌ Unexpected active sidebar id: ($resolved | to nuon)"
+            print $"  ❌ Unexpected active sidebar state: ($resolved | to json -r)"
             false
         }
     } catch {|err|
@@ -332,8 +342,8 @@ export def run_yazi_canonical_tests [] {
     [
         (test_yazi_command_resolvers_honor_defaults_and_overrides)
         (test_get_managed_editor_kind_accepts_managed_helix_wrapper_env)
-        (test_refresh_active_sidebar_yazi_emits_refresh_to_cached_sidebar_instance)
-        (test_get_active_sidebar_yazi_id_prefers_exact_session_and_pane_match)
+        (test_refresh_active_sidebar_yazi_emits_refresh_to_plugin_sidebar_instance)
+        (test_get_active_sidebar_state_uses_plugin_owned_sidebar_identity_instead_of_cache)
         (test_toggle_editor_sidebar_focus_reports_sidebar_target_from_plugin_response)
     ]
 }

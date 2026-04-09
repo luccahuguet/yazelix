@@ -2,7 +2,6 @@
 # Yazi integration utilities for Yazelix
 
 use ../utils/logging.nu log_to_file
-use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/config_parser.nu parse_yazelix_config
 use ./yazi_sidebar_state.nu get_active_sidebar_state
 use zellij.nu focus_managed_pane
@@ -154,10 +153,6 @@ export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: s
 
     try {
         run_ya_emit_to $sidebar_state.yazi_id "cd" $target_dir
-        if ($sidebar_state.path? | is-not-empty) {
-            write_text_atomic $sidebar_state.path $"($sidebar_state.yazi_id)\n($target_dir)\n" --raw | ignore
-            log_to_file $log_file $"Updated sidebar state cache: ($sidebar_state.path)"
-        }
         log_to_file $log_file $"Synced active sidebar Yazi to directory: ($target_dir)"
         {status: "ok", target_dir: $target_dir}
     } catch {|err|
