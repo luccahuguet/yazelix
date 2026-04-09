@@ -525,7 +525,3 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_respects_layout_override_for_shared_preflight)
     ]
 }
-
-export def run_doctor_tests [] {
-    run_doctor_canonical_tests
-}

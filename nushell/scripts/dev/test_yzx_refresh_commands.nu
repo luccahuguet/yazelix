@@ -516,7 +516,3 @@ export def run_refresh_canonical_tests [] {
         (test_refresh_regenerates_runtime_owned_configs)
     ]
 }
-
-export def run_refresh_tests [] {
-    run_refresh_canonical_tests
-}

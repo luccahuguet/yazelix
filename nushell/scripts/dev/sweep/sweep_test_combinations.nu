@@ -111,15 +111,3 @@ export def generate_visual_test_combinations []: nothing -> list<record> {
 
     $combinations
 }
-
-# Get test constants for external use
-export def get_test_constants []: nothing -> record {
-    {
-        shells: $SHELLS,
-        terminals: $TERMINALS,
-        primary_shell: $PRIMARY_SHELL,
-        primary_terminal: $PRIMARY_TERMINAL,
-        helix_modes: $HELIX_MODES,
-        boolean_features: $BOOLEAN_FEATURES
-    }
-}

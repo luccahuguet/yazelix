@@ -1187,7 +1187,3 @@ export def run_core_canonical_tests [] {
         (test_startup_reports_known_config_migration_before_generic_wrappers)
     ]
 }
-
-export def run_core_tests [] {
-    run_core_canonical_tests
-}

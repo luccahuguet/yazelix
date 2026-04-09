@@ -1691,7 +1691,3 @@ export def run_workspace_canonical_tests [] {
         (test_yzx_cwd_requires_zellij)
     ]
 }
-
-export def run_workspace_tests [] {
-    run_workspace_canonical_tests
-}

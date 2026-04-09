@@ -336,7 +336,3 @@ export def run_yazi_canonical_tests [] {
         (test_toggle_editor_sidebar_focus_reports_sidebar_target_from_plugin_response)
     ]
 }
-
-export def run_yazi_tests [] {
-    run_yazi_canonical_tests
-}

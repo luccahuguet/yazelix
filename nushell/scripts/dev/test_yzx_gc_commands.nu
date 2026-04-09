@@ -179,11 +179,3 @@ exit 0
     rm -rf $tmpdir
     $result
 }
-
-export def run_gc_tests [] {
-    [
-        (test_yzx_gc_accepts_du_totals_even_with_transient_errors)
-        (test_yzx_gc_surfaces_phase_feedback)
-        (test_yzx_gc_fails_loudly_when_devenv_gc_fails)
-    ]
-}

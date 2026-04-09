@@ -1485,7 +1485,3 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_zellij_config_replaces_conflicting_ui_and_serialization_settings)
     ]
 }
-
-export def run_generated_config_tests [] {
-    run_generated_config_canonical_tests
-}
