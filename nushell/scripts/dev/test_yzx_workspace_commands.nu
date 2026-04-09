@@ -4,6 +4,7 @@
 # Defends: docs/workspace_session_contract.md
 
 use ./yzx_test_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path setup_managed_config_fixture]
+use ../integrations/zellij.nu [retarget_workspace_for_path]
 
 def run_nu_snippet [snippet: string, extra_env?: record] {
     if ($extra_env | is-empty) {
@@ -2264,6 +2265,67 @@ def test_yzx_cwd_requires_zellij [] {
     }
 }
 
+# Regression: workspace retarget should return plugin-owned editor/sidebar targeting truth in one response.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status [] {
+    print "🧪 Testing workspace retarget returns plugin-owned editor/sidebar targeting truth in one response..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_workspace_retarget_truth"
+        '[core]
+recommended_deps = true
+'
+    )
+
+    let result = (try {
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        let target_dir = ($fixture.tmp_home | path join "workspace")
+        mkdir $fake_bin
+        mkdir $target_dir
+
+        write_probe_nu ($fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            "if [ \"$6\" = \"retarget_workspace\" ]; then"
+            "  printf '%s\\n' '{\"status\":\"ok\",\"editor_status\":\"ok\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}'"
+            "  exit 0"
+            "fi"
+            "printf '%s\\n' \"unexpected zellij args: $*\" >&2"
+            "exit 1"
+        ]
+
+        let retarget_result = (with-env {
+            HOME: $fixture.tmp_home
+            PATH: ($env.PATH | prepend $fake_bin)
+            ZELLIJ: "1"
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        } {
+            retarget_workspace_for_path $target_dir "helix" "workspace_truth.log"
+        })
+
+        if (
+            ($retarget_result.status == "ok")
+            and ($retarget_result.workspace_root == $target_dir)
+            and ($retarget_result.tab_name == "workspace")
+            and (($retarget_result.editor_status? | default "") == "ok")
+            and (($retarget_result.sidebar_state.yazi_id? | default "") == "plugin-sidebar-yazi-123")
+            and (($retarget_result.sidebar_state.cwd? | default "") == "/home/sidebar")
+        ) {
+            print "  ✅ workspace retarget now returns plugin-owned editor/sidebar targeting truth in one response"
+            true
+        } else {
+            print $"  ❌ Unexpected retarget result: ($retarget_result | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 export def run_workspace_canonical_tests [] {
     [
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
@@ -2295,6 +2357,7 @@ export def run_workspace_canonical_tests [] {
         (test_launch_rejects_file_working_dir)
         (test_startup_requires_generated_layout_path)
         (test_launch_requires_runtime_launch_script)
+        (test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status)
         (test_yzx_cwd_requires_zellij)
     ]
 }

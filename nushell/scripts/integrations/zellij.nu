@@ -182,6 +182,71 @@ def update_tab_workspace [command_name: string, target_path: path, log_file: str
     }
 }
 
+def parse_workspace_retarget_response [response: string] {
+    let trimmed = ($response | str trim)
+    if $trimmed == "missing" {
+        return {status: "missing"}
+    }
+    if $trimmed == "not_ready" {
+        return {status: "not_ready"}
+    }
+    if $trimmed == "permissions_denied" {
+        return {status: "permissions_denied"}
+    }
+    if $trimmed == "invalid_payload" {
+        return {status: "invalid_payload"}
+    }
+
+    try {
+        let parsed = ($trimmed | from json)
+        let sidebar_yazi_id = ($parsed.sidebar_yazi_id? | default "" | into string | str trim)
+        let sidebar_yazi_cwd = ($parsed.sidebar_yazi_cwd? | default "" | into string | str trim)
+        let sidebar_state = if ($sidebar_yazi_id | is-empty) {
+            null
+        } else {
+            {
+                yazi_id: $sidebar_yazi_id
+                cwd: $sidebar_yazi_cwd
+            }
+        }
+
+        ($parsed | reject sidebar_yazi_id sidebar_yazi_cwd) | upsert sidebar_state $sidebar_state
+    } catch {
+        {status: "error", reason: $trimmed}
+    }
+}
+
+def retarget_workspace_internal [
+    workspace_root: path
+    tab_name: string
+    log_file: string
+    cd_focused_pane: bool
+    editor_kind: string = ""
+] {
+    let expanded_workspace_root = ($workspace_root | path expand)
+    let normalized_editor_kind = ($editor_kind | default "" | into string | str trim)
+    let payload = {
+        workspace_root: $expanded_workspace_root
+        cd_focused_pane: $cd_focused_pane
+        editor: (if ($normalized_editor_kind | is-empty) { null } else { $normalized_editor_kind })
+    } | to json -r
+
+    try {
+        let response = (run_pane_orchestrator_command "retarget_workspace" $log_file $payload)
+        {
+            workspace_root: $expanded_workspace_root
+            tab_name: $tab_name
+        } | merge (parse_workspace_retarget_response $response)
+    } catch {|err|
+        {
+            workspace_root: $expanded_workspace_root
+            tab_name: $tab_name
+            status: "error"
+            reason: $err.msg
+        }
+    }
+}
+
 export def set_tab_cwd [target_path: path, log_file: string = "zellij_plugin.log"] {
     update_tab_workspace "set_workspace_root_and_cd_focused_pane" $target_path $log_file
 }
@@ -198,6 +263,34 @@ export def set_workspace_for_path [target_path: path, log_file: string = "zellij
     } catch {|err|
         $workspace | merge {status: "error", reason: $err.msg}
     }
+}
+
+export def retarget_tab_cwd [
+    target_path: path
+    editor_kind: string = ""
+    log_file: string = "zellij_plugin.log"
+] {
+    let expanded_target_path = ($target_path | path expand)
+    if not ($expanded_target_path | path exists) {
+        error make {msg: $"Path does not exist: ($expanded_target_path)"}
+    }
+
+    let target_dir = if (($expanded_target_path | path type) == "dir") {
+        $expanded_target_path
+    } else {
+        $expanded_target_path | path dirname
+    }
+
+    retarget_workspace_internal $target_dir (get_tab_name $target_dir) $log_file true $editor_kind
+}
+
+export def retarget_workspace_for_path [
+    target_path: path
+    editor_kind: string = ""
+    log_file: string = "zellij_plugin.log"
+] {
+    let workspace = (get_workspace_context $target_path $log_file)
+    retarget_workspace_internal $workspace.workspace_root $workspace.tab_name $log_file false $editor_kind
 }
 
 def open_file_in_managed_editor [editor_kind: string, file_path: path, log_file: string] {

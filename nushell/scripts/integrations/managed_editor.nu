@@ -3,8 +3,8 @@
 use ../utils/logging.nu log_to_file
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/editor_launch_context.nu [resolve_editor_launch_context]
-use ./zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, set_workspace_for_path, set_managed_editor_cwd]
-use ./yazi.nu [get_ya_command, is_sidebar_enabled, sync_active_sidebar_yazi_to_directory]
+use ./zellij.nu [open_in_existing_helix, open_in_existing_neovim, open_new_helix_pane, open_new_neovim_pane, get_workspace_root, retarget_workspace_for_path, set_managed_editor_cwd]
+use ./yazi.nu [get_ya_command, is_sidebar_enabled, sync_sidebar_yazi_state_to_directory]
 
 # Check if the editor command is Helix (supports both simple names and full paths)
 # This allows yazelix to work with "hx", "helix", "/nix/store/.../bin/hx", "/usr/bin/hx", etc.
@@ -125,16 +125,20 @@ def open_with_editor_integration [
         return
     }
 
-    let workspace_result = (set_workspace_for_path $file_path $log_file)
-    if $workspace_result.status == "ok" {
-        log_to_file $log_file $"Updated workspace root to: ($workspace_result.workspace_root)"
+    let retarget_result = (retarget_workspace_for_path $file_path "" $log_file)
+    if $retarget_result.status == "ok" {
+        log_to_file $log_file $"Updated workspace root to: ($retarget_result.workspace_root)"
     } else {
-        log_to_file $log_file $"WARNING: Failed to update workspace root \(status=($workspace_result.status)\)"
+        log_to_file $log_file $"WARNING: Failed to update workspace root \(status=($retarget_result.status)\)"
     }
 
     let sidebar_enabled = is_sidebar_enabled
     if $sidebar_enabled {
-        let sidebar_sync_result = (sync_active_sidebar_yazi_to_directory $file_path $log_file)
+        let sidebar_sync_result = if ($retarget_result.sidebar_state? | is-not-empty) {
+            sync_sidebar_yazi_state_to_directory $retarget_result.sidebar_state $file_path $log_file
+        } else {
+            {status: "skipped", reason: "sidebar_yazi_missing"}
+        }
         if $sidebar_sync_result.status == "ok" {
             log_to_file $log_file $"Synced active sidebar Yazi to directory: ($sidebar_sync_result.target_dir)"
         } else {
@@ -167,28 +171,32 @@ def open_with_generic_editor [file_path: path, editor: string, yazi_id: string] 
         log_to_file "open_generic.log" $"Successfully opened ($file_path) with ($editor) in new pane"
         print $"Opened ($file_path) with ($editor) in new pane"
 
-        let workspace_result = (set_workspace_for_path $file_path "open_generic.log")
-        if $workspace_result.status == "ok" {
-            log_to_file "open_generic.log" $"Updated workspace root to: ($workspace_result.workspace_root)"
+        let retarget_result = (retarget_workspace_for_path $file_path "" "open_generic.log")
+        if $retarget_result.status == "ok" {
+            log_to_file "open_generic.log" $"Updated workspace root to: ($retarget_result.workspace_root)"
         } else {
-            log_to_file "open_generic.log" $"WARNING: Failed to update workspace root \(status=($workspace_result.status)\)"
+            log_to_file "open_generic.log" $"WARNING: Failed to update workspace root \(status=($retarget_result.status)\)"
+        }
+
+        let sidebar_enabled = is_sidebar_enabled
+        if $sidebar_enabled {
+            let sidebar_sync_result = if ($retarget_result.sidebar_state? | is-not-empty) {
+                sync_sidebar_yazi_state_to_directory $retarget_result.sidebar_state $file_path "open_generic.log"
+            } else {
+                {status: "skipped", reason: "sidebar_yazi_missing"}
+            }
+            if $sidebar_sync_result.status == "ok" {
+                log_to_file "open_generic.log" $"Synced active sidebar Yazi to directory: ($sidebar_sync_result.target_dir)"
+            } else {
+                log_to_file "open_generic.log" $"WARNING: Active sidebar Yazi sync skipped \(status=($sidebar_sync_result.status)\)"
+            }
+        } else {
+            sync_yazi_to_directory $file_path $yazi_id "open_generic.log"
         }
     } catch {|err|
         let error_msg = $"Failed to open file with ($editor): ($err.msg)"
         log_to_file "open_generic.log" $"ERROR: ($error_msg)"
         print $"Error: ($error_msg)"
-    }
-
-    let sidebar_enabled = is_sidebar_enabled
-    if $sidebar_enabled {
-        let sidebar_sync_result = (sync_active_sidebar_yazi_to_directory $file_path "open_generic.log")
-        if $sidebar_sync_result.status == "ok" {
-            log_to_file "open_generic.log" $"Synced active sidebar Yazi to directory: ($sidebar_sync_result.target_dir)"
-        } else {
-            log_to_file "open_generic.log" $"WARNING: Active sidebar Yazi sync skipped \(status=($sidebar_sync_result.status)\)"
-        }
-    } else {
-        sync_yazi_to_directory $file_path $yazi_id "open_generic.log"
     }
 
     log_to_file "open_generic.log" "open_with_generic_editor function completed"

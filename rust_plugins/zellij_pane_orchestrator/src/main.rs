@@ -189,6 +189,10 @@ impl ZellijPlugin for State {
                 self.set_workspace_root_and_cd_focused_pane(&pipe_message);
                 false
             }
+            "retarget_workspace" => {
+                self.retarget_workspace(&pipe_message);
+                false
+            }
             "open_terminal_in_cwd" => {
                 self.open_terminal_in_cwd(&pipe_message);
                 false

@@ -142,8 +142,11 @@ export def sync_active_sidebar_yazi_to_directory [target_path: path, log_file: s
     if $action_context.status != "ok" {
         return ($action_context | reject sidebar_state)
     }
-    let sidebar_state = $action_context.sidebar_state
 
+    sync_sidebar_yazi_state_to_directory $action_context.sidebar_state $target_path $log_file
+}
+
+export def sync_sidebar_yazi_state_to_directory [sidebar_state: record, target_path: path, log_file: string = "yazi_sync.log"] {
     let expanded_target_path = ($target_path | path expand)
     let target_dir = if (($expanded_target_path | path type) == "dir") {
         $expanded_target_path

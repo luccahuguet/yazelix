@@ -162,7 +162,10 @@ impl EditorCommandSequence {
     }
 }
 
-fn build_editor_change_directory_command(editor: &str, working_dir: &str) -> Option<String> {
+pub(crate) fn build_editor_change_directory_command(
+    editor: &str,
+    working_dir: &str,
+) -> Option<String> {
     match editor {
         "helix" => Some(format!(":cd \"{}\"", escape_helix_path(working_dir))),
         "neovim" => Some(format!(

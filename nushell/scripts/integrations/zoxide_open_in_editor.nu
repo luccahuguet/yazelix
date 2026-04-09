@@ -3,9 +3,9 @@
 # Called from the zoxide-editor Yazi plugin with the selected path
 
 use ../utils/logging.nu log_to_file
-use ./zellij.nu [set_managed_editor_cwd, set_workspace_for_path, open_new_managed_editor_in_cwd]
+use ./zellij.nu [retarget_workspace_for_path, open_new_managed_editor_in_cwd]
 use ./managed_editor.nu get_managed_editor_kind
-use ./yazi.nu [sync_active_sidebar_yazi_to_directory, is_sidebar_enabled]
+use ./yazi.nu [is_sidebar_enabled, sync_sidebar_yazi_state_to_directory]
 
 const LOG = "zoxide_open_in_editor.log"
 
@@ -23,31 +23,41 @@ export def main [target_dir: string] {
         error make {msg: "No managed editor detected"}
     }
 
-    let cwd_result = (set_managed_editor_cwd $editor_kind $target_dir $LOG)
-    match ($cwd_result.status? | default "error") {
+    let retarget_result = (retarget_workspace_for_path $target_dir $editor_kind $LOG)
+    match ($retarget_result.status? | default "error") {
         "ok" => {
-            log_to_file $LOG $"Set ($editor_kind) cwd to ($target_dir)"
-        }
-        "missing" => {
-            let yazi_id = ($env.YAZI_ID? | default "" | into string | str trim)
-            log_to_file $LOG "Managed editor pane missing, opening a new managed editor pane"
-            open_new_managed_editor_in_cwd $editor_kind $target_dir $yazi_id $LOG
+            match ($retarget_result.editor_status? | default "skipped") {
+                "ok" => {
+                    log_to_file $LOG $"Set ($editor_kind) cwd to ($target_dir)"
+                }
+                "missing" => {
+                    let yazi_id = ($env.YAZI_ID? | default "" | into string | str trim)
+                    log_to_file $LOG "Managed editor pane missing, opening a new managed editor pane"
+                    open_new_managed_editor_in_cwd $editor_kind $target_dir $yazi_id $LOG
+                }
+                "unsupported_editor" => {
+                    log_to_file $LOG $"ERROR: Unsupported managed editor kind for workspace retarget: ($editor_kind)"
+                    error make {msg: $"Unsupported managed editor kind for workspace retarget: ($editor_kind)"}
+                }
+                _ => { }
+            }
         }
         _ => {
-            log_to_file $LOG $"ERROR: Failed to set editor cwd: ($cwd_result)"
-            error make {msg: $"Failed to set editor cwd: ($cwd_result)"}
+            log_to_file $LOG $"ERROR: Failed to retarget workspace/editor state: ($retarget_result)"
+            error make {msg: $"Failed to retarget workspace/editor state: ($retarget_result)"}
         }
     }
 
-    let workspace_result = (set_workspace_for_path $target_dir $LOG)
-    if $workspace_result.status == "ok" {
-        log_to_file $LOG $"Updated workspace root to: ($workspace_result.workspace_root)"
-    } else {
-        log_to_file $LOG $"WARNING: Failed to update workspace root \(status=($workspace_result.status)\)"
+    if ($retarget_result.status == "ok") {
+        log_to_file $LOG $"Updated workspace root to: ($retarget_result.workspace_root)"
     }
 
     if (is_sidebar_enabled) {
-        let sync_result = (sync_active_sidebar_yazi_to_directory $target_dir $LOG)
+        let sync_result = if ($retarget_result.sidebar_state? | is-not-empty) {
+            sync_sidebar_yazi_state_to_directory $retarget_result.sidebar_state $target_dir $LOG
+        } else {
+            {status: "skipped", reason: "sidebar_yazi_missing"}
+        }
         if $sync_result.status == "ok" {
             log_to_file $LOG $"Synced sidebar Yazi to: ($sync_result.target_dir)"
         } else {

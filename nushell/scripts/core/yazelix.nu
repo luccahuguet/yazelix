@@ -11,9 +11,9 @@ use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_pr
 use ../utils/common.nu [get_installed_yazelix_runtime_dir get_yazelix_runtime_dir]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../setup/shell_hooks.nu [check_shell_hook_versions]
-use ../integrations/managed_editor.nu sync_managed_editor_cwd
-use ../integrations/yazi.nu [reveal_in_yazi sync_active_sidebar_yazi_to_directory]
-use ../integrations/zellij.nu [set_tab_cwd resolve_tab_cwd_target]
+use ../integrations/managed_editor.nu get_managed_editor_kind
+use ../integrations/yazi.nu [reveal_in_yazi sync_sidebar_yazi_state_to_directory]
+use ../integrations/zellij.nu [retarget_tab_cwd resolve_tab_cwd_target]
 
 # Import modularized commands (export use to properly re-export subcommands)
 export use ../yzx/launch.nu *
@@ -126,8 +126,9 @@ export def "yzx cwd" [
         exit 1
     }
 
+    let editor_kind = ((get_managed_editor_kind) | default "")
     let result = try {
-        set_tab_cwd $resolved_dir "yzx_cwd.log"
+        retarget_tab_cwd $resolved_dir $editor_kind "yzx_cwd.log"
     } catch {|err|
         {
             status: "error"
@@ -137,14 +138,17 @@ export def "yzx cwd" [
 
     match $result.status {
         "ok" => {
-            let editor_sync_result = (sync_managed_editor_cwd $result.workspace_root "yzx_cwd.log")
-            let sidebar_sync_result = (sync_active_sidebar_yazi_to_directory $result.workspace_root "yzx_cwd.log")
+            let sidebar_sync_result = if ($result.sidebar_state? | is-not-empty) {
+                sync_sidebar_yazi_state_to_directory $result.sidebar_state $result.workspace_root "yzx_cwd.log"
+            } else {
+                {status: "skipped", reason: "sidebar_yazi_missing"}
+            }
             print $"✅ Updated current tab workspace directory to: ($result.workspace_root)"
             print $"   Tab renamed to: ($result.tab_name)"
             print "   The current pane will switch after this command returns."
             print "   Other existing panes keep their current working directories."
             print "   New managed actions will use the updated tab directory."
-            if $editor_sync_result.status == "ok" {
+            if (($result.editor_status? | default "") == "ok") {
                 print "   Managed editor cwd synced to the updated directory."
             }
             if $sidebar_sync_result.status == "ok" {

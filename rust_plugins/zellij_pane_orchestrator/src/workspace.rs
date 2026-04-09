@@ -3,9 +3,10 @@ use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use zellij_tile::prelude::*;
 
+use crate::editor::build_editor_change_directory_command;
 use crate::{State, COMMAND_STEP_DELAY_MS, RESULT_INVALID_PAYLOAD, RESULT_MISSING, RESULT_OK};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -27,6 +28,21 @@ pub(crate) enum WorkspaceStateSource {
 #[derive(Deserialize)]
 struct WorkspaceRootRequest {
     workspace_root: String,
+}
+
+#[derive(Deserialize)]
+struct WorkspaceRetargetRequest {
+    workspace_root: String,
+    cd_focused_pane: bool,
+    editor: Option<String>,
+}
+
+#[derive(Serialize)]
+struct WorkspaceRetargetResponse {
+    status: String,
+    editor_status: String,
+    sidebar_yazi_id: Option<String>,
+    sidebar_yazi_cwd: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -136,6 +152,95 @@ impl State {
         write_to_pane_id(vec![13], focused_pane_id);
 
         self.respond(pipe_message, RESULT_OK);
+    }
+
+    pub(crate) fn retarget_workspace(&mut self, pipe_message: &PipeMessage) {
+        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
+            return;
+        };
+
+        let Some(payload) = pipe_message.payload.as_deref() else {
+            self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+            return;
+        };
+
+        let workspace_retarget_request: WorkspaceRetargetRequest =
+            match serde_json::from_str(payload) {
+                Ok(request) => request,
+                Err(_) => {
+                    self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+                    return;
+                }
+            };
+
+        let workspace_root = workspace_retarget_request.workspace_root.trim().to_string();
+        if workspace_root.is_empty() {
+            self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
+            return;
+        }
+
+        let workspace_state = WorkspaceState::from_explicit_root(workspace_root.clone());
+        rename_tab(
+            tab_index_from_position(active_tab_position),
+            &tab_name_from_workspace_root(&workspace_state.root),
+        );
+        self.workspace_state_by_tab
+            .insert(active_tab_position, workspace_state.clone());
+
+        if workspace_retarget_request.cd_focused_pane {
+            let Some(focused_pane_id) = self.get_focused_terminal_pane(pipe_message) else {
+                return;
+            };
+
+            write_chars_to_pane_id(
+                &change_directory_command(&workspace_state.root),
+                focused_pane_id,
+            );
+            sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
+            write_to_pane_id(vec![13], focused_pane_id);
+        }
+
+        let editor_status = workspace_retarget_request
+            .editor
+            .as_deref()
+            .map(str::trim)
+            .filter(|editor| !editor.is_empty())
+            .map(|editor| {
+                let Some(change_directory_command) =
+                    build_editor_change_directory_command(editor, &workspace_state.root)
+                else {
+                    return "unsupported_editor".to_string();
+                };
+
+                let Some(editor_pane) = self
+                    .managed_panes_by_tab
+                    .get(&active_tab_position)
+                    .and_then(|managed_tab_panes| managed_tab_panes.editor)
+                else {
+                    return "missing".to_string();
+                };
+
+                write_to_pane_id(vec![27], editor_pane.pane_id);
+                sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
+                write_chars_to_pane_id(&change_directory_command, editor_pane.pane_id);
+                sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
+                write_to_pane_id(vec![13], editor_pane.pane_id);
+                "ok".to_string()
+            })
+            .unwrap_or_else(|| "skipped".to_string());
+
+        let sidebar_yazi_state = self.get_active_sidebar_yazi_state_snapshot(active_tab_position);
+        let response = WorkspaceRetargetResponse {
+            status: RESULT_OK.to_string(),
+            editor_status,
+            sidebar_yazi_id: sidebar_yazi_state.map(|state| state.yazi_id.clone()),
+            sidebar_yazi_cwd: sidebar_yazi_state.map(|state| state.cwd.clone()),
+        };
+
+        match serde_json::to_string(&response) {
+            Ok(serialized_response) => self.respond(pipe_message, &serialized_response),
+            Err(_) => self.respond(pipe_message, RESULT_INVALID_PAYLOAD),
+        }
     }
 
     pub(crate) fn open_terminal_in_cwd(&self, pipe_message: &PipeMessage) {

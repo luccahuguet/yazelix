@@ -187,6 +187,30 @@ Plugin does not:
 
 Those remain Nushell responsibilities after the workspace mutation succeeds.
 
+### `retarget_workspace`
+
+Input:
+
+- explicit workspace root from Nushell
+- whether the currently focused terminal pane should also receive `cd`
+- optional managed editor kind to sync against the active tab
+
+Plugin responsibilities:
+
+- store the per-tab workspace root as `explicit`
+- rename the tab from that root
+- optionally `cd` the currently focused pane
+- optionally `cd` the managed editor pane if it exists and the editor kind is supported
+- return the active tab's current sidebar Yazi identity so Nushell can emit sidebar adapter commands without re-deriving target pane truth
+
+Plugin does not:
+
+- resolve `zoxide`
+- infer repo roots
+- execute `ya emit-to` itself
+
+Nushell still owns path resolution and the actual Yazi adapter commands, but it should consume the plugin's retarget response instead of recomputing active editor/sidebar targeting through separate state lookups.
+
 ### `open_file`
 
 Input:
