@@ -101,6 +101,27 @@ Prefer declarative installs? Use the top-level Home Manager module in [home_mana
 
 📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions
 
+## Updating
+
+Choose one update owner for each Yazelix install. Do not mix both update paths for the same installed runtime.
+
+- Upstream/manual installs: use `yzx update upstream`
+- Home Manager installs: use `yzx update home_manager`
+
+`yzx update upstream` prints and runs:
+
+```bash
+nix run github:luccahuguet/yazelix#install
+```
+
+`yzx update home_manager` refreshes the current flake input with:
+
+```bash
+nix flake update yazelix
+```
+
+and then prints `home-manager switch` for you to run yourself.
+
 ### Helix Integration
 Helix supports optional `yzx reveal` integration through `Alt+r`. Yazelix now reserves `Alt+r` globally: in the managed editor it forwards `Alt+r` into Helix for reveal, and outside the editor it falls back to the editor/sidebar focus flow. `Ctrl+y` and `Alt+y` remain the dedicated workspace navigation keys.
 
@@ -264,6 +285,9 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx env [--no-shell] [--skip-refresh]` - Load Yazelix tools without UI (`--no-shell` keeps your current shell, `--skip-refresh` may use stale env)
 - `yzx refresh [--force] [--verbose] [--very-verbose]` - Refresh devenv cache/environment without launching UI (`-v` shows configured package scope + concise build progress, `-V` shows full debug output)
 - `yzx run <command> [args...]` - Run a single command inside the Yazelix environment
+- `yzx update` - Show the supported update-owner paths
+- `yzx update upstream` - Refresh Yazelix from the upstream installer surface
+- `yzx update home_manager` - Refresh the current Home Manager flake input, then print `home-manager switch`
 - `yzx config [--full] [--path]` - Show the active config, hiding `packs` by default
 - `yzx edit config|packs` - Open managed Yazelix config files in your editor
 - `yzx restart --skip-refresh` - Restart while skipping explicit refresh trigger (may use stale env)

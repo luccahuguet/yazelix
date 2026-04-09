@@ -81,6 +81,18 @@ Then open a fresh shell and run:
 yzx launch
 ```
 
+## Updating a Home Manager-owned Install
+
+For a Home Manager-owned Yazelix install, use:
+
+```bash
+yzx update home_manager
+```
+
+That command prints the exact `nix flake update yazelix` command it runs in the current flake directory, then prints `home-manager switch` for you to copy and run yourself.
+
+Do not mix this with `yzx update upstream` for the same installed Yazelix runtime.
+
 For maintainer workflows, a cloned repo is still useful. Normal Home Manager usage should not depend on treating `~/.config/yazelix` as a live repo checkout.
 
 ## Validated Behavior
@@ -96,6 +108,7 @@ Manual validation on April 8, 2026 covered both a lived-in account and a throwaw
 
 Migration note for older setups:
 - Replace `github:luccahuguet/yazelix?dir=home_manager` with `github:luccahuguet/yazelix` in your Home Manager flake inputs.
+- Upstream/manual installs use `yzx update upstream`; Home Manager installs use `yzx update home_manager`.
 
 ## Example Configuration
 

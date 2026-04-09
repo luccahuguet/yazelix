@@ -50,6 +50,7 @@ def archive_artifacts [artifacts: list<record>, backup_label: string] {
 export def "yzx home_manager" [] {
     print "Yazelix Home Manager helpers"
     print "  yzx home_manager prepare   Preview or archive manual-install artifacts before Home Manager takeover"
+    print "  yzx update home_manager    Refresh the current flake input, then print `home-manager switch`"
 }
 
 export def "yzx home_manager prepare" [

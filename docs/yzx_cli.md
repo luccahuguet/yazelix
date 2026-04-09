@@ -147,10 +147,22 @@ Show the current Yazelix release summary on demand
 
 ### `yzx update`
 Show available update targets
-- Bare `yzx update` prints the active runtime/distribution tier and the owning update path for that mode
-- It no longer exposes `yzx update runtime` or `yzx update all`
-- Installer-compatibility users are pointed at rerunning `nix run github:luccahuguet/yazelix#install`
-- Home Manager and packaged runtimes are pointed at their owning package-manager flow instead
+- Bare `yzx update` prints the supported update-owner choices
+- It points users at `yzx update upstream` or `yzx update home_manager`
+- It warns users not to mix both update paths for the same installed Yazelix runtime
+
+### `yzx update upstream`
+Refresh Yazelix from the upstream installer surface
+- Prints the exact command it will run
+- Runs `nix run github:luccahuguet/yazelix#install`
+- Intended for installs driven by the upstream/manual installer path
+
+### `yzx update home_manager`
+Refresh the current Home Manager flake input, then print the manual switch step
+- Must be run from the Home Manager flake directory that owns the install
+- Prints the exact command it will run
+- Runs `nix flake update yazelix`
+- Prints `home-manager switch` for the user to copy and run manually
 
 ### `yzx update nix [--yes] [--verbose]`
 Upgrade Determinate Nix
@@ -306,8 +318,9 @@ yzx status --verbose          # Show detailed shell hook status
 yzx sponsor                   # Open the Yazelix sponsor page
 
 # Updates
-yzx update                    # Show update targets
-yzx update                    # Prints the owning update path for the active runtime/distribution mode
+yzx update                    # Show the supported update-owner paths
+yzx update upstream           # Print and run nix run github:luccahuguet/yazelix#install
+yzx update home_manager       # Run nix flake update yazelix here, then print home-manager switch
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
 yzx dev update --yes --activate installer  # Refresh all inputs, run canaries, sync pins, refresh vendored zjstatus and Yazi plugins, then activate the installer-owned runtime
 yzx dev update --yes --activate none  # Refresh the repo state only and skip local activation
