@@ -356,10 +356,12 @@ def ensure_dir [path: string] {
     }
 }
 
-def split_top_level_block [config_content: string, block_name: string] {
+def extract_semantic_config_blocks [config_content: string] {
     mut stripped_lines = []
-    mut block_lines = []
-    mut in_named_block = false
+    mut load_plugin_lines = []
+    mut plugin_lines = []
+    mut keybind_lines = []
+    mut active_block = ""
     mut brace_depth = 0
 
     for line in ($config_content | lines) {
@@ -367,9 +369,16 @@ def split_top_level_block [config_content: string, block_name: string] {
         let open_braces = (($line | split chars | where {|char| $char == "{"}) | length)
         let close_braces = (($line | split chars | where {|char| $char == "}"}) | length)
 
-        if not $in_named_block {
-            if ($trimmed | str starts-with $block_name) {
-                $in_named_block = true
+        if ($active_block | is-empty) {
+            let matched_block = (
+                ["load_plugins", "plugins", "keybinds"]
+                | where {|block_name| $trimmed | str starts-with $block_name }
+                | get 0?
+                | default ""
+            )
+
+            if ($matched_block | is-not-empty) {
+                $active_block = $matched_block
                 $brace_depth = ($open_braces - $close_braces)
 
                 # Preserve compact one-line forms like:
@@ -377,14 +386,24 @@ def split_top_level_block [config_content: string, block_name: string] {
                 if $brace_depth <= 0 {
                     let inline_body = (
                         $trimmed
-                        | str replace -r $"^($block_name)\\s*\\{" ""
+                        | str replace -r $"^($matched_block)\\s*\\{" ""
                         | str replace -r "\\}\\s*$" ""
                         | str trim
                     )
                     if ($inline_body | is-not-empty) {
-                        $block_lines = ($block_lines | append $inline_body)
+                        match $matched_block {
+                            "load_plugins" => {
+                                $load_plugin_lines = ($load_plugin_lines | append $inline_body)
+                            }
+                            "plugins" => {
+                                $plugin_lines = ($plugin_lines | append $inline_body)
+                            }
+                            "keybinds" => {
+                                $keybind_lines = ($keybind_lines | append $inline_body)
+                            }
+                        }
                     }
-                    $in_named_block = false
+                    $active_block = ""
                     $brace_depth = 0
                 }
             } else {
@@ -393,40 +412,28 @@ def split_top_level_block [config_content: string, block_name: string] {
         } else {
             $brace_depth = ($brace_depth + $open_braces - $close_braces)
             if $brace_depth > 0 {
-                $block_lines = ($block_lines | append $line)
+                match $active_block {
+                    "load_plugins" => {
+                        $load_plugin_lines = ($load_plugin_lines | append $line)
+                    }
+                    "plugins" => {
+                        $plugin_lines = ($plugin_lines | append $line)
+                    }
+                    "keybinds" => {
+                        $keybind_lines = ($keybind_lines | append $line)
+                    }
+                }
             } else {
-                $in_named_block = false
+                $active_block = ""
             }
         }
     }
 
     {
-        config_without_block: ($stripped_lines | str join "\n")
-        block_lines: $block_lines
-    }
-}
-
-def split_load_plugins_block [config_content: string] {
-    let split = (split_top_level_block $config_content "load_plugins")
-    {
-        config_without_load_plugins: $split.config_without_block
-        load_plugin_lines: $split.block_lines
-    }
-}
-
-def split_keybinds_block [config_content: string] {
-    let split = (split_top_level_block $config_content "keybinds")
-    {
-        config_without_keybinds: $split.config_without_block
-        keybind_lines: $split.block_lines
-    }
-}
-
-def split_plugins_block [config_content: string] {
-    let split = (split_top_level_block $config_content "plugins")
-    {
-        config_without_plugins: $split.config_without_block
-        plugin_lines: $split.block_lines
+        config_without_semantic_blocks: ($stripped_lines | str join "\n")
+        load_plugin_lines: $load_plugin_lines
+        plugin_lines: $plugin_lines
+        keybind_lines: $keybind_lines
     }
 }
 
@@ -531,10 +538,10 @@ def read_yazelix_overrides [
         | str replace -a "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" $pane_orchestrator_plugin_url
         | str replace -a "__YAZELIX_RUNTIME_DIR__" $runtime_ref
     )
-    let split_keybinds = (split_keybinds_block $resolved_overrides)
+    let extracted_blocks = (extract_semantic_config_blocks $resolved_overrides)
     {
-        overrides_without_keybinds: $split_keybinds.config_without_keybinds
-        keybind_lines: $split_keybinds.keybind_lines
+        overrides_without_keybinds: $extracted_blocks.config_without_semantic_blocks
+        keybind_lines: $extracted_blocks.keybind_lines
     }
 }
 
@@ -629,23 +636,13 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         }
     }
 
-    let extracted_blocks = (profile_startup_step "zellij_config" "merge_config_blocks" {
-        let extracted_load_plugins = (split_load_plugins_block $base_config_source.content)
-        let extracted_plugins = (split_plugins_block $extracted_load_plugins.config_without_load_plugins)
-        let extracted_keybinds = (split_keybinds_block $extracted_plugins.config_without_plugins)
-        {
-            extracted_load_plugins: $extracted_load_plugins
-            extracted_plugins: $extracted_plugins
-            extracted_keybinds: $extracted_keybinds
-        }
+    let extracted_blocks = (profile_startup_step "zellij_config" "extract_semantic_blocks" {
+        extract_semantic_config_blocks $base_config_source.content
     })
-    let extracted_load_plugins = $extracted_blocks.extracted_load_plugins
-    let extracted_plugins = $extracted_blocks.extracted_plugins
-    let extracted_keybinds = $extracted_blocks.extracted_keybinds
 
     # Remove any settings we control from base config (yazelix.toml takes precedence)
     # This prevents conflicts when multiple declarations of the same setting exist
-    let base_config = ($extracted_keybinds.config_without_keybinds | lines | where {|line|
+    let base_config = ($extracted_blocks.config_without_semantic_blocks | lines | where {|line|
         let trimmed = ($line | str trim)
         not (
             ($trimmed | str starts-with "theme ") or
@@ -659,14 +656,15 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
             ($trimmed | str starts-with "default_shell ")
         )
     } | str join "\n")
-    let merged_keybinds_block = (build_merged_keybinds_block $extracted_keybinds.keybind_lines $yazelix_overrides.keybind_lines)
+    let merged_keybinds_block = (build_merged_keybinds_block $extracted_blocks.keybind_lines $yazelix_overrides.keybind_lines)
     let merged_config = [
         "// ========================================",
         "// GENERATED ZELLIJ CONFIG (YAZELIX)",
         "// ========================================",
         "// Source preference:",
         "//   1) ~/.config/yazelix/user_configs/zellij/config.kdl (user-managed)",
-        "//   2) zellij setup --dump-config (defaults)",
+        "//   2) ~/.config/zellij/config.kdl (native fallback, read-only)",
+        "//   3) zellij setup --dump-config (defaults)",
         "//",
         $"// Generated: (date now | format date '%Y-%m-%d %H:%M:%S')",
         "// ========================================",
@@ -678,7 +676,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         $merged_keybinds_block,
         "",
         (build_yazelix_plugins_block
-            $extracted_plugins.plugin_lines
+            $extracted_blocks.plugin_lines
             $PANE_ORCHESTRATOR_PLUGIN_ALIAS
             $pane_orchestrator_wasm_path
             $widget_tray_segment
@@ -696,7 +694,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         $"layout_dir \"($yazelix_layout_dir)\"",
         "",
         "// === YAZELIX BACKGROUND PLUGINS ===",
-        (build_yazelix_load_plugins_block $extracted_load_plugins.load_plugin_lines $PANE_ORCHESTRATOR_PLUGIN_ALIAS $popup_runner_wasm_path)
+        (build_yazelix_load_plugins_block $extracted_blocks.load_plugin_lines $PANE_ORCHESTRATOR_PLUGIN_ALIAS $popup_runner_wasm_path)
     ] | str join "\n"
     
     # Write atomically (write to temp file, then move)
