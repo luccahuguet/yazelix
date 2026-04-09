@@ -6,7 +6,8 @@ use ../utils/environment_bootstrap.nu [prepare_environment]
 use ../utils/devenv_backend.nu [format_command_failure_summary get_refresh_output_mode run_devenv_build_shell]
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ../utils/launch_state.nu record_launch_profile_state
-use ../utils/common.nu [require_yazelix_runtime_dir]
+use ../utils/common.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
+use ../utils/runtime_contract_checker.nu resolve_expected_layout_path
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
@@ -68,6 +69,26 @@ def regenerate_runtime_configs [runtime_dir: string, --quiet] {
     }
 }
 
+def list_missing_runtime_config_artifacts [config: record] {
+    let state_dir = (get_yazelix_state_dir)
+    let yazi_dir = ($state_dir | path join "configs" "yazi")
+    let zellij_dir = ($state_dir | path join "configs" "zellij")
+    let expected_layout_path = (resolve_expected_layout_path $config)
+    let required_artifacts = [
+        { label: "generated Yazi config" path: ($yazi_dir | path join "yazi.toml") }
+        { label: "generated Yazi keymap" path: ($yazi_dir | path join "keymap.toml") }
+        { label: "generated Yazi init.lua" path: ($yazi_dir | path join "init.lua") }
+        { label: "generated Zellij config" path: ($zellij_dir | path join "config.kdl") }
+        { label: "generated Zellij layout" path: $expected_layout_path }
+    ]
+
+    $required_artifacts
+    | where {|artifact|
+        let resolved_path = ($artifact.path | path expand)
+        not ($resolved_path | path exists)
+    }
+}
+
 # Refresh devenv evaluation cache without launching Yazelix UI
 export def "yzx refresh" [
     --force(-f)    # Force refresh even when no config/input changes are detected
@@ -93,8 +114,20 @@ export def "yzx refresh" [
         get_refresh_output_mode $config
     }
     let show_progress = ($refresh_output != "quiet")
+    let missing_runtime_artifacts = (list_missing_runtime_config_artifacts $config)
 
     if (not $force) and (not $needs_refresh) {
+        if ($missing_runtime_artifacts | is-not-empty) {
+            print "🩹 Yazelix environment is up to date, but generated runtime configs are missing."
+            if $show_progress {
+                let missing_labels = ($missing_runtime_artifacts | get label | str join ", ")
+                print $"   Repairing without rebuild: ($missing_labels)"
+            }
+            regenerate_runtime_configs $runtime_dir --quiet=($refresh_output == "quiet")
+            print "✅ Refresh repaired the missing runtime configs."
+            return
+        }
+
         print "✅ Yazelix environment is already up to date."
         print "   Nothing to refresh."
         return
