@@ -227,10 +227,17 @@ def setup_enter_forwarding_fixture [label: string] {
         "export def record_materialized_state [state: record] {}"
     ] | str join "\n" | save --force --raw ($utils_dir | path join "config_state.nu")
 
-    let backend_stub = ([
+    let bootstrap_stub = ([
         "export def prepare_environment [--verbose] {"
         "    error make {msg: \"PREPARE_ENVIRONMENT_SHOULD_NOT_RUN\"}"
         "}"
+        "export def ensure_environment_available [] {"
+        "    error make {msg: \"ENSURE_ENVIRONMENT_AVAILABLE_SHOULD_NOT_RUN\"}"
+        "}"
+    ] | str join "\n")
+    $bootstrap_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
+
+    let backend_stub = ([
         "export def rebuild_yazelix_environment ["
         "    --max-jobs: string = \"\""
         "    --build-cores: string = \"\""
@@ -263,7 +270,6 @@ def setup_enter_forwarding_fixture [label: string] {
         "}"
         "export def print_refresh_request_guidance [refresh_request: record] { null }"
     ] | str join "\n")
-    $backend_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
     $backend_stub | save --force --raw ($utils_dir | path join "devenv_backend.nu")
 
     [
@@ -370,7 +376,7 @@ def setup_refresh_activation_fixture [label: string] {
     ] | str join "\n" | save --force --raw $fake_nu
     ^chmod +x $fake_nu
 
-    let backend_stub = ([
+    let bootstrap_stub = ([
         "export def prepare_environment [--verbose] {"
         "    {"
         "        config: {max_jobs: \"half\", build_cores: \"2\", refresh_output: \"normal\"}"
@@ -378,10 +384,14 @@ def setup_refresh_activation_fixture [label: string] {
         "        needs_refresh: true"
         "    }"
         "}"
+        "export def ensure_environment_available [] {}"
+    ] | str join "\n")
+    $bootstrap_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
+
+    let backend_stub = ([
         "export def check_environment_status [] {"
         "    {already_in_env: false, in_nix_shell: false, in_yazelix_shell: false}"
         "}"
-        "export def ensure_environment_available [] {}"
         "export def rebuild_yazelix_environment ["
         "    --max-jobs: string = \"\""
         "    --build-cores: string = \"\""
@@ -415,7 +425,6 @@ def setup_refresh_activation_fixture [label: string] {
         "}"
         "export def print_refresh_request_guidance [refresh_request: record] { null }"
     ] | str join "\n")
-    $backend_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
     $backend_stub | save --force --raw ($utils_dir | path join "devenv_backend.nu")
 
     [
