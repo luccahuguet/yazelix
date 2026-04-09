@@ -1290,6 +1290,52 @@ def test_generated_runtime_configs_prefer_active_runtime_over_installed_referenc
     $result
 }
 
+# Regression: recursive managed cleanup must remove bounded symlinks without chmodding immutable external targets.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_remove_path_within_root_recursive_cleanup_removes_managed_symlinks_without_touching_targets [] {
+    print "🧪 Testing bounded recursive cleanup removes managed symlinks without chmodding immutable external targets..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_safe_remove_symlink_recursive_XXXXXX | str trim)
+    let managed_root = ($tmpdir | path join "managed")
+    let managed_symlink = ($managed_root | path join "runtime-entry")
+    let external_target = "/etc/passwd"
+
+    let result = (try {
+        if not ($external_target | path exists) {
+            error make {msg: $"Expected immutable external target to exist for this regression test: ($external_target)"}
+        }
+
+        mkdir $managed_root
+        ^ln -s $external_target $managed_symlink
+
+        let remove_symlink = (try {
+            remove_path_within_root $managed_symlink $managed_root "runtime project symlink" --recursive
+            {ok: true, msg: ""}
+        } catch {|err|
+            {ok: false, msg: $err.msg}
+        })
+
+        if (
+            $remove_symlink.ok
+            and (not ($managed_symlink | path exists))
+            and ($external_target | path exists)
+            and ($managed_root | path exists)
+        ) {
+            print "  ✅ Managed recursive cleanup now removes symlinks without touching immutable external targets"
+            true
+        } else {
+            print $"  ❌ Unexpected recursive symlink cleanup result: symlink=($remove_symlink | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Defends: sidebar width propagates into generated Zellij layouts and plugin config.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config [] {
@@ -1632,6 +1678,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_zellij_config_reuses_unchanged_state_and_invalidates_on_input_change)
         (test_remove_path_within_root_refuses_root_and_outside_targets)
         (test_remove_path_within_root_relaxes_read_only_managed_directories_before_recursive_cleanup)
+        (test_remove_path_within_root_recursive_cleanup_removes_managed_symlinks_without_touching_targets)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
         (test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers)
         (test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrator_toggle)
