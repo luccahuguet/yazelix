@@ -1,7 +1,8 @@
 #!/usr/bin/env nu
 # yzx menu - Interactive command palette and config opener
 
-use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap open_floating_runtime_wrapper]
+use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap]
+use ../integrations/zellij_runtime_wrappers.nu [open_floating_runtime_wrapper]
 use ./command_palette_catalog.nu [get_palette_menu_items]
 use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
 

@@ -121,7 +121,7 @@ Current behavior:
 
 - the plugin initializes new tabs from a bootstrap root, currently `HOME`
 - explicit workspace commands replace that per-tab root
-- `get_current_tab_workspace_root` hides bootstrap values by default so callers do not confuse "default HOME" with an explicitly chosen project root
+- callers that care about the bootstrap-vs-explicit distinction should inspect the plugin state directly rather than rely on a filtered helper export
 
 Implication:
 

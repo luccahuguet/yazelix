@@ -1,12 +1,11 @@
 #!/usr/bin/env nu
 
-use ../integrations/zellij.nu [toggle_sidebar_layout]
+use ../integrations/zellij.nu [run_pane_orchestrator_command_raw]
 
 def main [] {
-    let result = (toggle_sidebar_layout)
-
-    if $result.status != "ok" {
-        print $"Error: toggle sidebar failed \(status=($result.status)\)"
+    let response = (run_pane_orchestrator_command_raw "toggle_sidebar")
+    if $response != "ok" {
+        print $"Error: toggle sidebar failed \(status=($response)\)"
         exit 1
     }
 }

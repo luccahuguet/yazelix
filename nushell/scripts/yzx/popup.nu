@@ -2,8 +2,8 @@
 
 use ../integrations/zellij.nu [
     get_current_tab_workspace_root_including_bootstrap
-    open_floating_runtime_wrapper
 ]
+use ../integrations/zellij_runtime_wrappers.nu [open_floating_runtime_wrapper]
 use ../utils/config_parser.nu parse_yazelix_config
 
 def resolve_popup_command [configured_program: list<string>, override_program: list<string>] {

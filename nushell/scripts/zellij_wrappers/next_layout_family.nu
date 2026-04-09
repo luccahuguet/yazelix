@@ -1,11 +1,11 @@
 #!/usr/bin/env nu
 
-use ../integrations/zellij.nu [next_layout_family]
+use ../integrations/zellij.nu [run_pane_orchestrator_command_raw]
 
 def main [] {
-    let result = (next_layout_family)
-    if $result.status != "ok" {
-        print $"Error: next layout family failed \(status=($result.status)\)"
+    let response = (run_pane_orchestrator_command_raw "next_family")
+    if $response != "ok" {
+        print $"Error: next layout family failed \(status=($response)\)"
         exit 1
     }
 }
