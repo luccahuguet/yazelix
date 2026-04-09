@@ -1,5 +1,6 @@
 #!/usr/bin/env nu
 
+use atomic_writes.nu write_text_atomic
 use config_surfaces.nu [load_config_surface_pair merge_pack_sidecar]
 
 export const MANAGED_CONFIG_TRANSACTION_DIRNAME = ".managed_config_transactions"
@@ -33,7 +34,7 @@ def get_transaction_manifest_path [work_dir: string] {
 }
 
 def save_manifest [manifest_path: string, manifest: record] {
-    $manifest | to json | save --force --raw $manifest_path
+    write_text_atomic $manifest_path ($manifest | to json) --raw | ignore
 }
 
 def list_transaction_manifest_paths [config_path: string] {
@@ -348,7 +349,7 @@ def apply_managed_config_transaction_with_cleanup [
 
         if $has_main_target {
             try {
-                $normalized_main_toml | save --force --raw $main_staged_path
+                write_text_atomic $main_staged_path $normalized_main_toml --raw | ignore
             } catch {|err|
                 error make {msg: $"Failed to write staged main config: ($err | to nuon)"}
             }
@@ -356,7 +357,7 @@ def apply_managed_config_transaction_with_cleanup [
 
         if $has_pack_target {
             try {
-                $normalized_pack_toml | save --force --raw $pack_staged_path
+                write_text_atomic $pack_staged_path $normalized_pack_toml --raw | ignore
             } catch {|err|
                 error make {msg: $"Failed to write staged pack config: ($err | to nuon)"}
             }

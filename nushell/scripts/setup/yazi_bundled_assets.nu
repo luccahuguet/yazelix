@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
 use ../utils/common.nu get_yazelix_runtime_dir
+use ../utils/atomic_writes.nu write_text_atomic
 
 const runtime_dir_placeholder = "__YAZELIX_RUNTIME_DIR__"
 
@@ -28,7 +29,7 @@ def render_runtime_root_placeholders_in_directory [root_dir: string] {
                 error make {msg: $"Failed to make generated Yazi plugin file writable at ($file_path): ($chmod_result.stderr | str trim)"}
             }
             let rendered = (render_runtime_root_placeholders $content)
-            $rendered | save --force --raw $file_path
+            write_text_atomic $file_path $rendered --raw | ignore
         }
     }
 

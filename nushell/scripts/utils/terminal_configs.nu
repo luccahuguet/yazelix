@@ -2,6 +2,7 @@
 # Modular terminal configuration generator for yazelix
 
 use config_parser.nu parse_yazelix_config
+use ./atomic_writes.nu write_text_atomic
 use ./constants.nu *
 use ./common.nu get_yazelix_runtime_dir
 use ./terminal_ghostty_assets.nu sync_generated_ghostty_shader_assets
@@ -15,7 +16,7 @@ use ./terminal_renderers.nu [
 ]
 
 def write_generated_terminal_config [file_path: string, content: string] {
-    $content | save $file_path --force
+    write_text_atomic $file_path $content --raw | ignore
 }
 
 export def generate_selected_terminal_configs [selected_terminals: list<string>, runtime_dir?: string] {

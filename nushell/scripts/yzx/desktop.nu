@@ -1,5 +1,6 @@
 #!/usr/bin/env nu
 
+use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/common.nu [require_installed_yazelix_runtime_dir]
 
 const DESKTOP_LAUNCH_CLEARED_ENV_KEYS = [
@@ -115,7 +116,7 @@ export def "yzx desktop install" [
     let desktop_entry = (render_desktop_entry $launcher_path)
 
     mkdir $applications_dir
-    $desktop_entry | save --force --raw $desktop_path
+    write_text_atomic $desktop_path $desktop_entry --raw | ignore
     validate_desktop_entry $desktop_path
     refresh_desktop_database $applications_dir
 

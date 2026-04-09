@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 # Shared helpers for loading Yazelix config surfaces.
 
+use atomic_writes.nu write_text_atomic
 use common.nu [get_yazelix_config_dir get_yazelix_user_config_dir require_yazelix_runtime_dir]
 use failure_classes.nu [format_failure_classification]
 
@@ -292,7 +293,7 @@ def ensure_managed_taplo_support [config_root?: string, runtime_root?: string] {
         if ($target_path | path exists) {
             ^chmod u+w $target_path
         }
-        $source_content | save --force --raw $target_path
+        write_text_atomic $target_path $source_content --raw | ignore
         ^chmod u+w $target_path
     }
 

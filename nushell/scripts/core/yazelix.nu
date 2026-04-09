@@ -3,6 +3,7 @@
 # Consolidated commands for managing and interacting with yazelix
 
 use ../utils/build_policy.nu [describe_build_parallelism]
+use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment rebuild_yazelix_environment get_refresh_output_mode]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
@@ -276,7 +277,7 @@ def create_restart_sidebar_bootstrap_file [target_dir: string] {
     mkdir $state_dir
 
     let bootstrap_file = (^mktemp ($state_dir | path join "sidebar_cwd_XXXXXX") | str trim)
-    ($target_dir | path expand) | save --force --raw $bootstrap_file
+    write_text_atomic $bootstrap_file ($target_dir | path expand) --raw | ignore
     $bootstrap_file
 }
 

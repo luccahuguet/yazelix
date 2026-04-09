@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
 use ../utils/common.nu [get_yazelix_runtime_dir]
+use ../utils/atomic_writes.nu [copy_file_atomic write_text_atomic]
 
 const pane_orchestrator_plugin_prefix = "yazelix_pane_orchestrator"
 const pane_orchestrator_wasm_name = "yazelix_pane_orchestrator.wasm"
@@ -26,17 +27,6 @@ const zjstatus_required_permissions = [
     "ChangeApplicationState"
     "RunCommands"
 ]
-
-def atomic_copy [source_path: string, target_path: string] {
-    let target_dir = ($target_path | path dirname)
-    if not ($target_dir | path exists) {
-        mkdir $target_dir
-    }
-
-    let tmp_path = $"($target_path).tmp"
-    cp --force $source_path $tmp_path
-    mv --force $tmp_path $target_path
-}
 
 def get_runtime_plugins_dir [] {
     $env.HOME | path join ".local" "share" "yazelix" "configs" "zellij" "plugins"
@@ -132,11 +122,7 @@ def upsert_permission_blocks [blocks: list<string>] {
         | each {|block| build_permission_block $block.path $block.permissions }
     )
     let updated_content = ($retained_text | append $blocks | str join "\n\n")
-    let cache_dir = ($permissions_cache_path | path dirname)
-    if not ($cache_dir | path exists) {
-        mkdir $cache_dir
-    }
-    $updated_content | save --force --raw $permissions_cache_path
+    write_text_atomic $permissions_cache_path $updated_content --raw | ignore
     $permissions_cache_path
 }
 
@@ -191,7 +177,7 @@ def preserve_plugin_permissions [
         | str join "\n\n"
     )
 
-    $updated_content | save --force --raw $permissions_cache_path
+    write_text_atomic $permissions_cache_path $updated_content --raw | ignore
     {
         status: "updated"
         source_path: $source_block.path
@@ -234,7 +220,7 @@ export def sync_pane_orchestrator_runtime_wasm [yazelix_dir?: string] {
     let runtime_dir = (get_runtime_plugins_dir)
     let runtime_path = (get_runtime_pane_orchestrator_target_path)
 
-    atomic_copy $tracked_path $runtime_path
+    copy_file_atomic $tracked_path $runtime_path | ignore
 
     if ($runtime_dir | path exists) {
         let plugin_name_pattern = ("^" + $pane_orchestrator_plugin_prefix + "(_[0-9a-f]+)?\\.wasm$")
@@ -273,7 +259,7 @@ export def sync_popup_runner_runtime_wasm [yazelix_dir?: string] {
     let runtime_dir = (get_runtime_plugins_dir)
     let runtime_path = (get_runtime_popup_runner_target_path)
 
-    atomic_copy $tracked_path $runtime_path
+    copy_file_atomic $tracked_path $runtime_path | ignore
 
     if ($runtime_dir | path exists) {
         let plugin_name_pattern = ("^" + $popup_runner_plugin_prefix + "(_[0-9a-f]+)?\\.wasm$")
@@ -311,7 +297,7 @@ export def sync_zjstatus_runtime_wasm [yazelix_dir?: string] {
 
     let runtime_path = (get_runtime_zjstatus_target_path)
 
-    atomic_copy $tracked_path $runtime_path
+    copy_file_atomic $tracked_path $runtime_path | ignore
 
     preserve_zjstatus_permissions $tracked_path $runtime_path | ignore
 

@@ -97,6 +97,11 @@ ghostty_mode_effect = "ripple_rectangle"
             | lines
             | where {|path| $path | str trim | is-not-empty}
         )
+        let temp_noise = (
+            ^find $generated_root
+            | lines
+            | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
+        )
 
         if (
             not ($override_root | path exists)
@@ -118,6 +123,7 @@ ghostty_mode_effect = "ripple_rectangle"
             and ($tail_shader | path exists)
             and ($ripple_shader | path exists)
             and ($backup_noise | is-empty)
+            and ($temp_noise | is-empty)
         ) {
             print "  ✅ Terminal config generation keeps user terminal overrides opt-in, rewrites generated files in place, keeps startup out of generated terminal configs, and points Ghostty at real generated shaders"
             true
@@ -919,6 +925,11 @@ sidebar_width_percent = 35
                 layout: (open --raw $layout_path)
             }
         })
+        let temp_noise = (
+            ^find $out_dir
+            | lines
+            | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
+        )
 
         if (
             ($second_output.config == $first_output.config)
@@ -928,6 +939,7 @@ sidebar_width_percent = 35
             and ($third_output.config | str contains 'sidebar_width_percent "35"')
             and ($third_output.layout | str contains 'size "35%"')
             and not ($third_output.layout | str contains 'size "25%"')
+            and ($temp_noise | is-empty)
         ) {
             print "  ✅ Merged Zellij config now reuses unchanged generated state and regenerates when a real config input changes"
             true
@@ -1023,6 +1035,11 @@ def test_generate_merged_yazi_config_syncs_starship_plugin_config [] {
                 init_lua: (open --raw ($merged_dir | path join "init.lua"))
                 starship_config: (open --raw ($merged_dir | path join "yazelix_starship.toml"))
                 starship_config_mode: (^stat -c '%A' ($merged_dir | path join "yazelix_starship.toml") | str trim)
+                temp_noise: (
+                    ^find $merged_dir
+                    | lines
+                    | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
+                )
             }
         })
 
@@ -1033,6 +1050,7 @@ def test_generate_merged_yazi_config_syncs_starship_plugin_config [] {
             and ($generated.init_lua | str contains $"config_file = \"($expected_starship_config_path)\"")
             and ($generated.starship_config | str contains "# YAZELIX STARSHIP CONFIG FOR YAZI SIDEBAR")
             and ($generated.starship_config_mode != "-r--r--r--")
+            and ($generated.temp_noise | is-empty)
         ) {
             print "  ✅ Yazi Starship plugin now points at a managed sidebar-specific config that survives repeated regeneration"
             true

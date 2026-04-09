@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
 use ../utils/constants.nu ZELLIJ_CONFIG_PATHS
+use ../utils/atomic_writes.nu write_text_atomic
 use ./zellij_plugin_paths.nu [
     get_runtime_pane_orchestrator_wasm_path
     get_runtime_popup_runner_wasm_path
@@ -183,12 +184,10 @@ def load_cached_generation_fingerprint [merged_config_dir: string] {
 
 export def record_generation_fingerprint [merged_config_dir: string, fingerprint: string] {
     let metadata_path = (get_zellij_generation_metadata_path $merged_config_dir)
-    let temp_path = $"($metadata_path).tmp"
-    {
+    write_text_atomic $metadata_path ({
         fingerprint: $fingerprint
         generated_at: (date now | format date "%Y-%m-%dT%H:%M:%S%.3f%:z")
-    } | to json | save --force $temp_path
-    mv --force $temp_path $metadata_path
+    } | to json) --raw | ignore
 }
 
 export def can_reuse_generated_zellij_state [

@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 # Shared upgrade-note loading, rendering, and first-run suppression state.
 
+use atomic_writes.nu write_text_atomic
 use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 use constants.nu [YAZELIX_VERSION]
 use config_migrations.nu [build_config_migration_plan_from_record]
@@ -150,7 +151,7 @@ def read_last_seen_upgrade_version [] {
 
 def write_last_seen_upgrade_version [version: string] {
     let state_path = (get_upgrade_summary_state_path)
-    $version | save --force --raw $state_path
+    write_text_atomic $state_path $version --raw | ignore
     $state_path
 }
 

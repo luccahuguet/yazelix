@@ -2,6 +2,7 @@
 # Profile activation helpers for fast Yazelix launch/restart paths.
 
 use ./build_policy.nu [get_yazelix_nix_config]
+use ./atomic_writes.nu write_text_atomic
 use ./common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 use ./runtime_project.nu [get_existing_yazelix_runtime_project_dir]
 
@@ -350,12 +351,7 @@ export def record_launch_profile_state [config_state: record, profile_path: stri
     }
 
     let state_path = (get_recorded_launch_state_path)
-    let state_dir = ($state_path | path dirname)
-    if not ($state_dir | path exists) {
-        mkdir $state_dir
-    }
-
-    {
+    write_text_atomic $state_path ({
         combined_hash: (
             $config_state
             | get -o combined_hash
@@ -363,7 +359,7 @@ export def record_launch_profile_state [config_state: record, profile_path: stri
             | into string
         )
         profile_path: $resolved_profile
-    } | to json | save --force $state_path
+    } | to json) --raw | ignore
 }
 
 export def require_reused_launch_profile [config_state: record, command_name: string] {

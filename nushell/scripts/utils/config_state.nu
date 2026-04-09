@@ -2,6 +2,7 @@
 # Config state tracking for Yazelix
 
 use ./config_parser.nu parse_yazelix_config
+use ./atomic_writes.nu write_text_atomic
 use ./config_contract.nu [get_main_config_rebuild_required_paths]
 use ./common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 use ./config_surfaces.nu [load_active_config_surface get_main_user_config_path normalize_config_surface_path]
@@ -235,10 +236,6 @@ export def record_materialized_state [state: record] {
     }
 
     let materialized_state_path = (get_materialized_state_path)
-    let materialized_state_dir = ($materialized_state_path | path dirname)
-    if not ($materialized_state_dir | path exists) {
-        mkdir $materialized_state_dir
-    }
     let cache_record = {
         config_hash: ($state.config_hash? | default "")
         lock_hash: ($state.lock_hash? | default "")
@@ -246,5 +243,5 @@ export def record_materialized_state [state: record] {
         devenv_yaml_hash: ($state.devenv_yaml_hash? | default "")
         runtime_hash: ($state.runtime_hash? | default "")
     }
-    $cache_record | to json | save --force $materialized_state_path
+    write_text_atomic $materialized_state_path ($cache_record | to json) --raw | ignore
 }

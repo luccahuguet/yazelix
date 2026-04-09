@@ -3,6 +3,7 @@
 # Uses the Yazelix-managed user Zellij config when available, then native Zellij config, then Zellij defaults
 
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
+use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu resolve_zellij_default_shell
 use ../utils/layout_generator.nu [render_custom_text_segment render_widget_tray_segment]
@@ -195,21 +196,14 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         (build_yazelix_load_plugins_block $extracted_blocks.load_plugin_lines $PANE_ORCHESTRATOR_PLUGIN_ALIAS $popup_runner_wasm_path)
     ] | str join "\n"
     
-    # Write atomically (write to temp file, then move)
-    let temp_path = $"($merged_config_path).tmp"
     try {
-        $merged_config | save $temp_path
-        mv $temp_path $merged_config_path
+        write_text_atomic $merged_config_path $merged_config --raw | ignore
         record_generation_fingerprint $merged_config_dir $generation_fingerprint
         print $"✅ Zellij configuration generated successfully!"
         print $"   📁 Config saved to: ($merged_config_path)"
         print "   🔄 Config will auto-regenerate when source files change"
     } catch {|err|
         print $"❌ Failed to write merged config: ($err.msg)"
-        # Clean up temp file if it exists
-        if ($temp_path | path exists) {
-            rm $temp_path
-        }
         exit 1
     }
     

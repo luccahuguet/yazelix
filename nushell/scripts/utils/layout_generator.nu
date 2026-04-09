@@ -1,6 +1,8 @@
 #!/usr/bin/env nu
 # Copy Zellij layouts to merged config directory
 
+use atomic_writes.nu write_text_atomic
+
 const widget_tray_placeholder = "__YAZELIX_WIDGET_TRAY__"
 const custom_text_placeholder = "__YAZELIX_CUSTOM_TEXT_SEGMENT__"
 const pane_orchestrator_plugin_url_placeholder = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__"
@@ -190,7 +192,7 @@ def generate_layout [
         exit 1
     }
 
-    $updated | save --force ($target_layout | path expand)
+    write_text_atomic ($target_layout | path expand) $updated --raw | ignore
 }
 
 # Copy all layout files to the target directory

@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 # Generate a Yazelix-managed Helix config.toml for Yazelix-managed Helix sessions.
 
+use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/common.nu [get_yazelix_runtime_dir get_yazelix_state_dir get_yazelix_user_config_dir]
 
 const MANAGED_REVEAL_COMMAND = ':sh yzx reveal "%{buffer_name}"'
@@ -46,13 +47,6 @@ def get_helix_notice_state_dir [] {
 
 def get_helix_import_notice_marker_path [] {
     (get_helix_notice_state_dir) | path join "import_notice_seen"
-}
-
-def ensure_dir [path: string] {
-    let dir = ($path | path dirname)
-    if not ($dir | path exists) {
-        mkdir $dir
-    }
 }
 
 def deep_merge [base: record, user: record] {
@@ -144,12 +138,10 @@ export def generate_managed_helix_config [] {
     let output_path = (get_generated_helix_config_path)
     let final_config = (build_managed_helix_config)
     let notice = (maybe_show_helix_import_notice)
-    ensure_dir $output_path
-    ($final_config | to toml) | save --force $output_path
+    write_text_atomic $output_path ($final_config | to toml) --raw | ignore
 
     if $notice != null {
-        ensure_dir $notice.marker_path
-        "" | save --force --raw $notice.marker_path
+        write_text_atomic $notice.marker_path "" --raw | ignore
         for line in $notice.lines {
             print --stderr $line
         }

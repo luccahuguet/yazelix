@@ -1,5 +1,6 @@
 #!/usr/bin/env nu
 
+use atomic_writes.nu write_text_atomic
 use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir resolve_yazelix_nu_bin]
 
 export def get_generated_yzx_extern_path [state_root?: string] {
@@ -112,10 +113,8 @@ export def sync_generated_yzx_extern_bridge [runtime_root?: string, state_root?:
         $runtime_root | path expand
     }
 
-    mkdir ($extern_path | path dirname)
-
     let placeholder = "# Yazelix generated Nushell extern bridge (empty)\n"
-    $placeholder | save --force --raw $extern_path
+    write_text_atomic $extern_path $placeholder --raw | ignore
 
     try {
         let commands = (fetch_yzx_command_metadata $runtime_dir)
@@ -125,7 +124,7 @@ export def sync_generated_yzx_extern_bridge [runtime_root?: string, state_root?:
             ""
         ] | str join "\n"
         let body = ($commands | each {|command| render_extern_block $command } | str join "\n\n")
-        $"($header)($body)\n" | save --force --raw $extern_path
+        write_text_atomic $extern_path $"($header)($body)\n" --raw | ignore
     } catch {|err|
         print $"⚠️  Failed to generate Nushell yzx extern bridge: ($err.msg)"
     }

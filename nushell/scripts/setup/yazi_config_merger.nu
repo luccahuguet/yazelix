@@ -2,18 +2,11 @@
 # Yazi Configuration Generator
 # Generates yazi configs from yazelix defaults + dynamic settings from yazelix.toml
 
+use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu get_yazelix_state_dir
 use ./yazi_bundled_assets.nu [render_runtime_root_placeholders sync_bundled_yazi_assets]
 use ./yazi_user_overrides.nu [merge_yazi_keymap merge_yazi_toml_config resolve_yazi_user_file]
-
-# Ensure directory exists
-def ensure_dir [path: string] {
-    let dir = ($path | path dirname)
-    if not ($dir | path exists) {
-        mkdir $dir
-    }
-}
 
 # Generate yazi.toml with dynamic settings from yazelix.toml
 def generate_yazi_toml [source_dir: string, merged_dir: string, sort_by: string, user_plugins: list, --quiet] {
@@ -86,7 +79,7 @@ def generate_yazi_toml [source_dir: string, merged_dir: string, sort_by: string,
 
     # Write final config
     let config_content = (render_runtime_root_placeholders ($final_config | to toml))
-    $"($header)($config_content)" | save -f $merged_path
+    write_text_atomic $merged_path $"($header)($config_content)" --raw | ignore
 
     if not $quiet {
         let user_msg = if $has_user_config { " \(+user yazi.toml\)" } else { "" }
@@ -148,7 +141,7 @@ def generate_theme_toml [source_dir: string, merged_dir: string, theme: string, 
     } else {
         $final_config | to toml
     }
-    $"($header)($config_content)" | save -f $merged_path
+    write_text_atomic $merged_path $"($header)($config_content)" --raw | ignore
 
     if not $quiet {
         print $"     ✅ theme.toml generated with flavor: ($theme)"
@@ -196,7 +189,7 @@ def generate_keymap_toml [source_dir: string, merged_dir: string, --quiet] {
 
     # Write final keymap
     let keymap_content = (render_runtime_root_placeholders ($final_keymap | to toml))
-    $"($header)($keymap_content)" | save -f $merged_path
+    write_text_atomic $merged_path $"($header)($keymap_content)" --raw | ignore
 
     if not $quiet {
         let user_msg = if $has_user_keymap { " \(+user keymap\)" } else { "" }
@@ -290,7 +283,7 @@ def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
 
     # Write init.lua
     let init_path = $"($merged_dir)/init.lua"
-    $final_content | save -f $init_path
+    write_text_atomic $init_path $final_content --raw | ignore
 
     if not $quiet {
         let user_msg = if ($user_init_path | path exists) { " \(+user init.lua\)" } else { "" }
@@ -342,8 +335,9 @@ export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
         print "🔄 Generating Yazi configuration..."
     }
 
-    # Ensure output directory exists
-    ensure_dir $"($merged_config_dir)/yazi.toml"
+    if not ($merged_config_dir | path exists) {
+        mkdir $merged_config_dir
+    }
 
     # Generate yazi.toml with dynamic settings from yazelix.toml
     generate_yazi_toml $source_config_dir $merged_config_dir $sort_by $user_plugins --quiet=$quiet

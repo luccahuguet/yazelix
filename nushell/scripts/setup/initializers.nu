@@ -2,6 +2,8 @@
 # Universal shell initializer generator for Yazelix
 # Generates initializer scripts for all supported shells
 
+use ../utils/atomic_writes.nu write_text_atomic
+
 def strip_nu_starship_right_prompt [] {
     let lines = ($in | split row "\n")
     mut filtered = []
@@ -150,7 +152,7 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
                         (run-external $tool.name "init" $effective_shell_name)
                     }
                     let init_content = (normalize_initializer_content $shell.name $raw_init_content)
-                    $init_content | save --force $output_file
+                    write_text_atomic $output_file $init_content --raw | ignore
                     make_initializer_result "success" $tool.name $shell.name "" "" $output_file
                 } catch { |error|
                     # On failure, record and remove any previous output
@@ -215,7 +217,7 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
             ""
         }
 
-        ($header + $required_issues + $nushell_path_preservation + $aggregate_content + $nushell_path_restoration + "\n") | save --force $aggregate_file
+        write_text_atomic $aggregate_file ($header + $required_issues + $nushell_path_preservation + $aggregate_content + $nushell_path_restoration + "\n") --raw | ignore
 
         # Return both per-tool results and the aggregate file info
         $tool_results | append [{ status: "aggregate", shell: $shell.name, file: $aggregate_file }]
