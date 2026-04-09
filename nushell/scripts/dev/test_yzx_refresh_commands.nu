@@ -321,7 +321,7 @@ def test_command_failure_summary_includes_command_tail_and_recovery [] {
     try {
         let backend_script = (repo_path "nushell" "scripts" "utils" "devenv_backend.nu")
         let snippet = ([
-            $"source \"($backend_script)\""
+            $"use \"($backend_script)\" [format_command_failure_summary]"
             'print (format_command_failure_summary "Refresh failed" ["env", "-C", "/tmp/yazelix repo", "devenv", "build", "shell"] 17 "line1\nline2\nline3\nline4\nline5\nline6" "Run `yzx doctor`.")'
         ] | str join "\n")
         let output = (^nu -c $snippet | complete)
@@ -398,7 +398,7 @@ def test_rebuild_yazelix_environment_records_fresh_launch_profile [] {
     let fixture = (setup_rebuild_profile_recording_fixture "yazelix_rebuild_profile_record")
 
     let result = (try {
-        let command = $"source \"($fixture.backend_script)\"; rebuild_yazelix_environment --output-mode quiet"
+        let command = $"use \"($fixture.backend_script)\" [rebuild_yazelix_environment]; rebuild_yazelix_environment --output-mode quiet"
         let output = (with-env {
             PATH: ([$fixture.fake_bin, "/usr/bin", "/bin"] | str join (char esep))
             YAZELIX_RUNTIME_DIR: $fixture.runtime_dir

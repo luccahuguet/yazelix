@@ -258,6 +258,10 @@ def setup_enter_forwarding_fixture [label: string] {
         "export def get_refresh_output_mode [config: any] {"
         "    \"normal\""
         "}"
+        "export def resolve_refresh_request [needs_refresh: bool, --reuse, --skip-refresh] {"
+        "    { should_refresh: ($needs_refresh and (not $reuse) and (not $skip_refresh)), mode: \"noop\" }"
+        "}"
+        "export def print_refresh_request_guidance [refresh_request: record] { null }"
     ] | str join "\n")
     $backend_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
     $backend_stub | save --force --raw ($utils_dir | path join "devenv_backend.nu")
@@ -406,6 +410,10 @@ def setup_refresh_activation_fixture [label: string] {
         "export def get_refresh_output_mode [config: any] {"
         "    \"normal\""
         "}"
+        "export def resolve_refresh_request [needs_refresh: bool, --reuse, --skip-refresh] {"
+        "    { should_refresh: ($needs_refresh and (not $reuse) and (not $skip_refresh)), mode: \"noop\" }"
+        "}"
+        "export def print_refresh_request_guidance [refresh_request: record] { null }"
     ] | str join "\n")
     $backend_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
     $backend_stub | save --force --raw ($utils_dir | path join "devenv_backend.nu")

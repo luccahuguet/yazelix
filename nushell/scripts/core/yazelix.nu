@@ -6,7 +6,7 @@ use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/constants.nu *
 use ../utils/environment_bootstrap.nu [prepare_environment]
-use ../utils/devenv_backend.nu [get_refresh_output_mode rebuild_yazelix_environment]
+use ../utils/devenv_backend.nu [get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu [get_installed_yazelix_runtime_dir get_yazelix_runtime_dir]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
@@ -293,7 +293,8 @@ export def "yzx restart" [
     let manage_terminals = ($config.manage_terminals? | default true)
     let needs_refresh = $env_prep.needs_refresh
     let reuse_mode = $reuse
-    let should_refresh = ($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
+    let refresh_request = (resolve_refresh_request $needs_refresh --reuse=$reuse_mode --skip-refresh=$skip_refresh)
+    let should_refresh = $refresh_request.should_refresh
     let refresh_output = get_refresh_output_mode $config
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)
@@ -308,13 +309,8 @@ export def "yzx restart" [
     let is_yazelix_terminal = ($env.YAZELIX_TERMINAL? | is-not-empty)
 
     # Provide appropriate messaging
-    if $reuse_mode and $needs_refresh {
-        print "⚡ Reuse mode enabled - using the last built Yazelix profile without rebuild."
-        print "   Local config/input changes since the last refresh are not applied."
-    } else if $skip_refresh and $needs_refresh {
-        print "⚠️  Skipping explicit refresh trigger; environment may be stale."
-        print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
-    } else if $manage_terminals and $should_refresh and ($refresh_output != "quiet") {
+    print_refresh_request_guidance $refresh_request
+    if $manage_terminals and $should_refresh and ($refresh_output != "quiet") {
         print $"🔄 Configuration changed - rebuilding environment using ($build_parallelism_description)..."
     }
     if $is_yazelix_terminal {

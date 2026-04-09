@@ -4,7 +4,7 @@
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/environment_bootstrap.nu [prepare_environment]
-use ../utils/devenv_backend.nu [get_refresh_output_mode rebuild_yazelix_environment run_in_devenv_shell_command]
+use ../utils/devenv_backend.nu [get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request run_in_devenv_shell_command]
 use ../utils/launch_state.nu [get_launch_env get_launch_profile require_reused_launch_profile resolve_runtime_owned_profile]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
@@ -120,6 +120,7 @@ export def "yzx launch" [
     let config = $env_prep.config
     let config_state = $env_prep.config_state
     mut needs_refresh = $env_prep.needs_refresh
+    let refresh_request = (resolve_refresh_request $needs_refresh --reuse=$reuse_mode --skip-refresh=$skip_refresh)
     let refresh_output = get_refresh_output_mode $config
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)
@@ -134,7 +135,7 @@ export def "yzx launch" [
         and ($built_profile | is-not-empty)
         and (not (launch_profile_supports_configured_terminal $config $built_profile $requested_terminal))
     )
-    let should_refresh = (($needs_refresh or $terminal_profile_needs_repair) and (not $skip_refresh) and (not $reuse_mode))
+    let should_refresh = ($refresh_request.should_refresh or $terminal_profile_needs_repair)
     mut printed_refresh_notice = false
     if $verbose_mode {
         print $"🔍 Config hash changed? ($needs_refresh)"
@@ -142,13 +143,8 @@ export def "yzx launch" [
             print "🔍 Managed terminal wrapper repair needed: true"
         }
     }
-    if $reuse_mode and $needs_refresh {
-        print "⚡ Reuse mode enabled - using the last built Yazelix profile without rebuild."
-        print "   Local config/input changes since the last refresh are not applied."
-    } else if $skip_refresh and $needs_refresh {
-        print "⚠️  Skipping explicit refresh trigger; environment may be stale."
-        print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
-    } else if $terminal_profile_needs_repair {
+    print_refresh_request_guidance $refresh_request
+    if $terminal_profile_needs_repair {
         print "🔄 Managed terminal wrapper is stale or missing required runtime dependencies."
         print $"   Rebuilding environment using ($build_parallelism_description)..."
         $printed_refresh_notice = true

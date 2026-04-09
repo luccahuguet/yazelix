@@ -3,7 +3,7 @@
 
 use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/environment_bootstrap.nu [prepare_environment]
-use ../utils/devenv_backend.nu [check_environment_status rebuild_yazelix_environment run_in_devenv_shell_command]
+use ../utils/devenv_backend.nu [check_environment_status print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request run_in_devenv_shell_command]
 use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/launch_state.nu [get_launch_env require_reused_launch_profile]
@@ -70,6 +70,7 @@ export def "yzx env" [
     let config = $env_prep.config
     let needs_refresh = $env_prep.needs_refresh
     let reuse_mode = $reuse
+    let refresh_request = (resolve_refresh_request $needs_refresh --reuse=$reuse_mode --skip-refresh=$skip_refresh)
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)
     let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
@@ -93,13 +94,8 @@ export def "yzx env" [
         }
     )
 
-    if $reuse_mode and $needs_refresh {
-        print "⚡ Reuse mode enabled - using the last built Yazelix profile without rebuild."
-        print "   Local config/input changes since the last refresh are not applied."
-    } else if $skip_refresh and $needs_refresh {
-        print "⚠️  Skipping explicit refresh trigger; environment may be stale."
-        print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
-    } else if $needs_refresh {
+    print_refresh_request_guidance $refresh_request
+    if $refresh_request.should_refresh {
         print $"🔄 Configuration changed - rebuilding environment using ($build_parallelism_description)..."
         rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache
     }
@@ -114,10 +110,10 @@ export def "yzx env" [
                 run_with_launch_profile $config $reused_launch_profile "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir
             }
         } else if $has_setpriv {
-            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
+            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$refresh_request.should_refresh
         } else {
             # macOS and other systems without setpriv use POSIX trap fallback.
-            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
+            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$refresh_request.should_refresh
         }
 
     } else {
@@ -136,9 +132,9 @@ export def "yzx env" [
                         run_with_launch_profile $config $reused_launch_profile "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir
                     }
                 } else if $has_setpriv {
-                    run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
+                    run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$refresh_request.should_refresh
                 } else {
-                    run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=($needs_refresh and (not $skip_refresh) and (not $reuse_mode))
+                    run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$refresh_request.should_refresh
                 }
             }
         } catch {|err|

@@ -2,7 +2,7 @@
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 use ../utils/environment_bootstrap.nu [ensure_environment_available prepare_environment]
-use ../utils/devenv_backend.nu [check_environment_status get_refresh_output_mode rebuild_yazelix_environment run_in_devenv_shell_command]
+use ../utils/devenv_backend.nu [check_environment_status get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request run_in_devenv_shell_command]
 use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/launch_state.nu [activate_launch_profile get_launch_profile require_reused_launch_profile resolve_runtime_owned_profile]
@@ -76,7 +76,8 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     let env_prep = prepare_environment --verbose=$verbose_mode
     let config = $env_prep.config
     let needs_refresh = $env_prep.needs_refresh
-    let should_refresh = ($needs_refresh and (not $reuse) and (not $skip_refresh))
+    let refresh_request = (resolve_refresh_request $needs_refresh --reuse=$reuse --skip-refresh=$skip_refresh)
+    let should_refresh = $refresh_request.should_refresh
     let refresh_output = get_refresh_output_mode $config
     let max_jobs = ($config.max_jobs? | default "half" | into string)
     let build_cores = ($config.build_cores? | default "2" | into string)
@@ -88,13 +89,7 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only, --reuse
     mut activated_profile = false
     mut shellhook_already_applied = false
 
-    if $reuse_mode and $needs_refresh {
-        print "⚡ Reuse mode enabled - using the last built Yazelix profile without rebuild."
-        print "   Local config/input changes since the last refresh are not applied."
-    } else if $skip_refresh_mode and $needs_refresh {
-        print "⚠️  Skipping explicit refresh trigger; environment may be stale."
-        print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
-    }
+    print_refresh_request_guidance $refresh_request
 
     if (not $env_status.already_in_env) and ((not $should_refresh) or $reuse_mode) and (not $force_reenter_mode) {
         let profile_path = if $reuse_mode {

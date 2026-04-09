@@ -158,6 +158,39 @@ export def format_command_failure_summary [
     $lines | str join "\n"
 }
 
+export def resolve_refresh_request [
+    needs_refresh: bool
+    --reuse
+    --skip-refresh
+] {
+    {
+        should_refresh: ($needs_refresh and (not $reuse) and (not $skip_refresh))
+        mode: (if $needs_refresh and $reuse {
+            "reuse"
+        } else if $needs_refresh and $skip_refresh {
+            "skip"
+        } else if $needs_refresh {
+            "refresh"
+        } else {
+            "noop"
+        })
+    }
+}
+
+export def print_refresh_request_guidance [refresh_request: record] {
+    match ($refresh_request.mode | default "noop") {
+        "reuse" => {
+            print "⚡ Reuse mode enabled - using the last built Yazelix profile without rebuild."
+            print "   Local config/input changes since the last refresh are not applied."
+        }
+        "skip" => {
+            print "⚠️  Skipping explicit refresh trigger; environment may be stale."
+            print "   If tools/env vars look outdated, rerun without --skip-refresh or run 'yzx refresh'."
+        }
+        _ => null
+    }
+}
+
 # Check if unfree pack is enabled in yazelix.toml
 export def is_unfree_enabled [] {
     let config = parse_yazelix_config
