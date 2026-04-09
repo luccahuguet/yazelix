@@ -81,12 +81,12 @@ def copy_plugins_directory [source_dir: string, merged_dir: string, --quiet] {
                 error make {msg: $"Failed to copy Yazi plugin from ($plugin_path) to ($target): ($copy_result.stderr | str trim)"}
             }
 
-            render_runtime_root_placeholders_in_directory $target
-
             let chmod_result = (^chmod -R u+w $target | complete)
             if $chmod_result.exit_code != 0 {
                 error make {msg: $"Failed to make generated Yazi plugin writable at ($target): ($chmod_result.stderr | str trim)"}
             }
+
+            render_runtime_root_placeholders_in_directory $target
         }
 
         if not $quiet {

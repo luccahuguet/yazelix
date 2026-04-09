@@ -35,6 +35,10 @@ export def remove_path_within_root [
 
     let guarded_target = (require_target_within_root $expanded_target $root_path $label)
     if $recursive {
+        let chmod_result = (^chmod -R u+w $guarded_target | complete)
+        if ($chmod_result.exit_code != 0) and (($chmod_result.stderr | str trim) | is-not-empty) {
+            error make {msg: $"Failed to relax managed path permissions before removing ($label): ($chmod_result.stderr | str trim)"}
+        }
         rm -rf $guarded_target
     } else {
         rm --force $guarded_target

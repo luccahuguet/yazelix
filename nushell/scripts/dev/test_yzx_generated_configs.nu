@@ -1031,6 +1031,54 @@ def test_remove_path_within_root_refuses_root_and_outside_targets [] {
     $result
 }
 
+# Regression: recursive managed cleanup must tolerate read-only copied store artifacts before removal.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_remove_path_within_root_relaxes_read_only_managed_directories_before_recursive_cleanup [] {
+    print "🧪 Testing bounded recursive cleanup relaxes read-only managed directories before removal..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_safe_remove_read_only_XXXXXX | str trim)
+    let managed_root = ($tmpdir | path join "managed")
+    let managed_dir = ($managed_root | path join "bundled-plugin")
+    let managed_file = ($managed_dir | path join "main.lua")
+
+    let result = (try {
+        mkdir $managed_root
+        mkdir $managed_dir
+        "__YAZELIX_RUNTIME_DIR__" | save --force --raw $managed_file
+
+        let chmod_result = (^chmod -R a-w $managed_dir | complete)
+        if $chmod_result.exit_code != 0 {
+            error make {msg: $"Failed to make managed fixture read-only: ($chmod_result.stderr | str trim)"}
+        }
+
+        let remove_dir = (try {
+            remove_path_within_root $managed_dir $managed_root "bundled plugin" --recursive
+            {ok: true, msg: ""}
+        } catch {|err|
+            {ok: false, msg: $err.msg}
+        })
+
+        if (
+            $remove_dir.ok
+            and (not ($managed_dir | path exists))
+            and ($managed_root | path exists)
+        ) {
+            print "  ✅ Managed recursive cleanup now removes read-only generated directories"
+            true
+        } else {
+            print $"  ❌ Unexpected recursive managed cleanup result: dir=($remove_dir | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    chmod -R u+w $tmpdir
+    rm -rf $tmpdir
+    $result
+}
+
 # Regression: legacy Yazi override paths now fail fast instead of being relocated during generation.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generate_merged_yazi_config_rejects_legacy_user_overrides [] {
@@ -1583,6 +1631,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
         (test_generate_merged_zellij_config_reuses_unchanged_state_and_invalidates_on_input_change)
         (test_remove_path_within_root_refuses_root_and_outside_targets)
+        (test_remove_path_within_root_relaxes_read_only_managed_directories_before_recursive_cleanup)
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
         (test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers)
         (test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrator_toggle)
