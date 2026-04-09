@@ -318,14 +318,6 @@ export def sync_zjstatus_runtime_wasm [yazelix_dir?: string] {
     $runtime_path
 }
 
-export def get_pane_orchestrator_wasm_path [yazelix_dir?: string] {
-    sync_pane_orchestrator_runtime_wasm $yazelix_dir
-}
-
-export def get_popup_runner_wasm_path [yazelix_dir?: string] {
-    sync_popup_runner_runtime_wasm $yazelix_dir
-}
-
 export def get_zjstatus_wasm_path [yazelix_dir?: string] {
     sync_zjstatus_runtime_wasm $yazelix_dir
 }

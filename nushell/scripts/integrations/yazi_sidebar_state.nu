@@ -189,17 +189,3 @@ export def get_active_sidebar_yazi_id [] {
         }
     }
 }
-
-export def get_active_sidebar_cwd [] {
-    let sidebar_state = (get_active_sidebar_state)
-    if ($sidebar_state | is-empty) {
-        null
-    } else {
-        let cwd = ($sidebar_state.cwd? | default "" | str trim)
-        if ($cwd | is-empty) {
-            null
-        } else {
-            $cwd
-        }
-    }
-}

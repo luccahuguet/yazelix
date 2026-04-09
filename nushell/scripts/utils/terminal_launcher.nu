@@ -111,18 +111,6 @@ export def resolve_terminal_config [terminal: string, mode: string] {
     error make {msg: $"Unsupported terminal.config_mode '($mode)'. Expected 'yazelix' or 'user'."}
 }
 
-# Compatibility shim for older generated terminal wrappers that still read the
-# config mode from ambient env instead of using the wrapper's baked default.
-export def resolve_terminal_config_from_env [terminal: string] {
-    let mode = (
-        $env.YAZELIX_TERMINAL_CONFIG_MODE?
-        | default "yazelix"
-        | into string
-        | str trim
-    )
-    resolve_terminal_config $terminal $mode
-}
-
 export def detect_terminal_candidates [preferred: any, prefer_wrappers: bool = true] {
     # Build list of terminals to check: use list order if provided, otherwise preferred first
     let ordered_terminals = if ($preferred | describe | str contains "list") {
