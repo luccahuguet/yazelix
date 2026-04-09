@@ -83,7 +83,9 @@ Refresh Yazelix `devenv` evaluation cache/environment without launching UI
 
 ### `yzx run <command> [args...]`
 Run a single command in the Yazelix environment and exit
-- Quote args that start with `-` to avoid flag parsing (e.g., `"-lc"`)
+- `yzx run` is a wrapped argv passthrough: the first token is the child command and the remaining tokens are forwarded unchanged
+- Dash-prefixed child args do not need special quoting just to avoid Yazelix flag parsing
+- If you want shell parsing, call the shell explicitly, for example: `yzx run bash -lc "lazygit"`
 
 ### `yzx cwd [DIR]`
 Retarget the current tab workspace root inside Zellij
@@ -278,10 +280,10 @@ yzx refresh                   # Refresh devenv cache if changes were detected
 yzx refresh --force           # Force refresh even when up to date
 yzx refresh -v                # Refresh with high-level progress
 yzx refresh -V                # Refresh with full build logs (-vv equivalent)
-yzx run lazygit               # Run single command and exit
-yzx run bash "-lc" "lazygit"  # Run through a shell
-yzx run br init               # Outside-shell fallback for Beads Rust
-yzx run bv "--robot-triage"   # Outside-shell fallback for Beads Viewer robot mode
+yzx run lazygit              # Run single command and exit
+yzx run bash -lc "lazygit"   # Run through a shell
+yzx run br init              # Outside-shell fallback for Beads Rust
+yzx run bv --robot-triage    # Outside-shell fallback for Beads Viewer robot mode
 yzx cwd                       # Set the current tab directory to $PWD
 yzx cwd ~/project             # Set the current tab directory explicitly
 yzx cwd yazelix               # Resolve a project via zoxide, then retarget the current tab

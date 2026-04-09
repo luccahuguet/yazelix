@@ -6,10 +6,8 @@ use ../utils/devenv_backend.nu [resolve_backend_shell_transition resolve_refresh
 use ../utils/config_state.nu [record_materialized_state]
 
 # Run a command in the Yazelix environment and exit
-export def "yzx run" [
-    --verbose          # Enable verbose logging
-    command: string    # Command to run
-    ...args: string    # Command arguments (quote args that start with '-')
+export def --wrapped "yzx run" [
+    ...argv: string    # External argv; first token is the command and the rest pass through unchanged
 ] {
     use ../utils/nix_detector.nu ensure_nix_available
     ensure_nix_available
@@ -24,17 +22,16 @@ export def "yzx run" [
     let entry_context = (resolve_runtime_entry_context $refresh_request)
     let run_transition = (resolve_backend_shell_transition $entry_context.runtime_state)
 
-    if ($command | is-empty) {
+    if ($argv | is-empty) {
         print "Error: No command provided"
         print "Usage: yzx run <command> [args...]"
         exit 1
     }
 
-    if $verbose {
-        run_in_devenv_shell_command $command ...$args --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --skip-welcome --verbose --force-refresh=$run_transition.rebuild_before_exec
-    } else {
-        run_in_devenv_shell_command $command ...$args --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --skip-welcome --quiet --force-refresh=$run_transition.rebuild_before_exec
-    }
+    let command = ($argv | first)
+    let args = ($argv | skip 1)
+
+    run_in_devenv_shell_command $command ...$args --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --skip-welcome --quiet --force-refresh=$run_transition.rebuild_before_exec
 
     if $run_transition.rebuild_before_exec {
         record_materialized_state $env_prep.config_state

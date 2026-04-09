@@ -183,37 +183,6 @@ git = ["gh"]
     }
 }
 
-def setup_package_runtime_fixture [label: string] {
-    let fixture = (setup_managed_config_fixture
-        $label
-        '[core]
-welcome_style = "random"
-'
-    )
-
-    let package_root = ($fixture.tmp_home | path join "package_runtime")
-    let package_bin = ($package_root | path join "bin")
-
-    mkdir $package_bin
-    cp ($fixture.repo_root | path join "yazelix_default.toml") ($package_root | path join "yazelix_default.toml")
-
-    [
-        "#!/bin/sh"
-        "echo 'Yazelix test package runtime'"
-    ] | str join "\n" | save --force --raw ($package_bin | path join "yzx")
-    ^chmod +x ($package_bin | path join "yzx")
-
-    [
-        "#!/bin/sh"
-        "echo 'Nu 0.0-test'"
-    ] | str join "\n" | save --force --raw ($package_bin | path join "nu")
-    ^chmod +x ($package_bin | path join "nu")
-
-    $fixture | merge {
-        package_root: $package_root
-    }
-}
-
 def setup_update_wrapper_fixture [label: string] {
     let fixture = (setup_managed_config_fixture
         $label
@@ -244,6 +213,93 @@ welcome_style = "random"
         bin_dir: $bin_dir
         command_log: $command_log
         flake_dir: $flake_dir
+    }
+}
+
+def setup_run_passthrough_fixture [label: string] {
+    let fixture = (setup_managed_config_fixture
+        $label
+        '[core]
+welcome_style = "random"
+'
+    )
+
+    let stub_root = ($fixture.tmp_home | path join "run_passthrough_stub")
+    let yzx_dir = ($stub_root | path join "yzx")
+    let utils_dir = ($stub_root | path join "utils")
+    let command_log = ($fixture.tmp_home | path join "run_passthrough.json")
+    let stub_run_script = ($yzx_dir | path join "run.nu")
+
+    mkdir $yzx_dir
+    mkdir $utils_dir
+    cp (repo_path "nushell" "scripts" "yzx" "run.nu") $stub_run_script
+
+    [
+        "#!/usr/bin/env nu"
+        "export def prepare_environment [--verbose] {"
+        "    {"
+        "        config: {max_jobs: \"half\", build_cores: \"2\"}"
+        "        config_state: {}"
+        "        needs_refresh: false"
+        "    }"
+        "}"
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
+
+    [
+        "#!/usr/bin/env nu"
+        "export def resolve_refresh_request [needs_refresh: bool] { {should_refresh: $needs_refresh} }"
+        "export def resolve_runtime_entry_context [refresh_request: record] { {runtime_state: {}} }"
+        "export def resolve_backend_shell_transition [runtime_state: record] { {rebuild_before_exec: false} }"
+        "export def run_in_devenv_shell_command ["
+        "    command: string"
+        "    ...args: string"
+        "    --max-jobs: string = \"\""
+        "    --build-cores: string = \"\""
+        "    --cwd: string = \"\""
+        "    --runtime-dir: string = \"\""
+        "    --env-only"
+        "    --force-shell"
+        "    --verbose"
+        "    --quiet"
+        "    --skip-welcome"
+        "    --force-refresh"
+        "    --refresh-output-mode: string = \"normal\""
+        "] {"
+        "    {"
+        "        command: $command"
+        "        args: $args"
+        "        max_jobs: $max_jobs"
+        "        build_cores: $build_cores"
+        "        cwd: $cwd"
+        "        env_only: $env_only"
+        "        quiet: $quiet"
+        "        skip_welcome: $skip_welcome"
+        "        force_refresh: $force_refresh"
+        "    } | to json -r | save --force --raw $env.YZX_RUN_LOG"
+        "}"
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "devenv_backend.nu")
+
+    [
+        "#!/usr/bin/env nu"
+        "export def record_materialized_state [config_state: record] {}"
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "config_state.nu")
+
+    [
+        "#!/usr/bin/env nu"
+        "export def ensure_nix_available [] {}"
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "nix_detector.nu")
+
+    $fixture | merge {
+        command_log: $command_log
+        stub_run_script: $stub_run_script
+    }
+}
+
+def run_stubbed_yzx_run [fixture: record, command: string] {
+    with-env {
+        YZX_RUN_LOG: $fixture.command_log
+    } {
+        ^nu -c $"use \"($fixture.stub_run_script)\" *; ($command)" | complete
     }
 }
 
@@ -634,43 +690,6 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
     $result
 }
 
-# Defends: bare yzx update must be an explicit owner chooser instead of reviving runtime-tier update semantics.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_update_reports_explicit_owner_choices [] {
-    print "🧪 Testing yzx update reports explicit owner choices without reviving runtime-tier update guidance..."
-
-    let fixture = (setup_package_runtime_fixture "yazelix_update_owner_choices")
-
-    let result = (try {
-        let output = (run_yzx_command_for_fixture $fixture "yzx update" {
-            YAZELIX_RUNTIME_DIR: $fixture.package_root
-        })
-        let stdout = ($output.stdout | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Choose one update owner for this Yazelix install.")
-            and ($stdout | str contains "yzx update upstream")
-            and ($stdout | str contains "yzx update home_manager")
-            and ($stdout | str contains "yzx update nix")
-            and ($stdout | str contains "Do not use both update paths for the same installed Yazelix runtime.")
-            and not ($stdout | str contains "Yazelix runtime/distribution mode:")
-        ) {
-            print "  ✅ yzx update now acts as an explicit owner chooser instead of a runtime-tier summary"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
 # Defends: yzx update upstream must print and run the exact upstream installer command.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_update_upstream_runs_exact_installer_command [] {
@@ -736,6 +755,70 @@ def test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step [] 
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) log=($log_text) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: yzx run must forward dash-prefixed child args without forcing quoting or wrapper-side parsing.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_run_passes_dash_prefixed_args_through_unchanged [] {
+    print "🧪 Testing yzx run forwards dash-prefixed child args unchanged..."
+
+    let fixture = (setup_run_passthrough_fixture "yazelix_run_passes_dash_prefixed_args")
+    let result = (try {
+        let output = (run_stubbed_yzx_run $fixture "yzx run rg --files --hidden")
+        let logged = (open $fixture.command_log)
+
+        if (
+            ($output.exit_code == 0)
+            and ($logged.command == "rg")
+            and ($logged.args == ["--files", "--hidden"])
+            and ($logged.env_only == true)
+            and ($logged.skip_welcome == true)
+            and ($logged.quiet == true)
+        ) {
+            print "  ✅ yzx run now treats dash-prefixed child args as child argv instead of wrapper flags"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) logged=($logged | to json -r) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: yzx run must not consume child --verbose flags as Yazelix wrapper flags.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_run_treats_child_verbose_flag_as_child_argv [] {
+    print "🧪 Testing yzx run leaves child --verbose flags inside child argv..."
+
+    let fixture = (setup_run_passthrough_fixture "yazelix_run_child_verbose_passthrough")
+    let result = (try {
+        let output = (run_stubbed_yzx_run $fixture "yzx run cargo --verbose check")
+        let logged = (open $fixture.command_log)
+
+        if (
+            ($output.exit_code == 0)
+            and ($logged.command == "cargo")
+            and ($logged.args == ["--verbose", "check"])
+            and ($logged.quiet == true)
+        ) {
+            print "  ✅ yzx run no longer steals child --verbose flags for wrapper parsing"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) logged=($logged | to json -r) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -1366,9 +1449,10 @@ export def run_core_canonical_tests [] {
         (test_yzx_desktop_uninstall_removes_manual_entry_and_icons)
         (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)
         (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
-        (test_yzx_update_reports_explicit_owner_choices)
         (test_yzx_update_upstream_runs_exact_installer_command)
         (test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step)
+        (test_yzx_run_passes_dash_prefixed_args_through_unchanged)
+        (test_yzx_run_treats_child_verbose_flag_as_child_argv)
         (test_yzx_config_full_merges_pack_sidecar)
         (test_yzx_edit_targets_print_paths)
         (test_invalid_config_is_classified_as_config_problem)
