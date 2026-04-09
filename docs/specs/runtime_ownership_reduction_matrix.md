@@ -81,7 +81,7 @@ What gets deleted:
 
 - installer-owned `~/.local/share/yazelix/runtime/current` as a product promise
 - stable-launcher ownership/repair as a product promise
-- `yzx update runtime`
+- a generic in-app runtime-update surface
 - most install-artifact doctoring
 - the need for separate user-facing runtime/distribution stories such as:
   - installer-managed

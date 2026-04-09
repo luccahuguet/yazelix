@@ -26,7 +26,6 @@ def build_profile [
     title: string
     doctor_message: string
     doctor_details: string
-    update_guidance: string
     runtime_dir?: string
 ] {
     {
@@ -36,7 +35,6 @@ def build_profile [
         runtime_dir: ($runtime_dir | default null)
         doctor_message: $doctor_message
         doctor_details: $doctor_details
-        update_guidance: $update_guidance
     }
 }
 
@@ -53,7 +51,6 @@ export def get_runtime_distribution_capability_profile [] {
             "Home Manager-managed full runtime"
             "Runtime/distribution capability: Home Manager-managed full runtime"
             "Home Manager owns the packaged Yazelix runtime path and update transition in this mode."
-            "Reapply or upgrade the Home Manager configuration that provides Yazelix \(for example `home-manager switch`\)."
             $runtime_dir
         )
     }
@@ -65,7 +62,6 @@ export def get_runtime_distribution_capability_profile [] {
             "compatibility installer runtime"
             "Runtime/distribution capability: compatibility installer runtime"
             "This runtime still has legacy installer-owned artifacts, but Yazelix no longer owns an in-app runtime updater."
-            "If you still use the compatibility installer path, rerun `nix run github:luccahuguet/yazelix#install`, or prefer a package-manager update flow."
             $runtime_dir
         )
     }
@@ -77,7 +73,6 @@ export def get_runtime_distribution_capability_profile [] {
             "store/package runtime"
             "Runtime/distribution capability: store/package runtime"
             "This Yazelix runtime runs directly from a packaged runtime root."
-            "Update or reinstall the package that provides Yazelix \(for example `nix profile upgrade`, `home-manager switch`, or a system rebuild\)."
             $runtime_dir
         )
     }
@@ -88,7 +83,6 @@ export def get_runtime_distribution_capability_profile [] {
         "runtime-root-only mode"
         "Runtime/distribution capability: runtime-root-only mode"
         "This Yazelix session has a runtime root but no package-manager-owned distribution surface."
-        "Refresh the current runtime root manually, or switch to the packaged `#yazelix` surface or Home Manager."
         $runtime_dir
     )
 }

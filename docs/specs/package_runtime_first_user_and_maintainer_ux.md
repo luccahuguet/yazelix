@@ -121,13 +121,13 @@ Those commands operate from the packaged runtime root rather than from an instal
 
 #### Updates
 
-Users update Yazelix through their package manager:
+Users choose one explicit update owner for each install:
 
-- `nix profile upgrade`
-- `home-manager switch`
-- system rebuilds
+- upstream/manual installs: `yzx update upstream`
+- Home Manager installs: `yzx update home_manager`, then `home-manager switch`
+- other package-manager installs: use the owning package-manager flow directly
 
-The canonical update story is no longer “rerun the Yazelix installer” or “use `yzx update runtime`.”
+The canonical update story is no longer an old generic in-app runtime-update surface. The owner choice must stay explicit.
 
 ### Canonical Maintainer Flow
 

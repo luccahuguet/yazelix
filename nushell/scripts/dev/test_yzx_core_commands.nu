@@ -655,8 +655,6 @@ def test_yzx_update_reports_explicit_owner_choices [] {
             and ($stdout | str contains "yzx update nix")
             and ($stdout | str contains "Do not use both update paths for the same installed Yazelix runtime.")
             and not ($stdout | str contains "Yazelix runtime/distribution mode:")
-            and not ($stdout | str contains "yzx update runtime")
-            and not ($stdout | str contains "yzx update all")
         ) {
             print "  ✅ yzx update now acts as an explicit owner chooser instead of a runtime-tier summary"
             true

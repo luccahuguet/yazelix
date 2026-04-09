@@ -6,8 +6,8 @@ Yazelix should describe runtime/distribution behavior in terms of explicit owner
 
 The important split is simple:
 
-- `yzx update` reports the owning update path for the active tier
-- runtime replacement happens in the owning package-manager or compatibility-installer flow, not through an in-app `yzx update runtime` command
+- `yzx update` is the chooser/help surface, not a tier-sensitive updater
+- runtime replacement happens through explicit owner commands such as `yzx update upstream` or `yzx update home_manager`, not through a generic in-app runtime updater
 - `yzx doctor` reports the active tier and keeps only the install diagnostics that still make sense
 
 ## Why
@@ -19,13 +19,13 @@ Yazelix currently runs in more than one legitimate distribution shape:
 - store/package runtime
 - runtime-root-only sessions such as source checkouts
 
-Without an explicit contract, update and doctor behavior drifts back toward an installer-centric story that is no longer true.
+Without an explicit contract, doctor behavior drifts back toward an installer-centric story, and update UX drifts back toward pretending one generic updater exists everywhere.
 
 ## Scope
 
-- define the runtime/distribution tiers that `yzx update` and `yzx doctor` reason about
-- define the owner guidance `yzx update` must print in each tier
-- keep only the install diagnostics that still make sense after removing `yzx update runtime`
+- define the runtime/distribution tiers that `yzx doctor` still reasons about
+- define the explicit owner split that the update surface must expose
+- keep only the install diagnostics that still make sense after removing the old generic runtime-update story
 
 ## Behavior
 
@@ -36,25 +36,26 @@ Yazelix recognizes four concrete runtime/distribution tiers:
 1. `installer_managed`
    - compatibility tier for the legacy flake installer path
    - legacy installer-owned artifacts may still exist
-   - the honest update guidance is to rerun `nix run github:luccahuguet/yazelix#install` or move to a package-managed flow
+   - the honest update command is `yzx update upstream`
 2. `home_manager_managed`
    - full packaged-runtime tier
    - Home Manager owns the package path and update transition
-   - `yzx update` points at reapplying or upgrading Home Manager
+   - the honest update command is `yzx update home_manager`, followed by a manual `home-manager switch`
 3. `package_runtime`
    - narrowed packaged-runtime tier
    - Yazelix runs directly from a package root
-   - `yzx update` points at package-manager flows such as `nix profile upgrade`, `home-manager switch`, or system rebuilds
+   - package-manager updates still exist, but they are not currently wrapped by a dedicated `yzx update` subcommand
 4. `runtime_root_only`
    - narrowed runtime-root tier
    - Yazelix has a usable runtime root but no package-manager-owned distribution surface
-   - `yzx update` says to refresh the current runtime root manually or switch to the packaged `#yazelix` surface or Home Manager
+   - `yzx update` must not pretend this tier has a generic owner-managed update path
 
 ### `yzx update`
 
-- `yzx update` always reports the active runtime/distribution tier first.
-- `yzx update` no longer exposes `yzx update runtime` or `yzx update all`.
-- `yzx update` prints owner guidance for the current tier and may still mention `yzx update nix` as a separate Nix-management utility.
+- `yzx update` prints the explicit owner choices instead of reporting the active runtime/distribution tier.
+- `yzx update` points users at `yzx update upstream` and `yzx update home_manager`.
+- `yzx update` warns users not to mix both update owners for the same installed Yazelix runtime.
+- `yzx update` may still mention `yzx update nix` as a separate Nix-management utility.
 
 ### `yzx doctor`
 
@@ -66,13 +67,12 @@ Yazelix recognizes four concrete runtime/distribution tiers:
 ## Non-goals
 
 - reintroducing a Yazelix-owned runtime updater
-- defining a new dedicated `yzx update home_manager` command
 - redefining backend capability buckets or launch preflight here
 
 ## Acceptance Cases
 
-1. `yzx update` prints owner guidance without exposing `yzx update runtime` or `yzx update all`.
-2. Home Manager-managed mode never falls through to installer-specific update advice beyond explicit compatibility guidance.
+1. `yzx update` is a chooser/help surface, not a tier-sensitive generic updater.
+2. `yzx update upstream` and `yzx update home_manager` are the only dedicated Yazelix update-owner wrappers.
 3. Package/store runtimes do not claim they own a mutable installed runtime.
 4. Runtime-root-only doctor output does not warn about missing installer-owned runtime artifacts.
 5. The tier contract is explicit enough that later simplification work can delete installer ownership cleanly.
