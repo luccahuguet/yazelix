@@ -69,7 +69,7 @@ export def sync_managed_editor_cwd [target_path: path, log_file: string = "edito
     }
 }
 
-export def resolve_managed_editor_open_strategy [status: string] {
+def resolve_managed_editor_open_strategy [status: string] {
     match $status {
         "ok" => {action: "reuse_managed"}
         "missing" => {action: "open_new_managed"}

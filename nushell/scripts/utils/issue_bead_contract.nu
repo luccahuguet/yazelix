@@ -4,7 +4,7 @@ def contract_start [] {
     "2026-03-22T00:00:00Z" | into datetime
 }
 
-export def canonical_issue_bead_comment_body [bead_id: string] {
+def canonical_issue_bead_comment_body [bead_id: string] {
     $"Automated: Tracked in Beads as `($bead_id)`."
 }
 

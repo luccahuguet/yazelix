@@ -44,7 +44,7 @@ def get_helix_notice_state_dir [] {
     (get_yazelix_state_dir) | path join "state" "helix"
 }
 
-export def get_helix_import_notice_marker_path [] {
+def get_helix_import_notice_marker_path [] {
     (get_helix_notice_state_dir) | path join "import_notice_seen"
 }
 

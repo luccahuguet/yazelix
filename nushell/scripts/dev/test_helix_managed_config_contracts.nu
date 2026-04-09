@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ./yzx_test_helpers.nu [get_repo_root]
-use ../setup/helix_config_merger.nu [generate_managed_helix_config get_helix_import_notice_marker_path]
+use ../setup/helix_config_merger.nu [generate_managed_helix_config]
 use ../utils/launch_state.nu [get_launch_env]
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10

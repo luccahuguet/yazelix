@@ -92,7 +92,7 @@ export def consume_bootstrap_sidebar_cwd [] {
     }
 }
 
-export def resolve_reveal_target_path [buffer_name: string] {
+def resolve_reveal_target_path [buffer_name: string] {
     if ($buffer_name | is-empty) {
         error make {msg: "Buffer name not provided"}
     }

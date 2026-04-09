@@ -75,7 +75,7 @@ def test_issue_bead_comment_plan [] {
                 placeholder: $placeholder.kind
                 stale: $stale.kind
                 current: $current.kind
-                expected_body: (canonical_issue_bead_comment_body $bead.id)
+                expected_body: $"Automated: Tracked in Beads as `($bead.id)`."
             } | to json -r
         '
         let output = (^nu -c $command | complete)
