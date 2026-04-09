@@ -54,7 +54,7 @@ def setup_home_manager_symlinked_main_config_fixture [label: string] {
     }
 }
 
-# Defends: generated terminal configs do not silently take over user overrides.
+# Defends: generated terminal configs do not silently take over user overrides or create backup churn in Yazelix-owned generated paths.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in [] {
     print "🧪 Testing bundled terminal config generation keeps user terminal overrides opt-in..."
@@ -79,9 +79,11 @@ ghostty_mode_effect = "ripple_rectangle"
             YAZELIX_CONFIG_OVERRIDE: $config_path
         } {
             generate_all_terminal_configs $runtime_root
+            generate_all_terminal_configs $runtime_root
         }
 
         let override_root = ($fake_home | path join ".config" "yazelix" "user_configs" "terminal")
+        let generated_root = ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators")
         let ghostty_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty" "config"))
         let kitty_config = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "kitty" "kitty.conf"))
         let alacritty_entrypoint = (open --raw ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "alacritty" "alacritty.toml"))
@@ -90,6 +92,11 @@ ghostty_mode_effect = "ripple_rectangle"
         let ghostty_root = ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty")
         let tail_shader = ($ghostty_root | path join "shaders" "generated_effects" "tail.glsl")
         let ripple_shader = ($ghostty_root | path join "shaders" "generated_effects" "ripple_rectangle.glsl")
+        let backup_noise = (
+            ^find $generated_root -name '*.yazelix-backup'
+            | lines
+            | where {|path| $path | str trim | is-not-empty}
+        )
 
         if (
             not ($override_root | path exists)
@@ -110,11 +117,12 @@ ghostty_mode_effect = "ripple_rectangle"
             and not ($foot_config | str contains "[colors]\n")
             and ($tail_shader | path exists)
             and ($ripple_shader | path exists)
+            and ($backup_noise | is-empty)
         ) {
-            print "  ✅ Terminal config generation keeps user terminal overrides opt-in, keeps startup out of generated terminal configs, and points Ghostty at real generated shaders"
+            print "  ✅ Terminal config generation keeps user terminal overrides opt-in, rewrites generated files in place, keeps startup out of generated terminal configs, and points Ghostty at real generated shaders"
             true
         } else {
-            print "  ❌ Terminal config generation still scaffolded or imported unexpected user override files"
+            print "  ❌ Terminal config generation still scaffolded user overrides or left backup churn in generated paths"
             false
         }
     } catch {|err|

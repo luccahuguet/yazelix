@@ -30,7 +30,7 @@ def poll_for_welcome_keypress [timeout: duration] {
     (($result.stdout | str trim) == "key")
 }
 
-export def show_welcome_art [
+def show_welcome_art [
     welcome_style: string
     welcome_duration_seconds: float
     show_macchina_on_welcome: bool
@@ -46,7 +46,7 @@ export def show_welcome_art [
 }
 
 # Get flake last updated info
-export def get_flake_info [yazelix_dir: string, colors: record]: nothing -> string {
+def get_flake_info [yazelix_dir: string, colors: record]: nothing -> string {
     let flake_path = $"($yazelix_dir)/flake.nix"
     let flake_days_ago = if ($flake_path | path exists) {
         try {
@@ -70,7 +70,7 @@ export def get_flake_info [yazelix_dir: string, colors: record]: nothing -> stri
 }
 
 # Get Helix mode info
-export def get_helix_info [helix_mode: string, colors: record]: nothing -> string {
+def get_helix_info [helix_mode: string, colors: record]: nothing -> string {
     if $helix_mode == "source" {
         $"($colors.cyan)🔄 Using Helix flake from repository for latest features($colors.reset)"
     } else if $helix_mode == "release" {
@@ -81,7 +81,7 @@ export def get_helix_info [helix_mode: string, colors: record]: nothing -> strin
 }
 
 # Get persistent session info
-export def get_session_info [colors: record]: nothing -> string {
+def get_session_info [colors: record]: nothing -> string {
     try {
         let config = parse_yazelix_config
         if ($config.persistent_sessions == "true") {
@@ -95,7 +95,7 @@ export def get_session_info [colors: record]: nothing -> string {
 }
 
 # Get terminal info
-export def get_terminal_info [colors: record]: nothing -> string {
+def get_terminal_info [colors: record]: nothing -> string {
     try {
         let config = parse_yazelix_config
         if ($config.include_terminal == "true") and ((which yazelix-ghostty | length) > 0) {

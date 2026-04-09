@@ -18,7 +18,7 @@ def normalize_sidebar_pane_id [pane_id: string] {
     }
 }
 
-export def get_sidebar_yazi_state_path [session_name: string, pane_id: string] {
+def get_sidebar_yazi_state_path [session_name: string, pane_id: string] {
     let sanitized_session = (sanitize_sidebar_state_component $session_name)
     let sanitized_pane = (sanitize_sidebar_state_component (normalize_sidebar_pane_id $pane_id))
     (get_sidebar_yazi_state_dir | path join $"($sanitized_session)__($sanitized_pane).txt")

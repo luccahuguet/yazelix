@@ -13,7 +13,7 @@ def get_helix_template_path [] {
     (get_yazelix_runtime_dir) | path join "configs" "helix" "yazelix_config.toml"
 }
 
-export def get_managed_helix_user_config_dir [] {
+def get_managed_helix_user_config_dir [] {
     (get_yazelix_user_config_dir) | path join "helix"
 }
 
@@ -32,7 +32,7 @@ export def get_native_helix_config_path [] {
     ($xdg_config_home | path join "helix" "config.toml")
 }
 
-export def get_generated_helix_config_dir [] {
+def get_generated_helix_config_dir [] {
     (get_yazelix_state_dir) | path join "configs" "helix"
 }
 
