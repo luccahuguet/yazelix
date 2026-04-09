@@ -1667,6 +1667,42 @@ def test_env_transition_keeps_cached_profile_reuse_explicit [] {
     }
 }
 
+# Invariant: plain backend-shell commands derive rebuild intent from the shared runtime state instead of raw needs-refresh checks.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_backend_shell_transition_tracks_rebuild_intent [] {
+    print "🧪 Testing backend-shell transition tracks rebuild intent explicitly..."
+
+    try {
+        use ../utils/devenv_backend.nu [resolve_backend_shell_transition resolve_runtime_entry_state]
+
+        let rebuild_state = (
+            resolve_runtime_entry_state
+            {should_refresh: true, mode: "refresh"}
+        )
+        let clean_state = (
+            resolve_runtime_entry_state
+            {should_refresh: false, mode: "noop"}
+        )
+        let rebuild_transition = (resolve_backend_shell_transition $rebuild_state)
+        let clean_transition = (resolve_backend_shell_transition $clean_state)
+
+        if (
+            ($rebuild_transition.rebuild_before_exec == true)
+            and ($clean_transition.rebuild_before_exec == false)
+            and ($rebuild_transition.execution == "backend_shell")
+        ) {
+            print "  ✅ Backend-shell commands now inherit rebuild intent from the shared runtime state"
+            true
+        } else {
+            print $"  ❌ Unexpected backend transitions: rebuild=($rebuild_transition | to json -r) clean=($clean_transition | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 # Defends: persistent-session reuse warns when current-terminal startup ignores the requested directory.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_launch_here_path_warns_when_existing_persistent_session_ignores_it [] {
@@ -1887,6 +1923,7 @@ export def run_workspace_canonical_tests [] {
         (test_startup_transition_prefers_fresh_runtime_profile_after_rebuild)
         (test_launch_transition_blocks_live_session_fast_path_during_refresh)
         (test_env_transition_keeps_cached_profile_reuse_explicit)
+        (test_backend_shell_transition_tracks_rebuild_intent)
         (test_yzx_launch_rejects_removed_here_flag)
         (test_launch_here_path_warns_when_existing_persistent_session_ignores_it)
         (test_startup_rejects_missing_working_dir)

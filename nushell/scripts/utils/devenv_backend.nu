@@ -295,6 +295,14 @@ export def resolve_env_transition [
     }
 }
 
+export def resolve_backend_shell_transition [runtime_state: record] {
+    {
+        execution: "backend_shell"
+        profile_source: "none"
+        rebuild_before_exec: (($runtime_state.refresh_transition? | default "none") == "rebuild")
+    }
+}
+
 export def resolve_launch_transition [
     runtime_state: record
     --current-session-eligible
