@@ -62,7 +62,7 @@ def get_legacy_yazi_user_config_dir [] {
     (get_yazelix_config_dir) | path join "configs" "yazi" "user"
 }
 
-def reconcile_yazi_user_file [file_name: string] {
+def resolve_yazi_user_file [file_name: string] {
     let current_dir = (get_yazi_user_config_dir)
     let current_path = ($current_dir | path join $file_name)
     let legacy_path = ((get_legacy_yazi_user_config_dir) | path join $file_name)
@@ -84,8 +84,18 @@ def reconcile_yazi_user_file [file_name: string] {
     }
 
     if $legacy_exists {
-        mkdir $current_dir
-        mv $legacy_path $current_path
+        error make {
+            msg: (
+                [
+                    $"Yazelix found a legacy Yazi user config file for ($file_name)."
+                    $"legacy path: ($legacy_path)"
+                    $"managed path: ($current_path)"
+                    ""
+                    "Yazelix no longer relocates legacy Yazi overrides during normal config generation."
+                    "Use `yzx import yazi` to move native or legacy overrides into `~/.config/yazelix/user_configs/yazi/`, or move the file manually."
+                ] | str join "\n"
+            )
+        }
     }
 
     $current_path
@@ -267,7 +277,7 @@ def sync_starship_yazi_config [source_dir: string, merged_dir: string, --quiet] 
 # Generate yazi.toml with dynamic settings from yazelix.toml
 def generate_yazi_toml [source_dir: string, merged_dir: string, sort_by: string, user_plugins: list, --quiet] {
     let base_path = $"($source_dir)/yazelix_yazi.toml"
-    let user_path = (reconcile_yazi_user_file "yazi.toml")
+    let user_path = (resolve_yazi_user_file "yazi.toml")
     let merged_path = $"($merged_dir)/yazi.toml"
 
     if not $quiet {
@@ -407,7 +417,7 @@ def generate_theme_toml [source_dir: string, merged_dir: string, theme: string, 
 # Generate keymap.toml with optional user keymap merging
 def generate_keymap_toml [source_dir: string, merged_dir: string, --quiet] {
     let base_path = $"($source_dir)/yazelix_keymap.toml"
-    let user_path = (reconcile_yazi_user_file "keymap.toml")
+    let user_path = (resolve_yazi_user_file "keymap.toml")
     let merged_path = $"($merged_dir)/keymap.toml"
 
     if not $quiet {
@@ -549,7 +559,7 @@ def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
     let init_content = (render_runtime_root_placeholders $"($header)($requires)\n")
 
     # Check for user custom init.lua and append if exists
-    let user_init_path = (reconcile_yazi_user_file "init.lua")
+    let user_init_path = (resolve_yazi_user_file "init.lua")
     let final_content = if ($user_init_path | path exists) {
         let user_init = open $user_init_path --raw
         let user_section = [

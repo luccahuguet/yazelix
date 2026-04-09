@@ -936,16 +936,15 @@ sidebar_width_percent = 35
     $result
 }
 
-# Regression: legacy Yazi overrides are relocated into the managed surface.
+# Regression: legacy Yazi override paths now fail fast instead of being relocated during generation.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_generate_merged_yazi_config_relocates_legacy_user_overrides [] {
-    print "🧪 Testing merged Yazi config relocates legacy user overrides into user_configs/yazi..."
+def test_generate_merged_yazi_config_rejects_legacy_user_overrides [] {
+    print "🧪 Testing merged Yazi config rejects legacy user overrides and points to the import flow..."
 
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_yazi_user_configs_XXXXXX | str trim)
     let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
     let legacy_user_dir = ($temp_config_dir | path join "configs" "yazi" "user")
-    let canonical_user_dir = ($temp_config_dir | path join "user_configs" "yazi")
     mkdir ($tmp_home | path join ".config")
     mkdir $temp_config_dir
     mkdir $legacy_user_dir
@@ -955,27 +954,31 @@ def test_generate_merged_yazi_config_relocates_legacy_user_overrides [] {
 return "yazi-user-marker"
 ' | save --force --raw ($legacy_user_dir | path join "init.lua")
 
-        let merged_init = (with-env {
+        let generation_result = (with-env {
             HOME: $tmp_home
             XDG_CONFIG_HOME: ($tmp_home | path join ".config")
             XDG_DATA_HOME: ($tmp_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: $temp_config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            generate_merged_yazi_config $repo_root --quiet | ignore
-            open --raw ($tmp_home | path join ".local" "share" "yazelix" "configs" "yazi" "init.lua")
+            try {
+                generate_merged_yazi_config $repo_root --quiet | ignore
+                {ok: true}
+            } catch {|err|
+                {ok: false, msg: $err.msg}
+            }
         })
 
         if (
-            (($canonical_user_dir | path join "init.lua") | path exists)
-            and not (($legacy_user_dir | path join "init.lua") | path exists)
-            and ($merged_init | str contains "yazi-user-marker")
-            and ($merged_init | str contains "~/.config/yazelix/user_configs/yazi/init.lua")
+            (not $generation_result.ok)
+            and (($generation_result.msg | default "") | str contains "yzx import yazi")
+            and (($generation_result.msg | default "") | str contains "~/.config/yazelix/user_configs/yazi/")
+            and (($legacy_user_dir | path join "init.lua") | path exists)
         ) {
-            print "  ✅ Legacy Yazi user overrides relocate into user_configs and still merge"
+            print "  ✅ Legacy Yazi user overrides now fail fast and point to the explicit import flow"
             true
         } else {
-            print "  ❌ Unexpected result: Yazi legacy override did not relocate or merge correctly"
+            print $"  ❌ Unexpected result: ($generation_result | to json -r)"
             false
         }
     } catch { |err|
@@ -1471,7 +1474,7 @@ export def run_generated_config_canonical_tests [] {
         (test_user_mode_requires_real_terminal_config)
         (test_config_schema_rejects_removed_auto_terminal_config_mode)
         (test_config_schema_rejects_removed_layout_widget)
-        (test_generate_merged_yazi_config_relocates_legacy_user_overrides)
+        (test_generate_merged_yazi_config_rejects_legacy_user_overrides)
         (test_generate_merged_yazi_config_syncs_starship_plugin_config)
         (test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins)
         (test_generated_runtime_configs_prefer_active_runtime_over_installed_reference)
