@@ -44,6 +44,82 @@ def print_completed_output [result: record] {
     }
 }
 
+export def run_devenv_build_shell [
+    --max-jobs: string = ""
+    --build-cores: string = ""
+    --refresh-eval-cache
+    --output-mode: string = "normal"
+    --skip-shellhook-welcome
+    --startup-profile-phase: string = "build_shell"
+] {
+    let refresh_output = resolve_refresh_output_mode $output_mode
+    let requested_max_jobs = $max_jobs
+    let requested_build_cores = $build_cores
+    let devenv_base = (
+        get_devenv_base_command
+        --max-jobs $requested_max_jobs
+        --build-cores $requested_build_cores
+        --refresh-eval-cache=$refresh_eval_cache
+        --quiet=($refresh_output == "quiet")
+        --devenv-verbose=($refresh_output == "full")
+        --skip-shellhook-welcome=$skip_shellhook_welcome
+        --startup-profile-phase $startup_profile_phase
+    )
+    let devenv_cmd = ($devenv_base | append ["build", "shell"])
+    let cmd_bin = ($devenv_cmd | first)
+    let cmd_args = ($devenv_cmd | skip 1)
+
+    let build_result = if $refresh_output == "quiet" {
+        if (is_unfree_enabled) {
+            with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
+                let result = (^$cmd_bin ...$cmd_args | complete)
+                {
+                    exit_code: $result.exit_code
+                    stdout: ($result.stdout | default "")
+                    stderr: ($result.stderr | default "")
+                    stderr_streamed: false
+                }
+            }
+        } else {
+            let result = (^$cmd_bin ...$cmd_args | complete)
+            {
+                exit_code: $result.exit_code
+                stdout: ($result.stdout | default "")
+                stderr: ($result.stderr | default "")
+                stderr_streamed: false
+            }
+        }
+    } else if (is_unfree_enabled) {
+        with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
+            let result = (do { ^$cmd_bin ...$cmd_args } | complete)
+            print_completed_output $result
+            {
+                exit_code: $result.exit_code
+                stdout: ($result.stdout | default "")
+                stderr: ($result.stderr | default "")
+                stderr_streamed: true
+            }
+        }
+    } else {
+        let result = (do { ^$cmd_bin ...$cmd_args } | complete)
+        print_completed_output $result
+        {
+            exit_code: $result.exit_code
+            stdout: ($result.stdout | default "")
+            stderr: ($result.stderr | default "")
+            stderr_streamed: true
+        }
+    }
+
+    let built_profile = if $build_result.exit_code == 0 {
+        resolve_profile_from_build_shell_output ($build_result.stdout | default "")
+    } else {
+        ""
+    }
+
+    $build_result | insert command $devenv_cmd | insert built_profile $built_profile
+}
+
 export def format_command_failure_summary [
     label: string
     command_parts: list<string>
@@ -190,65 +266,16 @@ export def rebuild_yazelix_environment [
     --refresh-eval-cache  # Refresh devenv eval cache before rebuilding
     --output-mode: string = "normal"  # quiet | normal | full
 ] {
-    let refresh_output = resolve_refresh_output_mode $output_mode
-    let requested_max_jobs = $max_jobs
-    let requested_build_cores = $build_cores
-    let devenv_base = get_devenv_base_command --max-jobs $requested_max_jobs --build-cores $requested_build_cores --refresh-eval-cache=$refresh_eval_cache --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full") --skip-shellhook-welcome --startup-profile-phase "build_shell"
-    let devenv_cmd = ($devenv_base | append ["build", "shell"])
-    let cmd_bin = ($devenv_cmd | first)
-    let cmd_args = ($devenv_cmd | skip 1)
-
     let rebuild_result = (profile_startup_step "bootstrap" "devenv.build_shell" {
-        if $refresh_output == "quiet" {
-            if (is_unfree_enabled) {
-                with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
-                    let result = (^$cmd_bin ...$cmd_args | complete)
-                    {
-                        exit_code: $result.exit_code
-                        stdout: ($result.stdout | default "")
-                        stderr: ($result.stderr | default "")
-                        stderr_streamed: false
-                    }
-                }
-            } else {
-                let result = (^$cmd_bin ...$cmd_args | complete)
-                {
-                    exit_code: $result.exit_code
-                    stdout: ($result.stdout | default "")
-                    stderr: ($result.stderr | default "")
-                    stderr_streamed: false
-                }
-            }
-        } else if (is_unfree_enabled) {
-            with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
-                let result = (do { ^$cmd_bin ...$cmd_args } | complete)
-                print_completed_output $result
-                {
-                    exit_code: $result.exit_code
-                    stdout: ($result.stdout | default "")
-                    stderr: ($result.stderr | default "")
-                    stderr_streamed: true
-                }
-            }
-        } else {
-            let result = (do { ^$cmd_bin ...$cmd_args } | complete)
-            print_completed_output $result
-            {
-                exit_code: $result.exit_code
-                stdout: ($result.stdout | default "")
-                stderr: ($result.stderr | default "")
-                stderr_streamed: true
-            }
-        }
+        run_devenv_build_shell --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache=$refresh_eval_cache --output-mode $output_mode --skip-shellhook-welcome --startup-profile-phase "build_shell"
     } {
-        command: ($devenv_cmd | str join " ")
-        refresh_output: $refresh_output
+        refresh_output: $output_mode
     })
 
     if $rebuild_result.exit_code != 0 {
         print (format_command_failure_summary
             "Environment rebuild failed"
-            $devenv_cmd
+            $rebuild_result.command
             $rebuild_result.exit_code
             $rebuild_result.stderr
             "Run `yzx doctor` to inspect the runtime, then rerun `yzx refresh` or `yzx restart` once the underlying build failure is fixed."
@@ -258,7 +285,7 @@ export def rebuild_yazelix_environment [
     }
 
     let applied_state = (compute_config_state)
-    let built_profile = (resolve_profile_from_build_shell_output ($rebuild_result.stdout | default ""))
+    let built_profile = ($rebuild_result.built_profile | default "")
     if ($built_profile | is-empty) {
         print "❌ Environment rebuild completed but Yazelix could not resolve the resulting DEVENV_PROFILE from the build output."
         print "   Recovery: rerun `yzx refresh --verbose` or `yzx restart --verbose`, and inspect the final `devenv build shell` result."

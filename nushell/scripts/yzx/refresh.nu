@@ -3,9 +3,9 @@
 
 use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/environment_bootstrap.nu [prepare_environment]
-use ../utils/devenv_backend.nu [format_command_failure_summary get_devenv_base_command get_refresh_output_mode is_unfree_enabled]
+use ../utils/devenv_backend.nu [format_command_failure_summary get_refresh_output_mode run_devenv_build_shell]
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
-use ../utils/launch_state.nu [record_launch_profile_state resolve_profile_from_build_shell_output]
+use ../utils/launch_state.nu record_launch_profile_state
 use ../utils/common.nu [require_yazelix_runtime_dir]
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
@@ -25,18 +25,6 @@ def summarize_values [values max_items: int] {
     }
 }
 
-def print_refresh_command_output [result: record] {
-    let stdout_text = ($result.stdout | default "")
-    let stderr_text = ($result.stderr | default "")
-
-    if ($stdout_text | is-not-empty) {
-        print --raw $stdout_text
-    }
-    if ($stderr_text | is-not-empty) {
-        print --stderr --raw $stderr_text
-    }
-}
-
 def get_requested_package_scope [config] {
     let enabled_packs = ($config.pack_names? | default [])
     let pack_declarations = ($config.pack_declarations? | default {})
@@ -53,30 +41,6 @@ def get_requested_package_scope [config] {
     {
         enabled_packs: $enabled_packs
         top_level_packages: $top_level_packages
-    }
-}
-
-def run_refresh_command [devenv_cmd allow_unfree --stream-output] {
-    let cmd_bin = ($devenv_cmd | first)
-    let cmd_args = ($devenv_cmd | skip 1)
-
-    let result = if $allow_unfree {
-        with-env {NIXPKGS_ALLOW_UNFREE: "1"} {
-            ^$cmd_bin ...$cmd_args | complete
-        }
-    } else {
-        ^$cmd_bin ...$cmd_args | complete
-    }
-
-    if $stream_output {
-        print_refresh_command_output $result
-    }
-
-    {
-        exit_code: $result.exit_code
-        stdout: ($result.stdout | default "")
-        stderr: ($result.stderr | default "")
-        stderr_streamed: $stream_output
     }
 }
 
@@ -154,23 +118,16 @@ export def "yzx refresh" [
         print "   Note: Nix builds transitive dependencies in addition to these top-level packages."
     }
 
-    let allow_unfree = is_unfree_enabled
     mut built_profile = ""
     if $needs_refresh or $force {
         print $"♻️  Refreshing Yazelix environment \(($refresh_reason), using ($build_parallelism_description)\)..."
 
-        let devenv_base = (get_devenv_base_command --max-jobs $max_jobs --build-cores $build_cores --quiet=($refresh_output == "quiet") --devenv-verbose=($refresh_output == "full") --refresh-eval-cache --skip-shellhook-welcome)
-        let devenv_cmd = ($devenv_base | append ["build", "shell"])
+        let refresh_result = (run_devenv_build_shell --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output --skip-shellhook-welcome)
 
-        if $show_progress {
-            print $"⚙️ Running: ($devenv_cmd | str join ' ')"
-        }
-
-        let refresh_result = run_refresh_command $devenv_cmd $allow_unfree --stream-output=$show_progress
         if $refresh_result.exit_code != 0 {
             print (format_command_failure_summary
                 "Refresh failed"
-                $devenv_cmd
+                $refresh_result.command
                 $refresh_result.exit_code
                 $refresh_result.stderr
                 "Run `yzx doctor` to inspect the runtime, then rerun `yzx refresh` after fixing the failing build command."
@@ -179,7 +136,7 @@ export def "yzx refresh" [
             exit 1
         }
 
-        $built_profile = (resolve_profile_from_build_shell_output $refresh_result.stdout)
+        $built_profile = ($refresh_result.built_profile | default "")
         if ($built_profile | is-empty) {
             print "❌ Refresh completed the build but Yazelix could not resolve the resulting DEVENV_PROFILE from the build output."
             print "   Recovery: rerun `yzx refresh --verbose` and inspect the final `devenv build shell` result, or run `yzx doctor`."

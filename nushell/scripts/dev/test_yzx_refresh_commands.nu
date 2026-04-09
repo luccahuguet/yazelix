@@ -69,7 +69,7 @@ def setup_refresh_profile_recording_fixture [label: string] {
         "export def ensure_nix_available [] {}"
     ] | str join "\n" | save --force --raw ($utils_dir | path join "nix_detector.nu")
 
-    let backend_stub = ([
+    let prepare_environment_stub = ([
         "export def prepare_environment [] {"
         "    {"
         "        config: {"
@@ -90,6 +90,10 @@ def setup_refresh_profile_recording_fixture [label: string] {
         "        needs_refresh: true"
         "    }"
         "}"
+    ] | str join "\n")
+    $prepare_environment_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
+
+    let backend_stub = ([
         "export def get_devenv_base_command ["
         "    --max-jobs: string = \"\""
         "    --build-cores: string = \"\""
@@ -105,8 +109,24 @@ def setup_refresh_profile_recording_fixture [label: string] {
         "export def format_command_failure_summary [label, command_parts, exit_code, stderr, recovery_hint, --stderr-streamed] {"
         "    $\"($label)\""
         "}"
+        "export def run_devenv_build_shell ["
+        "    --max-jobs: string = \"\""
+        "    --build-cores: string = \"\""
+        "    --refresh-eval-cache"
+        "    --output-mode: string = \"normal\""
+        "    --skip-shellhook-welcome"
+        "    --startup-profile-phase: string = \"build_shell\""
+        "] {"
+        "    {"
+        "        command: [\"fake-devenv\", \"build\", \"shell\"]"
+        "        exit_code: 0"
+        "        stdout: \"/tmp/fresh-shell\""
+        "        stderr: \"\""
+        "        stderr_streamed: false"
+        $"        built_profile: \"($fresh_profile)\""
+        "    }"
+        "}"
     ] | str join "\n")
-    $backend_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
     $backend_stub | save --force --raw ($utils_dir | path join "devenv_backend.nu")
 
     [
@@ -189,7 +209,6 @@ def setup_rebuild_profile_recording_fixture [label: string] {
     let fake_shell = ($tmp_root | path join "fresh-shell")
     let fake_devenv = ($fake_bin | path join "fake-devenv")
     let real_nu = (which nu | get -o 0.path | default "nu")
-    let bootstrap_script = ($utils_dir | path join "environment_bootstrap.nu")
     let backend_script = ($utils_dir | path join "devenv_backend.nu")
 
     mkdir $utils_dir
@@ -200,7 +219,6 @@ def setup_rebuild_profile_recording_fixture [label: string] {
     mkdir $fresh_profile
     mkdir $stale_profile
 
-    cp (repo_path "nushell" "scripts" "utils" "environment_bootstrap.nu") $bootstrap_script
     cp (repo_path "nushell" "scripts" "utils" "devenv_backend.nu") $backend_script
 
     [
@@ -285,7 +303,7 @@ def setup_rebuild_profile_recording_fixture [label: string] {
         launch_log: $launch_log
         fresh_profile: $fresh_profile
         stale_profile: $stale_profile
-        bootstrap_script: $bootstrap_script
+        backend_script: $backend_script
     }
 }
 
@@ -295,9 +313,9 @@ def test_command_failure_summary_includes_command_tail_and_recovery [] {
     print "🧪 Testing refresh/rebuild failure summaries include command, stderr tail, and recovery..."
 
     try {
-        let bootstrap_script = (repo_path "nushell" "scripts" "utils" "environment_bootstrap.nu")
+        let backend_script = (repo_path "nushell" "scripts" "utils" "devenv_backend.nu")
         let snippet = ([
-            $"source \"($bootstrap_script)\""
+            $"source \"($backend_script)\""
             'print (format_command_failure_summary "Refresh failed" ["env", "-C", "/tmp/yazelix repo", "devenv", "build", "shell"] 17 "line1\nline2\nline3\nline4\nline5\nline6" "Run `yzx doctor`.")'
         ] | str join "\n")
         let output = (^nu -c $snippet | complete)
@@ -374,7 +392,7 @@ def test_rebuild_yazelix_environment_records_fresh_launch_profile [] {
     let fixture = (setup_rebuild_profile_recording_fixture "yazelix_rebuild_profile_record")
 
     let result = (try {
-        let command = $"source \"($fixture.bootstrap_script)\"; rebuild_yazelix_environment --output-mode quiet"
+        let command = $"source \"($fixture.backend_script)\"; rebuild_yazelix_environment --output-mode quiet"
         let output = (with-env {
             PATH: ([$fixture.fake_bin, "/usr/bin", "/bin"] | str join (char esep))
             YAZELIX_RUNTIME_DIR: $fixture.runtime_dir

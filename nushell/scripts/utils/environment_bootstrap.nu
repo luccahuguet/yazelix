@@ -7,15 +7,6 @@ use nix_detector.nu ensure_nix_available
 use startup_profile.nu [profile_startup_step]
 use devenv_backend.nu check_environment_status
 
-export use devenv_backend.nu [
-    format_command_failure_summary
-    get_devenv_base_command
-    get_refresh_output_mode
-    is_unfree_enabled
-    rebuild_yazelix_environment
-    run_in_devenv_shell_command
-]
-
 def setup_nix_environment [] {
     let nix_profiles = [
         "~/.nix-profile/etc/profile.d/nix.sh"
