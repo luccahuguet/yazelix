@@ -71,7 +71,7 @@ Boundary hardening, honest update ownership, and a much cleaner runtime surface.
 - `yzx update` now points at explicit owners: `yzx update upstream` and `yzx update home_manager`.
 - `yzx update` now points at explicit owners, the transitional `yzx update runtime` / `yzx update all` flow is gone again, and `yzx run` became a real argv passthrough.
 - The current v14 line also carries forward the front-door UX expansion introduced late in v13, including the welcome style selector, the live `game_of_life` welcome mode, `yzx screen`, and the managed popup runner with configurable popup commands and sizing.
-- Config ownership and upgrade UX became much more explicit through `user_configs/`, the `yazelix_packs.toml` sidecar, the migration engine, and first-run upgrade summaries instead of ad hoc breakage.
+- Config ownership and upgrade UX became much more explicit through `user_configs/`, the separate `yazelix_packs.toml` file, the migration engine, and first-run upgrade summaries instead of ad hoc breakage.
 - Workspace control also matured across the line with managed editor/sidebar routing, deterministic sidebar controls, and `yzx cwd` retargeting and sync.
 - A large delete-first cleanup pass trimmed broad helper surfaces and documented the trim-first path toward v15.
 
