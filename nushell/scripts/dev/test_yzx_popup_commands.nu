@@ -270,10 +270,10 @@ def test_popup_toggle_wrapper_refreshes_sidebar_only_after_close [] {
     $result
 }
 
-# Regression: popup wrappers use the canonical editor for the current launch profile.
+# Regression: popup wrappers recover the canonical editor even when the helper process lacks DEVENV_PROFILE.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
-    print "🧪 Testing popup wrappers derive EDITOR from the canonical launch env, not a stale shell value..."
+    print "🧪 Testing popup wrappers recover EDITOR from recorded/current-session profile evidence when DEVENV_PROFILE is missing..."
 
     try {
         let tmpdir = (^mktemp -d /tmp/yazelix_popup_env_XXXXXX | str trim)
@@ -283,7 +283,9 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
             let profile_path = ($tmpdir | path join "profile")
             let profile_bin = ($profile_path | path join "bin")
             let profile_nvim = ($profile_bin | path join "nvim")
+            let state_dir = ($tmpdir | path join "state")
             mkdir $profile_bin
+            mkdir ($state_dir | path join "state")
             "" | save --force --raw $profile_nvim
             ^chmod +x $profile_nvim
 
@@ -292,14 +294,19 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
                 "[editor]"
                 "command = \"nvim\""
             ] | str join "\n" | save --force --raw $config_path
+            ({
+                combined_hash: "popup-regression"
+                profile_path: $profile_path
+            } | to json) | save --force --raw ($state_dir | path join "state" "launch_state.json")
 
             let result = (with-env {
                 YAZELIX_CONFIG_OVERRIDE: $config_path
-                DEVENV_PROFILE: $profile_path
                 YAZELIX_RUNTIME_DIR: $env.PWD
+                YAZELIX_STATE_DIR: $state_dir
                 PATH: $"($profile_bin):/usr/bin"
                 EDITOR: "/tmp/wrong-editor"
                 YAZELIX_MANAGED_HELIX_BINARY: "/tmp/stale-hx"
+                DEVENV_PROFILE: ""
             } {
                 get_floating_wrapper_env
             })
@@ -326,7 +333,7 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
             ]
 
             if ($conditions | all {|item| $item }) {
-                print "  ✅ popup wrappers resolve EDITOR from the current Yazelix profile instead of a stale shell value"
+                print "  ✅ popup wrappers recover the canonical profile instead of trusting a stale helper-process EDITOR"
                 $success = true
             } else {
                 print $"  ❌ Unexpected popup wrapper env: ($result | to json -r)"

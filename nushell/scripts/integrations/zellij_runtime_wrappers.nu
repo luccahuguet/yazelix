@@ -2,7 +2,7 @@
 
 use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/config_parser.nu [parse_yazelix_config]
-use ../utils/launch_state.nu [get_launch_env]
+use ../utils/launch_state.nu [get_launch_env resolve_current_session_profile]
 
 const FLOATING_WRAPPER_ENV_KEYS = [
     "DEVENV_PROFILE"
@@ -34,15 +34,6 @@ def get_current_shell_wrapper_env [] {
     $wrapper_env
 }
 
-def get_current_shell_launch_profile [] {
-    let profile_path = ($env.DEVENV_PROFILE? | default "" | into string | str trim)
-    if ($profile_path | is-not-empty) and ($profile_path | path exists) {
-        $profile_path | path expand
-    } else {
-        ""
-    }
-}
-
 def serialize_wrapper_env_value [value: any] {
     let described = ($value | describe)
 
@@ -61,7 +52,7 @@ export def build_floating_wrapper_env_args [wrapper_env: record] {
 
 export def get_floating_wrapper_env [] {
     let current_shell_env = (get_current_shell_wrapper_env)
-    let profile_path = (get_current_shell_launch_profile)
+    let profile_path = (resolve_current_session_profile)
 
     if ($profile_path | is-empty) {
         return $current_shell_env
