@@ -40,7 +40,7 @@ Profile launch sequence and identify performance bottlenecks
 ### `yzx dev bump VERSION`
 Automate the version bump, release commit, and matching git tag
 - Requires a clean git worktree
-- Fails if `VERSION` is not a real Yazelix tag like `v13.14`
+- Fails if `VERSION` is not a real Yazelix tag like `v14` or `v13.13`
 - Refuses to reuse an existing git tag
 - Rotates the current `Unreleased` release notes into the requested version, resets a fresh `Unreleased` placeholder, updates `YAZELIX_VERSION`, syncs the README title/version marker, creates a dedicated commit, and creates the matching annotated tag
 - Refuses to run if `CHANGELOG.md` or `docs/upgrade_notes.toml` still contain the untouched default `Unreleased` placeholder text

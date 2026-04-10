@@ -1,4 +1,4 @@
-# Yazelix v13.13
+# Yazelix v14
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
@@ -60,17 +60,17 @@ Want the high-level product map? See [Architecture Map](./docs/architecture_map.
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
 <!-- BEGIN GENERATED README LATEST SERIES -->
-## What's New In v13
+## What's New In v14
 
-Plugin-managed workspaces, migration-aware upgrades, and a cleaner runtime story.
+Boundary hardening, honest update ownership, and a much cleaner runtime surface.
 
-- Plugin-managed editor/sidebar orchestration and deterministic workspace routing became the core of the v13 experience.
-- Workspace retargeting, `yzx cwd`, and Yazi-driven editor opens got much tighter tab-local behavior and better diagnostics.
-- The command surface got cleaner with `yzx config`, `yzx menu`, `yzx keys`, `yzx refresh`, and `yzx whats_new`.
-- Upgrade and recovery UX improved with structured release notes, migration-aware diagnostics, `yzx config migrate`, and `yzx doctor --fix`.
-- Later v13 releases hardened popup flows, startup recovery, desktop integration, and the move to Zellij 0.44.
+- Launch, runtime, and desktop startup got much harder to break on flake-installed or Home Manager-owned setups.
+- Workspace truth moved deeper into the pane orchestrator with explicit sidebar identity and cleaner retargeting semantics.
+- The packaged runtime became the honest center of the install story, with `runtime/current` and installer-owned indirection trimmed back sharply.
+- `yzx update` now points at explicit owners: `yzx update upstream` and `yzx update home_manager`.
+- `yzx run` became a real argv passthrough, while stale surfaces like `yzx update runtime`, `yzx update all`, and `yzx uninstall` were removed.
 
-For exact v13.13 upgrade notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new`.
+For exact v14 upgrade notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new`.
 For the longer project story, see [Version History](./docs/history.md).
 <!-- END GENERATED README LATEST SERIES -->
 

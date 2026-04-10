@@ -39,7 +39,7 @@ export def "yzx dev update" [
 }
 
 export def "yzx dev bump" [
-    version: string  # Version tag to release, for example v13.14
+    version: string  # Version tag to release, for example v14
 ] {
     let result = (perform_version_bump (require_yazelix_repo_root) $version)
     print $"✅ Bumped Yazelix from ($result.previous_version) to ($result.target_version)"

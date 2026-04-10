@@ -9,8 +9,9 @@ See the origin story in `docs/the_start.md`.
 
 ## Major Version Descriptions
 
+- **v14**: Boundary-hardening capstone, honest update ownership, and package-runtime cleanup before the v15 trim-first transition
 - **v13.1**: Safer multi-tab cwd routing, stronger `yzx cwd` workspace sync, and better Zellij diagnostics
-- **v13**: Plugin-managed editor/sidebar orchestration, deterministic sidebar controls, and cleaner Zellij workspace navigation
+- **v13**: Plugin-managed workspaces, migration-aware upgrades, richer front-door UX, and the full devenv-era integration push
 - **v12**: User-declared packs, Nixpkgs unstable, declarative themes, and tighter terminal/Zellij/Yazi integration
 - **v11**: Blazingly fast launches, instant config reloads, Home Manager parity, and zero friction
 - **v10**: Launch interface consolidation, IDE integration, project-oriented workflow, and enhanced UX!
@@ -24,6 +25,14 @@ See the origin story in `docs/the_start.md`.
 - **v2**: Yazi-Helix File Tree v2, now with a Closeable Sidebar! (the name 'Yazelix' did not exist yet; [announcement](https://www.reddit.com/r/HelixEditor/comments/1d6nkxs/yazihelix_file_tree_v2_now_with_a_closeable/))
 - **v1**: My first Zellij/Yazi/Helix/Nushell setup, inspired by a Reddit interaction, with no integration and a lot of hacks ([announcement](https://www.reddit.com/r/HelixEditor/comments/1d59br3/file_tree_setup_using_yazi_zellij_helix_and/))
 
+## v14: Boundary-hardening capstone, honest update ownership, and package-runtime cleanup
+
+- **The Runtime/Install Story Finally Got Honest** – v14 makes the packaged runtime the center of the supported install story, trims `runtime/current` indirection, and stops pretending Yazelix should keep a big installer-owned repair surface forever.
+- **Launch and Desktop Paths Got Harder to Break** – Flake-installed runtime cleanup, refresh handoff, desktop bootstrap env, and manual desktop icon behavior were all hardened so normal `yzx launch` and desktop-entry startup survive the real Nix/store ownership model better.
+- **Workspace Truth Moved Closer to the Plugin** – Sidebar identity and workspace retargeting moved deeper into the pane orchestrator, so managed editor/sidebar routing depends less on shell-side cache guesses and more on live Zellij state.
+- **Update Ownership Is Explicit Now** – `yzx update` now points at `yzx update upstream` or `yzx update home_manager`, and the old `yzx update runtime` / `yzx update all` story is gone.
+- **Delete-First Cleanup Started Paying Off** – v14 removes stale surfaces like `yzx uninstall` and makes `yzx run` a real argv passthrough, while documenting the package-runtime cleanup and the trim-first path toward v15.
+
 ## v13.1: Safer multi-tab cwd routing, stronger `yzx cwd` workspace sync, and better Zellij diagnostics
 
 - **Cross-Tab Yazi Cwd Isolation** - `yzx cwd` and related sidebar sync flows now target the current tab's managed Yazi pane instead of whichever sidebar state file was updated most recently in the session
@@ -32,17 +41,13 @@ See the origin story in `docs/the_start.md`.
 - **Workspace UX Polish** - Added `yzx keys`, aligned Yazi workspace keybindings, made Zellij default mode configurable, and cleaned up `Alt+Shift+M` pane handling
 - **Agent and Update Flow Follow-Through** - Added `justcode`, experimented with pi-agent support, then removed the unstable local `pi_rust` packaging path while tightening the canary/update flow
 
-## v13: Plugin-managed editor/sidebar orchestration, deterministic sidebar controls, and cleaner Zellij workspace navigation
+## v13: Plugin-managed workspaces, migration-aware upgrades, richer front-door UX, and the full devenv-era integration push
 
-- **The Biggest Pain Points Are Fixed** – v13 replaces fragile pane-scanning flows with a real Zellij plugin (written in rust!) that tracks the managed `editor` and `sidebar` panes and routes workspace actions directly instead of relying on shell heuristics
-- **The Sidebar Can Always Find the Editor** – The sidebar can now always find the managed `editor` pane and open files in it reliably, and it is much faster because Yazelix no longer has to walk through panes or rely on pane-scanning heuristics
-- **Sidebar and Layout Controls Are Finally Separate** – Sidebar open/close now has its own `Alt+y` binding instead of being entangled with layout-family switching on `Alt+[` and `Alt+]`
-- **Deterministic Workspace Navigation** – `Ctrl+y` toggles focus between the managed editor and sidebar, while `Alt+[` and `Alt+]` switch predictably between the `single`, `vertical split`, and `bottom terminal` layouts
-- **Better Config Inspection** – `yzx config` now supports focused section views for `hx`, `yazi`, and `zellij`, plus `yzx config open`
-- **Simpler Update and Testing Commands** – `yzx update` and `yzx dev test` were simplified into clearer defaults that are easier to remember and safer to use
-- **Clearer Refresh and Environment Feedback** – `yzx env` now shows rebuild activity more clearly, launch paths skip noisy shell-hook welcomes, and Yazelix warns when runtime versions drift
-- **Command Palette** – `yzx menu` gives you a searchable command palette for the main Yazelix actions, including a popup mode inside Zellij on `Alt+Shift+M`
-- **Refresh Workflow** – `yzx refresh` makes it easier to rebuild the Yazelix environment without launching the UI, while `yzx restart` cleanly switches the current window onto the refreshed profile (as before)
+- **The Biggest Workspace Pain Points Were Fixed** – v13 replaced fragile pane-scanning flows with a real Zellij plugin (written in Rust) that tracks the managed `editor` and `sidebar` panes and routes workspace actions directly instead of relying on shell heuristics.
+- **The Sidebar Could Finally Find the Editor Reliably** – Opening from Yazi, `yzx cwd`, reveal flows, and tab-local workspace routing all got much tighter and more deterministic across the v13 line.
+- **Config Ownership Grew Up** – v13 introduced `user_configs/` as the canonical managed boundary, split pack settings into `yazelix_packs.toml`, and added migration-aware diagnostics, structured release notes, `yzx config migrate`, and `yzx doctor --fix`.
+- **The Front Door Got Much Richer** – Popup-runner support, `yzx menu`, `yzx keys`, `yzx tutor`, richer welcome screens, better desktop integration, and the Zellij 0.44 transition all landed during v13.
+- **The Devenv-Era Runtime Story Matured** – Refresh/restart behavior, command-surface cleanup, Home Manager integration, Yazi command overrides, and late-series runtime identity hardening set up the eventual v14 boundary cleanup.
 
 ## v12: User-declared packs, Nixpkgs unstable, declarative themes, and tighter terminal/Zellij/Yazi integration
 

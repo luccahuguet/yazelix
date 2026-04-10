@@ -60,8 +60,8 @@ def ensure_clean_git_worktree [repo_root: string] {
 
 def validate_target_version [target_version: string] {
     let normalized = ($target_version | into string | str trim)
-    if not ($normalized =~ '^v\d+(?:\.\d+)+$') {
-        fail $"Invalid version `($target_version)`. Expected a git tag like v13.14 or v13.14.1"
+    if not ($normalized =~ '^v\d+(?:\.\d+)*$') {
+        fail $"Invalid version `($target_version)`. Expected a git tag like v14 or v14.1"
     }
     $normalized
 }

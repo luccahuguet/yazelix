@@ -2,6 +2,34 @@
 
 Short, upgrade-facing release notes live here. The longer narrative history remains in [docs/history.md](./docs/history.md).
 
+## Unreleased
+
+Post-v14 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v14 lands.
+
+## v14 - 2026-04-10
+
+Boundary hardening, honest update ownership, and capstone runtime cleanup.
+
+Upgrade impact: manual action required
+
+Highlights:
+- Hardened the flake-installed runtime path with safer runtime-project cleanup, explicit runtime-root handling, and launch fixes that stop rebuilds and desktop startup from tripping over stale or immutable paths.
+- Moved sidebar identity and workspace retargeting deeper into the pane orchestrator so managed editor/sidebar routing depends less on shell-side cache heuristics and more on live Zellij truth.
+- Simplified the packaged-runtime story by making flake and Home Manager installs primary, trimming `runtime/current` indirection, and deleting most installer-artifact doctoring.
+- Replaced the old runtime updater story with explicit owner commands: `yzx update` now points at `yzx update upstream` and `yzx update home_manager`, and desktop launch now targets the active runtime launcher directly.
+- Removed stale command baggage such as `yzx update runtime`, `yzx update all`, `yzx uninstall`, and the wrapper-owned `yzx run --verbose` flag, while making `yzx run` a real argv passthrough.
+
+Migration notes:
+- Replace `yzx update runtime` with `yzx update upstream` for upstream/manual installs.
+- Replace `yzx update all` with exactly one owner path: `yzx update upstream` for upstream/manual installs or `yzx update home_manager` for Home Manager installs.
+- Stop relying on `yzx uninstall`; remove manual desktop/runtime artifacts directly or use `yzx home_manager prepare --apply` when migrating to Home Manager.
+- If you used `yzx run --verbose`, pass `--verbose` to the child command instead; `yzx run` no longer owns wrapper flags.
+
 ## v13.13 - 2026-04-05
 
 Yazi git refresh hardening, fresh launch-profile recording, and maintainer input updates.
@@ -28,15 +56,6 @@ Highlights:
 - Reverted the managed Yazi default theme to Yazi's upstream built-in default instead of forcing the bundled `tokyo-night` flavor unless you opt into a flavor explicitly.
 - Fixed Home Manager runtime-source evaluation so the standalone `home_manager` flake can validate and install the lock-derived runtime without tripping invalid parent-source paths.
 - Dropped the broken Home Manager source-input workaround and kept the simpler module wiring now that the lock-derived `devenv` source import is stable again.
-
-## Unreleased
-
-Post-v13.13 work in progress
-
-Upgrade impact: no user action required
-
-Highlights:
-- Reserved for post-release changes after v13.12 lands.
 
 ## v13.11 - 2026-03-31
 
