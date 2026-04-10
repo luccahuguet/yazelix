@@ -359,35 +359,18 @@ def build_home_manager_switch_ref [flake_dir: string, attr: string = ""] {
 
 def activate_updated_installer_runtime [repo_root: string] {
     print "🔄 Installing updated local Yazelix runtime..."
+    print "   Streaming local installer activation logs \(this may take a while when Nix rebuilds\)..."
 
-    let result = (do {
+    let exit_code = (do {
         cd $repo_root
-        ^nix run .#install | complete
+        ^nix run -L .#install
+        ($env.LAST_EXIT_CODE? | default 0)
     })
 
-    if $result.exit_code != 0 {
-        let stderr_tail = trim_output_tail ($result.stderr | default "") 25
-        let stdout_tail = trim_output_tail ($result.stdout | default "") 25
-
+    if $exit_code != 0 {
         print "❌ nix run .#install failed."
-        if ($stderr_tail | is-not-empty) {
-            print "   stderr tail:"
-            print ($stderr_tail | lines | each { |line| $"     ($line)" } | str join "\n")
-        } else if ($stdout_tail | is-not-empty) {
-            print "   stdout tail:"
-            print ($stdout_tail | lines | each { |line| $"     ($line)" } | str join "\n")
-        }
         print "   Recovery: Fix the install failure, rerun `nix run .#install`, then restart Yazelix."
-        exit $result.exit_code
-    }
-
-    let stdout_text = ($result.stdout | default "" | str trim)
-    let stderr_text = ($result.stderr | default "" | str trim)
-    if ($stdout_text | is-not-empty) {
-        print $stdout_text
-    }
-    if ($stderr_text | is-not-empty) {
-        print --stderr $stderr_text
+        exit $exit_code
     }
 
     print "✅ Installed runtime updated."

@@ -798,6 +798,76 @@ def test_dev_update_requires_explicit_activation_for_real_updates [] {
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 # Defends: Home Manager activation refreshes the configured flake input and switches the requested flake ref instead of falling back to the installer path.
+def test_dev_update_installer_activation_streams_install_logs [] {
+    print "🧪 Testing yzx dev update installer activation streams local install logs through nix run -L..."
+
+    let repo_root = ($env.PWD | path expand)
+    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
+    let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_installer_activation_XXXXXX | str trim)
+    let bin_dir = ($tmp_root | path join "bin")
+    let log_path = ($tmp_root | path join "activation.log")
+    let nix_script = ($bin_dir | path join "nix")
+    let current_path = if (($env.PATH | describe) | str contains "list") {
+        $env.PATH | str join (char esep)
+    } else {
+        $env.PATH | into string
+    }
+
+    mkdir $bin_dir
+    [
+        "#!/usr/bin/env bash"
+        "printf 'nix:%s\\n' \"$*\" >> \"$YZX_TEST_LOG\""
+        "printf 'install-stream-line\\n'"
+        "exit 0"
+    ] | str join "\n" | save --force --raw $nix_script
+    ^chmod +x $nix_script
+
+    let result = (try {
+        let snippet = (
+            [
+                $"source \"($dev_module)\""
+                "activate_updated_installer_runtime $env.YZX_TEST_REPO_ROOT"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            PATH: $"($bin_dir)(char esep)($current_path)"
+            YZX_TEST_LOG: $log_path
+            YZX_TEST_REPO_ROOT: $repo_root
+        } {
+            ^nu -c $snippet | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let log_lines = if ($log_path | path exists) {
+            open --raw $log_path | lines
+        } else {
+            []
+        }
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "🔄 Installing updated local Yazelix runtime...")
+            and ($stdout | str contains "Streaming local installer activation logs")
+            and ($stdout | str contains "install-stream-line")
+            and ($stdout | str contains "✅ Installed runtime updated.")
+            and ($log_lines | any {|line| $line == "nix:run -L .#install" })
+        ) {
+            print "  ✅ Installer activation now streams nix install logs and uses nix run -L for local activation"
+            true
+        } else {
+            print $"  ❌ Unexpected installer activation result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim)) log=(($log_lines | str join '; '))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Defends: Home Manager activation refreshes the configured flake input and switches the requested flake ref instead of falling back to the installer path.
 def test_dev_update_home_manager_activation_refreshes_input_and_switches_requested_ref [] {
     print "🧪 Testing yzx dev update Home Manager activation refreshes the input lock and switches the requested ref..."
 
@@ -1071,6 +1141,7 @@ def main [] {
         (test_issue_bead_reconciliation_plan)
         (test_issue_bead_comment_plan)
         (test_dev_update_requires_explicit_activation_for_real_updates)
+        (test_dev_update_installer_activation_streams_install_logs)
         (test_dev_update_activation_mode_rejects_unknown_values)
         (test_dev_update_home_manager_activation_refreshes_input_and_switches_requested_ref)
         (test_dev_bump_rotates_release_metadata_and_tags_the_repo)
