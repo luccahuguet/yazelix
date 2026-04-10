@@ -66,9 +66,11 @@ Boundary hardening, honest update ownership, and a much cleaner runtime surface.
 
 - Launch, runtime, and desktop startup got much harder to break on flake-installed or Home Manager-owned setups.
 - Workspace truth moved deeper into the pane orchestrator with explicit sidebar identity and cleaner retargeting semantics.
+- Home Manager became a cleaner first-class path with profile-owned `yzx`, takeover prepare, and better validation around generated config surfaces.
 - The packaged runtime became the honest center of the install story, with `runtime/current` and installer-owned indirection trimmed back sharply.
 - `yzx update` now points at explicit owners: `yzx update upstream` and `yzx update home_manager`.
-- `yzx run` became a real argv passthrough, while stale surfaces like `yzx update runtime`, `yzx update all`, and `yzx uninstall` were removed.
+- `yzx update` now points at explicit owners, the transitional `yzx update runtime` / `yzx update all` flow is gone again, and `yzx run` became a real argv passthrough.
+- A large delete-first cleanup pass trimmed broad helper surfaces and documented the trim-first path toward v15.
 
 For exact v14 upgrade notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new`.
 For the longer project story, see [Version History](./docs/history.md).

@@ -18,11 +18,16 @@ Boundary hardening, honest update ownership, and capstone runtime cleanup.
 Upgrade impact: manual action required
 
 Highlights:
-- Hardened the flake-installed runtime path with safer runtime-project cleanup, explicit runtime-root handling, and launch fixes that stop rebuilds and desktop startup from tripping over stale or immutable paths.
-- Moved sidebar identity and workspace retargeting deeper into the pane orchestrator so managed editor/sidebar routing depends less on shell-side cache heuristics and more on live Zellij truth.
-- Simplified the packaged-runtime story by making flake and Home Manager installs primary, trimming `runtime/current` indirection, and deleting most installer-artifact doctoring.
-- Replaced the old runtime updater story with explicit owner commands: `yzx update` now points at `yzx update upstream` and `yzx update home_manager`, and desktop launch now targets the active runtime launcher directly.
-- Removed stale command baggage such as `yzx update runtime`, `yzx update all`, `yzx uninstall`, and the wrapper-owned `yzx run --verbose` flag, while making `yzx run` a real argv passthrough.
+- Applied a broad delete-first Nushell cleanup pass that removed stale compatibility surfaces, broad helper aliases, the old config-manager layer, the standalone startup-profile module, and many one-caller wrappers that no longer justified their own seams.
+- Refined Zellij, Yazi, terminal, and shell-hook ownership by splitting semantic merger blocks, centralizing Yazelix-owned Zellij settings, tightening Yazi override boundaries, replacing wrapper `nu -c` calls with runtime scripts, and failing fast on legacy override paths.
+- Matured the Home Manager path with clean-room validation, root-flake consolidation, tighter activation ordering, support for symlinked generated config surfaces, profile-owned `yzx`, `yzx home_manager prepare`, and clearer doctor validation around takeover and desktop shadowing.
+- Tightened everyday workspace UX with direct `Ctrl+y` focus toggling, `Alt+number` tab jumps, and better zjstatus tab-window overflow behavior before truncation.
+- Hardened runtime and refresh internals with shared atomic file writes, managed-root cleanup guards, a clearer backend adapter seam, explicit runtime entry transitions, no-op refresh recovery, canonical-contract config parsing, and launch-profile freshness diagnostics in `yzx doctor`.
+- Fixed real runtime identity regressions around Nix-store symlink cleanup, fresh launch-profile imports after rebuilds, desktop bootstrap env setup, bundled Yazi asset refresh cleanup, and manual desktop icon installation.
+- Moved sidebar identity and workspace retargeting deeper into the pane orchestrator so managed editor/sidebar routing depends less on shell-side cache heuristics and more on live Zellij truth, then documented the backend-free workspace slice and the v14 boundary-hardening gate explicitly.
+- Simplified the packaged-runtime story by making the flake package surface primary, removing `runtime/current` from the Home Manager identity path, dropping installed-runtime fallbacks from shared runtime logic, and trimming most installer-artifact doctoring.
+- Replaced the late-series runtime updater experiment with explicit owner commands: `yzx update` now points at `yzx update upstream` and `yzx update home_manager`, desktop launch now targets the active runtime launcher directly, and the transitional `yzx update runtime` / `yzx update all` flow is gone again.
+- Dropped the brief generic `yzx uninstall` path, made `yzx run` a real argv passthrough, and documented the package-runtime simplification path, config dependence matrix, subsystem code inventory, and the trim-first v15 roadmap that follows this capstone release.
 
 Migration notes:
 - Replace `yzx update runtime` with `yzx update upstream` for upstream/manual installs.

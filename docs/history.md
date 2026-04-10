@@ -27,11 +27,16 @@ See the origin story in `docs/the_start.md`.
 
 ## v14: Boundary-hardening capstone, honest update ownership, and package-runtime cleanup
 
-- **The Runtime/Install Story Finally Got Honest** – v14 makes the packaged runtime the center of the supported install story, trims `runtime/current` indirection, and stops pretending Yazelix should keep a big installer-owned repair surface forever.
-- **Launch and Desktop Paths Got Harder to Break** – Flake-installed runtime cleanup, refresh handoff, desktop bootstrap env, and manual desktop icon behavior were all hardened so normal `yzx launch` and desktop-entry startup survive the real Nix/store ownership model better.
-- **Workspace Truth Moved Closer to the Plugin** – Sidebar identity and workspace retargeting moved deeper into the pane orchestrator, so managed editor/sidebar routing depends less on shell-side cache guesses and more on live Zellij state.
-- **Update Ownership Is Explicit Now** – `yzx update` now points at `yzx update upstream` or `yzx update home_manager`, and the old `yzx update runtime` / `yzx update all` story is gone.
-- **Delete-First Cleanup Started Paying Off** – v14 removes stale surfaces like `yzx uninstall` and makes `yzx run` a real argv passthrough, while documenting the package-runtime cleanup and the trim-first path toward v15.
+- **The Delete-First Refactor Finally Went Wide** – v14 aggressively deleted stale compatibility surfaces, broad helper layers, the old config-manager stratum, the standalone startup-profile module, and a long tail of one-caller Nushell wrappers that were mostly carrying history and indirection cost.
+- **Ownership Boundaries Got Much Tighter** – Zellij, Yazi, terminal, shell-hook, migration, doctor, maintainer, and repo-checkout responsibilities were broken into smaller owners with clearer fail-fast behavior, especially around legacy override paths and wrapper script boundaries.
+- **Home Manager Became a Much More Real First-Class Path** – The series consolidated the Home Manager flake into the root surface, validated it in a clean room, tightened activation ordering, handled symlinked generated configs better, switched to the profile-owned `yzx` path, and introduced `yzx home_manager prepare` as the migration bridge from manual installs.
+- **Everyday Workspace UX Still Moved Forward** – `Ctrl+y` became a direct focus toggle, `Alt+number` tab jumps landed, and zjstatus tab-window overflow behavior became more deliberate before truncation.
+- **Runtime and Refresh Internals Were Hardened Heavily** – Shared atomic writes, managed-root cleanup guards, a clearer backend adapter seam, explicit runtime entry transitions, no-op refresh repairs, canonical-contract config parsing, and launch-profile freshness diagnostics all landed before the final boundary cuts.
+- **The Ugly Runtime Bugs Were Actually Fixed** – v14 fixed flake-installed runtime-project symlink cleanup against immutable Nix-store paths, repaired a missing launch-profile import after refresh, fixed desktop bootstrap env setup, hardened bundled Yazi asset refresh cleanup, and restored manual desktop icon installation.
+- **Workspace Truth Moved Closer to the Plugin** – Sidebar identity and workspace retargeting moved deeper into the pane orchestrator, and the repo explicitly documented the backend-free workspace slice plus the v14 boundary-hardening gate.
+- **The Runtime Story Finally Got Honest** – The flake package surface became primary, `runtime/current` stopped defining the Home Manager identity path, shared runtime logic dropped installed-runtime fallbacks, and most installer-artifact doctoring was deleted instead of preserved.
+- **Update and Command Ownership Were Cleaned Up** – `yzx update` now points at `yzx update upstream` or `yzx update home_manager`, the late-series `yzx update runtime` / `yzx update all` experiment is gone again, the brief generic `yzx uninstall` path was dropped, and `yzx run` became a real argv passthrough.
+- **The Capstone Release Also Drew the Next Boundary** – v14 documented the package-runtime simplification path, the config dependence matrix, subsystem code inventory, and the trim-first v15 roadmap that follows this integrated/devenv-era capstone.
 
 ## v13.1: Safer multi-tab cwd routing, stronger `yzx cwd` workspace sync, and better Zellij diagnostics
 
