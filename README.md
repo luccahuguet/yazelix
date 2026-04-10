@@ -66,14 +66,18 @@ Boundary hardening, honest update ownership, and a much cleaner runtime surface.
 
 - Launch, runtime, and desktop startup got much harder to break on flake-installed or Home Manager-owned setups.
 - Workspace truth moved deeper into the pane orchestrator with explicit sidebar identity and cleaner retargeting semantics.
-- Home Manager became a cleaner first-class path with profile-owned `yzx`, takeover prepare, and better validation around generated config surfaces.
+- Home Manager became a cleaner first-class path with profile-owned `yzx`, `yzx home_manager prepare` to preview or archive manual-install artifacts before Home Manager takeover, and better validation around generated config surfaces.
 - The packaged runtime became the honest center of the install story, with `runtime/current` and installer-owned indirection trimmed back sharply.
-- `yzx update` now points at explicit owners: `yzx update upstream` and `yzx update home_manager`.
-- `yzx update` now points at explicit owners, the transitional `yzx update runtime` / `yzx update all` flow is gone again, and `yzx run` became a real argv passthrough.
-- The current v14 line also carries forward the front-door UX expansion introduced late in v13, including the welcome style selector, the live `game_of_life` welcome mode, `yzx screen`, and the managed popup runner with configurable popup commands and sizing.
+- `yzx update` now points at explicit owners: `yzx update upstream` for upstream/manual installs and `yzx update home_manager` for Home Manager installs.
+- `yzx update` now points at explicit owners, the transitional `yzx update runtime` / `yzx update all` flow is gone again, and `yzx run` became a real argv passthrough for one-shot tools like `yzx run rg --files`.
+- The current v14 line also carries forward the front-door UX expansion introduced late in v13, including the welcome style selector, the live `game_of_life` welcome mode, `yzx screen` to preview the animated welcome screen directly in the terminal, and the managed popup runner with configurable popup commands and sizing.
 - Config ownership and upgrade UX became much more explicit through `user_configs/`, the separate `yazelix_packs.toml` file, the migration engine, and first-run upgrade summaries instead of ad hoc breakage.
-- Workspace control also matured across the line with managed editor/sidebar routing, deterministic sidebar controls, and `yzx cwd` retargeting and sync.
+- Workspace control also matured across the line with managed editor/sidebar routing, deterministic sidebar controls, and `yzx cwd` to retarget the current tab workspace root with editor/sidebar sync.
 - A large delete-first cleanup pass trimmed broad helper surfaces and documented the trim-first path toward v15.
+- v14 is the last feature release of Yazelix Classic: the broader `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including `yzx packs`. The `v14` tag stays alive for bug fixes, but the line is now feature-frozen.
+- The current v15 direction is to keep the narrower core `yzx` product surface around `launch`, `env`, `update`, `desktop`, and workspace-facing commands while trimming the older Classic machinery around `yzx refresh`, much of `yzx run`, `yzx packs`, launch-profile reuse, and the broad `devenv` lifecycle.
+- The broader `devenv` runtime and terminal-environment layer may continue as a separate project forked from Yazelix Classic and could be reintegrated later only with much clearer boundaries and separate codebases.
+- I still strongly recommend using v14 for the time being, especially if you are a power user. It remains unusually powerful, highly customizable, alive, and worth filing issues against.
 
 For exact v14 upgrade notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new`.
 For the longer project story, see [Version History](./docs/history.md).

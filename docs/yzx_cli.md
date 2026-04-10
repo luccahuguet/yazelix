@@ -166,6 +166,13 @@ Refresh the current Home Manager flake input, then print the manual switch step
 - Runs `nix flake update yazelix`
 - Prints `home-manager switch` for the user to copy and run manually
 
+### `yzx home_manager prepare [--apply] [--yes]`
+Preview or archive manual-install artifacts before Home Manager takeover
+- Default: preview takeover blockers and manual-install artifacts without changing anything
+- `--apply`: archive the takeover artifacts so `home-manager switch` can take ownership cleanly
+- `--yes`: skip the confirmation prompt when `--apply` is used
+- Use this when migrating an existing upstream/manual install to Home Manager
+
 ### `yzx update nix [--yes] [--verbose]`
 Upgrade Determinate Nix
 - `yzx update nix`: Upgrade Determinate Nix via `determinate-nixd` (`--yes` skips prompt, `--verbose` shows command; sudo required; only works if Determinate Nix is installed)
@@ -196,6 +203,13 @@ Interactive command palette (fuzzy search)
 - In popup mode after running a command: `Backspace` returns to menu, `Enter`/`Esc` closes popup
 - Keybind: `Alt Shift M` opens the popup menu in Zellij
 - Popup pane is named `yzx_menu` to avoid duplicate menu instances
+
+### `yzx screen [STYLE]`
+Preview the animated welcome screen directly in the current terminal
+- `STYLE`: one of `logo`, `boids`, `game_of_life`, or `random`
+- Runs until a key is pressed
+- Requires an interactive terminal that supports timed keypress reads via bash
+- Useful for previewing welcome styles without launching the full Yazelix UI
 
 ### `yzx popup [COMMAND ...]`
 Open a transient floating-pane command inside Zellij
@@ -323,12 +337,15 @@ yzx sponsor                   # Open the Yazelix sponsor page
 yzx update                    # Show the supported update-owner paths
 yzx update upstream           # Print and run nix run --refresh github:luccahuguet/yazelix#install
 yzx update home_manager       # Run nix flake update yazelix here, then print home-manager switch
+yzx home_manager prepare      # Preview manual-install takeover blockers before Home Manager switch
+yzx home_manager prepare --apply --yes  # Archive takeover artifacts, then hand off to home-manager switch
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
 yzx dev update --yes --activate installer  # Refresh all inputs, run canaries, sync pins, refresh vendored zjstatus and Yazi plugins, then activate the installer-owned runtime
 yzx dev update --yes --activate none  # Refresh the repo state only and skip local activation
 yzx dev update --yes --activate home_manager --home-manager-attr 'you@host'  # Refresh the repo, update the Home Manager yazelix-hm input, then run home-manager switch
 yzx dev update --canary-only --canaries [default]  # Run only the default canary
 yzx dev build_pane_orchestrator --sync  # Build and sync the pane orchestrator wasm (enable rust_wasi first)
+yzx screen game_of_life       # Preview the live game_of_life welcome animation in the terminal
 
 # Garbage collection
 yzx gc                        # Safe: clean devenv + remove unreferenced paths

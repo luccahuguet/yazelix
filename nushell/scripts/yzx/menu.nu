@@ -59,7 +59,7 @@ const PUBLIC_YZX_COMMAND_CATALOG = [
     {id: "yzx restart", category: "session", description: "Restart yazelix"}
     {id: "yzx reveal", category: "workspace", description: ""}
     {id: "yzx run", category: "system", description: "Run a command in the Yazelix environment and exit"}
-    {id: "yzx screen", category: "workspace", description: ""}
+    {id: "yzx screen", category: "workspace", description: "Preview the animated welcome screen directly in the current terminal."}
     {id: "yzx sponsor", category: "help", description: ""}
     {id: "yzx status", category: "system", description: "Canonical inspection command"}
     {id: "yzx tutor", category: "help", description: "Show the Yazelix guided overview."}

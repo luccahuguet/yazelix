@@ -9,7 +9,7 @@ See the origin story in `docs/the_start.md`.
 
 ## Major Version Descriptions
 
-- **v14**: Boundary-hardening capstone, honest update ownership, and package-runtime cleanup before the v15 trim-first transition
+- **v14**: Boundary hardening, honest update ownership, and package-runtime cleanup before the v15 trim-first transition
 - **v13.1**: Safer multi-tab cwd routing, stronger `yzx cwd` workspace sync, and better Zellij diagnostics
 - **v13**: Plugin-managed workspaces, migration-aware upgrades, richer front-door UX, and the full devenv-era integration push
 - **v12**: User-declared packs, Nixpkgs unstable, declarative themes, and tighter terminal/Zellij/Yazi integration
@@ -25,18 +25,18 @@ See the origin story in `docs/the_start.md`.
 - **v2**: Yazi-Helix File Tree v2, now with a Closeable Sidebar! (the name 'Yazelix' did not exist yet; [announcement](https://www.reddit.com/r/HelixEditor/comments/1d6nkxs/yazihelix_file_tree_v2_now_with_a_closeable/))
 - **v1**: My first Zellij/Yazi/Helix/Nushell setup, inspired by a Reddit interaction, with no integration and a lot of hacks ([announcement](https://www.reddit.com/r/HelixEditor/comments/1d59br3/file_tree_setup_using_yazi_zellij_helix_and/))
 
-## v14: Boundary-hardening capstone, honest update ownership, and package-runtime cleanup
+## v14: Boundary hardening, honest update ownership, and package-runtime cleanup
 
 - **The Delete-First Refactor Finally Went Wide** – v14 aggressively deleted stale compatibility surfaces, broad helper layers, the old config-manager stratum, the standalone startup-profile module, and a long tail of one-caller Nushell wrappers that were mostly carrying history and indirection cost.
 - **Ownership Boundaries Got Much Tighter** – Zellij, Yazi, terminal, shell-hook, migration, doctor, maintainer, and repo-checkout responsibilities were broken into smaller owners with clearer fail-fast behavior, especially around legacy override paths and wrapper script boundaries.
-- **Home Manager Became a Much More Real First-Class Path** – The series consolidated the Home Manager flake into the root surface, validated it in a clean room, tightened activation ordering, handled symlinked generated configs better, switched to the profile-owned `yzx` path, and introduced `yzx home_manager prepare` as the migration bridge from manual installs.
+- **Home Manager Became a Much More Real First-Class Path** – The series consolidated the Home Manager flake into the root surface, validated it in a clean room, tightened activation ordering, handled symlinked generated configs better, switched to the profile-owned `yzx` path, and introduced `yzx home_manager prepare` to preview or archive manual-install artifacts before Home Manager takeover.
 - **Everyday Workspace UX Still Moved Forward** – `Ctrl+y` became a direct focus toggle, `Alt+number` tab jumps landed, and zjstatus tab-window overflow behavior became more deliberate before truncation.
 - **Runtime and Refresh Internals Were Hardened Heavily** – Shared atomic writes, managed-root cleanup guards, a clearer backend adapter seam, explicit runtime entry transitions, no-op refresh repairs, canonical-contract config parsing, and launch-profile freshness diagnostics all landed before the final boundary cuts.
 - **The Ugly Runtime Bugs Were Actually Fixed** – v14 fixed flake-installed runtime-project symlink cleanup against immutable Nix-store paths, repaired a missing launch-profile import after refresh, fixed desktop bootstrap env setup, hardened bundled Yazi asset refresh cleanup, and restored manual desktop icon installation.
 - **Workspace Truth Moved Closer to the Plugin** – Sidebar identity and workspace retargeting moved deeper into the pane orchestrator, and the repo explicitly documented the backend-free workspace slice plus the v14 boundary-hardening gate.
 - **The Runtime Story Finally Got Honest** – The flake package surface became primary, `runtime/current` stopped defining the Home Manager identity path, shared runtime logic dropped installed-runtime fallbacks, and most installer-artifact doctoring was deleted instead of preserved.
-- **Update and Command Ownership Were Cleaned Up** – `yzx update` now points at `yzx update upstream` or `yzx update home_manager`, the late-series `yzx update runtime` / `yzx update all` experiment is gone again, the brief generic `yzx uninstall` path was dropped, and `yzx run` became a real argv passthrough.
-- **The Capstone Release Also Drew the Next Boundary** – v14 documented the package-runtime simplification path, the config dependence matrix, subsystem code inventory, and the trim-first v15 roadmap that follows this integrated/devenv-era capstone.
+- **Update and Command Ownership Were Cleaned Up** – `yzx update upstream` now serves upstream/manual installs, `yzx update home_manager` refreshes the owning Home Manager flake input, the late-series `yzx update runtime` / `yzx update all` experiment is gone again, and `yzx run` became a real one-shot argv passthrough for commands like `yzx run rg --files`.
+- **The Release Also Drew the Next Boundary** – v14 documented the package-runtime simplification path, the config dependence matrix, subsystem code inventory, and the trim-first v15 roadmap that follows this integrated/devenv-era transition.
 
 ## v13.1: Safer multi-tab cwd routing, stronger `yzx cwd` workspace sync, and better Zellij diagnostics
 
