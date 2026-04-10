@@ -70,6 +70,7 @@ Boundary hardening, honest update ownership, and a much cleaner runtime surface.
 - The packaged runtime became the honest center of the install story, with `runtime/current` and installer-owned indirection trimmed back sharply.
 - `yzx update` now points at explicit owners: `yzx update upstream` and `yzx update home_manager`.
 - `yzx update` now points at explicit owners, the transitional `yzx update runtime` / `yzx update all` flow is gone again, and `yzx run` became a real argv passthrough.
+- The current v14 line also carries forward the richer animation surface introduced late in v13, including the live `game_of_life` welcome mode and the `yzx screen` command.
 - A large delete-first cleanup pass trimmed broad helper surfaces and documented the trim-first path toward v15.
 
 For exact v14 upgrade notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new`.
