@@ -156,7 +156,7 @@ Show available update targets
 ### `yzx update upstream`
 Refresh Yazelix from the upstream installer surface
 - Prints the exact command it will run
-- Runs `nix run github:luccahuguet/yazelix#install`
+- Runs `nix run --refresh github:luccahuguet/yazelix#install`
 - Intended for installs driven by the upstream/manual installer path
 
 ### `yzx update home_manager`
@@ -321,7 +321,7 @@ yzx sponsor                   # Open the Yazelix sponsor page
 
 # Updates
 yzx update                    # Show the supported update-owner paths
-yzx update upstream           # Print and run nix run github:luccahuguet/yazelix#install
+yzx update upstream           # Print and run nix run --refresh github:luccahuguet/yazelix#install
 yzx update home_manager       # Run nix flake update yazelix here, then print home-manager switch
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
 yzx dev update --yes --activate installer  # Refresh all inputs, run canaries, sync pins, refresh vendored zjstatus and Yazi plugins, then activate the installer-owned runtime

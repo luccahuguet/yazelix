@@ -474,10 +474,10 @@ export def "yzx update upstream" [] {
 
     print_update_owner_warning
     print ""
-    let command = "nix run github:luccahuguet/yazelix#install"
+    let command = $"nix run --refresh ($YAZELIX_INSTALL_FLAKE_REF)"
     print_exact_command $command
 
-    let result = (^nix run github:luccahuguet/yazelix#install | complete)
+    let result = (^nix run --refresh $YAZELIX_INSTALL_FLAKE_REF | complete)
     print_completed_output $result
 
     if $result.exit_code != 0 {

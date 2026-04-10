@@ -690,10 +690,10 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
     $result
 }
 
-# Defends: yzx update upstream must print and run the exact upstream installer command.
+# Defends: yzx update upstream must print and run the exact refreshed upstream installer command.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_update_upstream_runs_exact_installer_command [] {
-    print "🧪 Testing yzx update upstream prints and runs the exact upstream installer command..."
+    print "🧪 Testing yzx update upstream prints and runs the exact refreshed upstream installer command..."
 
     let fixture = (setup_update_wrapper_fixture "yazelix_update_upstream_wrapper")
     let result = (try {
@@ -708,11 +708,11 @@ def test_yzx_update_upstream_runs_exact_installer_command [] {
             ($output.exit_code == 0)
             and ($stdout | str contains "Choose one update owner for this Yazelix install.")
             and ($stdout | str contains "Running:")
-            and ($stdout | str contains "nix run github:luccahuguet/yazelix#install")
-            and ($log_text | str contains "nix:run github:luccahuguet/yazelix#install")
+            and ($stdout | str contains "nix run --refresh github:luccahuguet/yazelix#install")
+            and ($log_text | str contains "nix:run --refresh github:luccahuguet/yazelix#install")
             and not ($log_text | str contains "home-manager:")
         ) {
-            print "  ✅ yzx update upstream now transparently wraps the exact upstream installer command"
+            print "  ✅ yzx update upstream now transparently wraps the exact refreshed upstream installer command"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) log=($log_text) stderr=(($output.stderr | str trim))"

@@ -432,7 +432,7 @@ def check_devenv_installation [capability_profile?: record] {
                 {
                     status: "warning"
                     message: "devenv missing from the installed Yazelix runtime"
-                    details: "Repair by rerunning `nix run github:luccahuguet/yazelix#install` or by switching to a package-managed update flow, then rerun the affected launch or refresh command."
+                    details: "Repair by rerunning `nix run --refresh github:luccahuguet/yazelix#install` or by switching to a package-managed update flow, then rerun the affected launch or refresh command."
                     fix_available: false
                 }
             }
@@ -456,7 +456,7 @@ def check_devenv_installation [capability_profile?: record] {
                 {
                     status: "warning"
                     message: "devenv not available for this runtime-root-only Yazelix session"
-                    details: "This mode does not own runtime repair. Provide `devenv` through the current runtime or PATH, or materialize a full install with `nix run github:luccahuguet/yazelix#install`."
+                    details: "This mode does not own runtime repair. Provide `devenv` through the current runtime or PATH, or materialize a full install with `nix run --refresh github:luccahuguet/yazelix#install`."
                     fix_available: false
                 }
             }

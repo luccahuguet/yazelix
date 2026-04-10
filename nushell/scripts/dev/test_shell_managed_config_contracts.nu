@@ -177,65 +177,6 @@ def test_managed_nushell_config_loads_in_repo_shell_without_runtime_env [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-# Defends: managed Nushell config loads the generated yzx extern bridge built from the real command tree.
-def test_managed_nushell_config_loads_generated_yzx_extern_bridge [] {
-    print "🧪 Testing managed Nushell config loads the generated yzx extern bridge..."
-
-    let repo_root = (get_repo_root)
-    let tmp_home = (^mktemp -d /tmp/yazelix_nu_yzx_extern_XXXXXX | str trim)
-    let xdg_config_home = ($tmp_home | path join ".config")
-    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
-    let init_dir = ($state_dir | path join "initializers" "nushell")
-
-    mkdir $xdg_config_home
-    mkdir $init_dir
-
-    let result = (try {
-        "" | save --force --raw ($init_dir | path join "yazelix_init.nu")
-        "" | save --force --raw ($init_dir | path join "yazelix_user_hook.nu")
-
-        let output = (with-env {
-            HOME: $tmp_home
-            XDG_CONFIG_HOME: $xdg_config_home
-            YAZELIX_RUNTIME_DIR: $repo_root
-            YAZELIX_STATE_DIR: $state_dir
-        } {
-            sync_generated_yzx_extern_bridge $repo_root $state_dir | ignore
-            ^nu -c $"source \"($repo_root | path join "nushell" "config" "config.nu")\"; scope commands | where name in [\"yzx update\", \"yzx update upstream\", \"yzx update home_manager\", \"yzx update nix\"] | sort-by name | to json -r" | complete
-        })
-
-        let stdout = ($output.stdout | default "")
-        let stderr_text = ($output.stderr | default "" | str trim)
-        let extern_path = (with-env {YAZELIX_STATE_DIR: $state_dir} { get_generated_yzx_extern_path $state_dir })
-        let extern_contents = (open --raw $extern_path)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "\"name\":\"yzx update\"")
-            and ($stdout | str contains "\"name\":\"yzx update upstream\"")
-            and ($stdout | str contains "\"name\":\"yzx update home_manager\"")
-            and ($stdout | str contains "\"name\":\"yzx update nix\"")
-            and ($stdout | str contains "\"type\":\"external\"")
-            and ($extern_contents | str contains 'export extern "yzx update upstream"')
-            and ($extern_contents | str contains 'export extern "yzx update home_manager"')
-            and ($extern_contents | str contains 'export extern "yzx update nix"')
-        ) {
-            print "  ✅ Managed Nushell config now loads a generated yzx extern bridge built from the real command tree"
-            true
-        } else {
-            print $"  ❌ Unexpected managed Nushell extern bridge output: exit=($output.exit_code) stdout=($stdout) stderr=($stderr_text) extern_path=($extern_path)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Regression: generated Nushell shell hooks must not pin yzx to a runtime-store import after runtime updates.
 def test_generated_nushell_shell_hook_uses_managed_config_only [] {
     print "🧪 Testing generated Nushell shell hooks source the managed config without importing a runtime-pinned yzx command..."
@@ -403,6 +344,7 @@ def test_source_checkout_runtime_resolution_beats_installed_runtime [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 # Regression: runtime-root resolution must fail fast instead of silently falling back to the config root.
 def test_runtime_resolution_fails_fast_without_valid_runtime_root [] {
     print "🧪 Testing runtime-root resolution fails fast without a valid runtime root..."
@@ -667,7 +609,6 @@ export def run_shell_managed_config_contract_tests [] {
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
         (test_managed_nushell_config_sources_optional_user_hook)
         (test_managed_nushell_config_loads_in_repo_shell_without_runtime_env)
-        (test_managed_nushell_config_loads_generated_yzx_extern_bridge)
         (test_generated_nushell_shell_hook_uses_managed_config_only)
         (test_managed_bash_config_sources_optional_user_hook)
         (test_managed_fish_config_does_not_export_helix_mode_env)

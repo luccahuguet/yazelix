@@ -113,7 +113,7 @@ Choose one update owner for each Yazelix install. Do not mix both update paths f
 `yzx update upstream` prints and runs:
 
 ```bash
-nix run github:luccahuguet/yazelix#install
+nix run --refresh github:luccahuguet/yazelix#install
 ```
 
 `yzx update home_manager` refreshes the current flake input with:
