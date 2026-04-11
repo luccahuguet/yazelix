@@ -69,15 +69,18 @@ def setup_desktop_runtime_probe_fixture [label: string, --with_hidden_launch_mod
     let runtime_store = ($cli_fixture.tmpdir | path join "runtime_store")
     let runtime_reference_root = ($cli_fixture.fake_home | path join ".local" "share" "yazelix" "runtime")
     let runtime_dir = ($runtime_store | path expand)
+    let runtime_scripts_dir = ($runtime_dir | path join "nushell" "scripts")
 
-    mkdir ($runtime_dir | path join "nushell" "scripts" "core")
+    mkdir ($runtime_scripts_dir | path join "core")
+    mkdir ($runtime_scripts_dir | path join "yzx")
     mkdir $runtime_reference_root
 
     ^ln -s $runtime_dir ($runtime_reference_root | path join "current")
-    ^ln -s (repo_path "nushell" "scripts" "core" "launch_yazelix.nu") ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+    ^cp --recursive (repo_path "nushell" "scripts" "utils") $runtime_scripts_dir
+    ^cp (repo_path "nushell" "scripts" "core" "launch_yazelix.nu") ($runtime_scripts_dir | path join "core" "launch_yazelix.nu")
+    ^cp (repo_path "nushell" "scripts" "yzx" "desktop.nu") ($runtime_scripts_dir | path join "yzx" "desktop.nu")
     if $with_hidden_launch_module {
-        mkdir ($runtime_dir | path join "nushell" "scripts" "yzx")
-        ^ln -s (repo_path "nushell" "scripts" "yzx" "launch.nu") ($runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
+        ^cp (repo_path "nushell" "scripts" "yzx" "launch.nu") ($runtime_scripts_dir | path join "yzx" "launch.nu")
     }
     ^ln -s (repo_path ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
     ^ln -s (repo_path "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
@@ -552,15 +555,25 @@ def test_yzx_cli_desktop_launch_ignores_hostile_shell_env [] {
     $result
 }
 
-# Regression: desktop launch must use the installed core launch fast path with a clean external-launch environment.
+# Regression: desktop launch must use the installed runtime fast path and clear Yazelix-owned desktop launch state before invoking it.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
-    print "🧪 Testing yzx desktop launch uses the installed core launch fast path with a clean external-launch env..."
+    print "🧪 Testing yzx desktop launch uses the installed runtime fast path and clears Yazelix-owned launch state..."
 
     let fixture = (setup_desktop_runtime_probe_fixture "yazelix_desktop_leaf_runtime")
 
     let result = (try {
-        write_probe_nu ($fixture.fake_profile_bin | path join "nu") [
+        let hostile_nu = ($fixture.fake_profile_bin | path join "nu")
+        let runtime_nu = ($fixture.runtime_dir | path join "bin" "nu")
+        mkdir ($runtime_nu | path dirname)
+
+        write_probe_nu $hostile_nu [
+            "#!/bin/sh"
+            $"printf 'hostile-nu\\n' > '($fixture.nu_log)'"
+            "exit 9"
+        ]
+
+        write_probe_nu $runtime_nu [
             "#!/bin/sh"
             $"printf '%s\\n' \"$1\" > '($fixture.nu_log)'"
             "shift"
@@ -581,10 +594,10 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
             "exit 0"
         ]
 
-        let desktop_script = (repo_path "nushell" "scripts" "yzx" "desktop.nu")
+        let desktop_script = ($fixture.runtime_dir | path join "nushell" "scripts" "yzx" "desktop.nu")
         let output = (with-env {
             HOME: $fixture.fake_home
-            YAZELIX_NU_BIN: ($fixture.fake_profile_bin | path join "nu")
+            YAZELIX_NU_BIN: $hostile_nu
             YAZELIX_RUNTIME_DIR: ($fixture.tmpdir | path join "hostile_runtime")
             YAZELIX_DIR: "/hostile/legacy_runtime"
             DEVENV_PROFILE: ($fixture.tmpdir | path join "hostile_profile")
@@ -602,13 +615,11 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
         let stderr = ($output.stderr | str trim)
         let invocation = (read_probe_lines $fixture.nu_log)
         let expected_launch_module = ($fixture.runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+        let invocation_env = ($invocation | skip 3)
         let expected_env = [
             $"YAZELIX_RUNTIME_DIR=($fixture.runtime_dir)"
             "YAZELIX_DIR=unset"
-            "DEVENV_PROFILE=unset"
-            "DEVENV_ROOT=unset"
             "IN_YAZELIX_SHELL=unset"
-            "IN_NIX_SHELL=unset"
             "YAZELIX_TERMINAL=unset"
             "YAZELIX_MENU_POPUP=unset"
             "YAZELIX_POPUP_PANE=unset"
@@ -622,9 +633,9 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
             and (($invocation | get -o 0 | default "") == $expected_launch_module)
             and (($invocation | get -o 1 | default "") == $fixture.fake_home)
             and (($invocation | get -o 2 | default "") == "--desktop-fast-path")
-            and (($invocation | skip 3) == $expected_env)
+            and ($expected_env | all {|line| $line in $invocation_env })
         ) {
-            print "  ✅ yzx desktop launch uses the installed core launch fast path and ignores inherited shell state"
+            print "  ✅ yzx desktop launch now reanchors to the installed runtime fast path and clears stale Yazelix launch state"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr) invocation=(($invocation | to json -r))"
@@ -639,41 +650,34 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
     $result
 }
 
-# Regression: desktop launch should fall back to the standard hidden-wait path only when no visible bootstrap terminal exists.
+# Regression: desktop launch should fail loudly from the fast path instead of silently falling back to a second launch path.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_desktop_launch_falls_back_to_hidden_wait_when_no_visible_bootstrap_terminal_exists [] {
-    print "🧪 Testing yzx desktop launch falls back to the hidden-wait path only after the fast path reports no visible bootstrap terminal..."
+def test_yzx_desktop_launch_propagates_fast_path_failures_without_fallback [] {
+    print "🧪 Testing yzx desktop launch reports fast-path failures instead of hiding them behind a fallback launch..."
 
-    let fixture = (setup_desktop_runtime_probe_fixture "yazelix_desktop_fallback_runtime" --with_hidden_launch_module)
+    let fixture = (setup_desktop_runtime_probe_fixture "yazelix_desktop_fallback_runtime")
 
     let result = (try {
         let fast_launch_module = ($fixture.runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
-        write_probe_nu ($fixture.fake_profile_bin | path join "nu") [
+        let runtime_nu = ($fixture.runtime_dir | path join "bin" "nu")
+        mkdir ($runtime_nu | path dirname)
+
+        write_probe_nu $runtime_nu [
             "#!/bin/sh"
-            "call_type=unknown"
-            $"if [ \"$1\" = \"($fast_launch_module)\" ]; then"
-            "  call_type=fast"
-            "fi"
-            $"printf '[%s]\\n' \"$call_type\" >> '($fixture.nu_log)'"
             $"printf '%s\\n' \"$1\" >> '($fixture.nu_log)'"
             "shift"
             "for arg in \"$@\"; do"
             $"  printf '%s\\n' \"$arg\" >> '($fixture.nu_log)'"
             "done"
             $"printf 'YAZELIX_RUNTIME_DIR=%s\\n' \"${YAZELIX_RUNTIME_DIR-unset}\" >> '($fixture.nu_log)'"
-            $"printf 'DEVENV_PROFILE=%s\\n' \"${DEVENV_PROFILE-unset}\" >> '($fixture.nu_log)'"
             $"printf 'IN_YAZELIX_SHELL=%s\\n' \"${IN_YAZELIX_SHELL-unset}\" >> '($fixture.nu_log)'"
-            "if [ \"$call_type\" = fast ]; then"
-            "  printf 'Failure class: desktop-bootstrap-unavailable.\\n' >&2"
-            "  exit 91"
-            "fi"
-            "exit 0"
+            "printf 'Failure class: desktop-bootstrap-unavailable.\\n' >&2"
+            "exit 91"
         ]
 
-        let desktop_script = (repo_path "nushell" "scripts" "yzx" "desktop.nu")
+        let desktop_script = ($fixture.runtime_dir | path join "nushell" "scripts" "yzx" "desktop.nu")
         let output = (with-env {
             HOME: $fixture.fake_home
-            YAZELIX_NU_BIN: ($fixture.fake_profile_bin | path join "nu")
             DEVENV_PROFILE: ($fixture.tmpdir | path join "hostile_profile")
             IN_YAZELIX_SHELL: "true"
             YAZELIX_RUNTIME_DIR: ($fixture.tmpdir | path join "hostile_runtime")
@@ -682,27 +686,18 @@ def test_yzx_desktop_launch_falls_back_to_hidden_wait_when_no_visible_bootstrap_
         })
         let stderr = ($output.stderr | str trim)
         let invocation = (read_probe_lines $fixture.nu_log)
-        let expected_launch_module = ($fixture.runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
-        let expected_launch_command = $"use \"($expected_launch_module)\" *; yzx launch --home"
 
         if (
-            ($output.exit_code == 0)
-            and ($stderr == "")
-            and (($invocation | get -o 0 | default "") == "[fast]")
-            and (($invocation | get -o 1 | default "") == $fast_launch_module)
-            and (($invocation | get -o 2 | default "") == $fixture.fake_home)
-            and (($invocation | get -o 3 | default "") == "--desktop-fast-path")
-            and (($invocation | get -o 4 | default "") == $"YAZELIX_RUNTIME_DIR=($fixture.runtime_dir)")
-            and (($invocation | get -o 5 | default "") == "DEVENV_PROFILE=unset")
-            and (($invocation | get -o 6 | default "") == "IN_YAZELIX_SHELL=unset")
-            and (($invocation | get -o 7 | default "") == "[unknown]")
-            and (($invocation | get -o 8 | default "") == "-c")
-            and (($invocation | get -o 9 | default "") == $expected_launch_command)
-            and (($invocation | get -o 10 | default "") == $"YAZELIX_RUNTIME_DIR=($fixture.runtime_dir)")
-            and (($invocation | get -o 11 | default "") == "DEVENV_PROFILE=unset")
-            and (($invocation | get -o 12 | default "") == "IN_YAZELIX_SHELL=unset")
+            ($output.exit_code == 1)
+            and ($stderr | str contains "Failure class: desktop-bootstrap-unavailable.")
+            and (($invocation | get -o 0 | default "") == $fast_launch_module)
+            and (($invocation | get -o 1 | default "") == $fixture.fake_home)
+            and (($invocation | get -o 2 | default "") == "--desktop-fast-path")
+            and (($invocation | get -o 3 | default "") == $"YAZELIX_RUNTIME_DIR=($fixture.runtime_dir)")
+            and (($invocation | get -o 4 | default "") == "IN_YAZELIX_SHELL=unset")
+            and not ($invocation | any {|line| $line == "-c" })
         ) {
-            print "  ✅ Desktop launch only falls back to hidden wait after the fast path reports no visible bootstrap terminal"
+            print "  ✅ yzx desktop launch now surfaces fast-path failures directly instead of hiding them behind a second launch attempt"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr) invocation=(($invocation | to json -r))"

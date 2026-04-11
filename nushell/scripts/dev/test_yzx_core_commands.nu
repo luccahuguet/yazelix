@@ -150,6 +150,20 @@ welcome_style = "random"
     }
 }
 
+def setup_installed_wrapper_desktop_fixture [label: string] {
+    let fixture = (setup_manual_desktop_install_fixture $label)
+    let installed_wrapper = ($fixture.tmp_home | path join ".local" "bin" "yzx")
+    mkdir ($installed_wrapper | path dirname)
+    write_test_executable $installed_wrapper [
+        "#!/bin/sh"
+        "exit 0"
+    ]
+
+    $fixture | merge {
+        installed_wrapper: $installed_wrapper
+    }
+}
+
 def setup_update_wrapper_fixture [label: string] {
     let fixture = (setup_managed_config_fixture
         $label
@@ -442,6 +456,37 @@ def test_yzx_desktop_install_writes_entry_and_icon_assets [] {
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) desktop_exists=(($fixture.desktop_path | path exists)) icons_ok=($icons_ok)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: desktop install must prefer the stable installed wrapper when it exists, not a runtime-pinned store path.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_desktop_install_prefers_installed_wrapper [] {
+    print "🧪 Testing yzx desktop install prefers the stable installed wrapper..."
+
+    let fixture = (setup_installed_wrapper_desktop_fixture "yazelix_desktop_install_prefers_installed_wrapper")
+
+    let result = (try {
+        let output = (run_yzx_command_for_fixture $fixture "yzx desktop install")
+        let desktop_entry = (open --raw $fixture.desktop_path)
+
+        if (
+            ($output.exit_code == 0)
+            and ($desktop_entry | str contains $fixture.installed_wrapper)
+            and not ($desktop_entry | str contains $fixture.launcher_path)
+        ) {
+            print "  ✅ yzx desktop install now anchors the desktop entry to the stable installed wrapper"
+            true
+        } else {
+            print $"  ❌ Unexpected desktop entry contents: exit=($output.exit_code) entry=($desktop_entry)"
             false
         }
     } catch {|err|

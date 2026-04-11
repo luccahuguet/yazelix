@@ -320,6 +320,10 @@ def create_restart_sidebar_bootstrap_file [target_dir: string] {
     $bootstrap_file
 }
 
+def get_installed_yzx_wrapper_path [] {
+    ($env.HOME | path join ".local" "bin" "yzx")
+}
+
 # Restart yazelix
 export def "yzx restart" [
 ] {
@@ -339,8 +343,20 @@ export def "yzx restart" [
         print "🔄 Restarting Yazelix \(opening new window\)..."
     }
 
-    with-env $restart_env {
-        yzx launch
+    let installed_wrapper = (get_installed_yzx_wrapper_path)
+    if ($installed_wrapper | path exists) {
+        let launch_output = (with-env $restart_env {
+            ^$installed_wrapper launch | complete
+        })
+        if $launch_output.exit_code != 0 {
+            print_completed_output $launch_output
+            print "❌ Failed to relaunch Yazelix through the installed wrapper."
+            exit $launch_output.exit_code
+        }
+    } else {
+        with-env $restart_env {
+            yzx launch
+        }
     }
 
     # Wait for new session to spawn

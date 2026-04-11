@@ -74,6 +74,79 @@ def run_completed_external [
     $result
 }
 
+def prepare_hostile_install_env [temp_home: string] {
+    let hostile_bin = ($temp_home | path join ".hostile_bin")
+    mkdir $hostile_bin
+
+    let real_nu = (resolve_external_command_path "nu")
+    if $real_nu == null {
+        error make { msg: "Could not resolve `nu` while preparing hostile install env" }
+    }
+
+    let hostile_scripts = [
+        {
+            name: "nu"
+            content: ([
+                "#!/bin/sh"
+                $"exec \"($real_nu)\" \"$@\""
+                ""
+            ] | str join "\n")
+        }
+        {
+            name: "starship"
+            content: ([
+                "#!/bin/sh"
+                "echo '# hostile starship path leaked into install output'"
+                ""
+            ] | str join "\n")
+        }
+        {
+            name: "zoxide"
+            content: ([
+                "#!/bin/sh"
+                "echo '# hostile zoxide path leaked into install output'"
+                ""
+            ] | str join "\n")
+        }
+        {
+            name: "mise"
+            content: ([
+                "#!/bin/sh"
+                "echo '# hostile mise path leaked into install output'"
+                ""
+            ] | str join "\n")
+        }
+        {
+            name: "atuin"
+            content: ([
+                "#!/bin/sh"
+                "echo '# hostile atuin path leaked into install output'"
+                ""
+            ] | str join "\n")
+        }
+        {
+            name: "carapace"
+            content: ([
+                "#!/bin/sh"
+                "echo '# hostile carapace path leaked into install output'"
+                ""
+            ] | str join "\n")
+        }
+    ]
+
+    for hostile_script in $hostile_scripts {
+        let script_path = ($hostile_bin | path join $hostile_script.name)
+        let content = $hostile_script.content
+        $content | save --force --raw $script_path
+        chmod +x $script_path
+    }
+
+    {
+        hostile_bin: $hostile_bin
+        hostile_nu: ($hostile_bin | path join "nu")
+    }
+}
+
 def run_flake_install [temp_home: string] {
     let state_root = ($temp_home | path join ".local" "share")
     let config_root = ($temp_home | path join ".config")
@@ -87,10 +160,23 @@ def run_flake_install [temp_home: string] {
     "" | save --force $bashrc_path
     "" | save --force $nushell_config_path
 
+    let hostile_env = (prepare_hostile_install_env $temp_home)
+    let inherited_path = ($env.PATH? | default [])
+    let inherited_path_desc = ($inherited_path | describe)
+    let install_path = if ($inherited_path_desc | str starts-with "list") {
+        [$hostile_env.hostile_bin] | append $inherited_path
+    } else if (($inherited_path | into string | str trim) | is-empty) {
+        [$hostile_env.hostile_bin]
+    } else {
+        [$hostile_env.hostile_bin, ($inherited_path | into string)]
+    }
+
     with-env {
         HOME: $temp_home
         XDG_CONFIG_HOME: $config_root
         XDG_DATA_HOME: $state_root
+        PATH: $install_path
+        YAZELIX_NU_BIN: $hostile_env.hostile_nu
     } {
         run_completed_external "running `nix run .#install` for flake install smoke validation" "nix" ["run" ".#install" "--extra-experimental-features" "nix-command flakes"] $INSTALL_TIMEOUT_SECONDS
     }
@@ -123,7 +209,11 @@ def verify_installed_runtime [temp_home: string] {
     let pack_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix_packs.toml")
     let config_root = ($temp_home | path join ".config" "yazelix")
     let managed_taplo_config = ($config_root | path join ".taplo.toml")
+    let desktop_entry = ($temp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")
     let zellij_config = ($temp_home | path join ".local" "share" "yazelix" "configs" "zellij" "config.kdl")
+    let bash_initializer = ($temp_home | path join ".local" "share" "yazelix" "initializers" "bash" "yazelix_init.sh")
+    let nushell_initializer = ($temp_home | path join ".local" "share" "yazelix" "initializers" "nushell" "yazelix_init.nu")
+    let hostile_bin = ($temp_home | path join ".hostile_bin")
     let yazi_theme = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "theme.toml")
     let yazi_flavor_root = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors")
     let resolved_runtime_current = (^readlink -f $runtime_current | str trim)
@@ -138,7 +228,10 @@ def verify_installed_runtime [temp_home: string] {
     require_path_exists $nushell_config "generated Nushell hook config"
     require_path_exists $user_config "seeded user config"
     require_path_exists $managed_taplo_config "managed Taplo formatter config"
+    require_path_exists $desktop_entry "generated desktop entry"
     require_path_exists $zellij_config "generated Zellij config"
+    require_path_exists $bash_initializer "generated Bash initializer"
+    require_path_exists $nushell_initializer "generated Nushell initializer"
     require_path_exists $yazi_theme "generated Yazi theme config"
     require_path_exists $yazi_flavor_root "generated Yazi flavors directory"
 
@@ -158,6 +251,9 @@ def verify_installed_runtime [temp_home: string] {
 
     require_file_contains $nushell_config $resolved_runtime_current "generated Nushell hook config"
     require_file_not_contains $nushell_config "/runtime/current/" "generated Nushell hook config"
+    require_file_contains $desktop_entry $"Exec=\"($yzx_path)\" desktop launch" "generated desktop entry"
+    require_file_not_contains $bash_initializer $hostile_bin "generated Bash initializer"
+    require_file_not_contains $nushell_initializer $hostile_bin "generated Nushell initializer"
     require_file_not_contains $yazi_theme "[flavor]" "generated Yazi theme config"
 
     if ((ls $yazi_flavor_root | where type == dir | length) < 1) {

@@ -9,6 +9,7 @@ const DESKTOP_LAUNCH_CLEARED_ENV_KEYS = [
     "YAZELIX_DIR"
     "YAZELIX_MENU_POPUP"
     "YAZELIX_POPUP_PANE"
+    "YAZELIX_NU_BIN"
     "YAZELIX_TERMINAL"
     "YAZI_ID"
     "ZELLIJ"
@@ -116,6 +117,19 @@ def get_desktop_entry_path [] {
     (get_desktop_applications_dir | path join "com.yazelix.Yazelix.desktop")
 }
 
+def get_installed_yzx_wrapper_path [] {
+    ($env.HOME | path join ".local" "bin" "yzx")
+}
+
+def resolve_desktop_launcher_path [runtime_dir: string] {
+    let installed_wrapper = (get_installed_yzx_wrapper_path)
+    if ($installed_wrapper | path exists) {
+        $installed_wrapper
+    } else {
+        get_yzx_cli_path $runtime_dir
+    }
+}
+
 def get_desktop_icon_entries [runtime_dir: string] {
     $DESKTOP_ICON_SIZES
     | each {|size|
@@ -168,7 +182,7 @@ export def "yzx desktop install" [
     if $runtime_dir == null {
         error make {msg: "Cannot resolve a Yazelix runtime root for desktop integration."}
     }
-    let launcher_path = (get_yzx_cli_path $runtime_dir)
+    let launcher_path = (resolve_desktop_launcher_path $runtime_dir)
 
     if not ($runtime_dir | path exists) {
         error make {msg: $"Missing Yazelix runtime at ($runtime_dir)"}
@@ -225,13 +239,12 @@ export def "yzx desktop launch" [] {
     }
     let fast_launch_module = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
     let launch_env = (get_desktop_launch_env $runtime_dir)
-    let resolved_nu_bin = (
-        $env.YAZELIX_NU_BIN?
-        | default "nu"
-        | into string
-        | str trim
-    )
-    let nu_bin = if ($resolved_nu_bin | is-empty) { "nu" } else { $resolved_nu_bin }
+    let runtime_nu = ($runtime_dir | path join "bin" "nu")
+    let nu_bin = if ($runtime_nu | path exists) {
+        $runtime_nu
+    } else {
+        "nu"
+    }
 
     if not ($fast_launch_module | path exists) {
         error make {msg: $"Missing Yazelix desktop launch module at ($fast_launch_module)"}

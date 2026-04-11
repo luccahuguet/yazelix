@@ -37,14 +37,10 @@
               [
                 "@runtime@"
                 "@coreutils_bin@"
-                "@nu_bin@"
-                "@zellij_bin@"
               ]
               [
                 "${runtime}"
                 "${pkgs.coreutils}/bin"
-                "${pkgs.nushell}/bin/nu"
-                "${pkgs.zellij}/bin"
               ]
               (builtins.readFile ./shells/posix/install_yazelix.sh.in)
           );

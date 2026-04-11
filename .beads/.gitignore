@@ -13,3 +13,6 @@ last-touched
 
 # Export history
 .br_history/
+
+# Recovery backups created by `br doctor --repair`
+.br_recovery/
