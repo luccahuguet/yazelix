@@ -1,5 +1,5 @@
-{ pkgs, src ? ./. }:
+{ pkgs, src ? ./., nixgl ? null }:
 
 import ./packaging/mk_yazelix_package.nix {
-  inherit pkgs src;
+  inherit pkgs src nixgl;
 }

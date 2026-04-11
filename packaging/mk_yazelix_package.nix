@@ -1,11 +1,11 @@
-{ pkgs, src ? ../. }:
+{ pkgs, src ? ../., nixgl ? null }:
 
 let
-  runtimeDeps = import ./runtime_deps.nix { inherit pkgs; };
+  runtimeDeps = import ./runtime_deps.nix { inherit pkgs nixgl; };
   runtimeBinPath = pkgs.lib.makeBinPath runtimeDeps;
 
   runtime = import ./mk_runtime_tree.nix {
-    inherit pkgs src;
+    inherit pkgs src nixgl;
     name = "yazelix-runtime";
   };
 in

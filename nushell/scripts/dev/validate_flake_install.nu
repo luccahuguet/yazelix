@@ -152,6 +152,9 @@ def verify_installed_runtime [temp_home: string] {
     for expected_bin in ["nu" "yzx" "zellij" "ghostty" "yazi" "hx" "nvim" "fish" "zsh" "bash" "nix" "jq" "fd" "rg"] {
         require_path_exists ($runtime_bin | path join $expected_bin) $"runtime binary `($expected_bin)`"
     }
+    if (($nu.os-info.name | str downcase) == "linux") {
+        require_path_exists ($runtime_bin | path join "nixGLMesa") "runtime binary `nixGLMesa`"
+    }
 
     require_file_contains $nushell_config $resolved_runtime_current "generated Nushell hook config"
     require_file_not_contains $nushell_config "/runtime/current/" "generated Nushell hook config"

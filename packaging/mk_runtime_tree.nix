@@ -1,7 +1,7 @@
-{ pkgs, src ? ../. , name ? "yazelix-runtime" }:
+{ pkgs, src ? ../., nixgl ? null, name ? "yazelix-runtime" }:
 
 let
-  runtimeDeps = import ./runtime_deps.nix { inherit pkgs; };
+  runtimeDeps = import ./runtime_deps.nix { inherit pkgs nixgl; };
   runtimeBinDirs = map (pkg: "${pkg}/bin") runtimeDeps;
   escapedRuntimeBinDirs = pkgs.lib.escapeShellArgs runtimeBinDirs;
 in

@@ -3,12 +3,14 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixgl.url = "github:guibou/nixGL";
   };
 
   outputs =
     {
       self,
       nixpkgs,
+      nixgl,
     }:
     let
       systems = [
@@ -20,8 +22,8 @@
       forAllSystems = nixpkgs.lib.genAttrs systems;
       mkPkgs = system: nixpkgs.legacyPackages.${system};
       homeManagerModule = import ./home_manager/module.nix;
-      runtimePackage = pkgs: import ./yazelix_runtime_package.nix { inherit pkgs; };
-      yazelixPackage = pkgs: import ./yazelix_package.nix { inherit pkgs; };
+      runtimePackage = pkgs: import ./yazelix_runtime_package.nix { inherit pkgs nixgl; };
+      yazelixPackage = pkgs: import ./yazelix_package.nix { inherit pkgs nixgl; };
     in
     {
       packages = forAllSystems (

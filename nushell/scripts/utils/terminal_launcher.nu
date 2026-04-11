@@ -39,12 +39,26 @@ def resolve_nixgl_launch_prefix [] {
         return $"($runtime_nixgl_default) "
     }
 
+    let runtime_nixgl_mesa = ((get_yazelix_runtime_dir) | path join "bin" "nixGLMesa")
+    if ($runtime_nixgl_mesa | path exists) {
+        return $"($runtime_nixgl_mesa) "
+    }
+
+    let runtime_nixgl_intel = ((get_yazelix_runtime_dir) | path join "bin" "nixGLIntel")
+    if ($runtime_nixgl_intel | path exists) {
+        return $"($runtime_nixgl_intel) "
+    }
+
     if (which nixGL | is-not-empty) {
         return "nixGL "
     }
 
     if (which nixGLDefault | is-not-empty) {
         return "nixGLDefault "
+    }
+
+    if (which nixGLMesa | is-not-empty) {
+        return "nixGLMesa "
     }
 
     if (which nixGLIntel | is-not-empty) {

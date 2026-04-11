@@ -271,6 +271,54 @@ def test_ghostty_linux_launch_command_keeps_linux_specific_flags [] {
     }
 }
 
+# Regression: Linux Ghostty launch must use a runtime-owned nixGL wrapper when one is shipped.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_ghostty_linux_launch_command_prefers_runtime_owned_nixgl_wrapper [] {
+    print "🧪 Testing Ghostty launch prefers the runtime-owned nixGL wrapper on Linux..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_linux_nixgl_launch_XXXXXX | str trim)
+    let fake_runtime = ($tmpdir | path join "runtime")
+    let fake_wrapper = ($fake_runtime | path join "bin" "nixGLMesa")
+    mkdir ($fake_runtime | path join "bin")
+    '{}' | save --force --raw ($fake_runtime | path join "yazelix_default.toml")
+
+    let result = (try {
+        '#!/bin/sh
+exit 0
+' | save --force --raw $fake_wrapper
+        ^chmod +x $fake_wrapper
+
+        let launch_cmd = (with-env {
+            YAZELIX_TEST_OS: "linux"
+            YAZELIX_RUNTIME_DIR: $fake_runtime
+        } {
+            build_launch_command {
+                terminal: "ghostty"
+                name: "Ghostty"
+                command: "ghostty"
+            } "/tmp/ghostty-config" "/tmp" false
+        })
+
+        if (
+            ($launch_cmd | str contains $"($fake_wrapper) ghostty")
+            and ($launch_cmd | str contains '--gtk-single-instance=false')
+            and ($launch_cmd | str contains '--x11-instance-name="yazelix"')
+        ) {
+            print "  ✅ Linux Ghostty launch now prefers the runtime-owned nixGL wrapper when Yazelix ships one"
+            true
+        } else {
+            print $"  ❌ Unexpected Linux Ghostty nixGL launch command: ($launch_cmd)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Regression: macOS Ghostty launch must not inherit Linux GTK/X11 flags.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_ghostty_macos_launch_command_omits_linux_specific_flags [] {
@@ -1625,6 +1673,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
         (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
         (test_managed_wrapper_launch_command_does_not_forward_config_mode_flag)
+        (test_ghostty_linux_launch_command_prefers_runtime_owned_nixgl_wrapper)
         (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
         (test_parse_yazelix_config_bootstraps_main_default_surface)
