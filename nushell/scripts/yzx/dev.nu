@@ -24,12 +24,12 @@ export def "yzx dev" [] {
 
 export def "yzx dev update" [
     --yes      # Skip confirmation prompt
-    --no-canary  # Skip canary refresh/build checks after updating devenv.lock
+    --no-canary  # Skip canary refresh/build checks after updating flake.lock
     --activate: string = ""  # Required unless --canary-only: installer, home_manager, or none
     --home-manager-dir: string = "~/.config/home-manager"  # Home Manager flake directory used when --activate home_manager
     --home-manager-input: string = "yazelix-hm"  # Home Manager flake input name to refresh before switch
     --home-manager-attr: string = ""  # Optional Home Manager flake output attribute appended as #attr during switch
-    --canary-only  # Run canary checks without updating devenv.lock or syncing pins
+    --canary-only  # Run canary checks without updating flake.lock or syncing pins
     --canaries: list<string> = []  # Canary subset: default, shell_layout
 ] {
     run_dev_update_workflow $yes $no_canary $activate $home_manager_dir $home_manager_input $home_manager_attr $canary_only $canaries

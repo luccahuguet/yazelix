@@ -3,7 +3,6 @@
 use repo_checkout.nu require_yazelix_repo_root
 use config_surfaces.nu [copy_default_config_surfaces load_config_surface_from_main get_main_user_config_path]
 use readme_release_block.nu sync_readme_surface
-use devenv_cli.nu resolve_preferred_devenv_path
 use nix_detector.nu ensure_nix_available
 
 def update_constant_value [contents: string, key: string, new_value: string] {
@@ -329,6 +328,20 @@ export def resolve_requested_update_activation_mode [requested?: string, canary_
     resolve_update_activation_mode $normalized
 }
 
+def refresh_repo_runtime_inputs [repo_root: string] {
+    print $"⚙️ Running: nix flake update nixpkgs \(cwd: ($repo_root)\)"
+    try {
+        do {
+            ^nix flake update nixpkgs --flake $repo_root
+        }
+    } catch {|err|
+        print $"❌ nix flake update nixpkgs failed: ($err.msg)"
+        print "   Check your network connection and flake inputs, then try again."
+        exit 1
+    }
+    print "✅ flake.lock nixpkgs input updated."
+}
+
 def resolve_home_manager_flake_dir [candidate: string] {
     let expanded = ($candidate | path expand)
     let flake_file = ($expanded | path join "flake.nix")
@@ -485,8 +498,8 @@ export def run_dev_update_workflow [
     }
 
     if (not $yes) and (not $canary_only) {
-        print "⚠️  This updates Yazelix maintainer inputs to latest upstream versions."
-        print "   The hardened flow updates devenv.lock locally, then runs canary refresh/build checks before finishing."
+        print "⚠️  This updates Yazelix runtime inputs to latest upstream unstable revisions."
+        print "   The hardened flow updates flake.lock locally, then runs canary refresh/build checks before finishing."
         print "   Broken updates should stay local and never be pushed."
         let confirm = try {
             (input "Continue? [y/N]: " | str downcase)
@@ -499,23 +512,10 @@ export def run_dev_update_workflow [
 
     if $canary_only {
         print $"🧪 Running update canaries only: ($selected_canaries | str join ', ')"
-    } else {
-        print $"⚙️ Running: devenv update \(cwd: ($yazelix_dir)\)"
     }
 
     if not $canary_only {
-        try {
-            do {
-                cd $yazelix_dir
-                let devenv_path = (resolve_preferred_devenv_path)
-                ^$devenv_path update
-            }
-        } catch {|err|
-            print $"❌ devenv update failed: ($err.msg)"
-            print "   Check your network connection and devenv.yaml inputs, then try again."
-            exit 1
-        }
-        print "✅ devenv.lock updated."
+        refresh_repo_runtime_inputs $yazelix_dir
     }
 
     if $no_canary {

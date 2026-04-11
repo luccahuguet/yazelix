@@ -606,6 +606,75 @@ def test_dev_update_requires_explicit_activation_for_real_updates [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Defends: maintainer update refreshes the runtime flake pin directly so packaged runtime tool versions actually move.
+def test_dev_update_refreshes_runtime_flake_inputs [] {
+    print "🧪 Testing yzx dev update refreshes flake nixpkgs directly..."
+
+    let repo_root = ($env.PWD | path expand)
+    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
+    let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_inputs_XXXXXX | str trim)
+    let bin_dir = ($tmp_root | path join "bin")
+    let log_path = ($tmp_root | path join "update.log")
+    let nix_script = ($bin_dir | path join "nix")
+    let current_path = if (($env.PATH | describe) | str contains "list") {
+        $env.PATH | str join (char esep)
+    } else {
+        $env.PATH | into string
+    }
+
+    mkdir $bin_dir
+    [
+        "#!/usr/bin/env bash"
+        "printf 'nix:%s\\n' \"$*\" >> \"$YZX_TEST_LOG\""
+        "exit 0"
+    ] | str join "\n" | save --force --raw $nix_script
+    ^chmod +x $nix_script
+
+    let result = (try {
+        let snippet = (
+            [
+                $"source \"($dev_module)\""
+                "refresh_repo_runtime_inputs $env.YZX_TEST_REPO_ROOT"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            PATH: $"($bin_dir)(char esep)($current_path)"
+            YZX_TEST_LOG: $log_path
+            YZX_TEST_REPO_ROOT: $repo_root
+        } {
+            ^nu -c $snippet | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let log_lines = if ($log_path | path exists) {
+            open --raw $log_path | lines
+        } else {
+            []
+        }
+        let expected_log = [
+            $"nix:flake update nixpkgs --flake ($repo_root)"
+        ]
+
+        if (
+            ($output.exit_code == 0)
+            and ($log_lines == $expected_log)
+            and ($stdout | str contains "✅ flake.lock nixpkgs input updated.")
+        ) {
+            print "  ✅ Maintainer update now refreshes the runtime flake pin directly"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) log=(($log_lines | to json -r)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 # Defends: Home Manager activation refreshes the configured flake input and switches the requested flake ref instead of falling back to the installer path.
 def test_dev_update_installer_activation_streams_install_logs [] {
     print "🧪 Testing yzx dev update installer activation streams local install logs through nix run -L..."
@@ -950,6 +1019,7 @@ def main [] {
         (test_issue_bead_reconciliation_plan)
         (test_issue_bead_comment_plan)
         (test_dev_update_requires_explicit_activation_for_real_updates)
+        (test_dev_update_refreshes_runtime_flake_inputs)
         (test_dev_update_installer_activation_streams_install_logs)
         (test_dev_update_activation_mode_rejects_unknown_values)
         (test_dev_update_home_manager_activation_refreshes_input_and_switches_requested_ref)
