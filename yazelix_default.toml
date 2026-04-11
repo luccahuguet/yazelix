@@ -70,10 +70,10 @@ default_shell = "nu"
 # The first entry is the primary terminal used for launch; the rest are fallbacks.
 # Options: "ghostty", "wezterm", "kitty", "alacritty", "foot" (Linux-only)
 #
-# Ghostty installation:
-# - Linux: Provided by Yazelix via Nix
-# - macOS: Install via Homebrew: `brew install --cask ghostty`
-#   (Nix package doesn't support macOS due to app bundle limitations)
+# Ghostty availability:
+# - Linux and macOS: Provided by Yazelix via Nix as the built-in default terminal path
+# - WezTerm, Kitty, and Alacritty: supported PATH-provided alternatives
+# - Foot: supported Linux-only PATH-provided alternative
 #
 # Auto-detection fallback order matches this list.
 # WezTerm is the recommended fallback (works on both platforms, best image preview)

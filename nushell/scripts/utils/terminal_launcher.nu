@@ -18,6 +18,16 @@ def get_terminal_title [terminal: string] {
     $"Yazelix - (($TERMINAL_METADATA | get -o $terminal | default {} | get -o name | default $terminal))"
 }
 
+def get_runtime_platform_name []: nothing -> string {
+    (
+        $env.YAZELIX_TEST_OS?
+        | default $nu.os-info.name
+        | into string
+        | str trim
+        | str downcase
+    )
+}
+
 def resolve_nixgl_launch_prefix [] {
     let runtime_nixgl = ((get_yazelix_runtime_dir) | path join "bin" "nixGL")
     if ($runtime_nixgl | path exists) {
@@ -163,6 +173,23 @@ def get_working_dir_arg [terminal: string, working_dir: string]: nothing -> stri
     }
 }
 
+def build_ghostty_launch_command [
+    command: string
+    config_path: string
+    title: string
+    working_dir_arg: string
+    startup_shell: string
+]: nothing -> string {
+    let platform_name = (get_runtime_platform_name)
+
+    if $platform_name == "macos" {
+        return $"($command) --config-default-files=false --config-file=($config_path) --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
+    }
+
+    let nixgl_prefix = (resolve_nixgl_launch_prefix)
+    $"($nixgl_prefix)($command) --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --class=\"($YAZELIX_WINDOW_CLASS)\" --x11-instance-name=\"($YAZELIX_X11_INSTANCE)\" --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
+}
+
 # Build launch command for a terminal. The returned command is a foreground
 # terminal exec; detached/background handling is applied by run_detached_terminal_launch.
 export def build_launch_command [
@@ -184,7 +211,7 @@ export def build_launch_command [
     let nixgl_prefix = (resolve_nixgl_launch_prefix)
     let terminal_cmd = match $terminal {
         "ghostty" => {
-            $"($nixgl_prefix)($command) --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --class=\"($YAZELIX_WINDOW_CLASS)\" --x11-instance-name=\"($YAZELIX_X11_INSTANCE)\" --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
+            build_ghostty_launch_command $command $config_path $title $working_dir_arg $startup_shell
         },
         "wezterm" => {
             $"($nixgl_prefix)($command) --config-file ($config_path) start --class=($YAZELIX_WINDOW_CLASS)($working_dir_arg) -- ($startup_shell)"

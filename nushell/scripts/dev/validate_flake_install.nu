@@ -127,6 +127,7 @@ def verify_installed_runtime [temp_home: string] {
     let yazi_theme = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "theme.toml")
     let yazi_flavor_root = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors")
     let resolved_runtime_current = (^readlink -f $runtime_current | str trim)
+    let resolved_runtime_bin = ($resolved_runtime_current | path join "bin")
 
     require_path_exists $runtime_current "installed runtime symlink"
     require_path_exists $runtime_nu "runtime-local Nushell binary"
@@ -148,7 +149,7 @@ def verify_installed_runtime [temp_home: string] {
     require_path_missing ($runtime_current | path join "devenv.yaml") "runtime-local devenv.yaml"
     require_path_missing ($runtime_current | path join "yazelix_packs_default.toml") "runtime-local pack template"
 
-    for expected_bin in ["nu" "yzx" "zellij" "yazi" "hx" "nvim" "fish" "zsh" "bash" "nix" "jq" "fd" "rg"] {
+    for expected_bin in ["nu" "yzx" "zellij" "ghostty" "yazi" "hx" "nvim" "fish" "zsh" "bash" "nix" "jq" "fd" "rg"] {
         require_path_exists ($runtime_bin | path join $expected_bin) $"runtime binary `($expected_bin)`"
     }
 
@@ -232,8 +233,8 @@ def verify_installed_runtime [temp_home: string] {
     let probe = ($runtime_probe.stdout | str trim | from json)
     if (
         ($probe.shell != "true")
-        or ($probe.runtime != ($runtime_current | into string))
-        or ($probe.path0 != ($runtime_bin | into string))
+        or ($probe.runtime != $resolved_runtime_current)
+        or ($probe.path0 != $resolved_runtime_bin)
         or (not ($probe.editor | str contains "yazelix_hx.sh"))
     ) {
         error make {

@@ -17,39 +17,34 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
-Yazelix provides 5 terminal emulators built-in via Nix - set your `terminals` list in `yazelix.toml`:
-
-**Note**: On macOS, Ghostty uses the native Homebrew version (see below). All other terminals are provided via Nix.
+Yazelix provides Ghostty built-in via Nix on Linux and macOS. WezTerm, Kitty, Alacritty, and Foot remain supported terminal choices, but you provide those binaries yourself and then list them in `terminals` in `yazelix.toml`.
 
 See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
 
 **WezTerm**
 - Modern, fast, written in Rust
-- Provided by Yazelix via Nix (no installation needed)
+- Supported as a PATH-provided alternative terminal
 - Reference: https://wezfurlong.org/wezterm/installation.html
 
 **Ghostty** (Default)
 - Modern, fast, written in Zig, newer
-- **Linux**: Provided by Yazelix via Nix (no installation needed)
-- **macOS**: Install via Homebrew: `brew install --cask ghostty`
-  - Nix package doesn't support macOS due to app bundle limitations
-  - Yazelix will auto-detect Homebrew installation
+- **Linux and macOS**: Provided by Yazelix via Nix as the built-in default terminal path
 - Download page: https://ghostty.org/download
 - **Note**: Due to a [Zellij/Yazi/Ghostty interaction](https://github.com/zellij-org/zellij/issues/2814#issuecomment-2965117327), image previews in Yazi may not display properly, for now. If this is a problem for you, use WezTerm instead
 
 **Kitty**
 - Fast, feature-rich, GPU-accelerated terminal
-- Provided by Yazelix via Nix (no installation needed)
+- Supported as a PATH-provided alternative terminal
 - Reference: https://sw.kovidgoyal.net/kitty/binary/
 
 **Alacritty**
 - Fast, GPU-accelerated terminal written in Rust
-- Provided by Yazelix via Nix (no installation needed)
+- Supported as a PATH-provided alternative terminal
 - Reference: https://github.com/alacritty/alacritty/blob/master/INSTALL.md
 
 **Foot**
 - Fast, simple, written in C
-- Provided by Yazelix via Nix (no installation needed)
+- Supported as a PATH-provided Linux-only alternative terminal
 - Reference: https://codeberg.org/dnkl/foot/src/branch/master/INSTALL.md
 
 ## Quickstart

@@ -101,7 +101,7 @@ I still strongly recommend using v14 for the time being, especially if you are a
 
 ## Compatibility
 - **Platform**: Works on Linux and macOS
-- **Terminal**: Ghostty (via Homebrew on macOS), Kitty, WezTerm, Alacritty; Foot on Linux only
+- **Terminal**: Ghostty is built into Yazelix on Linux and macOS. WezTerm, Kitty, and Alacritty remain supported PATH-provided alternatives; Foot remains a Linux-only PATH-provided alternative
 - **Editor**: Any editor works. Helix and Neovim have first-class support (reveal in sidebar, open buffer in a running instance, managed editor-pane targeting). Configure via `[editor].command` in `yazelix.toml`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 

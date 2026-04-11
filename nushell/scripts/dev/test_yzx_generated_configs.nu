@@ -240,6 +240,72 @@ def test_managed_wrapper_launch_command_does_not_forward_config_mode_flag [] {
     }
 }
 
+# Regression: Linux Ghostty launch keeps the GTK/X11 flags Yazelix relies on there.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_ghostty_linux_launch_command_keeps_linux_specific_flags [] {
+    print "🧪 Testing Ghostty launch keeps Linux-specific GTK/X11 flags on Linux..."
+
+    try {
+        let launch_cmd = (with-env {YAZELIX_TEST_OS: "linux"} {
+            build_launch_command {
+                terminal: "ghostty"
+                name: "Ghostty"
+                command: "ghostty"
+            } "/tmp/ghostty-config" "/tmp" false
+        })
+
+        if (
+            ($launch_cmd | str contains '--gtk-single-instance=false')
+            and ($launch_cmd | str contains '--class="com.yazelix.Yazelix"')
+            and ($launch_cmd | str contains '--x11-instance-name="yazelix"')
+        ) {
+            print "  ✅ Linux Ghostty launch keeps the GTK/X11 flags Yazelix expects there"
+            true
+        } else {
+            print $"  ❌ Unexpected Linux Ghostty launch command: ($launch_cmd)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+# Regression: macOS Ghostty launch must not inherit Linux GTK/X11 flags.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_ghostty_macos_launch_command_omits_linux_specific_flags [] {
+    print "🧪 Testing Ghostty launch drops Linux-specific GTK/X11 flags on macOS..."
+
+    try {
+        let launch_cmd = (with-env {YAZELIX_TEST_OS: "macos"} {
+            build_launch_command {
+                terminal: "ghostty"
+                name: "Ghostty"
+                command: "ghostty"
+            } "/tmp/ghostty-config" "/tmp" false
+        })
+
+        if (
+            ($launch_cmd | str contains '--config-default-files=false')
+            and ($launch_cmd | str contains '--config-file=/tmp/ghostty-config')
+            and ($launch_cmd | str contains '--title="Yazelix - Ghostty"')
+            and ($launch_cmd | str contains '--working-directory="/tmp"')
+            and not ($launch_cmd | str contains '--gtk-single-instance=false')
+            and not ($launch_cmd | str contains '--class="com.yazelix.Yazelix"')
+            and not ($launch_cmd | str contains '--x11-instance-name="yazelix"')
+        ) {
+            print "  ✅ macOS Ghostty launch now avoids the Linux-only GTK/X11 flags"
+            true
+        } else {
+            print $"  ❌ Unexpected macOS Ghostty launch command: ($launch_cmd)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
 # Defends: removed ascii mode fails with migration guidance.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance [] {

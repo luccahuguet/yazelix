@@ -237,8 +237,8 @@ export def check_launch_terminal_support [requested_terminal: string, terminals:
         let candidates = (detect_terminal_candidates [$specified_terminal])
 
         if ($candidates | is-empty) {
-            let reason = $"Specified terminal '($specified_terminal)' is not installed on the host."
-            let recovery = "Install it on the host, or choose a different terminal for testing."
+            let reason = $"Specified terminal '($specified_terminal)' is not available in the active Yazelix runtime or PATH."
+            let recovery = "Use a terminal shipped by the active Yazelix runtime, install it on PATH, or choose a different terminal for testing."
             return (build_runtime_check
                 "launch_terminal_support"
                 "error"
@@ -265,8 +265,8 @@ export def check_launch_terminal_support [requested_terminal: string, terminals:
 
     let candidates = (detect_terminal_candidates $terminals)
     if ($candidates | is-empty) {
-        let reason = "None of the configured terminal binaries are installed on the host."
-        let recovery = "Install one of the configured terminals on the host, or adjust [terminal].terminals to match what is available."
+        let reason = "None of the configured terminal binaries are available in the active Yazelix runtime or PATH."
+        let recovery = "Use Ghostty from the active Yazelix runtime, install one of the other configured terminals on PATH, or adjust [terminal].terminals to match what is available."
         return (build_runtime_check
             "launch_terminal_support"
             "error"
