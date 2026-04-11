@@ -1,5 +1,9 @@
 # Config Surface Backend Dependence Matrix
 
+> Status: Historical pre-v15-trim planning note.
+> This matrix was written before the trimmed v15 branch removed `yazelix_packs.toml`, backend-owned rebuild knobs, and related pack-graph semantics from the current user contract.
+> Do not treat it as the current branch contract. See [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
 ## Summary
 
 Yazelix should classify its config surfaces by execution owner, not just by file.

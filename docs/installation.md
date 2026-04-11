@@ -123,7 +123,7 @@ Normal usage relies on the package-provided `yzx` entrypoint or the Home Manager
 Host prerequisite contract:
 - **Host prerequisite**: Nix with flakes enabled
 - **Package-provided**: the Yazelix runtime, including runtime-local `nu`, `zellij`, `yazi`, `helix`, shells, and the fixed helper toolset behind `bin/yzx`
-- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or a host terminal emulator binary for launch
+- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or PATH-provided alternative terminals other than the built-in Ghostty path
 
 ### Step 3: Configure Your Installation (Optional)
 
@@ -143,12 +143,12 @@ The trimmed v15 packaged runtime ships a fixed toolset instead of configurable d
 What it does not ship anymore:
 - runtime-local `devenv`
 - dynamic packs or `user_packages`
-- host terminal binaries; install one of your configured terminals separately on the host
+- non-Ghostty terminal binaries; install WezTerm, Kitty, Alacritty, or Foot yourself if you choose them
 
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
 - **Terminal preference**: Set `terminals` (`["ghostty", "wezterm", "kitty", "alacritty", "foot"]`, ordered)
-- **Terminal launch**: Yazelix launches host-installed terminals directly in the order you configure
+- **Terminal launch**: Ghostty is the built-in default on Linux and macOS; other configured terminals are launched from `PATH` in the order you configure
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
 ### Step 4: Install Fonts (Required for Kitty and Alacritty)

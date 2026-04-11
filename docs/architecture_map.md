@@ -118,25 +118,29 @@ Current direction:
 - live session activation markers should be treated as process-local session state, not as persisted runtime truth
 - package-ready work should keep clarifying what is shipped, user-owned, generated, or maintainer-only
 
-See [Config Surface And Launch Profile Contract](./specs/config_surface_and_launch_profile_contract.md) for the concrete runtime ownership model.
-See [Runtime Root Contract](./specs/runtime_root_contract.md) for the concrete split between config-owned paths, shipped runtime assets, and generated state.
-See [Runtime Activation State Contract](./specs/runtime_activation_state_contract.md) for the explicit fourth runtime layer that separates process-local activation markers from persisted launch/materialized state.
+See [v15 Trimmed Runtime Contract](./specs/v15_trimmed_runtime_contract.md) for the current branch contract after the delete-first v15 trim.
+See [Runtime Root Contract](./specs/runtime_root_contract.md) for the concrete split between config-owned paths, shipped runtime assets, generated state, and activation-only markers.
 See [Backend Capability Contract](./specs/backend_capability_contract.md) for the concrete capability buckets Yazelix expects from its runtime/environment layer before any alternative backend evaluation.
 See [Runtime Dependency And Launch Preflight Contract](./specs/runtime_dependency_preflight_contract.md) for the narrower user-facing dependency story that separates fast launch blockers from heavier doctor and install-smoke diagnostics.
 See [Runtime Distribution Capability Tiers](./specs/runtime_distribution_capability_tiers.md) for the user-facing install/update/doctor tier split between installer-managed, Home Manager-managed, packaged, and runtime-root-only modes.
-See [Runtime Ownership Reduction Matrix](./specs/runtime_ownership_reduction_matrix.md) for the explicit distinction between deleting installer/distribution ownership and deleting backend/environment ownership.
-See [Package-Runtime-First User And Maintainer UX](./specs/package_runtime_first_user_and_maintainer_ux.md) for the concrete target user and maintainer flow once the product stops centering the installer-managed runtime model.
-See [Config Surface Backend Dependence Matrix](./specs/config_surface_backend_dependence_matrix.md) for the config-family audit that separates backend/devenv inputs, workspace/session settings, launch/integration policy knobs, and host-tool locator seams.
 See [yzx Command Surface Backend Coupling](./specs/yzx_command_surface_backend_coupling.md) for the command-family audit that separates backend-required control-plane commands from workspace/config UX, runtime/distribution surfaces, and mixed seams.
 See [Backend-Free Workspace Slice](./specs/backend_free_workspace_slice.md) for the concrete proof slice that already works in runtime-root-only mode with host-provided tools.
 See [Cross-Language Runtime Ownership](./specs/cross_language_runtime_ownership.md) for the current language/runtime ownership map across Nushell, Rust plugins, Lua Yazi code, POSIX shell, and Zellij transport.
 See [Yazelix Core Boundary](./specs/yazelix_core_boundary.md) for the current recommendation on whether a separate Core edition should exist and what it would keep or drop if revisited later.
 See [v14 Boundary-Hardening Gate](./specs/v14_boundary_hardening_gate.md) for the explicit technical gate that defines when a `v14` major bump is actually earned.
 See [Managed Config Migration Transaction Contract](./specs/managed_config_migration_transaction_contract.md) for the staged write and rollback model that keeps Yazelix-owned config migrations from landing in a half-applied state.
-See [One-Command Install UX](./specs/one_command_install_ux.md) for the installer-first phase-1 front door and why it was a thin `nix run` installer surface instead of a hosted shell script.
-See [Flake Interface Contract](./specs/flake_interface_contract.md) for the exact phase-1 flake outputs and the stable installed-runtime layout they should target.
 See [Nixpkgs Package Contract](./specs/nixpkgs_package_contract.md) for the simpler store-backed package shape Yazelix should target before preparing the upstream nixpkgs submission.
 See [Helix Managed Config Contract](./specs/helix_managed_config_contract.md) for the phase-1 boundary that makes Helix reveal integration self-contained without taking ownership of the user's full Helix config tree.
+
+Historical pre-trim planning notes:
+
+- [Config Surface And Launch Profile Contract](./specs/config_surface_and_launch_profile_contract.md)
+- [Runtime Activation State Contract](./specs/runtime_activation_state_contract.md)
+- [Runtime Ownership Reduction Matrix](./specs/runtime_ownership_reduction_matrix.md)
+- [Package-Runtime-First User And Maintainer UX](./specs/package_runtime_first_user_and_maintainer_ux.md)
+- [Config Surface Backend Dependence Matrix](./specs/config_surface_backend_dependence_matrix.md)
+- [One-Command Install UX](./specs/one_command_install_ux.md)
+- [Flake Interface Contract](./specs/flake_interface_contract.md)
 
 ### Workspace and Session Ownership
 

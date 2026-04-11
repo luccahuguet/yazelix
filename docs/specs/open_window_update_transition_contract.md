@@ -1,5 +1,9 @@
 # Open Window Update Transition Contract
 
+> Status: Historical pre-v15-trim planning note.
+> This document assumes older `yzx refresh` semantics that included backend/profile rebuild behavior.
+> Do not treat it as the current branch contract. See [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
 ## Summary
 
 Yazelix should treat `yzx refresh`, external runtime replacement, and `yzx restart` as different transition surfaces across already-open windows. `yzx refresh` updates shared materialized state, package-manager or compatibility-installer updates replace the runtime on disk, and `yzx restart` is the explicit live-session transition surface. None of those transitions should silently hot-swap unrelated already-open non-persistent windows in place.

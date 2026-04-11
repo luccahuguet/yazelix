@@ -35,7 +35,7 @@ Profile launch sequence and identify performance bottlenecks
 - Default: Profile the current-terminal startup path and write a structured startup report under `~/.local/share/yazelix/profiles/startup/`
 - `--cold`: Profile cold startup from a vanilla terminal (outside Yazelix)
 - `--clear-cache`: Clear the runtime project cache plus recorded materialized/launch state first so the profiled run exercises the rebuild-heavy path
-- The summary breaks out real startup phases such as preflight, config-state checks, `devenv` shell entry, shellHook setup, and inner startup work
+- The summary breaks out real startup phases such as preflight, config-state checks, maintainer-shell entry, shellHook setup, and inner startup work
 
 ### `yzx dev bump VERSION`
 Automate the version bump, release commit, and matching git tag
@@ -72,7 +72,7 @@ Repair Yazelix generated runtime state without launching UI
 - `--verbose, -v`: Show concise repair progress
 - `--very-verbose, -V`: Alias for `--verbose` in the trimmed v15 flow
 - Repairs generated Yazi and Zellij state and records the resulting materialized config hash
-- Does not rebuild a `devenv` profile or reuse cached launch-profile state
+- Does not rebuild a backend profile or reuse cached launch-profile state
 
 ### `yzx run <command> [args...]`
 Run a single command in the Yazelix environment and exit

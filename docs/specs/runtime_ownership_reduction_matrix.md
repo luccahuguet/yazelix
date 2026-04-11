@@ -1,5 +1,9 @@
 # Runtime Ownership Reduction Matrix
 
+> Status: Historical pre-v15-trim planning note.
+> This matrix explores alternative shapes that still preserved pack sidecars, installer-owned runtime identity, or launch-profile reuse.
+> Do not treat it as the current branch contract. See [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
 ## Summary
 
 Yazelix should distinguish clearly between two different kinds of reduction work:

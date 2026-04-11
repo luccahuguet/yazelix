@@ -1,5 +1,9 @@
 # Flake Interface Contract
 
+> Status: Historical phase-1 installer/front-door note.
+> This document captures the earlier installer-centered flake surface before the trimmed v15 branch demoted `#install` to a compatibility/bootstrap path.
+> Do not treat it as the current branch contract. See [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
 ## Summary
 
 Yazelix should expose a small, honest top-level flake surface centered on the packaged `yzx` runtime, not on the compatibility installer app.

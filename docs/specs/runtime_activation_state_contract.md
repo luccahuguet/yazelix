@@ -1,5 +1,9 @@
 # Runtime Activation State Contract
 
+> Status: Historical pre-v15-trim planning note.
+> This document describes an earlier activation model centered on recorded launch profiles and `devenv`-backed materialization.
+> Do not treat it as the current branch contract. See [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
 ## Summary
 
 Yazelix should treat live session activation state as a first-class runtime layer, separate from dynamic user intent, deterministic runtime code, and materialized/generated state.

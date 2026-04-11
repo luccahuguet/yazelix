@@ -31,7 +31,7 @@ Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://gith
 - This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
 
 ## Why Yazelix
-Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix. It delivers a consistent, fast “superterminal” locally or over SSH with zero manual setup: smart pane/layout orchestration, sidebar reveal/open flows, curated packs, and sane defaults. It also solves helix/zellij keybinding conflicts (no need to ever lock zellij), auto‑configures great tools like starship, zoxide, carapace (that normally require editing shell config files), and includes many tools from the Yazelix Collection, like lazygit
+Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix. It delivers a consistent, fast “superterminal” locally or over SSH with zero manual setup: smart pane/layout orchestration, sidebar reveal/open flows, a curated built-in toolset, and sane defaults. It also solves helix/zellij keybinding conflicts (no need to ever lock zellij), auto‑configures great tools like starship, zoxide, carapace (that normally require editing shell config files), and includes many tools from the Yazelix Collection, like lazygit
 
 It already comes with cool zellij and yazi plugins, some of which I maintain myself
 
@@ -91,9 +91,13 @@ Classic is not abandoned. For now, `main` remains the v14.x / Yazelix Classic li
 
 v15 work lives separately on the `v15` branch until it is ready for alpha testing. The goal is a slimmer, Rust-rewritten, more performant Yazelix that stops trying to also be a broad package-and-environment manager. That means dropping `devenv`, trimming the command and config surface, and keeping a clearer core around fast workspace entry and explicit update ownership.
 
+On the current `v15` branch, the trimmed contract is already narrower: no `yazelix_packs.toml`, no runtime-local `devenv`, no launch-profile reuse semantics, a fixed packaged runtime toolset, built-in Ghostty on Linux and macOS, and explicit update owners through `yzx update upstream` or `yzx update home_manager`.
+
 The important split is this: Yazelix Classic is both a terminal workspace and a runtime/package-environment manager. v15 is intended to become the narrower workspace product. The broader `devenv` runtime and terminal-environment layer may continue later as a separate project forked from Yazelix Classic, and it could be reintegrated in a future release only with clearer boundaries and separate codebases.
 
 I still strongly recommend using v14 for the time being, especially if you are a power user. It is unusually powerful, highly customizable, and very much alive. If you find bugs in the Classic line, please open issues.
+
+For the current trimmed branch contract, see [docs/specs/v15_trimmed_runtime_contract.md](./docs/specs/v15_trimmed_runtime_contract.md).
 
 ## Experiments
 

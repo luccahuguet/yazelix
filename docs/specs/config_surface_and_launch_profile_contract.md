@@ -1,5 +1,9 @@
 # Config Surface And Launch Profile Contract
 
+> Status: Historical pre-v15-trim planning note.
+> This document describes superseded semantics such as `yazelix_packs.toml`, cached launch-profile reuse, and `devenv`-backed rebuild ownership.
+> Do not treat it as the current branch contract. See [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
 ## Summary
 
 Yazelix should treat configuration surfaces, generated runtime state, cached launch profiles, and live session activation as four distinct concerns with explicit ownership. The canonical user-facing config surfaces are the managed TOML files under `~/.config/yazelix/user_configs/`, while Home Manager is an integration that renders the same user intent into those surfaces rather than inventing separate semantics. Generated runtime configs under `~/.local/share/yazelix/configs/` and cached launch-profile state under `~/.local/share/yazelix/state/` are derived artifacts, not user-owned sources of truth. Process-local activation markers are a separate runtime layer again, not persisted launch truth.

@@ -2,28 +2,29 @@
 
 ## Summary
 
-Yazelix must treat the user config root, the shipped runtime root, and the generated state root as three separate locations with different owners. Normal usage must not require a source checkout living under `~/.config/yazelix`.
+Yazelix treats the config root, runtime root, and state root as separate locations with different owners. The trimmed v15 branch no longer treats installer-owned launch profiles, pack sidecars, or runtime-local `devenv` artifacts as part of the normal user contract.
 
-These three roots line up with three filesystem-backed kinds of state plus one process-local layer:
+These roots line up with three filesystem-backed kinds of state plus one process-local layer:
 
 1. Dynamic user intent
    - config under `~/.config/yazelix/user_configs/`
 2. Deterministic runtime code
-   - the shipped runtime tree from the flake, package, or repo checkout
+   - the shipped runtime tree from the package, flake output, or repo checkout
 3. Materialized/generated state
-   - generated configs, cached hashes, launch state, and other derived artifacts under `~/.local/share/yazelix`
+   - generated configs, initializers, logs, rebuild hashes, and other derived artifacts under `~/.local/share/yazelix`
 4. Live session activation state
-   - process-local markers such as `DEVENV_PROFILE`, profile-derived `PATH`, `IN_NIX_SHELL`, `IN_YAZELIX_SHELL`, `YAZELIX_TERMINAL`, and Zellij session markers
+   - process-local markers such as `IN_YAZELIX_SHELL`, `YAZELIX_TERMINAL`, Zellij session markers, and maintainer-only activation markers such as `DEVENV_PROFILE`
 
 ## Why
 
-Yazelix already has helpers for `YAZELIX_CONFIG_DIR`, `YAZELIX_RUNTIME_DIR`, and `YAZELIX_STATE_DIR`, but parts of the product still collapse those concerns back into one hardcoded path. That keeps the source checkout requirement alive in practice even when the intended architecture says otherwise.
+The branch is smaller now, but path confusion is still one of the easiest ways to reintroduce old v14 assumptions:
 
-Without a sharper contract:
+- treating the config root like a source checkout
+- treating the current shell as runtime truth
+- treating generated state as handwritten config
+- treating legacy aliases such as `YAZELIX_DIR` as canonical ownership
 
-- terminal and desktop launchers keep assuming runtime scripts live under `~/.config/yazelix`
-- bundled integrations like Yazi shell-outs keep invoking source-checkout paths
-- packaged/runtime installs remain second-class even though the codebase already has split-root helpers
+This contract keeps those boundaries explicit.
 
 ## Scope
 
@@ -40,77 +41,71 @@ Without a sharper contract:
   - Canonical environment variable: `YAZELIX_CONFIG_DIR`
   - Contents include:
     - `user_configs/yazelix.toml`
-    - `user_configs/yazelix_packs.toml`
-    - other user-managed overrides under `user_configs/`
+    - user-managed overrides such as `user_configs/zellij/`, `user_configs/yazi/`, `user_configs/helix/`, and `user_configs/shells/`
+  - The trimmed v15 line does not treat `yazelix_packs.toml` as part of the current config contract.
 - The runtime root is the shipped Yazelix asset tree used at runtime.
   - Canonical environment variable: `YAZELIX_RUNTIME_DIR`
   - It may be:
     - a source checkout during maintainer work
-    - an installed runtime tree from a package or generated deployment
-  - Contents include shipped scripts, layouts, bundled plugins, templates, and other runtime assets Yazelix executes or reads directly.
+    - an installed runtime tree from the package or compatibility installer
+  - Contents include shipped scripts, layouts, bundled plugins, templates, and the fixed runtime toolset.
   - It is deterministic product code tied to the repo or packaged runtime revision, not mutable user config state.
 - The state root is the generated and cached Yazelix data surface.
   - Default location: `~/.local/share/yazelix`
   - Canonical environment variable: `YAZELIX_STATE_DIR`
-  - Contents include generated configs, cached launch-profile state, rebuild state, and other derived runtime artifacts.
-  - The runtime-project workspace under `~/.local/share/yazelix/runtime/project` is part of this state root, including optional `.devenv` helper artifacts produced by `devenv`.
+  - Contents include generated configs, shell initializers, logs, rebuild hashes, and other derived runtime artifacts.
   - It is the materialized result of combining user intent with the shipped runtime.
 - Live session activation state has no canonical filesystem root.
-  - It is the current process-local activation of a built profile and session.
-  - It includes values such as `DEVENV_PROFILE`, profile-derived `PATH`, `IN_NIX_SHELL`, `IN_YAZELIX_SHELL`, `YAZELIX_TERMINAL`, and Zellij session markers.
-  - It may be stale even while the runtime root and state root are correct.
+  - It is the current process-local activation of a runtime/session.
+  - It includes values such as `IN_YAZELIX_SHELL`, `YAZELIX_TERMINAL`, `ZELLIJ`, `ZELLIJ_SESSION_NAME`, `ZELLIJ_PANE_ID`, and related session-local markers.
+  - Maintainer shells may also carry `DEVENV_PROFILE`, but that is maintainer activation state, not normal user runtime truth.
   - It must not be treated as persisted runtime truth.
-- `YAZELIX_DIR` is a legacy compatibility alias for the runtime root only.
+- `YAZELIX_DIR` is a legacy compatibility alias only.
   - New code should prefer `YAZELIX_RUNTIME_DIR` and `YAZELIX_CONFIG_DIR` explicitly.
-  - Code must not treat `YAZELIX_DIR` as the user config root.
+  - User entrypoints and maintainer shells should clear or ignore inherited `YAZELIX_DIR` rather than trusting it as canonical runtime identity.
 - User-facing runtime entrypoints must resolve shipped assets through the runtime root, not by assuming a repo clone under `~/.config/yazelix`.
   - Examples: terminal wrappers, desktop launchers, `yzx` menu/popup helpers, bundled Yazi plugins, editor integration scripts.
 - User-facing config lookups must resolve through the config root, not through the runtime root.
 - Generated configs and cached state must resolve through the state root or the derived runtime config paths, not through the source checkout.
-- Runtime-project `.devenv` helper artifacts are not canonical launch truth by themselves.
-  - `devenv build shell` output and recorded launch state are the stable reusable-profile evidence.
-  - `.devenv/profile` and `.devenv/gc/shell` under the runtime-project workspace may be absent in a fresh state root.
-  - Code may use those `.devenv` entries as fallback/bootstrap evidence only when they already exist.
-- Runtime/profile identity should not be inferred from whichever shell the user happens to be sitting in.
-  - Maintainer shells may still hold an older `DEVENV_PROFILE`.
-  - That older shell profile is stale live activation state, not necessarily stale materialized launch state.
-  - Reusable launch state should be recorded from real launch/refresh flows against the runtime project state, not from shell-hook setup alone.
-  - External launch helpers should sanitize inherited activation markers instead of assuming the current shell is the authoritative runtime session.
-- Maintainer-only workflows may still assume a source checkout when the task is explicitly about repository maintenance.
-  - Examples: release automation, source validators, README syncing, issue/bead reconciliation, repo-local dev helpers.
+- The normal user runtime contract is the fixed packaged runtime plus explicit update ownership.
+  - `yzx update upstream` owns upstream/manual installs
+  - `yzx update home_manager` owns Home Manager installs
+  - `#install` is a compatibility/bootstrap surface, not the canonical runtime identity
+- Maintainer-only workflows may still assume a source checkout and `devenv.nix` when the task is explicitly about repository maintenance.
+  - Examples: release automation, source validators, repo-local profiling, issue/bead reconciliation, and repo-shell development helpers.
   - Those assumptions should stay explicit instead of leaking into normal user entrypoints.
 
 ## Non-goals
 
-- defining the final packaging format for Yazelix
+- defining the final packaging format for every future Yazelix release
 - removing source-checkout workflows for maintainers
 - redesigning every environment variable in one step
 - moving user config out of `~/.config/yazelix`
 
 ## Acceptance Cases
 
-1. A normal installed Yazelix runtime can launch without a git clone at `~/.config/yazelix`, as long as the runtime root, config root, and state root are present in their supported locations.
+1. A normal installed Yazelix runtime can launch without a git clone at `~/.config/yazelix`, as long as the runtime root, config root, and state root are present in supported locations.
 2. Bundled runtime integrations invoke shipped scripts through the runtime root instead of hardcoded source-checkout paths under `~/.config/yazelix`.
 3. User config continues to load from the config root even when the runtime root is somewhere else.
-4. Maintainer-only commands that still require a source checkout are explicit about that requirement instead of being used silently by normal user entrypoints.
-5. Reinstalling Yazelix from a repo shell does not silently redefine launch-profile ownership or treat the current maintainer shell as the launched runtime.
-6. New path-model work can classify each lookup as config-owned, runtime-owned, state-owned, or activation-only without guessing.
+4. Generated configs, logs, and repair hashes remain derived state rather than becoming user-owned config.
+5. A repo maintainer shell can exist without becoming part of the normal user runtime contract.
 
 ## Verification
 
-- manual review of runtime entrypoints against this contract
-- integration tests that run with split `YAZELIX_CONFIG_DIR` and `YAZELIX_RUNTIME_DIR`
 - config/runtime path checks in `nushell/scripts/dev/test_yzx_generated_configs.nu`
-- core command checks in `nushell/scripts/dev/test_yzx_core_commands.nu`
+- workspace/runtime launch checks in `nushell/scripts/dev/test_yzx_workspace_commands.nu`
+- maintainer-shell runtime-boundary checks in `nushell/scripts/dev/test_yzx_maintainer.nu`
+- installed-runtime validation in `nushell/scripts/dev/validate_installed_runtime_contract.nu`
 
 ## Traceability
 
-- Bead: `yazelix-hac.2`
+- Bead: `yazelix-qgj7.2.4.3`
 - Defended by: `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
-- Defended by: `nu nushell/scripts/dev/test_yzx_core_commands.nu`
+- Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+- Defended by: `nu nushell/scripts/dev/test_yzx_maintainer.nu`
+- Defended by: `nu nushell/scripts/dev/validate_installed_runtime_contract.nu`
 
 ## Open Questions
 
-- Should `YAZELIX_DIR` eventually disappear entirely once all supported user entrypoints are on explicit runtime/config root variables?
-- Which shipped assets, if any, should move out of the runtime root and into the state root during package-ready work?
-- Should future runtime helpers expose activation-only markers through dedicated helper names so they stop looking like alternate runtime roots?
+- Should `YAZELIX_DIR` eventually disappear entirely once all supported entrypoints use explicit runtime/config roots?
+- Which shipped assets, if any, should later move out of the runtime root and into a more sharply named generated-state subtree?

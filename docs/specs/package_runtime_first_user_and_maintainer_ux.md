@@ -1,5 +1,9 @@
 # Package-Runtime-First User And Maintainer UX
 
+> Status: Historical planning note.
+> This document captures the transition space before the trimmed v15 branch dropped pack sidecars and runtime-local `devenv` from the normal user contract.
+> Do not treat it as the current branch contract. See [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
 ## Summary
 
 After the package-runtime-first simplification lane lands, the normal Yazelix product flow should be package-first:
