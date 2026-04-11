@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 44
+field_count = 35
 artifact_role = "canonical_machine_metadata"
 default_template = "yazelix_default.toml"
 home_manager_module = "home_manager/module.nix"
@@ -19,31 +19,7 @@ loader_module = "nushell/scripts/utils/config_contract.nu"
 scope_note = "Pack-surface metadata is intentionally excluded from this artifact."
 
 [rebuild]
-extra_paths = ["packs.enabled", "packs.declarations", "packs.user_packages"]
-
-[fields."core.recommended_deps"]
-kind = "bool"
-default = true
-parser_key = "recommended_deps"
-home_manager_option = "recommended_deps"
-parser_behavior = "direct"
-rebuild_required = true
-
-[fields."core.yazi_extensions"]
-kind = "bool"
-default = true
-parser_key = "yazi_extensions"
-home_manager_option = "yazi_extensions"
-parser_behavior = "direct"
-rebuild_required = true
-
-[fields."core.yazi_media"]
-kind = "bool"
-default = false
-parser_key = "yazi_media"
-home_manager_option = "yazi_media"
-parser_behavior = "direct"
-rebuild_required = true
+extra_paths = []
 
 [fields."core.debug_mode"]
 kind = "bool"
@@ -89,46 +65,6 @@ validation = "float_range"
 min = 0.2
 max = 8.0
 rebuild_required = false
-
-[fields."core.refresh_output"]
-kind = "string"
-default = "normal"
-parser_key = "refresh_output"
-home_manager_option = "refresh_output"
-parser_behavior = "direct"
-validation = "enum"
-allowed_values = ["quiet", "normal", "full"]
-rebuild_required = false
-
-[fields."core.max_jobs"]
-kind = "string"
-default = "half"
-parser_key = "max_jobs"
-home_manager_option = "max_jobs"
-parser_behavior = "direct"
-validation = "symbol_or_positive_int_string"
-allowed_symbols = ["auto", "max", "max_minus_one", "half", "quarter"]
-rebuild_required = true
-
-[fields."core.build_cores"]
-kind = "string"
-default = "2"
-parser_key = "build_cores"
-home_manager_option = "build_cores"
-parser_behavior = "direct"
-validation = "symbol_or_positive_int_string"
-allowed_symbols = ["max", "max_minus_one", "half", "quarter"]
-rebuild_required = true
-
-[fields."helix.mode"]
-kind = "string"
-default = "release"
-parser_key = "helix_mode"
-home_manager_option = "helix_mode"
-parser_behavior = "direct"
-validation = "enum"
-allowed_values = ["release", "source"]
-rebuild_required = true
 
 [fields."helix.runtime_path"]
 kind = "string"
@@ -181,16 +117,6 @@ validation = "enum"
 allowed_values = ["nu", "bash", "fish", "zsh"]
 rebuild_required = false
 
-[fields."shell.extra_shells"]
-kind = "string_list"
-default = []
-parser_key = "extra_shells"
-home_manager_option = "extra_shells"
-parser_behavior = "direct"
-validation = "enum_string_list"
-allowed_values = ["fish", "zsh"]
-rebuild_required = true
-
 [fields."terminal.terminals"]
 kind = "string_list"
 default = ["ghostty"]
@@ -200,14 +126,6 @@ parser_behavior = "direct"
 validation = "enum_string_list"
 allowed_values = ["ghostty", "wezterm", "kitty", "alacritty", "foot"]
 rebuild_required = true
-
-[fields."terminal.manage_terminals"]
-kind = "bool"
-default = true
-parser_key = "manage_terminals"
-home_manager_option = "manage_terminals"
-parser_behavior = "direct"
-rebuild_required = false
 
 [fields."terminal.config_mode"]
 kind = "string"

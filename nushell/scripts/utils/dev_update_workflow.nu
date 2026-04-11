@@ -139,7 +139,7 @@ def sync_readme_version_marker [] {
 }
 
 def resolve_update_canary_selection [requested: list<string>] {
-    let available = ["default", "maximal"]
+    let available = ["default", "shell_layout"]
 
     if ($requested | is-empty) {
         return $available
@@ -164,8 +164,6 @@ def materialize_update_canaries [selected: list<string>] {
 
     let template_surface = (load_config_surface_from_main $default_config_path)
     let template = $template_surface.merged_config
-    let all_pack_names = ($template.packs.declarations | columns | sort)
-
     let base_temp_dir = "~/.local/share/yazelix/update_canaries" | path expand
     mkdir $base_temp_dir
     let temp_dir = (^mktemp -d ($base_temp_dir | path join "update_XXXXXX") | str trim)
@@ -178,25 +176,25 @@ def materialize_update_canaries [selected: list<string>] {
                     {
                         name: "default"
                         config_path: $default_config_path
-                        description: "yazelix_default.toml + yazelix_packs_default.toml"
+                        description: "default v15 runtime config"
                     }
                 }
-                "maximal" => {
-                    let config_dir = ($temp_dir | path join "maximal")
+                "shell_layout" => {
+                    let config_dir = ($temp_dir | path join "shell_layout")
                     let config_path = (get_main_user_config_path $config_dir)
                     mkdir $config_dir
                     let copied = (copy_default_config_surfaces $default_config_path $config_path)
-                    let config = ($template | upsert packs.enabled $all_pack_names)
-                    ($config | reject packs) | to toml | save --force --raw $copied.config_path
+                    let config = (
+                        $template
+                        | upsert shell.default_shell "zsh"
+                        | upsert editor.command "nvim"
+                        | upsert editor.enable_sidebar false
+                    )
+                    $config | to toml | save --force --raw $copied.config_path
                     {
-                        enabled: $all_pack_names
-                        declarations: ($template.packs.declarations)
-                        user_packages: ($template.packs.user_packages? | default [])
-                    } | to toml | save --force --raw $copied.pack_config_path
-                    {
-                        name: "maximal"
+                        name: "shell_layout"
                         config_path: $config_path
-                        description: "all pack declarations enabled"
+                        description: "zsh entry, neovim editor, no-sidebar layout"
                     }
                 }
             }

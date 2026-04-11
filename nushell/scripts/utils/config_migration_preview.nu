@@ -1,7 +1,6 @@
 #!/usr/bin/env nu
 
 use config_migrations.nu [build_config_migration_plan_from_record]
-use config_surfaces.nu get_pack_sidecar_path
 
 def format_release_context [rule: record] {
     if ($rule.introduced_in | is-not-empty) {
@@ -15,14 +14,7 @@ def format_release_context [rule: record] {
 
 export def get_config_migration_plan [config_path: string] {
     let config = open $config_path
-    let pack_config_path = (get_pack_sidecar_path $config_path)
-    let pack_config = if ($pack_config_path | path exists) {
-        open $pack_config_path
-    } else {
-        null
-    }
-
-    build_config_migration_plan_from_record $config $config_path $pack_config $pack_config_path
+    build_config_migration_plan_from_record $config $config_path
 }
 
 export def render_config_migration_plan [plan: record] {

@@ -41,13 +41,6 @@ def get_edit_targets [] {
             path: $paths.user_config
         }
         {
-            id: "packs"
-            label: $"packs  (ansi dark_gray)- pack declarations → ($paths.user_pack_config)(ansi reset)"
-            aliases: ["packs", "pack", "yazelix_packs.toml"]
-            search: "packs pack declarations yazelix_packs.toml"
-            path: $paths.user_pack_config
-        }
-        {
             id: "helix"
             label: $"helix  (ansi dark_gray)- managed Helix user config → ($helix_path)(ansi reset)"
             aliases: ["helix", "hx", "editor"]
@@ -188,12 +181,5 @@ export def "yzx edit config" [
     --print  # Print the config path without opening
 ] {
     let target = (resolve_edit_target_by_id "config")
-    open_config_surface_in_editor $target.path --print=$print
-}
-
-export def "yzx edit packs" [
-    --print  # Print the config path without opening
-] {
-    let target = (resolve_edit_target_by_id "packs")
     open_config_surface_in_editor $target.path --print=$print
 }

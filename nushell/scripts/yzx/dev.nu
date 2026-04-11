@@ -30,7 +30,7 @@ export def "yzx dev update" [
     --home-manager-input: string = "yazelix-hm"  # Home Manager flake input name to refresh before switch
     --home-manager-attr: string = ""  # Optional Home Manager flake output attribute appended as #attr during switch
     --canary-only  # Run canary checks without updating devenv.lock or syncing pins
-    --canaries: list<string> = []  # Canary subset: default, maximal
+    --canaries: list<string> = []  # Canary subset: default, shell_layout
 ] {
     run_dev_update_workflow $yes $no_canary $activate $home_manager_dir $home_manager_input $home_manager_attr $canary_only $canaries
 }

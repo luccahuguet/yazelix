@@ -30,7 +30,6 @@ def setup_home_manager_symlinked_main_config_fixture [label: string] {
     let user_config_dir = ($config_dir | path join "user_configs")
     let hm_store_dir = ($tmpdir | path join "hm-store")
     let symlinked_main = ($user_config_dir | path join "yazelix.toml")
-    let pack_path = ($user_config_dir | path join "yazelix_packs.toml")
     let state_path = ($fake_home | path join ".local" "share" "yazelix" "state" "rebuild_hash")
     let store_main = ($hm_store_dir | path join "yazelix.toml")
 
@@ -50,7 +49,6 @@ def setup_home_manager_symlinked_main_config_fixture [label: string] {
         config_dir: $config_dir
         user_config_dir: $user_config_dir
         symlinked_main: $symlinked_main
-        pack_path: $pack_path
         state_path: $state_path
     }
 }
@@ -212,25 +210,25 @@ terminals = ["ghostty", "kitty", "alacritty"]
     $result
 }
 
-# Regression: managed terminal wrappers must not leak Yazelix-only config-mode args into terminal binaries.
+# Regression: direct terminal launch commands must keep Yazelix-only config-mode details internal.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_managed_wrapper_launch_command_does_not_forward_config_mode_flag [] {
-    print "🧪 Testing managed terminal wrapper launch command keeps config-mode internal..."
+    print "🧪 Testing direct terminal launch command keeps config-mode internal..."
 
     try {
         let launch_cmd = (build_launch_command {
             terminal: "ghostty"
             name: "Ghostty"
-            command: "yazelix-ghostty"
-            use_wrapper: true
-        } null "yazelix" "/tmp" false)
+            command: "ghostty"
+        } "/tmp/ghostty-config" "/tmp" false)
 
         if (
-            ($launch_cmd | str contains 'yazelix-ghostty')
+            ($launch_cmd | str contains 'ghostty')
             and not ($launch_cmd | str contains '--config-mode')
             and ($launch_cmd | str contains '--working-directory="/tmp"')
+            and not ($launch_cmd | str contains 'yazelix-ghostty')
         ) {
-            print "  ✅ Managed wrapper launch command now keeps config-mode internal to the wrapper"
+            print "  ✅ Direct terminal launch command now keeps config-mode internal to Yazelix"
             true
         } else {
             print $"  ❌ Unexpected managed wrapper launch command: ($launch_cmd)"
@@ -323,8 +321,8 @@ enable_atuin = true
 
 # Invariant: split default config surfaces are bootstrapped when missing.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
-    print "🧪 Testing parse_yazelix_config bootstraps both default config surfaces on first run..."
+def test_parse_yazelix_config_bootstraps_main_default_surface [] {
+    print "🧪 Testing parse_yazelix_config bootstraps the managed main config surface on first run..."
 
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_pack_bootstrap_XXXXXX | str trim)
@@ -343,21 +341,18 @@ def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
 
         let user_config_dir = ($temp_config_dir | path join "user_configs")
         let main_exists = (($user_config_dir | path join "yazelix.toml") | path exists)
-        let pack_exists = (($user_config_dir | path join "yazelix_packs.toml") | path exists)
         let generated_main = (if $main_exists { open --raw ($user_config_dir | path join "yazelix.toml") } else { "" })
-        let generated_packs = (if $pack_exists { open --raw ($user_config_dir | path join "yazelix_packs.toml") } else { "" })
 
         if (
             $main_exists
-            and $pack_exists
-            and ($generated_main | str contains "Pack configuration lives in ~/.config/yazelix/user_configs/yazelix_packs.toml")
-            and ($generated_packs | str contains "[declarations]")
-            and ((($parsed.pack_declarations | default {}) | columns | length) > 0)
+            and not (($user_config_dir | path join "yazelix_packs.toml") | path exists)
+            and ($generated_main | str contains '[shell]')
+            and (($parsed.default_shell? | default "") == "nu")
         ) {
-            print "  ✅ First-run bootstrap now materializes both user_configs TOML surfaces from runtime defaults"
+            print "  ✅ First-run bootstrap now materializes the managed main config without reviving the removed pack sidecar"
             true
         } else {
-            print $"  ❌ Unexpected result: main_exists=($main_exists) pack_exists=($pack_exists) parsed=($parsed | select pack_names pack_declarations | to json -r)"
+            print $"  ❌ Unexpected result: main_exists=($main_exists) parsed=($parsed | to json -r)"
             false
         }
     } catch { |err|
@@ -505,10 +500,10 @@ default_shell = "bash"
     $result
 }
 
-# Defends: legacy inline packs are rejected with migration guidance.
+# Defends: removed pack config is rejected through the narrowed v15 config surface.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance [] {
-    print "🧪 Testing parse_yazelix_config rejects legacy [packs] in yazelix.toml and points users at migrate..."
+    print "🧪 Testing parse_yazelix_config rejects legacy [packs] in yazelix.toml through the narrowed v15 config surface..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_pack_legacy_main"
@@ -528,10 +523,11 @@ git = ["gh", "prek"]
 
         if (
             ($parser_result.exit_code != 0)
-            and ($stderr | str contains "Known migration at packs")
-            and ($stderr | str contains "yzx config migrate --apply")
+            and ($stderr | str contains "Unknown config field at packs")
+            and ($stderr | str contains "Failure class: config problem.")
+            and ($stderr | str contains "yzx config reset")
         ) {
-            print "  ✅ Legacy pack settings are now blocked with shared migration guidance"
+            print "  ✅ Removed pack settings are now rejected as unsupported config surface fields"
             true
         } else {
             print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr)"
@@ -543,95 +539,6 @@ git = ["gh", "prek"]
     })
 
     rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: split pack ownership conflicts fail fast.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_rejects_split_pack_ownership [] {
-    print "🧪 Testing parse_yazelix_config fails fast when yazelix.toml and yazelix_packs.toml both define packs..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_pack_sidecar_conflict_XXXXXX | str trim)
-
-    let result = (try {
-        let config_path = ($tmpdir | path join "yazelix.toml")
-        let pack_path = ($tmpdir | path join "yazelix_packs.toml")
-        let parser_script = (repo_path "nushell" "scripts" "utils" "config_parser.nu")
-
-        '[packs]
-enabled = ["git"]
-' | save --force --raw $config_path
-
-        'enabled = ["rust"]
-' | save --force --raw $pack_path
-
-        let output = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
-            ^nu -c $"source \"($parser_script)\"; try { parse_yazelix_config | ignore } catch {|err| print $err.msg }" | complete
-        })
-        let stdout = ($output.stdout | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Yazelix found pack settings in both yazelix.toml and yazelix_packs.toml.")
-            and ($stdout | str contains "fully owns pack settings")
-            and ($stdout | str contains "Failure class: config problem.")
-        ) {
-            print "  ✅ parse_yazelix_config fails fast on ambiguous split pack ownership"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
-# Regression: Home Manager symlinked main configs must still discover the sibling pack sidecar.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_parse_yazelix_config_reads_pack_sidecar_next_to_symlinked_main_config [] {
-    print "🧪 Testing parse_yazelix_config keeps pack sidecar ownership next to a symlinked Home Manager main config..."
-
-    let fixture = (setup_home_manager_symlinked_main_config_fixture "yazelix_hm_symlink_pack_surface")
-
-    let result = (try {
-        let parser_script = (repo_path "nushell" "scripts" "utils" "config_parser.nu")
-
-        'enabled = ["misc"]
-' | save --force --raw $fixture.pack_path
-
-        let output = (with-env {
-            HOME: $fixture.fake_home
-            XDG_CONFIG_HOME: ($fixture.fake_home | path join ".config")
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.repo_root
-        } {
-            ^nu --no-config-file -c $"use \"($parser_script)\" [parse_yazelix_config]; parse_yazelix_config | get pack_names | to json -r" | complete
-        })
-        let stdout = ($output.stdout | str trim)
-        let stderr = ($output.stderr | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout == '["misc"]')
-            and not ($stderr | str contains "Already exists")
-        ) {
-            print "  ✅ Symlinked Home Manager main configs still read the sibling yazelix_packs.toml sidecar"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmpdir
     $result
 }
 
@@ -648,13 +555,11 @@ def test_record_materialized_state_accepts_symlinked_managed_main_config [] {
             XDG_CONFIG_HOME: ($fixture.fake_home | path join ".config")
             YAZELIX_CONFIG_DIR: $fixture.config_dir
             YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZELIX_STATE_DIR: ($fixture.fake_home | path join ".local" "share" "yazelix")
         } {
             record_materialized_state {
                 config_file: $fixture.symlinked_main
                 config_hash: "cfg"
-                lock_hash: "lock"
-                devenv_nix_hash: "nix"
-                devenv_yaml_hash: "yaml"
                 runtime_hash: "runtime"
             }
         }
@@ -665,13 +570,11 @@ def test_record_materialized_state_accepts_symlinked_managed_main_config [] {
             null
         }
         let recorded_config_hash = if $recorded == null { "" } else { $recorded | get -o config_hash | default "" }
-        let recorded_lock_hash = if $recorded == null { "" } else { $recorded | get -o lock_hash | default "" }
         let recorded_runtime_hash = if $recorded == null { "" } else { $recorded | get -o runtime_hash | default "" }
 
         if (
             ($recorded != null)
             and ($recorded_config_hash == "cfg")
-            and ($recorded_lock_hash == "lock")
             and ($recorded_runtime_hash == "runtime")
         ) {
             print "  ✅ Symlinked Home Manager managed configs still record canonical rebuild state"
@@ -1658,13 +1561,10 @@ export def run_generated_config_canonical_tests [] {
         (test_managed_wrapper_launch_command_does_not_forward_config_mode_flag)
         (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
-        (test_parse_yazelix_config_bootstraps_split_default_surfaces)
+        (test_parse_yazelix_config_bootstraps_main_default_surface)
         (test_parse_yazelix_config_bootstraps_taplo_formatter_support)
         (test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation)
         (test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed)
-        (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)
-        (test_parse_yazelix_config_rejects_split_pack_ownership)
-        (test_parse_yazelix_config_reads_pack_sidecar_next_to_symlinked_main_config)
         (test_record_materialized_state_accepts_symlinked_managed_main_config)
         (test_user_mode_requires_real_terminal_config)
         (test_config_schema_rejects_removed_auto_terminal_config_mode)

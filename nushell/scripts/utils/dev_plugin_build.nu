@@ -35,8 +35,8 @@ def get_popup_runner_paths [] {
 }
 
 def print_rust_wasi_enable_hint [] {
-    print "   Enable the `rust_wasi` pack in ~/.config/yazelix/user_configs/yazelix_packs.toml to get the pinned WASI-capable Rust toolchain."
-    print '   Example: enabled = ["rust_wasi"]'
+    print "   Install a WASI-capable Rust toolchain in your maintainer environment."
+    print "   Example: run the build inside `devenv shell`, or use `rustup target add wasm32-wasip1`."
 }
 
 def ensure_build_tools_available [] {

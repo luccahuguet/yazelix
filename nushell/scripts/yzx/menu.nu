@@ -33,7 +33,6 @@ const PUBLIC_YZX_COMMAND_CATALOG = [
     {id: "yzx doctor", category: "system", description: "Run health checks and diagnostics"}
     {id: "yzx edit", category: "config", description: ""}
     {id: "yzx edit config", category: "config", description: ""}
-    {id: "yzx edit packs", category: "config", description: ""}
     {id: "yzx enter", category: "session", description: "Start Yazelix in the current terminal"}
     {id: "yzx env", category: "system", description: "Load yazelix environment without UI"}
     {id: "yzx gc", category: "system", description: "Garbage collection for Nix store"}
@@ -52,7 +51,6 @@ const PUBLIC_YZX_COMMAND_CATALOG = [
     {id: "yzx keys yzx", category: "help", description: "Alias for the default Yazelix keybinding view."}
     {id: "yzx launch", category: "session", description: "Launch yazelix"}
     {id: "yzx menu", category: "help", description: "Interactive command palette for Yazelix"}
-    {id: "yzx packs", category: "system", description: "Show packs and their sizes"}
     {id: "yzx popup", category: "workspace", description: ""}
     {id: "yzx repair", category: "system", description: ""}
     {id: "yzx repair zellij-permissions", category: "system", description: ""}

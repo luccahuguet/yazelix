@@ -3,7 +3,7 @@
 
 use config_migrations.nu [apply_config_migration_plan build_config_migration_plan_from_record]
 use config_schema.nu [apply_main_contract_to_reference_config compare_configs validate_enum_values]
-use config_surfaces.nu [get_pack_sidecar_path load_config_surface_from_main]
+use config_surfaces.nu [load_config_surface_from_main]
 use failure_classes.nu [format_failure_classification]
 
 def format_release_context [result: record] {
@@ -136,7 +136,6 @@ export def build_config_diagnostic_report_from_records [
     default_config: record
     config_path: string
     migration_config?: any
-    pack_config?: any
     --include-missing
 ] {
     let migration_source = ($migration_config | default $user_config)
@@ -144,8 +143,6 @@ export def build_config_diagnostic_report_from_records [
         build_config_migration_plan_from_record
             $migration_source
             $config_path
-            $pack_config
-            (get_pack_sidecar_path $config_path)
     )
     let migration_paths = ($migration_plan.results | get -o matched_paths | default [] | flatten | uniq)
     let schema_findings = (
@@ -186,7 +183,6 @@ export def build_config_diagnostic_report [
             $default_config
             $config_path
             $config_surface.main_config
-            $config_surface.pack_config
             --include-missing=$include_missing
         | upsert config_path $config_surface.display_config_path
     )

@@ -207,53 +207,6 @@ def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
     }
 }
 
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Regression: managed Ghostty wrappers must find sibling nixGL even when desktop launch clears DEVENV_PROFILE.
-def test_managed_wrapper_prefers_sibling_nixgl_without_ambient_profile [] {
-    print "🧪 Testing managed Ghostty wrappers resolve sibling nixGL without ambient DEVENV_PROFILE..."
-
-    let repo_root = ($env.PWD | path expand)
-    let devenv_bin = (resolve_preferred_devenv_path)
-
-    try {
-        let output = (with-env {
-            YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
-            YAZELIX_ENV_ONLY: "true"
-        } {
-            ^$devenv_bin --quiet shell -- bash -lc 'expected="$DEVENV_PROFILE/bin/nixGL"; wrapper="$DEVENV_PROFILE/bin/yazelix-ghostty"; printf "__EXPECTED__%s\n" "$expected"; env -u DEVENV_PROFILE PATH=/usr/bin:/bin YAZELIX_RUNTIME_DIR="$DEVENV_ROOT" bash -x "$wrapper" --version >/dev/null' | complete
-        })
-        let expected_nixgl = (
-            $output.stdout
-            | lines
-            | where {|line| $line | str starts-with "__EXPECTED__" }
-            | get -o 0
-            | default ""
-            | str replace "__EXPECTED__" ""
-            | str trim
-        )
-        let trace = ($output.stderr | default "")
-        let expected_self_line = ('+ self_nixgl=' + $expected_nixgl)
-        let expected_exec_prefix = ('+ exec ' + $expected_nixgl + ' ')
-
-        if (
-            ($output.exit_code == 0)
-            and ($expected_nixgl | is-not-empty)
-            and ($trace | str contains $expected_self_line)
-            and ($trace | str contains $expected_exec_prefix)
-        ) {
-            print "  ✅ Managed Ghostty wrapper now finds sibling nixGL without relying on ambient DEVENV_PROFILE"
-            true
-        } else {
-            let trace_tail = ($trace | lines | last 20 | str join "\n")
-            print $"  ❌ Unexpected result: exit=($output.exit_code) expected_nixgl=($expected_nixgl) stderr=($trace_tail)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Regression: maintainer commands resolve a writable repo root even when the stable CLI carries an installed runtime env.
 def test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env [] {
@@ -284,78 +237,6 @@ def test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env [] {
     }
 }
 
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-# Regression: runtime-project lookup must stay read-only while materialization remains explicit.
-def test_runtime_project_lookup_stays_read_only_until_materialized [] {
-    print "🧪 Testing runtime-project lookup stays read-only until materialized..."
-
-    let repo_root = ($env.PWD | path expand)
-    let tmp_root = (^mktemp -d /tmp/yazelix_runtime_project_split_XXXXXX | str trim)
-    let state_dir = ($tmp_root | path join "state")
-    let runtime_dir = ($tmp_root | path join "runtime")
-    let project_dir = ($state_dir | path join "runtime" "project")
-    let stale_runtime_dir = ($tmp_root | path join "stale_runtime")
-    let common_script = ($repo_root | path join "nushell" "scripts" "utils" "common.nu")
-    let runtime_project_script = ($repo_root | path join "nushell" "scripts" "utils" "runtime_project.nu")
-
-    mkdir $state_dir
-    mkdir $runtime_dir
-    mkdir $project_dir
-    mkdir $stale_runtime_dir
-
-    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "nushell", "rust_plugins", "shells", "CHANGELOG.md", "devenv.lock", "devenv.nix", "devenv.yaml", "yazelix_default.toml", "yazelix_packs_default.toml"] {
-        ^ln -s ($repo_root | path join $entry) ($runtime_dir | path join $entry)
-    }
-    "stale" | save --force ($stale_runtime_dir | path join "devenv.nix")
-    ^ln -s ($stale_runtime_dir | path join "devenv.nix") ($project_dir | path join "devenv.nix")
-    "stale-docs" | save --force ($project_dir | path join "docs")
-
-    let result = (try {
-        let snippet = (
-            [
-                $"use \"($runtime_project_script)\" [get_existing_yazelix_runtime_project_dir materialize_yazelix_runtime_project_dir]"
-                "print ((get_existing_yazelix_runtime_project_dir) | default '<missing>')"
-                "print (materialize_yazelix_runtime_project_dir)"
-                "print ((get_existing_yazelix_runtime_project_dir) | default '<missing>')"
-            ] | str join "\n"
-        )
-        let output = (with-env {
-            YAZELIX_RUNTIME_DIR: $runtime_dir
-            YAZELIX_STATE_DIR: $state_dir
-        } {
-            do { ^nu -c $snippet } | complete
-        })
-        let lines = ($output.stdout | lines)
-        let devenv_nix_target = ($project_dir | path join "devenv.nix")
-        let docs_target = ($project_dir | path join "docs")
-        let resolved_devenv_nix_target = (if ($devenv_nix_target | path exists) { ^readlink -f $devenv_nix_target | str trim } else { "" })
-        let resolved_runtime_devenv_nix = (^readlink -f ($runtime_dir | path join "devenv.nix") | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and (($lines | get -o 0 | default "") == "<missing>")
-            and (($lines | get -o 1 | default "") == $project_dir)
-            and (($lines | get -o 2 | default "") == $project_dir)
-            and ($devenv_nix_target | path exists)
-            and (($devenv_nix_target | path type) == "symlink")
-            and ($resolved_devenv_nix_target == $resolved_runtime_devenv_nix)
-            and not ($docs_target | path exists)
-        ) {
-            print "  ✅ Stale runtime-project state is ignored until explicit materialization replaces it"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) lines=(($lines | to json -r)) target_exists=(($devenv_nix_target | path exists)) target_type=(if ($devenv_nix_target | path exists) { $devenv_nix_target | path type } else { '<missing>' }) target_resolved=($resolved_devenv_nix_target) docs_exists=(($docs_target | path exists)) stderr=(($output.stderr | str trim))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_root
-    $result
-}
-
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 # Regression: default-suite budget profiling must not wait for leaked background children from the runner.
 def test_default_budget_profiler_does_not_wait_on_background_children [] {
@@ -380,97 +261,6 @@ def test_default_budget_profiler_does_not_wait_on_background_children [] {
         print $"  ❌ Exception: ($err.msg)"
         false
     }
-}
-
-# Strength: defect=2 behavior=2 resilience=2 cost=0 uniqueness=2 total=8/10
-# Regression: a successful build-shell keeps runtime-project profile artifacts aligned with the built profile.
-def test_build_shell_output_records_runtime_owned_profile_without_runtime_project_artifacts [] {
-    print "🧪 Testing build-shell output records the runtime-owned profile without requiring runtime-project .devenv artifacts..."
-
-    let repo_root = ($env.PWD | path expand)
-    let tmp_root = (^mktemp -d /tmp/yazelix_runtime_project_shell_align_XXXXXX | str trim)
-    let temp_home = ($tmp_root | path join "home")
-    let config_dir = ($temp_home | path join ".config" "yazelix")
-    let user_config_dir = ($config_dir | path join "user_configs")
-    let state_dir = ($tmp_root | path join "state")
-    let bootstrap_module = ($repo_root | path join "nushell" "scripts" "utils" "devenv_backend.nu")
-    let launch_state_module = ($repo_root | path join "nushell" "scripts" "utils" "launch_state.nu")
-
-    mkdir $user_config_dir
-    mkdir $state_dir
-    cp ($repo_root | path join "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
-    cp ($repo_root | path join "yazelix_packs_default.toml") ($user_config_dir | path join "yazelix_packs.toml")
-
-    let result = (try {
-        let snippet = (
-            [
-                $"use \"($bootstrap_module)\" [get_devenv_base_command]"
-                $"use \"($launch_state_module)\" [record_launch_profile_state resolve_profile_from_build_shell_output resolve_runtime_owned_profile]"
-                "let base = (get_devenv_base_command --quiet --skip-shellhook-welcome)"
-                "let full = ($base | append [\"build\" \"shell\"])"
-                "let cmd_bin = ($full | first)"
-                "let cmd_args = ($full | skip 1)"
-                "let result = (^$cmd_bin ...$cmd_args | complete)"
-                "if $result.exit_code != 0 {"
-                "    print --raw ($result.stdout | default \"\")"
-                "    print --stderr --raw ($result.stderr | default \"\")"
-                "    exit 1"
-                "}"
-                "let built_profile = (resolve_profile_from_build_shell_output $result.stdout)"
-                "let project_root = ($env.YAZELIX_STATE_DIR | path join \"runtime\" \"project\")"
-                "let profile_link = ($project_root | path join \".devenv\" \"profile\")"
-                "let shell_link = ($project_root | path join \".devenv\" \"gc\" \"shell\")"
-                "if ($profile_link | path exists) { rm --force $profile_link }"
-                "if ($shell_link | path exists) { rm --force $shell_link }"
-                "record_launch_profile_state {combined_hash: \"probe-hash\"} $built_profile"
-                "let runtime_owned = (resolve_runtime_owned_profile)"
-                "let recorded_state = (open (($env.YAZELIX_STATE_DIR | path join \"state\" \"launch_state.json\")))"
-                "{"
-                "    built_profile: $built_profile"
-                "    runtime_owned: $runtime_owned"
-                "    recorded_profile: ($recorded_state.profile_path | into string)"
-                "    profile_link_exists: ($profile_link | path exists)"
-                "    shell_link_exists: ($shell_link | path exists)"
-                "} | to json -r"
-            ] | str join "\n"
-        )
-        let output = (with-env {
-            HOME: $temp_home
-            YAZELIX_CONFIG_DIR: $config_dir
-            YAZELIX_STATE_DIR: $state_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $snippet | complete
-        })
-        let stdout = ($output.stdout | str trim)
-        let resolved = if $output.exit_code == 0 {
-            $stdout | lines | last | from json
-        } else {
-            null
-        }
-
-        if (
-            ($output.exit_code == 0)
-            and ($resolved != null)
-            and (($resolved.built_profile? | default "") | is-not-empty)
-            and ($resolved.built_profile == $resolved.runtime_owned)
-            and ($resolved.built_profile == $resolved.recorded_profile)
-            and (not $resolved.profile_link_exists)
-            and (not $resolved.shell_link_exists)
-        ) {
-            print "  ✅ Build-shell output and recorded launch state are enough for runtime-owned profile resolution"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_root
-    $result
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=0 uniqueness=2 total=8/10
@@ -1148,11 +938,8 @@ def main [] {
         (test_dev_bump_rejects_dirty_worktrees)
         (test_dev_bump_rejects_existing_target_tags)
         (test_source_devenv_shell_clears_inherited_runtime_aliases)
-        (test_managed_wrapper_prefers_sibling_nixgl_without_ambient_profile)
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
-        (test_runtime_project_lookup_stays_read_only_until_materialized)
         (test_default_budget_profiler_does_not_wait_on_background_children)
-        (test_build_shell_output_records_runtime_owned_profile_without_runtime_project_artifacts)
         (test_vendored_yazi_plugin_refresh_applies_patch_and_refuses_dirty_targets)
         (test_nushell_initializer_restores_current_path_first)
         (test_startup_profile_report_schema_is_structured_and_summarizable)

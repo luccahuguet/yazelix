@@ -21,7 +21,7 @@ See [Subsystem Code Inventory](./subsystem_code_inventory.md) for the current ma
 | Subsystem | Purpose | Examples | Main source of truth |
 | --- | --- | --- | --- |
 | Workspace | The terminal IDE experience users interact with directly | Zellij layouts, Yazi/editor flow, keybindings, managed panes, tab naming, workspace roots | Session and workspace state, pane orchestrator, workspace-focused commands |
-| Runtime | The environment and control plane that makes the workspace reproducible | `devenv`, packs, `yazelix.toml`, `yzx refresh`, `yzx restart`, `yzx run` | Dynamic user intent in managed TOML, deterministic shipped runtime code, materialized/generated state, and live session activation state |
+| Runtime | The environment and control plane that makes the workspace reproducible | fixed packaged runtime, `yazelix.toml`, `yzx launch`, `yzx env`, `yzx update`, `yzx run` | Dynamic user intent in managed TOML, deterministic shipped runtime code, materialized/generated state, and live session activation state |
 | Integrations | Adapters between Yazelix and external systems | Home Manager, desktop entry, shell hooks, terminal-specific launchers, CI entrypoints | The supported contract of the subsystem being integrated, not ad hoc host assumptions |
 | Maintainer Workflow | The machinery that keeps the product evolving safely | Beads, CI, validators, release/version/update workflow, future specs | Beads graph, CI workflows, documented contracts, maintainer commands |
 
@@ -48,22 +48,21 @@ This layer should answer questions like:
 
 The runtime layer is what makes Yazelix reproducible and configurable:
 
-- dynamic user intent in `yazelix.toml` and `yazelix_packs.toml`
+- dynamic user intent in `yazelix.toml`
 - deterministic runtime code from the shipped runtime tree
-- package selection through packs
+- fixed shipped tool availability through the packaged runtime
 - shell and editor configuration in `yazelix.toml`
-- `devenv` evaluation and environment build logic
-- generated configs, cached launch state, and refresh/restart flows
-- live session activation state such as `DEVENV_PROFILE`, profile-derived `PATH`, and session markers
+- generated configs, runtime-state hashing, and update/restart flows
+- live session activation state such as runtime-derived `PATH`, editor wrappers, and session markers
 
 This layer should answer questions like:
 
 - Which settings express user intent versus shipped defaults?
 - Which files are deterministic runtime code versus generated artifacts?
-- Which tools are installed?
+- Which tools are shipped versus expected from the host?
 - Which shell/editor/terminal is configured?
 - Where do generated configs live?
-- How does `yzx refresh` or `yzx restart` rebuild and switch the runtime safely?
+- How does `yzx update`, `yzx launch`, or `yzx restart` repair and switch the runtime safely?
 
 ## Supporting Subsystems
 
@@ -115,9 +114,9 @@ Current direction:
 
 - code should resolve config root, runtime root, and state root through canonical helpers instead of treating one shell or checkout path as authoritative for everything
 - tests and helpers should not assume `~/.config/yazelix` is a repo checkout
-- setup and install flows may materialize generated state, but launch and refresh flows should own launch-profile recording
+- setup and install flows may materialize generated state, but hot-path launch should enter an already-built runtime rather than own package materialization
 - live session activation markers should be treated as process-local session state, not as persisted runtime truth
-- package-ready work should keep clarifying what is shipped, user-owned, and generated
+- package-ready work should keep clarifying what is shipped, user-owned, generated, or maintainer-only
 
 See [Config Surface And Launch Profile Contract](./specs/config_surface_and_launch_profile_contract.md) for the concrete runtime ownership model.
 See [Runtime Root Contract](./specs/runtime_root_contract.md) for the concrete split between config-owned paths, shipped runtime assets, and generated state.

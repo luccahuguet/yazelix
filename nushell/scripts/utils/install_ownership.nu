@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use common.nu [get_yazelix_state_dir]
-use config_surfaces.nu [get_main_user_config_path get_pack_sidecar_path]
+use config_surfaces.nu get_main_user_config_path
 
 const HOME_MANAGER_FILES_MARKER = "-home-manager-files/"
 const MANUAL_DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
@@ -9,12 +9,18 @@ const MANUAL_DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
 def get_xdg_data_home [] {
     let configured = (
         $env.XDG_DATA_HOME?
-        | default "~/.local/share"
+        | default ""
         | into string
         | str trim
     )
 
-    $configured | path expand
+    if ($configured | is-not-empty) {
+        $configured | path expand
+    } else if (($env.HOME? | default "" | into string | str trim) | is-not-empty) {
+        $env.HOME | path join ".local" "share"
+    } else {
+        "~/.local/share" | path expand
+    }
 }
 
 def read_symlink_target [path: string] {
@@ -62,10 +68,6 @@ def get_manual_desktop_icon_path [size: string] {
 
 export def get_manual_main_config_path [] {
     get_main_user_config_path
-}
-
-export def get_manual_pack_config_path [] {
-    get_pack_sidecar_path (get_main_user_config_path)
 }
 
 export def is_home_manager_owned_surface [path: string] {
@@ -150,16 +152,6 @@ export def collect_home_manager_prepare_artifacts [] {
         })
     }
 
-    let pack_config = (get_manual_pack_config_path)
-    if ($pack_config | path exists) and not (is_home_manager_owned_surface $pack_config) {
-        $artifacts = ($artifacts | append {
-            id: "pack_config"
-            class: "blocker"
-            label: "managed yazelix_packs.toml surface"
-            path: $pack_config
-        })
-    }
-
     let desktop_entry = (get_manual_desktop_entry_path)
     if (is_manual_desktop_entry_path $desktop_entry) {
         $artifacts = ($artifacts | append {
@@ -179,10 +171,5 @@ export def collect_home_manager_prepare_artifacts [] {
 
 export def has_home_manager_managed_install [] {
     let main_config = (get_manual_main_config_path)
-    let pack_config = (get_manual_pack_config_path)
-
-    (
-        (is_home_manager_owned_surface $main_config)
-        or (is_home_manager_owned_surface $pack_config)
-    )
+    is_home_manager_owned_surface $main_config
 }

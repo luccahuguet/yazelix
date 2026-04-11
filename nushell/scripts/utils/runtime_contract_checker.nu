@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use failure_classes.nu [format_failure_classification]
-use terminal_launcher.nu [detect_terminal_candidates detect_terminal_wrapper_candidates]
+use terminal_launcher.nu detect_terminal_candidates
 use constants.nu [SUPPORTED_TERMINALS TERMINAL_METADATA]
 use common.nu [get_yazelix_state_dir]
 
@@ -217,7 +217,7 @@ export def check_generated_layout [layout_path: string, owner_surface: string] {
         "Run `yzx refresh` to regenerate layouts, or check the configured layout name.")
 }
 
-export def check_launch_terminal_support [requested_terminal: string, terminals: list<string>, manage_terminals: bool] {
+export def check_launch_terminal_support [requested_terminal: string, terminals: list<string>] {
     if ($requested_terminal | is-not-empty) {
         let specified_terminal = $requested_terminal
         let term_meta = ($TERMINAL_METADATA | get -o $specified_terminal)
@@ -234,23 +234,11 @@ export def check_launch_terminal_support [requested_terminal: string, terminals:
                 --blocking)
         }
 
-        let candidates = if $manage_terminals {
-            detect_terminal_wrapper_candidates [$specified_terminal]
-        } else {
-            detect_terminal_candidates [$specified_terminal] false
-        }
+        let candidates = (detect_terminal_candidates [$specified_terminal])
 
         if ($candidates | is-empty) {
-            let reason = if $manage_terminals {
-                $"Specified terminal '($specified_terminal)' is not available in the current Yazelix environment."
-            } else {
-                $"Specified terminal '($specified_terminal)' is not installed"
-            }
-            let recovery = if $manage_terminals {
-                "Install the requested terminal in the Yazelix runtime or on the host, then rerun `yzx launch`."
-            } else {
-                "Please install it or choose a different terminal for testing."
-            }
+            let reason = $"Specified terminal '($specified_terminal)' is not installed on the host."
+            let recovery = "Install it on the host, or choose a different terminal for testing."
             return (build_runtime_check
                 "launch_terminal_support"
                 "error"
@@ -275,22 +263,10 @@ export def check_launch_terminal_support [requested_terminal: string, terminals:
             --candidates $candidates)
     }
 
-    let candidates = if $manage_terminals {
-        detect_terminal_wrapper_candidates $terminals
-    } else {
-        detect_terminal_candidates $terminals false
-    }
+    let candidates = (detect_terminal_candidates $terminals)
     if ($candidates | is-empty) {
-        let reason = if $manage_terminals {
-            "None of the configured managed terminals are available in the current Yazelix environment."
-        } else {
-            "None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty, Foot) are installed."
-        }
-        let recovery = if $manage_terminals {
-            "Install one configured terminal in the Yazelix runtime or on the host, or adjust [terminal].terminals to an available terminal."
-        } else {
-            "Please install one of these terminals to use Yazelix.\n  - WezTerm: https://wezfurlong.org/wezterm/\n  - Ghostty: https://ghostty.org/\n  - Kitty: https://sw.kovidgoyal.net/kitty/\n  - Alacritty: https://alacritty.org/\n  - Foot: https://codeberg.org/dnkl/foot"
-        }
+        let reason = "None of the configured terminal binaries are installed on the host."
+        let recovery = "Install one of the configured terminals on the host, or adjust [terminal].terminals to match what is available."
         return (build_runtime_check
             "launch_terminal_support"
             "error"

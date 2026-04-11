@@ -138,41 +138,6 @@ const CONFIG_MIGRATION_RULES = [
         rationale: "Yazelix now uses the clearer game_of_life welcome-style name instead of the shorter life alias."
         manual_fix: "Replace core.welcome_style = \"life\" with \"game_of_life\"."
     }
-    {
-        id: "split_legacy_pack_config_surface"
-        title: "Move legacy [packs] out of yazelix.toml into yazelix_packs.toml"
-        kind: "field_reshape"
-        introduced_in: "v13.8"
-        introduced_after_version: null
-        introduced_on: "2026-03-28"
-        review_after_days: 180
-        last_reviewed_on: null
-        retirement_policy: "demote_to_explicit_then_delete"
-        auto_apply: true
-        user_visible: true
-        guarded_paths: ["packs"]
-        rationale: "Yazelix now keeps pack declarations in a dedicated yazelix_packs.toml sidecar so the main config stays focused and pack ownership is unambiguous."
-        manual_fix: "Move [packs] out of yazelix.toml into yazelix_packs.toml, then re-run with only the sidecar owning pack settings."
-    }
-    {
-        id: "replace_removed_nodepackages_typescript_language_server"
-        title: "Replace the removed nodePackages.typescript-language-server package name"
-        kind: "removed_value"
-        introduced_in: null
-        introduced_after_version: "v13.11"
-        introduced_on: "2026-04-04"
-        review_after_days: 180
-        last_reviewed_on: null
-        retirement_policy: "demote_to_explicit_then_delete"
-        auto_apply: true
-        user_visible: true
-        guarded_paths: [
-            "yazelix_packs.toml.user_packages"
-            "yazelix_packs.toml.declarations"
-        ]
-        rationale: "nixpkgs removed the nodePackages namespace, so Yazelix-managed pack configs must now use the top-level typescript-language-server package name."
-        manual_fix: "Replace nodePackages.typescript-language-server with typescript-language-server in yazelix_packs.toml."
-    }
 ]
 
 def parse_rule_date [value: any] {

@@ -52,7 +52,7 @@ def get_launch_error_details [stdout: string, stderr: string]: nothing -> string
     )
 
     if $missing_terminal {
-        let hint = "Missing terminal. Install it, or set manage_terminals = true and run yzx restart."
+        let hint = "Missing terminal. Install one of the configured host terminals, or update [terminal].terminals and rerun yzx launch."
         let matched_line = (
             $lines
             | where {|line|

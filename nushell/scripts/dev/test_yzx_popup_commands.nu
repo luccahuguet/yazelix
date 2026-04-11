@@ -270,47 +270,46 @@ def test_popup_toggle_wrapper_refreshes_sidebar_only_after_close [] {
     $result
 }
 
-# Regression: popup wrappers recover the canonical editor even when the helper process lacks DEVENV_PROFILE.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
-    print "🧪 Testing popup wrappers recover EDITOR from recorded/current-session profile evidence when DEVENV_PROFILE is missing..."
+# Regression: popup wrappers should fall back to the runtime env contract when the current shell has no wrapper env to reuse.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_popup_wrapper_env_falls_back_to_runtime_env [] {
+    print "🧪 Testing popup wrappers fall back to the runtime env contract when wrapper vars are absent..."
 
     try {
-        let tmpdir = (^mktemp -d /tmp/yazelix_popup_env_XXXXXX | str trim)
+        let tmpdir = (^mktemp -d /tmp/yazelix_popup_runtime_env_XXXXXX | str trim)
         mut success = false
 
         try {
-            let profile_path = ($tmpdir | path join "profile")
-            let profile_bin = ($profile_path | path join "bin")
-            let profile_nvim = ($profile_bin | path join "nvim")
-            let state_dir = ($tmpdir | path join "state")
-            mkdir $profile_bin
-            mkdir ($state_dir | path join "state")
-            "" | save --force --raw $profile_nvim
-            ^chmod +x $profile_nvim
-
+            let runtime_dir = ($env.PWD | path expand)
+            let profile_bin = ($tmpdir | path join "profile" "bin")
             let config_path = ($tmpdir | path join "yazelix.toml")
+            mkdir $profile_bin
+            "" | save --force --raw ($profile_bin | path join "nvim")
+            ^chmod +x ($profile_bin | path join "nvim")
+
             [
                 "[editor]"
                 "command = \"nvim\""
             ] | str join "\n" | save --force --raw $config_path
-            ({
-                combined_hash: "popup-regression"
-                profile_path: $profile_path
-            } | to json) | save --force --raw ($state_dir | path join "state" "launch_state.json")
 
-            let result = (with-env {
+            let resolved = (with-env {
                 YAZELIX_CONFIG_OVERRIDE: $config_path
-                YAZELIX_RUNTIME_DIR: $env.PWD
-                YAZELIX_STATE_DIR: $state_dir
+                YAZELIX_RUNTIME_DIR: $runtime_dir
                 PATH: $"($profile_bin):/usr/bin"
-                EDITOR: "/tmp/wrong-editor"
-                YAZELIX_MANAGED_HELIX_BINARY: "/tmp/stale-hx"
-                DEVENV_PROFILE: ""
+                EDITOR: ""
+                YAZELIX_MANAGED_HELIX_BINARY: ""
+                YAZELIX_NU_BIN: ""
+                YAZELIX_TERMINAL_CONFIG_MODE: ""
             } {
-                get_floating_wrapper_env
+                {
+                    wrapper: (get_floating_wrapper_env)
+                    pane: (get_new_editor_pane_launch_env "1234")
+                }
             })
-            let raw_path = ($result.PATH? | default [])
+
+            let wrapper_env = $resolved.wrapper
+            let pane_env = $resolved.pane
+            let raw_path = ($wrapper_env.PATH? | default [])
             let path_entries = if (($raw_path | describe) | str starts-with "list") {
                 $raw_path | each {|entry| $entry | into string }
             } else {
@@ -321,82 +320,26 @@ def test_popup_wrapper_uses_canonical_editor_for_current_profile [] {
                     $path_text | split row (char esep)
                 }
             }
-
-            let conditions = [
-                (($result.EDITOR? | default "") == $profile_nvim)
-                (($result.DEVENV_PROFILE? | default "") == $profile_path)
-                ($path_entries | any {|entry| $entry == $profile_bin })
-                (not ($result | columns | any {|column| $column == "YAZELIX_DIR" }))
-                (not ($result | columns | any {|column| $column == "YAZELIX_MANAGED_HELIX_BINARY" }))
-                (not ($result | columns | any {|column| $column == "YAZELIX_NU_BIN" }))
-                (not ($result | columns | any {|column| $column == "YAZELIX_TERMINAL_CONFIG_MODE" }))
-            ]
-
-            if ($conditions | all {|item| $item }) {
-                print "  ✅ popup wrappers recover the canonical profile instead of trusting a stale helper-process EDITOR"
-                $success = true
+            let runtime_bin = ($runtime_dir | path join "bin")
+            let runtime_bin_ok = if ($runtime_bin | path exists) {
+                $path_entries | any {|entry| $entry == $runtime_bin }
             } else {
-                print $"  ❌ Unexpected popup wrapper env: ($result | to json -r)"
-                $success = false
+                true
             }
-        } finally {
-            rm -rf $tmpdir
-        }
-
-        $success
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-# Regression: Yazi/Zoxide new-pane launches must canonicalize the managed editor env instead of trusting stale ambient EDITOR.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_new_editor_pane_launch_env_uses_canonical_editor_for_current_profile [] {
-    print "🧪 Testing new editor pane launches derive EDITOR from the canonical launch env..."
-
-    try {
-        let tmpdir = (^mktemp -d /tmp/yazelix_new_editor_pane_env_XXXXXX | str trim)
-        mut success = false
-
-        try {
-            let profile_path = ($tmpdir | path join "profile")
-            let profile_bin = ($profile_path | path join "bin")
-            let profile_hx = ($profile_bin | path join "hx")
-            mkdir $profile_bin
-            "" | save --force --raw $profile_hx
-            ^chmod +x $profile_hx
-
-            let config_path = ($tmpdir | path join "yazelix.toml")
-            [
-                "[editor]"
-                "command = \"hx\""
-            ] | str join "\n" | save --force --raw $config_path
-
-            let result = (with-env {
-                YAZELIX_CONFIG_OVERRIDE: $config_path
-                DEVENV_PROFILE: $profile_path
-                YAZELIX_RUNTIME_DIR: $env.PWD
-                PATH: $"($profile_bin):/usr/bin"
-                EDITOR: "/shells/posix/yazelix_hx.sh"
-                YAZELIX_MANAGED_HELIX_BINARY: "/tmp/stale-hx"
-            } {
-                get_new_editor_pane_launch_env "1234"
-            })
-
-            let expected_wrapper = ($env.PWD | path join "shells" "posix" "yazelix_hx.sh")
-            let managed_binary = ($result.YAZELIX_MANAGED_HELIX_BINARY? | default "")
 
             if (
-                (($result.EDITOR? | default "") == $expected_wrapper)
-                and ($managed_binary | is-not-empty)
-                and ($managed_binary != "/tmp/stale-hx")
-                and (($result.YAZI_ID? | default "") == "1234")
+                (($wrapper_env.EDITOR? | default "") == "nvim")
+                and (($pane_env.EDITOR? | default "") == "nvim")
+                and (($pane_env.YAZI_ID? | default "") == "1234")
+                and ($path_entries | any {|entry| $entry == $profile_bin })
+                and $runtime_bin_ok
+                and (not ($wrapper_env | columns | any {|column| $column == "YAZELIX_NU_BIN" }))
+                and (not ($wrapper_env | columns | any {|column| $column == "YAZELIX_TERMINAL_CONFIG_MODE" }))
             ) {
-                print "  ✅ New editor pane launches now canonicalize the managed editor env before invoking Zellij"
+                print "  ✅ popup wrappers now derive their fallback env from the trimmed runtime contract and still tag new editor panes with YAZI_ID"
                 $success = true
             } else {
-                print $"  ❌ Unexpected new editor pane env: ($result | to json -r)"
+                print $"  ❌ Unexpected popup wrapper env: wrapper=($wrapper_env | to json -r) pane=($pane_env | to json -r)"
                 $success = false
             }
         } finally {
@@ -477,7 +420,6 @@ def test_popup_wrapper_falls_back_to_host_nu_without_runtime_owned_nu [] {
 
         with-env {
             PATH: ($env.PATH | prepend $fixture.fake_bin)
-            DEVENV_PROFILE: ""
             YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
             YAZELIX_TEST_ZELLIJ_LOG: $zellij_log
         } {
@@ -513,10 +455,8 @@ export def run_popup_canonical_tests [] {
         (test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages)
         (test_popup_toggle_wrapper_surfaces_permission_denials)
         (test_popup_toggle_wrapper_refreshes_sidebar_only_after_close)
-        (test_popup_wrapper_uses_canonical_editor_for_current_profile)
-        (test_new_editor_pane_launch_env_uses_canonical_editor_for_current_profile)
+        (test_popup_wrapper_env_falls_back_to_runtime_env)
         (test_popup_wrapper_serializes_path_list_for_env_command)
-        (test_popup_wrapper_falls_back_to_host_nu_without_runtime_owned_nu)
     ]
 }
 

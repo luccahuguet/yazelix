@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# yzx config - Show, migrate, and reset Yazelix config surfaces
+# yzx config - Show, migrate, and reset the Yazelix main config surface
 
 use ../utils/config_migration_preview.nu [get_config_migration_plan render_config_migration_plan]
 use ../utils/config_migrations.nu apply_config_migration_plan
@@ -9,7 +9,7 @@ use ../utils/config_surfaces.nu [copy_default_config_surfaces get_primary_config
 
 # Show the active Yazelix configuration
 export def "yzx config" [
-    --full   # Include the packs section
+    --full   # Show the complete main config record
     --path   # Print the resolved config path
 ] {
     let config_surface = (load_active_config_surface)
@@ -18,27 +18,22 @@ export def "yzx config" [
     if $path {
         $config_path
     } else {
-        let active_config = $config_surface.merged_config
-        if $full { $active_config } else { $active_config | reject packs }
+        $config_surface.merged_config
     }
 }
 
 def resolve_config_migration_context [] {
     let paths = get_primary_config_paths
     let user_exists = ($paths.user_config | path exists)
-    let user_pack_exists = ($paths.user_pack_config | path exists)
     let legacy_exists = ($paths.legacy_user_config | path exists)
-    let legacy_pack_exists = ($paths.legacy_pack_config | path exists)
 
-    if ($user_exists or $user_pack_exists) and ($legacy_exists or $legacy_pack_exists) {
+    if $user_exists and $legacy_exists {
         error make {
             msg: (
                 [
                     "Yazelix found duplicate config surfaces in both the repo root and user_configs."
                     $"user_configs main: ($paths.user_config)"
-                    $"user_configs packs: ($paths.user_pack_config)"
                     $"legacy main: ($paths.legacy_user_config)"
-                    $"legacy packs: ($paths.legacy_pack_config)"
                     ""
                     "Keep only the user_configs copies. Move or delete the legacy root-level config files so Yazelix has one clear config owner."
                 ] | str join "\n"
@@ -50,7 +45,7 @@ def resolve_config_migration_context [] {
         return {
             paths: $paths
             preview_config_path: $paths.user_config
-            preview_pack_path: $paths.user_pack_config
+            preview_pack_path: null
             relocation_needed: false
         }
     }
@@ -59,7 +54,7 @@ def resolve_config_migration_context [] {
         return {
             paths: $paths
             preview_config_path: $paths.legacy_user_config
-            preview_pack_path: $paths.legacy_pack_config
+            preview_pack_path: null
             relocation_needed: true
         }
     }
@@ -91,12 +86,8 @@ export def "yzx config migrate" [
         print "Yazelix config path migration preview"
         print $"[AUTO] relocate_root_config_surfaces_into_user_configs"
         print $"  Legacy main: ($context.paths.legacy_user_config)"
-        if ($context.paths.legacy_pack_config | path exists) {
-            print $"  Legacy packs: ($context.paths.legacy_pack_config)"
-        }
         print $"  Target main: ($context.paths.user_config)"
-        print $"  Target packs: ($context.paths.user_pack_config)"
-        print "  Change: Move the legacy root-level managed config files into user_configs before applying any safe rewrites."
+        print "  Change: Move the legacy root-level managed config file into user_configs before applying any safe rewrites."
         print ""
     }
     print (render_config_migration_plan $preview_plan)
@@ -136,7 +127,6 @@ export def "yzx config migrate" [
         if $had_path_relocation {
             print "   It will also move legacy root-level config files into user_configs."
         }
-        print "   It may also create or rewrite yazelix_packs.toml when packs are migrated."
         print "   Any rewritten file will be backed up first."
         print "   Comments and key ordering may be normalized."
         let confirm = try {
@@ -155,8 +145,6 @@ export def "yzx config migrate" [
             status: "relocated"
             config_path: $context.paths.user_config
             backup_path: null
-            pack_config_path: $context.paths.user_pack_config
-            pack_backup_path: null
             applied_count: 0
             manual_count: $apply_plan.manual_count
         }
@@ -165,18 +153,9 @@ export def "yzx config migrate" [
     print ""
     if $had_path_relocation {
         print $"✅ Relocated managed config into: ($context.paths.user_config)"
-        if ($context.paths.user_pack_config | path exists) {
-            print $"✅ Using managed pack config at: ($context.paths.user_pack_config)"
-        }
     }
     if ($apply_result.backup_path? | is-not-empty) {
         print $"✅ Backed up previous config to: ($apply_result.backup_path)"
-    }
-    if ($apply_result.pack_backup_path? | is-not-empty) {
-        print $"✅ Backed up previous pack config to: ($apply_result.pack_backup_path)"
-    }
-    if ($apply_result.pack_config_path? | is-not-empty) and ($apply_result.pack_backup_path? | is-empty) and (($apply_result.pack_config_path | path exists)) {
-        print $"✅ Wrote pack config to: ($apply_result.pack_config_path)"
     }
     if $apply_result.applied_count > 0 {
         print $"✅ Applied ($apply_result.applied_count) config migration\(s\) to: ($apply_result.config_path)"
@@ -196,26 +175,19 @@ export def "yzx config reset" [
 ] {
     let paths = get_primary_config_paths
     let user_config_exists = ($paths.user_config | path exists)
-    let user_pack_config_exists = ($paths.user_pack_config | path exists)
-    let removed_without_backup = ($no_backup and ($user_config_exists or $user_pack_config_exists))
+    let removed_without_backup = ($no_backup and $user_config_exists)
 
     if not ($paths.default_config | path exists) {
         error make {msg: $"Default config not found: ($paths.default_config)"}
     }
 
     if not $yes {
-        print "⚠️  This replaces yazelix.toml and yazelix_packs.toml with fresh shipped templates."
+        print "⚠️  This replaces yazelix.toml with a fresh shipped template."
         if $user_config_exists and not $no_backup {
             print "   Your current yazelix.toml will be backed up first."
         }
         if $user_config_exists and $no_backup {
             print "   Your current yazelix.toml will be removed without a backup."
-        }
-        if $user_pack_config_exists and not $no_backup {
-            print "   Your current yazelix_packs.toml will be backed up first."
-        }
-        if $user_pack_config_exists and $no_backup {
-            print "   Your current yazelix_packs.toml will be removed without a backup."
         }
         let confirm = try {
             (input "Continue? [y/N]: " | str downcase)
@@ -238,31 +210,13 @@ export def "yzx config reset" [
         null
     }
 
-    let pack_backup_path = if $user_pack_config_exists and not $no_backup {
-        let timestamp = (date now | format date "%Y%m%d_%H%M%S")
-        let path = $"($paths.user_pack_config).backup-($timestamp)"
-        mv $paths.user_pack_config $path
-        $path
-    } else if $user_pack_config_exists and $no_backup {
-        rm $paths.user_pack_config
-        null
-    } else {
-        null
-    }
-
-    let copy_result = (copy_default_config_surfaces $paths.default_config $paths.user_config)
+    copy_default_config_surfaces $paths.default_config $paths.user_config | ignore
 
     if ($backup_path | is-not-empty) {
         print $"✅ Backed up previous config to: ($backup_path)"
     }
-    if ($pack_backup_path | is-not-empty) {
-        print $"✅ Backed up previous pack config to: ($pack_backup_path)"
-    }
     print $"✅ Replaced yazelix.toml with a fresh template: ($paths.user_config)"
-    if $copy_result.pack_config_copied {
-        print $"✅ Replaced yazelix_packs.toml with a fresh template: ($copy_result.pack_config_path)"
-    }
     if $removed_without_backup {
-        print "⚠️  Previous config surfaces were removed without backup."
+        print "⚠️  Previous config surface was removed without backup."
     }
 }

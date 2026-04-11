@@ -2,51 +2,16 @@
 # yazelix.toml will be automatically copied from yazelix_toml if not found during launch. But you can manually copy it to yazelix.toml too.
 # yazelix.toml is gitignored so you can pull updates without conflicts
 #
-# Note: All configuration changes require restarting Yazelix to take effect.
-# Package changes (like enabling packs) will automatically trigger a rebuild when detected.
+# Note: Most configuration changes require restarting Yazelix to take effect.
 
 [core]
-# See docs/package_sizes.md for details
-recommended_deps = true       # Productivity tools (~350MB): lazygit, carapace
-yazi_extensions = true        # File preview support (~125MB): p7zip, jq, fd, ripgrep, poppler
-yazi_media = false            # Media processing (~1GB): ffmpeg, imagemagick
 debug_mode = false            # Enable verbose debug logging in the shellHook
 skip_welcome_screen = false   # When true, welcome info is logged instead of displayed
 show_macchina_on_welcome = true  # Show system info on welcome screen (uses macchina)
 welcome_style = "random"      # Welcome style: "static", "logo", "boids", "game_of_life", "mandelbrot", or "random" (never picks "static")
 welcome_duration_seconds = 2.0 # Welcome animation duration in seconds for animated styles; logo ignores this and keeps its fixed timing (0.2 to 8.0)
-refresh_output = "normal"     # Rebuild output for launch/restart/refresh: "quiet", "normal", or "full"
-
-# Concurrent Nix jobs configuration (default: "half")
-# Controls how many derivations devenv/Nix may build at the same time.
-# Options:
-# - "auto":          Match devenv/Nix default behavior (roughly quarter of cores)
-# - "max":           Use all available CPU cores as concurrent jobs
-# - "max_minus_one": Use all cores minus one
-# - "half":          Use half of available CPU cores (recommended default)
-# - "quarter":       Use a quarter of available CPU cores
-# - Custom number:   Specify exact job count, e.g., "8" or "4"
-max_jobs = "half"
-
-# Build cores per Nix job (default: "2")
-# Combined with max_jobs, this determines the overall CPU budget.
-# Recommended default:
-# - max_jobs = "half"
-# - build_cores = "2"
-# Options:
-# - "max":           Use all available CPU cores per build
-# - "max_minus_one": Use all cores minus one per build
-# - "half":          Use half of available cores per build
-# - "quarter":       Use a quarter of available cores per build
-# - Custom number:   Specify exact core count, e.g., "8" or "4"
-build_cores = "2"
 
 [helix]
-# Helix build mode (choose ONE):
-# - "release": Use latest Helix release from nixpkgs (recommended for first-time users)
-# - "source":  Use Helix flake from repository (bleeding edge, recommended for most users)
-mode = "release"
-
 # Helix runtime path (advanced users only)
 # ONLY set this if editor_command points to a custom Helix build
 # The runtime MUST exactly match your Helix binary version to avoid errors
@@ -96,19 +61,12 @@ sidebar_width_percent = 20
 
 [shell]
 # Default shell for Zellij: "nu", "bash", "fish", or "zsh" (default: "nu")
-# Note: fish and zsh are only installed if set as default_shell or included in extra_shells
+# The selected shell must be available in the installed Yazelix runtime or host PATH.
 default_shell = "nu"
-
-# Extra shells to install beyond nu/bash (default: [])
-# Only install additional shells if you plan to use them
-extra_shells = [
-  # "fish",
-  # "zsh",
-]
 
 
 [terminal]
-# Terminal emulator preference + install list (ordered)
+# Terminal emulator preference list (ordered)
 # The first entry is the primary terminal used for launch; the rest are fallbacks.
 # Options: "ghostty", "wezterm", "kitty", "alacritty", "foot" (Linux-only)
 #
@@ -126,11 +84,6 @@ terminals = [
   # "alacritty",
   # "foot",
 ]
-
-# Manage terminals via Nix (default: true)
-# - true: Yazelix installs and wraps terminals listed above
-# - false: Yazelix does not install terminals; it only uses the list as preference
-manage_terminals = true
 
 # Terminal config mode (how Yazelix handles terminal emulator configs)
 # Options:
@@ -316,6 +269,4 @@ theme = "default"
 # This value is the source of truth and overrides any sort_by in configs/yazi/user/yazi.toml
 sort_by = "alphabetical"
 
-# Pack configuration lives in ~/.config/yazelix/user_configs/yazelix_packs.toml
-# so this main config stays focused on core Yazelix behavior.
-# See docs/yazelix_collection.md for the full pack catalog and examples.
+# Yazelix Classic v14 pack configuration does not belong to the trimmed v15 core config surface.

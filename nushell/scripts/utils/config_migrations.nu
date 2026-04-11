@@ -421,82 +421,7 @@ def plan_rename_life_welcome_style_to_game_of_life [config: record] {
     )
 }
 
-def plan_split_legacy_pack_config_surface [config: record, pack_config: any, pack_config_path: string] {
-    let path = ["packs"]
-    let packs = (maybe_get $config $path)
-
-    if $packs == null {
-        return null
-    }
-
-    if not (($packs | describe) | str contains "record") {
-        return (make_result "split_legacy_pack_config_surface" "manual_only" [] [(format_path $path)] $config)
-    }
-
-    if $pack_config != null {
-        return (make_result
-            "split_legacy_pack_config_surface"
-            "manual_only"
-            []
-            [
-                (format_path $path)
-                $pack_config_path
-            ]
-            $config
-        )
-    }
-
-    let updated_config = ($config | reject packs)
-
-    (
-        make_result
-            "split_legacy_pack_config_surface"
-            "auto"
-            [
-                "Move [packs] out of yazelix.toml into yazelix_packs.toml."
-            ]
-            [(format_path $path)]
-            $updated_config
-        | upsert pack_config_after $packs
-    )
-}
-
-def plan_replace_removed_nodepackages_typescript_language_server [config: record, pack_config: any, pack_config_path: string] {
-    if $pack_config == null {
-        return null
-    }
-
-    let old_package = "nodePackages.typescript-language-server"
-    let new_package = "typescript-language-server"
-    let rewrite = (rewrite_exact_string $pack_config $old_package $new_package)
-
-    if ($rewrite.matched_paths | is-empty) {
-        return null
-    }
-
-    let matched_paths = (
-        $rewrite.matched_paths
-        | each {|path|
-            if ($path | is-empty) {
-                $pack_config_path
-            } else {
-                $"($pack_config_path).($path)"
-            }
-        }
-    )
-
-    (
-        make_result
-            "replace_removed_nodepackages_typescript_language_server"
-            "auto"
-            [$"Replace \"($old_package)\" with \"($new_package)\" in yazelix_packs.toml."]
-            $matched_paths
-            $config
-        | upsert pack_config_after $rewrite.value
-    )
-}
-
-def get_plan_step [rule_id: string, config: record, pack_config: any = null, pack_config_path: string = "yazelix_packs.toml"] {
+def get_plan_step [rule_id: string, config: record] {
     match $rule_id {
         "remove_zellij_widget_tray_layout" => (plan_remove_zellij_widget_tray_layout $config)
         "unify_terminal_preference_list" => (plan_unify_terminal_preference_list $config)
@@ -506,19 +431,16 @@ def get_plan_step [rule_id: string, config: record, pack_config: any = null, pac
         "review_terminal_config_mode_auto" => (plan_review_terminal_config_mode_auto $config)
         "replace_ascii_art_mode_with_welcome_style" => (plan_replace_ascii_art_mode_with_welcome_style $config)
         "rename_life_welcome_style_to_game_of_life" => (plan_rename_life_welcome_style_to_game_of_life $config)
-        "split_legacy_pack_config_surface" => (plan_split_legacy_pack_config_surface $config $pack_config $pack_config_path)
-        "replace_removed_nodepackages_typescript_language_server" => (plan_replace_removed_nodepackages_typescript_language_server $config $pack_config $pack_config_path)
         _ => (error make {msg: $"Unknown config migration rule id: ($rule_id)"})
     }
 }
 
-export def build_config_migration_plan_from_record [config: record, config_path: string = "<memory>", pack_config: any = null, pack_config_path: string = "yazelix_packs.toml"] {
+export def build_config_migration_plan_from_record [config: record, config_path: string = "<memory>"] {
     mut current_config = $config
-    mut current_pack_config = $pack_config
     mut results = []
 
     for rule in (get_config_migration_rules) {
-        let step = (get_plan_step $rule.id $current_config $current_pack_config $pack_config_path)
+        let step = (get_plan_step $rule.id $current_config)
         if $step == null {
             continue
         }
@@ -527,9 +449,6 @@ export def build_config_migration_plan_from_record [config: record, config_path:
 
         if $step.status == "auto" {
             $current_config = $step.config_after
-            if ("pack_config_after" in ($step | columns)) {
-                $current_pack_config = $step.pack_config_after
-            }
         }
     }
 
@@ -538,11 +457,8 @@ export def build_config_migration_plan_from_record [config: record, config_path:
 
     {
         config_path: $config_path
-        pack_config_path: $pack_config_path
         original_config: $config
         migrated_config: $current_config
-        original_pack_config: $pack_config
-        migrated_pack_config: $current_pack_config
         results: $results
         auto_results: $auto_results
         manual_results: $manual_results
@@ -550,7 +466,6 @@ export def build_config_migration_plan_from_record [config: record, config_path:
         manual_count: ($manual_results | length)
         has_auto_changes: (not ($auto_results | is-empty))
         has_manual_items: (not ($manual_results | is-empty))
-        has_pack_config_change: ($current_pack_config != $pack_config)
     }
 }
 
@@ -560,27 +475,17 @@ export def apply_config_migration_plan [plan: record, caller: string] {
             status: "noop"
             config_path: $plan.config_path
             backup_path: null
-            pack_config_path: ($plan.pack_config_path? | default null)
-            pack_backup_path: null
             applied_count: 0
             manual_count: $plan.manual_count
         }
     }
 
-    let pack_config_path = ($plan.pack_config_path? | default null)
     let rewritten = ($plan.migrated_config | to toml)
-    let pack_rewritten = if $plan.has_pack_config_change {
-        $plan.migrated_pack_config | to toml
-    } else {
-        null
-    }
     let transaction_result = (
         apply_managed_config_transaction
             $caller
             $plan.config_path
             $rewritten
-            $pack_config_path
-            $pack_rewritten
     )
 
     $transaction_result | merge {

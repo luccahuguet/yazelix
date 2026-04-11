@@ -12,7 +12,7 @@ The repo keeps one maintained static preview. Add richer demos only when there i
 ## Overview
 Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://github.com/zellij-org/zellij), and [Helix](https://helix-editor.com) (hence the name!), with first-class support for [Neovim](https://neovim.io) too.
 
-- Yazelix now uses the devenv-based runtime (`devenv.nix`) and `yazelix.toml`. The legacy `yazelix.nix` config is gone, and the normal flake surface is now the `yazelix` package plus the top-level Home Manager module.
+- Yazelix now uses the managed `yazelix.toml` config surface. The legacy `yazelix.nix` config is gone, and the normal flake surface is the packaged `yazelix` runtime plus the top-level Home Manager module. `devenv.nix` remains the maintainer shell for repo work.
 
 - **Use your preferred shell**: Bash, Fish, Zsh, or Nushell - Yazelix works with all of them
 - Zellij orchestrates everything, with Yazi as a sidebar and your chosen editor (Helix by default)
@@ -37,7 +37,7 @@ It already comes with cool zellij and yazi plugins, some of which I maintain mys
 
 It has features like `reveal in Yazi` (from Helix or Neovim) and opening files from Yazi in your configured editor
 
-Supports top terminals (Ghostty, WezTerm, Kitty, Alacritty) and popular shells (Bash, Zsh, Fish, Nushell). Easy to configure via `yazelix.toml`, with `devenv.nix` providing the environment
+Supports top terminals (Ghostty, WezTerm, Kitty, Alacritty) and popular shells (Bash, Zsh, Fish, Nushell). Easy to configure via `yazelix.toml`, with the packaged runtime providing the fixed Yazelix toolset.
 
 Get everything running in less than 10 minutes. No extra dependencies, only Nix
 
@@ -235,9 +235,9 @@ yzx env
 ```
 This loads all tools (helix, yazi, lazygit, etc.) into your current shell, with Yazelix env vars set and clean messaging, and automatically launches the shell configured in your `yazelix.toml`. Prefer the legacy behavior? Run `yzx env --no-shell` to stay in your current shell.
 
-If you prefer a raw environment shell without launching Yazelix, you can use:
+If you want the Yazelix tool PATH without switching into your configured shell, use:
 ```bash
-devenv shell
+yzx env --no-shell
 ```
 
 ### Packages & Customization
@@ -246,26 +246,23 @@ devenv shell
 See the full catalog of tools and integrations in the Yazelix Collection:
 [docs/yazelix_collection.md](./docs/yazelix_collection.md).
 - **Essential tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), shells (bash/nushell, plus your preferred shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
-- **Recommended tools** (enabled by default): [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdx/mise), [cargo-update](https://github.com/nabijaczleweli/cargo-update), [ouch](https://github.com/ouch-org/ouch), etc
+- **Bundled helpers**: [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdx/mise), [carapace](https://github.com/carapace-sh/carapace-bin), [macchina](https://github.com/Macchina-CLI/macchina), and the fixed helper tooling behind the trimmed v15 core
 - **Optional history**: [atuin](https://github.com/atuinsh/atuin) integration is now controlled by `enable_atuin` (disabled by default).
-- **Yazi extensions** (enabled by default): `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` (for archives, search, document previews)
-- **Yazi media extensions** (disabled by default): `ffmpeg`, `imagemagick` (for media previews - ~1GB)
+- **Yazi preview helpers**: `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` are part of the fixed runtime surface
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
 If you followed [step 4 in the installation guide](./docs/installation.md#step-4-configure-your-installation-optional), you already have your `~/.config/yazelix/user_configs/yazelix.toml` config file ready. You can modify it anytime and restart Yazelix to apply changes. See [yazelix_default.toml](./yazelix_default.toml) for all available options and their descriptions.
 
 **Terminal Emulator Selection:**
-- **Ghostty** (default): Modern, fast terminal written in Zig with great performance
-  - **Linux**: Provided by Yazelix via Nix
-  - **macOS**: Install via Homebrew: `brew install --cask ghostty` (Nix doesn't support macOS app bundles)
-- **WezTerm** (recommended fallback): Works on both platforms via Nix, best image preview support in Yazi
-- **Kitty**: Fast, feature-rich, GPU-accelerated terminal (works on both platforms)
+- **Ghostty** (default preference): Modern, fast terminal written in Zig with great performance
+- **WezTerm** (recommended fallback): Best image preview support in Yazi
+- **Kitty**: Fast, feature-rich, GPU-accelerated terminal
 - **Alacritty**: Fast, GPU-accelerated terminal written in Rust
 - **Foot**: Wayland-native terminal (Linux-only)
 - **Auto-detection**: Fallback order follows your configured terminal list
 - Configure your preference in `yazelix.toml` with `terminals = ["ghostty", "wezterm", ...]` (first item is primary)
-- **Managed terminals**: Set `manage_terminals = true` to install wrappers and terminal packages via Nix. Set it to false to use system-installed terminals only.
+- **v15 terminal contract**: Yazelix launches host-installed terminals directly. Keep one of your configured terminals available on the host `PATH`.
 
 [See the full Customization Guide here.](./docs/customization.md)
 
@@ -276,7 +273,7 @@ If you followed [step 4 in the installation guide](./docs/installation.md#step-4
 Yazelix includes optional Home Manager support for declarative configuration management through the top-level flake's `homeManagerModules.default` output. See [home_manager/README.md](home_manager/README.md) for setup instructions.
 
 ## Notes
-- `devenv shell` automatically passes through the HOME environment variable, so Yazelix can resolve user-specific paths without extra flags
+- The packaged runtime respects your HOME/XDG paths directly, so managed config and generated-state paths resolve without extra flags
 - Tweak configs to make them yours; this is just a starting point! 
 - For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html)
 - Add more swap layouts as needed using the KDL files in `configs/zellij/layouts`
@@ -302,16 +299,15 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx launch --home` - Launch in home directory
 - `yzx launch --terminal ghostty` - Force a particular terminal for this launch
 - `yzx launch --verbose` - Print detailed launch diagnostics
-- `yzx launch --skip-refresh` - Launch while skipping explicit refresh trigger (may use stale env)
-- `yzx env [--no-shell] [--skip-refresh]` - Load Yazelix tools without UI (`--no-shell` keeps your current shell, `--skip-refresh` may use stale env)
-- `yzx refresh [--force] [--verbose] [--very-verbose]` - Refresh devenv cache/environment without launching UI (`-v` shows configured package scope + concise build progress, `-V` shows full debug output)
+- `yzx env [--no-shell]` - Load Yazelix tools without UI (`--no-shell` keeps your current shell)
+- `yzx refresh [--force] [--verbose] [--very-verbose]` - Repair generated Yazi/Zellij runtime state without launching UI
 - `yzx run <command> [args...]` - Run a single command inside the Yazelix environment
 - `yzx update` - Show the supported update-owner paths
 - `yzx update upstream` - Refresh Yazelix from the upstream installer surface
 - `yzx update home_manager` - Refresh the current Home Manager flake input, then print `home-manager switch`
-- `yzx config [--full] [--path]` - Show the active config, hiding `packs` by default
-- `yzx edit config|packs` - Open managed Yazelix config files in your editor
-- `yzx restart --skip-refresh` - Restart while skipping explicit refresh trigger (may use stale env)
+- `yzx config [--path]` - Show the active config or print its resolved path
+- `yzx edit config` - Open the main managed Yazelix config file in your editor
+- `yzx restart` - Restart Yazelix in a fresh window
 - `yzx doctor [--verbose] [--fix]` - Health checks and diagnostics
 - `yzx dev profile [--cold] [--clear-cache]` - Profile startup phases and write a structured report under `~/.local/share/yazelix/profiles/startup/`
 - `yzx status [--versions] [--verbose]` - Show current Yazelix status, tool versions, and shell hook details

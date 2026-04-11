@@ -5,9 +5,6 @@ use ../utils/common.nu get_yazelix_runtime_dir
 use ../utils/shell_config_generation.nu get_yzx_cli_path
 
 const DESKTOP_LAUNCH_CLEARED_ENV_KEYS = [
-    "DEVENV_PROFILE"
-    "DEVENV_ROOT"
-    "IN_NIX_SHELL"
     "IN_YAZELIX_SHELL"
     "YAZELIX_DIR"
     "YAZELIX_MENU_POPUP"
@@ -26,12 +23,18 @@ const DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
 def get_xdg_data_home [] {
     let data_home = (
         $env.XDG_DATA_HOME?
-        | default "~/.local/share"
+        | default ""
         | into string
         | str trim
     )
 
-    ($data_home | path expand)
+    if ($data_home | is-not-empty) {
+        $data_home | path expand
+    } else if (($env.HOME? | default "" | into string | str trim) | is-not-empty) {
+        $env.HOME | path join ".local" "share"
+    } else {
+        "~/.local/share" | path expand
+    }
 }
 
 def get_desktop_applications_dir [] {
@@ -243,16 +246,5 @@ export def "yzx desktop launch" [] {
     }
 
     let stderr = ($fast_launch.stderr | str trim)
-    if ($stderr | str contains "Failure class: desktop-bootstrap-unavailable.") {
-        let launch_module = ($runtime_dir | path join "nushell" "scripts" "yzx" "launch.nu")
-        if not ($launch_module | path exists) {
-            error make {msg: $"Missing Yazelix fallback launch module at ($launch_module)"}
-        }
-        with-env $launch_env {
-            ^$nu_bin -c $"use \"($launch_module)\" *; yzx launch --home"
-        }
-        return
-    }
-
     error make {msg: (if ($stderr | is-not-empty) { $stderr } else { $fast_launch.stdout | str trim })}
 }

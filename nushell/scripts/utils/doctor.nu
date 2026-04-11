@@ -258,9 +258,8 @@ def check_shared_runtime_preflight [] {
     let runtime_dir = (get_yazelix_runtime_dir)
     let current_dir = (try { pwd } catch { null })
     let terminals = ($config.terminals? | default ["ghostty"] | uniq)
-    let manage_terminals = ($config.manage_terminals? | default true)
     let layout_path = (resolve_expected_layout_path $config)
-    let terminal_check = (check_launch_terminal_support "" $terminals $manage_terminals)
+    let terminal_check = (check_launch_terminal_support "" $terminals)
 
     mut checks = [
         (check_runtime_script ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix_inner.nu") "startup_runtime_script" "startup script" "doctor")
@@ -580,12 +579,6 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
                 let apply_result = (apply_doctor_config_fixes $report)
                 if $apply_result.status == "applied" {
                     print $"✅ Applied ($apply_result.applied_count) config migration fix\(es\) with backup: ($apply_result.backup_path)"
-                    if ($apply_result.pack_backup_path? | is-not-empty) {
-                        print $"✅ Backed up previous pack config to: ($apply_result.pack_backup_path)"
-                    }
-                    if ($apply_result.pack_config_path? | is-not-empty) and ($apply_result.pack_backup_path? | is-empty) and (($apply_result.pack_config_path | path exists)) {
-                        print $"✅ Wrote pack config to: ($apply_result.pack_config_path)"
-                    }
                 }
             }
         }

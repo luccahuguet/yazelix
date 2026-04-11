@@ -25,9 +25,7 @@ def make_noop_report [entrypoint_label: string, status: string = "noop"] {
         applied_count: 0
         manual_count: 0
         config_path: null
-        pack_config_path: null
         backup_path: null
-        pack_backup_path: null
         remaining_plan: null
     }
 }
@@ -42,20 +40,10 @@ def render_preflight_success_summary [report: record] {
     if $report.had_relocation and ($report.config_path != null) {
         $lines = ($lines | append $"ℹ️  Yazelix relocated the managed config into user_configs before ($report.entrypoint_label).")
         $lines = ($lines | append $"   Main config: ($report.config_path)")
-    } else if $report.had_relocation and (($report.pack_config_path | default "" | is-not-empty)) {
-        $lines = ($lines | append $"ℹ️  Yazelix relocated the managed pack config into user_configs before ($report.entrypoint_label).")
     }
 
     if ($report.backup_path | default "" | is-not-empty) {
         $lines = ($lines | append $"   Backup: ($report.backup_path)")
-    }
-
-    if ($report.pack_backup_path | default "" | is-not-empty) {
-        $lines = ($lines | append $"   Pack backup: ($report.pack_backup_path)")
-    }
-
-    if ($report.pack_config_path | default "" | is-not-empty) and (($report.pack_config_path | path exists)) {
-        $lines = ($lines | append $"   Pack config: ($report.pack_config_path)")
     }
 
     $lines
@@ -93,10 +81,7 @@ def build_preflight_context [] {
     }
 
     let initial_paths = (get_primary_config_paths)
-    let had_legacy = (
-        ($initial_paths.legacy_user_config | path exists)
-        or ($initial_paths.legacy_pack_config | path exists)
-    )
+    let had_legacy = ($initial_paths.legacy_user_config | path exists)
 
     {
         status: "ready"
@@ -132,10 +117,7 @@ export def run_entrypoint_config_migration_preflight [
 
     let refreshed_paths = (get_primary_config_paths)
     ensure_no_duplicate_primary_config_surfaces $refreshed_paths
-    let refreshed_had_legacy = (
-        ($refreshed_paths.legacy_user_config | path exists)
-        or ($refreshed_paths.legacy_pack_config | path exists)
-    )
+    let refreshed_had_legacy = ($refreshed_paths.legacy_user_config | path exists)
     let context = (
         $context
         | upsert paths $refreshed_paths
@@ -144,28 +126,15 @@ export def run_entrypoint_config_migration_preflight [
 
     let relocation_result = if $context.had_relocation {
         let has_legacy_main = ($context.paths.legacy_user_config | path exists)
-        let has_legacy_pack = ($context.paths.legacy_pack_config | path exists)
 
         if $has_legacy_main {
             let legacy_main_config = (open $context.paths.legacy_user_config)
-            let legacy_pack_config = if $has_legacy_pack {
-                open $context.paths.legacy_pack_config
-            } else {
-                null
-            }
             let relocation_plan = (
                 build_config_migration_plan_from_record
                     $legacy_main_config
                     $context.paths.user_config
-                    $legacy_pack_config
-                    $context.paths.user_pack_config
             )
             let rewritten_main_toml = ($relocation_plan.migrated_config | to toml)
-            let rewritten_pack_toml = if $has_legacy_pack or $relocation_plan.has_pack_config_change {
-                $relocation_plan.migrated_pack_config | to toml
-            } else {
-                null
-            }
 
             {
                 apply_result: (
@@ -173,7 +142,6 @@ export def run_entrypoint_config_migration_preflight [
                         "entrypoint_preflight"
                         ($context.paths | merge {
                             rewritten_main_toml: $rewritten_main_toml
-                            rewritten_pack_toml: $rewritten_pack_toml
                         })
                 )
                 plan: $relocation_plan
@@ -201,9 +169,7 @@ export def run_entrypoint_config_migration_preflight [
             applied_count: ($relocation_result.plan.auto_count? | default 0)
             manual_count: ($relocation_result.plan.manual_count? | default 0)
             config_path: null
-            pack_config_path: ($relocation_result.apply_result.pack_config_path? | default null)
             backup_path: ($relocation_result.apply_result.backup_path? | default null)
-            pack_backup_path: ($relocation_result.apply_result.pack_backup_path? | default null)
             remaining_plan: null
         }
 
@@ -231,9 +197,7 @@ export def run_entrypoint_config_migration_preflight [
             applied_count: 0
             manual_count: 0
             config_path: $effective_config_path
-            pack_config_path: $initial_plan.pack_config_path
             backup_path: null
-            pack_backup_path: null
             remaining_plan: $initial_plan
         })
     }
@@ -250,8 +214,6 @@ export def run_entrypoint_config_migration_preflight [
             status: "relocated"
             config_path: $effective_config_path
             backup_path: null
-            pack_config_path: $initial_plan.pack_config_path
-            pack_backup_path: null
             applied_count: 0
             manual_count: $initial_plan.manual_count
         }
@@ -265,9 +227,7 @@ export def run_entrypoint_config_migration_preflight [
         applied_count: ($apply_result.applied_count? | default 0)
         manual_count: $remaining_plan.manual_count
         config_path: $effective_config_path
-        pack_config_path: ($apply_result.pack_config_path? | default $remaining_plan.pack_config_path)
         backup_path: ($apply_result.backup_path? | default null)
-        pack_backup_path: ($apply_result.pack_backup_path? | default null)
         remaining_plan: $remaining_plan
     }
 

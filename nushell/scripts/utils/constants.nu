@@ -26,7 +26,6 @@ export const YAZELIX_REGENERATE_COMMENT = "# delete this whole section to re-gen
 
 export const DEFAULT_SHELL = "nu"
 export const DEFAULT_TERMINAL = "ghostty"
-export const DEFAULT_HELIX_MODE = "release"
 
 # Supported terminal emulators (fallback priority order)
 export const SUPPORTED_TERMINALS = ["ghostty", "wezterm", "kitty", "alacritty", "foot"]
@@ -60,13 +59,13 @@ export const TERMINAL_CONFIG_PATHS = {
     }
 }
 
-# Terminal display names and wrappers
+# Terminal display names
 export const TERMINAL_METADATA = {
-    ghostty: {name: "Ghostty", wrapper: "yazelix-ghostty"}
-    kitty: {name: "Kitty", wrapper: "yazelix-kitty"}
-    wezterm: {name: "WezTerm", wrapper: "yazelix-wezterm"}
-    alacritty: {name: "Alacritty", wrapper: "yazelix-alacritty"}
-    foot: {name: "Foot", wrapper: "yazelix-foot"}
+    ghostty: {name: "Ghostty"}
+    kitty: {name: "Kitty"}
+    wezterm: {name: "WezTerm"}
+    alacritty: {name: "Alacritty"}
+    foot: {name: "Foot"}
 }
 
 # Common terminal configuration values

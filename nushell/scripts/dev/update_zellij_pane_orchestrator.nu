@@ -18,7 +18,7 @@ export def main [] {
   if not ($source_path | path exists) {
     print $"Error: built pane orchestrator wasm not found at: ($source_path)"
     print "Build it first with `yzx dev build_pane_orchestrator`."
-    print "If cargo/rustc or the wasm stdlib are missing, enable the `rust_wasi` pack in yazelix.toml."
+    print "If cargo/rustc or the wasm stdlib are missing, run the build inside the Yazelix maintainer shell or install a wasm32-wasip1 Rust toolchain."
     exit 2
   }
 

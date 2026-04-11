@@ -7,7 +7,6 @@ const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path
 const GUARDED_FILES = [
     "nushell/scripts/utils/constants.nu"
     "yazelix_default.toml"
-    "yazelix_packs_default.toml"
     "home_manager/module.nix"
     "nushell/scripts/utils/config_schema.nu"
     "nushell/scripts/utils/config_migrations.nu"
@@ -16,7 +15,6 @@ const GUARDED_FILES = [
 ]
 const ACK_REQUIRED_FILES = [
     "yazelix_default.toml"
-    "yazelix_packs_default.toml"
     "home_manager/module.nix"
     "nushell/scripts/utils/config_schema.nu"
     "nushell/scripts/utils/config_migrations.nu"

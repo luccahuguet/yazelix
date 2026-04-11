@@ -19,6 +19,8 @@ def setup_legacy_root_config_migrate_fixture [label: string, raw_toml: string] {
 def run_yzx_command_for_fixture [fixture: record, command: string, extra_env?: record] {
     let base_env = {
         HOME: $fixture.tmp_home
+        XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+        XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
     }
@@ -36,6 +38,8 @@ def run_yzx_command_for_fixture [fixture: record, command: string, extra_env?: r
 def run_yzx_command_for_fixture_in_dir [fixture: record, working_dir: string, command: string, extra_env?: record] {
     let base_env = {
         HOME: $fixture.tmp_home
+        XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+        XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
     }
@@ -63,6 +67,8 @@ def run_config_migrate_command [fixture: record, args: list<string> = []] {
 
     with-env {
         HOME: $fixture.tmp_home
+        XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+        XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
     } {
@@ -102,7 +108,6 @@ welcome_style = "random"
     let launcher_path = ($fixture.repo_root | path join "shells" "posix" "yzx_cli.sh")
     let desktop_path = ($fixture.tmp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")
     let desktop_icons = (manual_desktop_icon_records $fixture.tmp_home $fixture.repo_root)
-    let pack_config_path = ($fixture.user_config_dir | path join "yazelix_packs.toml")
 
     mkdir ($desktop_path | path dirname)
 
@@ -119,17 +124,10 @@ welcome_style = "random"
         $"Exec=\"($launcher_path)\" desktop launch"
     ] | str join "\n" | save --force --raw $desktop_path
 
-    'enabled = ["git"]
-
-[declarations]
-git = ["gh"]
-' | save --force --raw $pack_config_path
-
     $fixture | merge {
         launcher_path: $launcher_path
         desktop_path: $desktop_path
         desktop_icons: $desktop_icons
-        pack_config_path: $pack_config_path
     }
 }
 
@@ -149,37 +147,6 @@ welcome_style = "random"
         launcher_path: $launcher_path
         desktop_path: $desktop_path
         desktop_icons: $desktop_icons
-    }
-}
-
-def setup_home_manager_owned_install_fixture [label: string] {
-    let fixture = (setup_managed_config_fixture
-        $label
-        '[core]
-welcome_style = "random"
-'
-    )
-
-    let hm_store = ($fixture.tmp_home | path join "fake-home-manager-files")
-    let hm_main = ($hm_store | path join ".config" "yazelix" "user_configs" "yazelix.toml")
-    let hm_pack = ($hm_store | path join ".config" "yazelix" "user_configs" "yazelix_packs.toml")
-    let pack_config_path = ($fixture.user_config_dir | path join "yazelix_packs.toml")
-
-    rm -f $fixture.config_path
-
-    mkdir ($hm_main | path dirname)
-
-    cp ($fixture.repo_root | path join "yazelix_default.toml") $hm_main
-    'enabled = ["git"]
-
-[declarations]
-git = ["gh"]
-' | save --force --raw $hm_pack
-    ^ln -s $hm_main $fixture.config_path
-    ^ln -s $hm_pack $pack_config_path
-
-    $fixture | merge {
-        pack_config_path: $pack_config_path
     }
 }
 
@@ -238,7 +205,7 @@ welcome_style = "random"
         "#!/usr/bin/env nu"
         "export def prepare_environment [--verbose] {"
         "    {"
-        "        config: {max_jobs: \"half\", build_cores: \"2\"}"
+        "        config: {}"
         "        config_state: {}"
         "        needs_refresh: false"
         "    }"
@@ -247,47 +214,21 @@ welcome_style = "random"
 
     [
         "#!/usr/bin/env nu"
-        "export def resolve_refresh_request [needs_refresh: bool] { {should_refresh: $needs_refresh} }"
-        "export def resolve_runtime_entry_context [refresh_request: record] { {runtime_state: {}} }"
-        "export def resolve_backend_shell_transition [runtime_state: record] { {rebuild_before_exec: false} }"
-        "export def run_in_devenv_shell_command ["
-        "    command: string"
-        "    ...args: string"
-        "    --max-jobs: string = \"\""
-        "    --build-cores: string = \"\""
+        "export def run_runtime_argv ["
+        "    argv: list<string>"
         "    --cwd: string = \"\""
-        "    --runtime-dir: string = \"\""
-        "    --env-only"
-        "    --force-shell"
-        "    --verbose"
-        "    --quiet"
-        "    --skip-welcome"
-        "    --force-refresh"
-        "    --refresh-output-mode: string = \"normal\""
+        "    --config: record"
         "] {"
+        "    let command = ($argv | first)"
+        "    let args = ($argv | skip 1)"
         "    {"
         "        command: $command"
         "        args: $args"
-        "        max_jobs: $max_jobs"
-        "        build_cores: $build_cores"
         "        cwd: $cwd"
-        "        env_only: $env_only"
-        "        quiet: $quiet"
-        "        skip_welcome: $skip_welcome"
-        "        force_refresh: $force_refresh"
+        "        config_present: (($config | describe) | str starts-with \"record\")"
         "    } | to json -r | save --force --raw $env.YZX_RUN_LOG"
         "}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "devenv_backend.nu")
-
-    [
-        "#!/usr/bin/env nu"
-        "export def record_materialized_state [config_state: record] {}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "config_state.nu")
-
-    [
-        "#!/usr/bin/env nu"
-        "export def ensure_nix_available [] {}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "nix_detector.nu")
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "runtime_env.nu")
 
     $fixture | merge {
         command_log: $command_log
@@ -433,60 +374,6 @@ enable_atuin = true
     $result
 }
 
-# Defends: legacy inline pack ownership is split into the supported sidecar surface.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_yzx_config_migrate_apply_splits_legacy_packs_into_sidecar [] {
-    print "🧪 Testing yzx config migrate apply moves legacy [packs] into yazelix_packs.toml..."
-
-    let fixture = (setup_config_migrate_fixture
-        "yazelix_migrate_pack_split"
-        '[packs]
-enabled = ["git", "go"]
-user_packages = ["docker"]
-
-[packs.declarations]
-git = ["gh", "prek"]
-go = ["gopls", "golangci-lint"]
-')
-
-    let result = (try {
-        let output = (run_config_migrate_command $fixture ["--apply", "--yes"])
-        let stdout = ($output.stdout | str trim)
-        let updated_main = (open $fixture.config_path)
-        let pack_path = ($fixture.user_config_dir | path join "yazelix_packs.toml")
-        let updated_pack = (if ($pack_path | path exists) { open $pack_path } else { null })
-        let updated_pack_rendered = (if $updated_pack == null { "<missing>" } else { $updated_pack | to json -r })
-        let backups = (
-            ls $fixture.user_config_dir
-            | where name =~ 'yazelix\.toml\.backup-'
-        )
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "[AUTO] split_legacy_pack_config_surface")
-            and ($stdout | str contains "Wrote pack config to")
-            and not (record_has_path $updated_main ["packs"])
-            and ($updated_pack.enabled == ["git", "go"])
-            and ($updated_pack.user_packages == ["docker"])
-            and (($updated_pack.declarations | get git) == ["gh", "prek"])
-            and (($updated_pack.declarations | get go) == ["gopls", "golangci-lint"])
-            and (($backups | length) == 1)
-        ) {
-            print "  ✅ yzx config migrate now moves legacy pack ownership into yazelix_packs.toml"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main=($updated_main | to json -r) pack=($updated_pack_rendered) backups=(($backups | length))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
 # Invariant: current config shapes do not churn under migrate apply.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_yzx_config_migrate_apply_noops_on_current_config [] {
@@ -617,12 +504,10 @@ def test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts [] {
             ($output.exit_code == 0)
             and ($stdout | str contains "Blocking manual-install artifacts:")
             and ($stdout | str contains $fixture.config_path)
-            and ($stdout | str contains $fixture.pack_config_path)
             and ($stdout | str contains "Cleanup-only manual-install artifacts:")
             and ($stdout | str contains $fixture.desktop_path)
             and ($stdout | str contains (($fixture.desktop_icons | first).path))
             and ($fixture.config_path | path exists)
-            and ($fixture.pack_config_path | path exists)
             and ($fixture.desktop_path | path exists)
         ) {
             print "  ✅ yzx home_manager prepare preview shows the real takeover blockers and cleanup-only manual artifacts without mutating them"
@@ -651,7 +536,6 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
         let output = (run_yzx_command_for_fixture $fixture "yzx home_manager prepare --apply --yes")
         let stdout = ($output.stdout | str trim)
         let main_backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.home-manager-prepare-backup-')
-        let pack_backups = (ls $fixture.user_config_dir | where name =~ 'yazelix_packs\.toml\.home-manager-prepare-backup-')
         let desktop_backups = (ls ($fixture.desktop_path | path dirname) | where name =~ 'com\.yazelix\.Yazelix\.desktop\.home-manager-prepare-backup-')
         let icon_backup_count = (
             $fixture.desktop_icons
@@ -668,17 +552,15 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
             and ($stdout | str contains "Archived manual-install artifacts for Home Manager takeover")
             and ($stdout | str contains "home-manager switch")
             and not ($fixture.config_path | path exists)
-            and not ($fixture.pack_config_path | path exists)
             and not ($fixture.desktop_path | path exists)
             and (($main_backups | length) == 1)
-            and (($pack_backups | length) == 1)
             and (($desktop_backups | length) == 1)
             and ($icon_backup_count == ($fixture.desktop_icons | length))
         ) {
             print "  ✅ yzx home_manager prepare --apply archives the real takeover blockers and cleanup-only manual artifacts, then points users at home-manager switch"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main_backups=(($main_backups | length)) pack_backups=(($pack_backups | length)) desktop_backups=(($desktop_backups | length)) icon_backups=($icon_backup_count)"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main_backups=(($main_backups | length)) desktop_backups=(($desktop_backups | length)) icon_backups=($icon_backup_count)"
             false
         }
     } catch {|err|
@@ -780,9 +662,8 @@ def test_yzx_run_passes_dash_prefixed_args_through_unchanged [] {
             ($output.exit_code == 0)
             and ($logged.command == "rg")
             and ($logged.args == ["--files", "--hidden"])
-            and ($logged.env_only == true)
-            and ($logged.skip_welcome == true)
-            and ($logged.quiet == true)
+            and ($logged.cwd == (pwd))
+            and ($logged.config_present == true)
         ) {
             print "  ✅ yzx run now treats dash-prefixed child args as child argv instead of wrapper flags"
             true
@@ -813,7 +694,8 @@ def test_yzx_run_treats_child_verbose_flag_as_child_argv [] {
             ($output.exit_code == 0)
             and ($logged.command == "cargo")
             and ($logged.args == ["--verbose", "check"])
-            and ($logged.quiet == true)
+            and ($logged.cwd == (pwd))
+            and ($logged.config_present == true)
         ) {
             print "  ✅ yzx run no longer steals child --verbose flags for wrapper parsing"
             true
@@ -998,47 +880,6 @@ default_shell = "bash"
     $result
 }
 
-# Regression: pack-only legacy relocation should still be surfaced to the user.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_entrypoint_preflight_reports_pack_only_legacy_root_relocation [] {
-    print "🧪 Testing entrypoint migration preflight reports pack-only legacy-root relocation..."
-
-    let fixture = (setup_legacy_root_config_migrate_fixture
-        "yazelix_entrypoint_preflight_pack_only_relocate"
-        "[core]\nwelcome_style = \"random\"\n"
-    )
-
-    let result = (try {
-        rm $fixture.config_path
-        let legacy_pack = ($fixture.config_dir | path join "yazelix_packs.toml")
-        'enabled = ["git"]
-' | save --force --raw $legacy_pack
-
-        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
-        let stdout = ($output.stdout | str trim)
-        let relocated_pack = ($fixture.user_config_dir | path join "yazelix_packs.toml")
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "relocated the managed pack config into user_configs")
-            and ($relocated_pack | path exists)
-            and not ($legacy_pack | path exists)
-        ) {
-            print "  ✅ Entry-point preflight reports pack-only legacy relocation instead of moving it silently"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) relocated_pack_exists=(($relocated_pack | path exists)) legacy_pack_exists=(($legacy_pack | path exists))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
 # Regression: entrypoint preflight relocates legacy-root config and applies the deterministic subset before blocking.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_entrypoint_preflight_relocates_legacy_root_and_applies_safe_subset_before_manual_block [] {
@@ -1159,57 +1000,6 @@ welcome_style = "random"
     $result
 }
 
-# Invariant: pack sidecar config is merged into the full config view.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-def test_yzx_config_full_merges_pack_sidecar [] {
-    print "🧪 Testing yzx config --full merges the dedicated pack sidecar..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_config_full_sidecar_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    let user_config_dir = ($temp_config_dir | path join "user_configs")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-    mkdir $user_config_dir
-
-    let result = (try {
-        '[core]
-debug_mode = false
-' | save --force --raw ($user_config_dir | path join "yazelix.toml")
-
-        'enabled = ["git"]
-
-[declarations]
-git = ["gh", "prek"]
-' | save --force --raw ($user_config_dir | path join "yazelix_packs.toml")
-
-        let rendered = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            yzx config --full
-        }
-
-        if (
-            (($rendered.packs.enabled? | default []) == ["git"])
-            and ((($rendered.packs.declarations? | default {}) | get git) == ["gh", "prek"])
-        ) {
-            print "  ✅ yzx config --full renders the merged pack sidecar view"
-            true
-        } else {
-            print $"  ❌ Unexpected result: ($rendered | to json -r)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
 # Defends: yzx edit fuzzy-style target queries resolve to canonical managed config surfaces and reject ambiguous noninteractive use.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_yzx_edit_targets_print_paths [] {
@@ -1229,13 +1019,6 @@ def test_yzx_edit_targets_print_paths [] {
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
             yzx edit config --print
-        }
-        let packs_stdout = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            yzx edit packs --print
         }
         let helix_stdout = with-env {
             HOME: $tmp_home
@@ -1288,7 +1071,6 @@ def test_yzx_edit_targets_print_paths [] {
         }
 
         let expected_main = ($temp_config_dir | path join "user_configs" "yazelix.toml")
-        let expected_packs = ($temp_config_dir | path join "user_configs" "yazelix_packs.toml")
         let expected_helix = ($temp_config_dir | path join "user_configs" "helix" "config.toml")
         let expected_zellij = ($temp_config_dir | path join "user_configs" "zellij" "config.kdl")
         let expected_yazi = ($temp_config_dir | path join "user_configs" "yazi" "yazi.toml")
@@ -1301,7 +1083,6 @@ def test_yzx_edit_targets_print_paths [] {
             ($missing_subcommand_output.exit_code != 0)
             and ($invalid_output.exit_code != 0)
             and ($main_stdout == $expected_main)
-            and ($packs_stdout == $expected_packs)
             and ($helix_stdout == $expected_helix)
             and ($zellij_stdout == $expected_zellij)
             and ($yazi_stdout == $expected_yazi)
@@ -1313,7 +1094,7 @@ def test_yzx_edit_targets_print_paths [] {
             print "  ✅ yzx edit resolves canonical managed surfaces through permissive target queries and rejects unsupported noninteractive cases"
             true
         } else {
-            print $"  ❌ Unexpected result: main=($main_stdout) packs=($packs_stdout) helix=($helix_stdout) zellij=($zellij_stdout) yazi=($yazi_stdout) yazi_keymap=($yazi_keymap_stdout) yazi_init=($yazi_init_stdout) missing_exit=($missing_subcommand_output.exit_code) missing_stderr=($missing_subcommand_stderr) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
+            print $"  ❌ Unexpected result: main=($main_stdout) helix=($helix_stdout) zellij=($zellij_stdout) yazi=($yazi_stdout) yazi_keymap=($yazi_keymap_stdout) yazi_init=($yazi_init_stdout) missing_exit=($missing_subcommand_output.exit_code) missing_stderr=($missing_subcommand_stderr) invalid_exit=($invalid_output.exit_code) invalid_stderr=($invalid_stderr)"
             false
         }
     } catch {|err|
@@ -1361,8 +1142,7 @@ def test_invalid_config_is_classified_as_config_problem [] {
 
         if (
             ($output.exit_code == 0)
-            and ($stdout | str contains "Unsupported config value at core.refresh_output")
-            and ($stdout | str contains "Invalid value for core.refresh_output: loud")
+            and ($stdout | str contains "Unknown config field at core.refresh_output")
             and ($stdout | str contains "Failure class: config problem.")
             and ($stdout | str contains "yzx config reset")
         ) {
@@ -1436,24 +1216,17 @@ export def run_core_canonical_tests [] {
     [
         (test_yzx_config_migrate_preview_reports_known_migrations)
         (test_yzx_config_migrate_apply_rewrites_config_with_backup)
-        (test_yzx_config_migrate_apply_splits_legacy_packs_into_sidecar)
         (test_yzx_config_migrate_apply_noops_on_current_config)
         (test_entrypoint_preflight_auto_applies_safe_migrations)
         (test_entrypoint_preflight_migrates_legacy_helix_command)
         (test_entrypoint_preflight_applies_auto_changes_then_blocks_on_manual_followup)
         (test_entrypoint_preflight_relocates_legacy_root_config_surfaces)
-        (test_entrypoint_preflight_reports_pack_only_legacy_root_relocation)
         (test_entrypoint_preflight_relocates_legacy_root_and_applies_safe_subset_before_manual_block)
         (test_entrypoint_preflight_recovers_stale_relocation_before_duplicate_surface_error)
-        (test_yzx_desktop_install_writes_entry_and_icon_assets)
-        (test_yzx_desktop_uninstall_removes_manual_entry_and_icons)
-        (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)
-        (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
         (test_yzx_update_upstream_runs_exact_installer_command)
         (test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step)
         (test_yzx_run_passes_dash_prefixed_args_through_unchanged)
         (test_yzx_run_treats_child_verbose_flag_as_child_argv)
-        (test_yzx_config_full_merges_pack_sidecar)
         (test_yzx_edit_targets_print_paths)
         (test_invalid_config_is_classified_as_config_problem)
         (test_startup_reports_known_config_migration_before_generic_wrappers)

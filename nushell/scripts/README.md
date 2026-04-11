@@ -40,7 +40,7 @@ Scripts for development, testing, and maintenance:
 - `record_demo_fonts.nu` - Font testing for VHS recordings
 - `update_zjstatus.nu` - Internal maintainer helper to refresh the vendored zjstatus.wasm from the pinned Nix package
 - `update_zellij_pane_orchestrator.nu` - Sync the locally built pane orchestrator wasm into the repo and runtime plugin paths
-  - Pair with `yzx dev build_pane_orchestrator` after enabling the `rust_wasi` pack
+  - Pair with `yzx dev build_pane_orchestrator` from the Yazelix maintainer shell or another Rust toolchain that has `wasm32-wasip1`
 
 ## Usage
 

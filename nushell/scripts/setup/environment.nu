@@ -67,13 +67,9 @@ def main [--welcome-source: string, --skip-welcome] {
         ($config.skip_welcome_screen? | default false)
         or ($env.YAZELIX_STARTUP_PROFILE_SKIP_WELCOME? == "true")
     )
-    let helix_mode = ($config.helix_mode? | default "release")
     let welcome_style = ($config.welcome_style? | default "random")
     let welcome_duration_seconds = ($config.welcome_duration_seconds? | default 2.0)
     let show_macchina_on_welcome = ($config.show_macchina_on_welcome? | default false)
-
-    # Parse extra shells from config
-    let extra_shells = ($config.extra_shells? | default [])
 
     # DEBUG: Print skip_welcome_screen value
     if $debug_mode {
@@ -130,8 +126,8 @@ def main [--welcome-source: string, --skip-welcome] {
     # Validate user config against schema
     use ../utils/config_schema.nu validate_config_against_default
 
-    # Determine which shells to configure (always nu/bash, plus default_shell and extra_shells)
-    let shells_to_configure = (["nu", "bash"] ++ [$default_shell] ++ $extra_shells) | uniq
+    # Keep shell entry narrow: always configure the runtime baseline plus the selected default shell.
+    let shells_to_configure = (["nu", "bash", $default_shell] | uniq)
 
     # Setup logging in state directory (XDG-compliant)
     let state_dir = ($env.YAZELIX_STATE_DIR | str replace "~" $env.HOME)
@@ -233,7 +229,7 @@ def main [--welcome-source: string, --skip-welcome] {
     let colors = get_yazelix_colors
 
     # Build welcome message
-    let welcome_message = build_welcome_message $yazelix_dir $helix_mode $colors
+    let welcome_message = build_welcome_message $yazelix_dir $colors
 
     # Display welcome screen or log it (skip when start_yazelix handles it)
     if $welcome_source != "start" {

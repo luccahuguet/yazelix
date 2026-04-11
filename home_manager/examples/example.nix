@@ -11,29 +11,14 @@
   programs.yazelix = {
     enable = true;
 
-    # Dependency control for specific use cases
-    recommended_deps = true; # Productivity tools like lazygit, atuin
-    yazi_extensions = true; # File preview support
-    yazi_media = true; # Enable heavy media processing (~1GB)
-    max_jobs = "half"; # Optional: "auto", "max", "max_minus_one", "half", "quarter", or "8"
-    build_cores = "2"; # Optional: "max", "max_minus_one", "half", "quarter", or "2"
-
-    # Build Helix from source for latest features
-    helix_mode = "source";
-
-    # Multi-shell environment
-    default_shell = "nu";
-    extra_shells = [
-      "fish"
-      "zsh"
-    ]; # Optional: install additional shells
+    # Shell entry
+    default_shell = "zsh";
 
     # Terminal preference
     terminals = [
       "wezterm"
       "ghostty"
-    ]; # Better for media previews
-    manage_terminals = true;
+    ];
     terminal_config_mode = "yazelix"; # Optional: "yazelix" or "user"
     ghostty_trail_color = "random"; # Optional: Ghostty color palette + Kitty fallback
     ghostty_trail_effect = "random"; # Optional: "tail", "warp", "sweep", "random", or null
@@ -72,44 +57,7 @@
     # Persistent sessions for long-running work
     persistent_sessions = true;
     session_name = "main-dev";
-
-    # Packs (optional bundles defined in pack_declarations)
-    pack_names = [
-      "python"
-      "git"
-    ];
-    pack_declarations = {
-      python = [
-        "ruff"
-        "uv"
-        "ty"
-        "python3Packages.ipython"
-      ];
-      git = [
-        "onefetch"
-        "gh"
-        "delta"
-        "gitleaks"
-        "jujutsu"
-        "prek"
-      ];
-    };
     enable_atuin = true;
-
-    # Additional tools for development workflow
-    user_packages = with pkgs; [
-      # Package management
-      cargo-update
-      mise
-
-      # Development tools
-      ruff # Python linting/formatting
-      biome # JS/TS formatting and linting
-
-      # File management
-      ouch # Archive handling
-      erdtree # Modern tree command
-    ];
   };
 
   # Optional: install Nushell as your normal interactive shell outside Yazelix.

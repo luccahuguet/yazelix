@@ -22,7 +22,7 @@ def test_yazi_command_resolvers_honor_defaults_and_overrides [] {
         {
             label: "defaults"
             raw_toml: '[core]
-recommended_deps = true
+skip_welcome_screen = true
 '
             expected_yazi: "yazi"
             expected_ya: "ya"
@@ -99,7 +99,7 @@ def test_get_managed_editor_kind_accepts_managed_helix_wrapper_env [] {
     let fixture = (setup_managed_config_fixture
         "yazelix_yazi_managed_helix_wrapper"
         '[core]
-recommended_deps = true
+skip_welcome_screen = true
 '
     )
 
@@ -283,7 +283,7 @@ def test_toggle_editor_sidebar_focus_reports_sidebar_target_from_plugin_response
     let fixture = (setup_managed_config_fixture
         "yazelix_yazi_sidebar_focus_target"
         '[core]
-recommended_deps = true
+skip_welcome_screen = true
 '
     )
 

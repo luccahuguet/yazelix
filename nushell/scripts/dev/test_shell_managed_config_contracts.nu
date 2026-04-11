@@ -418,7 +418,7 @@ def test_standard_shellhook_setup_skips_legacy_yzx_wrapper [] {
     mkdir $runtime_dir
     mkdir $runtime_bin_dir
 
-    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "nushell", "shells", "yazelix_default.toml", "yazelix_packs_default.toml"] {
+    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "nushell", "shells", "yazelix_default.toml"] {
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
     ^ln -s $runtime_nu ($runtime_bin_dir | path join "nu")
@@ -426,7 +426,6 @@ def test_standard_shellhook_setup_skips_legacy_yzx_wrapper [] {
     mkdir ($nushell_host_config | path dirname)
     "" | save --force --raw $nushell_host_config
     cp (repo_path "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
-    cp (repo_path "yazelix_packs_default.toml") ($user_config_dir | path join "yazelix_packs.toml")
 
     let result = (try {
         let output = (with-env {
@@ -493,12 +492,11 @@ def test_home_manager_shellhook_setup_skips_host_shell_surfaces [] {
     mkdir $runtime_dir
     mkdir $runtime_bin_dir
 
-    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "nushell", "shells", "yazelix_default.toml", "yazelix_packs_default.toml"] {
+    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "nushell", "shells", "yazelix_default.toml"] {
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
     ^ln -s $runtime_nu ($runtime_bin_dir | path join "nu")
     cp (repo_path "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
-    cp (repo_path "yazelix_packs_default.toml") ($user_config_dir | path join "yazelix_packs.toml")
     "" | save --force --raw $hm_marker
 
     let result = (try {

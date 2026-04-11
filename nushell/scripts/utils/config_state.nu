@@ -7,7 +7,7 @@ use ./config_contract.nu [get_main_config_rebuild_required_paths]
 use ./common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 use ./config_surfaces.nu [load_active_config_surface get_main_user_config_path normalize_config_surface_path]
 
-# Extract a nested key from a record using dot notation (e.g., "core.recommended_deps")
+# Extract a nested key from a record using dot notation (e.g., "shell.default_shell")
 def get_nested_key [record: record, key: string] {
     let parts = ($key | split row ".")
     mut value = $record
@@ -183,7 +183,22 @@ export def compute_config_state [] {
 export def record_materialized_state [state: record] {
     let config_file = ($state.config_file? | default "")
     let default_config = (normalize_config_surface_path (get_main_user_config_path))
-    if ($config_file | is-not-empty) and ((normalize_config_surface_path $config_file) != $default_config) {
+    let normalized_config_file = if ($config_file | is-not-empty) {
+        normalize_config_surface_path $config_file
+    } else {
+        ""
+    }
+    let default_config_dir = ($default_config | path dirname)
+    let default_config_name = ($default_config | path basename)
+    let is_default_managed_surface = (
+        ($normalized_config_file == $default_config)
+        or (
+            ($normalized_config_file | is-not-empty)
+            and (($normalized_config_file | path dirname) == $default_config_dir)
+            and (($normalized_config_file | path basename) == $default_config_name)
+        )
+    )
+    if ($config_file | is-not-empty) and (not $is_default_managed_surface) {
         return
     }
 

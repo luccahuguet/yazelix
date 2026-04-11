@@ -1,19 +1,7 @@
 { pkgs, src ? ../. }:
 
 let
-  lockedDevenv = import ./locked_devenv_package.nix { inherit pkgs src; };
-  runtimeDeps = [
-    pkgs.nushell
-    lockedDevenv
-    pkgs.nix
-    pkgs.coreutils
-    pkgs.findutils
-    pkgs.gnugrep
-    pkgs.gnused
-    pkgs.jq
-    pkgs.util-linux
-    pkgs.bash
-  ];
+  runtimeDeps = import ./runtime_deps.nix { inherit pkgs; };
   runtimeBinPath = pkgs.lib.makeBinPath runtimeDeps;
 
   runtime = import ./mk_runtime_tree.nix {

@@ -1,10 +1,10 @@
 # Yazelix Home Manager Module
 
-A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that declaratively manages the package-ready runtime surface alongside `yazelix.toml` and `yazelix_packs.toml`.
+A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that declaratively manages the package-ready runtime surface alongside `yazelix.toml`.
 
 ## What This Module Does
 
-- **Generates `yazelix.toml` and `yazelix_packs.toml`** from Home Manager options
+- **Generates `yazelix.toml`** from Home Manager options
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
 - **Installs icons and a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
@@ -72,7 +72,6 @@ home-manager switch
 This creates:
 - the `yzx` command in your Home Manager profile, typically `~/.nix-profile/bin/yzx`
 - `~/.config/yazelix/user_configs/yazelix.toml`
-- `~/.config/yazelix/user_configs/yazelix_packs.toml`
 - a Home Manager profile desktop entry, typically `~/.nix-profile/share/applications/yazelix.desktop`
 
 Then open a fresh shell and run:
@@ -133,7 +132,6 @@ See [examples/example.nix](./examples/example.nix) for a comprehensive example s
 
 The prepare command archives the common manual-install takeover blockers and handoff cleanup paths:
 - `~/.config/yazelix/user_configs/yazelix.toml`
-- `~/.config/yazelix/user_configs/yazelix_packs.toml`
 - `~/.local/share/applications/com.yazelix.Yazelix.desktop`
 - `~/.local/share/icons/hicolor/*/apps/yazelix.png`
 

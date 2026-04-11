@@ -28,6 +28,12 @@ def require_list_contains [items: list<string>, expected: string, label: string]
     }
 }
 
+def require_list_not_contains [items: list<string>, forbidden: string, label: string] {
+    if ($items | any {|item| $item == $forbidden }) {
+        error make { msg: $"($label) unexpectedly contains forbidden entry `($forbidden)`. Found: (($items | str join ', '))" }
+    }
+}
+
 def run_completed_external [
     label: string
     cmd_bin: string
@@ -82,6 +88,7 @@ export def main [] {
     require_file_contains $install_template '@coreutils_bin@/ln -sfn "$runtime_current/bin/yzx" "$yzx_link"' "flake installer template"
     require_file_contains $install_template 'YAZELIX_RUNTIME_DIR="$runtime_current"' "flake installer template"
     require_file_contains $install_template '@nu_bin@ "$runtime_current/nushell/scripts/setup/environment.nu" --skip-welcome' "flake installer template"
+    require_file_not_contains $install_template 'yazelix_packs.toml' "flake installer template"
     require_file_not_contains $install_template 'YAZELIX_DIR="$runtime_current"' "flake installer template"
 
     require_file_contains $cli_wrapper 'export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$RUNTIME_DIR"' "stable POSIX CLI wrapper"
@@ -92,10 +99,16 @@ export def main [] {
     require_file_not_contains $environment_setup "get_installed_yazelix_runtime_reference_dir" "environment setup script"
     require_file_not_contains $environment_setup "ensure_user_cli_wrapper" "environment setup script"
 
-    require_file_contains $runtime_tree "import ./locked_devenv_package.nix" "runtime tree builder"
-    require_file_contains $runtime_tree 'ln -s ${lockedDevenv}/bin/devenv "$out/bin/devenv"' "runtime tree builder"
-    require_file_contains $runtime_tree 'ln -s ${pkgs.nushell}/bin/nu "$out/bin/nu"' "runtime tree builder"
+    require_file_contains $runtime_tree "import ./runtime_deps.nix" "runtime tree builder"
+    require_file_contains $runtime_tree 'ln -s ${src}/yazelix_default.toml "$out/yazelix_default.toml"' "runtime tree builder"
+    require_file_contains $runtime_tree 'for bin_dir in ${escapedRuntimeBinDirs}; do' "runtime tree builder"
     require_file_contains $runtime_tree 'cat > "$out/bin/yzx" <<EOF' "runtime tree builder"
+    require_file_not_contains $runtime_tree "locked_devenv_package.nix" "runtime tree builder"
+    require_file_not_contains $runtime_tree 'devenv.lock' "runtime tree builder"
+    require_file_not_contains $runtime_tree 'devenv.nix' "runtime tree builder"
+    require_file_not_contains $runtime_tree 'devenv.yaml' "runtime tree builder"
+    require_file_not_contains $runtime_tree 'yazelix_packs_default.toml' "runtime tree builder"
+    require_file_not_contains $runtime_tree '"$out/bin/devenv"' "runtime tree builder"
 
     let flake_show = (run_completed_external "evaluating flake package/app surface" "nix" ["flake" "show" "--json"])
     if $flake_show.exit_code != 0 {
@@ -110,9 +123,10 @@ export def main [] {
 
     let flake = ($flake_show.stdout | from json)
     let package_keys = ($flake | get packages."x86_64-linux" | columns)
-    for expected in ["default" "runtime" "install" "yazelix" "locked_devenv"] {
+    for expected in ["default" "runtime" "install" "yazelix"] {
         require_list_contains $package_keys $expected "x86_64-linux package outputs"
     }
+    require_list_not_contains $package_keys "locked_devenv" "x86_64-linux package outputs"
 
     let app_keys = ($flake | get apps."x86_64-linux" | columns)
     for expected in ["default" "install" "yazelix"] {

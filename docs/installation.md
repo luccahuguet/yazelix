@@ -127,40 +127,33 @@ Normal usage relies on the package-provided `yzx` entrypoint or the Home Manager
 
 Host prerequisite contract:
 - **Host prerequisite**: Nix with flakes enabled
-- **Package-provided**: the Yazelix runtime, including runtime-local `devenv` and `nu`, plus `bin/yzx`
-- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix
+- **Package-provided**: the Yazelix runtime, including runtime-local `nu`, `zellij`, `yazi`, `helix`, shells, and the fixed helper toolset behind `bin/yzx`
+- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or a host terminal emulator binary for launch
 
 ### Step 3: Configure Your Installation (Optional)
 
-If you skipped customization before the installer, it will auto-create `user_configs/yazelix.toml` and `user_configs/yazelix_packs.toml` from the shipped defaults. You can edit them anytime afterward:
+If you skipped customization before the installer, it will auto-create `user_configs/yazelix.toml` from the shipped default. You can edit it anytime afterward:
 
 ```bash
 hx ~/.config/yazelix/user_configs/yazelix.toml
 ```
 
-#### Dependency Groups & Size Estimates
+#### Runtime Surface
 
-| Group | Size | Default | Description |
-|-------|------|---------|-------------|
-| **✅ Essential Tools** | ~1.7GB | Always included | Core Yazelix functionality (Yazi, Zellij, Helix, shells, built-in Ghostty, etc.) |
-| **🔧 Recommended Tools** | ~350MB | Enabled | Productivity enhancers (lazygit, atuin, etc.) |
-| **🗂️ Yazi Extensions** | ~125MB | Enabled | File preview & archive support |
-| **🎬 Yazi Media** | ~1GB | Disabled | Heavy media processing |
+The trimmed v15 packaged runtime ships a fixed toolset instead of configurable dependency groups. The package includes:
+- the core Yazelix stack: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
+- the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `mise`, `carapace`, `macchina`
+- the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 
-#### Installation Options
-
-**Note**: All installations require Nix (~2.5GB) as a prerequisite.
-
-- **Minimal install**: Nix (~2.5GB) + devenv (~5GB) + essential tools (~1.7GB) = **~9.2GB total**
-- **Standard install**: Nix (~2.5GB) + devenv (~5GB) + default config (~2.2GB) = **~9.7GB total**
-- **Full install**: Nix (~2.5GB) + devenv (~5GB) + all groups (~3.2GB) = **~10.7GB total**
-
-📋 For detailed package breakdowns and configuration strategies, see **[Package Sizes Documentation](./package_sizes.md)**
+What it does not ship anymore:
+- runtime-local `devenv`
+- dynamic packs or `user_packages`
+- host terminal binaries; install one of your configured terminals separately on the host
 
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
 - **Terminal preference**: Set `terminals` (`["ghostty", "wezterm", "kitty", "alacritty", "foot"]`, ordered)
-- **Managed terminals**: Set `manage_terminals = true` to install via Nix, or false to use system-installed terminals only
+- **Terminal launch**: Yazelix launches host-installed terminals directly in the order you configure
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
 ### Step 4: Install Fonts (Required for Kitty and Alacritty)
@@ -196,7 +189,7 @@ Useful launch variants:
 - `yzx enter` starts Yazelix in the current terminal
 - `yzx help` shows the command surface
 
-**First run note**: the first launch may take several minutes while Yazelix downloads and installs its environment. Subsequent launches are much faster because `devenv` caching is reused.
+**First run note**: the first launch can take a bit longer while Yazelix writes shell hooks and generates managed runtime state. Later launches are usually faster because that generated state already exists.
 
 If you want to use Nushell as your normal host shell outside Yazelix, install it separately in the way you prefer. Yazelix no longer requires that extra host `nu` install just to bootstrap or launch the installed runtime.
 
@@ -307,9 +300,9 @@ yzx env
 ```
 This loads all tools (helix, yazi, lazygit, etc.) into your configured shell with Yazelix environment variables set. Add `--no-shell` to keep using your current shell instead.
 
-If you prefer a raw environment shell:
+If you want the Yazelix tool PATH without switching into your configured shell:
 ```bash
-devenv shell
+yzx env --no-shell
 ```
 
 ### Home Manager Integration

@@ -19,7 +19,6 @@ export use ../yzx/env.nu *
 export use ../yzx/refresh.nu *
 export use ../yzx/import.nu *
 export use ../yzx/run.nu *
-export use ../yzx/packs.nu *
 export use ../yzx/popup.nu *
 export use ../yzx/screen.nu *
 export use ../yzx/gc.nu *
@@ -238,7 +237,8 @@ export def "yzx status" [
     } else {
         print $"Terminals: (($terminals | str join ', '))"
     }
-    print $"Helix Mode: ($config.helix_mode)"
+    let helix_runtime_label = ($config.helix_runtime_path? | default 'runtime default')
+    print $"Helix Runtime: ($helix_runtime_label)"
     print $"Persistent Sessions: ($config.persistent_sessions)"
     if ($config.persistent_sessions == "true") {
         print $"Session Name: ($config.session_name)"

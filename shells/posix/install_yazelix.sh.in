@@ -16,7 +16,6 @@ config_root="$HOME/.config/yazelix"
 user_config_dir="$config_root/user_configs"
 taplo_config="$config_root/.taplo.toml"
 main_config="$user_config_dir/yazelix.toml"
-pack_config="$user_config_dir/yazelix_packs.toml"
 
 @coreutils_bin@/mkdir -p "$runtime_root" "$bin_dir" "$user_config_dir"
 @coreutils_bin@/ln -sfn "$runtime_target" "$runtime_current"
@@ -24,10 +23,6 @@ pack_config="$user_config_dir/yazelix_packs.toml"
 
 if [ ! -f "$main_config" ]; then
   @coreutils_bin@/cp "$runtime_current/yazelix_default.toml" "$main_config"
-fi
-
-if [ ! -f "$pack_config" ]; then
-  @coreutils_bin@/cp "$runtime_current/yazelix_packs_default.toml" "$pack_config"
 fi
 
 @coreutils_bin@/rm -f "$taplo_config"

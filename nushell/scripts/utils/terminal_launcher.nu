@@ -75,7 +75,7 @@ export def resolve_terminal_config [terminal: string, mode: string] {
     error make {msg: $"Unsupported terminal.config_mode '($mode)'. Expected 'yazelix' or 'user'."}
 }
 
-export def detect_terminal_candidates [preferred: any, prefer_wrappers: bool = true] {
+export def detect_terminal_candidates [preferred: any] {
     # Build list of terminals to check: use list order if provided, otherwise preferred first
     let ordered_terminals = if ($preferred | describe | str contains "list") {
         $preferred | where $it in $SUPPORTED_TERMINALS
@@ -87,35 +87,14 @@ export def detect_terminal_candidates [preferred: any, prefer_wrappers: bool = t
         return []
     }
 
-    let terminals_to_check = (
-        $ordered_terminals
-        | each {|t|
-            if $prefer_wrappers {
-                [
-                    {terminal: $t, use_wrapper: true}
-                    {terminal: $t, use_wrapper: false}
-                ]
-            } else {
-                [{terminal: $t, use_wrapper: false}]
-            }
-        }
-        | flatten
-    )
-
     mut available = []
-    for term_check in $terminals_to_check {
-        let terminal = $term_check.terminal
-        let use_wrapper = $term_check.use_wrapper
+    for terminal in $ordered_terminals {
         let term_meta = ($TERMINAL_METADATA | get -o $terminal | default {})
-
-        let command = if $use_wrapper { $term_meta.wrapper } else { $terminal }
-
-        if (command_exists $command) {
+        if (command_exists $terminal) {
             $available = ($available | append {
                 terminal: $terminal
                 name: $term_meta.name
-                command: $command
-                use_wrapper: $use_wrapper
+                command: $terminal
             })
         }
     }
@@ -123,13 +102,9 @@ export def detect_terminal_candidates [preferred: any, prefer_wrappers: bool = t
     $available
 }
 
-export def detect_terminal_wrapper_candidates [preferred: any] {
-    detect_terminal_candidates $preferred true
-}
-
-# Detect first available terminal (wrapper or direct)
-export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
-    let candidates = (detect_terminal_candidates $preferred $prefer_wrappers)
+# Detect first available terminal.
+export def detect_terminal [preferred: any] {
+    let candidates = (detect_terminal_candidates $preferred)
     if ($candidates | is-empty) {
         null
     } else {
@@ -193,61 +168,47 @@ def get_working_dir_arg [terminal: string, working_dir: string]: nothing -> stri
 export def build_launch_command [
     terminal_info: record
     config_path
-    terminal_config_mode: string
     working_dir: string
     needs_reload: bool = true  # Whether to force environment reload
 ]: nothing -> string {
     let terminal = $terminal_info.terminal
     let command = $terminal_info.command
-    let use_wrapper = $terminal_info.use_wrapper
     let launch_prefix = build_detached_launch_prefix $needs_reload
     let working_dir_arg = (get_working_dir_arg $terminal $working_dir)
     let startup_script = (get_startup_script_path)
     let startup_shell = $"sh -c 'exec ($startup_script)'"
     let title = (get_terminal_title $terminal)
 
-    if $use_wrapper {
-        # Managed wrapper binaries already bake the canonical terminal binary,
-        # config mode, startup script, and nixGL path.
-        $"($launch_prefix)($command)($working_dir_arg)"
-    } else {
-        # Direct terminal launch with config
-        # Prefer the generic nixGL wrapper when available. Fall back to the
-        # older Intel-specific name only if the default wrapper is absent.
-        let nixgl_prefix = (resolve_nixgl_launch_prefix)
-        let terminal_cmd = match $terminal {
-            "ghostty" => {
-                $"($nixgl_prefix)ghostty --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --class=\"($YAZELIX_WINDOW_CLASS)\" --x11-instance-name=\"($YAZELIX_X11_INSTANCE)\" --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
-            },
-            "wezterm" => {
-                $"($nixgl_prefix)wezterm --config-file ($config_path) start --class=($YAZELIX_WINDOW_CLASS)($working_dir_arg) -- ($startup_shell)"
-            },
-            "kitty" => {
-                $"($nixgl_prefix)kitty --config=($config_path) --class=($YAZELIX_WINDOW_CLASS) --title=\"($title)\"($working_dir_arg) ($startup_shell)"
-            },
-            "alacritty" => {
-                $"($nixgl_prefix)alacritty --config-file ($config_path) --class \"($YAZELIX_WINDOW_CLASS)\" --title \"($title)\"($working_dir_arg) -e ($startup_shell)"
-            },
-            "foot" => {
-                $"($nixgl_prefix)foot --config ($config_path) --app-id ($YAZELIX_WINDOW_CLASS)($working_dir_arg) ($startup_shell)"
-            },
-            _ => {
-                error make {msg: $"Unknown terminal: ($terminal)"}
-            }
+    # Prefer the generic nixGL wrapper when available. Fall back to the
+    # older Intel-specific name only if the default wrapper is absent.
+    let nixgl_prefix = (resolve_nixgl_launch_prefix)
+    let terminal_cmd = match $terminal {
+        "ghostty" => {
+            $"($nixgl_prefix)($command) --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --class=\"($YAZELIX_WINDOW_CLASS)\" --x11-instance-name=\"($YAZELIX_X11_INSTANCE)\" --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
+        },
+        "wezterm" => {
+            $"($nixgl_prefix)($command) --config-file ($config_path) start --class=($YAZELIX_WINDOW_CLASS)($working_dir_arg) -- ($startup_shell)"
+        },
+        "kitty" => {
+            $"($nixgl_prefix)($command) --config=($config_path) --class=($YAZELIX_WINDOW_CLASS) --title=\"($title)\"($working_dir_arg) ($startup_shell)"
+        },
+        "alacritty" => {
+            $"($nixgl_prefix)($command) --config-file ($config_path) --class \"($YAZELIX_WINDOW_CLASS)\" --title \"($title)\"($working_dir_arg) -e ($startup_shell)"
+        },
+        "foot" => {
+            $"($nixgl_prefix)($command) --config ($config_path) --app-id ($YAZELIX_WINDOW_CLASS)($working_dir_arg) ($startup_shell)"
+        },
+        _ => {
+            error make {msg: $"Unknown terminal: ($terminal)"}
         }
-
-        $"($launch_prefix)($terminal_cmd)"
     }
+
+    $"($launch_prefix)($terminal_cmd)"
 }
 
 # Get display name for terminal
 export def get_terminal_display_name [terminal_info: record]: nothing -> string {
-    let name = $terminal_info.name
-    if $terminal_info.use_wrapper {
-        $"Yazelix - ($name)"
-    } else {
-        $"($name)"
-    }
+    $terminal_info.name
 }
 
 export def run_detached_terminal_launch [launch_cmd: string, terminal_name: string, --verbose] {

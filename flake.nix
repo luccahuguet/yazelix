@@ -28,10 +28,6 @@
         system:
         let
           pkgs = mkPkgs system;
-          lockedDevenv = import ./packaging/locked_devenv_package.nix {
-            inherit pkgs;
-            src = ./.;
-          };
           runtime = runtimePackage pkgs;
           yazelix = yazelixPackage pkgs;
           install = pkgs.writeShellScriptBin "yazelix-install" (
@@ -53,7 +49,6 @@
         in
         {
           default = yazelix;
-          locked_devenv = lockedDevenv;
           runtime = runtime;
           yazelix = yazelix;
           install = install;

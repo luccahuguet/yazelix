@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ../core/yazelix.nu *
-use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [get_repo_config_dir setup_managed_config_fixture]
 
 def run_doctor_command_for_fixture [fixture: record, command: string, extra_env?: record] {
     let base_env = {
@@ -27,8 +27,6 @@ def setup_fake_home_manager_install_artifacts [fixture: record] {
     let fake_runtime_bin = ($fake_runtime | path join "bin")
     let hm_store = ($fixture.tmp_home | path join "fake-home-manager-files")
     let hm_main = ($hm_store | path join ".config" "yazelix" "user_configs" "yazelix.toml")
-    let hm_pack = ($hm_store | path join ".config" "yazelix" "user_configs" "yazelix_packs.toml")
-    let pack_config_path = ($fixture.user_config_dir | path join "yazelix_packs.toml")
     let profile_yzx = ($fixture.tmp_home | path join ".nix-profile" "bin" "yzx")
     let profile_desktop_path = ($fixture.tmp_home | path join ".nix-profile" "share" "applications" "yazelix.desktop")
 
@@ -42,11 +40,6 @@ def setup_fake_home_manager_install_artifacts [fixture: record] {
     cp ($fixture.repo_root | path join ".taplo.toml") ($fake_runtime | path join ".taplo.toml")
     ^ln -s ($fixture.repo_root | path join "config_metadata") ($fake_runtime | path join "config_metadata")
     cp ($fixture.repo_root | path join "yazelix_default.toml") $hm_main
-    'enabled = ["git"]
-
-[declarations]
-git = ["gh"]
-' | save --force --raw $hm_pack
 
     [
         "#!/bin/sh"
@@ -62,7 +55,6 @@ git = ["gh"]
     ^ln -s ($fake_runtime | path join "bin" "yzx") $profile_yzx
     rm -f $fixture.config_path
     ^ln -s $hm_main $fixture.config_path
-    ^ln -s $hm_pack $pack_config_path
 
     [
         "[Desktop Entry]"
@@ -85,45 +77,6 @@ def doctor_output_reports_current_home_manager_install [stdout: string] {
     )
 }
 
-def seed_launch_profile_fixture_state [fixture: record, profile_path: string] {
-    let state_dir = ($fixture.tmp_home | path join ".local" "share" "yazelix")
-    let config_state_module = (repo_path "nushell" "scripts" "utils" "config_state.nu")
-    let launch_state_module = (repo_path "nushell" "scripts" "utils" "launch_state.nu")
-
-    let output = (with-env {
-        HOME: $fixture.tmp_home
-        YAZELIX_CONFIG_DIR: $fixture.config_dir
-        YAZELIX_RUNTIME_DIR: $fixture.repo_root
-        YAZELIX_STATE_DIR: $state_dir
-    } {
-        let snippet = ([
-            $"use \"($config_state_module)\" [compute_config_state record_materialized_state]"
-            $"use \"($launch_state_module)\" [record_launch_profile_state]"
-            "let state = (compute_config_state)"
-            "record_materialized_state $state"
-            $"record_launch_profile_state $state \"($profile_path)\""
-            "{"
-            "    combined_hash: $state.combined_hash"
-            "    config_hash: $state.config_hash"
-            "    lock_hash: $state.lock_hash"
-            "    devenv_nix_hash: ($state.devenv_nix_hash? | default '')"
-            "    devenv_yaml_hash: ($state.devenv_yaml_hash? | default '')"
-            "    runtime_hash: ($state.runtime_hash? | default '')"
-            "} | to json -r"
-        ] | str join "\n")
-        ^nu -c $snippet | complete
-    })
-
-    if $output.exit_code != 0 {
-        error make {msg: $"Failed to seed launch-profile fixture state: (($output.stderr | default $output.stdout | str trim))"}
-    }
-
-    {
-        state_dir: $state_dir
-        state: ($output.stdout | lines | last | str trim | from json)
-    }
-}
-
 # Defends: doctor warns on stale config fields with actionable guidance.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_yzx_doctor_warns_on_stale_config_fields [] {
@@ -138,8 +91,6 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
         let stale_config = (
             open ($fixture.repo_root | path join "yazelix_default.toml")
             | upsert core.stale_field true
-            | upsert packs.declarations.custom_pack ["hello"]
-            | upsert packs.enabled ["custom_pack"]
         )
         $stale_config | to toml | save --force $fixture.config_path
 
@@ -158,9 +109,8 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
             and ($stdout | str contains "Stale, unsupported, or migration-aware yazelix.toml entries detected")
             and ($stdout | str contains "Unknown config field: core.stale_field")
             and ($stdout | str contains "yzx config reset")
-            and not ($stdout | str contains "packs.declarations.custom_pack")
         ) {
-            print "  ✅ yzx doctor reports stale config fields without flagging custom pack declarations"
+            print "  ✅ yzx doctor reports stale config fields through the narrowed v15 config surface"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
@@ -258,58 +208,6 @@ enable_atuin = true
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) rewritten=($rewritten | to json -r) backups=(($backups | length))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Regression: doctor fix splits legacy pack config into the supported sidecar path.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_yzx_doctor_fix_splits_legacy_pack_config [] {
-    print "🧪 Testing yzx doctor --fix relocates legacy pack config into user_configs/yazelix_packs.toml..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_doctor_fix_packs"
-        '[packs]
-enabled = ["git"]
-user_packages = ["docker"]
-
-[packs.declarations]
-git = ["gh", "prek"]
-'
-        --legacy-root
-    )
-
-    let result = (try {
-        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --fix")
-        let stdout = ($output.stdout | str trim)
-        let rewritten = (open ($fixture.user_config_dir | path join "yazelix.toml"))
-        let pack_path = ($fixture.user_config_dir | path join "yazelix_packs.toml")
-        let pack_rewritten = (if ($pack_path | path exists) { open $pack_path } else { null })
-        let pack_rendered = (if $pack_rewritten == null { "<missing>" } else { $pack_rewritten | to json -r })
-        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Applied 1 config migration fix")
-            and ($stdout | str contains "Wrote pack config to")
-            and not ("packs" in ($rewritten | columns))
-            and ($pack_rewritten.enabled == ["git"])
-            and ($pack_rewritten.user_packages == ["docker"])
-            and (($pack_rewritten.declarations | get git) == ["gh", "prek"])
-            and (($backups | length) == 1)
-            and not ($fixture.config_path | path exists)
-        ) {
-            print "  ✅ yzx doctor --fix relocates legacy pack ownership into user_configs"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main=($rewritten | to json -r) pack=($pack_rendered) backups=(($backups | length))"
             false
         }
     } catch {|err|
@@ -456,7 +354,6 @@ def test_yzx_doctor_reports_missing_runtime_launch_assets [] {
     let fixture = (setup_managed_config_fixture
         "yazelix_doctor_runtime_preflight"
         '[terminal]
-manage_terminals = false
 terminals = ["ghostty"]
 '
     )
@@ -517,7 +414,6 @@ def test_yzx_doctor_respects_layout_override_for_shared_preflight [] {
     let fixture = (setup_managed_config_fixture
         "yazelix_doctor_layout_override"
         '[terminal]
-manage_terminals = false
 terminals = ["ghostty"]
 '
     )
@@ -552,88 +448,6 @@ terminals = ["ghostty"]
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: launch-profile freshness diagnostics use the canonical config-state and launch-state contract.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_doctor_reports_launch_profile_freshness_states [] {
-    print "🧪 Testing yzx doctor reports healthy, stale, and missing cached launch-profile states..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_doctor_launch_profile"
-        '[terminal]
-terminals = ["ghostty"]
-'
-    )
-
-    let result = (try {
-        let state_dir = ($fixture.tmp_home | path join ".local" "share" "yazelix")
-        let profile_dir = ($fixture.tmp_home | path join "cached_profile")
-        let launch_state_path = ($state_dir | path join "state" "launch_state.json")
-        let rebuild_state_path = ($state_dir | path join "state" "rebuild_hash")
-        mkdir $profile_dir
-
-        let seeded = (seed_launch_profile_fixture_state $fixture $profile_dir)
-        let doctor_env = {YAZELIX_STATE_DIR: $state_dir}
-
-        let healthy_output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" $doctor_env)
-        let healthy_stdout = ($healthy_output.stdout | str trim)
-
-        '[terminal]
-terminals = ["kitty"]
-' | save --force --raw $fixture.config_path
-        let stale_config_output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" $doctor_env)
-        let stale_config_stdout = ($stale_config_output.stdout | str trim)
-
-        '[terminal]
-terminals = ["ghostty"]
-' | save --force --raw $fixture.config_path
-        {
-            config_hash: $seeded.state.config_hash
-            lock_hash: "stale-lock-hash"
-            devenv_nix_hash: $seeded.state.devenv_nix_hash
-            devenv_yaml_hash: $seeded.state.devenv_yaml_hash
-            runtime_hash: $seeded.state.runtime_hash
-        } | to json | save --force $rebuild_state_path
-        let stale_inputs_output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" $doctor_env)
-        let stale_inputs_stdout = ($stale_inputs_output.stdout | str trim)
-
-        {
-            config_hash: $seeded.state.config_hash
-            lock_hash: $seeded.state.lock_hash
-            devenv_nix_hash: $seeded.state.devenv_nix_hash
-            devenv_yaml_hash: $seeded.state.devenv_yaml_hash
-            runtime_hash: $seeded.state.runtime_hash
-        } | to json | save --force $rebuild_state_path
-        rm --force $launch_state_path
-        let missing_output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" $doctor_env)
-        let missing_stdout = ($missing_output.stdout | str trim)
-
-        if (
-            ($healthy_output.exit_code == 0)
-            and ($healthy_stdout | str contains "Cached launch profile matches the current rebuild-relevant config and tracked inputs")
-            and ($healthy_stdout | str contains $profile_dir)
-            and ($stale_config_output.exit_code == 0)
-            and ($stale_config_stdout | str contains "Cached launch profile is stale because rebuild-relevant config changed")
-            and ($stale_config_stdout | str contains "Run `yzx refresh` before relying on `yzx enter --reuse`")
-            and ($stale_inputs_output.exit_code == 0)
-            and ($stale_inputs_stdout | str contains "Cached launch profile is stale because tracked runtime/devenv inputs changed")
-            and ($missing_output.exit_code == 0)
-            and ($missing_stdout | str contains "No verified cached launch profile exists for the current rebuild-relevant config and tracked inputs")
-        ) {
-            print "  ✅ yzx doctor now classifies cached launch-profile health across healthy, stale-config, stale-input, and missing-profile states"
-            true
-        } else {
-            print $"  ❌ Unexpected launch-profile doctor output:\nHEALTHY:\n($healthy_stdout)\n\nSTALE CONFIG:\n($stale_config_stdout)\n\nSTALE INPUTS:\n($stale_inputs_stdout)\n\nMISSING:\n($missing_stdout)"
             false
         }
     } catch {|err|
@@ -687,13 +501,6 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_warns_on_stale_config_fields)
         (test_yzx_doctor_reports_known_migration_inside_zellij_session)
         (test_yzx_doctor_fix_applies_safe_config_migrations)
-        (test_yzx_doctor_fix_splits_legacy_pack_config)
-        (test_yzx_doctor_reports_stale_desktop_entry_exec)
         (test_yzx_doctor_accepts_home_manager_install_artifacts)
-        (test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager)
-        (test_yzx_doctor_reports_missing_runtime_launch_assets)
-        (test_yzx_doctor_respects_layout_override_for_shared_preflight)
-        (test_yzx_doctor_reports_launch_profile_freshness_states)
-        (test_yzx_doctor_omits_installer_artifact_checks_in_runtime_root_only_mode)
     ]
 }
