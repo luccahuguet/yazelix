@@ -1212,6 +1212,50 @@ widget_tray = ["layout", "editor"]
     $result
 }
 
+# Regression: yzx status must import and use the shared environment bootstrap successfully.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_status_reports_basic_runtime_summary [] {
+    print "🧪 Testing yzx status reports the basic runtime summary through the shared environment bootstrap..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_status_summary"
+        '[core]
+welcome_style = "random"
+
+[shell]
+default_shell = "nu"
+
+[terminal]
+terminals = ["ghostty"]
+'
+    )
+
+    let result = (try {
+        let output = (run_yzx_command_for_fixture $fixture "yzx status")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "=== Yazelix Status ===")
+            and ($stdout | str contains $"Config File: ($fixture.config_path)")
+            and ($stdout | str contains "Default Shell: nu")
+            and ($stdout | str contains "Terminals: ghostty")
+        ) {
+            print "  ✅ yzx status now reaches the shared environment bootstrap and reports the live config summary"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 export def run_core_canonical_tests [] {
     [
         (test_yzx_config_migrate_preview_reports_known_migrations)
@@ -1230,5 +1274,6 @@ export def run_core_canonical_tests [] {
         (test_yzx_edit_targets_print_paths)
         (test_invalid_config_is_classified_as_config_problem)
         (test_startup_reports_known_config_migration_before_generic_wrappers)
+        (test_yzx_status_reports_basic_runtime_summary)
     ]
 }
