@@ -105,7 +105,7 @@ refresh_output = "loud"
     )
     let log_file = $fixture.log_file
 
-    log_line $log_file "Case: unsupported config without migration guidance"
+    log_line $log_file "Case: unknown config field without migration guidance"
     log_line $log_file $"Temp HOME: ($fixture.tmp_home)"
     log_line $log_file $"Config path: ($fixture.config_path)"
     log_line $log_file ""
@@ -120,9 +120,9 @@ refresh_output = "loud"
     log_block $log_file "Doctor stderr" ($doctor.stderr | str trim)
 
     let ok = (
-        (($startup.stdout | str contains "Unsupported config value at core.refresh_output"))
+        (($startup.stdout | str contains "Unknown config field at core.refresh_output"))
         and not (($startup.stdout | str contains "Known migration"))
-        and (($doctor.stdout | str contains "Unsupported config value at core.refresh_output"))
+        and (($doctor.stdout | str contains "Unknown config field at core.refresh_output"))
         and not (($doctor.stdout | str contains "Safe apply: `yzx config migrate --apply` or `yzx doctor --fix`"))
     )
 

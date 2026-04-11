@@ -174,16 +174,26 @@ def test_issue_bead_comment_plan [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Regression: repo-local devenv shells clear inherited installed-runtime aliases without exporting a fake runtime root.
-def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
-    print "🧪 Testing repo-local devenv shells sanitize inherited runtime aliases without exporting a fake runtime root..."
+# Regression: repo-local devenv shells ignore inherited installed-runtime aliases and re-root the live runtime to the checkout.
+def test_source_devenv_shell_re_roots_runtime_aliases_to_checkout [] {
+    print "🧪 Testing repo-local devenv shells ignore inherited installed-runtime aliases and re-root the runtime to the checkout..."
 
     let repo_root = ($env.PWD | path expand)
-    let fake_runtime = (get_yazelix_state_dir | path join "runtime" "current" | path expand)
     let devenv_bin = (resolve_preferred_devenv_path)
+    let tmp_home = (^mktemp -d /tmp/yazelix_repo_shell_runtime_aliases_XXXXXX | str trim)
+    let fake_runtime = ($tmp_home | path join ".local" "share" "yazelix" "runtime" "current")
+    let bashrc_path = ($tmp_home | path join ".bashrc")
+    let nushell_config_dir = ($tmp_home | path join ".config" "nushell")
+    let nushell_config_path = ($nushell_config_dir | path join "config.nu")
 
-    try {
+    mkdir ($tmp_home | path join ".config")
+    mkdir $nushell_config_dir
+    "" | save --force $bashrc_path
+    "" | save --force $nushell_config_path
+
+    let result = (try {
         let output = (with-env {
+            HOME: $tmp_home
             YAZELIX_RUNTIME_DIR: $fake_runtime
             YAZELIX_DIR: "/nix/store/fake-yazelix-runtime"
             YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
@@ -194,8 +204,8 @@ def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
         let summary = ($output.stdout | lines | last | default "")
         let expected_editor = ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
 
-        if ($output.exit_code == 0) and ($summary == $"unset|unset|($repo_root)|($expected_editor)") {
-            print "  ✅ Repo-local devenv shell now clears inherited runtime aliases, relies on DEVENV_ROOT as the live checkout identity, and exports an absolute managed Helix wrapper"
+        if ($output.exit_code == 0) and ($summary == $"($repo_root)|unset|($repo_root)|($expected_editor)") {
+            print "  ✅ Repo-local devenv shell now replaces inherited runtime aliases with the checkout root, keeps legacy YAZELIX_DIR unset, and exports an absolute managed Helix wrapper"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) summary=($summary) stderr=(($output.stderr | str trim))"
@@ -204,7 +214,10 @@ def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
     } catch { |err|
         print $"  ❌ Exception: ($err.msg)"
         false
-    }
+    })
+
+    rm -rf $tmp_home
+    $result
 }
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
@@ -466,20 +479,26 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
     let temp_home = ($tmp_root | path join "home")
     let state_dir = ($tmp_root | path join "state")
     let config_dir = ($temp_home | path join ".config" "yazelix")
+    let bashrc_path = ($temp_home | path join ".bashrc")
+    let nushell_config_dir = ($temp_home | path join ".config" "nushell")
+    let nushell_config_path = ($nushell_config_dir | path join "config.nu")
     let generated_layout_dir = ($temp_home | path join ".local" "share" "yazelix" "configs" "zellij" "layouts")
     let profile_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
 
     mkdir $temp_home
     mkdir $state_dir
     mkdir ($config_dir | path dirname)
+    mkdir $nushell_config_dir
     mkdir $generated_layout_dir
+    "" | save --force $bashrc_path
+    "" | save --force $nushell_config_path
     "layout { pane }" | save --force ($generated_layout_dir | path join "yzx_side.kdl")
 
     let result = (try {
         let snippet = (
             [
                 $"source \"($profile_module)\""
-                "let summary = (run_dev_profile_harness \"maintainer_e2e\" [\"--skip-refresh\"])"
+                "let summary = (run_dev_profile_harness \"maintainer_e2e\" [])"
                 "{"
                 "    report_path: $summary.report_path"
                 "    scenario: $summary.run.scenario"
@@ -937,7 +956,7 @@ def main [] {
         (test_dev_bump_rotates_release_metadata_and_tags_the_repo)
         (test_dev_bump_rejects_dirty_worktrees)
         (test_dev_bump_rejects_existing_target_tags)
-        (test_source_devenv_shell_clears_inherited_runtime_aliases)
+        (test_source_devenv_shell_re_roots_runtime_aliases_to_checkout)
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
         (test_default_budget_profiler_does_not_wait_on_background_children)
         (test_vendored_yazi_plugin_refresh_applies_patch_and_refuses_dirty_targets)

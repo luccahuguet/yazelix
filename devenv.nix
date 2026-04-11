@@ -145,6 +145,7 @@ in
     fi
 
     runtime_root="$DEVENV_ROOT"
+    unset YAZELIX_DIR
     export YAZELIX_RUNTIME_DIR="$runtime_root"
     export YAZELIX_CONFIG_DIR="$HOME/.config/yazelix"
     export YAZELIX_STATE_DIR="$HOME/.local/share/yazelix"

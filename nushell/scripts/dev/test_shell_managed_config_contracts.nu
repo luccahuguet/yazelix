@@ -581,7 +581,7 @@ def test_setup_shell_hooks_rejects_legacy_generations [] {
             $outcome.ok
             and ($outcome.message | str contains $"no longer auto-migrates ($legacy.generation)")
             and ($outcome.message | str contains "delete the old Yazelix-managed section")
-            and ($outcome.message | str contains "yzx refresh")
+            and ($outcome.message | str contains "yzx launch")
             and ($bashrc_contents | str contains $legacy.marker)
             and not ($bashrc_contents | str contains "# YAZELIX START v4")
         )
