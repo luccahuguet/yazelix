@@ -4,12 +4,10 @@
 
 use ../utils/config_state.nu compute_config_state
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/nix_detector.nu ensure_nix_available
 use ../utils/terminal_configs.nu [generate_all_terminal_configs generate_selected_terminal_configs]
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [SUPPORTED_TERMINALS, TERMINAL_METADATA]
 use ../utils/common.nu [get_yazelix_runtime_dir]
-use ../utils/launch_state.nu resolve_runtime_owned_profile
 use ../utils/runtime_contract_checker.nu [
     check_launch_terminal_support
     check_launch_working_dir
@@ -52,16 +50,6 @@ def resolve_desktop_fast_path_candidates [requested_terminal: string, terminals:
     let explicit_terminal_request = ($requested_terminal | is-not-empty)
     require_supported_requested_terminal $requested_terminal
     let preferred = (get_launch_preference_order $requested_terminal $terminals)
-
-    if $manage_terminals and (not $needs_reload) {
-        let profile_path = (resolve_runtime_owned_profile)
-        if ($profile_path | is-not-empty) {
-            let wrapper_candidates = (detect_terminal_wrapper_candidates_from_profile $preferred $profile_path)
-            if not ($wrapper_candidates | is-empty) {
-                return $wrapper_candidates
-            }
-        }
-    }
 
     if $needs_reload {
         let direct_candidates = (detect_terminal_candidates $preferred false)
@@ -251,8 +239,6 @@ def main [
     --verbose               # Enable verbose logging
     --desktop-fast-path     # Launch the terminal immediately and let startup rebuild inside it
 ] {
-    # Check if Nix is properly installed before proceeding
-    ensure_nix_available
     run_entrypoint_config_migration_preflight "Yazelix launch" --allow-noninteractive | ignore
 
     # Resolve HOME using shell expansion

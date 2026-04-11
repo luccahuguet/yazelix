@@ -2,14 +2,12 @@
 
 use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/config_parser.nu [parse_yazelix_config]
-use ../utils/launch_state.nu [get_launch_env resolve_current_session_profile]
+use ../utils/runtime_env.nu get_runtime_env
 
 const FLOATING_WRAPPER_ENV_KEYS = [
-    "DEVENV_PROFILE"
     "PATH"
     "YAZELIX_RUNTIME_DIR"
     "IN_YAZELIX_SHELL"
-    "IN_NIX_SHELL"
     "NIX_CONFIG"
     "ZELLIJ_DEFAULT_LAYOUT"
     "YAZI_CONFIG_HOME"
@@ -52,14 +50,8 @@ export def build_floating_wrapper_env_args [wrapper_env: record] {
 
 export def get_floating_wrapper_env [] {
     let current_shell_env = (get_current_shell_wrapper_env)
-    let profile_path = (resolve_current_session_profile)
-
-    if ($profile_path | is-empty) {
-        return $current_shell_env
-    }
-
     let config = (parse_yazelix_config)
-    get_launch_env $config $profile_path
+    (get_runtime_env $config) | merge $current_shell_env
 }
 
 export def get_new_editor_pane_launch_env [yazi_id: string = ""] {

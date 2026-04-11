@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use config_parser.nu [parse_yazelix_config]
-use launch_state.nu [get_launch_env is_live_yazelix_session resolve_current_session_profile resolve_runtime_owned_profile]
+use runtime_env.nu get_runtime_env
 use common.nu [get_yazelix_runtime_dir]
 
 def normalize_editor_command [editor?: string, runtime_dir?: string] {
@@ -23,23 +23,16 @@ def normalize_editor_command [editor?: string, runtime_dir?: string] {
 }
 
 export def resolve_editor_launch_context [] {
-    let profile_path = if (is_live_yazelix_session) {
-        resolve_current_session_profile
-    } else {
-        resolve_runtime_owned_profile
-    }
-    if ($profile_path | is-not-empty) {
-        let config = parse_yazelix_config
-        mut launch_env = (get_launch_env $config $profile_path)
-        let runtime_dir = ($launch_env.YAZELIX_RUNTIME_DIR? | default (get_yazelix_runtime_dir))
-        let editor = (normalize_editor_command ($launch_env.EDITOR? | default "") $runtime_dir)
+    let config = parse_yazelix_config
+    mut launch_env = (get_runtime_env $config)
+    let runtime_dir = ($launch_env.YAZELIX_RUNTIME_DIR? | default (get_yazelix_runtime_dir))
+    let editor = (normalize_editor_command ($launch_env.EDITOR? | default "") $runtime_dir)
 
-        if ($editor | is-not-empty) {
-            $launch_env = ($launch_env | upsert EDITOR $editor)
-            return {
-                editor: $editor
-                launch_env: $launch_env
-            }
+    if ($editor | is-not-empty) {
+        $launch_env = ($launch_env | upsert EDITOR $editor)
+        return {
+            editor: $editor
+            launch_env: $launch_env
         }
     }
 

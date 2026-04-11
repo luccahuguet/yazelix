@@ -10,12 +10,7 @@ export def "yzx enter" [
     --path(-p): string # Start in specific directory
     --home             # Start in home directory
     --verbose          # Enable verbose logging
-    --reuse            # Reuse the last built profile without rebuilding
-    --skip-refresh(-s) # Skip explicit refresh trigger and allow potentially stale environment
-    --force-reenter    # Force re-entering devenv before startup
 ] {
-    use ../utils/nix_detector.nu ensure_nix_available
-    ensure_nix_available
     print_runtime_version_drift_warning
     run_entrypoint_config_migration_preflight "yzx enter" | ignore
 
@@ -36,8 +31,8 @@ export def "yzx enter" [
     }
 
     if ($cwd_override != null) {
-        start_yazelix_session $cwd_override --verbose=$verbose_mode --reuse=$reuse --skip-refresh=$skip_refresh --force-reenter=$force_reenter
+        start_yazelix_session $cwd_override --verbose=$verbose_mode
     } else {
-        start_yazelix_session --verbose=$verbose_mode --reuse=$reuse --skip-refresh=$skip_refresh --force-reenter=$force_reenter
+        start_yazelix_session --verbose=$verbose_mode
     }
 }

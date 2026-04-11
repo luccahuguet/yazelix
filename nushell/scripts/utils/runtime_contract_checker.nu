@@ -247,7 +247,7 @@ export def check_launch_terminal_support [requested_terminal: string, terminals:
                 $"Specified terminal '($specified_terminal)' is not installed"
             }
             let recovery = if $manage_terminals {
-                "Run `yzx refresh` or `yzx restart` to rebuild the managed terminal wrappers, or choose a configured terminal that is present in the Yazelix profile."
+                "Install the requested terminal in the Yazelix runtime or on the host, then rerun `yzx launch`."
             } else {
                 "Please install it or choose a different terminal for testing."
             }
@@ -287,7 +287,7 @@ export def check_launch_terminal_support [requested_terminal: string, terminals:
             "None of the supported terminals (WezTerm, Ghostty, Kitty, Alacritty, Foot) are installed."
         }
         let recovery = if $manage_terminals {
-            "Run `yzx refresh` or `yzx restart` to rebuild the terminal wrappers, or adjust [terminal].terminals to terminals that Yazelix can manage."
+            "Install one configured terminal in the Yazelix runtime or on the host, or adjust [terminal].terminals to an available terminal."
         } else {
             "Please install one of these terminals to use Yazelix.\n  - WezTerm: https://wezfurlong.org/wezterm/\n  - Ghostty: https://ghostty.org/\n  - Kitty: https://sw.kovidgoyal.net/kitty/\n  - Alacritty: https://alacritty.org/\n  - Foot: https://codeberg.org/dnkl/foot"
         }

@@ -2,7 +2,6 @@
 # Simple version information for Yazelix tools
 
 use common.nu get_yazelix_runtime_dir
-use devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available]
 use helix_mode.nu [get_helix_binary]
 
 def extract_first_semver [] {
@@ -131,10 +130,6 @@ def get_version [tool: string] {
                     if $result.exit_code != 0 { "error" } else { ($result.stdout | lines | first | extract_last_semver) }
                 } catch { "error" }
             }
-            "devenv" => {
-                if not (is_preferred_devenv_available) { return "not installed" }
-                try { (get_preferred_devenv_version_line | extract_first_semver) } catch { "error" }
-            }
             "kitty" => {
                 if (which kitty | is-empty) { return "not installed" }
                 try {
@@ -182,7 +177,6 @@ def get_locked_version [tool: string, lockfile: record] {
     let nixpkgs_locked = (format_locked_entry ($nodes | get -o nixpkgs))
 
     match $tool {
-        "devenv" => (format_locked_entry ($nodes | get -o devenv))
         "helix" => (format_locked_entry ($nodes | get -o helix))
         "nix" => $nixpkgs_locked
         _ => $nixpkgs_locked
@@ -203,7 +197,6 @@ export def main [] {
         "wezterm"
         "ghostty"
         "nix"
-        "devenv"
         "kitty"
         "foot"
         "alacritty"

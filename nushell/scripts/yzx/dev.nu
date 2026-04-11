@@ -9,11 +9,8 @@ use ../utils/common.nu [
 use ../utils/repo_checkout.nu [require_yazelix_repo_root]
 use ../utils/dev_issue_sync.nu run_dev_issue_sync
 use ../utils/dev_plugin_build.nu [build_pane_orchestrator_wasm build_popup_plugin_wasm]
-use ../utils/devenv_backend.nu [run_in_devenv_shell_command]
 use ../utils/dev_bump_workflow.nu perform_version_bump
-use ../utils/config_surfaces.nu [copy_default_config_surfaces get_main_user_config_path]
 use ../utils/dev_update_workflow.nu run_dev_update_workflow
-use ../utils/runtime_project.nu [get_existing_yazelix_runtime_project_dir]
 use ../utils/startup_profile.nu [
     create_startup_profile_run
     load_startup_profile_report
@@ -124,21 +121,9 @@ export def "yzx dev build_popup_plugin" [
 }
 
 def clear_startup_profile_caches [] {
-    let runtime_project_dir = (get_existing_yazelix_runtime_project_dir)
-    let devenv_cache = if $runtime_project_dir == null {
-        null
-    } else {
-        ($runtime_project_dir | path join ".devenv")
-    }
-
-    if ($devenv_cache != null) and ($devenv_cache | path exists) {
-        rm -rf $devenv_cache
-    }
-
     let state_root = (get_yazelix_state_dir | path join "state")
     let cache_paths = [
         ($state_root | path join "rebuild_hash")
-        ($state_root | path join "launch_state.json")
     ]
     for cache_path in $cache_paths {
         if ($cache_path | path exists) {
@@ -226,7 +211,7 @@ def run_default_profile_command [] {
     let in_yazelix_shell = (($env.IN_YAZELIX_SHELL? | default "") == "true")
     if $in_yazelix_shell {
         print "🚀 Profiling warm Yazelix startup from the current shell..."
-        run_dev_profile_harness "enter_warm" ["--skip-refresh"] | ignore
+        run_dev_profile_harness "enter_warm" [] | ignore
     } else {
         print "⚠️  Not currently inside a Yazelix shell."
         print "   Profiling the default current-terminal startup path instead."
@@ -300,7 +285,11 @@ export def "yzx dev lint_nu" [
     } else {
         $paths
     }
-    let nu_lint_available = not (which nu-lint | is-empty)
+    if (which nu-lint | is-empty) {
+        print "Error: nu-lint not found in PATH."
+        print "Install nu-lint in your maintainer environment, then rerun this command."
+        exit 1
+    }
 
-    run_in_devenv_shell_command "nu-lint" "--config" $config_path "--format" $format ...$targets --skip-welcome --quiet --force-refresh=(not $nu_lint_available)
+    ^nu-lint --config $config_path --format $format ...$targets
 }

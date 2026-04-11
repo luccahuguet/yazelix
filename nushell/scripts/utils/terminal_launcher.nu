@@ -18,24 +18,6 @@ def get_terminal_title [terminal: string] {
     $"Yazelix - (($TERMINAL_METADATA | get -o $terminal | default {} | get -o name | default $terminal))"
 }
 
-def get_profile_bin_dir [profile: string] {
-    if ($profile | is-empty) {
-        return ""
-    }
-
-    let bin_dir = ($profile | path join "bin")
-    if ($bin_dir | path exists) {
-        $bin_dir
-    } else {
-        ""
-    }
-}
-
-def get_current_profile_bin_dir [] {
-    let profile = ($env.DEVENV_PROFILE? | default "" | into string | str trim)
-    get_profile_bin_dir $profile
-}
-
 def resolve_nixgl_launch_prefix [] {
     let runtime_nixgl = ((get_yazelix_runtime_dir) | path join "bin" "nixGL")
     if ($runtime_nixgl | path exists) {
@@ -45,24 +27,6 @@ def resolve_nixgl_launch_prefix [] {
     let runtime_nixgl_default = ((get_yazelix_runtime_dir) | path join "bin" "nixGLDefault")
     if ($runtime_nixgl_default | path exists) {
         return $"($runtime_nixgl_default) "
-    }
-
-    let profile_bin_dir = (get_current_profile_bin_dir)
-    if ($profile_bin_dir | is-not-empty) {
-        let profile_nixgl = ($profile_bin_dir | path join "nixGL")
-        if ($profile_nixgl | path exists) {
-            return $"($profile_nixgl) "
-        }
-
-        let profile_nixgl_default = ($profile_bin_dir | path join "nixGLDefault")
-        if ($profile_nixgl_default | path exists) {
-            return $"($profile_nixgl_default) "
-        }
-
-        let profile_nixgl_intel = ($profile_bin_dir | path join "nixGLIntel")
-        if ($profile_nixgl_intel | path exists) {
-            return $"($profile_nixgl_intel) "
-        }
     }
 
     if (which nixGL | is-not-empty) {
@@ -159,48 +123,8 @@ export def detect_terminal_candidates [preferred: any, prefer_wrappers: bool = t
     $available
 }
 
-export def detect_terminal_wrapper_candidates_from_profile [preferred: any, profile_path: string] {
-    let profile_bin_dir = (get_profile_bin_dir $profile_path)
-    if ($profile_bin_dir | is-empty) {
-        return []
-    }
-
-    let ordered_terminals = if ($preferred | describe | str contains "list") {
-        $preferred | where $it in $SUPPORTED_TERMINALS
-    } else {
-        let other_terminals = $SUPPORTED_TERMINALS | where $it != $preferred
-        ([$preferred] | append $other_terminals)
-    }
-    if ($ordered_terminals | is-empty) {
-        return []
-    }
-
-    $ordered_terminals
-    | each {|terminal|
-        let term_meta = ($TERMINAL_METADATA | get -o $terminal | default {})
-        let wrapper = ($term_meta.wrapper? | default "")
-        let wrapper_path = if ($wrapper | is-not-empty) {
-            $profile_bin_dir | path join $wrapper
-        } else {
-            ""
-        }
-        if ($wrapper_path | is-not-empty) and ($wrapper_path | path exists) {
-            {
-                terminal: $terminal
-                name: $term_meta.name
-                command: $wrapper_path
-                use_wrapper: true
-            }
-        } else {
-            null
-        }
-    }
-    | compact
-}
-
 export def detect_terminal_wrapper_candidates [preferred: any] {
-    let current_profile = ($env.DEVENV_PROFILE? | default "" | into string | str trim)
-    detect_terminal_wrapper_candidates_from_profile $preferred $current_profile
+    detect_terminal_candidates $preferred true
 }
 
 # Detect first available terminal (wrapper or direct)

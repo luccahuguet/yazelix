@@ -3,9 +3,8 @@
 
 use config_parser.nu parse_yazelix_config
 use config_state.nu compute_config_state
-use nix_detector.nu ensure_nix_available
 use startup_profile.nu [profile_startup_step]
-use devenv_backend.nu check_environment_status
+use common.nu require_yazelix_runtime_dir
 
 def setup_nix_environment [] {
     let nix_profiles = [
@@ -70,13 +69,7 @@ def ensure_nix_in_environment [] {
 }
 
 export def ensure_environment_available [] {
-    let env_status = check_environment_status
-
-    if not $env_status.already_in_env {
-        if not (ensure_nix_in_environment) {
-            ensure_nix_available
-        }
-    }
+    require_yazelix_runtime_dir | ignore
 }
 
 export def prepare_environment [--verbose] {

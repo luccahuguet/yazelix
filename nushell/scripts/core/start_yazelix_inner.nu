@@ -3,7 +3,6 @@
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
-use ../utils/launch_state.nu [record_launch_profile_state resolve_current_session_profile]
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_zellij_default_shell]
@@ -32,7 +31,7 @@ def require_existing_layout [layout_path: string] {
     let resolved = ($layout_path | path expand)
 
     if not ($resolved | path exists) {
-        let classification = (format_failure_classification "generated-state" "Regenerate layouts with `yzx refresh`, or fix the configured layout name if it points at a missing file.")
+        let classification = (format_failure_classification "generated-state" "Run `yzx refresh` to repair generated layouts, or fix the configured layout name if it points at a missing file.")
         error make {msg: $"Zellij layout not found: ($resolved)\nRun `yzx refresh` to regenerate layouts, or check the configured layout name.\n($classification)"}
     }
 
@@ -86,7 +85,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
             }
         }
     } catch { |err|
-        error make {msg: $"Failed to generate Yazi configuration: ($err.msg)\nRun `yzx doctor` to inspect the runtime, then rerun `yzx refresh` if needed."}
+            error make {msg: $"Failed to generate Yazi configuration: ($err.msg)\nRun `yzx doctor` to inspect the runtime, then rerun `yzx refresh` to repair generated config if needed."}
     }
 
     let merged_zellij_dir = ($ZELLIJ_CONFIG_PATHS.merged_config_dir | str replace "~" $env.HOME)
@@ -95,7 +94,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
             generate_merged_zellij_config $yazelix_dir | ignore
         }
     } catch { |err|
-        error make {msg: $"Failed to generate Zellij configuration: ($err.msg)\nRun `yzx doctor` to inspect the runtime, then rerun `yzx refresh` if needed."}
+        error make {msg: $"Failed to generate Zellij configuration: ($err.msg)\nRun `yzx doctor` to inspect the runtime, then rerun `yzx refresh` to repair generated config if needed."}
     }
 
     let working_dir = if ($cwd_override | is-not-empty) {
@@ -125,16 +124,11 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     }
     let layout_path = (require_existing_layout $resolved_layout_path)
 
-    # Record that the current config/input state has been successfully applied
-    # once we are inside the prepared Yazelix runtime, and remember the live
-    # built profile for later reuse/startup checks.
+    # Record that the current config/runtime state has been successfully applied
+    # once generated config has been refreshed inside the prepared runtime.
     profile_startup_step "inner" "record_runtime_state" {
         let computed_state = (compute_config_state)
         record_materialized_state $computed_state
-        let built_profile = (resolve_current_session_profile)
-        if ($built_profile | is-not-empty) {
-            record_launch_profile_state $computed_state $built_profile
-        }
         $computed_state
     } | ignore
 

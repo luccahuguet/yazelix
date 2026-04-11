@@ -2,11 +2,8 @@
 # Yazelix Command Suite
 # Consolidated commands for managing and interacting with yazelix
 
-use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/constants.nu *
-use ../utils/environment_bootstrap.nu [prepare_environment]
-use ../utils/devenv_backend.nu [get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request]
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu get_yazelix_runtime_dir
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
@@ -324,21 +321,8 @@ def create_restart_sidebar_bootstrap_file [target_dir: string] {
 
 # Restart yazelix
 export def "yzx restart" [
-    --reuse         # Reuse the last built profile without rebuilding
-    --skip-refresh(-s) # Skip explicit refresh trigger and allow potentially stale environment
 ] {
     run_entrypoint_config_migration_preflight "yzx restart" | ignore
-    let env_prep = prepare_environment
-    let config = $env_prep.config
-    let manage_terminals = ($config.manage_terminals? | default true)
-    let needs_refresh = $env_prep.needs_refresh
-    let reuse_mode = $reuse
-    let refresh_request = (resolve_refresh_request $needs_refresh --reuse=$reuse_mode --skip-refresh=$skip_refresh)
-    let should_refresh = $refresh_request.should_refresh
-    let refresh_output = get_refresh_output_mode $config
-    let max_jobs = ($config.max_jobs? | default "half" | into string)
-    let build_cores = ($config.build_cores? | default "2" | into string)
-    let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let session_to_kill = get_current_zellij_session
     let restart_sidebar_cwd_file = (create_restart_sidebar_bootstrap_file (pwd))
     let restart_env = {
@@ -348,35 +332,14 @@ export def "yzx restart" [
     # Detect if we're in a Yazelix-controlled terminal.
     let is_yazelix_terminal = ($env.YAZELIX_TERMINAL? | is-not-empty)
 
-    # Provide appropriate messaging
-    print_refresh_request_guidance $refresh_request
-    if $manage_terminals and $should_refresh and ($refresh_output != "quiet") {
-        print $"🔄 Configuration changed - rebuilding environment using ($build_parallelism_description)..."
-    }
     if $is_yazelix_terminal {
         print "🔄 Restarting Yazelix..."
     } else {
         print "🔄 Restarting Yazelix \(opening new window\)..."
     }
 
-    # Launch new terminal window
-    if $manage_terminals and $should_refresh {
-        with-env $restart_env {
-            rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
-            yzx launch --force-reenter
-        }
-    } else if $reuse_mode {
-        with-env $restart_env {
-            yzx launch --reuse
-        }
-    } else if $skip_refresh {
-        with-env $restart_env {
-            yzx launch --skip-refresh
-        }
-    } else {
-        with-env $restart_env {
-            yzx launch
-        }
+    with-env $restart_env {
+        yzx launch
     }
 
     # Wait for new session to spawn

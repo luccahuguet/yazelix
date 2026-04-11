@@ -4,12 +4,10 @@
 use logging.nu log_to_file
 use constants.nu [PINNED_NIX_VERSION]
 use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir require_yazelix_runtime_dir]
-use config_state.nu compute_config_state
 use config_migration_transactions.nu [recover_stale_managed_config_transactions]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface reconcile_primary_config_surfaces]
 use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
-use devenv_cli.nu [get_preferred_devenv_version_line is_preferred_devenv_available resolve_preferred_devenv_path]
 use doctor_helix.nu [
     check_helix_runtime_conflicts
     check_helix_runtime_health
@@ -17,7 +15,6 @@ use doctor_helix.nu [
     fix_helix_runtime_conflicts
 ]
 use doctor_install_artifacts.nu check_desktop_entry_freshness
-use launch_state.nu [describe_launch_profile_freshness resolve_runtime_owned_profile]
 use runtime_distribution_capabilities.nu get_runtime_distribution_capability_profile
 use runtime_contract_checker.nu [
     check_generated_layout
@@ -28,11 +25,6 @@ use runtime_contract_checker.nu [
     runtime_check_to_doctor_result
 ]
 use ../integrations/zellij.nu debug_editor_state
-
-def extract_first_semver [text: string] {
-    let matches = ($text | parse --regex '(\d+\.\d+\.\d+)' | get -o capture0)
-    if ($matches | is-empty) { "unknown" } else { $matches | first }
-}
 
 def extract_last_semver [text: string] {
     let matches = ($text | parse --regex '(\d+\.\d+\.\d+)' | get -o capture0)
@@ -47,11 +39,6 @@ def get_runtime_tool_version [tool: string] {
                     let result = (^nix --version | complete)
                     if $result.exit_code != 0 { "error" } else { extract_last_semver ($result.stdout | lines | first) }
                 } catch { "error" }
-            }
-        }
-        "devenv" => {
-            if not (is_preferred_devenv_available) { "not installed" } else {
-                try { extract_first_semver (get_preferred_devenv_version_line) } catch { "error" }
             }
         }
         _ => "unknown"
@@ -273,14 +260,7 @@ def check_shared_runtime_preflight [] {
     let terminals = ($config.terminals? | default ["ghostty"] | uniq)
     let manage_terminals = ($config.manage_terminals? | default true)
     let layout_path = (resolve_expected_layout_path $config)
-    let built_profile = (resolve_runtime_owned_profile)
-    let terminal_check = if $manage_terminals and ($built_profile | is-not-empty) {
-        with-env {DEVENV_PROFILE: $built_profile} {
-            check_launch_terminal_support "" $terminals $manage_terminals
-        }
-    } else {
-        check_launch_terminal_support "" $terminals $manage_terminals
-    }
+    let terminal_check = (check_launch_terminal_support "" $terminals $manage_terminals)
 
     mut checks = [
         (check_runtime_script ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix_inner.nu") "startup_runtime_script" "startup script" "doctor")
@@ -294,74 +274,6 @@ def check_shared_runtime_preflight [] {
     }
 
     $checks | each {|check| runtime_check_to_doctor_result $check }
-}
-
-def check_launch_profile_freshness [] {
-    let config_state_result = (try {
-        {state: (compute_config_state), error: ""}
-    } catch {|err|
-        {state: null, error: $err.msg}
-    })
-    if ($config_state_result.error | is-not-empty) {
-        return {
-            status: "info"
-            message: "Launch-profile freshness check skipped until the active config parses cleanly"
-            details: $config_state_result.error
-            fix_available: false
-        }
-    }
-
-    let config_state = $config_state_result.state
-    let freshness = (describe_launch_profile_freshness $config_state)
-    let recorded_profile = ($freshness.recorded_profile | default "")
-    let recovery = "Run `yzx refresh` before relying on `yzx enter --reuse` or other cached launch-profile flows."
-
-    match $freshness.kind {
-        "healthy" => {
-            {
-                status: "ok"
-                message: "Cached launch profile matches the current rebuild-relevant config and tracked inputs"
-                details: (if ($recorded_profile | is-not-empty) {
-                    $"Recorded profile: ($recorded_profile)"
-                } else {
-                    null
-                })
-                fix_available: false
-            }
-        }
-        "stale_config_and_inputs" => {
-            {
-                status: "warning"
-                message: "Cached launch profile is stale because rebuild-relevant config and tracked runtime/devenv inputs changed"
-                details: $"($recovery)\nRecorded profile: ($recorded_profile | default '<missing>')"
-                fix_available: false
-            }
-        }
-        "stale_config" => {
-            {
-                status: "warning"
-                message: "Cached launch profile is stale because rebuild-relevant config changed"
-                details: $"($recovery)\nRecorded profile: ($recorded_profile | default '<missing>')"
-                fix_available: false
-            }
-        }
-        "stale_inputs" => {
-            {
-                status: "warning"
-                message: "Cached launch profile is stale because tracked runtime/devenv inputs changed"
-                details: $"($recovery)\nRecorded profile: ($recorded_profile | default '<missing>')"
-                fix_available: false
-            }
-        }
-        _ => {
-            {
-                status: "warning"
-                message: "No verified cached launch profile exists for the current rebuild-relevant config and tracked inputs"
-                details: $"($recovery)\nRecorded profile: ($recorded_profile | default '<missing>')"
-                fix_available: false
-            }
-        }
-    }
 }
 
 def get_desktop_applications_dir [] {
@@ -402,67 +314,6 @@ def check_log_files [] {
             details: $"Logs directory: ($logs_path)"
             fix_available: false
         }
-    }
-}
-
-def is_devenv_installed [] {
-    is_preferred_devenv_available
-}
-
-# Check devenv availability inside the installed Yazelix runtime contract
-def check_devenv_installation [capability_profile?: record] {
-    let profile = if $capability_profile == null {
-        get_runtime_distribution_capability_profile
-    } else {
-        $capability_profile
-    }
-
-    if (is_devenv_installed) {
-        let version = try { (get_preferred_devenv_version_line | str trim) } catch { "unknown" }
-        let path = try { resolve_preferred_devenv_path } catch { "unknown" }
-        {
-            status: "ok"
-            message: $"devenv available: ($version)"
-            details: $"Selected CLI: ($path)"
-            fix_available: false
-        }
-    } else {
-        let missing_result = match $profile.mode {
-            "installer_managed" => {
-                {
-                    status: "warning"
-                    message: "devenv missing from the installed Yazelix runtime"
-                    details: "Repair by rerunning `nix run --refresh github:luccahuguet/yazelix#install` or by switching to a package-managed update flow, then rerun the affected launch or refresh command."
-                    fix_available: false
-                }
-            }
-            "home_manager_managed" => {
-                {
-                    status: "warning"
-                    message: "devenv missing from the Home Manager-provided Yazelix runtime"
-                    details: "Repair by reapplying or upgrading the Home Manager configuration that provides Yazelix, then rerun the affected launch or refresh command."
-                    fix_available: false
-                }
-            }
-            "package_runtime" => {
-                {
-                    status: "warning"
-                    message: "devenv missing from the packaged Yazelix runtime"
-                    details: "Repair by upgrading or reinstalling the package that provides Yazelix, then rerun the affected launch or refresh command."
-                    fix_available: false
-                }
-            }
-            _ => {
-                {
-                    status: "warning"
-                    message: "devenv not available for this runtime-root-only Yazelix session"
-                    details: "This mode does not own runtime repair. Provide `devenv` through the current runtime or PATH, or materialize a full install with `nix run --refresh github:luccahuguet/yazelix#install`."
-                    fix_available: false
-                }
-            }
-        }
-
-        $missing_result
     }
 }
 
@@ -639,17 +490,11 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
     # Shared runtime preflight overlap with launch-facing checks
     $all_results = ($all_results | append (check_shared_runtime_preflight))
 
-    # Launch-profile freshness
-    $all_results = ($all_results | append (check_launch_profile_freshness))
-
     # Desktop entry freshness
     $all_results = ($all_results | append (check_desktop_entry_freshness))
 
     # Log files
     $all_results = ($all_results | append (check_log_files))
-
-    # devenv installation (performance optimization)
-    $all_results = ($all_results | append (check_devenv_installation $runtime_distribution_profile))
 
     # Runtime drift against Yazelix pinned expectations
     $all_results = ($all_results | append (get_version_drift_results))
