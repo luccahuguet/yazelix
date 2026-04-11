@@ -83,6 +83,18 @@ For exact v14 upgrade notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_n
 For the longer project story, see [Version History](./docs/history.md).
 <!-- END GENERATED README LATEST SERIES -->
 
+## Yazelix Classic And v15
+
+Yazelix v14 is the last feature release of **Yazelix Classic**: the broad, heavily integrated, `devenv`-based version of the project. This is the line with `yazelix packs`, `yzx packs`, dynamic runtime management, rich shell and terminal integration, Home Manager and manual install support, and the widest power-user command/config surface.
+
+Classic is not abandoned. For now, `main` remains the v14.x / Yazelix Classic line that users should keep using. The `v14` tag stays as the immutable original v14 release, and future Classic fixes can be tagged as `v14.1`, `v14.2`, and so on when needed.
+
+v15 work lives separately on the `v15` branch until it is ready for alpha testing. The goal is a slimmer, Rust-rewritten, more performant Yazelix that stops trying to also be a broad package-and-environment manager. That means dropping `devenv`, trimming the command and config surface, and keeping a clearer core around fast workspace entry and explicit update ownership.
+
+The important split is this: Yazelix Classic is both a terminal workspace and a runtime/package-environment manager. v15 is intended to become the narrower workspace product. The broader `devenv` runtime and terminal-environment layer may continue later as a separate project forked from Yazelix Classic, and it could be reintegrated in a future release only with clearer boundaries and separate codebases.
+
+I still strongly recommend using v14 for the time being, especially if you are a power user. It is unusually powerful, highly customizable, and very much alive. If you find bugs in the Classic line, please open issues.
+
 ## Experiments
 
 - **Nixless (System) Mode** – Experimental work lives on the `nixless-system-mode` branch and might never land in `main`.
@@ -334,8 +346,26 @@ theme = "term16_dark"  # Recommended transparent theme
 Yazelix includes adaptive layouts that organize your workspace. Use `three_column` for Claude Code and AI tools, and more. See [docs/layouts.md](./docs/layouts.md) for details and customization.
 
 ## Keybindings
-Keybindings are discoverable in each tool (e.g., `~` in Yazi, `?` in lazygit). See [docs/keybindings.md](./docs/keybindings.md) for full details, custom keybindings, and usage tips.
 
+Yazelix uses Zellij as the workspace layer, so the most important bindings are global workspace bindings rather than editor-local shortcuts. Run `yzx keys` inside Yazelix for the live summary, and see [docs/keybindings.md](./docs/keybindings.md) for the full reference.
+
+| Keybinding | What It Does |
+|------------|--------------|
+| `Ctrl+y` | Toggle focus between the managed editor and Yazi sidebar |
+| `Alt+y` | Open or close the sidebar |
+| `Alt+r` | Smart reveal/focus key; forwards into the editor when appropriate |
+| `Alt+[` / `Alt+]` | Switch between layouts |
+| `Alt+m` | Open a new terminal in the current tab workspace root |
+| `Alt+t` | Toggle the configured managed popup program, usually `lazygit` |
+| `Alt+Shift+M` | Open the `yzx` command palette popup |
+| `Alt+1..9` | Jump directly to tabs 1 through 9 |
+| `Alt+w` / `Alt+q` | Move to the next or previous tab |
+| `Alt+Shift+H` / `Alt+Shift+L` | Move the current tab left or right |
+| `Alt+Shift+F` | Toggle pane fullscreen |
+
+Yazi still has its own keymap too. Press `~` inside Yazi for its built-in help. The most useful Yazelix-specific sidebar flows are `Enter` to open through the managed editor integration, `Alt+z` to pick a directory with zoxide and retarget the workspace, and `Alt+p` to open the selected directory in a new pane as the current tab workspace root.
+
+Helix and Neovim integration is intentionally small. Use `Ctrl+y` and `Alt+y` for workspace navigation, and use `Alt+r` / `yzx reveal` when you want the editor to reveal the current file in the managed Yazi sidebar. See [docs/helix_keybindings.md](./docs/helix_keybindings.md) and [docs/neovim_keybindings.md](./docs/neovim_keybindings.md) for editor-local setup details.
 
 ## I'm Lost! Too Much Information
 Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterwards
