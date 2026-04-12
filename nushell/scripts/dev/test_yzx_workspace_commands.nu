@@ -222,122 +222,29 @@ def setup_enter_forwarding_fixture [label: string] {
     let runtime_dir = ($tmp_home | path join "runtime")
     let scripts_dir = ($runtime_dir | path join "nushell" "scripts")
     let yzx_dir = ($scripts_dir | path join "yzx")
-    let core_dir = ($scripts_dir | path join "core")
     let utils_dir = ($scripts_dir | path join "utils")
     let config_dir = ($tmp_home | path join ".config" "yazelix")
-    let user_config_dir = ($config_dir | path join "user_configs")
     let call_log = ($tmp_home | path join "start_yazelix_session.json")
 
     mkdir $runtime_dir
     mkdir ($runtime_dir | path join "nushell")
     mkdir $scripts_dir
     mkdir $yzx_dir
-    mkdir $core_dir
     mkdir $utils_dir
     mkdir ($tmp_home | path join ".config")
     mkdir $config_dir
-    mkdir $user_config_dir
 
     ^ln -s (repo_path "nushell" "scripts" "yzx" "launch.nu") ($yzx_dir | path join "launch.nu")
-    ^ln -s (repo_path "nushell" "scripts" "yzx" "enter.nu") ($yzx_dir | path join "enter.nu")
-
-    (open --raw (repo_path "yazelix_default.toml")) | save --force --raw ($user_config_dir | path join "yazelix.toml")
-    "" | save --force --raw ($runtime_dir | path join "yazelix_default.toml")
-
-    [
-        "export def start_yazelix_session [cwd_override?: string, --verbose, --setup-only, --reuse, --skip-refresh, --force-reenter] {"
-        "    {"
-        "        cwd_override: ($cwd_override | default null)"
-        "        verbose: $verbose"
-        "        setup_only: $setup_only"
-        "        reuse: $reuse"
-        "        skip_refresh: $skip_refresh"
-        "        force_reenter: $force_reenter"
-        "    } | to json -r | save --force --raw $env.YAZELIX_TEST_LAUNCH_LOG"
-        "}"
-    ] | str join "\n" | save --force --raw ($core_dir | path join "start_yazelix.nu")
-
-    [
-        "export def compute_config_state [] {"
-        "    {config: {}, config_file: \"\", combined_hash: \"\", cached_hash: \"\", needs_refresh: false}"
-        "}"
-        "export def record_materialized_state [state: record] {}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "config_state.nu")
 
     let bootstrap_stub = ([
         "export def prepare_environment [--verbose] {"
-        "    error make {msg: \"PREPARE_ENVIRONMENT_SHOULD_NOT_RUN\"}"
+            "    error make {msg: \"PREPARE_ENVIRONMENT_SHOULD_NOT_RUN\"}"
         "}"
         "export def ensure_environment_available [] {"
         "    error make {msg: \"ENSURE_ENVIRONMENT_AVAILABLE_SHOULD_NOT_RUN\"}"
         "}"
     ] | str join "\n")
     $bootstrap_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
-
-    let backend_stub = ([
-        "export def check_environment_status [] {"
-        "    {already_in_env: false, in_nix_shell: false, in_yazelix_shell: false}"
-        "}"
-        "export def advance_runtime_state_after_rebuild [runtime_state: record] {"
-        "    $runtime_state"
-        "}"
-        "export def rebuild_yazelix_environment ["
-        "    --max-jobs: string = \"\""
-        "    --build-cores: string = \"\""
-        "    --refresh-eval-cache"
-        "    --output-mode: string = \"normal\""
-        "] {"
-        "    error make {msg: \"REBUILD_ENVIRONMENT_SHOULD_NOT_RUN\"}"
-        "}"
-        "export def run_in_devenv_shell_command ["
-        "    command: string"
-        "    ...args: string"
-        "    --max-jobs: string = \"\""
-        "    --build-cores: string = \"\""
-        "    --cwd: string = \"\""
-        "    --runtime-dir: string = \"\""
-        "    --env-only"
-        "    --force-shell"
-        "    --skip-welcome"
-        "    --force-refresh"
-        "    --verbose"
-        "    --refresh-output-mode: string = \"normal\""
-        "] {"
-        "    error make {msg: \"DEVENV_RUNNER_SHOULD_NOT_RUN\"}"
-        "}"
-        "export def get_refresh_output_mode [config: any] {"
-        "    \"normal\""
-        "}"
-        "export def resolve_refresh_request [needs_refresh: bool, --reuse, --skip-refresh] {"
-        "    { should_refresh: ($needs_refresh and (not $reuse) and (not $skip_refresh)), mode: \"noop\" }"
-        "}"
-        "export def resolve_runtime_entry_state [refresh_request: record, --already-in-env, --in-yazelix-shell, --force-reenter] {"
-        "    {"
-        "        activation_surface: (if $in_yazelix_shell { \"live_yazelix_session\" } else if $already_in_env { \"ambient_backend_shell\" } else { \"external_process\" })"
-        "        refresh_transition: (if ($refresh_request.should_refresh? | default false) { \"rebuild\" } else { \"none\" })"
-        "        profile_request: \"none\""
-        "        force_reenter: $force_reenter"
-        "    }"
-        "}"
-        "export def resolve_runtime_entry_context [refresh_request: record, --force-reenter] {"
-        "    let env_status = (check_environment_status)"
-        "    let runtime_state = (resolve_runtime_entry_state $refresh_request --already-in-env=$env_status.already_in_env --in-yazelix-shell=$env_status.in_yazelix_shell --force-reenter=$force_reenter)"
-        "    { refresh_request: $refresh_request, env_status: $env_status, runtime_state: $runtime_state }"
-        "}"
-        "export def resolve_launch_transition [runtime_state: record, --current-session-eligible, --profile-available] {"
-        "    { execution: \"backend_shell\", profile_source: \"none\", rebuild_before_exec: false }"
-        "}"
-        "export def print_refresh_request_guidance [refresh_request: record] { null }"
-    ] | str join "\n")
-    $backend_stub | save --force --raw ($utils_dir | path join "devenv_backend.nu")
-
-    [
-        "export def get_launch_env [config: record, profile_path: string] { {} }"
-        "export def get_launch_profile [config_state: record, --allow-stale] { null }"
-        "export def require_reused_launch_profile [config_state: record, context: string] { \"/tmp/fake-profile\" }"
-        "export def resolve_requested_launch_profile [runtime_state: record, config_state: record, command_name: string] { null }"
-        "export def resolve_runtime_owned_profile [] { \"\" }"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "launch_state.nu")
 
     [
         "export def print_runtime_version_drift_warning [] {}"
@@ -351,17 +258,16 @@ def setup_enter_forwarding_fixture [label: string] {
         "export def require_yazelix_runtime_dir [] {"
         "    $env.YAZELIX_RUNTIME_DIR"
         "}"
+        "export def resolve_yazelix_nu_bin [] {"
+        "    which nu | get -o 0.path | default \"nu\""
+        "}"
     ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
 
     [
-        "export def describe_build_parallelism [build_cores: string, max_jobs: string] {"
-        "    \"1 job x 1 core/job\""
+        "export def get_runtime_env [config?: record] {"
+        "    {}"
         "}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "build_policy.nu")
-
-    [
-        "export const TERMINAL_METADATA = {}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "constants.nu")
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "runtime_env.nu")
 
     [
         "export def check_runtime_script [script_path: string, field: string, label: string, context: string] {"
@@ -372,17 +278,12 @@ def setup_enter_forwarding_fixture [label: string] {
         "}"
     ] | str join "\n" | save --force --raw ($utils_dir | path join "runtime_contract_checker.nu")
 
-    [
-        "export def ensure_nix_available [] {}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "nix_detector.nu")
-
     {
         tmp_home: $tmp_home
         runtime_dir: $runtime_dir
         config_dir: $config_dir
         call_log: $call_log
         launch_script: ($yzx_dir | path join "launch.nu")
-        enter_script: ($yzx_dir | path join "enter.nu")
     }
 }
 
@@ -582,8 +483,6 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
             "done"
             $"printf 'YAZELIX_RUNTIME_DIR=%s\\n' \"${YAZELIX_RUNTIME_DIR-unset}\" >> '($fixture.nu_log)'"
             $"printf 'YAZELIX_DIR=%s\\n' \"${YAZELIX_DIR-unset}\" >> '($fixture.nu_log)'"
-            $"printf 'DEVENV_PROFILE=%s\\n' \"${DEVENV_PROFILE-unset}\" >> '($fixture.nu_log)'"
-            $"printf 'DEVENV_ROOT=%s\\n' \"${DEVENV_ROOT-unset}\" >> '($fixture.nu_log)'"
             $"printf 'IN_YAZELIX_SHELL=%s\\n' \"${IN_YAZELIX_SHELL-unset}\" >> '($fixture.nu_log)'"
             $"printf 'IN_NIX_SHELL=%s\\n' \"${IN_NIX_SHELL-unset}\" >> '($fixture.nu_log)'"
             $"printf 'YAZELIX_TERMINAL=%s\\n' \"${YAZELIX_TERMINAL-unset}\" >> '($fixture.nu_log)'"
@@ -600,8 +499,6 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
             YAZELIX_NU_BIN: $hostile_nu
             YAZELIX_RUNTIME_DIR: ($fixture.tmpdir | path join "hostile_runtime")
             YAZELIX_DIR: "/hostile/legacy_runtime"
-            DEVENV_PROFILE: ($fixture.tmpdir | path join "hostile_profile")
-            DEVENV_ROOT: (repo_path)
             IN_YAZELIX_SHELL: "true"
             IN_NIX_SHELL: "impure"
             YAZELIX_TERMINAL: "ghostty"
@@ -678,7 +575,6 @@ def test_yzx_desktop_launch_propagates_fast_path_failures_without_fallback [] {
         let desktop_script = ($fixture.runtime_dir | path join "nushell" "scripts" "yzx" "desktop.nu")
         let output = (with-env {
             HOME: $fixture.fake_home
-            DEVENV_PROFILE: ($fixture.tmpdir | path join "hostile_profile")
             IN_YAZELIX_SHELL: "true"
             YAZELIX_RUNTIME_DIR: ($fixture.tmpdir | path join "hostile_runtime")
         } {
@@ -734,7 +630,7 @@ def test_desktop_fast_path_rejects_bootstrap_terminal_substitution_for_explicit_
         let snippet = ([
             $"source \"($launch_script)\""
             "try {"
-            "    resolve_desktop_fast_path_candidates 'kitty' ['ghostty', 'kitty'] true true | ignore"
+            "    resolve_desktop_fast_path_candidates 'kitty' ['ghostty', 'kitty'] | ignore"
             "} catch {|err|"
             "    print $err.msg"
             "}"
@@ -750,8 +646,8 @@ def test_desktop_fast_path_rejects_bootstrap_terminal_substitution_for_explicit_
         if (
             ($output.exit_code == 0)
             and ($stderr == "")
-            and ($stdout | str contains "requested terminal 'kitty'")
-            and ($stdout | str contains "desktop-bootstrap-unavailable")
+            and ($stdout | str contains "Specified terminal 'kitty' is not available")
+            and ($stdout | str contains "host-dependency")
             and (not ($stdout | str contains "ghostty"))
         ) {
             print "  ✅ Desktop fast path preserves an explicit terminal request instead of silently substituting another terminal"
@@ -824,7 +720,7 @@ def test_desktop_fast_path_uses_direct_host_terminal_during_reload_instead_of_st
         let launch_script = (repo_path "nushell" "scripts" "core" "launch_yazelix.nu")
         let snippet = ([
             $"source \"($launch_script)\""
-            "let candidates = (resolve_desktop_fast_path_candidates '' ['ghostty'] true true)"
+            "let candidates = (resolve_desktop_fast_path_candidates '' ['ghostty'])"
             "print ($candidates | to json -r)"
         ] | str join "\n")
         let output = (with-env {
@@ -1218,70 +1114,67 @@ def test_launch_here_path_warns_when_existing_persistent_session_ignores_it [] {
     $result
 }
 
-# Regression: launch falls through to the next managed terminal and ignores bare host terminal binaries.
+# Regression: launch falls through to the next configured terminal after an immediate terminal failure.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_launch_falls_through_after_immediate_terminal_failure [] {
-    print "🧪 Testing managed terminal launch skips bare host binaries and falls through after immediate failure..."
+    print "🧪 Testing terminal launch falls through after immediate failure..."
 
     let tmpdir = (^mktemp -d /tmp/yazelix_terminal_fallback_XXXXXX | str trim)
 
     let result = (try {
         let fake_bin = ($tmpdir | path join "bin")
+        let fake_home = ($tmpdir | path join "home")
         let fake_runtime = ($tmpdir | path join "runtime")
         let fake_shells = ($fake_runtime | path join "shells" "posix")
+        let fake_terminal_configs = ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators")
         mkdir $fake_bin
+        mkdir $fake_home
         mkdir $fake_runtime
         mkdir ($fake_runtime | path join "shells")
         mkdir $fake_shells
+        mkdir ($fake_terminal_configs | path join "wezterm")
+        mkdir ($fake_terminal_configs | path join "alacritty")
         ^ln -s (repo_path ".taplo.toml") ($fake_runtime | path join ".taplo.toml")
         "" | save --force --raw ($fake_runtime | path join "yazelix_default.toml")
+        "" | save --force --raw ($fake_terminal_configs | path join "wezterm" ".wezterm.lua")
+        "" | save --force --raw ($fake_terminal_configs | path join "alacritty" "alacritty.toml")
 
         [
             "#!/bin/sh"
             "echo wezterm-boom >&2"
             "exit 27"
-        ] | str join "\n" | save --force --raw ($fake_bin | path join "yazelix-wezterm")
-        ^chmod +x ($fake_bin | path join "yazelix-wezterm")
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "wezterm")
+        ^chmod +x ($fake_bin | path join "wezterm")
 
         [
             "#!/bin/sh"
             "sleep 2"
-        ] | str join "\n" | save --force --raw ($fake_bin | path join "yazelix-alacritty")
-        ^chmod +x ($fake_bin | path join "yazelix-alacritty")
+        ] | str join "\n" | save --force --raw ($fake_bin | path join "alacritty")
+        ^chmod +x ($fake_bin | path join "alacritty")
 
-        let fake_wezterm = ($fake_bin | path join "yazelix-wezterm")
-        let fake_alacritty = ($fake_bin | path join "yazelix-alacritty")
-        [
-            "#!/bin/sh"
-            "echo raw-kitty-should-not-run >&2"
-            "exit 88"
-        ] | str join "\n" | save --force --raw ($fake_bin | path join "kitty")
-        ^chmod +x ($fake_bin | path join "kitty")
         let launch_script = (repo_path "nushell" "scripts" "core" "launch_yazelix.nu")
         let snippet = ([
             $"source \"($launch_script)\""
-            "let candidates = (resolve_terminal_candidates '' ['wezterm', 'kitty', 'alacritty'] true)"
+            "let candidates = (resolve_terminal_candidates '' ['wezterm', 'alacritty'])"
             "if (($candidates | length) != 2) { error make { msg: ($candidates | to json -r) } }"
-            "if (($candidates | get 0.command) != $env.FAKE_WEZTERM) { error make { msg: 'wezterm wrapper not selected first' } }"
-            "if (($candidates | get 1.command) != $env.FAKE_ALACRITTY) { error make { msg: 'bare kitty binary should not be treated as a managed candidate' } }"
+            "if (($candidates | get 0.command) != 'wezterm') { error make { msg: 'wezterm not selected first' } }"
+            "if (($candidates | get 1.command) != 'alacritty') { error make { msg: 'alacritty not selected second' } }"
             "let launched = (launch_terminal_candidates $candidates 'yazelix' $env.PWD false $env.YAZELIX_RUNTIME_DIR false '')"
             "print ($launched.terminal)"
         ] | str join "\n")
         let output = (with-env {
+            HOME: $fake_home
             YAZELIX_RUNTIME_DIR: $fake_runtime
-            DEVENV_PROFILE: $tmpdir
             YAZELIX_STATE_DIR: ($tmpdir | path join "state")
             PATH: ([$fake_bin] | append $env.PATH)
-            FAKE_WEZTERM: $fake_wezterm
-            FAKE_ALACRITTY: $fake_alacritty
         } {
             run_nu_snippet $snippet
         })
         let stdout = ($output.stdout | str trim)
         let stderr = ($output.stderr | str trim)
 
-        if ($output.exit_code == 0) and ($stdout | str contains "failed to start; trying Yazelix - Alacritty") and ($stdout | str ends-with "alacritty") and ($stderr == "") {
-            print "  ✅ Managed launch ignores bare host binaries and falls through to the next Yazelix wrapper"
+        if ($output.exit_code == 0) and ($stdout | str contains "failed to start; trying Alacritty") and ($stdout | str ends-with "alacritty") and ($stderr == "") {
+            print "  ✅ Terminal launch falls through to the next configured terminal after an immediate failure"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr)"
@@ -1445,6 +1338,11 @@ skip_welcome_screen = true
 export def run_workspace_canonical_tests [] {
     [
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
+        (test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env)
+        (test_yzx_desktop_launch_propagates_fast_path_failures_without_fallback)
+        (test_desktop_fast_path_rejects_bootstrap_terminal_substitution_for_explicit_terminal)
+        (test_desktop_fast_path_uses_direct_host_terminal_during_reload_instead_of_stale_wrapper)
+        (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
         (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
         (test_yzx_cli_menu_uses_lightweight_menu_module)
         (test_yzx_cli_popup_uses_lightweight_popup_module)
@@ -1452,6 +1350,10 @@ export def run_workspace_canonical_tests [] {
         (test_startup_bootstrap_runtime_env_exports_state_and_logs_dirs)
         (test_startup_rejects_missing_working_dir)
         (test_launch_rejects_file_working_dir)
+        (test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions)
+        (test_yzx_launch_rejects_removed_here_flag)
+        (test_launch_here_path_warns_when_existing_persistent_session_ignores_it)
+        (test_launch_falls_through_after_immediate_terminal_failure)
         (test_startup_requires_generated_layout_path)
         (test_launch_requires_runtime_launch_script)
         (test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status)
