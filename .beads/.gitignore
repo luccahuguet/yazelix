@@ -1,5 +1,6 @@
 # Dolt database (managed by Dolt, not git)
 dolt/
+embeddeddolt/
 
 # Runtime files
 bd.sock
@@ -54,6 +55,10 @@ dolt-server.activity
 
 # Backup data (auto-exported JSONL, local-only)
 backup/
+
+# Migration artifacts (Yazelix br→bd migration)
+migration_backup/
+migration_bd.jsonl
 
 # Per-project environment file (Dolt connection config, GH#2520)
 .env
