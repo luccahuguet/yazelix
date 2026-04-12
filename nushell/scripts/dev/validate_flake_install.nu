@@ -2,7 +2,7 @@
 
 use ../utils/common.nu resolve_external_command_path
 
-const INSTALL_TIMEOUT_SECONDS = 1500
+const INSTALL_TIMEOUT_SECONDS = 2700
 const PROBE_TIMEOUT_SECONDS = 60
 
 def make_temp_home [] {

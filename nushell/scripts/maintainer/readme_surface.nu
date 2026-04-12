@@ -48,6 +48,12 @@ export def render_readme_latest_series_section [version: string = $YAZELIX_VERSI
     $lines | str join "\n"
 }
 
+export def render_readme_latest_series_section_for_root [runtime_root: string, version: string = $YAZELIX_VERSION] {
+    with-env {YAZELIX_RUNTIME_DIR: $runtime_root} {
+        render_readme_latest_series_section $version
+    }
+}
+
 export def extract_readme_latest_series_section [contents: string] {
     let normalized = ($contents | str replace -a "\r\n" "\n")
 
@@ -77,10 +83,11 @@ export def extract_readme_latest_series_section [contents: string] {
     $"($README_LATEST_SERIES_BEGIN)($block)($README_LATEST_SERIES_END)"
 }
 
-def sync_readme_latest_series_section [readme_path: string] {
+def sync_readme_latest_series_section [readme_path: string, version: string] {
     let contents = (open --raw $readme_path)
     let normalized = ($contents | str replace -a "\r\n" "\n")
-    let rendered = (render_readme_latest_series_section)
+    let readme_root = ($readme_path | path dirname)
+    let rendered = (render_readme_latest_series_section_for_root $readme_root $version)
     let current_block = (extract_readme_latest_series_section $normalized)
     let updated = ($normalized | str replace $current_block $rendered)
 
@@ -108,7 +115,7 @@ export def sync_readme_surface [readme_path?: string, version: string = $YAZELIX
         $updated_title | save --force --raw $target_readme_path
     }
 
-    let series_changed = (sync_readme_latest_series_section $target_readme_path)
+    let series_changed = (sync_readme_latest_series_section $target_readme_path $version)
 
     {
         readme_path: $target_readme_path
