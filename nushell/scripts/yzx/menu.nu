@@ -194,7 +194,8 @@ export def "yzx menu" [
         }
 
         let popup_cwd = ((get_current_tab_workspace_root_including_bootstrap) | default (pwd))
-        let open_result = (open_transient_pane "menu" [] $popup_cwd)
+        let runtime_dir = (get_yazelix_runtime_dir | path expand)
+        let open_result = (open_transient_pane "menu" [] $popup_cwd $runtime_dir)
         if $open_result.status != "ok" {
             error make {msg: $"Failed to open the Yazelix menu popup pane: ($open_result | to json -r)"}
         }

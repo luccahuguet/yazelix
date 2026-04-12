@@ -122,10 +122,10 @@ def test_zjstatus_permission_cache_migrates_to_tracked_and_stable_paths [] {
     $result
 }
 
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-# Regression: pane orchestrator permission grants migrate onto tracked and stable Yazelix plugin paths with RunCommands for shared transient-pane launching.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: legacy pane orchestrator permission grants upgrade onto tracked and stable Yazelix plugin paths with RunCommands for shared transient-pane launching.
 def test_pane_orchestrator_permission_cache_migrates_run_commands_to_tracked_and_stable_paths [] {
-    print "🧪 Testing pane orchestrator permission grants migrate to tracked and stable paths with RunCommands..."
+    print "🧪 Testing legacy pane orchestrator permission grants upgrade to tracked and stable paths with RunCommands..."
 
     let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_pane_orchestrator_permission_cache_XXXXXX | str trim)
@@ -142,7 +142,6 @@ def test_pane_orchestrator_permission_cache_migrates_run_commands_to_tracked_and
     ReadApplicationState
     OpenTerminalsOrPlugins
     ChangeApplicationState
-    RunCommands
     WriteToStdin
     ReadCliPipes
 }
@@ -168,8 +167,9 @@ def test_pane_orchestrator_permission_cache_migrates_run_commands_to_tracked_and
             and ($migrated.cache | str contains $"\"($migrated.tracked_path)\"")
             and ($migrated.cache | str contains $"\"($migrated.stable_path)\"")
             and ($migrated.cache | str contains "RunCommands")
+            and not ($migrated.cache | str contains '"/tmp/legacy/yazelix_pane_orchestrator.wasm"')
         ) {
-            print "  ✅ pane orchestrator permission grants now migrate onto both tracked and stable paths with RunCommands preserved"
+            print "  ✅ legacy pane orchestrator grants now upgrade onto both tracked and stable paths with RunCommands added and stale store grants trimmed"
             true
         } else {
             print $"  ❌ Unexpected pane orchestrator permission cache state: (($migrated | to json -r))"

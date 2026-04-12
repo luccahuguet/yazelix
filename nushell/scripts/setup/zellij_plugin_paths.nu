@@ -127,11 +127,6 @@ def upsert_permission_blocks [blocks: list<string>] {
     $permissions_cache_path
 }
 
-def permission_block_is_sufficient [permissions: list<string>, required_permissions: list<string>] {
-    $required_permissions
-    | all {|permission| $permission in $permissions }
-}
-
 def preserve_plugin_permissions [
     plugin_prefix: string
     tracked_path: string
@@ -145,7 +140,7 @@ def preserve_plugin_permissions [
 
     let raw_content = (open --raw $permissions_cache_path)
     let blocks = (parse_permission_blocks $raw_content)
-    let pane_orchestrator_blocks = (
+    let matching_blocks = (
         $blocks
         | where {|block|
             let file_name = ($block.path | path basename)
@@ -153,19 +148,16 @@ def preserve_plugin_permissions [
         }
     )
 
-    let source_block = (
-        $pane_orchestrator_blocks
-        | where {|block| permission_block_is_sufficient $block.permissions $required_permissions }
-        | get -o 0
-    )
-
-    if $source_block == null {
-        return { status: "no_granted_source" }
+    if ($matching_blocks | is-empty) {
+        return { status: "no_existing_source" }
     }
 
     let retained_blocks = (
         $blocks
-        | where {|block| ($block.path != $tracked_path) and ($block.path != $runtime_path) }
+        | where {|block|
+            let file_name = ($block.path | path basename)
+            not ($file_name =~ ("^" + $plugin_prefix + "(_[0-9a-f]+)?\\.wasm$"))
+        }
     )
     let target_blocks = [
         (build_permission_block $tracked_path $required_permissions)
@@ -181,7 +173,7 @@ def preserve_plugin_permissions [
     write_text_atomic $permissions_cache_path $updated_content --raw | ignore
     {
         status: "updated"
-        source_path: $source_block.path
+        source_path: (($matching_blocks | get 0.path))
     }
 }
 

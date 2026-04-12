@@ -7,8 +7,7 @@ use yazelix_pane_orchestrator::transient_pane_contract::{
 };
 use zellij_tile::prelude::*;
 
-use crate::panes::TerminalPaneLayout;
-use crate::{State, RESULT_INVALID_PAYLOAD, RESULT_MISSING, RESULT_OK};
+use crate::{State, RESULT_INVALID_PAYLOAD, RESULT_MISSING};
 
 pub(crate) const RESULT_CLOSED: &str = "closed";
 pub(crate) const RESULT_FOCUSED: &str = "focused";
@@ -32,6 +31,7 @@ struct OpenTransientPaneRequest {
     #[serde(default)]
     args: Vec<String>,
     cwd: Option<String>,
+    runtime_dir: Option<String>,
 }
 
 impl Default for TransientPaneConfig {
@@ -88,13 +88,32 @@ impl TransientPaneConfig {
     }
 
     fn launcher_path(&self) -> Option<PathBuf> {
-        let path = PathBuf::from(&self.runtime_dir).join("shells/posix/yazelix_nu.sh");
-        path.exists().then_some(path)
+        let trimmed_runtime_dir = self.runtime_dir.trim();
+        if trimmed_runtime_dir.is_empty() {
+            return None;
+        }
+        Some(PathBuf::from(trimmed_runtime_dir).join("shells/posix/yazelix_nu.sh"))
     }
 
     fn wrapper_path(&self, kind: TransientPaneKind) -> Option<PathBuf> {
-        let path = PathBuf::from(&self.runtime_dir).join(kind.wrapper_relative_path());
-        path.exists().then_some(path)
+        let trimmed_runtime_dir = self.runtime_dir.trim();
+        if trimmed_runtime_dir.is_empty() {
+            return None;
+        }
+        Some(PathBuf::from(trimmed_runtime_dir).join(kind.wrapper_relative_path()))
+    }
+
+    fn with_runtime_dir(&self, runtime_dir: Option<&str>) -> Self {
+        let trimmed_override = runtime_dir.unwrap_or("").trim();
+        if trimmed_override.is_empty() {
+            return self.clone();
+        }
+
+        Self {
+            runtime_dir: trimmed_override.to_owned(),
+            width_percent: self.width_percent,
+            height_percent: self.height_percent,
+        }
     }
 
     fn default_cwd(&self, workspace_root: Option<&str>) -> String {
@@ -104,6 +123,38 @@ impl TransientPaneConfig {
         } else {
             trimmed_root.to_string()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TransientPaneConfig;
+    use yazelix_pane_orchestrator::transient_pane_contract::TransientPaneKind;
+
+    #[test]
+    fn transient_runtime_paths_do_not_depend_on_plugin_local_fs_probes() {
+        let config = TransientPaneConfig {
+            runtime_dir: "/runtime/root".to_owned(),
+            width_percent: 90,
+            height_percent: 90,
+        };
+
+        assert_eq!(
+            config.launcher_path().unwrap(),
+            std::path::PathBuf::from("/runtime/root/shells/posix/yazelix_nu.sh")
+        );
+        assert_eq!(
+            config.wrapper_path(TransientPaneKind::Popup).unwrap(),
+            std::path::PathBuf::from(
+                "/runtime/root/nushell/scripts/zellij_wrappers/yzx_popup_program.nu"
+            )
+        );
+        assert_eq!(
+            config.wrapper_path(TransientPaneKind::Menu).unwrap(),
+            std::path::PathBuf::from(
+                "/runtime/root/nushell/scripts/zellij_wrappers/yzx_menu_popup.nu"
+            )
+        );
     }
 }
 
@@ -160,6 +211,7 @@ impl State {
                     kind,
                     args: vec![],
                     cwd: None,
+                    runtime_dir: None,
                 };
                 self.open_transient_pane_with_request(active_tab_position, request, pipe_message);
             }
@@ -180,11 +232,15 @@ impl State {
         request: OpenTransientPaneRequest,
         pipe_message: &PipeMessage,
     ) {
-        let Some(launcher_path) = self.transient_pane_config.launcher_path() else {
+        let transient_pane_config = self
+            .transient_pane_config
+            .with_runtime_dir(request.runtime_dir.as_deref());
+
+        let Some(launcher_path) = transient_pane_config.launcher_path() else {
             self.respond(pipe_message, RESULT_RUNTIME_NOT_CONFIGURED);
             return;
         };
-        let Some(wrapper_path) = self.transient_pane_config.wrapper_path(request.kind) else {
+        let Some(wrapper_path) = transient_pane_config.wrapper_path(request.kind) else {
             self.respond(pipe_message, RESULT_RUNTIME_NOT_CONFIGURED);
             return;
         };
@@ -199,7 +255,7 @@ impl State {
             .map(str::trim)
             .filter(|cwd| !cwd.is_empty())
             .map(str::to_string)
-            .unwrap_or_else(|| self.transient_pane_config.default_cwd(workspace_root));
+            .unwrap_or_else(|| transient_pane_config.default_cwd(workspace_root));
 
         let mut args = vec![wrapper_path.display().to_string()];
         args.extend(request.args);
@@ -210,9 +266,11 @@ impl State {
             cwd: Some(PathBuf::from(requested_cwd)),
         };
 
-        let pane_id = open_command_pane_floating_near_plugin(
+        // The pane orchestrator runs as a background plugin, so the "near plugin"
+        // variant can hang waiting for a pane-local placement anchor that does not exist.
+        let pane_id = open_command_pane_floating(
             command_to_run,
-            self.transient_pane_config.floating_coordinates(),
+            transient_pane_config.floating_coordinates(),
             BTreeMap::new(),
         );
 

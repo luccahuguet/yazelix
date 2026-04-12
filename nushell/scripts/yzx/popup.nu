@@ -4,6 +4,7 @@ use ../integrations/zellij.nu [
     get_current_tab_workspace_root_including_bootstrap
     open_transient_pane
 ]
+use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/config_parser.nu parse_yazelix_config
 
 def resolve_popup_command [configured_program: list<string>, override_program: list<string>] {
@@ -47,7 +48,8 @@ export def --wrapped "yzx popup" [
     }
 
     let popup_cwd = (resolve_popup_cwd ((get_current_tab_workspace_root_including_bootstrap) | default "") (pwd))
-    let open_result = (open_transient_pane "popup" $popup_program $popup_cwd)
+    let runtime_dir = (get_yazelix_runtime_dir | path expand)
+    let open_result = (open_transient_pane "popup" $popup_program $popup_cwd $runtime_dir)
     if $open_result.status != "ok" {
         error make {msg: $"Failed to open the Yazelix popup pane: ($open_result | to json -r)"}
     }

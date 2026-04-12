@@ -16,6 +16,7 @@ def setup_runtime_wrapper_fixture [label: string] {
     let tmpdir = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let runtime_dir = ($tmpdir | path join "runtime")
     let integrations_dir = ($runtime_dir | path join "nushell" "scripts" "integrations")
+    let utils_dir = ($runtime_dir | path join "nushell" "scripts" "utils")
     let yzx_dir = ($runtime_dir | path join "nushell" "scripts" "yzx")
     let wrapper_dir = ($runtime_dir | path join "nushell" "scripts" "zellij_wrappers")
     let fake_bin = ($tmpdir | path join "bin")
@@ -23,17 +24,24 @@ def setup_runtime_wrapper_fixture [label: string] {
     let real_nu = (which nu | get -o 0.path)
 
     mkdir $integrations_dir
+    mkdir $utils_dir
     mkdir $yzx_dir
     mkdir $wrapper_dir
     mkdir $fake_bin
     cp ($env.PWD | path join "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
     cp ($env.PWD | path join ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
     ^ln -s ($env.PWD | path join "config_metadata") ($runtime_dir | path join "config_metadata")
+    [
+        "export def parse_yazelix_config [] {"
+        "    { popup_program: [\"config-popup\"] }"
+        "}"
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "config_parser.nu")
 
     {
         tmpdir: $tmpdir
         runtime_dir: $runtime_dir
         integrations_dir: $integrations_dir
+        utils_dir: $utils_dir
         yzx_dir: $yzx_dir
         wrapper_dir: $wrapper_dir
         fake_bin: $fake_bin
@@ -243,6 +251,80 @@ def test_popup_program_wrapper_runs_resolved_argv_directly [] {
             true
         } else {
             print $"  ❌ Unexpected popup wrapper behavior: exit=($output.exit_code) popup=($popup_invocation | to json -r) zellij=($zellij_invocation | to json -r) refresh=($refresh_log | to json -r) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmpdir
+    $result
+}
+
+# Regression: the runtime popup pane wrapper must fall back to the configured popup program when keybind-driven popup opens do not pass argv.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_popup_program_wrapper_falls_back_to_configured_default_when_args_are_missing [] {
+    print "🧪 Testing popup program wrapper falls back to the configured popup program when no argv is provided..."
+
+    let fixture = (setup_runtime_wrapper_fixture "yazelix_popup_wrapper_config_fallback")
+
+    let result = (try {
+        write_executable_fixture_file ($fixture.fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            "if [ -f \"$YAZELIX_TEST_ZELLIJ_LOG\" ]; then"
+            "  printf '%s\\n' \"$*\" >> \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "else"
+            "  printf '%s\\n' \"$*\" > \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "fi"
+            "exit 0"
+        ]
+        write_executable_fixture_file ($fixture.fake_bin | path join "config-popup") [
+            "#!/bin/sh"
+            "printf 'args=%s\\n' \"$*\" > \"$YAZELIX_TEST_POPUP_LOG\""
+            "exit 0"
+        ]
+        [
+            "export def refresh_active_sidebar_yazi [] {"
+            "    'refresh' | save --force --raw $env.YAZELIX_TEST_REFRESH_LOG"
+            "    {status: 'ok'}"
+            "}"
+        ] | str join "\n" | save --force --raw ($fixture.integrations_dir | path join "yazi.nu")
+        cp ($env.PWD | path join "nushell" "scripts" "zellij_wrappers" "yzx_popup_program.nu") ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
+
+        let wrapper_script = ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
+        let output = (with-env {
+            PATH: ([$fixture.fake_bin] | append $env.PATH)
+            ZELLIJ: "1"
+            YAZELIX_TEST_POPUP_LOG: ($fixture.tmpdir | path join "popup_program.log")
+            YAZELIX_TEST_ZELLIJ_LOG: ($fixture.tmpdir | path join "zellij.log")
+            YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
+        } {
+            ^nu $wrapper_script | complete
+        })
+
+        let popup_log = ($fixture.tmpdir | path join "popup_program.log")
+        let zellij_log = ($fixture.tmpdir | path join "zellij.log")
+        let popup_invocation = if ($popup_log | path exists) {
+            open --raw $popup_log | lines
+        } else {
+            []
+        }
+        let zellij_invocation = if ($zellij_log | path exists) {
+            open --raw $zellij_log | lines
+        } else {
+            []
+        }
+
+        if (
+            ($output.exit_code == 0)
+            and ($popup_invocation == ["args="])
+            and ($zellij_invocation == ["action rename-pane yzx_popup" "action close-pane"])
+        ) {
+            print "  ✅ popup runtime wrapper now falls back to the configured popup program when keybind-driven popup opens do not pass argv"
+            true
+        } else {
+            print $"  ❌ Unexpected popup wrapper config fallback behavior: exit=($output.exit_code) popup=($popup_invocation | to json -r) zellij=($zellij_invocation | to json -r) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
