@@ -36,7 +36,7 @@ def get_popup_runner_paths [] {
 
 def print_rust_wasi_enable_hint [] {
     print "   Install a WASI-capable Rust toolchain in your maintainer environment."
-    print "   Example: run the build inside `devenv shell`, or use `rustup target add wasm32-wasip1`."
+    print "   Example: run the build inside the repo's maintainer shell, or use `rustup target add wasm32-wasip1`."
 }
 
 def ensure_build_tools_available [] {

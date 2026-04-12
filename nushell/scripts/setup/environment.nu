@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 # Main Yazelix environment setup script
-# Called from devenv.nix shellHook to reduce complexity
+# Shared by startup, installer, and maintainer-shell entrypoints
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]

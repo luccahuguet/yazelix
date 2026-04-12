@@ -4,7 +4,6 @@
 
 use ../utils/common.nu [get_yazelix_state_dir]
 use ../utils/repo_checkout.nu [require_yazelix_repo_root]
-use ../utils/devenv_cli.nu resolve_preferred_devenv_path
 
 def profile_suite_runner [runner: closure] {
     let started = (date now)
@@ -173,67 +172,21 @@ def test_issue_bead_comment_plan [] {
     }
 }
 
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Regression: repo-local devenv shells ignore inherited installed-runtime aliases and re-root the live runtime to the checkout.
-def test_source_devenv_shell_re_roots_runtime_aliases_to_checkout [] {
-    print "🧪 Testing repo-local devenv shells ignore inherited installed-runtime aliases and re-root the runtime to the checkout..."
-
-    let repo_root = ($env.PWD | path expand)
-    let devenv_bin = (resolve_preferred_devenv_path)
-    let tmp_home = (^mktemp -d /tmp/yazelix_repo_shell_runtime_aliases_XXXXXX | str trim)
-    let fake_runtime = ($tmp_home | path join ".local" "share" "yazelix" "runtime" "current")
-    let bashrc_path = ($tmp_home | path join ".bashrc")
-    let nushell_config_dir = ($tmp_home | path join ".config" "nushell")
-    let nushell_config_path = ($nushell_config_dir | path join "config.nu")
-
-    mkdir ($tmp_home | path join ".config")
-    mkdir $nushell_config_dir
-    "" | save --force $bashrc_path
-    "" | save --force $nushell_config_path
-
-    let result = (try {
-        let output = (with-env {
-            HOME: $tmp_home
-            YAZELIX_RUNTIME_DIR: $fake_runtime
-            YAZELIX_DIR: "/nix/store/fake-yazelix-runtime"
-            YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
-            YAZELIX_ENV_ONLY: "true"
-        } {
-            ^$devenv_bin --quiet shell -- bash -lc 'printf "%s|%s|%s|%s\n" "$(printenv YAZELIX_RUNTIME_DIR 2>/dev/null || printf unset)" "$(printenv YAZELIX_DIR 2>/dev/null || printf unset)" "$DEVENV_ROOT" "$EDITOR"' | complete
-        })
-        let summary = ($output.stdout | lines | last | default "")
-        let expected_editor = ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
-
-        if ($output.exit_code == 0) and ($summary == $"($repo_root)|unset|($repo_root)|($expected_editor)") {
-            print "  ✅ Repo-local devenv shell now replaces inherited runtime aliases with the checkout root, keeps legacy YAZELIX_DIR unset, and exports an absolute managed Helix wrapper"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) summary=($summary) stderr=(($output.stderr | str trim))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Regression: maintainer commands resolve a writable repo root even when the stable CLI carries an installed runtime env.
 def test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env [] {
     print "🧪 Testing maintainer repo-root resolution prefers the checkout over installed runtime env..."
 
     let repo_root = ($env.PWD | path expand)
+    let repo_subdir = ($repo_root | path join "nushell" "scripts")
     let fake_runtime = (get_yazelix_state_dir | path join "runtime" "current" | path expand)
 
     try {
         let resolved = (with-env {
-            DEVENV_ROOT: $repo_root
             YAZELIX_RUNTIME_DIR: $fake_runtime
             YAZELIX_DIR: "/nix/store/fake-yazelix-runtime"
         } {
+            cd $repo_subdir
             require_yazelix_repo_root
         })
 
@@ -510,7 +463,6 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
             HOME: $temp_home
             YAZELIX_STATE_DIR: $state_dir
             YAZELIX_CONFIG_DIR: $config_dir
-            DEVENV_ROOT: $repo_root
             IN_YAZELIX_SHELL: ""
             YAZELIX_TERMINAL: ""
             DEVENV_PROFILE: ""
@@ -833,6 +785,104 @@ def test_dev_update_home_manager_activation_refreshes_input_and_switches_request
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: Home Manager-owned live-session restart must use the profile yzx wrapper and avoid recreating user-local manual surfaces.
+def test_home_manager_profile_restart_uses_owner_wrapper_without_manual_surfaces [] {
+    print "🧪 Testing Home Manager profile-owned restart uses the profile yzx wrapper without manual surfaces..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_home_manager_restart_smoke_XXXXXX | str trim)
+    let temp_home = ($tmp_root | path join "home")
+    let config_dir = ($temp_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
+    let hm_store = ($tmp_root | path join "abc-home-manager-files")
+    let hm_main_config = ($hm_store | path join ".config" "yazelix" "user_configs" "yazelix.toml")
+    let profile_yzx = ($temp_home | path join ".nix-profile" "bin" "yzx")
+    let profile_desktop = ($temp_home | path join ".nix-profile" "share" "applications" "yazelix.desktop")
+    let manual_yzx = ($temp_home | path join ".local" "bin" "yzx")
+    let manual_desktop = ($temp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")
+    let fake_bin = ($tmp_root | path join "bin")
+    let yzx_log = ($tmp_root | path join "profile_yzx.log")
+    let zellij_log = ($tmp_root | path join "zellij.log")
+
+    mkdir $temp_home
+    mkdir $user_config_dir
+    mkdir ($hm_main_config | path dirname)
+    mkdir ($profile_yzx | path dirname)
+    mkdir ($profile_desktop | path dirname)
+    mkdir $fake_bin
+
+    cp ($repo_root | path join "yazelix_default.toml") $hm_main_config
+    rm -f ($user_config_dir | path join "yazelix.toml")
+    ^ln -s $hm_main_config ($user_config_dir | path join "yazelix.toml")
+
+    [
+        "#!/bin/sh"
+        ": > \"$YZX_TEST_PROFILE_YZX_LOG\""
+        "printf '%s\n' \"$@\" >> \"$YZX_TEST_PROFILE_YZX_LOG\""
+        "printf 'BOOTSTRAP=%s\n' \"${YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE-unset}\" >> \"$YZX_TEST_PROFILE_YZX_LOG\""
+        "exit 0"
+    ] | str join "\n" | save --force --raw $profile_yzx
+    ^chmod +x $profile_yzx
+
+    [
+        "#!/bin/sh"
+        "printf '%s\n' \"$*\" >> \"$YZX_TEST_ZELLIJ_LOG\""
+        "exit 0"
+    ] | str join "\n" | save --force --raw ($fake_bin | path join "zellij")
+    ^chmod +x ($fake_bin | path join "zellij")
+
+    [
+        "[Desktop Entry]"
+        "Type=Application"
+        "Name=Yazelix"
+        $"Exec=\"($profile_yzx)\" desktop launch"
+    ] | str join "\n" | save --force --raw $profile_desktop
+
+    let result = (try {
+        let output = (with-env {
+            HOME: $temp_home
+            XDG_CONFIG_HOME: ($temp_home | path join ".config")
+            XDG_DATA_HOME: ($temp_home | path join ".local" "share")
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            PATH: ([$fake_bin] | append $env.PATH)
+            ZELLIJ_SESSION_NAME: "old-yazelix"
+            YAZELIX_TERMINAL: "ghostty"
+            YZX_TEST_PROFILE_YZX_LOG: $yzx_log
+            YZX_TEST_ZELLIJ_LOG: $zellij_log
+        } {
+            ^nu -c $"use \"($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")\" *; yzx restart" | complete
+        })
+        let yzx_lines = if ($yzx_log | path exists) { open --raw $yzx_log | lines } else { [] }
+        let zellij_lines = if ($zellij_log | path exists) { open --raw $zellij_log | lines } else { [] }
+        let bootstrap_line = ($yzx_lines | where {|line| $line | str starts-with "BOOTSTRAP=" } | get -o 0 | default "")
+        let bootstrap_path = ($bootstrap_line | str replace "BOOTSTRAP=" "")
+
+        if (
+            ($output.exit_code == 0)
+            and (($yzx_lines | get -o 0 | default "") == "launch")
+            and ($bootstrap_path | path exists)
+            and ($zellij_lines | any {|line| $line == "kill-session old-yazelix" })
+            and ($profile_desktop | path exists)
+            and (not ($manual_yzx | path exists))
+            and (not ($manual_desktop | path exists))
+        ) {
+            print "  ✅ Home Manager restart uses the profile yzx owner and does not recreate manual yzx or desktop surfaces"
+            true
+        } else {
+            print $"  ❌ Unexpected Home Manager restart result: exit=($output.exit_code) yzx=(($yzx_lines | to json -r)) zellij=(($zellij_lines | to json -r)) manual_yzx=(($manual_yzx | path exists)) manual_desktop=(($manual_desktop | path exists)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Defends: maintainer update activation rejects unknown mode names instead of accepting ambiguous shorthand.
 def test_dev_update_activation_mode_rejects_unknown_values [] {
@@ -1023,10 +1073,10 @@ def main [] {
         (test_dev_update_installer_activation_streams_install_logs)
         (test_dev_update_activation_mode_rejects_unknown_values)
         (test_dev_update_home_manager_activation_refreshes_input_and_switches_requested_ref)
+        (test_home_manager_profile_restart_uses_owner_wrapper_without_manual_surfaces)
         (test_dev_bump_rotates_release_metadata_and_tags_the_repo)
         (test_dev_bump_rejects_dirty_worktrees)
         (test_dev_bump_rejects_existing_target_tags)
-        (test_source_devenv_shell_re_roots_runtime_aliases_to_checkout)
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
         (test_default_budget_profiler_does_not_wait_on_background_children)
         (test_vendored_yazi_plugin_refresh_applies_patch_and_refuses_dirty_targets)

@@ -189,11 +189,11 @@ def main [yazelix_dir: string, shells_to_configure_str: string] {
             | str join ""
         )
 
-        # For Nushell: add PATH preservation to prevent devenv paths from being lost
+        # For Nushell: preserve the inherited PATH before Yazelix-managed initializers run
         let nushell_path_preservation = if ($shell.name == "nu") {
             [
                 ""
-                "# Preserve devenv-provided PATH (includes packs like python, rust, etc.)"
+                "# Preserve the inherited PATH before Yazelix-managed initializers modify it"
                 "let initial_path = $env.PATH"
                 ""
                 "# --- Tool initializers below ---"

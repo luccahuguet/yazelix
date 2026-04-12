@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# Interactive launch sequence (runs inside devenv shell)
+# Interactive launch sequence for the active Yazelix runtime
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/config_state.nu [compute_config_state record_materialized_state]

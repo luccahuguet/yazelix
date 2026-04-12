@@ -36,10 +36,10 @@ def is_valid_repo_root [candidate?: string] {
     }
 
     let git_marker = ($candidate_path | path join ".git")
-    let devenv_nix = ($candidate_path | path join "devenv.nix")
+    let flake_nix = ($candidate_path | path join "flake.nix")
     let default_config = ($candidate_path | path join "yazelix_default.toml")
 
-    ($git_marker | path exists) and ($devenv_nix | path exists) and ($default_config | path exists)
+    ($git_marker | path exists) and ($flake_nix | path exists) and ($default_config | path exists)
 }
 
 def resolve_git_repo_root_from_pwd [] {
@@ -66,16 +66,6 @@ def resolve_git_repo_root_from_pwd [] {
 }
 
 def get_yazelix_repo_root [] {
-    let raw_devenv_root = ($env.DEVENV_ROOT? | default null)
-    let devenv_root = if $raw_devenv_root == null {
-        null
-    } else {
-        resolve_existing_path ($raw_devenv_root | into string | str trim)
-    }
-    if (is_valid_repo_root $devenv_root) {
-        return $devenv_root
-    }
-
     let pwd_repo_root = (resolve_git_repo_root_from_pwd)
     if $pwd_repo_root != null {
         return $pwd_repo_root
@@ -92,7 +82,7 @@ def get_yazelix_repo_root [] {
 export def require_yazelix_repo_root [] {
     let repo_root = (get_yazelix_repo_root)
     if $repo_root == null {
-        error make {msg: "This maintainer command requires a writable Yazelix repo checkout. Run it from the repo root or a repo-local devenv shell."}
+        error make {msg: "This maintainer command requires a writable Yazelix repo checkout. Run it from the repo root or another directory inside the same checkout."}
     }
 
     $repo_root
