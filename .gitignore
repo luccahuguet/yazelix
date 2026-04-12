@@ -45,3 +45,8 @@ rust_plugins/*/target/
 
 # Editor-local project settings
 .vscode/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
