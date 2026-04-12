@@ -49,6 +49,8 @@ The main runtime fact remains the same: command wrappers are not the main weight
 
 This is a trim-oriented repartition of the same `14,270` runtime LOC. Each runtime file is assigned to exactly one group below.
 
+Note: this section is a pre-move snapshot. The maintainer-helper ownership cleanup that followed relocated the maintainer-only helper cluster out of `nushell/scripts/utils` into `nushell/scripts/maintainer`, so the old `Runtime-shipped maintainer helpers` line is now intentionally obsolete pending the next full inventory refresh.
+
 | Runtime trim group | Files | Code LOC | Share of runtime | What it captures |
 | --- | ---: | ---: | ---: | --- |
 | Startup and generated-state materialization | 25 | 3,898 | 27.3% | Launch/bootstrap entrypoints, generated config writes, terminal renderers, Zellij/Yazi materialization |
@@ -109,17 +111,17 @@ This table is intentionally about direct command-family LOC, not full ownership 
 
 ### Runtime Hotspot Files
 
-These are the heaviest runtime-side files after the latest trim:
+These are the heaviest runtime-side files after the latest trim. The recent maintainer-helper ownership cleanup moved the maintainer-only update/test helpers out of `nushell/scripts/utils`, so the remaining list is runtime-first again.
 
 | File | Code LOC | Why it matters |
 | --- | ---: | --- |
 | [`ascii_art.nu`](/home/lucca/pjs/yazelix/nushell/scripts/utils/ascii_art.nu) | 909 | Most of the front-door UX cost lives here |
-| [`dev_update_workflow.nu`](/home/lucca/pjs/yazelix/nushell/scripts/utils/dev_update_workflow.nu) | 481 | Large maintainer/update surface still shipped under runtime paths |
 | [`config_migrations.nu`](/home/lucca/pjs/yazelix/nushell/scripts/utils/config_migrations.nu) | 408 | Central config-migration ownership |
 | [`yazelix.nu`](/home/lucca/pjs/yazelix/nushell/scripts/core/yazelix.nu) | 399 | Inline `yzx` command definitions plus shared command glue |
 | [`doctor.nu`](/home/lucca/pjs/yazelix/nushell/scripts/utils/doctor.nu) | 351 | Main troubleshooting surface |
-| [`test_runner.nu`](/home/lucca/pjs/yazelix/nushell/scripts/utils/test_runner.nu) | 334 | Maintainer logic still living in shipped runtime paths |
 | [`terminal_renderers.nu`](/home/lucca/pjs/yazelix/nushell/scripts/utils/terminal_renderers.nu) | 310 | Shared terminal materialization logic |
+| [`upgrade_summary.nu`](/home/lucca/pjs/yazelix/nushell/scripts/utils/upgrade_summary.nu) | 273 | Release and upgrade-summary rendering still serves the runtime UX directly |
+| [`terminal_launcher.nu`](/home/lucca/pjs/yazelix/nushell/scripts/utils/terminal_launcher.nu) | 249 | Host terminal detection and detached launch transport remain a dense runtime seam |
 | [`config_migration_transactions.nu`](/home/lucca/pjs/yazelix/nushell/scripts/utils/config_migration_transactions.nu) | 309 | Migration transaction engine |
 | [`zellij_plugin_paths.nu`](/home/lucca/pjs/yazelix/nushell/scripts/setup/zellij_plugin_paths.nu) | 295 | Zellij plugin ownership/materialization seam |
 | [`doctor_helix.nu`](/home/lucca/pjs/yazelix/nushell/scripts/utils/doctor_helix.nu) | 274 | Helix-specific diagnostic surface |

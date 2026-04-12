@@ -1,11 +1,11 @@
 #!/usr/bin/env nu
 
-use ../utils/common.nu [get_yazelix_runtime_dir]
+use ../maintainer/repo_checkout.nu [require_yazelix_repo_root]
 use ../utils/constants.nu [YAZELIX_VERSION]
-use ../utils/readme_release_block.nu [extract_readme_latest_series_section render_readme_latest_series_section]
+use ../maintainer/readme_surface.nu [extract_readme_latest_series_section render_readme_latest_series_section]
 
 export def main [] {
-    let readme_path = ((get_yazelix_runtime_dir) | path join "README.md")
+    let readme_path = ((require_yazelix_repo_root) | path join "README.md")
     let readme_contents = (open --raw $readme_path)
     let readme_title = (
         $readme_contents

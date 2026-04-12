@@ -1,9 +1,9 @@
 #!/usr/bin/env nu
 
 use repo_checkout.nu require_yazelix_repo_root
-use config_surfaces.nu [copy_default_config_surfaces load_config_surface_from_main get_main_user_config_path]
-use readme_release_block.nu sync_readme_surface
-use nix_detector.nu ensure_nix_available
+use ../utils/config_surfaces.nu [copy_default_config_surfaces load_config_surface_from_main get_main_user_config_path]
+use readme_surface.nu sync_readme_surface
+use ../utils/nix_detector.nu ensure_nix_available
 
 def update_constant_value [contents: string, key: string, new_value: string] {
     let pattern = $"export const ($key) = \"[^\"]+\""

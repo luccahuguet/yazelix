@@ -5,7 +5,7 @@
 use ../utils/ascii_art.nu *
 use ../utils/constants.nu YAZELIX_VERSION
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/readme_release_block.nu get_current_major_series_entry
+use ../utils/upgrade_notes.nu get_current_major_series_entry
 use ../utils/upgrade_summary.nu get_upgrade_note_entry
 
 # Show welcome art based on the configured style

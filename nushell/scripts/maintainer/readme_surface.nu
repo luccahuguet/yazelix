@@ -1,14 +1,11 @@
 #!/usr/bin/env nu
 
-use common.nu [get_yazelix_runtime_dir]
-use constants.nu [YAZELIX_VERSION]
+use ../utils/common.nu [get_yazelix_runtime_dir]
+use ../utils/constants.nu [YAZELIX_VERSION]
+use ../utils/upgrade_notes.nu [get_current_major_series_entry]
 
 export const README_LATEST_SERIES_BEGIN = "<!-- BEGIN GENERATED README LATEST SERIES -->"
 export const README_LATEST_SERIES_END = "<!-- END GENERATED README LATEST SERIES -->"
-
-def get_upgrade_notes_path [] {
-    (get_yazelix_runtime_dir | path join "docs" "upgrade_notes.toml")
-}
 
 def get_readme_path [] {
     (get_yazelix_runtime_dir | path join "README.md")
@@ -20,44 +17,6 @@ def as_string_list [value: any] {
     } else {
         []
     }
-}
-
-def load_upgrade_notes [] {
-    let notes_path = (get_upgrade_notes_path)
-    if not ($notes_path | path exists) {
-        error make {msg: $"upgrade notes not found at ($notes_path)"}
-    }
-
-    open $notes_path
-}
-
-export def get_current_major_series_entry [version: string = $YAZELIX_VERSION] {
-    let series_key = (
-        $version
-        | parse --regex '^(?<major>v\d+)'
-        | get -o 0.major
-        | default null
-    )
-    if $series_key == null {
-        error make {msg: $"failed to derive a major series key from version `($version)`"}
-    }
-
-    let notes = (load_upgrade_notes)
-    let series = ($notes.series? | default {})
-    if not (($series | describe) | str contains "record") {
-        error make {msg: "upgrade notes are missing the `series` table"}
-    }
-
-    let entry = ($series | get -o $series_key)
-    if $entry == null {
-        error make {msg: $"upgrade notes are missing the current major series entry `($series_key)`"}
-    }
-
-    if not (($entry | describe) | str contains "record") {
-        error make {msg: $"upgrade notes series entry `($series_key)` is not a record"}
-    }
-
-    ($entry | merge {key: $series_key, version: $version})
 }
 
 export def render_readme_latest_series_section [version: string = $YAZELIX_VERSION] {

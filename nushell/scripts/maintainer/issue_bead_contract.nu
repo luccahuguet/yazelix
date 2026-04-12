@@ -1,10 +1,10 @@
 #!/usr/bin/env nu
 
-def contract_start [] {
+export def contract_start [] {
     "2026-03-22T00:00:00Z" | into datetime
 }
 
-def canonical_issue_bead_comment_body [bead_id: string] {
+export def canonical_issue_bead_comment_body [bead_id: string] {
     $"Automated: Tracked in Beads as `($bead_id)`."
 }
 

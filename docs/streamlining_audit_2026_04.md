@@ -49,7 +49,7 @@ These are large, but currently justified enough to avoid reflexive splitting:
   - config/import/edit command behavior coverage
 - `nushell/scripts/utils/ascii_art.nu`
   - concentrated asset/renderer logic rather than mixed subsystem ownership
-- `nushell/scripts/utils/dev_update_workflow.nu`
+- `nushell/scripts/maintainer/update_workflow.nu`
   - one maintainer workflow family with a coherent owner
 
 These may still shrink later, but they are not the highest-value refactor targets right now.

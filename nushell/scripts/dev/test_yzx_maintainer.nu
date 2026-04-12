@@ -3,7 +3,7 @@
 # Test lane: maintainer
 
 use ../utils/common.nu [get_yazelix_state_dir]
-use ../utils/repo_checkout.nu [require_yazelix_repo_root]
+use ../maintainer/repo_checkout.nu [require_yazelix_repo_root]
 
 def profile_suite_runner [runner: closure] {
     let started = (date now)
@@ -21,20 +21,21 @@ def setup_dev_bump_fixture [] {
     let tmp_root = (^mktemp -d /tmp/yazelix_dev_bump_XXXXXX | str trim)
     let fixture_root = ($tmp_root | path join "repo")
     let utils_dir = ($fixture_root | path join "nushell" "scripts" "utils")
+    let maintainer_dir = ($fixture_root | path join "nushell" "scripts" "maintainer")
     let docs_dir = ($fixture_root | path join "docs")
 
     mkdir $fixture_root
     mkdir ($fixture_root | path join "nushell")
     mkdir ($fixture_root | path join "nushell" "scripts")
     mkdir $utils_dir
+    mkdir $maintainer_dir
     mkdir $docs_dir
 
     ^cp ($repo_root | path join "README.md") ($fixture_root | path join "README.md")
     ^cp ($repo_root | path join "CHANGELOG.md") ($fixture_root | path join "CHANGELOG.md")
     ^cp ($repo_root | path join "docs" "upgrade_notes.toml") ($docs_dir | path join "upgrade_notes.toml")
     ^cp ($repo_root | path join "nushell" "scripts" "utils" "constants.nu") ($utils_dir | path join "constants.nu")
-    ^cp ($repo_root | path join "nushell" "scripts" "utils" "readme_release_block.nu") ($utils_dir | path join "readme_release_block.nu")
-    ^cp ($repo_root | path join "nushell" "scripts" "utils" "dev_bump_workflow.nu") ($utils_dir | path join "dev_bump_workflow.nu")
+    ^cp ($repo_root | path join "nushell" "scripts" "maintainer" "version_bump.nu") ($maintainer_dir | path join "version_bump.nu")
 
     ^git -C $fixture_root init --quiet
     ^git -C $fixture_root config user.email "codex@example.com"
@@ -44,7 +45,7 @@ def setup_dev_bump_fixture [] {
 
     {
         repo_root: $fixture_root
-        helper_module: ($utils_dir | path join "dev_bump_workflow.nu")
+        helper_module: ($maintainer_dir | path join "version_bump.nu")
         constants_path: ($utils_dir | path join "constants.nu")
         notes_path: ($docs_dir | path join "upgrade_notes.toml")
         changelog_path: ($fixture_root | path join "CHANGELOG.md")
@@ -84,7 +85,7 @@ def test_issue_bead_reconciliation_plan [] {
 
     try {
         let command = '
-            source nushell/scripts/utils/issue_bead_contract.nu
+            source nushell/scripts/maintainer/issue_bead_contract.nu
             let github_issues = [
                 {number: 500, state: "OPEN", title: "Missing bead", url: "https://github.com/luccahuguet/yazelix/issues/500", createdAt: "2026-03-22T12:30:00Z", body: ""}
                 {number: 501, state: "OPEN", title: "Closed bead should reopen", url: "https://github.com/luccahuguet/yazelix/issues/501", createdAt: "2026-03-22T12:31:00Z", body: ""}
@@ -133,7 +134,7 @@ def test_issue_bead_comment_plan [] {
 
     try {
         let command = '
-            source nushell/scripts/utils/issue_bead_contract.nu
+            source nushell/scripts/maintainer/issue_bead_contract.nu
             let issue = {number: 600, state: "OPEN", title: "Comment contract", url: "https://github.com/luccahuguet/yazelix/issues/600", createdAt: "2026-03-22T12:40:00Z", body: ""}
             let bead = {id: "yazelix-comment", status: "open", external_ref: $issue.url}
             let missing = (plan_issue_bead_comment_sync $issue $bead [])
@@ -511,7 +512,7 @@ def test_dev_update_requires_explicit_activation_for_real_updates [] {
     print "🧪 Testing yzx dev update requires an explicit activation target unless canary-only is requested..."
 
     let repo_root = ($env.PWD | path expand)
-    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
+    let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
 
     try {
         let snippet = (
@@ -562,7 +563,7 @@ def test_dev_update_refreshes_runtime_flake_inputs [] {
     print "🧪 Testing yzx dev update refreshes flake nixpkgs directly..."
 
     let repo_root = ($env.PWD | path expand)
-    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
+    let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
     let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_inputs_XXXXXX | str trim)
     let bin_dir = ($tmp_root | path join "bin")
     let log_path = ($tmp_root | path join "update.log")
@@ -631,7 +632,7 @@ def test_dev_update_installer_activation_streams_install_logs [] {
     print "🧪 Testing yzx dev update installer activation streams local install logs through nix run -L..."
 
     let repo_root = ($env.PWD | path expand)
-    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
+    let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
     let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_installer_activation_XXXXXX | str trim)
     let bin_dir = ($tmp_root | path join "bin")
     let log_path = ($tmp_root | path join "activation.log")
@@ -701,7 +702,7 @@ def test_dev_update_home_manager_activation_refreshes_input_and_switches_request
     print "🧪 Testing yzx dev update Home Manager activation refreshes the input lock and switches the requested ref..."
 
     let repo_root = ($env.PWD | path expand)
-    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
+    let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
     let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_home_manager_activation_XXXXXX | str trim)
     let bin_dir = ($tmp_root | path join "bin")
     let flake_dir = ($tmp_root | path join "home-manager")
@@ -888,7 +889,7 @@ def test_dev_update_activation_mode_rejects_unknown_values [] {
     print "🧪 Testing yzx dev update activation parsing rejects unknown mode names..."
 
     let repo_root = ($env.PWD | path expand)
-    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
+    let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
 
     try {
         let snippet = (

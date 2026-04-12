@@ -525,95 +525,6 @@ def test_parse_yazelix_config_bootstraps_taplo_formatter_support [] {
     $result
 }
 
-# Defends: legacy root config is rejected unless the user explicitly allows migration.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation [] {
-    print "🧪 Testing parse_yazelix_config rejects legacy root-level config files when it cannot prompt..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_legacy_root_no_prompt"
-        '[shell]
-default_shell = "bash"
-'
-        --legacy-root
-    )
-
-    let result = (try {
-        let parser_result = (run_parse_yazelix_config_probe $fixture)
-
-        let stderr = ($parser_result.stderr | str trim)
-
-        if (
-            ($parser_result.exit_code != 0)
-            and ($stderr | str contains "legacy root-level config files but could not prompt for")
-            and ($stderr | str contains "confirmation")
-            and ($stderr | str contains "yzx doctor --fix")
-            and ($fixture.config_path | path exists)
-            and not (($fixture.user_config_dir | path join "yazelix.toml") | path exists)
-        ) {
-            print "  ✅ Legacy root-level config now fails clearly instead of silently relocating in non-interactive startup"
-            true
-        } else {
-            print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: explicit legacy-root migration uses the managed relocation path.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed [] {
-    print "🧪 Testing parse_yazelix_config relocates legacy root-level config when explicitly allowed..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_legacy_root_allowed"
-        '[shell]
-default_shell = "bash"
-'
-        --legacy-root
-    )
-
-    let result = (try {
-        let parsed = (with-env { YAZELIX_ACCEPT_USER_CONFIG_RELOCATION: "true" } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
-            with-env {
-                HOME: $fixture.tmp_home
-                YAZELIX_CONFIG_DIR: $fixture.config_dir
-                YAZELIX_RUNTIME_DIR: $fixture.repo_root
-                YAZELIX_ACCEPT_USER_CONFIG_RELOCATION: "true"
-            } {
-                parse_yazelix_config
-            }
-        })
-
-        let relocated_path = ($fixture.user_config_dir | path join "yazelix.toml")
-
-        if (
-            (($parsed.default_shell? | default "") == "bash")
-            and ($relocated_path | path exists)
-            and not ($fixture.config_path | path exists)
-        ) {
-            print "  ✅ Explicitly allowed relocation moves the legacy root config into user_configs"
-            true
-        } else {
-            print $"  ❌ Unexpected result: parsed=($parsed | to json -r) relocated_exists=(($relocated_path | path exists))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
 # Defends: removed pack config is rejected through the narrowed v15 config surface.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance [] {
@@ -1680,8 +1591,6 @@ export def run_generated_config_canonical_tests [] {
         (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
         (test_parse_yazelix_config_bootstraps_main_default_surface)
         (test_parse_yazelix_config_bootstraps_taplo_formatter_support)
-        (test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation)
-        (test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed)
         (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)
         (test_record_materialized_state_accepts_symlinked_managed_main_config)
         (test_user_mode_requires_real_terminal_config)

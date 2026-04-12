@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use common.nu get_yazelix_runtime_dir
+use ../utils/common.nu get_yazelix_runtime_dir
 
 def resolve_existing_path [candidate?: string] {
     if $candidate == null {

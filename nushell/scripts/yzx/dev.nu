@@ -5,11 +5,11 @@ use ../utils/common.nu [
     get_yazelix_state_dir
     resolve_yazelix_nu_bin
 ]
-use ../utils/repo_checkout.nu [require_yazelix_repo_root]
-use ../utils/dev_issue_sync.nu run_dev_issue_sync
-use ../utils/dev_plugin_build.nu [build_pane_orchestrator_wasm build_popup_plugin_wasm]
-use ../utils/dev_bump_workflow.nu perform_version_bump
-use ../utils/dev_update_workflow.nu run_dev_update_workflow
+use ../maintainer/repo_checkout.nu [require_yazelix_repo_root]
+use ../maintainer/issue_sync.nu run_dev_issue_sync
+use ../maintainer/plugin_build.nu [build_pane_orchestrator_wasm build_popup_plugin_wasm]
+use ../maintainer/version_bump.nu perform_version_bump
+use ../maintainer/update_workflow.nu run_dev_update_workflow
 use ../utils/startup_profile.nu [
     create_startup_profile_run
     load_startup_profile_report
@@ -172,7 +172,7 @@ export def "yzx dev test" [
     --all(-a)  # Run the default suite plus sweep + visual lanes
     --delay: int = 3  # Delay between visual terminal launches in seconds
 ] {
-    use ../utils/test_runner.nu run_all_tests
+    use ../maintainer/test_runner.nu run_all_tests
     run_all_tests --verbose=$verbose --new-window=$new_window --lint-only=$lint_only --profile=$profile --sweep=$sweep --visual=$visual --all=$all --delay $delay
 }
 
