@@ -269,6 +269,36 @@ def run_stubbed_yzx_run [fixture: record, command: string] {
     }
 }
 
+def setup_palette_catalog_runtime_fixture [label: string] {
+    let tmp_root = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
+    let runtime_root = ($tmp_root | path join "runtime")
+    let core_dir = ($runtime_root | path join "nushell" "scripts" "core")
+    let core_script = ($core_dir | path join "yazelix.nu")
+
+    mkdir $core_dir
+    "" | save --force --raw ($runtime_root | path join "yazelix_default.toml")
+
+    [
+        "#!/usr/bin/env nu"
+        "export def yzx [] {}"
+        "export def \"yzx launch\" [] {}"
+        "export def \"yzx status\" [] {}"
+        "export def \"yzx screen\" [] {}"
+        "export def \"yzx why\" [] {}"
+        "export def \"yzx env\" [] {}"
+        "export def \"yzx run\" [...argv: string] { $argv | ignore }"
+        "export def \"yzx cwd\" [target?: string] { $target | ignore }"
+        "export def \"yzx dev sync_issues\" [] {}"
+        "export def \"yzx test_dynamic\" [] {}"
+    ] | str join "\n" | save --force --raw $core_script
+
+    {
+        tmp_root: $tmp_root
+        runtime_root: $runtime_root
+        core_script: $core_script
+    }
+}
+
 def run_entrypoint_preflight_command [fixture: record, entrypoint_label: string, --allow-noninteractive] {
     let helper_script = (repo_path "nushell" "scripts" "utils" "entrypoint_config_migrations.nu")
     let allow_suffix = if $allow_noninteractive { " --allow-noninteractive" } else { "" }
@@ -1281,6 +1311,55 @@ terminals = ["ghostty"]
     $result
 }
 
+# Regression: yzx menu should derive its catalog from the live exported command tree instead of a handwritten list.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
+    print "🧪 Testing yzx menu catalog tracks the live exported command surface..."
+
+    let fixture = (setup_palette_catalog_runtime_fixture "yazelix_menu_catalog_runtime")
+    let menu_script = (repo_path "nushell" "scripts" "yzx" "menu.nu")
+
+    let result = (try {
+        let output = (with-env {
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_root
+        } {
+            ^nu -c $"source \"($menu_script)\"; get_palette_command_entries | select id category | to json -r" | complete
+        })
+        let entries = ($output.stdout | from json)
+        let ids = ($entries | get id)
+
+        if (
+            ($output.exit_code == 0)
+            and ("yzx" in $ids)
+            and ("yzx launch" in $ids)
+            and ("yzx status" in $ids)
+            and ("yzx screen" in $ids)
+            and ("yzx test_dynamic" in $ids)
+            and not ("yzx env" in $ids)
+            and not ("yzx run" in $ids)
+            and not ("yzx cwd" in $ids)
+            and not ("yzx dev sync_issues" in $ids)
+            and (($entries | where id == "yzx" | get -o 0.category | default "") == "help")
+            and (($entries | where id == "yzx launch" | get -o 0.category | default "") == "session")
+            and (($entries | where id == "yzx screen" | get -o 0.category | default "") == "workspace")
+            and (($entries | where id == "yzx status" | get -o 0.category | default "") == "system")
+            and (($entries | where id == "yzx test_dynamic" | get -o 0.category | default "") == "system")
+        ) {
+            print "  ✅ yzx menu now derives its catalog from the live exported command surface and only applies explicit exclusions"
+            true
+        } else {
+            print $"  ❌ Unexpected menu catalog result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_root
+    $result
+}
+
 export def run_core_canonical_tests [] {
     [
         (test_entrypoint_preflight_auto_applies_safe_migrations)
@@ -1305,5 +1384,6 @@ export def run_core_canonical_tests [] {
         (test_invalid_config_is_classified_as_config_problem)
         (test_startup_reports_known_config_migration_before_generic_wrappers)
         (test_yzx_status_reports_basic_runtime_summary)
+        (test_yzx_menu_catalog_tracks_live_exported_command_surface)
     ]
 }

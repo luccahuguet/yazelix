@@ -15,59 +15,30 @@ const PALETTE_CATEGORY_STYLE = {
 
 const PALETTE_EXCLUDED_COMMANDS = [
     "yzx menu"
-    "yzx menu --popup"
     "yzx env"
     "yzx run"
     "yzx cwd"
 ]
 
-const PUBLIC_YZX_COMMAND_CATALOG = [
-    {id: "yzx", category: "help", description: ""}
-    {id: "yzx config", category: "config", description: "Show the active Yazelix configuration"}
-    {id: "yzx config reset", category: "config", description: ""}
-    {id: "yzx cwd", category: "workspace", description: "Retarget the current tab workspace root via a path or zoxide query."}
-    {id: "yzx desktop install", category: "system", description: ""}
-    {id: "yzx desktop launch", category: "system", description: ""}
-    {id: "yzx desktop uninstall", category: "system", description: ""}
-    {id: "yzx doctor", category: "system", description: "Run health checks and diagnostics"}
-    {id: "yzx edit", category: "config", description: ""}
-    {id: "yzx edit config", category: "config", description: ""}
-    {id: "yzx enter", category: "session", description: "Start Yazelix in the current terminal"}
-    {id: "yzx env", category: "system", description: "Load yazelix environment without UI"}
-    {id: "yzx home_manager", category: "system", description: "Home Manager takeover helpers for Yazelix-owned paths."}
-    {id: "yzx home_manager prepare", category: "system", description: "Preview or archive manual-install artifacts before Home Manager takeover."}
-    {id: "yzx import", category: "config", description: "Import native config files into Yazelix-managed override paths."}
-    {id: "yzx import helix", category: "config", description: "Import the native Helix config into Yazelix-managed overrides."}
-    {id: "yzx import yazi", category: "config", description: "Import native Yazi config files into Yazelix-managed overrides."}
-    {id: "yzx import zellij", category: "config", description: "Import the native Zellij config into Yazelix-managed overrides."}
-    {id: "yzx keys", category: "help", description: "Show Yazelix-owned keybindings and remaps."}
-    {id: "yzx keys helix", category: "help", description: "Alias for `yzx keys hx`."}
-    {id: "yzx keys hx", category: "help", description: "Explain how to discover Helix keybindings and commands."}
-    {id: "yzx keys nu", category: "help", description: "Show a small curated subset of useful Nushell keybindings."}
-    {id: "yzx keys nushell", category: "help", description: "Alias for `yzx keys nu`."}
-    {id: "yzx keys yazi", category: "help", description: "Explain how to view Yazi's built-in keybindings."}
-    {id: "yzx keys yzx", category: "help", description: "Alias for the default Yazelix keybinding view."}
-    {id: "yzx launch", category: "session", description: "Launch yazelix"}
-    {id: "yzx menu", category: "help", description: "Interactive command palette for Yazelix"}
-    {id: "yzx popup", category: "workspace", description: ""}
-    {id: "yzx restart", category: "session", description: "Restart yazelix"}
-    {id: "yzx reveal", category: "workspace", description: ""}
-    {id: "yzx run", category: "system", description: "Run a command in the Yazelix environment and exit"}
-    {id: "yzx screen", category: "workspace", description: "Preview the animated welcome screen directly in the current terminal."}
-    {id: "yzx sponsor", category: "help", description: ""}
-    {id: "yzx status", category: "system", description: "Canonical inspection command"}
-    {id: "yzx tutor", category: "help", description: "Show the Yazelix guided overview."}
-    {id: "yzx tutor helix", category: "help", description: "Alias for `yzx tutor hx`."}
-    {id: "yzx tutor hx", category: "help", description: "Launch Helix's built-in tutorial."}
-    {id: "yzx tutor nu", category: "help", description: "Launch Nushell's built-in tutorial in a fresh Nushell process."}
-    {id: "yzx tutor nushell", category: "help", description: "Alias for `yzx tutor nu`."}
-    {id: "yzx update", category: "system", description: "Choose the Yazelix update owner path"}
-    {id: "yzx update upstream", category: "system", description: "Refresh Yazelix from the upstream installer surface"}
-    {id: "yzx update home_manager", category: "system", description: "Refresh the current Home Manager flake input and print the switch step"}
-    {id: "yzx update nix", category: "system", description: ""}
-    {id: "yzx whats_new", category: "help", description: ""}
-    {id: "yzx why", category: "help", description: "Elevator pitch: Why Yazelix"}
-]
+const PALETTE_DESCRIPTION_OVERRIDES = {
+    "yzx config reset": "Reset managed Yazelix config surfaces back to their defaults."
+    "yzx desktop install": "Install or refresh the Yazelix desktop entry and icon assets."
+    "yzx desktop launch": "Launch Yazelix through the desktop-entry path."
+    "yzx desktop uninstall": "Remove Yazelix-managed desktop entry and icon assets."
+    "yzx edit": "Open the managed Yazelix config directory."
+    "yzx edit config": "Open the active Yazelix config file."
+    "yzx home_manager": "Home Manager takeover helpers for Yazelix-owned paths."
+    "yzx home_manager prepare": "Preview or archive manual-install artifacts before Home Manager takeover."
+    "yzx popup": "Open a floating terminal tool pane, for example `yzx popup lazygit`."
+    "yzx restart": "Restart Yazelix."
+    "yzx reveal": "Reveal a path in the managed Yazi sidebar."
+    "yzx screen": "Preview the animated welcome screen directly in the current terminal."
+    "yzx sponsor": "Show the sponsorship links and support message."
+    "yzx update home_manager": "Refresh the current Home Manager input and print the switch step."
+    "yzx update nix": "Refresh the runtime lock and print the local install step."
+    "yzx update upstream": "Refresh Yazelix from the upstream installer surface."
+    "yzx whats_new": "Show the latest release notes."
+}
 
 def format_palette_item [entry: record] {
     let category = ($entry.category | into string)
@@ -93,10 +64,91 @@ def is_palette_eligible_command [cmd: string] {
     )
 }
 
-def get_palette_menu_items [] {
-    $PUBLIC_YZX_COMMAND_CATALOG
-    | where {|entry| is_palette_eligible_command $entry.id }
+def fetch_yzx_command_catalog [] {
+    let runtime_dir = (get_yazelix_runtime_dir)
+    let runtime_nu = (resolve_yazelix_nu_bin)
+    let probe = (do {
+        cd $runtime_dir
+        ^$runtime_nu -c 'source nushell/scripts/core/yazelix.nu; scope commands | where {|command| ($command.name == "yzx") or ($command.name | str starts-with "yzx ")} | sort-by name | select name description extra_description | to json -r' | complete
+    })
+
+    if $probe.exit_code != 0 {
+        let stderr = ($probe.stderr | default "" | str trim)
+        error make {msg: $"Failed to inspect the exported yzx command surface for the command palette: ($stderr)"}
+    }
+
+    $probe.stdout | from json
+}
+
+def palette_category_for_command [cmd: string] {
+    if $cmd == "yzx" {
+        "help"
+    } else if (
+        ($cmd | str starts-with "yzx launch")
+        or ($cmd | str starts-with "yzx enter")
+        or ($cmd | str starts-with "yzx restart")
+    ) {
+        "session"
+    } else if (
+        ($cmd | str starts-with "yzx popup")
+        or ($cmd | str starts-with "yzx reveal")
+        or ($cmd | str starts-with "yzx screen")
+    ) {
+        "workspace"
+    } else if (
+        ($cmd | str starts-with "yzx config")
+        or ($cmd | str starts-with "yzx edit")
+        or ($cmd | str starts-with "yzx import")
+    ) {
+        "config"
+    } else if (
+        ($cmd | str starts-with "yzx keys")
+        or ($cmd | str starts-with "yzx tutor")
+        or ($cmd | str starts-with "yzx why")
+        or ($cmd | str starts-with "yzx whats_new")
+        or ($cmd | str starts-with "yzx sponsor")
+    ) {
+        "help"
+    } else {
+        "system"
+    }
+}
+
+def palette_description_for_command [command: record] {
+    let id = ($command.name | into string)
+    let discovered = (
+        [
+            ($command.description? | default "" | str trim)
+            ($command.extra_description? | default "" | str trim)
+        ]
+        | where {|value| $value | is-not-empty }
+        | get -o 0
+        | default ""
+    )
+    let override = ($PALETTE_DESCRIPTION_OVERRIDES | get -o $id | default "")
+
+    if ($override | is-not-empty) {
+        $override
+    } else {
+        $discovered
+    }
+}
+
+def get_palette_command_entries [] {
+    fetch_yzx_command_catalog
+    | where {|command| is_palette_eligible_command $command.name }
+    | each {|command|
+        {
+            id: $command.name
+            category: (palette_category_for_command $command.name)
+            description: (palette_description_for_command $command)
+        }
+    }
     | sort-by id
+}
+
+def get_palette_menu_items [] {
+    get_palette_command_entries
     | each {|entry| format_palette_item $entry }
 }
 
