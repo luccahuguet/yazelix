@@ -12,7 +12,7 @@ The repo keeps one maintained static preview. Add richer demos only when there i
 ## Overview
 Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://github.com/zellij-org/zellij), and [Helix](https://helix-editor.com) (hence the name!), with first-class support for [Neovim](https://neovim.io) too.
 
-- Yazelix now uses the managed `yazelix.toml` config surface. The legacy `yazelix.nix` config is gone, and the normal flake surface is the packaged `yazelix` runtime plus the top-level Home Manager module. `devenv.nix` remains the maintainer shell for repo work.
+- Yazelix now uses the managed `yazelix.toml` config surface. The legacy `yazelix.nix` config is gone, and the normal flake surface is the packaged `yazelix` runtime plus the top-level Home Manager module. Repo work now uses the flake maintainer shell defined in `maintainer_shell.nix`.
 
 - **Use your preferred shell**: Bash, Fish, Zsh, or Nushell - Yazelix works with all of them
 - Zellij orchestrates everything, with Yazi as a sidebar and your chosen editor (Helix by default)
