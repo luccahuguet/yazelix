@@ -4,10 +4,8 @@ use ../utils/constants.nu ZELLIJ_CONFIG_PATHS
 use ../utils/atomic_writes.nu write_text_atomic
 use ./zellij_plugin_paths.nu [
     get_runtime_pane_orchestrator_wasm_path
-    get_runtime_popup_runner_wasm_path
     get_runtime_zjstatus_wasm_path
     get_tracked_pane_orchestrator_wasm_path
-    get_tracked_popup_runner_wasm_path
     get_tracked_zjstatus_wasm_path
 ]
 
@@ -81,12 +79,6 @@ export def resolve_zellij_plugin_artifacts [yazelix_dir: string] {
             tracked_path: (get_tracked_pane_orchestrator_wasm_path $yazelix_dir)
             runtime_path: (get_runtime_pane_orchestrator_wasm_path)
             missing_label: "Tracked pane orchestrator wasm"
-        }
-        {
-            name: "popup_runner"
-            tracked_path: (get_tracked_popup_runner_wasm_path $yazelix_dir)
-            runtime_path: (get_runtime_popup_runner_wasm_path)
-            missing_label: "Tracked popup runner wasm"
         }
         {
             name: "zjstatus"

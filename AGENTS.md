@@ -11,6 +11,7 @@ Use Beads (`bd`) as the agent memory and triage layer for Yazelix work.
 - Use `bd` for all issue mutations: create, update, close, dependency management.
 - bd uses embedded Dolt (`.beads/embeddeddolt/`) as its storage backend — there is no separate DB/JSONL sync cycle. `bd export` and `bd import` handle JSONL interchange when needed.
 - Never fire `bd` write commands in parallel from multiple tools or subshells at once; bd uses file-level locking and a single-writer model.
+- Treat embedded-`bd` access as one-at-a-time in practice: even parallel read commands can trip the embedded Dolt lock. Serialize `bd` reads/writes unless you intentionally switch to a backend that supports concurrent access.
 - Treat scope boundaries strictly:
   - `bd ready` and `bd prime` decide what to work on.
   - `bd` updates issue state.
@@ -136,22 +137,13 @@ When creating new files or directories, always use underscores to maintain consi
 ## Rust Plugin Workflow
 
 - **Rust pane-orchestrator source edits are not live by themselves.** Changes under `rust_plugins/zellij_pane_orchestrator/` do not affect Yazelix behavior until the wasm is rebuilt and synced into the tracked/runtime plugin paths.
-- **Rust popup-runner source edits are not live by themselves either.** Changes under `rust_plugins/zellij_popup_runner/` do not affect Yazelix behavior until that wasm is rebuilt and synced into the tracked/runtime plugin paths.
 - After changing the pane orchestrator, rebuild and sync it before claiming behavior is fixed:
   ```bash
   yzx dev build_pane_orchestrator --sync
   ```
-- After changing the popup runner, rebuild and sync it before claiming popup behavior is fixed:
-  ```bash
-  yzx dev build_popup_plugin --sync
-  ```
 - If the current shell toolchain cannot build `wasm32-wasip1`, use the flake maintainer shell:
   ```bash
   nix develop -c nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_pane_orchestrator --sync'
-  ```
-- For popup-runner rebuilds in the flake maintainer shell:
-  ```bash
-  nix develop -c nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_popup_plugin --sync'
   ```
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the synced wasm plus a fresh Yazelix session.
 - After syncing a new plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.

@@ -589,6 +589,7 @@ export def run_popup_canonical_tests [] {
         (test_popup_cwd_prefers_workspace_root)
         (test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages)
         (test_popup_program_wrapper_runs_resolved_argv_directly)
+        (test_popup_program_wrapper_falls_back_to_configured_default_when_args_are_missing)
         (test_menu_popup_wrapper_marks_popup_mode_and_closes_transient_pane)
         (test_popup_wrapper_env_falls_back_to_runtime_env)
         (test_popup_wrapper_serializes_path_list_for_env_command)

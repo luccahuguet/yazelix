@@ -7,7 +7,7 @@ use ../utils/common.nu [
 ]
 use ../maintainer/repo_checkout.nu [require_yazelix_repo_root]
 use ../maintainer/issue_sync.nu run_dev_issue_sync
-use ../maintainer/plugin_build.nu [build_pane_orchestrator_wasm build_popup_plugin_wasm]
+use ../maintainer/plugin_build.nu build_pane_orchestrator_wasm
 use ../maintainer/version_bump.nu perform_version_bump
 use ../maintainer/update_workflow.nu run_dev_update_workflow
 use ../utils/startup_profile.nu [
@@ -53,12 +53,6 @@ export def "yzx dev build_pane_orchestrator" [
     --sync  # Sync the built wasm into the repo/runtime paths after a successful build
 ] {
     build_pane_orchestrator_wasm $sync
-}
-
-export def "yzx dev build_popup_plugin" [
-    --sync  # Sync the built wasm into the repo/runtime paths after a successful build
-] {
-    build_popup_plugin_wasm $sync
 }
 
 def clear_startup_profile_caches [] {

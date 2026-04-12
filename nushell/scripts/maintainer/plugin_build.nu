@@ -18,22 +18,6 @@ def get_pane_orchestrator_paths [] {
     }
 }
 
-def get_popup_runner_paths [] {
-    let yazelix_dir = require_yazelix_repo_root
-    let crate_dir = ($yazelix_dir | path join "rust_plugins" "zellij_popup_runner")
-    let build_target = "wasm32-wasip1"
-    let wasm_path = ($crate_dir | path join "target" $build_target "release" "yazelix_popup_runner.wasm")
-    let sync_script = ($yazelix_dir | path join "nushell" "scripts" "dev" "update_zellij_popup_runner.nu")
-
-    {
-        yazelix_dir: $yazelix_dir
-        crate_dir: $crate_dir
-        build_target: $build_target
-        wasm_path: $wasm_path
-        sync_script: $sync_script
-    }
-}
-
 def print_rust_wasi_enable_hint [] {
     print "   Install a WASI-capable Rust toolchain in your maintainer environment."
     print "   Example: run the build inside the repo's maintainer shell, or use `rustup target add wasm32-wasip1`."
@@ -112,14 +96,5 @@ export def build_pane_orchestrator_wasm [sync: bool = false] {
 
     if $sync {
         sync_built_wasm $paths "pane orchestrator"
-    }
-}
-
-export def build_popup_plugin_wasm [sync: bool = false] {
-    let paths = get_popup_runner_paths
-    run_wasm_build $paths "popup runner"
-
-    if $sync {
-        sync_built_wasm $paths "popup runner"
     }
 }

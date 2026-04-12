@@ -1428,6 +1428,7 @@ popup_height_percent = 76
             and ($generated_config | str contains 'payload "popup"')
             and ($generated_config | str contains 'payload "menu"')
             and (($generated_config | lines | where {|line| $line | str contains $"runtime_dir \"($repo_root)\""} | length) >= 3)
+            and not ($generated_config | str contains "yazelix_popup_runner.wasm")
             and not ($generated_config | str contains 'configs/zellij/scripts/yzx_toggle_popup.nu')
             and not ($generated_config | str contains 'width "70%"')
             and not ($generated_config | str contains 'height "70%"')

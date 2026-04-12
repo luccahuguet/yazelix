@@ -33,8 +33,8 @@ use ./zellij_semantic_blocks.nu [
 ]
 use ./zellij_plugin_paths.nu [
     PANE_ORCHESTRATOR_PLUGIN_ALIAS
+    cleanup_legacy_popup_runner_artifacts
     sync_pane_orchestrator_runtime_wasm
-    sync_popup_runner_runtime_wasm
     sync_zjstatus_runtime_wasm
 ]
 
@@ -69,6 +69,9 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     let plugin_artifacts = (profile_startup_step "zellij_config" "resolve_plugin_artifacts" {
         resolve_zellij_plugin_artifacts $yazelix_dir
     })
+    profile_startup_step "zellij_config" "cleanup_legacy_popup_runner" {
+        cleanup_legacy_popup_runner_artifacts
+    } | ignore
     let base_config_source = (profile_startup_step "zellij_config" "load_base_config" {
         resolve_base_config_source
     })
@@ -110,9 +113,6 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
 
     let pane_orchestrator_wasm_path = (profile_startup_step "zellij_config" "sync_pane_orchestrator_plugin" {
         sync_pane_orchestrator_runtime_wasm $yazelix_dir
-    })
-    let popup_runner_wasm_path = (profile_startup_step "zellij_config" "sync_popup_runner_plugin" {
-        sync_popup_runner_runtime_wasm $yazelix_dir
     })
     let zjstatus_wasm_path = (profile_startup_step "zellij_config" "sync_zjstatus_plugin" {
         sync_zjstatus_runtime_wasm $yazelix_dir
@@ -198,7 +198,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         (render_yazelix_top_level_settings_block "// === YAZELIX ENFORCED SETTINGS ===" $enforced_top_level_settings),
         "",
         "// === YAZELIX BACKGROUND PLUGINS ===",
-        (build_yazelix_load_plugins_block $extracted_blocks.load_plugin_lines $PANE_ORCHESTRATOR_PLUGIN_ALIAS $popup_runner_wasm_path)
+        (build_yazelix_load_plugins_block $extracted_blocks.load_plugin_lines $PANE_ORCHESTRATOR_PLUGIN_ALIAS)
     ] | str join "\n"
     
     try {

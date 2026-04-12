@@ -92,19 +92,21 @@ export def extract_semantic_config_blocks [config_content: string] {
 export def build_yazelix_load_plugins_block [
     existing_load_plugin_lines: list<string>
     pane_orchestrator_alias: string
-    popup_runner_wasm_path: string
 ] {
-    mut merged_plugin_lines = ($existing_load_plugin_lines | flatten)
+    mut merged_plugin_lines = (
+        $existing_load_plugin_lines
+        | flatten
+        | where {|line|
+            not (
+                ($line | str contains "yazelix_popup_runner.wasm")
+                or ($line | str contains "yazelix_popup_runner")
+            )
+        }
+    )
     let pane_orchestrator_entry = $"  ($pane_orchestrator_alias)"
     let pane_orchestrator_present = ($merged_plugin_lines | any {|line| ($line | str trim) == $pane_orchestrator_alias })
     if not $pane_orchestrator_present {
         $merged_plugin_lines = ($merged_plugin_lines | append $pane_orchestrator_entry)
-    }
-
-    let popup_runner_entry = $"  \"file:($popup_runner_wasm_path)\""
-    let popup_runner_present = ($merged_plugin_lines | any {|line| $line | str contains $popup_runner_wasm_path })
-    if not $popup_runner_present {
-        $merged_plugin_lines = ($merged_plugin_lines | append $popup_runner_entry)
     }
 
     (

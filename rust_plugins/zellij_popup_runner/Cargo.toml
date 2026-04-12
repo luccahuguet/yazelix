@@ -1,7 +1,0 @@
-[package]
-name = "yazelix_popup_runner"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-zellij-tile = "0.44.0"

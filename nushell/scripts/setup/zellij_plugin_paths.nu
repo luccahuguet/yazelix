@@ -5,8 +5,6 @@ use ../utils/atomic_writes.nu [copy_file_atomic write_text_atomic]
 
 const pane_orchestrator_plugin_prefix = "yazelix_pane_orchestrator"
 const pane_orchestrator_wasm_name = "yazelix_pane_orchestrator.wasm"
-const popup_runner_plugin_prefix = "yazelix_popup_runner"
-const popup_runner_wasm_name = "yazelix_popup_runner.wasm"
 const zjstatus_wasm_name = "zjstatus.wasm"
 export const PANE_ORCHESTRATOR_PLUGIN_ALIAS = "yazelix_pane_orchestrator"
 const pane_orchestrator_required_permissions = [
@@ -15,11 +13,6 @@ const pane_orchestrator_required_permissions = [
     "ChangeApplicationState"
     "RunCommands"
     "WriteToStdin"
-    "ReadCliPipes"
-]
-const popup_runner_required_permissions = [
-    "ReadApplicationState"
-    "ChangeApplicationState"
     "ReadCliPipes"
 ]
 const zjstatus_plugin_prefix = "zjstatus"
@@ -35,10 +28,6 @@ def get_runtime_plugins_dir [] {
 
 def get_runtime_pane_orchestrator_target_path [] {
     (get_runtime_plugins_dir) | path join $pane_orchestrator_wasm_name
-}
-
-def get_runtime_popup_runner_target_path [] {
-    (get_runtime_plugins_dir) | path join $popup_runner_wasm_name
 }
 
 def get_runtime_zjstatus_target_path [] {
@@ -181,10 +170,6 @@ def preserve_pane_orchestrator_permissions [tracked_path: string, runtime_path: 
     preserve_plugin_permissions $pane_orchestrator_plugin_prefix $tracked_path $runtime_path $pane_orchestrator_required_permissions
 }
 
-def preserve_popup_runner_permissions [tracked_path: string, runtime_path: string] {
-    preserve_plugin_permissions $popup_runner_plugin_prefix $tracked_path $runtime_path $popup_runner_required_permissions
-}
-
 def preserve_zjstatus_permissions [tracked_path: string, runtime_path: string] {
     preserve_plugin_permissions $zjstatus_plugin_prefix $tracked_path $runtime_path $zjstatus_required_permissions
 }
@@ -194,14 +179,73 @@ export def get_tracked_pane_orchestrator_wasm_path [yazelix_dir?: string] {
     $root | path join "configs" "zellij" "plugins" $pane_orchestrator_wasm_name
 }
 
-export def get_tracked_popup_runner_wasm_path [yazelix_dir?: string] {
-    let root = (($yazelix_dir | default (get_yazelix_runtime_dir)) | path expand)
-    $root | path join "configs" "zellij" "plugins" $popup_runner_wasm_name
-}
-
 export def get_tracked_zjstatus_wasm_path [yazelix_dir?: string] {
     let root = (($yazelix_dir | default (get_yazelix_runtime_dir)) | path expand)
     $root | path join "configs" "zellij" "plugins" $zjstatus_wasm_name
+}
+
+def remove_runtime_plugins_by_prefix [plugin_prefix: string] {
+    let runtime_dir = (get_runtime_plugins_dir)
+    if not ($runtime_dir | path exists) {
+        return []
+    }
+
+    let plugin_name_pattern = ("^" + $plugin_prefix + "(_[0-9a-f]+)?\\.wasm$")
+    let stale_runtime_plugins = (
+        ls $runtime_dir
+        | where type == file
+        | each {|entry|
+            let full_path = $entry.name
+            let file_name = ($full_path | path basename)
+            {
+                full_path: $full_path
+                file_name: $file_name
+            }
+        }
+        | where file_name =~ $plugin_name_pattern
+        | get full_path
+    )
+
+    if ($stale_runtime_plugins | length) > 0 {
+        rm --force ...$stale_runtime_plugins
+    }
+
+    $stale_runtime_plugins
+}
+
+def remove_permission_blocks_by_prefix [plugin_prefix: string] {
+    let permissions_cache_path = (get_permissions_cache_path)
+    if not ($permissions_cache_path | path exists) {
+        return {status: "missing_cache"}
+    }
+
+    let blocks = (parse_permission_blocks (open --raw $permissions_cache_path))
+    let retained_blocks = (
+        $blocks
+        | where {|block|
+            let file_name = ($block.path | path basename)
+            not ($file_name =~ ("^" + $plugin_prefix + "(_[0-9a-f]+)?\\.wasm$"))
+        }
+    )
+
+    if ($retained_blocks | length) == ($blocks | length) {
+        return {status: "no_matches"}
+    }
+
+    let updated_content = (
+        $retained_blocks
+        | each {|block| build_permission_block $block.path $block.permissions }
+        | str join "\n\n"
+    )
+    write_text_atomic $permissions_cache_path $updated_content --raw | ignore
+    {status: "updated"}
+}
+
+export def cleanup_legacy_popup_runner_artifacts [] {
+    {
+        removed_runtime_plugins: (remove_runtime_plugins_by_prefix "yazelix_popup_runner")
+        permissions: (remove_permission_blocks_by_prefix "yazelix_popup_runner")
+    }
 }
 
 export def sync_pane_orchestrator_runtime_wasm [yazelix_dir?: string] {
@@ -243,45 +287,6 @@ export def sync_pane_orchestrator_runtime_wasm [yazelix_dir?: string] {
     $runtime_path
 }
 
-export def sync_popup_runner_runtime_wasm [yazelix_dir?: string] {
-    let tracked_path = (get_tracked_popup_runner_wasm_path $yazelix_dir)
-    if not ($tracked_path | path exists) {
-        error make {msg: $"Tracked popup runner wasm not found at: ($tracked_path)"}
-    }
-
-    let runtime_dir = (get_runtime_plugins_dir)
-    let runtime_path = (get_runtime_popup_runner_target_path)
-
-    copy_file_atomic $tracked_path $runtime_path | ignore
-
-    if ($runtime_dir | path exists) {
-        let plugin_name_pattern = ("^" + $popup_runner_plugin_prefix + "(_[0-9a-f]+)?\\.wasm$")
-        let stale_runtime_plugins = (
-            ls $runtime_dir
-            | where type == file
-            | each {|entry|
-                let full_path = $entry.name
-                let file_name = ($full_path | path basename)
-                {
-                    full_path: $full_path
-                    file_name: $file_name
-                }
-            }
-            | where file_name =~ $plugin_name_pattern
-            | where full_path != $runtime_path
-            | get full_path
-        )
-
-        if ($stale_runtime_plugins | length) > 0 {
-            rm --force ...$stale_runtime_plugins
-        }
-    }
-
-    preserve_popup_runner_permissions $tracked_path $runtime_path | ignore
-
-    $runtime_path
-}
-
 export def sync_zjstatus_runtime_wasm [yazelix_dir?: string] {
     let tracked_path = (get_tracked_zjstatus_wasm_path $yazelix_dir)
     if not ($tracked_path | path exists) {
@@ -305,27 +310,20 @@ export def get_runtime_pane_orchestrator_wasm_path [] {
     get_runtime_pane_orchestrator_target_path
 }
 
-export def get_runtime_popup_runner_wasm_path [] {
-    get_runtime_popup_runner_target_path
-}
-
 export def get_runtime_zjstatus_wasm_path [] {
     get_runtime_zjstatus_target_path
 }
 
 export def seed_yazelix_plugin_permissions [yazelix_dir?: string] {
+    let legacy_popup_runner_cleanup = (cleanup_legacy_popup_runner_artifacts)
     let tracked_pane_orchestrator = (get_tracked_pane_orchestrator_wasm_path $yazelix_dir)
-    let tracked_popup_runner = (get_tracked_popup_runner_wasm_path $yazelix_dir)
     let tracked_zjstatus = (get_tracked_zjstatus_wasm_path $yazelix_dir)
     let runtime_pane_orchestrator = (sync_pane_orchestrator_runtime_wasm $yazelix_dir)
-    let runtime_popup_runner = (sync_popup_runner_runtime_wasm $yazelix_dir)
     let runtime_zjstatus = (sync_zjstatus_runtime_wasm $yazelix_dir)
 
     let blocks = [
         (build_permission_block $tracked_pane_orchestrator $pane_orchestrator_required_permissions)
         (build_permission_block $runtime_pane_orchestrator $pane_orchestrator_required_permissions)
-        (build_permission_block $tracked_popup_runner $popup_runner_required_permissions)
-        (build_permission_block $runtime_popup_runner $popup_runner_required_permissions)
         (build_permission_block $tracked_zjstatus $zjstatus_required_permissions)
         (build_permission_block $runtime_zjstatus $zjstatus_required_permissions)
     ]
@@ -333,10 +331,9 @@ export def seed_yazelix_plugin_permissions [yazelix_dir?: string] {
 
     {
         permissions_cache_path: $permissions_cache_path
+        legacy_popup_runner_cleanup: $legacy_popup_runner_cleanup
         tracked_pane_orchestrator: $tracked_pane_orchestrator
         runtime_pane_orchestrator: $runtime_pane_orchestrator
-        tracked_popup_runner: $tracked_popup_runner
-        runtime_popup_runner: $runtime_popup_runner
         tracked_zjstatus: $tracked_zjstatus
         runtime_zjstatus: $runtime_zjstatus
     }
