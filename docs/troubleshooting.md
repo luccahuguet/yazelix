@@ -123,12 +123,13 @@ The updated launcher uses POSIX `sh` with explicit Nix paths, bypassing bash pro
 
 If clicking Yazelix in your application menu does nothing:
 
-1. **Reinstall the desktop entry:** The launcher may be outdated or still point at an older runtime path
+1. **Reinstall the desktop entry for manual/profile installs:** The launcher may be outdated or still point at an older runtime path
    ```bash
    yzx desktop install
    ```
-2. **Verify your package/profile path:** Ensure the package or Home Manager profile that provides `yzx` is still present
-3. **If you no longer want local desktop integration:** remove the user-local entry with `yzx desktop uninstall`
+2. **For Home Manager installs:** reapply your Home Manager configuration instead of running `yzx desktop install`; Home Manager owns the profile desktop entry
+3. **Verify your package/profile path:** Ensure the package or Home Manager profile that provides `yzx` is still present
+4. **If a stale user-local entry shadows Home Manager:** remove it with `yzx desktop uninstall`
 
 ## Editor Issues
 

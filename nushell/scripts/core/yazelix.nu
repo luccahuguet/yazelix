@@ -7,6 +7,8 @@ use ../utils/constants.nu *
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu get_yazelix_runtime_dir
 use ../utils/environment_bootstrap.nu [prepare_environment]
+use ../utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path
+use ../utils/version_info.nu [print_version_info]
 use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../setup/shell_hooks.nu [check_shell_hook_versions]
 use ../integrations/managed_editor.nu get_managed_editor_kind
@@ -251,9 +253,7 @@ export def "yzx status" [
     }
     if $versions {
         print ""
-        let version_info_script = ($yazelix_dir | path join "nushell" "scripts" "utils" "version_info.nu")
-        let version_info_command = $"source \"($version_info_script)\"; main"
-        ^nu -c $version_info_command
+        print_version_info
     }
     print "=========================="
 }
@@ -320,10 +320,6 @@ def create_restart_sidebar_bootstrap_file [target_dir: string] {
     $bootstrap_file
 }
 
-def get_installed_yzx_wrapper_path [] {
-    ($env.HOME | path join ".local" "bin" "yzx")
-}
-
 # Restart yazelix
 export def "yzx restart" [
 ] {
@@ -343,14 +339,14 @@ export def "yzx restart" [
         print "🔄 Restarting Yazelix \(opening new window\)..."
     }
 
-    let installed_wrapper = (get_installed_yzx_wrapper_path)
-    if ($installed_wrapper | path exists) {
+    let stable_wrapper = (resolve_stable_yzx_wrapper_path)
+    if $stable_wrapper != null {
         let launch_output = (with-env $restart_env {
-            ^$installed_wrapper launch | complete
+            ^$stable_wrapper launch | complete
         })
         if $launch_output.exit_code != 0 {
             print_completed_output $launch_output
-            print "❌ Failed to relaunch Yazelix through the installed wrapper."
+            print "❌ Failed to relaunch Yazelix through the stable owner wrapper."
             exit $launch_output.exit_code
         }
     } else {

@@ -7,9 +7,9 @@ def write_executable [path: string, body: string] {
 }
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-# Defends: yzx gc surfaces phase-by-phase progress and completion feedback.
+# Defends: yzx gc surfaces Nix-store progress and completion feedback without owning devenv GC.
 def test_yzx_gc_surfaces_phase_feedback [] {
-    print "🧪 Testing yzx gc surfaces start/finish feedback for each phase..."
+    print "🧪 Testing yzx gc surfaces Nix-store start/finish feedback..."
 
     let tmpdir = (^mktemp -d /tmp/yazelix_gc_feedback_XXXXXX | str trim)
 
@@ -21,14 +21,6 @@ def test_yzx_gc_surfaces_phase_feedback [] {
 
         write_executable ($fake_bin | path join "du") '#!/bin/sh
 printf "1048576\t/nix/store\n"
-'
-        write_executable ($fake_bin | path join "devenv") '#!/bin/sh
-if [ "$1" = "gc" ]; then
-  echo "devenv cleaned"
-  exit 0
-fi
-echo "unexpected devenv args: $*" >&2
-exit 1
 '
         write_executable ($fake_bin | path join "nix-collect-garbage") '#!/bin/sh
 echo "garbage cleaned"
@@ -44,15 +36,14 @@ exit 0
         if (
             ($output.exit_code == 0)
             and ($stdout | str contains "Measuring current Nix store size...")
-            and ($stdout | str contains "Cleaning devenv generations... this can take a while")
             and ($stdout | str contains "Collecting garbage... this can take a while")
             and ($stdout | str contains "Re-measuring Nix store size...")
-            and ($stdout | str contains "Done in")
-            and ($stdout | str contains "devenv cleaned")
+            and ($stdout | str contains "done in")
             and ($stdout | str contains "garbage cleaned")
             and ($stdout | str contains "Nix Store")
+            and not ($stdout | str contains "devenv")
         ) {
-            print "  ✅ yzx gc reports progress and completion for both phases"
+            print "  ✅ yzx gc reports progress and completion for the Nix-store phase"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
@@ -86,14 +77,6 @@ printf "148547536542\t/nix/store\n"
 exit 1
 '
 
-        write_executable ($fake_bin | path join "devenv") '#!/bin/sh
-if [ "$1" = "gc" ]; then
-  echo "devenv cleaned"
-  exit 0
-fi
-echo "unexpected devenv args: $*" >&2
-exit 1
-'
         write_executable ($fake_bin | path join "nix-collect-garbage") '#!/bin/sh
 echo "garbage cleaned"
 exit 0
@@ -109,8 +92,8 @@ exit 0
             ($output.exit_code == 0)
             and ($stdout | str contains "Current size:")
             and not ($stdout | str contains "Current size: 0 B")
-            and ($stdout | str contains "devenv cleaned")
             and ($stdout | str contains "garbage cleaned")
+            and not ($stdout | str contains "devenv")
         ) {
             print "  ✅ yzx gc uses the reported du total even when du emits transient missing-path errors"
             true
@@ -128,9 +111,9 @@ exit 0
 }
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-# Defends: yzx gc fails loudly and stops early when devenv gc fails.
-def test_yzx_gc_fails_loudly_when_devenv_gc_fails [] {
-    print "🧪 Testing yzx gc fails loudly when devenv gc fails..."
+# Defends: yzx gc fails loudly and stops before re-measuring when nix-collect-garbage fails.
+def test_yzx_gc_fails_loudly_when_nix_gc_fails [] {
+    print "🧪 Testing yzx gc fails loudly when nix-collect-garbage fails..."
 
     let tmpdir = (^mktemp -d /tmp/yazelix_gc_failure_XXXXXX | str trim)
 
@@ -143,13 +126,9 @@ def test_yzx_gc_fails_loudly_when_devenv_gc_fails [] {
         write_executable ($fake_bin | path join "du") '#!/bin/sh
 printf "1048576\t/nix/store\n"
 '
-        write_executable ($fake_bin | path join "devenv") '#!/bin/sh
-echo "devenv exploded" >&2
-exit 7
-'
         write_executable ($fake_bin | path join "nix-collect-garbage") '#!/bin/sh
-echo "should not run"
-exit 0
+echo "nix gc exploded" >&2
+exit 7
 '
 
         let gc_script = ("nushell/scripts/yzx/gc.nu" | path expand)
@@ -160,12 +139,13 @@ exit 0
 
         if (
             ($output.exit_code != 0)
-            and ($stdout | str contains "Cleaning devenv generations... this can take a while")
+            and ($stdout | str contains "Collecting garbage... this can take a while")
             and ($stdout | str contains "Failed after")
-            and ($stdout | str contains "devenv exploded")
-            and not ($stdout | str contains "Collecting garbage... this can take a while")
+            and ($stdout | str contains "nix gc exploded")
+            and not ($stdout | str contains "Re-measuring Nix store size")
+            and not ($stdout | str contains "devenv")
         ) {
-            print "  ✅ yzx gc surfaces devenv gc failures instead of looking silent"
+            print "  ✅ yzx gc surfaces nix-collect-garbage failures instead of looking silent"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"

@@ -164,6 +164,36 @@ def setup_installed_wrapper_desktop_fixture [label: string] {
     }
 }
 
+def setup_home_manager_desktop_fixture [label: string] {
+    let fixture = (setup_manual_install_takeover_fixture $label)
+    let hm_store_config = ($fixture.tmp_home | path join "hm-store" "abc-home-manager-files" "yazelix.toml")
+    let hm_profile_yzx = ($fixture.tmp_home | path join ".nix-profile" "bin" "yzx")
+    let manual_wrapper = ($fixture.tmp_home | path join ".local" "bin" "yzx")
+
+    mkdir ($hm_store_config | path dirname)
+    mkdir ($hm_profile_yzx | path dirname)
+    mkdir ($manual_wrapper | path dirname)
+    '[core]
+welcome_style = "random"
+' | save --force --raw $hm_store_config
+    rm $fixture.config_path
+    ^ln -s $hm_store_config $fixture.config_path
+
+    write_test_executable $hm_profile_yzx [
+        "#!/bin/sh"
+        "exit 0"
+    ]
+    write_test_executable $manual_wrapper [
+        "#!/bin/sh"
+        "exit 0"
+    ]
+
+    $fixture | merge {
+        hm_profile_yzx: $hm_profile_yzx
+        manual_wrapper: $manual_wrapper
+    }
+}
+
 def setup_update_wrapper_fixture [label: string] {
     let fixture = (setup_managed_config_fixture
         $label
@@ -487,6 +517,109 @@ def test_yzx_desktop_install_prefers_installed_wrapper [] {
             true
         } else {
             print $"  ❌ Unexpected desktop entry contents: exit=($output.exit_code) entry=($desktop_entry)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: Home Manager mode must resolve through the profile-owned yzx wrapper even if an old manual wrapper still exists.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_stable_yzx_wrapper_prefers_home_manager_profile_owner [] {
+    print "🧪 Testing stable yzx wrapper resolution prefers the Home Manager profile owner..."
+
+    let fixture = (setup_home_manager_desktop_fixture "yazelix_stable_wrapper_home_manager")
+
+    let result = (try {
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+        } {
+            ^nu -c 'use nushell/scripts/utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path; resolve_stable_yzx_wrapper_path' | complete
+        })
+        let resolved = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved == $fixture.hm_profile_yzx)
+            and ($resolved != $fixture.manual_wrapper)
+        ) {
+            print "  ✅ stable wrapper resolution now follows the Home Manager profile owner"
+            true
+        } else {
+            print $"  ❌ Unexpected stable wrapper: exit=($output.exit_code) resolved=($resolved) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: Home Manager owns desktop integration in Home Manager mode; manual install must refuse without blocking cleanup.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_desktop_install_refuses_home_manager_owned_install [] {
+    print "🧪 Testing yzx desktop install refuses Home Manager-owned installs..."
+
+    let fixture = (setup_home_manager_desktop_fixture "yazelix_desktop_install_home_manager_refusal")
+
+    let result = (try {
+        let output = (run_yzx_command_for_fixture $fixture "yzx desktop install")
+        let stderr = ($output.stderr | str trim)
+        let desktop_entry_still_exists = ($fixture.desktop_path | path exists)
+
+        if (
+            ($output.exit_code != 0)
+            and ($stderr | str contains "Home Manager owns Yazelix desktop integration")
+            and ($stderr | str contains "yzx desktop uninstall")
+            and $desktop_entry_still_exists
+        ) {
+            print "  ✅ yzx desktop install now refuses Home Manager-owned installs without deleting stale cleanup targets"
+            true
+        } else {
+            print $"  ❌ Unexpected Home Manager desktop install result: exit=($output.exit_code) stderr=($stderr) desktop_exists=($desktop_entry_still_exists)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: Home Manager mode must still allow yzx desktop uninstall to remove a stale user-local desktop entry.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_desktop_uninstall_preserves_home_manager_cleanup_path [] {
+    print "🧪 Testing yzx desktop uninstall still cleans stale manual entries in Home Manager mode..."
+
+    let fixture = (setup_home_manager_desktop_fixture "yazelix_desktop_uninstall_home_manager_cleanup")
+
+    let result = (try {
+        let output = (run_yzx_command_for_fixture $fixture "yzx desktop uninstall")
+        let stdout = ($output.stdout | str trim)
+        let icons_removed = ($fixture.desktop_icons | all {|icon| not ($icon.path | path exists) })
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Removed Yazelix desktop entry")
+            and not ($fixture.desktop_path | path exists)
+            and $icons_removed
+        ) {
+            print "  ✅ yzx desktop uninstall remains the cleanup path for stale Home Manager-shadowing manual entries"
+            true
+        } else {
+            print $"  ❌ Unexpected Home Manager desktop uninstall result: exit=($output.exit_code) stdout=($stdout) desktop_exists=(($fixture.desktop_path | path exists)) icons_removed=($icons_removed)"
             false
         }
     } catch {|err|
@@ -1312,6 +1445,14 @@ export def run_core_canonical_tests [] {
         (test_entrypoint_preflight_relocates_legacy_root_config_surfaces)
         (test_entrypoint_preflight_relocates_legacy_root_and_applies_safe_subset_before_manual_block)
         (test_entrypoint_preflight_recovers_stale_relocation_before_duplicate_surface_error)
+        (test_yzx_desktop_install_writes_entry_and_icon_assets)
+        (test_yzx_desktop_install_prefers_installed_wrapper)
+        (test_stable_yzx_wrapper_prefers_home_manager_profile_owner)
+        (test_yzx_desktop_install_refuses_home_manager_owned_install)
+        (test_yzx_desktop_uninstall_preserves_home_manager_cleanup_path)
+        (test_yzx_desktop_uninstall_removes_manual_entry_and_icons)
+        (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)
+        (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
         (test_yzx_update_upstream_runs_exact_installer_command)
         (test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step)
         (test_yzx_run_passes_dash_prefixed_args_through_unchanged)

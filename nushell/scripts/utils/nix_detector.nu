@@ -3,7 +3,6 @@
 
 # Check if Nix is installed and properly configured
 export def check_nix_installation [
-    --skip-devenv  # Deprecated v14 compatibility flag; v15 does not require devenv
 ] {
     # Check if nix command is available in PATH
     let nix_available = (which nix | is-not-empty)
@@ -138,7 +137,6 @@ def show_nix_installation_help [error_type: string] {
 # Main function to check Nix and fail gracefully if not available
 export def ensure_nix_available [
     --non-interactive  # Skip interactive prompts (for testing)
-    --skip-devenv      # Skip devenv CLI check (for installing/updating devenv itself)
 ] {
     let colors = {
         red: $"\u{1b}[31m"
@@ -149,11 +147,7 @@ export def ensure_nix_available [
         reset: $"\u{1b}[0m"
     }
 
-    let nix_status = if $skip_devenv {
-        check_nix_installation --skip-devenv
-    } else {
-        check_nix_installation
-    }
+    let nix_status = (check_nix_installation)
 
     if not $nix_status.installed or ($nix_status.error | is-not-empty) {
         show_nix_installation_help $nix_status.error

@@ -9,7 +9,7 @@ Post-v14 work in progress
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v14 lands.
+- Restored the pinned Nix helper version to the current latest pinned line after an accidental downgrade during v15 installer hardening.
 
 ## v14 - 2026-04-10
 

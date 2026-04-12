@@ -92,6 +92,8 @@ That command prints the exact `nix flake update yazelix` command it runs in the 
 
 Do not mix this with `yzx update upstream` for the same installed Yazelix runtime.
 
+After `home-manager switch`, fresh launches use the profile-owned `yzx` wrapper. Already-open Yazelix windows keep running their current live runtime until you explicitly relaunch them or run `yzx restart`; there is no invisible hot-swap of live sessions.
+
 For maintainer workflows, a cloned repo is still useful. Normal Home Manager usage should not depend on treating `~/.config/yazelix` as a live repo checkout.
 
 ## Validated Behavior

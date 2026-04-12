@@ -2,7 +2,8 @@
 
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/common.nu get_yazelix_runtime_dir
-use ../utils/shell_config_generation.nu get_yzx_cli_path
+use ../utils/install_ownership.nu has_home_manager_managed_install
+use ../utils/launcher_resolution.nu resolve_desktop_launcher_path
 
 const DESKTOP_LAUNCH_CLEARED_ENV_KEYS = [
     "IN_YAZELIX_SHELL"
@@ -117,19 +118,6 @@ def get_desktop_entry_path [] {
     (get_desktop_applications_dir | path join "com.yazelix.Yazelix.desktop")
 }
 
-def get_installed_yzx_wrapper_path [] {
-    ($env.HOME | path join ".local" "bin" "yzx")
-}
-
-def resolve_desktop_launcher_path [runtime_dir: string] {
-    let installed_wrapper = (get_installed_yzx_wrapper_path)
-    if ($installed_wrapper | path exists) {
-        $installed_wrapper
-    } else {
-        get_yzx_cli_path $runtime_dir
-    }
-}
-
 def get_desktop_icon_entries [runtime_dir: string] {
     $DESKTOP_ICON_SIZES
     | each {|size|
@@ -178,6 +166,10 @@ def get_desktop_launch_env [runtime_dir: string] {
 export def "yzx desktop install" [
     --print-path(-p) # Print only the installed desktop-file path
 ] {
+    if (has_home_manager_managed_install) {
+        error make {msg: "Home Manager owns Yazelix desktop integration for this install. Reapply your Home Manager configuration for the profile desktop entry, or run `yzx desktop uninstall` only to remove a stale user-local entry."}
+    }
+
     let runtime_dir = (get_yazelix_runtime_dir)
     if $runtime_dir == null {
         error make {msg: "Cannot resolve a Yazelix runtime root for desktop integration."}

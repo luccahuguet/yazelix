@@ -228,7 +228,7 @@ def verify_installed_runtime [temp_home: string] {
     require_path_exists $nushell_config "generated Nushell hook config"
     require_path_exists $user_config "seeded user config"
     require_path_exists $managed_taplo_config "managed Taplo formatter config"
-    require_path_exists $desktop_entry "generated desktop entry"
+    require_path_missing $desktop_entry "default user-local desktop entry"
     require_path_exists $zellij_config "generated Zellij config"
     require_path_exists $bash_initializer "generated Bash initializer"
     require_path_exists $nushell_initializer "generated Nushell initializer"
@@ -251,7 +251,6 @@ def verify_installed_runtime [temp_home: string] {
 
     require_file_contains $nushell_config $resolved_runtime_current "generated Nushell hook config"
     require_file_not_contains $nushell_config "/runtime/current/" "generated Nushell hook config"
-    require_file_contains $desktop_entry $"Exec=\"($yzx_path)\" desktop launch" "generated desktop entry"
     require_file_not_contains $bash_initializer $hostile_bin "generated Bash initializer"
     require_file_not_contains $nushell_initializer $hostile_bin "generated Nushell initializer"
     require_file_not_contains $yazi_theme "[flavor]" "generated Yazi theme config"

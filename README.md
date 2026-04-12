@@ -147,6 +147,8 @@ nix flake update yazelix
 
 and then prints `home-manager switch` for you to run yourself.
 
+Updating replaces the installed runtime that future launches use. Already-open Yazelix windows keep running their current live runtime until you explicitly relaunch them or run `yzx restart`; Yazelix does not silently hot-swap live sessions in place.
+
 ### Helix Integration
 Helix supports optional `yzx reveal` integration through `Alt+r`. Yazelix now reserves `Alt+r` globally: in the managed editor it forwards `Alt+r` into Helix for reveal, and outside the editor it falls back to the editor/sidebar focus flow. `Ctrl+y` and `Alt+y` remain the dedicated workspace navigation keys.
 

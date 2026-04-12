@@ -97,7 +97,7 @@ The current code suggests this first-pass classification:
 
 ### Current Code Evidence
 
-- `nushell/scripts/utils/devenv_cli.nu` shows that Yazelix already expects preferred runtime-owned backend CLI resolution, not just host `PATH` lookup.
+- `nushell/scripts/utils/runtime_env.nu` shows that Yazelix already expects runtime-owned environment resolution, not just host `PATH` lookup.
 - `nushell/scripts/utils/environment_bootstrap.nu` shows that rebuild, refresh, and re-entry behavior are backend concerns.
 - `nushell/scripts/utils/launch_state.nu` and `nushell/scripts/utils/config_state.nu` show that reusable launch/profile semantics are part of the current backend contract.
 - `docs/specs/config_surface_and_launch_profile_contract.md` shows that the backend consumes canonical config surfaces and rebuild-relevant subsets without owning config semantics outright.
@@ -172,7 +172,7 @@ This matrix is intentionally tentative. It exists to make the backend contract r
   - [flake_interface_contract.md](./flake_interface_contract.md)
   - [one_command_install_ux.md](./one_command_install_ux.md)
 - manual review of the backend-coupled code paths:
-  - `nushell/scripts/utils/devenv_cli.nu`
+  - `nushell/scripts/utils/runtime_env.nu`
   - `nushell/scripts/utils/environment_bootstrap.nu`
   - `nushell/scripts/utils/launch_state.nu`
   - `nushell/scripts/utils/config_state.nu`

@@ -8,8 +8,11 @@ use ./yzx_test_helpers.nu [get_repo_config_dir setup_managed_config_fixture]
 def run_doctor_command_for_fixture [fixture: record, command: string, extra_env?: record] {
     let base_env = {
         HOME: $fixture.tmp_home
+        XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+        XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
     }
     let merged_env = if ($extra_env | is-empty) {
         $base_env
@@ -328,7 +331,8 @@ def test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager [] {
             ($output.exit_code == 0)
             and ($stdout | str contains "A stale user-local Yazelix desktop entry shadows the Home Manager desktop entry")
             and ($stdout | str contains "yzx desktop uninstall")
-            and ($stdout | str contains "yzx desktop install")
+            and ($stdout | str contains "reapply your Home Manager configuration")
+            and not ($stdout | str contains "refresh it with `yzx desktop install`")
             and not ($stdout | str contains "Yazelix desktop entry uses the expected launcher path")
         ) {
             print "  ✅ yzx doctor flags a stale manual desktop entry that would shadow the Home Manager launcher"
@@ -501,6 +505,11 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_warns_on_stale_config_fields)
         (test_yzx_doctor_reports_known_migration_inside_zellij_session)
         (test_yzx_doctor_fix_applies_safe_config_migrations)
+        (test_yzx_doctor_reports_stale_desktop_entry_exec)
         (test_yzx_doctor_accepts_home_manager_install_artifacts)
+        (test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager)
+        (test_yzx_doctor_reports_missing_runtime_launch_assets)
+        (test_yzx_doctor_respects_layout_override_for_shared_preflight)
+        (test_yzx_doctor_omits_installer_artifact_checks_in_runtime_root_only_mode)
     ]
 }

@@ -25,7 +25,9 @@ def setup_runtime_wrapper_fixture [label: string] {
     mkdir $integrations_dir
     mkdir $wrapper_dir
     mkdir $fake_bin
-    "" | save --force --raw ($runtime_dir | path join "yazelix_default.toml")
+    cp ($env.PWD | path join "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
+    cp ($env.PWD | path join ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
+    ^ln -s ($env.PWD | path join "config_metadata") ($runtime_dir | path join "config_metadata")
 
     {
         tmpdir: $tmpdir
@@ -222,7 +224,7 @@ def test_popup_toggle_wrapper_refreshes_sidebar_only_after_close [] {
 
         let wrapper_script = ($env.PWD | path join "configs" "zellij" "scripts" "yzx_toggle_popup.nu")
         let closed_output = (with-env {
-            PATH: ($env.PATH | prepend $fixture.fake_bin)
+            PATH: ([$fixture.fake_bin] | append $env.PATH)
             YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
             YAZELIX_NU_BIN: $fixture.real_nu
             YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
@@ -239,7 +241,7 @@ def test_popup_toggle_wrapper_refreshes_sidebar_only_after_close [] {
         rm -f $fixture.refresh_log
 
         let focused_output = (with-env {
-            PATH: ($env.PATH | prepend $fixture.fake_bin)
+            PATH: ([$fixture.fake_bin] | append $env.PATH)
             YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
             YAZELIX_NU_BIN: $fixture.real_nu
             YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
@@ -419,7 +421,7 @@ def test_popup_wrapper_falls_back_to_host_nu_without_runtime_owned_nu [] {
         ]
 
         with-env {
-            PATH: ($env.PATH | prepend $fixture.fake_bin)
+            PATH: ([$fixture.fake_bin] | append $env.PATH)
             YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
             YAZELIX_TEST_ZELLIJ_LOG: $zellij_log
         } {
@@ -457,6 +459,7 @@ export def run_popup_canonical_tests [] {
         (test_popup_toggle_wrapper_refreshes_sidebar_only_after_close)
         (test_popup_wrapper_env_falls_back_to_runtime_env)
         (test_popup_wrapper_serializes_path_list_for_env_command)
+        (test_popup_wrapper_falls_back_to_host_nu_without_runtime_owned_nu)
     ]
 }
 

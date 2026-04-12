@@ -1,8 +1,6 @@
 #!/usr/bin/env nu
 # yzx gc - Garbage collection for Nix store
 
-use ../utils/devenv_cli.nu resolve_preferred_devenv_path
-
 # Format bytes to human readable
 def format_size [bytes: int] {
     if $bytes < 1024 {
@@ -55,23 +53,6 @@ def filter_gc_lines [stdout: string, stderr: string, ignored_prefixes: list<stri
     }
 }
 
-# Run devenv gc with quiet mode, filtering remaining noise
-def run_devenv_gc [] {
-    let start = (date now)
-    let devenv_path = (resolve_preferred_devenv_path)
-    let result = (do { ^$devenv_path gc --quiet } | complete)
-
-    {
-        exit_code: $result.exit_code
-        duration_ms: (((((date now) - $start) | into int) / 1000000) | into int)
-        lines: (filter_gc_lines $result.stdout $result.stderr
-            ["warning:" "finding garbage"]
-            ["Cannot delete path" "referenced by the GC root" "unknown setting"])
-        raw_stdout: ($result.stdout | default "")
-        raw_stderr: ($result.stderr | default "")
-    }
-}
-
 # Run nix-collect-garbage and filter noisy output
 def run_nix_gc [args: list<string>] {
     let start = (date now)
@@ -119,7 +100,7 @@ def print_gc_phase_output [phase_name: string, result: record, empty_message: st
 # Garbage collection for Nix store
 #
 # Modes:
-#   yzx gc           - Clean devenv + remove unreferenced paths
+#   yzx gc           - Remove unreferenced Nix store paths
 #   yzx gc deep      - Also delete generations older than 30d
 #   yzx gc deep 7d   - Also delete generations older than 7d
 #   yzx gc deeper    - Delete ALL old generations
@@ -137,11 +118,6 @@ export def "yzx gc" [
     print $"(ansi cyan)Measuring current Nix store size...(ansi reset)"
     let before_size = get_store_size
     print $"  Current size: (ansi cyan)(format_size $before_size)(ansi reset)"
-    
-    # Run devenv gc
-    print $"(ansi cyan)Cleaning devenv generations... this can take a while(ansi reset)"
-    let devenv_result = (run_devenv_gc)
-    print_gc_phase_output "devenv gc" $devenv_result "No additional devenv GC output."
 
     # Run nix-collect-garbage with appropriate flags
     print $"(ansi cyan)Collecting garbage... this can take a while(ansi reset)"

@@ -200,6 +200,7 @@ yzx desktop install
 
 After this, you can search for "Yazelix" in your application launcher and launch it directly.
 `yzx desktop install` points the desktop entry at the active Yazelix runtime launcher, and `yzx desktop uninstall` removes that user-local desktop integration again.
+For Home Manager installs, do not run `yzx desktop install`; the Home Manager module owns the profile desktop entry. Use `yzx desktop uninstall` only to remove a stale user-local entry that shadows the Home Manager launcher.
 
 For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 

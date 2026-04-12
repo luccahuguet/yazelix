@@ -120,6 +120,9 @@ Show the guided Yazelix overview
 
 ### `yzx restart`
 Restart Yazelix (handles persistent sessions)
+- Relaunches through the stable owner-provided `yzx` wrapper when one exists
+- Manual installs prefer `~/.local/bin/yzx`; Home Manager installs prefer the profile-owned `yzx`
+- Already-open Yazelix windows keep running their current live runtime until they are explicitly relaunched or restarted
 
 ### `yzx status [--versions] [--verbose]`
 Show current Yazelix status
@@ -149,6 +152,7 @@ Refresh Yazelix from the upstream installer surface
 - Prints the exact command it will run
 - Runs `nix run --refresh github:luccahuguet/yazelix#install`
 - Intended for installs driven by the upstream/manual installer path
+- Fresh launches use the updated installed runtime; already-open windows continue on their current live runtime until relaunch or `yzx restart`
 
 ### `yzx update home_manager`
 Refresh the current Home Manager flake input, then print the manual switch step
@@ -156,6 +160,7 @@ Refresh the current Home Manager flake input, then print the manual switch step
 - Prints the exact command it will run
 - Runs `nix flake update yazelix`
 - Prints `home-manager switch` for the user to copy and run manually
+- After `home-manager switch`, fresh launches and `yzx restart` use the profile-owned wrapper; already-open windows do not hot-swap invisibly
 
 ### `yzx home_manager prepare [--apply] [--yes]`
 Preview or archive manual-install artifacts before Home Manager takeover
@@ -174,8 +179,8 @@ Maintainer-only updates:
 - `yzx dev build_pane_orchestrator [--sync]`: Build the Zellij pane orchestrator wasm for `wasm32-wasip1`; `--sync` also updates the tracked/runtime plugin paths after a successful build, preserves previously granted plugin permissions onto the stable runtime path when possible, and regenerates Zellij config. After syncing, prefer restarting Yazelix over reloading the plugin in place. If the toolchain is missing, install a WASI-capable Rust toolchain first.
 
 ### `yzx gc [deep [PERIOD] | deeper]`
-Garbage collection for Nix store
-- `yzx gc`: Clean devenv generations + remove unreferenced paths
+Garbage collection for the Nix store
+- `yzx gc`: Remove unreferenced Nix store paths
 - `yzx gc deep`: Also delete generations older than 30 days
 - `yzx gc deep 7d`: Delete generations older than 7 days (configurable period)
 - `yzx gc deeper`: Delete ALL old generations (most aggressive)
@@ -322,7 +327,7 @@ yzx dev build_pane_orchestrator --sync  # Build and sync the pane orchestrator w
 yzx screen game_of_life       # Preview the live game_of_life welcome animation in the terminal
 
 # Garbage collection
-yzx gc                        # Safe: clean devenv + remove unreferenced paths
+yzx gc                        # Safe: remove unreferenced Nix store paths
 yzx gc deep                   # Medium: also delete generations older than 30d
 yzx gc deep 7d                # Medium: delete generations older than 7 days
 yzx gc deeper                 # Aggressive: delete ALL old generations
