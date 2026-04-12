@@ -2,7 +2,7 @@
 # yzx menu - Interactive command palette and config opener
 
 use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap]
-use ../integrations/zellij_runtime_wrappers.nu [open_floating_runtime_wrapper]
+use ../integrations/zellij_runtime_wrappers.nu [open_floating_runtime_script]
 use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
 
 const PALETTE_CATEGORY_STYLE = {
@@ -194,7 +194,7 @@ export def "yzx menu" [
         }
 
         let popup_cwd = ((get_current_tab_workspace_root_including_bootstrap) | default (pwd))
-        open_floating_runtime_wrapper "yzx_menu" "yzx_menu_popup.nu" $popup_cwd
+        open_floating_runtime_script "yzx_menu" "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu" $popup_cwd
         return
     }
 

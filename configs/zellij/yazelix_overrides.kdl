@@ -82,7 +82,7 @@ keybinds {
 
         // Yazelix command palette (yzx menu) in a floating pane
         bind "Alt Shift M" {
-            Run "nu" "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/yzx_menu_popup.nu" {
+            Run "nu" "__YAZELIX_RUNTIME_DIR__/nushell/scripts/zellij_wrappers/yzx_menu_popup.nu" {
                 name "yzx_menu"
                 floating true
                 close_on_exit true

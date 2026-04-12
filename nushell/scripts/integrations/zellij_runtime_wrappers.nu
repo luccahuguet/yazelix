@@ -64,9 +64,9 @@ export def get_new_editor_pane_launch_env [yazi_id: string = ""] {
     $pane_env
 }
 
-export def open_floating_runtime_wrapper [
+export def open_floating_runtime_script [
     pane_name: string
-    wrapper_name: string
+    script_relative_path: string
     cwd: string
     extra_env: record = {}
     command_args: list<string> = []
@@ -74,10 +74,10 @@ export def open_floating_runtime_wrapper [
     height_percent: int = 90
 ] {
     let runtime_dir = (get_yazelix_runtime_dir)
-    let wrapper = ($runtime_dir | path join "configs" "zellij" "scripts" $wrapper_name)
+    let runtime_script = ($runtime_dir | path join $script_relative_path)
     let runtime_nu = (resolve_yazelix_nu_bin)
-    if not ($wrapper | path exists) {
-        error make {msg: $"Floating wrapper script not found at: ($wrapper)"}
+    if not ($runtime_script | path exists) {
+        error make {msg: $"Floating runtime script not found at: ($runtime_script)"}
     }
     if not ($runtime_nu | path exists) {
         error make {msg: $"Resolved Yazelix Nushell binary not found at: ($runtime_nu)"}
@@ -92,5 +92,5 @@ export def open_floating_runtime_wrapper [
     let x_arg = $"($x_offset)%"
     let y_arg = $"($y_offset)%"
 
-    ^zellij run --name $pane_name --floating --close-on-exit --width $width_arg --height $height_arg --x $x_arg --y $y_arg --cwd $cwd -- env ...$env_args $runtime_nu $wrapper ...$command_args
+    ^zellij run --name $pane_name --floating --close-on-exit --width $width_arg --height $height_arg --x $x_arg --y $y_arg --cwd $cwd -- env ...$env_args $runtime_nu $runtime_script ...$command_args
 }

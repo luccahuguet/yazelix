@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
-use runtime_helper.nu [run_runtime_nu_script]
+use ../../../nushell/scripts/integrations/yazi.nu [refresh_active_sidebar_yazi]
+use ../../../nushell/scripts/yzx/popup.nu *
 
 def popup_plugin_toggle_result [] {
     let pipe_result = (^zellij pipe --name toggle_popup -- "" | complete)
@@ -25,17 +26,21 @@ export def resolve_popup_toggle_action [toggle_result?: string] {
     }
 }
 
+def refresh_sidebar_after_popup_close [] {
+    refresh_active_sidebar_yazi | ignore
+}
+
 def main [] {
     let action = (resolve_popup_toggle_action (popup_plugin_toggle_result))
 
     if $action.action == "open" {
-        run_runtime_nu_script "nushell/scripts/zellij_wrappers/popup_open.nu"
+        yzx popup
         return
     }
 
     if $action.action == "handled" {
         if ($action.refresh_sidebar? | default false) {
-            run_runtime_nu_script "nushell/scripts/zellij_wrappers/popup_refresh_active_sidebar_yazi.nu"
+            refresh_sidebar_after_popup_close
         }
         return
     }
