@@ -4,6 +4,7 @@
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
+use ../utils/install_ownership.nu has_home_manager_managed_install
 use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 use ../utils/startup_profile.nu [profile_startup_step]
@@ -18,16 +19,7 @@ def detect_environment [] {
     } catch {
         true
     })
-    let home_manager_indicators = [
-        ($env.HOME | path join ".local" "state" "nix" "profiles" "home-manager")
-        ($env.HOME | path join ".nix-profile" "etc" "profile.d" "hm-session-vars.sh")
-        ($env.NIX_PROFILE? | default null)
-    ]
-    let home_manager = (
-        $home_manager_indicators
-        | where {|path| $path != null }
-        | any {|path| $path | path exists }
-    )
+    let home_manager = (has_home_manager_managed_install)
 
     {
         read_only_config: $read_only_config
