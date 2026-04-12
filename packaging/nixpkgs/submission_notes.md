@@ -28,10 +28,10 @@ The package body is intentionally parameterized by `src` in this repo-local draf
 ## Reviewer-Relevant Notes
 
 1. The package is not the flake installer.
-   It runs directly from the store path and does not create `~/.local/bin/yzx`, `runtime/current`, shell hooks, or desktop entries during installation.
+   It runs directly from the store path and does not create `~/.local/bin/yzx`, manual-install runtime symlinks, shell hooks, or desktop entries during installation.
 
 2. The package owns the bootstrap tools it needs.
-   In particular, the direct package includes runtime-local `nu` and the fixed Yazelix runtime toolset; it does not ship or prefer a runtime-local `devenv`.
+   In particular, the direct package includes runtime-local `nu` and the fixed Yazelix runtime toolset; it does not ship or prefer a second `devenv` binary.
 
 3. Desktop integration remains explicit.
    Users install a desktop entry later with `yzx desktop install`. The first nixpkgs submission deliberately avoids package-install desktop side effects.

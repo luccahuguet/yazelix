@@ -125,9 +125,9 @@ When creating new files or directories, always use underscores to maintain consi
 
 ## Tool Invocation Workflow
 
-- Prefer `yzx run ...` for project-scoped tool invocations instead of raw `devenv shell ...` when running tools provided by the Yazelix environment.
-- Use raw `devenv shell ...` only when `yzx run ...` is not a clean fit for the task, such as larger multi-command shell scripts or environment debugging.
-- For agent-driven Yazelix or `devenv` invocations, always suppress the welcome/UI path by default. Prefer entrypoints that already do this, such as `yzx run ...`, or pass the equivalent `--skip-welcome` flow when calling Yazelix bootstrap/runtime scripts through `devenv shell ...`. Do not launch the interactive welcome screen or its animations unless the task is explicitly about validating that UX.
+- Prefer `yzx run ...` for project-scoped tool invocations instead of raw `nix develop -c ...` when running tools provided by the Yazelix environment.
+- Use raw `nix develop -c ...` only when `yzx run ...` is not a clean fit for the task, such as larger multi-command shell scripts or environment debugging.
+- For agent-driven Yazelix invocations, always suppress the welcome/UI path by default. Prefer entrypoints that already do this, such as `yzx run ...`, or pass the equivalent `--skip-welcome` flow when calling Yazelix bootstrap/runtime scripts through `nix develop -c ...`. Do not launch the interactive welcome screen or its animations unless the task is explicitly about validating that UX.
 - Be careful with heavyweight Nix probes during investigation. Prefer cheap read-only commands such as `nix eval`, `nix flake show`, `nix path-info`, `rg`, or repo-local code inspection before running `nix build` on large external inputs. Do not casually launch expensive build jobs just to inspect metadata, and if a diagnostic build is truly needed, say so explicitly and clean it up if it is no longer needed.
 
 ## Command Surface Policy
@@ -147,13 +147,13 @@ When creating new files or directories, always use underscores to maintain consi
   ```bash
   yzx dev build_popup_plugin --sync
   ```
-- If the current shell toolchain cannot build `wasm32-wasip1`, use the pinned Yazelix environment:
+- If the current shell toolchain cannot build `wasm32-wasip1`, use the flake maintainer shell:
   ```bash
-  devenv shell -- nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_pane_orchestrator --sync'
+  nix develop -c nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_pane_orchestrator --sync'
   ```
-- For popup-runner rebuilds in the pinned environment:
+- For popup-runner rebuilds in the flake maintainer shell:
   ```bash
-  devenv shell -- nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_popup_plugin --sync'
+  nix develop -c nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_popup_plugin --sync'
   ```
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the synced wasm plus a fresh Yazelix session.
 - After syncing a new plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.

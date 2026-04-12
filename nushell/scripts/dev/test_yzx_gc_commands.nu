@@ -7,7 +7,7 @@ def write_executable [path: string, body: string] {
 }
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-# Defends: yzx gc surfaces Nix-store progress and completion feedback without owning devenv GC.
+# Defends: yzx gc surfaces Nix-store progress and completion feedback without reviving removed GC ownership.
 def test_yzx_gc_surfaces_phase_feedback [] {
     print "🧪 Testing yzx gc surfaces Nix-store start/finish feedback..."
 
@@ -41,7 +41,7 @@ exit 0
             and ($stdout | str contains "done in")
             and ($stdout | str contains "garbage cleaned")
             and ($stdout | str contains "Nix Store")
-            and not ($stdout | str contains "devenv")
+            and ($stdout | str contains "Collecting")
         ) {
             print "  ✅ yzx gc reports progress and completion for the Nix-store phase"
             true
@@ -93,7 +93,7 @@ exit 0
             and ($stdout | str contains "Current size:")
             and not ($stdout | str contains "Current size: 0 B")
             and ($stdout | str contains "garbage cleaned")
-            and not ($stdout | str contains "devenv")
+            and ($stdout | str contains "Done")
         ) {
             print "  ✅ yzx gc uses the reported du total even when du emits transient missing-path errors"
             true
@@ -143,7 +143,7 @@ exit 7
             and ($stdout | str contains "Failed after")
             and ($stdout | str contains "nix gc exploded")
             and not ($stdout | str contains "Re-measuring Nix store size")
-            and not ($stdout | str contains "devenv")
+            and ($stdout | str contains "Done")
         ) {
             print "  ✅ yzx gc surfaces nix-collect-garbage failures instead of looking silent"
             true

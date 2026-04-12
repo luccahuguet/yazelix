@@ -1248,10 +1248,10 @@ def test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins [] 
     $result
 }
 
-# Regression: source-checkout sessions must generate runtime-owned Yazi and Zellij artifacts against the active runtime, not runtime/current.
+# Regression: source-checkout sessions must generate runtime-owned Yazi and Zellij artifacts against the active runtime, not a stale installed-runtime reference.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generated_runtime_configs_prefer_active_runtime_over_installed_reference [] {
-    print "🧪 Testing generated Yazi and Zellij runtime configs prefer the active runtime over runtime/current..."
+    print "🧪 Testing generated Yazi and Zellij runtime configs prefer the active runtime over a stale installed-runtime reference..."
 
     let repo_root = (get_repo_config_dir)
     let tmpdir = (^mktemp -d /tmp/yazelix_runtime_identity_split_XXXXXX | str trim)
@@ -1295,7 +1295,7 @@ def test_generated_runtime_configs_prefer_active_runtime_over_installed_referenc
             print "  ✅ Generated runtime-owned configs now stay pinned to the active runtime in source-checkout sessions"
             true
         } else {
-            print $"  ❌ Runtime-owned generated configs still leaked runtime/current: fake_installed_runtime=($fake_installed_runtime)"
+            print $"  ❌ Runtime-owned generated configs still leaked the legacy installed-runtime reference: fake_installed_runtime=($fake_installed_runtime)"
             false
         }
     } catch {|err|

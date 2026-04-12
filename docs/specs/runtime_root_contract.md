@@ -2,7 +2,7 @@
 
 ## Summary
 
-Yazelix treats the config root, runtime root, and state root as separate locations with different owners. The trimmed v15 branch no longer treats installer-owned launch profiles, pack sidecars, or runtime-local `devenv` artifacts as part of the normal user contract.
+Yazelix treats the config root, runtime root, and state root as separate locations with different owners. The trimmed v15 branch no longer treats installer-owned launch profiles, pack sidecars, or the old runtime-local `devenv` layer as part of the normal user contract.
 
 These roots line up with three filesystem-backed kinds of state plus one process-local layer:
 
@@ -13,7 +13,7 @@ These roots line up with three filesystem-backed kinds of state plus one process
 3. Materialized/generated state
    - generated configs, initializers, logs, rebuild hashes, and other derived artifacts under `~/.local/share/yazelix`
 4. Live session activation state
-   - process-local markers such as `IN_YAZELIX_SHELL`, `YAZELIX_TERMINAL`, Zellij session markers, and maintainer-only activation markers such as `DEVENV_PROFILE`
+   - process-local markers such as `IN_YAZELIX_SHELL`, `YAZELIX_TERMINAL`, Zellij session markers, and maintainer-shell activation markers from `nix develop`
 
 ## Why
 
@@ -58,7 +58,7 @@ This contract keeps those boundaries explicit.
 - Live session activation state has no canonical filesystem root.
   - It is the current process-local activation of a runtime/session.
   - It includes values such as `IN_YAZELIX_SHELL`, `YAZELIX_TERMINAL`, `ZELLIJ`, `ZELLIJ_SESSION_NAME`, `ZELLIJ_PANE_ID`, and related session-local markers.
-  - Maintainer shells may also carry `DEVENV_PROFILE`, but that is maintainer activation state, not normal user runtime truth.
+  - Maintainer shells may also carry extra activation markers from `nix develop`, but that is maintainer activation state, not normal user runtime truth.
   - It must not be treated as persisted runtime truth.
 - `YAZELIX_DIR` is a legacy compatibility alias only.
   - New code should prefer `YAZELIX_RUNTIME_DIR` and `YAZELIX_CONFIG_DIR` explicitly.
@@ -71,7 +71,7 @@ This contract keeps those boundaries explicit.
   - `yzx update upstream` owns upstream/manual installs
   - `yzx update home_manager` owns Home Manager installs
   - `#install` is a compatibility/bootstrap surface, not the canonical runtime identity
-- Maintainer-only workflows may still assume a source checkout and `devenv.nix` when the task is explicitly about repository maintenance.
+- Maintainer-only workflows may still assume a source checkout and `maintainer_shell.nix` when the task is explicitly about repository maintenance.
   - Examples: release automation, source validators, repo-local profiling, issue/bead reconciliation, and repo-shell development helpers.
   - Those assumptions should stay explicit instead of leaking into normal user entrypoints.
 

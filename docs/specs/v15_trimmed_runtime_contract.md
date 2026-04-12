@@ -16,7 +16,7 @@ It is no longer centered on:
 
 - `yazelix_packs.toml`
 - dynamic pack graphs
-- runtime-local `devenv`
+- the old runtime-local `devenv` layer
 - cached launch-profile reuse
 - a generic Yazelix-owned runtime updater
 
@@ -68,16 +68,16 @@ This file exists so current docs and current specs can point at one authoritativ
 
 ### Maintainer Boundary
 
-- `devenv.nix` still exists for repo development and maintainer workflows.
+- `maintainer_shell.nix` defines the repo development shell for maintainer workflows.
 - That maintainer shell is not the normal user runtime contract.
-- Maintainer-only commands may still touch repo-local `devenv.lock`, repo profiling flows, or release automation.
+- Maintainer-only commands may still touch flake inputs, repo profiling flows, or release automation.
 - Those maintainer semantics should not leak back into user-facing runtime docs.
 
 ## Non-goals
 
 - reintroducing dynamic pack management on the trimmed v15 branch
 - treating cached launch-profile reuse as a current product guarantee
-- restoring runtime-local `devenv` as part of the normal shipped runtime
+- restoring the old runtime-local `devenv` layer as part of the normal shipped runtime
 - pretending the compatibility installer is the canonical everyday product flow
 
 ## Acceptance Cases
@@ -85,7 +85,7 @@ This file exists so current docs and current specs can point at one authoritativ
 1. A current v15 user can understand the product without learning about `yazelix_packs.toml`, launch-profile reuse, or runtime-local `devenv`.
 2. Current docs explain `yzx refresh` as generated-state repair rather than backend/profile orchestration.
 3. Current docs explain update ownership through explicit owner commands rather than a generic runtime updater.
-4. Current docs distinguish the normal packaged runtime from maintainer-only `devenv.nix` workflows.
+4. Current docs distinguish the normal packaged runtime from maintainer-only `nix develop` workflows.
 
 ## Verification
 
@@ -104,4 +104,3 @@ This file exists so current docs and current specs can point at one authoritativ
 - Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_maintainer.nu`
-

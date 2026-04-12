@@ -141,7 +141,7 @@ The trimmed v15 packaged runtime ships a fixed toolset instead of configurable d
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 
 What it does not ship anymore:
-- runtime-local `devenv`
+- a runtime-local `devenv` binary
 - dynamic packs or `user_packages`
 - non-Ghostty terminal binaries; install WezTerm, Kitty, Alacritty, or Foot yourself if you choose them
 

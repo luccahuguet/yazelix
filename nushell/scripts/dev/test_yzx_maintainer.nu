@@ -465,7 +465,6 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
             YAZELIX_CONFIG_DIR: $config_dir
             IN_YAZELIX_SHELL: ""
             YAZELIX_TERMINAL: ""
-            DEVENV_PROFILE: ""
             IN_NIX_SHELL: ""
         } {
             do { ^nu -c $snippet } | complete

@@ -119,7 +119,7 @@ def test_managed_nushell_config_sources_optional_user_hook [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-# Regression: repo-local devenv shells must still load the managed Nushell config when runtime identity is no longer exported ambiently.
+# Regression: repo-local maintainer shells must still load the managed Nushell config when runtime identity is no longer exported ambiently.
 def test_managed_nushell_config_loads_in_repo_shell_without_runtime_env [] {
     print "🧪 Testing managed Nushell config still loads in repo shells without ambient YAZELIX_RUNTIME_DIR..."
 

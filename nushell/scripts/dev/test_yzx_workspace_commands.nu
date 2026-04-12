@@ -147,7 +147,7 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
     mkdir $state_dir
     mkdir $fake_bin
 
-    for entry in [".taplo.toml", "nushell", "shells", "configs", "config_metadata", "devenv.lock", "yazelix_default.toml", "docs", "CHANGELOG.md", "assets"] {
+    for entry in [".taplo.toml", "nushell", "shells", "configs", "config_metadata", "yazelix_default.toml", "docs", "CHANGELOG.md", "assets"] {
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
 
@@ -696,9 +696,6 @@ def test_desktop_fast_path_uses_direct_host_terminal_during_reload_instead_of_st
 
         ^ln -s (repo_path ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
         "" | save --force --raw ($runtime_dir | path join "yazelix_default.toml")
-        "" | save --force --raw ($runtime_dir | path join "devenv.nix")
-        "" | save --force --raw ($runtime_dir | path join "devenv.yaml")
-        "" | save --force --raw ($runtime_dir | path join "devenv.lock")
         "" | save --force --raw ($runtime_dir | path join "CHANGELOG.md")
         {
             combined_hash: "ignored-for-fast-path-resolution"

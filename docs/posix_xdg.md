@@ -15,7 +15,6 @@ Yazelix follows the XDG Base Directory Specification and respects these variable
   - `~/.config/yazelix/nushell/config/config.nu` – Yazelix Nushell config sourced into your shell
 
 - Data (XDG_DATA_HOME)
-  - `~/.local/share/yazelix/runtime/current` – active installed runtime symlink for manual/upstream installs
   - `~/.local/share/yazelix/initializers/` – generated init scripts (nushell, starship, zoxide, carapace)
   - `~/.local/share/yazelix/configs/yazi/` – Yazi config used by integrations (`YAZI_CONFIG_HOME`)
   - `~/.local/share/yazelix/configs/zellij/` – generated Zellij config and layouts
@@ -40,3 +39,4 @@ Set by Yazelix entrypoints to wire integrations:
 Notes:
 - If you change `XDG_CONFIG_HOME`, Yazelix looks for config under the new `.../yazelix/user_configs/` path.
 - Generated files follow `XDG_DATA_HOME`.
+- The stable installed CLI shim lives at `~/.local/bin/yzx` and points directly at the packaged runtime.

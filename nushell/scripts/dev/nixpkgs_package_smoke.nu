@@ -35,11 +35,7 @@ export def run_yzx [package_root: string, temp_home: string, ...args: string] {
 export def verify_yazelix_package [package_root: string] {
     let temp_home = (make_temp_home)
 
-    if (($package_root | path join "bin" "devenv") | path exists) {
-        error make { msg: $"Packaged Yazelix should not ship a runtime-local devenv binary: ($package_root | path join "bin" "devenv")" }
-    }
-
-    for forbidden in ["devenv.lock" "devenv.nix" "devenv.yaml" "yazelix_packs_default.toml"] {
+    for forbidden in ["yazelix_packs_default.toml"] {
         if (($package_root | path join $forbidden) | path exists) {
             error make { msg: $"Packaged Yazelix should not ship `($forbidden)`: ($package_root | path join $forbidden)" }
         }

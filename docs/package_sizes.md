@@ -11,7 +11,7 @@ The current runtime includes:
 - system helpers required by the runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
 
 It does not ship:
-- a runtime-local `devenv`
+- a runtime-local `devenv` binary
 - pack-driven optional dependency groups
 - heavy media helpers as a user-toggleable surface
 

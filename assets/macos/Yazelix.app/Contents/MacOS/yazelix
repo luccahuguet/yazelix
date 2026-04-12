@@ -2,7 +2,7 @@
 # Yazelix macOS App Launcher
 # This script is executed when the Yazelix.app is launched from Spotlight/Finder
 
-# Source shell profile to get Nix and devenv in PATH
+# Source shell profile to get Nix in PATH
 if [ -f "$HOME/.bash_profile" ]; then
     source "$HOME/.bash_profile"
 elif [ -f "$HOME/.profile" ]; then

@@ -2,7 +2,7 @@
 
 ## Summary
 
-Yazelix should define its backend contract in terms of concrete capabilities, not in terms of a specific tool such as `devenv`. A backend is the runtime/environment layer that makes the Yazelix workspace and control-plane entrypoints possible. The contract should be precise enough to evaluate current full Yazelix and a future Nix-only `Yazelix Core` candidate without moving the goalposts. Other later backend experiments should be able to reuse the same contract instead of shaping it.
+Yazelix should define its backend contract in terms of concrete capabilities, not in terms of one specific implementation. A backend is the runtime/environment layer that makes the Yazelix workspace and control-plane entrypoints possible. The contract should be precise enough to evaluate both the older Classic line and a future Nix-only `Yazelix Core` candidate without moving the goalposts. Other later backend experiments should be able to reuse the same contract instead of shaping it.
 
 ## Why
 
@@ -33,7 +33,7 @@ Without a written contract:
 - A Yazelix backend is the layer that materializes and activates the runtime/tool environment needed by Yazelix entrypoints.
 - Delete-first rule for this contract:
   - keep only the capabilities Yazelix genuinely needs from the backend layer
-  - do not keep a capability in the backend contract just because current `devenv`-based code happens to bundle it there
+  - do not keep a capability in the backend contract just because older Classic-era code happened to bundle it there
   - if a capability is really about launch diagnostics, product scope, or integration ownership, move it out of the backend contract
 - The backend contract includes these hard-required capability buckets:
   - Config-input relationship
@@ -58,7 +58,7 @@ Without a written contract:
     - give Yazelix a coherent way to request a fresh environment after input drift
   - Runtime-owned binary and asset resolution
     - allow Yazelix to resolve runtime-owned tools and assets through the active runtime contract rather than assuming host-global installations
-    - examples in current code include `devenv`, `nu`, launch scripts, and bundled runtime assets
+    - examples in maintained code include `nu`, launch scripts, and bundled runtime assets, while older Classic-era code also routed through the previous environment-manager layer
   - Generated state relationship
     - define how backend materialization relates to generated configs, cached launch state, and runtime project state under `~/.local/share/yazelix`
     - generated state is not the backend itself, but its validity depends on backend identity and input drift
@@ -122,13 +122,13 @@ This matrix is intentionally tentative. It exists to make the backend contract r
 | Capability bucket | Full Yazelix today | Nix-only `Yazelix Core` candidate |
 | --- | --- | --- |
 | Config-input relationship | Native fit through canonical managed config surfaces plus rebuild-relevant input hashing. | Native fit if Core keeps the same config surface contract and only narrows backend behavior, not config ownership. |
-| Runtime materialization | Native fit via the current `devenv`-backed runtime model. | Plausible fit if Core is a fixed, opinionated flake/runtime bundle rather than a flexible pack-driven environment. |
+| Runtime materialization | Native fit via the older Classic environment-manager-backed runtime model and the current fixed packaged runtime. | Plausible fit if Core is a fixed, opinionated flake/runtime bundle rather than a flexible pack-driven environment. |
 | Stable runtime identity | Native fit through the installed runtime pointer, packaged runtime tree, and stable `yzx` entrypoint. | Native fit if Core keeps a stable runtime pointer or direct package identity and does not reintroduce clone-path assumptions. |
 | `yzx env` / `yzx run` / launch re-entry entrypoints | Native fit through the current environment bootstrap and re-entry flow. | Possible with adaptation. Core would likely keep `launch` and selected noninteractive entrypoints, but may narrow or redefine `env` semantics. |
-| Refresh / rebuild semantics | Native fit through current rebuild-relevant input hashing and explicit refresh/re-entry flows. | Possible with adaptation. Core still needs freshness semantics, but likely with fewer moving parts and without `devenv`-profile rebuild logic. |
+| Refresh / rebuild semantics | Native fit through current rebuild-relevant input hashing and explicit refresh/re-entry flows. | Possible with adaptation. Core still needs freshness semantics, but likely with fewer moving parts and without the old profile-rebuild logic. |
 | Runtime-owned binary and asset resolution | Native fit. Current runtime owns `nu`, launch scripts, bundled assets, and prefers runtime-local tools. | Native fit if Core ships the default stack directly and keeps runtime-owned asset resolution explicit. |
 | Relationship to generated state | Native fit through the current runtime/config/state split and launch-state model. | Native fit if Core preserves the same split-root ownership model. |
-| Reusable activation acceleration | Native fit through cached launch-profile reuse. | Possible but optional. Core should not require a `devenv`-style profile cache if a simpler runtime model makes reuse cheaper or less necessary. |
+| Reusable activation acceleration | Native fit through cached launch-profile reuse. | Possible but optional. Core should not require the old profile-cache style if a simpler runtime model makes reuse cheaper or less necessary. |
 | Services / long-lived process orchestration | Available today mainly because the current backend stack can support it. | Probably intentionally dropped or kept out of scope unless Core proves it needs them. |
 
 ### First-Pass Risk Notes
@@ -161,7 +161,7 @@ This matrix is intentionally tentative. It exists to make the backend contract r
 2. When a later bead asks how `yazelix.toml`, pack config, or Home Manager relate to the backend, the answer is clear: they are backend inputs for materialization and refresh, but their semantics are owned by the config-surface contract rather than the backend contract.
 3. When a later bead asks whether “is Ghostty installed?” belongs in the backend contract, the answer is clearly no, because that is part of launch-time dependency/preflight behavior.
 4. When a future `Yazelix Core` discussion happens, it can reuse this contract without collapsing product-boundary questions back into backend-capability questions.
-5. When later refactors separate backend concerns from workspace UX, they can point at concrete contract buckets rather than reverse-engineering requirements from `devenv`-specific code paths.
+5. When later refactors separate backend concerns from workspace UX, they can point at concrete contract buckets rather than reverse-engineering requirements from one older implementation.
 
 ## Verification
 
@@ -190,5 +190,5 @@ This matrix is intentionally tentative. It exists to make the backend contract r
 ## Open Questions
 
 - Should the current reusable launch-profile model remain a hard backend requirement, or is it better described as one acceptable implementation strategy for the “reusable activation semantics” bucket?
-- Which current `devenv`-specific conveniences should later be downgraded from “required” to “optional” once the backend boundary is cleaner?
+- Which Classic-era backend conveniences should later be downgraded from “required” to “optional” once the backend boundary is cleaner?
 - For a future Nix-only `Yazelix Core` candidate, which parts of the default tool stack should be considered required runtime materialization versus explicit host-managed dependencies?

@@ -41,7 +41,8 @@ Contains app metadata:
 ### Launcher Script
 The `MacOS/yazelix` script:
 1. Sources shell profiles (.bash_profile, .profile, .zprofile)
-2. Ensures Nix and devenv are in PATH
+2. Ensures Nix is in PATH
+2. Ensures Nix is in PATH
 3. Executes the stable `yzx desktop launch` entrypoint
 
 ## Icon Creation (Optional)
@@ -81,7 +82,7 @@ To set up a global keyboard shortcut:
 xattr -cr /Applications/Yazelix.app
 ```
 
-### Nix/devenv not found
+### Nix not found
 Ensure your shell profile files (.bash_profile, .zprofile, etc.) properly source the Nix environment:
 ```bash
 # Usually added by Nix installer

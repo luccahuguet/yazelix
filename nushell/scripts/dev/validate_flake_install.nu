@@ -197,13 +197,15 @@ def run_installed_yzx [temp_home: string, ...args: string] {
 def verify_installed_runtime [temp_home: string] {
     print "🔍 Verifying installed runtime layout ..."
 
-    let runtime_current = ($temp_home | path join ".local" "share" "yazelix" "runtime" "current")
-    let runtime_bin = ($runtime_current | path join "bin")
-    let runtime_nu = ($runtime_bin | path join "nu")
-    let runtime_yzx_cli = ($runtime_current | path join "shells" "posix" "yzx_cli.sh")
-    let runtime_taplo_config = ($runtime_current | path join ".taplo.toml")
-    let runtime_yazelix_default = ($runtime_current | path join "yazelix_default.toml")
     let yzx_path = ($temp_home | path join ".local" "bin" "yzx")
+    let wrapper_target = (^readlink -f $yzx_path | str trim)
+    let runtime_root = ($wrapper_target | path dirname | path dirname)
+    let runtime_bin = ($runtime_root | path join "bin")
+    let runtime_nu = ($runtime_bin | path join "nu")
+    let runtime_yzx_cli = ($runtime_root | path join "shells" "posix" "yzx_cli.sh")
+    let runtime_taplo_config = ($runtime_root | path join ".taplo.toml")
+    let runtime_yazelix_default = ($runtime_root | path join "yazelix_default.toml")
+    let legacy_runtime_link = ($temp_home | path join ".local" "share" "yazelix" "runtime" "current")
     let nushell_config = ($temp_home | path join ".config" "nushell" "config.nu")
     let user_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix.toml")
     let pack_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix_packs.toml")
@@ -216,10 +218,8 @@ def verify_installed_runtime [temp_home: string] {
     let hostile_bin = ($temp_home | path join ".hostile_bin")
     let yazi_theme = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "theme.toml")
     let yazi_flavor_root = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors")
-    let resolved_runtime_current = (^readlink -f $runtime_current | str trim)
-    let resolved_runtime_bin = ($resolved_runtime_current | path join "bin")
 
-    require_path_exists $runtime_current "installed runtime symlink"
+    require_path_missing $legacy_runtime_link "legacy installed runtime symlink"
     require_path_exists $runtime_nu "runtime-local Nushell binary"
     require_path_exists $runtime_yzx_cli "runtime-local POSIX yzx launcher"
     require_path_exists $runtime_taplo_config "runtime-local Taplo formatter config"
@@ -236,11 +236,6 @@ def verify_installed_runtime [temp_home: string] {
     require_path_exists $yazi_flavor_root "generated Yazi flavors directory"
 
     require_path_missing $pack_config "legacy seeded pack config"
-    require_path_missing ($runtime_bin | path join "devenv") "runtime-local devenv binary"
-    require_path_missing ($runtime_current | path join "devenv.lock") "runtime-local devenv.lock"
-    require_path_missing ($runtime_current | path join "devenv.nix") "runtime-local devenv.nix"
-    require_path_missing ($runtime_current | path join "devenv.yaml") "runtime-local devenv.yaml"
-    require_path_missing ($runtime_current | path join "yazelix_packs_default.toml") "runtime-local pack template"
 
     for expected_bin in ["nu" "yzx" "zellij" "ghostty" "yazi" "hx" "nvim" "fish" "zsh" "bash" "nix" "jq" "fd" "rg"] {
         require_path_exists ($runtime_bin | path join $expected_bin) $"runtime binary `($expected_bin)`"
@@ -249,8 +244,8 @@ def verify_installed_runtime [temp_home: string] {
         require_path_exists ($runtime_bin | path join "nixGLMesa") "runtime binary `nixGLMesa`"
     }
 
-    require_file_contains $nushell_config $resolved_runtime_current "generated Nushell hook config"
-    require_file_not_contains $nushell_config "/runtime/current/" "generated Nushell hook config"
+    require_file_contains $nushell_config $runtime_root "generated Nushell hook config"
+    require_file_not_contains $nushell_config (["runtime" "current"] | str join "/") "generated Nushell hook config"
     require_file_not_contains $bash_initializer $hostile_bin "generated Bash initializer"
     require_file_not_contains $nushell_initializer $hostile_bin "generated Nushell initializer"
     require_file_not_contains $yazi_theme "[flavor]" "generated Yazi theme config"
@@ -259,10 +254,9 @@ def verify_installed_runtime [temp_home: string] {
         error make { msg: $"Generated Yazi flavors directory is empty: ($yazi_flavor_root)" }
     }
 
-    let wrapper_target = (^readlink $yzx_path | str trim)
-    let expected_wrapper_target = ($runtime_current | path join "bin" "yzx")
+    let expected_wrapper_target = ($runtime_root | path join "bin" "yzx")
     if ($wrapper_target != $expected_wrapper_target) {
-        error make { msg: $"Installed yzx wrapper should point at runtime/current. Expected ($expected_wrapper_target), got ($wrapper_target)" }
+        error make { msg: $"Installed yzx wrapper should point at the packaged runtime. Expected ($expected_wrapper_target), got ($wrapper_target)" }
     }
 
     let version_result = (run_installed_yzx $temp_home "--version-short")
@@ -331,8 +325,8 @@ def verify_installed_runtime [temp_home: string] {
     let probe = ($runtime_probe.stdout | str trim | from json)
     if (
         ($probe.shell != "true")
-        or ($probe.runtime != $resolved_runtime_current)
-        or ($probe.path0 != $resolved_runtime_bin)
+        or ($probe.runtime != $runtime_root)
+        or ($probe.path0 != $runtime_bin)
         or (not ($probe.editor | str contains "yazelix_hx.sh"))
     ) {
         error make {

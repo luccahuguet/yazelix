@@ -46,7 +46,7 @@ jobs:
 
           base="$BASE_SHA"
           head="$HEAD_SHA"
-          integration_paths_regex='^(flake\.nix|\.github/workflows/ci\.yml|shells/|configs/|home_manager/|locked_devenv_package\.nix|mk_runtime_tree\.nix|mk_yazelix_package\.nix|yazelix_runtime_package\.nix|devenv\.lock|devenv\.nix|devenv\.yaml|yazelix_default\.toml|yazelix_packs_default\.toml|nushell/scripts/core/|nushell/scripts/setup/|nushell/scripts/utils/|nushell/scripts/dev/validate_flake_install\.nu|nushell/scripts/dev/validate_installed_runtime_contract\.nu|nushell/scripts/dev/devenv_lock_contract\.nu)'
+          integration_paths_regex='^(flake\.nix|flake\.lock|maintainer_shell\.nix|\.github/workflows/ci\.yml|shells/|configs/|home_manager/|packaging/mk_runtime_tree\.nix|yazelix_package\.nix|yazelix_runtime_package\.nix|yazelix_default\.toml|nushell/scripts/core/|nushell/scripts/setup/|nushell/scripts/utils/|nushell/scripts/dev/validate_flake_install\.nu|nushell/scripts/dev/validate_installed_runtime_contract\.nu)'
 
           if [ -z "${base:-}" ] || [ "$base" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
             base="$(git rev-parse "$head^" 2>/dev/null || git rev-list --max-parents=0 "$head" | tail -n1)"

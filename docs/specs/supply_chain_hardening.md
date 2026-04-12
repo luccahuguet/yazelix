@@ -58,13 +58,13 @@ Without that policy, every incident becomes ad-hoc reasoning under time pressure
 
 - unit tests: n/a
 - integration tests: n/a
-- manual verification: review `devenv.nix`, `yazelix_default.toml`, `home_manager/module.nix`, and the documented packs against this policy
+- manual verification: review `maintainer_shell.nix`, `yazelix_default.toml`, `home_manager/module.nix`, and the documented packs against this policy
 - manual verification: use a recent incident triage example to confirm the workflow leads to a specific default-surface / opt-in / not-present conclusion
 
 ## Traceability
 
 - Bead: `yazelix-5u8`
-- Defended by: `manual review of devenv.nix, yazelix_default.toml, and home_manager/module.nix against this policy`
+- Defended by: `manual review of maintainer_shell.nix, yazelix_default.toml, and home_manager/module.nix against this policy`
 - Defended by: `manual incident-triage review using a concrete advisory against the documented workflow`
 
 ## Open Questions

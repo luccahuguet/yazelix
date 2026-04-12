@@ -102,7 +102,7 @@ Manual validation on April 8, 2026 covered both a lived-in account and a throwaw
 
 - Home Manager owns the profile-provided `yzx` command and the generated `user_configs/` TOML files through symlinks into the Home Manager profile.
 - The managed `yzx` command resolves through the Home Manager profile, typically `~/.nix-profile/bin/yzx`, rather than through the manual installer's `~/.local/bin/yzx` path.
-- The active runtime root resolves directly from the packaged Yazelix runtime in the Home Manager profile/store path, not through `~/.local/share/yazelix/runtime/current`.
+- The active runtime root resolves directly from the packaged Yazelix runtime in the Home Manager profile/store path, not through a manual-install runtime symlink.
 - The Home Manager desktop entry comes from the Home Manager profile, typically `~/.nix-profile/share/applications/yazelix.desktop`, rather than from `yzx desktop install`.
 - Old manual desktop-entry files under `~/.local/share/applications/` can linger after migration; they are not Home Manager-owned and will shadow the Home Manager profile entry until you remove them.
 - Host shell hooks are optional for the Home Manager path. Launch through `yzx` or the Home Manager desktop entry; do not expect `home-manager switch` to rewrite `.bashrc` or `~/.config/nushell/config.nu`.
@@ -209,7 +209,7 @@ To work on this module:
 
 ```bash
 cd /path/to/cloned/yazelix
-devenv shell
+nix develop
 ```
 
 Use the repo root environment and your preferred Nix formatting/lint tools as needed.

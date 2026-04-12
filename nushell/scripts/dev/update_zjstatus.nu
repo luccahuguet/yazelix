@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 # Update zjstatus plugin (Zellij status bar) for Yazelix
-# Refreshes the vendored zjstatus wasm from the pinned `zjstatus` input in devenv.lock.
+# Refreshes the vendored zjstatus wasm from the pinned `zjstatus` flake input.
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
 
@@ -38,10 +38,10 @@ export def main [] {
   }
 
   let target_dir = ($REPO_ROOT | path join "configs" "zellij" "plugins")
-  let lock_path = ($REPO_ROOT | path join "devenv.lock")
+  let lock_path = ($REPO_ROOT | path join "flake.lock")
 
   if not ($lock_path | path exists) {
-    print $"Error: devenv.lock not found at: ($lock_path)"
+    print $"Error: flake.lock not found at: ($lock_path)"
     exit 2
   }
 

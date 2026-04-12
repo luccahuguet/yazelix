@@ -4,6 +4,14 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixgl.url = "github:guibou/nixGL";
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    zjstatus = {
+      url = "github:dj95/zjstatus";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -11,6 +19,8 @@
       self,
       nixpkgs,
       nixgl,
+      fenix,
+      zjstatus,
     }:
     let
       systems = [
@@ -24,6 +34,14 @@
       homeManagerModule = import ./home_manager/module.nix;
       runtimePackage = pkgs: import ./yazelix_runtime_package.nix { inherit pkgs nixgl; };
       yazelixPackage = pkgs: import ./yazelix_package.nix { inherit pkgs nixgl; };
+      maintainerShell =
+        system: pkgs:
+        import ./maintainer_shell.nix {
+          inherit pkgs nixgl;
+          lib = nixpkgs.lib;
+          fenixPkgs = fenix.packages.${system};
+          repoRoot = ./.;
+        };
     in
     {
       packages = forAllSystems (
@@ -67,6 +85,16 @@
           program = "${self.packages.${system}.install}/bin/yazelix-install";
         };
       });
+
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = mkPkgs system;
+        in
+        {
+          default = maintainerShell system pkgs;
+        }
+      );
 
       homeManagerModules.default = homeManagerModule;
       homeManagerModules.yazelix = homeManagerModule;
