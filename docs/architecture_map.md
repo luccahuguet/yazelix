@@ -7,7 +7,7 @@ This is a maintainer-facing map, not a marketing split. The point is to answer t
 1. Which part of the repo owns a behavior?
 2. Where should deletion-first simplification pay off first?
 
-See [Subsystem Code Inventory](./subsystem_code_inventory.md) for the current LOC snapshot using the same subsystem families.
+See [Subsystem Code Inventory](./subsystem_code_inventory.md) for the current LOC snapshot, the detailed runtime and maintainer breakdowns, and the trim-oriented command view built on the same subsystem families.
 
 ## Subsystem Families
 
