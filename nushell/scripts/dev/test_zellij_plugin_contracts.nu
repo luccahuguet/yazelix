@@ -4,7 +4,12 @@
 
 use ./yzx_test_helpers.nu get_repo_root
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
-use ../setup/zellij_plugin_paths.nu [get_tracked_zjstatus_wasm_path get_zjstatus_wasm_path]
+use ../setup/zellij_plugin_paths.nu [
+    get_tracked_pane_orchestrator_wasm_path
+    get_tracked_zjstatus_wasm_path
+    get_zjstatus_wasm_path
+    sync_pane_orchestrator_runtime_wasm
+]
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Defends: generated Zellij layouts load zjstatus from a stable Yazelix plugin path instead of a store path.
@@ -117,6 +122,68 @@ def test_zjstatus_permission_cache_migrates_to_tracked_and_stable_paths [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Regression: pane orchestrator permission grants migrate onto tracked and stable Yazelix plugin paths with RunCommands for shared transient-pane launching.
+def test_pane_orchestrator_permission_cache_migrates_run_commands_to_tracked_and_stable_paths [] {
+    print "🧪 Testing pane orchestrator permission grants migrate to tracked and stable paths with RunCommands..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_pane_orchestrator_permission_cache_XXXXXX | str trim)
+    let config_dir = ($tmp_home | path join ".config" "yazelix")
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+    let cache_path = ($tmp_home | path join ".cache" "zellij" "permissions.kdl")
+
+    mkdir ($tmp_home | path join ".config")
+    mkdir $config_dir
+    mkdir ($cache_path | path dirname)
+
+    let result = (try {
+        '"/tmp/legacy/yazelix_pane_orchestrator.wasm" {
+    ReadApplicationState
+    OpenTerminalsOrPlugins
+    ChangeApplicationState
+    RunCommands
+    WriteToStdin
+    ReadCliPipes
+}
+' | save --force --raw $cache_path
+
+        let migrated = (with-env {
+            HOME: $tmp_home
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            let stable_path = (sync_pane_orchestrator_runtime_wasm $repo_root)
+            let tracked_path = (get_tracked_pane_orchestrator_wasm_path $repo_root)
+            {
+                stable_path: $stable_path
+                tracked_path: $tracked_path
+                cache: (open --raw $cache_path)
+            }
+        })
+
+        if (
+            ($migrated.stable_path | path exists)
+            and ($migrated.cache | str contains $"\"($migrated.tracked_path)\"")
+            and ($migrated.cache | str contains $"\"($migrated.stable_path)\"")
+            and ($migrated.cache | str contains "RunCommands")
+        ) {
+            print "  ✅ pane orchestrator permission grants now migrate onto both tracked and stable paths with RunCommands preserved"
+            true
+        } else {
+            print $"  ❌ Unexpected pane orchestrator permission cache state: (($migrated | to json -r))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 # Regression: zjstatus terminal widget falls back to configured terminals without relying on YAZELIX_PREFERRED_TERMINAL or parser/bootstrap noise.
 def test_zjstatus_terminal_widget_falls_back_to_configured_terminal_without_env_hint [] {
@@ -174,6 +241,7 @@ export def run_zellij_plugin_contract_tests [] {
     [
         (test_generate_merged_zellij_layouts_use_stable_zjstatus_plugin_path)
         (test_zjstatus_permission_cache_migrates_to_tracked_and_stable_paths)
+        (test_pane_orchestrator_permission_cache_migrates_run_commands_to_tracked_and_stable_paths)
         (test_zjstatus_terminal_widget_falls_back_to_configured_terminal_without_env_hint)
     ]
 }

@@ -124,10 +124,16 @@ export def build_yazelix_plugins_block [
     widget_tray_segment: string
     custom_text_segment: string
     sidebar_width_percent: int
+    runtime_dir: string
+    popup_width_percent: int
+    popup_height_percent: int
 ] {
     let escaped_widget_tray = ($widget_tray_segment | to json -r)
     let escaped_custom_text = ($custom_text_segment | to json -r)
     let escaped_sidebar_width_percent = ($sidebar_width_percent | into string | to json -r)
+    let escaped_runtime_dir = ($runtime_dir | path expand | to json -r)
+    let escaped_popup_width_percent = ($popup_width_percent | into string | to json -r)
+    let escaped_popup_height_percent = ($popup_height_percent | into string | to json -r)
     let pane_alias_present = ($existing_plugin_lines | any {|line| $line | str contains $"($pane_orchestrator_alias) location=" })
     mut merged_plugin_lines = $existing_plugin_lines
 
@@ -137,6 +143,9 @@ export def build_yazelix_plugins_block [
             $"        widget_tray_segment ($escaped_widget_tray)"
             $"        custom_text_segment ($escaped_custom_text)"
             $"        sidebar_width_percent ($escaped_sidebar_width_percent)"
+            $"        runtime_dir ($escaped_runtime_dir)"
+            $"        popup_width_percent ($escaped_popup_width_percent)"
+            $"        popup_height_percent ($escaped_popup_height_percent)"
             "    }"
         ])
     }

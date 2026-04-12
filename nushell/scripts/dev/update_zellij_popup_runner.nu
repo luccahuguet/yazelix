@@ -6,12 +6,13 @@ use ../setup/zellij_plugin_paths.nu [
   get_tracked_popup_runner_wasm_path
   sync_popup_runner_runtime_wasm
 ]
+use ../maintainer/repo_checkout.nu require_yazelix_repo_root
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
 const built_plugin_relative_path = "rust_plugins/zellij_popup_runner/target/wasm32-wasip1/release/yazelix_popup_runner.wasm"
 
 export def main [] {
-  let yazelix_dir = ($env.HOME | path join ".config" "yazelix")
+  let yazelix_dir = (require_yazelix_repo_root)
   let source_path = ($yazelix_dir | path join $built_plugin_relative_path)
   let repo_target_path = (get_tracked_popup_runner_wasm_path $yazelix_dir)
 

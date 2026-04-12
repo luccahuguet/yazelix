@@ -7,11 +7,12 @@ use ../setup/zellij_plugin_paths.nu [
   sync_pane_orchestrator_runtime_wasm
 ]
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
+use ../maintainer/repo_checkout.nu require_yazelix_repo_root
 
 const built_plugin_relative_path = "rust_plugins/zellij_pane_orchestrator/target/wasm32-wasip1/release/yazelix_pane_orchestrator.wasm"
 
 export def main [] {
-  let yazelix_dir = ($env.HOME | path join ".config" "yazelix")
+  let yazelix_dir = (require_yazelix_repo_root)
   let source_path = ($yazelix_dir | path join $built_plugin_relative_path)
   let repo_target_path = (get_tracked_pane_orchestrator_wasm_path $yazelix_dir)
 

@@ -13,6 +13,7 @@ const pane_orchestrator_required_permissions = [
     "ReadApplicationState"
     "OpenTerminalsOrPlugins"
     "ChangeApplicationState"
+    "RunCommands"
     "WriteToStdin"
     "ReadCliPipes"
 ]

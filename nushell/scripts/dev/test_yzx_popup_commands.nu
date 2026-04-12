@@ -6,7 +6,6 @@
 use ../yzx/popup.nu [resolve_yzx_popup_command resolve_yzx_popup_cwd]
 use ../integrations/zellij_runtime_wrappers.nu [build_floating_wrapper_env_args get_floating_wrapper_env get_new_editor_pane_launch_env open_floating_runtime_script]
 use ../utils/config_parser.nu [parse_yazelix_config]
-use ../../../configs/zellij/scripts/yzx_toggle_popup.nu [resolve_popup_toggle_action]
 
 def write_executable_fixture_file [path: string, lines: list<string>] {
     $lines | str join "\n" | save --force --raw $path
@@ -19,16 +18,13 @@ def setup_runtime_wrapper_fixture [label: string] {
     let integrations_dir = ($runtime_dir | path join "nushell" "scripts" "integrations")
     let yzx_dir = ($runtime_dir | path join "nushell" "scripts" "yzx")
     let wrapper_dir = ($runtime_dir | path join "nushell" "scripts" "zellij_wrappers")
-    let config_script_dir = ($runtime_dir | path join "configs" "zellij" "scripts")
     let fake_bin = ($tmpdir | path join "bin")
     let refresh_log = ($tmpdir | path join "refresh.log")
-    let popup_open_log = ($tmpdir | path join "popup_open.log")
     let real_nu = (which nu | get -o 0.path)
 
     mkdir $integrations_dir
     mkdir $yzx_dir
     mkdir $wrapper_dir
-    mkdir $config_script_dir
     mkdir $fake_bin
     cp ($env.PWD | path join "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
     cp ($env.PWD | path join ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
@@ -40,16 +36,10 @@ def setup_runtime_wrapper_fixture [label: string] {
         integrations_dir: $integrations_dir
         yzx_dir: $yzx_dir
         wrapper_dir: $wrapper_dir
-        config_script_dir: $config_script_dir
         fake_bin: $fake_bin
         refresh_log: $refresh_log
-        popup_open_log: $popup_open_log
         real_nu: $real_nu
     }
-}
-
-def install_runtime_config_script [fixture: record, script_name: string] {
-    cp ($env.PWD | path join "configs" "zellij" "scripts" $script_name) ($fixture.config_script_dir | path join $script_name)
 }
 
 # Defends: popup command resolution prefers the configured default program.
@@ -183,119 +173,76 @@ def test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages [] {
     }
 }
 
-# Regression: popup toggle wrapper surfaces permission denials instead of failing silently.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_popup_toggle_wrapper_surfaces_permission_denials [] {
-    print "🧪 Testing popup toggle wrapper surfaces popup-plugin permission denials..."
-
-    try {
-        let result = (resolve_popup_toggle_action "permissions_denied")
-
-        if ($result.action == "error") and ($result.message | str contains "popup-runner plugin permissions") {
-            print "  ✅ popup toggle wrapper reports popup-plugin permission denials clearly"
-            true
-        } else {
-            print $"  ❌ Unexpected result: ($result | to json -r)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-# Regression: popup toggle refreshes sidebar Yazi only after closing the popup and opens missing popups directly.
+# Regression: the runtime popup pane wrapper must run the resolved argv directly, refresh the sidebar, and close its own transient pane after success.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_popup_toggle_wrapper_refreshes_sidebar_only_after_close [] {
-    print "🧪 Testing popup toggle refreshes sidebar Yazi only after popup close and opens missing popups directly..."
+def test_popup_program_wrapper_runs_resolved_argv_directly [] {
+    print "🧪 Testing popup program wrapper runs the resolved popup argv directly and closes its transient pane..."
 
-    let fixture = (setup_runtime_wrapper_fixture "yazelix_popup_toggle_refresh")
+    let fixture = (setup_runtime_wrapper_fixture "yazelix_popup_direct_wrapper")
 
     let result = (try {
         write_executable_fixture_file ($fixture.fake_bin | path join "zellij") [
             "#!/bin/sh"
-            "printf '%s\\n' \"$YAZELIX_TEST_POPUP_RESULT\""
+            "if [ -f \"$YAZELIX_TEST_ZELLIJ_LOG\" ]; then"
+            "  printf '%s\\n' \"$*\" >> \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "else"
+            "  printf '%s\\n' \"$*\" > \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "fi"
             "exit 0"
         ]
-
+        write_executable_fixture_file ($fixture.fake_bin | path join "fake-popup") [
+            "#!/bin/sh"
+            "printf 'args=%s\\n' \"$*\" > \"$YAZELIX_TEST_POPUP_LOG\""
+            "printf 'pane-env=%s\\n' \"${YAZELIX_POPUP_PANE-unset}\" >> \"$YAZELIX_TEST_POPUP_LOG\""
+            "exit 0"
+        ]
         [
             "export def refresh_active_sidebar_yazi [] {"
-            "    if ($env.YAZELIX_TEST_REFRESH_LOG | path exists) {"
-            "        'refresh' | save --append --raw $env.YAZELIX_TEST_REFRESH_LOG"
-            "    } else {"
-            "        'refresh' | save --force --raw $env.YAZELIX_TEST_REFRESH_LOG"
-            "    }"
+            "    'refresh' | save --force --raw $env.YAZELIX_TEST_REFRESH_LOG"
             "    {status: 'ok'}"
             "}"
         ] | str join "\n" | save --force --raw ($fixture.integrations_dir | path join "yazi.nu")
-        [
-            "export def \"yzx popup\" [] {"
-            "    if ($env.YAZELIX_TEST_POPUP_OPEN_LOG | path exists) {"
-            "        'open' | save --append --raw $env.YAZELIX_TEST_POPUP_OPEN_LOG"
-            "    } else {"
-            "        'open' | save --force --raw $env.YAZELIX_TEST_POPUP_OPEN_LOG"
-            "    }"
-            "}"
-        ] | str join "\n" | save --force --raw ($fixture.yzx_dir | path join "popup.nu")
-        install_runtime_config_script $fixture "yzx_toggle_popup.nu"
+        cp ($env.PWD | path join "nushell" "scripts" "zellij_wrappers" "yzx_popup_program.nu") ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
 
-        let wrapper_script = ($fixture.config_script_dir | path join "yzx_toggle_popup.nu")
-        let closed_output = (with-env {
+        let wrapper_script = ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
+        let output = (with-env {
             PATH: ([$fixture.fake_bin] | append $env.PATH)
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-            YAZELIX_NU_BIN: $fixture.real_nu
+            ZELLIJ: "1"
+            YAZELIX_TEST_POPUP_LOG: ($fixture.tmpdir | path join "popup_program.log")
+            YAZELIX_TEST_ZELLIJ_LOG: ($fixture.tmpdir | path join "zellij.log")
             YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
-            YAZELIX_TEST_POPUP_RESULT: "closed"
         } {
-            ^nu $wrapper_script | complete
+            ^nu $wrapper_script fake-popup "--flag" "value" | complete
         })
-        let closed_refresh = if ($fixture.refresh_log | path exists) {
+
+        let popup_log = ($fixture.tmpdir | path join "popup_program.log")
+        let zellij_log = ($fixture.tmpdir | path join "zellij.log")
+        let popup_invocation = if ($popup_log | path exists) {
+            open --raw $popup_log | lines
+        } else {
+            []
+        }
+        let zellij_invocation = if ($zellij_log | path exists) {
+            open --raw $zellij_log | lines
+        } else {
+            []
+        }
+        let refresh_log = if ($fixture.refresh_log | path exists) {
             open --raw $fixture.refresh_log | str trim
         } else {
             ""
         }
 
-        rm -f $fixture.refresh_log
-
-        let focused_output = (with-env {
-            PATH: ([$fixture.fake_bin] | append $env.PATH)
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-            YAZELIX_NU_BIN: $fixture.real_nu
-            YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
-            YAZELIX_TEST_POPUP_RESULT: "focused"
-        } {
-            ^nu $wrapper_script | complete
-        })
-        let focused_refresh_exists = ($fixture.refresh_log | path exists)
-
-        let missing_output = (with-env {
-            PATH: ([$fixture.fake_bin] | append $env.PATH)
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
-            YAZELIX_NU_BIN: $fixture.real_nu
-            YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
-            YAZELIX_TEST_POPUP_OPEN_LOG: $fixture.popup_open_log
-            YAZELIX_TEST_POPUP_RESULT: "missing"
-        } {
-            ^nu $wrapper_script | complete
-        })
-        let missing_open = if ($fixture.popup_open_log | path exists) {
-            open --raw $fixture.popup_open_log | str trim
-        } else {
-            ""
-        }
-
         if (
-            ($closed_output.exit_code == 0)
-            and ($closed_refresh == "refresh")
-            and ($focused_output.exit_code == 0)
-            and (not $focused_refresh_exists)
-            and ($missing_output.exit_code == 0)
-            and ($missing_open == "open")
+            ($output.exit_code == 0)
+            and ($popup_invocation == ["args=--flag value" "pane-env=unset"])
+            and ($zellij_invocation == ["action rename-pane yzx_popup" "action close-pane"])
+            and ($refresh_log == "refresh")
         ) {
-            print "  ✅ popup toggle now refreshes sidebar Yazi only after closing the popup and opens missing popups directly"
+            print "  ✅ popup runtime wrapper now runs the resolved argv directly, refreshes the sidebar, and closes the transient pane after success"
             true
         } else {
-            print $"  ❌ Unexpected popup-toggle behavior: closed_exit=($closed_output.exit_code) closed_refresh=($closed_refresh | to json -r) focused_exit=($focused_output.exit_code) focused_refresh_exists=($focused_refresh_exists) missing_exit=($missing_output.exit_code) missing_open=($missing_open | to json -r) closed_stderr=(($closed_output.stderr | str trim)) focused_stderr=(($focused_output.stderr | str trim)) missing_stderr=(($missing_output.stderr | str trim))"
+            print $"  ❌ Unexpected popup wrapper behavior: exit=($output.exit_code) popup=($popup_invocation | to json -r) zellij=($zellij_invocation | to json -r) refresh=($refresh_log | to json -r) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -307,60 +254,64 @@ def test_popup_toggle_wrapper_refreshes_sidebar_only_after_close [] {
     $result
 }
 
-# Regression: the runtime popup pane wrapper must run the resolved argv directly instead of re-entering `yzx popup`.
+# Regression: the runtime menu popup wrapper must mark popup mode, rename itself, and close its own transient pane after success.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_popup_program_wrapper_runs_resolved_argv_directly [] {
-    print "🧪 Testing popup program wrapper runs the resolved popup argv directly..."
+def test_menu_popup_wrapper_marks_popup_mode_and_closes_transient_pane [] {
+    print "🧪 Testing menu popup wrapper sets popup mode and closes its transient pane..."
 
-    let tmpdir = (^mktemp -d /tmp/yazelix_popup_direct_wrapper_XXXXXX | str trim)
-    let fake_bin = ($tmpdir | path join "bin")
-    let popup_log = ($tmpdir | path join "popup_program.log")
-    let zellij_log = ($tmpdir | path join "zellij.log")
-    mkdir $fake_bin
+    let fixture = (setup_runtime_wrapper_fixture "yazelix_menu_popup_wrapper")
 
     let result = (try {
-        write_executable_fixture_file ($fake_bin | path join "zellij") [
-            "#!/bin/sh"
-            "printf '%s\\n' \"$*\" > \"$YAZELIX_TEST_ZELLIJ_LOG\""
-            "exit 0"
-        ]
-        write_executable_fixture_file ($fake_bin | path join "fake-popup") [
-            "#!/bin/sh"
-            "printf 'args=%s\\n' \"$*\" > \"$YAZELIX_TEST_POPUP_LOG\""
-            "printf 'pane-env=%s\\n' \"${YAZELIX_POPUP_PANE-unset}\" >> \"$YAZELIX_TEST_POPUP_LOG\""
-            "exit 0"
-        ]
+        let zellij_log = ($fixture.tmpdir | path join "zellij.log")
+        let menu_log = ($fixture.tmpdir | path join "menu.log")
 
-        let wrapper_script = ($env.PWD | path join "nushell" "scripts" "zellij_wrappers" "yzx_popup_program.nu")
+        write_executable_fixture_file ($fixture.fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            "if [ -f \"$YAZELIX_TEST_ZELLIJ_LOG\" ]; then"
+            "  printf '%s\\n' \"$*\" >> \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "else"
+            "  printf '%s\\n' \"$*\" > \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "fi"
+            "exit 0"
+        ]
+        [
+            "export def \"yzx menu\" [] {"
+            "    let value = ($env.YAZELIX_MENU_POPUP? | default \"unset\")"
+            "    $\"YAZELIX_MENU_POPUP=($value)\" | save --force --raw $env.YAZELIX_TEST_MENU_LOG"
+            "}"
+        ] | str join "\n" | save --force --raw ($fixture.yzx_dir | path join "menu.nu")
+        cp ($env.PWD | path join "nushell" "scripts" "zellij_wrappers" "yzx_menu_popup.nu") ($fixture.wrapper_dir | path join "yzx_menu_popup.nu")
+
+        let wrapper_script = ($fixture.wrapper_dir | path join "yzx_menu_popup.nu")
         let output = (with-env {
-            PATH: ([$fake_bin] | append $env.PATH)
+            PATH: ([$fixture.fake_bin] | append $env.PATH)
             ZELLIJ: "1"
-            YAZELIX_TEST_POPUP_LOG: $popup_log
             YAZELIX_TEST_ZELLIJ_LOG: $zellij_log
+            YAZELIX_TEST_MENU_LOG: $menu_log
         } {
-            ^nu $wrapper_script fake-popup "--flag" "value" | complete
+            ^nu $wrapper_script | complete
         })
 
-        let popup_invocation = if ($popup_log | path exists) {
-            open --raw $popup_log | lines
-        } else {
-            []
-        }
-        let zellij_invocation = if ($zellij_log | path exists) {
-            open --raw $zellij_log | str trim
+        let menu_env = if ($menu_log | path exists) {
+            open --raw $menu_log | str trim
         } else {
             ""
+        }
+        let zellij_invocation = if ($zellij_log | path exists) {
+            open --raw $zellij_log | lines
+        } else {
+            []
         }
 
         if (
             ($output.exit_code == 0)
-            and ($popup_invocation == ["args=--flag value" "pane-env=unset"])
-            and ($zellij_invocation == "action rename-pane yzx_popup")
+            and ($menu_env == "YAZELIX_MENU_POPUP=true")
+            and ($zellij_invocation == ["action rename-pane yzx_menu" "action close-pane"])
         ) {
-            print "  ✅ popup runtime wrapper now runs the resolved argv directly without the old pane env re-entry path"
+            print "  ✅ menu popup wrapper now marks popup mode, renames itself, and closes the transient pane after success"
             true
         } else {
-            print $"  ❌ Unexpected popup wrapper behavior: exit=($output.exit_code) popup=($popup_invocation | to json -r) zellij=($zellij_invocation | to json -r) stderr=(($output.stderr | str trim))"
+            print $"  ❌ Unexpected menu wrapper behavior: exit=($output.exit_code) menu_env=($menu_env | to json -r) zellij=($zellij_invocation | to json -r) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -368,7 +319,7 @@ def test_popup_program_wrapper_runs_resolved_argv_directly [] {
         false
     })
 
-    rm -rf $tmpdir
+    rm -rf $fixture.tmpdir
     $result
 }
 
@@ -555,9 +506,8 @@ export def run_popup_canonical_tests [] {
         (test_popup_command_prefers_configured_default)
         (test_popup_cwd_prefers_workspace_root)
         (test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages)
-        (test_popup_toggle_wrapper_surfaces_permission_denials)
-        (test_popup_toggle_wrapper_refreshes_sidebar_only_after_close)
         (test_popup_program_wrapper_runs_resolved_argv_directly)
+        (test_menu_popup_wrapper_marks_popup_mode_and_closes_transient_pane)
         (test_popup_wrapper_env_falls_back_to_runtime_env)
         (test_popup_wrapper_serializes_path_list_for_env_command)
         (test_popup_wrapper_falls_back_to_host_nu_without_runtime_owned_nu)

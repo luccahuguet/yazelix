@@ -57,6 +57,9 @@ export def toggle_editor_sidebar_focus [log_file: string = "zellij_plugin.log"] 
 def parse_pane_orchestrator_response [response: string] {
     match $response {
         "ok" => {status: "ok"}
+        "opened" => {status: "ok", action: "opened"}
+        "focused" => {status: "ok", action: "focused"}
+        "closed" => {status: "ok", action: "closed"}
         "focused_editor" => {status: "ok", target: "editor"}
         "focused_sidebar" => {status: "ok", target: "sidebar"}
         "opened_sidebar" => {status: "ok", target: "sidebar", opened: true}
@@ -65,9 +68,30 @@ def parse_pane_orchestrator_response [response: string] {
         "not_ready" => {status: "not_ready"}
         "permissions_denied" => {status: "permissions_denied"}
         "invalid_payload" => {status: "invalid_payload"}
+        "runtime_not_configured" => {status: "runtime_not_configured"}
         "unknown_layout" => {status: "unknown_layout"}
         "unsupported_editor" => {status: "unsupported_editor"}
         _ => {status: "error", reason: $response}
+    }
+}
+
+export def open_transient_pane [
+    kind: string
+    args: list<string> = []
+    cwd?: string
+    log_file: string = "zellij_plugin.log"
+] {
+    let payload = ({
+        kind: $kind
+        args: $args
+        cwd: ($cwd | default "")
+    } | to json -r)
+
+    try {
+        let response = (run_pane_orchestrator_command "open_transient_pane" $log_file $payload)
+        parse_pane_orchestrator_response $response
+    } catch {|err|
+        {status: "error", reason: $err.msg}
     }
 }
 

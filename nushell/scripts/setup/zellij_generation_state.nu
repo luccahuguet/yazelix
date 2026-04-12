@@ -128,6 +128,8 @@ export def build_zellij_generation_fingerprint [
         zellij_default_mode: ($config.zellij_default_mode? | default "normal")
         enable_sidebar: ($config.enable_sidebar? | default true)
         sidebar_width_percent: ($config.sidebar_width_percent? | default 20)
+        popup_width_percent: ($config.popup_width_percent? | default 90)
+        popup_height_percent: ($config.popup_height_percent? | default 90)
         disable_zellij_tips: ($config.disable_zellij_tips? | default "true")
         zellij_pane_frames: ($config.zellij_pane_frames? | default "true")
         zellij_rounded_corners: ($config.zellij_rounded_corners? | default "true")

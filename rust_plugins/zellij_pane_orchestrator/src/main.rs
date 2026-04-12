@@ -2,6 +2,7 @@ mod editor;
 mod layout;
 mod panes;
 mod sidebar_yazi;
+mod transient;
 mod workspace;
 
 use std::cell::RefCell;
@@ -41,6 +42,7 @@ struct State {
     seen_tab_positions: HashSet<usize>,
     initial_workspace_state: Option<WorkspaceState>,
     override_layout_config: layout::OverrideLayoutConfig,
+    transient_pane_config: transient::TransientPaneConfig,
     permissions_granted: bool,
 }
 
@@ -73,9 +75,14 @@ impl ZellijPlugin for State {
             PermissionType::ReadApplicationState,
             PermissionType::ChangeApplicationState,
             PermissionType::OpenTerminalsOrPlugins,
+            PermissionType::RunCommands,
             PermissionType::WriteToStdin,
             PermissionType::ReadCliPipes,
         ]);
+        self.transient_pane_config = transient::TransientPaneConfig::from_plugin_configuration(
+            &configuration,
+            &plugin_ids.initial_cwd,
+        );
         subscribe(&[
             EventType::TabUpdate,
             EventType::PaneUpdate,
@@ -199,6 +206,14 @@ impl ZellijPlugin for State {
             }
             "open_workspace_terminal" => {
                 self.open_workspace_terminal(&pipe_message);
+                false
+            }
+            "open_transient_pane" => {
+                self.open_transient_pane(&pipe_message);
+                false
+            }
+            "toggle_transient_pane" => {
+                self.toggle_transient_pane(&pipe_message);
                 false
             }
             "debug_editor_state" => {

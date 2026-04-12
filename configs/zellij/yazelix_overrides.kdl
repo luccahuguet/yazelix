@@ -74,22 +74,17 @@ keybinds {
 
         // Yazelix managed popup program (defaults to lazygit)
         bind "Alt t" {
-            Run "nu" "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/yzx_toggle_popup.nu" {
-                name "yzx_popup_toggle"
-                close_on_exit true
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_transient_pane"
+                payload "popup"
             }
         }
 
         // Yazelix command palette (yzx menu) in a floating pane
         bind "Alt Shift M" {
-            Run "nu" "__YAZELIX_RUNTIME_DIR__/nushell/scripts/zellij_wrappers/yzx_menu_popup.nu" {
-                name "yzx_menu"
-                floating true
-                close_on_exit true
-                x "15%"
-                y "15%"
-                width "70%"
-                height "70%"
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                name "toggle_transient_pane"
+                payload "menu"
             }
         }
     }

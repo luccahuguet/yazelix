@@ -1,5 +1,7 @@
 #!/usr/bin/env nu
 
+use ../integrations/yazi.nu [refresh_active_sidebar_yazi]
+
 def run_popup_program [popup_program: list<string>] {
     if ($popup_program | is-empty) {
         error make {msg: "No popup program was provided to the Yazelix popup runtime wrapper."}
@@ -15,10 +17,33 @@ def run_popup_program [popup_program: list<string>] {
     run-external $command ...$args
 }
 
-def --wrapped main [...popup_args: string] {
+def rename_transient_pane [name: string] {
     if ($env.ZELLIJ? | is-not-empty) {
-        ^zellij action rename-pane "yzx_popup" | complete | ignore
+        ^zellij action rename-pane $name | complete | ignore
+    }
+}
+
+def close_transient_pane [] {
+    if ($env.ZELLIJ? | is-not-empty) {
+        ^zellij action close-pane | complete | ignore
+    }
+}
+
+def --wrapped main [...popup_args: string] {
+    rename_transient_pane "yzx_popup"
+
+    let result = (try {
+        run_popup_program $popup_args
+        {ok: true}
+    } catch {|err|
+        {ok: false, msg: $err.msg}
+    })
+
+    if $result.ok {
+        refresh_active_sidebar_yazi | ignore
+        close_transient_pane
+        return
     }
 
-    run_popup_program $popup_args
+    error make {msg: $result.msg}
 }

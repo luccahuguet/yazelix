@@ -62,6 +62,8 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     let resolved_default_shell = (resolve_zellij_default_shell $yazelix_dir $default_shell)
     let default_layout_name = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
     let sidebar_width_percent = ($config.sidebar_width_percent? | default 20)
+    let popup_width_percent = ($config.popup_width_percent? | default 90)
+    let popup_height_percent = ($config.popup_height_percent? | default 90)
     let source_layouts_dir = $"($yazelix_dir)/($ZELLIJ_CONFIG_PATHS.layouts_dir)"
     let pane_orchestrator_plugin_url = $PANE_ORCHESTRATOR_PLUGIN_ALIAS
     let plugin_artifacts = (profile_startup_step "zellij_config" "resolve_plugin_artifacts" {
@@ -184,6 +186,9 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
             $widget_tray_segment
             $custom_text_segment
             $sidebar_width_percent
+            $yazelix_dir
+            $popup_width_percent
+            $popup_height_percent
         ),
         "",
         $merged_ui_block,

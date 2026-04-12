@@ -1398,6 +1398,57 @@ def test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrato
     $result
 }
 
+# Regression: popup and menu transient panes must route through the pane orchestrator and share one configured floating geometry contract.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_generate_merged_zellij_config_routes_popup_and_menu_through_shared_transient_pane_contract [] {
+    print "🧪 Testing merged Zellij config routes popup/menu through the shared pane-orchestrator transient-pane contract..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_transient_contract_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        let config_path = ($tmpdir | path join "yazelix.toml")
+
+        write_minimal_user_zellij_config $fake_home
+        '[zellij]
+popup_width_percent = 82
+popup_height_percent = 76
+' | save --force --raw $config_path
+
+        let output = (run_merged_zellij_config_in_fake_home $tmpdir {
+            YAZELIX_CONFIG_OVERRIDE: $config_path
+        })
+        let generated_config = ($output.config | str trim)
+        let repo_root = (get_repo_config_dir)
+
+        if (
+            ($generated_config | str contains 'bind "Alt t" {')
+            and ($generated_config | str contains 'bind "Alt Shift M" {')
+            and (($generated_config | str contains 'name "toggle_transient_pane"') and (($generated_config | lines | where {|line| $line | str contains 'name "toggle_transient_pane"'} | length) >= 2))
+            and ($generated_config | str contains 'payload "popup"')
+            and ($generated_config | str contains 'payload "menu"')
+            and not ($generated_config | str contains 'configs/zellij/scripts/yzx_toggle_popup.nu')
+            and not ($generated_config | str contains 'width "70%"')
+            and not ($generated_config | str contains 'height "70%"')
+            and ($generated_config | str contains $"runtime_dir \"($repo_root)\"")
+            and ($generated_config | str contains 'popup_width_percent "82"')
+            and ($generated_config | str contains 'popup_height_percent "76"')
+        ) {
+            print "  ✅ popup and menu now bind directly to the pane orchestrator and carry one shared transient-pane geometry contract in plugin config"
+            true
+        } else {
+            print $"  ❌ Generated Zellij config is missing the shared transient-pane contract: ($generated_config)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Regression: non-persistent Zellij sessions must quit on terminal close while persistent sessions may detach.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_generate_merged_zellij_config_sets_on_force_close_by_session_mode [] {
@@ -1609,6 +1660,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
         (test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers)
         (test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrator_toggle)
+        (test_generate_merged_zellij_config_routes_popup_and_menu_through_shared_transient_pane_contract)
         (test_generate_merged_zellij_config_sets_on_force_close_by_session_mode)
         (test_generate_merged_zellij_config_replaces_conflicting_ui_and_serialization_settings)
     ]
