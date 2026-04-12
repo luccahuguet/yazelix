@@ -137,7 +137,7 @@ export def main [] {
         and ($second_leading_line == "=== RESULT ===")
         and (($second.stdout | str contains '"shown":false'))
         and (($manual.stdout | str contains $"What's New In Yazelix ($YAZELIX_VERSION)"))
-        and (($manual.stdout | str contains "yzx config migrate --apply"))
+        and (($manual.stdout | str contains "yzx doctor --fix"))
     )
 
     if $ok {

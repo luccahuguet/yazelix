@@ -2,16 +2,14 @@
 # Interactive launch sequence for the active Yazelix runtime
 
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS, YAZELIX_LOGS_DIR]
 use ../utils/ascii_art.nu get_yazelix_colors
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_zellij_default_shell]
 use ../utils/failure_classes.nu [format_failure_classification]
+use ../utils/generated_runtime_state.nu [regenerate_runtime_configs record_current_materialized_state]
 use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/upgrade_summary.nu [maybe_show_first_run_upgrade_summary]
 use ../setup/welcome.nu [show_welcome build_welcome_message]
-use ../setup/yazi_config_merger.nu generate_merged_yazi_config
-use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
 def require_existing_directory [path_value: string, label: string] {
     let resolved = ($path_value | path expand)
@@ -31,8 +29,8 @@ def require_existing_layout [layout_path: string] {
     let resolved = ($layout_path | path expand)
 
     if not ($resolved | path exists) {
-        let classification = (format_failure_classification "generated-state" "Run `yzx refresh` to repair generated layouts, or fix the configured layout name if it points at a missing file.")
-        error make {msg: $"Zellij layout not found: ($resolved)\nRun `yzx refresh` to regenerate layouts, or check the configured layout name.\n($classification)"}
+        let classification = (format_failure_classification "generated-state" "Run `yzx doctor` to inspect generated-state issues, or fix the configured layout name if it points at a missing file.")
+        error make {msg: $"Zellij layout not found: ($resolved)\nRun `yzx doctor` to inspect the generated-state contract, or check the configured layout name.\n($classification)"}
     }
 
     if (($resolved | path type) != "file") {
@@ -75,28 +73,18 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         print ""
     }
 
-    print "🔧 Preparing Yazi configuration..."
     try {
-        profile_startup_step "inner" "generate_yazi_config" {
+        profile_startup_step "inner" "materialize_runtime_configs" {
             if $verbose {
-                generate_merged_yazi_config $yazelix_dir | ignore
-            } else {
-                generate_merged_yazi_config $yazelix_dir --quiet | ignore
+                print "🔧 Preparing Yazelix generated runtime state..."
             }
+            regenerate_runtime_configs $yazelix_dir --quiet=(not $verbose)
         }
     } catch { |err|
-            error make {msg: $"Failed to generate Yazi configuration: ($err.msg)\nRun `yzx doctor` to inspect the runtime, then rerun `yzx refresh` to repair generated config if needed."}
+            error make {msg: $"Failed to prepare Yazelix generated runtime state: ($err.msg)\nRun `yzx doctor` to inspect the runtime and generated-state contract, then restart Yazelix after fixing the reported problem."}
     }
 
     let merged_zellij_dir = ($ZELLIJ_CONFIG_PATHS.merged_config_dir | str replace "~" $env.HOME)
-    try {
-        profile_startup_step "inner" "generate_zellij_config" {
-            generate_merged_zellij_config $yazelix_dir | ignore
-        }
-    } catch { |err|
-        error make {msg: $"Failed to generate Zellij configuration: ($err.msg)\nRun `yzx doctor` to inspect the runtime, then rerun `yzx refresh` to repair generated config if needed."}
-    }
-
     let working_dir = if ($cwd_override | is-not-empty) {
         $cwd_override
     } else {
@@ -127,9 +115,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     # Record that the current config/runtime state has been successfully applied
     # once generated config has been refreshed inside the prepared runtime.
     profile_startup_step "inner" "record_runtime_state" {
-        let computed_state = (compute_config_state)
-        record_materialized_state $computed_state
-        $computed_state
+        record_current_materialized_state
     } | ignore
 
     cd $launch_process_cwd

@@ -55,8 +55,8 @@ This file exists so current docs and current specs can point at one authoritativ
 
 - Generated Zellij/Yazi configs, shell initializers, logs, and repair hashes live under `~/.local/share/yazelix`.
 - Those files are derived artifacts, not canonical handwritten config.
-- `yzx refresh` owns generated-state repair only.
-- `yzx refresh` does not rebuild or reuse a cached backend launch profile.
+- Generated-state repair is an internal runtime responsibility surfaced through startup preflight, `yzx doctor`, and maintainer canaries rather than through a public refresh command.
+- Generated-state repair does not rebuild or reuse a cached backend launch profile.
 
 ### Update And Distribution Ownership
 
@@ -83,7 +83,7 @@ This file exists so current docs and current specs can point at one authoritativ
 ## Acceptance Cases
 
 1. A current v15 user can understand the product without learning about `yazelix_packs.toml`, launch-profile reuse, or runtime-local `devenv`.
-2. Current docs explain `yzx refresh` as generated-state repair rather than backend/profile orchestration.
+2. Current docs explain generated-state repair through startup and `yzx doctor` rather than through a public refresh command.
 3. Current docs explain update ownership through explicit owner commands rather than a generic runtime updater.
 4. Current docs distinguish the normal packaged runtime from maintainer-only `nix develop` workflows.
 

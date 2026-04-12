@@ -1,8 +1,6 @@
 #!/usr/bin/env nu
 # Yazelix Doctor - Health check utilities
 
-use logging.nu log_to_file
-use constants.nu [PINNED_NIX_VERSION]
 use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir require_yazelix_runtime_dir]
 use config_migration_transactions.nu [recover_stale_managed_config_transactions]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface reconcile_primary_config_surfaces]
@@ -24,79 +22,8 @@ use runtime_contract_checker.nu [
     resolve_expected_layout_path
     runtime_check_to_doctor_result
 ]
+use ../setup/zellij_plugin_paths.nu seed_yazelix_plugin_permissions
 use ../integrations/zellij.nu debug_editor_state
-
-def extract_last_semver [text: string] {
-    let matches = ($text | parse --regex '(\d+\.\d+\.\d+)' | get -o capture0)
-    if ($matches | is-empty) { "unknown" } else { $matches | last }
-}
-
-def get_runtime_tool_version [tool: string] {
-    match $tool {
-        "nix" => {
-            if (which nix | is-empty) { "not installed" } else {
-                try {
-                    let result = (^nix --version | complete)
-                    if $result.exit_code != 0 { "error" } else { extract_last_semver ($result.stdout | lines | first) }
-                } catch { "error" }
-            }
-        }
-        _ => "unknown"
-    }
-}
-
-def build_version_drift_result [tool: string, pinned: string, runtime: string] {
-    if $runtime == "not installed" {
-        {
-            status: "warning"
-            message: $"($tool) not installed"
-            details: $"Yazelix expects ($tool) ($pinned)"
-            fix_available: false
-        }
-    } else if $runtime == "error" or $runtime == "unknown" {
-        {
-            status: "warning"
-            message: $"Could not determine ($tool) runtime version"
-            details: $"Yazelix expects ($tool) ($pinned)"
-            fix_available: false
-        }
-    } else if $runtime != $pinned {
-        {
-            status: "warning"
-            message: $"($tool) version drift: runtime ($runtime), Yazelix expects ($pinned)"
-            details: "Version drift can cause breakage after upstream CLI or evaluation changes"
-            fix_available: false
-        }
-    } else {
-        {
-            status: "ok"
-            message: $"($tool) version matches Yazelix expectation: ($runtime)"
-            details: null
-            fix_available: false
-        }
-    }
-}
-
-def get_version_drift_results [] {
-    let nix_runtime = get_runtime_tool_version "nix"
-
-    [
-        (build_version_drift_result "nix" $PINNED_NIX_VERSION $nix_runtime)
-    ]
-}
-
-export def print_runtime_version_drift_warning [] {
-    let drift_results = (get_version_drift_results | where status == "warning")
-    if ($drift_results | is-empty) {
-        return
-    }
-
-    let nix_drift = ($drift_results | where message =~ '^nix version drift' | get -o 0)
-
-    if ($nix_drift != null) {
-        print $"⚠️  ($nix_drift.message)"
-    }
-}
 
 def build_runtime_distribution_doctor_result [profile: record] {
     {
@@ -107,35 +34,6 @@ def build_runtime_distribution_doctor_result [profile: record] {
         capability_tier: $profile.tier
         capability_mode: $profile.mode
     }
-}
-
-# Check environment variables
-def check_environment_variables [] {
-    mut results = []
-    
-    # Check EDITOR
-    if ($env.EDITOR? | is-empty) {
-        $results = ($results | append {
-            status: "warning"
-            message: "EDITOR environment variable not set"
-            details: "Some tools may not know which editor to use"
-            fix_available: false
-        })
-    } else {
-        $results = ($results | append {
-            status: "ok" 
-            message: $"EDITOR set to: ($env.EDITOR)"
-            details: null
-            fix_available: false
-        })
-    }
-    
-    # Check if using Helix and verify its effective runtime
-    if ($env.EDITOR? | default "" | str contains "hx") {
-        $results = ($results | append (check_helix_runtime_health))
-    }
-    
-    $results
 }
 
 # Check configuration files
@@ -275,47 +173,6 @@ def check_shared_runtime_preflight [] {
     $checks | each {|check| runtime_check_to_doctor_result $check }
 }
 
-def get_desktop_applications_dir [] {
-}
-
-# Check log files
-def check_log_files [] {
-    let logs_dir = ((get_yazelix_runtime_dir) | path join "logs")
-    let logs_path = ($logs_dir | path expand)
-
-    if not ($logs_path | path exists) {
-        return {
-            status: "info"
-            message: "No logs directory found"
-            details: "Logs will be created when needed"
-            fix_available: false
-        }
-    }
-
-    let large_logs = try {
-        (ls $logs_path | where type == file and size > 10MB)
-    } catch {
-        []
-    }
-
-    if not ($large_logs | is-empty) {
-        let large_files = ($large_logs | get name | path basename | str join ", ")
-        {
-            status: "warning"
-            message: $"Large log files found: ($large_files)"
-            details: "Consider cleaning up logs to improve performance"
-            fix_available: true
-        }
-    } else {
-        {
-            status: "ok"
-            message: "Log files are reasonable size"
-            details: $"Logs directory: ($logs_path)"
-            fix_available: false
-        }
-    }
-}
-
 def check_zellij_plugin_health [] {
     if ($env.ZELLIJ? | is-empty) {
         return [{
@@ -362,8 +219,9 @@ def build_zellij_plugin_health_results [plugin_state: record, sidebar_enabled: b
         $results = ($results | append {
             status: "error"
             message: "Yazelix pane-orchestrator plugin permissions not granted"
-            details: "Grant the required Yazelix Zellij plugin permissions: focus the top zjstatus bar and press `y` if it prompts, and also answer yes to the Yazelix orchestrator permission popup. If permission state gets out of sync after an update, run `yzx repair zellij-permissions` and restart Yazelix. Yazelix workspace bindings like `Alt+m`, `Alt+y`, `Ctrl+y`, `Alt+r`, `Alt+[`, and `Alt+]` depend on the orchestrator."
-            fix_available: false
+            details: "Grant the required Yazelix Zellij plugin permissions: focus the top zjstatus bar and press `y` if it prompts, and also answer yes to the Yazelix orchestrator permission popup. If permission state gets out of sync after an update, run `yzx doctor --fix` and restart Yazelix. Yazelix workspace bindings like `Alt+m`, `Alt+y`, `Ctrl+y`, `Alt+r`, `Alt+[`, and `Alt+]` depend on the orchestrator."
+            fix_available: true
+            fix_action: "seed_zellij_plugin_permissions"
         })
     } else {
         $results = ($results | append {
@@ -421,30 +279,6 @@ def build_zellij_plugin_health_results [plugin_state: record, sidebar_enabled: b
     $results
 }
 
-# Clean large log files
-def fix_large_logs [] {
-    let logs_dir = ((get_yazelix_runtime_dir) | path join "logs")
-    let logs_path = ($logs_dir | path expand)
-    
-    if not ($logs_path | path exists) {
-        return true
-    }
-    
-    try {
-        let large_logs = (ls $logs_path | where type == file and size > 10MB)
-        
-        for $log in $large_logs {
-            rm $log.name
-            print $"✅ Removed large log file: ($log.name | path basename)"
-        }
-        
-        return true
-    } catch {
-        print "❌ Failed to clean log files"
-        return false
-    }
-}
-
 # Create yazelix.toml from default
 def fix_create_config [] {
     use ./config_surfaces.nu [copy_default_config_surfaces]
@@ -477,8 +311,10 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
     # Runtime conflicts check
     $all_results = ($all_results | append (check_helix_runtime_conflicts))
 
-    # Environment variables
-    $all_results = ($all_results | append (check_environment_variables))
+    # Effective Helix runtime health only matters when EDITOR points at Helix.
+    if ($env.EDITOR? | default "" | str contains "hx") {
+        $all_results = ($all_results | append (check_helix_runtime_health))
+    }
 
     # Managed Helix contract
     $all_results = ($all_results | append (check_managed_helix_integration))
@@ -491,12 +327,6 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
 
     # Desktop entry freshness
     $all_results = ($all_results | append (check_desktop_entry_freshness))
-
-    # Log files
-    $all_results = ($all_results | append (check_log_files))
-
-    # Runtime drift against Yazelix pinned expectations
-    $all_results = ($all_results | append (get_version_drift_results))
 
     # Zellij session-local plugin health
     $all_results = ($all_results | append (check_zellij_plugin_health))
@@ -559,13 +389,7 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
                 fix_helix_runtime_conflicts $conflict.conflicts
             }
         }
-        
-        # Fix large logs
-        let log_issues = ($all_results | where status == "warning" and message =~ "log")
-        if not ($log_issues | is-empty) {
-            fix_large_logs
-        }
-        
+
         # Fix missing config
         let config_issues = ($all_results | where status == "info" and message =~ "default")
         if not ($config_issues | is-empty) {
@@ -580,6 +404,16 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
                 if $apply_result.status == "applied" {
                     print $"✅ Applied ($apply_result.applied_count) config migration fix\(es\) with backup: ($apply_result.backup_path)"
                 }
+            }
+        }
+
+        let plugin_permission_issues = ($all_results | where {|result| ($result.fix_action? | default "") == "seed_zellij_plugin_permissions" })
+        if not ($plugin_permission_issues | is-empty) {
+            try {
+                let repair_result = (seed_yazelix_plugin_permissions)
+                print $"✅ Seeded Yazelix plugin permissions in: ($repair_result.permissions_cache_path)"
+            } catch {|err|
+                print $"❌ Failed to seed Yazelix plugin permissions: ($err.msg)"
             }
         }
 

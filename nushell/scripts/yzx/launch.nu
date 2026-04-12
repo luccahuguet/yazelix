@@ -1,7 +1,6 @@
 #!/usr/bin/env nu
 # yzx launch command - Launch Yazelix in a new terminal window
 
-use ../utils/doctor.nu print_runtime_version_drift_warning
 use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/environment_bootstrap.nu [prepare_environment]
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_yazelix_nu_bin]
@@ -36,7 +35,6 @@ export def "yzx launch" [
     --terminal(-t): string  # Override terminal selection
     --verbose          # Enable verbose logging
 ] {
-    print_runtime_version_drift_warning
     run_entrypoint_config_migration_preflight "yzx launch" | ignore
 
     let verbose_mode = $verbose

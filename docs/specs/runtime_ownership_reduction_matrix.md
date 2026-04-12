@@ -113,7 +113,7 @@ This means the following families can still make sense after deleting distributi
 - `yzx enter`
 - `yzx env`
 - `yzx run`
-- `yzx refresh`
+- internal generated-state repair helpers
 - config/edit/import flows
 - workspace/session commands
 
@@ -140,7 +140,7 @@ What becomes questionable or likely out of scope:
 
 - `yzx env`
 - `yzx run`
-- `yzx refresh`
+- internal generated-state repair helpers
 - `yzx launch` if it still depends on backend activation semantics
 - `yzx packs` as a first-class product surface
 

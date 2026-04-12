@@ -19,18 +19,15 @@ The point is not to defend every old test file. The point is to make it obvious 
   - `nushell/scripts/dev/test_build_cores.nu`
   - `nushell/scripts/dev/devenv_lock_contract.nu`
 - Classification:
-  - `Contract removed` for stale profile reuse, build-shell parallelism propagation, runtime-local `devenv` ownership, and lock-derived `devenv` package ownership.
-  - `Missing replacement coverage` for the simplified success branches of `yzx refresh`.
+  - `Contract removed` for stale profile reuse, build-shell parallelism propagation, runtime-local `devenv` ownership, lock-derived `devenv` package ownership, and the old public refresh surface.
 - Why:
   - v15 no longer treats Yazelix as a broad `devenv` owner. The old tests were mostly defending profile reuse, build-shell command construction, or lock/runtime indirection that no longer belongs to the retained contract.
-  - The surviving `yzx refresh` command is now a narrower generated-state repair surface in [`nushell/scripts/yzx/refresh.nu`](../nushell/scripts/yzx/refresh.nu).
+  - Generated-state repair now lives under startup preflight, doctor guidance, and internal helper paths rather than under a public refresh command.
 - Current defenses:
   - Removed `devenv` and lock ownership is defended by [`nushell/scripts/dev/validate_installed_runtime_contract.nu:102`](../nushell/scripts/dev/validate_installed_runtime_contract.nu) through [`nushell/scripts/dev/validate_installed_runtime_contract.nu:110`](../nushell/scripts/dev/validate_installed_runtime_contract.nu).
   - Removed `core.refresh_output` is rejected as unsupported config surface by [`nushell/scripts/dev/test_yzx_core_commands.nu:1110`](../nushell/scripts/dev/test_yzx_core_commands.nu) through [`nushell/scripts/dev/test_yzx_core_commands.nu:1147`](../nushell/scripts/dev/test_yzx_core_commands.nu).
-  - `yzx refresh` still participates in stale-config diagnostics via [`nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu:21`](../nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu) through [`nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu:82`](../nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu).
-  - Startup preflight still points missing generated state at `yzx refresh` through [`nushell/scripts/dev/test_yzx_workspace_commands.nu:1306`](../nushell/scripts/dev/test_yzx_workspace_commands.nu).
-- Remaining gap:
-  - There is no direct surviving regression test for the success/no-op branches of the simplified `yzx refresh` command itself, such as "already up to date" and "repair missing generated artifacts without rebuild."
+  - Startup preflight still points missing generated state at `yzx doctor` through [`nushell/scripts/dev/test_yzx_workspace_commands.nu:1202`](../nushell/scripts/dev/test_yzx_workspace_commands.nu).
+  - Migration-aware diagnostics still cover startup plus doctor via [`nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu:41`](../nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu) through [`nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu:112`](../nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu).
 
 ## 2. Pack sidecar and pack config surface
 
@@ -117,4 +114,4 @@ The point is not to defend every old test file. The point is to make it obvious 
 
 - The pack-sidecar era, build-shell parallelism era, runtime-local `devenv` ownership, and lock-derived runtime ownership were intentionally removed and are now defended mainly by absence checks.
 - Terminal launch, managed-config behavior, parser behavior, and runtime/install behavior are defended by stronger surviving tests than the deleted broad smoke files provided.
-- The one real remaining gap is a direct regression around the simplified `yzx refresh` success branches. That gap is small, explicit, and a good candidate for follow-up if we want the retained refresh surface itself to be defended more directly.
+- The main remaining gaps are now around the surviving startup/doctor-generated-state seams rather than around any deleted public refresh command.

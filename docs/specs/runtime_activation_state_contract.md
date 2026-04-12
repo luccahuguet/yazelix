@@ -72,7 +72,7 @@ Without naming that split explicitly, helpers keep making the wrong leap:
 - External launch helpers should sanitize inherited live activation markers before starting a new Yazelix session from outside the current one.
   - Examples: desktop launch, launcher entrypoints, detached launch helpers.
 - Install/setup/bootstrap work may materialize generated state, but it must not persist live activation state as durable launch truth.
-- `yzx refresh` is a materialized-state owner, not an activation-transition owner.
+- Generated-state repair is a materialized-state owner, not an activation-transition owner.
   - It may rebuild and record a fresh reusable launch profile.
   - It must not claim that the current shell or window has activated that profile already.
   - Switching a live session to that profile remains the job of an explicit activation boundary such as `yzx restart`, `yzx launch`, or `yzx env`.

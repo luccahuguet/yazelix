@@ -39,7 +39,7 @@ This subsystem answers questions like:
 
 - How does `yazelix.toml` become actual runtime behavior?
 - Where do generated configs live?
-- What does `yzx refresh`, `yzx launch`, `yzx env`, or `yzx update` mean now?
+- What does `yzx launch`, `yzx env`, `yzx doctor`, or `yzx update` mean now?
 - Which paths are config-owned, runtime-owned, or generated-state-owned?
 
 This is still the single largest shipped logic surface in the repo. If Yazelix is too heavy, this is still the first place to look before blaming Nix glue or Rust plugins.

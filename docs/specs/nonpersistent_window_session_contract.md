@@ -9,7 +9,7 @@ When `zellij.persistent_sessions = false`, each Yazelix launch creates an indepe
 Yazelix now has clearer runtime, materialized-state, and activation-state boundaries, but the default multi-window behavior is still mostly implicit. In practice, users can have multiple Yazelix windows open at once, and the risky cases are not ordinary pane/workspace spillover so much as special transitions:
 
 - one window is still running an older built profile while a newer launch uses fresher state
-- `yzx refresh` updates shared materialized state while other windows remain open
+- generated-state repair updates shared materialized state while other windows remain open
 - a package-manager upgrade or compatibility-installer rerun changes the runtime on disk while other windows remain open
 - closing a non-persistent window may leave a detached zero-client Zellij server behind
 
@@ -19,7 +19,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
 
 - define the default cross-window behavior when `zellij.persistent_sessions = false`
 - define what is shared across non-persistent windows and what remains session-local
-- define how `yzx refresh`, external runtime replacement, and `yzx restart` should behave for already-open non-persistent windows
+- define how generated-state repair, external runtime replacement, and `yzx restart` should behave for already-open non-persistent windows
 - define the expected lifecycle of the last client in a non-persistent Yazelix session
 
 ## Behavior
@@ -38,7 +38,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
 - New launches may use newer durable state than already-open non-persistent windows.
   - That is expected behavior, not cross-window corruption.
   - Older open windows may remain on an older activated profile until explicitly restarted or relaunched.
-- `yzx refresh` updates shared materialized state only.
+- generated-state repair updates shared materialized state only.
   - It may build a newer launch profile and update generated/runtime-owned artifacts.
   - It must not silently hot-replace unrelated already-open non-persistent windows.
 - external runtime replacement updates the installed runtime for future launches.
@@ -61,7 +61,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
 
 1. When a user opens two Yazelix windows in non-persistent mode, each window owns its own live session even if both consume the same user config and runtime.
 2. When one non-persistent window uses fresher durable state than another, that is treated as normal version skew between independent live sessions rather than as cross-window spillover.
-3. When `yzx refresh` or external runtime replacement happens while non-persistent windows are already open, those windows are not silently hot-swapped in place; future launches may use newer state, and explicit restart remains the transition surface for existing windows.
+3. When generated-state repair or external runtime replacement happens while non-persistent windows are already open, those windows are not silently hot-swapped in place; future launches may use newer state, and explicit restart remains the transition surface for existing windows.
 4. When `yzx restart` is invoked from one non-persistent window, that window transitions independently and other already-open non-persistent windows remain separate live sessions.
 5. When the last client for a non-persistent Yazelix session closes, the session should not remain behind as a hot detached zero-client server.
 
@@ -71,7 +71,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
 - CI checks: `nu nushell/scripts/dev/validate_specs.nu`
 - manual verification:
   - open two non-persistent Yazelix windows, confirm they do not reattach to one shared session
-  - run `yzx refresh` or replace the runtime from a package-manager or compatibility-installer context and verify the other open window is not silently replaced
+  - run generated-state repair through startup/doctor or replace the runtime from a package-manager or compatibility-installer context and verify the other open window is not silently replaced
   - close the last client for a non-persistent session and confirm no detached zero-client server remains
 
 ## Traceability

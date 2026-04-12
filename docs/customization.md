@@ -15,7 +15,6 @@ Yazelix is highly customizable! Here are the main ways you can tailor your exper
     - **Config ownership switch**: `terminal.config_mode = "yazelix"` keeps using Yazelix-managed configs; `"user"` loads the terminal's native config file instead and fails if it is missing
     - **No manual copying required** - generated automatically when launching Yazelix
   - **Reference configs** (generated snapshot): `configs/terminal_emulators/`
-    - Refresh snapshots: `yzx dev sync_terminal_configs` (uses `yazelix_default.toml`)
     - Snapshots match the generated configs under `~/.local/share/yazelix/configs/terminal_emulators/`
 - **Zellij Configuration**: Yazelix-managed user config plus generated runtime overlays:
   - **Quick start**: Edit `~/.config/yazelix/user_configs/zellij/config.kdl`

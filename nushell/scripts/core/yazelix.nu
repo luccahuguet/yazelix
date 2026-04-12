@@ -9,7 +9,6 @@ use ../utils/common.nu get_yazelix_runtime_dir
 use ../utils/environment_bootstrap.nu [prepare_environment]
 use ../utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path
 use ../utils/version_info.nu [print_version_info]
-use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
 use ../setup/shell_hooks.nu [check_shell_hook_versions]
 use ../integrations/managed_editor.nu get_managed_editor_kind
 use ../integrations/yazi.nu [reveal_in_yazi sync_sidebar_yazi_state_to_directory]
@@ -19,12 +18,10 @@ use ../integrations/zellij.nu [retarget_tab_cwd resolve_tab_cwd_target]
 export use ../yzx/launch.nu *
 export use ../yzx/enter.nu *
 export use ../yzx/env.nu *
-export use ../yzx/refresh.nu *
 export use ../yzx/import.nu *
 export use ../yzx/run.nu *
 export use ../yzx/popup.nu *
 export use ../yzx/screen.nu *
-export use ../yzx/gc.nu *
 export use ../yzx/dev.nu *
 export use ../yzx/desktop.nu *
 export use ../yzx/menu.nu *
@@ -97,6 +94,36 @@ def require_current_working_flake [] {
         print $"   Missing flake.nix in the current directory: ($flake_file)"
         exit 1
     }
+}
+
+def build_status_rows [config: record, config_state: record, yazelix_dir: string, shell_status: list<record>] {
+    let terminals = ($config.terminals? | default ["ghostty"])
+    let terminal_label = if ($terminals | is-empty) {
+        "none"
+    } else {
+        $terminals | str join ", "
+    }
+    let helix_runtime_label = ($config.helix_runtime_path? | default "runtime default")
+    let session_name = if ($config.persistent_sessions == "true") {
+        $config.session_name
+    } else {
+        "disabled"
+    }
+
+    [
+        {field: "version", value: $YAZELIX_VERSION}
+        {field: "description", value: $YAZELIX_DESCRIPTION}
+        {field: "config_file", value: $config_state.config_file}
+        {field: "runtime_dir", value: $yazelix_dir}
+        {field: "logs_dir", value: ($yazelix_dir | path join "logs")}
+        {field: "generated_state_repair_needed", value: ($config_state.needs_refresh | into string)}
+        {field: "shell_hooks", value: (format_shell_hook_summary $shell_status)}
+        {field: "default_shell", value: $config.default_shell}
+        {field: "terminals", value: $terminal_label}
+        {field: "helix_runtime", value: $helix_runtime_label}
+        {field: "persistent_sessions", value: ($config.persistent_sessions | into string)}
+        {field: "session_name", value: $session_name}
+    ]
 }
 
 export def yzx [
@@ -197,7 +224,7 @@ export def "yzx cwd" [
         }
         "permissions_denied" => {
             print "❌ The Yazelix pane orchestrator plugin is missing required Zellij permissions."
-            print "   Run `yzx repair zellij-permissions`, then restart Yazelix."
+            print "   Run `yzx doctor --fix`, then restart Yazelix."
             exit 1
         }
         _ => {
@@ -224,38 +251,19 @@ export def "yzx status" [
     let config_state = $env_prep.config_state
     let yazelix_dir = (get_yazelix_runtime_dir)
     let shell_status = check_shell_hook_versions $yazelix_dir
+    let status_rows = (build_status_rows $config $config_state $yazelix_dir $shell_status)
 
-    print "=== Yazelix Status ==="
-    print $"Version: ($YAZELIX_VERSION)"
-    print $"Description: ($YAZELIX_DESCRIPTION)"
-    print $"Config File: ($config_state.config_file)"
-    print $"Directory: ($yazelix_dir)"
-    print $"Logs: ($yazelix_dir | path join "logs")"
-    print $"Environment Refresh Needed: ($config_state.needs_refresh)"
-    print $"Shell Hooks: (format_shell_hook_summary $shell_status)"
-    print $"Default Shell: ($config.default_shell)"
-    let terminals = ($config.terminals? | default ["ghostty"])
-    if ($terminals | is-empty) {
-        print "Terminals: none"
-    } else {
-        print $"Terminals: (($terminals | str join ', '))"
-    }
-    let helix_runtime_label = ($config.helix_runtime_path? | default 'runtime default')
-    print $"Helix Runtime: ($helix_runtime_label)"
-    print $"Persistent Sessions: ($config.persistent_sessions)"
-    if ($config.persistent_sessions == "true") {
-        print $"Session Name: ($config.session_name)"
-    }
+    print "Yazelix status"
+    print ($status_rows | table)
     if $verbose {
         print ""
-        print "Shell Hook Details:"
+        print "Shell hook details:"
         print ($shell_status | table)
     }
     if $versions {
         print ""
         print_version_info
     }
-    print "=========================="
 }
 
 # Helper: Resolve the current Zellij session from environment or CLI.
@@ -376,17 +384,6 @@ export def "yzx doctor" [
     } else {
         run_doctor_checks $verbose $fix
     }
-}
-
-export def "yzx repair" [] {
-    print "Available recovery commands:"
-    print "  yzx repair zellij-permissions   Seed Yazelix plugin grants in ~/.cache/zellij/permissions.kdl"
-}
-
-export def "yzx repair zellij-permissions" [] {
-    let result = (seed_yazelix_plugin_permissions)
-    print $"✅ Seeded Yazelix plugin permissions at: ($result.permissions_cache_path)"
-    print "   Restart Yazelix so Zellij reloads the plugin permission state."
 }
 
 # Update dependencies and inputs

@@ -375,7 +375,7 @@ mode = "animated"
             ($parser_result.exit_code != 0)
             and ($stderr | str contains "Known migration at ascii")
             and ($stderr | str contains "Replace legacy [ascii].mode with core.welcome_style")
-            and ($stderr | str contains "yzx config migrate --apply")
+            and ($stderr | str contains "yzx doctor --fix")
             and not ($stderr | str contains "Unknown config field at ascii")
         ) {
             print "  ✅ Legacy [ascii].mode now points at one clean migration path during startup"
@@ -414,7 +414,7 @@ enable_atuin = true
         if (
             ($parser_result.exit_code != 0)
             and ($stderr | str contains "Known migration at shell.enable_atuin")
-            and ($stderr | str contains "yzx config migrate --apply")
+            and ($stderr | str contains "yzx doctor --fix")
             and ($updated.shell.enable_atuin? | default false)
             and (($backups | length) == 0)
         ) {

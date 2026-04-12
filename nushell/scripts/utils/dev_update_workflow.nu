@@ -227,12 +227,12 @@ def trim_output_tail [text: string, max_lines: int] {
 }
 
 def run_update_canary [canary: record] {
-    let yzx_script = ((require_yazelix_repo_root) | path join "nushell" "scripts" "core" "yazelix.nu")
-    let refresh_command = $"use \"($yzx_script)\" *; yzx refresh --force --verbose"
+    let helper_script = ((require_yazelix_repo_root) | path join "nushell" "scripts" "utils" "generated_runtime_state.nu")
+    let repair_command = $"use \"($helper_script)\" [repair_generated_runtime_state]; repair_generated_runtime_state --force --verbose"
 
     let result = (do {
         with-env {YAZELIX_CONFIG_OVERRIDE: $canary.config_path} {
-            ^nu -c $refresh_command | complete
+            ^nu -c $repair_command | complete
         }
     })
 

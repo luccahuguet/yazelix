@@ -24,12 +24,6 @@ Run Yazelix test suite
 - `--all`: Run the default suite plus non-visual sweep + visual sweep
 - `--delay`: Delay between visual terminal launches in seconds (default: 3)
 
-### `yzx dev bench [-n ITERATIONS] [-t TERMINAL] [--verbose]`
-Benchmark terminal launch performance
-- `-n, --iterations`: Number of iterations per terminal (default: 3)
-- `-t, --terminal`: Test only specific terminal (e.g., ghostty, wezterm, kitty)
-- `--verbose`: Show detailed output
-
 ### `yzx dev profile [--cold] [--clear-cache]`
 Profile launch sequence and identify performance bottlenecks
 - Default: Profile the current-terminal startup path and write a structured startup report under `~/.local/share/yazelix/profiles/startup/`
@@ -64,15 +58,7 @@ Start Yazelix in the current terminal
 Load Yazelix environment without UI
 - Default: Drop into your configured shell with all Yazelix tools available
 - `--no-shell`: Stay in current shell (doesn't switch shells)
-
-### `yzx refresh [--force] [--verbose] [--very-verbose]`
-Repair Yazelix generated runtime state without launching UI
-- Default: Refresh only when config or generated runtime inputs changed
-- `--force`: Refresh even if no changes are detected
-- `--verbose, -v`: Show concise repair progress
-- `--very-verbose, -V`: Alias for `--verbose` in the trimmed v15 flow
-- Repairs generated Yazi and Zellij state and records the resulting materialized config hash
-- Does not rebuild a backend profile or reuse cached launch-profile state
+- This remains the supported non-UI shell-entry surface for editor and terminal integration
 
 ### `yzx run <command> [args...]`
 Run a single command in the Yazelix environment and exit
@@ -126,7 +112,7 @@ Restart Yazelix (handles persistent sessions)
 
 ### `yzx status [--versions] [--verbose]`
 Show current Yazelix status
-- Default: show active config, refresh state, shell hook summary, and key runtime settings
+- Default: show the structured runtime/config summary table plus shell-hook summary
 - `--versions, -V`: include the full tool version matrix
 - `--verbose, -v`: include detailed shell hook status table
 
@@ -174,16 +160,8 @@ Upgrade Determinate Nix
 - `yzx update nix`: Upgrade Determinate Nix via `determinate-nixd` (`--yes` skips prompt, `--verbose` shows command; sudo required; only works if Determinate Nix is installed)
 
 Maintainer-only updates:
-- `yzx dev update`: Refresh the repo runtime inputs by updating `flake.lock` `nixpkgs`, run canary refresh/build checks (`default`, `shell_layout`), then sync pinned runtime expectations, refresh the vendored `configs/zellij/plugins/zjstatus.wasm`, refresh vendored Yazi plugin runtime files from the pinned source map in `config_metadata/vendored_yazi_plugins.toml`, and perform one explicit activation step selected by the required `--activate installer|home_manager|none` flag (`home_manager` refreshes the Home Manager flake input before `home-manager switch`; `none` leaves local activation untouched). `--canary-only` is the only path that does not require `--activate`.
-- `yzx dev sync_terminal_configs`: Regenerate terminal configs and sync snapshots into `configs/terminal_emulators/`
+- `yzx dev update`: Refresh the repo runtime inputs by updating `flake.lock` `nixpkgs`, run canary generated-state/build checks (`default`, `shell_layout`), then sync pinned runtime expectations, refresh the vendored `configs/zellij/plugins/zjstatus.wasm`, refresh vendored Yazi plugin runtime files from the pinned source map in `config_metadata/vendored_yazi_plugins.toml`, and perform one explicit activation step selected by the required `--activate installer|home_manager|none` flag (`home_manager` refreshes the Home Manager flake input before `home-manager switch`; `none` leaves local activation untouched). `--canary-only` is the only path that does not require `--activate`.
 - `yzx dev build_pane_orchestrator [--sync]`: Build the Zellij pane orchestrator wasm for `wasm32-wasip1`; `--sync` also updates the tracked/runtime plugin paths after a successful build, preserves previously granted plugin permissions onto the stable runtime path when possible, and regenerates Zellij config. After syncing, prefer restarting Yazelix over reloading the plugin in place. If the toolchain is missing, install a WASI-capable Rust toolchain first.
-
-### `yzx gc [deep [PERIOD] | deeper]`
-Garbage collection for the Nix store
-- `yzx gc`: Remove unreferenced Nix store paths
-- `yzx gc deep`: Also delete generations older than 30 days
-- `yzx gc deep 7d`: Delete generations older than 7 days (configurable period)
-- `yzx gc deeper`: Delete ALL old generations (most aggressive)
 
 ### `yzx menu [--popup]`
 Interactive command palette (fuzzy search)
@@ -237,15 +215,6 @@ Open one of the managed config surfaces through explicit or fuzzy target selecti
 - Yazi targets stay inside `user_configs/yazi/` and do not expose host-owned `~/.config/yazi/` files
 - `--print`: print the resolved managed path without opening
 
-### `yzx config migrate [--apply] [--yes]`
-Preview or apply known Yazelix config migrations
-- Default: preview known safe rewrites and manual-only follow-up without changing the file
-- `--apply`: write only deterministic rewrites back to `yazelix.toml`
-- `--yes`: skip the confirmation prompt for `--apply`
-- Always uses a backup-first write path on apply
-- Never guesses on ambiguous legacy config; those cases stay manual-only
-- Rewrites from parsed TOML, so comments and key ordering may be normalized on apply
-
 ### `yzx config reset [--yes] [--no-backup]`
 Replace `yazelix.toml` with a fresh copy of the shipped template
 - Backs up the current config file to `*.backup-<timestamp>` first when it exists
@@ -270,10 +239,6 @@ yzx launch --verbose          # Detailed launch diagnostics
 # Environment-only mode (no UI)
 yzx env                       # Drop into configured shell with Yazelix tools
 yzx env --no-shell            # Load tools but stay in current shell
-yzx refresh                   # Repair generated runtime state if changes were detected
-yzx refresh --force           # Force repair even when up to date
-yzx refresh -v                # Refresh with high-level progress
-yzx refresh -V                # Alias for verbose refresh progress
 yzx run lazygit              # Run single command and exit
 yzx run bash -lc "lazygit"   # Run through a shell
 yzx run br init              # Outside-shell fallback for Beads Rust
@@ -301,8 +266,6 @@ yzx import zellij --force     # Backup and replace the managed Zellij override
 yzx edit config               # Open the main managed config
 yzx edit keymap               # Open managed Yazi keymap.toml
 yzx edit init                 # Open managed Yazi init.lua
-yzx config migrate            # Preview known config migrations
-yzx config migrate --apply --yes  # Apply safe migrations with backup
 yzx config reset              # Replace the managed config with a fresh template after confirmation
 yzx config reset --yes        # Replace the managed config with a fresh template and keep backups
 yzx config reset --yes --no-backup  # Replace the managed config without writing backups
@@ -326,12 +289,6 @@ yzx dev update --canary-only --canaries [shell_layout]  # Run the alternate shel
 yzx dev build_pane_orchestrator --sync  # Build and sync the pane orchestrator wasm
 yzx screen game_of_life       # Preview the live game_of_life welcome animation in the terminal
 
-# Garbage collection
-yzx gc                        # Safe: remove unreferenced Nix store paths
-yzx gc deep                   # Medium: also delete generations older than 30d
-yzx gc deep 7d                # Medium: delete generations older than 7 days
-yzx gc deeper                 # Aggressive: delete ALL old generations
-
 # Development verification
 yzx dev test                  # Run the default non-sweep regression suite
 yzx dev test --verbose        # Run the default suite with detailed output
@@ -340,12 +297,6 @@ yzx dev test --lint-only      # Run only syntax validation
 yzx dev test --sweep          # Run only the non-visual config/shell sweep
 yzx dev test --visual         # Run only the visual terminal sweep
 yzx dev test --all            # Run the default suite plus sweep + visual lanes
-
-# Benchmarking
-yzx dev bench                 # Benchmark all available terminals (3 iterations each)
-yzx dev bench -n 5            # Run 5 iterations per terminal
-yzx dev bench -t ghostty      # Benchmark only Ghostty
-yzx dev bench -t wezterm -n 10 # Benchmark WezTerm with 10 iterations
 
 # Profiling
 # Note: Different launch scenarios have different performance characteristics

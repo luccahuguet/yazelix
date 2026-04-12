@@ -20,16 +20,6 @@ def run_startup_probe [fixture: record] {
     }
 }
 
-def run_refresh_probe [fixture: record] {
-    with-env {
-        HOME: $fixture.tmp_home
-        YAZELIX_CONFIG_DIR: $fixture.config_dir
-        YAZELIX_RUNTIME_DIR: $fixture.repo_root
-    } {
-        ^nu -c $"use \"($fixture.yzx_script)\" *; yzx refresh" | complete
-    }
-}
-
 def run_doctor_probe [fixture: record, fix: bool = false] {
     let command = if $fix { "yzx doctor --fix" } else { "yzx doctor --verbose" }
 
@@ -54,7 +44,7 @@ enable_atuin = true
     )
     let log_file = $fixture.log_file
 
-    log_line $log_file "Case: known migration diagnostics across startup, refresh, and doctor"
+    log_line $log_file "Case: known migration diagnostics across startup and doctor"
     log_line $log_file $"Temp HOME: ($fixture.tmp_home)"
     log_line $log_file $"Config path: ($fixture.config_path)"
     log_line $log_file ""
@@ -63,10 +53,6 @@ enable_atuin = true
     let startup = (run_startup_probe $fixture)
     log_block $log_file "Startup stdout" ($startup.stdout | str trim)
     log_block $log_file "Startup stderr" ($startup.stderr | str trim)
-
-    let refresh = (run_refresh_probe $fixture)
-    log_block $log_file "Refresh stdout" ($refresh.stdout | str trim)
-    log_block $log_file "Refresh stderr" ($refresh.stderr | str trim)
 
     let doctor = (run_doctor_probe $fixture)
     log_block $log_file "Doctor stdout" ($doctor.stdout | str trim)
@@ -80,8 +66,7 @@ enable_atuin = true
     let parsed = (open $fixture.config_path)
     let ok = (
         (($startup.stdout | str contains "Known migration at zellij.widget_tray"))
-        and (($refresh.stderr | default "" | str contains "Known migration at zellij.widget_tray") or ($refresh.stdout | str contains "Known migration at zellij.widget_tray"))
-        and (($doctor.stdout | str contains "Safe apply: `yzx config migrate --apply` or `yzx doctor --fix`"))
+        and (($doctor.stdout | str contains "Safe apply: `yzx doctor --fix`"))
         and (($doctor_fix.stdout | str contains "Applied 2 config migration fix"))
         and (($parsed | get zellij.widget_tray) == ["editor"])
     )
@@ -123,7 +108,7 @@ refresh_output = "loud"
         (($startup.stdout | str contains "Unknown config field at core.refresh_output"))
         and not (($startup.stdout | str contains "Known migration"))
         and (($doctor.stdout | str contains "Unknown config field at core.refresh_output"))
-        and not (($doctor.stdout | str contains "Safe apply: `yzx config migrate --apply` or `yzx doctor --fix`"))
+        and not (($doctor.stdout | str contains "Safe apply: `yzx doctor --fix`"))
     )
 
     if $ok {

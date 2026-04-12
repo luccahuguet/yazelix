@@ -109,7 +109,6 @@ Commands that show, edit, import, migrate, or reset user-managed config surfaces
 Included:
 
 - `yzx config`
-- `yzx config migrate`
 - `yzx config reset`
 - `yzx edit`
 - `yzx edit config`
@@ -128,11 +127,8 @@ Included:
 - `yzx doctor`
 - `yzx status`
 - `yzx packs`
-- `yzx gc`
 - `yzx update`
 - `yzx update nix`
-- `yzx repair`
-- `yzx repair zellij-permissions`
 - `yzx desktop install`
 - `yzx desktop launch`
 - `yzx desktop uninstall`

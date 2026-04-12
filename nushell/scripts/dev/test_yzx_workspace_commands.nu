@@ -247,10 +247,6 @@ def setup_enter_forwarding_fixture [label: string] {
     $bootstrap_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
 
     [
-        "export def print_runtime_version_drift_warning [] {}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "doctor.nu")
-
-    [
         "export def run_entrypoint_config_migration_preflight [entrypoint_label: string, --allow-noninteractive] { null }"
     ] | str join "\n" | save --force --raw ($utils_dir | path join "entrypoint_config_migrations.nu")
 
@@ -1204,7 +1200,7 @@ def test_startup_requires_generated_layout_path [] {
         let output = (run_nu_snippet $snippet)
         let stdout = ($output.stdout | str trim)
 
-        if ($output.exit_code == 0) and ($stdout | str contains "Missing Yazelix generated Zellij layout") and ($stdout | str contains "yzx refresh") and ($stdout | str contains "Failure class: generated-state problem.") {
+        if ($output.exit_code == 0) and ($stdout | str contains "Missing Yazelix generated Zellij layout") and ($stdout | str contains "yzx doctor") and ($stdout | str contains "Failure class: generated-state problem.") {
             print "  ✅ Startup preflight fails clearly when the generated layout is missing"
             true
         } else {

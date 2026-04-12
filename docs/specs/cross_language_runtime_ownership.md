@@ -52,13 +52,12 @@ Primary owner: Nushell
 - `config_state.nu`
 - `yzx env`
 - `yzx run`
-- `yzx refresh`
 - `yzx launch`
 - `start_yazelix`
 
 Reason:
 
-- these paths are about config intent, rebuild freshness, launch-profile reuse, and process activation
+- these paths are about config intent, generated-state freshness, launch-profile reuse, and process activation
 - they are not plugin-state problems
 
 ### Live Workspace And Session State

@@ -189,7 +189,7 @@ def render_upgrade_summary [entry: record, matching_migrations: list<record> = [
             ])
             if ($matching_migrations | is-empty) {
                 $lines = ($lines | append [
-                    "Run `yzx config migrate` to preview safe rewrites if your config predates this release."
+                    "Run `yzx doctor` to inspect safe rewrites if your config predates this release."
                     "Run `yzx doctor` for migration-aware diagnostics if startup fails."
                 ])
             } else {
@@ -204,8 +204,8 @@ def render_upgrade_summary [entry: record, matching_migrations: list<record> = [
                     }
                 }
                 $lines = ($lines | append [
-                    "Next: run `yzx config migrate` to preview safe rewrites."
-                    "Next: run `yzx config migrate --apply` or `yzx doctor --fix` to apply only deterministic rewrites."
+                    "Next: run `yzx doctor` to inspect the matching migration candidates."
+                    "Next: run `yzx doctor --fix` to apply only deterministic rewrites."
                 ])
             }
         }

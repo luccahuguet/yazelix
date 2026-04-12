@@ -214,7 +214,7 @@ export def check_generated_layout [layout_path: string, owner_surface: string] {
         $owner_surface
         "generated Zellij layout"
         "generated Zellij layout"
-        "Run `yzx refresh` to regenerate layouts, or check the configured layout name.")
+        "Run `yzx doctor` to inspect generated-state issues, or check the configured layout name.")
 }
 
 export def check_launch_terminal_support [requested_terminal: string, terminals: list<string>] {

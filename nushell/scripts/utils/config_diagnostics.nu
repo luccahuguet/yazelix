@@ -32,8 +32,7 @@ def make_migration_diagnostic [result: record] {
     let path_label = ($result.matched_paths | get -o 0 | default "<config>")
     let next_steps = if $result.status == "auto" {
         [
-            "Run `yzx config migrate` to preview the known safe rewrite."
-            "Run `yzx config migrate --apply` to apply the safe rewrite with backup."
+            "Run `yzx doctor --verbose` to inspect the known safe rewrite."
             "Run `yzx doctor --fix` to apply the same safe rewrite from the doctor flow."
         ]
     } else {
@@ -191,7 +190,7 @@ export def build_config_diagnostic_report [
 export def render_startup_config_error [report: record] {
     let detail_lines = (format_diagnostic_lines $report.blocking_diagnostics)
     let recovery_hint = if $report.has_fixable_migrations {
-        "Run `yzx config migrate` to preview known safe rewrites, `yzx config migrate --apply` to apply them with backup, or `yzx doctor --fix` to apply the same safe rewrites from the doctor flow."
+        "Run `yzx doctor --verbose` to inspect known safe rewrites, or `yzx doctor --fix` to apply the deterministic ones with backup."
     } else {
         "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback."
     }
@@ -215,8 +214,8 @@ export def render_doctor_config_details [report: record] {
     let guidance = if $report.has_fixable_migrations {
         [
             ""
-            "Safe preview: `yzx config migrate`"
-            "Safe apply: `yzx config migrate --apply` or `yzx doctor --fix`"
+            "Inspect details: `yzx doctor --verbose`"
+            "Safe apply: `yzx doctor --fix`"
             "Blunt fallback: `yzx config reset`"
         ]
     } else {

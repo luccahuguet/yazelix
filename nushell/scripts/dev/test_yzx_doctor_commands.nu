@@ -158,8 +158,8 @@ widget_tray = ["layout", "editor"]
         if (
             ($output.exit_code == 0)
             and ($stdout | str contains "Known migration at zellij.widget_tray")
-            and ($stdout | str contains "Safe preview: `yzx config migrate`")
-            and ($stdout | str contains "Safe apply: `yzx config migrate --apply` or `yzx doctor --fix`")
+            and ($stdout | str contains "Inspect details: `yzx doctor --verbose`")
+            and ($stdout | str contains "Safe apply: `yzx doctor --fix`")
             and (
                 ($stdout | str contains "Yazelix pane-orchestrator")
                 or ($stdout | str contains "Could not contact the Yazelix pane-orchestrator plugin")
@@ -393,7 +393,7 @@ terminals = ["ghostty"]
             ($output.exit_code == 0)
             and ($stdout | str contains "Missing Yazelix launch script")
             and ($stdout | str contains "Missing Yazelix generated Zellij layout")
-            and ($stdout | str contains "Run `yzx refresh` to regenerate layouts")
+            and ($stdout | str contains "Run `yzx doctor` to inspect generated-state issues")
         ) {
             print "  ✅ yzx doctor reuses the shared runtime checker for missing launch assets"
             true

@@ -57,9 +57,8 @@ The coherent future boundary would look like this:
 
 - `yzx env`
 - `yzx run`
-- `yzx refresh`
 - `yzx packs`
-- `yzx gc`
+- generic Nix housekeeping or other non-workspace utility commands
 - any promise that Yazelix provisions the tool/runtime environment itself
 
 ### User Responsibilities In That Future Mode

@@ -9,7 +9,7 @@ Yazelix should define its backend contract in terms of concrete capabilities, no
 Yazelix currently talks about “the backend” as if it only means “which tool opens the shell.” The code already shows a broader contract:
 
 - install and update own a stable runtime identity
-- `yzx env`, `yzx run`, `yzx refresh`, and `yzx launch` rely on backend-controlled activation and rebuild behavior
+- `yzx env`, `yzx run`, and `yzx launch` rely on backend-controlled activation and rebuild behavior
 - fast launch relies on cached profile reuse and invalidation rules
 - runtime-owned binaries and assets are resolved through the active runtime, not only through generic `PATH` lookup
 
@@ -101,7 +101,7 @@ The current code suggests this first-pass classification:
 - `nushell/scripts/utils/environment_bootstrap.nu` shows that rebuild, refresh, and re-entry behavior are backend concerns.
 - `nushell/scripts/utils/launch_state.nu` and `nushell/scripts/utils/config_state.nu` show that reusable launch/profile semantics are part of the current backend contract.
 - `docs/specs/config_surface_and_launch_profile_contract.md` shows that the backend consumes canonical config surfaces and rebuild-relevant subsets without owning config semantics outright.
-- `nushell/scripts/yzx/env.nu`, `nushell/scripts/yzx/run.nu`, `nushell/scripts/yzx/launch.nu`, and `nushell/scripts/yzx/refresh.nu` show that the backend currently owns activation and rebuild control-plane behavior.
+- `nushell/scripts/yzx/env.nu`, `nushell/scripts/yzx/run.nu`, `nushell/scripts/yzx/launch.nu`, and `nushell/scripts/utils/generated_runtime_state.nu` show that the backend currently owns activation and generated-state control-plane behavior.
 - `docs/specs/flake_interface_contract.md`, `docs/specs/one_command_install_ux.md`, and `shells/posix/install_yazelix.sh.in` show that install/update identity is part of the backend story too.
 
 ### Evaluation Matrix Requirement
@@ -179,7 +179,7 @@ This matrix is intentionally tentative. It exists to make the backend contract r
   - `nushell/scripts/yzx/env.nu`
   - `nushell/scripts/yzx/run.nu`
   - `nushell/scripts/yzx/launch.nu`
-  - `nushell/scripts/yzx/refresh.nu`
+  - `nushell/scripts/utils/generated_runtime_state.nu`
 - CI/spec check: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Traceability

@@ -26,7 +26,7 @@ The last-seen version must be stored in Yazelix-managed state, not in the user c
 
 `yzx whats_new` should render the same current-version summary on demand even when the version was already seen automatically. The command should also mark the current version as seen so intentional manual review does not force a duplicate automatic prompt later.
 
-When the current release notes declare `upgrade_impact = "migration_available"`, the rendered summary should point users at `yzx config migrate`, `yzx doctor`, and `yzx doctor --fix` as appropriate. If the current config actually matches any of the release note's referenced migration ids, the summary should call that out explicitly using the shared migration engine rather than generic prose.
+When the current release notes declare `upgrade_impact = "migration_available"`, the rendered summary should point users at `yzx doctor` and `yzx doctor --fix` as appropriate. If the current config actually matches any of the release note's referenced migration ids, the summary should call that out explicitly using the shared migration engine rather than generic prose.
 
 If the current version has no release-note entry, startup should stay quiet instead of inventing notes. `yzx whats_new` should fail clearly in that case.
 
@@ -42,7 +42,7 @@ If the current version has no release-note entry, startup should stay quiet inst
 1. When the stored last-seen version is absent or older than the installed version, the first startup summary appears and then records the current version as seen.
 2. When the same version starts a second time, the automatic summary stays quiet.
 3. When the user runs `yzx whats_new`, the current-version summary renders even if the version was already seen.
-4. When current release notes declare migration ids that match the current config, the summary points to the migrate and doctor repair flows with explicit matching guidance.
+4. When current release notes declare migration ids that match the current config, the summary points to the doctor inspection and repair flows with explicit matching guidance.
 5. When the current version is missing from `docs/upgrade_notes.toml`, `yzx whats_new` fails clearly and startup does not invent a summary.
 
 ## Verification

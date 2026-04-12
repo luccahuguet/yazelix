@@ -61,12 +61,12 @@ export def render_config_migration_plan [plan: record] {
 
     $rendered = ($rendered | append [
         ""
-        "Preview only. Re-run with `yzx config migrate --apply` to write the safe rewrites."
+        "Preview only. Run `yzx doctor --fix` to apply only the safe rewrites."
     ])
 
     if $plan.has_manual_items {
         $rendered = ($rendered | append [
-            "Manual-only items will stay untouched on apply."
+            "Manual-only items stay untouched by `yzx doctor --fix`."
         ])
     }
 

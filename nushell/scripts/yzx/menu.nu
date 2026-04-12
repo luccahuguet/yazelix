@@ -24,7 +24,6 @@ const PALETTE_EXCLUDED_COMMANDS = [
 const PUBLIC_YZX_COMMAND_CATALOG = [
     {id: "yzx", category: "help", description: ""}
     {id: "yzx config", category: "config", description: "Show the active Yazelix configuration"}
-    {id: "yzx config migrate", category: "config", description: "Preview or apply known Yazelix config migrations"}
     {id: "yzx config reset", category: "config", description: ""}
     {id: "yzx cwd", category: "workspace", description: "Retarget the current tab workspace root via a path or zoxide query."}
     {id: "yzx desktop install", category: "system", description: ""}
@@ -35,7 +34,6 @@ const PUBLIC_YZX_COMMAND_CATALOG = [
     {id: "yzx edit config", category: "config", description: ""}
     {id: "yzx enter", category: "session", description: "Start Yazelix in the current terminal"}
     {id: "yzx env", category: "system", description: "Load yazelix environment without UI"}
-    {id: "yzx gc", category: "system", description: "Garbage collection for Nix store"}
     {id: "yzx home_manager", category: "system", description: "Home Manager takeover helpers for Yazelix-owned paths."}
     {id: "yzx home_manager prepare", category: "system", description: "Preview or archive manual-install artifacts before Home Manager takeover."}
     {id: "yzx import", category: "config", description: "Import native config files into Yazelix-managed override paths."}
@@ -52,8 +50,6 @@ const PUBLIC_YZX_COMMAND_CATALOG = [
     {id: "yzx launch", category: "session", description: "Launch yazelix"}
     {id: "yzx menu", category: "help", description: "Interactive command palette for Yazelix"}
     {id: "yzx popup", category: "workspace", description: ""}
-    {id: "yzx repair", category: "system", description: ""}
-    {id: "yzx repair zellij-permissions", category: "system", description: ""}
     {id: "yzx restart", category: "session", description: "Restart yazelix"}
     {id: "yzx reveal", category: "workspace", description: ""}
     {id: "yzx run", category: "system", description: "Run a command in the Yazelix environment and exit"}
