@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v15 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v15 lands.
+
+## v15 - 2026-04-13
+
 v15 trims Yazelix down to the fast workspace core
 
 Upgrade impact: manual action required
@@ -27,6 +36,7 @@ Command surface:
 Migration notes:
 - Compare your current config with `yazelix_default.toml` or run `yzx config reset` to start fresh; v15 does not ship automatic config migrations.
 - If you relied on Classic-only surfaces such as `yazelix packs`, `yzx packs`, or `yzx refresh`, stay on the historical `v14` tag or adapt to the trimmed v15 command surface.
+
 
 ## v14 - 2026-04-10
 
