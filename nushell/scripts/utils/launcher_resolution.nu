@@ -1,11 +1,10 @@
 #!/usr/bin/env nu
 
-use install_ownership.nu has_home_manager_managed_install
+use install_ownership.nu [
+    get_manual_yzx_wrapper_path
+    has_home_manager_managed_install
+]
 use shell_config_generation.nu get_yzx_cli_path
-
-export def get_manual_yzx_wrapper_path [] {
-    ($env.HOME | path join ".local" "bin" "yzx")
-}
 
 export def get_home_manager_yzx_profile_paths [] {
     mut candidates = [

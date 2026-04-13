@@ -131,6 +131,24 @@ If clicking Yazelix in your application menu does nothing:
 3. **Verify your package/profile path:** Ensure the package or Home Manager profile that provides `yzx` is still present
 4. **If a stale user-local entry shadows Home Manager:** remove it with `yzx desktop uninstall`
 
+### `yzx update upstream` Still Tries `#install`
+
+If `yzx update upstream` still tries the removed `github:luccahuguet/yazelix#install` path, your shell is almost certainly resolving `yzx` through a stale legacy `~/.local/bin/yzx` wrapper instead of the current profile-owned command
+
+Check what your shell is using:
+
+```bash
+which yzx
+readlink -f "$(which yzx)"
+```
+
+If `which yzx` points at `~/.local/bin/yzx` while your real install is owned by Home Manager or a Nix profile:
+
+- For Home Manager migration, run `yzx home_manager prepare --apply`, then `home-manager switch`
+- For a plain Nix profile install, remove the stale `~/.local/bin/yzx` wrapper and keep the profile-owned `yzx`
+
+After cleanup, open a fresh shell and verify `which yzx` resolves to the current owner path
+
 ## Editor Issues
 
 ### File Opening Broken

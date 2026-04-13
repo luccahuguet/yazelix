@@ -69,6 +69,14 @@ def write_test_executable [path: string, lines: list<string>] {
     ^chmod +x $path
 }
 
+def write_test_legacy_yzx_wrapper [path: string] {
+    write_test_executable $path [
+        "#!/bin/sh"
+        "# Stable Yazelix CLI entrypoint for external tools and editors."
+        'exec "$(dirname "$0")/../shells/posix/yzx_cli.sh" "$@"'
+    ]
+}
+
 def setup_manual_install_takeover_fixture [label: string] {
     let fixture = (setup_managed_config_fixture
         $label
@@ -80,13 +88,17 @@ welcome_style = "random"
     let launcher_path = ($fixture.repo_root | path join "shells" "posix" "yzx_cli.sh")
     let desktop_path = ($fixture.tmp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")
     let desktop_icons = (manual_desktop_icon_records $fixture.tmp_home $fixture.repo_root)
+    let manual_wrapper = ($fixture.tmp_home | path join ".local" "bin" "yzx")
 
     mkdir ($desktop_path | path dirname)
+    mkdir ($manual_wrapper | path dirname)
 
     for icon in $desktop_icons {
         mkdir ($icon.path | path dirname)
         ^cp $icon.source $icon.path
     }
+
+    write_test_legacy_yzx_wrapper $manual_wrapper
 
     [
         "[Desktop Entry]"
@@ -100,6 +112,7 @@ welcome_style = "random"
         launcher_path: $launcher_path
         desktop_path: $desktop_path
         desktop_icons: $desktop_icons
+        manual_wrapper: $manual_wrapper
     }
 }
 
@@ -140,11 +153,9 @@ def setup_home_manager_desktop_fixture [label: string] {
     let fixture = (setup_manual_install_takeover_fixture $label)
     let hm_store_config = ($fixture.tmp_home | path join "hm-store" "abc-home-manager-files" "yazelix.toml")
     let hm_profile_yzx = ($fixture.tmp_home | path join ".nix-profile" "bin" "yzx")
-    let manual_wrapper = ($fixture.tmp_home | path join ".local" "bin" "yzx")
 
     mkdir ($hm_store_config | path dirname)
     mkdir ($hm_profile_yzx | path dirname)
-    mkdir ($manual_wrapper | path dirname)
     '[core]
 welcome_style = "random"
 ' | save --force --raw $hm_store_config
@@ -155,14 +166,9 @@ welcome_style = "random"
         "#!/bin/sh"
         "exit 0"
     ]
-    write_test_executable $manual_wrapper [
-        "#!/bin/sh"
-        "exit 0"
-    ]
 
     $fixture | merge {
         hm_profile_yzx: $hm_profile_yzx
-        manual_wrapper: $manual_wrapper
     }
 }
 
@@ -521,8 +527,10 @@ def test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts [] {
             and ($stdout | str contains "Cleanup-only manual-install artifacts:")
             and ($stdout | str contains $fixture.desktop_path)
             and ($stdout | str contains (($fixture.desktop_icons | first).path))
+            and ($stdout | str contains $fixture.manual_wrapper)
             and ($fixture.config_path | path exists)
             and ($fixture.desktop_path | path exists)
+            and ($fixture.manual_wrapper | path exists)
         ) {
             print "  ✅ yzx home_manager prepare preview shows the real takeover blockers and cleanup-only manual artifacts without mutating them"
             true
@@ -551,6 +559,7 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
         let stdout = ($output.stdout | str trim)
         let main_backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.home-manager-prepare-backup-')
         let desktop_backups = (ls ($fixture.desktop_path | path dirname) | where name =~ 'com\.yazelix\.Yazelix\.desktop\.home-manager-prepare-backup-')
+        let wrapper_backups = (ls ($fixture.manual_wrapper | path dirname) | where name =~ 'yzx\.home-manager-prepare-backup-')
         let icon_backup_count = (
             $fixture.desktop_icons
             | each {|icon|
@@ -567,14 +576,16 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
             and ($stdout | str contains "home-manager switch")
             and not ($fixture.config_path | path exists)
             and not ($fixture.desktop_path | path exists)
+            and not ($fixture.manual_wrapper | path exists)
             and (($main_backups | length) == 1)
             and (($desktop_backups | length) == 1)
+            and (($wrapper_backups | length) == 1)
             and ($icon_backup_count == ($fixture.desktop_icons | length))
         ) {
             print "  ✅ yzx home_manager prepare --apply archives the real takeover blockers and cleanup-only manual artifacts, then points users at home-manager switch"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main_backups=(($main_backups | length)) desktop_backups=(($desktop_backups | length)) icon_backups=($icon_backup_count)"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) main_backups=(($main_backups | length)) desktop_backups=(($desktop_backups | length)) wrapper_backups=(($wrapper_backups | length)) icon_backups=($icon_backup_count)"
             false
         }
     } catch {|err|

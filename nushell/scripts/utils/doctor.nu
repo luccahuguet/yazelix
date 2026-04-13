@@ -11,7 +11,10 @@ use doctor_helix.nu [
     check_managed_helix_integration
     fix_helix_runtime_conflicts
 ]
-use doctor_install_artifacts.nu check_desktop_entry_freshness
+use doctor_install_artifacts.nu [
+    check_desktop_entry_freshness
+    check_shell_yzx_wrapper_shadowing
+]
 use runtime_distribution_capabilities.nu get_runtime_distribution_capability_profile
 use constants.nu DEFAULT_TERMINAL
 use runtime_contract_checker.nu [
@@ -314,6 +317,7 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
     $all_results = ($all_results | append (check_shared_runtime_preflight))
 
     # Desktop entry freshness
+    $all_results = ($all_results | append (check_shell_yzx_wrapper_shadowing))
     $all_results = ($all_results | append (check_desktop_entry_freshness))
 
     # Zellij session-local plugin health

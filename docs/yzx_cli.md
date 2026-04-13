@@ -153,6 +153,7 @@ Preview or archive manual-install artifacts before Home Manager takeover
 - Default: preview takeover blockers and manual-install artifacts without changing anything
 - `--apply`: archive the takeover artifacts so `home-manager switch` can take ownership cleanly
 - `--yes`: skip the confirmation prompt when `--apply` is used
+- It also archives a stale legacy `~/.local/bin/yzx` wrapper when that old manual path would shadow the profile-owned command after migration
 - Use this when migrating an existing upstream/manual install to Home Manager
 
 ### `yzx update nix [--yes] [--verbose]`

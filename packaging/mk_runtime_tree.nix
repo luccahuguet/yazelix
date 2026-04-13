@@ -32,6 +32,8 @@ pkgs.runCommand name { } ''
   cat > "$out/bin/yzx" <<EOF
 #!/bin/sh
 PATH="${pkgs.nushell}/bin:\$PATH"
+YAZELIX_INVOKED_YZX_PATH="\$0"
+export YAZELIX_INVOKED_YZX_PATH
 SCRIPT_PATH="\$0"
 if [ -L "\$SCRIPT_PATH" ]; then
   LINK_TARGET="\$(readlink "\$SCRIPT_PATH")"

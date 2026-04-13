@@ -25,6 +25,15 @@ def run_doctor_command_for_fixture [fixture: record, command: string, extra_env?
     }
 }
 
+def write_test_legacy_yzx_wrapper [path: string] {
+    [
+        "#!/bin/sh"
+        "# Stable Yazelix CLI entrypoint for external tools and editors."
+        'exec "$(dirname "$0")/../shells/posix/yzx_cli.sh" "$@"'
+    ] | str join "\n" | save --force --raw $path
+    ^chmod +x $path
+}
+
 def setup_fake_home_manager_install_artifacts [fixture: record] {
     let fake_runtime = ($fixture.tmp_home | path join "fake_home_manager_package")
     let fake_runtime_bin = ($fake_runtime | path join "bin")
@@ -66,7 +75,11 @@ def setup_fake_home_manager_install_artifacts [fixture: record] {
         $"Exec=\"($fixture.tmp_home | path join '.nix-profile' 'bin' 'yzx')\" desktop launch"
     ] | str join "\n" | save --force --raw $profile_desktop_path
 
-    { runtime_root: $fake_runtime }
+    {
+        runtime_root: $fake_runtime
+        profile_yzx: $profile_yzx
+        profile_desktop_path: $profile_desktop_path
+    }
 }
 
 def doctor_output_reports_current_home_manager_install [stdout: string] {
@@ -74,6 +87,7 @@ def doctor_output_reports_current_home_manager_install [stdout: string] {
         ($stdout | str contains "Runtime/distribution capability: Home Manager-managed full runtime")
         and ($stdout | str contains "Home Manager owns the packaged Yazelix runtime path and update transition in this mode.")
         and ($stdout | str contains "Yazelix desktop entry uses the expected launcher path")
+        and not ($stdout | str contains "A stale user-local yzx wrapper shadows the profile-owned Yazelix command")
         and not ($stdout | str contains "Installed Yazelix runtime link is missing")
         and not ($stdout | str contains "Installed yzx command is missing")
         and not ($stdout | str contains "Installed yzx command is stale")
@@ -238,6 +252,7 @@ def test_yzx_doctor_accepts_home_manager_install_artifacts [] {
         let hm_install = (setup_fake_home_manager_install_artifacts $fixture)
 
         let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
+            YAZELIX_INVOKED_YZX_PATH: $hm_install.profile_yzx
             YAZELIX_RUNTIME_DIR: $hm_install.runtime_root
         })
         let stdout = ($output.stdout | str trim)
@@ -281,6 +296,7 @@ def test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager [] {
         ] | str join "\n" | save --force --raw $local_desktop_path
 
         let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
+            YAZELIX_INVOKED_YZX_PATH: $hm_install.profile_yzx
             YAZELIX_RUNTIME_DIR: $hm_install.runtime_root
         })
         let stdout = ($output.stdout | str trim)
@@ -294,6 +310,51 @@ def test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager [] {
             and not ($stdout | str contains "Yazelix desktop entry uses the expected launcher path")
         ) {
             print "  ✅ yzx doctor flags a stale manual desktop entry that would shadow the Home Manager launcher"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: A stale legacy ~/.local/bin/yzx wrapper can shadow the profile-owned command after migration and must be reported clearly.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_reports_shadowing_manual_yzx_wrapper_for_profile_owner [] {
+    print "🧪 Testing yzx doctor reports a stale manual yzx wrapper that shadows the profile-owned command..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_shadowed_manual_yzx_wrapper"
+        ""
+    )
+
+    let result = (try {
+        let hm_install = (setup_fake_home_manager_install_artifacts $fixture)
+        let local_wrapper = ($fixture.tmp_home | path join ".local" "bin" "yzx")
+        mkdir ($local_wrapper | path dirname)
+        write_test_legacy_yzx_wrapper $local_wrapper
+
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
+            YAZELIX_INVOKED_YZX_PATH: $local_wrapper
+            YAZELIX_RUNTIME_DIR: $hm_install.runtime_root
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "A stale user-local yzx wrapper shadows the profile-owned Yazelix command")
+            and ($stdout | str contains $local_wrapper)
+            and ($stdout | str contains $hm_install.profile_yzx)
+            and ($stdout | str contains "yzx home_manager prepare --apply")
+            and ($stdout | str contains "remove the stale `~/.local/bin/yzx` wrapper")
+        ) {
+            print "  ✅ yzx doctor flags stale manual yzx wrapper shadowing before mixed-owner PATH state causes stale commands"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
@@ -465,6 +526,7 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_accepts_manual_stable_wrapper_desktop_entry)
         (test_yzx_doctor_accepts_home_manager_install_artifacts)
         (test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager)
+        (test_yzx_doctor_reports_shadowing_manual_yzx_wrapper_for_profile_owner)
         (test_yzx_doctor_reports_missing_runtime_launch_assets)
         (test_yzx_doctor_respects_layout_override_for_shared_preflight)
         (test_yzx_doctor_omits_installer_artifact_checks_in_runtime_root_only_mode)

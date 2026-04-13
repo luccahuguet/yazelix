@@ -5,7 +5,6 @@ use config_surfaces.nu get_main_user_config_path
 
 const HOME_MANAGER_FILES_MARKER = "-home-manager-files/"
 const MANUAL_DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
-
 def get_xdg_data_home [] {
     let configured = (
         $env.XDG_DATA_HOME?
@@ -56,6 +55,10 @@ def is_home_manager_symlink_target [target?: string] {
 
 export def get_manual_runtime_reference_path [] {
     get_yazelix_state_dir | path join "runtime" "current"
+}
+
+export def get_manual_yzx_wrapper_path [] {
+    ($env.HOME | path join ".local" "bin" "yzx")
 }
 
 export def get_manual_desktop_entry_path [] {
@@ -122,6 +125,55 @@ export def is_manual_desktop_entry_path [path?: string] {
     )
 }
 
+def symlink_target_looks_like_legacy_yazelix_wrapper [target?: string] {
+    if $target == null {
+        return false
+    }
+
+    let normalized = ($target | into string | str trim)
+
+    (
+        ($normalized | str contains "yazelix-runtime")
+        and ($normalized | str ends-with "/bin/yzx")
+    )
+}
+
+def file_contents_look_like_legacy_yazelix_wrapper [path: string] {
+    let raw = try {
+        open --raw $path
+    } catch {
+        return false
+    }
+
+    (
+        ($raw | str contains "shells/posix/yzx_cli.sh")
+        or ($raw | str contains "Stable Yazelix CLI entrypoint for external tools and editors.")
+        or (
+            ($raw | str contains "YAZELIX_BOOTSTRAP_RUNTIME_DIR")
+            and ($raw | str contains "Yazelix")
+        )
+    )
+}
+
+export def is_legacy_manual_yzx_wrapper_path [path?: string] {
+    let candidate = if $path == null {
+        get_manual_yzx_wrapper_path
+    } else {
+        $path | path expand
+    }
+
+    if not ($candidate | path exists) {
+        return false
+    }
+
+    let target = (read_symlink_target $candidate)
+    if (symlink_target_looks_like_legacy_yazelix_wrapper $target) {
+        return true
+    }
+
+    file_contents_look_like_legacy_yazelix_wrapper $candidate
+}
+
 def collect_manual_desktop_icon_artifacts [] {
     $MANUAL_DESKTOP_ICON_SIZES
     | each {|size|
@@ -164,6 +216,16 @@ export def collect_home_manager_prepare_artifacts [] {
 
     for icon_artifact in (collect_manual_desktop_icon_artifacts) {
         $artifacts = ($artifacts | append ($icon_artifact | upsert class "cleanup"))
+    }
+
+    let manual_yzx_wrapper = (get_manual_yzx_wrapper_path)
+    if (is_legacy_manual_yzx_wrapper_path $manual_yzx_wrapper) {
+        $artifacts = ($artifacts | append {
+            id: "manual_yzx_wrapper"
+            class: "cleanup"
+            label: "legacy ~/.local/bin/yzx wrapper"
+            path: $manual_yzx_wrapper
+        })
     }
 
     $artifacts

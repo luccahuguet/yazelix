@@ -3,7 +3,9 @@
 use common.nu get_yazelix_runtime_dir
 use install_ownership.nu [
     get_manual_desktop_entry_path
+    get_manual_yzx_wrapper_path
     has_home_manager_managed_install
+    is_legacy_manual_yzx_wrapper_path
 ]
 use launcher_resolution.nu [
     get_existing_home_manager_yzx_profile_path
@@ -26,6 +28,32 @@ def detect_install_owner [] {
 
 def get_home_manager_profile_desktop_entry_path [] {
     ($env.HOME | path join ".nix-profile" "share" "applications" "yazelix.desktop")
+}
+
+def get_shell_resolved_yzx_path [] {
+    let invoked = (
+        $env.YAZELIX_INVOKED_YZX_PATH?
+        | default ""
+        | into string
+        | str trim
+    )
+
+    if ($invoked | is-not-empty) {
+        return ($invoked | path expand --no-symlink)
+    }
+
+    let resolved = (
+        which yzx
+        | where type == "external"
+        | get -o 0.path
+        | default null
+    )
+
+    if $resolved == null {
+        null
+    } else {
+        $resolved | path expand --no-symlink
+    }
 }
 
 def get_desktop_entry_exec [desktop_path: string] {
@@ -175,4 +203,44 @@ export def check_desktop_entry_freshness [] {
         details: $desktop_path
         fix_available: false
     }
+}
+
+export def check_shell_yzx_wrapper_shadowing [] {
+    let manual_wrapper = (get_manual_yzx_wrapper_path)
+    if not (is_legacy_manual_yzx_wrapper_path $manual_wrapper) {
+        return []
+    }
+
+    let profile_wrapper = (get_existing_home_manager_yzx_profile_path)
+    if $profile_wrapper == null {
+        return []
+    }
+
+    let shell_resolved = (get_shell_resolved_yzx_path)
+    if $shell_resolved == null {
+        return []
+    }
+
+    let expanded_manual_wrapper = ($manual_wrapper | path expand --no-symlink)
+    let expanded_profile_wrapper = ($profile_wrapper | path expand --no-symlink)
+
+    if $shell_resolved != $expanded_manual_wrapper {
+        return []
+    }
+
+    let details_lines = [
+        $"Shell-resolved yzx: ($shell_resolved)"
+        $"Legacy local wrapper: ($expanded_manual_wrapper)"
+        $"Profile-owned yzx: ($expanded_profile_wrapper)"
+        "Choose one clear owner for this install"
+        "If you are migrating to Home Manager, run `yzx home_manager prepare --apply`, then rerun `home-manager switch`"
+        "If a profile install owns this runtime, remove the stale `~/.local/bin/yzx` wrapper and keep the profile-owned `yzx` command"
+    ]
+
+    [{
+        status: "warning"
+        message: "A stale user-local yzx wrapper shadows the profile-owned Yazelix command"
+        details: ($details_lines | str join "\n")
+        fix_available: false
+    }]
 }
