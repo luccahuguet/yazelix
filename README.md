@@ -194,10 +194,10 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
 - **Core settings**: Edit `~/.config/yazelix/user_configs/yazelix.toml` for shell, editor, terminal, and package preferences
-- **Yazi customization**: Configure plugins, theme, and sorting in `yazelix.toml` under the `[yazi]` section (see [Yazi Configuration](./docs/yazi-configuration.md))
-- **Zellij customization**: Add personal overrides in `configs/zellij/personal/` directory
+- **Yazi customization**: Use the built-in `[yazi]` settings in `yazelix.toml` for things like plugins, theme, sorting, and binary overrides, and use `~/.config/yazelix/user_configs/yazi/` for deeper merged overrides such as `init.lua`, `keymap.toml`, or `yazi.toml` additions (see [Yazi Configuration](./docs/yazi-configuration.md))
+- **Zellij customization**: Use the built-in `[zellij]` settings in `yazelix.toml` for Yazelix-owned Zellij knobs, and use `~/.config/yazelix/user_configs/zellij/config.kdl` for your deeper managed Zellij overrides (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Your configs persist** across Yazelix updates without git conflicts
-- **Intelligent merging**: TOML sections merge properly, avoiding duplicate keys and conflicts
+- **Intelligent merging**: Generated Yazi and Zellij runtime configs are rebuilt from Yazelix defaults plus your managed overrides instead of forcing you to edit tracked runtime files
 
 📖 **[Complete Customization Guide →](./docs/customization.md)** - Detailed instructions for customizing every tool
 
@@ -274,16 +274,8 @@ If you followed [step 4 in the installation guide](./docs/installation.md#step-4
 
 Yazelix includes optional Home Manager support for declarative configuration management through the top-level flake's `homeManagerModules.default` output; see [home_manager/README.md](home_manager/README.md) for setup instructions
 
-## Notes
-- The packaged runtime respects your HOME/XDG paths directly, so managed config and generated-state paths resolve without extra flags
-- Tweak configs to make them yours; this is just a starting point! 
-- For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html)
-- Add more swap layouts as needed using the KDL files in `configs/zellij/layouts`
-- Use `lazygit`, it's great
-
 ## When should you not use yazelix?
 - If you hate having fun
-- If you suffer from a severe case of nix-allergy
 
 ## Initializer Scripts
 Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Carapace for your configured shell set during environment setup and refresh; see [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details

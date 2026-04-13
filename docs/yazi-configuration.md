@@ -1,10 +1,10 @@
 # Yazi Configuration
 
-Yazelix provides a simple, streamlined Yazi configuration system that generates configs from yazelix defaults with dynamic settings from `yazelix.toml`.
+Yazelix provides a layered Yazi configuration system built from Yazelix defaults, dynamic settings from `yazelix.toml`, and optional managed overrides under `~/.config/yazelix/user_configs/yazi/`.
 
 ## Quick Start
 
-Edit `yazelix.toml` to customize Yazi:
+Edit `yazelix.toml` to customize the built-in Yazi knobs:
 
 ```toml
 [yazi]
@@ -13,11 +13,16 @@ theme = "dracula"           # Color theme
 sort_by = "modified"        # Sort files by modification time
 ```
 
-Restart yazelix and your changes take effect!
+Restart yazelix and your changes take effect.
 
 ## Configuration
 
-All yazi settings are in `yazelix.toml`:
+Yazi has two customization layers:
+
+1. Built-in Yazelix-facing Yazi settings in `yazelix.toml`
+2. Optional managed Yazi override files in `~/.config/yazelix/user_configs/yazi/`
+
+The `yazelix.toml` layer controls the common knobs Yazelix understands directly.
 
 ### Binary Overrides
 
@@ -86,13 +91,14 @@ sort_by = "alphabetical"
 
 When yazelix starts:
 
-1. Reads settings from `yazelix.toml`
-2. Generates `yazi.toml` with your theme and sort_by settings
-3. Generates `init.lua` with your plugin list
-4. Copies bundled configs (keymap, theme)
-5. Copies bundled plugins to plugins directory
+1. Reads the built-in `[yazi]` settings from `yazelix.toml`
+2. Generates the managed base `yazi.toml` from Yazelix defaults plus those settings
+3. Merges your optional `~/.config/yazelix/user_configs/yazi/yazi.toml` overrides when that file exists
+4. Generates `init.lua` with the built-in plugin list, then appends your optional `~/.config/yazelix/user_configs/yazi/init.lua`
+5. Merges your optional `~/.config/yazelix/user_configs/yazi/keymap.toml` with the Yazelix keymap layer
+6. Copies bundled configs, plugins, and flavors into the generated runtime Yazi directory
 
-**No merging. No personal folders. Simple generation.**
+The generated runtime config lives under `~/.local/share/yazelix/configs/yazi/`. You customize the managed inputs under `user_configs/yazi/`, not the generated output.
 
 ## Default Features
 
@@ -105,7 +111,7 @@ When yazelix starts:
 
 ## Advanced Customization
 
-For deeper customization beyond `yazelix.toml` options:
+For deeper customization beyond the built-in `yazelix.toml` options, use the managed override files under `~/.config/yazelix/user_configs/yazi/`.
 
 ### Custom init.lua Code
 
