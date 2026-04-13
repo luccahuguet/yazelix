@@ -125,7 +125,7 @@ This pass re-audited the largest surviving default-suite component files after t
 | `yzx status` default-suite assertion | `Keep, assertion narrowed` | The test still defends that `yzx status` reaches the shared environment bootstrap and prints the summary fields. It no longer requires the full config path to be unwrapped in Nushell's pretty table output. |
 | Maintainer workflow file | `Keep for maintainer lane` | `test_yzx_maintainer.nu` remains large, but it is outside the default runner and maps to issue sync, update, bump, profile, and plugin-refresh maintainer contracts. No safe delete was found in this pass. |
 
-The default-suite count moved from 92 to 89 canonical tests after the overlap trim, then to 90 when the command-surface help-description contract got a generated-metadata check. The old count-budget cap of 53 was stale relative to the actual suite, so it was reset to the current deliberate count after the consolidation. Future default-suite additions should again fail the budget gate unless they update the cap deliberately.
+The default-suite count moved from 92 to 89 canonical tests after the overlap trim, then to 90 when the command-surface help-description contract got a generated-metadata check, then to 91 when the stable-wrapper desktop-entry doctor regression became part of the default lane. The old count-budget cap of 53 was stale relative to the actual suite, so it was reset to the current deliberate count after the consolidation. Future default-suite additions should again fail the budget gate unless they update the cap deliberately.
 
 ## Bottom line
 

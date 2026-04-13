@@ -943,9 +943,10 @@ def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
         let output = (with-env {
             YAZELIX_RUNTIME_DIR: $fixture.runtime_root
         } {
-            ^nu -c $"source \"($menu_script)\"; get_palette_command_entries | select id category | to json -r" | complete
+            ^nu -c $"source \"($menu_script)\"; { entries: \(get_palette_command_entries | select id category\), prompt: \(menu_prompt\), post_prompt: \(popup_post_action_prompt\), esc_decision: \(popup_post_action_key_decision esc\), enter_decision: \(popup_post_action_key_decision enter\), backspace_decision: \(popup_post_action_key_decision backspace\) } | to json -r" | complete
         })
-        let entries = ($output.stdout | from json)
+        let contract = ($output.stdout | from json)
+        let entries = ($contract.entries | default [])
         let ids = ($entries | get id)
 
         if (
@@ -964,11 +965,16 @@ def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
             and (($entries | where id == "yzx screen" | get -o 0.category | default "") == "workspace")
             and (($entries | where id == "yzx status" | get -o 0.category | default "") == "system")
             and (($entries | where id == "yzx test_dynamic" | get -o 0.category | default "") == "system")
+            and ($contract.prompt == "yzx menu> ")
+            and ($contract.post_prompt == "Backspace: return to menu | Enter: close")
+            and ($contract.esc_decision == "continue")
+            and ($contract.enter_decision == "close")
+            and ($contract.backspace_decision == "menu")
         ) {
-            print "  ✅ yzx menu now derives its catalog from the live exported command surface and only applies explicit exclusions"
+            print "  ✅ yzx menu now derives its catalog from the live exported command surface, applies explicit exclusions, and leaves Escape out of its own close path"
             true
         } else {
-            print $"  ❌ Unexpected menu catalog result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            print $"  ❌ Unexpected menu catalog or key contract result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -978,44 +984,6 @@ def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
 
     rm -rf $fixture.tmp_root
     $result
-}
-
-# Regression: popup/menu close behavior is toggle-owned, so menu-specific Esc close text and handling should not drift back in.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_yzx_menu_does_not_advertise_or_handle_escape_as_close [] {
-    print "🧪 Testing yzx menu leaves Escape out of the popup close contract..."
-
-    let menu_script = (repo_path "nushell" "scripts" "yzx" "menu.nu")
-
-    try {
-        let output = (
-            ^nu -c $"source \"($menu_script)\"; { prompt: \(menu_prompt\), post_prompt: \(popup_post_action_prompt\), esc_decision: \(popup_post_action_key_decision esc\), enter_decision: \(popup_post_action_key_decision enter\), backspace_decision: \(popup_post_action_key_decision backspace\) } | to json -r"
-            | complete
-        )
-
-        if $output.exit_code != 0 {
-            print $"  ❌ Failed to inspect yzx menu popup key contract: stderr=(($output.stderr | str trim))"
-            return false
-        }
-
-        let contract = ($output.stdout | from json)
-        if (
-            ($contract.prompt == "yzx menu> ")
-            and ($contract.post_prompt == "Backspace: return to menu | Enter: close")
-            and ($contract.esc_decision == "continue")
-            and ($contract.enter_decision == "close")
-            and ($contract.backspace_decision == "menu")
-        ) {
-            print "  ✅ yzx menu no longer advertises or handles Escape as its own close path"
-            true
-        } else {
-            print $"  ❌ Unexpected menu popup key contract: ($contract | to json -r)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
 }
 
 # Defends: exported yzx commands carry concise help descriptions without maintaining a second command tree.
@@ -1057,7 +1025,6 @@ export def run_core_canonical_tests [] {
         (test_invalid_config_is_classified_as_config_problem)
         (test_yzx_status_reports_basic_runtime_summary)
         (test_yzx_menu_catalog_tracks_live_exported_command_surface)
-        (test_yzx_menu_does_not_advertise_or_handle_escape_as_close)
         (test_yzx_exported_commands_have_help_descriptions)
     ]
 }
