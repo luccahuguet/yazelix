@@ -34,7 +34,7 @@ Profile launch sequence and identify performance bottlenecks
 ### `yzx dev bump VERSION`
 Automate the version bump, release commit, and matching git tag
 - Requires a clean git worktree
-- Fails if `VERSION` is not a real Yazelix tag like `v14` or `v13.13`
+- Fails if `VERSION` is not a real Yazelix tag like `v15` or `v15.1`
 - Refuses to reuse an existing git tag
 - Rotates the current `Unreleased` release notes into the requested version, resets a fresh `Unreleased` placeholder, updates `YAZELIX_VERSION`, syncs the README title/version marker, creates a dedicated commit, and creates the matching annotated tag
 - Refuses to run if `CHANGELOG.md` or `docs/upgrade_notes.toml` still contain the untouched default `Unreleased` placeholder text
@@ -168,8 +168,8 @@ Interactive command palette (fuzzy search)
 - Default: inline mode in current terminal
 - `--popup`: open in a Zellij floating pane (errors if not in Zellij)
 - Lists most `yzx` commands while hiding maintenance-heavy or low-signal entries (`yzx dev*`, `yzx env`, `yzx run`)
-- Cancel with `Esc`
-- In popup mode after running a command: `Backspace` returns to menu, `Enter`/`Esc` closes popup
+- Cancel with `Esc` before running a command
+- In popup mode after running a command: `Backspace` returns to menu and `Enter` closes the popup
 - Keybind: `Alt Shift M` opens the popup menu in Zellij
 - Popup pane is named `yzx_menu` to avoid duplicate menu instances
 
