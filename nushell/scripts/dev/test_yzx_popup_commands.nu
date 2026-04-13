@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 # Defends: docs/specs/floating_tui_panes.md
 
-use ../yzx/popup.nu [resolve_yzx_popup_command resolve_yzx_popup_cwd]
+use ../yzx/popup.nu [resolve_yzx_popup_command resolve_yzx_popup_contract resolve_yzx_popup_cwd]
 use ../integrations/zellij_runtime_wrappers.nu [build_floating_wrapper_env_args get_floating_wrapper_env get_new_editor_pane_launch_env open_floating_runtime_script]
 use ../utils/config_parser.nu [parse_yazelix_config]
 
@@ -31,6 +31,7 @@ def setup_runtime_wrapper_fixture [label: string] {
     cp ($env.PWD | path join "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
     cp ($env.PWD | path join ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
     ^ln -s ($env.PWD | path join "config_metadata") ($runtime_dir | path join "config_metadata")
+    cp ($env.PWD | path join "nushell" "scripts" "utils" "transient_pane_contract.nu") ($utils_dir | path join "transient_pane_contract.nu")
     [
         "export def parse_yazelix_config [] {"
         "    { popup_program: [\"config-popup\"] }"
@@ -88,6 +89,51 @@ def test_popup_cwd_prefers_workspace_root [] {
             false
         }
     } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+# Defends: popup open requests carry one explicit identity, argv, cwd, runtime, and geometry contract.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_popup_contract_carries_explicit_identity_and_geometry [] {
+    print "🧪 Testing popup contract resolves explicit identity, argv, cwd, runtime, and geometry..."
+
+    try {
+        let contract = (
+            resolve_yzx_popup_contract
+                {
+                    popup_program: ["lazygit"]
+                    popup_width_percent: 82
+                    popup_height_percent: 76
+                }
+                "/tmp/runtime"
+                "/tmp/workspace"
+                "/tmp/current"
+                "lazygit"
+                "--path"
+        )
+
+        if (
+            ($contract.kind == "popup")
+            and ($contract.pane_title == "yzx_popup")
+            and ($contract.wrapper_marker == "yzx_popup_program.nu")
+            and ($contract.wrapper_relative_path == "nushell/scripts/zellij_wrappers/yzx_popup_program.nu")
+            and ($contract.mode_env_key == "YAZELIX_POPUP_PANE")
+            and ($contract.mode_env_value == "true")
+            and ($contract.args == ["lazygit" "--path"])
+            and ($contract.cwd == "/tmp/workspace")
+            and ($contract.runtime_dir == "/tmp/runtime")
+            and ($contract.width_percent == 82)
+            and ($contract.height_percent == 76)
+        ) {
+            print "  ✅ popup contract now makes managed identity and open-shape explicit"
+            true
+        } else {
+            print $"  ❌ Unexpected popup contract: ($contract | to json -r)"
+            false
+        }
+    } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
     }
@@ -243,7 +289,7 @@ def test_popup_program_wrapper_runs_resolved_argv_directly [] {
 
         if (
             ($output.exit_code == 0)
-            and ($popup_invocation == ["args=--flag value" "pane-env=unset"])
+            and ($popup_invocation == ["args=--flag value" "pane-env=true"])
             and ($zellij_invocation == ["action rename-pane yzx_popup" "action close-pane"])
             and ($refresh_log == "refresh")
         ) {
@@ -587,6 +633,7 @@ export def run_popup_canonical_tests [] {
     [
         (test_popup_command_prefers_configured_default)
         (test_popup_cwd_prefers_workspace_root)
+        (test_popup_contract_carries_explicit_identity_and_geometry)
         (test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages)
         (test_popup_program_wrapper_runs_resolved_argv_directly)
         (test_popup_program_wrapper_falls_back_to_configured_default_when_args_are_missing)

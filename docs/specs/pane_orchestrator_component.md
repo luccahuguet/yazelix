@@ -81,6 +81,7 @@ The plugin is authoritative for managed pane identity inside a Zellij session:
 - managed sidebar panes are terminal panes titled `sidebar`
 - transient popup panes are floating terminal panes titled `yzx_popup` or launched through `yzx_popup_program.nu`
 - transient menu panes are floating terminal panes titled `yzx_menu` or launched through `yzx_menu_popup.nu`
+- Nushell and Rust share one explicit transient-pane identity contract for popup/menu title, wrapper marker, and wrapper path; wrapper-mode env ownership stays on the Nushell side of that seam
 - plugin panes, exited panes, and unrelated user panes must not count as managed editor/sidebar/transient panes
 - workspace state is tab-local and explicit workspace retargets are stronger than bootstrap state
 - sidebar Yazi identity returned from `retarget_workspace` is active-tab state, not a session-global cache scan

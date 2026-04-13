@@ -7,6 +7,13 @@ pub enum TransientPaneKind {
     Menu,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TransientPaneIdentityContract {
+    pub pane_title: &'static str,
+    pub wrapper_marker: &'static str,
+    pub wrapper_relative_path: &'static str,
+}
+
 impl TransientPaneKind {
     pub fn from_payload(payload: &str) -> Option<Self> {
         match payload.trim() {
@@ -16,25 +23,31 @@ impl TransientPaneKind {
         }
     }
 
-    pub fn title(&self) -> &'static str {
+    pub fn identity(&self) -> TransientPaneIdentityContract {
         match self {
-            Self::Popup => "yzx_popup",
-            Self::Menu => "yzx_menu",
+            Self::Popup => TransientPaneIdentityContract {
+                pane_title: "yzx_popup",
+                wrapper_marker: "yzx_popup_program.nu",
+                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
+            },
+            Self::Menu => TransientPaneIdentityContract {
+                pane_title: "yzx_menu",
+                wrapper_marker: "yzx_menu_popup.nu",
+                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
+            },
         }
+    }
+
+    pub fn title(&self) -> &'static str {
+        self.identity().pane_title
     }
 
     pub fn wrapper_marker(&self) -> &'static str {
-        match self {
-            Self::Popup => "yzx_popup_program.nu",
-            Self::Menu => "yzx_menu_popup.nu",
-        }
+        self.identity().wrapper_marker
     }
 
     pub fn wrapper_relative_path(&self) -> &'static str {
-        match self {
-            Self::Popup => "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
-            Self::Menu => "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
-        }
+        self.identity().wrapper_relative_path
     }
 }
 
@@ -99,7 +112,8 @@ pub fn resolve_transient_toggle_plan<Id: Copy>(
 #[cfg(test)]
 mod tests {
     use super::{
-        resolve_transient_toggle_plan, select_transient_pane, TransientPaneKind,
+        resolve_transient_toggle_plan, select_transient_pane, TransientPaneIdentityContract,
+        TransientPaneKind,
         TransientPaneSnapshot, TransientPaneState, TransientTogglePlan,
     };
 
@@ -143,6 +157,27 @@ mod tests {
                 pane_id: 8,
                 is_focused: false,
             })
+        );
+    }
+
+    #[test]
+    fn exposes_explicit_identity_contract_for_popup_and_menu() {
+        assert_eq!(
+            TransientPaneKind::Popup.identity(),
+            TransientPaneIdentityContract {
+                pane_title: "yzx_popup",
+                wrapper_marker: "yzx_popup_program.nu",
+                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_popup_program.nu",
+            }
+        );
+
+        assert_eq!(
+            TransientPaneKind::Menu.identity(),
+            TransientPaneIdentityContract {
+                pane_title: "yzx_menu",
+                wrapper_marker: "yzx_menu_popup.nu",
+                wrapper_relative_path: "nushell/scripts/zellij_wrappers/yzx_menu_popup.nu",
+            }
         );
     }
 

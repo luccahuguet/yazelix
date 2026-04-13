@@ -92,11 +92,23 @@ export def open_transient_pane [
     runtime_dir?: string
     log_file: string = "zellij_plugin.log"
 ] {
-    let payload = ({
+    open_transient_pane_contract {
         kind: $kind
         args: $args
         cwd: ($cwd | default "")
         runtime_dir: ($runtime_dir | default "")
+    } $log_file
+}
+
+export def open_transient_pane_contract [
+    contract: record
+    log_file: string = "zellij_plugin.log"
+] {
+    let payload = ({
+        kind: ($contract.kind? | default "" | into string | str trim)
+        args: ($contract.args? | default [])
+        cwd: ($contract.cwd? | default "" | into string)
+        runtime_dir: ($contract.runtime_dir? | default "" | into string)
     } | to json -r)
 
     try {

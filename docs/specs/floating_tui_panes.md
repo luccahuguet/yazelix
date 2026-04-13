@@ -25,6 +25,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Popup width and height percentages must be integers in the range `1..100`.
 - The default popup width and height are both `90`.
 - `yzx popup <command ...>` overrides the configured command for that invocation.
+- The surviving popup/menu seam is one explicit transient-pane contract: kind, pane identity, wrapper path, mode env, argv, cwd, runtime, and geometry are resolved before the plugin open request is sent.
 - The popup launches in the current tab workspace root when available; otherwise it uses the current shell directory.
 - The popup closes on exit.
 - `Alt+t` opens one managed popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.

@@ -2,24 +2,17 @@
 # Wrapper script for yzx menu popup (called from Zellij keybind)
 
 use ../yzx/menu.nu *
-
-def rename_transient_pane [name: string] {
-    if ($env.ZELLIJ? | is-not-empty) {
-        ^zellij action rename-pane $name | complete | ignore
-    }
-}
-
-def close_transient_pane [] {
-    if ($env.ZELLIJ? | is-not-empty) {
-        ^zellij action close-pane | complete | ignore
-    }
-}
+use ../utils/transient_pane_contract.nu [
+    close_current_transient_pane
+    get_transient_pane_mode_env
+    rename_current_transient_pane
+]
 
 def main [] {
-    rename_transient_pane "yzx_menu"
+    rename_current_transient_pane "menu"
 
     let result = (try {
-        with-env {YAZELIX_MENU_POPUP: "true"} {
+        with-env (get_transient_pane_mode_env "menu") {
             yzx menu
         }
         {ok: true}
@@ -28,7 +21,7 @@ def main [] {
     })
 
     if $result.ok {
-        close_transient_pane
+        close_current_transient_pane
         return
     }
 
