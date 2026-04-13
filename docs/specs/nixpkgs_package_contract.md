@@ -8,12 +8,9 @@ The nixpkgs package should not re-enact the flake installer. It should not mutat
 
 ## Why
 
-The flake installer and the nixpkgs package solve different problems:
+Older Yazelix releases exposed a flake installer that materialized persistent user-local state, while a nixpkgs package is an immutable store package that should work directly when added to a profile or system configuration
 
-- `nix run github:luccahuguet/yazelix#install` is a bootstrap surface that materializes a persistent user-local install
-- a nixpkgs package is an immutable store package that should work directly when added to a profile or system configuration
-
-If the nixpkgs package tries to behave like the installer, it creates unnecessary duplication, more wrapper logic, and a more fragile review surface. The package contract should delete that duplication instead of preserving it.
+If the nixpkgs package tries to behave like that older installer model, it creates unnecessary duplication, more wrapper logic, and a more fragile review surface. The package contract should delete that duplication instead of preserving it.
 
 ## Delete-First Decisions
 
@@ -40,7 +37,7 @@ The package should be consumable through normal nixpkgs surfaces such as:
 - `environment.systemPackages = [ pkgs.yazelix ];`
 - Home Manager package installation
 
-The package should not require the top-level flake installer to be involved after installation.
+The package should not require any separate installer surface after installation.
 
 ## Installed Package Contents
 
@@ -150,11 +147,11 @@ For nixpkgs users, updates come from the package manager:
 - channel/flake input updates
 - system/Home Manager rebuilds
 
-The package contract should not depend on the flake installer as the update mechanism for nixpkgs users.
+The package contract should not depend on any separate installer as the update mechanism for nixpkgs users.
 
 ## Non-goals
 
-- replacing the flake installer
+- restoring a separate flake installer
 - replacing Home Manager
 - automatically installing desktop entries
 - automatically installing shell hooks

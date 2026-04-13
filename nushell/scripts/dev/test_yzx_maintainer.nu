@@ -523,7 +523,7 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-# Defends: maintainer update requires an explicit activation target for real updates instead of silently falling through to installer behavior.
+# Defends: maintainer update requires an explicit activation target for real updates instead of silently falling through to a legacy default.
 def test_dev_update_requires_explicit_activation_for_real_updates [] {
     print "🧪 Testing yzx dev update requires an explicit activation target unless canary-only is requested..."
 
@@ -554,7 +554,7 @@ def test_dev_update_requires_explicit_activation_for_real_updates [] {
         let output = (^nu -c $snippet | complete)
         let stdout = ($output.stdout | str trim)
         let resolved = ($stdout | from json)
-        let expected = "yzx dev update now requires --activate installer|home_manager|none unless you are using --canary-only."
+        let expected = "yzx dev update now requires --activate profile|home_manager|none unless you are using --canary-only."
 
         if (
             ($output.exit_code == 0)
@@ -734,13 +734,13 @@ def test_dev_update_syncs_runtime_tool_pins_from_locked_flake [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Defends: Home Manager activation refreshes the configured flake input and switches the requested flake ref instead of falling back to the installer path.
-def test_dev_update_installer_activation_streams_install_logs [] {
-    print "🧪 Testing yzx dev update installer activation streams local install logs through nix run -L..."
+# Defends: maintainer profile activation removes old default-profile Yazelix entries and installs the local checkout package.
+def test_dev_update_profile_activation_reinstalls_local_package [] {
+    print "🧪 Testing yzx dev update profile activation removes old profile entries and installs the local checkout package..."
 
     let repo_root = ($env.PWD | path expand)
     let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
-    let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_installer_activation_XXXXXX | str trim)
+    let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_profile_activation_XXXXXX | str trim)
     let bin_dir = ($tmp_root | path join "bin")
     let log_path = ($tmp_root | path join "activation.log")
     let nix_script = ($bin_dir | path join "nix")
@@ -751,10 +751,31 @@ def test_dev_update_installer_activation_streams_install_logs [] {
     }
 
     mkdir $bin_dir
+    let profile_list_json = ({
+        elements: {
+            yazelix: {
+                active: true
+                originalUrl: "github:luccahuguet/yazelix"
+                attrPath: "packages.x86_64-linux.yazelix"
+                storePaths: ["/nix/store/fake-yazelix"]
+            }
+            git: {
+                active: true
+                originalUrl: "flake:nixpkgs"
+                attrPath: "legacyPackages.x86_64-linux.git"
+                storePaths: ["/nix/store/fake-git"]
+            }
+        }
+        version: 3
+    } | to json -r)
     [
         "#!/usr/bin/env bash"
         "printf 'nix:%s\\n' \"$*\" >> \"$YZX_TEST_LOG\""
-        "printf 'install-stream-line\\n'"
+        "if [ \"$1\" = \"profile\" ] && [ \"$2\" = \"list\" ] && [ \"$3\" = \"--json\" ]; then"
+        "  printf '%s\\n' \"$YZX_TEST_PROFILE_LIST_JSON\""
+        "  exit 0"
+        "fi"
+        "printf 'profile-stream-line\\n'"
         "exit 0"
     ] | str join "\n" | save --force --raw $nix_script
     ^chmod +x $nix_script
@@ -763,13 +784,14 @@ def test_dev_update_installer_activation_streams_install_logs [] {
         let snippet = (
             [
                 $"source \"($dev_module)\""
-                "activate_updated_installer_runtime $env.YZX_TEST_REPO_ROOT"
+                "activate_updated_profile_runtime $env.YZX_TEST_REPO_ROOT"
             ] | str join "\n"
         )
         let output = (with-env {
             PATH: $"($bin_dir)(char esep)($current_path)"
             YZX_TEST_LOG: $log_path
             YZX_TEST_REPO_ROOT: $repo_root
+            YZX_TEST_PROFILE_LIST_JSON: $profile_list_json
         } {
             ^nu -c $snippet | complete
         })
@@ -782,16 +804,19 @@ def test_dev_update_installer_activation_streams_install_logs [] {
 
         if (
             ($output.exit_code == 0)
-            and ($stdout | str contains "🔄 Installing updated local Yazelix runtime...")
-            and ($stdout | str contains "Streaming local installer activation logs")
-            and ($stdout | str contains "install-stream-line")
-            and ($stdout | str contains "✅ Installed runtime updated.")
-            and ($log_lines | any {|line| $line == "nix:run -L .#install" })
+            and ($stdout | str contains "🔄 Activating updated local Yazelix package in the default Nix profile...")
+            and ($stdout | str contains "Streaming local profile activation logs")
+            and ($stdout | str contains "Removing existing Yazelix profile entries before installing the local checkout: yazelix")
+            and ($stdout | str contains "profile-stream-line")
+            and ($stdout | str contains "✅ Default-profile Yazelix package updated from the local checkout.")
+            and ($log_lines | any {|line| $line == "nix:profile list --json" })
+            and ($log_lines | any {|line| $line == "nix:profile remove yazelix" })
+            and ($log_lines | any {|line| $line == "nix:profile add --refresh -L .#yazelix" })
         ) {
-            print "  ✅ Installer activation now streams nix install logs and uses nix run -L for local activation"
+            print "  ✅ Profile activation now replaces older default-profile Yazelix entries and installs the local checkout package"
             true
         } else {
-            print $"  ❌ Unexpected installer activation result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim)) log=(($log_lines | str join '; '))"
+            print $"  ❌ Unexpected profile activation result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim)) log=(($log_lines | str join '; '))"
             false
         }
     } catch { |err|
@@ -1012,7 +1037,7 @@ def test_dev_update_activation_mode_rejects_unknown_values [] {
         )
         let output = (^nu -c $snippet | complete)
         let stdout = ($output.stdout | str trim)
-        let expected = "Unknown activation mode: hm. Expected one of: installer, home_manager, none"
+        let expected = "Unknown activation mode: hm. Expected one of: profile, home_manager, none"
 
         if ($output.exit_code == 0) and ($stdout == $expected) {
             print "  ✅ Unknown maintainer activation names now fail fast with the supported mode list"
@@ -1178,7 +1203,7 @@ def main [] {
         (test_dev_update_requires_explicit_activation_for_real_updates)
         (test_dev_update_refreshes_runtime_flake_inputs)
         (test_dev_update_syncs_runtime_tool_pins_from_locked_flake)
-        (test_dev_update_installer_activation_streams_install_logs)
+        (test_dev_update_profile_activation_reinstalls_local_package)
         (test_dev_update_activation_mode_rejects_unknown_values)
         (test_dev_update_home_manager_activation_refreshes_input_and_switches_requested_ref)
         (test_home_manager_profile_restart_uses_owner_wrapper_without_manual_surfaces)

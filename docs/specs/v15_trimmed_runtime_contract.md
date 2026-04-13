@@ -67,9 +67,9 @@ This file exists so current docs and current specs can point at one authoritativ
 ### Update And Distribution Ownership
 
 - Users choose one explicit update owner per install.
-  - `yzx update upstream` for upstream/manual installs
+  - `yzx update upstream` for default-profile installs of `#yazelix`
   - `yzx update home_manager` for Home Manager installs
-- `#install` remains a compatibility/bootstrap surface.
+- The flake no longer exposes `#install`.
 - The product no longer promises a generic in-app runtime updater that owns every install mode.
 
 ### Maintainer Boundary

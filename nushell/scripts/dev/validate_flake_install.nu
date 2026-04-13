@@ -6,7 +6,7 @@ const INSTALL_TIMEOUT_SECONDS = 2700
 const PROBE_TIMEOUT_SECONDS = 60
 
 def make_temp_home [] {
-    (^mktemp -d /tmp/yazelix_flake_install_XXXXXX | str trim)
+    (^mktemp -d /tmp/yazelix_profile_install_XXXXXX | str trim)
 }
 
 def prepare_temp_home [temp_home: string] {
@@ -124,116 +124,30 @@ def run_completed_external [
     $result
 }
 
-def prepare_hostile_install_env [temp_home: string] {
-    let hostile_bin = ($temp_home | path join ".hostile_bin")
-    mkdir $hostile_bin
-
-    let real_nu = (resolve_external_command_path "nu")
-    if $real_nu == null {
-        error make { msg: "Could not resolve `nu` while preparing hostile install env" }
-    }
-
-    let hostile_scripts = [
-        {
-            name: "nu"
-            content: ([
-                "#!/bin/sh"
-                $"exec \"($real_nu)\" \"$@\""
-                ""
-            ] | str join "\n")
-        }
-        {
-            name: "starship"
-            content: ([
-                "#!/bin/sh"
-                "echo '# hostile starship path leaked into install output'"
-                ""
-            ] | str join "\n")
-        }
-        {
-            name: "zoxide"
-            content: ([
-                "#!/bin/sh"
-                "echo '# hostile zoxide path leaked into install output'"
-                ""
-            ] | str join "\n")
-        }
-        {
-            name: "mise"
-            content: ([
-                "#!/bin/sh"
-                "echo '# hostile mise path leaked into install output'"
-                ""
-            ] | str join "\n")
-        }
-        {
-            name: "atuin"
-            content: ([
-                "#!/bin/sh"
-                "echo '# hostile atuin path leaked into install output'"
-                ""
-            ] | str join "\n")
-        }
-        {
-            name: "carapace"
-            content: ([
-                "#!/bin/sh"
-                "echo '# hostile carapace path leaked into install output'"
-                ""
-            ] | str join "\n")
-        }
-    ]
-
-    for hostile_script in $hostile_scripts {
-        let script_path = ($hostile_bin | path join $hostile_script.name)
-        let content = $hostile_script.content
-        $content | save --force --raw $script_path
-        chmod +x $script_path
-    }
-
-    {
-        hostile_bin: $hostile_bin
-        hostile_nu: ($hostile_bin | path join "nu")
-    }
-}
-
-def run_flake_install [temp_home: string] {
+def run_profile_install [temp_home: string] {
     let state_root = ($temp_home | path join ".local" "share")
     let config_root = ($temp_home | path join ".config")
-    let nushell_config_dir = ($config_root | path join "nushell")
-    let bashrc_path = ($temp_home | path join ".bashrc")
-    let nushell_config_path = ($nushell_config_dir | path join "config.nu")
-
-    mkdir $state_root
-    mkdir $config_root
-    mkdir $nushell_config_dir
-    "" | save --force $bashrc_path
-    "" | save --force $nushell_config_path
-
-    let hostile_env = (prepare_hostile_install_env $temp_home)
-    let inherited_path = ($env.PATH? | default [])
-    let inherited_path_desc = ($inherited_path | describe)
-    let install_path = if ($inherited_path_desc | str starts-with "list") {
-        [$hostile_env.hostile_bin] | append $inherited_path
-    } else if (($inherited_path | into string | str trim) | is-empty) {
-        [$hostile_env.hostile_bin]
-    } else {
-        [$hostile_env.hostile_bin, ($inherited_path | into string)]
-    }
+    let profile_root = ($temp_home | path join ".nix-profile")
 
     with-env {
         HOME: $temp_home
         XDG_CONFIG_HOME: $config_root
         XDG_DATA_HOME: $state_root
-        PATH: $install_path
-        YAZELIX_NU_BIN: $hostile_env.hostile_nu
     } {
-        run_completed_external "running `nix run .#install` for flake install smoke validation" "nix" ["run" ".#install" "--extra-experimental-features" "nix-command flakes"] $INSTALL_TIMEOUT_SECONDS
+        run_completed_external "running `nix profile add --profile ... .#yazelix` for cold profile-install validation" "nix" [
+            "--extra-experimental-features"
+            "nix-command flakes"
+            "profile"
+            "add"
+            "--profile"
+            $profile_root
+            ".#yazelix"
+        ] $INSTALL_TIMEOUT_SECONDS
     }
 }
 
 def run_installed_yzx [temp_home: string, ...args: string] {
-    let yzx_path = ($temp_home | path join ".local" "bin" "yzx")
+    let yzx_path = ($temp_home | path join ".nix-profile" "bin" "yzx")
     let label = $"probing installed yzx command: ($args | str join ' ')"
     with-env {
         HOME: $temp_home
@@ -245,9 +159,25 @@ def run_installed_yzx [temp_home: string, ...args: string] {
 }
 
 def verify_installed_runtime [temp_home: string] {
-    print "🔍 Verifying installed runtime layout ..."
+    print "🔍 Verifying profile-installed runtime layout ..."
 
-    let yzx_path = ($temp_home | path join ".local" "bin" "yzx")
+    let profile_root = ($temp_home | path join ".nix-profile")
+    let yzx_path = ($profile_root | path join "bin" "yzx")
+    let local_wrapper = ($temp_home | path join ".local" "bin" "yzx")
+    let legacy_runtime_link = ($temp_home | path join ".local" "share" "yazelix" "runtime" "current")
+    let desktop_entry = ($temp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")
+    let user_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix.toml")
+    let pack_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix_packs.toml")
+    let nushell_config = ($temp_home | path join ".config" "nushell" "config.nu")
+
+    require_path_exists $yzx_path "profile-installed yzx wrapper"
+    require_path_missing $local_wrapper "legacy user-local yzx wrapper"
+    require_path_missing $legacy_runtime_link "legacy installed runtime symlink"
+    require_path_missing $desktop_entry "default user-local desktop entry before explicit desktop install"
+    require_path_missing $user_config "managed user config before first runtime entry"
+    require_path_missing $pack_config "legacy managed pack config before first runtime entry"
+    require_path_missing $nushell_config "host Nushell hook config before first runtime entry"
+
     let readlink_result = (^readlink -f $yzx_path | complete)
     if $readlink_result.exit_code != 0 {
         error make { msg: $"Failed to resolve installed yzx wrapper target: (($readlink_result.stderr | str trim))" }
@@ -260,19 +190,6 @@ def verify_installed_runtime [temp_home: string] {
     let runtime_ghostty_wrapper = ($runtime_root | path join "shells" "posix" "yazelix_ghostty.sh")
     let runtime_taplo_config = ($runtime_root | path join ".taplo.toml")
     let runtime_yazelix_default = ($runtime_root | path join "yazelix_default.toml")
-    let legacy_runtime_link = ($temp_home | path join ".local" "share" "yazelix" "runtime" "current")
-    let nushell_config = ($temp_home | path join ".config" "nushell" "config.nu")
-    let user_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix.toml")
-    let pack_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix_packs.toml")
-    let config_root = ($temp_home | path join ".config" "yazelix")
-    let managed_taplo_config = ($config_root | path join ".taplo.toml")
-    let desktop_entry = ($temp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")
-    let zellij_config = ($temp_home | path join ".local" "share" "yazelix" "configs" "zellij" "config.kdl")
-    let bash_initializer = ($temp_home | path join ".local" "share" "yazelix" "initializers" "bash" "yazelix_init.sh")
-    let nushell_initializer = ($temp_home | path join ".local" "share" "yazelix" "initializers" "nushell" "yazelix_init.nu")
-    let hostile_bin = ($temp_home | path join ".hostile_bin")
-    let yazi_theme = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "theme.toml")
-    let yazi_flavor_root = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors")
     let runtime_ghostty_shader_root = ($runtime_root | path join "configs" "terminal_emulators" "ghostty" "shaders")
     let runtime_ghostty_shader_builder = ($runtime_ghostty_shader_root | path join "build_shaders.nu")
     let runtime_ghostty_trail_variant = ($runtime_ghostty_shader_root | path join "variants" "reef.glsl")
@@ -282,27 +199,13 @@ def verify_installed_runtime [temp_home: string] {
     let generated_ghostty_effect_dir = ($generated_ghostty_root | path join "shaders" "generated_effects")
     let runtime_terminal_configs_script = ($runtime_root | path join "nushell" "scripts" "utils" "terminal_configs.nu")
 
-    require_path_missing $legacy_runtime_link "legacy installed runtime symlink"
     require_path_exists $runtime_nu "runtime-local Nushell binary"
     require_path_exists $runtime_yzx_cli "runtime-local POSIX yzx launcher"
     require_path_exists $runtime_ghostty_wrapper "runtime-local Ghostty env wrapper"
-    require_path_exists $runtime_taplo_config "runtime-local Taplo formatter config"
     require_path_exists $runtime_yazelix_default "runtime-local default config"
     require_path_exists $runtime_ghostty_shader_builder "runtime-local Ghostty shader builder"
     require_path_exists $runtime_ghostty_trail_variant "runtime-local Ghostty trail shader variant"
     require_path_exists $runtime_ghostty_effect_template "runtime-local Ghostty cursor effect template"
-    require_path_exists $yzx_path "installed yzx wrapper"
-    require_path_exists $nushell_config "generated Nushell hook config"
-    require_path_exists $user_config "seeded user config"
-    require_path_exists $managed_taplo_config "managed Taplo formatter config"
-    require_path_missing $desktop_entry "default user-local desktop entry"
-    require_path_exists $zellij_config "generated Zellij config"
-    require_path_exists $bash_initializer "generated Bash initializer"
-    require_path_exists $nushell_initializer "generated Nushell initializer"
-    require_path_exists $yazi_theme "generated Yazi theme config"
-    require_path_exists $yazi_flavor_root "generated Yazi flavors directory"
-
-    require_path_missing $pack_config "legacy seeded pack config"
 
     for expected_bin in ["nu" "yzx" "zellij" "ghostty" "yazi" "hx" "nvim" "fish" "zsh" "bash" "nix" "jq" "fd" "rg"] {
         require_path_exists ($runtime_bin | path join $expected_bin) $"runtime binary `($expected_bin)`"
@@ -310,16 +213,6 @@ def verify_installed_runtime [temp_home: string] {
     if (($nu.os-info.name | str downcase) == "linux") {
         require_path_exists ($runtime_bin | path join "nixGLMesa") "runtime binary `nixGLMesa`"
         require_path_exists ($runtime_bin | path join "pgrep") "runtime binary `pgrep`"
-    }
-
-    require_file_contains $nushell_config $runtime_root "generated Nushell hook config"
-    require_file_not_contains $nushell_config (["runtime" "current"] | str join "/") "generated Nushell hook config"
-    require_file_not_contains $bash_initializer $hostile_bin "generated Bash initializer"
-    require_file_not_contains $nushell_initializer $hostile_bin "generated Nushell initializer"
-    require_file_not_contains $yazi_theme "[flavor]" "generated Yazi theme config"
-
-    if ((ls $yazi_flavor_root | where type == dir | length) < 1) {
-        error make { msg: $"Generated Yazi flavors directory is empty: ($yazi_flavor_root)" }
     }
 
     let expected_wrapper_target = ($runtime_root | path join "bin" "yzx")
@@ -335,7 +228,7 @@ def verify_installed_runtime [temp_home: string] {
         if ($version_result.stderr | is-not-empty) {
             print $version_result.stderr
         }
-        error make { msg: "Installed yzx --version-short failed during flake install smoke validation" }
+        error make { msg: "Installed yzx --version-short failed during cold profile-install validation" }
     }
 
     let version_text = ($version_result.stdout | str trim)
@@ -363,7 +256,7 @@ def verify_installed_runtime [temp_home: string] {
         if ($posix_launcher_result.stderr | is-not-empty) {
             print $posix_launcher_result.stderr
         }
-        error make { msg: "Runtime-local POSIX yzx launcher failed under minimal PATH during flake install smoke validation" }
+        error make { msg: "Runtime-local POSIX yzx launcher failed under minimal PATH during cold profile-install validation" }
     }
 
     let posix_version_text = ($posix_launcher_result.stdout | str trim)
@@ -387,7 +280,7 @@ def verify_installed_runtime [temp_home: string] {
         if ($runtime_probe.stderr | is-not-empty) {
             print $runtime_probe.stderr
         }
-        error make { msg: "Installed yzx run probe failed during flake install smoke validation" }
+        error make { msg: "Installed yzx run probe failed during cold profile-install validation" }
     }
 
     let probe = ($runtime_probe.stdout | str trim | from json)
@@ -418,7 +311,7 @@ def verify_installed_runtime [temp_home: string] {
         if ($ghostty_config_probe.stderr | is-not-empty) {
             print $ghostty_config_probe.stderr
         }
-        error make { msg: "Installed runtime failed to materialize Ghostty shader-backed terminal config during flake install smoke validation" }
+        error make { msg: "Installed runtime failed to materialize Ghostty shader-backed terminal config during cold profile-install validation" }
     }
 
     require_ghostty_shader_references_exist $generated_ghostty_config
@@ -428,7 +321,7 @@ def verify_installed_runtime [temp_home: string] {
 def run_install_phase [temp_home: string] {
     prepare_temp_home $temp_home
 
-    let install_result = (run_flake_install $temp_home)
+    let install_result = (run_profile_install $temp_home)
     if $install_result.exit_code != 0 {
         if ($install_result.stdout | is-not-empty) {
             print $install_result.stdout
@@ -436,16 +329,16 @@ def run_install_phase [temp_home: string] {
         if ($install_result.stderr | is-not-empty) {
             print $install_result.stderr
         }
-        error make { msg: "Flake install smoke validation failed while running `nix run .#install`" }
+        error make { msg: "Cold profile-install validation failed while running `nix profile add --profile ... .#yazelix`" }
     }
 
-    print "✅ Flake install smoke build phase passed"
+    print "✅ Cold profile-install build phase passed"
 }
 
 def run_verify_phase [temp_home: string] {
-    require_path_exists $temp_home "flake install smoke temp home"
+    require_path_exists $temp_home "cold profile-install temp home"
     verify_installed_runtime $temp_home
-    print "✅ Flake install smoke verification phase passed"
+    print "✅ Cold profile-install verification phase passed"
 }
 
 export def main [phase?: string, temp_home?: string] {
@@ -462,7 +355,7 @@ export def main [phase?: string, temp_home?: string] {
 
             run_install_phase $resolved_temp_home
             run_verify_phase $resolved_temp_home
-            print "✅ Flake install smoke check passed"
+            print "✅ Cold profile-install check passed"
         }
         "install" => {
             if $temp_home == null {
@@ -477,7 +370,7 @@ export def main [phase?: string, temp_home?: string] {
             run_verify_phase $temp_home
         }
         _ => {
-            error make { msg: $"Unsupported flake install smoke phase `($selected_phase)`. Expected one of: all, install, verify" }
+            error make { msg: $"Unsupported cold profile-install phase `($selected_phase)`. Expected one of: all, install, verify" }
         }
     }
 }

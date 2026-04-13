@@ -8,6 +8,12 @@ def require_path_exists [path: string, label: string] {
     }
 }
 
+def require_path_missing [path: string, label: string] {
+    if ($path | path exists) {
+        error make { msg: $"Unexpected ($label): ($path)" }
+    }
+}
+
 def require_file_contains [path: string, needle: string, label: string] {
     let content = (open --raw $path)
     if not ($content | str contains $needle) {
@@ -69,7 +75,6 @@ def run_completed_external [
 export def main [] {
     print "🔍 Validating installed-runtime contract surfaces ..."
 
-    let install_template = "shells/posix/install_yazelix.sh.in"
     let cli_wrapper = "shells/posix/yzx_cli.sh"
     let runtime_env = "shells/posix/runtime_env.sh"
     let environment_setup = "nushell/scripts/setup/environment.nu"
@@ -77,19 +82,11 @@ export def main [] {
     let flake_path = "flake.nix"
 
     require_path_exists $flake_path "flake definition"
-    require_path_exists $install_template "flake installer template"
+    require_path_missing "shells/posix/install_yazelix.sh.in" "legacy flake installer template"
     require_path_exists $cli_wrapper "stable POSIX CLI wrapper"
     require_path_exists $runtime_env "runtime env helper"
     require_path_exists $environment_setup "environment setup script"
     require_path_exists $runtime_tree "runtime tree builder"
-
-    require_file_contains $install_template 'runtime_target="@runtime@"' "flake installer template"
-    require_file_contains $install_template 'legacy_runtime_dir="$HOME/.local/share/yazelix/runtime"' "flake installer template"
-    require_file_contains $install_template '@coreutils_bin@/ln -sfn "$runtime_target/bin/yzx" "$yzx_link"' "flake installer template"
-    require_file_contains $install_template 'YAZELIX_RUNTIME_DIR="$runtime_target"' "flake installer template"
-    require_file_contains $install_template 'run_runtime_nu "$runtime_target/nushell/scripts/setup/environment.nu" --skip-welcome' "flake installer template"
-    require_file_not_contains $install_template 'yazelix_packs.toml' "flake installer template"
-    require_file_not_contains $install_template 'YAZELIX_DIR="$runtime_target"' "flake installer template"
 
     require_file_contains $cli_wrapper 'export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$RUNTIME_DIR"' "stable POSIX CLI wrapper"
     require_file_contains $cli_wrapper 'runtime_env_script="$RUNTIME_DIR/shells/posix/runtime_env.sh"' "stable POSIX CLI wrapper"
@@ -118,20 +115,17 @@ export def main [] {
 
     let flake = ($flake_show.stdout | from json)
     let package_keys = ($flake | get packages."x86_64-linux" | columns)
-    for expected in ["default" "runtime" "install" "yazelix"] {
+    for expected in ["default" "runtime" "yazelix"] {
         require_list_contains $package_keys $expected "x86_64-linux package outputs"
     }
+    require_list_not_contains $package_keys "install" "x86_64-linux package outputs"
     require_list_not_contains $package_keys "locked_devenv" "x86_64-linux package outputs"
 
     let app_keys = ($flake | get apps."x86_64-linux" | columns)
-    for expected in ["default" "install" "yazelix"] {
+    for expected in ["default" "yazelix"] {
         require_list_contains $app_keys $expected "x86_64-linux app outputs"
     }
-
-    let install_app_type = ($flake | get apps."x86_64-linux".install.type)
-    if $install_app_type != "app" {
-        error make { msg: $"Unexpected flake install app type: ($install_app_type)" }
-    }
+    require_list_not_contains $app_keys "install" "x86_64-linux app outputs"
 
     print "✅ Installed-runtime contract smoke passed"
 }

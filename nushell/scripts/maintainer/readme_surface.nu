@@ -40,8 +40,8 @@ export def render_readme_latest_series_section [version: string = $YAZELIX_VERSI
 
     $lines = ($lines | append [
         ""
-        $"For exact tagged release notes, see [CHANGELOG]\(./CHANGELOG.md\) or run `yzx whats_new` after installing that release."
-        "For the longer project story, see [Version History](./docs/history.md)."
+        $"For exact tagged release notes, see [CHANGELOG]\(./CHANGELOG.md\) or run `yzx whats_new` after installing that release"
+        "For the longer project story, see [Version History](./docs/history.md)"
         $README_LATEST_SERIES_END
     ])
 

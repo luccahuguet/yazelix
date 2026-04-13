@@ -34,9 +34,9 @@ Without an explicit contract, doctor behavior drifts back toward an installer-ce
 Yazelix recognizes four concrete runtime/distribution tiers:
 
 1. `installer_managed`
-   - compatibility tier for the legacy flake installer path
-   - legacy installer-owned artifacts may still exist
-   - the honest update command is `yzx update upstream`
+   - compatibility tier for older installs that still carry installer-owned runtime artifacts
+   - new installs do not create this tier because the flake no longer exposes `#install`
+   - the honest recovery path is to reinstall into the default Nix profile or move to Home Manager
 2. `home_manager_managed`
    - full packaged-runtime tier
    - Home Manager owns the package path and update transition
@@ -44,7 +44,8 @@ Yazelix recognizes four concrete runtime/distribution tiers:
 3. `package_runtime`
    - narrowed packaged-runtime tier
    - Yazelix runs directly from a package root
-   - package-manager updates still exist, but they are not currently wrapped by a dedicated `yzx update` subcommand
+   - when the package is owned by the default Nix profile, `yzx update upstream` is the explicit owner wrapper
+   - temporary or one-shot package runtimes still do not imply a retained update owner
 4. `runtime_root_only`
    - narrowed runtime-root tier
    - Yazelix has a usable runtime root but no package-manager-owned distribution surface

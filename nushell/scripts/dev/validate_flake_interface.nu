@@ -14,13 +14,13 @@ export def main [] {
         + "  builtins.hasAttr \"default\" flake.packages.${system} &&\n"
         + "  builtins.hasAttr \"runtime\" flake.packages.${system} &&\n"
         + "  builtins.hasAttr \"yazelix\" flake.packages.${system} &&\n"
-        + "  builtins.hasAttr \"install\" flake.packages.${system} &&\n"
+        + "  !builtins.hasAttr \"install\" flake.packages.${system} &&\n"
         + "  flake.packages.${system}.default.outPath == flake.packages.${system}.yazelix.outPath &&\n"
         + "  builtins.hasAttr \"apps\" flake &&\n"
         + "  builtins.hasAttr system flake.apps &&\n"
         + "  builtins.hasAttr \"default\" flake.apps.${system} &&\n"
         + "  builtins.hasAttr \"yazelix\" flake.apps.${system} &&\n"
-        + "  builtins.hasAttr \"install\" flake.apps.${system} &&\n"
+        + "  !builtins.hasAttr \"install\" flake.apps.${system} &&\n"
         + "  builtins.hasAttr \"homeManagerModules\" flake &&\n"
         + "  builtins.hasAttr \"default\" flake.homeManagerModules &&\n"
         + "  builtins.hasAttr \"yazelix\" flake.homeManagerModules &&\n"
@@ -39,6 +39,6 @@ export def main [] {
 
     let ok = ($result.stdout | from json)
     if not $ok {
-        error make { msg: "Top-level flake interface is missing required package/app/Home Manager outputs or still points packages.default at the lower-level runtime." }
+        error make { msg: "Top-level flake interface is missing required package/app/Home Manager outputs, still exposes legacy install outputs, or still points packages.default at the lower-level runtime." }
     }
 }

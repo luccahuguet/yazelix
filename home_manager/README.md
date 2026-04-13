@@ -101,7 +101,7 @@ For maintainer workflows, a cloned repo is still useful. Normal Home Manager usa
 Manual validation on April 8, 2026 covered both a lived-in account and a throwaway clean-room Home Manager activation.
 
 - Home Manager owns the profile-provided `yzx` command and the generated `user_configs/` TOML files through symlinks into the Home Manager profile.
-- The managed `yzx` command resolves through the Home Manager profile, typically `~/.nix-profile/bin/yzx`, rather than through the manual installer's `~/.local/bin/yzx` path.
+- The managed `yzx` command resolves through the Home Manager profile, typically `~/.nix-profile/bin/yzx`, rather than through a legacy user-local wrapper path.
 - The active runtime root resolves directly from the packaged Yazelix runtime in the Home Manager profile/store path, not through a manual-install runtime symlink.
 - The Home Manager desktop entry comes from the Home Manager profile, typically `~/.nix-profile/share/applications/yazelix.desktop`, rather than from `yzx desktop install`.
 - Old manual desktop-entry files under `~/.local/share/applications/` can linger after migration; they are not Home Manager-owned and will shadow the Home Manager profile entry until you remove them.
@@ -109,7 +109,7 @@ Manual validation on April 8, 2026 covered both a lived-in account and a throwaw
 
 Migration note for older setups:
 - Replace `github:luccahuguet/yazelix?dir=home_manager` with `github:luccahuguet/yazelix` in your Home Manager flake inputs.
-- Upstream/manual installs use `yzx update upstream`; Home Manager installs use `yzx update home_manager`.
+- Profile installs use `yzx update upstream`; Home Manager installs use `yzx update home_manager`.
 
 ## Example Configuration
 

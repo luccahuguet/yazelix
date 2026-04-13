@@ -318,7 +318,7 @@ def print_update_canary_failure_details [results: list] {
 
 def resolve_update_activation_mode [requested: string] {
     let normalized = ($requested | default "" | into string | str trim | str downcase)
-    let available = ["installer", "home_manager", "none"]
+    let available = ["profile", "home_manager", "none"]
 
     if $normalized in $available {
         return $normalized
@@ -339,10 +339,51 @@ export def resolve_requested_update_activation_mode [requested?: string, canary_
     }
 
     if ($normalized | is-empty) {
-        error make {msg: "yzx dev update now requires --activate installer|home_manager|none unless you are using --canary-only."}
+        error make {msg: "yzx dev update now requires --activate profile|home_manager|none unless you are using --canary-only."}
     }
 
     resolve_update_activation_mode $normalized
+}
+
+def load_default_profile_elements [] {
+    let result = (^nix profile list --json | complete)
+    if $result.exit_code != 0 {
+        error make {msg: $"Failed to inspect the default Nix profile: (($result.stderr | default $result.stdout | str trim))"}
+    }
+
+    try {
+        $result.stdout | from json | get -o elements | default {}
+    } catch {|err|
+        error make {msg: $"Failed to parse `nix profile list --json`: ($err.msg)"}
+    }
+}
+
+def is_yazelix_profile_entry [row: record] {
+    let name = ($row.name | default "" | into string | str trim)
+    let entry = ($row.entry | default {})
+    let attr_path = ($entry | get -o attrPath | default "" | into string | str trim)
+    let original_url = ($entry | get -o originalUrl | default "" | into string | str trim)
+    let resolved_url = ($entry | get -o url | default "" | into string | str trim)
+    let store_paths = ($entry | get -o storePaths | default [])
+
+    (
+        ($name =~ '^yazelix(-\d+)?$')
+        or ($attr_path =~ '(^|\\.)yazelix$')
+        or ($original_url | str contains "luccahuguet/yazelix")
+        or ($resolved_url | str contains "luccahuguet/yazelix")
+        or ($store_paths | any {|store_path|
+            let normalized = ($store_path | into string | str trim)
+            ($normalized | str contains "-yazelix-") or ($normalized | str ends-with "-yazelix")
+        })
+    )
+}
+
+def find_default_profile_yazelix_entries [] {
+    (
+        load_default_profile_elements
+        | transpose name entry
+        | where {|row| is_yazelix_profile_entry $row }
+    )
 }
 
 def refresh_repo_runtime_inputs [repo_root: string] {
@@ -385,18 +426,29 @@ def build_home_manager_switch_ref [flake_dir: string, attr: string = ""] {
     }
 }
 
-def activate_updated_installer_runtime [repo_root: string] {
-    print "🔄 Installing updated local Yazelix runtime..."
-    print "   Streaming local installer activation logs \(this may take a while when Nix rebuilds\)..."
+def activate_updated_profile_runtime [repo_root: string] {
+    print "🔄 Activating updated local Yazelix package in the default Nix profile..."
+    print "   Streaming local profile activation logs \(this may take a while when Nix rebuilds\)..."
 
-    let status_result = (^mktemp -t yazelix_installer_activation_status_XXXXXX | complete)
+    let existing_entries = (find_default_profile_yazelix_entries)
+    if (($existing_entries | length) > 0) {
+        let entry_names = ($existing_entries | get name)
+        let remove_command = $"nix profile remove ($entry_names | str join ' ')"
+        print $"   Removing existing Yazelix profile entries before installing the local checkout: ($entry_names | str join ', ')"
+        let remove_result = (^nix profile remove ...$entry_names | complete)
+        if $remove_result.exit_code != 0 {
+            error make {msg: $"Failed to remove existing Yazelix profile entries with `($remove_command)`: (($remove_result.stderr | default $remove_result.stdout | str trim))"}
+        }
+    }
+
+    let status_result = (^mktemp -t yazelix_profile_activation_status_XXXXXX | complete)
     if $status_result.exit_code != 0 {
-        error make {msg: $"Failed to allocate installer activation status file: (($status_result.stderr | str trim))"}
+        error make {msg: $"Failed to allocate profile activation status file: (($status_result.stderr | str trim))"}
     }
     let status_path = ($status_result.stdout | str trim)
     do {
         cd $repo_root
-        ^sh -c 'nix run -L .#install; code=$?; printf "%s" "$code" > "$1"; exit "$code"' sh $status_path
+        ^sh -c 'nix profile add --refresh -L .#yazelix; code=$?; printf "%s" "$code" > "$1"; exit "$code"' sh $status_path
     }
     let exit_code = if ($status_path | path exists) {
         open --raw $status_path | str trim | into int
@@ -406,12 +458,12 @@ def activate_updated_installer_runtime [repo_root: string] {
     rm -f $status_path
 
     if $exit_code != 0 {
-        print "❌ nix run .#install failed."
-        print "   Recovery: Fix the install failure, rerun `nix run .#install`, then restart Yazelix."
+        print "❌ `nix profile add --refresh .#yazelix` failed."
+        print "   Recovery: Fix the local package failure, rerun `nix profile add --refresh .#yazelix`, then restart Yazelix."
         exit $exit_code
     }
 
-    print "✅ Installed runtime updated."
+    print "✅ Default-profile Yazelix package updated from the local checkout."
 }
 
 def refresh_home_manager_input_lock [flake_dir: string, input_name: string] {
@@ -455,7 +507,7 @@ def refresh_home_manager_input_lock [flake_dir: string, input_name: string] {
 export def activate_updated_home_manager_runtime [flake_dir: string, input_name: string, attr: string = ""] {
     if (which home-manager | is-empty) {
         print "❌ home-manager not found in PATH."
-        print "   Recovery: Install Home Manager first, or use `yzx dev update --activate installer` or `--activate none`."
+        print "   Recovery: Install Home Manager first, or use `yzx dev update --activate profile` or `--activate none`."
         exit 1
     }
 
@@ -578,9 +630,9 @@ export def run_dev_update_workflow [
             print "⚠️  No local activation was requested."
             print "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, and vendored Yazi plugin runtime files are in sync in the repo checkout. Review and commit the changes if everything looks good."
         }
-        "installer" => {
-            activate_updated_installer_runtime $yazelix_dir
-            print "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, vendored Yazi plugin runtime files, and the local installer-owned runtime are in sync. Review and commit the changes if everything looks good."
+        "profile" => {
+            activate_updated_profile_runtime $yazelix_dir
+            print "✅ Inputs, canaries, runtime pins, README version marker, vendored zjstatus, vendored Yazi plugin runtime files, and the local default-profile Yazelix package are in sync. Review and commit the changes if everything looks good."
         }
         "home_manager" => {
             let activation = (activate_updated_home_manager_runtime $home_manager_dir $home_manager_input $home_manager_attr)

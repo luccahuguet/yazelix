@@ -68,9 +68,9 @@ This contract keeps those boundaries explicit.
 - User-facing config lookups must resolve through the config root, not through the runtime root.
 - Generated configs and cached state must resolve through the state root or the derived runtime config paths, not through the source checkout.
 - The normal user runtime contract is the fixed packaged runtime plus explicit update ownership.
-  - `yzx update upstream` owns upstream/manual installs
+  - `yzx update upstream` owns default-profile installs of `#yazelix`
   - `yzx update home_manager` owns Home Manager installs
-  - `#install` is a compatibility/bootstrap surface, not the canonical runtime identity
+  - the flake no longer exposes `#install`
 - Maintainer-only workflows may still assume a source checkout and `maintainer_shell.nix` when the task is explicitly about repository maintenance.
   - Examples: release automation, source validators, repo-local profiling, issue/bead reconciliation, and repo-shell development helpers.
   - Those assumptions should stay explicit instead of leaking into normal user entrypoints.

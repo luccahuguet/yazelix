@@ -186,6 +186,9 @@ welcome_style = "random"
     write_test_executable ($bin_dir | path join "nix") [
         "#!/bin/sh"
         "printf 'nix:%s\\n' \"$*\" >> \"$YZX_TEST_LOG\""
+        "if [ \"$1\" = \"profile\" ] && [ \"$2\" = \"list\" ] && [ \"$3\" = \"--json\" ]; then"
+        "  printf '%s\\n' \"$YZX_TEST_PROFILE_LIST_JSON\""
+        "fi"
     ]
     write_test_executable ($bin_dir | path join "home-manager") [
         "#!/bin/sh"
@@ -583,16 +586,28 @@ def test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts [] {
     $result
 }
 
-# Defends: yzx update upstream must print and run the exact refreshed upstream installer command.
+# Defends: yzx update upstream must resolve the active profile-owned Yazelix package and upgrade that exact entry.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_update_upstream_runs_exact_installer_command [] {
-    print "🧪 Testing yzx update upstream prints and runs the exact refreshed upstream installer command..."
+def test_yzx_update_upstream_upgrades_matching_profile_entry [] {
+    print "🧪 Testing yzx update upstream upgrades the exact profile entry that owns the active runtime..."
 
     let fixture = (setup_update_wrapper_fixture "yazelix_update_upstream_wrapper")
     let result = (try {
+        let profile_list_json = ({
+            elements: {
+                yazelix: {
+                    active: true
+                    originalUrl: "github:luccahuguet/yazelix"
+                    attrPath: "packages.x86_64-linux.yazelix"
+                    storePaths: [$fixture.repo_root]
+                }
+            }
+            version: 3
+        } | to json -r)
         let output = (run_yzx_command_for_fixture $fixture "yzx update upstream" {
             PATH: ($env.PATH | prepend $fixture.bin_dir)
             YZX_TEST_LOG: $fixture.command_log
+            YZX_TEST_PROFILE_LIST_JSON: $profile_list_json
         })
         let stdout = ($output.stdout | str trim)
         let log_text = (open --raw $fixture.command_log | str trim)
@@ -601,11 +616,61 @@ def test_yzx_update_upstream_runs_exact_installer_command [] {
             ($output.exit_code == 0)
             and ($stdout | str contains "Choose one update owner for this Yazelix install.")
             and ($stdout | str contains "Running:")
-            and ($stdout | str contains "nix run --refresh github:luccahuguet/yazelix#install")
-            and ($log_text | str contains "nix:run --refresh github:luccahuguet/yazelix#install")
+            and ($stdout | str contains "nix profile upgrade --refresh yazelix")
+            and ($log_text | str contains "nix:profile list --json")
+            and ($log_text | str contains "nix:profile upgrade --refresh yazelix")
             and not ($log_text | str contains "home-manager:")
         ) {
-            print "  ✅ yzx update upstream now transparently wraps the exact refreshed upstream installer command"
+            print "  ✅ yzx update upstream now upgrades the exact profile-owned Yazelix entry that matches the active runtime"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) log=($log_text) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: yzx update upstream must fail fast when the active runtime is not owned by the default Nix profile.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_update_upstream_fails_without_matching_profile_entry [] {
+    print "🧪 Testing yzx update upstream fails clearly when no default-profile entry owns the active runtime..."
+
+    let fixture = (setup_update_wrapper_fixture "yazelix_update_upstream_missing_profile")
+    let result = (try {
+        let profile_list_json = ({
+            elements: {
+                unrelated: {
+                    active: true
+                    originalUrl: "flake:nixpkgs"
+                    attrPath: "legacyPackages.x86_64-linux.hello"
+                    storePaths: ["/nix/store/fake-unrelated"]
+                }
+            }
+            version: 3
+        } | to json -r)
+        let output = (run_yzx_command_for_fixture $fixture "yzx update upstream" {
+            PATH: ($env.PATH | prepend $fixture.bin_dir)
+            YZX_TEST_LOG: $fixture.command_log
+            YZX_TEST_PROFILE_LIST_JSON: $profile_list_json
+        })
+        let stdout = ($output.stdout | str trim)
+        let log_text = (open --raw $fixture.command_log | str trim)
+
+        if (
+            ($output.exit_code != 0)
+            and ($stdout | str contains "could not find the active Yazelix runtime in the default Nix profile")
+            and ($stdout | str contains "profile-installed Yazelix packages")
+            and ($stdout | str contains "nix profile install github:luccahuguet/yazelix#yazelix")
+            and ($log_text | str contains "nix:profile list --json")
+            and not ($log_text | str contains "nix:profile upgrade")
+        ) {
+            print "  ✅ yzx update upstream now fails clearly instead of guessing when the current runtime is not profile-owned"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) log=($log_text) stderr=(($output.stderr | str trim))"
@@ -1017,7 +1082,8 @@ export def run_core_canonical_tests [] {
         (test_yzx_desktop_uninstall_removes_manual_entry_and_icons)
         (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)
         (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
-        (test_yzx_update_upstream_runs_exact_installer_command)
+        (test_yzx_update_upstream_upgrades_matching_profile_entry)
+        (test_yzx_update_upstream_fails_without_matching_profile_entry)
         (test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step)
         (test_yzx_run_passes_dash_prefixed_args_through_unchanged)
         (test_yzx_run_treats_child_verbose_flag_as_child_argv)

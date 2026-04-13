@@ -61,10 +61,58 @@ def has_external_command [command_name: string] {
 def print_update_owner_warning [] {
     print "Choose one update owner for this Yazelix install."
     print ""
-    print "  Use `yzx update upstream` if this install is driven by the upstream installer."
+    print "  Use `yzx update upstream` if this install is owned by a Nix profile package."
     print "  Use `yzx update home_manager` if Home Manager owns this install."
     print ""
     print "Do not use both update paths for the same installed Yazelix runtime."
+}
+
+def load_default_profile_elements [] {
+    let result = (^nix profile list --json | complete)
+    if $result.exit_code != 0 {
+        print "❌ Failed to inspect the default Nix profile."
+        print_completed_output $result
+        exit 1
+    }
+
+    let profile_json = try {
+        $result.stdout | from json
+    } catch {|err|
+        print $"❌ Failed to parse `nix profile list --json`: ($err.msg)"
+        exit 1
+    }
+
+    $profile_json | get -o elements | default {}
+}
+
+def resolve_active_yazelix_profile_entry [] {
+    let runtime_root = (get_yazelix_runtime_dir | path expand)
+    let elements = (load_default_profile_elements)
+    let matches = (
+        $elements
+        | transpose name entry
+        | where {|row|
+            let store_paths = ($row.entry | get -o storePaths | default [])
+            $store_paths | any {|store_path| ($store_path | path expand) == $runtime_root }
+        }
+    )
+
+    if (($matches | length) == 1) {
+        return ($matches | first)
+    }
+
+    if (($matches | length) > 1) {
+        let names = ($matches | get name | str join ", ")
+        print $"❌ Multiple default-profile Yazelix entries point at the active runtime: ($names)"
+        print "   Keep one clear profile owner, then rerun `yzx update upstream`."
+        exit 1
+    }
+
+    print "❌ `yzx update upstream` could not find the active Yazelix runtime in the default Nix profile."
+    print $"   Current runtime: ($runtime_root)"
+    print "   This command now updates profile-installed Yazelix packages after the legacy flake installer was removed."
+    print "   Recovery: Reinstall with `nix profile install github:luccahuguet/yazelix#yazelix`, or use `yzx update home_manager` if Home Manager owns this install."
+    exit 1
 }
 
 def print_exact_command [command: string] {
@@ -393,7 +441,7 @@ export def "yzx update" [] {
     print_update_owner_warning
     print ""
     print "Available update commands:"
-    print "  yzx update upstream      Refresh Yazelix from the upstream installer surface"
+    print "  yzx update upstream      Upgrade the active Yazelix package in the default Nix profile"
     print "  yzx update home_manager  Refresh the current Home Manager flake input, then print `home-manager switch`"
     print "  yzx update nix           Upgrade Determinate Nix \(if installed\)"
 }
@@ -441,7 +489,7 @@ export def "yzx update nix" [
     }
 }
 
-# Refresh Yazelix through the upstream installer surface
+# Refresh the active Yazelix package in the default Nix profile
 export def "yzx update upstream" [] {
     if not (has_external_command "nix") {
         print "❌ nix not found in PATH."
@@ -451,10 +499,11 @@ export def "yzx update upstream" [] {
 
     print_update_owner_warning
     print ""
-    let command = $"nix run --refresh ($YAZELIX_INSTALL_FLAKE_REF)"
+    let profile_entry = (resolve_active_yazelix_profile_entry)
+    let command = $"nix profile upgrade --refresh ($profile_entry.name)"
     print_exact_command $command
 
-    let result = (^nix run --refresh $YAZELIX_INSTALL_FLAKE_REF | complete)
+    let result = (^nix profile upgrade --refresh $profile_entry.name | complete)
     print_completed_output $result
 
     if $result.exit_code != 0 {

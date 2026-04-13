@@ -59,24 +59,11 @@
           pkgs = mkPkgs system;
           runtime = runtimePackage pkgs;
           yazelix = yazelixPackage pkgs;
-          install = pkgs.writeShellScriptBin "yazelix-install" (
-            builtins.replaceStrings
-              [
-                "@runtime@"
-                "@coreutils_bin@"
-              ]
-              [
-                "${runtime}"
-                "${pkgs.coreutils}/bin"
-              ]
-              (builtins.readFile ./shells/posix/install_yazelix.sh.in)
-          );
         in
         {
           default = yazelix;
           runtime = runtime;
           yazelix = yazelix;
-          install = install;
         }
       );
 
@@ -88,10 +75,6 @@
         yazelix = {
           type = "app";
           program = "${self.packages.${system}.yazelix}/bin/yzx";
-        };
-        install = {
-          type = "app";
-          program = "${self.packages.${system}.install}/bin/yazelix-install";
         };
       });
 

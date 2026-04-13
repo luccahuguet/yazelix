@@ -107,7 +107,7 @@ Show the guided Yazelix overview
 ### `yzx restart`
 Restart Yazelix (handles persistent sessions)
 - Relaunches through the stable owner-provided `yzx` wrapper when one exists
-- Manual installs prefer `~/.local/bin/yzx`; Home Manager installs prefer the profile-owned `yzx`
+- Profile installs relaunch through the default-profile `yzx`; Home Manager installs relaunch through the Home Manager-owned `yzx`
 - Already-open Yazelix windows keep running their current live runtime until they are explicitly relaunched or restarted
 
 ### `yzx status [--versions] [--verbose]`
@@ -134,10 +134,10 @@ Show available update targets
 - It warns users not to mix both update paths for the same installed Yazelix runtime
 
 ### `yzx update upstream`
-Refresh Yazelix from the upstream installer surface
+Upgrade the active Yazelix package in the default Nix profile
 - Prints the exact command it will run
-- Runs `nix run --refresh github:luccahuguet/yazelix#install`
-- Intended for installs driven by the upstream/manual installer path
+- Runs `nix profile upgrade --refresh <matching-yazelix-profile-entry>`
+- Intended for installs owned by the default Nix profile
 - Fresh launches use the updated installed runtime; already-open windows continue on their current live runtime until relaunch or `yzx restart`
 
 ### `yzx update home_manager`
@@ -160,7 +160,7 @@ Upgrade Determinate Nix
 - `yzx update nix`: Upgrade Determinate Nix via `determinate-nixd` (`--yes` skips prompt, `--verbose` shows command; sudo required; only works if Determinate Nix is installed)
 
 Maintainer-only updates:
-- `yzx dev update`: Refresh the repo runtime inputs by updating `flake.lock` `nixpkgs`, run canary generated-state/build checks (`default`, `shell_layout`), then sync pinned runtime expectations, refresh the vendored `configs/zellij/plugins/zjstatus.wasm`, refresh vendored Yazi plugin runtime files from the pinned source map in `config_metadata/vendored_yazi_plugins.toml`, and perform one explicit activation step selected by the required `--activate installer|home_manager|none` flag (`home_manager` refreshes the Home Manager flake input before `home-manager switch`; `none` leaves local activation untouched). `--canary-only` is the only path that does not require `--activate`.
+- `yzx dev update`: Refresh the repo runtime inputs by updating `flake.lock` `nixpkgs`, run canary generated-state/build checks (`default`, `shell_layout`), then sync pinned runtime expectations, refresh the vendored `configs/zellij/plugins/zjstatus.wasm`, refresh vendored Yazi plugin runtime files from the pinned source map in `config_metadata/vendored_yazi_plugins.toml`, and perform one explicit activation step selected by the required `--activate profile|home_manager|none` flag (`profile` replaces older default-profile Yazelix entries with the current repo package for local dogfooding, `home_manager` refreshes the Home Manager flake input before `home-manager switch`, and `none` leaves local activation untouched). `--canary-only` is the only path that does not require `--activate`.
 - `yzx dev build_pane_orchestrator [--sync]`: Build the Zellij pane orchestrator wasm for `wasm32-wasip1`; `--sync` also updates the tracked/runtime plugin paths after a successful build, preserves previously granted plugin permissions onto the stable runtime path when possible, and regenerates Zellij config. After syncing, prefer restarting Yazelix over reloading the plugin in place. If the toolchain is missing, install a WASI-capable Rust toolchain first.
 
 ### `yzx menu [--popup]`
@@ -276,12 +276,12 @@ yzx sponsor                   # Open the Yazelix sponsor page
 
 # Updates
 yzx update                    # Show the supported update-owner paths
-yzx update upstream           # Print and run nix run --refresh github:luccahuguet/yazelix#install
+yzx update upstream           # Print and run nix profile upgrade --refresh <matching-yazelix-profile-entry>
 yzx update home_manager       # Run nix flake update yazelix here, then print home-manager switch
 yzx home_manager prepare      # Preview manual-install takeover blockers before Home Manager switch
 yzx home_manager prepare --apply --yes  # Archive takeover artifacts, then hand off to home-manager switch
 yzx update nix                # Upgrade Determinate Nix via determinate-nixd (sudo)
-yzx dev update --yes --activate installer  # Refresh all inputs, run canaries, sync pins, refresh vendored zjstatus and Yazi plugins, then activate the installer-owned runtime
+yzx dev update --yes --activate profile  # Refresh all inputs, run canaries, sync pins, refresh vendored zjstatus and Yazi plugins, then activate the local repo package in the default profile
 yzx dev update --yes --activate none  # Refresh the repo state only and skip local activation
 yzx dev update --yes --activate home_manager --home-manager-attr 'you@host'  # Refresh the repo, update the Home Manager yazelix-hm input, then run home-manager switch
 yzx dev update --canary-only --canaries [default]  # Run only the default canary

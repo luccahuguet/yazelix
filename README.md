@@ -34,8 +34,8 @@ v15.0 is the trimmed non-Rust reboot: 15.5% fewer code lines than the historical
 - `yzx env`: Enter the Yazelix tool environment without the UI
 - `yzx popup`: CLI entrypoint for the managed popup pane, usually `lazygit`; most users trigger the same toggle with `Alt+t`
 - `yzx menu --popup`: CLI entrypoint for the popup command palette; most users trigger the same toggle with `Alt+Shift+M`
-- `yzx update upstream`: Refresh an upstream/manual install by rerunning the upstream installer surface for the next launch
-- `yzx update home_manager`: Refresh the `yazelix` flake input in the owning Home Manager config, then apply it with `home-manager switch`
+- `yzx update upstream`: Upgrade the Yazelix package that owns the current runtime in the default Nix profile
+- `yzx update home_manager`: Refresh the owning Home Manager flake input, then print the `home-manager switch` step
 
 ## Workspace Model
 
@@ -69,13 +69,13 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 
 The trimmed workspace release: one supported line, first-party Ghostty, and fast helperless popup/menu panes
 
-- v15 is the only supported Yazelix line now, with v14 available only as the final historical Classic snapshot for users who specifically need the old broader product shape
+- v15 is the only supported Yazelix line now. v14 remains available only as the final historical Classic snapshot for users who specifically need the old broader product shape
 - Yazelix is now the narrower workspace product: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`
-- Ghostty is the first-party bundled terminal on Linux and macOS, while WezTerm, Kitty, Alacritty, and Foot remain supported when you provide them on the host `PATH`
+- Ghostty is the first-party bundled terminal on Linux and macOS. WezTerm, Kitty, Alacritty, and Foot remain supported when you provide them on the host `PATH`
 - The front door is clearer: `yzx launch` opens a managed terminal window, `yzx enter` starts Yazelix in the current terminal, and `yzx env` remains the non-UI environment surface
 - The fast transient workspace tools now share the helperless floating-pane path: `yzx popup` toggles the configured popup program and `yzx menu --popup` toggles the command palette with the same identity and geometry seam
 - The core workspace surface remains layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
-- v15 is the trimmed non-Rust reboot, and selective Rust can still land in v15.x where it clearly pays for itself while v16 remains the Rust-forward release target
+- v15 is the trimmed non-Rust reboot. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target
 
 For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new` after installing that release
 For the longer project story, see [Version History](./docs/history.md)
@@ -118,7 +118,7 @@ One-off use without installing also works:
 nix run github:luccahuguet/yazelix#yazelix -- launch
 ```
 
-Prefer declarative installs? Use the top-level Home Manager module in [home_manager/README.md](home_manager/README.md); the legacy `#install` app remains only as a compatibility/bootstrap surface
+Prefer declarative installs? Use the top-level Home Manager module in [home_manager/README.md](home_manager/README.md)
 
 📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions
 
@@ -126,13 +126,13 @@ Prefer declarative installs? Use the top-level Home Manager module in [home_mana
 
 Choose one update owner for each Yazelix install, and do not mix both update paths for the same installed runtime
 
-- Upstream/manual installs: use `yzx update upstream`
+- Profile installs: use `yzx update upstream`
 - Home Manager installs: use `yzx update home_manager`
 
 `yzx update upstream` prints and runs:
 
 ```bash
-nix run --refresh github:luccahuguet/yazelix#install
+nix profile upgrade --refresh yazelix
 ```
 
 `yzx update home_manager` refreshes the current flake input with:
@@ -304,7 +304,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx env [--no-shell]` - Load Yazelix tools without UI (`--no-shell` keeps your current shell)
 - `yzx run <command> [args...]` - Run a single command inside the Yazelix environment
 - `yzx update` - Show the supported update-owner paths
-- `yzx update upstream` - Refresh Yazelix from the upstream installer surface
+- `yzx update upstream` - Upgrade the active default-profile Yazelix package
 - `yzx update home_manager` - Refresh the current Home Manager flake input, then print `home-manager switch`
 - `yzx config [--path]` - Show the active config or print its resolved path
 - `yzx edit config` - Open the main managed Yazelix config file in your editor

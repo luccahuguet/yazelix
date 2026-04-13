@@ -61,7 +61,7 @@ export def get_runtime_distribution_capability_profile [] {
             "full"
             "compatibility installer runtime"
             "Runtime/distribution capability: compatibility installer runtime"
-            "This runtime still has legacy installer-owned artifacts, but Yazelix no longer owns an in-app runtime updater."
+            "This runtime still has legacy installer-owned artifacts from older releases. Current Yazelix no longer ships `#install`; reinstall into a Nix profile or move to Home Manager."
             $runtime_dir
         )
     }

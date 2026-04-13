@@ -183,7 +183,7 @@ jobs:
         run: nu nushell/scripts/dev/validate_installed_runtime_contract.nu
 
   cold_install:
-    # Full cold install/rebuild smoke. Keep this on weekly/manual validation
+    # Full cold profile-install/rebuild smoke. Keep this on weekly/manual validation
     # instead of routine pushes and PRs because the runtime closure can be
     # substitution-sensitive and much more expensive than the contract lane.
     needs: [detect_integration_changes, validate]
@@ -218,8 +218,8 @@ jobs:
         with:
           version: "0.111.0"
 
-      - name: Run cold flake install rebuild
+      - name: Run cold profile install build
         run: nu nushell/scripts/dev/validate_flake_install.nu install "${{ runner.temp }}/yazelix_flake_install_smoke"
 
-      - name: Verify cold flake installed runtime
+      - name: Verify cold profile-installed runtime
         run: nu nushell/scripts/dev/validate_flake_install.nu verify "${{ runner.temp }}/yazelix_flake_install_smoke"

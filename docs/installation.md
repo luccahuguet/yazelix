@@ -128,7 +128,7 @@ Host prerequisite contract:
 
 ### Step 3: Configure Your Installation (Optional)
 
-If you skipped customization before the installer, it will auto-create `user_configs/yazelix.toml` from the shipped default. You can edit it anytime afterward:
+If you launch before editing config, Yazelix will auto-create `user_configs/yazelix.toml` from the shipped default. You can edit it anytime afterward:
 
 ```bash
 hx ~/.config/yazelix/user_configs/yazelix.toml
@@ -214,16 +214,6 @@ yzx desktop launch
 ```
 
 This launches the same command surface used by the generated desktop entry.
-
-## Compatibility Bootstrap Path
-
-If you are migrating from the older installer-managed model or want the legacy bootstrap helper, the flake still exposes:
-
-```bash
-nix run github:luccahuguet/yazelix#install
-```
-
-That path is compatibility-oriented now. Normal install, update, and dogfooding flows should prefer the `yazelix` package or the Home Manager module.
 
 ## Maintainer / Clone-Based Flow
 

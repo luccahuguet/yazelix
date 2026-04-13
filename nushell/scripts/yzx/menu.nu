@@ -41,7 +41,7 @@ const PALETTE_DESCRIPTION_OVERRIDES = {
     "yzx sponsor": "Show the sponsorship links and support message."
     "yzx update home_manager": "Refresh the current Home Manager input and print the switch step."
     "yzx update nix": "Refresh the runtime lock and print the local install step."
-    "yzx update upstream": "Refresh Yazelix from the upstream installer surface."
+    "yzx update upstream": "Upgrade the active default-profile Yazelix package."
     "yzx whats_new": "Show the latest release notes."
 }
 
