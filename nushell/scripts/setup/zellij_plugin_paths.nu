@@ -184,13 +184,14 @@ export def get_tracked_zjstatus_wasm_path [yazelix_dir?: string] {
     $root | path join "configs" "zellij" "plugins" $zjstatus_wasm_name
 }
 
-def remove_runtime_plugins_by_prefix [plugin_prefix: string] {
+def remove_runtime_plugins_by_prefix [plugin_prefix: string, excluded_path?: string] {
     let runtime_dir = (get_runtime_plugins_dir)
     if not ($runtime_dir | path exists) {
         return []
     }
 
     let plugin_name_pattern = ("^" + $plugin_prefix + "(_[0-9a-f]+)?\\.wasm$")
+    let excluded_expanded = if ($excluded_path | is-empty) { null } else { $excluded_path | path expand }
     let stale_runtime_plugins = (
         ls $runtime_dir
         | where type == file
@@ -203,6 +204,7 @@ def remove_runtime_plugins_by_prefix [plugin_prefix: string] {
             }
         }
         | where file_name =~ $plugin_name_pattern
+        | where {|plugin| $excluded_expanded == null or (($plugin.full_path | path expand) != $excluded_expanded) }
         | get full_path
     )
 
@@ -254,33 +256,11 @@ export def sync_pane_orchestrator_runtime_wasm [yazelix_dir?: string] {
         error make {msg: $"Tracked pane orchestrator wasm not found at: ($tracked_path)"}
     }
 
-    let runtime_dir = (get_runtime_plugins_dir)
     let runtime_path = (get_runtime_pane_orchestrator_target_path)
 
     copy_file_atomic $tracked_path $runtime_path | ignore
 
-    if ($runtime_dir | path exists) {
-        let plugin_name_pattern = ("^" + $pane_orchestrator_plugin_prefix + "(_[0-9a-f]+)?\\.wasm$")
-        let stale_runtime_plugins = (
-            ls $runtime_dir
-            | where type == file
-            | each {|entry|
-                let full_path = $entry.name
-                let file_name = ($full_path | path basename)
-                {
-                    full_path: $full_path
-                    file_name: $file_name
-                }
-            }
-            | where file_name =~ $plugin_name_pattern
-            | where full_path != $runtime_path
-            | get full_path
-        )
-
-        if ($stale_runtime_plugins | length) > 0 {
-            rm --force ...$stale_runtime_plugins
-        }
-    }
+    remove_runtime_plugins_by_prefix $pane_orchestrator_plugin_prefix $runtime_path | ignore
 
     preserve_pane_orchestrator_permissions $tracked_path $runtime_path | ignore
 

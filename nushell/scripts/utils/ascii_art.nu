@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Width-aware welcome art for Yazelix.
 
-export const WELCOME_STYLE_VALUES = ["static", "logo", "boids", "game_of_life", "mandelbrot", "random"]
+export const WELCOME_STYLE_VALUES = ["static", "logo", "boids", "game_of_life", "random"]
 export const ANIMATED_WELCOME_STYLE_VALUES = ["game_of_life"]
 export const SCREEN_STYLE_VALUES = ["logo", "boids", "game_of_life", "random"]
 
@@ -904,37 +904,6 @@ export def get_animated_ascii_art [width?: int] {
     get_logo_animation_frames $width
 }
 
-def play_frames [frames: list<list<string>>, duration: duration] {
-    if ($frames | is-empty) {
-        return
-    }
-
-    let frame_delay = ($duration / ($frames | length))
-    let max_frame_height = ($frames | each {|frame| $frame | length } | math max)
-    let last_index = (($frames | length) - 1)
-
-    for item in ($frames | enumerate) {
-        let frame = $item.item
-        let padded_frame = if (($frame | length) < $max_frame_height) {
-            let filler = (0..(($max_frame_height - ($frame | length)) - 1) | each { "" })
-            ($frame | append $filler)
-        } else {
-            $frame
-        }
-
-        for line in $padded_frame {
-            print $"\r\u{1b}[2K($line)"
-        }
-
-        if $item.index < $last_index {
-            sleep $frame_delay
-            print ("\u{1b}[" + (($max_frame_height + 1) | into string) + "A")
-        } else {
-            print ("\u{1b}[" + (($max_frame_height - ($frame | length)) | into string) + "A")
-        }
-    }
-}
-
 export def play_frames_interruptibly [frames: list<list<string>>, frame_delay: duration, poller?: closure, on_skip?: closure] {
     if ($frames | is-empty) {
         return false
@@ -991,11 +960,6 @@ def repaint_resting_logo_after_skip [width?] {
     }
 }
 
-def play_animation [duration: duration, width?: int] {
-    let frames = (get_animated_ascii_art $width)
-    play_frames $frames $duration
-}
-
 def get_welcome_playback_duration [welcome_style: string, duration_seconds: float] {
     if $welcome_style == "logo" {
         0.5sec
@@ -1034,14 +998,6 @@ export def render_welcome_style_interruptibly [welcome_style: string, duration_s
         print ""
         let frames = (get_game_of_life_animation_frames $width $duration_seconds)
         return (play_frames_interruptibly $frames (get_game_of_life_welcome_frame_delay) $poller $skip_to_resting_logo)
-    }
-
-    if $resolved_style == "mandelbrot" {
-        print ""
-        # Dedicated renderers land in their own welcome-style beads.
-        # Until then, animated styles share the logo-forward reveal contract.
-        play_animation $playback_duration $width
-        return false
     }
 
     error make {msg: $"Unsupported welcome_style: ($resolved_style)"}

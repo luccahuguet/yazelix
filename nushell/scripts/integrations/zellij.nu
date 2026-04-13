@@ -185,39 +185,6 @@ export def resolve_tab_cwd_target [
     }
 }
 
-def update_tab_workspace [command_name: string, target_path: path, log_file: string] {
-    let expanded_target_path = ($target_path | path expand)
-    if not ($expanded_target_path | path exists) {
-        error make {msg: $"Path does not exist: ($expanded_target_path)"}
-    }
-
-    let target_dir = if (($expanded_target_path | path type) == "dir") {
-        $expanded_target_path
-    } else {
-        $expanded_target_path | path dirname
-    }
-    let payload = {
-        workspace_root: $target_dir
-    } | to json -r
-
-    log_to_file $log_file $"Setting tab cwd to: ($target_dir)"
-
-    try {
-        let response = (run_pane_orchestrator_command $command_name $log_file $payload)
-        {
-            workspace_root: $target_dir
-            tab_name: (get_tab_name $target_dir)
-        } | merge (parse_pane_orchestrator_response $response)
-    } catch {|err|
-        {
-            workspace_root: $target_dir
-            tab_name: (get_tab_name $target_dir)
-            status: "error"
-            reason: $err.msg
-        }
-    }
-}
-
 def parse_workspace_retarget_response [response: string] {
     let trimmed = ($response | str trim)
     if $trimmed == "missing" {
@@ -280,24 +247,6 @@ def retarget_workspace_internal [
             status: "error"
             reason: $err.msg
         }
-    }
-}
-
-export def set_tab_cwd [target_path: path, log_file: string = "zellij_plugin.log"] {
-    update_tab_workspace "set_workspace_root_and_cd_focused_pane" $target_path $log_file
-}
-
-export def set_workspace_for_path [target_path: path, log_file: string = "zellij_plugin.log"] {
-    let workspace = (get_workspace_context $target_path $log_file)
-    let payload = {
-        workspace_root: $workspace.workspace_root
-    } | to json -r
-
-    try {
-        let response = (run_pane_orchestrator_command "set_workspace_root" $log_file $payload)
-        $workspace | merge (parse_pane_orchestrator_response $response)
-    } catch {|err|
-        $workspace | merge {status: "error", reason: $err.msg}
     }
 }
 

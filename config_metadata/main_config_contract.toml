@@ -52,7 +52,7 @@ parser_key = "welcome_style"
 home_manager_option = "welcome_style"
 parser_behavior = "direct"
 validation = "enum"
-allowed_values = ["static", "logo", "boids", "game_of_life", "mandelbrot", "random"]
+allowed_values = ["static", "logo", "boids", "game_of_life", "random"]
 rebuild_required = false
 
 [fields."core.welcome_duration_seconds"]

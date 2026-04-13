@@ -8,7 +8,7 @@
 debug_mode = false            # Enable verbose debug logging in the shellHook
 skip_welcome_screen = false   # When true, welcome info is logged instead of displayed
 show_macchina_on_welcome = true  # Show system info on welcome screen (uses macchina)
-welcome_style = "random"      # Welcome style: "static", "logo", "boids", "game_of_life", "mandelbrot", or "random" (never picks "static")
+welcome_style = "random"      # Welcome style: "static", "logo", "boids", "game_of_life", or "random" (never picks "static")
 welcome_duration_seconds = 2.0 # Welcome animation duration in seconds for animated styles; logo ignores this and keeps its fixed timing (0.2 to 8.0)
 
 [helix]

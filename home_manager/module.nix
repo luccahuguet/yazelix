@@ -349,9 +349,8 @@ in
         Welcome screen style.
         - "static": show the resting Yazelix logo frame only
         - "logo": show the branded animated logo reveal
-        - "boids": reserved animated flocking style
-        - "game_of_life": reserved Game of Life style
-        - "mandelbrot": reserved fractal style
+        - "boids": show the animated flocking style
+        - "game_of_life": show the Game of Life style
         - "random": choose one animated style at random (never "static")
       '';
     };
