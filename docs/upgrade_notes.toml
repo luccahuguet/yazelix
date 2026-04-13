@@ -1,19 +1,27 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = "Post-v14 work in progress"
+headline = "v15 trims Yazelix down to the fast workspace core"
 summary = [
-    "Restored the pinned Nix helper version to the current latest pinned line after an accidental downgrade during v15 installer hardening.",
-    "Made maintainer runtime pins explicit for both the Nix helper and the Nixpkgs-provided Nushell version, and refreshed the runtime lock onto the declared unstable input.",
+    "v15 is the only supported Yazelix line now, and v14 is the final historical Classic snapshot rather than a maintained fallback.",
+    "Dropped the out-of-scope Classic runtime-manager surface: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`.",
+    "Made Ghostty the first-party bundled terminal on Linux and macOS while keeping WezTerm, Kitty, Alacritty, and Foot as PATH-provided alternatives.",
+    "Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface.",
+    "Made `yzx popup` and `yzx menu --popup` share the fast helperless floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour.",
+    "Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`.",
+    "Continued the delete-first trim by replacing string-built runtime wrapper commands with direct runtime scripts, making maintainer pins explicit again, and keeping the runtime lock on the declared unstable input.",
 ]
-upgrade_impact = "no_user_action"
+upgrade_impact = "manual_action_required"
 acknowledged_guarded_changes = [
     "yazelix_default.toml",
     "home_manager/module.nix",
     "nushell/scripts/utils/constants.nu",
 ]
 migration_ids = []
-manual_actions = []
+manual_actions = [
+    "Compare your current config with `yazelix_default.toml` or run `yzx config reset` to start fresh; v15 does not ship automatic config migrations.",
+    "If you relied on Classic-only surfaces such as `yazelix packs`, `yzx packs`, or `yzx refresh`, stay on the historical `v14` tag or adapt to the trimmed v15 command surface.",
+]
 
 [releases.v14]
 version = "v14"
@@ -31,10 +39,10 @@ summary = [
     "Replaced the late-series runtime updater experiment with explicit owner commands: `yzx update upstream` refreshes upstream/manual installs, `yzx update home_manager` refreshes the current Home Manager flake input, desktop launch now targets the active runtime launcher directly, and the transitional `yzx update runtime` / `yzx update all` flow is gone again.",
     "Made `yzx run` a real argv passthrough for one-shot Yazelix-environment commands, so child args like `yzx run rg --files` pass through unchanged, and documented the package-runtime simplification path, config dependence matrix, subsystem code inventory, and the trim-first v15 roadmap that follows this transition release.",
     "v14 is now best read as Yazelix Classic: the broad `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including commands like `yzx packs`.",
-    "The v15 branch has since become the live trimmed line rather than a parallel future experiment: a smaller non-Rust reboot with no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry.",
+    "v15 has since become the only supported line rather than a parallel future experiment: a smaller non-Rust reboot with no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry.",
     "That means much of the broader Classic machinery belongs to the historical v14 snapshot: explicit refresh semantics, launch-profile reuse, the first-class `yazelix packs` / `yzx packs` model, broad pack/package-graph ownership, and the older `devenv`-driven hot-path model around commands like `yzx refresh` and much of `yzx run`.",
     "Rust remains a later implementation path: selective Rust may land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.",
-    "The v14 tag remains useful as the historical Classic snapshot for users who want that broader product shape, but the active branch direction is v15 rather than two maintained products in parallel.",
+    "The `v14` tag remains available only as the final historical Classic snapshot for users who specifically need that broader product shape; it is no longer a supported line.",
 ]
 upgrade_impact = "manual_action_required"
 acknowledged_guarded_changes = [
@@ -130,6 +138,7 @@ manual_actions = [
 version = "v14"
 headline = "Boundary hardening, honest update ownership, and a much cleaner runtime surface."
 summary = [
+    "v14 is the final historical Yazelix Classic release. It is no longer a supported line, and its broader dynamic-runtime-management scope is now historical context rather than the current product direction.",
     "Launch, runtime, and desktop startup got much harder to break on flake-installed or Home Manager-owned setups.",
     "Workspace truth moved deeper into the pane orchestrator with explicit sidebar identity and cleaner retargeting semantics.",
     "Home Manager became a cleaner first-class path with profile-owned `yzx`, `yzx home_manager prepare` to preview or archive manual-install artifacts before Home Manager takeover, and better validation around generated config surfaces.",
@@ -141,9 +150,22 @@ summary = [
     "Workspace control also matured across the line with managed editor/sidebar routing, deterministic sidebar controls, and `yzx cwd` to retarget the current tab workspace root with editor/sidebar sync.",
     "A large delete-first cleanup pass trimmed broad helper surfaces and documented the trim-first path toward v15.",
     "v14 is now best read as Yazelix Classic: the broader `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including `yzx packs`.",
-    "The v15 branch has since become the live trimmed line rather than a parallel future experiment: a smaller non-Rust reboot with no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry.",
+    "v15 has since become the live trimmed line rather than a parallel future experiment: a smaller non-Rust reboot with no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry.",
     "Rust remains a later implementation path: selective Rust may land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.",
-    "The v14 tag remains useful as the historical Classic snapshot for users who want that broader product shape, but the active branch direction is v15 rather than two maintained products in parallel.",
+    "The `v14` tag remains available only as the final historical Classic snapshot for users who specifically need that broader product shape; it is no longer a supported line.",
+]
+
+[series.v15]
+version = "v15"
+headline = "The trimmed workspace release: one supported line, first-party Ghostty, and fast helperless popup/menu panes."
+summary = [
+    "v15 is the only supported Yazelix line now. v14 remains available only as the final historical Classic snapshot for users who specifically need the old broader product shape.",
+    "Yazelix is now the narrower workspace product: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`.",
+    "Ghostty is the first-party bundled terminal on Linux and macOS. WezTerm, Kitty, Alacritty, and Foot remain supported when you provide them on the host `PATH`.",
+    "The front door is clearer: `yzx launch` opens a managed terminal window, `yzx enter` starts Yazelix in the current terminal, and `yzx env` remains the non-UI environment surface.",
+    "The fast transient workspace tools now share the helperless floating-pane path: `yzx popup` toggles the configured popup program and `yzx menu --popup` toggles the command palette with the same identity and geometry seam.",
+    "The core workspace surface remains layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`.",
+    "v15 is the trimmed non-Rust reboot. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target.",
 ]
 
 [series.v13]

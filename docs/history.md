@@ -2,6 +2,8 @@
 
 > **Note:** Older entries reference the legacy `yazelix.nix` configuration. Yazelix now uses `yazelix.toml`, but historical notes retain the original terminology for accuracy.
 
+Use [CHANGELOG.md](../CHANGELOG.md) for concise upgrade-facing notes. This page is the longer narrative companion, and the recent release framing here should stay aligned with [docs/upgrade_notes.toml](./upgrade_notes.toml).
+
 ## The start
 
 See the origin story in `docs/the_start.md`.
@@ -9,6 +11,7 @@ See the origin story in `docs/the_start.md`.
 
 ## Major Version Descriptions
 
+- **v15**: The live trimmed workspace release with first-party Ghostty, helperless popup/menu panes, and the Classic runtime-manager surface removed from scope
 - **v14**: Boundary hardening, honest update ownership, and package-runtime cleanup before the v15 trim-first transition
 - **v13.1**: Safer multi-tab cwd routing, stronger `yzx cwd` workspace sync, and better Zellij diagnostics
 - **v13**: Plugin-managed workspaces, migration-aware upgrades, richer front-door UX, and the full devenv-era integration push
@@ -25,7 +28,19 @@ See the origin story in `docs/the_start.md`.
 - **v2**: Yazi-Helix File Tree v2, now with a Closeable Sidebar! (the name 'Yazelix' did not exist yet; [announcement](https://www.reddit.com/r/HelixEditor/comments/1d6nkxs/yazihelix_file_tree_v2_now_with_a_closeable/))
 - **v1**: My first Zellij/Yazi/Helix/Nushell setup, inspired by a Reddit interaction, with no integration and a lot of hacks ([announcement](https://www.reddit.com/r/HelixEditor/comments/1d59br3/file_tree_setup_using_yazi_zellij_helix_and/))
 
+## v15: The live trimmed workspace release
+
+- **One Supported Line Again** – v15 is the only supported Yazelix line now. The two-products-in-one problem from late Classic is resolved by trimming the product boundary instead of trying to maintain both shapes in parallel. v14 remains available only as the final historical Classic snapshot for users who specifically need it.
+- **The Product Boundary Is Much Cleaner** – The broader Classic runtime-manager story is out of scope now: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`. v15 is the narrower workspace product rather than a package-and-environment manager glued onto one.
+- **The Front Door Is Simpler and Faster** – `yzx launch` owns managed external-terminal startup, `yzx enter` owns current-terminal startup, and `yzx env` remains the non-UI tool-environment path. That split makes the live command surface easier to understand and easier to validate.
+- **Ghostty Became First-Party** – Yazelix now bundles Ghostty as the first-party terminal on Linux and macOS. Other terminals still work when you provide them on the host `PATH`, but the first-party launch story is finally honest and packaged.
+- **Popup And Menu Became Real Peers** – The popup pane and popup command menu now share the same helperless floating-pane control model, explicit pane identity, and toggle-oriented behavior. That seam is smaller, faster, and closer to the actual product than the old helper-pane detour.
+- **The Workspace Core Stayed Intact** – Layout families, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners remain the backbone of the product. v15 is not a feature wipe; it is the point where the surviving workspace core became the product.
+- **Rust Is A Later Tool, Not The Identity Of The Release** – v15 is the trimmed non-Rust reboot. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target.
+
 ## v14: Boundary hardening, honest update ownership, and package-runtime cleanup
+
+v14 is the final historical Yazelix Classic release. It is no longer a supported line, but it remains the clearest snapshot of the broader Classic-era product shape for users who specifically need it or want to study it.
 
 - **The Delete-First Refactor Finally Went Wide** – v14 aggressively deleted stale compatibility surfaces, broad helper layers, the old config-manager stratum, the standalone startup-profile module, and a long tail of one-caller Nushell wrappers that were mostly carrying history and indirection cost.
 - **Ownership Boundaries Got Much Tighter** – Zellij, Yazi, terminal, shell-hook, migration, doctor, maintainer, and repo-checkout responsibilities were broken into smaller owners with clearer fail-fast behavior, especially around legacy override paths and wrapper script boundaries.

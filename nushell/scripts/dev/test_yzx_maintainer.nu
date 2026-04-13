@@ -70,10 +70,22 @@ def prepare_releasable_unreleased_fixture [fixture: record] {
     $updated_notes | to toml | save --force --raw $fixture.notes_path
 
     let changelog = (open --raw $fixture.changelog_path)
+    let custom_unreleased = (
+        [
+            "## Unreleased"
+            ""
+            "Backend seam cleanup and release automation"
+            ""
+            "Upgrade impact: no user action required"
+            ""
+            "Highlights:"
+            "- Finalized the source-vs-installed runtime identity cleanup so repo shells stop exporting a fake installed runtime root."
+            "- Added `yzx dev bump` to rotate release metadata, update `YAZELIX_VERSION`, and create the matching release tag."
+        ] | str join "\n"
+    )
     let updated_changelog = (
         $changelog
-        | str replace "Post-v14 work in progress" "Backend seam cleanup and release automation"
-        | str replace "- Reserved for post-release changes after v14 lands." "- Finalized the source-vs-installed runtime identity cleanup and added `yzx dev bump`."
+        | str replace -r '(?ms)^## Unreleased\n.*?(?=\n## )' $custom_unreleased
     )
     $updated_changelog | save --force --raw $fixture.changelog_path
 }

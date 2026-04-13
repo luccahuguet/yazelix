@@ -4,13 +4,29 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v14 work in progress
+v15 trims Yazelix down to the fast workspace core
 
-Upgrade impact: no user action required
+Upgrade impact: manual action required
 
 Highlights:
-- Restored the pinned Nix helper version to the current latest pinned line after an accidental downgrade during v15 installer hardening.
-- Made maintainer runtime pins explicit for both the Nix helper and the Nixpkgs-provided Nushell version, and refreshed the runtime lock onto the declared unstable input.
+- v15 is the only supported Yazelix line now, and v14 is the final historical Classic snapshot rather than a maintained fallback.
+- Dropped the out-of-scope Classic runtime-manager surface: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`.
+- Ghostty is now the first-party bundled terminal on Linux and macOS, while WezTerm, Kitty, Alacritty, and Foot remain supported when you provide them on the host `PATH`.
+- Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface.
+- `yzx popup` and `yzx menu --popup` now share the fast helperless floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour.
+- Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`.
+- Continued the delete-first trim by replacing string-built runtime wrapper commands with direct runtime scripts, making maintainer pins explicit again, and keeping the runtime lock on the declared unstable input.
+
+Command surface:
+- `yzx launch`: open Yazelix in a managed terminal window.
+- `yzx enter`: start Yazelix directly in the current terminal.
+- `yzx env`: enter the Yazelix tool environment without the UI.
+- `yzx popup`: toggle the configured popup program, usually `lazygit`.
+- `yzx menu --popup`: toggle the popup command palette.
+
+Migration notes:
+- Compare your current config with `yazelix_default.toml` or run `yzx config reset` to start fresh; v15 does not ship automatic config migrations.
+- If you relied on Classic-only surfaces such as `yazelix packs`, `yzx packs`, or `yzx refresh`, stay on the historical `v14` tag or adapt to the trimmed v15 command surface.
 
 ## v14 - 2026-04-10
 
@@ -40,7 +56,7 @@ v14 is the last feature release of what I now think of as Yazelix Classic.
 
 Yazelix Classic is the broad, heavily integrated, `devenv`-era shape of the project: `yazelix packs`, dynamic runtime management, rich shell and terminal integration, multiple ownership paths, a large `yzx` surface that includes commands like `yzx packs`, and the unusually wide power-user workflow that made Yazelix one of a kind.
 
-The v14 tag remains useful as the historical Classic snapshot for users who want that broader product shape.
+The `v14` tag remains available only as the final historical Classic snapshot for users who specifically need that broader product shape. It is no longer a supported line.
 
 The active branch direction is now v15 rather than two maintained products in parallel.
 
