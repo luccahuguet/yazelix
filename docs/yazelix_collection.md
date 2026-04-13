@@ -78,8 +78,7 @@ That means:
 Repo maintenance still uses a broader maintainer toolchain than the end-user runtime surface. Common maintainer tools around this repo include:
 - [gh](https://cli.github.com/) — GitHub CLI for issues, PRs, and repo workflow
 - [prek](https://github.com/j178/prek) — Fast local pre-commit hook runner
-- [beads_rust](https://github.com/Dicklesworthstone/beads_rust) — Rust Beads tracker (`br`)
-- [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer) — Graph-aware triage viewer (`bv`)
+- [beads](https://github.com/steveyegge/beads) — Beads issue tracker (`bd`) for local planning and GitHub issue contract work
 - [nu-lint](https://github.com/nushell/nu-lint) — Optional Nushell linter for explicit maintainer lint runs
 
 Use the repo's root [`../.pre-commit-config.yaml`](../.pre-commit-config.yaml) with `prek install`, then run `prek run --all-files` when you want the fast maintainer checks on demand.

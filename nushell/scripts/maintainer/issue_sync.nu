@@ -48,7 +48,7 @@ def create_bead_from_github_issue [issue: record] {
     let issue_type = (infer_issue_type_from_body ($issue.body? | default ""))
     let description = (build_imported_issue_description $issue)
     let output = (
-        ^br create $issue.title
+        ^bd create $issue.title
             --type $issue_type
             --priority 2
             --description $description
@@ -69,7 +69,7 @@ def create_bead_from_github_issue [issue: record] {
 def reopen_bead_from_github_issue [action: record] {
     let issue = $action.issue
     let bead = $action.bead
-    let output = (^br update $bead.id --status open --json | complete)
+    let output = (^bd update $bead.id --status open --json | complete)
 
     if $output.exit_code != 0 {
         error make {
@@ -81,7 +81,7 @@ def reopen_bead_from_github_issue [action: record] {
 def close_bead_from_github_issue [action: record] {
     let issue = $action.issue
     let bead = $action.bead
-    let output = (^br close $bead.id --reason "Closed on GitHub" --json | complete)
+    let output = (^bd close $bead.id --reason "Closed on GitHub" --json | complete)
 
     if $output.exit_code != 0 {
         error make {
@@ -226,7 +226,13 @@ export def run_dev_issue_sync [dry_run: bool = false] {
         }
     }
 
-    ^br sync --flush-only
+    let export_path = ((require_yazelix_repo_root) | path join ".beads" "issues.jsonl")
+    let exported = (^bd export -o $export_path | complete)
+    if $exported.exit_code != 0 {
+        error make {
+            msg: $"Failed to export Beads JSONL after lifecycle sync: ($exported.stderr | str trim)"
+        }
+    }
 
     let refreshed_github_issues = load_contract_github_issues
     let refreshed_beads = load_contract_beads

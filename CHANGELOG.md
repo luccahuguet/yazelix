@@ -78,7 +78,7 @@ Upgrade impact: no user action required
 Highlights:
 - Refreshed Yazi sidebar git decorations more reliably on focus return, open, navigation, and explicit sidebar refresh so the managed sidebar stops carrying stale git state.
 - Recorded the fresh built launch profile after Yazelix-owned rebuilds so desktop-entry and restart flows stop reactivating stale `DEVENV_PROFILE` paths.
-- Updated maintainer inputs, including the packaged `beads-rust` build used for `br`, and verified the real issue-mutation path after the bump.
+- Updated maintainer inputs, including the then-current Beads tracker build, and verified the real issue-mutation path after the bump.
 
 ## v13.12 - 2026-04-05
 

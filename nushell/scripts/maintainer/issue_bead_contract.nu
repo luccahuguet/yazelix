@@ -60,7 +60,7 @@ export def load_issue_comments [issue_number: int] {
 }
 
 export def load_contract_beads [] {
-    let listed = (^br list --all --limit 0 --json | complete)
+    let listed = (^bd list --all --limit 0 --json | complete)
     if $listed.exit_code != 0 {
         error make {
             msg: $"Failed to load Beads issues: ($listed.stderr | str trim)"
@@ -96,9 +96,13 @@ export def infer_issue_type_from_body [body?: string] {
         return "task"
     }
 
-    let allowed = ["task" "bug" "feature" "docs" "question" "epic" "chore"]
+    let allowed = ["task" "bug" "feature" "epic" "chore" "decision"]
     if $extracted in $allowed {
         $extracted
+    } else if $extracted == "docs" {
+        "chore"
+    } else if $extracted == "question" {
+        "decision"
     } else {
         "task"
     }

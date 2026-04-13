@@ -13,7 +13,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     env:
-      BR_VERSION: v0.1.31
+      BD_VERSION: v1.0.0
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -23,19 +23,16 @@ jobs:
         with:
           version: "0.111.0"
 
-      - name: Install br
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+
+      - name: Install bd
         run: |
-          asset="br-${BR_VERSION}-linux_amd64.tar.gz"
-          checksum="$asset.sha256"
-          curl -fsSL -o /tmp/$asset "https://github.com/Dicklesworthstone/beads_rust/releases/download/${BR_VERSION}/${asset}"
-          curl -fsSL -o /tmp/$checksum "https://github.com/Dicklesworthstone/beads_rust/releases/download/${BR_VERSION}/${checksum}"
-          (
-            cd /tmp
-            sha256sum -c $checksum
-          )
-          tar -xzf /tmp/$asset -C /tmp
-          install -m 0755 /tmp/br /usr/local/bin/br
-          br --version
+          go install github.com/steveyegge/beads/cmd/bd@${BD_VERSION}
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          "$(go env GOPATH)/bin/bd" --version
 
       - name: Validate contract
         env:

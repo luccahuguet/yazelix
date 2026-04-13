@@ -158,7 +158,7 @@ This is an exact repartition of the same `12,547` LOC maintainer bucket.
 | Maintainer group | Files | Code LOC | Share of maintainer bucket | What it captures |
 | --- | ---: | ---: | ---: | --- |
 | Runtime behavior and workspace tests | 9 | 4,092 | 32.6% | Core runtime, workspace, popup, doctor, sidebar, and plugin behavior coverage |
-| Maintainer update, release, and issue flows | 12 | 2,723 | 21.7% | Maintainer-command coverage plus issue sync, readme/build/update flows, version bumping, and the one-off br→bd migration helper |
+| Maintainer update, release, and issue flows | 12 | 2,723 | 21.7% | Maintainer-command coverage plus issue sync, readme/build/update flows, version bumping, and Beads/GitHub contract helpers |
 | Generated config and managed-config coverage | 4 | 2,442 | 19.5% | Generated config coverage, shell/Helix managed-config contracts, and config sweep behavior |
 | Validators and install-contract checks | 14 | 1,710 | 13.6% | Traceability, flake/install, syntax/spec, readme, config-surface, and upgrade validators |
 | Sweep, demo, and harness glue | 10 | 1,082 | 8.6% | Demo recorders, sweep runners, shared test helpers, the maintainer test runner, and the maintainer shell |

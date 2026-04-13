@@ -113,7 +113,7 @@ When creating new files or directories, always use underscores to maintain consi
 - GitHub Actions must stay read-only with respect to Beads. Do not let CI mutate or commit `.beads/issues.jsonl`.
 - Sync GitHub issue state into Beads locally during normal maintainer work with `yzx dev sync_issues`; that command is also responsible for creating or repairing the canonical Beads comment on GitHub issues. Then commit the Beads changes on your branch.
 - Do not block on `yzx dev sync_issues` when it is slow or hanging. Prefer `bd` for Beads mutations whenever possible, continue the implementation work, and repair the GitHub/Beads contract afterward.
-- Use `bd export` and `bd import` for JSONL interchange when needed. bd uses embedded Dolt as its storage backend — there is no separate DB/JSONL sync cycle like `br sync`.
+- Use `bd export` and `bd import` for JSONL interchange when needed. bd uses embedded Dolt as its storage backend — there is no separate DB/JSONL sync cycle.
 
 ## Spec Workflow
 
