@@ -524,6 +524,10 @@ export def "yzx update home_manager" [] {
 
     print_update_owner_warning
     print ""
+    print "⚠️  `yzx update home_manager` updates the `yazelix` input in the current flake directory."
+    print "   Run it only from the Home Manager flake that owns this install."
+    print "   If your Yazelix input uses a different name, run `nix flake update <your-input-name>` yourself."
+    print ""
     let command = "nix flake update yazelix"
     print_exact_command $command
 

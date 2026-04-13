@@ -143,8 +143,10 @@ Upgrade the active Yazelix package in the default Nix profile
 ### `yzx update home_manager`
 Refresh the current Home Manager flake input, then print the manual switch step
 - Must be run from the Home Manager flake directory that owns the install
+- Assumes the Yazelix flake input in that directory is named `yazelix`
 - Prints the exact command it will run
 - Runs `nix flake update yazelix`
+- If your flake uses a different input name, run `nix flake update <your-input-name>` yourself
 - Prints `home-manager switch` for the user to copy and run manually
 - After `home-manager switch`, fresh launches and `yzx restart` use the profile-owned wrapper; already-open windows do not hot-swap invisibly
 

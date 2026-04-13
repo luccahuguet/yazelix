@@ -135,13 +135,17 @@ Choose one update owner for each Yazelix install, and do not mix both update pat
 nix profile upgrade --refresh yazelix
 ```
 
-`yzx update home_manager` refreshes the current flake input with:
+`yzx update home_manager` runs in your current flake directory and refreshes the `yazelix` input with:
 
 ```bash
 nix flake update yazelix
 ```
 
-and then prints `home-manager switch` for you to run yourself
+Run it only from the Home Manager flake that owns this install
+
+If your Home Manager flake uses a different Yazelix input name, run `nix flake update <your-input-name>` yourself instead
+
+Then `yzx update home_manager` prints `home-manager switch` for you to run yourself
 
 Updating replaces the installed runtime that future launches use, while already-open Yazelix windows keep running their current live runtime until you explicitly relaunch them or run `yzx restart`; Yazelix does not silently hot-swap live sessions in place
 
