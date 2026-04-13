@@ -22,6 +22,74 @@ def run_parse_yazelix_config_probe [fixture: record, extra_env: record = {}] {
     }
 }
 
+def check_parse_rejects_removed_config_surface [case: record] {
+    let fixture = (setup_managed_config_fixture $case.label $case.config)
+
+    let result = (try {
+        let original = (open --raw $fixture.config_path)
+        let parser_result = (run_parse_yazelix_config_probe $fixture)
+        let stderr = ($parser_result.stderr | str trim)
+        let updated = (open --raw $fixture.config_path)
+        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
+
+        if (
+            ($parser_result.exit_code != 0)
+            and ($stderr | str contains $case.expected_error)
+            and ($stderr | str contains "Failure class: config problem.")
+            and ($stderr | str contains "yzx config reset")
+            and not ($stderr | str contains "Known migration")
+            and not ($stderr | str contains "yzx doctor --fix")
+            and ($updated == $original)
+            and (($backups | length) == 0)
+        ) {
+            print $"  ✅ ($case.name)"
+            true
+        } else {
+            print $"  ❌ ($case.name): exit=($parser_result.exit_code) stderr=($stderr) unchanged=(($updated == $original)) backups=(($backups | length))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ ($case.name): ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def check_schema_rejects_removed_enum_value [case: record] {
+    let tmpdir = (^mktemp -d $"/tmp/($case.label)_XXXXXX" | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        $case.config | save --force --raw $config_path
+
+        let findings = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            use ../utils/config_schema.nu [validate_enum_values]
+            validate_enum_values (open $config_path)
+        })
+        let matching_findings = ($findings | where path == $case.path)
+
+        if (
+            (($matching_findings | length) == 1)
+            and (($matching_findings | get 0.kind) == "invalid_enum")
+            and ((($matching_findings | get 0.message) | str contains $case.expected_value))
+        ) {
+            print $"  ✅ ($case.name)"
+            true
+        } else {
+            print $"  ❌ ($case.name): findings=($matching_findings | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ ($case.name): ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def setup_home_manager_symlinked_main_config_fixture [label: string] {
     let repo_root = (get_repo_config_dir)
     let tmpdir = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
@@ -354,87 +422,34 @@ def test_ghostty_macos_launch_command_omits_linux_specific_flags [] {
     }
 }
 
-# Defends: removed ascii mode fails as an unsupported config surface.
+# Defends: removed v14 config surfaces fail clearly without mutation.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_rejects_legacy_ascii_mode_as_unsupported [] {
-    print "🧪 Testing parse_yazelix_config rejects legacy [ascii].mode as unsupported..."
+def test_parse_yazelix_config_rejects_removed_surfaces_without_rewriting [] {
+    print "🧪 Testing parse_yazelix_config rejects removed config surfaces without rewriting..."
 
-    let fixture = (setup_managed_config_fixture
-        "yazelix_welcome_style_legacy"
-        '[ascii]
-mode = "animated"
-'
-    )
-
-    let result = (try {
-        let parser_result = (run_parse_yazelix_config_probe $fixture)
-
-        let stderr = ($parser_result.stderr | str trim)
-
-        if (
-            ($parser_result.exit_code != 0)
-            and ($stderr | str contains "Unknown config field at ascii")
-            and ($stderr | str contains "Failure class: config problem.")
-            and ($stderr | str contains "yzx config reset")
-            and not ($stderr | str contains "Known migration")
-            and not ($stderr | str contains "yzx doctor --fix")
-        ) {
-            print "  ✅ Legacy [ascii].mode is now rejected as unsupported current config"
-            true
-        } else {
-            print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr)"
-            false
+    let cases = [
+        {
+            name: "legacy [ascii].mode is unsupported"
+            label: "yazelix_welcome_style_legacy"
+            config: "[ascii]\nmode = \"animated\"\n"
+            expected_error: "Unknown config field at ascii"
         }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: removed config fields fail without mutation.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_rejects_removed_shell_field_without_rewriting [] {
-    print "🧪 Testing parse_yazelix_config rejects removed shell fields without rewriting..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_parser_no_auto_apply"
-        '[shell]
-enable_atuin = true
-'
-    )
-
-    let result = (try {
-        let parser_result = (run_parse_yazelix_config_probe $fixture)
-        let stderr = ($parser_result.stderr | str trim)
-        let updated = (open $fixture.config_path)
-        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
-
-        if (
-            ($parser_result.exit_code != 0)
-            and ($stderr | str contains "Unknown config field at shell.enable_atuin")
-            and ($stderr | str contains "Failure class: config problem.")
-            and ($stderr | str contains "yzx config reset")
-            and not ($stderr | str contains "Known migration")
-            and not ($stderr | str contains "yzx doctor --fix")
-            and ($updated.shell.enable_atuin? | default false)
-            and (($backups | length) == 0)
-        ) {
-            print "  ✅ parse_yazelix_config rejects removed fields without rewriting config files"
-            true
-        } else {
-            print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr) updated=($updated | to json -r) backups=(($backups | length))"
-            false
+        {
+            name: "removed shell.enable_atuin is unsupported"
+            label: "yazelix_parser_no_auto_apply"
+            config: "[shell]\nenable_atuin = true\n"
+            expected_error: "Unknown config field at shell.enable_atuin"
         }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
+        {
+            name: "legacy [packs] is unsupported"
+            label: "yazelix_pack_legacy_main"
+            config: "[packs]\nenabled = [\"git\"]\nuser_packages = [\"docker\"]\n\n[packs.declarations]\ngit = [\"gh\", \"prek\"]\n"
+            expected_error: "Unknown config field at packs"
+        }
+    ]
 
-    rm -rf $fixture.tmp_home
-    $result
+    let results = ($cases | each {|case| check_parse_rejects_removed_config_surface $case })
+    ($results | all {|result| $result })
 }
 
 # Invariant: split default config surfaces are bootstrapped when missing.
@@ -529,48 +544,6 @@ def test_parse_yazelix_config_bootstraps_taplo_formatter_support [] {
     $result
 }
 
-# Defends: removed pack config is rejected through the narrowed v15 config surface.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_rejects_legacy_main_file_packs [] {
-    print "🧪 Testing parse_yazelix_config rejects legacy [packs] in yazelix.toml through the narrowed v15 config surface..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_pack_legacy_main"
-        '[packs]
-enabled = ["git"]
-user_packages = ["docker"]
-
-[packs.declarations]
-git = ["gh", "prek"]
-'
-    )
-
-    let result = (try {
-        let parser_result = (run_parse_yazelix_config_probe $fixture)
-
-        let stderr = ($parser_result.stderr | str trim)
-
-        if (
-            ($parser_result.exit_code != 0)
-            and ($stderr | str contains "Unknown config field at packs")
-            and ($stderr | str contains "Failure class: config problem.")
-            and ($stderr | str contains "yzx config reset")
-        ) {
-            print "  ✅ Removed pack settings are now rejected as unsupported config surface fields"
-            true
-        } else {
-            print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
 # Regression: Home Manager symlinked managed configs must still record canonical rebuild state.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_record_materialized_state_accepts_symlinked_managed_main_config [] {
@@ -654,81 +627,30 @@ def test_user_mode_requires_real_terminal_config [] {
     $result
 }
 
-# Defends: removed auto terminal config mode is rejected by schema validation.
+# Defends: removed enum values are rejected by schema validation.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_config_schema_rejects_removed_auto_terminal_config_mode [] {
-    print "🧪 Testing config schema rejects the removed terminal.config_mode = auto value..."
+def test_config_schema_rejects_removed_enum_values [] {
+    print "🧪 Testing config schema rejects removed enum values..."
 
-    let tmpdir = (^mktemp -d /tmp/yazelix_terminal_mode_schema_XXXXXX | str trim)
-
-    let result = (try {
-        let config_path = ($tmpdir | path join "yazelix.toml")
-        '[terminal]
-config_mode = "auto"
-' | save --force --raw $config_path
-
-        let findings = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
-            use ../utils/config_schema.nu [validate_enum_values]
-            validate_enum_values (open $config_path)
-        })
-        let mode_findings = ($findings | where path == "terminal.config_mode")
-
-        if (
-            (($mode_findings | length) == 1)
-            and (($mode_findings | get 0.kind) == "invalid_enum")
-        ) {
-            print "  ✅ Config schema rejects the removed auto terminal config mode"
-            true
-        } else {
-            print $"  ❌ Unexpected findings: ($mode_findings | to json -r)"
-            false
+    let cases = [
+        {
+            name: "terminal.config_mode = auto"
+            label: "yazelix_terminal_mode_schema"
+            config: "[terminal]\nconfig_mode = \"auto\"\n"
+            path: "terminal.config_mode"
+            expected_value: "auto"
         }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
-# Defends: removed layout widget config is rejected by schema validation.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_config_schema_rejects_removed_layout_widget [] {
-    print "🧪 Testing config schema rejects the removed zellij layout widget..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_widget_tray_schema_XXXXXX | str trim)
-
-    let result = (try {
-        let config_path = ($tmpdir | path join "yazelix.toml")
-        '[zellij]
-widget_tray = ["layout", "editor"]
-' | save --force --raw $config_path
-
-        let findings = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
-            use ../utils/config_schema.nu [validate_enum_values]
-            validate_enum_values (open $config_path)
-        })
-        let tray_findings = ($findings | where path == "zellij.widget_tray")
-
-        if (
-            (($tray_findings | length) == 1)
-            and (($tray_findings | get 0.kind) == "invalid_enum")
-            and ((($tray_findings | get 0.message) | str contains "layout"))
-        ) {
-            print "  ✅ Config schema rejects the removed layout widget entry"
-            true
-        } else {
-            print $"  ❌ Unexpected findings: ($tray_findings | to json -r)"
-            false
+        {
+            name: "zellij.widget_tray contains layout"
+            label: "yazelix_widget_tray_schema"
+            config: "[zellij]\nwidget_tray = [\"layout\", \"editor\"]\n"
+            path: "zellij.widget_tray"
+            expected_value: "layout"
         }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
+    ]
 
-    rm -rf $tmpdir
-    $result
+    let results = ($cases | each {|case| check_schema_rejects_removed_enum_value $case })
+    ($results | all {|result| $result })
 }
 
 def write_minimal_user_zellij_config [fake_home: string] {
@@ -1644,15 +1566,12 @@ export def run_generated_config_canonical_tests [] {
         (test_ghostty_linux_launch_command_keeps_linux_specific_flags)
         (test_ghostty_linux_launch_command_prefers_runtime_owned_nixgl_wrapper)
         (test_ghostty_macos_launch_command_omits_linux_specific_flags)
-        (test_parse_yazelix_config_rejects_removed_shell_field_without_rewriting)
-        (test_parse_yazelix_config_rejects_legacy_ascii_mode_as_unsupported)
+        (test_parse_yazelix_config_rejects_removed_surfaces_without_rewriting)
         (test_parse_yazelix_config_bootstraps_main_default_surface)
         (test_parse_yazelix_config_bootstraps_taplo_formatter_support)
-        (test_parse_yazelix_config_rejects_legacy_main_file_packs)
         (test_record_materialized_state_accepts_symlinked_managed_main_config)
         (test_user_mode_requires_real_terminal_config)
-        (test_config_schema_rejects_removed_auto_terminal_config_mode)
-        (test_config_schema_rejects_removed_layout_widget)
+        (test_config_schema_rejects_removed_enum_values)
         (test_generate_merged_yazi_config_rejects_legacy_user_overrides)
         (test_generate_merged_yazi_config_syncs_starship_plugin_config)
         (test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins)

@@ -1283,10 +1283,12 @@ skip_welcome_screen = true
 
         write_probe_nu ($fake_bin | path join "zellij") [
             "#!/bin/sh"
-            "if [ \"$6\" = \"retarget_workspace\" ]; then"
-            "  printf '%s\\n' '{\"status\":\"ok\",\"editor_status\":\"ok\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}'"
-            "  exit 0"
-            "fi"
+            "for arg in \"$@\"; do"
+            "  if [ \"$arg\" = \"retarget_workspace\" ]; then"
+            "    printf '%s\\n' '{\"status\":\"ok\",\"editor_status\":\"ok\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}'"
+            "    exit 0"
+            "  fi"
+            "done"
             "printf '%s\\n' \"unexpected zellij args: $*\" >&2"
             "exit 1"
         ]

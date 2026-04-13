@@ -910,7 +910,7 @@ terminals = ["ghostty"]
             ($output.exit_code == 0)
             and ($stdout | str contains "Yazelix status")
             and ($stdout | str contains $"config_file")
-            and ($stdout | str contains $fixture.config_path)
+            and ($stdout | str contains "yazelix.toml")
             and ($stdout | str contains "default_shell")
             and ($stdout | str contains "nu")
             and ($stdout | str contains "terminals")

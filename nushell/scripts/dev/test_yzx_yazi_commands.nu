@@ -157,10 +157,12 @@ ya_command = "ya"
         ]
         write_executable_fixture_file ($fake_bin | path join "zellij") [
             "#!/bin/sh"
-            "if [ \"$6\" = \"get_active_sidebar_yazi_state\" ]; then"
-            "  printf '%s\\n' '{\"pane_id\":\"terminal:5\",\"yazi_id\":\"plugin-sidebar-yazi-123\",\"cwd\":\"/home/test/workspace\"}'"
-            "  exit 0"
-            "fi"
+            "for arg in \"$@\"; do"
+            "  if [ \"$arg\" = \"get_active_sidebar_yazi_state\" ]; then"
+            "    printf '%s\\n' '{\"pane_id\":\"terminal:5\",\"yazi_id\":\"plugin-sidebar-yazi-123\",\"cwd\":\"/home/test/workspace\"}'"
+            "    exit 0"
+            "  fi"
+            "done"
             "printf '%s\\n' \"unexpected zellij args: $*\" >&2"
             "exit 1"
         ]
@@ -227,10 +229,12 @@ ya_command = "ya"
 
         write_executable_fixture_file ($fake_bin | path join "zellij") [
             "#!/bin/sh"
-            "if [ \"$6\" = \"get_active_sidebar_yazi_state\" ]; then"
-            "  printf '%s\\n' '{\"pane_id\":\"terminal:0\",\"yazi_id\":\"plugin-yazi-id\",\"cwd\":\"/home/plugin\"}'"
-            "  exit 0"
-            "fi"
+            "for arg in \"$@\"; do"
+            "  if [ \"$arg\" = \"get_active_sidebar_yazi_state\" ]; then"
+            "    printf '%s\\n' '{\"pane_id\":\"terminal:0\",\"yazi_id\":\"plugin-yazi-id\",\"cwd\":\"/home/plugin\"}'"
+            "    exit 0"
+            "  fi"
+            "done"
             "printf '%s\\n' \"unexpected zellij args: $*\" >&2"
             "exit 1"
         ]
