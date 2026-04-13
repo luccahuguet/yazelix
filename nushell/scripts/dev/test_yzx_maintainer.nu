@@ -33,8 +33,12 @@ def setup_dev_bump_fixture [] {
 
     ^cp ($repo_root | path join "README.md") ($fixture_root | path join "README.md")
     ^cp ($repo_root | path join "CHANGELOG.md") ($fixture_root | path join "CHANGELOG.md")
+    ^cp ($repo_root | path join "yazelix_default.toml") ($fixture_root | path join "yazelix_default.toml")
     ^cp ($repo_root | path join "docs" "upgrade_notes.toml") ($docs_dir | path join "upgrade_notes.toml")
+    ^cp ($repo_root | path join "nushell" "scripts" "utils" "common.nu") ($utils_dir | path join "common.nu")
     ^cp ($repo_root | path join "nushell" "scripts" "utils" "constants.nu") ($utils_dir | path join "constants.nu")
+    ^cp ($repo_root | path join "nushell" "scripts" "utils" "upgrade_notes.nu") ($utils_dir | path join "upgrade_notes.nu")
+    ^cp ($repo_root | path join "nushell" "scripts" "maintainer" "readme_surface.nu") ($maintainer_dir | path join "readme_surface.nu")
     ^cp ($repo_root | path join "nushell" "scripts" "maintainer" "version_bump.nu") ($maintainer_dir | path join "version_bump.nu")
 
     ^git -C $fixture_root init --quiet
@@ -1036,7 +1040,7 @@ def test_dev_bump_rotates_release_metadata_and_tags_the_repo [] {
         let snippet = (
             [
                 $"use \"($fixture.helper_module)\" [perform_version_bump]"
-                $"perform_version_bump \"($fixture.repo_root)\" \"v14.1\" | to json -r"
+                $"perform_version_bump \"($fixture.repo_root)\" \"v15.1\" | to json -r"
             ] | str join "\n"
         )
         let output = (^nu -c $snippet | complete)
@@ -1056,18 +1060,18 @@ def test_dev_bump_rotates_release_metadata_and_tags_the_repo [] {
         if (
             ($output.exit_code == 0)
             and ($resolved != null)
-            and ($resolved.previous_version == "v14")
-            and ($resolved.target_version == "v14.1")
-            and ($constants | str contains 'export const YAZELIX_VERSION = "v14.1"')
-            and (($notes.releases | columns) | any {|column| $column == "v14.1" })
-            and ($notes.releases.unreleased.headline == "Post-v14.1 work in progress")
-            and ($notes.releases.unreleased.summary == ["Reserved for post-release changes after v14.1 lands."])
-            and ($changelog | str contains "## v14.1 - ")
+            and ($resolved.previous_version == "v15")
+            and ($resolved.target_version == "v15.1")
+            and ($constants | str contains 'export const YAZELIX_VERSION = "v15.1"')
+            and (($notes.releases | columns) | any {|column| $column == "v15.1" })
+            and ($notes.releases.unreleased.headline == "Post-v15.1 work in progress")
+            and ($notes.releases.unreleased.summary == ["Reserved for post-release changes after v15.1 lands."])
+            and ($changelog | str contains "## v15.1 - ")
             and ($changelog | str contains "## Unreleased")
             and ($changelog | str contains "Backend seam cleanup and release automation")
-            and ($readme | lines | first) == "# Yazelix v14.1"
-            and ($commit_subject == "Bump version to v14.1")
-            and ("v14.1" in $tags)
+            and ($readme | lines | first) == "# Yazelix v15.1"
+            and ($commit_subject == "Bump version to v15.1")
+            and ("v15.1" in $tags)
         ) {
             print "  ✅ yzx dev bump now rotates release metadata, updates the version constant, commits, and tags deterministically"
             true
@@ -1097,7 +1101,7 @@ def test_dev_bump_rejects_dirty_worktrees [] {
             [
                 $"use \"($fixture.helper_module)\" [perform_version_bump]"
                 "try {"
-                $"    perform_version_bump \"($fixture.repo_root)\" \"v14.1\" | ignore"
+                $"    perform_version_bump \"($fixture.repo_root)\" \"v15.1\" | ignore"
                 "    print \"unexpected-success\""
                 "} catch {|err|"
                 "    print $err.msg"
@@ -1131,14 +1135,14 @@ def test_dev_bump_rejects_existing_target_tags [] {
     let fixture = (setup_dev_bump_fixture)
     prepare_releasable_unreleased_fixture $fixture
     commit_dev_bump_fixture_change $fixture "Prepare unreleased release notes"
-    ^git -C $fixture.repo_root tag -a v14.1 -m "Existing tag"
+    ^git -C $fixture.repo_root tag -a v15.1 -m "Existing tag"
 
     let result = (try {
         let snippet = (
             [
                 $"use \"($fixture.helper_module)\" [perform_version_bump]"
                 "try {"
-                $"    perform_version_bump \"($fixture.repo_root)\" \"v14.1\" | ignore"
+                $"    perform_version_bump \"($fixture.repo_root)\" \"v15.1\" | ignore"
                 "    print \"unexpected-success\""
                 "} catch {|err|"
                 "    print $err.msg"
@@ -1148,7 +1152,7 @@ def test_dev_bump_rejects_existing_target_tags [] {
         let output = (^nu -c $snippet | complete)
         let stdout = ($output.stdout | str trim)
 
-        if ($output.exit_code == 0) and ($stdout == "Tag already exists: v14.1") {
+        if ($output.exit_code == 0) and ($stdout == "Tag already exists: v15.1") {
             print "  ✅ yzx dev bump now refuses to reuse an existing git tag"
             true
         } else {

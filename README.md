@@ -12,7 +12,7 @@ The repo keeps one maintained static preview. Add richer demos only when there i
 ## Overview
 Yazelix is a workspace-focused terminal environment built around [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://github.com/zellij-org/zellij), and [Helix](https://helix-editor.com), with first-class [Neovim](https://neovim.io) support too.
 
-This checkout is the live v15 line. The versioned README title and the auto-generated tagged-release block still follow the latest tag until `v15` is cut, but the supported product in this branch is already the trimmed v15 Yazelix.
+This checkout is the live v15 line. The supported product in this branch is the trimmed v15 Yazelix.
 
 Yazelix now uses the managed `yazelix.toml` config surface. The legacy `yazelix.nix` config is gone, the normal flake surface is the packaged `yazelix` runtime plus the top-level Home Manager module, and repo work uses the flake maintainer shell defined in `maintainer_shell.nix`.
 
@@ -65,25 +65,17 @@ Want the high-level product map? See [Architecture Map](./docs/architecture_map.
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages.
 
 <!-- BEGIN GENERATED README LATEST SERIES -->
-## Latest Tagged Release: v14
+## Latest Tagged Release: v15
 
-Boundary hardening, honest update ownership, and a much cleaner runtime surface.
+The trimmed workspace release: one supported line, first-party Ghostty, and fast helperless popup/menu panes.
 
-- v14 is the final historical Yazelix Classic release. It is no longer a supported line, and its broader dynamic-runtime-management scope is now historical context rather than the current product direction.
-- Launch, runtime, and desktop startup got much harder to break on flake-installed or Home Manager-owned setups.
-- Workspace truth moved deeper into the pane orchestrator with explicit sidebar identity and cleaner retargeting semantics.
-- Home Manager became a cleaner first-class path with profile-owned `yzx`, `yzx home_manager prepare` to preview or archive manual-install artifacts before Home Manager takeover, and better validation around generated config surfaces.
-- The packaged runtime became the honest center of the install story, with `runtime/current` and installer-owned indirection trimmed back sharply.
-- `yzx update` now points at explicit owners: `yzx update upstream` for upstream/manual installs and `yzx update home_manager` for Home Manager installs.
-- `yzx update` now points at explicit owners, the transitional `yzx update runtime` / `yzx update all` flow is gone again, and `yzx run` became a real argv passthrough for one-shot tools like `yzx run rg --files`.
-- The current v14 line also carries forward the front-door UX expansion introduced late in v13, including the welcome style selector, the live `game_of_life` welcome mode, `yzx screen` to preview the animated welcome screen directly in the terminal, and the managed popup runner with configurable popup commands and sizing.
-- Config ownership and upgrade UX became much more explicit through `user_configs/`, the separate `yazelix_packs.toml` file, the migration engine, and first-run upgrade summaries instead of ad hoc breakage.
-- Workspace control also matured across the line with managed editor/sidebar routing, deterministic sidebar controls, and `yzx cwd` to retarget the current tab workspace root with editor/sidebar sync.
-- A large delete-first cleanup pass trimmed broad helper surfaces and documented the trim-first path toward v15.
-- v14 is now best read as Yazelix Classic: the broader `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including `yzx packs`.
-- v15 has since become the live trimmed line rather than a parallel future experiment: a smaller non-Rust reboot with no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry.
-- Rust remains a later implementation path: selective Rust may land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.
-- The `v14` tag remains available only as the final historical Classic snapshot for users who specifically need that broader product shape; it is no longer a supported line.
+- v15 is the only supported Yazelix line now. v14 remains available only as the final historical Classic snapshot for users who specifically need the old broader product shape.
+- Yazelix is now the narrower workspace product: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`.
+- Ghostty is the first-party bundled terminal on Linux and macOS. WezTerm, Kitty, Alacritty, and Foot remain supported when you provide them on the host `PATH`.
+- The front door is clearer: `yzx launch` opens a managed terminal window, `yzx enter` starts Yazelix in the current terminal, and `yzx env` remains the non-UI environment surface.
+- The fast transient workspace tools now share the helperless floating-pane path: `yzx popup` toggles the configured popup program and `yzx menu --popup` toggles the command palette with the same identity and geometry seam.
+- The core workspace surface remains layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`.
+- v15 is the trimmed non-Rust reboot. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target.
 
 For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new` after installing that release.
 For the longer project story, see [Version History](./docs/history.md).

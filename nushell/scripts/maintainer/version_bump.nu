@@ -1,5 +1,7 @@
 #!/usr/bin/env nu
 
+use ./readme_surface.nu [sync_readme_surface]
+
 def fail [message: string] {
     error make {msg: $message}
 }
@@ -202,9 +204,9 @@ def sync_readme_version [repo_root: string, target_version: string] {
     if not ($readme_path | path exists) {
         fail $"README.md not found under ($repo_root)"
     }
-    let contents = (open --raw $readme_path)
-    let updated = ($contents | str replace -r '^# Yazelix v[^\r\n]+' $"# Yazelix ($target_version)")
-    $updated | save --force --raw $readme_path
+    with-env {YAZELIX_RUNTIME_DIR: $repo_root} {
+        sync_readme_surface $readme_path $target_version | ignore
+    }
 }
 
 export def perform_version_bump [
