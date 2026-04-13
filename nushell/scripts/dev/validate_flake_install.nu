@@ -257,6 +257,7 @@ def verify_installed_runtime [temp_home: string] {
     let runtime_bin = ($runtime_root | path join "bin")
     let runtime_nu = ($runtime_bin | path join "nu")
     let runtime_yzx_cli = ($runtime_root | path join "shells" "posix" "yzx_cli.sh")
+    let runtime_ghostty_wrapper = ($runtime_root | path join "shells" "posix" "yazelix_ghostty.sh")
     let runtime_taplo_config = ($runtime_root | path join ".taplo.toml")
     let runtime_yazelix_default = ($runtime_root | path join "yazelix_default.toml")
     let legacy_runtime_link = ($temp_home | path join ".local" "share" "yazelix" "runtime" "current")
@@ -284,6 +285,7 @@ def verify_installed_runtime [temp_home: string] {
     require_path_missing $legacy_runtime_link "legacy installed runtime symlink"
     require_path_exists $runtime_nu "runtime-local Nushell binary"
     require_path_exists $runtime_yzx_cli "runtime-local POSIX yzx launcher"
+    require_path_exists $runtime_ghostty_wrapper "runtime-local Ghostty env wrapper"
     require_path_exists $runtime_taplo_config "runtime-local Taplo formatter config"
     require_path_exists $runtime_yazelix_default "runtime-local default config"
     require_path_exists $runtime_ghostty_shader_builder "runtime-local Ghostty shader builder"
@@ -307,6 +309,7 @@ def verify_installed_runtime [temp_home: string] {
     }
     if (($nu.os-info.name | str downcase) == "linux") {
         require_path_exists ($runtime_bin | path join "nixGLMesa") "runtime binary `nixGLMesa`"
+        require_path_exists ($runtime_bin | path join "pgrep") "runtime binary `pgrep`"
     }
 
     require_file_contains $nushell_config $runtime_root "generated Nushell hook config"

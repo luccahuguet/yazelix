@@ -326,11 +326,13 @@ def test_ghostty_linux_launch_command_keeps_linux_specific_flags [] {
         })
 
         if (
+            ($launch_cmd | str contains 'shells/posix/yazelix_ghostty.sh')
+            and
             ($launch_cmd | str contains '--gtk-single-instance=false')
             and ($launch_cmd | str contains '--class="com.yazelix.Yazelix"')
             and ($launch_cmd | str contains '--x11-instance-name="yazelix"')
         ) {
-            print "  ✅ Linux Ghostty launch keeps the GTK/X11 flags Yazelix expects there"
+            print "  ✅ Linux Ghostty launch now routes through the runtime Ghostty env wrapper and keeps the GTK/X11 flags Yazelix expects there"
             true
         } else {
             print $"  ❌ Unexpected Linux Ghostty launch command: ($launch_cmd)"
@@ -371,7 +373,9 @@ exit 0
         })
 
         if (
-            ($launch_cmd | str contains $"($fake_wrapper) ghostty")
+            ($launch_cmd | str contains ($fake_runtime | path join "shells" "posix" "yazelix_ghostty.sh"))
+            and ($launch_cmd | str contains $fake_wrapper)
+            and ($launch_cmd | str contains ' ghostty --config-default-files=false')
             and ($launch_cmd | str contains '--gtk-single-instance=false')
             and ($launch_cmd | str contains '--x11-instance-name="yazelix"')
         ) {
@@ -379,6 +383,127 @@ exit 0
             true
         } else {
             print $"  ❌ Unexpected Linux Ghostty nixGL launch command: ($launch_cmd)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+# Regression: the Ghostty env wrapper must fall back to GTK_IM_MODULE=simple when Wayland IM state is stale.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_ghostty_wayland_wrapper_falls_back_to_simple_im_without_active_daemon [] {
+    print "🧪 Testing Ghostty Wayland wrapper falls back to GTK_IM_MODULE=simple when no IM daemon is active..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_ghostty_im_fallback_XXXXXX | str trim)
+    let result = (try {
+        let fake_bin = ($tmpdir | path join "bin")
+        let fake_pgrep = ($fake_bin | path join "pgrep")
+        let probe = ($tmpdir | path join "probe-env.sh")
+        let wrapper = ($env.PWD | path join "shells" "posix" "yazelix_ghostty.sh")
+
+        mkdir $fake_bin
+        '#!/bin/sh
+exit 1
+' | save --force --raw $fake_pgrep
+        ^chmod +x $fake_pgrep
+
+        '#!/bin/sh
+printf "GTK_IM_MODULE=%s\n" "${GTK_IM_MODULE-unset}"
+printf "QT_IM_MODULE=%s\n" "${QT_IM_MODULE-unset}"
+printf "XMODIFIERS=%s\n" "${XMODIFIERS-unset}"
+' | save --force --raw $probe
+        ^chmod +x $probe
+
+        let output = (with-env {
+            PATH: ([$fake_bin] | append $env.PATH)
+            WAYLAND_DISPLAY: "wayland-0"
+            GTK_IM_MODULE: "ibus"
+            QT_IM_MODULE: "ibus"
+            XMODIFIERS: "@im=ibus"
+        } {
+            ^sh $wrapper $probe | complete
+        })
+        let env_lines = ($output.stdout | lines)
+
+        if (
+            ($output.exit_code == 0)
+            and ($env_lines == [
+                "GTK_IM_MODULE=simple"
+                "QT_IM_MODULE=unset"
+                "XMODIFIERS=unset"
+            ])
+        ) {
+            print "  ✅ Ghostty Wayland fallback now restores dead keys by switching stale IM state to GTK_IM_MODULE=simple"
+            true
+        } else {
+            print $"  ❌ Unexpected Ghostty Wayland IM fallback behavior: exit=($output.exit_code) env=($env_lines | to json -r) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+# Regression: the Ghostty env wrapper must not clobber a valid running Wayland IM daemon setup.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_ghostty_wayland_wrapper_preserves_active_ibus_env [] {
+    print "🧪 Testing Ghostty Wayland wrapper preserves a live ibus input-method setup..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_ghostty_im_preserve_XXXXXX | str trim)
+    let result = (try {
+        let fake_bin = ($tmpdir | path join "bin")
+        let fake_pgrep = ($fake_bin | path join "pgrep")
+        let probe = ($tmpdir | path join "probe-env.sh")
+        let wrapper = ($env.PWD | path join "shells" "posix" "yazelix_ghostty.sh")
+
+        mkdir $fake_bin
+        '#!/bin/sh
+if [ "$1" = "-x" ] && [ "$2" = "ibus-daemon" ]; then
+  exit 0
+fi
+exit 1
+' | save --force --raw $fake_pgrep
+        ^chmod +x $fake_pgrep
+
+        '#!/bin/sh
+printf "GTK_IM_MODULE=%s\n" "${GTK_IM_MODULE-unset}"
+printf "QT_IM_MODULE=%s\n" "${QT_IM_MODULE-unset}"
+printf "XMODIFIERS=%s\n" "${XMODIFIERS-unset}"
+' | save --force --raw $probe
+        ^chmod +x $probe
+
+        let output = (with-env {
+            PATH: ([$fake_bin] | append $env.PATH)
+            WAYLAND_DISPLAY: "wayland-0"
+            GTK_IM_MODULE: "ibus"
+            QT_IM_MODULE: "ibus"
+            XMODIFIERS: "@im=ibus"
+        } {
+            ^sh $wrapper $probe | complete
+        })
+        let env_lines = ($output.stdout | lines)
+
+        if (
+            ($output.exit_code == 0)
+            and ($env_lines == [
+                "GTK_IM_MODULE=ibus"
+                "QT_IM_MODULE=ibus"
+                "XMODIFIERS=@im=ibus"
+            ])
+        ) {
+            print "  ✅ Ghostty Wayland wrapper preserves a valid live ibus setup instead of clobbering it"
+            true
+        } else {
+            print $"  ❌ Unexpected Ghostty Wayland IM preservation behavior: exit=($output.exit_code) env=($env_lines | to json -r) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -1587,6 +1712,8 @@ export def run_generated_config_canonical_tests [] {
         (test_managed_wrapper_launch_command_does_not_forward_config_mode_flag)
         (test_ghostty_linux_launch_command_keeps_linux_specific_flags)
         (test_ghostty_linux_launch_command_prefers_runtime_owned_nixgl_wrapper)
+        (test_ghostty_wayland_wrapper_falls_back_to_simple_im_without_active_daemon)
+        (test_ghostty_wayland_wrapper_preserves_active_ibus_env)
         (test_ghostty_macos_launch_command_omits_linux_specific_flags)
         (test_parse_yazelix_config_rejects_removed_surfaces_without_rewriting)
         (test_parse_yazelix_config_bootstraps_main_default_surface)

@@ -53,3 +53,6 @@ with pkgs;
 ] ++ pkgs.lib.optionals (linuxGlWrapperPackage != null) [
   linuxGlWrapperPackage
 ]
+++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+  procps
+]

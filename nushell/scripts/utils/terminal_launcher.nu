@@ -187,6 +187,11 @@ def get_working_dir_arg [terminal: string, working_dir: string]: nothing -> stri
     }
 }
 
+def get_ghostty_env_wrapper_path []: nothing -> string {
+    let runtime_dir = (get_yazelix_runtime_dir)
+    $runtime_dir | path join "shells" "posix" "yazelix_ghostty.sh"
+}
+
 def build_ghostty_launch_command [
     command: string
     config_path: string
@@ -201,7 +206,8 @@ def build_ghostty_launch_command [
     }
 
     let nixgl_prefix = (resolve_nixgl_launch_prefix)
-    $"($nixgl_prefix)($command) --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --class=\"($YAZELIX_WINDOW_CLASS)\" --x11-instance-name=\"($YAZELIX_X11_INSTANCE)\" --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
+    let ghostty_env_wrapper = (quote_for_bash_single_string (get_ghostty_env_wrapper_path))
+    $"($ghostty_env_wrapper) ($nixgl_prefix)($command) --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --class=\"($YAZELIX_WINDOW_CLASS)\" --x11-instance-name=\"($YAZELIX_X11_INSTANCE)\" --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
 }
 
 # Build launch command for a terminal. The returned command is a foreground
