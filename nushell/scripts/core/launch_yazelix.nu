@@ -5,7 +5,7 @@
 use ../utils/config_state.nu compute_config_state
 use ../utils/terminal_configs.nu [generate_all_terminal_configs generate_selected_terminal_configs]
 use ../utils/terminal_launcher.nu *
-use ../utils/constants.nu [SUPPORTED_TERMINALS, TERMINAL_METADATA]
+use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADATA]
 use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/runtime_contract_checker.nu [
     check_launch_terminal_support
@@ -206,7 +206,7 @@ def main [
     }
 
     let terminal_config_mode = $config.terminal_config_mode
-    mut terminals = ($config.terminals? | default ["ghostty"] | uniq)
+    mut terminals = ($config.terminals? | default [$DEFAULT_TERMINAL] | uniq)
     if ($terminals | is-empty) {
         let available = ($SUPPORTED_TERMINALS | where {|t| which $t | is-not-empty })
         let available_str = if ($available | is-empty) {

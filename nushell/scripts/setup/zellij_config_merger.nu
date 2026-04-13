@@ -2,7 +2,7 @@
 # Zellij Configuration Merger
 # Uses the Yazelix-managed user Zellij config when available, then native Zellij config, then Zellij defaults
 
-use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
+use ../utils/constants.nu [DEFAULT_SHELL ZELLIJ_CONFIG_PATHS]
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu resolve_zellij_default_shell
@@ -58,7 +58,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     let config = parse_yazelix_config
     let widget_tray = ($config.zellij_widget_tray? | default ["editor", "shell", "term", "cpu", "ram"])
     let custom_text = ($config.zellij_custom_text? | default "")
-    let default_shell = ($config.default_shell? | default "nu")
+    let default_shell = ($config.default_shell? | default $DEFAULT_SHELL)
     let resolved_default_shell = (resolve_zellij_default_shell $yazelix_dir $default_shell)
     let default_layout_name = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
     let sidebar_width_percent = ($config.sidebar_width_percent? | default 20)

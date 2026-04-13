@@ -3,7 +3,7 @@
 # Handles ASCII art display and welcome message generation
 
 use ../utils/ascii_art.nu *
-use ../utils/constants.nu YAZELIX_VERSION
+use ../utils/constants.nu [DEFAULT_TERMINAL YAZELIX_VERSION]
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/upgrade_notes.nu get_current_major_series_entry
 use ../utils/upgrade_summary.nu get_upgrade_note_entry
@@ -87,7 +87,7 @@ def get_session_info [colors: record]: nothing -> string {
 def get_terminal_info [colors: record]: nothing -> string {
     try {
         let config = parse_yazelix_config
-        let terminals = ($config.terminals? | default ["ghostty"])
+        let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL])
         let preferred = if ($terminals | is-empty) { "unknown" } else { $terminals | first }
         $"($colors.cyan)🖥️  Preferred host terminal: ($preferred)($colors.reset)"
     } catch {

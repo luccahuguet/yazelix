@@ -4,6 +4,7 @@
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
+use ../utils/constants.nu DEFAULT_SHELL
 use ../utils/install_ownership.nu has_home_manager_managed_install
 use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
@@ -52,7 +53,7 @@ def main [--welcome-source: string, --skip-welcome] {
 
     # Extract values from config (all properly typed from TOML)
     let yazelix_dir = (get_yazelix_runtime_dir)
-    let default_shell = ($config.default_shell? | default "nu")
+    let default_shell = ($config.default_shell? | default $DEFAULT_SHELL)
     let debug_mode = ($config.debug_mode? | default false)
     let runtime_nu = (resolve_yazelix_nu_bin)
     let skip_welcome_screen = (
@@ -119,7 +120,7 @@ def main [--welcome-source: string, --skip-welcome] {
     use ../utils/config_schema.nu validate_config_against_default
 
     # Keep shell entry narrow: always configure the runtime baseline plus the selected default shell.
-    let shells_to_configure = (["nu", "bash", $default_shell] | uniq)
+    let shells_to_configure = ([$DEFAULT_SHELL, "bash", $default_shell] | uniq)
 
     # Setup logging in state directory (XDG-compliant)
     let state_dir = ($env.YAZELIX_STATE_DIR | str replace "~" $env.HOME)

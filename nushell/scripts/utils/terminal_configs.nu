@@ -88,7 +88,7 @@ export def generate_selected_terminal_configs [selected_terminals: list<string>,
 
 export def generate_all_terminal_configs [runtime_dir?: string] {
     let config = parse_yazelix_config
-    mut terminals = ($config.terminals? | default ["ghostty"])
+    mut terminals = ($config.terminals? | default [$DEFAULT_TERMINAL])
     if ($terminals | is-empty) {
         error make {msg: "terminal.terminals must include at least one terminal"}
     }

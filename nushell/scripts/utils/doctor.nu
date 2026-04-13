@@ -13,6 +13,7 @@ use doctor_helix.nu [
 ]
 use doctor_install_artifacts.nu check_desktop_entry_freshness
 use runtime_distribution_capabilities.nu get_runtime_distribution_capability_profile
+use constants.nu DEFAULT_TERMINAL
 use runtime_contract_checker.nu [
     check_generated_layout
     check_launch_terminal_support
@@ -142,7 +143,7 @@ def check_shared_runtime_preflight [] {
     let config = $config_result.config
     let runtime_dir = (get_yazelix_runtime_dir)
     let current_dir = (try { pwd } catch { null })
-    let terminals = ($config.terminals? | default ["ghostty"] | uniq)
+    let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL] | uniq)
     let layout_path = (resolve_expected_layout_path $config)
     let terminal_check = (check_launch_terminal_support "" $terminals)
 

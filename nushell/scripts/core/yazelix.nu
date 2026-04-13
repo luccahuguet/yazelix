@@ -96,7 +96,7 @@ def require_current_working_flake [] {
 }
 
 def build_status_rows [config: record, config_state: record, yazelix_dir: string, shell_status: list<record>] {
-    let terminals = ($config.terminals? | default ["ghostty"])
+    let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL])
     let terminal_label = if ($terminals | is-empty) {
         "none"
     } else {

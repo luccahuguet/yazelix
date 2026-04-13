@@ -3,6 +3,7 @@
 
 use ../utils/environment_bootstrap.nu [prepare_environment]
 use ../utils/runtime_env.nu get_runtime_env
+use ../utils/constants.nu DEFAULT_SHELL
 
 # Build shell command from shell name.
 # --login keeps existing behavior for default yzx env mode.
@@ -54,7 +55,7 @@ export def "yzx env" [
     let env_prep = prepare_environment
     let config = $env_prep.config
     let original_dir = (pwd)
-    let configured_shell_name = ($config.default_shell? | default "nu" | str downcase)
+    let configured_shell_name = ($config.default_shell? | default $DEFAULT_SHELL | str downcase)
     let invoking_shell_name = (
         if ($env.SHELL? | is-not-empty) {
             $env.SHELL | path basename | str downcase

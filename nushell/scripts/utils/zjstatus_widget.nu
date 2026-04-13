@@ -2,6 +2,7 @@
 
 use ./common.nu get_yazelix_runtime_dir
 use ./config_surfaces.nu get_main_user_config_path
+use ./constants.nu DEFAULT_SHELL
 
 def detect_terminal_name [] {
     if ($env.YAZELIX_TERMINAL? | is-not-empty) {
@@ -93,7 +94,7 @@ export def main [widget: string] {
         "shell" => {
             let config = (load_widget_main_config)
             let shell_config = ($config.shell? | default {})
-            normalize_command_label (($shell_config | get -o default_shell | default "nu") | into string) "nu"
+            normalize_command_label (($shell_config | get -o default_shell | default $DEFAULT_SHELL) | into string) $DEFAULT_SHELL
         }
         "editor" => {
             let config = (load_widget_main_config)
