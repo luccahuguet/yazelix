@@ -247,6 +247,12 @@ def setup_enter_forwarding_fixture [label: string] {
     $bootstrap_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
 
     [
+        "export def parse_yazelix_config [] {"
+            "    error make {msg: \"PARSE_YAZELIX_CONFIG_SHOULD_NOT_RUN\"}"
+        "}"
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "config_parser.nu")
+
+    [
         "export def require_yazelix_runtime_dir [] {"
         "    $env.YAZELIX_RUNTIME_DIR"
         "}"

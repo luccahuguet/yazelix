@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # yzx launch command - Launch Yazelix in a new terminal window
 
-use ../utils/environment_bootstrap.nu [prepare_environment]
+use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/runtime_contract_checker.nu [check_runtime_script require_runtime_check]
 use ../utils/runtime_env.nu get_runtime_env
@@ -39,8 +39,7 @@ export def "yzx launch" [
         print "🔍 yzx launch: verbose mode enabled"
     }
 
-    let env_prep = prepare_environment --verbose=$verbose_mode
-    let config = $env_prep.config
+    let config = parse_yazelix_config
     let requested_path = ($path | default "")
     let requested_terminal = ($terminal | default "")
     let launch_cwd = if $home {

@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
-use ../utils/environment_bootstrap.nu prepare_environment
+use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/runtime_env.nu get_runtime_env
 use ../utils/runtime_contract_checker.nu [
@@ -53,9 +53,12 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     }
     let nu_bin = (resolve_yazelix_nu_bin)
 
-    let env_prep = prepare_environment --verbose=$verbose_mode
-    let config = $env_prep.config
+    let config = parse_yazelix_config
     let runtime_env = (get_runtime_env $config)
+
+    if $verbose_mode {
+        print "🔍 Startup config parsed"
+    }
 
     if $setup_only {
         print "🔧 Setting up Yazelix generated environment files..."
