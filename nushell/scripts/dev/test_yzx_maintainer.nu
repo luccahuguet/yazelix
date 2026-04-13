@@ -3,8 +3,7 @@
 # Test lane: maintainer
 
 use ../utils/common.nu [get_yazelix_state_dir]
-use ../utils/repo_checkout.nu [require_yazelix_repo_root]
-use ../utils/devenv_cli.nu resolve_preferred_devenv_path
+use ../maintainer/repo_checkout.nu [require_yazelix_repo_root]
 
 def profile_suite_runner [runner: closure] {
     let started = (date now)
@@ -22,20 +21,25 @@ def setup_dev_bump_fixture [] {
     let tmp_root = (^mktemp -d /tmp/yazelix_dev_bump_XXXXXX | str trim)
     let fixture_root = ($tmp_root | path join "repo")
     let utils_dir = ($fixture_root | path join "nushell" "scripts" "utils")
+    let maintainer_dir = ($fixture_root | path join "nushell" "scripts" "maintainer")
     let docs_dir = ($fixture_root | path join "docs")
 
     mkdir $fixture_root
     mkdir ($fixture_root | path join "nushell")
     mkdir ($fixture_root | path join "nushell" "scripts")
     mkdir $utils_dir
+    mkdir $maintainer_dir
     mkdir $docs_dir
 
     ^cp ($repo_root | path join "README.md") ($fixture_root | path join "README.md")
     ^cp ($repo_root | path join "CHANGELOG.md") ($fixture_root | path join "CHANGELOG.md")
+    ^cp ($repo_root | path join "yazelix_default.toml") ($fixture_root | path join "yazelix_default.toml")
     ^cp ($repo_root | path join "docs" "upgrade_notes.toml") ($docs_dir | path join "upgrade_notes.toml")
+    ^cp ($repo_root | path join "nushell" "scripts" "utils" "common.nu") ($utils_dir | path join "common.nu")
     ^cp ($repo_root | path join "nushell" "scripts" "utils" "constants.nu") ($utils_dir | path join "constants.nu")
-    ^cp ($repo_root | path join "nushell" "scripts" "utils" "readme_release_block.nu") ($utils_dir | path join "readme_release_block.nu")
-    ^cp ($repo_root | path join "nushell" "scripts" "utils" "dev_bump_workflow.nu") ($utils_dir | path join "dev_bump_workflow.nu")
+    ^cp ($repo_root | path join "nushell" "scripts" "utils" "upgrade_notes.nu") ($utils_dir | path join "upgrade_notes.nu")
+    ^cp ($repo_root | path join "nushell" "scripts" "maintainer" "readme_surface.nu") ($maintainer_dir | path join "readme_surface.nu")
+    ^cp ($repo_root | path join "nushell" "scripts" "maintainer" "version_bump.nu") ($maintainer_dir | path join "version_bump.nu")
 
     ^git -C $fixture_root init --quiet
     ^git -C $fixture_root config user.email "codex@example.com"
@@ -45,7 +49,7 @@ def setup_dev_bump_fixture [] {
 
     {
         repo_root: $fixture_root
-        helper_module: ($utils_dir | path join "dev_bump_workflow.nu")
+        helper_module: ($maintainer_dir | path join "version_bump.nu")
         constants_path: ($utils_dir | path join "constants.nu")
         notes_path: ($docs_dir | path join "upgrade_notes.toml")
         changelog_path: ($fixture_root | path join "CHANGELOG.md")
@@ -70,10 +74,22 @@ def prepare_releasable_unreleased_fixture [fixture: record] {
     $updated_notes | to toml | save --force --raw $fixture.notes_path
 
     let changelog = (open --raw $fixture.changelog_path)
+    let custom_unreleased = (
+        [
+            "## Unreleased"
+            ""
+            "Backend seam cleanup and release automation"
+            ""
+            "Upgrade impact: no user action required"
+            ""
+            "Highlights:"
+            "- Finalized the source-vs-installed runtime identity cleanup so repo shells stop exporting a fake installed runtime root."
+            "- Added `yzx dev bump` to rotate release metadata, update `YAZELIX_VERSION`, and create the matching release tag."
+        ] | str join "\n"
+    )
     let updated_changelog = (
         $changelog
-        | str replace "Post-v14 work in progress" "Backend seam cleanup and release automation"
-        | str replace "- Reserved for post-release changes after v14 lands." "- Finalized the source-vs-installed runtime identity cleanup and added `yzx dev bump`."
+        | str replace -r '(?ms)^## Unreleased\n.*?(?=\n## )' $custom_unreleased
     )
     $updated_changelog | save --force --raw $fixture.changelog_path
 }
@@ -85,7 +101,7 @@ def test_issue_bead_reconciliation_plan [] {
 
     try {
         let command = '
-            source nushell/scripts/utils/issue_bead_contract.nu
+            source nushell/scripts/maintainer/issue_bead_contract.nu
             let github_issues = [
                 {number: 500, state: "OPEN", title: "Missing bead", url: "https://github.com/luccahuguet/yazelix/issues/500", createdAt: "2026-03-22T12:30:00Z", body: ""}
                 {number: 501, state: "OPEN", title: "Closed bead should reopen", url: "https://github.com/luccahuguet/yazelix/issues/501", createdAt: "2026-03-22T12:31:00Z", body: ""}
@@ -134,7 +150,7 @@ def test_issue_bead_comment_plan [] {
 
     try {
         let command = '
-            source nushell/scripts/utils/issue_bead_contract.nu
+            source nushell/scripts/maintainer/issue_bead_contract.nu
             let issue = {number: 600, state: "OPEN", title: "Comment contract", url: "https://github.com/luccahuguet/yazelix/issues/600", createdAt: "2026-03-22T12:40:00Z", body: ""}
             let bead = {id: "yazelix-comment", status: "open", external_ref: $issue.url}
             let missing = (plan_issue_bead_comment_sync $issue $bead [])
@@ -173,101 +189,21 @@ def test_issue_bead_comment_plan [] {
     }
 }
 
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Regression: repo-local devenv shells clear inherited installed-runtime aliases without exporting a fake runtime root.
-def test_source_devenv_shell_clears_inherited_runtime_aliases [] {
-    print "🧪 Testing repo-local devenv shells sanitize inherited runtime aliases without exporting a fake runtime root..."
-
-    let repo_root = ($env.PWD | path expand)
-    let fake_runtime = (get_yazelix_state_dir | path join "runtime" "current" | path expand)
-    let devenv_bin = (resolve_preferred_devenv_path)
-
-    try {
-        let output = (with-env {
-            YAZELIX_RUNTIME_DIR: $fake_runtime
-            YAZELIX_DIR: "/nix/store/fake-yazelix-runtime"
-            YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
-            YAZELIX_ENV_ONLY: "true"
-        } {
-            ^$devenv_bin --quiet shell -- bash -lc 'printf "%s|%s|%s|%s\n" "$(printenv YAZELIX_RUNTIME_DIR 2>/dev/null || printf unset)" "$(printenv YAZELIX_DIR 2>/dev/null || printf unset)" "$DEVENV_ROOT" "$EDITOR"' | complete
-        })
-        let summary = ($output.stdout | lines | last | default "")
-        let expected_editor = ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
-
-        if ($output.exit_code == 0) and ($summary == $"unset|unset|($repo_root)|($expected_editor)") {
-            print "  ✅ Repo-local devenv shell now clears inherited runtime aliases, relies on DEVENV_ROOT as the live checkout identity, and exports an absolute managed Helix wrapper"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) summary=($summary) stderr=(($output.stderr | str trim))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Regression: managed Ghostty wrappers must find sibling nixGL even when desktop launch clears DEVENV_PROFILE.
-def test_managed_wrapper_prefers_sibling_nixgl_without_ambient_profile [] {
-    print "🧪 Testing managed Ghostty wrappers resolve sibling nixGL without ambient DEVENV_PROFILE..."
-
-    let repo_root = ($env.PWD | path expand)
-    let devenv_bin = (resolve_preferred_devenv_path)
-
-    try {
-        let output = (with-env {
-            YAZELIX_SHELLHOOK_SKIP_WELCOME: "true"
-            YAZELIX_ENV_ONLY: "true"
-        } {
-            ^$devenv_bin --quiet shell -- bash -lc 'expected="$DEVENV_PROFILE/bin/nixGL"; wrapper="$DEVENV_PROFILE/bin/yazelix-ghostty"; printf "__EXPECTED__%s\n" "$expected"; env -u DEVENV_PROFILE PATH=/usr/bin:/bin YAZELIX_RUNTIME_DIR="$DEVENV_ROOT" bash -x "$wrapper" --version >/dev/null' | complete
-        })
-        let expected_nixgl = (
-            $output.stdout
-            | lines
-            | where {|line| $line | str starts-with "__EXPECTED__" }
-            | get -o 0
-            | default ""
-            | str replace "__EXPECTED__" ""
-            | str trim
-        )
-        let trace = ($output.stderr | default "")
-        let expected_self_line = ('+ self_nixgl=' + $expected_nixgl)
-        let expected_exec_prefix = ('+ exec ' + $expected_nixgl + ' ')
-
-        if (
-            ($output.exit_code == 0)
-            and ($expected_nixgl | is-not-empty)
-            and ($trace | str contains $expected_self_line)
-            and ($trace | str contains $expected_exec_prefix)
-        ) {
-            print "  ✅ Managed Ghostty wrapper now finds sibling nixGL without relying on ambient DEVENV_PROFILE"
-            true
-        } else {
-            let trace_tail = ($trace | lines | last 20 | str join "\n")
-            print $"  ❌ Unexpected result: exit=($output.exit_code) expected_nixgl=($expected_nixgl) stderr=($trace_tail)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    }
-}
-
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Regression: maintainer commands resolve a writable repo root even when the stable CLI carries an installed runtime env.
 def test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env [] {
     print "🧪 Testing maintainer repo-root resolution prefers the checkout over installed runtime env..."
 
     let repo_root = ($env.PWD | path expand)
+    let repo_subdir = ($repo_root | path join "nushell" "scripts")
     let fake_runtime = (get_yazelix_state_dir | path join "runtime" "current" | path expand)
 
     try {
         let resolved = (with-env {
-            DEVENV_ROOT: $repo_root
             YAZELIX_RUNTIME_DIR: $fake_runtime
             YAZELIX_DIR: "/nix/store/fake-yazelix-runtime"
         } {
+            cd $repo_subdir
             require_yazelix_repo_root
         })
 
@@ -282,78 +218,6 @@ def test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env [] {
         print $"  ❌ Exception: ($err.msg)"
         false
     }
-}
-
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-# Regression: runtime-project lookup must stay read-only while materialization remains explicit.
-def test_runtime_project_lookup_stays_read_only_until_materialized [] {
-    print "🧪 Testing runtime-project lookup stays read-only until materialized..."
-
-    let repo_root = ($env.PWD | path expand)
-    let tmp_root = (^mktemp -d /tmp/yazelix_runtime_project_split_XXXXXX | str trim)
-    let state_dir = ($tmp_root | path join "state")
-    let runtime_dir = ($tmp_root | path join "runtime")
-    let project_dir = ($state_dir | path join "runtime" "project")
-    let stale_runtime_dir = ($tmp_root | path join "stale_runtime")
-    let common_script = ($repo_root | path join "nushell" "scripts" "utils" "common.nu")
-    let runtime_project_script = ($repo_root | path join "nushell" "scripts" "utils" "runtime_project.nu")
-
-    mkdir $state_dir
-    mkdir $runtime_dir
-    mkdir $project_dir
-    mkdir $stale_runtime_dir
-
-    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "nushell", "rust_plugins", "shells", "CHANGELOG.md", "devenv.lock", "devenv.nix", "devenv.yaml", "yazelix_default.toml", "yazelix_packs_default.toml"] {
-        ^ln -s ($repo_root | path join $entry) ($runtime_dir | path join $entry)
-    }
-    "stale" | save --force ($stale_runtime_dir | path join "devenv.nix")
-    ^ln -s ($stale_runtime_dir | path join "devenv.nix") ($project_dir | path join "devenv.nix")
-    "stale-docs" | save --force ($project_dir | path join "docs")
-
-    let result = (try {
-        let snippet = (
-            [
-                $"use \"($runtime_project_script)\" [get_existing_yazelix_runtime_project_dir materialize_yazelix_runtime_project_dir]"
-                "print ((get_existing_yazelix_runtime_project_dir) | default '<missing>')"
-                "print (materialize_yazelix_runtime_project_dir)"
-                "print ((get_existing_yazelix_runtime_project_dir) | default '<missing>')"
-            ] | str join "\n"
-        )
-        let output = (with-env {
-            YAZELIX_RUNTIME_DIR: $runtime_dir
-            YAZELIX_STATE_DIR: $state_dir
-        } {
-            do { ^nu -c $snippet } | complete
-        })
-        let lines = ($output.stdout | lines)
-        let devenv_nix_target = ($project_dir | path join "devenv.nix")
-        let docs_target = ($project_dir | path join "docs")
-        let resolved_devenv_nix_target = (if ($devenv_nix_target | path exists) { ^readlink -f $devenv_nix_target | str trim } else { "" })
-        let resolved_runtime_devenv_nix = (^readlink -f ($runtime_dir | path join "devenv.nix") | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and (($lines | get -o 0 | default "") == "<missing>")
-            and (($lines | get -o 1 | default "") == $project_dir)
-            and (($lines | get -o 2 | default "") == $project_dir)
-            and ($devenv_nix_target | path exists)
-            and (($devenv_nix_target | path type) == "symlink")
-            and ($resolved_devenv_nix_target == $resolved_runtime_devenv_nix)
-            and not ($docs_target | path exists)
-        ) {
-            print "  ✅ Stale runtime-project state is ignored until explicit materialization replaces it"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) lines=(($lines | to json -r)) target_exists=(($devenv_nix_target | path exists)) target_type=(if ($devenv_nix_target | path exists) { $devenv_nix_target | path type } else { '<missing>' }) target_resolved=($resolved_devenv_nix_target) docs_exists=(($docs_target | path exists)) stderr=(($output.stderr | str trim))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_root
-    $result
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
@@ -380,97 +244,6 @@ def test_default_budget_profiler_does_not_wait_on_background_children [] {
         print $"  ❌ Exception: ($err.msg)"
         false
     }
-}
-
-# Strength: defect=2 behavior=2 resilience=2 cost=0 uniqueness=2 total=8/10
-# Regression: a successful build-shell keeps runtime-project profile artifacts aligned with the built profile.
-def test_build_shell_output_records_runtime_owned_profile_without_runtime_project_artifacts [] {
-    print "🧪 Testing build-shell output records the runtime-owned profile without requiring runtime-project .devenv artifacts..."
-
-    let repo_root = ($env.PWD | path expand)
-    let tmp_root = (^mktemp -d /tmp/yazelix_runtime_project_shell_align_XXXXXX | str trim)
-    let temp_home = ($tmp_root | path join "home")
-    let config_dir = ($temp_home | path join ".config" "yazelix")
-    let user_config_dir = ($config_dir | path join "user_configs")
-    let state_dir = ($tmp_root | path join "state")
-    let bootstrap_module = ($repo_root | path join "nushell" "scripts" "utils" "devenv_backend.nu")
-    let launch_state_module = ($repo_root | path join "nushell" "scripts" "utils" "launch_state.nu")
-
-    mkdir $user_config_dir
-    mkdir $state_dir
-    cp ($repo_root | path join "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
-    cp ($repo_root | path join "yazelix_packs_default.toml") ($user_config_dir | path join "yazelix_packs.toml")
-
-    let result = (try {
-        let snippet = (
-            [
-                $"use \"($bootstrap_module)\" [get_devenv_base_command]"
-                $"use \"($launch_state_module)\" [record_launch_profile_state resolve_profile_from_build_shell_output resolve_runtime_owned_profile]"
-                "let base = (get_devenv_base_command --quiet --skip-shellhook-welcome)"
-                "let full = ($base | append [\"build\" \"shell\"])"
-                "let cmd_bin = ($full | first)"
-                "let cmd_args = ($full | skip 1)"
-                "let result = (^$cmd_bin ...$cmd_args | complete)"
-                "if $result.exit_code != 0 {"
-                "    print --raw ($result.stdout | default \"\")"
-                "    print --stderr --raw ($result.stderr | default \"\")"
-                "    exit 1"
-                "}"
-                "let built_profile = (resolve_profile_from_build_shell_output $result.stdout)"
-                "let project_root = ($env.YAZELIX_STATE_DIR | path join \"runtime\" \"project\")"
-                "let profile_link = ($project_root | path join \".devenv\" \"profile\")"
-                "let shell_link = ($project_root | path join \".devenv\" \"gc\" \"shell\")"
-                "if ($profile_link | path exists) { rm --force $profile_link }"
-                "if ($shell_link | path exists) { rm --force $shell_link }"
-                "record_launch_profile_state {combined_hash: \"probe-hash\"} $built_profile"
-                "let runtime_owned = (resolve_runtime_owned_profile)"
-                "let recorded_state = (open (($env.YAZELIX_STATE_DIR | path join \"state\" \"launch_state.json\")))"
-                "{"
-                "    built_profile: $built_profile"
-                "    runtime_owned: $runtime_owned"
-                "    recorded_profile: ($recorded_state.profile_path | into string)"
-                "    profile_link_exists: ($profile_link | path exists)"
-                "    shell_link_exists: ($shell_link | path exists)"
-                "} | to json -r"
-            ] | str join "\n"
-        )
-        let output = (with-env {
-            HOME: $temp_home
-            YAZELIX_CONFIG_DIR: $config_dir
-            YAZELIX_STATE_DIR: $state_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $snippet | complete
-        })
-        let stdout = ($output.stdout | str trim)
-        let resolved = if $output.exit_code == 0 {
-            $stdout | lines | last | from json
-        } else {
-            null
-        }
-
-        if (
-            ($output.exit_code == 0)
-            and ($resolved != null)
-            and (($resolved.built_profile? | default "") | is-not-empty)
-            and ($resolved.built_profile == $resolved.runtime_owned)
-            and ($resolved.built_profile == $resolved.recorded_profile)
-            and (not $resolved.profile_link_exists)
-            and (not $resolved.shell_link_exists)
-        ) {
-            print "  ✅ Build-shell output and recorded launch state are enough for runtime-owned profile resolution"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_root
-    $result
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=0 uniqueness=2 total=8/10
@@ -676,20 +449,26 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
     let temp_home = ($tmp_root | path join "home")
     let state_dir = ($tmp_root | path join "state")
     let config_dir = ($temp_home | path join ".config" "yazelix")
+    let bashrc_path = ($temp_home | path join ".bashrc")
+    let nushell_config_dir = ($temp_home | path join ".config" "nushell")
+    let nushell_config_path = ($nushell_config_dir | path join "config.nu")
     let generated_layout_dir = ($temp_home | path join ".local" "share" "yazelix" "configs" "zellij" "layouts")
     let profile_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
 
     mkdir $temp_home
     mkdir $state_dir
     mkdir ($config_dir | path dirname)
+    mkdir $nushell_config_dir
     mkdir $generated_layout_dir
+    "" | save --force $bashrc_path
+    "" | save --force $nushell_config_path
     "layout { pane }" | save --force ($generated_layout_dir | path join "yzx_side.kdl")
 
     let result = (try {
         let snippet = (
             [
                 $"source \"($profile_module)\""
-                "let summary = (run_dev_profile_harness \"maintainer_e2e\" [\"--skip-refresh\"])"
+                "let summary = (run_dev_profile_harness \"maintainer_e2e\" [])"
                 "{"
                 "    report_path: $summary.report_path"
                 "    scenario: $summary.run.scenario"
@@ -701,10 +480,8 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
             HOME: $temp_home
             YAZELIX_STATE_DIR: $state_dir
             YAZELIX_CONFIG_DIR: $config_dir
-            DEVENV_ROOT: $repo_root
             IN_YAZELIX_SHELL: ""
             YAZELIX_TERMINAL: ""
-            DEVENV_PROFILE: ""
             IN_NIX_SHELL: ""
         } {
             do { ^nu -c $snippet } | complete
@@ -726,8 +503,8 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
             and ($resolved != null)
             and ($resolved.report_path | path exists)
             and ($resolved.scenario == "maintainer_e2e")
-            and ($steps | any {|step| $step.component == "startup" and $step.step == "entrypoint.config_migration_preflight" })
-            and ($steps | any {|step| $step.component == "bootstrap" and $step.step == "prepare.parse_config" })
+            and ($steps | any {|step| $step.component == "shellhook" and $step.step == "generate_initializers" })
+            and ($steps | any {|step| $step.component == "inner" and $step.step == "materialize_runtime_configs" })
             and ($steps | any {|step| $step.component == "inner" and $step.step == "zellij_handoff_ready" })
         ) {
             print "  ✅ Profiling harness now records the real startup ownership boundaries"
@@ -751,7 +528,7 @@ def test_dev_update_requires_explicit_activation_for_real_updates [] {
     print "🧪 Testing yzx dev update requires an explicit activation target unless canary-only is requested..."
 
     let repo_root = ($env.PWD | path expand)
-    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
+    let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
 
     try {
         let snippet = (
@@ -797,12 +574,172 @@ def test_dev_update_requires_explicit_activation_for_real_updates [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Defends: maintainer update refreshes the runtime flake pin directly so packaged runtime tool versions actually move.
+def test_dev_update_refreshes_runtime_flake_inputs [] {
+    print "🧪 Testing yzx dev update refreshes flake nixpkgs directly..."
+
+    let repo_root = ($env.PWD | path expand)
+    let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
+    let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_inputs_XXXXXX | str trim)
+    let bin_dir = ($tmp_root | path join "bin")
+    let log_path = ($tmp_root | path join "update.log")
+    let nix_script = ($bin_dir | path join "nix")
+    let current_path = if (($env.PATH | describe) | str contains "list") {
+        $env.PATH | str join (char esep)
+    } else {
+        $env.PATH | into string
+    }
+
+    mkdir $bin_dir
+    [
+        "#!/usr/bin/env bash"
+        "printf 'nix:%s\\n' \"$*\" >> \"$YZX_TEST_LOG\""
+        "exit 0"
+    ] | str join "\n" | save --force --raw $nix_script
+    ^chmod +x $nix_script
+
+    let result = (try {
+        let snippet = (
+            [
+                $"source \"($dev_module)\""
+                "refresh_repo_runtime_inputs $env.YZX_TEST_REPO_ROOT"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            PATH: $"($bin_dir)(char esep)($current_path)"
+            YZX_TEST_LOG: $log_path
+            YZX_TEST_REPO_ROOT: $repo_root
+        } {
+            ^nu -c $snippet | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let log_lines = if ($log_path | path exists) {
+            open --raw $log_path | lines
+        } else {
+            []
+        }
+        let expected_log = [
+            $"nix:flake update nixpkgs --flake ($repo_root)"
+        ]
+
+        if (
+            ($output.exit_code == 0)
+            and ($log_lines == $expected_log)
+            and ($stdout | str contains "✅ flake.lock nixpkgs input updated.")
+        ) {
+            print "  ✅ Maintainer update now refreshes the runtime flake pin directly"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) log=(($log_lines | to json -r)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Defends: maintainer update syncs runtime tool pins from the locked flake instead of host tool drift.
+def test_dev_update_syncs_runtime_tool_pins_from_locked_flake [] {
+    print "🧪 Testing yzx dev update syncs Nix and Nushell runtime pins from the locked flake..."
+
+    let repo_root = ($env.PWD | path expand)
+    let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
+    let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_runtime_pins_XXXXXX | str trim)
+    let fixture_repo = ($tmp_root | path join "repo")
+    let constants_dir = ($fixture_repo | path join "nushell" "scripts" "utils")
+    let bin_dir = ($tmp_root | path join "bin")
+    let log_path = ($tmp_root | path join "nix.log")
+    let nix_script = ($bin_dir | path join "nix")
+    let current_path = if (($env.PATH | describe) | str contains "list") {
+        $env.PATH | str join (char esep)
+    } else {
+        $env.PATH | into string
+    }
+
+    mkdir $constants_dir
+    mkdir $bin_dir
+    mkdir $fixture_repo
+    ^git -C $fixture_repo init -q
+    "{}" | save --force --raw ($fixture_repo | path join "flake.nix")
+    "" | save --force --raw ($fixture_repo | path join "yazelix_default.toml")
+    [
+        'export const YAZELIX_VERSION = "v14"'
+        'export const PINNED_NIX_VERSION = "0.0.0"'
+        'export const PINNED_NUSHELL_VERSION = "0.0.0"'
+        ""
+    ] | str join "\n" | save --force --raw ($constants_dir | path join "constants.nu")
+
+    [
+        "#!/usr/bin/env bash"
+        "printf 'nix:%s\\n' \"$*\" >> \"$YZX_TEST_LOG\""
+        "case \"$*\" in"
+        "  *nixVersions.latest.version*) printf '2.34.5\\n' ;;"
+        "  *nushell.version*) printf '0.112.1\\n' ;;"
+        "  *) printf 'unexpected nix invocation: %s\\n' \"$*\" >&2; exit 1 ;;"
+        "esac"
+    ] | str join "\n" | save --force --raw $nix_script
+    ^chmod +x $nix_script
+
+    let result = (try {
+        let snippet = (
+            [
+                $"source \"($dev_module)\""
+                "sync_runtime_pins"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            PATH: $"($bin_dir)(char esep)($current_path)"
+            YZX_TEST_LOG: $log_path
+        } {
+            do {
+                cd $fixture_repo
+                ^nu -c $snippet | complete
+            }
+        })
+        let stdout = ($output.stdout | str trim)
+        let constants = (open --raw ($constants_dir | path join "constants.nu"))
+        let log_lines = if ($log_path | path exists) {
+            open --raw $log_path | lines
+        } else {
+            []
+        }
+        let log_text = ($log_lines | str join "\n")
+
+        if (
+            ($output.exit_code == 0)
+            and ($constants | str contains 'export const PINNED_NIX_VERSION = "2.34.5"')
+            and ($constants | str contains 'export const PINNED_NUSHELL_VERSION = "0.112.1"')
+            and ($stdout | str contains "✅ Updated runtime pins: nix 2.34.5, nushell 0.112.1")
+            and ($log_text | str contains "nixVersions.latest.version")
+            and ($log_text | str contains "nushell.version")
+        ) {
+            print "  ✅ Runtime pins now sync from the locked flake, including Nushell, without trusting host tool drift"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) constants=($constants) log=(($log_lines | to json -r)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 # Defends: Home Manager activation refreshes the configured flake input and switches the requested flake ref instead of falling back to the installer path.
 def test_dev_update_installer_activation_streams_install_logs [] {
     print "🧪 Testing yzx dev update installer activation streams local install logs through nix run -L..."
 
     let repo_root = ($env.PWD | path expand)
-    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
+    let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
     let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_installer_activation_XXXXXX | str trim)
     let bin_dir = ($tmp_root | path join "bin")
     let log_path = ($tmp_root | path join "activation.log")
@@ -872,7 +809,7 @@ def test_dev_update_home_manager_activation_refreshes_input_and_switches_request
     print "🧪 Testing yzx dev update Home Manager activation refreshes the input lock and switches the requested ref..."
 
     let repo_root = ($env.PWD | path expand)
-    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
+    let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
     let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_home_manager_activation_XXXXXX | str trim)
     let bin_dir = ($tmp_root | path join "bin")
     let flake_dir = ($tmp_root | path join "home-manager")
@@ -955,13 +892,111 @@ def test_dev_update_home_manager_activation_refreshes_input_and_switches_request
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: Home Manager-owned live-session restart must use the profile yzx wrapper and avoid recreating user-local manual surfaces.
+def test_home_manager_profile_restart_uses_owner_wrapper_without_manual_surfaces [] {
+    print "🧪 Testing Home Manager profile-owned restart uses the profile yzx wrapper without manual surfaces..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_home_manager_restart_smoke_XXXXXX | str trim)
+    let temp_home = ($tmp_root | path join "home")
+    let config_dir = ($temp_home | path join ".config" "yazelix")
+    let user_config_dir = ($config_dir | path join "user_configs")
+    let hm_store = ($tmp_root | path join "abc-home-manager-files")
+    let hm_main_config = ($hm_store | path join ".config" "yazelix" "user_configs" "yazelix.toml")
+    let profile_yzx = ($temp_home | path join ".nix-profile" "bin" "yzx")
+    let profile_desktop = ($temp_home | path join ".nix-profile" "share" "applications" "yazelix.desktop")
+    let manual_yzx = ($temp_home | path join ".local" "bin" "yzx")
+    let manual_desktop = ($temp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")
+    let fake_bin = ($tmp_root | path join "bin")
+    let yzx_log = ($tmp_root | path join "profile_yzx.log")
+    let zellij_log = ($tmp_root | path join "zellij.log")
+
+    mkdir $temp_home
+    mkdir $user_config_dir
+    mkdir ($hm_main_config | path dirname)
+    mkdir ($profile_yzx | path dirname)
+    mkdir ($profile_desktop | path dirname)
+    mkdir $fake_bin
+
+    cp ($repo_root | path join "yazelix_default.toml") $hm_main_config
+    rm -f ($user_config_dir | path join "yazelix.toml")
+    ^ln -s $hm_main_config ($user_config_dir | path join "yazelix.toml")
+
+    [
+        "#!/bin/sh"
+        ": > \"$YZX_TEST_PROFILE_YZX_LOG\""
+        "printf '%s\n' \"$@\" >> \"$YZX_TEST_PROFILE_YZX_LOG\""
+        "printf 'BOOTSTRAP=%s\n' \"${YAZELIX_BOOTSTRAP_SIDEBAR_CWD_FILE-unset}\" >> \"$YZX_TEST_PROFILE_YZX_LOG\""
+        "exit 0"
+    ] | str join "\n" | save --force --raw $profile_yzx
+    ^chmod +x $profile_yzx
+
+    [
+        "#!/bin/sh"
+        "printf '%s\n' \"$*\" >> \"$YZX_TEST_ZELLIJ_LOG\""
+        "exit 0"
+    ] | str join "\n" | save --force --raw ($fake_bin | path join "zellij")
+    ^chmod +x ($fake_bin | path join "zellij")
+
+    [
+        "[Desktop Entry]"
+        "Type=Application"
+        "Name=Yazelix"
+        $"Exec=\"($profile_yzx)\" desktop launch"
+    ] | str join "\n" | save --force --raw $profile_desktop
+
+    let result = (try {
+        let output = (with-env {
+            HOME: $temp_home
+            XDG_CONFIG_HOME: ($temp_home | path join ".config")
+            XDG_DATA_HOME: ($temp_home | path join ".local" "share")
+            YAZELIX_CONFIG_DIR: $config_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            PATH: ([$fake_bin] | append $env.PATH)
+            ZELLIJ_SESSION_NAME: "old-yazelix"
+            YAZELIX_TERMINAL: "ghostty"
+            YZX_TEST_PROFILE_YZX_LOG: $yzx_log
+            YZX_TEST_ZELLIJ_LOG: $zellij_log
+        } {
+            ^nu -c $"use \"($repo_root | path join "nushell" "scripts" "core" "yazelix.nu")\" *; yzx restart" | complete
+        })
+        let yzx_lines = if ($yzx_log | path exists) { open --raw $yzx_log | lines } else { [] }
+        let zellij_lines = if ($zellij_log | path exists) { open --raw $zellij_log | lines } else { [] }
+        let bootstrap_line = ($yzx_lines | where {|line| $line | str starts-with "BOOTSTRAP=" } | get -o 0 | default "")
+        let bootstrap_path = ($bootstrap_line | str replace "BOOTSTRAP=" "")
+
+        if (
+            ($output.exit_code == 0)
+            and (($yzx_lines | get -o 0 | default "") == "launch")
+            and ($bootstrap_path | path exists)
+            and ($zellij_lines | any {|line| $line == "kill-session old-yazelix" })
+            and ($profile_desktop | path exists)
+            and (not ($manual_yzx | path exists))
+            and (not ($manual_desktop | path exists))
+        ) {
+            print "  ✅ Home Manager restart uses the profile yzx owner and does not recreate manual yzx or desktop surfaces"
+            true
+        } else {
+            print $"  ❌ Unexpected Home Manager restart result: exit=($output.exit_code) yzx=(($yzx_lines | to json -r)) zellij=(($zellij_lines | to json -r)) manual_yzx=(($manual_yzx | path exists)) manual_desktop=(($manual_desktop | path exists)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Defends: maintainer update activation rejects unknown mode names instead of accepting ambiguous shorthand.
 def test_dev_update_activation_mode_rejects_unknown_values [] {
     print "🧪 Testing yzx dev update activation parsing rejects unknown mode names..."
 
     let repo_root = ($env.PWD | path expand)
-    let dev_module = ($repo_root | path join "nushell" "scripts" "utils" "dev_update_workflow.nu")
+    let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
 
     try {
         let snippet = (
@@ -1005,7 +1040,7 @@ def test_dev_bump_rotates_release_metadata_and_tags_the_repo [] {
         let snippet = (
             [
                 $"use \"($fixture.helper_module)\" [perform_version_bump]"
-                $"perform_version_bump \"($fixture.repo_root)\" \"v14.1\" | to json -r"
+                $"perform_version_bump \"($fixture.repo_root)\" \"v15.1\" | to json -r"
             ] | str join "\n"
         )
         let output = (^nu -c $snippet | complete)
@@ -1025,18 +1060,18 @@ def test_dev_bump_rotates_release_metadata_and_tags_the_repo [] {
         if (
             ($output.exit_code == 0)
             and ($resolved != null)
-            and ($resolved.previous_version == "v14")
-            and ($resolved.target_version == "v14.1")
-            and ($constants | str contains 'export const YAZELIX_VERSION = "v14.1"')
-            and (($notes.releases | columns) | any {|column| $column == "v14.1" })
-            and ($notes.releases.unreleased.headline == "Post-v14.1 work in progress")
-            and ($notes.releases.unreleased.summary == ["Reserved for post-release changes after v14.1 lands."])
-            and ($changelog | str contains "## v14.1 - ")
+            and ($resolved.previous_version == "v15")
+            and ($resolved.target_version == "v15.1")
+            and ($constants | str contains 'export const YAZELIX_VERSION = "v15.1"')
+            and (($notes.releases | columns) | any {|column| $column == "v15.1" })
+            and ($notes.releases.unreleased.headline == "Post-v15.1 work in progress")
+            and ($notes.releases.unreleased.summary == ["Reserved for post-release changes after v15.1 lands."])
+            and ($changelog | str contains "## v15.1 - ")
             and ($changelog | str contains "## Unreleased")
             and ($changelog | str contains "Backend seam cleanup and release automation")
-            and ($readme | lines | first) == "# Yazelix v14.1"
-            and ($commit_subject == "Bump version to v14.1")
-            and ("v14.1" in $tags)
+            and ($readme | lines | first) == "# Yazelix v15.1"
+            and ($commit_subject == "Bump version to v15.1")
+            and ("v15.1" in $tags)
         ) {
             print "  ✅ yzx dev bump now rotates release metadata, updates the version constant, commits, and tags deterministically"
             true
@@ -1066,7 +1101,7 @@ def test_dev_bump_rejects_dirty_worktrees [] {
             [
                 $"use \"($fixture.helper_module)\" [perform_version_bump]"
                 "try {"
-                $"    perform_version_bump \"($fixture.repo_root)\" \"v14.1\" | ignore"
+                $"    perform_version_bump \"($fixture.repo_root)\" \"v15.1\" | ignore"
                 "    print \"unexpected-success\""
                 "} catch {|err|"
                 "    print $err.msg"
@@ -1100,14 +1135,14 @@ def test_dev_bump_rejects_existing_target_tags [] {
     let fixture = (setup_dev_bump_fixture)
     prepare_releasable_unreleased_fixture $fixture
     commit_dev_bump_fixture_change $fixture "Prepare unreleased release notes"
-    ^git -C $fixture.repo_root tag -a v14.1 -m "Existing tag"
+    ^git -C $fixture.repo_root tag -a v15.1 -m "Existing tag"
 
     let result = (try {
         let snippet = (
             [
                 $"use \"($fixture.helper_module)\" [perform_version_bump]"
                 "try {"
-                $"    perform_version_bump \"($fixture.repo_root)\" \"v14.1\" | ignore"
+                $"    perform_version_bump \"($fixture.repo_root)\" \"v15.1\" | ignore"
                 "    print \"unexpected-success\""
                 "} catch {|err|"
                 "    print $err.msg"
@@ -1117,7 +1152,7 @@ def test_dev_bump_rejects_existing_target_tags [] {
         let output = (^nu -c $snippet | complete)
         let stdout = ($output.stdout | str trim)
 
-        if ($output.exit_code == 0) and ($stdout == "Tag already exists: v14.1") {
+        if ($output.exit_code == 0) and ($stdout == "Tag already exists: v15.1") {
             print "  ✅ yzx dev bump now refuses to reuse an existing git tag"
             true
         } else {
@@ -1141,18 +1176,17 @@ def main [] {
         (test_issue_bead_reconciliation_plan)
         (test_issue_bead_comment_plan)
         (test_dev_update_requires_explicit_activation_for_real_updates)
+        (test_dev_update_refreshes_runtime_flake_inputs)
+        (test_dev_update_syncs_runtime_tool_pins_from_locked_flake)
         (test_dev_update_installer_activation_streams_install_logs)
         (test_dev_update_activation_mode_rejects_unknown_values)
         (test_dev_update_home_manager_activation_refreshes_input_and_switches_requested_ref)
+        (test_home_manager_profile_restart_uses_owner_wrapper_without_manual_surfaces)
         (test_dev_bump_rotates_release_metadata_and_tags_the_repo)
         (test_dev_bump_rejects_dirty_worktrees)
         (test_dev_bump_rejects_existing_target_tags)
-        (test_source_devenv_shell_clears_inherited_runtime_aliases)
-        (test_managed_wrapper_prefers_sibling_nixgl_without_ambient_profile)
         (test_maintainer_repo_root_prefers_checkout_over_installed_runtime_env)
-        (test_runtime_project_lookup_stays_read_only_until_materialized)
         (test_default_budget_profiler_does_not_wait_on_background_children)
-        (test_build_shell_output_records_runtime_owned_profile_without_runtime_project_artifacts)
         (test_vendored_yazi_plugin_refresh_applies_patch_and_refuses_dirty_targets)
         (test_nushell_initializer_restores_current_path_first)
         (test_startup_profile_report_schema_is_structured_and_summarizable)

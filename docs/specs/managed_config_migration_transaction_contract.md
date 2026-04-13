@@ -1,5 +1,9 @@
 # Managed Config Migration Transaction Contract
 
+> Status: Historical v13/v14 migration-era contract.
+> v15 removed the automatic config-migration and legacy relocation layer, so this staged transaction model is not a live branch contract.
+> Current v15 behavior is fail-fast unsupported config diagnostics plus manual cleanup or `yzx config reset`; see [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md) and [stale_config_diagnostics.md](./stale_config_diagnostics.md).
+
 ## Summary
 
 Yazelix should treat managed config migrations as a small staged transaction over a narrow set of Yazelix-owned config surfaces, not as a sequence of ad hoc direct writes. The contract should guarantee that a migration either commits a coherent new managed config set or leaves the previously valid managed config set intact.
@@ -12,7 +16,7 @@ Yazelix already has the ingredients of a migration system:
 
 - a shared migration registry and preview/apply engine
 - startup preflight that can auto-apply safe rewrites
-- backup-first write paths for `yzx config migrate --apply`
+- backup-first write paths for `yzx doctor --fix`
 - legacy root-level relocation into `user_configs`
 
 But the current write model is still direct-write plus backup/copy-back recovery:
@@ -27,7 +31,7 @@ That is good enough for many happy-path cases, but it leaves the repo with fuzzy
 - when is a migration considered valid enough to commit?
 - what exactly is the rollback source of truth?
 - what should startup do if it discovers an interrupted migration attempt?
-- how should `yzx config migrate --apply`, `yzx doctor --fix`, and startup preflight share one model instead of slowly drifting apart?
+- how should `yzx doctor --fix` and startup preflight share one model instead of slowly drifting apart?
 
 Yazelix does not need a generic database. It does need one explicit, narrow transaction contract for the config surfaces it owns.
 
@@ -38,7 +42,6 @@ Yazelix does not need a generic database. It does need one explicit, narrow tran
 - define prepare, validate, commit, rollback, and recovery phases
 - define where staged artifacts and rollback artifacts live
 - define the caller contract shared by:
-  - `yzx config migrate --apply`
   - `yzx doctor --fix`
   - entrypoint config-migration preflight
 - define what “success” means when manual-only migration items still remain
@@ -254,14 +257,11 @@ This is intentionally conservative. It favors “last known valid config set” 
 
 All three caller families should share the same transaction engine:
 
-- `yzx config migrate --apply`
 - `yzx doctor --fix`
 - entrypoint migration preflight
 
 What differs between callers is not the commit model, but what they do after a valid transaction:
 
-- `yzx config migrate --apply`
-  - may commit deterministic rewrites and then report remaining manual-only items without blocking the process afterward
 - `yzx doctor --fix`
   - may do the same, but present the result through doctor UX
 - entrypoint preflight
@@ -306,18 +306,9 @@ Yazelix does not need to import those systems wholesale. It should copy the smal
 
 ## Verification
 
-- manual review against:
-  - [config_migration_engine.md](./config_migration_engine.md)
-  - [stale_config_diagnostics.md](./stale_config_diagnostics.md)
-  - [backend_capability_contract.md](./backend_capability_contract.md)
-- current-code review:
-  - `nushell/scripts/utils/config_migrations.nu`
-  - `nushell/scripts/utils/entrypoint_config_migrations.nu`
-  - `nushell/scripts/utils/config_surfaces.nu`
-  - `nushell/scripts/yzx/menu.nu`
-  - `nushell/scripts/utils/config_diagnostics.nu`
-- CI/spec check:
-  - `nu nushell/scripts/dev/validate_specs.nu`
+This is now a historical contract. It is no longer defended by live migration transaction code because v15 removed the migration and legacy relocation layer. Current v15 config behavior is defended by [stale_config_diagnostics.md](./stale_config_diagnostics.md) and [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
+- historical spec validation: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Traceability
 
@@ -326,6 +317,4 @@ Yazelix does not need to import those systems wholesale. It should copy the smal
 
 ## Open Questions
 
-- Should `yzx config reset` adopt the same transaction engine in its first implementation pass, or should it remain adjacent until the migration path is proven?
-- Should the interrupted-transaction manifest live beside the managed config files or in a dedicated hidden transaction subdirectory under `user_configs`?
-- When the migration layer moves to Rust later, should Yazelix keep the same rollback-first recovery policy or add a more explicit forward-commit phase marker?
+- Closed for v15: the migration transaction engine is no longer part of the live branch contract.

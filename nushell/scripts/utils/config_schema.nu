@@ -6,9 +6,7 @@
 use config_contract.nu [load_main_config_contract]
 use config_surfaces.nu [load_config_surface_from_main get_main_user_config_path]
 
-const OPEN_RECORD_PATHS = [
-    ["packs", "declarations"]
-]
+const OPEN_RECORD_PATHS = []
 
 const FLEXIBLE_NUMERIC_PATHS = [
     ["core", "welcome_duration_seconds"]

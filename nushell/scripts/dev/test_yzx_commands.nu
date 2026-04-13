@@ -10,7 +10,6 @@ use ./test_yzx_core_commands.nu [run_core_canonical_tests]
 use ./test_yzx_doctor_commands.nu [run_doctor_canonical_tests]
 use ./test_yzx_generated_configs.nu [run_generated_config_canonical_tests]
 use ./test_yzx_popup_commands.nu [run_popup_canonical_tests]
-use ./test_yzx_refresh_commands.nu [run_refresh_canonical_tests]
 use ./test_yzx_screen_commands.nu [run_screen_canonical_tests]
 use ./test_yzx_workspace_commands.nu [run_workspace_canonical_tests]
 use ./test_yzx_yazi_commands.nu [run_yazi_canonical_tests]
@@ -44,7 +43,6 @@ export def run_default_canonical_suite [--profile] {
             (build_profiled_suite_result "doctor" { run_doctor_canonical_tests })
             (build_profiled_suite_result "generated" { run_generated_config_canonical_tests })
             (build_profiled_suite_result "popup" { run_popup_canonical_tests })
-            (build_profiled_suite_result "refresh" { run_refresh_canonical_tests })
             (build_profiled_suite_result "screen" { run_screen_canonical_tests })
             (build_profiled_suite_result "workspace" { run_workspace_canonical_tests })
             (build_profiled_suite_result "yazi" { run_yazi_canonical_tests })

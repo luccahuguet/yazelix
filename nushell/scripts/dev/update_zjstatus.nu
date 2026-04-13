@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 # Update zjstatus plugin (Zellij status bar) for Yazelix
-# Refreshes the vendored zjstatus wasm from the pinned `zjstatus` input in devenv.lock.
+# Refreshes the vendored zjstatus wasm from the pinned `zjstatus` flake input.
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
 
@@ -38,10 +38,10 @@ export def main [] {
   }
 
   let target_dir = ($REPO_ROOT | path join "configs" "zellij" "plugins")
-  let lock_path = ($REPO_ROOT | path join "devenv.lock")
+  let lock_path = ($REPO_ROOT | path join "flake.lock")
 
   if not ($lock_path | path exists) {
-    print $"Error: devenv.lock not found at: ($lock_path)"
+    print $"Error: flake.lock not found at: ($lock_path)"
     exit 2
   }
 
@@ -55,14 +55,26 @@ export def main [] {
   let owner = ($locked_zjstatus | get owner)
   let repo = ($locked_zjstatus | get repo)
   let rev = ($locked_zjstatus | get rev)
-  let system = (^nix eval --impure --raw --expr "builtins.currentSystem" | str trim)
+  let system_result = (^nix eval --impure --raw --expr "builtins.currentSystem" | complete)
+  if $system_result.exit_code != 0 {
+    print "Error: Failed to resolve current Nix system"
+    print ($system_result.stderr | str trim)
+    exit 4
+  }
+  let system = ($system_result.stdout | str trim)
   if ($system | is-empty) {
     print "Error: Failed to resolve current Nix system"
     exit 4
   }
 
   let flake_ref = $"github:($owner)/($repo)/($rev)#packages.($system).default"
-  let store_root = (^nix build --no-link --print-out-paths $flake_ref | str trim)
+  let build_result = (^nix build --no-link --print-out-paths $flake_ref | complete)
+  if $build_result.exit_code != 0 {
+    print $"Error: Failed to build zjstatus flake ref: ($flake_ref)"
+    print ($build_result.stderr | str trim)
+    exit 5
+  }
+  let store_root = ($build_result.stdout | str trim)
 
   # Prepare target directory
   if not ($target_dir | path exists) { mkdir $target_dir }

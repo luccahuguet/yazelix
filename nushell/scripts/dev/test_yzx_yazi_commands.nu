@@ -22,7 +22,7 @@ def test_yazi_command_resolvers_honor_defaults_and_overrides [] {
         {
             label: "defaults"
             raw_toml: '[core]
-recommended_deps = true
+skip_welcome_screen = true
 '
             expected_yazi: "yazi"
             expected_ya: "ya"
@@ -99,7 +99,7 @@ def test_get_managed_editor_kind_accepts_managed_helix_wrapper_env [] {
     let fixture = (setup_managed_config_fixture
         "yazelix_yazi_managed_helix_wrapper"
         '[core]
-recommended_deps = true
+skip_welcome_screen = true
 '
     )
 
@@ -110,7 +110,7 @@ recommended_deps = true
             YAZELIX_CONFIG_DIR: $fixture.config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
             EDITOR: ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
-            YAZELIX_MANAGED_HELIX_BINARY: ($repo_root | path join ".devenv" "profile" "bin" "hx")
+            YAZELIX_MANAGED_HELIX_BINARY: ($repo_root | path join "bin" "hx")
         } {
             get_managed_editor_kind
         })
@@ -157,10 +157,12 @@ ya_command = "ya"
         ]
         write_executable_fixture_file ($fake_bin | path join "zellij") [
             "#!/bin/sh"
-            "if [ \"$6\" = \"get_active_sidebar_yazi_state\" ]; then"
-            "  printf '%s\\n' '{\"pane_id\":\"terminal:5\",\"yazi_id\":\"plugin-sidebar-yazi-123\",\"cwd\":\"/home/test/workspace\"}'"
-            "  exit 0"
-            "fi"
+            "for arg in \"$@\"; do"
+            "  if [ \"$arg\" = \"get_active_sidebar_yazi_state\" ]; then"
+            "    printf '%s\\n' '{\"pane_id\":\"terminal:5\",\"yazi_id\":\"plugin-sidebar-yazi-123\",\"cwd\":\"/home/test/workspace\"}'"
+            "    exit 0"
+            "  fi"
+            "done"
             "printf '%s\\n' \"unexpected zellij args: $*\" >&2"
             "exit 1"
         ]
@@ -227,10 +229,12 @@ ya_command = "ya"
 
         write_executable_fixture_file ($fake_bin | path join "zellij") [
             "#!/bin/sh"
-            "if [ \"$6\" = \"get_active_sidebar_yazi_state\" ]; then"
-            "  printf '%s\\n' '{\"pane_id\":\"terminal:0\",\"yazi_id\":\"plugin-yazi-id\",\"cwd\":\"/home/plugin\"}'"
-            "  exit 0"
-            "fi"
+            "for arg in \"$@\"; do"
+            "  if [ \"$arg\" = \"get_active_sidebar_yazi_state\" ]; then"
+            "    printf '%s\\n' '{\"pane_id\":\"terminal:0\",\"yazi_id\":\"plugin-yazi-id\",\"cwd\":\"/home/plugin\"}'"
+            "    exit 0"
+            "  fi"
+            "done"
             "printf '%s\\n' \"unexpected zellij args: $*\" >&2"
             "exit 1"
         ]
@@ -283,7 +287,7 @@ def test_toggle_editor_sidebar_focus_reports_sidebar_target_from_plugin_response
     let fixture = (setup_managed_config_fixture
         "yazelix_yazi_sidebar_focus_target"
         '[core]
-recommended_deps = true
+skip_welcome_screen = true
 '
     )
 

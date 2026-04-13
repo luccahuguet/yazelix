@@ -8,54 +8,70 @@ if [ -z "${HOME:-}" ]; then
 fi
 
 runtime_target="@runtime@"
-runtime_root="$HOME/.local/share/yazelix/runtime"
-runtime_current="$runtime_root/current"
+legacy_runtime_dir="$HOME/.local/share/yazelix/runtime"
 bin_dir="$HOME/.local/bin"
 yzx_link="$bin_dir/yzx"
 config_root="$HOME/.config/yazelix"
 user_config_dir="$config_root/user_configs"
 taplo_config="$config_root/.taplo.toml"
 main_config="$user_config_dir/yazelix.toml"
-pack_config="$user_config_dir/yazelix_packs.toml"
+desktop_entry="${XDG_DATA_HOME:-$HOME/.local/share}/applications/com.yazelix.Yazelix.desktop"
+runtime_nu="$runtime_target/bin/nu"
+runtime_path="$runtime_target/bin:@coreutils_bin@:/usr/bin:/bin"
+runtime_config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/yazelix"
 
-@coreutils_bin@/mkdir -p "$runtime_root" "$bin_dir" "$user_config_dir"
-@coreutils_bin@/ln -sfn "$runtime_target" "$runtime_current"
-@coreutils_bin@/ln -sfn "$runtime_current/bin/yzx" "$yzx_link"
+@coreutils_bin@/mkdir -p "$bin_dir" "$user_config_dir"
+@coreutils_bin@/rm -f "$legacy_runtime_dir/current"
+@coreutils_bin@/ln -sfn "$runtime_target/bin/yzx" "$yzx_link"
 
 if [ ! -f "$main_config" ]; then
-  @coreutils_bin@/cp "$runtime_current/yazelix_default.toml" "$main_config"
-fi
-
-if [ ! -f "$pack_config" ]; then
-  @coreutils_bin@/cp "$runtime_current/yazelix_packs_default.toml" "$pack_config"
+  @coreutils_bin@/cp "$runtime_target/yazelix_default.toml" "$main_config"
 fi
 
 @coreutils_bin@/rm -f "$taplo_config"
-@coreutils_bin@/cp "$runtime_current/.taplo.toml" "$taplo_config"
+@coreutils_bin@/cp "$runtime_target/.taplo.toml" "$taplo_config"
 @coreutils_bin@/chmod u+w "$taplo_config"
 
+if [ ! -x "$runtime_nu" ]; then
+  echo "Error: installed Yazelix runtime is missing bin/nu: $runtime_nu" >&2
+  exit 1
+fi
+
+run_runtime_nu() {
+  # Delete-first: materialize installer-owned state from the runtime we just
+  # linked, not from stale caller PATH or inherited YAZELIX_* variables.
+  @coreutils_bin@/env -i \
+    HOME="$HOME" \
+    XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}" \
+    XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}" \
+    PATH="$runtime_path" \
+    YAZELIX_CONFIG_DIR="$runtime_config_dir" \
+    YAZELIX_RUNTIME_DIR="$runtime_target" \
+    YAZELIX_STATE_DIR="$HOME/.local/share/yazelix" \
+    YAZELIX_LOGS_DIR="$HOME/.local/share/yazelix/logs" \
+    YAZELIX_NU_BIN="$runtime_nu" \
+    "$runtime_nu" "$@"
+}
+
 echo "Refreshing Yazelix shell hooks..."
-YAZELIX_RUNTIME_DIR="$runtime_current" \
-YAZELIX_STATE_DIR="$HOME/.local/share/yazelix" \
-YAZELIX_LOGS_DIR="$HOME/.local/share/yazelix/logs" \
-@nu_bin@ "$runtime_current/nushell/scripts/setup/environment.nu" --skip-welcome
+run_runtime_nu "$runtime_target/nushell/scripts/setup/environment.nu" --skip-welcome
 
 echo "Rebuilding generated Yazelix runtime configs..."
 @coreutils_bin@/rm -rf \
   "$HOME/.local/share/yazelix/configs/yazi" \
   "$HOME/.local/share/yazelix/configs/zellij"
-YAZELIX_RUNTIME_DIR="$runtime_current" \
-YAZELIX_STATE_DIR="$HOME/.local/share/yazelix" \
-YAZELIX_LOGS_DIR="$HOME/.local/share/yazelix/logs" \
-@nu_bin@ "$runtime_current/nushell/scripts/setup/yazi_config_merger.nu" "$runtime_current" --quiet
-YAZELIX_RUNTIME_DIR="$runtime_current" \
-YAZELIX_STATE_DIR="$HOME/.local/share/yazelix" \
-YAZELIX_LOGS_DIR="$HOME/.local/share/yazelix/logs" \
-PATH="@zellij_bin@:$PATH" \
-@nu_bin@ -c "use '$runtime_current/nushell/scripts/setup/zellij_config_merger.nu' [generate_merged_zellij_config]; generate_merged_zellij_config '$runtime_current' | ignore"
+run_runtime_nu "$runtime_target/nushell/scripts/setup/yazi_config_merger.nu" "$runtime_target" --quiet
+run_runtime_nu -c "use '$runtime_target/nushell/scripts/setup/zellij_config_merger.nu' [generate_merged_zellij_config]; generate_merged_zellij_config '$runtime_target' | ignore"
+
+if [ -f "$desktop_entry" ] && @coreutils_bin@/env PATH="$runtime_path" grep -q '^X-Yazelix-Managed=true$' "$desktop_entry"; then
+  echo "Refreshing existing Yazelix desktop integration..."
+  run_runtime_nu -c "use '$runtime_target/nushell/scripts/yzx/desktop.nu' *; yzx desktop install | ignore"
+else
+  echo "Yazelix desktop integration not installed; leaving it unchanged."
+fi
 
 echo "Yazelix runtime installed."
-echo "  Runtime: $runtime_current -> $runtime_target"
+echo "  Runtime: $runtime_target"
 echo "  CLI: $yzx_link"
 echo "  Config: $config_root"
 echo

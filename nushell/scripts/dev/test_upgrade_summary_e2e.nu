@@ -21,16 +21,13 @@ def setup_fixture [] {
     mkdir ($tmp_home | path join ".local" "share")
     mkdir $state_dir
 
-    for entry in [".taplo.toml", "nushell", "shells", "configs", "devenv.lock", "yazelix_default.toml", "CHANGELOG.md"] {
+    for entry in [".taplo.toml", "nushell", "shells", "configs", "yazelix_default.toml", "CHANGELOG.md"] {
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
 
     ^cp -R (repo_path "docs") ($runtime_dir | path join "docs")
-    '[zellij]
-widget_tray = ["layout", "editor"]
-
-[shell]
-enable_atuin = true
+    '[core]
+welcome_style = "game_of_life"
 ' | save --force --raw $config_path
 
     let notes_path = ($runtime_dir | path join "docs" "upgrade_notes.toml")
@@ -39,8 +36,8 @@ enable_atuin = true
         ($notes.releases | get -o $YAZELIX_VERSION)
         | upsert headline $"Config migration follow-up after the ($YAZELIX_VERSION) upgrade"
         | upsert summary [
-            "This fixture simulates a release that ships upgrade-summary migration guidance."
-            "It should point stale configs at the migrate and doctor repair surfaces."
+            "This fixture simulates a historical release that mentioned config-shape changes."
+            "It should render historical guidance without probing or rewriting the current config."
         ]
         | upsert upgrade_impact "migration_available"
         | upsert migration_ids [
@@ -132,12 +129,14 @@ export def main [] {
 
     let ok = (
         (($first.stdout | str contains $"What's New In Yazelix ($YAZELIX_VERSION)"))
-        and (($first.stdout | str contains "Detected matching migration candidates in your current config"))
+        and (($first.stdout | str contains "historical release included config-shape changes"))
+        and (($first.stdout | str contains "v15 no longer ships an automatic config migration engine"))
         and ($state_after_first == $YAZELIX_VERSION)
         and ($second_leading_line == "=== RESULT ===")
         and (($second.stdout | str contains '"shown":false'))
         and (($manual.stdout | str contains $"What's New In Yazelix ($YAZELIX_VERSION)"))
-        and (($manual.stdout | str contains "yzx config migrate --apply"))
+        and (($manual.stdout | str contains "yzx config reset"))
+        and not (($manual.stdout | str contains "yzx doctor --fix"))
     )
 
     if $ok {

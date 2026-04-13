@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
-const DEFAULT_SUITE_MAX_TESTS = 53
+const DEFAULT_SUITE_MAX_TESTS = 91
 
 def load_default_suite_component_files [] {
     let suite_runner = ($REPO_ROOT | path join "nushell" "scripts" "dev" "test_yzx_commands.nu")

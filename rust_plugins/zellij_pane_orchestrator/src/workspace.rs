@@ -26,11 +26,6 @@ pub(crate) enum WorkspaceStateSource {
 }
 
 #[derive(Deserialize)]
-struct WorkspaceRootRequest {
-    workspace_root: String,
-}
-
-#[derive(Deserialize)]
 struct WorkspaceRetargetRequest {
     workspace_root: String,
     cd_focused_pane: bool,
@@ -82,76 +77,6 @@ impl State {
         }
 
         self.seen_tab_positions = current_tab_positions;
-    }
-
-    pub(crate) fn set_workspace_root(&mut self, pipe_message: &PipeMessage) {
-        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
-            return;
-        };
-
-        let Some(payload) = pipe_message.payload.as_deref() else {
-            self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
-            return;
-        };
-
-        let workspace_root_request: WorkspaceRootRequest = match serde_json::from_str(payload) {
-            Ok(request) => request,
-            Err(_) => {
-                self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
-                return;
-            }
-        };
-
-        let workspace_state =
-            WorkspaceState::from_explicit_root(workspace_root_request.workspace_root);
-        rename_tab(
-            tab_index_from_position(active_tab_position),
-            &tab_name_from_workspace_root(&workspace_state.root),
-        );
-        self.workspace_state_by_tab
-            .insert(active_tab_position, workspace_state);
-        self.respond(pipe_message, RESULT_OK);
-    }
-
-    pub(crate) fn set_workspace_root_and_cd_focused_pane(&mut self, pipe_message: &PipeMessage) {
-        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
-            return;
-        };
-
-        let Some(payload) = pipe_message.payload.as_deref() else {
-            self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
-            return;
-        };
-
-        let workspace_root_request: WorkspaceRootRequest = match serde_json::from_str(payload) {
-            Ok(request) => request,
-            Err(_) => {
-                self.respond(pipe_message, RESULT_INVALID_PAYLOAD);
-                return;
-            }
-        };
-
-        let Some(focused_pane_id) = self.get_focused_terminal_pane(pipe_message) else {
-            return;
-        };
-
-        let workspace_state =
-            WorkspaceState::from_explicit_root(workspace_root_request.workspace_root);
-        rename_tab(
-            tab_index_from_position(active_tab_position),
-            &tab_name_from_workspace_root(&workspace_state.root),
-        );
-        self.workspace_state_by_tab
-            .insert(active_tab_position, workspace_state.clone());
-
-        write_chars_to_pane_id(
-            &change_directory_command(&workspace_state.root),
-            focused_pane_id,
-        );
-        sleep(Duration::from_millis(COMMAND_STEP_DELAY_MS));
-        write_to_pane_id(vec![13], focused_pane_id);
-
-        self.respond(pipe_message, RESULT_OK);
     }
 
     pub(crate) fn retarget_workspace(&mut self, pipe_message: &PipeMessage) {

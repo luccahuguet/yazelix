@@ -1,214 +1,136 @@
 # Yazelix Architecture Map
 
-Yazelix is easiest to understand as one product with two main user-facing layers and two supporting subsystems.
+Yazelix is easiest to understand as five maintained subsystem families.
 
-The two main product layers are:
+This is a maintainer-facing map, not a marketing split. The point is to answer two practical questions:
 
-1. Workspace
-2. Runtime
+1. Which part of the repo owns a behavior?
+2. Where should deletion-first simplification pay off first?
 
-The two supporting subsystems are:
+See [Subsystem Code Inventory](./subsystem_code_inventory.md) for the current LOC snapshot, the detailed runtime and maintainer breakdowns, and the trim-oriented command view built on the same subsystem families.
 
-1. Integrations
-2. Maintainer Workflow
+## Subsystem Families
 
-The important architectural rule is that each subsystem should have a clear owner and a clear source of truth. Modularity in Yazelix does not mean adding abstraction for its own sake. It means removing hidden ownership, stale path assumptions, and accidental cross-layer state.
-
-See [Subsystem Code Inventory](./subsystem_code_inventory.md) for the current maintainer-facing LOC snapshot by subsystem family.
-
-## Subsystems
-
-| Subsystem | Purpose | Examples | Main source of truth |
+| Subsystem family | What it owns | Main paths | Main source of truth |
 | --- | --- | --- | --- |
-| Workspace | The terminal IDE experience users interact with directly | Zellij layouts, Yazi/editor flow, keybindings, managed panes, tab naming, workspace roots | Session and workspace state, pane orchestrator, workspace-focused commands |
-| Runtime | The environment and control plane that makes the workspace reproducible | `devenv`, packs, `yazelix.toml`, `yzx refresh`, `yzx restart`, `yzx run` | Dynamic user intent in managed TOML, deterministic shipped runtime code, materialized/generated state, and live session activation state |
-| Integrations | Adapters between Yazelix and external systems | Home Manager, desktop entry, shell hooks, terminal-specific launchers, CI entrypoints | The supported contract of the subsystem being integrated, not ad hoc host assumptions |
-| Maintainer Workflow | The machinery that keeps the product evolving safely | Beads, CI, validators, release/version/update workflow, future specs | Beads graph, CI workflows, documented contracts, maintainer commands |
+| Runtime control plane and command surface | Config parsing, runtime/bootstrap behavior, generated-state repair, and the `yzx` command surface | `nushell/scripts/core`, `nushell/scripts/setup`, `nushell/scripts/utils`, `nushell/scripts/yzx` | Runtime/config/state contracts plus the surviving `yzx` command semantics |
+| Workspace session orchestration | Live Zellij/Yazi/editor session behavior: panes, tabs, sidebar identity, reveal/open flows, popup flows, and layout-family transitions | `nushell/scripts/integrations`, `nushell/scripts/zellij_wrappers`, `rust_plugins/` | Live Zellij session truth, pane-orchestrator contracts, and workspace/session specs |
+| Distribution and host integration | How Yazelix is packaged, launched, and adapted into external owners such as Home Manager, shells, terminals, and installer surfaces | `home_manager`, `packaging`, `shells`, `flake.nix`, `yazelix_package.nix`, `yazelix_runtime_package.nix` | The packaged runtime shape and explicit integration contracts |
+| Shipped runtime data and assets | The tracked data the runtime consumes directly: layouts, themes, plugins, templates, release metadata, Taplo support, and visual assets | `configs`, `config_metadata`, `user_configs`, `assets`, `nushell/config`, `.taplo.toml`, `yazelix_default.toml`, `docs/upgrade_notes.toml` | Version-controlled shipped files |
+| Maintainer workflow and validation | The non-user-facing machinery that keeps the other four coherent: tests, validators, release/update workflow, CI, and maintainer tooling | `nushell/scripts/dev`, `.github`, `maintainer_shell.nix`, `.nu-lint.toml` | Beads, specs/contracts, CI policy, and maintainer command surfaces |
 
-## The Two Main Layers
+## How They Fit Together
 
-### Workspace
+The current repo shape is best read in this order:
 
-The workspace layer is what users usually mean when they talk about "using Yazelix":
+1. Shipped runtime data and assets define the tracked files the runtime and workspace consume.
+2. The runtime control plane turns config plus shipped files into actual behavior, generated state, and user-facing commands.
+3. The workspace session subsystem owns the live terminal-IDE behavior once a Yazelix session is running.
+4. Distribution and host integration expose that runtime/workspace behavior through package, install, shell, terminal, and Home Manager entrypoints.
+5. The maintainer workflow guards the contracts of the other four so they do not drift.
 
-- Zellij as the workspace shell
-- Yazi as the file-manager/sidebar surface
-- Helix or another editor as the editing surface
-- keybindings, tab naming, pane creation, and workspace-root behavior
+That means Yazelix is no longer best described as just "workspace plus runtime." The current v15 repo has a real data/config payload, a real maintainer/validation payload, and a small but important distribution layer.
 
-This layer should answer questions like:
+## Subsystem Notes
 
-- What does a tab represent?
-- Where should a new pane open?
-- Which pane is the managed editor?
-- When should the sidebar take focus?
-- How should Yazi, tab naming, and workspace roots stay in sync?
+### Runtime Control Plane And Command Surface
 
-### Runtime
+This subsystem answers questions like:
 
-The runtime layer is what makes Yazelix reproducible and configurable:
-
-- dynamic user intent in `yazelix.toml` and `yazelix_packs.toml`
-- deterministic runtime code from the shipped runtime tree
-- package selection through packs
-- shell and editor configuration in `yazelix.toml`
-- `devenv` evaluation and environment build logic
-- generated configs, cached launch state, and refresh/restart flows
-- live session activation state such as `DEVENV_PROFILE`, profile-derived `PATH`, and session markers
-
-This layer should answer questions like:
-
-- Which settings express user intent versus shipped defaults?
-- Which files are deterministic runtime code versus generated artifacts?
-- Which tools are installed?
-- Which shell/editor/terminal is configured?
+- How does `yazelix.toml` become actual runtime behavior?
 - Where do generated configs live?
-- How does `yzx refresh` or `yzx restart` rebuild and switch the runtime safely?
+- What does `yzx launch`, `yzx env`, `yzx doctor`, or `yzx update` mean now?
+- Which paths are config-owned, runtime-owned, or generated-state-owned?
 
-## Supporting Subsystems
+This is still the single largest shipped logic surface in the repo. If Yazelix is too heavy, this is still the first place to look before blaming Nix glue or Rust plugins.
 
-### Integrations
+Related contracts:
 
-Integrations translate Yazelix into other environments and entrypoints:
+- [v15 Trimmed Runtime Contract](./specs/v15_trimmed_runtime_contract.md)
+- [Runtime Root Contract](./specs/runtime_root_contract.md)
+- [Backend Capability Contract](./specs/backend_capability_contract.md)
+- [Runtime Dependency And Launch Preflight Contract](./specs/runtime_dependency_preflight_contract.md)
+- [yzx Command Surface Backend Coupling](./specs/yzx_command_surface_backend_coupling.md)
 
-- Home Manager
-- desktop launchers
-- shell hooks
-- terminal-specific launch wrappers
-- CI-specific setup and smoke checks
+### Workspace Session Orchestration
 
-They are important, but they should stay thin. An integration should adapt a well-defined Yazelix contract to an external system. It should not invent new sources of truth.
+This subsystem answers questions like:
 
-Examples:
+- Which pane is the managed editor?
+- Which pane is the sidebar in the current tab?
+- When should reveal/open target the existing editor pane versus create one?
+- How should layout-family changes, popup flows, and workspace roots behave?
 
-- Home Manager should own declarative config and explicit desktop integration, not assume a repo checkout.
-- Desktop launchers should use the supported launch contract, not depend on shell-specific quirks.
-- CI should test supported entrypoints, not rely on maintainer-only machine state.
+This is where the Rust plugins matter. They are not "extra integration code"; they are part of the live workspace owner.
 
-### Maintainer Workflow
+Related contracts:
 
-This subsystem exists so the other three can evolve safely:
+- [Workspace Session Contract](./workspace_session_contract.md)
+- [Backend-Free Workspace Slice](./specs/backend_free_workspace_slice.md)
+- [Cross-Language Runtime Ownership](./specs/cross_language_runtime_ownership.md)
 
-- Beads issue graph
-- GitHub issue contract
-- CI
-- regression tests
-- version/update/release workflows
-- future spec-driven development
+### Distribution And Host Integration
 
-This is not user-facing product value by itself, but without it the product drifts quickly.
+This subsystem answers questions like:
+
+- What does the flake actually expose?
+- What belongs to the packaged runtime versus the host?
+- How should Home Manager, shell hooks, desktop entry installation, and terminal launchers adapt Yazelix without inventing new product semantics?
+
+This layer should stay thin. If it starts owning behavior that belongs to runtime or workspace, that is architecture drift.
+
+Related contracts:
+
+- [Nixpkgs Package Contract](./specs/nixpkgs_package_contract.md)
+- [Runtime Distribution Capability Tiers](./specs/runtime_distribution_capability_tiers.md)
+- [Helix Managed Config Contract](./specs/helix_managed_config_contract.md)
+
+### Shipped Runtime Data And Assets
+
+This subsystem answers questions like:
+
+- Which tracked files are part of the runtime payload?
+- Which layouts, plugins, themes, templates, and metadata are product code rather than generated state?
+- Which user-facing defaults are actually shipped with the runtime?
+
+This bucket matters because Yazelix is not just Nushell and Rust. A meaningful part of the product lives in TOML, Lua, GLSL, KDL, shell config, and release metadata.
+
+### Maintainer Workflow And Validation
+
+This subsystem answers questions like:
+
+- Which tests and validators defend the real current contract?
+- How are release notes, version bumps, package smoke checks, and issue/bead sync handled?
+- What should `nix develop` guarantee for maintainers?
+
+This subsystem exists so the other four can change without silently regressing. It is not user-facing product value, but it is a large real code cost.
 
 ## Ownership Rules
 
-Each area should have one clear owner.
+Useful modularity in Yazelix means:
 
-### Runtime and Source Ownership
-
-- Dynamic user intent is one concern.
-- Deterministic runtime code is another concern.
-- Materialized/generated state is another concern.
-- Live session activation state is another concern.
-
-These should not be conflated.
-
-Current direction:
-
-- code should resolve config root, runtime root, and state root through canonical helpers instead of treating one shell or checkout path as authoritative for everything
-- tests and helpers should not assume `~/.config/yazelix` is a repo checkout
-- setup and install flows may materialize generated state, but launch and refresh flows should own launch-profile recording
-- live session activation markers should be treated as process-local session state, not as persisted runtime truth
-- package-ready work should keep clarifying what is shipped, user-owned, and generated
-
-See [Config Surface And Launch Profile Contract](./specs/config_surface_and_launch_profile_contract.md) for the concrete runtime ownership model.
-See [Runtime Root Contract](./specs/runtime_root_contract.md) for the concrete split between config-owned paths, shipped runtime assets, and generated state.
-See [Runtime Activation State Contract](./specs/runtime_activation_state_contract.md) for the explicit fourth runtime layer that separates process-local activation markers from persisted launch/materialized state.
-See [Backend Capability Contract](./specs/backend_capability_contract.md) for the concrete capability buckets Yazelix expects from its runtime/environment layer before any alternative backend evaluation.
-See [Runtime Dependency And Launch Preflight Contract](./specs/runtime_dependency_preflight_contract.md) for the narrower user-facing dependency story that separates fast launch blockers from heavier doctor and install-smoke diagnostics.
-See [Runtime Distribution Capability Tiers](./specs/runtime_distribution_capability_tiers.md) for the user-facing install/update/doctor tier split between installer-managed, Home Manager-managed, packaged, and runtime-root-only modes.
-See [Runtime Ownership Reduction Matrix](./specs/runtime_ownership_reduction_matrix.md) for the explicit distinction between deleting installer/distribution ownership and deleting backend/environment ownership.
-See [Package-Runtime-First User And Maintainer UX](./specs/package_runtime_first_user_and_maintainer_ux.md) for the concrete target user and maintainer flow once the product stops centering the installer-managed runtime model.
-See [Config Surface Backend Dependence Matrix](./specs/config_surface_backend_dependence_matrix.md) for the config-family audit that separates backend/devenv inputs, workspace/session settings, launch/integration policy knobs, and host-tool locator seams.
-See [yzx Command Surface Backend Coupling](./specs/yzx_command_surface_backend_coupling.md) for the command-family audit that separates backend-required control-plane commands from workspace/config UX, runtime/distribution surfaces, and mixed seams.
-See [Backend-Free Workspace Slice](./specs/backend_free_workspace_slice.md) for the concrete proof slice that already works in runtime-root-only mode with host-provided tools.
-See [Cross-Language Runtime Ownership](./specs/cross_language_runtime_ownership.md) for the current language/runtime ownership map across Nushell, Rust plugins, Lua Yazi code, POSIX shell, and Zellij transport.
-See [Yazelix Core Boundary](./specs/yazelix_core_boundary.md) for the current recommendation on whether a separate Core edition should exist and what it would keep or drop if revisited later.
-See [v14 Boundary-Hardening Gate](./specs/v14_boundary_hardening_gate.md) for the explicit technical gate that defines when a `v14` major bump is actually earned.
-See [Managed Config Migration Transaction Contract](./specs/managed_config_migration_transaction_contract.md) for the staged write and rollback model that keeps Yazelix-owned config migrations from landing in a half-applied state.
-See [One-Command Install UX](./specs/one_command_install_ux.md) for the installer-first phase-1 front door and why it was a thin `nix run` installer surface instead of a hosted shell script.
-See [Flake Interface Contract](./specs/flake_interface_contract.md) for the exact phase-1 flake outputs and the stable installed-runtime layout they should target.
-See [Nixpkgs Package Contract](./specs/nixpkgs_package_contract.md) for the simpler store-backed package shape Yazelix should target before preparing the upstream nixpkgs submission.
-See [Helix Managed Config Contract](./specs/helix_managed_config_contract.md) for the phase-1 boundary that makes Helix reveal integration self-contained without taking ownership of the user's full Helix config tree.
-
-### Workspace and Session Ownership
-
-The workspace model should have a narrow contract between Nushell and the pane orchestrator.
-
-See [Workspace Session Contract](./workspace_session_contract.md) for the current boundary in more concrete terms.
-
-That contract should cover:
-
-- tab workspace root
-- managed editor identity
-- sidebar identity and state
-- tab naming
-- pane creation cwd
-- cross-tab isolation
-
-If these rules are implicit, workspace bugs reappear under different symptoms.
-
-### Integration Ownership
-
-Integrations should be adapters around the workspace or runtime contracts.
-
-They should not own product semantics that belong elsewhere.
-
-Examples:
-
-- `yazelix.toml` should express runtime/user config, not desktop-entry metadata
-- Home Manager can manage both config and desktop integration, but those responsibilities should be explicit
-- launcher compatibility fixes should live in launcher integration logic, not leak back into unrelated workspace code
-
-### Maintainer Ownership
-
-Maintainer tooling should guard real contracts:
-
-- path model
-- issue/bead lifecycle sync
-- Home Manager evaluation
-- workspace invariants
-- version drift
-
-Tests and automation should defend meaningful boundaries, not superficial command discovery.
-
-## What "More Modular" Means For Yazelix
-
-Useful modularity for Yazelix means:
-
-- fewer hidden sources of truth
+- one clear owner per behavior
+- one clear source of truth per maintained contract
+- fewer hidden path assumptions
 - fewer environment-variable side channels
-- fewer path assumptions
-- clearer ownership of workspace state
-- thinner integration adapters
-- better contract tests at subsystem boundaries
+- thinner adapters around external systems
+- tests and validators that defend real boundaries instead of trivia
 
 It does not mean:
 
 - splitting the repo just to look cleaner
-- rewriting everything in Rust immediately
-- introducing wrappers with no clear ownership benefit
-- creating configuration layers that duplicate each other
+- introducing wrappers with no ownership benefit
+- moving behavior into an integration layer because it is inconvenient elsewhere
+- pretending shipped data files are not part of the architecture
 
 ## Current Working Model
 
-For now, the right mental model is:
+For current v15 work, the right mental model is:
 
-1. Yazelix Workspace is the terminal IDE experience.
-2. Yazelix Runtime combines:
-   - dynamic user intent
-   - deterministic runtime code
-   - materialized environment/generated state
-   - live session activation state
-3. Integrations connect Yazelix to external systems.
-4. Maintainer Workflow keeps the product coherent over time.
+1. Runtime control plane owns command/runtime semantics.
+2. Workspace session orchestration owns live pane/tab/sidebar behavior.
+3. Distribution and host integration adapts Yazelix to package/install/launcher owners.
+4. Shipped runtime data and assets are a first-class subsystem, not miscellaneous residue.
+5. Maintainer workflow and validation keeps the other four honest.
 
-Future architecture and spec work should build on this map rather than treating Yazelix as one undifferentiated shell script system.
+Historical pre-trim planning notes still exist under `docs/specs/`, but this map should describe the living repo shape, not the old broader Classic-era model.

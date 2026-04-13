@@ -1,5 +1,9 @@
 # Config Surface Backend Dependence Matrix
 
+> Status: Historical pre-v15-trim planning note.
+> This matrix was written before the trimmed v15 branch removed `yazelix_packs.toml`, backend-owned rebuild knobs, and related pack-graph semantics from the current user contract.
+> Do not treat it as the current branch contract. See [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
 ## Summary
 
 Yazelix should classify its config surfaces by execution owner, not just by file.
@@ -60,7 +64,7 @@ Use these buckets:
 | Terminal host-integration policy | `terminal.manage_terminals`, `terminal.config_mode` | launch/integration policy | no | keep | narrow or drop |
 | Terminal visual styling | `terminal.ghostty_trail_color`, `terminal.ghostty_trail_effect`, `terminal.ghostty_mode_effect`, `terminal.ghostty_trail_glow`, `terminal.transparency` | integration/UI policy | no | keep | keep only if Yazelix still owns terminal config generation; otherwise move outward |
 | Welcome and runtime UX | `core.debug_mode`, `core.skip_welcome_screen`, `core.show_macchina_on_welcome`, `core.welcome_style`, `core.welcome_duration_seconds` | runtime UX | no | keep | mostly keep if Yazelix still owns startup UI; otherwise narrow |
-| Refresh UX | `core.refresh_output` | backend/devenv-owned | no | keep | drop if `yzx refresh` disappears |
+| Generated-state repair UX | `core.refresh_output` | backend/devenv-owned | no | keep | drop if the public refresh surface disappears |
 | Zellij workspace/session UX | all `zellij.*` keys | workspace/session-owned | no | keep | mostly keep |
 | Yazi command locators | `yazi.command`, `yazi.ya_command` | host-tool locator seam | no | keep | keep if Yazi remains a host/runtime prerequisite |
 | Yazi workspace UX | `yazi.plugins`, `yazi.theme`, `yazi.sort_by` | workspace/session-owned | no | keep | keep if Yazi remains in the surviving workspace slice |

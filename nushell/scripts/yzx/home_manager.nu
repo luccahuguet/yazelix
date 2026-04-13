@@ -47,12 +47,14 @@ def archive_artifacts [artifacts: list<record>, backup_label: string] {
     }
 }
 
+# Show Yazelix Home Manager takeover helpers
 export def "yzx home_manager" [] {
     print "Yazelix Home Manager helpers"
     print "  yzx home_manager prepare   Preview or archive manual-install artifacts before Home Manager takeover"
     print "  yzx update home_manager    Refresh the current flake input, then print `home-manager switch`"
 }
 
+# Preview or archive manual-install artifacts before Home Manager takeover
 export def "yzx home_manager prepare" [
     --apply  # Archive the detected manual-install takeover blockers and cleanup-only artifacts
     --yes    # Skip confirmation prompt when using --apply

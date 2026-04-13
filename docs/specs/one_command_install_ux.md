@@ -1,5 +1,9 @@
 # One-Command Install UX
 
+> Status: Historical installer-first planning note.
+> This document describes the earlier phase where `nix run ...#install` was intended to be the canonical front door and where the installed runtime owned `devenv`.
+> Do not treat it as the current branch contract. See [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
 ## Summary
 
 Yazelix should adopt a first-class one-command install story built around a thin first-party Nix flake installer app:

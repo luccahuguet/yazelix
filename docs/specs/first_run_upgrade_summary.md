@@ -6,7 +6,7 @@ Yazelix should show a concise once-per-version summary on the first relevant int
 
 ## Why
 
-The changelog and migration engine are necessary, but they are still passive surfaces. Users also need a proactive summary at the moment an upgrade becomes relevant, without turning normal startup into noisy release marketing or hiding the recovery commands when config changes matter.
+The changelog and structured upgrade notes are passive surfaces. Users also need a proactive summary at the moment an upgrade becomes relevant, without turning normal startup into noisy release marketing or hiding the recovery commands when config changes matter.
 
 ## Scope
 
@@ -16,7 +16,7 @@ This spec covers:
 - current-version note selection from `docs/upgrade_notes.toml`
 - first-run suppression on repeated launches
 - manual reopen via `yzx whats_new`
-- migration-aware guidance when the current config matches known migration ids for the current release
+- historical config-shape guidance when older release notes mention migration-era changes
 
 ## Behavior
 
@@ -26,7 +26,7 @@ The last-seen version must be stored in Yazelix-managed state, not in the user c
 
 `yzx whats_new` should render the same current-version summary on demand even when the version was already seen automatically. The command should also mark the current version as seen so intentional manual review does not force a duplicate automatic prompt later.
 
-When the current release notes declare `upgrade_impact = "migration_available"`, the rendered summary should point users at `yzx config migrate`, `yzx doctor`, and `yzx doctor --fix` as appropriate. If the current config actually matches any of the release note's referenced migration ids, the summary should call that out explicitly using the shared migration engine rather than generic prose.
+When historical release notes declare `upgrade_impact = "migration_available"`, the rendered summary should explain that v15 no longer ships an automatic config-migration engine. It should point users toward manual comparison with the current template or `yzx config reset` as a blunt fresh-start path. It should not probe the current config through a migration registry, because that registry is no longer part of the live product.
 
 If the current version has no release-note entry, startup should stay quiet instead of inventing notes. `yzx whats_new` should fail clearly in that case.
 
@@ -36,18 +36,19 @@ If the current version has no release-note entry, startup should stay quiet inst
 - scraping `CHANGELOG.md` directly at runtime
 - mutating `yazelix.toml` automatically from the summary path
 - showing the full historical changelog during startup
+- restoring migration-registry probing to the v15 upgrade-summary path
 
 ## Acceptance Cases
 
 1. When the stored last-seen version is absent or older than the installed version, the first startup summary appears and then records the current version as seen.
 2. When the same version starts a second time, the automatic summary stays quiet.
 3. When the user runs `yzx whats_new`, the current-version summary renders even if the version was already seen.
-4. When current release notes declare migration ids that match the current config, the summary points to the migrate and doctor repair flows with explicit matching guidance.
+4. When historical release notes declare migration ids, the summary renders no-migration-engine guidance instead of pointing to `yzx doctor --fix` as a config rewrite path.
 5. When the current version is missing from `docs/upgrade_notes.toml`, `yzx whats_new` fails clearly and startup does not invent a summary.
 
 ## Verification
 
-- unit tests: state persistence, suppression logic, and matching-migration summary rendering in `nushell/scripts/dev/test_yzx_core_commands.nu`
+- unit tests: state persistence, suppression logic, and historical config-shape summary rendering in `nushell/scripts/dev/test_yzx_core_commands.nu`
 - e2e scripts: `nu nushell/scripts/dev/test_upgrade_summary_e2e.nu`
 - integration checks: `nu nushell/scripts/dev/test_yzx_commands.nu`
 

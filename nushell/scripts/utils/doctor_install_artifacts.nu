@@ -5,28 +5,17 @@ use install_ownership.nu [
     get_manual_desktop_entry_path
     has_home_manager_managed_install
 ]
-use shell_config_generation.nu get_yzx_cli_path
-
-def resolve_realpath_or_null [target: string] {
-    let result = (^readlink -f $target | complete)
-    if $result.exit_code == 0 {
-        let resolved = ($result.stdout | str trim)
-        if ($resolved | is-empty) { null } else { $resolved }
-    } else {
-        null
-    }
-}
-
-def path_is_symlink [target: string] {
-    let result = (^bash -lc $"test -L ($target | into string | to json -r)" | complete)
-    $result.exit_code == 0
-}
+use launcher_resolution.nu [
+    get_existing_home_manager_yzx_profile_path
+    get_home_manager_yzx_profile_paths
+    resolve_desktop_launcher_path
+]
 
 def detect_install_owner [] {
     if (has_home_manager_managed_install) {
         "home-manager"
     } else if (
-        ((get_home_manager_profile_yzx_path) != null)
+        ((get_existing_home_manager_yzx_profile_path) != null)
         or ((get_home_manager_profile_desktop_entry_path | path exists))
     ) {
         "home-manager"
@@ -71,18 +60,6 @@ def desktop_entry_exec_matches_expected [desktop_exec, expected_execs: list<stri
     }
 }
 
-def get_home_manager_yzx_profile_paths [] {
-    mut candidates = [
-        ($env.HOME | path join ".nix-profile" "bin" "yzx")
-    ]
-
-    if ("USER" in $env) and (($env.USER | default "") != "") {
-        $candidates = ($candidates | append ("/etc/profiles/per-user" | path join $env.USER "bin" "yzx"))
-    }
-
-    $candidates | uniq
-}
-
 def get_expected_desktop_entry_execs [install_owner: string] {
     let launcher_paths = if $install_owner == "home-manager" {
         get_home_manager_yzx_profile_paths
@@ -91,7 +68,7 @@ def get_expected_desktop_entry_execs [install_owner: string] {
         if $runtime_dir == null {
             []
         } else {
-            [ (get_yzx_cli_path $runtime_dir) ]
+            [ (resolve_desktop_launcher_path $runtime_dir) ]
         }
     }
 
@@ -158,7 +135,7 @@ export def check_desktop_entry_freshness [] {
         return {
             status: "warning"
             message: "A stale user-local Yazelix desktop entry shadows the Home Manager desktop entry"
-            details: $"Shadowing local entry: ($local_desktop_path)\nLocal Exec: ($local_desktop_exec | default '<missing>')\nHome Manager entry: ($profile_desktop_path)\nProfile Exec: ($profile_desktop_exec)\nRemove the shadowing local entry with `yzx desktop uninstall` or refresh it with `yzx desktop install`."
+            details: $"Shadowing local entry: ($local_desktop_path)\nLocal Exec: ($local_desktop_exec | default '<missing>')\nHome Manager entry: ($profile_desktop_path)\nProfile Exec: ($profile_desktop_exec)\nRemove the shadowing local entry with `yzx desktop uninstall`, then reapply your Home Manager configuration if the profile desktop entry is missing or stale."
             fix_available: false
         }
     }
@@ -198,12 +175,4 @@ export def check_desktop_entry_freshness [] {
         details: $desktop_path
         fix_available: false
     }
-}
-
-def get_home_manager_profile_yzx_path [] {
-    (
-        get_home_manager_yzx_profile_paths
-        | where {|path| ($path | path exists) or (path_is_symlink $path) }
-        | get -o 0
-    )
 }

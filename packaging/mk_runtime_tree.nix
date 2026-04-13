@@ -1,7 +1,9 @@
-{ pkgs, src ? ../. , name ? "yazelix-runtime" }:
+{ pkgs, src ? ../., nixgl ? null, name ? "yazelix-runtime" }:
 
 let
-  lockedDevenv = import ./locked_devenv_package.nix { inherit pkgs src; };
+  runtimeDeps = import ./runtime_deps.nix { inherit pkgs nixgl; };
+  runtimeBinDirs = map (pkg: "${pkg}/bin") runtimeDeps;
+  escapedRuntimeBinDirs = pkgs.lib.escapeShellArgs runtimeBinDirs;
 in
 pkgs.runCommand name { } ''
   mkdir -p "$out"
@@ -16,15 +18,17 @@ pkgs.runCommand name { } ''
 
   ln -s ${src}/CHANGELOG.md "$out/CHANGELOG.md"
   ln -s ${src}/.taplo.toml "$out/.taplo.toml"
-  ln -s ${src}/devenv.lock "$out/devenv.lock"
-  ln -s ${src}/devenv.nix "$out/devenv.nix"
-  ln -s ${src}/devenv.yaml "$out/devenv.yaml"
   ln -s ${src}/yazelix_default.toml "$out/yazelix_default.toml"
-  ln -s ${src}/yazelix_packs_default.toml "$out/yazelix_packs_default.toml"
 
   mkdir -p "$out/bin"
-  ln -s ${lockedDevenv}/bin/devenv "$out/bin/devenv"
-  ln -s ${pkgs.nushell}/bin/nu "$out/bin/nu"
+  for bin_dir in ${escapedRuntimeBinDirs}; do
+    if [ -d "$bin_dir" ]; then
+      for entry in "$bin_dir"/*; do
+        [ -e "$entry" ] || continue
+        ln -sfn "$entry" "$out/bin/$(basename "$entry")"
+      done
+    fi
+  done
   cat > "$out/bin/yzx" <<EOF
 #!/bin/sh
 PATH="${pkgs.nushell}/bin:\$PATH"

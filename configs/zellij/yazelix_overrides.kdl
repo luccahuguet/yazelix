@@ -34,6 +34,7 @@ keybinds {
         // Previously: Alt + n (in helix: select_next_sibling)
         bind "Alt m" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                runtime_dir "__YAZELIX_RUNTIME_DIR__"
                 name "open_workspace_terminal"
             }
         }
@@ -74,22 +75,19 @@ keybinds {
 
         // Yazelix managed popup program (defaults to lazygit)
         bind "Alt t" {
-            Run "nu" "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/yzx_toggle_popup.nu" {
-                name "yzx_popup_toggle"
-                close_on_exit true
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                runtime_dir "__YAZELIX_RUNTIME_DIR__"
+                name "toggle_transient_pane"
+                payload "popup"
             }
         }
 
         // Yazelix command palette (yzx menu) in a floating pane
         bind "Alt Shift M" {
-            Run "nu" "__YAZELIX_RUNTIME_DIR__/configs/zellij/scripts/yzx_menu_popup.nu" {
-                name "yzx_menu"
-                floating true
-                close_on_exit true
-                x "15%"
-                y "15%"
-                width "70%"
-                height "70%"
+            MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                runtime_dir "__YAZELIX_RUNTIME_DIR__"
+                name "toggle_transient_pane"
+                payload "menu"
             }
         }
     }
@@ -97,12 +95,14 @@ keybinds {
     shared_except "locked" {
         bind "Alt h" "Alt Left" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                runtime_dir "__YAZELIX_RUNTIME_DIR__"
                 name "move_focus_left_or_tab"
             }
         }
 
         bind "Alt l" "Alt Right" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                runtime_dir "__YAZELIX_RUNTIME_DIR__"
                 name "move_focus_right_or_tab"
             }
         }
@@ -115,6 +115,7 @@ keybinds {
         // Toggle focus between the managed sidebar and the managed editor.
         bind "Ctrl y" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                runtime_dir "__YAZELIX_RUNTIME_DIR__"
                 name "toggle_editor_sidebar_focus"
             }
         }
@@ -122,6 +123,7 @@ keybinds {
         // Toggle the managed sidebar through the pane orchestrator plugin.
         bind "Alt y" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                runtime_dir "__YAZELIX_RUNTIME_DIR__"
                 name "toggle_sidebar"
             }
         }
@@ -131,6 +133,7 @@ keybinds {
         // - elsewhere, fall back to the editor/sidebar focus toggle flow
         bind "Alt r" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                runtime_dir "__YAZELIX_RUNTIME_DIR__"
                 name "smart_reveal"
             }
         }
@@ -138,11 +141,13 @@ keybinds {
         // Override raw swap-layout cycling with Yazelix family-aware switching.
         bind "Alt [" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                runtime_dir "__YAZELIX_RUNTIME_DIR__"
                 name "previous_family"
             }
         }
         bind "Alt ]" {
             MessagePlugin "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" {
+                runtime_dir "__YAZELIX_RUNTIME_DIR__"
                 name "next_family"
             }
         }

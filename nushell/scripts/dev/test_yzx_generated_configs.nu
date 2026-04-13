@@ -6,6 +6,7 @@ use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fi
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/config_state.nu [record_materialized_state]
+use ../utils/generated_runtime_state.nu [record_current_materialized_state regenerate_runtime_configs]
 use ../utils/safe_remove.nu remove_path_within_root
 use ../utils/terminal_launcher.nu [build_launch_command resolve_terminal_config]
 use ../utils/terminal_configs.nu [
@@ -22,6 +23,74 @@ def run_parse_yazelix_config_probe [fixture: record, extra_env: record = {}] {
     }
 }
 
+def check_parse_rejects_removed_config_surface [case: record] {
+    let fixture = (setup_managed_config_fixture $case.label $case.config)
+
+    let result = (try {
+        let original = (open --raw $fixture.config_path)
+        let parser_result = (run_parse_yazelix_config_probe $fixture)
+        let stderr = ($parser_result.stderr | str trim)
+        let updated = (open --raw $fixture.config_path)
+        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
+
+        if (
+            ($parser_result.exit_code != 0)
+            and ($stderr | str contains $case.expected_error)
+            and ($stderr | str contains "Failure class: config problem.")
+            and ($stderr | str contains "yzx config reset")
+            and not ($stderr | str contains "Known migration")
+            and not ($stderr | str contains "yzx doctor --fix")
+            and ($updated == $original)
+            and (($backups | length) == 0)
+        ) {
+            print $"  ✅ ($case.name)"
+            true
+        } else {
+            print $"  ❌ ($case.name): exit=($parser_result.exit_code) stderr=($stderr) unchanged=(($updated == $original)) backups=(($backups | length))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ ($case.name): ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+def check_schema_rejects_removed_enum_value [case: record] {
+    let tmpdir = (^mktemp -d $"/tmp/($case.label)_XXXXXX" | str trim)
+
+    let result = (try {
+        let config_path = ($tmpdir | path join "yazelix.toml")
+        $case.config | save --force --raw $config_path
+
+        let findings = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
+            use ../utils/config_schema.nu [validate_enum_values]
+            validate_enum_values (open $config_path)
+        })
+        let matching_findings = ($findings | where path == $case.path)
+
+        if (
+            (($matching_findings | length) == 1)
+            and (($matching_findings | get 0.kind) == "invalid_enum")
+            and ((($matching_findings | get 0.message) | str contains $case.expected_value))
+        ) {
+            print $"  ✅ ($case.name)"
+            true
+        } else {
+            print $"  ❌ ($case.name): findings=($matching_findings | to json -r)"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ ($case.name): ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 def setup_home_manager_symlinked_main_config_fixture [label: string] {
     let repo_root = (get_repo_config_dir)
     let tmpdir = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
@@ -30,7 +99,6 @@ def setup_home_manager_symlinked_main_config_fixture [label: string] {
     let user_config_dir = ($config_dir | path join "user_configs")
     let hm_store_dir = ($tmpdir | path join "hm-store")
     let symlinked_main = ($user_config_dir | path join "yazelix.toml")
-    let pack_path = ($user_config_dir | path join "yazelix_packs.toml")
     let state_path = ($fake_home | path join ".local" "share" "yazelix" "state" "rebuild_hash")
     let store_main = ($hm_store_dir | path join "yazelix.toml")
 
@@ -50,7 +118,6 @@ def setup_home_manager_symlinked_main_config_fixture [label: string] {
         config_dir: $config_dir
         user_config_dir: $user_config_dir
         symlinked_main: $symlinked_main
-        pack_path: $pack_path
         state_path: $state_path
     }
 }
@@ -93,16 +160,18 @@ ghostty_mode_effect = "ripple_rectangle"
         let ghostty_root = ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty")
         let tail_shader = ($ghostty_root | path join "shaders" "generated_effects" "tail.glsl")
         let ripple_shader = ($ghostty_root | path join "shaders" "generated_effects" "ripple_rectangle.glsl")
-        let backup_noise = (
-            ^find $generated_root -name '*.yazelix-backup'
-            | lines
-            | where {|path| $path | str trim | is-not-empty}
-        )
-        let temp_noise = (
-            ^find $generated_root
-            | lines
-            | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
-        )
+        let backup_find = (^find $generated_root -name '*.yazelix-backup' | complete)
+        let temp_find = (^find $generated_root | complete)
+        let backup_noise = if $backup_find.exit_code == 0 {
+            $backup_find.stdout | lines | where {|path| $path | str trim | is-not-empty}
+        } else {
+            []
+        }
+        let temp_noise = if $temp_find.exit_code == 0 {
+            $temp_find.stdout | lines | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
+        } else {
+            []
+        }
 
         if (
             not ($override_root | path exists)
@@ -212,25 +281,25 @@ terminals = ["ghostty", "kitty", "alacritty"]
     $result
 }
 
-# Regression: managed terminal wrappers must not leak Yazelix-only config-mode args into terminal binaries.
+# Regression: direct terminal launch commands must keep Yazelix-only config-mode details internal.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_managed_wrapper_launch_command_does_not_forward_config_mode_flag [] {
-    print "🧪 Testing managed terminal wrapper launch command keeps config-mode internal..."
+    print "🧪 Testing direct terminal launch command keeps config-mode internal..."
 
     try {
         let launch_cmd = (build_launch_command {
             terminal: "ghostty"
             name: "Ghostty"
-            command: "yazelix-ghostty"
-            use_wrapper: true
-        } null "yazelix" "/tmp" false)
+            command: "ghostty"
+        } "/tmp/ghostty-config" "/tmp" false)
 
         if (
-            ($launch_cmd | str contains 'yazelix-ghostty')
+            ($launch_cmd | str contains 'ghostty')
             and not ($launch_cmd | str contains '--config-mode')
             and ($launch_cmd | str contains '--working-directory="/tmp"')
+            and not ($launch_cmd | str contains 'yazelix-ghostty')
         ) {
-            print "  ✅ Managed wrapper launch command now keeps config-mode internal to the wrapper"
+            print "  ✅ Direct terminal launch command now keeps config-mode internal to Yazelix"
             true
         } else {
             print $"  ❌ Unexpected managed wrapper launch command: ($launch_cmd)"
@@ -242,89 +311,279 @@ def test_managed_wrapper_launch_command_does_not_forward_config_mode_flag [] {
     }
 }
 
-# Defends: removed ascii mode fails with migration guidance.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance [] {
-    print "🧪 Testing parse_yazelix_config rejects legacy [ascii].mode with one clean migration path..."
+# Regression: Linux Ghostty launch keeps the GTK/X11 flags Yazelix relies on there.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_ghostty_linux_launch_command_keeps_linux_specific_flags [] {
+    print "🧪 Testing Ghostty launch keeps Linux-specific GTK/X11 flags on Linux..."
 
-    let fixture = (setup_managed_config_fixture
-        "yazelix_welcome_style_legacy"
-        '[ascii]
-mode = "animated"
-'
-    )
-
-    let result = (try {
-        let parser_result = (run_parse_yazelix_config_probe $fixture)
-
-        let stderr = ($parser_result.stderr | str trim)
+    try {
+        let launch_cmd = (with-env {YAZELIX_TEST_OS: "linux"} {
+            build_launch_command {
+                terminal: "ghostty"
+                name: "Ghostty"
+                command: "ghostty"
+            } "/tmp/ghostty-config" "/tmp" false
+        })
 
         if (
-            ($parser_result.exit_code != 0)
-            and ($stderr | str contains "Known migration at ascii")
-            and ($stderr | str contains "Replace legacy [ascii].mode with core.welcome_style")
-            and ($stderr | str contains "yzx config migrate --apply")
-            and not ($stderr | str contains "Unknown config field at ascii")
+            ($launch_cmd | str contains 'shells/posix/yazelix_ghostty.sh')
+            and
+            ($launch_cmd | str contains '--gtk-single-instance=false')
+            and ($launch_cmd | str contains '--class="com.yazelix.Yazelix"')
+            and ($launch_cmd | str contains '--x11-instance-name="yazelix"')
         ) {
-            print "  ✅ Legacy [ascii].mode now points at one clean migration path during startup"
+            print "  ✅ Linux Ghostty launch now routes through the runtime Ghostty env wrapper and keeps the GTK/X11 flags Yazelix expects there"
             true
         } else {
-            print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr)"
+            print $"  ❌ Unexpected Linux Ghostty launch command: ($launch_cmd)"
             false
         }
-    } catch { |err|
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+# Regression: Linux Ghostty launch must use a runtime-owned nixGL wrapper when one is shipped.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_ghostty_linux_launch_command_prefers_runtime_owned_nixgl_wrapper [] {
+    print "🧪 Testing Ghostty launch prefers the runtime-owned nixGL wrapper on Linux..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_linux_nixgl_launch_XXXXXX | str trim)
+    let fake_runtime = ($tmpdir | path join "runtime")
+    let fake_wrapper = ($fake_runtime | path join "bin" "nixGLMesa")
+    mkdir ($fake_runtime | path join "bin")
+    '{}' | save --force --raw ($fake_runtime | path join "yazelix_default.toml")
+
+    let result = (try {
+        '#!/bin/sh
+exit 0
+' | save --force --raw $fake_wrapper
+        ^chmod +x $fake_wrapper
+
+        let launch_cmd = (with-env {
+            YAZELIX_TEST_OS: "linux"
+            YAZELIX_RUNTIME_DIR: $fake_runtime
+        } {
+            build_launch_command {
+                terminal: "ghostty"
+                name: "Ghostty"
+                command: "ghostty"
+            } "/tmp/ghostty-config" "/tmp" false
+        })
+
+        if (
+            ($launch_cmd | str contains ($fake_runtime | path join "shells" "posix" "yazelix_ghostty.sh"))
+            and ($launch_cmd | str contains $fake_wrapper)
+            and ($launch_cmd | str contains ' ghostty --config-default-files=false')
+            and ($launch_cmd | str contains '--gtk-single-instance=false')
+            and ($launch_cmd | str contains '--x11-instance-name="yazelix"')
+        ) {
+            print "  ✅ Linux Ghostty launch now prefers the runtime-owned nixGL wrapper when Yazelix ships one"
+            true
+        } else {
+            print $"  ❌ Unexpected Linux Ghostty nixGL launch command: ($launch_cmd)"
+            false
+        }
+    } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
     })
 
-    rm -rf $fixture.tmp_home
+    rm -rf $tmpdir
     $result
 }
 
-# Defends: config parsing stays read-only and does not auto-apply migrations.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_does_not_auto_apply_safe_migrations [] {
-    print "🧪 Testing parse_yazelix_config keeps safe migration rewrites out of read paths..."
+# Regression: the Ghostty env wrapper must fall back to GTK_IM_MODULE=simple when Wayland IM state is stale.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_ghostty_wayland_wrapper_falls_back_to_simple_im_without_active_daemon [] {
+    print "🧪 Testing Ghostty Wayland wrapper falls back to GTK_IM_MODULE=simple when no IM daemon is active..."
 
-    let fixture = (setup_managed_config_fixture
-        "yazelix_parser_no_auto_apply"
-        '[shell]
-enable_atuin = true
-'
-    )
-
+    let tmpdir = (^mktemp -d /tmp/yazelix_ghostty_im_fallback_XXXXXX | str trim)
     let result = (try {
-        let parser_result = (run_parse_yazelix_config_probe $fixture)
-        let stderr = ($parser_result.stderr | str trim)
-        let updated = (open $fixture.config_path)
-        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
+        let fake_bin = ($tmpdir | path join "bin")
+        let fake_pgrep = ($fake_bin | path join "pgrep")
+        let probe = ($tmpdir | path join "probe-env.sh")
+        let wrapper = ($env.PWD | path join "shells" "posix" "yazelix_ghostty.sh")
+
+        mkdir $fake_bin
+        '#!/bin/sh
+exit 1
+' | save --force --raw $fake_pgrep
+        ^chmod +x $fake_pgrep
+
+        '#!/bin/sh
+printf "GTK_IM_MODULE=%s\n" "${GTK_IM_MODULE-unset}"
+printf "QT_IM_MODULE=%s\n" "${QT_IM_MODULE-unset}"
+printf "XMODIFIERS=%s\n" "${XMODIFIERS-unset}"
+' | save --force --raw $probe
+        ^chmod +x $probe
+
+        let output = (with-env {
+            PATH: ([$fake_bin] | append $env.PATH)
+            WAYLAND_DISPLAY: "wayland-0"
+            GTK_IM_MODULE: "ibus"
+            QT_IM_MODULE: "ibus"
+            XMODIFIERS: "@im=ibus"
+        } {
+            ^sh $wrapper $probe | complete
+        })
+        let env_lines = ($output.stdout | lines)
 
         if (
-            ($parser_result.exit_code != 0)
-            and ($stderr | str contains "Known migration at shell.enable_atuin")
-            and ($stderr | str contains "yzx config migrate --apply")
-            and ($updated.shell.enable_atuin? | default false)
-            and (($backups | length) == 0)
+            ($output.exit_code == 0)
+            and ($env_lines == [
+                "GTK_IM_MODULE=simple"
+                "QT_IM_MODULE=unset"
+                "XMODIFIERS=unset"
+            ])
         ) {
-            print "  ✅ parse_yazelix_config still fails cleanly without rewriting safe migration cases"
+            print "  ✅ Ghostty Wayland fallback now restores dead keys by switching stale IM state to GTK_IM_MODULE=simple"
             true
         } else {
-            print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr) updated=($updated | to json -r) backups=(($backups | length))"
+            print $"  ❌ Unexpected Ghostty Wayland IM fallback behavior: exit=($output.exit_code) env=($env_lines | to json -r) stderr=(($output.stderr | str trim))"
             false
         }
-    } catch { |err|
+    } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
     })
 
-    rm -rf $fixture.tmp_home
+    rm -rf $tmpdir
     $result
+}
+
+# Regression: the Ghostty env wrapper must not clobber a valid running Wayland IM daemon setup.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_ghostty_wayland_wrapper_preserves_active_ibus_env [] {
+    print "🧪 Testing Ghostty Wayland wrapper preserves a live ibus input-method setup..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_ghostty_im_preserve_XXXXXX | str trim)
+    let result = (try {
+        let fake_bin = ($tmpdir | path join "bin")
+        let fake_pgrep = ($fake_bin | path join "pgrep")
+        let probe = ($tmpdir | path join "probe-env.sh")
+        let wrapper = ($env.PWD | path join "shells" "posix" "yazelix_ghostty.sh")
+
+        mkdir $fake_bin
+        '#!/bin/sh
+if [ "$1" = "-x" ] && [ "$2" = "ibus-daemon" ]; then
+  exit 0
+fi
+exit 1
+' | save --force --raw $fake_pgrep
+        ^chmod +x $fake_pgrep
+
+        '#!/bin/sh
+printf "GTK_IM_MODULE=%s\n" "${GTK_IM_MODULE-unset}"
+printf "QT_IM_MODULE=%s\n" "${QT_IM_MODULE-unset}"
+printf "XMODIFIERS=%s\n" "${XMODIFIERS-unset}"
+' | save --force --raw $probe
+        ^chmod +x $probe
+
+        let output = (with-env {
+            PATH: ([$fake_bin] | append $env.PATH)
+            WAYLAND_DISPLAY: "wayland-0"
+            GTK_IM_MODULE: "ibus"
+            QT_IM_MODULE: "ibus"
+            XMODIFIERS: "@im=ibus"
+        } {
+            ^sh $wrapper $probe | complete
+        })
+        let env_lines = ($output.stdout | lines)
+
+        if (
+            ($output.exit_code == 0)
+            and ($env_lines == [
+                "GTK_IM_MODULE=ibus"
+                "QT_IM_MODULE=ibus"
+                "XMODIFIERS=@im=ibus"
+            ])
+        ) {
+            print "  ✅ Ghostty Wayland wrapper preserves a valid live ibus setup instead of clobbering it"
+            true
+        } else {
+            print $"  ❌ Unexpected Ghostty Wayland IM preservation behavior: exit=($output.exit_code) env=($env_lines | to json -r) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+# Regression: macOS Ghostty launch must not inherit Linux GTK/X11 flags.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_ghostty_macos_launch_command_omits_linux_specific_flags [] {
+    print "🧪 Testing Ghostty launch drops Linux-specific GTK/X11 flags on macOS..."
+
+    try {
+        let launch_cmd = (with-env {YAZELIX_TEST_OS: "macos"} {
+            build_launch_command {
+                terminal: "ghostty"
+                name: "Ghostty"
+                command: "ghostty"
+            } "/tmp/ghostty-config" "/tmp" false
+        })
+
+        if (
+            ($launch_cmd | str contains '--config-default-files=false')
+            and ($launch_cmd | str contains '--config-file=/tmp/ghostty-config')
+            and ($launch_cmd | str contains '--title="Yazelix - Ghostty"')
+            and ($launch_cmd | str contains '--working-directory="/tmp"')
+            and not ($launch_cmd | str contains '--gtk-single-instance=false')
+            and not ($launch_cmd | str contains '--class="com.yazelix.Yazelix"')
+            and not ($launch_cmd | str contains '--x11-instance-name="yazelix"')
+        ) {
+            print "  ✅ macOS Ghostty launch now avoids the Linux-only GTK/X11 flags"
+            true
+        } else {
+            print $"  ❌ Unexpected macOS Ghostty launch command: ($launch_cmd)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+# Defends: removed v14 config surfaces fail clearly without mutation.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_parse_yazelix_config_rejects_removed_surfaces_without_rewriting [] {
+    print "🧪 Testing parse_yazelix_config rejects removed config surfaces without rewriting..."
+
+    let cases = [
+        {
+            name: "legacy [ascii].mode is unsupported"
+            label: "yazelix_welcome_style_legacy"
+            config: "[ascii]\nmode = \"animated\"\n"
+            expected_error: "Unknown config field at ascii"
+        }
+        {
+            name: "removed shell.enable_atuin is unsupported"
+            label: "yazelix_parser_no_auto_apply"
+            config: "[shell]\nenable_atuin = true\n"
+            expected_error: "Unknown config field at shell.enable_atuin"
+        }
+        {
+            name: "legacy [packs] is unsupported"
+            label: "yazelix_pack_legacy_main"
+            config: "[packs]\nenabled = [\"git\"]\nuser_packages = [\"docker\"]\n\n[packs.declarations]\ngit = [\"gh\", \"prek\"]\n"
+            expected_error: "Unknown config field at packs"
+        }
+    ]
+
+    let results = ($cases | each {|case| check_parse_rejects_removed_config_surface $case })
+    ($results | all {|result| $result })
 }
 
 # Invariant: split default config surfaces are bootstrapped when missing.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
-    print "🧪 Testing parse_yazelix_config bootstraps both default config surfaces on first run..."
+def test_parse_yazelix_config_bootstraps_main_default_surface [] {
+    print "🧪 Testing parse_yazelix_config bootstraps the managed main config surface on first run..."
 
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d /tmp/yazelix_pack_bootstrap_XXXXXX | str trim)
@@ -343,21 +602,18 @@ def test_parse_yazelix_config_bootstraps_split_default_surfaces [] {
 
         let user_config_dir = ($temp_config_dir | path join "user_configs")
         let main_exists = (($user_config_dir | path join "yazelix.toml") | path exists)
-        let pack_exists = (($user_config_dir | path join "yazelix_packs.toml") | path exists)
         let generated_main = (if $main_exists { open --raw ($user_config_dir | path join "yazelix.toml") } else { "" })
-        let generated_packs = (if $pack_exists { open --raw ($user_config_dir | path join "yazelix_packs.toml") } else { "" })
 
         if (
             $main_exists
-            and $pack_exists
-            and ($generated_main | str contains "Pack configuration lives in ~/.config/yazelix/user_configs/yazelix_packs.toml")
-            and ($generated_packs | str contains "[declarations]")
-            and ((($parsed.pack_declarations | default {}) | columns | length) > 0)
+            and not (($user_config_dir | path join "yazelix_packs.toml") | path exists)
+            and ($generated_main | str contains '[shell]')
+            and (($parsed.default_shell? | default "") == "nu")
         ) {
-            print "  ✅ First-run bootstrap now materializes both user_configs TOML surfaces from runtime defaults"
+            print "  ✅ First-run bootstrap now materializes the managed main config without reviving the removed pack sidecar"
             true
         } else {
-            print $"  ❌ Unexpected result: main_exists=($main_exists) pack_exists=($pack_exists) parsed=($parsed | select pack_names pack_declarations | to json -r)"
+            print $"  ❌ Unexpected result: main_exists=($main_exists) parsed=($parsed | to json -r)"
             false
         }
     } catch { |err|
@@ -416,225 +672,6 @@ def test_parse_yazelix_config_bootstraps_taplo_formatter_support [] {
     $result
 }
 
-# Defends: legacy root config is rejected unless the user explicitly allows migration.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation [] {
-    print "🧪 Testing parse_yazelix_config rejects legacy root-level config files when it cannot prompt..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_legacy_root_no_prompt"
-        '[shell]
-default_shell = "bash"
-'
-        --legacy-root
-    )
-
-    let result = (try {
-        let parser_result = (run_parse_yazelix_config_probe $fixture)
-
-        let stderr = ($parser_result.stderr | str trim)
-
-        if (
-            ($parser_result.exit_code != 0)
-            and ($stderr | str contains "legacy root-level config files but could not prompt for")
-            and ($stderr | str contains "confirmation")
-            and ($stderr | str contains "yzx doctor --fix")
-            and ($fixture.config_path | path exists)
-            and not (($fixture.user_config_dir | path join "yazelix.toml") | path exists)
-        ) {
-            print "  ✅ Legacy root-level config now fails clearly instead of silently relocating in non-interactive startup"
-            true
-        } else {
-            print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: explicit legacy-root migration uses the managed relocation path.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed [] {
-    print "🧪 Testing parse_yazelix_config relocates legacy root-level config when explicitly allowed..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_legacy_root_allowed"
-        '[shell]
-default_shell = "bash"
-'
-        --legacy-root
-    )
-
-    let result = (try {
-        let parsed = (with-env { YAZELIX_ACCEPT_USER_CONFIG_RELOCATION: "true" } {
-            use ../utils/config_parser.nu [parse_yazelix_config]
-            with-env {
-                HOME: $fixture.tmp_home
-                YAZELIX_CONFIG_DIR: $fixture.config_dir
-                YAZELIX_RUNTIME_DIR: $fixture.repo_root
-                YAZELIX_ACCEPT_USER_CONFIG_RELOCATION: "true"
-            } {
-                parse_yazelix_config
-            }
-        })
-
-        let relocated_path = ($fixture.user_config_dir | path join "yazelix.toml")
-
-        if (
-            (($parsed.default_shell? | default "") == "bash")
-            and ($relocated_path | path exists)
-            and not ($fixture.config_path | path exists)
-        ) {
-            print "  ✅ Explicitly allowed relocation moves the legacy root config into user_configs"
-            true
-        } else {
-            print $"  ❌ Unexpected result: parsed=($parsed | to json -r) relocated_exists=(($relocated_path | path exists))"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: legacy inline packs are rejected with migration guidance.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance [] {
-    print "🧪 Testing parse_yazelix_config rejects legacy [packs] in yazelix.toml and points users at migrate..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_pack_legacy_main"
-        '[packs]
-enabled = ["git"]
-user_packages = ["docker"]
-
-[packs.declarations]
-git = ["gh", "prek"]
-'
-    )
-
-    let result = (try {
-        let parser_result = (run_parse_yazelix_config_probe $fixture)
-
-        let stderr = ($parser_result.stderr | str trim)
-
-        if (
-            ($parser_result.exit_code != 0)
-            and ($stderr | str contains "Known migration at packs")
-            and ($stderr | str contains "yzx config migrate --apply")
-        ) {
-            print "  ✅ Legacy pack settings are now blocked with shared migration guidance"
-            true
-        } else {
-            print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: split pack ownership conflicts fail fast.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_rejects_split_pack_ownership [] {
-    print "🧪 Testing parse_yazelix_config fails fast when yazelix.toml and yazelix_packs.toml both define packs..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_pack_sidecar_conflict_XXXXXX | str trim)
-
-    let result = (try {
-        let config_path = ($tmpdir | path join "yazelix.toml")
-        let pack_path = ($tmpdir | path join "yazelix_packs.toml")
-        let parser_script = (repo_path "nushell" "scripts" "utils" "config_parser.nu")
-
-        '[packs]
-enabled = ["git"]
-' | save --force --raw $config_path
-
-        'enabled = ["rust"]
-' | save --force --raw $pack_path
-
-        let output = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
-            ^nu -c $"source \"($parser_script)\"; try { parse_yazelix_config | ignore } catch {|err| print $err.msg }" | complete
-        })
-        let stdout = ($output.stdout | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Yazelix found pack settings in both yazelix.toml and yazelix_packs.toml.")
-            and ($stdout | str contains "fully owns pack settings")
-            and ($stdout | str contains "Failure class: config problem.")
-        ) {
-            print "  ✅ parse_yazelix_config fails fast on ambiguous split pack ownership"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
-# Regression: Home Manager symlinked main configs must still discover the sibling pack sidecar.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_parse_yazelix_config_reads_pack_sidecar_next_to_symlinked_main_config [] {
-    print "🧪 Testing parse_yazelix_config keeps pack sidecar ownership next to a symlinked Home Manager main config..."
-
-    let fixture = (setup_home_manager_symlinked_main_config_fixture "yazelix_hm_symlink_pack_surface")
-
-    let result = (try {
-        let parser_script = (repo_path "nushell" "scripts" "utils" "config_parser.nu")
-
-        'enabled = ["misc"]
-' | save --force --raw $fixture.pack_path
-
-        let output = (with-env {
-            HOME: $fixture.fake_home
-            XDG_CONFIG_HOME: ($fixture.fake_home | path join ".config")
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.repo_root
-        } {
-            ^nu --no-config-file -c $"use \"($parser_script)\" [parse_yazelix_config]; parse_yazelix_config | get pack_names | to json -r" | complete
-        })
-        let stdout = ($output.stdout | str trim)
-        let stderr = ($output.stderr | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout == '["misc"]')
-            and not ($stderr | str contains "Already exists")
-        ) {
-            print "  ✅ Symlinked Home Manager main configs still read the sibling yazelix_packs.toml sidecar"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmpdir
-    $result
-}
-
 # Regression: Home Manager symlinked managed configs must still record canonical rebuild state.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_record_materialized_state_accepts_symlinked_managed_main_config [] {
@@ -648,13 +685,11 @@ def test_record_materialized_state_accepts_symlinked_managed_main_config [] {
             XDG_CONFIG_HOME: ($fixture.fake_home | path join ".config")
             YAZELIX_CONFIG_DIR: $fixture.config_dir
             YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZELIX_STATE_DIR: ($fixture.fake_home | path join ".local" "share" "yazelix")
         } {
             record_materialized_state {
                 config_file: $fixture.symlinked_main
                 config_hash: "cfg"
-                lock_hash: "lock"
-                devenv_nix_hash: "nix"
-                devenv_yaml_hash: "yaml"
                 runtime_hash: "runtime"
             }
         }
@@ -665,13 +700,11 @@ def test_record_materialized_state_accepts_symlinked_managed_main_config [] {
             null
         }
         let recorded_config_hash = if $recorded == null { "" } else { $recorded | get -o config_hash | default "" }
-        let recorded_lock_hash = if $recorded == null { "" } else { $recorded | get -o lock_hash | default "" }
         let recorded_runtime_hash = if $recorded == null { "" } else { $recorded | get -o runtime_hash | default "" }
 
         if (
             ($recorded != null)
             and ($recorded_config_hash == "cfg")
-            and ($recorded_lock_hash == "lock")
             and ($recorded_runtime_hash == "runtime")
         ) {
             print "  ✅ Symlinked Home Manager managed configs still record canonical rebuild state"
@@ -722,81 +755,30 @@ def test_user_mode_requires_real_terminal_config [] {
     $result
 }
 
-# Defends: removed auto terminal config mode is rejected by schema validation.
+# Defends: removed enum values are rejected by schema validation.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_config_schema_rejects_removed_auto_terminal_config_mode [] {
-    print "🧪 Testing config schema rejects the removed terminal.config_mode = auto value..."
+def test_config_schema_rejects_removed_enum_values [] {
+    print "🧪 Testing config schema rejects removed enum values..."
 
-    let tmpdir = (^mktemp -d /tmp/yazelix_terminal_mode_schema_XXXXXX | str trim)
-
-    let result = (try {
-        let config_path = ($tmpdir | path join "yazelix.toml")
-        '[terminal]
-config_mode = "auto"
-' | save --force --raw $config_path
-
-        let findings = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
-            use ../utils/config_schema.nu [validate_enum_values]
-            validate_enum_values (open $config_path)
-        })
-        let mode_findings = ($findings | where path == "terminal.config_mode")
-
-        if (
-            (($mode_findings | length) == 1)
-            and (($mode_findings | get 0.kind) == "invalid_enum")
-        ) {
-            print "  ✅ Config schema rejects the removed auto terminal config mode"
-            true
-        } else {
-            print $"  ❌ Unexpected findings: ($mode_findings | to json -r)"
-            false
+    let cases = [
+        {
+            name: "terminal.config_mode = auto"
+            label: "yazelix_terminal_mode_schema"
+            config: "[terminal]\nconfig_mode = \"auto\"\n"
+            path: "terminal.config_mode"
+            expected_value: "auto"
         }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmpdir
-    $result
-}
-
-# Defends: removed layout widget config is rejected by schema validation.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_config_schema_rejects_removed_layout_widget [] {
-    print "🧪 Testing config schema rejects the removed zellij layout widget..."
-
-    let tmpdir = (^mktemp -d /tmp/yazelix_widget_tray_schema_XXXXXX | str trim)
-
-    let result = (try {
-        let config_path = ($tmpdir | path join "yazelix.toml")
-        '[zellij]
-widget_tray = ["layout", "editor"]
-' | save --force --raw $config_path
-
-        let findings = (with-env { YAZELIX_CONFIG_OVERRIDE: $config_path } {
-            use ../utils/config_schema.nu [validate_enum_values]
-            validate_enum_values (open $config_path)
-        })
-        let tray_findings = ($findings | where path == "zellij.widget_tray")
-
-        if (
-            (($tray_findings | length) == 1)
-            and (($tray_findings | get 0.kind) == "invalid_enum")
-            and ((($tray_findings | get 0.message) | str contains "layout"))
-        ) {
-            print "  ✅ Config schema rejects the removed layout widget entry"
-            true
-        } else {
-            print $"  ❌ Unexpected findings: ($tray_findings | to json -r)"
-            false
+        {
+            name: "zellij.widget_tray contains layout"
+            label: "yazelix_widget_tray_schema"
+            config: "[zellij]\nwidget_tray = [\"layout\", \"editor\"]\n"
+            path: "zellij.widget_tray"
+            expected_value: "layout"
         }
-    } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
+    ]
 
-    rm -rf $tmpdir
-    $result
+    let results = ($cases | each {|case| check_schema_rejects_removed_enum_value $case })
+    ($results | all {|result| $result })
 }
 
 def write_minimal_user_zellij_config [fake_home: string] {
@@ -926,11 +908,12 @@ sidebar_width_percent = 35
                 layout: (open --raw $layout_path)
             }
         })
-        let temp_noise = (
-            ^find $out_dir
-            | lines
-            | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
-        )
+        let temp_find = (^find $out_dir | complete)
+        let temp_noise = if $temp_find.exit_code == 0 {
+            $temp_find.stdout | lines | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
+        } else {
+            []
+        }
 
         if (
             ($second_output.config == $first_output.config)
@@ -1149,20 +1132,24 @@ def test_generate_merged_yazi_config_syncs_starship_plugin_config [] {
             XDG_CONFIG_HOME: ($tmp_home | path join ".config")
             XDG_DATA_HOME: ($tmp_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_LOGS_DIR: ($tmp_home | path join ".local" "share" "yazelix" "logs")
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
             let merged_dir = (generate_merged_yazi_config $repo_root --quiet)
             generate_merged_yazi_config $repo_root --quiet | ignore
+            let mode_result = (^stat -c '%A' ($merged_dir | path join "yazelix_starship.toml") | complete)
+            let temp_find = (^find $merged_dir | complete)
             {
                 merged_dir: $merged_dir
                 init_lua: (open --raw ($merged_dir | path join "init.lua"))
                 starship_config: (open --raw ($merged_dir | path join "yazelix_starship.toml"))
-                starship_config_mode: (^stat -c '%A' ($merged_dir | path join "yazelix_starship.toml") | str trim)
-                temp_noise: (
-                    ^find $merged_dir
-                    | lines
-                    | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
-                )
+                starship_config_mode: (if $mode_result.exit_code == 0 { $mode_result.stdout | str trim } else { "" })
+                temp_noise: (if $temp_find.exit_code == 0 {
+                    $temp_find.stdout | lines | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
+                } else {
+                    []
+                })
             }
         })
 
@@ -1206,20 +1193,34 @@ def test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins [] 
             XDG_CONFIG_HOME: ($tmp_home | path join ".config")
             XDG_DATA_HOME: ($tmp_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_LOGS_DIR: ($tmp_home | path join ".local" "share" "yazelix" "logs")
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
             let merged_dir = (generate_merged_yazi_config $repo_root --quiet)
-            open --raw ($merged_dir | path join "plugins" "zoxide-editor.yazi" "main.lua")
+            let zoxide_plugin = ($merged_dir | path join "plugins" "zoxide-editor.yazi" "main.lua")
+            let warm_sentinel = ($merged_dir | path join "plugins" "zoxide-editor.yazi" "warm_skip_sentinel")
+            record_current_materialized_state | ignore
+            "warm asset marker" | save --force --raw $warm_sentinel
+            regenerate_runtime_configs $repo_root --quiet
+            let sentinel_after_warm_skip = ($warm_sentinel | path exists)
+            rm --force $zoxide_plugin
+            regenerate_runtime_configs $repo_root --quiet
+            {
+                zoxide_plugin: (open --raw $zoxide_plugin)
+                sentinel_after_warm_skip: $sentinel_after_warm_skip
+            }
         })
 
         if (
-            ($generated | str contains ($repo_root | path join "nushell" "scripts" "integrations" "zoxide_open_in_editor.nu"))
-            and not ($generated | str contains "__YAZELIX_RUNTIME_DIR__")
+            ($generated.zoxide_plugin | str contains ($repo_root | path join "nushell" "scripts" "integrations" "zoxide_open_in_editor.nu"))
+            and not ($generated.zoxide_plugin | str contains "__YAZELIX_RUNTIME_DIR__")
+            and $generated.sentinel_after_warm_skip
         ) {
-            print "  ✅ Generated Yazi plugins now render a real runtime path instead of leaking the placeholder"
+            print "  ✅ Generated Yazi plugins render real runtime paths, skip static recopy on warm paths, and self-heal missing bundled files"
             true
         } else {
-            print "  ❌ Generated Zoxide Yazi plugin still leaked the runtime placeholder"
+            print "  ❌ Generated Zoxide Yazi plugin still leaked the runtime placeholder or recopied warm assets unnecessarily"
             false
         }
     } catch {|err|
@@ -1231,10 +1232,10 @@ def test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins [] 
     $result
 }
 
-# Regression: source-checkout sessions must generate runtime-owned Yazi and Zellij artifacts against the active runtime, not runtime/current.
+# Regression: source-checkout sessions must generate runtime-owned Yazi and Zellij artifacts against the active runtime, not a stale installed-runtime reference.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generated_runtime_configs_prefer_active_runtime_over_installed_reference [] {
-    print "🧪 Testing generated Yazi and Zellij runtime configs prefer the active runtime over runtime/current..."
+    print "🧪 Testing generated Yazi and Zellij runtime configs prefer the active runtime over a stale installed-runtime reference..."
 
     let repo_root = (get_repo_config_dir)
     let tmpdir = (^mktemp -d /tmp/yazelix_runtime_identity_split_XXXXXX | str trim)
@@ -1278,7 +1279,7 @@ def test_generated_runtime_configs_prefer_active_runtime_over_installed_referenc
             print "  ✅ Generated runtime-owned configs now stay pinned to the active runtime in source-checkout sessions"
             true
         } else {
-            print $"  ❌ Runtime-owned generated configs still leaked runtime/current: fake_installed_runtime=($fake_installed_runtime)"
+            print $"  ❌ Runtime-owned generated configs still leaked the legacy installed-runtime reference: fake_installed_runtime=($fake_installed_runtime)"
             false
         }
     } catch {|err|
@@ -1459,6 +1460,59 @@ def test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrato
             true
         } else {
             print $"  ❌ Generated Zellij config is missing the direct Ctrl+y pane-orchestrator binding contract: ($generated_config)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
+# Regression: popup and menu transient panes must route through the pane orchestrator and share one configured floating geometry contract.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_generate_merged_zellij_config_routes_popup_and_menu_through_shared_transient_pane_contract [] {
+    print "🧪 Testing merged Zellij config routes popup/menu through the shared pane-orchestrator transient-pane contract..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_transient_contract_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        let config_path = ($tmpdir | path join "yazelix.toml")
+
+        write_minimal_user_zellij_config $fake_home
+        '[zellij]
+popup_width_percent = 82
+popup_height_percent = 76
+' | save --force --raw $config_path
+
+        let output = (run_merged_zellij_config_in_fake_home $tmpdir {
+            YAZELIX_CONFIG_OVERRIDE: $config_path
+        })
+        let generated_config = ($output.config | str trim)
+        let repo_root = (get_repo_config_dir)
+
+        if (
+            ($generated_config | str contains 'bind "Alt t" {')
+            and ($generated_config | str contains 'bind "Alt Shift M" {')
+            and (($generated_config | str contains 'name "toggle_transient_pane"') and (($generated_config | lines | where {|line| $line | str contains 'name "toggle_transient_pane"'} | length) >= 2))
+            and ($generated_config | str contains 'payload "popup"')
+            and ($generated_config | str contains 'payload "menu"')
+            and (($generated_config | lines | where {|line| $line | str contains $"runtime_dir \"($repo_root)\""} | length) >= 3)
+            and not ($generated_config | str contains "yazelix_popup_runner.wasm")
+            and not ($generated_config | str contains 'configs/zellij/scripts/yzx_toggle_popup.nu')
+            and not ($generated_config | str contains 'width "70%"')
+            and not ($generated_config | str contains 'height "70%"')
+            and ($generated_config | str contains $"runtime_dir \"($repo_root)\"")
+            and ($generated_config | str contains 'popup_width_percent "82"')
+            and ($generated_config | str contains 'popup_height_percent "76"')
+        ) {
+            print "  ✅ popup and menu now bind directly to the pane orchestrator and carry one shared transient-pane geometry contract in plugin config"
+            true
+        } else {
+            print $"  ❌ Generated Zellij config is missing the shared transient-pane contract: ($generated_config)"
             false
         }
     } catch {|err|
@@ -1656,19 +1710,17 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
         (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
         (test_managed_wrapper_launch_command_does_not_forward_config_mode_flag)
-        (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
-        (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
-        (test_parse_yazelix_config_bootstraps_split_default_surfaces)
+        (test_ghostty_linux_launch_command_keeps_linux_specific_flags)
+        (test_ghostty_linux_launch_command_prefers_runtime_owned_nixgl_wrapper)
+        (test_ghostty_wayland_wrapper_falls_back_to_simple_im_without_active_daemon)
+        (test_ghostty_wayland_wrapper_preserves_active_ibus_env)
+        (test_ghostty_macos_launch_command_omits_linux_specific_flags)
+        (test_parse_yazelix_config_rejects_removed_surfaces_without_rewriting)
+        (test_parse_yazelix_config_bootstraps_main_default_surface)
         (test_parse_yazelix_config_bootstraps_taplo_formatter_support)
-        (test_parse_yazelix_config_rejects_legacy_root_config_without_confirmation)
-        (test_parse_yazelix_config_relocates_legacy_root_config_when_explicitly_allowed)
-        (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)
-        (test_parse_yazelix_config_rejects_split_pack_ownership)
-        (test_parse_yazelix_config_reads_pack_sidecar_next_to_symlinked_main_config)
         (test_record_materialized_state_accepts_symlinked_managed_main_config)
         (test_user_mode_requires_real_terminal_config)
-        (test_config_schema_rejects_removed_auto_terminal_config_mode)
-        (test_config_schema_rejects_removed_layout_widget)
+        (test_config_schema_rejects_removed_enum_values)
         (test_generate_merged_yazi_config_rejects_legacy_user_overrides)
         (test_generate_merged_yazi_config_syncs_starship_plugin_config)
         (test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins)
@@ -1682,6 +1734,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
         (test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers)
         (test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrator_toggle)
+        (test_generate_merged_zellij_config_routes_popup_and_menu_through_shared_transient_pane_contract)
         (test_generate_merged_zellij_config_sets_on_force_close_by_session_mode)
         (test_generate_merged_zellij_config_replaces_conflicting_ui_and_serialization_settings)
     ]

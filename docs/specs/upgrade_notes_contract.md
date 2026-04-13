@@ -2,11 +2,11 @@
 
 ## Summary
 
-Yazelix should keep one short human-facing upgrade surface and one canonical structured upgrade-notes source, then enforce both with cheap local validation and stricter CI checks so config-affecting changes cannot quietly ship without migration or release-note coverage.
+Yazelix should keep one short human-facing upgrade surface and one canonical structured upgrade-notes source, then enforce both with cheap local validation and stricter CI checks so config-affecting changes cannot quietly ship without release-note coverage.
 
 ## Why
 
-The upgrade UX beads depend on durable, machine-readable release notes rather than ad hoc markdown edits or commit archaeology. Without an explicit contract and validator lane, it is too easy to change config surfaces, bump versions, or add migrations without recording what users need to know.
+The upgrade UX beads depend on durable, machine-readable release notes rather than ad hoc markdown edits or commit archaeology. Without an explicit contract and validator lane, it is too easy to change config surfaces or bump versions without recording what users need to know.
 
 ## Scope
 
@@ -26,11 +26,11 @@ Yazelix should keep:
 - a root `CHANGELOG.md` for concise, user-facing upgrade notes
 - `docs/upgrade_notes.toml` as the canonical structured source
 
-The structured notes must include at least the current `YAZELIX_VERSION` and an `unreleased` bucket so `main` can describe post-release work honestly without inventing fake versions. Each entry must declare its upgrade impact, migration ids when safe migrations exist, and manual actions when automation is not possible.
+The structured notes must include at least the current `YAZELIX_VERSION` and an `unreleased` bucket so the live branch can describe post-release work honestly without inventing fake versions. Each entry must declare its upgrade impact, any historical migration ids it still references, and manual actions when user action is required.
 
-`docs/upgrade_notes.toml` may also include optional major-series summaries, such as `series.v13`, when Yazelix wants a curated README projection of the current major line. Those summaries are not exact-version release notes and should stay high-level.
+`docs/upgrade_notes.toml` may also include optional major-series summaries, such as `series.v14`, when Yazelix wants a curated README projection of the latest tagged line. Those summaries are not exact-version release notes and should stay high-level.
 
-Cheap validation should run locally and in CI to ensure the files exist, the current version is represented, the changelog headings and headlines line up with the structured data, and the migration ids resolve to real migration rules.
+Cheap validation should run locally and in CI to ensure the files exist, the current version is represented, and the changelog headings and headlines line up with the structured data. Because v15 no longer ships a live config-migration registry, `unreleased` must not use `migration_available`, and historical migration ids are preserved as release-note history rather than validated against live migration rules.
 
 CI should additionally inspect the diff. Version bumps must update both release-note surfaces in the same change. Changes to guarded upgrade-sensitive files must be acknowledged in the relevant structured entry, and the root changelog plus structured notes should change together so the two surfaces do not drift.
 
@@ -44,13 +44,13 @@ CI should additionally inspect the diff. Version bumps must update both release-
 
 1. When `YAZELIX_VERSION` changes, CI fails unless both `CHANGELOG.md` and `docs/upgrade_notes.toml` are updated in the same diff.
 2. When guarded config-contract files change without a version bump, CI fails unless the `unreleased` entry acknowledges the changed paths.
-3. When upgrade notes reference migration ids, validation fails unless those ids exist in the migration registry.
+3. When `unreleased` declares `upgrade_impact = "migration_available"`, validation fails because v15 no longer ships a live config-migration engine.
 4. When the changelog or structured notes drift out of lockstep, validation fails clearly with the exact missing requirement.
 5. When maintainers run local hooks, the cheap validator catches missing files, missing entries, or malformed note metadata quickly.
 
 ## Verification
 
-- unit tests: validator coverage for required fields, version alignment, migration-id integrity, and diff-aware guarded-file enforcement
+- unit tests: validator coverage for required fields, version alignment, no-live-migration enforcement, and diff-aware guarded-file enforcement
 - integration tests: `nu nushell/scripts/dev/validate_upgrade_contract.nu`
 - e2e scripts: `nu nushell/scripts/dev/test_upgrade_contract_e2e.nu`
 - CI checks: `nu nushell/scripts/dev/validate_upgrade_contract.nu --ci`

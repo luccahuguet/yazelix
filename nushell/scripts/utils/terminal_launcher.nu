@@ -18,22 +18,14 @@ def get_terminal_title [terminal: string] {
     $"Yazelix - (($TERMINAL_METADATA | get -o $terminal | default {} | get -o name | default $terminal))"
 }
 
-def get_profile_bin_dir [profile: string] {
-    if ($profile | is-empty) {
-        return ""
-    }
-
-    let bin_dir = ($profile | path join "bin")
-    if ($bin_dir | path exists) {
-        $bin_dir
-    } else {
-        ""
-    }
-}
-
-def get_current_profile_bin_dir [] {
-    let profile = ($env.DEVENV_PROFILE? | default "" | into string | str trim)
-    get_profile_bin_dir $profile
+def get_runtime_platform_name []: nothing -> string {
+    (
+        $env.YAZELIX_TEST_OS?
+        | default $nu.os-info.name
+        | into string
+        | str trim
+        | str downcase
+    )
 }
 
 def resolve_nixgl_launch_prefix [] {
@@ -47,22 +39,14 @@ def resolve_nixgl_launch_prefix [] {
         return $"($runtime_nixgl_default) "
     }
 
-    let profile_bin_dir = (get_current_profile_bin_dir)
-    if ($profile_bin_dir | is-not-empty) {
-        let profile_nixgl = ($profile_bin_dir | path join "nixGL")
-        if ($profile_nixgl | path exists) {
-            return $"($profile_nixgl) "
-        }
+    let runtime_nixgl_mesa = ((get_yazelix_runtime_dir) | path join "bin" "nixGLMesa")
+    if ($runtime_nixgl_mesa | path exists) {
+        return $"($runtime_nixgl_mesa) "
+    }
 
-        let profile_nixgl_default = ($profile_bin_dir | path join "nixGLDefault")
-        if ($profile_nixgl_default | path exists) {
-            return $"($profile_nixgl_default) "
-        }
-
-        let profile_nixgl_intel = ($profile_bin_dir | path join "nixGLIntel")
-        if ($profile_nixgl_intel | path exists) {
-            return $"($profile_nixgl_intel) "
-        }
+    let runtime_nixgl_intel = ((get_yazelix_runtime_dir) | path join "bin" "nixGLIntel")
+    if ($runtime_nixgl_intel | path exists) {
+        return $"($runtime_nixgl_intel) "
     }
 
     if (which nixGL | is-not-empty) {
@@ -71,6 +55,10 @@ def resolve_nixgl_launch_prefix [] {
 
     if (which nixGLDefault | is-not-empty) {
         return "nixGLDefault "
+    }
+
+    if (which nixGLMesa | is-not-empty) {
+        return "nixGLMesa "
     }
 
     if (which nixGLIntel | is-not-empty) {
@@ -111,7 +99,7 @@ export def resolve_terminal_config [terminal: string, mode: string] {
     error make {msg: $"Unsupported terminal.config_mode '($mode)'. Expected 'yazelix' or 'user'."}
 }
 
-export def detect_terminal_candidates [preferred: any, prefer_wrappers: bool = true] {
+export def detect_terminal_candidates [preferred: any] {
     # Build list of terminals to check: use list order if provided, otherwise preferred first
     let ordered_terminals = if ($preferred | describe | str contains "list") {
         $preferred | where $it in $SUPPORTED_TERMINALS
@@ -123,35 +111,14 @@ export def detect_terminal_candidates [preferred: any, prefer_wrappers: bool = t
         return []
     }
 
-    let terminals_to_check = (
-        $ordered_terminals
-        | each {|t|
-            if $prefer_wrappers {
-                [
-                    {terminal: $t, use_wrapper: true}
-                    {terminal: $t, use_wrapper: false}
-                ]
-            } else {
-                [{terminal: $t, use_wrapper: false}]
-            }
-        }
-        | flatten
-    )
-
     mut available = []
-    for term_check in $terminals_to_check {
-        let terminal = $term_check.terminal
-        let use_wrapper = $term_check.use_wrapper
+    for terminal in $ordered_terminals {
         let term_meta = ($TERMINAL_METADATA | get -o $terminal | default {})
-
-        let command = if $use_wrapper { $term_meta.wrapper } else { $terminal }
-
-        if (command_exists $command) {
+        if (command_exists $terminal) {
             $available = ($available | append {
                 terminal: $terminal
                 name: $term_meta.name
-                command: $command
-                use_wrapper: $use_wrapper
+                command: $terminal
             })
         }
     }
@@ -159,53 +126,9 @@ export def detect_terminal_candidates [preferred: any, prefer_wrappers: bool = t
     $available
 }
 
-export def detect_terminal_wrapper_candidates_from_profile [preferred: any, profile_path: string] {
-    let profile_bin_dir = (get_profile_bin_dir $profile_path)
-    if ($profile_bin_dir | is-empty) {
-        return []
-    }
-
-    let ordered_terminals = if ($preferred | describe | str contains "list") {
-        $preferred | where $it in $SUPPORTED_TERMINALS
-    } else {
-        let other_terminals = $SUPPORTED_TERMINALS | where $it != $preferred
-        ([$preferred] | append $other_terminals)
-    }
-    if ($ordered_terminals | is-empty) {
-        return []
-    }
-
-    $ordered_terminals
-    | each {|terminal|
-        let term_meta = ($TERMINAL_METADATA | get -o $terminal | default {})
-        let wrapper = ($term_meta.wrapper? | default "")
-        let wrapper_path = if ($wrapper | is-not-empty) {
-            $profile_bin_dir | path join $wrapper
-        } else {
-            ""
-        }
-        if ($wrapper_path | is-not-empty) and ($wrapper_path | path exists) {
-            {
-                terminal: $terminal
-                name: $term_meta.name
-                command: $wrapper_path
-                use_wrapper: true
-            }
-        } else {
-            null
-        }
-    }
-    | compact
-}
-
-export def detect_terminal_wrapper_candidates [preferred: any] {
-    let current_profile = ($env.DEVENV_PROFILE? | default "" | into string | str trim)
-    detect_terminal_wrapper_candidates_from_profile $preferred $current_profile
-}
-
-# Detect first available terminal (wrapper or direct)
-export def detect_terminal [preferred: any, prefer_wrappers: bool = true] {
-    let candidates = (detect_terminal_candidates $preferred $prefer_wrappers)
+# Detect first available terminal.
+export def detect_terminal [preferred: any] {
+    let candidates = (detect_terminal_candidates $preferred)
     if ($candidates | is-empty) {
         null
     } else {
@@ -264,66 +187,75 @@ def get_working_dir_arg [terminal: string, working_dir: string]: nothing -> stri
     }
 }
 
+def get_ghostty_env_wrapper_path []: nothing -> string {
+    let runtime_dir = (get_yazelix_runtime_dir)
+    $runtime_dir | path join "shells" "posix" "yazelix_ghostty.sh"
+}
+
+def build_ghostty_launch_command [
+    command: string
+    config_path: string
+    title: string
+    working_dir_arg: string
+    startup_shell: string
+]: nothing -> string {
+    let platform_name = (get_runtime_platform_name)
+
+    if $platform_name == "macos" {
+        return $"($command) --config-default-files=false --config-file=($config_path) --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
+    }
+
+    let nixgl_prefix = (resolve_nixgl_launch_prefix)
+    let ghostty_env_wrapper = (quote_for_bash_single_string (get_ghostty_env_wrapper_path))
+    $"($ghostty_env_wrapper) ($nixgl_prefix)($command) --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --class=\"($YAZELIX_WINDOW_CLASS)\" --x11-instance-name=\"($YAZELIX_X11_INSTANCE)\" --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
+}
+
 # Build launch command for a terminal. The returned command is a foreground
 # terminal exec; detached/background handling is applied by run_detached_terminal_launch.
 export def build_launch_command [
     terminal_info: record
     config_path
-    terminal_config_mode: string
     working_dir: string
     needs_reload: bool = true  # Whether to force environment reload
 ]: nothing -> string {
     let terminal = $terminal_info.terminal
     let command = $terminal_info.command
-    let use_wrapper = $terminal_info.use_wrapper
     let launch_prefix = build_detached_launch_prefix $needs_reload
     let working_dir_arg = (get_working_dir_arg $terminal $working_dir)
     let startup_script = (get_startup_script_path)
     let startup_shell = $"sh -c 'exec ($startup_script)'"
     let title = (get_terminal_title $terminal)
 
-    if $use_wrapper {
-        # Managed wrapper binaries already bake the canonical terminal binary,
-        # config mode, startup script, and nixGL path.
-        $"($launch_prefix)($command)($working_dir_arg)"
-    } else {
-        # Direct terminal launch with config
-        # Prefer the generic nixGL wrapper when available. Fall back to the
-        # older Intel-specific name only if the default wrapper is absent.
-        let nixgl_prefix = (resolve_nixgl_launch_prefix)
-        let terminal_cmd = match $terminal {
-            "ghostty" => {
-                $"($nixgl_prefix)ghostty --config-default-files=false --config-file=($config_path) --gtk-single-instance=false --class=\"($YAZELIX_WINDOW_CLASS)\" --x11-instance-name=\"($YAZELIX_X11_INSTANCE)\" --title=\"($title)\"($working_dir_arg) -e ($startup_shell)"
-            },
-            "wezterm" => {
-                $"($nixgl_prefix)wezterm --config-file ($config_path) start --class=($YAZELIX_WINDOW_CLASS)($working_dir_arg) -- ($startup_shell)"
-            },
-            "kitty" => {
-                $"($nixgl_prefix)kitty --config=($config_path) --class=($YAZELIX_WINDOW_CLASS) --title=\"($title)\"($working_dir_arg) ($startup_shell)"
-            },
-            "alacritty" => {
-                $"($nixgl_prefix)alacritty --config-file ($config_path) --class \"($YAZELIX_WINDOW_CLASS)\" --title \"($title)\"($working_dir_arg) -e ($startup_shell)"
-            },
-            "foot" => {
-                $"($nixgl_prefix)foot --config ($config_path) --app-id ($YAZELIX_WINDOW_CLASS)($working_dir_arg) ($startup_shell)"
-            },
-            _ => {
-                error make {msg: $"Unknown terminal: ($terminal)"}
-            }
+    # Prefer the generic nixGL wrapper when available. Fall back to the
+    # older Intel-specific name only if the default wrapper is absent.
+    let nixgl_prefix = (resolve_nixgl_launch_prefix)
+    let terminal_cmd = match $terminal {
+        "ghostty" => {
+            build_ghostty_launch_command $command $config_path $title $working_dir_arg $startup_shell
+        },
+        "wezterm" => {
+            $"($nixgl_prefix)($command) --config-file ($config_path) start --class=($YAZELIX_WINDOW_CLASS)($working_dir_arg) -- ($startup_shell)"
+        },
+        "kitty" => {
+            $"($nixgl_prefix)($command) --config=($config_path) --class=($YAZELIX_WINDOW_CLASS) --title=\"($title)\"($working_dir_arg) ($startup_shell)"
+        },
+        "alacritty" => {
+            $"($nixgl_prefix)($command) --config-file ($config_path) --class \"($YAZELIX_WINDOW_CLASS)\" --title \"($title)\"($working_dir_arg) -e ($startup_shell)"
+        },
+        "foot" => {
+            $"($nixgl_prefix)($command) --config ($config_path) --app-id ($YAZELIX_WINDOW_CLASS)($working_dir_arg) ($startup_shell)"
+        },
+        _ => {
+            error make {msg: $"Unknown terminal: ($terminal)"}
         }
-
-        $"($launch_prefix)($terminal_cmd)"
     }
+
+    $"($launch_prefix)($terminal_cmd)"
 }
 
 # Get display name for terminal
 export def get_terminal_display_name [terminal_info: record]: nothing -> string {
-    let name = $terminal_info.name
-    if $terminal_info.use_wrapper {
-        $"Yazelix - ($name)"
-    } else {
-        $"($name)"
-    }
+    $terminal_info.name
 }
 
 export def run_detached_terminal_launch [launch_cmd: string, terminal_name: string, --verbose] {

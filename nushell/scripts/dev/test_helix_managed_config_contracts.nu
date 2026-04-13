@@ -4,7 +4,7 @@
 
 use ./yzx_test_helpers.nu [get_repo_root]
 use ../setup/helix_config_merger.nu [generate_managed_helix_config]
-use ../utils/launch_state.nu [get_launch_env]
+use ../utils/runtime_env.nu [get_runtime_env]
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Defends: managed Helix config preserves user overrides while enforcing the Yazelix reveal binding.
@@ -68,28 +68,28 @@ A-r = ":noop"
 }
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-# Defends: launch env wraps Helix with the managed Yazelix wrapper and preserves the real binary path.
-def test_get_launch_env_wraps_helix_with_managed_wrapper [] {
-    print "🧪 Testing launch env wraps Helix with the Yazelix-managed wrapper and records the real binary..."
+# Defends: runtime env wraps Helix with the managed Yazelix wrapper and preserves the wrapped binary hint.
+def test_get_runtime_env_wraps_helix_with_managed_wrapper [] {
+    print "🧪 Testing runtime env wraps Helix with the Yazelix-managed wrapper and records the wrapped binary hint..."
 
     let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_managed_helix_launch_env_XXXXXX | str trim)
-    let profile_path = ($tmp_home | path join "profile")
-    let profile_bin = ($profile_path | path join "bin")
-    mkdir $profile_bin
-    "" | save --force --raw ($profile_bin | path join "hx")
 
     let result = (try {
-        let launch_env = (with-env {
+        let runtime_env = (with-env {
             HOME: $tmp_home
             YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
         } {
-            get_launch_env {} $profile_path
+            get_runtime_env {
+                editor_command: "hx"
+                enable_sidebar: true
+                helix_runtime_path: null
+            }
         })
 
         let expected_wrapper = ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
-        let expected_binary = ($profile_bin | path join "hx")
+        let expected_binary = "hx"
 
         let retired_env_keys = [
             "YAZELIX_DEBUG_MODE"
@@ -103,18 +103,18 @@ def test_get_launch_env_wraps_helix_with_managed_wrapper [] {
         ]
         let retired_keys_absent = (
             $retired_env_keys
-            | all {|key| not ($launch_env | columns | any {|column| $column == $key }) }
+            | all {|key| not ($runtime_env | columns | any {|column| $column == $key }) }
         )
 
         if (
-            ($launch_env.EDITOR == $expected_wrapper)
-            and (($launch_env | get YAZELIX_MANAGED_HELIX_BINARY) == $expected_binary)
+            ($runtime_env.EDITOR == $expected_wrapper)
+            and (($runtime_env | get YAZELIX_MANAGED_HELIX_BINARY) == $expected_binary)
             and $retired_keys_absent
         ) {
-            print "  ✅ Launch env routes managed Helix sessions through the Yazelix wrapper, preserves the real Helix binary, and omits dead export-only vars"
+            print "  ✅ Runtime env routes managed Helix sessions through the Yazelix wrapper, preserves the wrapped Helix hint, and omits dead export-only vars"
             true
         } else {
-            print $"  ❌ Unexpected managed Helix launch env: (($launch_env | to json -r))"
+            print $"  ❌ Unexpected managed Helix runtime env: (($runtime_env | to json -r))"
             false
         }
     } catch {|err|
@@ -277,7 +277,7 @@ line-number = "relative"
 export def run_helix_managed_config_contract_tests [] {
     [
         (test_generate_managed_helix_config_merges_user_config_and_enforces_reveal)
-        (test_get_launch_env_wraps_helix_with_managed_wrapper)
+        (test_get_runtime_env_wraps_helix_with_managed_wrapper)
         (test_yazelix_hx_ignores_legacy_runtime_alias_and_uses_wrapper_runtime_root)
         (test_yzx_import_helix_copies_personal_config_with_force_backups)
     ]

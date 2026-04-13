@@ -1,11 +1,8 @@
 #!/usr/bin/env nu
 # Nix installation detector and graceful failure handler
 
-use devenv_cli.nu is_preferred_devenv_available
-
 # Check if Nix is installed and properly configured
 export def check_nix_installation [
-    --skip-devenv  # Skip devenv CLI check (for installing/updating devenv itself)
 ] {
     # Check if nix command is available in PATH
     let nix_available = (which nix | is-not-empty)
@@ -57,19 +54,6 @@ export def check_nix_installation [
         }
     }
 
-    if not $skip_devenv {
-        # Ensure devenv command is available
-        let devenv_available = (is_preferred_devenv_available)
-
-        if not $devenv_available {
-            return {
-                installed: true
-                error: "devenv_not_found"
-                message: "devenv command is not installed or not in PATH"
-            }
-        }
-    }
-    
     return {
         installed: true
         error: null
@@ -138,15 +122,6 @@ def show_nix_installation_help [error_type: string] {
             print "Or reinstall with the modern installer that enables flakes by default:"
             print $"($colors.cyan)curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install($colors.reset)"
         }
-        
-        "devenv_not_found" => {
-            print $"($colors.yellow)🔍 Problem:($colors.reset) devenv CLI is not installed or not available in PATH."
-            print ""
-            print $"($colors.blue)💡 Solution:($colors.reset) Install devenv by following the official guide:"
-            print $"($colors.cyan)https://devenv.sh/getting-started/($colors.reset)"
-            print ""
-            print "If devenv is already installed, ensure your shell sources the appropriate profile or restart your terminal."
-        }
     }
     
     print ""
@@ -162,7 +137,6 @@ def show_nix_installation_help [error_type: string] {
 # Main function to check Nix and fail gracefully if not available
 export def ensure_nix_available [
     --non-interactive  # Skip interactive prompts (for testing)
-    --skip-devenv      # Skip devenv CLI check (for installing/updating devenv itself)
 ] {
     let colors = {
         red: $"\u{1b}[31m"
@@ -173,11 +147,7 @@ export def ensure_nix_available [
         reset: $"\u{1b}[0m"
     }
 
-    let nix_status = if $skip_devenv {
-        check_nix_installation --skip-devenv
-    } else {
-        check_nix_installation
-    }
+    let nix_status = (check_nix_installation)
 
     if not $nix_status.installed or ($nix_status.error | is-not-empty) {
         show_nix_installation_help $nix_status.error
@@ -233,7 +203,14 @@ export def ensure_nix_available [
                     
                     # Test if nix is now available
                     if (which nix | is-not-empty) {
-                        let nix_version = try { (^nix --version | lines | first) } catch { "unknown" }
+                        let nix_version = try {
+                            let version_result = (^nix --version | complete)
+                            if $version_result.exit_code == 0 {
+                                $version_result.stdout | lines | first
+                            } else {
+                                "unknown"
+                            }
+                        } catch { "unknown" }
                         print $"($colors.green)✅ Success! Nix is now available: ($nix_version)($colors.reset)"
                         return true
                     } else {

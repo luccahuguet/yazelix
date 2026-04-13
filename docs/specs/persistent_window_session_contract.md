@@ -36,7 +36,7 @@ Without stating that explicitly, users and future fixes will keep treating persi
 - Session-local state is shared across persistent-mode windows because those windows are attached to one logical session.
   - Tab state, workspace roots, and in-session behavior belong to that shared session rather than to each client window separately.
 - Restart and update transitions are session-scoped in persistent mode.
-  - `yzx refresh` still updates shared durable/materialized state rather than mutating every running process in place.
+  - generated-state repair still updates shared durable/materialized state rather than mutating every running process in place.
   - `yzx restart` should be understood as a transition of the named logical session, not as an independent restart of just one attached client.
   - If restart behavior affects other attached clients, that is part of the persistent-session model rather than a cross-window spillover bug.
 - Last-client lifecycle may intentionally differ from non-persistent mode.

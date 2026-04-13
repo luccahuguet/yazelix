@@ -4,7 +4,7 @@
 
 Yazelix should target a simple nixpkgs package shape: one `yazelix` package that ships the immutable runtime tree plus the `yzx` command, and runs directly from the store path.
 
-The nixpkgs package should not re-enact the flake installer. It should not mutate the user's home directory at install time, install a separate `devenv` into the user's profile, or require a `runtime/current` indirection just to function.
+The nixpkgs package should not re-enact the flake installer. It should not mutate the user's home directory at install time, install a separate legacy environment-manager binary into the user's profile, or require a `runtime/current` indirection just to function.
 
 ## Why
 
@@ -23,7 +23,7 @@ To keep the nixpkgs submission small, honest, and maintainable:
 2. It should not require `~/.local/share/yazelix/runtime/current` to exist.
 3. It should not auto-install shell hooks or desktop entries.
 4. It should not auto-create `~/.local/bin/yzx`.
-5. It should not install `devenv` into the user's profile as a side effect.
+5. It should not install a second legacy environment-manager binary into the user's profile as a side effect.
 6. It should not introduce a second runtime definition outside the existing runtime package/source tree.
 
 ## Package Identity
@@ -55,10 +55,6 @@ The package should ship the immutable runtime assets Yazelix executes directly:
 - `shells/`
 - shipped templates such as:
   - `yazelix_default.toml`
-  - `yazelix_packs_default.toml`
-  - `devenv.nix`
-  - `devenv.lock`
-  - `devenv.yaml`
 - `bin/yzx`
 - runtime-local `bin/nu`
 
@@ -89,8 +85,7 @@ The nixpkgs package should depend on the tools needed to bootstrap and run Yazel
 Expected package-level runtime dependencies:
 
 - Nushell
-- `devenv`
-- other small direct bootstrap/runtime tools that Yazelix invokes outside the managed `devenv` shell
+- other small direct bootstrap/runtime tools that Yazelix invokes outside its own runtime scripts
 
 Non-goal for first submission:
 
@@ -173,7 +168,7 @@ The package contract should not depend on the flake installer as the update mech
 2. The package does not need `runtime/current` or `~/.local/bin/yzx` to function.
 3. The package does not mutate the user's home directory during install.
 4. User config and generated state remain outside the package.
-5. The package includes the runtime-local `nu` and the bootstrap/runtime dependencies needed to invoke Yazelix itself.
+5. The package includes the runtime-local `nu` and the direct bootstrap/runtime dependencies needed to invoke Yazelix itself.
 6. Desktop integration remains explicit via `yzx desktop install` instead of becoming implicit package behavior.
 7. The remaining work to upstream the package is mostly translation and review, not product-boundary redesign.
 

@@ -11,42 +11,30 @@ const PRIMARY_TERMINAL = $DEFAULT_TERMINAL
 const TERMINALS = $SUPPORTED_TERMINALS
 
 # Configuration variations to test
-const HELIX_MODES = ["release", "source"]
 const BOOLEAN_FEATURES = [
     "enable_sidebar",
-    "persistent_sessions",
-    "recommended_deps",
-    "yazi_extensions"
+    "persistent_sessions"
 ]
 
 # Feature record builders
-def make_standard_features [helix_mode: string = "release"]: nothing -> record {
+def make_standard_features []: nothing -> record {
     {
-        helix_mode: $helix_mode,
         enable_sidebar: true,
-        persistent_sessions: false,
-        recommended_deps: true,
-        yazi_extensions: true
+        persistent_sessions: false
     }
 }
 
 def make_minimal_features []: nothing -> record {
     {
-        helix_mode: "release",
         enable_sidebar: false,
-        persistent_sessions: false,
-        recommended_deps: false,
-        yazi_extensions: false
+        persistent_sessions: false
     }
 }
 
-def make_maximal_features []: nothing -> record {
+def make_persistent_features []: nothing -> record {
     {
-        helix_mode: "source",
         enable_sidebar: true,
-        persistent_sessions: true,
-        recommended_deps: true,
-        yazi_extensions: true
+        persistent_sessions: true
     }
 }
 
@@ -64,17 +52,7 @@ export def generate_test_combinations []: nothing -> list<record> {
         })
     }
 
-    # 2. Feature variation testing (primary shell/terminal with different features)
-    for $helix_mode in $HELIX_MODES {
-        $combinations = ($combinations | append {
-            type: "feature_variation",
-            shell: $PRIMARY_SHELL,
-            terminal: $PRIMARY_TERMINAL,
-            features: (make_standard_features $helix_mode)
-        })
-    }
-
-    # 3. Boolean feature combinations (test key features on/off)
+    # 2. Feature variation testing (primary shell/terminal with surviving config toggles)
     $combinations = ($combinations | append {
         type: "minimal_config",
         shell: $PRIMARY_SHELL,
@@ -83,10 +61,10 @@ export def generate_test_combinations []: nothing -> list<record> {
     })
 
     $combinations = ($combinations | append {
-        type: "maximal_config",
+        type: "persistent_config",
         shell: $PRIMARY_SHELL,
         terminal: $PRIMARY_TERMINAL,
-        features: (make_maximal_features)
+        features: (make_persistent_features)
     })
 
     $combinations

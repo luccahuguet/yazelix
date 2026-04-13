@@ -11,17 +11,11 @@ def build_sweep_config [
 ] : nothing -> record {
     {
         core: {
-            recommended_deps: ($features.recommended_deps? | default true)
-            yazi_extensions: ($features.yazi_extensions? | default true)
-            yazi_media: false
             debug_mode: false
             skip_welcome_screen: true
             show_macchina_on_welcome: false
             welcome_style: "static"
             welcome_duration_seconds: 2.0
-        }
-        helix: {
-            mode: ($features.helix_mode? | default "release")
         }
         editor: {
             command: ""
@@ -29,7 +23,6 @@ def build_sweep_config [
         }
         shell: {
             default_shell: $shell
-            extra_shells: []
         }
         terminal: {
             terminals: ([$terminal "ghostty" "wezterm" "kitty" "alacritty" "foot"] | uniq)

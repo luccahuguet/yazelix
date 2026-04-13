@@ -3,9 +3,9 @@
 # Handles ASCII art display and welcome message generation
 
 use ../utils/ascii_art.nu *
-use ../utils/constants.nu YAZELIX_VERSION
+use ../utils/constants.nu [DEFAULT_TERMINAL YAZELIX_VERSION]
 use ../utils/config_parser.nu parse_yazelix_config
-use ../utils/readme_release_block.nu get_current_major_series_entry
+use ../utils/upgrade_notes.nu get_current_major_series_entry
 use ../utils/upgrade_summary.nu get_upgrade_note_entry
 
 # Show welcome art based on the configured style
@@ -69,17 +69,6 @@ def get_flake_info [yazelix_dir: string, colors: record]: nothing -> string {
     }
 }
 
-# Get Helix mode info
-def get_helix_info [helix_mode: string, colors: record]: nothing -> string {
-    if $helix_mode == "source" {
-        $"($colors.cyan)🔄 Using Helix flake from repository for latest features($colors.reset)"
-    } else if $helix_mode == "release" {
-        $"($colors.cyan)📦 Using latest Helix release from nixpkgs \(fast setup\)($colors.reset)"
-    } else {
-        $"($colors.cyan)📝 Using stable nixpkgs Helix($colors.reset)"
-    }
-}
-
 # Get persistent session info
 def get_session_info [colors: record]: nothing -> string {
     try {
@@ -98,20 +87,11 @@ def get_session_info [colors: record]: nothing -> string {
 def get_terminal_info [colors: record]: nothing -> string {
     try {
         let config = parse_yazelix_config
-        if ($config.include_terminal == "true") and ((which yazelix-ghostty | length) > 0) {
-            $"($colors.green)🖥️  Using yazelix included terminal \(Ghostty with GPU acceleration\)($colors.reset)"
-        } else {
-            let terminals = ($config.terminals? | default ["ghostty"])
-            let preferred = if ($terminals | is-empty) { "unknown" } else { $terminals | first }
-            $"($colors.cyan)🖥️  Using external terminal: ($preferred)($colors.reset)"
-        }
+        let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL])
+        let preferred = if ($terminals | is-empty) { "unknown" } else { $terminals | first }
+        $"($colors.cyan)🖥️  Preferred host terminal: ($preferred)($colors.reset)"
     } catch {
-        # Fallback: check if we have yazelix-ghostty but no config
-        if (which yazelix-ghostty | length) > 0 {
-            $"($colors.green)🖥️  Using yazelix included terminal \(Ghostty with GPU acceleration\)($colors.reset)"
-        } else {
-            $"($colors.cyan)🖥️  Using external terminal \(configuration not found\)($colors.reset)"
-        }
+        $"($colors.cyan)🖥️  Preferred host terminal: configuration not found($colors.reset)"
     }
 }
 
@@ -150,11 +130,9 @@ def get_startup_release_headline [] {
 
 export def build_welcome_message [
     yazelix_dir: string
-    helix_mode: string
     colors: record
 ]: nothing -> list<string> {
     let flake_info = get_flake_info $yazelix_dir $colors
-    let helix_info = get_helix_info $helix_mode $colors
     let session_info = get_session_info $colors
     let terminal_info = get_terminal_info $colors
     let release_headline = (get_startup_release_headline)
@@ -165,7 +143,6 @@ export def build_welcome_message [
         (if ($release_headline | is-not-empty) { $"($colors.blue)($release_headline)($colors.reset)" } else { "" }),
         $flake_info,
         $"($colors.cyan)✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide($colors.reset)",
-        $helix_info,
         $session_info,
         $terminal_info,
         $"($colors.yellow)⚠️  First run: grant the required Yazelix plugin permissions. Focus the top zjstatus bar and press 'y' if it prompts, and also say yes to the Yazelix orchestrator permission popup.($colors.reset)",

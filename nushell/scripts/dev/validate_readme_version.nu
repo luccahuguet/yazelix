@@ -1,11 +1,12 @@
 #!/usr/bin/env nu
 
-use ../utils/common.nu [get_yazelix_runtime_dir]
+use ../maintainer/repo_checkout.nu [require_yazelix_repo_root]
 use ../utils/constants.nu [YAZELIX_VERSION]
-use ../utils/readme_release_block.nu [extract_readme_latest_series_section render_readme_latest_series_section]
+use ../maintainer/readme_surface.nu [extract_readme_latest_series_section render_readme_latest_series_section_for_root]
 
 export def main [] {
-    let readme_path = ((get_yazelix_runtime_dir) | path join "README.md")
+    let repo_root = (require_yazelix_repo_root)
+    let readme_path = ($repo_root | path join "README.md")
     let readme_contents = (open --raw $readme_path)
     let readme_title = (
         $readme_contents
@@ -21,7 +22,7 @@ export def main [] {
         }
     }
 
-    let expected_block = (render_readme_latest_series_section)
+    let expected_block = (render_readme_latest_series_section_for_root $repo_root)
     let actual_block = (extract_readme_latest_series_section $readme_contents)
 
     if $actual_block != $expected_block {

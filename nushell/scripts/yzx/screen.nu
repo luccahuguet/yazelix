@@ -48,6 +48,7 @@ export def get_yzx_screen_cycle_frames [screen_style?: string, width?: int] {
     get_screen_cycle_frames $resolved_style $width
 }
 
+# Show an animated Yazelix full-terminal screen
 export def "yzx screen" [
     style?: string  # Animated screen style: logo, boids, game_of_life, or random
 ] {

@@ -1,25 +1,20 @@
 #!/usr/bin/env nu
 
 use ../utils/constants.nu [YAZELIX_VERSION]
-use ../utils/config_migration_rules.nu get_config_migration_rules
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
 const GUARDED_FILES = [
     "nushell/scripts/utils/constants.nu"
     "yazelix_default.toml"
-    "yazelix_packs_default.toml"
     "home_manager/module.nix"
     "nushell/scripts/utils/config_schema.nu"
-    "nushell/scripts/utils/config_migrations.nu"
     "docs/upgrade_notes.toml"
     "CHANGELOG.md"
 ]
 const ACK_REQUIRED_FILES = [
     "yazelix_default.toml"
-    "yazelix_packs_default.toml"
     "home_manager/module.nix"
     "nushell/scripts/utils/config_schema.nu"
-    "nushell/scripts/utils/config_migrations.nu"
 ]
 const IMPACT_VALUES = ["no_user_action", "migration_available", "manual_action_required"]
 
@@ -76,7 +71,7 @@ def as_string_list [value: any] {
     }
 }
 
-def validate_entry [key: string, entry: record, migration_ids: list<string>] {
+def validate_entry [key: string, entry: record] {
     let required_fields = [
         "version"
         "date"
@@ -131,12 +126,6 @@ def validate_entry [key: string, entry: record, migration_ids: list<string>] {
         $errors = ($errors | append $"upgrade_notes.toml: entry `($key)` has invalid upgrade_impact `($impact)`")
     }
 
-    for migration_id in $entry_migration_ids {
-        if not ($migration_id in $migration_ids) {
-            $errors = ($errors | append $"upgrade_notes.toml: entry `($key)` references unknown migration id `($migration_id)`")
-        }
-    }
-
     match $impact {
         "no_user_action" => {
             if not ($entry_migration_ids | is-empty) {
@@ -147,8 +136,8 @@ def validate_entry [key: string, entry: record, migration_ids: list<string>] {
             }
         }
         "migration_available" => {
-            if ($entry_migration_ids | is-empty) {
-                $errors = ($errors | append $"upgrade_notes.toml: entry `($key)` must list migration_ids when upgrade_impact = migration_available")
+            if $key == "unreleased" {
+                $errors = ($errors | append "upgrade_notes.toml: `unreleased` must not use migration_available because v15 no longer ships a live config migration engine")
             }
         }
         "manual_action_required" => {
@@ -353,14 +342,13 @@ def validate_ci_rules [entries: record, diff_base: string] {
 
 export def main [
     --ci
-    --diff-base: string
+    --diff-base: string = ""
 ] {
     let changelog_path = ($REPO_ROOT | path join "CHANGELOG.md")
     let notes_path = ($REPO_ROOT | path join "docs" "upgrade_notes.toml")
-    let requested_diff_base = ($diff_base | default "")
+    let requested_diff_base = $diff_base
     let changelog = (load_changelog)
     let entries = (get_release_entries)
-    let migration_ids = (get_config_migration_rules | get id)
     mut errors = []
 
     if not ($changelog_path | path exists) {
@@ -381,11 +369,11 @@ export def main [
     }
 
     if $current_entry != null {
-        $errors = ($errors | append (validate_entry $YAZELIX_VERSION $current_entry $migration_ids))
+        $errors = ($errors | append (validate_entry $YAZELIX_VERSION $current_entry))
         $errors = ($errors | append (validate_changelog_entry $YAZELIX_VERSION $current_entry $changelog))
     }
     if $unreleased_entry != null {
-        $errors = ($errors | append (validate_entry "unreleased" $unreleased_entry $migration_ids))
+        $errors = ($errors | append (validate_entry "unreleased" $unreleased_entry))
         $errors = ($errors | append (validate_changelog_entry "unreleased" $unreleased_entry $changelog))
     }
 

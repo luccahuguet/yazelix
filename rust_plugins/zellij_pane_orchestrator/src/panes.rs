@@ -10,6 +10,7 @@ use yazelix_pane_orchestrator::pane_contract::{
 use yazelix_pane_orchestrator::sidebar_contract::{
     resolve_sidebar_focus_toggle, SidebarFocusTogglePlan,
 };
+use yazelix_pane_orchestrator::transient_pane_contract::TransientPaneSnapshot;
 use zellij_tile::prelude::*;
 
 use crate::workspace::WorkspaceStateSource;
@@ -32,6 +33,7 @@ pub(crate) struct TerminalPaneLayout {
     pub(crate) title: String,
     pub(crate) terminal_command: Option<String>,
     pub(crate) is_focused: bool,
+    pub(crate) is_floating: bool,
     pub(crate) pane_x: usize,
     pub(crate) pane_y: usize,
     pub(crate) pane_columns: usize,
@@ -182,6 +184,7 @@ pub(crate) fn build_terminal_panes_by_tab(
                     title: pane.title.clone(),
                     terminal_command: pane.terminal_command.clone(),
                     is_focused: pane.is_focused,
+                    is_floating: pane.is_floating,
                     pane_x: pane.pane_x,
                     pane_y: pane.pane_y,
                     pane_columns: pane.pane_columns,
@@ -449,6 +452,20 @@ impl State {
                 self.respond(pipe_message, RESULT_MISSING);
                 None
             }
+        }
+    }
+}
+
+impl TerminalPaneLayout {
+    pub(crate) fn transient_snapshot(&self) -> TransientPaneSnapshot<'_, PaneId> {
+        TransientPaneSnapshot {
+            pane_id: self.pane_id,
+            title: self.title.as_str(),
+            terminal_command: self.terminal_command.as_deref(),
+            is_plugin: false,
+            exited: false,
+            is_floating: self.is_floating,
+            is_focused: self.is_focused,
         }
     }
 }

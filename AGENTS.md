@@ -4,17 +4,17 @@ This file is the single source of truth for agent workflow, coding conventions, 
 
 ## Beads Workflow
 
-Use Beads as the agent memory and triage layer for Yazelix work.
+Use Beads (`bd`) as the agent memory and triage layer for Yazelix work.
 
 - Use `AGENTS.md` as the single durable source of agent workflow rules and command-surface policy.
-- Use `bv --robot-triage` as the default entrypoint for task context instead of manually reconstructing project state from `.beads`.
-- When token budget matters, prefer `bv --robot-triage --format toon`.
-- For bounded handoff context, use `bv --agent-brief <dir>` to export a compact bundle (`triage.json`, `insights.json`, `brief.md`, `helpers.md`).
-- Use `br` for issue mutations and sync: create, update, close, dependency management, and `br sync --flush-only`.
-- Never fire Beads commands in parallel. Do not run concurrent `br`/`bv` mutations or issue-creation flows from multiple tools or subshells at once; the Beads DB/JSONL path is not reliable under parallel agent writes and tends to produce `database is busy` failures or half-applied state.
+- Use `bd ready` to find unblocked work and `bd prime` for agent-optimized context instead of manually reconstructing project state from `.beads`.
+- Use `bd` for all issue mutations: create, update, close, dependency management.
+- bd uses embedded Dolt (`.beads/embeddeddolt/`) as its storage backend — there is no separate DB/JSONL sync cycle. `bd export` and `bd import` handle JSONL interchange when needed.
+- Never fire `bd` write commands in parallel from multiple tools or subshells at once; bd uses file-level locking and a single-writer model.
+- Treat embedded-`bd` access as one-at-a-time in practice: even parallel read commands can trip the embedded Dolt lock. Serialize `bd` reads/writes unless you intentionally switch to a backend that supports concurrent access.
 - Treat scope boundaries strictly:
-  - `bv` decides what to work on.
-  - `br` updates issue state.
+  - `bd ready` and `bd prime` decide what to work on.
+  - `bd` updates issue state.
   - Coordination between multiple agents should use a separate coordination layer, not ad-hoc issue comments or long prompt memory.
 - Keep agent guidance short. Do not copy large issue graphs, long triage dumps, or project history into `AGENTS.md`; store dynamic state in Beads and regenerate it when needed.
 
@@ -112,9 +112,8 @@ When creating new files or directories, always use underscores to maintain consi
   - The automated validator enforces this contract for issues created on or after `2026-03-22`. Older backlog issues are intentionally grandfathered until they are explicitly imported or touched by the local sync flow.
 - GitHub Actions must stay read-only with respect to Beads. Do not let CI mutate or commit `.beads/issues.jsonl`.
 - Sync GitHub issue state into Beads locally during normal maintainer work with `yzx dev sync_issues`; that command is also responsible for creating or repairing the canonical Beads comment on GitHub issues. Then commit the Beads changes on your branch.
-- Do not block on `yzx dev sync_issues` when it is slow or hanging. Prefer `br` for Beads mutations whenever possible, continue the implementation work, and repair the GitHub/Beads contract afterward.
-- Edit `.beads/issues.jsonl` directly only as a fallback when `br` is not a clean fit or is blocked.
-- When taking that direct path, still preserve the contract before calling the work done: the bead must have the correct `external_ref`, GitHub open/closed state must match the bead lifecycle, and the canonical `Automated: Tracked in Beads as \`yazelix-...\`.` comment should exist on the issue page.
+- Do not block on `yzx dev sync_issues` when it is slow or hanging. Prefer `bd` for Beads mutations whenever possible, continue the implementation work, and repair the GitHub/Beads contract afterward.
+- Use `bd export` and `bd import` for JSONL interchange when needed. bd uses embedded Dolt as its storage backend — there is no separate DB/JSONL sync cycle.
 
 ## Spec Workflow
 
@@ -125,9 +124,9 @@ When creating new files or directories, always use underscores to maintain consi
 
 ## Tool Invocation Workflow
 
-- Prefer `yzx run ...` for project-scoped tool invocations instead of raw `devenv shell ...` when running tools provided by the Yazelix environment.
-- Use raw `devenv shell ...` only when `yzx run ...` is not a clean fit for the task, such as larger multi-command shell scripts or environment debugging.
-- For agent-driven Yazelix or `devenv` invocations, always suppress the welcome/UI path by default. Prefer entrypoints that already do this, such as `yzx run ...`, or pass the equivalent `--skip-welcome` flow when calling Yazelix bootstrap/runtime scripts through `devenv shell ...`. Do not launch the interactive welcome screen or its animations unless the task is explicitly about validating that UX.
+- Prefer `yzx run ...` for project-scoped tool invocations instead of raw `nix develop -c ...` when running tools provided by the Yazelix environment.
+- Use raw `nix develop -c ...` only when `yzx run ...` is not a clean fit for the task, such as larger multi-command shell scripts or environment debugging.
+- For agent-driven Yazelix invocations, always suppress the welcome/UI path by default. Prefer entrypoints that already do this, such as `yzx run ...`, or pass the equivalent `--skip-welcome` flow when calling Yazelix bootstrap/runtime scripts through `nix develop -c ...`. Do not launch the interactive welcome screen or its animations unless the task is explicitly about validating that UX.
 - Be careful with heavyweight Nix probes during investigation. Prefer cheap read-only commands such as `nix eval`, `nix flake show`, `nix path-info`, `rg`, or repo-local code inspection before running `nix build` on large external inputs. Do not casually launch expensive build jobs just to inspect metadata, and if a diagnostic build is truly needed, say so explicitly and clean it up if it is no longer needed.
 
 ## Command Surface Policy
@@ -138,22 +137,13 @@ When creating new files or directories, always use underscores to maintain consi
 ## Rust Plugin Workflow
 
 - **Rust pane-orchestrator source edits are not live by themselves.** Changes under `rust_plugins/zellij_pane_orchestrator/` do not affect Yazelix behavior until the wasm is rebuilt and synced into the tracked/runtime plugin paths.
-- **Rust popup-runner source edits are not live by themselves either.** Changes under `rust_plugins/zellij_popup_runner/` do not affect Yazelix behavior until that wasm is rebuilt and synced into the tracked/runtime plugin paths.
 - After changing the pane orchestrator, rebuild and sync it before claiming behavior is fixed:
   ```bash
   yzx dev build_pane_orchestrator --sync
   ```
-- After changing the popup runner, rebuild and sync it before claiming popup behavior is fixed:
+- If the current shell toolchain cannot build `wasm32-wasip1`, use the flake maintainer shell:
   ```bash
-  yzx dev build_popup_plugin --sync
-  ```
-- If the current shell toolchain cannot build `wasm32-wasip1`, use the pinned Yazelix environment:
-  ```bash
-  devenv shell -- nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_pane_orchestrator --sync'
-  ```
-- For popup-runner rebuilds in the pinned environment:
-  ```bash
-  devenv shell -- nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_popup_plugin --sync'
+  nix develop -c nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev build_pane_orchestrator --sync'
   ```
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the synced wasm plus a fresh Yazelix session.
 - After syncing a new plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
@@ -219,97 +209,102 @@ Use this as the default refactor and audit method in Yazelix, especially before 
 - When referencing versions in documentation or migration notes, only use actual version numbers that exist
 - **Keep `YAZELIX_VERSION` in sync with git tags**: When creating a new git tag, update `nushell/scripts/utils/constants.nu` to match (e.g., `export const YAZELIX_VERSION = "v12.3"`). This version is displayed in the zjstatus bar.
 
-<!-- bv-agent-instructions-v2 -->
-
----
-
 ## Beads Workflow Integration
 
-This project uses [beads_rust](https://github.com/Dicklesworthstone/beads_rust) (`br`) for issue tracking and [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer) (`bv`) for graph-aware triage. Issues are stored in `.beads/` and tracked in git.
+This project uses [gastownhall/beads](https://github.com/gastownhall/beads) (`bd`) for issue tracking. Issues are stored in `.beads/` and tracked in git via Dolt's versioned storage.
 
-### Using bv as an AI sidecar
-
-bv is a graph-aware triage engine for Beads projects (.beads/beads.jsonl). Instead of parsing JSONL or hallucinating graph traversal, use robot flags for deterministic, dependency-aware outputs with precomputed metrics (PageRank, betweenness, critical path, cycles, HITS, eigenvector, k-core).
-
-**Scope boundary:** bv handles *what to work on* (triage, priority, planning). `br` handles creating, modifying, and closing beads.
-
-**CRITICAL: Use ONLY --robot-* flags. Bare bv launches an interactive TUI that blocks your session.**
-
-#### The Workflow: Start With Triage
-
-**`bv --robot-triage` is your single entry point.** It returns everything you need in one call:
-- `quick_ref`: at-a-glance counts + top 3 picks
-- `recommendations`: ranked actionable items with scores, reasons, unblock info
-- `quick_wins`: low-effort high-impact items
-- `blockers_to_clear`: items that unblock the most downstream work
-- `project_health`: status/type/priority distributions, graph metrics
-- `commands`: copy-paste shell commands for next steps
+### bd Commands for Issue Management
 
 ```bash
-bv --robot-triage        # THE MEGA-COMMAND: start here
-bv --robot-next          # Minimal: just the single top pick + claim command
-
-# Token-optimized output (TOON) for lower LLM context usage:
-bv --robot-triage --format toon
-```
-
-#### Other bv Commands
-
-| Command | Returns |
-|---------|---------|
-| `--robot-plan` | Parallel execution tracks with unblocks lists |
-| `--robot-priority` | Priority misalignment detection with confidence |
-| `--robot-insights` | Full metrics: PageRank, betweenness, HITS, eigenvector, critical path, cycles, k-core |
-| `--robot-alerts` | Stale issues, blocking cascades, priority mismatches |
-| `--robot-suggest` | Hygiene: duplicates, missing deps, label suggestions, cycle breaks |
-| `--robot-diff --diff-since <ref>` | Changes since ref: new/closed/modified issues |
-| `--robot-graph [--graph-format=json\|dot\|mermaid]` | Dependency graph export |
-
-#### Scoping & Filtering
-
-```bash
-bv --robot-plan --label backend              # Scope to label's subgraph
-bv --robot-insights --as-of HEAD~30          # Historical point-in-time
-bv --recipe actionable --robot-plan          # Pre-filter: ready to work (no blockers)
-bv --recipe high-impact --robot-triage       # Pre-filter: top PageRank scores
-```
-
-### br Commands for Issue Management
-
-```bash
-br ready              # Show issues ready to work (no blockers)
-br list --status=open # All open issues
-br show <id>          # Full issue details with dependencies
-br create --title="..." --type=task --priority=2
-br update <id> --status=in_progress
-br close <id> --reason="Completed"
-br close <id1> <id2>  # Close multiple issues at once
-br sync --flush-only  # Export DB to JSONL
+bd ready              # Show issues ready to work (no blockers)
+bd ready --explain    # Show WHY issues are or aren't ready
+bd list --status=open  # All open issues
+bd show <id>          # Full issue details with dependencies
+bd create "Title" -p 0 -t task    # Create a P0 task
+bd create "Title" --parent <id>   # Create child with parent
+bd update <id> --status=in_progress --claim   # Claim and start work
+bd close <id> --reason="Completed"
+bd close <id1> <id2>  # Close multiple issues at once
+bd dep add <child> <parent> --type parent-child  # Add dependency
+bd dep add <blocked> --blocked-by <blocker>     # Add blocks dep
+bd prime              # Agent-optimized workflow context
+bd graph <id>         # Dependency graph for an issue
+bd stale              # Show stale issues
+bd blocked            # Show blocked issues
+bd export              # Export issues to JSONL
+bd import <file>       # Import issues from JSONL
 ```
 
 ### Workflow Pattern
 
-1. **Triage**: Run `bv --robot-triage` to find the highest-impact actionable work
-2. **Claim**: Use `br update <id> --status=in_progress`
+1. **Triage**: Run `bd ready` to find unblocked work, `bd prime` for agent context
+2. **Claim**: Use `bd update <id> --status=in_progress --claim`
 3. **Work**: Implement the task
-4. **Complete**: Use `br close <id>`
-5. **Sync**: Always run `br sync --flush-only` at session end
+4. **Complete**: Use `bd close <id> --reason="Completed"`
+5. **Sync**: `git add .beads/ && git commit` — Dolt versioning handles the rest
 
 ### Key Concepts
 
-- **Dependencies**: Issues can block other issues. `br ready` shows only unblocked work.
-- **Priority**: P0=critical, P1=high, P2=medium, P3=low, P4=backlog (use numbers 0-4, not words)
-- **Types**: task, bug, feature, epic, chore, docs, question
-- **Blocking**: `br dep add <issue> <depends-on>` to add dependencies
+- **Dependencies**: Issues can block other issues. `bd ready` shows only unblocked work. `bd dep add <blocked> --blocked-by <blocker>` adds blocking deps.
+- **Priority**: P0=critical, P1=high, P2=medium, P3=low, P4=backlog (use numbers 0-4 or P0-P4 strings)
+- **Types**: task, bug, feature, epic, chore, decision
+- **Dotted IDs**: bd natively supports hierarchical IDs (e.g., `yazelix-qgj7.4.3.5`)
 
 ### Session Protocol
 
 ```bash
 git status              # Check what changed
+git add .beads/         # Stage beads changes (Dolt auto-commits internally)
 git add <files>         # Stage code changes
-br sync --flush-only    # Export beads changes to JSONL
 git commit -m "..."     # Commit everything
 git push                # Push to remote
 ```
 
-<!-- end-bv-agent-instructions -->
+<!-- end-bd-workflow -->
+
+<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
+## Beads Issue Tracker
+
+This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
+
+### Quick Reference
+
+```bash
+bd ready              # Find available work
+bd show <id>          # View issue details
+bd update <id> --claim  # Claim work
+bd close <id>         # Complete work
+```
+
+### Rules
+
+- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
+- Run `bd prime` for detailed command reference and session close protocol
+- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
+
+## Session Completion
+
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+
+**MANDATORY WORKFLOW:**
+
+1. **File issues for remaining work** - Create issues for anything that needs follow-up
+2. **Run quality gates** (if code changed) - Tests, linters, builds
+3. **Update issue status** - Close finished work, update in-progress items
+4. **PUSH TO REMOTE** - This is MANDATORY:
+   ```bash
+   git pull --rebase
+   bd dolt push
+   git push
+   git status  # MUST show "up to date with origin"
+   ```
+5. **Clean up** - Clear stashes, prune remote branches
+6. **Verify** - All changes committed AND pushed
+7. **Hand off** - Provide context for next session
+
+**CRITICAL RULES:**
+- Work is NOT complete until `git push` succeeds
+- NEVER stop before pushing - that leaves work stranded locally
+- NEVER say "ready to push when you are" - YOU must push
+- If push fails, resolve and retry until it succeeds
+<!-- END BEADS INTEGRATION -->

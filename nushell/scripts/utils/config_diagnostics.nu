@@ -1,20 +1,9 @@
 #!/usr/bin/env nu
 # Shared config diagnostics for startup, refresh, and doctor.
 
-use config_migrations.nu [apply_config_migration_plan build_config_migration_plan_from_record]
 use config_schema.nu [apply_main_contract_to_reference_config compare_configs validate_enum_values]
-use config_surfaces.nu [get_pack_sidecar_path load_config_surface_from_main]
+use config_surfaces.nu [load_config_surface_from_main]
 use failure_classes.nu [format_failure_classification]
-
-def format_release_context [result: record] {
-    if ($result.introduced_in | is-not-empty) {
-        $"($result.introduced_in) on ($result.introduced_on)"
-    } else if ($result.introduced_after_version | is-not-empty) {
-        $"after ($result.introduced_after_version) on ($result.introduced_on)"
-    } else {
-        $result.introduced_on
-    }
-}
 
 def get_schema_findings [default_config: record, user_config: record, include_missing: bool] {
     let schema_reference = (apply_main_contract_to_reference_config $default_config)
@@ -26,36 +15,6 @@ def get_schema_findings [default_config: record, user_config: record, include_mi
     }
     let enum_findings = (validate_enum_values $user_config)
     [$filtered_schema $enum_findings] | flatten
-}
-
-def make_migration_diagnostic [result: record] {
-    let path_label = ($result.matched_paths | get -o 0 | default "<config>")
-    let next_steps = if $result.status == "auto" {
-        [
-            "Run `yzx config migrate` to preview the known safe rewrite."
-            "Run `yzx config migrate --apply` to apply the safe rewrite with backup."
-            "Run `yzx doctor --fix` to apply the same safe rewrite from the doctor flow."
-        ]
-    } else {
-        [$result.manual_fix]
-    }
-
-    {
-        category: "migration"
-        path: $path_label
-        status: $result.status
-        blocking: true
-        fix_available: ($result.status == "auto")
-        headline: $"Known migration at ($path_label)"
-        detail_lines: (
-            [
-                $"What changed: ($result.title)"
-                $"Introduced: (format_release_context $result)"
-                $"Why: ($result.rationale)"
-                ...($next_steps | each {|line| $"Next: ($line)" })
-            ]
-        )
-    }
 }
 
 def make_schema_diagnostic [finding: record] {
@@ -135,40 +94,23 @@ export def build_config_diagnostic_report_from_records [
     user_config: record
     default_config: record
     config_path: string
-    migration_config?: any
-    pack_config?: any
     --include-missing
 ] {
-    let migration_source = ($migration_config | default $user_config)
-    let migration_plan = (
-        build_config_migration_plan_from_record
-            $migration_source
-            $config_path
-            $pack_config
-            (get_pack_sidecar_path $config_path)
-    )
-    let migration_paths = ($migration_plan.results | get -o matched_paths | default [] | flatten | uniq)
-    let schema_findings = (
-        get_schema_findings $default_config $user_config $include_missing
-        | where {|finding| not ($finding.path in $migration_paths) }
-    )
-    let migration_diagnostics = ($migration_plan.results | each {|result| make_migration_diagnostic $result })
+    let schema_findings = (get_schema_findings $default_config $user_config $include_missing)
     let schema_diagnostics = ($schema_findings | each {|finding| make_schema_diagnostic $finding })
-    let doctor_diagnostics = [$migration_diagnostics $schema_diagnostics] | flatten
+    let doctor_diagnostics = $schema_diagnostics
     let blocking_diagnostics = ($doctor_diagnostics | where {|diagnostic| $diagnostic.blocking })
 
     {
         config_path: $config_path
-        migration_plan: $migration_plan
-        migration_diagnostics: $migration_diagnostics
         schema_diagnostics: $schema_diagnostics
         doctor_diagnostics: $doctor_diagnostics
         blocking_diagnostics: $blocking_diagnostics
         issue_count: ($doctor_diagnostics | length)
         blocking_count: ($blocking_diagnostics | length)
-        fixable_count: ($migration_diagnostics | where {|diagnostic| $diagnostic.fix_available } | length)
+        fixable_count: 0
         has_blocking: (not ($blocking_diagnostics | is-empty))
-        has_fixable_migrations: (($migration_diagnostics | where {|diagnostic| $diagnostic.fix_available } | is-not-empty))
+        has_fixable_config_issues: false
     }
 }
 
@@ -185,8 +127,6 @@ export def build_config_diagnostic_report [
             $user_config
             $default_config
             $config_path
-            $config_surface.main_config
-            $config_surface.pack_config
             --include-missing=$include_missing
         | upsert config_path $config_surface.display_config_path
     )
@@ -194,11 +134,7 @@ export def build_config_diagnostic_report [
 
 export def render_startup_config_error [report: record] {
     let detail_lines = (format_diagnostic_lines $report.blocking_diagnostics)
-    let recovery_hint = if $report.has_fixable_migrations {
-        "Run `yzx config migrate` to preview known safe rewrites, `yzx config migrate --apply` to apply them with backup, or `yzx doctor --fix` to apply the same safe rewrites from the doctor flow."
-    } else {
-        "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback."
-    }
+    let recovery_hint = "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback."
 
     (
         [
@@ -216,20 +152,11 @@ export def render_doctor_config_details [report: record] {
         return "No stale or unsupported config issues detected."
     }
 
-    let guidance = if $report.has_fixable_migrations {
-        [
-            ""
-            "Safe preview: `yzx config migrate`"
-            "Safe apply: `yzx config migrate --apply` or `yzx doctor --fix`"
-            "Blunt fallback: `yzx config reset`"
-        ]
-    } else {
-        [
-            ""
-            "Review the listed fields manually."
-            "Blunt fallback: `yzx config reset`"
-        ]
-    }
+    let guidance = [
+        ""
+        "Review the listed fields manually."
+        "Blunt fallback: `yzx config reset`"
+    ]
 
     (
         [
@@ -241,16 +168,4 @@ export def render_doctor_config_details [report: record] {
             ...$guidance
         ] | str join "\n"
     )
-}
-
-export def apply_doctor_config_fixes [report: record] {
-    if not $report.has_fixable_migrations {
-        return {
-            status: "noop"
-            backup_path: null
-            applied_count: 0
-        }
-    }
-
-    apply_config_migration_plan $report.migration_plan "doctor_fix"
 }

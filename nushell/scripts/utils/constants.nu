@@ -6,10 +6,11 @@
 # VERSION INFORMATION
 # ============================================================================
 
-export const YAZELIX_VERSION = "v14"
+export const YAZELIX_VERSION = "v15"
 export const YAZELIX_DESCRIPTION = "Yazi + Zellij + Helix integrated terminal environment"
 export const YAZELIX_INSTALL_FLAKE_REF = "github:luccahuguet/yazelix#install"
-export const PINNED_NIX_VERSION = "2.33.3"
+export const PINNED_NIX_VERSION = "2.34.5"
+export const PINNED_NUSHELL_VERSION = "0.111.0"
 
 # ============================================================================
 # CONFIGURATION SECTION MARKERS (Shell Hook Management)
@@ -26,7 +27,6 @@ export const YAZELIX_REGENERATE_COMMENT = "# delete this whole section to re-gen
 
 export const DEFAULT_SHELL = "nu"
 export const DEFAULT_TERMINAL = "ghostty"
-export const DEFAULT_HELIX_MODE = "release"
 
 # Supported terminal emulators (fallback priority order)
 export const SUPPORTED_TERMINALS = ["ghostty", "wezterm", "kitty", "alacritty", "foot"]
@@ -60,13 +60,13 @@ export const TERMINAL_CONFIG_PATHS = {
     }
 }
 
-# Terminal display names and wrappers
+# Terminal display names
 export const TERMINAL_METADATA = {
-    ghostty: {name: "Ghostty", wrapper: "yazelix-ghostty"}
-    kitty: {name: "Kitty", wrapper: "yazelix-kitty"}
-    wezterm: {name: "WezTerm", wrapper: "yazelix-wezterm"}
-    alacritty: {name: "Alacritty", wrapper: "yazelix-alacritty"}
-    foot: {name: "Foot", wrapper: "yazelix-foot"}
+    ghostty: {name: "Ghostty"}
+    kitty: {name: "Kitty"}
+    wezterm: {name: "WezTerm"}
+    alacritty: {name: "Alacritty"}
+    foot: {name: "Foot"}
 }
 
 # Common terminal configuration values

@@ -3,13 +3,10 @@
 # Nushell version of the Yazelix launcher
 
 use ../utils/config_state.nu compute_config_state
-use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/nix_detector.nu ensure_nix_available
 use ../utils/terminal_configs.nu [generate_all_terminal_configs generate_selected_terminal_configs]
 use ../utils/terminal_launcher.nu *
-use ../utils/constants.nu [SUPPORTED_TERMINALS, TERMINAL_METADATA]
+use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADATA]
 use ../utils/common.nu [get_yazelix_runtime_dir]
-use ../utils/launch_state.nu resolve_runtime_owned_profile
 use ../utils/runtime_contract_checker.nu [
     check_launch_terminal_support
     check_launch_working_dir
@@ -22,93 +19,13 @@ def validate_launch_working_dir [working_dir: string] {
     $check.path
 }
 
-def resolve_terminal_candidates [requested_terminal: string, terminals: list<string>, manage_terminals: bool] {
-    let check = (check_launch_terminal_support $requested_terminal $terminals $manage_terminals)
+def resolve_terminal_candidates [requested_terminal: string, terminals: list<string>] {
+    let check = (check_launch_terminal_support $requested_terminal $terminals)
     require_runtime_check $check | ignore
     ($check.candidates? | default [])
 }
-
-def get_launch_preference_order [requested_terminal: string, terminals: list<string>] {
-    if ($requested_terminal | is-not-empty) {
-        [$requested_terminal]
-    } else {
-        $terminals
-    }
-}
-
-def require_supported_requested_terminal [requested_terminal: string] {
-    if ($requested_terminal | is-empty) {
-        return
-    }
-
-    if (($TERMINAL_METADATA | get -o $requested_terminal) == null) {
-        error make {
-            msg: $"Unsupported terminal '($requested_terminal)'\nSupported terminals: ($SUPPORTED_TERMINALS | str join ', ')"
-        }
-    }
-}
-
-def resolve_desktop_fast_path_candidates [requested_terminal: string, terminals: list<string>, manage_terminals: bool, needs_reload: bool] {
-    let explicit_terminal_request = ($requested_terminal | is-not-empty)
-    require_supported_requested_terminal $requested_terminal
-    let preferred = (get_launch_preference_order $requested_terminal $terminals)
-
-    if $manage_terminals and (not $needs_reload) {
-        let profile_path = (resolve_runtime_owned_profile)
-        if ($profile_path | is-not-empty) {
-            let wrapper_candidates = (detect_terminal_wrapper_candidates_from_profile $preferred $profile_path)
-            if not ($wrapper_candidates | is-empty) {
-                return $wrapper_candidates
-            }
-        }
-    }
-
-    if $needs_reload {
-        let direct_candidates = (detect_terminal_candidates $preferred false)
-        if not ($direct_candidates | is-empty) {
-            return $direct_candidates
-        }
-
-        if $explicit_terminal_request {
-            error make {
-                msg: $"Desktop launch could not open requested terminal '($requested_terminal)' before rebuild.\nFailure class: desktop-bootstrap-unavailable.\nRecovery: Falling back to the standard desktop launch path is required because the requested terminal is not host-launchable before rebuild."
-            }
-        }
-
-        if $manage_terminals {
-            let bootstrap_terminals = (
-                $preferred
-                | append ($SUPPORTED_TERMINALS | where {|terminal| $terminal not-in $preferred})
-                | uniq
-            )
-            let bootstrap_candidates = (detect_terminal_candidates $bootstrap_terminals false)
-            if not ($bootstrap_candidates | is-empty) {
-                return $bootstrap_candidates
-            }
-
-            error make {
-                msg: "Desktop launch could not open any visible bootstrap terminal before rebuild.\nFailure class: desktop-bootstrap-unavailable.\nRecovery: Falling back to the standard desktop launch path is required because no host-launchable terminal is currently available."
-            }
-        }
-    }
-
-    let direct_candidates = (detect_terminal_candidates $preferred false)
-    if not ($direct_candidates | is-empty) {
-        return $direct_candidates
-    }
-
-    let reason = if ($requested_terminal | is-not-empty) {
-        $"Requested desktop terminal '($requested_terminal)' is not available on the host."
-    } else {
-        "None of the configured desktop terminal binaries are available on the host."
-    }
-    let recovery = if ($requested_terminal | is-not-empty) {
-        "Install the requested terminal binary on the host, or launch Yazelix from a shell with `yzx launch` to rebuild managed wrappers first."
-    } else {
-        "Install one of the configured terminal binaries on the host, or launch Yazelix from a shell with `yzx launch` to rebuild managed wrappers first."
-    }
-
-    error make {msg: $"($reason)\n($recovery)"}
+def resolve_desktop_fast_path_candidates [requested_terminal: string, terminals: list<string>] {
+    resolve_terminal_candidates $requested_terminal $terminals
 }
 
 def ensure_terminal_configs_available_for_candidates [terminal_candidates: list<record>, terminal_config_mode: string, runtime_dir: string] {
@@ -132,9 +49,7 @@ def ensure_terminal_configs_available_for_candidates [terminal_candidates: list<
 
 def describe_terminal_invocation [terminal_info: record, terminal_config] {
     let terminal = $terminal_info.terminal
-    if $terminal_info.use_wrapper {
-        $"Running: ($terminal_info.command) \(managed Yazelix wrapper\)"
-    } else if $terminal == "wezterm" {
+    if $terminal == "wezterm" {
         $"Running: wezterm --config-file ($terminal_config) start --class=com.yazelix.Yazelix"
     } else if $terminal == "ghostty" {
         $"Running: ghostty --config-file=($terminal_config)"
@@ -163,11 +78,7 @@ def launch_terminal_candidates [
 
     for terminal_info in $terminal_candidates {
         let display_name = (get_terminal_display_name $terminal_info)
-        let terminal_config = if $terminal_info.use_wrapper {
-            null
-        } else {
-            resolve_terminal_config $terminal_info.terminal $terminal_config_mode
-        }
+        let terminal_config = (resolve_terminal_config $terminal_info.terminal $terminal_config_mode)
 
         if ($terminal_config != null) and (not ($terminal_config | path exists)) {
             let msg = $"($terminal_info.name) config not found at ($terminal_config)"
@@ -175,7 +86,7 @@ def launch_terminal_candidates [
             continue
         }
 
-        let launch_cmd = (build_launch_command $terminal_info $terminal_config $terminal_config_mode $working_dir $needs_reload)
+        let launch_cmd = (build_launch_command $terminal_info $terminal_config $working_dir $needs_reload)
 
         if $verbose_mode {
             print $"Using terminal: ($display_name)"
@@ -196,8 +107,7 @@ def launch_terminal_candidates [
         let env_block = $propagated_env
 
         if $verbose_mode {
-            let launch_label = if $terminal_info.use_wrapper { "Launching wrapper command" } else { "Launching command" }
-            print $"($launch_label): ($launch_cmd)"
+            print $"Launching command: ($launch_cmd)"
         }
 
         let launch_attempt = (try {
@@ -218,8 +128,11 @@ def launch_terminal_candidates [
         $index = $index + 1
 
         if ($requested_terminal | is-empty) and ($index < ($terminal_candidates | length)) {
-            let next_name = (get_terminal_display_name ($terminal_candidates | get $index))
-            print $"⚠️  ($display_name) failed to start; trying ($next_name)..."
+            let next_candidate = ($terminal_candidates | get -o $index)
+            if $next_candidate != null {
+                let next_name = (get_terminal_display_name $next_candidate)
+                print $"⚠️  ($display_name) failed to start; trying ($next_name)..."
+            }
         }
     }
 
@@ -247,14 +160,10 @@ def launch_terminal_candidates [
 
 def main [
     launch_cwd?: string
-    --terminal(-t): string  # Override terminal selection (for sweep testing)
+    --terminal(-t): string = ""  # Override terminal selection (for sweep testing)
     --verbose               # Enable verbose logging
     --desktop-fast-path     # Launch the terminal immediately and let startup rebuild inside it
 ] {
-    # Check if Nix is properly installed before proceeding
-    ensure_nix_available
-    run_entrypoint_config_migration_preflight "Yazelix launch" --allow-noninteractive | ignore
-
     # Resolve HOME using shell expansion
     let home = $env.HOME
     if ($home | is-empty) or (not ($home | path exists)) {
@@ -263,7 +172,7 @@ def main [
     }
 
     let verbose_mode = $verbose
-    let requested_terminal = ($terminal | default "")
+    let requested_terminal = $terminal
     if $verbose_mode {
         print "🔍 launch_yazelix: verbose mode enabled"
         print $"Resolved HOME=($home)"
@@ -300,36 +209,25 @@ def main [
     }
 
     let terminal_config_mode = $config.terminal_config_mode
-    let manage_terminals = ($config.manage_terminals? | default true)
-    mut terminals = ($config.terminals? | default ["ghostty"] | uniq)
+    let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL] | uniq)
     if ($terminals | is-empty) {
-        if $manage_terminals {
-            let available = (
-                $SUPPORTED_TERMINALS
-                | where {|t|
-                    let meta = ($TERMINAL_METADATA | get -o $t | default {})
-                    (which $meta.wrapper | is-not-empty) or (which $t | is-not-empty)
-                }
-            )
-            let available_str = if ($available | is-empty) {
-                "none detected"
-            } else {
-                $available | str join ", "
-            }
-            print "Error: terminal.terminals must include at least one terminal"
-            print $"Detected terminals: ($available_str)"
-            print "Set [terminal].terminals in ~/.config/yazelix/user_configs/yazelix.toml"
-            exit 1
+        let available = ($SUPPORTED_TERMINALS | where {|t| which $t | is-not-empty })
+        let available_str = if ($available | is-empty) {
+            "none detected"
         } else {
-            $terminals = $SUPPORTED_TERMINALS
+            $available | str join ", "
         }
+        print "Error: terminal.terminals must include at least one terminal"
+        print $"Detected terminals: ($available_str)"
+        print "Set [terminal].terminals in ~/.config/yazelix/user_configs/yazelix.toml"
+        exit 1
     }
 
     let runtime_dir = (get_yazelix_runtime_dir)
     let terminal_candidates = if $desktop_fast_path {
-        resolve_desktop_fast_path_candidates $requested_terminal $terminals $manage_terminals $needs_reload
+        resolve_desktop_fast_path_candidates $requested_terminal $terminals
     } else {
-        resolve_terminal_candidates $requested_terminal $terminals $manage_terminals
+        resolve_terminal_candidates $requested_terminal $terminals
     }
     if $desktop_fast_path {
         ensure_terminal_configs_available_for_candidates $terminal_candidates $terminal_config_mode $runtime_dir

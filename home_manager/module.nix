@@ -11,7 +11,6 @@ let
   cfg = config.programs.yazelix;
   yazelixPackage = import ../yazelix_package.nix { inherit pkgs; };
   mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
-  packCatalogContract = builtins.fromTOML (builtins.readFile ../config_metadata/pack_catalog_contract.toml);
   mainContractFields = mainConfigContract.fields;
   mainConfigSectionOrder = [
     "core"
@@ -30,7 +29,6 @@ let
     pkgs.coreutils
     pkgs.zellij
   ];
-  packDeclarationsDefault = lib.mapAttrs (_: declaration: declaration.packages) packCatalogContract.declarations;
 
   boolToToml = value: if value then "true" else "false";
 
@@ -44,13 +42,6 @@ let
   listToToml =
     values:
     if values == [ ] then "[]" else "[ " + (concatStringsSep ", " (map escapeString values)) + " ]";
-
-  packagesToToml =
-    packages:
-    let
-      names = map (pkg: pkg.pname or pkg.name or "unknown") packages;
-    in
-    listToToml names;
 
   attrOr =
     attrs: name: fallback:
@@ -163,70 +154,18 @@ let
     in
     if lines == [ ] then [ ] else [ "" "[${section}]" ] ++ lines;
 
-  packDeclarationsToToml =
-    declarations:
-    let
-      names = sort lessThan (attrNames declarations);
-    in
-    map (name: "${escapeString name} = ${listToToml declarations.${name}}") names;
-
 in
 {
   options.programs.yazelix = {
     enable = mkEnableOption "Yazelix terminal environment";
 
     # Configuration options (mirrors yazelix_default.toml structure)
-    recommended_deps = mkMainContractOption "core.recommended_deps" {
-      description = "Install recommended productivity tools (~350MB)";
-    };
-
-    yazi_extensions = mkMainContractOption "core.yazi_extensions" {
-      description = "Install Yazi file preview extensions (~125MB)";
-    };
-
-    yazi_media = mkMainContractOption "core.yazi_media" {
-      description = "Install Yazi media processing tools (~1GB)";
-    };
-
-    build_cores = mkMainContractOption "core.build_cores" {
-      description = ''
-        CPU cores per Nix build: "max", "max_minus_one", "half", "quarter", or a custom number like "2"
-      '';
-    };
-
-    max_jobs = mkMainContractOption "core.max_jobs" {
-      description = ''
-        Concurrent Nix build jobs: "auto", "max", "max_minus_one", "half", "quarter", or a custom number like "8"
-      '';
-    };
-
-    refresh_output = mkMainContractOption "core.refresh_output" {
-      description = ''
-        Refresh output level for launch/restart/refresh flows.
-        - "quiet": suppress routine rebuild output
-        - "normal": show standard devenv build output
-        - "full": show full verbose devenv logs
-      '';
-    };
-
-    helix_mode = mkMainContractOption "helix.mode" {
-      description = "Helix build mode: release (nixpkgs) or source (flake)";
-    };
-
     default_shell = mkMainContractOption "shell.default_shell" {
       description = "Default shell for Zellij sessions";
     };
 
-    extra_shells = mkMainContractOption "shell.extra_shells" {
-      description = "Additional shells to install beyond nu/bash";
-    };
-
     terminals = mkMainContractOption "terminal.terminals" {
       description = "Ordered terminal emulator list (first is primary, rest are fallbacks)";
-    };
-
-    manage_terminals = mkMainContractOption "terminal.manage_terminals" {
-      description = "Manage terminal emulators via Nix (disable to use system-installed terminals only)";
     };
 
     terminal_config_mode = mkMainContractOption "terminal.config_mode" {
@@ -410,9 +349,8 @@ in
         Welcome screen style.
         - "static": show the resting Yazelix logo frame only
         - "logo": show the branded animated logo reveal
-        - "boids": reserved animated flocking style
-        - "game_of_life": reserved Game of Life style
-        - "mandelbrot": reserved fractal style
+        - "boids": show the animated flocking style
+        - "game_of_life": show the Game of Life style
         - "random": choose one animated style at random (never "static")
       '';
     };
@@ -445,23 +383,6 @@ in
       '';
     };
 
-    pack_names = mkOption {
-      type = types.listOf types.str;
-      default = packCatalogContract.surface.enabled.default;
-      description = "Packs to enable (must match pack_declarations keys)";
-    };
-
-    pack_declarations = mkOption {
-      type = types.attrsOf (types.listOf types.str);
-      default = packDeclarationsDefault;
-      description = "Pack declarations mapping names to nixpkgs package strings (supports dotted paths)";
-    };
-
-    user_packages = mkOption {
-      type = types.listOf types.package;
-      default = packCatalogContract.surface.user_packages.default;
-      description = "Additional packages to install in Yazelix environment";
-    };
   };
 
   config = mkIf cfg.enable {
@@ -509,32 +430,6 @@ in
             "# Edit your Home Manager configuration instead of this file."
           ]
           ++ lib.concatLists (map renderMainConfigSection mainConfigSectionOrder)
-          ++ [
-            ""
-            "# Pack configuration lives in user_configs/yazelix_packs.toml."
-            ""
-          ]
-        )
-        + "\n";
-    };
-
-    xdg.configFile."yazelix/user_configs/yazelix_packs.toml" = {
-      text =
-        lib.concatStringsSep "\n" (
-          [
-            "# Generated by the Yazelix Home Manager module."
-            "# Edit your Home Manager configuration instead of this file."
-            ""
-            "enabled = ${listToToml cfg.pack_names}"
-            "user_packages = ${packagesToToml cfg.user_packages}"
-            ""
-            "[declarations]"
-            ""
-          ]
-          ++ packDeclarationsToToml cfg.pack_declarations
-          ++ [
-            ""
-          ]
         )
         + "\n";
     };

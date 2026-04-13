@@ -20,7 +20,7 @@ export def extract_semantic_config_blocks [config_content: string] {
             let matched_block = (
                 ["load_plugins", "plugins", "keybinds", "ui"]
                 | where {|block_name| $trimmed | str starts-with $block_name }
-                | get 0?
+                | get -o 0
                 | default ""
             )
 
@@ -92,19 +92,21 @@ export def extract_semantic_config_blocks [config_content: string] {
 export def build_yazelix_load_plugins_block [
     existing_load_plugin_lines: list<string>
     pane_orchestrator_alias: string
-    popup_runner_wasm_path: string
 ] {
-    mut merged_plugin_lines = ($existing_load_plugin_lines | flatten)
+    mut merged_plugin_lines = (
+        $existing_load_plugin_lines
+        | flatten
+        | where {|line|
+            not (
+                ($line | str contains "yazelix_popup_runner.wasm")
+                or ($line | str contains "yazelix_popup_runner")
+            )
+        }
+    )
     let pane_orchestrator_entry = $"  ($pane_orchestrator_alias)"
     let pane_orchestrator_present = ($merged_plugin_lines | any {|line| ($line | str trim) == $pane_orchestrator_alias })
     if not $pane_orchestrator_present {
         $merged_plugin_lines = ($merged_plugin_lines | append $pane_orchestrator_entry)
-    }
-
-    let popup_runner_entry = $"  \"file:($popup_runner_wasm_path)\""
-    let popup_runner_present = ($merged_plugin_lines | any {|line| $line | str contains $popup_runner_wasm_path })
-    if not $popup_runner_present {
-        $merged_plugin_lines = ($merged_plugin_lines | append $popup_runner_entry)
     }
 
     (
@@ -124,10 +126,16 @@ export def build_yazelix_plugins_block [
     widget_tray_segment: string
     custom_text_segment: string
     sidebar_width_percent: int
+    runtime_dir: string
+    popup_width_percent: int
+    popup_height_percent: int
 ] {
     let escaped_widget_tray = ($widget_tray_segment | to json -r)
     let escaped_custom_text = ($custom_text_segment | to json -r)
     let escaped_sidebar_width_percent = ($sidebar_width_percent | into string | to json -r)
+    let escaped_runtime_dir = ($runtime_dir | path expand | to json -r)
+    let escaped_popup_width_percent = ($popup_width_percent | into string | to json -r)
+    let escaped_popup_height_percent = ($popup_height_percent | into string | to json -r)
     let pane_alias_present = ($existing_plugin_lines | any {|line| $line | str contains $"($pane_orchestrator_alias) location=" })
     mut merged_plugin_lines = $existing_plugin_lines
 
@@ -137,6 +145,9 @@ export def build_yazelix_plugins_block [
             $"        widget_tray_segment ($escaped_widget_tray)"
             $"        custom_text_segment ($escaped_custom_text)"
             $"        sidebar_width_percent ($escaped_sidebar_width_percent)"
+            $"        runtime_dir ($escaped_runtime_dir)"
+            $"        popup_width_percent ($escaped_popup_width_percent)"
+            $"        popup_height_percent ($escaped_popup_height_percent)"
             "    }"
         ])
     }

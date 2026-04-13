@@ -74,7 +74,6 @@ export def format_test_profile_report [records: list<record>, title: string] {
 export def setup_managed_config_fixture [
     label: string
     raw_toml: string
-    --legacy-root
 ] {
     let repo_root = (get_repo_config_dir)
     let tmp_home = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
@@ -85,11 +84,7 @@ export def setup_managed_config_fixture [
     mkdir $config_dir
     mkdir $user_config_dir
 
-    let config_path = if $legacy_root {
-        ($config_dir | path join "yazelix.toml")
-    } else {
-        ($user_config_dir | path join "yazelix.toml")
-    }
+    let config_path = ($user_config_dir | path join "yazelix.toml")
 
     $raw_toml | save --force --raw $config_path
 

@@ -8,7 +8,7 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 
 **Pre-configured** (🔧 auto-configured): Tools with custom Yazelix configurations, shell initializers, or special setup.
 
-**Curated Recommendations**: High-quality tools included in `yazelix_default.toml` as optional packages. These can be easily enabled/disabled by updating your config - **Yazelix doesn't have special integration with most of these projects**. They're just excellent tools we recommend!
+**Fixed Runtime Helpers**: Useful tools shipped in the trimmed v15 runtime. These are part of the default runtime/tooling surface, not a user-managed pack graph.
 
 ---
 
@@ -29,20 +29,15 @@ Yazelix is built on the shoulders of giants. Here are the projects, tools, and p
 - [Fish](https://fishshell.com/) — The Friendly Interactive Shell. Fish offers user-friendly features, autosuggestions, and syntax highlighting. Yazelix can install and integrate with Fish if selected in the configuration.
 - [Zsh](https://www.zsh.org/) — The Z Shell. Zsh is a powerful, highly customizable shell with advanced scripting capabilities. Yazelix can install and integrate with Zsh if selected in the configuration.
 
-## Recommended Tools
+## Runtime Helper Tools
 - [lazygit](https://github.com/jesseduffield/lazygit) — A simple terminal UI for git commands, making version control fast and intuitive. Yazelix includes lazygit for easy git management.
 - [carapace](https://github.com/rsteube/carapace-bin) — A cross-shell command-line completion engine. Improves tab completion in supported shells. 🔧 auto-configured
-
-## Yazi Extensions
-- [p7zip](https://github.com/p7zip-project/p7zip) — A port of the 7-Zip archiver. Enables archive extraction and compression in Yazi.
-- [jq](https://github.com/jqlang/jq) — A lightweight and flexible command-line JSON processor. Used by Yazi plugins for parsing and manipulating JSON data.
-- [fd](https://github.com/sharkdp/fd) — A simple, fast, and user-friendly alternative to find. Powers fast file search in Yazi.
-- [ripgrep](https://github.com/BurntSushi/ripgrep) — A line-oriented search tool that recursively searches your current directory for a regex pattern. Used for fast text search in Yazi.
-- [poppler](https://poppler.freedesktop.org/) — A PDF rendering library. Enables PDF previews in Yazi.
-
-## Yazi Media Extensions
-- [ffmpeg](https://ffmpeg.org/) — A complete, cross-platform solution to record, convert, and stream audio and video. Used for media previews in Yazi.
-- [ImageMagick](https://imagemagick.org/) — A software suite to create, edit, compose, or convert bitmap images. Enables image previews and thumbnails in Yazi.
+- [mise](https://mise.jdx.dev/) — Runtime/version manager integrations used by the generated shell initializers. 🔧 auto-configured
+- [jq](https://github.com/jqlang/jq) — JSON processing used by bundled helper flows and Yazi plugins.
+- [fd](https://github.com/sharkdp/fd) — Fast file search used by Yazi and helper scripts.
+- [ripgrep](https://github.com/BurntSushi/ripgrep) — Fast text search used by Yazi and one-shot runtime tooling.
+- [p7zip](https://github.com/p7zip-project/p7zip) — Archive support for Yazi preview/extract flows.
+- [poppler](https://poppler.freedesktop.org/) — PDF preview support in Yazi.
 
 ## Terminal Emulators
 - [WezTerm](https://wezfurlong.org/wezterm/) — A GPU-accelerated terminal emulator and multiplexer written in Rust. Yazelix supports WezTerm for its advanced features, performance, and modern design.
@@ -69,175 +64,24 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 ## Nushell scripts
 - [nuscripts](https://github.com/nushell/nuscripts) — A collection of Nushell scripts, including the `clip` command for copying to the system clipboard. Used in Yazelix for clipboard integration. 🔧 auto-configured
 
-## User Packages
+## Runtime Surface
 
-Yazelix offers two ways to add packages:
+The trimmed v15 branch no longer treats Yazelix as a user-extensible pack graph or package manager. The packaged runtime ships a fixed tool stack, and user configuration focuses on workspace/layout/editor/shell/terminal behavior rather than package composition.
 
-**Pack declarations**: Define packs in `~/.config/yazelix/user_configs/yazelix_packs.toml` and enable them via `enabled`:
-```toml
-enabled = ["python", "git"]
-user_packages = ["docker", "kubectl", "gleam"]
+That means:
+- there is no `yazelix_packs.toml` sidecar in the current v15 line
+- there is no public `yzx packs` / `yazelix packs` workflow in the current v15 line
+- the runtime helper tools listed above are part of the shipped runtime surface
 
-[declarations]
-python = [
-  "ruff",
-  "uv",
-  "ty",
-  "python3Packages.ipython",
-]
-git = [
-  "onefetch",
-  "gh",
-  "delta",
-  "gitleaks",
-  "jujutsu",
-  "prek",
-]
-```
+## Maintainer Tooling
 
-Packs now belong in `yazelix_packs.toml`. If you still have a legacy `[packs]` section in `yazelix.toml`, run `yzx config migrate --apply` to move it into the sidecar.
-
-**Individual packages**: Add specific tools via `user_packages` in `~/.config/yazelix/user_configs/yazelix_packs.toml`:
-```toml
-# user_packages = ["atuin", "docker", "kubectl", "gleam"]
-```
-
-## Example Pack Declarations
-
-Complete toolchains you can declare:
-
-### Python Pack (`python`)
-- [ruff](https://github.com/astral-sh/ruff) — Fast Python linter and code formatter
-- [uv](https://github.com/astral-sh/uv) — Ultra-fast Python package installer and resolver
-- [ty](https://github.com/astral-sh/ty) — Extremely fast Python type checker from Astral
-- [ipython](https://ipython.org/) — Enhanced interactive Python REPL with autocomplete, syntax highlighting, and magic commands
-
-### TypeScript Pack (`ts`)
-- [typescript-language-server](https://github.com/typescript-language-server/typescript-language-server) — TypeScript language server for IDE features and LSP support
-- [tailwindcss-language-server](https://github.com/tailwindlabs/tailwindcss-intellisense) — Tailwind CSS language server for utility-class completions, hovers, and diagnostics in Tailwind projects
-- [biome](https://biomejs.dev/) — Formats JS, TS, JSON, CSS, and lints JS/TS
-- [oxlint](https://oxc-project.github.io/) — Extremely fast TypeScript/JavaScript linter from the oxc project
-
-### Modern JS Pack (`modern_js`)
-- [bun](https://bun.sh/) — Fast all-in-one JavaScript runtime, package manager, bundler, and test runner
-- [deno](https://deno.com/) — Secure JavaScript and TypeScript runtime with built-in tooling
-- `vite-plus` is not bundled yet because it is not packaged in the current nixpkgs snapshot used by Yazelix
-
-### Maintainer Pack (`maintainer`)
-- [gh](https://cli.github.com/) — GitHub CLI for repo maintenance and issue/PR work
-- [prek](https://github.com/j178/prek) — Fast local pre-commit hook runner for cheap maintainer checks
-- [tru](https://github.com/Dicklesworthstone/toon_rust) — Compact structured output CLI used in agent/Beads workflows
-- [beads_rust](https://github.com/Dicklesworthstone/beads_rust) — Rust Beads tracker (`br`)
-- [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer) — Beads graph triage viewer (`bv`)
-- [nu-lint](https://github.com/nushell/nu-lint) — Nushell linter for explicit maintainer lint runs
-- `rust_wasi_toolchain` — Pinned Rust toolchain with `wasm32-wasip1` so maintainers can rebuild the Yazelix pane orchestrator wasm without enabling a separate pack
-
-### Misc Pack (`misc`)
-- [tokei](https://github.com/XAMPPRocky/tokei) — Fast code statistics and line-count CLI for quick repo inspection as a general-purpose optional utility
-
-### Rust Pack (`rust`)
-- `rust_toolchain` — Pinned stable Rust toolchain with `cargo`, `rustc`, `rustfmt`, and `clippy`
-- [cargo-edit](https://github.com/killercup/cargo-edit) — Add, remove, and upgrade dependencies from the command line (`cargo add`, `cargo rm`)
-- [cargo-watch](https://github.com/watchexec/cargo-watch) — Auto-recompile and re-run on file changes
-- [cargo-nextest](https://github.com/nextest-rs/nextest) — Next-generation test runner with better output and parallelism
-- [cargo-audit](https://github.com/rustsec/rustsec/tree/main/cargo-audit) — Audit dependencies for security vulnerabilities
-
-### Rust Maintainer Pack (`rust_maintainer`)
-- [cargo-update](https://github.com/nabijaczleweli/cargo-update) — Updates Rust crates for project maintenance
-- [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) — Faster installation of Rust tools
-
-### Rust WASI Pack (`rust_wasi`)
-- `rust_wasi_toolchain` — Pinned Rust toolchain with `cargo`, `rustc`, `rustfmt`, `clippy`, and the `wasm32-wasip1` target for Yazelix/Zellij plugin builds
-
-### Go Pack (`go`)
-- [gopls](https://github.com/golang/tools/tree/master/gopls) — Official Go language server for IDE features and LSP support
-- [golangci-lint](https://github.com/golangci/golangci-lint) — Fast, comprehensive Go linter aggregator running multiple linters in parallel
-- [delve](https://github.com/go-delve/delve) — Powerful debugger for Go with breakpoints, variable inspection, and more
-- [govulncheck](https://golang.org/x/vuln/cmd/govulncheck) — Official Go vulnerability scanner from the Go security team
-
-### Kotlin Pack (`kotlin`)
-- [kotlin-language-server](https://github.com/fwcd/kotlin-language-server) — Language server for IDE features and LSP support
-- [ktlint](https://github.com/pinterest/ktlint) — Linter and formatter with automatic code style fixing
-- [detekt](https://github.com/detekt/detekt) — Static code analysis tool for code quality and smell detection
-- [gradle](https://gradle.org/) — Build automation tool for Kotlin/JVM projects
-
-### Writing Pack (`writing`)
-- [typst](https://typst.app/) — Modern document preparation system: a fast, markup-based alternative to LaTeX with a built-in compiler, formatter, and language server
-- [tinymist](https://github.com/Myriad-Dreamin/tinymist) — Full-featured Typst language server with LSP support (completions, diagnostics, hover, document export)
-- [pandoc](https://pandoc.org/) — Universal document converter supporting Markdown, LaTeX, HTML, Word, PDF, EPUB, and many more formats
-- [markdown-oxide](https://oxide.md/index) — Markdown PKM language server with LSP support for note links, completions, and knowledge graph navigation
-
-### Nix Pack (`nix`)
-- [nil](https://github.com/oxalica/nil) — Nix language server for IDE features (LSP support for Helix, VSCode, etc.)
-- [nixd](https://github.com/nix-community/nixd) — Alternative Nix language server with advanced features and diagnostics
-- [nixfmt](https://github.com/NixOS/nixfmt) — Official Nix code formatter
-
-## Tool Packs
-
-General-purpose development tools:
-
-### Configuration Pack (`config`)
-- [taplo](https://github.com/tamasfe/taplo) — TOML formatter and language server for configuration files (included by default)
-- [mpls](https://github.com/mhersson/mpls) — Markdown Preview Language Server with live browser preview and Mermaid/PlantUML support
-- [yaml-language-server](https://github.com/redhat-developer/yaml-language-server) — Language Server for YAML files
-
-### File Management Pack (`file-management`)
-- [ouch](https://github.com/ouch-org/ouch) — Compression tool for handling archives
-- [erdtree](https://github.com/solidiquis/erdtree) — Modern tree command with file size display
-- [serpl](https://github.com/serpl/serpl) — Command-line tool for search and replace operations
-
-### Git Pack (`git`)
-- [onefetch](https://github.com/o2sh/onefetch) — Git repository summary with statistics and language breakdown
-- [gh](https://cli.github.com/) — GitHub CLI for repository management and PR workflows
-- [prek](https://github.com/j178/prek) — Fast local pre-commit hook runner
-
-### Jujutsu Pack (`jj`)
-- [jujutsu](https://github.com/martinvonz/jj) — Modern version control system with powerful conflict resolution (command: `jj`)
-- [lazyjj](https://github.com/Cretezy/lazyjj) — LazyGit-style TUI for jj
-- [jjui](https://github.com/idursun/jjui) — TUI for Jujutsu VCS
-
-### Maintainer Pack (`maintainer`)
-Tools for maintaining Yazelix itself without changing runtime behavior.
-
+Repo maintenance still uses a broader maintainer toolchain than the end-user runtime surface. Common maintainer tools around this repo include:
 - [gh](https://cli.github.com/) — GitHub CLI for issues, PRs, and repo workflow
 - [prek](https://github.com/j178/prek) — Fast local pre-commit hook runner
-- [tru](https://github.com/block/tru) — Compact structured output for Beads and agent workflows
-- [beads-rust](https://github.com/Dicklesworthstone/beads_rust) — Rust Beads tracker (`br`)
-- [beads-viewer](https://github.com/Dicklesworthstone/beads_viewer) — Graph-aware triage and visualization (`bv`)
-- [nu-lint](https://github.com/nushell/nu-lint) — Optional Nushell linter for explicit repo-maintainer lint runs
+- [beads](https://github.com/steveyegge/beads) — Beads issue tracker (`bd`) for local planning and GitHub issue contract work
+- [nu-lint](https://github.com/nushell/nu-lint) — Optional Nushell linter for explicit maintainer lint runs
 
-Use the repo's root [`../.pre-commit-config.yaml`](../.pre-commit-config.yaml) with `prek install`, then run `prek run --all-files` when you want the full fast maintainer checks on demand.
-
-### Misc Pack (`misc`)
-- [tokei](https://github.com/XAMPPRocky/tokei) — Fast code statistics and line-count CLI for quick repo inspection as a general-purpose optional utility
-
-### AI Agents Pack (`ai_agents`)
-AI coding agents sourced from [llm-agents.nix](https://github.com/numtide/llm-agents.nix) with daily updates.
-
-- [claude-code](https://github.com/anthropics/claude-code) — Claude Code CLI (Anthropic)
-- [codex](https://github.com/openai/codex) — Codex CLI for agentic coding (OpenAI)
-- [justcode](https://github.com/just-every/code) — just-every/code CLI (installed as `justcode`)
-- [gemini-cli](https://github.com/google-gemini/gemini-cli) — Gemini CLI (Google)
-- [pi](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent) — Pi coding agent CLI (Mario Zechner)
-- [opencode](https://github.com/opencode-ai/opencode) — OpenCode CLI
-- [amp](https://github.com/sourcegraph/amp) — Amp coding agent
-- [cursor-agent](https://github.com/getcursor/cursor) — Cursor agent
-- [goose-cli](https://github.com/block/goose) — Goose CLI (Block)
-
-### AI Tools Pack (`ai_tools`)
-AI support tools: analytics, code review, and utilities (from llm-agents.nix).
-
-- [coderabbit-cli](https://github.com/coderabbitai/coderabbit-cli) — AI code review
-- [ccusage](https://github.com/ryoppippi/ccusage) — Claude Code usage tracker
-- ccusage-amp, ccusage-codex, ccusage-opencode — Usage trackers for other agents
-- [beads](https://github.com/steveyegge/beads) — Original Beads tracker (`bd`)
-- [beads-rust](https://github.com/Dicklesworthstone/beads_rust) — Rust port of classic Beads (`br`), recommended primary CLI
-- [beads-viewer](https://github.com/Dicklesworthstone/beads_viewer) — Graph-aware TUI and robot triage sidecar (`bv`)
-- [openclaw](https://github.com/openclaw/openclaw) — OpenClaw (formerly moltbot/clawdbot)
-- [picoclaw](https://github.com/picoclaw/picoclaw) — PicoClaw
-- [zeroclaw](https://github.com/zeroclaw-labs/zeroclaw) — ZeroClaw
-
-**Usage**: Use `~/.config/yazelix/user_configs/yazelix_packs.toml` for pack enablement, declarations, and `user_packages`. Legacy `[packs]` entries in `yazelix.toml` should be migrated with `yzx config migrate --apply`.
+Use the repo's root [`../.pre-commit-config.yaml`](../.pre-commit-config.yaml) with `prek install`, then run `prek run --all-files` when you want the fast maintainer checks on demand.
 
 ---
 

@@ -1,12 +1,9 @@
 #!/usr/bin/env nu
-# yzx env command - Load Yazelix environment without UI
+# yzx env command - Load Yazelix runtime environment without UI
 
-use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/environment_bootstrap.nu [prepare_environment]
-use ../utils/devenv_backend.nu [print_refresh_request_guidance rebuild_yazelix_environment resolve_env_transition resolve_refresh_request resolve_runtime_entry_context run_in_devenv_shell_command]
-use ../utils/doctor.nu print_runtime_version_drift_warning
-use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
-use ../utils/launch_state.nu [get_launch_env resolve_requested_launch_profile]
+use ../utils/runtime_env.nu get_runtime_env
+use ../utils/constants.nu DEFAULT_SHELL
 
 # Build shell command from shell name.
 # --login keeps existing behavior for default yzx env mode.
@@ -32,57 +29,33 @@ def resolve_shell_command [shell_name: string, --login] {
     }
 }
 
-def run_with_launch_profile [
-    config: record
-    profile_path: string
-    command: string
-    ...args: string
-    --cwd: string
-] {
-    let requested_cwd = ($cwd | default "")
-    let resolved_cwd = if ($requested_cwd | is-not-empty) { $requested_cwd | path expand } else { "" }
-    let exec_cmd = if ($resolved_cwd | is-not-empty) {
-        ["env", "-C", $resolved_cwd] | append $command | append $args
+def run_runtime_shell [runtime_env: record, shell_command: list<string>, --cwd: string = ""] {
+    let has_setpriv = (which setpriv | is-not-empty)
+    let trap_supervisor = "trap 'kill 0' HUP TERM; exec \"$@\""
+    let exec_cmd = if $has_setpriv {
+        ["setpriv", "--pdeathsig", "TERM", "--"] | append $shell_command
     } else {
-        [$command] | append $args
+        ["sh", "-c", $trap_supervisor, "_"] | append $shell_command
     }
     let exec_bin = ($exec_cmd | first)
     let exec_args = ($exec_cmd | skip 1)
 
-    with-env (get_launch_env $config $profile_path) {
+    with-env $runtime_env {
+        if ($cwd | is-not-empty) {
+            cd ($cwd | path expand)
+        }
         ^$exec_bin ...$exec_args
     }
 }
 
-# Load yazelix environment without UI
+# Load yazelix environment without UI.
 export def "yzx env" [
     --no-shell(-n)  # Keep current shell instead of launching configured shell
-    --reuse         # Reuse the last built profile without rebuilding
-    --skip-refresh(-s)  # Skip explicit refresh trigger and allow potentially stale environment
 ] {
-    use ../utils/nix_detector.nu ensure_nix_available
-    ensure_nix_available
-    print_runtime_version_drift_warning
-    run_entrypoint_config_migration_preflight "yzx env" | ignore
-
-    # Prepare environment (shared with start_yazelix.nu)
     let env_prep = prepare_environment
     let config = $env_prep.config
-    let needs_refresh = $env_prep.needs_refresh
-    let reuse_mode = $reuse
-    let refresh_request = (resolve_refresh_request $needs_refresh --reuse=$reuse_mode --skip-refresh=$skip_refresh)
-    let max_jobs = ($config.max_jobs? | default "half" | into string)
-    let build_cores = ($config.build_cores? | default "2" | into string)
-    let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
-
     let original_dir = (pwd)
-    let entry_context = (resolve_runtime_entry_context $refresh_request)
-    let reused_launch_profile = (resolve_requested_launch_profile $entry_context.runtime_state $env_prep.config_state "yzx env --reuse")
-    let env_transition = (resolve_env_transition $entry_context.runtime_state --profile-available=($reused_launch_profile != null))
-
-    let has_setpriv = (which setpriv | is-not-empty)
-    let trap_supervisor = "trap 'kill 0' HUP TERM; exec \"$@\""
-    let configured_shell_name = ($config.default_shell? | default "nu" | str downcase)
+    let configured_shell_name = ($config.default_shell? | default $DEFAULT_SHELL | str downcase)
     let invoking_shell_name = (
         if ($env.SHELL? | is-not-empty) {
             $env.SHELL | path basename | str downcase
@@ -90,54 +63,19 @@ export def "yzx env" [
             $configured_shell_name
         }
     )
-
-    print_refresh_request_guidance $refresh_request
-    if $env_transition.rebuild_before_exec {
-        print $"🔄 Configuration changed - rebuilding environment using ($build_parallelism_description)..."
-        rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache
-    }
-
-    if $no_shell {
-        # For --no-shell, preserve the invoking shell when possible.
-        let shell_command = (resolve_shell_command $invoking_shell_name)
-        if $env_transition.execution == "launch_profile" {
-            if $has_setpriv {
-                run_with_launch_profile $config $reused_launch_profile "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --cwd $original_dir
-            } else {
-                run_with_launch_profile $config $reused_launch_profile "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir
-            }
-        } else if $has_setpriv {
-            run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$env_transition.rebuild_before_exec
-        } else {
-            # macOS and other systems without setpriv use POSIX trap fallback.
-            run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$env_transition.rebuild_before_exec
-        }
-
+    let shell_command = if $no_shell {
+        resolve_shell_command $invoking_shell_name
     } else {
-        # Launch configured shell
-        let shell_command = (resolve_shell_command $configured_shell_name --login)
-        let shell_exec = ($shell_command | first)
-        # Prefer Linux parent-death signaling for force-close paths.
-        # Fall back to POSIX trap on systems without setpriv (for example macOS).
+        resolve_shell_command $configured_shell_name --login
+    }
+    let shell_exec = ($shell_command | first)
+    let runtime_env = ((get_runtime_env $config) | upsert SHELL $shell_exec)
 
-        try {
-            with-env {SHELL: $shell_exec} {
-                if $env_transition.execution == "launch_profile" {
-                    if $has_setpriv {
-                        run_with_launch_profile $config $reused_launch_profile "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --cwd $original_dir
-                    } else {
-                        run_with_launch_profile $config $reused_launch_profile "sh" "-c" $trap_supervisor "_" ...$shell_command --cwd $original_dir
-                    }
-                } else if $has_setpriv {
-                    run_in_devenv_shell_command "setpriv" "--pdeathsig" "TERM" "--" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$env_transition.rebuild_before_exec
-                } else {
-                    run_in_devenv_shell_command "sh" "-c" $trap_supervisor "_" ...$shell_command --max-jobs $max_jobs --build-cores $build_cores --cwd $original_dir --env-only --quiet --force-refresh=$env_transition.rebuild_before_exec
-                }
-            }
-        } catch {|err|
-            print $"❌ Failed to launch configured shell: ($err.msg)"
-            print "   Tip: rerun with 'yzx env --no-shell' to stay in your current shell."
-            exit 1
-        }
+    try {
+        run_runtime_shell $runtime_env $shell_command --cwd $original_dir
+    } catch {|err|
+        print $"❌ Failed to launch Yazelix runtime shell: ($err.msg)"
+        print "   Tip: rerun with 'yzx env --no-shell' to stay in your current shell."
+        exit 1
     }
 }

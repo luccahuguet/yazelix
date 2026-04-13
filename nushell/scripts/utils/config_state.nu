@@ -6,9 +6,8 @@ use ./atomic_writes.nu write_text_atomic
 use ./config_contract.nu [get_main_config_rebuild_required_paths]
 use ./common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 use ./config_surfaces.nu [load_active_config_surface get_main_user_config_path normalize_config_surface_path]
-use ./launch_state.nu [has_matching_launch_state]
 
-# Extract a nested key from a record using dot notation (e.g., "core.recommended_deps")
+# Extract a nested key from a record using dot notation (e.g., "shell.default_shell")
 def get_nested_key [record: record, key: string] {
     let parts = ($key | split row ".")
     mut value = $record
@@ -72,7 +71,7 @@ def load_recorded_materialized_state [] {
     }
 }
 
-# Compute active config hash and track whether devenv needs cache refresh.
+# Compute active config hash and track whether generated runtime state needs repair.
 # Only hashes rebuild-required keys (ignoring comments and runtime settings).
 # Returns a record with:
 #   config: parsed Yazelix configuration
@@ -99,34 +98,14 @@ export def compute_config_state [] {
         $normalized | hash sha256
     }
 
-    # Include devenv inputs so updates trigger refresh on restart
     let yazelix_dir = get_yazelix_runtime_dir
-    let lock_path = ($yazelix_dir | path join "devenv.lock")
-    let devenv_nix_path = ($yazelix_dir | path join "devenv.nix")
-    let devenv_yaml_path = ($yazelix_dir | path join "devenv.yaml")
-
-    let lock_hash = if ($lock_path | path exists) {
-        open --raw $lock_path | hash sha256
-    } else {
-        ""
-    }
-    let devenv_nix_hash = if ($devenv_nix_path | path exists) {
-        open --raw $devenv_nix_path | hash sha256
-    } else {
-        ""
-    }
-    let devenv_yaml_hash = if ($devenv_yaml_path | path exists) {
-        open --raw $devenv_yaml_path | hash sha256
-    } else {
-        ""
-    }
     let runtime_hash = (
         $yazelix_dir
         | path expand
         | hash sha256
     )
 
-    let combined_hash = [$config_hash, $lock_hash, $devenv_nix_hash, $devenv_yaml_hash, $runtime_hash]
+    let combined_hash = [$config_hash, $runtime_hash]
         | str join ":"
         | hash sha256
 
@@ -145,21 +124,6 @@ export def compute_config_state [] {
     } else {
         ""
     }
-    let cached_lock_hash = if $has_structured_cache {
-        $cached_state | get -o lock_hash | default ""
-    } else {
-        ""
-    }
-    let cached_devenv_nix_hash = if $has_structured_cache {
-        $cached_state | get -o devenv_nix_hash | default ""
-    } else {
-        ""
-    }
-    let cached_devenv_yaml_hash = if $has_structured_cache {
-        $cached_state | get -o devenv_yaml_hash | default ""
-    } else {
-        ""
-    }
     let cached_runtime_hash = if $has_structured_cache {
         $cached_state | get -o runtime_hash | default ""
     } else {
@@ -171,12 +135,7 @@ export def compute_config_state [] {
         false
     }
     let inputs_changed = if $has_structured_cache {
-        (
-            ($lock_hash != $cached_lock_hash)
-            or ($devenv_nix_hash != $cached_devenv_nix_hash)
-            or ($devenv_yaml_hash != $cached_devenv_yaml_hash)
-            or ($runtime_hash != $cached_runtime_hash)
-        )
+        $runtime_hash != $cached_runtime_hash
     } else {
         false
     }
@@ -188,23 +147,20 @@ export def compute_config_state [] {
     } else {
         true
     }
-    let has_verified_launch_profile = (has_matching_launch_state {combined_hash: $combined_hash} --allow-stale=false)
-    let needs_refresh = $inputs_require_refresh or (not $has_verified_launch_profile)
+    let needs_refresh = $inputs_require_refresh
 
     let refresh_reason = if not $needs_refresh {
         ""
     } else if $inputs_require_refresh and (not $has_structured_cache) {
-        "config, runtime, or devenv inputs changed since last launch"
+        "config or runtime inputs changed since last generated-state repair"
     } else if $inputs_require_refresh and $config_changed and $inputs_changed {
-        "config and runtime/devenv inputs changed since last launch"
+        "config and runtime inputs changed since last generated-state repair"
     } else if $inputs_require_refresh and $config_changed {
-        "config changed since last launch"
+        "config changed since last generated-state repair"
     } else if $inputs_require_refresh and $inputs_changed {
-        "runtime or devenv inputs changed since last launch"
-    } else if not $has_verified_launch_profile {
-        "verified launch profile missing for current config"
+        "runtime inputs changed since last generated-state repair"
     } else {
-        "config, runtime, or devenv inputs changed since last launch"
+        "config or runtime inputs changed since last generated-state repair"
     }
 
     {
@@ -215,11 +171,7 @@ export def compute_config_state [] {
         config_changed: $config_changed
         inputs_changed: $inputs_changed
         inputs_require_refresh: $inputs_require_refresh
-        has_verified_launch_profile: $has_verified_launch_profile
         config_hash: $config_hash
-        lock_hash: $lock_hash
-        devenv_nix_hash: $devenv_nix_hash
-        devenv_yaml_hash: $devenv_yaml_hash
         runtime_hash: $runtime_hash
         combined_hash: $combined_hash
         cached_hash: $cached_hash
@@ -231,16 +183,28 @@ export def compute_config_state [] {
 export def record_materialized_state [state: record] {
     let config_file = ($state.config_file? | default "")
     let default_config = (normalize_config_surface_path (get_main_user_config_path))
-    if ($config_file | is-not-empty) and ((normalize_config_surface_path $config_file) != $default_config) {
+    let normalized_config_file = if ($config_file | is-not-empty) {
+        normalize_config_surface_path $config_file
+    } else {
+        ""
+    }
+    let default_config_dir = ($default_config | path dirname)
+    let default_config_name = ($default_config | path basename)
+    let is_default_managed_surface = (
+        ($normalized_config_file == $default_config)
+        or (
+            ($normalized_config_file | is-not-empty)
+            and (($normalized_config_file | path dirname) == $default_config_dir)
+            and (($normalized_config_file | path basename) == $default_config_name)
+        )
+    )
+    if ($config_file | is-not-empty) and (not $is_default_managed_surface) {
         return
     }
 
     let materialized_state_path = (get_materialized_state_path)
     let cache_record = {
         config_hash: ($state.config_hash? | default "")
-        lock_hash: ($state.lock_hash? | default "")
-        devenv_nix_hash: ($state.devenv_nix_hash? | default "")
-        devenv_yaml_hash: ($state.devenv_yaml_hash? | default "")
         runtime_hash: ($state.runtime_hash? | default "")
     }
     write_text_atomic $materialized_state_path ($cache_record | to json) --raw | ignore

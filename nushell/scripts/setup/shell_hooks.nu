@@ -255,7 +255,7 @@ export def setup_shell_hooks [
     let legacy_generation = (get_legacy_yazelix_shell_hook_generation $config_content)
     if $legacy_generation != null {
         error make {
-            msg: $"Legacy Yazelix shell hooks detected in ($shell_config).\n   Yazelix no longer auto-migrates ($legacy_generation) shell hook generations.\n   Recovery: delete the old Yazelix-managed section from ($shell_config), then rerun `yzx refresh` to generate the current hooks."
+            msg: $"Legacy Yazelix shell hooks detected in ($shell_config).\n   Yazelix no longer auto-migrates ($legacy_generation) shell hook generations.\n   Recovery: delete the old Yazelix-managed section from ($shell_config), then rerun `yzx launch`, `yzx enter`, or your install/setup flow to generate the current hooks."
             label: {
                 text: $"Manual shell-hook cleanup required for ($legacy_generation)"
                 span: (metadata $shell).span

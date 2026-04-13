@@ -73,7 +73,7 @@ def get_traceability_section [content: string] {
 }
 
 def load_default_suite_entrypoints [] {
-    use ../utils/test_runner.nu [get_default_test_file_names]
+    use ../maintainer/test_runner.nu [get_default_test_file_names]
     get_default_test_file_names
 }
 

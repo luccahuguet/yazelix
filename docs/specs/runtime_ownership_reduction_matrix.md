@@ -1,5 +1,9 @@
 # Runtime Ownership Reduction Matrix
 
+> Status: Historical pre-v15-trim planning note.
+> This matrix explores alternative shapes that still preserved pack sidecars, installer-owned runtime identity, or launch-profile reuse.
+> Do not treat it as the current branch contract. See [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
 ## Summary
 
 Yazelix should distinguish clearly between two different kinds of reduction work:
@@ -109,7 +113,7 @@ This means the following families can still make sense after deleting distributi
 - `yzx enter`
 - `yzx env`
 - `yzx run`
-- `yzx refresh`
+- internal generated-state repair helpers
 - config/edit/import flows
 - workspace/session commands
 
@@ -136,7 +140,7 @@ What becomes questionable or likely out of scope:
 
 - `yzx env`
 - `yzx run`
-- `yzx refresh`
+- internal generated-state repair helpers
 - `yzx launch` if it still depends on backend activation semantics
 - `yzx packs` as a first-class product surface
 

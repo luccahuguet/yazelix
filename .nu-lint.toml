@@ -1,9 +1,9 @@
 # Yazelix nu-lint configuration
 # Run via: yzx dev lint_nu
-# Requires: `maintainer` pack or an explicit `nu-lint` user package
+# Requires: the flake maintainer shell or an explicit `nu-lint` user package
 #
 # Disables noisy groups and rules that conflict with Yazelix conventions.
-# Keeps ~15 high-signal rules for dead code, runtime safety, and correctness.
+# Keeps the current high-signal rules for runtime safety and correctness.
 #
 # Structural upstream blockers for CI gating:
 #   - nu_parse_error: false positives on relative `use` imports
@@ -31,6 +31,15 @@ upstream = "off"
 
 # Suppress noisy rules from enabled groups (runtime-errors, type-safety, performance, dead-code)
 redundant_nu_subprocess = "off"      # intentional process isolation in tests/menus/runners
+spread_list_to_external = "off"      # false positives on typed internal Nushell helper calls that intentionally accept list args
+redundant_ignore = "off"             # low-value advisory churn; many hits intentionally suppress helper output
+chained_str_transform = "off"        # style/perf hint, not worth rewriting readable text transforms
+error_make_for_non_fatal = "off"     # style hint; several hits intentionally print contextual recovery text
+if_null_to_default = "off"           # style simplification, not a defect signal
+unused_parameter = "off"             # false positives on user-facing flags forwarded as named args
+unused_variable = "off"              # false positives on values used as Nushell command arguments
+unused_helper_functions = "off"      # false positives on callback helpers passed through closures
+assign_then_return = "off"           # low-value style hint
 catch_builtin_error_try = "off"      # too broad, flags normal pipeline usage
 exit_only_in_main = "off"            # scripts legitimately use exit
 try_instead_of_do = "off"            # stylistic, not a correctness issue

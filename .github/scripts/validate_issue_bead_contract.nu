@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use ../../nushell/scripts/utils/issue_bead_contract.nu [
+use ../../nushell/scripts/maintainer/issue_bead_contract.nu [
     canonical_issue_bead_comment_body
     contract_start
     find_issue_bead_comment

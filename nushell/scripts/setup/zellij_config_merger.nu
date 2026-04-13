@@ -2,7 +2,7 @@
 # Zellij Configuration Merger
 # Uses the Yazelix-managed user Zellij config when available, then native Zellij config, then Zellij defaults
 
-use ../utils/constants.nu [ZELLIJ_CONFIG_PATHS]
+use ../utils/constants.nu [DEFAULT_SHELL ZELLIJ_CONFIG_PATHS]
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu resolve_zellij_default_shell
@@ -33,8 +33,8 @@ use ./zellij_semantic_blocks.nu [
 ]
 use ./zellij_plugin_paths.nu [
     PANE_ORCHESTRATOR_PLUGIN_ALIAS
+    cleanup_legacy_popup_runner_artifacts
     sync_pane_orchestrator_runtime_wasm
-    sync_popup_runner_runtime_wasm
     sync_zjstatus_runtime_wasm
 ]
 
@@ -58,15 +58,20 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     let config = parse_yazelix_config
     let widget_tray = ($config.zellij_widget_tray? | default ["editor", "shell", "term", "cpu", "ram"])
     let custom_text = ($config.zellij_custom_text? | default "")
-    let default_shell = ($config.default_shell? | default "nu")
+    let default_shell = ($config.default_shell? | default $DEFAULT_SHELL)
     let resolved_default_shell = (resolve_zellij_default_shell $yazelix_dir $default_shell)
     let default_layout_name = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
     let sidebar_width_percent = ($config.sidebar_width_percent? | default 20)
+    let popup_width_percent = ($config.popup_width_percent? | default 90)
+    let popup_height_percent = ($config.popup_height_percent? | default 90)
     let source_layouts_dir = $"($yazelix_dir)/($ZELLIJ_CONFIG_PATHS.layouts_dir)"
     let pane_orchestrator_plugin_url = $PANE_ORCHESTRATOR_PLUGIN_ALIAS
     let plugin_artifacts = (profile_startup_step "zellij_config" "resolve_plugin_artifacts" {
         resolve_zellij_plugin_artifacts $yazelix_dir
     })
+    profile_startup_step "zellij_config" "cleanup_legacy_popup_runner" {
+        cleanup_legacy_popup_runner_artifacts
+    } | ignore
     let base_config_source = (profile_startup_step "zellij_config" "load_base_config" {
         resolve_base_config_source
     })
@@ -108,9 +113,6 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
 
     let pane_orchestrator_wasm_path = (profile_startup_step "zellij_config" "sync_pane_orchestrator_plugin" {
         sync_pane_orchestrator_runtime_wasm $yazelix_dir
-    })
-    let popup_runner_wasm_path = (profile_startup_step "zellij_config" "sync_popup_runner_plugin" {
-        sync_popup_runner_runtime_wasm $yazelix_dir
     })
     let zjstatus_wasm_path = (profile_startup_step "zellij_config" "sync_zjstatus_plugin" {
         sync_zjstatus_runtime_wasm $yazelix_dir
@@ -184,6 +186,9 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
             $widget_tray_segment
             $custom_text_segment
             $sidebar_width_percent
+            $yazelix_dir
+            $popup_width_percent
+            $popup_height_percent
         ),
         "",
         $merged_ui_block,
@@ -193,7 +198,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         (render_yazelix_top_level_settings_block "// === YAZELIX ENFORCED SETTINGS ===" $enforced_top_level_settings),
         "",
         "// === YAZELIX BACKGROUND PLUGINS ===",
-        (build_yazelix_load_plugins_block $extracted_blocks.load_plugin_lines $PANE_ORCHESTRATOR_PLUGIN_ALIAS $popup_runner_wasm_path)
+        (build_yazelix_load_plugins_block $extracted_blocks.load_plugin_lines $PANE_ORCHESTRATOR_PLUGIN_ALIAS)
     ] | str join "\n"
     
     try {

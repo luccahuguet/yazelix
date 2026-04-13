@@ -8,9 +8,7 @@ shells/zsh/initializers
 # New XDG-compliant state directory (local machine state, not tracked)
 .local/
 
-# devenv generated files and cache
-.devenv/
-.devenv.flake.nix
+# Legacy local environment caches
 
 # User configuration
 yazelix.nix
@@ -47,3 +45,8 @@ rust_plugins/*/target/
 
 # Editor-local project settings
 .vscode/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

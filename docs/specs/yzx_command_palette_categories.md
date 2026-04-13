@@ -2,7 +2,7 @@
 
 ## Summary
 
-`yzx menu` should not discover commands through a narrow hand-filtered allowlist. It should classify the public `yzx` surface into practical palette categories and allow most user-facing commands by default.
+`yzx menu` should derive its catalog from the real exported `yzx` surface, not from a handwritten allowlist. It should classify the public `yzx` tree into practical palette categories and allow most user-facing commands by default.
 
 The palette is a command-discovery and dispatch surface, not a second shell. So the right rule is:
 
@@ -13,7 +13,7 @@ This spec complements backend-coupling analysis. It does not replace it.
 
 ## Why
 
-The current `yzx menu` implementation in `nushell/scripts/yzx/menu.nu` discovers commands from `help commands` and then layers a small set of ad hoc exclusions on top. That has two problems:
+The stale `yzx menu` pattern in `nushell/scripts/yzx/menu.nu` was a handwritten public command catalog with a few ad hoc exclusions layered on top. That had two problems:
 
 1. palette eligibility is implicit and fragile
 2. command grouping is mixed with implementation ownership
@@ -32,7 +32,7 @@ Without a palette-specific contract, `menu.nu` will keep accreting one-off filte
 - define default palette eligibility rules
 - define explicit exclusions
 - explain how palette categories relate to backend-coupling buckets
-- provide a source-of-truth grouping that `yzx menu` can consume later
+- provide a source-of-truth grouping that `yzx menu` can consume directly
 
 ## Source Of Truth
 
@@ -44,7 +44,7 @@ The command inventory for this spec comes from the real exported surface:
 Sanity check:
 
 ```bash
-nu -c 'use nushell/scripts/core/yazelix.nu *; help commands | where name =~ "^yzx( |$)" | select name description | sort-by name'
+nu -c 'source nushell/scripts/core/yazelix.nu; scope commands | where name =~ "^yzx( |$)" | select name description | sort-by name'
 ```
 
 This spec intentionally excludes:
@@ -109,11 +109,9 @@ Commands that show, edit, import, migrate, or reset user-managed config surfaces
 Included:
 
 - `yzx config`
-- `yzx config migrate`
 - `yzx config reset`
 - `yzx edit`
 - `yzx edit config`
-- `yzx edit packs`
 - `yzx import`
 - `yzx import helix`
 - `yzx import yazi`
@@ -127,12 +125,12 @@ Included:
 
 - `yzx doctor`
 - `yzx status`
-- `yzx packs`
-- `yzx gc`
+- `yzx home_manager`
+- `yzx home_manager prepare`
 - `yzx update`
+- `yzx update upstream`
+- `yzx update home_manager`
 - `yzx update nix`
-- `yzx repair`
-- `yzx repair zellij-permissions`
 - `yzx desktop install`
 - `yzx desktop launch`
 - `yzx desktop uninstall`
@@ -199,7 +197,7 @@ The two models should agree on inventory, but they intentionally optimize for di
 
 ## Acceptance Cases
 
-1. When `yzx menu` is refactored, it can derive grouping and eligibility from this spec instead of layering more string filters over `help commands`.
+1. `yzx menu` can derive grouping and eligibility from the real exported command tree instead of maintaining a handwritten catalog.
 2. When a new public `yzx` command is added, maintainers can decide whether it belongs in the palette by checking these eligibility rules rather than guessing from precedent.
 3. When a user asks why `yzx env`, `yzx run`, or `yzx cwd` are not normal palette items, the answer is explicit and intentional.
 4. When the menu surface is thinned, it can still present most public commands without treating the palette as a second shell.
@@ -210,7 +208,7 @@ The two models should agree on inventory, but they intentionally optimize for di
   - [yzx_command_surface_backend_coupling.md](./yzx_command_surface_backend_coupling.md)
   - [architecture_map.md](../architecture_map.md)
 - command-surface sanity check:
-  - `nu -c 'use nushell/scripts/core/yazelix.nu *; help commands | where name =~ "^yzx( |$)" | select name description | sort-by name'`
+  - `nu -c 'source nushell/scripts/core/yazelix.nu; scope commands | where name =~ "^yzx( |$)" | select name description | sort-by name'`
 - spec validation:
   - `nu nushell/scripts/dev/validate_specs.nu`
 

@@ -25,6 +25,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Popup width and height percentages must be integers in the range `1..100`.
 - The default popup width and height are both `90`.
 - `yzx popup <command ...>` overrides the configured command for that invocation.
+- The surviving popup/menu seam is one explicit transient-pane contract: kind, pane identity, wrapper path, mode env, argv, cwd, runtime, and geometry are resolved before the plugin open request is sent.
 - The popup launches in the current tab workspace root when available; otherwise it uses the current shell directory.
 - The popup closes on exit.
 - `Alt+t` opens one managed popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.
@@ -50,9 +51,10 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 
 - unit tests: popup command/cwd resolution helpers
 - unit tests: popup geometry config parsing and validation
-- unit tests: popup lifecycle contract and popup-pane discovery in the popup runner
+- unit tests: popup lifecycle contract and transient-pane discovery in the pane orchestrator
 - unit tests: popup-toggle wrapper decision path
 - integration tests: `yzx popup` command routing and popup geometry arguments with a fake Zellij binary
+- integration tests: generated Zellij config and permission cleanup remove stale popup-runner artifacts
 - CI checks: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - manual verification: `Alt+t` toggles one managed popup and `Alt+Shift+M` still opens the menu
 
@@ -61,8 +63,8 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Bead: `yazelix-2v0`
 - Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - Defended by: `nu nushell/scripts/dev/test_yzx_popup_commands.nu`
-- Defended by: `cargo test --manifest-path rust_plugins/zellij_popup_runner/Cargo.toml --lib`
+- Defended by: `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
 
 ## Open Questions
 
-- Should Yazi’s lazygit binding eventually route through the same popup runner when inside Yazelix/Zellij?
+- Should Yazi’s lazygit binding eventually route through the same pane-orchestrated popup contract when inside Yazelix/Zellij?

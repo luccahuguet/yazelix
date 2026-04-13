@@ -87,7 +87,6 @@ This slice does **not** prove that these families work without backend ownership
 - `yzx enter`
 - `yzx env`
 - `yzx run`
-- `yzx refresh`
 - `yzx restart`
 - distribution/update/repair commands
 

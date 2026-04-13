@@ -5,7 +5,6 @@
 [mgr]
 cwd = { fg = "#179299" }
 
-# TODO: remove
 # Hovered
 hovered         = { reversed = true }
 preview_hovered = { underline = true }
@@ -179,7 +178,6 @@ rules = [
 	# Fallback
 	{ url = "*", fg = "#4c4f69" },
 	{ url = "*/", fg = "#1e66f5" },
-	# TODO: remove
 	{ url = "*", fg = "#4c4f69" },
 	{ url = "*/", fg = "#1e66f5" }
 ]

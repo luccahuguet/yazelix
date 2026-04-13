@@ -1,23 +1,11 @@
-{ pkgs, src ? ../. }:
+{ pkgs, src ? ../., nixgl ? null }:
 
 let
-  lockedDevenv = import ./locked_devenv_package.nix { inherit pkgs src; };
-  runtimeDeps = [
-    pkgs.nushell
-    lockedDevenv
-    pkgs.nix
-    pkgs.coreutils
-    pkgs.findutils
-    pkgs.gnugrep
-    pkgs.gnused
-    pkgs.jq
-    pkgs.util-linux
-    pkgs.bash
-  ];
+  runtimeDeps = import ./runtime_deps.nix { inherit pkgs nixgl; };
   runtimeBinPath = pkgs.lib.makeBinPath runtimeDeps;
 
   runtime = import ./mk_runtime_tree.nix {
-    inherit pkgs src;
+    inherit pkgs src nixgl;
     name = "yazelix-runtime";
   };
 in

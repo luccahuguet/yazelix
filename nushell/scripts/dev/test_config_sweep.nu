@@ -52,7 +52,7 @@ def get_launch_error_details [stdout: string, stderr: string]: nothing -> string
     )
 
     if $missing_terminal {
-        let hint = "Missing terminal. Install it, or set manage_terminals = true and run yzx restart."
+        let hint = "Missing terminal. Install one of the configured host terminals, or update [terminal].terminals and rerun yzx launch."
         let matched_line = (
             $lines
             | where {|line|
@@ -191,9 +191,9 @@ def run_sweep_test [
 export def run_all_sweep_tests [
     --verbose(-v)           # Show detailed output
     --visual(-w)            # Launch visual Yazelix windows for each test
-    --visual-delay: int     # Delay between visual launches in seconds (default: 3)
+    --visual-delay: int = 3 # Delay between visual launches in seconds
 ]: nothing -> nothing {
-    let visual_delay_seconds = ($visual_delay | default 3)
+    let visual_delay_seconds = $visual_delay
     let visual_delay = ($visual_delay_seconds * 1sec)
 
     if $visual {

@@ -1,5 +1,9 @@
 # Config Surface And Launch Profile Contract
 
+> Status: Historical pre-v15-trim planning note.
+> This document describes superseded semantics such as `yazelix_packs.toml`, cached launch-profile reuse, and `devenv`-backed rebuild ownership.
+> Do not treat it as the current branch contract. See [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
 ## Summary
 
 Yazelix should treat configuration surfaces, generated runtime state, cached launch profiles, and live session activation as four distinct concerns with explicit ownership. The canonical user-facing config surfaces are the managed TOML files under `~/.config/yazelix/user_configs/`, while Home Manager is an integration that renders the same user intent into those surfaces rather than inventing separate semantics. Generated runtime configs under `~/.local/share/yazelix/configs/` and cached launch-profile state under `~/.local/share/yazelix/state/` are derived artifacts, not user-owned sources of truth. Process-local activation markers are a separate runtime layer again, not persisted launch truth.
@@ -121,8 +125,8 @@ Without a written contract, later cleanup work risks centralizing the wrong thin
 5. When only non-rebuild runtime settings change, Yazelix may still use the existing launch profile without forcing a `devenv` rebuild, while the updated runtime behavior is still applied on the next normal launch flow.
 6. When rebuild-relevant config or `devenv` inputs change, Yazelix treats the recorded launch profile as stale for normal fast-launch paths until a new matching profile is built and recorded.
 7. When `yzx launch --reuse` is used, Yazelix may reuse the last recorded profile despite current config drift, but it fails clearly if no cached launch profile exists.
-8. When install or shell-hook setup runs from a stale maintainer shell, it must not overwrite `launch_state.json` with that stale shell profile. Real launch and refresh flows own launch-profile recording.
-9. When `yzx refresh` builds through `devenv build shell`, Yazelix records the embedded `DEVENV_PROFILE`, not the shell-script wrapper path and not an unrelated ambient maintainer-shell profile.
+8. When install or shell-hook setup runs from a stale maintainer shell, it must not overwrite `launch_state.json` with that stale shell profile. Real launch and generated-state repair flows own launch-profile recording.
+9. When generated-state repair builds through `devenv build shell`, Yazelix records the embedded `DEVENV_PROFILE`, not the shell-script wrapper path and not an unrelated ambient maintainer-shell profile.
 10. When a stale maintainer shell and a correct `launch_state.json` coexist, the docs and helpers treat that as a live-activation-versus-materialized-state split, not as contradictory runtime truth.
 11. When a fresh state root runs `devenv build shell`, Yazelix can still derive and record the reusable profile from build output even if `runtime/project/.devenv/profile` and `runtime/project/.devenv/gc/shell` do not exist yet.
 12. When a startup, restart, or other runtime-entry rebuild succeeds, Yazelix may record the fresh reusable profile before the newly launched session has fully activated it.

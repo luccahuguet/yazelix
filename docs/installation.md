@@ -17,39 +17,34 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
-Yazelix provides 5 terminal emulators built-in via Nix - set your `terminals` list in `yazelix.toml`:
-
-**Note**: On macOS, Ghostty uses the native Homebrew version (see below). All other terminals are provided via Nix.
+Yazelix provides Ghostty built-in via Nix on Linux and macOS. WezTerm, Kitty, Alacritty, and Foot remain supported terminal choices, but you provide those binaries yourself and then list them in `terminals` in `yazelix.toml`.
 
 See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
 
 **WezTerm**
 - Modern, fast, written in Rust
-- Provided by Yazelix via Nix (no installation needed)
+- Supported as a PATH-provided alternative terminal
 - Reference: https://wezfurlong.org/wezterm/installation.html
 
 **Ghostty** (Default)
 - Modern, fast, written in Zig, newer
-- **Linux**: Provided by Yazelix via Nix (no installation needed)
-- **macOS**: Install via Homebrew: `brew install --cask ghostty`
-  - Nix package doesn't support macOS due to app bundle limitations
-  - Yazelix will auto-detect Homebrew installation
+- **Linux and macOS**: Provided by Yazelix via Nix as the built-in default terminal path
 - Download page: https://ghostty.org/download
 - **Note**: Due to a [Zellij/Yazi/Ghostty interaction](https://github.com/zellij-org/zellij/issues/2814#issuecomment-2965117327), image previews in Yazi may not display properly, for now. If this is a problem for you, use WezTerm instead
 
 **Kitty**
 - Fast, feature-rich, GPU-accelerated terminal
-- Provided by Yazelix via Nix (no installation needed)
+- Supported as a PATH-provided alternative terminal
 - Reference: https://sw.kovidgoyal.net/kitty/binary/
 
 **Alacritty**
 - Fast, GPU-accelerated terminal written in Rust
-- Provided by Yazelix via Nix (no installation needed)
+- Supported as a PATH-provided alternative terminal
 - Reference: https://github.com/alacritty/alacritty/blob/master/INSTALL.md
 
 **Foot**
 - Fast, simple, written in C
-- Provided by Yazelix via Nix (no installation needed)
+- Supported as a PATH-provided Linux-only alternative terminal
 - Reference: https://codeberg.org/dnkl/foot/src/branch/master/INSTALL.md
 
 ## Quickstart
@@ -127,40 +122,34 @@ Normal usage relies on the package-provided `yzx` entrypoint or the Home Manager
 
 Host prerequisite contract:
 - **Host prerequisite**: Nix with flakes enabled
-- **Package-provided**: the Yazelix runtime, including runtime-local `devenv` and `nu`, plus `bin/yzx`
-- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix
+- **Package-provided**: the Yazelix runtime, including runtime-local `nu`, `zellij`, `yazi`, `helix`, shells, and the fixed helper toolset behind `bin/yzx`
+- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or PATH-provided alternative terminals other than the built-in Ghostty path
+- **Nushell version ownership**: Yazelix uses the Nushell packaged by the locked `nixpkgs` input for the runtime and bootstrap path. The maintainer update workflow records that as `PINNED_NUSHELL_VERSION`; it does not chase a newer upstream Nushell release until Nixpkgs packages it.
 
 ### Step 3: Configure Your Installation (Optional)
 
-If you skipped customization before the installer, it will auto-create `user_configs/yazelix.toml` and `user_configs/yazelix_packs.toml` from the shipped defaults. You can edit them anytime afterward:
+If you skipped customization before the installer, it will auto-create `user_configs/yazelix.toml` from the shipped default. You can edit it anytime afterward:
 
 ```bash
 hx ~/.config/yazelix/user_configs/yazelix.toml
 ```
 
-#### Dependency Groups & Size Estimates
+#### Runtime Surface
 
-| Group | Size | Default | Description |
-|-------|------|---------|-------------|
-| **✅ Essential Tools** | ~1.7GB | Always included | Core Yazelix functionality (Yazi, Zellij, Helix, shells, built-in Ghostty, etc.) |
-| **🔧 Recommended Tools** | ~350MB | Enabled | Productivity enhancers (lazygit, atuin, etc.) |
-| **🗂️ Yazi Extensions** | ~125MB | Enabled | File preview & archive support |
-| **🎬 Yazi Media** | ~1GB | Disabled | Heavy media processing |
+The trimmed v15 packaged runtime ships a fixed toolset instead of configurable dependency groups. The package includes:
+- the core Yazelix stack: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
+- the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `mise`, `carapace`, `macchina`
+- the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 
-#### Installation Options
-
-**Note**: All installations require Nix (~2.5GB) as a prerequisite.
-
-- **Minimal install**: Nix (~2.5GB) + devenv (~5GB) + essential tools (~1.7GB) = **~9.2GB total**
-- **Standard install**: Nix (~2.5GB) + devenv (~5GB) + default config (~2.2GB) = **~9.7GB total**
-- **Full install**: Nix (~2.5GB) + devenv (~5GB) + all groups (~3.2GB) = **~10.7GB total**
-
-📋 For detailed package breakdowns and configuration strategies, see **[Package Sizes Documentation](./package_sizes.md)**
+What it does not ship anymore:
+- a runtime-local `devenv` binary
+- dynamic packs or `user_packages`
+- non-Ghostty terminal binaries; install WezTerm, Kitty, Alacritty, or Foot yourself if you choose them
 
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
 - **Terminal preference**: Set `terminals` (`["ghostty", "wezterm", "kitty", "alacritty", "foot"]`, ordered)
-- **Managed terminals**: Set `manage_terminals = true` to install via Nix, or false to use system-installed terminals only
+- **Terminal launch**: Ghostty is the built-in default on Linux and macOS; other configured terminals are launched from `PATH` in the order you configure
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
 ### Step 4: Install Fonts (Required for Kitty and Alacritty)
@@ -196,7 +185,7 @@ Useful launch variants:
 - `yzx enter` starts Yazelix in the current terminal
 - `yzx help` shows the command surface
 
-**First run note**: the first launch may take several minutes while Yazelix downloads and installs its environment. Subsequent launches are much faster because `devenv` caching is reused.
+**First run note**: the first launch can take a bit longer while Yazelix writes shell hooks and generates managed runtime state. Later launches are usually faster because that generated state already exists.
 
 If you want to use Nushell as your normal host shell outside Yazelix, install it separately in the way you prefer. Yazelix no longer requires that extra host `nu` install just to bootstrap or launch the installed runtime.
 
@@ -212,6 +201,7 @@ yzx desktop install
 
 After this, you can search for "Yazelix" in your application launcher and launch it directly.
 `yzx desktop install` points the desktop entry at the active Yazelix runtime launcher, and `yzx desktop uninstall` removes that user-local desktop integration again.
+For Home Manager installs, do not run `yzx desktop install`; the Home Manager module owns the profile desktop entry. Use `yzx desktop uninstall` only to remove a stale user-local entry that shadows the Home Manager launcher.
 
 For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 
@@ -307,9 +297,9 @@ yzx env
 ```
 This loads all tools (helix, yazi, lazygit, etc.) into your configured shell with Yazelix environment variables set. Add `--no-shell` to keep using your current shell instead.
 
-If you prefer a raw environment shell:
+If you want the Yazelix tool PATH without switching into your configured shell:
 ```bash
-devenv shell
+yzx env --no-shell
 ```
 
 ### Home Manager Integration

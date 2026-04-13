@@ -1,9 +1,11 @@
 #!/usr/bin/env nu
 # Main Yazelix environment setup script
-# Called from devenv.nix shellHook to reduce complexity
+# Shared by startup, installer, and maintainer-shell entrypoints
 
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
+use ../utils/constants.nu DEFAULT_SHELL
+use ../utils/install_ownership.nu has_home_manager_managed_install
 use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 use ../utils/startup_profile.nu [profile_startup_step]
@@ -18,16 +20,7 @@ def detect_environment [] {
     } catch {
         true
     })
-    let home_manager_indicators = [
-        ($env.HOME | path join ".local" "state" "nix" "profiles" "home-manager")
-        ($env.HOME | path join ".nix-profile" "etc" "profile.d" "hm-session-vars.sh")
-        ($env.NIX_PROFILE? | default null)
-    ]
-    let home_manager = (
-        $home_manager_indicators
-        | where {|path| $path != null }
-        | any {|path| $path | path exists }
-    )
+    let home_manager = (has_home_manager_managed_install)
 
     {
         read_only_config: $read_only_config
@@ -54,26 +47,22 @@ def ensure_runtime_scripts_executable [yazelix_dir: string] {
     chmod +x $"($runtime_root)/nushell/scripts/core/start_yazelix.nu"
 }
 
-def main [--welcome-source: string, --skip-welcome] {
+def main [--welcome-source: string = "", --skip-welcome] {
     # Read configuration directly from TOML - single source of truth!
     let config = parse_yazelix_config
 
     # Extract values from config (all properly typed from TOML)
     let yazelix_dir = (get_yazelix_runtime_dir)
-    let default_shell = ($config.default_shell? | default "nu")
+    let default_shell = ($config.default_shell? | default $DEFAULT_SHELL)
     let debug_mode = ($config.debug_mode? | default false)
     let runtime_nu = (resolve_yazelix_nu_bin)
     let skip_welcome_screen = (
         ($config.skip_welcome_screen? | default false)
         or ($env.YAZELIX_STARTUP_PROFILE_SKIP_WELCOME? == "true")
     )
-    let helix_mode = ($config.helix_mode? | default "release")
     let welcome_style = ($config.welcome_style? | default "random")
     let welcome_duration_seconds = ($config.welcome_duration_seconds? | default 2.0)
     let show_macchina_on_welcome = ($config.show_macchina_on_welcome? | default false)
-
-    # Parse extra shells from config
-    let extra_shells = ($config.extra_shells? | default [])
 
     # DEBUG: Print skip_welcome_screen value
     if $debug_mode {
@@ -130,8 +119,8 @@ def main [--welcome-source: string, --skip-welcome] {
     # Validate user config against schema
     use ../utils/config_schema.nu validate_config_against_default
 
-    # Determine which shells to configure (always nu/bash, plus default_shell and extra_shells)
-    let shells_to_configure = (["nu", "bash"] ++ [$default_shell] ++ $extra_shells) | uniq
+    # Keep shell entry narrow: always configure the runtime baseline plus the selected default shell.
+    let shells_to_configure = ([$DEFAULT_SHELL, "bash", $default_shell] | uniq)
 
     # Setup logging in state directory (XDG-compliant)
     let state_dir = ($env.YAZELIX_STATE_DIR | str replace "~" $env.HOME)
@@ -233,7 +222,7 @@ def main [--welcome-source: string, --skip-welcome] {
     let colors = get_yazelix_colors
 
     # Build welcome message
-    let welcome_message = build_welcome_message $yazelix_dir $helix_mode $colors
+    let welcome_message = build_welcome_message $yazelix_dir $colors
 
     # Display welcome screen or log it (skip when start_yazelix handles it)
     if $welcome_source != "start" {

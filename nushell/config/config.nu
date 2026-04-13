@@ -2,7 +2,7 @@
 # Location: ~/.config/yazelix/nushell/config.nu
 
 # Guard: Only load if in a Yazelix environment.
-# Repo-local devenv shells rely on IN_YAZELIX_SHELL, while installed runtime
+# Repo-local maintainer shells rely on IN_YAZELIX_SHELL, while installed runtime
 # entrypoints provide an explicit YAZELIX_RUNTIME_DIR.
 if (($env.IN_YAZELIX_SHELL? | is-empty) and ($env.YAZELIX_RUNTIME_DIR? | is-empty)) {
     return
@@ -36,17 +36,6 @@ source ~/.local/share/yazelix/initializers/nushell/yazelix_init.nu
 # Keep managed Yazelix Nushell panes single-line and self-contained instead of
 # inheriting Nushell's default date right-prompt.
 $env.PROMPT_COMMAND_RIGHT = {|| "" }
-
-# Restore devenv-provided packages (includes packs like python, rust, etc.)
-# This ensures pack tools remain available even if user's env.nu modifies PATH
-# Use DEVENV_PROFILE which is the canonical location for all devenv packages
-if ($env.DEVENV_PROFILE? | is-not-empty) {
-    let devenv_bin = $"($env.DEVENV_PROFILE)/bin"
-    if ($devenv_bin | path exists) {
-        # Prepend devenv bin path so devenv packages take precedence
-        $env.PATH = ([$devenv_bin] | append $env.PATH | uniq)
-    }
-}
 
 # Tools aliases
 export alias lg = lazygit

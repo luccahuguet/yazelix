@@ -12,7 +12,7 @@ Current recommendation:
 - POSIX shell stays limited to installer/launcher glue.
 - Zellij CLI and KDL stay transport/static-shape layers, not state owners.
 
-The point is not to rewrite everything. It is to stop letting one user-visible behavior depend equally on POSIX shell, Nushell, Rust, Lua, and Zellij CLI state at once.
+The point is not to rewrite everything for v15.0. It is to stop letting one user-visible behavior depend equally on POSIX shell, Nushell, Rust, Lua, and Zellij CLI state at once. v15.0 stays a trimmed non-Rust reboot; selective Rust can land in later v15.x releases, while v16 is the Rust-forward target.
 
 ## Why
 
@@ -29,14 +29,14 @@ That stack can work, but it is expensive. The right delete-first move is to deci
 - define language/runtime owners for the main hot paths
 - identify which layers are durable owners versus adapters
 - identify at least one high-value seam that should collapse further
-- support later Rust migration planning without forcing it now
+- support later Rust migration planning without forcing it into v15.0
 
 ## Ownership Map
 
 | Layer | Should own | Should not own |
 | --- | --- | --- |
-| POSIX shell | installer entrypoints, stable launcher glue, narrow host integration scripts | workspace state, config semantics, launch-profile freshness, tab/workspace routing |
-| Nushell | `yzx` CLI UX, config parsing/migration, backend activation semantics, generated config orchestration, explicit integration glue | authoritative live tab state, long-lived pane identity, in-Yazi UI state |
+| POSIX shell | installer entrypoints, stable launcher glue, narrow host integration scripts | workspace state, config semantics, old launch-profile freshness, tab/workspace routing |
+| Nushell | `yzx` CLI UX, config parsing and validation, runtime activation semantics, generated config orchestration, explicit integration glue | authoritative live tab state, long-lived pane identity, in-Yazi UI state, automatic config migrations |
 | Rust pane orchestrator | authoritative per-tab workspace root, managed pane identity, focus/layout/sidebar state, tab-local workspace mutations | high-level config semantics, import flows, backend refresh policy |
 | Lua Yazi plugins | in-Yazi keymaps/status UI, small adapter events, local cache writes when needed | workspace source of truth, tab identity, launch/runtime policy |
 | Zellij CLI/KDL | command transport and static layout/config shape | durable workspace truth, business logic, config ownership |
@@ -47,18 +47,15 @@ That stack can work, but it is expensive. The right delete-first move is to deci
 
 Primary owner: Nushell
 
-- `devenv_backend.nu`
-- `launch_state.nu`
 - `config_state.nu`
 - `yzx env`
 - `yzx run`
-- `yzx refresh`
 - `yzx launch`
 - `start_yazelix`
 
 Reason:
 
-- these paths are about config intent, rebuild freshness, launch-profile reuse, and process activation
+- these paths are about config intent, generated-state freshness, fixed runtime activation, and process activation
 - they are not plugin-state problems
 
 ### Live Workspace And Session State
@@ -121,8 +118,8 @@ That means:
 Not everything should migrate:
 
 - config semantics
-- migration planning/apply rules
-- backend activation policy
+- config validation and diagnostics
+- runtime activation policy
 - explicit user-facing command UX
 - install/update/distribution glue
 
@@ -140,7 +137,7 @@ Those are product/control-plane concerns, and Nushell is already the right owner
 1. There is an explicit language/runtime map for CLI UX, backend activation, live workspace/session state, in-Yazi behavior, and static layout/transport.
 2. The map identifies the pane orchestrator as the long-lived owner for workspace/session truth.
 3. The map identifies Lua Yazi code as an adapter layer, not a workspace truth owner.
-4. Later Rust migration planning can use this map instead of guessing where the first high-value slices are.
+4. Later v15.x or v16 Rust migration planning can use this map instead of guessing where the first high-value slices are.
 
 ## Verification
 

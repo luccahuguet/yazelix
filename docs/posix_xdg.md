@@ -11,18 +11,17 @@ Yazelix follows the XDG Base Directory Specification and respects these variable
 
 - Config (XDG_CONFIG_HOME)
   - `~/.config/yazelix/user_configs/yazelix.toml` – user config (auto‑created from template on first run)
-  - `~/.config/yazelix/user_configs/yazelix_packs.toml` – pack config surface (auto‑created from template on first run)
-  - `~/.config/yazelix/yazelix_default.toml` – template with defaults
-  - `~/.config/yazelix/yazelix_packs_default.toml` – pack template with defaults
+  - `~/.config/yazelix/.taplo.toml` – managed Taplo support file for formatting Yazelix TOML
   - `~/.config/yazelix/nushell/config/config.nu` – Yazelix Nushell config sourced into your shell
 
 - Data (XDG_DATA_HOME)
   - `~/.local/share/yazelix/initializers/` – generated init scripts (nushell, starship, zoxide, carapace)
   - `~/.local/share/yazelix/configs/yazi/` – Yazi config used by integrations (`YAZI_CONFIG_HOME`)
+  - `~/.local/share/yazelix/configs/zellij/` – generated Zellij config and layouts
   - `~/.local/share/yazelix/logs/` – shell hook logs and setup output
 
 - State (XDG_STATE_HOME)
-  - Reserved for future use (session state, runtime metadata)
+  - `~/.local/share/yazelix/state/rebuild_hash` – generated-state freshness record used by the trimmed refresh path
 
 - Cache (XDG_CACHE_HOME)
   - Reserved for future use (heavy or reproducible, re‑generable artifacts)
@@ -31,9 +30,8 @@ Yazelix follows the XDG Base Directory Specification and respects these variable
 
 Set by Yazelix entrypoints to wire integrations:
 
-- Repo-local `devenv` shells use `DEVENV_ROOT` as the live checkout identity and set `IN_YAZELIX_SHELL=true`.
 - Installed/runtime-owned launch paths export `YAZELIX_RUNTIME_DIR` to point at the active Yazelix runtime root.
-- `YAZELIX_DIR` is a legacy runtime-root compatibility alias that older external wrappers may still carry, but maintained Yazelix entrypoints do not export or require it. New code should use `YAZELIX_RUNTIME_DIR`.
+- Maintained entrypoints set `IN_YAZELIX_SHELL=true` when executing inside the Yazelix runtime environment.
 - `ZELLIJ_DEFAULT_LAYOUT` – chosen layout name (`yzx_side` or `yzx_no_side`)
 - `YAZI_CONFIG_HOME` – `~/.local/share/yazelix/configs/yazi` for consistent Yazi behavior
 - `EDITOR` – your configured editor command or Yazelix Helix
@@ -41,3 +39,4 @@ Set by Yazelix entrypoints to wire integrations:
 Notes:
 - If you change `XDG_CONFIG_HOME`, Yazelix looks for config under the new `.../yazelix/user_configs/` path.
 - Generated files follow `XDG_DATA_HOME`.
+- The stable installed CLI shim lives at `~/.local/bin/yzx` and points directly at the packaged runtime.

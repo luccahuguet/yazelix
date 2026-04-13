@@ -1,13 +1,11 @@
 #!/usr/bin/env nu
 
-use ../utils/constants.nu ZELLIJ_CONFIG_PATHS
+use ../utils/constants.nu [DEFAULT_SHELL ZELLIJ_CONFIG_PATHS]
 use ../utils/atomic_writes.nu write_text_atomic
 use ./zellij_plugin_paths.nu [
     get_runtime_pane_orchestrator_wasm_path
-    get_runtime_popup_runner_wasm_path
     get_runtime_zjstatus_wasm_path
     get_tracked_pane_orchestrator_wasm_path
-    get_tracked_popup_runner_wasm_path
     get_tracked_zjstatus_wasm_path
 ]
 
@@ -83,12 +81,6 @@ export def resolve_zellij_plugin_artifacts [yazelix_dir: string] {
             missing_label: "Tracked pane orchestrator wasm"
         }
         {
-            name: "popup_runner"
-            tracked_path: (get_tracked_popup_runner_wasm_path $yazelix_dir)
-            runtime_path: (get_runtime_popup_runner_wasm_path)
-            missing_label: "Tracked popup runner wasm"
-        }
-        {
             name: "zjstatus"
             tracked_path: (get_tracked_zjstatus_wasm_path $yazelix_dir)
             runtime_path: (get_runtime_zjstatus_wasm_path)
@@ -123,11 +115,13 @@ export def build_zellij_generation_fingerprint [
         zellij_widget_tray: ($config.zellij_widget_tray? | default ["editor", "shell", "term", "cpu", "ram"])
         zellij_custom_text: ($config.zellij_custom_text? | default "")
         support_kitty_keyboard_protocol: ($config.support_kitty_keyboard_protocol? | default "true")
-        default_shell: ($config.default_shell? | default "nu")
+        default_shell: ($config.default_shell? | default $DEFAULT_SHELL)
         resolved_default_shell: $resolved_default_shell
         zellij_default_mode: ($config.zellij_default_mode? | default "normal")
         enable_sidebar: ($config.enable_sidebar? | default true)
         sidebar_width_percent: ($config.sidebar_width_percent? | default 20)
+        popup_width_percent: ($config.popup_width_percent? | default 90)
+        popup_height_percent: ($config.popup_height_percent? | default 90)
         disable_zellij_tips: ($config.disable_zellij_tips? | default "true")
         zellij_pane_frames: ($config.zellij_pane_frames? | default "true")
         zellij_rounded_corners: ($config.zellij_rounded_corners? | default "true")

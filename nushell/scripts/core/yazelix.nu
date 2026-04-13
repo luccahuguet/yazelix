@@ -2,14 +2,12 @@
 # Yazelix Command Suite
 # Consolidated commands for managing and interacting with yazelix
 
-use ../utils/build_policy.nu [describe_build_parallelism]
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/constants.nu *
-use ../utils/environment_bootstrap.nu [prepare_environment]
-use ../utils/devenv_backend.nu [get_refresh_output_mode print_refresh_request_guidance rebuild_yazelix_environment resolve_refresh_request]
-use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu get_yazelix_runtime_dir
-use ../setup/zellij_plugin_paths.nu [seed_yazelix_plugin_permissions]
+use ../utils/environment_bootstrap.nu [prepare_environment]
+use ../utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path
+use ../utils/version_info.nu [print_version_info]
 use ../setup/shell_hooks.nu [check_shell_hook_versions]
 use ../integrations/managed_editor.nu get_managed_editor_kind
 use ../integrations/yazi.nu [reveal_in_yazi sync_sidebar_yazi_state_to_directory]
@@ -19,13 +17,10 @@ use ../integrations/zellij.nu [retarget_tab_cwd resolve_tab_cwd_target]
 export use ../yzx/launch.nu *
 export use ../yzx/enter.nu *
 export use ../yzx/env.nu *
-export use ../yzx/refresh.nu *
 export use ../yzx/import.nu *
 export use ../yzx/run.nu *
-export use ../yzx/packs.nu *
 export use ../yzx/popup.nu *
 export use ../yzx/screen.nu *
-export use ../yzx/gc.nu *
 export use ../yzx/dev.nu *
 export use ../yzx/desktop.nu *
 export use ../yzx/menu.nu *
@@ -100,6 +95,37 @@ def require_current_working_flake [] {
     }
 }
 
+def build_status_rows [config: record, config_state: record, yazelix_dir: string, shell_status: list<record>] {
+    let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL])
+    let terminal_label = if ($terminals | is-empty) {
+        "none"
+    } else {
+        $terminals | str join ", "
+    }
+    let helix_runtime_label = ($config.helix_runtime_path? | default "runtime default")
+    let session_name = if ($config.persistent_sessions == "true") {
+        $config.session_name
+    } else {
+        "disabled"
+    }
+
+    [
+        {field: "version", value: $YAZELIX_VERSION}
+        {field: "description", value: $YAZELIX_DESCRIPTION}
+        {field: "config_file", value: $config_state.config_file}
+        {field: "runtime_dir", value: $yazelix_dir}
+        {field: "logs_dir", value: ($yazelix_dir | path join "logs")}
+        {field: "generated_state_repair_needed", value: ($config_state.needs_refresh | into string)}
+        {field: "shell_hooks", value: (format_shell_hook_summary $shell_status)}
+        {field: "default_shell", value: $config.default_shell}
+        {field: "terminals", value: $terminal_label}
+        {field: "helix_runtime", value: $helix_runtime_label}
+        {field: "persistent_sessions", value: ($config.persistent_sessions | into string)}
+        {field: "session_name", value: $session_name}
+    ]
+}
+
+# Show Yazelix help or version information
 export def yzx [
     --version (-V)  # Show Yazelix version
     --version-short (-v)  # Show Yazelix version
@@ -123,6 +149,7 @@ export def "yzx why" [] {
     print "Install once, get the same environment everywhere."
 }
 
+# Open the Yazelix sponsor page or print its URL
 export def "yzx sponsor" [] {
     let sponsor_url = "https://github.com/sponsors/luccahuguet"
 
@@ -146,6 +173,7 @@ export def "yzx sponsor" [] {
     print $sponsor_url
 }
 
+# Retarget the current Yazelix tab workspace directory
 export def "yzx cwd" [
     target?: string  # Directory path or zoxide query for the current tab workspace root (defaults to the current directory)
 ] {
@@ -198,7 +226,7 @@ export def "yzx cwd" [
         }
         "permissions_denied" => {
             print "❌ The Yazelix pane orchestrator plugin is missing required Zellij permissions."
-            print "   Run `yzx repair zellij-permissions`, then restart Yazelix."
+            print "   Run `yzx doctor --fix`, then restart Yazelix."
             exit 1
         }
         _ => {
@@ -209,6 +237,7 @@ export def "yzx cwd" [
     }
 }
 
+# Reveal a file or directory in the managed Yazi sidebar
 export def "yzx reveal" [
     target: string  # File or directory to reveal in the managed Yazi sidebar
 ] {
@@ -225,39 +254,19 @@ export def "yzx status" [
     let config_state = $env_prep.config_state
     let yazelix_dir = (get_yazelix_runtime_dir)
     let shell_status = check_shell_hook_versions $yazelix_dir
+    let status_rows = (build_status_rows $config $config_state $yazelix_dir $shell_status)
 
-    print "=== Yazelix Status ==="
-    print $"Version: ($YAZELIX_VERSION)"
-    print $"Description: ($YAZELIX_DESCRIPTION)"
-    print $"Config File: ($config_state.config_file)"
-    print $"Directory: ($yazelix_dir)"
-    print $"Logs: ($yazelix_dir | path join "logs")"
-    print $"Environment Refresh Needed: ($config_state.needs_refresh)"
-    print $"Shell Hooks: (format_shell_hook_summary $shell_status)"
-    print $"Default Shell: ($config.default_shell)"
-    let terminals = ($config.terminals? | default ["ghostty"])
-    if ($terminals | is-empty) {
-        print "Terminals: none"
-    } else {
-        print $"Terminals: (($terminals | str join ', '))"
-    }
-    print $"Helix Mode: ($config.helix_mode)"
-    print $"Persistent Sessions: ($config.persistent_sessions)"
-    if ($config.persistent_sessions == "true") {
-        print $"Session Name: ($config.session_name)"
-    }
+    print "Yazelix status"
+    print ($status_rows | table)
     if $verbose {
         print ""
-        print "Shell Hook Details:"
+        print "Shell hook details:"
         print ($shell_status | table)
     }
     if $versions {
         print ""
-        let version_info_script = ($yazelix_dir | path join "nushell" "scripts" "utils" "version_info.nu")
-        let version_info_command = $"source \"($version_info_script)\"; main"
-        ^nu -c $version_info_command
+        print_version_info
     }
-    print "=========================="
 }
 
 # Helper: Resolve the current Zellij session from environment or CLI.
@@ -324,21 +333,7 @@ def create_restart_sidebar_bootstrap_file [target_dir: string] {
 
 # Restart yazelix
 export def "yzx restart" [
-    --reuse         # Reuse the last built profile without rebuilding
-    --skip-refresh(-s) # Skip explicit refresh trigger and allow potentially stale environment
 ] {
-    run_entrypoint_config_migration_preflight "yzx restart" | ignore
-    let env_prep = prepare_environment
-    let config = $env_prep.config
-    let manage_terminals = ($config.manage_terminals? | default true)
-    let needs_refresh = $env_prep.needs_refresh
-    let reuse_mode = $reuse
-    let refresh_request = (resolve_refresh_request $needs_refresh --reuse=$reuse_mode --skip-refresh=$skip_refresh)
-    let should_refresh = $refresh_request.should_refresh
-    let refresh_output = get_refresh_output_mode $config
-    let max_jobs = ($config.max_jobs? | default "half" | into string)
-    let build_cores = ($config.build_cores? | default "2" | into string)
-    let build_parallelism_description = (describe_build_parallelism $build_cores $max_jobs)
     let session_to_kill = get_current_zellij_session
     let restart_sidebar_cwd_file = (create_restart_sidebar_bootstrap_file (pwd))
     let restart_env = {
@@ -348,30 +343,21 @@ export def "yzx restart" [
     # Detect if we're in a Yazelix-controlled terminal.
     let is_yazelix_terminal = ($env.YAZELIX_TERMINAL? | is-not-empty)
 
-    # Provide appropriate messaging
-    print_refresh_request_guidance $refresh_request
-    if $manage_terminals and $should_refresh and ($refresh_output != "quiet") {
-        print $"🔄 Configuration changed - rebuilding environment using ($build_parallelism_description)..."
-    }
     if $is_yazelix_terminal {
         print "🔄 Restarting Yazelix..."
     } else {
         print "🔄 Restarting Yazelix \(opening new window\)..."
     }
 
-    # Launch new terminal window
-    if $manage_terminals and $should_refresh {
-        with-env $restart_env {
-            rebuild_yazelix_environment --max-jobs $max_jobs --build-cores $build_cores --refresh-eval-cache --output-mode $refresh_output
-            yzx launch --force-reenter
-        }
-    } else if $reuse_mode {
-        with-env $restart_env {
-            yzx launch --reuse
-        }
-    } else if $skip_refresh {
-        with-env $restart_env {
-            yzx launch --skip-refresh
+    let stable_wrapper = (resolve_stable_yzx_wrapper_path)
+    if $stable_wrapper != null {
+        let launch_output = (with-env $restart_env {
+            ^$stable_wrapper launch | complete
+        })
+        if $launch_output.exit_code != 0 {
+            print_completed_output $launch_output
+            print "❌ Failed to relaunch Yazelix through the stable owner wrapper."
+            exit $launch_output.exit_code
         }
     } else {
         with-env $restart_env {
@@ -402,17 +388,6 @@ export def "yzx doctor" [
     }
 }
 
-export def "yzx repair" [] {
-    print "Available recovery commands:"
-    print "  yzx repair zellij-permissions   Seed Yazelix plugin grants in ~/.cache/zellij/permissions.kdl"
-}
-
-export def "yzx repair zellij-permissions" [] {
-    let result = (seed_yazelix_plugin_permissions)
-    print $"✅ Seeded Yazelix plugin permissions at: ($result.permissions_cache_path)"
-    print "   Restart Yazelix so Zellij reloads the plugin permission state."
-}
-
 # Update dependencies and inputs
 export def "yzx update" [] {
     print_update_owner_warning
@@ -423,6 +398,7 @@ export def "yzx update" [] {
     print "  yzx update nix           Upgrade Determinate Nix \(if installed\)"
 }
 
+# Upgrade Determinate Nix through determinate-nixd
 export def "yzx update nix" [
     --yes      # Skip confirmation prompt
     --verbose  # Show the underlying command
@@ -465,6 +441,7 @@ export def "yzx update nix" [
     }
 }
 
+# Refresh Yazelix through the upstream installer surface
 export def "yzx update upstream" [] {
     if not (has_external_command "nix") {
         print "❌ nix not found in PATH."
@@ -486,6 +463,7 @@ export def "yzx update upstream" [] {
     }
 }
 
+# Refresh the current Home Manager flake input for Yazelix
 export def "yzx update home_manager" [] {
     if not (has_external_command "nix") {
         print "❌ nix not found in PATH."

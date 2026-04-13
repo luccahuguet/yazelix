@@ -1,11 +1,9 @@
 #!/usr/bin/env nu
 
 use ../utils/common.nu resolve_external_command_path
-use ./devenv_lock_contract.nu [DEVENV_SKEW_WARNING get_locked_devenv_package_root]
 
-const INSTALL_TIMEOUT_SECONDS = 1500
+const INSTALL_TIMEOUT_SECONDS = 2700
 const PROBE_TIMEOUT_SECONDS = 60
-const SHELL_ENTER_TIMEOUT_SECONDS = 120
 
 def make_temp_home [] {
     (^mktemp -d /tmp/yazelix_flake_install_XXXXXX | str trim)
@@ -25,6 +23,12 @@ def require_path_exists [path: string, label: string] {
     }
 }
 
+def require_path_missing [path: string, label: string] {
+    if ($path | path exists) {
+        error make { msg: $"Unexpected ($label): ($path)" }
+    }
+}
+
 def require_file_contains [path: string, needle: string, label: string] {
     let content = (open --raw $path)
     if not ($content | str contains $needle) {
@@ -36,6 +40,56 @@ def require_file_not_contains [path: string, needle: string, label: string] {
     let content = (open --raw $path)
     if ($content | str contains $needle) {
         error make { msg: $"($label) unexpectedly contains text `($needle)`: ($path)" }
+    }
+}
+
+def require_non_empty_dir [path: string, label: string] {
+    require_path_exists $path $label
+    let entries = (ls $path | where type == file)
+    if (($entries | length) < 1) {
+        error make { msg: $"($label) is empty: ($path)" }
+    }
+}
+
+def resolve_ghostty_shader_reference [ghostty_config_path: string, shader_ref: string] {
+    let raw_ref = ($shader_ref | str trim | str replace -r '^"(.*)"$' '$1')
+    if ($raw_ref | str starts-with "/") {
+        return $raw_ref
+    }
+
+    let relative_ref = if ($raw_ref | str starts-with "./") {
+        $raw_ref | str replace -r '^\./' ''
+    } else {
+        $raw_ref
+    }
+
+    ($ghostty_config_path | path dirname | path join $relative_ref)
+}
+
+def require_ghostty_shader_references_exist [ghostty_config_path: string] {
+    require_path_exists $ghostty_config_path "generated Ghostty config"
+
+    let shader_refs = (
+        open --raw $ghostty_config_path
+        | lines
+        | each {|line| $line | str trim}
+        | where {|line| $line | str starts-with "custom-shader = "}
+        | each {|line|
+            $line
+            | split row "="
+            | skip 1
+            | str join "="
+            | str trim
+        }
+    )
+
+    if ($shader_refs | is-empty) {
+        error make { msg: $"Generated Ghostty config references no shader assets: ($ghostty_config_path)" }
+    }
+
+    for shader_ref in $shader_refs {
+        let shader_path = (resolve_ghostty_shader_reference $ghostty_config_path $shader_ref)
+        require_path_exists $shader_path $"generated Ghostty shader `($shader_ref)`"
     }
 }
 
@@ -70,6 +124,79 @@ def run_completed_external [
     $result
 }
 
+def prepare_hostile_install_env [temp_home: string] {
+    let hostile_bin = ($temp_home | path join ".hostile_bin")
+    mkdir $hostile_bin
+
+    let real_nu = (resolve_external_command_path "nu")
+    if $real_nu == null {
+        error make { msg: "Could not resolve `nu` while preparing hostile install env" }
+    }
+
+    let hostile_scripts = [
+        {
+            name: "nu"
+            content: ([
+                "#!/bin/sh"
+                $"exec \"($real_nu)\" \"$@\""
+                ""
+            ] | str join "\n")
+        }
+        {
+            name: "starship"
+            content: ([
+                "#!/bin/sh"
+                "echo '# hostile starship path leaked into install output'"
+                ""
+            ] | str join "\n")
+        }
+        {
+            name: "zoxide"
+            content: ([
+                "#!/bin/sh"
+                "echo '# hostile zoxide path leaked into install output'"
+                ""
+            ] | str join "\n")
+        }
+        {
+            name: "mise"
+            content: ([
+                "#!/bin/sh"
+                "echo '# hostile mise path leaked into install output'"
+                ""
+            ] | str join "\n")
+        }
+        {
+            name: "atuin"
+            content: ([
+                "#!/bin/sh"
+                "echo '# hostile atuin path leaked into install output'"
+                ""
+            ] | str join "\n")
+        }
+        {
+            name: "carapace"
+            content: ([
+                "#!/bin/sh"
+                "echo '# hostile carapace path leaked into install output'"
+                ""
+            ] | str join "\n")
+        }
+    ]
+
+    for hostile_script in $hostile_scripts {
+        let script_path = ($hostile_bin | path join $hostile_script.name)
+        let content = $hostile_script.content
+        $content | save --force --raw $script_path
+        chmod +x $script_path
+    }
+
+    {
+        hostile_bin: $hostile_bin
+        hostile_nu: ($hostile_bin | path join "nu")
+    }
+}
+
 def run_flake_install [temp_home: string] {
     let state_root = ($temp_home | path join ".local" "share")
     let config_root = ($temp_home | path join ".config")
@@ -83,75 +210,124 @@ def run_flake_install [temp_home: string] {
     "" | save --force $bashrc_path
     "" | save --force $nushell_config_path
 
+    let hostile_env = (prepare_hostile_install_env $temp_home)
+    let inherited_path = ($env.PATH? | default [])
+    let inherited_path_desc = ($inherited_path | describe)
+    let install_path = if ($inherited_path_desc | str starts-with "list") {
+        [$hostile_env.hostile_bin] | append $inherited_path
+    } else if (($inherited_path | into string | str trim) | is-empty) {
+        [$hostile_env.hostile_bin]
+    } else {
+        [$hostile_env.hostile_bin, ($inherited_path | into string)]
+    }
+
     with-env {
         HOME: $temp_home
         XDG_CONFIG_HOME: $config_root
         XDG_DATA_HOME: $state_root
+        PATH: $install_path
+        YAZELIX_NU_BIN: $hostile_env.hostile_nu
     } {
         run_completed_external "running `nix run .#install` for flake install smoke validation" "nix" ["run" ".#install" "--extra-experimental-features" "nix-command flakes"] $INSTALL_TIMEOUT_SECONDS
+    }
+}
+
+def run_installed_yzx [temp_home: string, ...args: string] {
+    let yzx_path = ($temp_home | path join ".local" "bin" "yzx")
+    let label = $"probing installed yzx command: ($args | str join ' ')"
+    with-env {
+        HOME: $temp_home
+        XDG_CONFIG_HOME: ($temp_home | path join ".config")
+        XDG_DATA_HOME: ($temp_home | path join ".local" "share")
+    } {
+        run_completed_external $label $yzx_path $args
     }
 }
 
 def verify_installed_runtime [temp_home: string] {
     print "🔍 Verifying installed runtime layout ..."
 
-    let runtime_current = ($temp_home | path join ".local" "share" "yazelix" "runtime" "current")
-    let runtime_devenv = ($runtime_current | path join "bin" "devenv")
-    let runtime_nu = ($runtime_current | path join "bin" "nu")
-    let runtime_yzx_cli = ($runtime_current | path join "shells" "posix" "yzx_cli.sh")
-    let runtime_taplo_config = ($runtime_current | path join ".taplo.toml")
-    let devenv_cli_module = ($runtime_current | path join "nushell" "scripts" "utils" "devenv_cli.nu")
-    let runtime_helper_module = ($runtime_current | path join "configs" "zellij" "scripts" "runtime_helper.nu")
     let yzx_path = ($temp_home | path join ".local" "bin" "yzx")
+    let readlink_result = (^readlink -f $yzx_path | complete)
+    if $readlink_result.exit_code != 0 {
+        error make { msg: $"Failed to resolve installed yzx wrapper target: (($readlink_result.stderr | str trim))" }
+    }
+    let wrapper_target = ($readlink_result.stdout | str trim)
+    let runtime_root = ($wrapper_target | path dirname | path dirname)
+    let runtime_bin = ($runtime_root | path join "bin")
+    let runtime_nu = ($runtime_bin | path join "nu")
+    let runtime_yzx_cli = ($runtime_root | path join "shells" "posix" "yzx_cli.sh")
+    let runtime_ghostty_wrapper = ($runtime_root | path join "shells" "posix" "yazelix_ghostty.sh")
+    let runtime_taplo_config = ($runtime_root | path join ".taplo.toml")
+    let runtime_yazelix_default = ($runtime_root | path join "yazelix_default.toml")
+    let legacy_runtime_link = ($temp_home | path join ".local" "share" "yazelix" "runtime" "current")
     let nushell_config = ($temp_home | path join ".config" "nushell" "config.nu")
     let user_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix.toml")
     let pack_config = ($temp_home | path join ".config" "yazelix" "user_configs" "yazelix_packs.toml")
     let config_root = ($temp_home | path join ".config" "yazelix")
     let managed_taplo_config = ($config_root | path join ".taplo.toml")
+    let desktop_entry = ($temp_home | path join ".local" "share" "applications" "com.yazelix.Yazelix.desktop")
     let zellij_config = ($temp_home | path join ".local" "share" "yazelix" "configs" "zellij" "config.kdl")
+    let bash_initializer = ($temp_home | path join ".local" "share" "yazelix" "initializers" "bash" "yazelix_init.sh")
+    let nushell_initializer = ($temp_home | path join ".local" "share" "yazelix" "initializers" "nushell" "yazelix_init.nu")
+    let hostile_bin = ($temp_home | path join ".hostile_bin")
     let yazi_theme = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "theme.toml")
     let yazi_flavor_root = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors")
-    let locked_package_root = (get_locked_devenv_package_root)
-    let resolved_runtime_current = (^readlink -f $runtime_current | str trim)
+    let runtime_ghostty_shader_root = ($runtime_root | path join "configs" "terminal_emulators" "ghostty" "shaders")
+    let runtime_ghostty_shader_builder = ($runtime_ghostty_shader_root | path join "build_shaders.nu")
+    let runtime_ghostty_trail_variant = ($runtime_ghostty_shader_root | path join "variants" "reef.glsl")
+    let runtime_ghostty_effect_template = ($runtime_ghostty_shader_root | path join "upstream_effects" "ripple_rectangle_cursor.glsl")
+    let generated_ghostty_root = ($temp_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty")
+    let generated_ghostty_config = ($generated_ghostty_root | path join "config")
+    let generated_ghostty_effect_dir = ($generated_ghostty_root | path join "shaders" "generated_effects")
+    let runtime_terminal_configs_script = ($runtime_root | path join "nushell" "scripts" "utils" "terminal_configs.nu")
 
-    require_path_exists $runtime_current "installed runtime symlink"
-    require_path_exists $runtime_devenv "runtime-local devenv binary"
+    require_path_missing $legacy_runtime_link "legacy installed runtime symlink"
     require_path_exists $runtime_nu "runtime-local Nushell binary"
     require_path_exists $runtime_yzx_cli "runtime-local POSIX yzx launcher"
+    require_path_exists $runtime_ghostty_wrapper "runtime-local Ghostty env wrapper"
     require_path_exists $runtime_taplo_config "runtime-local Taplo formatter config"
+    require_path_exists $runtime_yazelix_default "runtime-local default config"
+    require_path_exists $runtime_ghostty_shader_builder "runtime-local Ghostty shader builder"
+    require_path_exists $runtime_ghostty_trail_variant "runtime-local Ghostty trail shader variant"
+    require_path_exists $runtime_ghostty_effect_template "runtime-local Ghostty cursor effect template"
     require_path_exists $yzx_path "installed yzx wrapper"
     require_path_exists $nushell_config "generated Nushell hook config"
     require_path_exists $user_config "seeded user config"
-    require_path_exists $pack_config "seeded pack config"
     require_path_exists $managed_taplo_config "managed Taplo formatter config"
+    require_path_missing $desktop_entry "default user-local desktop entry"
     require_path_exists $zellij_config "generated Zellij config"
+    require_path_exists $bash_initializer "generated Bash initializer"
+    require_path_exists $nushell_initializer "generated Nushell initializer"
     require_path_exists $yazi_theme "generated Yazi theme config"
     require_path_exists $yazi_flavor_root "generated Yazi flavors directory"
 
-    require_file_contains $nushell_config $resolved_runtime_current "generated Nushell hook config"
-    require_file_not_contains $nushell_config "/runtime/current/" "generated Nushell hook config"
+    require_path_missing $pack_config "legacy seeded pack config"
+
+    for expected_bin in ["nu" "yzx" "zellij" "ghostty" "yazi" "hx" "nvim" "fish" "zsh" "bash" "nix" "jq" "fd" "rg"] {
+        require_path_exists ($runtime_bin | path join $expected_bin) $"runtime binary `($expected_bin)`"
+    }
+    if (($nu.os-info.name | str downcase) == "linux") {
+        require_path_exists ($runtime_bin | path join "nixGLMesa") "runtime binary `nixGLMesa`"
+        require_path_exists ($runtime_bin | path join "pgrep") "runtime binary `pgrep`"
+    }
+
+    require_file_contains $nushell_config $runtime_root "generated Nushell hook config"
+    require_file_not_contains $nushell_config (["runtime" "current"] | str join "/") "generated Nushell hook config"
+    require_file_not_contains $bash_initializer $hostile_bin "generated Bash initializer"
+    require_file_not_contains $nushell_initializer $hostile_bin "generated Nushell initializer"
     require_file_not_contains $yazi_theme "[flavor]" "generated Yazi theme config"
 
     if ((ls $yazi_flavor_root | where type == dir | length) < 1) {
         error make { msg: $"Generated Yazi flavors directory is empty: ($yazi_flavor_root)" }
     }
 
-    let wrapper_target = (^readlink $yzx_path | str trim)
-    let expected_wrapper_target = ($runtime_current | path join "bin" "yzx")
+    let expected_wrapper_target = ($runtime_root | path join "bin" "yzx")
     if ($wrapper_target != $expected_wrapper_target) {
-        error make { msg: $"Installed yzx wrapper should point at runtime/current, not a pinned store path. Expected ($expected_wrapper_target), got ($wrapper_target)" }
+        error make { msg: $"Installed yzx wrapper should point at the packaged runtime. Expected ($expected_wrapper_target), got ($wrapper_target)" }
     }
 
-    let version_result = (
-        with-env {
-            HOME: $temp_home
-            XDG_CONFIG_HOME: ($temp_home | path join ".config")
-            XDG_DATA_HOME: ($temp_home | path join ".local" "share")
-        } {
-            run_completed_external "probing installed `yzx --version-short`" $yzx_path ["--version-short"]
-        }
-    )
-
+    let version_result = (run_installed_yzx $temp_home "--version-short")
     if $version_result.exit_code != 0 {
         if ($version_result.stdout | is-not-empty) {
             print $version_result.stdout
@@ -195,122 +371,58 @@ def verify_installed_runtime [temp_home: string] {
         error make { msg: $"Unexpected runtime-local POSIX yzx output: ($posix_version_text)" }
     }
 
-    let runtime_devenv_probe = (
-        run_completed_external "probing runtime-local devenv resolution" "env" [
-            "-i"
-            $"HOME=($temp_home)"
-            "PATH=/usr/bin:/bin"
-            $"XDG_CONFIG_HOME=($temp_home | path join '.config')"
-            $"XDG_DATA_HOME=($temp_home | path join '.local' 'share')"
-            $"YAZELIX_RUNTIME_DIR=($runtime_current)"
-            $runtime_nu
+    let runtime_probe = (
+        run_installed_yzx
+            $temp_home
+            "run"
+            "nu"
             "-c"
-            $"use ($devenv_cli_module | into string) *; print \(resolve_preferred_devenv_path\)"
-        ]
+            'print ({shell: ($env.IN_YAZELIX_SHELL | default ""), runtime: ($env.YAZELIX_RUNTIME_DIR | default ""), path0: (($env.PATH | default []) | first | default ""), editor: ($env.EDITOR | default "")} | to json -r)'
     )
 
-    if $runtime_devenv_probe.exit_code != 0 {
-        if ($runtime_devenv_probe.stdout | is-not-empty) {
-            print $runtime_devenv_probe.stdout
+    if $runtime_probe.exit_code != 0 {
+        if ($runtime_probe.stdout | is-not-empty) {
+            print $runtime_probe.stdout
         }
-        if ($runtime_devenv_probe.stderr | is-not-empty) {
-            print $runtime_devenv_probe.stderr
+        if ($runtime_probe.stderr | is-not-empty) {
+            print $runtime_probe.stderr
         }
-        error make { msg: "Installed runtime failed to resolve its own runtime-local devenv path during flake install smoke validation" }
+        error make { msg: "Installed yzx run probe failed during flake install smoke validation" }
     }
 
-    let selected_devenv = ($runtime_devenv_probe.stdout | str trim | path expand)
-    let expected_devenv = ($runtime_devenv | path expand)
-    if ($selected_devenv != $expected_devenv) {
-        error make { msg: $"Installed runtime selected the wrong devenv path: expected ($expected_devenv), got ($selected_devenv)" }
+    let probe = ($runtime_probe.stdout | str trim | from json)
+    if (
+        ($probe.shell != "true")
+        or ($probe.runtime != $runtime_root)
+        or ($probe.path0 != $runtime_bin)
+        or (not ($probe.editor | str contains "yazelix_hx.sh"))
+    ) {
+        error make {
+            msg: $"Installed runtime probe saw the wrong Yazelix env: ($probe | to json -r)"
+        }
     }
 
-    let resolved_runtime_devenv = (^readlink -f $runtime_devenv | str trim)
-    let expected_locked_devenv = (^readlink -f ($locked_package_root | path join "bin" "devenv") | str trim)
-    if ($resolved_runtime_devenv != $expected_locked_devenv) {
-        error make { msg: $"Installed runtime devenv is not sourced from the locked package. Expected ($expected_locked_devenv), got ($resolved_runtime_devenv)" }
-    }
-
-    let stale_runtime_probe = (
-        run_completed_external "probing stale config-root runtime recovery" "env" [
-            "-i"
-            $"HOME=($temp_home)"
-            "PATH=/usr/bin:/bin"
-            $"XDG_CONFIG_HOME=($temp_home | path join '.config')"
-            $"XDG_DATA_HOME=($temp_home | path join '.local' 'share')"
-            $"YAZELIX_RUNTIME_DIR=($config_root)"
-            $runtime_nu
+    let ghostty_config_probe = (
+        run_installed_yzx
+            $temp_home
+            "run"
+            "nu"
             "-c"
-            $"use '($runtime_helper_module | into string)' [get_runtime_nu_path]; print \(get_runtime_nu_path\)"
-        ]
+            $"use \"($runtime_terminal_configs_script)\" [generate_all_terminal_configs]; generate_all_terminal_configs \"($runtime_root)\""
     )
 
-    if $stale_runtime_probe.exit_code != 0 {
-        if ($stale_runtime_probe.stdout | is-not-empty) {
-            print $stale_runtime_probe.stdout
+    if $ghostty_config_probe.exit_code != 0 {
+        if ($ghostty_config_probe.stdout | is-not-empty) {
+            print $ghostty_config_probe.stdout
         }
-        if ($stale_runtime_probe.stderr | is-not-empty) {
-            print $stale_runtime_probe.stderr
+        if ($ghostty_config_probe.stderr | is-not-empty) {
+            print $ghostty_config_probe.stderr
         }
-        error make { msg: "Installed runtime failed to recover the canonical Nushell path when YAZELIX_RUNTIME_DIR still points at the config root" }
+        error make { msg: "Installed runtime failed to materialize Ghostty shader-backed terminal config during flake install smoke validation" }
     }
 
-    let recovered_runtime_nu = ($stale_runtime_probe.stdout | str trim | path expand)
-    let expected_runtime_nu = ($runtime_nu | path expand)
-    if ($recovered_runtime_nu != $expected_runtime_nu) {
-        error make { msg: $"Installed runtime recovered the wrong Nushell path from a stale config-root runtime env. Expected ($expected_runtime_nu), got ($recovered_runtime_nu)" }
-    }
-
-    let shell_probe_command = ([
-        $"use '($runtime_current | path join "nushell" "scripts" "utils" "devenv_backend.nu")' get_devenv_base_command"
-        "get_devenv_base_command | append [\"shell\" \"--\" \"true\"] | to json -r"
-    ] | str join "\n")
-    let shell_probe_resolution = (
-        run_completed_external "resolving installed runtime shell-enter command" "env" [
-            "-i"
-            $"HOME=($temp_home)"
-            "PATH=/usr/bin:/bin"
-            $"XDG_CONFIG_HOME=($temp_home | path join '.config')"
-            $"XDG_DATA_HOME=($temp_home | path join '.local' 'share')"
-            $"YAZELIX_RUNTIME_DIR=($runtime_current)"
-            $runtime_nu
-            "-c"
-            $shell_probe_command
-        ]
-    )
-
-    if $shell_probe_resolution.exit_code != 0 {
-        if ($shell_probe_resolution.stdout | is-not-empty) {
-            print $shell_probe_resolution.stdout
-        }
-        if ($shell_probe_resolution.stderr | is-not-empty) {
-            print $shell_probe_resolution.stderr
-        }
-        error make { msg: "Installed runtime failed to resolve the shell-enter command during flake install smoke validation" }
-    }
-
-    let shell_command = ($shell_probe_resolution.stdout | str trim | from json)
-    let shell_bin = ($shell_command | first)
-    let shell_args = ($shell_command | skip 1)
-    let shell_probe = (
-        run_completed_external "running installed runtime shell-enter probe" $shell_bin $shell_args $SHELL_ENTER_TIMEOUT_SECONDS
-    )
-
-    if $shell_probe.exit_code != 0 {
-        if ($shell_probe.stdout | is-not-empty) {
-            print $shell_probe.stdout
-        }
-        if ($shell_probe.stderr | is-not-empty) {
-            print $shell_probe.stderr
-        }
-        error make { msg: "Installed runtime shell-enter probe command failed during flake install smoke validation" }
-    }
-
-    let probe_stdout = ($shell_probe.stdout | default "")
-    let probe_stderr = ($shell_probe.stderr | default "")
-    if (($probe_stdout | str contains $DEVENV_SKEW_WARNING) or ($probe_stderr | str contains $DEVENV_SKEW_WARNING)) {
-        error make { msg: $"Installed runtime still emits the upstream devenv skew warning: (($probe_stderr + $probe_stdout) | str trim)" }
-    }
+    require_ghostty_shader_references_exist $generated_ghostty_config
+    require_non_empty_dir $generated_ghostty_effect_dir "generated Ghostty cursor effect shaders directory"
 }
 
 def run_install_phase [temp_home: string] {

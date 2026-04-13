@@ -1,19 +1,23 @@
 # Config Migration Engine
 
+> Status: Historical v13/v14 migration-era contract.
+> v15 no longer ships the automatic config-migration engine described here. Keep this file as design history only.
+> Current v15 behavior is fail-fast unsupported config diagnostics plus manual cleanup or `yzx config reset`; see [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md) and [stale_config_diagnostics.md](./stale_config_diagnostics.md).
+
 ## Summary
 
-Yazelix should own a shared config-migration engine that can detect known stale `yazelix.toml` shapes, preview safe rewrites, apply only deterministic fixes through the managed-config transaction contract, and clearly separate manual-only migrations from blunt reset flows.
+Yazelix should own a shared config-migration engine that can detect known stale `yazelix.toml` shapes, render safe-rewrite guidance, apply only deterministic fixes through the managed-config transaction contract, and clearly separate manual-only migrations from blunt reset flows.
 
 ## Why
 
-Users should not need to diff old commits or reset their entire config just because a small schema change landed. The migration engine is the foundation for startup diagnostics, `yzx doctor`, `yzx config migrate`, and later upgrade-summary UX, so it needs one canonical rule registry and one predictable preview/apply contract.
+Users should not need to diff old commits or reset their entire config just because a small schema change landed. The migration engine is the foundation for startup diagnostics, `yzx doctor`, and later upgrade-summary UX, so it needs one canonical rule registry and one predictable preview/apply contract.
 
 ## Scope
 
 This spec covers:
 
 - the shared migration-rule registry and its required metadata
-- preview-first behavior for `yzx config migrate`
+- preview/report behavior for startup diagnostics and `yzx doctor`
 - explicit apply behavior with backup and normalized TOML rewrite
 - rule matching and ordering for safe and manual-only migrations
 - migration retention and review policy
@@ -21,11 +25,11 @@ This spec covers:
 
 ## Behavior
 
-`yzx config migrate` should inspect the active `yazelix.toml` and build a migration plan from a shared registry of known rules. Each rule must carry stable metadata, including an id, release/date context, guarded config paths, rationale, manual-fix guidance, and whether Yazelix may rewrite the config automatically.
+The migration engine should inspect the active `yazelix.toml` and build a migration plan from a shared registry of known rules. Each rule must carry stable metadata, including an id, release/date context, guarded config paths, rationale, manual-fix guidance, and whether Yazelix may rewrite the config automatically.
 
-The command must default to a read-only preview. The preview should enumerate safe rewrites in rule order, explain manual-only findings without touching them, and state clearly when no known migrations were detected.
+Startup and `yzx doctor --verbose` must default to a read-only preview/report. That reporting should enumerate safe rewrites in rule order, explain manual-only findings without touching them, and state clearly when no known migrations were detected.
 
-When the user reruns with `--apply`, Yazelix should stage only the deterministic rewrites from the plan and commit them through the managed-config migration transaction contract. That means the final managed config set is validated before commit, rollback artifacts are prepared before any canonical target is replaced, and partial writes must not leave the managed config surfaces in a half-applied state. Because the file set is rewritten from parsed TOML, comments and key ordering may be normalized; the command should say so explicitly.
+When the user reruns `yzx doctor --fix`, Yazelix should stage only the deterministic rewrites from the plan and commit them through the managed-config migration transaction contract. That means the final managed config set is validated before commit, rollback artifacts are prepared before any canonical target is replaced, and partial writes must not leave the managed config surfaces in a half-applied state. Because the file set is rewritten from parsed TOML, comments and key ordering may be normalized; the fix flow should say so explicitly.
 
 When a rule is ambiguous or lossy, the migration engine must not guess. It should leave the config unchanged for that rule and explain the manual follow-up needed.
 
@@ -51,9 +55,9 @@ The review question is whether the rule still pays for its complexity. Old low-v
 
 The repo should follow a demote-before-delete policy for deterministic auto-apply rewrites:
 
-1. while a rule is current, it may participate fully in startup preflight, `yzx config migrate --apply`, and `yzx doctor --fix`
+1. while a rule is current, it may participate fully in startup preflight and `yzx doctor --fix`
 2. once the review window is reached, maintainers must explicitly review the rule
-3. if the rule is still worth carrying but no longer worth automatic entrypoint application, it should first be demoted to explicit repair surfaces such as `yzx config migrate` and related diagnostics
+3. if the rule is still worth carrying but no longer worth automatic entrypoint application, it should first be demoted to explicit diagnostic-only reporting
 4. only after that demotion phase should the rule be deleted entirely, unless maintainers decide it still pays for itself and record that review
 
 Manual-only guards follow a slightly different policy:
@@ -84,7 +88,7 @@ See [Managed Config Migration Transaction Contract](./managed_config_migration_t
 ## Non-goals
 
 - silent config mutation during startup
-- treating `yzx config migrate` as a replacement for `yzx config reset`
+- treating the migration engine as a replacement for `yzx config reset`
 - inventing fake release metadata for unreleased config changes
 - auto-fixing unknown config drift that is not captured by an explicit rule
 
@@ -100,19 +104,14 @@ See [Managed Config Migration Transaction Contract](./managed_config_migration_t
 
 ## Verification
 
-- unit tests: direct migration-plan tests for rule metadata completeness, ordering, deterministic rewrite behavior, manual-only classification, preview rendering, apply behavior, and backup creation
-- integration tests: `nu nushell/scripts/dev/test_yzx_commands.nu`
-- e2e scripts: `nu nushell/scripts/dev/test_config_migrate_e2e.nu`
-- CI checks: `nu nushell/scripts/dev/validate_specs.nu` and `nu nushell/scripts/dev/validate_config_migration_rules.nu`
-- manual verification: run `yzx config migrate` and `yzx config migrate --apply` against temp config roots with known stale configs
-- metadata validation must also reject rules that do not declare a positive `review_after_days`, valid retirement metadata, or a timely explicit review
+This is now a historical contract. It is no longer defended by live migration-engine tests or the deleted migration-rule validator. Current v15 config behavior is defended by [stale_config_diagnostics.md](./stale_config_diagnostics.md) and [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
+- historical spec validation: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Traceability
 
 - Bead: `yazelix-cr3`
-- Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
-- Defended by: `nu nushell/scripts/dev/test_config_migrate_e2e.nu`
-- Defended by: `nu nushell/scripts/dev/validate_config_migration_rules.nu`
+- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Open Questions
 

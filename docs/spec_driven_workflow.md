@@ -67,6 +67,8 @@ Examples:
 
 Use [`docs/specs/template.md`](./specs/template.md) as the starting point.
 
+Use [`docs/specs/spec_inventory.md`](./specs/spec_inventory.md) before implementing against an older spec. It marks which specs are live v15 contracts, which are forward-looking planning notes, and which are historical Classic-era design records.
+
 ## Relationship To Beads
 
 Beads still own planning state:
