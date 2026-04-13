@@ -10,6 +10,7 @@ Upgrade impact: no user action required
 
 Highlights:
 - Restored the pinned Nix helper version to the current latest pinned line after an accidental downgrade during v15 installer hardening.
+- Made maintainer runtime pins explicit for both the Nix helper and the Nixpkgs-provided Nushell version, and refreshed the runtime lock onto the declared unstable input.
 
 ## v14 - 2026-04-10
 

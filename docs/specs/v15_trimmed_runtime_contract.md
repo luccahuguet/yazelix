@@ -43,6 +43,7 @@ This file exists so current docs and current specs can point at one authoritativ
 
 - The normal product runtime is the packaged `yazelix` runtime.
 - That runtime ships a fixed toolset rather than a user-managed package graph.
+- Runtime tool versions come from the locked `nixpkgs` input. Maintainer update pins record the Nix helper version and the Nixpkgs-provided Nushell version, so upstream Nushell releases only become runtime bumps after they land in Nixpkgs or Yazelix deliberately changes that ownership model.
 - Ghostty is built into the Yazelix runtime on Linux and macOS as the first-party terminal path.
 - WezTerm, Kitty, Alacritty, and Foot remain supported alternatives when the user provides those binaries on `PATH`.
 - The runtime does not ship a runtime-local `devenv`.

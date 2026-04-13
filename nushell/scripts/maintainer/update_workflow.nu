@@ -14,56 +14,73 @@ def extract_version [value: string] {
     $value | parse --regex '(\d+\.\d+\.\d+)' | get capture0 | last | default ""
 }
 
-def get_nix_version_from_repo_shell [] {
-    let result = (^nix --version | complete)
+def eval_locked_nixpkgs_version [repo_root: string, attr_expr: string, label: string] {
+    let expr = (
+        [
+            "let"
+            $"  flake = builtins.getFlake \"path:($repo_root)\";"
+            "  system = builtins.currentSystem;"
+            "  pkgs = flake.inputs.nixpkgs.legacyPackages.${system};"
+            $"in ($attr_expr)"
+        ] | str join "\n"
+    )
+
+    let result = (^nix eval --raw --impure --extra-experimental-features "nix-command flakes" --expr $expr | complete)
     if $result.exit_code != 0 {
         let stderr = ($result.stderr | str trim)
-        print $"❌ Failed to resolve nix version from the current environment: ($stderr)"
+        print $"❌ Failed to resolve ($label) version from the locked nixpkgs input: ($stderr)"
         exit 1
     }
-    $result.stdout | str trim
+
+    let version = (extract_version ($result.stdout | str trim))
+    if ($version | is-empty) {
+        print $"❌ Failed to parse ($label) version from: ($result.stdout | str trim)"
+        exit 1
+    }
+
+    $version
 }
 
-def get_runtime_pin_versions [] {
+def get_runtime_pin_versions [repo_root: string] {
     if (which nix | is-empty) {
         print "❌ nix not found in PATH."
         exit 1
     }
 
-    print "   Resolving nix from the current environment..."
-    let nix_version_raw = (get_nix_version_from_repo_shell)
-    let nix_version = (extract_version $nix_version_raw)
-
-    if ($nix_version | is-empty) {
-        print $"❌ Failed to parse nix version from: ($nix_version_raw)"
-        exit 1
-    }
+    print "   Resolving runtime pins from the locked nixpkgs input..."
+    let nix_version = (eval_locked_nixpkgs_version $repo_root "pkgs.nixVersions.latest.version" "Nix")
+    let nushell_version = (eval_locked_nixpkgs_version $repo_root "pkgs.nushell.version" "Nushell")
 
     {
         nix_version: $nix_version
+        nushell_version: $nushell_version
     }
 }
 
 def sync_runtime_pins [] {
-    let constants_path = ((require_yazelix_repo_root) | path join "nushell" "scripts" "utils" "constants.nu")
+    let repo_root = require_yazelix_repo_root
+    let constants_path = ($repo_root | path join "nushell" "scripts" "utils" "constants.nu")
     if not ($constants_path | path exists) {
         print $"❌ Constants file not found: ($constants_path)"
         exit 1
     }
 
-    let runtime_pins = get_runtime_pin_versions
+    let runtime_pins = get_runtime_pin_versions $repo_root
     let contents = (open $constants_path)
     let updated = (
-        update_constant_value $contents "PINNED_NIX_VERSION" $runtime_pins.nix_version
+        update_constant_value
+            (update_constant_value $contents "PINNED_NIX_VERSION" $runtime_pins.nix_version)
+            "PINNED_NUSHELL_VERSION"
+            $runtime_pins.nushell_version
     )
 
     if $updated == $contents {
-        print $"✅ Runtime pins unchanged: nix ($runtime_pins.nix_version)"
+        print $"✅ Runtime pins unchanged: nix ($runtime_pins.nix_version), nushell ($runtime_pins.nushell_version)"
         return
     }
 
     $updated | save $constants_path --force
-    print $"✅ Updated runtime pins: nix ($runtime_pins.nix_version)"
+    print $"✅ Updated runtime pins: nix ($runtime_pins.nix_version), nushell ($runtime_pins.nushell_version)"
 }
 
 def sync_vendored_zjstatus [] {

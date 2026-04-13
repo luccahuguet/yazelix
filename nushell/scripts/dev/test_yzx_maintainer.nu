@@ -487,7 +487,8 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
             and ($resolved != null)
             and ($resolved.report_path | path exists)
             and ($resolved.scenario == "maintainer_e2e")
-            and ($steps | any {|step| $step.component == "bootstrap" and $step.step == "prepare.parse_config" })
+            and ($steps | any {|step| $step.component == "shellhook" and $step.step == "generate_initializers" })
+            and ($steps | any {|step| $step.component == "inner" and $step.step == "materialize_runtime_configs" })
             and ($steps | any {|step| $step.component == "inner" and $step.step == "zellij_handoff_ready" })
         ) {
             print "  ✅ Profiling harness now records the real startup ownership boundaries"
@@ -614,6 +615,97 @@ def test_dev_update_refreshes_runtime_flake_inputs [] {
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) log=(($log_lines | to json -r)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Defends: maintainer update syncs runtime tool pins from the locked flake instead of host tool drift.
+def test_dev_update_syncs_runtime_tool_pins_from_locked_flake [] {
+    print "🧪 Testing yzx dev update syncs Nix and Nushell runtime pins from the locked flake..."
+
+    let repo_root = ($env.PWD | path expand)
+    let dev_module = ($repo_root | path join "nushell" "scripts" "maintainer" "update_workflow.nu")
+    let tmp_root = (^mktemp -d /tmp/yazelix_dev_update_runtime_pins_XXXXXX | str trim)
+    let fixture_repo = ($tmp_root | path join "repo")
+    let constants_dir = ($fixture_repo | path join "nushell" "scripts" "utils")
+    let bin_dir = ($tmp_root | path join "bin")
+    let log_path = ($tmp_root | path join "nix.log")
+    let nix_script = ($bin_dir | path join "nix")
+    let current_path = if (($env.PATH | describe) | str contains "list") {
+        $env.PATH | str join (char esep)
+    } else {
+        $env.PATH | into string
+    }
+
+    mkdir $constants_dir
+    mkdir $bin_dir
+    mkdir $fixture_repo
+    ^git -C $fixture_repo init -q
+    "{}" | save --force --raw ($fixture_repo | path join "flake.nix")
+    "" | save --force --raw ($fixture_repo | path join "yazelix_default.toml")
+    [
+        'export const YAZELIX_VERSION = "v14"'
+        'export const PINNED_NIX_VERSION = "0.0.0"'
+        'export const PINNED_NUSHELL_VERSION = "0.0.0"'
+        ""
+    ] | str join "\n" | save --force --raw ($constants_dir | path join "constants.nu")
+
+    [
+        "#!/usr/bin/env bash"
+        "printf 'nix:%s\\n' \"$*\" >> \"$YZX_TEST_LOG\""
+        "case \"$*\" in"
+        "  *nixVersions.latest.version*) printf '2.34.5\\n' ;;"
+        "  *nushell.version*) printf '0.112.1\\n' ;;"
+        "  *) printf 'unexpected nix invocation: %s\\n' \"$*\" >&2; exit 1 ;;"
+        "esac"
+    ] | str join "\n" | save --force --raw $nix_script
+    ^chmod +x $nix_script
+
+    let result = (try {
+        let snippet = (
+            [
+                $"source \"($dev_module)\""
+                "sync_runtime_pins"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            PATH: $"($bin_dir)(char esep)($current_path)"
+            YZX_TEST_LOG: $log_path
+        } {
+            do {
+                cd $fixture_repo
+                ^nu -c $snippet | complete
+            }
+        })
+        let stdout = ($output.stdout | str trim)
+        let constants = (open --raw ($constants_dir | path join "constants.nu"))
+        let log_lines = if ($log_path | path exists) {
+            open --raw $log_path | lines
+        } else {
+            []
+        }
+        let log_text = ($log_lines | str join "\n")
+
+        if (
+            ($output.exit_code == 0)
+            and ($constants | str contains 'export const PINNED_NIX_VERSION = "2.34.5"')
+            and ($constants | str contains 'export const PINNED_NUSHELL_VERSION = "0.112.1"')
+            and ($stdout | str contains "✅ Updated runtime pins: nix 2.34.5, nushell 0.112.1")
+            and ($log_text | str contains "nixVersions.latest.version")
+            and ($log_text | str contains "nushell.version")
+        ) {
+            print "  ✅ Runtime pins now sync from the locked flake, including Nushell, without trusting host tool drift"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) constants=($constants) log=(($log_lines | to json -r)) stderr=(($output.stderr | str trim))"
             false
         }
     } catch { |err|
@@ -1069,6 +1161,7 @@ def main [] {
         (test_issue_bead_comment_plan)
         (test_dev_update_requires_explicit_activation_for_real_updates)
         (test_dev_update_refreshes_runtime_flake_inputs)
+        (test_dev_update_syncs_runtime_tool_pins_from_locked_flake)
         (test_dev_update_installer_activation_streams_install_logs)
         (test_dev_update_activation_mode_rejects_unknown_values)
         (test_dev_update_home_manager_activation_refreshes_input_and_switches_requested_ref)

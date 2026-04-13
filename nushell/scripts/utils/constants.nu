@@ -9,7 +9,8 @@
 export const YAZELIX_VERSION = "v14"
 export const YAZELIX_DESCRIPTION = "Yazi + Zellij + Helix integrated terminal environment"
 export const YAZELIX_INSTALL_FLAKE_REF = "github:luccahuguet/yazelix#install"
-export const PINNED_NIX_VERSION = "2.33.3"
+export const PINNED_NIX_VERSION = "2.34.5"
+export const PINNED_NUSHELL_VERSION = "0.111.0"
 
 # ============================================================================
 # CONFIGURATION SECTION MARKERS (Shell Hook Management)

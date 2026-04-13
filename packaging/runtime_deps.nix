@@ -44,7 +44,7 @@ with pkgs;
   ripgrep
   p7zip
   poppler
-  nix
+  nixVersions.latest
   coreutils
   findutils
   gnugrep
