@@ -162,18 +162,37 @@ def should_pause_in_popup [cmd: string] {
     )
 }
 
+def menu_prompt [] {
+    "yzx menu> "
+}
+
+def popup_post_action_prompt [] {
+    "Backspace: return to menu | Enter: close"
+}
+
+def popup_post_action_key_decision [code: string] {
+    match $code {
+        "backspace" => "menu"
+        "enter" => "close"
+        _ => "continue"
+    }
+}
+
 def popup_post_action_decision [] {
     print ""
-    print "Backspace: return to menu | Enter/Esc: close"
+    print (popup_post_action_prompt)
     loop {
         let event = (input listen --types [key])
         let code = ($event.code? | default "")
-        if $code == "backspace" {
-            clear
-            return "menu"
-        }
-        if ($code == "enter") or ($code == "esc") {
-            return "close"
+        match (popup_post_action_key_decision $code) {
+            "menu" => {
+                clear
+                return "menu"
+            }
+            "close" => {
+                return "close"
+            }
+            _ => {}
         }
     }
 }
@@ -207,7 +226,7 @@ export def "yzx menu" [
 
     if $in_popup {
         loop {
-            let selected = ($items | get label | input list --fuzzy "yzx menu \(Esc to cancel\)> ")
+            let selected = ($items | get label | input list --fuzzy (menu_prompt))
             if ($selected | is-empty) {
                 return
             }
@@ -224,7 +243,7 @@ export def "yzx menu" [
             return
         }
     } else {
-        let selected = ($items | get label | input list --fuzzy "yzx menu \(Esc to cancel\)> ")
+        let selected = ($items | get label | input list --fuzzy (menu_prompt))
         if ($selected | is-empty) {
             return
         }
