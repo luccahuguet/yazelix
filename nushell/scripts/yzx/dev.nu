@@ -21,6 +21,7 @@ export def "yzx dev" [] {
     print "Run 'yzx dev --help' to see available maintainer subcommands"
 }
 
+# Refresh maintainer flake inputs and run update canaries
 export def "yzx dev update" [
     --yes      # Skip confirmation prompt
     --no-canary  # Skip canary refresh/build checks after updating flake.lock
@@ -34,6 +35,7 @@ export def "yzx dev update" [
     run_dev_update_workflow $yes $no_canary $activate $home_manager_dir $home_manager_input $home_manager_attr $canary_only $canaries
 }
 
+# Bump the tracked Yazelix version and create release metadata
 export def "yzx dev bump" [
     version: string  # Version tag to release, for example v14
 ] {
@@ -43,12 +45,14 @@ export def "yzx dev bump" [
     print $"   tag: ($result.tag)"
 }
 
+# Sync GitHub issue lifecycle into Beads locally
 export def "yzx dev sync_issues" [
     --dry-run  # Show the local GitHub→Beads reconciliation plan without mutating Beads
 ] {
     run_dev_issue_sync $dry_run
 }
 
+# Build the Zellij pane-orchestrator wasm
 export def "yzx dev build_pane_orchestrator" [
     --sync  # Sync the built wasm into the repo/runtime paths after a successful build
 ] {

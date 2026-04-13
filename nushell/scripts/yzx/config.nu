@@ -18,6 +18,7 @@ export def "yzx config" [
     }
 }
 
+# Replace the main Yazelix config with a fresh shipped template
 export def "yzx config reset" [
     --yes        # Skip confirmation prompt
     --no-backup  # Replace config surfaces without writing timestamped backups first

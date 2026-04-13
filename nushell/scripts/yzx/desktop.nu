@@ -163,6 +163,7 @@ def get_desktop_launch_env [runtime_dir: string] {
     }
 }
 
+# Install the user-local Yazelix desktop entry and icons
 export def "yzx desktop install" [
     --print-path(-p) # Print only the installed desktop-file path
 ] {
@@ -203,6 +204,7 @@ export def "yzx desktop install" [
     }
 }
 
+# Remove the user-local Yazelix desktop entry and icons
 export def "yzx desktop uninstall" [
     --print-path(-p) # Print only the desktop-file path that was removed or would be removed
 ] {
@@ -224,6 +226,7 @@ export def "yzx desktop uninstall" [
     }
 }
 
+# Launch Yazelix from the desktop entry fast path
 export def "yzx desktop launch" [] {
     let runtime_dir = (get_yazelix_runtime_dir)
     if $runtime_dir == null {

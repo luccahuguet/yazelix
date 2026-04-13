@@ -980,6 +980,27 @@ def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
     $result
 }
 
+# Defends: exported yzx commands carry concise help descriptions without maintaining a second command tree.
+# Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=2 total=8/10
+def test_yzx_exported_commands_have_help_descriptions [] {
+    print "🧪 Testing exported yzx commands have help descriptions..."
+
+    let blank_descriptions = (
+        help commands
+        | where name =~ "^yzx( |$)"
+        | where {|command| (($command.description? | default "" | into string | str trim) | is-empty)}
+        | get name
+    )
+
+    if ($blank_descriptions | is-empty) {
+        print "  ✅ Every exported yzx command now carries a nonblank Nushell help description"
+        true
+    } else {
+        print $"  ❌ Exported yzx commands with blank descriptions: ($blank_descriptions | str join ', ')"
+        false
+    }
+}
+
 export def run_core_canonical_tests [] {
     [
         (test_yzx_desktop_install_writes_entry_and_icon_assets)
@@ -998,5 +1019,6 @@ export def run_core_canonical_tests [] {
         (test_invalid_config_is_classified_as_config_problem)
         (test_yzx_status_reports_basic_runtime_summary)
         (test_yzx_menu_catalog_tracks_live_exported_command_surface)
+        (test_yzx_exported_commands_have_help_descriptions)
     ]
 }

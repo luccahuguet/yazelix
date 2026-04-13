@@ -37,6 +37,7 @@ export def resolve_yzx_popup_cwd [
     resolve_popup_cwd ($workspace_root | default "") ($current_dir | default (pwd))
 }
 
+# Open or toggle the configured Yazelix popup program in Zellij
 export def --wrapped "yzx popup" [
     ...program: string  # Optional command override, eg. `yzx popup lazygit`
 ] {

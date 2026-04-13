@@ -134,6 +134,7 @@ def choose_edit_target [targets: list<record>, prompt: string] {
     $targets | where label == $selected | first
 }
 
+# Open a Yazelix-managed config surface in the configured editor
 export def "yzx edit" [
     ...query: string  # Optional managed config surface name or alias
     --print  # Print the resolved config path without opening
@@ -177,6 +178,7 @@ export def "yzx edit" [
     open_config_surface_in_editor $selected.path
 }
 
+# Open the main Yazelix config in the configured editor
 export def "yzx edit config" [
     --print  # Print the config path without opening
 ] {

@@ -125,6 +125,7 @@ def build_status_rows [config: record, config_state: record, yazelix_dir: string
     ]
 }
 
+# Show Yazelix help or version information
 export def yzx [
     --version (-V)  # Show Yazelix version
     --version-short (-v)  # Show Yazelix version
@@ -148,6 +149,7 @@ export def "yzx why" [] {
     print "Install once, get the same environment everywhere."
 }
 
+# Open the Yazelix sponsor page or print its URL
 export def "yzx sponsor" [] {
     let sponsor_url = "https://github.com/sponsors/luccahuguet"
 
@@ -171,6 +173,7 @@ export def "yzx sponsor" [] {
     print $sponsor_url
 }
 
+# Retarget the current Yazelix tab workspace directory
 export def "yzx cwd" [
     target?: string  # Directory path or zoxide query for the current tab workspace root (defaults to the current directory)
 ] {
@@ -234,6 +237,7 @@ export def "yzx cwd" [
     }
 }
 
+# Reveal a file or directory in the managed Yazi sidebar
 export def "yzx reveal" [
     target: string  # File or directory to reveal in the managed Yazi sidebar
 ] {
@@ -394,6 +398,7 @@ export def "yzx update" [] {
     print "  yzx update nix           Upgrade Determinate Nix \(if installed\)"
 }
 
+# Upgrade Determinate Nix through determinate-nixd
 export def "yzx update nix" [
     --yes      # Skip confirmation prompt
     --verbose  # Show the underlying command
@@ -436,6 +441,7 @@ export def "yzx update nix" [
     }
 }
 
+# Refresh Yazelix through the upstream installer surface
 export def "yzx update upstream" [] {
     if not (has_external_command "nix") {
         print "❌ nix not found in PATH."
@@ -457,6 +463,7 @@ export def "yzx update upstream" [] {
     }
 }
 
+# Refresh the current Home Manager flake input for Yazelix
 export def "yzx update home_manager" [] {
     if not (has_external_command "nix") {
         print "❌ nix not found in PATH."
