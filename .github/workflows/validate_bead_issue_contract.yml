@@ -30,6 +30,8 @@ jobs:
 
       - name: Install bd
         run: |
+          sudo apt-get update
+          sudo apt-get install -y libicu-dev
           go install github.com/steveyegge/beads/cmd/bd@${BD_VERSION}
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
           "$(go env GOPATH)/bin/bd" --version

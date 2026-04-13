@@ -2,6 +2,7 @@
   pkgs,
   lib,
   fenixPkgs,
+  bdPackage,
   repoRoot,
   nixgl ? null,
 }:
@@ -17,6 +18,7 @@ let
   ];
   maintainerDeps =
     [ pkgs.github-cli ]
+    ++ [ bdPackage ]
     ++ [ rustWasiToolchain ];
   allDeps = lib.unique (runtimeDeps ++ maintainerDeps);
 
