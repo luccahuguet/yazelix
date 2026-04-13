@@ -247,10 +247,6 @@ def setup_enter_forwarding_fixture [label: string] {
     $bootstrap_stub | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
 
     [
-        "export def run_entrypoint_config_migration_preflight [entrypoint_label: string, --allow-noninteractive] { null }"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "entrypoint_config_migrations.nu")
-
-    [
         "export def require_yazelix_runtime_dir [] {"
         "    $env.YAZELIX_RUNTIME_DIR"
         "}"

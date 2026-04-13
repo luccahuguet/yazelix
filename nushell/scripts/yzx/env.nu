@@ -1,7 +1,6 @@
 #!/usr/bin/env nu
 # yzx env command - Load Yazelix runtime environment without UI
 
-use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/environment_bootstrap.nu [prepare_environment]
 use ../utils/runtime_env.nu get_runtime_env
 
@@ -52,8 +51,6 @@ def run_runtime_shell [runtime_env: record, shell_command: list<string>, --cwd: 
 export def "yzx env" [
     --no-shell(-n)  # Keep current shell instead of launching configured shell
 ] {
-    run_entrypoint_config_migration_preflight "yzx env" | ignore
-
     let env_prep = prepare_environment
     let config = $env_prep.config
     let original_dir = (pwd)

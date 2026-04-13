@@ -3,7 +3,6 @@
 # Nushell version of the Yazelix launcher
 
 use ../utils/config_state.nu compute_config_state
-use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/terminal_configs.nu [generate_all_terminal_configs generate_selected_terminal_configs]
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [SUPPORTED_TERMINALS, TERMINAL_METADATA]
@@ -162,8 +161,6 @@ def main [
     --verbose               # Enable verbose logging
     --desktop-fast-path     # Launch the terminal immediately and let startup rebuild inside it
 ] {
-    run_entrypoint_config_migration_preflight "Yazelix launch" --allow-noninteractive | ignore
-
     # Resolve HOME using shell expansion
     let home = $env.HOME
     if ($home | is-empty) or (not ($home | path exists)) {

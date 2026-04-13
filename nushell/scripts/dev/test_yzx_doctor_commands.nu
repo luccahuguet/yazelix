@@ -109,7 +109,7 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
 
         if (
             ($output.exit_code == 0)
-            and ($stdout | str contains "Stale, unsupported, or migration-aware yazelix.toml entries detected")
+            and ($stdout | str contains "Stale or unsupported yazelix.toml entries detected")
             and ($stdout | str contains "Unknown config field: core.stale_field")
             and ($stdout | str contains "yzx config reset")
         ) {
@@ -120,100 +120,6 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
             false
         }
     } catch { |err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Regression: doctor must still report config migrations when the Zellij plugin-health branch runs.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_doctor_reports_known_migration_inside_zellij_session [] {
-    print "🧪 Testing yzx doctor still reports known migrations from inside a Zellij session..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_doctor_migration_zellij"
-        '[zellij]
-widget_tray = ["layout", "editor"]
-')
-
-    let result = (try {
-        let fake_bin = ($fixture.tmp_home | path join "bin")
-        mkdir $fake_bin
-        [
-            "#!/bin/sh"
-            "printf '%s\\n' 'fake-zellij-no-session' >&2"
-            "exit 1"
-        ] | str join "\n" | save --force --raw ($fake_bin | path join "zellij")
-        ^chmod +x ($fake_bin | path join "zellij")
-
-        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
-            ZELLIJ: "0"
-            PATH: ([$fake_bin] | append $env.PATH)
-        })
-        let stdout = ($output.stdout | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Known migration at zellij.widget_tray")
-            and ($stdout | str contains "Inspect details: `yzx doctor --verbose`")
-            and ($stdout | str contains "Safe apply: `yzx doctor --fix`")
-            and (
-                ($stdout | str contains "Yazelix pane-orchestrator")
-                or ($stdout | str contains "Could not contact the Yazelix pane-orchestrator plugin")
-            )
-        ) {
-            print "  ✅ yzx doctor reports config migrations with shared fix guidance even when plugin health executes inside Zellij"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: doctor fix applies safe config migrations.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_yzx_doctor_fix_applies_safe_config_migrations [] {
-    print "🧪 Testing yzx doctor --fix applies safe config migrations..."
-
-    let fixture = (setup_managed_config_fixture
-        "yazelix_doctor_fix"
-        '[zellij]
-widget_tray = ["layout", "editor"]
-
-[shell]
-enable_atuin = true
-')
-
-    let result = (try {
-        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --fix")
-        let stdout = ($output.stdout | str trim)
-        let rewritten = (open $fixture.config_path)
-        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Applied 2 config migration fix")
-            and (($rewritten | get zellij.widget_tray) == ["editor"])
-            and not (($rewritten.shell? | default {}) | columns | any {|column| $column == "enable_atuin" })
-            and (($backups | length) == 1)
-        ) {
-            print "  ✅ yzx doctor --fix applies safe config migrations with backup"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) rewritten=($rewritten | to json -r) backups=(($backups | length))"
-            false
-        }
-    } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
     })
@@ -503,8 +409,6 @@ def test_yzx_doctor_omits_installer_artifact_checks_in_runtime_root_only_mode []
 export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
-        (test_yzx_doctor_reports_known_migration_inside_zellij_session)
-        (test_yzx_doctor_fix_applies_safe_config_migrations)
         (test_yzx_doctor_reports_stale_desktop_entry_exec)
         (test_yzx_doctor_accepts_home_manager_install_artifacts)
         (test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager)

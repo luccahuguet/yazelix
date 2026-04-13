@@ -224,7 +224,6 @@ export def parse_yazelix_config [] {
                 $raw_config
                 $default_surface.merged_config
                 $config_to_read
-                $config_surface.main_config
             | upsert config_path $config_surface.display_config_path
         )
         if $diagnostic_report.has_blocking {

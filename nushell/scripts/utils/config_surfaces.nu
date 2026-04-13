@@ -21,52 +21,6 @@ def make_surface_error [headline: string, details: list<string>, recovery_hint: 
     }
 }
 
-def parse_truthy_env [value: any] {
-    let normalized = ($value | default "" | into string | str trim | str downcase)
-    $normalized in ["1" "true" "yes" "y" "on"]
-}
-
-def has_interactive_tty [] {
-    let result = (^tty | complete)
-    $result.exit_code == 0
-}
-
-def confirm_legacy_config_surface_relocation [paths: record] {
-    if (parse_truthy_env ($env.YAZELIX_ACCEPT_USER_CONFIG_RELOCATION? | default "")) {
-        return
-    }
-
-    if not (has_interactive_tty) {
-        (make_surface_error
-            "Yazelix found legacy root-level config files but could not prompt for confirmation."
-            [
-                $"legacy main: ($paths.legacy_user_config)"
-                $"target main: ($paths.user_config)"
-            ]
-            "Rerun in an interactive terminal and confirm the relocation, move the files into user_configs manually, or use `yzx doctor --fix` to apply the managed relocation path."
-        )
-    }
-
-    print "⚠️  Yazelix found legacy root-level config files that now belong under user_configs."
-    if ($paths.legacy_user_config | path exists) {
-        print $"   Main config: ($paths.legacy_user_config) -> ($paths.user_config)"
-    }
-    print "   This moves your managed config files into the canonical user_configs location."
-
-    let confirm = (input "Move them now? [y/N]: " | str downcase | str trim)
-
-    if $confirm not-in ["y", "yes"] {
-        (make_surface_error
-            "Yazelix did not relocate the legacy root-level config files."
-            [
-                $"legacy main: ($paths.legacy_user_config)"
-                $"target main: ($paths.user_config)"
-            ]
-            "Move the files into user_configs manually, rerun in an interactive terminal and confirm the relocation, or use `yzx doctor --fix` to apply the managed relocation path."
-        )
-    }
-}
-
 def ensure_record_surface [value: any, label: string, path: string] {
     if (($value | describe) | str contains "record") {
         $value
@@ -116,7 +70,7 @@ export def copy_default_config_surfaces [
     }
 }
 
-export def ensure_no_duplicate_primary_config_surfaces [paths: record] {
+export def ensure_current_primary_config_surface [paths: record] {
     let current_exists = ($paths.user_config | path exists)
     let legacy_exists = ($paths.legacy_user_config | path exists)
 
@@ -130,28 +84,22 @@ export def ensure_no_duplicate_primary_config_surfaces [paths: record] {
             "Keep only the user_configs copies. Move or delete the legacy root-level config files so Yazelix has one clear config owner."
         )
     }
-}
-
-def relocate_legacy_config_surfaces_if_needed [paths: record] {
-    let legacy_exists = ($paths.legacy_user_config | path exists)
-
-    ensure_no_duplicate_primary_config_surfaces $paths
-
-    if not $legacy_exists {
-        return
-    }
-
-    confirm_legacy_config_surface_relocation $paths
-    mkdir $paths.user_config_dir
 
     if $legacy_exists {
-        mv $paths.legacy_user_config $paths.user_config
+        (make_surface_error
+            "Yazelix found an unsupported legacy root-level config surface."
+            [
+                $"legacy main: ($paths.legacy_user_config)"
+                $"current main: ($paths.user_config)"
+            ]
+            "Move your current Yazelix config to user_configs/yazelix.toml manually, or run `yzx config reset` to create a fresh v15 config template."
+        )
     }
 }
 
 export def reconcile_primary_config_surfaces [config_root?: string, runtime_root?: string] {
     let paths = (get_primary_config_paths $config_root $runtime_root)
-    relocate_legacy_config_surfaces_if_needed $paths
+    ensure_current_primary_config_surface $paths
     ensure_managed_taplo_support $paths.config_dir $paths.runtime_root | ignore
     $paths
 }

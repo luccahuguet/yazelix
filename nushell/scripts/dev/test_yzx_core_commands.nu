@@ -3,18 +3,9 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ../core/yazelix.nu *
-use ../utils/config_migration_transactions.nu [get_managed_config_transaction_dir]
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
 
 const DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
-
-def setup_config_migrate_fixture [label: string, raw_toml: string] {
-    setup_managed_config_fixture $label $raw_toml
-}
-
-def setup_legacy_root_config_migrate_fixture [label: string, raw_toml: string] {
-    setup_managed_config_fixture $label $raw_toml --legacy-root
-}
 
 def run_yzx_command_for_fixture [fixture: record, command: string, extra_env?: record] {
     let base_env = {
@@ -297,38 +288,6 @@ def setup_palette_catalog_runtime_fixture [label: string] {
         runtime_root: $runtime_root
         core_script: $core_script
     }
-}
-
-def run_entrypoint_preflight_command [fixture: record, entrypoint_label: string, --allow-noninteractive] {
-    let helper_script = (repo_path "nushell" "scripts" "utils" "entrypoint_config_migrations.nu")
-    let allow_suffix = if $allow_noninteractive { " --allow-noninteractive" } else { "" }
-
-    with-env {
-        HOME: $fixture.tmp_home
-        YAZELIX_CONFIG_DIR: $fixture.config_dir
-        YAZELIX_RUNTIME_DIR: $fixture.repo_root
-    } {
-        ^nu -c $"use \"($helper_script)\" [run_entrypoint_config_migration_preflight]; run_entrypoint_config_migration_preflight \"($entrypoint_label)\"($allow_suffix)" | complete
-    }
-}
-
-def record_has_path [data: record, path: list<string>] {
-    mut current = $data
-
-    for segment in $path {
-        if not ((($current | describe) | str contains "record")) {
-            return false
-        }
-
-        let keys = ($current | columns)
-        if not ($segment in $keys) {
-            return false
-        }
-
-        $current = ($current | get -o $segment)
-    }
-
-    true
 }
 
 # Regression: `yzx desktop install` must install the icon assets needed by the manual desktop entry.
@@ -764,294 +723,6 @@ def test_yzx_run_treats_child_verbose_flag_as_child_argv [] {
     $result
 }
 
-# Defends: startup preflight auto-applies safe migrations before launch.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_entrypoint_preflight_auto_applies_safe_migrations [] {
-    print "🧪 Testing entrypoint migration preflight auto-applies deterministic rewrites..."
-
-    let fixture = (setup_config_migrate_fixture
-        "yazelix_entrypoint_preflight_auto"
-        '[zellij]
-widget_tray = ["layout", "editor"]
-
-[shell]
-enable_atuin = true
-')
-
-    let result = (try {
-        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
-        let stdout = ($output.stdout | str trim)
-        let updated = (open $fixture.config_path)
-        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Yazelix auto-applied 2 safe config migration")
-            and (($updated | get zellij.widget_tray) == ["editor"])
-            and not (($updated.shell? | default {}) | columns | any {|column| $column == "enable_atuin" })
-            and (($backups | length) == 1)
-        ) {
-            print "  ✅ Entry-point preflight auto-applies deterministic config rewrites with backup"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) updated=($updated | to json -r) backups=(($backups | length))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Regression: legacy helix command strings are migrated during preflight.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_entrypoint_preflight_migrates_legacy_helix_command [] {
-    print "🧪 Testing entrypoint migration preflight rewrites legacy helix.command into editor.command..."
-
-    let fixture = (setup_config_migrate_fixture
-        "yazelix_entrypoint_preflight_legacy_helix_command"
-        '[helix]
-command = "/tmp/custom-hx"
-runtime_path = "/tmp/custom-runtime"
-'
-    )
-
-    let result = (try {
-        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
-        let stdout = ($output.stdout | str trim)
-        let updated = (open $fixture.config_path)
-        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Yazelix auto-applied 1 safe config migration")
-            and (($updated.editor.command? | default "") == "/tmp/custom-hx")
-            and (($updated.helix.runtime_path? | default "") == "/tmp/custom-runtime")
-            and not (($updated.helix? | default {}) | columns | any {|column| $column == "command" })
-            and (($backups | length) == 1)
-        ) {
-            print "  ✅ Entry-point preflight preserves custom Helix runtime settings while migrating the legacy command field"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) updated=($updated | to json -r) backups=(($backups | length))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Defends: startup blocks on remaining manual config work after safe rewrites.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_entrypoint_preflight_applies_auto_changes_then_blocks_on_manual_followup [] {
-    print "🧪 Testing entrypoint migration preflight applies safe rewrites before blocking on manual follow-up..."
-
-    let fixture = (setup_config_migrate_fixture
-        "yazelix_entrypoint_preflight_mixed"
-        '[zellij]
-widget_tray = ["layout", "editor"]
-
-[terminal]
-config_mode = "auto"
-')
-
-    let result = (try {
-        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
-        let stdout = ($output.stdout | str trim)
-        let stderr = ($output.stderr | str trim)
-        let updated = (open $fixture.config_path)
-        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
-
-        if (
-            ($output.exit_code != 0)
-            and ($stdout | str contains "Yazelix auto-applied 1 safe config migration")
-            and ($stderr | str contains "[MANUAL] review_terminal_config_mode_auto")
-            and (($updated | get zellij.widget_tray) == ["editor"])
-            and (($updated | get terminal.config_mode) == "auto")
-            and (($backups | length) == 1)
-        ) {
-            print "  ✅ Entry-point preflight fixes the deterministic subset and then blocks on manual-only config follow-up"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr) updated=($updated | to json -r) backups=(($backups | length))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Regression: legacy root config surfaces are detected and relocated only through the managed path.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_entrypoint_preflight_relocates_legacy_root_config_surfaces [] {
-    print "🧪 Testing entrypoint migration preflight relocates legacy root config into user_configs..."
-
-    let fixture = (setup_legacy_root_config_migrate_fixture
-        "yazelix_entrypoint_preflight_root_relocate"
-        '[shell]
-default_shell = "bash"
-'
-    )
-
-    let result = (try {
-        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
-        let stdout = ($output.stdout | str trim)
-        let relocated_main = ($fixture.user_config_dir | path join "yazelix.toml")
-        let updated = (open $relocated_main)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "relocated the managed config into user_configs")
-            and ($relocated_main | path exists)
-            and not ($fixture.config_path | path exists)
-            and (($updated.shell.default_shell? | default "") == "bash")
-        ) {
-            print "  ✅ Entry-point preflight relocates deterministic legacy root config ownership before continuing"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) relocated_exists=(($relocated_main | path exists)) updated=($updated | to json -r)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Regression: entrypoint preflight relocates legacy-root config and applies the deterministic subset before blocking.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_entrypoint_preflight_relocates_legacy_root_and_applies_safe_subset_before_manual_block [] {
-    print "🧪 Testing entrypoint migration preflight relocates legacy-root config and applies safe rewrites before blocking..."
-
-    let fixture = (setup_legacy_root_config_migrate_fixture
-        "yazelix_entrypoint_preflight_root_relocate_mixed"
-        '[zellij]
-widget_tray = ["layout", "editor"]
-
-[terminal]
-config_mode = "auto"
-'
-    )
-
-    let result = (try {
-        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
-        let stdout = ($output.stdout | str trim)
-        let stderr = ($output.stderr | str trim)
-        let relocated_main = ($fixture.user_config_dir | path join "yazelix.toml")
-        let backups = (ls $fixture.user_config_dir | where name =~ 'yazelix\.toml\.backup-')
-        let updated = (open $relocated_main)
-
-        if (
-            ($output.exit_code != 0)
-            and ($stdout | str contains "relocated the managed config into user_configs")
-            and ($stdout | str contains "Yazelix auto-applied 1 safe config migration")
-            and ($stderr | str contains "[MANUAL] review_terminal_config_mode_auto")
-            and ($relocated_main | path exists)
-            and not ($fixture.config_path | path exists)
-            and (($updated | get zellij.widget_tray) == ["editor"])
-            and (($updated | get terminal.config_mode) == "auto")
-            and (($backups | length) == 0)
-        ) {
-            print "  ✅ Entry-point preflight now relocates legacy-root config and applies the deterministic subset inside the same managed transition"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr) relocated_exists=(($relocated_main | path exists)) updated=($updated | to json -r) backups=(($backups | length))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
-# Regression: interrupted relocation recovery must run before duplicate-surface validation.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_entrypoint_preflight_recovers_stale_relocation_before_duplicate_surface_error [] {
-    print "🧪 Testing entrypoint migration preflight recovers stale relocation state before duplicate-surface validation..."
-
-    let fixture = (setup_legacy_root_config_migrate_fixture
-        "yazelix_entrypoint_preflight_recover_stale_relocation"
-        '[shell]
-default_shell = "bash"
-'
-    )
-
-    let result = (try {
-        let relocated_main = ($fixture.user_config_dir | path join "yazelix.toml")
-        let transaction_root = (get_managed_config_transaction_dir $relocated_main)
-        let transaction_id = "txn_stale_entrypoint_relocation"
-        let work_dir = ($transaction_root | path join $transaction_id)
-        let manifest_path = ($work_dir | path join "manifest.json")
-        let staged_main = ($work_dir | path join "yazelix.toml")
-
-        mkdir $work_dir
-        '[core]
-welcome_style = "random"
-' | save --force --raw $relocated_main
-        '# stale staged main
-' | save --force --raw $staged_main
-        {
-            schema_version: 1
-            transaction_id: $transaction_id
-            caller: "entrypoint_preflight"
-            phase: "validated"
-            targets: [
-                {
-                    role: "main"
-                    target_path: $relocated_main
-                    staged_path: $staged_main
-                    backup_path: null
-                    existed_before: false
-                }
-            ]
-            cleanup_sources: []
-        } | to json | save --force --raw $manifest_path
-
-        let output = (run_entrypoint_preflight_command $fixture "yzx launch" --allow-noninteractive)
-        let stdout = ($output.stdout | str trim)
-        let updated = (open $relocated_main)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Recovered 1 interrupted managed-config transaction")
-            and ($stdout | str contains "relocated the managed config into user_configs")
-            and ($relocated_main | path exists)
-            and not ($fixture.config_path | path exists)
-            and (($updated.shell.default_shell? | default "") == "bash")
-            and not ($manifest_path | path exists)
-        ) {
-            print "  ✅ Entry-point preflight recovers stale relocation state before validating duplicate config surfaces"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) relocated_exists=(($relocated_main | path exists)) updated=($updated | to json -r) manifest_exists=(($manifest_path | path exists))"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $fixture.tmp_home
-    $result
-}
-
 # Defends: yzx edit fuzzy-style target queries resolve to canonical managed config surfaces and reject ambiguous noninteractive use.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_yzx_edit_targets_print_paths [] {
@@ -1213,57 +884,6 @@ def test_invalid_config_is_classified_as_config_problem [] {
     $result
 }
 
-# Regression: startup reports known migration needs before generic wrapper noise.
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-def test_startup_reports_known_config_migration_before_generic_wrappers [] {
-    print "🧪 Testing startup reports known config migrations before generic wrappers..."
-
-    let repo_root = (get_repo_config_dir)
-    let tmp_home = (^mktemp -d /tmp/yazelix_startup_migration_XXXXXX | str trim)
-    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
-    let user_config_dir = ($temp_config_dir | path join "user_configs")
-    mkdir ($tmp_home | path join ".config")
-    mkdir $temp_config_dir
-    mkdir $user_config_dir
-
-    let result = (try {
-        '[zellij]
-widget_tray = ["layout", "editor"]
-' | save --force --raw ($user_config_dir | path join "yazelix.toml")
-
-        let inner_script = ($repo_root | path join "nushell" "scripts" "core" "start_yazelix_inner.nu")
-        let output = with-env {
-            HOME: $tmp_home
-            YAZELIX_CONFIG_DIR: $temp_config_dir
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            ^nu -c $"source \"($inner_script)\"; try { main \"($tmp_home)\" \"($tmp_home | path join "unused.kdl")\" } catch {|err| print $err.msg }" | complete
-        }
-        let stdout = ($output.stdout | str trim)
-
-        if (
-            ($output.exit_code == 0)
-            and ($stdout | str contains "Known migration at zellij.widget_tray")
-            and ($stdout | str contains "after v13.7 on 2026-03-27")
-            and ($stdout | str contains "yzx doctor --verbose")
-            and ($stdout | str contains "yzx doctor --fix")
-            and not ($stdout | str contains "Failed to generate Zellij configuration")
-        ) {
-            print "  ✅ Startup surfaces migration-aware config failures before generic wrappers"
-            true
-        } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
-    rm -rf $tmp_home
-    $result
-}
-
 # Regression: yzx status must import and use the shared environment bootstrap successfully.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_status_reports_basic_runtime_summary [] {
@@ -1362,12 +982,6 @@ def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
 
 export def run_core_canonical_tests [] {
     [
-        (test_entrypoint_preflight_auto_applies_safe_migrations)
-        (test_entrypoint_preflight_migrates_legacy_helix_command)
-        (test_entrypoint_preflight_applies_auto_changes_then_blocks_on_manual_followup)
-        (test_entrypoint_preflight_relocates_legacy_root_config_surfaces)
-        (test_entrypoint_preflight_relocates_legacy_root_and_applies_safe_subset_before_manual_block)
-        (test_entrypoint_preflight_recovers_stale_relocation_before_duplicate_surface_error)
         (test_yzx_desktop_install_writes_entry_and_icon_assets)
         (test_yzx_desktop_install_prefers_installed_wrapper)
         (test_stable_yzx_wrapper_prefers_home_manager_profile_owner)
@@ -1382,7 +996,6 @@ export def run_core_canonical_tests [] {
         (test_yzx_run_treats_child_verbose_flag_as_child_argv)
         (test_yzx_edit_targets_print_paths)
         (test_invalid_config_is_classified_as_config_problem)
-        (test_startup_reports_known_config_migration_before_generic_wrappers)
         (test_yzx_status_reports_basic_runtime_summary)
         (test_yzx_menu_catalog_tracks_live_exported_command_surface)
     ]

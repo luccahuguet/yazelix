@@ -1,7 +1,6 @@
 #!/usr/bin/env nu
 # yzx enter command - Start Yazelix in the current terminal
 
-use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../core/start_yazelix.nu [start_yazelix_session]
 
 # Start Yazelix in the current terminal
@@ -10,8 +9,6 @@ export def "yzx enter" [
     --home             # Start in home directory
     --verbose          # Enable verbose logging
 ] {
-    run_entrypoint_config_migration_preflight "yzx enter" | ignore
-
     let verbose_mode = $verbose
     if $verbose_mode {
         print "🔍 yzx enter: verbose mode enabled"

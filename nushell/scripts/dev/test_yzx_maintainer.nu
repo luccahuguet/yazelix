@@ -487,7 +487,6 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
             and ($resolved != null)
             and ($resolved.report_path | path exists)
             and ($resolved.scenario == "maintainer_e2e")
-            and ($steps | any {|step| $step.component == "startup" and $step.step == "entrypoint.config_migration_preflight" })
             and ($steps | any {|step| $step.component == "bootstrap" and $step.step == "prepare.parse_config" })
             and ($steps | any {|step| $step.component == "inner" and $step.step == "zellij_handoff_ready" })
         ) {

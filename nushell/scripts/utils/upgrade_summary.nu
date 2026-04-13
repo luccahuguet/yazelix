@@ -4,8 +4,6 @@
 use atomic_writes.nu write_text_atomic
 use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
 use constants.nu [YAZELIX_VERSION]
-use config_migrations.nu [build_config_migration_plan_from_record]
-use config_surfaces.nu get_main_user_config_path
 
 def normalize_string_list [values: any] {
     if not (($values | describe) | str contains "list") {
@@ -75,60 +73,6 @@ export def get_upgrade_note_entry [version: string = $YAZELIX_VERSION] {
     })
 }
 
-def resolve_raw_config_path [] {
-    if ($env.YAZELIX_CONFIG_OVERRIDE? | is-not-empty) {
-        return $env.YAZELIX_CONFIG_OVERRIDE
-    }
-
-    let runtime_dir = (get_yazelix_runtime_dir)
-    let user_config = (get_main_user_config_path)
-    let default_config = ($runtime_dir | path join "yazelix_default.toml")
-
-    if ($user_config | path exists) {
-        $user_config
-    } else if ($default_config | path exists) {
-        $default_config
-    } else {
-        null
-    }
-}
-
-def load_raw_active_config [] {
-    let config_path = (resolve_raw_config_path)
-    if $config_path == null {
-        return null
-    }
-
-    let parsed = (try { open $config_path } catch { null })
-    if $parsed == null {
-        return null
-    }
-
-    {
-        config_path: $config_path
-        config: $parsed
-    }
-}
-
-def get_matching_current_migrations [entry: record] {
-    let migration_ids = (normalize_string_list ($entry.migration_ids? | default []))
-    if ($migration_ids | is-empty) {
-        return []
-    }
-
-    let raw_config = (load_raw_active_config)
-    if $raw_config == null {
-        return []
-    }
-
-    let plan = (try { build_config_migration_plan_from_record $raw_config.config $raw_config.config_path } catch { null })
-    if $plan == null {
-        return []
-    }
-
-    $plan.results | where {|result| $result.id in $migration_ids }
-}
-
 def get_upgrade_summary_state_path [] {
     let summary_dir = (get_yazelix_state_dir | path join "state" "upgrade_summary")
     mkdir $summary_dir
@@ -155,7 +99,7 @@ def write_last_seen_upgrade_version [version: string] {
     $state_path
 }
 
-def render_upgrade_summary [entry: record, matching_migrations: list<record> = []] {
+def render_upgrade_summary [entry: record] {
     let release_date = ($entry.date? | default "" | into string | str trim)
     let headline = ($entry.headline? | default "" | into string | str trim)
     let summary_items = (normalize_string_list ($entry.summary? | default []))
@@ -185,29 +129,10 @@ def render_upgrade_summary [entry: record, matching_migrations: list<record> = [
         "migration_available" => {
             $lines = ($lines | append [
                 ""
-                "Upgrade impact: this release includes known config migrations."
+                "Upgrade impact: this historical release included config-shape changes."
+                "Yazelix v15 no longer ships an automatic config migration engine."
+                "If you are jumping from this release era, compare your config manually with the current template or run `yzx config reset` to start fresh."
             ])
-            if ($matching_migrations | is-empty) {
-                $lines = ($lines | append [
-                    "Run `yzx doctor` to inspect safe rewrites if your config predates this release."
-                    "Run `yzx doctor` for migration-aware diagnostics if startup fails."
-                ])
-            } else {
-                $lines = ($lines | append [
-                    "Detected matching migration candidates in your current config:"
-                ])
-                for result in $matching_migrations {
-                    let matched_paths = ($result.matched_paths | default [] | str join ", ")
-                    $lines = ($lines | append [$"- ($result.id): ($result.title)"])
-                    if ($matched_paths | is-not-empty) {
-                        $lines = ($lines | append [$"  Matched paths: ($matched_paths)"])
-                    }
-                }
-                $lines = ($lines | append [
-                    "Next: run `yzx doctor` to inspect the matching migration candidates."
-                    "Next: run `yzx doctor --fix` to apply only deterministic rewrites."
-                ])
-            }
         }
         "manual_action_required" => {
             $lines = ($lines | append [
@@ -259,8 +184,7 @@ export def build_upgrade_summary_report [version: string = $YAZELIX_VERSION] {
         }
     }
 
-    let matching_migrations = (get_matching_current_migrations $entry)
-    let rendered = (render_upgrade_summary $entry $matching_migrations)
+    let rendered = (render_upgrade_summary $entry)
 
     {
         found: true
@@ -270,8 +194,8 @@ export def build_upgrade_summary_report [version: string = $YAZELIX_VERSION] {
         changelog_path: $entry.changelog_path
         state_path: $state_path
         last_seen_version: $last_seen_version
-        matching_migrations: $matching_migrations
-        matching_migration_ids: ($matching_migrations | get -o id | default [])
+        matching_migrations: []
+        matching_migration_ids: []
         output: $rendered
     }
 }

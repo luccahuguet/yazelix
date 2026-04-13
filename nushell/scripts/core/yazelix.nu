@@ -4,7 +4,6 @@
 
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/constants.nu *
-use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu get_yazelix_runtime_dir
 use ../utils/environment_bootstrap.nu [prepare_environment]
 use ../utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path
@@ -331,7 +330,6 @@ def create_restart_sidebar_bootstrap_file [target_dir: string] {
 # Restart yazelix
 export def "yzx restart" [
 ] {
-    run_entrypoint_config_migration_preflight "yzx restart" | ignore
     let session_to_kill = get_current_zellij_session
     let restart_sidebar_cwd_file = (create_restart_sidebar_bootstrap_file (pwd))
     let restart_env = {

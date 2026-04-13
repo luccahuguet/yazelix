@@ -2,10 +2,8 @@
 # ~/.config/yazelix/nushell/scripts/core/start_yazelix.nu
 
 use ../utils/environment_bootstrap.nu prepare_environment
-use ../utils/entrypoint_config_migrations.nu [run_entrypoint_config_migration_preflight]
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/runtime_env.nu get_runtime_env
-use ../utils/startup_profile.nu [profile_startup_step]
 use ../utils/runtime_contract_checker.nu [
     check_generated_layout
     check_runtime_script
@@ -54,10 +52,6 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
         exit 1
     }
     let nu_bin = (resolve_yazelix_nu_bin)
-
-    profile_startup_step "startup" "entrypoint.config_migration_preflight" {
-        run_entrypoint_config_migration_preflight "Yazelix startup" | ignore
-    }
 
     let env_prep = prepare_environment --verbose=$verbose_mode
     let config = $env_prep.config

@@ -354,10 +354,10 @@ def test_ghostty_macos_launch_command_omits_linux_specific_flags [] {
     }
 }
 
-# Defends: removed ascii mode fails with migration guidance.
+# Defends: removed ascii mode fails as an unsupported config surface.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance [] {
-    print "🧪 Testing parse_yazelix_config rejects legacy [ascii].mode with one clean migration path..."
+def test_parse_yazelix_config_rejects_legacy_ascii_mode_as_unsupported [] {
+    print "🧪 Testing parse_yazelix_config rejects legacy [ascii].mode as unsupported..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_welcome_style_legacy"
@@ -373,12 +373,13 @@ mode = "animated"
 
         if (
             ($parser_result.exit_code != 0)
-            and ($stderr | str contains "Known migration at ascii")
-            and ($stderr | str contains "Replace legacy [ascii].mode with core.welcome_style")
-            and ($stderr | str contains "yzx doctor --fix")
-            and not ($stderr | str contains "Unknown config field at ascii")
+            and ($stderr | str contains "Unknown config field at ascii")
+            and ($stderr | str contains "Failure class: config problem.")
+            and ($stderr | str contains "yzx config reset")
+            and not ($stderr | str contains "Known migration")
+            and not ($stderr | str contains "yzx doctor --fix")
         ) {
-            print "  ✅ Legacy [ascii].mode now points at one clean migration path during startup"
+            print "  ✅ Legacy [ascii].mode is now rejected as unsupported current config"
             true
         } else {
             print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr)"
@@ -393,10 +394,10 @@ mode = "animated"
     $result
 }
 
-# Defends: config parsing stays read-only and does not auto-apply migrations.
+# Defends: removed config fields fail without mutation.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_does_not_auto_apply_safe_migrations [] {
-    print "🧪 Testing parse_yazelix_config keeps safe migration rewrites out of read paths..."
+def test_parse_yazelix_config_rejects_removed_shell_field_without_rewriting [] {
+    print "🧪 Testing parse_yazelix_config rejects removed shell fields without rewriting..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_parser_no_auto_apply"
@@ -413,12 +414,15 @@ enable_atuin = true
 
         if (
             ($parser_result.exit_code != 0)
-            and ($stderr | str contains "Known migration at shell.enable_atuin")
-            and ($stderr | str contains "yzx doctor --fix")
+            and ($stderr | str contains "Unknown config field at shell.enable_atuin")
+            and ($stderr | str contains "Failure class: config problem.")
+            and ($stderr | str contains "yzx config reset")
+            and not ($stderr | str contains "Known migration")
+            and not ($stderr | str contains "yzx doctor --fix")
             and ($updated.shell.enable_atuin? | default false)
             and (($backups | length) == 0)
         ) {
-            print "  ✅ parse_yazelix_config still fails cleanly without rewriting safe migration cases"
+            print "  ✅ parse_yazelix_config rejects removed fields without rewriting config files"
             true
         } else {
             print $"  ❌ Unexpected parser result: exit=($parser_result.exit_code) stderr=($stderr) updated=($updated | to json -r) backups=(($backups | length))"
@@ -527,7 +531,7 @@ def test_parse_yazelix_config_bootstraps_taplo_formatter_support [] {
 
 # Defends: removed pack config is rejected through the narrowed v15 config surface.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance [] {
+def test_parse_yazelix_config_rejects_legacy_main_file_packs [] {
     print "🧪 Testing parse_yazelix_config rejects legacy [packs] in yazelix.toml through the narrowed v15 config surface..."
 
     let fixture = (setup_managed_config_fixture
@@ -1640,11 +1644,11 @@ export def run_generated_config_canonical_tests [] {
         (test_ghostty_linux_launch_command_keeps_linux_specific_flags)
         (test_ghostty_linux_launch_command_prefers_runtime_owned_nixgl_wrapper)
         (test_ghostty_macos_launch_command_omits_linux_specific_flags)
-        (test_parse_yazelix_config_does_not_auto_apply_safe_migrations)
-        (test_parse_yazelix_config_rejects_legacy_ascii_mode_with_migration_guidance)
+        (test_parse_yazelix_config_rejects_removed_shell_field_without_rewriting)
+        (test_parse_yazelix_config_rejects_legacy_ascii_mode_as_unsupported)
         (test_parse_yazelix_config_bootstraps_main_default_surface)
         (test_parse_yazelix_config_bootstraps_taplo_formatter_support)
-        (test_parse_yazelix_config_rejects_legacy_main_file_packs_with_migration_guidance)
+        (test_parse_yazelix_config_rejects_legacy_main_file_packs)
         (test_record_materialized_state_accepts_symlinked_managed_main_config)
         (test_user_mode_requires_real_terminal_config)
         (test_config_schema_rejects_removed_auto_terminal_config_mode)

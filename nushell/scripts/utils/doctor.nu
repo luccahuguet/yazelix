@@ -2,9 +2,8 @@
 # Yazelix Doctor - Health check utilities
 
 use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir require_yazelix_runtime_dir]
-use config_migration_transactions.nu [recover_stale_managed_config_transactions]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface reconcile_primary_config_surfaces]
-use config_diagnostics.nu [apply_doctor_config_fixes build_config_diagnostic_report render_doctor_config_details]
+use config_diagnostics.nu [build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
 use doctor_helix.nu [
     check_helix_runtime_conflicts
@@ -37,7 +36,7 @@ def build_runtime_distribution_doctor_result [profile: record] {
 }
 
 # Check configuration files
-def check_configuration [--recover-interrupted-transactions] {
+def check_configuration [] {
     let config_dir = (get_yazelix_config_dir)
     let runtime_dir = (require_yazelix_runtime_dir)
     let yazelix_legacy = ($config_dir | path join "yazelix.nix")
@@ -75,18 +74,6 @@ def check_configuration [--recover-interrupted-transactions] {
             fix_available: false
         })
 
-        if $recover_interrupted_transactions {
-            let recovery = (recover_stale_managed_config_transactions $yazelix_config)
-            if $recovery.recovered_count > 0 {
-                $results = ($results | append {
-                    status: "info"
-                    message: $"Recovered ($recovery.recovered_count) interrupted managed-config transaction\(s\)"
-                    details: $yazelix_config
-                    fix_available: false
-                })
-            }
-        }
-
         let validation_result = (try {
             {
                 report: (build_config_diagnostic_report $yazelix_config $yazelix_default)
@@ -110,9 +97,9 @@ def check_configuration [--recover-interrupted-transactions] {
             let issue_count = $validation_result.report.issue_count
             $results = ($results | append {
                 status: "warning"
-                message: $"Stale, unsupported, or migration-aware yazelix.toml entries detected \(($issue_count) issues\)"
+                message: $"Stale or unsupported yazelix.toml entries detected \(($issue_count) issues\)"
                 details: (render_doctor_config_details $validation_result.report)
-                fix_available: $validation_result.report.has_fixable_migrations
+                fix_available: false
                 config_diagnostic_report: $validation_result.report
             })
         }
@@ -320,7 +307,7 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
     $all_results = ($all_results | append (check_managed_helix_integration))
 
     # Configuration
-    $all_results = ($all_results | append (check_configuration --recover-interrupted-transactions=$fix))
+    $all_results = ($all_results | append (check_configuration))
 
     # Shared runtime preflight overlap with launch-facing checks
     $all_results = ($all_results | append (check_shared_runtime_preflight))
@@ -394,17 +381,6 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
         let config_issues = ($all_results | where status == "info" and message =~ "default")
         if not ($config_issues | is-empty) {
             fix_create_config
-        }
-
-        let migration_issues = ($all_results | where config_diagnostic_report? != null)
-        for $issue in $migration_issues {
-            let report = $issue.config_diagnostic_report
-            if $report.has_fixable_migrations {
-                let apply_result = (apply_doctor_config_fixes $report)
-                if $apply_result.status == "applied" {
-                    print $"✅ Applied ($apply_result.applied_count) config migration fix\(es\) with backup: ($apply_result.backup_path)"
-                }
-            }
         }
 
         let plugin_permission_issues = ($all_results | where {|result| ($result.fix_action? | default "") == "seed_zellij_plugin_permissions" })

@@ -31,12 +31,11 @@ def setup_repo_fixture [] {
     mkdir ($fixture_root | path join "nushell")
     mkdir ($fixture_root | path join "nushell" "scripts")
     mkdir ($fixture_root | path join "nushell" "scripts" "dev")
-    mkdir ($fixture_root | path join "nushell" "scripts" "utils")
     ^cp ($repo_root | path join "CHANGELOG.md") ($fixture_root | path join "CHANGELOG.md")
     ^cp ($repo_root | path join "docs" "upgrade_notes.toml") ($fixture_root | path join "docs" "upgrade_notes.toml")
     ^cp ($repo_root | path join "nushell" "scripts" "dev" "validate_upgrade_contract.nu") ($fixture_root | path join "nushell" "scripts" "dev" "validate_upgrade_contract.nu")
+    mkdir ($fixture_root | path join "nushell" "scripts" "utils")
     ^cp ($repo_root | path join "nushell" "scripts" "utils" "constants.nu") ($fixture_root | path join "nushell" "scripts" "utils" "constants.nu")
-    ^cp ($repo_root | path join "nushell" "scripts" "utils" "config_migrations.nu") ($fixture_root | path join "nushell" "scripts" "utils" "config_migrations.nu")
     ^git -C $fixture_root init --quiet
     ^git -C $fixture_root config user.email "codex@example.com"
     ^git -C $fixture_root config user.name "Codex"
@@ -86,11 +85,11 @@ def run_current_repo_case [] {
     $ok
 }
 
-def run_broken_notes_case [] {
+def run_unreleased_migration_available_case [] {
     let fixture = (setup_repo_fixture)
     let log_file = $fixture.log_file
 
-    log_line $log_file "Case: broken upgrade notes are rejected"
+    log_line $log_file "Case: unreleased migration_available is rejected"
     let broken_notes = (
         open $fixture.notes
         | upsert releases.unreleased.upgrade_impact "migration_available"
@@ -104,7 +103,10 @@ def run_broken_notes_case [] {
     log_block $log_file "Validator stdout" ($result.stdout | str trim)
     log_block $log_file "Validator stderr" ($result.stderr | str trim)
 
-    let ok = ($result.exit_code != 0) and (([$result.stdout $result.stderr] | str join "\n") | str contains "must list migration_ids")
+    let ok = (
+        ($result.exit_code != 0)
+        and (([$result.stdout $result.stderr] | str join "\n") | str contains "must not use migration_available because v15 no longer ships a live config migration engine")
+    )
     if $ok { log_line $log_file "Result: PASS" } else { log_line $log_file "Result: FAIL" }
 
     rm -rf ($fixture.fixture_root | path dirname)
@@ -118,7 +120,7 @@ def run_ci_ack_only_notes_case [] {
     log_line $log_file "Case: CI accepts ack-only structured note updates without a changelog edit"
     let updated_notes = (
         open $fixture.notes
-        | upsert releases.unreleased.acknowledged_guarded_changes ["nushell/scripts/utils/config_migrations.nu"]
+        | upsert releases.unreleased.acknowledged_guarded_changes ["nushell/scripts/utils/config_schema.nu"]
     )
     $updated_notes | to toml | save --force $fixture.notes
     commit_fixture_change $fixture "Ack guarded change in upgrade notes only"
@@ -171,7 +173,7 @@ def run_ci_series_only_notes_case [] {
         open $fixture.notes
         | upsert series.v13.summary [
             "Plugin-managed workspaces and deterministic editor/sidebar routing define the v13 experience."
-            "Workspace retargeting, migration-aware upgrade UX, and popup/runtime hardening kept tightening through the series."
+            "Workspace retargeting, upgrade UX, and popup/runtime hardening kept tightening through the series."
             "The public command surface is cleaner, with better inspection, release-note, and recovery paths."
         ]
     )
@@ -194,7 +196,7 @@ def run_ci_series_only_notes_case [] {
 export def main [] {
     let results = [
         (run_current_repo_case)
-        (run_broken_notes_case)
+        (run_unreleased_migration_available_case)
         (run_ci_ack_only_notes_case)
         (run_ci_summary_without_changelog_case)
         (run_ci_series_only_notes_case)
