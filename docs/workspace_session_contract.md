@@ -151,42 +151,6 @@ This is what powers actions like managed focus toggling. Nushell should not reim
 
 ## Command Contract
 
-### `set_workspace_root`
-
-Input:
-
-- explicit directory path from Nushell
-
-Plugin responsibilities:
-
-- store the per-tab workspace root as `explicit`
-- rename the tab from that root
-
-Plugin does not:
-
-- resolve `zoxide`
-- infer repo roots
-- change the cwd of the focused pane
-
-### `set_workspace_root_and_cd_focused_pane`
-
-Input:
-
-- explicit directory path from Nushell
-
-Plugin responsibilities:
-
-- store the per-tab workspace root as `explicit`
-- rename the tab from that root
-- send `cd` to the currently focused terminal pane
-
-Plugin does not:
-
-- synchronize Yazi
-- synchronize the managed editor through editor-specific logic
-
-Those remain Nushell responsibilities after the workspace mutation succeeds.
-
 ### `retarget_workspace`
 
 Input:

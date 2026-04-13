@@ -40,6 +40,7 @@ Status labels:
 | `one_command_install_ux.md` | Historical | Earlier installer-first planning note. |
 | `open_window_update_transition_contract.md` | Historical | Older `yzx refresh` and runtime replacement transition model. |
 | `package_runtime_first_user_and_maintainer_ux.md` | Historical | Transition-space note before v15 dropped pack sidecars and runtime-local `devenv`. |
+| `pane_orchestrator_component.md` | Live | Current internal Zellij plugin component boundary for pipe commands, plugin config keys, runtime wrapper assumptions, and pane identity invariants. |
 | `persistent_window_session_contract.md` | Live | Current persistent-session behavior contract. |
 | `runtime_activation_state_contract.md` | Historical | Earlier activation model centered on recorded launch profiles and `devenv`. |
 | `runtime_dependency_preflight_contract.md` | Live | Current launch-preflight versus doctor/install-smoke boundary. |
