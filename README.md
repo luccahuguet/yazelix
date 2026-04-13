@@ -30,6 +30,16 @@ Yazelix integrates [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://gith
   - **Modular editor support**: Helix and Neovim have full integration features, or use any other editor via `[editor].command`
 - This project includes config files for Zellij, Yazi, terminal emulators, Nushell scripts, Lua plugins, and a lot of love
 
+## Current v15 Branch
+
+This branch is the trimmed v15 line. `YAZELIX_VERSION` and the generated release block still point at the latest tagged release until the next tag is cut, but the live product direction in this checkout is v15.
+
+v15.0 is not the Rust release. It is the slimmed-down Yazelix reboot: no runtime-local `devenv`, no `yazelix_packs.toml`, no launch-profile reuse contract, no config-migration engine, built-in Ghostty on Linux and macOS, explicit update owners, and the faster helperless popup/menu experience.
+
+Rust is a later implementation path. Selective Rust can land in v15.x point releases where it clearly pays for itself; v16 is the release target where Rust becomes a major architectural fact.
+
+v14 is now historical Yazelix Classic. It remains useful as a tagged snapshot for the broader `devenv`-era product shape, but the active branch direction is not two maintained products in parallel.
+
 ## Why Yazelix
 Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix. It delivers a consistent, fast “superterminal” locally or over SSH with zero manual setup: smart pane/layout orchestration, sidebar reveal/open flows, a curated built-in toolset, and sane defaults. It also solves helix/zellij keybinding conflicts (no need to ever lock zellij), auto‑configures great tools like starship, zoxide, carapace (that normally require editing shell config files), and includes many tools from the Yazelix Collection, like lazygit
 
@@ -74,10 +84,10 @@ Boundary hardening, honest update ownership, and a much cleaner runtime surface.
 - Config ownership and upgrade UX became much more explicit through `user_configs/`, the separate `yazelix_packs.toml` file, the migration engine, and first-run upgrade summaries instead of ad hoc breakage.
 - Workspace control also matured across the line with managed editor/sidebar routing, deterministic sidebar controls, and `yzx cwd` to retarget the current tab workspace root with editor/sidebar sync.
 - A large delete-first cleanup pass trimmed broad helper surfaces and documented the trim-first path toward v15.
-- v14 is the last feature release of Yazelix Classic: the broader `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including `yzx packs`. The `v14` tag stays alive for bug fixes, but the line is now feature-frozen.
-- The current v15 direction is to keep the narrower core `yzx` product surface around `launch`, `env`, `update`, `desktop`, and workspace-facing commands while trimming the older Classic machinery around much of `yzx run`, `yzx packs`, generic Nix housekeeping, launch-profile reuse, and the broad `devenv` lifecycle.
-- The broader `devenv` runtime and terminal-environment layer may continue as a separate project forked from Yazelix Classic and could be reintegrated later only with much clearer boundaries and separate codebases.
-- I still strongly recommend using v14 for the time being, especially if you are a power user. It remains unusually powerful, highly customizable, alive, and worth filing issues against.
+- v14 is now best read as Yazelix Classic: the broader `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including `yzx packs`.
+- The v15 branch has since become the live trimmed line rather than a parallel future experiment: a smaller non-Rust reboot with no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry.
+- Rust remains a later implementation path: selective Rust may land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.
+- The v14 tag remains useful as the historical Classic snapshot for users who want that broader product shape, but the active branch direction is v15 rather than two maintained products in parallel.
 
 For exact v14 upgrade notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new`.
 For the longer project story, see [Version History](./docs/history.md).
@@ -85,17 +95,15 @@ For the longer project story, see [Version History](./docs/history.md).
 
 ## Yazelix Classic And v15
 
-Yazelix v14 is the last feature release of **Yazelix Classic**: the broad, heavily integrated, `devenv`-based version of the project. This is the line with `yazelix packs`, `yzx packs`, dynamic runtime management, rich shell and terminal integration, Home Manager and manual install support, and the widest power-user command/config surface.
+Yazelix v14 is the historical **Yazelix Classic** snapshot: the broad, heavily integrated, `devenv`-based version of the project. That line had `yazelix packs`, `yzx packs`, dynamic runtime management, rich shell and terminal integration, Home Manager and manual install support, and the widest power-user command/config surface.
 
-Classic is not abandoned. For now, `main` remains the v14.x / Yazelix Classic line that users should keep using. The `v14` tag stays as the immutable original v14 release, and future Classic fixes can be tagged as `v14.1`, `v14.2`, and so on when needed.
+Classic is not the active product line in this branch. The `v14` tag remains available for users who want that broader shape, but v15 is the line being simplified and hardened now.
 
-v15 work lives separately on the `v15` branch until it is ready for alpha testing. The goal is a slimmer, Rust-rewritten, more performant Yazelix that stops trying to also be a broad package-and-environment manager. That means dropping `devenv`, trimming the command and config surface, and keeping a clearer core around fast workspace entry and explicit update ownership.
+v15.0 is the trimmed non-Rust reboot. It stops trying to also be a broad package-and-environment manager, drops the old runtime-local `devenv` layer, trims the command and config surface, and keeps a clearer core around fast workspace entry, generated-state repair, explicit update ownership, and the popup/menu-centered workspace UX.
 
-On the current `v15` branch, the trimmed contract is already narrower: no `yazelix_packs.toml`, no runtime-local `devenv`, no launch-profile reuse semantics, a fixed packaged runtime toolset, built-in Ghostty on Linux and macOS, and explicit update owners through `yzx update upstream` or `yzx update home_manager`.
+On the current `v15` branch, the trimmed contract is already narrower: no `yazelix_packs.toml`, no runtime-local `devenv`, no launch-profile reuse semantics, no automatic config migrations, a fixed packaged runtime toolset, built-in Ghostty on Linux and macOS, and explicit update owners through `yzx update upstream` or `yzx update home_manager`.
 
-The important split is this: Yazelix Classic is both a terminal workspace and a runtime/package-environment manager. v15 is intended to become the narrower workspace product. The broader `devenv` runtime and terminal-environment layer may continue later as a separate project forked from Yazelix Classic, and it could be reintegrated in a future release only with clearer boundaries and separate codebases.
-
-I still strongly recommend using v14 for the time being, especially if you are a power user. It is unusually powerful, highly customizable, and very much alive. If you find bugs in the Classic line, please open issues.
+The important split is this: Yazelix Classic was both a terminal workspace and a runtime/package-environment manager. v15 is the narrower workspace product. A broader runtime or terminal-environment project could still be forked from Classic later, but it should only come back with a clear separation of concerns and separate codebase boundaries.
 
 For the current trimmed branch contract, see [docs/specs/v15_trimmed_runtime_contract.md](./docs/specs/v15_trimmed_runtime_contract.md).
 
@@ -253,7 +261,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 [docs/yazelix_collection.md](./docs/yazelix_collection.md).
 - **Essential tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), shells (bash/nushell, plus your preferred shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
 - **Bundled helpers**: [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [mise](https://github.com/jdx/mise), [carapace](https://github.com/carapace-sh/carapace-bin), [macchina](https://github.com/Macchina-CLI/macchina), and the fixed helper tooling behind the trimmed v15 core
-- **Optional history**: [atuin](https://github.com/atuinsh/atuin) integration is now controlled by `enable_atuin` (disabled by default).
+- **Optional history**: [atuin](https://github.com/atuinsh/atuin) remains an optional initializer when the binary is available, but the old `shell.enable_atuin` config knob is gone.
 - **Yazi preview helpers**: `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` are part of the fixed runtime surface
 - **Environment setup**: Proper paths, variables, and shell configurations
 
@@ -268,7 +276,7 @@ If you followed [step 4 in the installation guide](./docs/installation.md#step-4
 - **Foot**: Wayland-native terminal (Linux-only)
 - **Auto-detection**: Fallback order follows your configured terminal list
 - Configure your preference in `yazelix.toml` with `terminals = ["ghostty", "wezterm", ...]` (first item is primary)
-- **v15 terminal contract**: Yazelix launches host-installed terminals directly. Keep one of your configured terminals available on the host `PATH`.
+- **v15 terminal contract**: Ghostty is first-party and bundled by Yazelix. Other configured terminals are still supported when you provide them on the host `PATH`.
 
 [See the full Customization Guide here.](./docs/customization.md)
 

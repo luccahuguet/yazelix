@@ -39,35 +39,35 @@ v14 is the last feature release of what I now think of as Yazelix Classic.
 
 Yazelix Classic is the broad, heavily integrated, `devenv`-era shape of the project: `yazelix packs`, dynamic runtime management, rich shell and terminal integration, multiple ownership paths, a large `yzx` surface that includes commands like `yzx packs`, and the unusually wide power-user workflow that made Yazelix one of a kind.
 
-That line is not dead. The `v14` tag will continue to be maintained for bug fixes and stability fixes if real issues are found. What changes now is scope: v14 is entering a feature freeze.
+The v14 tag remains useful as the historical Classic snapshot for users who want that broader product shape.
 
-Most new design and implementation work will now shift to v15.
+The active branch direction is now v15 rather than two maintained products in parallel.
 
-The goal for v15 is not to rewrite Yazelix line for line in Rust. The goal is a smaller, slimmer, faster, more opinionated Yazelix with a much clearer product boundary. In practice, that means dropping `devenv`, stopping the project from also trying to be a broad package-and-environment manager, trimming the command and config surface, and then rewriting the smaller surviving product in Rust.
+v15.0 is the trimmed non-Rust reboot. The goal is a smaller, slimmer, faster, more opinionated Yazelix with a much clearer product boundary. In practice, that means dropping the old runtime-local `devenv` layer, stopping the project from also trying to be a broad package-and-environment manager, trimming the command and config surface, deleting the config-migration engine, and focusing on fast workspace entry.
 
 That is the main architectural lesson of v14: Yazelix had clearly become two products in one.
 
 One product was the broad environment-management system: rebuild and refresh semantics, package and pack ownership, shell and terminal breadth, multiple install and update ownership modes, launch-profile state, and a large amount of dynamic runtime machinery.
 
-The other product was the narrower workspace tool that had been trying to emerge inside it: fast entry into a built runtime, explicit ownership, predictable workspace behavior, stronger editor/sidebar orchestration, and a smaller core that can eventually be made much more robust and performant in Rust.
+The other product was the narrower workspace tool that had been trying to emerge inside it: fast entry into a built runtime, explicit ownership, predictable workspace behavior, stronger editor/sidebar orchestration, and a smaller core.
 
-v14 is the release where that split became impossible to ignore. It did not fully resolve it, but it made the problem visible enough to finally treat it honestly.
+v14 is the release where that split became impossible to ignore. The v15 branch now resolves it by trimming first instead of trying to preserve both product shapes.
 
 A lot of the current `yzx` surface belongs to Yazelix Classic. That includes the parts of `yzx` that are tightly tied to the older `devenv` hot-path and cold-path model: explicit refresh semantics, dynamic runtime entry behavior, launch-profile reuse, first-class `yazelix packs` / `yzx packs` package selection and inspection, broad pack and package-graph ownership, wider shell and terminal policy, and the idea that Yazelix should also act as a fairly general environment-management layer.
 
 In that sense, commands like `yzx refresh` and much of the older meaning carried by `yzx run` belong much more to the v14 Classic world than to the slimmer v15 direction.
 
-The current v15 lean is to keep the core `yzx` product surface and trim away the parts that mainly exist to support the older `devenv` machinery. The backbone most likely to survive is `yzx launch`, `yzx env`, `yzx update`, and `yzx desktop`. Beyond that backbone, workspace-facing commands such as `yzx cwd`, `yzx reveal`, `yzx popup`, `yzx menu`, `yzx keys`, `yzx tutor`, `yzx whats_new`, and `yzx doctor` still fit the actual product much better than the older backend-management surface does.
+The v15 branch keeps the core `yzx` product surface and trims away the parts that mainly existed to support the older `devenv` machinery. The backbone is `yzx launch`, `yzx env`, `yzx update`, and `yzx desktop`. Beyond that backbone, workspace-facing commands such as `yzx cwd`, `yzx reveal`, `yzx popup`, `yzx menu`, `yzx keys`, `yzx tutor`, `yzx whats_new`, and `yzx doctor` fit the actual product much better than the older backend-management surface does.
 
-What is much less likely to survive in its current form are commands and semantics that mainly exist because Yazelix was also trying to manage a large dynamic `devenv` lifecycle. That is why the current v15 direction leans toward dropping or heavily narrowing `yzx refresh`, `yzx run`, launch-profile reuse semantics, explicit backend/materialization entry logic on the hot path, and the broader `yazelix packs` / `yzx packs` package-graph ownership model unless a much narrower replacement survives.
+Commands and semantics that mainly existed because Yazelix was also trying to manage a large dynamic `devenv` lifecycle are now historical Classic surfaces. That is why v15 drops or heavily narrows `yzx refresh`, `yzx run`, launch-profile reuse semantics, explicit backend/materialization entry logic on the hot path, the broader `yazelix packs` / `yzx packs` package-graph ownership model, and automatic config migrations.
 
-There is also a real chance that the broader `devenv` runtime and terminal-environment layer will continue as a separate project, forked from Yazelix Classic. That would let the broader environment-management direction evolve on its own terms instead of staying entangled with the slimmer v15 product.
+There is still a chance that a broader runtime or terminal-environment project could be forked from Yazelix Classic later. That would let the broader environment-management direction evolve on its own terms instead of staying entangled with the slimmer v15 product.
 
-If that separate project proves valuable, it may be reintegrated later, potentially around v16, but only with much cleaner boundaries: separate codebases, clear separation of concerns, and an explicit integration seam between the two products.
+If that separate project proves valuable, it should only be reintegrated with much cleaner boundaries: separate codebases, clear separation of concerns, and an explicit integration seam between the two products.
 
-v14 may also end up being the last heavily Nushell-based release of Yazelix before most of the system is rewritten in Rust. If that happens, the `v14` line will remain useful not just as a product, but also as a substantial real-world Nushell codebase for people who want to study how a larger Nushell-heavy project is structured.
+Rust remains a later implementation path. Selective Rust can land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.
 
-I still strongly recommend using v14 for the time being, especially if you are a power user. Yazelix Classic remains unusually powerful, highly customizable, and very much alive. If you find bugs, please open issues. If the Classic direction is the one you care about most, you can also keep using it, customize it heavily, or fork it and take it further yourself.
+v14 may also be the last heavily Nushell-based Classic snapshot. It remains useful as a substantial real-world Nushell codebase for people who want to study that older broader product shape.
 
 ## v13.13 - 2026-04-05
 

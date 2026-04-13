@@ -4,12 +4,15 @@
 
 This spec is the current branch-level contract for the trimmed v15 line.
 
+v15.0 is the slimmed-down non-Rust reboot. Selective Rust may land later in v15.x when it clearly pays for itself; v16 is the Rust-forward release target.
+
 The product surface is now centered on:
 
 - a fixed packaged runtime
 - explicit install/update owners
 - managed `user_configs/` configuration
 - workspace/session commands
+- helperless fast popup/menu transient panes
 - generated-state repair instead of backend/profile orchestration
 
 It is no longer centered on:
@@ -18,6 +21,7 @@ It is no longer centered on:
 - dynamic pack graphs
 - the old runtime-local `devenv` layer
 - cached launch-profile reuse
+- automatic config migrations
 - a generic Yazelix-owned runtime updater
 
 ## Why
@@ -50,6 +54,7 @@ This file exists so current docs and current specs can point at one authoritativ
 - Managed override directories such as Zellij, Yazi, Helix, and shell user hooks remain part of that user-owned config surface.
 - The trimmed v15 branch does not have a `yazelix_packs.toml` sidecar and does not expose a first-class pack graph.
 - Legacy or removed config fields fail fast instead of degrading silently.
+- v15 does not ship a config-migration engine. Users moving from very old config shapes should compare with the current template manually or use `yzx config reset` as a blunt fresh-start path.
 
 ### Generated State
 
@@ -78,14 +83,17 @@ This file exists so current docs and current specs can point at one authoritativ
 - reintroducing dynamic pack management on the trimmed v15 branch
 - treating cached launch-profile reuse as a current product guarantee
 - restoring the old runtime-local `devenv` layer as part of the normal shipped runtime
+- restoring automatic config migrations as a normal v15 product surface
 - pretending the compatibility installer is the canonical everyday product flow
+- treating v15.0 as the Rust release
 
 ## Acceptance Cases
 
-1. A current v15 user can understand the product without learning about `yazelix_packs.toml`, launch-profile reuse, or runtime-local `devenv`.
+1. A current v15 user can understand the product without learning about `yazelix_packs.toml`, launch-profile reuse, runtime-local `devenv`, or automatic config migrations.
 2. Current docs explain generated-state repair through startup and `yzx doctor` rather than through a public refresh command.
 3. Current docs explain update ownership through explicit owner commands rather than a generic runtime updater.
 4. Current docs distinguish the normal packaged runtime from maintainer-only `nix develop` workflows.
+5. Current roadmap docs describe v15.0 as the trimmed non-Rust reboot and v16 as the Rust-forward release.
 
 ## Verification
 

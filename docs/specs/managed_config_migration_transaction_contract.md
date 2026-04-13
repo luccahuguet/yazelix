@@ -1,5 +1,9 @@
 # Managed Config Migration Transaction Contract
 
+> Status: Historical v13/v14 migration-era contract.
+> v15 removed the automatic config-migration and legacy relocation layer, so this staged transaction model is not a live branch contract.
+> Current v15 behavior is fail-fast unsupported config diagnostics plus manual cleanup or `yzx config reset`; see [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md) and [stale_config_diagnostics.md](./stale_config_diagnostics.md).
+
 ## Summary
 
 Yazelix should treat managed config migrations as a small staged transaction over a narrow set of Yazelix-owned config surfaces, not as a sequence of ad hoc direct writes. The contract should guarantee that a migration either commits a coherent new managed config set or leaves the previously valid managed config set intact.
@@ -302,18 +306,9 @@ Yazelix does not need to import those systems wholesale. It should copy the smal
 
 ## Verification
 
-- manual review against:
-  - [config_migration_engine.md](./config_migration_engine.md)
-  - [stale_config_diagnostics.md](./stale_config_diagnostics.md)
-  - [backend_capability_contract.md](./backend_capability_contract.md)
-- current-code review:
-  - `nushell/scripts/utils/config_migrations.nu`
-  - `nushell/scripts/utils/entrypoint_config_migrations.nu`
-  - `nushell/scripts/utils/config_surfaces.nu`
-  - `nushell/scripts/yzx/menu.nu`
-  - `nushell/scripts/utils/config_diagnostics.nu`
-- CI/spec check:
-  - `nu nushell/scripts/dev/validate_specs.nu`
+This is now a historical contract. It is no longer defended by live migration transaction code because v15 removed the migration and legacy relocation layer. Current v15 config behavior is defended by [stale_config_diagnostics.md](./stale_config_diagnostics.md) and [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
+- historical spec validation: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Traceability
 
@@ -322,6 +317,4 @@ Yazelix does not need to import those systems wholesale. It should copy the smal
 
 ## Open Questions
 
-- Should `yzx config reset` adopt the same transaction engine in its first implementation pass, or should it remain adjacent until the migration path is proven?
-- Should the interrupted-transaction manifest live beside the managed config files or in a dedicated hidden transaction subdirectory under `user_configs`?
-- When the migration layer moves to Rust later, should Yazelix keep the same rollback-first recovery policy or add a more explicit forward-commit phase marker?
+- Closed for v15: the migration transaction engine is no longer part of the live branch contract.

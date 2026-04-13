@@ -1,5 +1,9 @@
 # Config Migration Engine
 
+> Status: Historical v13/v14 migration-era contract.
+> v15 no longer ships the automatic config-migration engine described here. Keep this file as design history only.
+> Current v15 behavior is fail-fast unsupported config diagnostics plus manual cleanup or `yzx config reset`; see [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md) and [stale_config_diagnostics.md](./stale_config_diagnostics.md).
+
 ## Summary
 
 Yazelix should own a shared config-migration engine that can detect known stale `yazelix.toml` shapes, render safe-rewrite guidance, apply only deterministic fixes through the managed-config transaction contract, and clearly separate manual-only migrations from blunt reset flows.
@@ -100,19 +104,14 @@ See [Managed Config Migration Transaction Contract](./managed_config_migration_t
 
 ## Verification
 
-- unit tests: direct migration-plan tests for rule metadata completeness, ordering, deterministic rewrite behavior, manual-only classification, preview rendering, apply behavior, and backup creation
-- integration tests: `nu nushell/scripts/dev/test_yzx_commands.nu`
-- e2e scripts: `nu nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu`
-- CI checks: `nu nushell/scripts/dev/validate_specs.nu` and `nu nushell/scripts/dev/validate_config_migration_rules.nu`
-- manual verification: run `yzx doctor --verbose` and `yzx doctor --fix` against temp config roots with known stale configs
-- metadata validation must also reject rules that do not declare a positive `review_after_days`, valid retirement metadata, or a timely explicit review
+This is now a historical contract. It is no longer defended by live migration-engine tests or the deleted migration-rule validator. Current v15 config behavior is defended by [stale_config_diagnostics.md](./stale_config_diagnostics.md) and [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md).
+
+- historical spec validation: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Traceability
 
 - Bead: `yazelix-cr3`
-- Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
-- Defended by: `nu nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu`
-- Defended by: `nu nushell/scripts/dev/validate_config_migration_rules.nu`
+- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Open Questions
 

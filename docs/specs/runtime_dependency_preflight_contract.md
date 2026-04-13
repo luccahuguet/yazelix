@@ -9,7 +9,7 @@ Yazelix should define one shared runtime dependency contract for normal user-fac
 The current code already distinguishes several kinds of checks, but the boundary is implicit:
 
 - startup and launch fail fast on missing working directories, missing runtime scripts, missing generated layouts, and unavailable configured terminals
-- config migration preflight runs before launch, but it is a config-contract concern rather than a runtime dependency concern
+- config validation runs before launch, but it is a config-contract concern rather than a runtime dependency concern
 - `yzx doctor` performs much heavier checks such as shell-hook freshness, desktop-entry freshness, install-artifact staleness, version drift, Helix runtime conflicts, and plugin health
 - install smoke validates even heavier installed-runtime invariants that are useful for packaging confidence but too expensive for normal launch
 
@@ -34,9 +34,9 @@ Without a written contract:
 - This contract is downstream of the backend capability contract:
   - the backend contract defines what the runtime/environment layer must make possible
   - this contract defines what should be verified quickly before launch and what should remain in richer diagnostics
-- Config migration/stale-config blocking is adjacent but separate:
-  - entrypoint config migration preflight should still run before launch
-  - but config migration logic is not itself part of the runtime dependency checker scope
+- Stale-config blocking is adjacent but separate:
+  - entrypoint config validation should still run before launch
+  - but config parsing and unsupported-field diagnostics are not themselves part of the runtime dependency checker scope
 
 ### Dependency Classes
 
@@ -71,7 +71,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 | Missing runtime entrypoint script such as `start_yazelix_inner.nu` or `launch_yazelix.nu` | Launch preflight | This is a hard runtime integrity blocker for the selected path, not a deep diagnostic. |
 | Missing generated layout required for startup | Launch preflight | Startup will fail immediately and the recovery is bounded: regenerate or fix the configured layout. |
 | No suitable configured/requested terminal available for new-window launch | Launch preflight | Detached launch should fail clearly before attempting terminal startup. |
-| Config migration follow-up before entrypoint execution | Adjacent config-migration preflight | This can block entrypoints, but it belongs to config-surface ownership rather than runtime dependency checking. |
+| Unsupported config follow-up before entrypoint execution | Adjacent config-surface validation | This can block entrypoints, but it belongs to config-surface ownership rather than runtime dependency checking. |
 | Stale shell hooks or stale desktop entry | `yzx doctor` | Important health signal, but not a universal startup blocker for every entrypoint. |
 | Installed runtime pointer correctness or stable launcher shim correctness | Install/package validation and `yzx doctor` | These defend packaging/install integrity and may be inspected by doctor, but are too heavy for routine launch. |
 | Minimal-PATH POSIX launcher viability and shell-enter contract | Install/package validation | Heavy install-smoke concerns, not routine preflight checks. |
@@ -120,7 +120,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 ## Non-goals
 
 - redefining backend capabilities already covered by the backend capability contract
-- redefining config migration or stale-config rules
+- redefining config validation or stale-config rules
 - making `yzx doctor` and launch run the exact same set of checks
 - turning launch into a slow environment audit
 - deciding the final `Yazelix Core` product boundary in this spec
@@ -138,7 +138,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 
 - manual review against:
   - [backend_capability_contract.md](./backend_capability_contract.md)
-  - [config_surface_and_launch_profile_contract.md](./config_surface_and_launch_profile_contract.md)
+  - [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md)
   - [stale_config_diagnostics.md](./stale_config_diagnostics.md)
 - manual review of the current runtime-check code paths:
   - `nushell/scripts/core/start_yazelix.nu`
@@ -146,7 +146,6 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
   - `nushell/scripts/core/launch_yazelix.nu`
   - `nushell/scripts/utils/terminal_launcher.nu`
   - `nushell/scripts/utils/doctor.nu`
-  - `nushell/scripts/utils/entrypoint_config_migrations.nu`
   - `nushell/scripts/dev/validate_installed_runtime_contract.nu`
   - `nushell/scripts/dev/validate_flake_install.nu`
 - integration tests:

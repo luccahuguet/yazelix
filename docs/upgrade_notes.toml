@@ -27,11 +27,11 @@ summary = [
     "Simplified the packaged-runtime story by making the flake package surface primary, removing `runtime/current` from the Home Manager identity path, dropping installed-runtime fallbacks from shared runtime logic, and trimming most installer-artifact doctoring.",
     "Replaced the late-series runtime updater experiment with explicit owner commands: `yzx update upstream` refreshes upstream/manual installs, `yzx update home_manager` refreshes the current Home Manager flake input, desktop launch now targets the active runtime launcher directly, and the transitional `yzx update runtime` / `yzx update all` flow is gone again.",
     "Made `yzx run` a real argv passthrough for one-shot Yazelix-environment commands, so child args like `yzx run rg --files` pass through unchanged, and documented the package-runtime simplification path, config dependence matrix, subsystem code inventory, and the trim-first v15 roadmap that follows this transition release.",
-    "v14 is the last feature release of Yazelix Classic: the broad `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including commands like `yzx packs`. The `v14` tag stays alive for bug fixes, but the line is now feature-frozen.",
-    "The v15 direction is a slimmer, Rust-rewritten, more performant Yazelix that stops trying to also be a broad package-and-environment manager, drops `devenv`, and keeps a narrower core `yzx` surface centered on `launch`, `env`, `update`, `desktop`, and workspace-facing commands.",
-    "That means much of the broader Classic machinery belongs to v14: explicit refresh semantics, launch-profile reuse, the first-class `yazelix packs` / `yzx packs` model, broad pack/package-graph ownership, and the older `devenv`-driven hot-path model around commands like `yzx refresh` and much of `yzx run`.",
-    "The broader `devenv` runtime and terminal-environment layer may continue as a separate project forked from Yazelix Classic and could be reintegrated later with clearer separation of concerns and separate codebases.",
-    "I still strongly recommend using v14 for the time being, especially if you are a power user. It remains unusually powerful, highly customizable, alive, and worth filing issues against. If you are interested in Nushell and want to study how a larger Nushell-heavy project is structured, v14 is also a good place to look.",
+    "v14 is now best read as Yazelix Classic: the broad `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including commands like `yzx packs`.",
+    "The v15 branch has since become the live trimmed line rather than a parallel future experiment: a smaller non-Rust reboot with no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry.",
+    "That means much of the broader Classic machinery belongs to the historical v14 snapshot: explicit refresh semantics, launch-profile reuse, the first-class `yazelix packs` / `yzx packs` model, broad pack/package-graph ownership, and the older `devenv`-driven hot-path model around commands like `yzx refresh` and much of `yzx run`.",
+    "Rust remains a later implementation path: selective Rust may land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.",
+    "The v14 tag remains useful as the historical Classic snapshot for users who want that broader product shape, but the active branch direction is v15 rather than two maintained products in parallel.",
 ]
 upgrade_impact = "manual_action_required"
 acknowledged_guarded_changes = [
@@ -137,10 +137,10 @@ summary = [
     "Config ownership and upgrade UX became much more explicit through `user_configs/`, the separate `yazelix_packs.toml` file, the migration engine, and first-run upgrade summaries instead of ad hoc breakage.",
     "Workspace control also matured across the line with managed editor/sidebar routing, deterministic sidebar controls, and `yzx cwd` to retarget the current tab workspace root with editor/sidebar sync.",
     "A large delete-first cleanup pass trimmed broad helper surfaces and documented the trim-first path toward v15.",
-    "v14 is the last feature release of Yazelix Classic: the broader `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including `yzx packs`. The `v14` tag stays alive for bug fixes, but the line is now feature-frozen.",
-    "The current v15 direction is to keep the narrower core `yzx` product surface around `launch`, `env`, `update`, `desktop`, and workspace-facing commands while trimming the older Classic machinery around much of `yzx run`, `yzx packs`, generic Nix housekeeping, launch-profile reuse, and the broad `devenv` lifecycle.",
-    "The broader `devenv` runtime and terminal-environment layer may continue as a separate project forked from Yazelix Classic and could be reintegrated later only with much clearer boundaries and separate codebases.",
-    "I still strongly recommend using v14 for the time being, especially if you are a power user. It remains unusually powerful, highly customizable, alive, and worth filing issues against.",
+    "v14 is now best read as Yazelix Classic: the broader `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including `yzx packs`.",
+    "The v15 branch has since become the live trimmed line rather than a parallel future experiment: a smaller non-Rust reboot with no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry.",
+    "Rust remains a later implementation path: selective Rust may land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.",
+    "The v14 tag remains useful as the historical Classic snapshot for users who want that broader product shape, but the active branch direction is v15 rather than two maintained products in parallel.",
 ]
 
 [series.v13]
