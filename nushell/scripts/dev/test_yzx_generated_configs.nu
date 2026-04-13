@@ -6,6 +6,7 @@ use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fi
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/config_state.nu [record_materialized_state]
+use ../utils/generated_runtime_state.nu [record_current_materialized_state regenerate_runtime_configs]
 use ../utils/safe_remove.nu remove_path_within_root
 use ../utils/terminal_launcher.nu [build_launch_command resolve_terminal_config]
 use ../utils/terminal_configs.nu [
@@ -1003,6 +1004,8 @@ def test_generate_merged_yazi_config_syncs_starship_plugin_config [] {
             XDG_CONFIG_HOME: ($tmp_home | path join ".config")
             XDG_DATA_HOME: ($tmp_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_LOGS_DIR: ($tmp_home | path join ".local" "share" "yazelix" "logs")
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
             let merged_dir = (generate_merged_yazi_config $repo_root --quiet)
@@ -1060,20 +1063,34 @@ def test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins [] 
             XDG_CONFIG_HOME: ($tmp_home | path join ".config")
             XDG_DATA_HOME: ($tmp_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_LOGS_DIR: ($tmp_home | path join ".local" "share" "yazelix" "logs")
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
             let merged_dir = (generate_merged_yazi_config $repo_root --quiet)
-            open --raw ($merged_dir | path join "plugins" "zoxide-editor.yazi" "main.lua")
+            let zoxide_plugin = ($merged_dir | path join "plugins" "zoxide-editor.yazi" "main.lua")
+            let warm_sentinel = ($merged_dir | path join "plugins" "zoxide-editor.yazi" "warm_skip_sentinel")
+            record_current_materialized_state | ignore
+            "warm asset marker" | save --force --raw $warm_sentinel
+            regenerate_runtime_configs $repo_root --quiet
+            let sentinel_after_warm_skip = ($warm_sentinel | path exists)
+            rm --force $zoxide_plugin
+            regenerate_runtime_configs $repo_root --quiet
+            {
+                zoxide_plugin: (open --raw $zoxide_plugin)
+                sentinel_after_warm_skip: $sentinel_after_warm_skip
+            }
         })
 
         if (
-            ($generated | str contains ($repo_root | path join "nushell" "scripts" "integrations" "zoxide_open_in_editor.nu"))
-            and not ($generated | str contains "__YAZELIX_RUNTIME_DIR__")
+            ($generated.zoxide_plugin | str contains ($repo_root | path join "nushell" "scripts" "integrations" "zoxide_open_in_editor.nu"))
+            and not ($generated.zoxide_plugin | str contains "__YAZELIX_RUNTIME_DIR__")
+            and $generated.sentinel_after_warm_skip
         ) {
-            print "  ✅ Generated Yazi plugins now render a real runtime path instead of leaking the placeholder"
+            print "  ✅ Generated Yazi plugins render real runtime paths, skip static recopy on warm paths, and self-heal missing bundled files"
             true
         } else {
-            print "  ❌ Generated Zoxide Yazi plugin still leaked the runtime placeholder"
+            print "  ❌ Generated Zoxide Yazi plugin still leaked the runtime placeholder or recopied warm assets unnecessarily"
             false
         }
     } catch {|err|

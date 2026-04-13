@@ -5,7 +5,7 @@
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu get_yazelix_state_dir
-use ./yazi_bundled_assets.nu [render_runtime_root_placeholders sync_bundled_yazi_assets]
+use ./yazi_bundled_assets.nu [bundled_yazi_assets_missing render_runtime_root_placeholders sync_bundled_yazi_assets]
 use ./yazi_user_overrides.nu [merge_yazi_keymap merge_yazi_toml_config resolve_yazi_user_file]
 
 # Generate yazi.toml with dynamic settings from yazelix.toml
@@ -292,7 +292,11 @@ def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
 }
 
 # Main function: Generate Yazi configuration
-export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
+export def generate_merged_yazi_config [
+    yazelix_dir: string,
+    --quiet,
+    --sync-static-assets = true
+] {
     # Parse yazelix config to get settings
     let config = parse_yazelix_config
     let user_plugins = $config.yazi_plugins
@@ -348,8 +352,15 @@ export def generate_merged_yazi_config [yazelix_dir: string, --quiet] {
     # Generate keymap.toml with optional user keymap merging
     generate_keymap_toml $source_config_dir $merged_config_dir --quiet=$quiet
 
-    # Sync bundled Yazi runtime assets
-    sync_bundled_yazi_assets $source_config_dir $merged_config_dir --quiet=$quiet
+    let should_sync_static_assets = (
+        $sync_static_assets or (bundled_yazi_assets_missing $source_config_dir $merged_config_dir)
+    )
+
+    if $should_sync_static_assets {
+        sync_bundled_yazi_assets $source_config_dir $merged_config_dir --quiet=$quiet
+    } else if not $quiet {
+        print "   📦 Reusing existing bundled Yazi runtime assets"
+    }
 
     # Generate init.lua dynamically based on plugin configuration
     generate_init_lua $merged_config_dir $user_plugins --quiet=$quiet

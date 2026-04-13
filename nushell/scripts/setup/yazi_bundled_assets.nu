@@ -143,6 +143,70 @@ def copy_flavors_directory [source_dir: string, merged_dir: string, --quiet] {
     }
 }
 
+def list_relative_asset_paths [root_dir: string] {
+    if not ($root_dir | path exists) {
+        return []
+    }
+
+    let expanded_root = ($root_dir | path expand)
+    let prefix_length = (($expanded_root | str length) + 1)
+
+    glob ($expanded_root | path join "**" "*")
+    | where {|path| ($path | path expand) != $expanded_root}
+    | each {|path| ($path | path expand | str substring ($prefix_length..))}
+}
+
+def list_copied_asset_paths [root_dir: string] {
+    if not ($root_dir | path exists) {
+        return []
+    }
+
+    mut relative_paths = []
+    let child_dirs = (ls $root_dir | where type == dir | get name)
+
+    for child_dir in $child_dirs {
+        let child_name = ($child_dir | path basename)
+        let child_paths = (
+            list_relative_asset_paths $child_dir
+            | each {|relative_path| $child_name | path join $relative_path}
+        )
+        $relative_paths = ($relative_paths | append $child_name | append $child_paths)
+    }
+
+    $relative_paths
+}
+
+def asset_tree_missing_targets [source_root: string, target_root: string] {
+    if not ($source_root | path exists) {
+        return []
+    }
+
+    if not ($target_root | path exists) {
+        return [$target_root]
+    }
+
+    list_copied_asset_paths $source_root
+    | each {|relative_path| $target_root | path join $relative_path}
+    | where {|target_path| not ($target_path | path exists)}
+}
+
+export def bundled_yazi_assets_missing [source_dir: string, merged_dir: string] {
+    let source_plugins = ($source_dir | path join "plugins")
+    let merged_plugins = ($merged_dir | path join "plugins")
+    let source_flavors = ($source_dir | path join "flavors")
+    let merged_flavors = ($merged_dir | path join "flavors")
+    let source_starship = ($source_dir | path join "yazelix_starship.toml")
+    let merged_starship = ($merged_dir | path join "yazelix_starship.toml")
+
+    let missing_tree_targets = (
+        asset_tree_missing_targets $source_plugins $merged_plugins
+        | append (asset_tree_missing_targets $source_flavors $merged_flavors)
+    )
+
+    let starship_missing = (not ($source_starship | path exists)) or (not ($merged_starship | path exists))
+    ($missing_tree_targets | is-not-empty) or $starship_missing
+}
+
 def sync_starship_yazi_config [source_dir: string, merged_dir: string, --quiet] {
     let source_config = ($source_dir | path join "yazelix_starship.toml")
     let target_config = ($merged_dir | path join "yazelix_starship.toml")

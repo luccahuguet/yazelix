@@ -9,23 +9,27 @@ use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
 export def regenerate_runtime_configs [runtime_dir: string, --quiet] {
     let quiet_mode = $quiet
+    let config_state = compute_config_state
+    let sync_static_yazi_assets = ($config_state.needs_refresh? | default true)
 
     try {
         if $quiet_mode {
-            generate_merged_yazi_config $runtime_dir --quiet | ignore
+            generate_merged_yazi_config $runtime_dir --quiet --sync-static-assets=$sync_static_yazi_assets | ignore
         } else {
             print "🔧 Regenerating managed Yazi configuration..."
-            generate_merged_yazi_config $runtime_dir | ignore
+            generate_merged_yazi_config $runtime_dir --sync-static-assets=$sync_static_yazi_assets | ignore
         }
     } catch {|err|
         error make {msg: $"Failed to regenerate Yazi configuration: ($err.msg)"}
     }
 
     try {
+        let state_dir = (get_yazelix_state_dir)
+        let zellij_config_dir = ($state_dir | path join "configs" "zellij")
         if not $quiet_mode {
             print "🔧 Regenerating managed Zellij configuration..."
         }
-        generate_merged_zellij_config $runtime_dir | ignore
+        generate_merged_zellij_config $runtime_dir $zellij_config_dir | ignore
     } catch {|err|
         error make {msg: $"Failed to regenerate Zellij configuration: ($err.msg)"}
     }
