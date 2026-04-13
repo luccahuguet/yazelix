@@ -248,7 +248,11 @@ def verify_installed_runtime [temp_home: string] {
     print "🔍 Verifying installed runtime layout ..."
 
     let yzx_path = ($temp_home | path join ".local" "bin" "yzx")
-    let wrapper_target = (^readlink -f $yzx_path | str trim)
+    let readlink_result = (^readlink -f $yzx_path | complete)
+    if $readlink_result.exit_code != 0 {
+        error make { msg: $"Failed to resolve installed yzx wrapper target: (($readlink_result.stderr | str trim))" }
+    }
+    let wrapper_target = ($readlink_result.stdout | str trim)
     let runtime_root = ($wrapper_target | path dirname | path dirname)
     let runtime_bin = ($runtime_root | path join "bin")
     let runtime_nu = ($runtime_bin | path join "nu")

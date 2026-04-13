@@ -47,7 +47,7 @@ def ensure_runtime_scripts_executable [yazelix_dir: string] {
     chmod +x $"($runtime_root)/nushell/scripts/core/start_yazelix.nu"
 }
 
-def main [--welcome-source: string, --skip-welcome] {
+def main [--welcome-source: string = "", --skip-welcome] {
     # Read configuration directly from TOML - single source of truth!
     let config = parse_yazelix_config
 

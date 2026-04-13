@@ -91,7 +91,7 @@ export def resolve_external_command_path [command_name: string] {
     if ($matches | is-empty) {
         null
     } else {
-        $matches | get 0.path
+        $matches | get -o 0.path
     }
 }
 

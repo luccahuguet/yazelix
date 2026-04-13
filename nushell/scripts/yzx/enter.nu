@@ -5,7 +5,7 @@ use ../core/start_yazelix.nu [start_yazelix_session]
 
 # Start Yazelix in the current terminal
 export def "yzx enter" [
-    --path(-p): string # Start in specific directory
+    --path(-p): string = "" # Start in specific directory
     --home             # Start in home directory
     --verbose          # Enable verbose logging
 ] {
@@ -16,7 +16,7 @@ export def "yzx enter" [
 
     $env.YAZELIX_ENV_ONLY = "false"
 
-    let requested_path = ($path | default "")
+    let requested_path = $path
     let cwd_override = if $home {
         $env.HOME
     } else if ($requested_path | is-not-empty) {

@@ -29,7 +29,7 @@ def resolve_shell_command [shell_name: string, --login] {
     }
 }
 
-def run_runtime_shell [runtime_env: record, shell_command: list<string>, --cwd: string] {
+def run_runtime_shell [runtime_env: record, shell_command: list<string>, --cwd: string = ""] {
     let has_setpriv = (which setpriv | is-not-empty)
     let trap_supervisor = "trap 'kill 0' HUP TERM; exec \"$@\""
     let exec_cmd = if $has_setpriv {

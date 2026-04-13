@@ -94,8 +94,6 @@ export def build_managed_helix_config [] {
     }
 
     let user_config_path = (get_managed_helix_user_config_path)
-    let output_path = (get_generated_helix_config_path)
-
     let base_config = (open $template_path)
     let merged_config = if ($user_config_path | path exists) {
         let user_config = (open $user_config_path)

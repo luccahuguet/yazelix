@@ -203,7 +203,14 @@ export def ensure_nix_available [
                     
                     # Test if nix is now available
                     if (which nix | is-not-empty) {
-                        let nix_version = try { (^nix --version | lines | first) } catch { "unknown" }
+                        let nix_version = try {
+                            let version_result = (^nix --version | complete)
+                            if $version_result.exit_code == 0 {
+                                $version_result.stdout | lines | first
+                            } else {
+                                "unknown"
+                            }
+                        } catch { "unknown" }
                         print $"($colors.green)✅ Success! Nix is now available: ($nix_version)($colors.reset)"
                         return true
                     } else {

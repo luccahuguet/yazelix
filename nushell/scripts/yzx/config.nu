@@ -5,7 +5,6 @@ use ../utils/config_surfaces.nu [copy_default_config_surfaces get_primary_config
 
 # Show the active Yazelix configuration
 export def "yzx config" [
-    --full   # Show the complete main config record
     --path   # Print the resolved config path
 ] {
     let config_surface = (load_active_config_surface)

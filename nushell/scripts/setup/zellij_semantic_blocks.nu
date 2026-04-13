@@ -20,7 +20,7 @@ export def extract_semantic_config_blocks [config_content: string] {
             let matched_block = (
                 ["load_plugins", "plugins", "keybinds", "ui"]
                 | where {|block_name| $trimmed | str starts-with $block_name }
-                | get 0?
+                | get -o 0
                 | default ""
             )
 

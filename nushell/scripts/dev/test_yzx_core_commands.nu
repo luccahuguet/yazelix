@@ -674,7 +674,7 @@ def test_yzx_run_passes_dash_prefixed_args_through_unchanged [] {
             and ($logged.command == "rg")
             and ($logged.args == ["--files", "--hidden"])
             and ($logged.cwd == (pwd))
-            and ($logged.config_present == true)
+            and $logged.config_present
         ) {
             print "  ✅ yzx run now treats dash-prefixed child args as child argv instead of wrapper flags"
             true
@@ -706,7 +706,7 @@ def test_yzx_run_treats_child_verbose_flag_as_child_argv [] {
             and ($logged.command == "cargo")
             and ($logged.args == ["--verbose", "check"])
             and ($logged.cwd == (pwd))
-            and ($logged.config_present == true)
+            and $logged.config_present
         ) {
             print "  ✅ yzx run no longer steals child --verbose flags for wrapper parsing"
             true

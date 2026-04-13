@@ -389,11 +389,21 @@ def activate_updated_installer_runtime [repo_root: string] {
     print "🔄 Installing updated local Yazelix runtime..."
     print "   Streaming local installer activation logs \(this may take a while when Nix rebuilds\)..."
 
-    let exit_code = (do {
+    let status_result = (^mktemp -t yazelix_installer_activation_status_XXXXXX | complete)
+    if $status_result.exit_code != 0 {
+        error make {msg: $"Failed to allocate installer activation status file: (($status_result.stderr | str trim))"}
+    }
+    let status_path = ($status_result.stdout | str trim)
+    do {
         cd $repo_root
-        ^nix run -L .#install
-        ($env.LAST_EXIT_CODE? | default 0)
-    })
+        ^sh -c 'nix run -L .#install; code=$?; printf "%s" "$code" > "$1"; exit "$code"' sh $status_path
+    }
+    let exit_code = if ($status_path | path exists) {
+        open --raw $status_path | str trim | into int
+    } else {
+        1
+    }
+    rm -f $status_path
 
     if $exit_code != 0 {
         print "❌ nix run .#install failed."

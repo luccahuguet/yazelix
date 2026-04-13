@@ -735,7 +735,7 @@ def test_desktop_fast_path_uses_direct_host_terminal_during_reload_instead_of_st
         if (
             ($output.exit_code == 0)
             and (($first_candidate.terminal? | default "") == "ghostty")
-            and (($first_candidate.use_wrapper? | default false) == false)
+            and (not ($first_candidate.use_wrapper? | default false))
             and (
                 ($chosen_command == "ghostty")
                 or ($chosen_command == ($fake_bin | path join "ghostty"))

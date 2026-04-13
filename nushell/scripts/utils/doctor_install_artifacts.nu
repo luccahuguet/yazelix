@@ -11,16 +11,6 @@ use launcher_resolution.nu [
     resolve_desktop_launcher_path
 ]
 
-def resolve_realpath_or_null [target: string] {
-    let result = (^readlink -f $target | complete)
-    if $result.exit_code == 0 {
-        let resolved = ($result.stdout | str trim)
-        if ($resolved | is-empty) { null } else { $resolved }
-    } else {
-        null
-    }
-}
-
 def detect_install_owner [] {
     if (has_home_manager_managed_install) {
         "home-manager"

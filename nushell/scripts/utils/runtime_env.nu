@@ -108,7 +108,7 @@ export def --env activate_runtime_env [config?: record] {
 
 export def run_runtime_argv [
     argv: list<string>
-    --cwd: string
+    --cwd: string = ""
     --config: record
 ] {
     if ($argv | is-empty) {
@@ -117,7 +117,7 @@ export def run_runtime_argv [
 
     let command = ($argv | first)
     let args = ($argv | skip 1)
-    let requested_cwd = ($cwd | default "")
+    let requested_cwd = $cwd
     let runtime_env = if $config == null {
         get_runtime_env
     } else {

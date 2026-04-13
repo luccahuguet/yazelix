@@ -128,8 +128,11 @@ def launch_terminal_candidates [
         $index = $index + 1
 
         if ($requested_terminal | is-empty) and ($index < ($terminal_candidates | length)) {
-            let next_name = (get_terminal_display_name ($terminal_candidates | get $index))
-            print $"⚠️  ($display_name) failed to start; trying ($next_name)..."
+            let next_candidate = ($terminal_candidates | get -o $index)
+            if $next_candidate != null {
+                let next_name = (get_terminal_display_name $next_candidate)
+                print $"⚠️  ($display_name) failed to start; trying ($next_name)..."
+            }
         }
     }
 
@@ -157,7 +160,7 @@ def launch_terminal_candidates [
 
 def main [
     launch_cwd?: string
-    --terminal(-t): string  # Override terminal selection (for sweep testing)
+    --terminal(-t): string = ""  # Override terminal selection (for sweep testing)
     --verbose               # Enable verbose logging
     --desktop-fast-path     # Launch the terminal immediately and let startup rebuild inside it
 ] {
@@ -169,7 +172,7 @@ def main [
     }
 
     let verbose_mode = $verbose
-    let requested_terminal = ($terminal | default "")
+    let requested_terminal = $terminal
     if $verbose_mode {
         print "🔍 launch_yazelix: verbose mode enabled"
         print $"Resolved HOME=($home)"
@@ -206,7 +209,7 @@ def main [
     }
 
     let terminal_config_mode = $config.terminal_config_mode
-    mut terminals = ($config.terminals? | default [$DEFAULT_TERMINAL] | uniq)
+    let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL] | uniq)
     if ($terminals | is-empty) {
         let available = ($SUPPORTED_TERMINALS | where {|t| which $t | is-not-empty })
         let available_str = if ($available | is-empty) {

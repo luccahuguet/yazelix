@@ -42,7 +42,7 @@ const PALETTE_DESCRIPTION_OVERRIDES = {
 
 def format_palette_item [entry: record] {
     let category = ($entry.category | into string)
-    let color = ($PALETTE_CATEGORY_STYLE | get $category)
+    let color = ($PALETTE_CATEGORY_STYLE | get -o $category | default (ansi reset))
     let tag = $"($color)[($category)](ansi reset)"
     let description = ($entry.description | default "" | str trim)
 

@@ -396,7 +396,6 @@ def test_runtime_resolution_fails_fast_without_valid_runtime_root [] {
 def test_standard_shellhook_setup_skips_legacy_yzx_wrapper [] {
     print "🧪 Testing standard shellhook setup skips the legacy yzx wrapper and refreshes stale hooks with ambient Home Manager profiles..."
 
-    let repo_root = (get_repo_root)
     let tmp_root = (^mktemp -d /tmp/yazelix_standard_shellhook_surfaces_XXXXXX | str trim)
     let tmp_home = ($tmp_root | path join "home")
     let xdg_config_home = ($tmp_home | path join ".config")
@@ -480,7 +479,6 @@ def test_standard_shellhook_setup_skips_legacy_yzx_wrapper [] {
 def test_home_manager_shellhook_setup_skips_host_shell_surfaces [] {
     print "🧪 Testing Home Manager shellhook setup skips host dotfiles and the legacy yzx wrapper..."
 
-    let repo_root = (get_repo_root)
     let tmp_root = (^mktemp -d /tmp/yazelix_hm_shellhook_surfaces_XXXXXX | str trim)
     let tmp_home = ($tmp_root | path join "home")
     let xdg_config_home = ($tmp_home | path join ".config")

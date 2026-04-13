@@ -160,16 +160,18 @@ ghostty_mode_effect = "ripple_rectangle"
         let ghostty_root = ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty")
         let tail_shader = ($ghostty_root | path join "shaders" "generated_effects" "tail.glsl")
         let ripple_shader = ($ghostty_root | path join "shaders" "generated_effects" "ripple_rectangle.glsl")
-        let backup_noise = (
-            ^find $generated_root -name '*.yazelix-backup'
-            | lines
-            | where {|path| $path | str trim | is-not-empty}
-        )
-        let temp_noise = (
-            ^find $generated_root
-            | lines
-            | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
-        )
+        let backup_find = (^find $generated_root -name '*.yazelix-backup' | complete)
+        let temp_find = (^find $generated_root | complete)
+        let backup_noise = if $backup_find.exit_code == 0 {
+            $backup_find.stdout | lines | where {|path| $path | str trim | is-not-empty}
+        } else {
+            []
+        }
+        let temp_noise = if $temp_find.exit_code == 0 {
+            $temp_find.stdout | lines | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
+        } else {
+            []
+        }
 
         if (
             not ($override_root | path exists)
@@ -781,11 +783,12 @@ sidebar_width_percent = 35
                 layout: (open --raw $layout_path)
             }
         })
-        let temp_noise = (
-            ^find $out_dir
-            | lines
-            | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
-        )
+        let temp_find = (^find $out_dir | complete)
+        let temp_noise = if $temp_find.exit_code == 0 {
+            $temp_find.stdout | lines | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
+        } else {
+            []
+        }
 
         if (
             ($second_output.config == $first_output.config)
@@ -1010,16 +1013,18 @@ def test_generate_merged_yazi_config_syncs_starship_plugin_config [] {
         } {
             let merged_dir = (generate_merged_yazi_config $repo_root --quiet)
             generate_merged_yazi_config $repo_root --quiet | ignore
+            let mode_result = (^stat -c '%A' ($merged_dir | path join "yazelix_starship.toml") | complete)
+            let temp_find = (^find $merged_dir | complete)
             {
                 merged_dir: $merged_dir
                 init_lua: (open --raw ($merged_dir | path join "init.lua"))
                 starship_config: (open --raw ($merged_dir | path join "yazelix_starship.toml"))
-                starship_config_mode: (^stat -c '%A' ($merged_dir | path join "yazelix_starship.toml") | str trim)
-                temp_noise: (
-                    ^find $merged_dir
-                    | lines
-                    | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
-                )
+                starship_config_mode: (if $mode_result.exit_code == 0 { $mode_result.stdout | str trim } else { "" })
+                temp_noise: (if $temp_find.exit_code == 0 {
+                    $temp_find.stdout | lines | where {|path| ($path | str trim | is-not-empty) and ($path | str contains ".yazelix-tmp-")}
+                } else {
+                    []
+                })
             }
         })
 

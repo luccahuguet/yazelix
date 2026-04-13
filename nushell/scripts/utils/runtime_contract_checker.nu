@@ -15,9 +15,10 @@ def build_runtime_check [
     recovery?
     failure_class?
     --blocking
-    --path: string
-    --candidates: any
+    --path: string = ""
+    --candidates: any = null
 ] {
+    let checked_path = if ($path | is-empty) { null } else { $path }
     {
         id: $id
         status: $status
@@ -28,8 +29,8 @@ def build_runtime_check [
         recovery: ($recovery | default null)
         failure_class: ($failure_class | default null)
         blocking: $blocking
-        path: ($path | default null)
-        candidates: ($candidates | default null)
+        path: $checked_path
+        candidates: $candidates
     }
 }
 

@@ -29,9 +29,9 @@ def propagate_test_env [runtime_env: record] {
 
 # Launch Yazelix.
 export def "yzx launch" [
-    --path(-p): string # Start in specific directory
+    --path(-p): string = "" # Start in specific directory
     --home             # Start in home directory
-    --terminal(-t): string  # Override terminal selection
+    --terminal(-t): string = ""  # Override terminal selection
     --verbose          # Enable verbose logging
 ] {
     let verbose_mode = $verbose
@@ -40,8 +40,8 @@ export def "yzx launch" [
     }
 
     let config = parse_yazelix_config
-    let requested_path = ($path | default "")
-    let requested_terminal = ($terminal | default "")
+    let requested_path = $path
+    let requested_terminal = $terminal
     let launch_cwd = if $home {
         $env.HOME
     } else if ($requested_path | is-not-empty) {

@@ -18,6 +18,7 @@ let
   ];
   maintainerDeps =
     [ pkgs.github-cli ]
+    ++ [ pkgs.nu-lint ]
     ++ [ bdPackage ]
     ++ [ rustWasiToolchain ];
   allDeps = lib.unique (runtimeDeps ++ maintainerDeps);

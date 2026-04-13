@@ -46,7 +46,7 @@ def run_completed_external [
     let result = if ($timeout_result | is-empty) {
         ^$cmd_bin ...$cmd_args | complete
     } else {
-        let timeout_bin = ($timeout_result | get 0.path)
+        let timeout_bin = ($timeout_result | get -o 0.path)
         ^$timeout_bin -k "15" ($timeout_seconds | into string) $cmd_bin ...$cmd_args | complete
     }
 

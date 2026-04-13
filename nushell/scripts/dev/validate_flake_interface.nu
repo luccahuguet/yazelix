@@ -38,7 +38,7 @@ export def main [] {
     }
 
     let ok = ($result.stdout | from json)
-    if $ok != true {
+    if not $ok {
         error make { msg: "Top-level flake interface is missing required package/app/Home Manager outputs or still points packages.default at the lower-level runtime." }
     }
 }

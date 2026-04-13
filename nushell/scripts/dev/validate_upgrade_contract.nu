@@ -342,11 +342,11 @@ def validate_ci_rules [entries: record, diff_base: string] {
 
 export def main [
     --ci
-    --diff-base: string
+    --diff-base: string = ""
 ] {
     let changelog_path = ($REPO_ROOT | path join "CHANGELOG.md")
     let notes_path = ($REPO_ROOT | path join "docs" "upgrade_notes.toml")
-    let requested_diff_base = ($diff_base | default "")
+    let requested_diff_base = $diff_base
     let changelog = (load_changelog)
     let entries = (get_release_entries)
     mut errors = []

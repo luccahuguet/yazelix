@@ -162,7 +162,7 @@ def preserve_plugin_permissions [
     write_text_atomic $permissions_cache_path $updated_content --raw | ignore
     {
         status: "updated"
-        source_path: (($matching_blocks | get 0.path))
+        source_path: (($matching_blocks | get -o 0.path))
     }
 }
 
