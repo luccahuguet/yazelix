@@ -44,6 +44,12 @@ When creating new files or directories, always use underscores to maintain consi
 - All paths reference `~/.config/yazelix/` as the base directory
 - Scripts are organized in `nushell/scripts/` with subdirectories using underscores
 
+## README Style
+
+- Treat `README.md` as a distinct prose surface with its own style expectations
+- Do not end README prose lines or bullet items with periods unless the punctuation is semantically required, such as code, URLs, abbreviations, or quoted literal text
+- When updating generated or manual README surface text, rewrite the sentence instead of leaving trailing periods behind
+
 ## Upstream Reference Clones
 
 - For upstream dependency code inspection, prefer the local reference clones under `/home/lucca/pjs/open_source/yazelix_related/` before browsing the network.
