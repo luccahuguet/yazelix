@@ -8,8 +8,8 @@ use install_ownership.nu [
 use launcher_resolution.nu [
     get_existing_home_manager_yzx_profile_path
     get_home_manager_yzx_profile_paths
+    resolve_desktop_launcher_path
 ]
-use shell_config_generation.nu get_yzx_cli_path
 
 def resolve_realpath_or_null [target: string] {
     let result = (^readlink -f $target | complete)
@@ -78,7 +78,7 @@ def get_expected_desktop_entry_execs [install_owner: string] {
         if $runtime_dir == null {
             []
         } else {
-            [ (get_yzx_cli_path $runtime_dir) ]
+            [ (resolve_desktop_launcher_path $runtime_dir) ]
         }
     }
 

@@ -172,6 +172,58 @@ def test_yzx_doctor_reports_stale_desktop_entry_exec [] {
     $result
 }
 
+# Defends: doctor uses the same manual stable-wrapper launcher policy as yzx desktop install.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_accepts_manual_stable_wrapper_desktop_entry [] {
+    print "🧪 Testing yzx doctor accepts manual desktop entries that target the stable wrapper..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_manual_stable_wrapper_desktop_entry"
+        ""
+    )
+
+    let result = (try {
+        let wrapper_path = ($fixture.tmp_home | path join ".local" "bin" "yzx")
+        let applications_dir = ($fixture.tmp_home | path join ".local" "share" "applications")
+        let desktop_path = ($applications_dir | path join "com.yazelix.Yazelix.desktop")
+
+        mkdir ($wrapper_path | path dirname)
+        mkdir $applications_dir
+        [
+            "#!/bin/sh"
+            "exit 0"
+        ] | str join "\n" | save --force --raw $wrapper_path
+        ^chmod +x $wrapper_path
+        [
+            "[Desktop Entry]"
+            "Type=Application"
+            "Name=Yazelix"
+            $"Exec=\"($wrapper_path)\" desktop launch"
+        ] | str join "\n" | save --force --raw $desktop_path
+
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Yazelix desktop entry uses the expected launcher path")
+            and not ($stdout | str contains "Yazelix desktop entry does not use the expected launcher path")
+        ) {
+            print "  ✅ yzx doctor accepts manual desktop entries anchored to the stable wrapper"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 # Regression: Home Manager installs use the profile yzx command, profile desktop entries, and optional host shell hooks.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_doctor_accepts_home_manager_install_artifacts [] {
@@ -410,6 +462,7 @@ export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
         (test_yzx_doctor_reports_stale_desktop_entry_exec)
+        (test_yzx_doctor_accepts_manual_stable_wrapper_desktop_entry)
         (test_yzx_doctor_accepts_home_manager_install_artifacts)
         (test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager)
         (test_yzx_doctor_reports_missing_runtime_launch_assets)
