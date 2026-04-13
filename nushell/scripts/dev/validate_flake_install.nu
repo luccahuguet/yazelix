@@ -43,6 +43,56 @@ def require_file_not_contains [path: string, needle: string, label: string] {
     }
 }
 
+def require_non_empty_dir [path: string, label: string] {
+    require_path_exists $path $label
+    let entries = (ls $path | where type == file)
+    if (($entries | length) < 1) {
+        error make { msg: $"($label) is empty: ($path)" }
+    }
+}
+
+def resolve_ghostty_shader_reference [ghostty_config_path: string, shader_ref: string] {
+    let raw_ref = ($shader_ref | str trim | str replace -r '^"(.*)"$' '$1')
+    if ($raw_ref | str starts-with "/") {
+        return $raw_ref
+    }
+
+    let relative_ref = if ($raw_ref | str starts-with "./") {
+        $raw_ref | str replace -r '^\./' ''
+    } else {
+        $raw_ref
+    }
+
+    ($ghostty_config_path | path dirname | path join $relative_ref)
+}
+
+def require_ghostty_shader_references_exist [ghostty_config_path: string] {
+    require_path_exists $ghostty_config_path "generated Ghostty config"
+
+    let shader_refs = (
+        open --raw $ghostty_config_path
+        | lines
+        | each {|line| $line | str trim}
+        | where {|line| $line | str starts-with "custom-shader = "}
+        | each {|line|
+            $line
+            | split row "="
+            | skip 1
+            | str join "="
+            | str trim
+        }
+    )
+
+    if ($shader_refs | is-empty) {
+        error make { msg: $"Generated Ghostty config references no shader assets: ($ghostty_config_path)" }
+    }
+
+    for shader_ref in $shader_refs {
+        let shader_path = (resolve_ghostty_shader_reference $ghostty_config_path $shader_ref)
+        require_path_exists $shader_path $"generated Ghostty shader `($shader_ref)`"
+    }
+}
+
 def run_completed_external [
     label: string
     cmd_bin: string
@@ -218,12 +268,23 @@ def verify_installed_runtime [temp_home: string] {
     let hostile_bin = ($temp_home | path join ".hostile_bin")
     let yazi_theme = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "theme.toml")
     let yazi_flavor_root = ($temp_home | path join ".local" "share" "yazelix" "configs" "yazi" "flavors")
+    let runtime_ghostty_shader_root = ($runtime_root | path join "configs" "terminal_emulators" "ghostty" "shaders")
+    let runtime_ghostty_shader_builder = ($runtime_ghostty_shader_root | path join "build_shaders.nu")
+    let runtime_ghostty_trail_variant = ($runtime_ghostty_shader_root | path join "variants" "reef.glsl")
+    let runtime_ghostty_effect_template = ($runtime_ghostty_shader_root | path join "upstream_effects" "ripple_rectangle_cursor.glsl")
+    let generated_ghostty_root = ($temp_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty")
+    let generated_ghostty_config = ($generated_ghostty_root | path join "config")
+    let generated_ghostty_effect_dir = ($generated_ghostty_root | path join "shaders" "generated_effects")
+    let runtime_terminal_configs_script = ($runtime_root | path join "nushell" "scripts" "utils" "terminal_configs.nu")
 
     require_path_missing $legacy_runtime_link "legacy installed runtime symlink"
     require_path_exists $runtime_nu "runtime-local Nushell binary"
     require_path_exists $runtime_yzx_cli "runtime-local POSIX yzx launcher"
     require_path_exists $runtime_taplo_config "runtime-local Taplo formatter config"
     require_path_exists $runtime_yazelix_default "runtime-local default config"
+    require_path_exists $runtime_ghostty_shader_builder "runtime-local Ghostty shader builder"
+    require_path_exists $runtime_ghostty_trail_variant "runtime-local Ghostty trail shader variant"
+    require_path_exists $runtime_ghostty_effect_template "runtime-local Ghostty cursor effect template"
     require_path_exists $yzx_path "installed yzx wrapper"
     require_path_exists $nushell_config "generated Nushell hook config"
     require_path_exists $user_config "seeded user config"
@@ -333,6 +394,28 @@ def verify_installed_runtime [temp_home: string] {
             msg: $"Installed runtime probe saw the wrong Yazelix env: ($probe | to json -r)"
         }
     }
+
+    let ghostty_config_probe = (
+        run_installed_yzx
+            $temp_home
+            "run"
+            "nu"
+            "-c"
+            $"use \"($runtime_terminal_configs_script)\" [generate_all_terminal_configs]; generate_all_terminal_configs \"($runtime_root)\""
+    )
+
+    if $ghostty_config_probe.exit_code != 0 {
+        if ($ghostty_config_probe.stdout | is-not-empty) {
+            print $ghostty_config_probe.stdout
+        }
+        if ($ghostty_config_probe.stderr | is-not-empty) {
+            print $ghostty_config_probe.stderr
+        }
+        error make { msg: "Installed runtime failed to materialize Ghostty shader-backed terminal config during flake install smoke validation" }
+    }
+
+    require_ghostty_shader_references_exist $generated_ghostty_config
+    require_non_empty_dir $generated_ghostty_effect_dir "generated Ghostty cursor effect shaders directory"
 }
 
 def run_install_phase [temp_home: string] {
