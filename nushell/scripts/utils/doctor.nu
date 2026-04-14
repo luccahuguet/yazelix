@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Yazelix Doctor - Health check utilities
 
-use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir require_yazelix_runtime_dir]
+use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_state_dir require_yazelix_runtime_dir]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface reconcile_primary_config_surfaces]
 use config_diagnostics.nu [build_config_diagnostic_report render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
@@ -17,6 +17,7 @@ use doctor_install_artifacts.nu [
 ]
 use runtime_distribution_capabilities.nu get_runtime_distribution_capability_profile
 use constants.nu DEFAULT_TERMINAL
+use generated_runtime_state.nu repair_generated_runtime_state
 use runtime_contract_checker.nu [
     check_generated_layout
     check_launch_terminal_support
@@ -37,6 +38,21 @@ def build_runtime_distribution_doctor_result [profile: record] {
         capability_tier: $profile.tier
         capability_mode: $profile.mode
     }
+}
+
+def is_managed_generated_layout_path [layout_path?: string] {
+    if $layout_path == null {
+        return false
+    }
+
+    let resolved_layout_path = ($layout_path | path expand)
+    let managed_layout_dir = (
+        get_yazelix_state_dir
+        | path join "configs" "zellij" "layouts"
+        | path expand
+    )
+
+    $resolved_layout_path | str starts-with $"($managed_layout_dir)/"
 }
 
 # Check configuration files
@@ -161,7 +177,21 @@ def check_shared_runtime_preflight [] {
         $checks = ($checks | prepend (check_launch_working_dir $current_dir))
     }
 
-    $checks | each {|check| runtime_check_to_doctor_result $check }
+    $checks | each {|check|
+        let doctor_result = (runtime_check_to_doctor_result $check)
+        if (
+            ($check.id == "generated_layout")
+            and ($check.status != "ok")
+            and (($check.failure_class? | default "") == "generated-state")
+            and (is_managed_generated_layout_path ($check.path? | default null))
+        ) {
+            $doctor_result
+            | upsert fix_available true
+            | upsert fix_action "repair_generated_runtime_state"
+        } else {
+            $doctor_result
+        }
+    }
 }
 
 def check_zellij_plugin_health [] {
@@ -386,6 +416,15 @@ export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
         let config_issues = ($all_results | where status == "info" and message =~ "default")
         if not ($config_issues | is-empty) {
             fix_create_config
+        }
+
+        let generated_state_issues = ($all_results | where {|result| ($result.fix_action? | default "") == "repair_generated_runtime_state" })
+        if not ($generated_state_issues | is-empty) {
+            try {
+                repair_generated_runtime_state --verbose=$verbose | ignore
+            } catch {|err|
+                print $"❌ Failed to repair generated runtime state: ($err.msg)"
+            }
         }
 
         let plugin_permission_issues = ($all_results | where {|result| ($result.fix_action? | default "") == "seed_zellij_plugin_permissions" })

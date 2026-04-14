@@ -143,6 +143,7 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
     mkdir ($tmp_home | path join ".config")
     mkdir $config_dir
     mkdir $user_config_dir
+    mkdir ($tmp_home | path join ".config" "nushell")
     mkdir ($tmp_home | path join ".local" "share")
     mkdir $state_dir
     mkdir $fake_bin
@@ -150,6 +151,9 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
     for entry in [".taplo.toml", "nushell", "shells", "configs", "config_metadata", "yazelix_default.toml", "docs", "CHANGELOG.md", "assets"] {
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
+
+    "" | save --force --raw ($tmp_home | path join ".bashrc")
+    "" | save --force --raw ($tmp_home | path join ".config" "nushell" "config.nu")
 
     [
         "[core]"
@@ -204,7 +208,9 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
         state_dir: $state_dir
         fake_bin: $fake_bin
         zellij_log: $zellij_log
+        start_script: ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix.nu")
         start_inner: ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix_inner.nu")
+        yzx_script: ($runtime_dir | path join "nushell" "scripts" "core" "yazelix.nu")
         layout_path: ($state_dir | path join "configs" "zellij" "layouts" "yzx_side.kdl")
         env: {
             HOME: $tmp_home
@@ -1184,10 +1190,48 @@ def test_launch_falls_through_after_immediate_terminal_failure [] {
     $result
 }
 
-# Defends: startup preflight requires the generated layout path before deeper launch work.
+# Regression: missing managed generated layouts can be materialized before startup hands off to Zellij.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_startup_materializes_missing_managed_layout_before_handoff [] {
+    print "🧪 Testing startup materializes a missing managed Zellij layout before handoff..."
+
+    let fixture = (setup_launch_path_fixture "yazelix_startup_missing_managed_layout" false false)
+
+    let result = (try {
+        let target_dir = ($fixture.tmp_home | path join "workspace")
+        mkdir $target_dir
+
+        let output = (with-env ($fixture.env | merge {
+            YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ: "true"
+        }) {
+            ^nu $fixture.start_script $target_dir | complete
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($fixture.layout_path | path exists)
+            and (not ($stdout | str contains "Missing Yazelix generated Zellij layout"))
+        ) {
+            print "  ✅ Startup repairs the managed generated layout before attempting Zellij handoff"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) layout_exists=(($fixture.layout_path | path exists)) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: low-level generated-layout preflight still reports a missing managed layout clearly.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_startup_requires_generated_layout_path [] {
-    print "🧪 Testing startup preflight requires an existing Zellij layout..."
+def test_require_generated_layout_reports_missing_managed_layout [] {
+    print "🧪 Testing low-level generated-layout preflight reports missing managed layouts clearly..."
 
     try {
         let start_script = (repo_path "nushell" "scripts" "core" "start_yazelix.nu")
@@ -1203,7 +1247,7 @@ def test_startup_requires_generated_layout_path [] {
         let stdout = ($output.stdout | str trim)
 
         if ($output.exit_code == 0) and ($stdout | str contains "Missing Yazelix generated Zellij layout") and ($stdout | str contains "yzx doctor") and ($stdout | str contains "Failure class: generated-state problem.") {
-            print "  ✅ Startup preflight fails clearly when the generated layout is missing"
+            print "  ✅ Low-level generated-layout preflight still fails clearly when the managed layout is missing"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
@@ -1213,6 +1257,43 @@ def test_startup_requires_generated_layout_path [] {
         print $"  ❌ Exception: ($err.msg)"
         false
     }
+}
+
+# Regression: doctor --fix repairs missing managed generated layouts instead of only reporting them.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_doctor_fix_repairs_missing_managed_generated_layout [] {
+    print "🧪 Testing yzx doctor --fix repairs a missing managed Zellij layout..."
+
+    let fixture = (setup_launch_path_fixture "yazelix_doctor_fix_missing_managed_layout" false false)
+
+    let result = (try {
+        let output = (with-env $fixture.env {
+            ^bash -lc $"($CLEAN_ZELLIJ_ENV_PREFIX) nu -c 'cd \"($fixture.tmp_home)\"; use \"($fixture.yzx_script)\" *; yzx doctor --fix --verbose'" | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let repaired_message = (
+            ($stdout | str contains "Generated runtime state repaired")
+            or ($stdout | str contains "Repaired the missing generated runtime artifacts")
+        )
+
+        if (
+            ($output.exit_code == 0)
+            and ($fixture.layout_path | path exists)
+            and $repaired_message
+        ) {
+            print "  ✅ yzx doctor --fix repairs the managed generated layout and reports the repair"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) layout_exists=(($fixture.layout_path | path exists)) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
 }
 
 # Defends: new-window launch preflight requires the runtime launch script before deeper execution.
@@ -1346,12 +1427,14 @@ export def run_workspace_canonical_tests [] {
         (test_yzx_cli_enter_uses_lightweight_enter_module)
         (test_startup_bootstrap_runtime_env_exports_state_and_logs_dirs)
         (test_startup_rejects_missing_working_dir)
+        (test_startup_materializes_missing_managed_layout_before_handoff)
         (test_launch_rejects_file_working_dir)
         (test_launch_here_path_uses_requested_directory_for_nonpersistent_sessions)
         (test_yzx_launch_rejects_removed_here_flag)
         (test_launch_here_path_warns_when_existing_persistent_session_ignores_it)
         (test_launch_falls_through_after_immediate_terminal_failure)
-        (test_startup_requires_generated_layout_path)
+        (test_require_generated_layout_reports_missing_managed_layout)
+        (test_doctor_fix_repairs_missing_managed_generated_layout)
         (test_launch_requires_runtime_launch_script)
         (test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status)
         (test_yzx_cwd_requires_zellij)
