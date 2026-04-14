@@ -82,7 +82,7 @@ nix run github:luccahuguet/yazelix#yazelix -- env --no-shell
 Users should normally install the package, not materialize a Yazelix-owned runtime pointer:
 
 ```bash
-nix profile install github:luccahuguet/yazelix#yazelix
+nix profile add github:luccahuguet/yazelix#yazelix
 ```
 
 Equivalent supported package-manager flows can also provide the runtime:
@@ -157,7 +157,7 @@ nix run .#yazelix -- launch
 For longer dogfooding or PATH-based validation, maintainers may also install the local package output:
 
 ```bash
-nix profile install .#yazelix
+nix profile add .#yazelix
 ```
 
 The important shift is:

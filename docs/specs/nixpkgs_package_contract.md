@@ -33,7 +33,7 @@ First submission target:
 
 The package should be consumable through normal nixpkgs surfaces such as:
 
-- `nix profile install nixpkgs#yazelix`
+- `nix profile add nixpkgs#yazelix`
 - `environment.systemPackages = [ pkgs.yazelix ];`
 - Home Manager package installation
 

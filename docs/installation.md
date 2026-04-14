@@ -52,7 +52,7 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 If you already have Nix with flakes enabled, the canonical install flow is:
 
 ```bash
-nix profile install github:luccahuguet/yazelix#yazelix
+nix profile add github:luccahuguet/yazelix#yazelix
 yzx launch
 ```
 
@@ -62,7 +62,7 @@ One-off use without installing also works:
 nix run github:luccahuguet/yazelix#yazelix -- launch
 ```
 
-Declarative users can install through the top-level Home Manager module instead of `nix profile install`.
+Declarative users can install through the top-level Home Manager module instead of `nix profile add`.
 
 ## Step-by-Step Installation
 
@@ -103,7 +103,7 @@ Set `eval-cores` to 0 to use all cores, or 1 to disable.
 Install the Yazelix package exposed by the top-level flake:
 
 ```bash
-nix profile install github:luccahuguet/yazelix#yazelix
+nix profile add github:luccahuguet/yazelix#yazelix
 ```
 
 After it finishes:

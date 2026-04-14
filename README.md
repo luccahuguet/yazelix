@@ -108,7 +108,7 @@ For the current trimmed branch contract, see [docs/specs/v15_trimmed_runtime_con
 ## Installation
 
 ```bash
-nix profile install github:luccahuguet/yazelix#yazelix
+nix profile add github:luccahuguet/yazelix#yazelix
 yzx launch
 ```
 

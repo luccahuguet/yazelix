@@ -677,7 +677,7 @@ def test_yzx_update_upstream_fails_without_matching_profile_entry [] {
             ($output.exit_code != 0)
             and ($stdout | str contains "could not find the active Yazelix runtime in the default Nix profile")
             and ($stdout | str contains "profile-installed Yazelix packages")
-            and ($stdout | str contains "nix profile install github:luccahuguet/yazelix#yazelix")
+            and ($stdout | str contains "nix profile add github:luccahuguet/yazelix#yazelix")
             and ($log_text | str contains "nix:profile list --json")
             and not ($log_text | str contains "nix:profile upgrade")
         ) {

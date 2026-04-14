@@ -25,7 +25,7 @@ The canonical package output.
 
 ```bash
 nix run github:luccahuguet/yazelix#yazelix -- launch
-nix profile install github:luccahuguet/yazelix#yazelix
+nix profile add github:luccahuguet/yazelix#yazelix
 ```
 
 It should provide the wrapped `yzx` command and the runtime-local tools it needs.

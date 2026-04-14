@@ -111,7 +111,7 @@ def resolve_active_yazelix_profile_entry [] {
     print "❌ `yzx update upstream` could not find the active Yazelix runtime in the default Nix profile."
     print $"   Current runtime: ($runtime_root)"
     print "   This command now updates profile-installed Yazelix packages after the legacy flake installer was removed."
-    print "   Recovery: Reinstall with `nix profile install github:luccahuguet/yazelix#yazelix`, or use `yzx update home_manager` if Home Manager owns this install."
+    print "   Recovery: Reinstall with `nix profile add github:luccahuguet/yazelix#yazelix`, or use `yzx update home_manager` if Home Manager owns this install."
     exit 1
 }
 
