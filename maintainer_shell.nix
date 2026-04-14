@@ -16,11 +16,13 @@ let
     fenixPkgs.stable.clippy
     fenixPkgs.targets.wasm32-wasip1.stable.rust-std
   ];
+  openssl = pkgs.openssl;
   maintainerDeps =
     [ pkgs.github-cli ]
     ++ [ pkgs.nu-lint ]
     ++ [ bdPackage ]
-    ++ [ rustWasiToolchain ];
+    ++ [ rustWasiToolchain ]
+    ++ [ openssl ];
   allDeps = lib.unique (runtimeDeps ++ maintainerDeps);
 
   yazelixNixConfig = ''
@@ -66,6 +68,10 @@ pkgs.mkShell {
       echo "   Flake-owned runtime + maintainer toolchain."
       echo "   EDITOR: $EDITOR"
     fi
+
+    export OPENSSL_DIR="${pkgs.openssl.out}"
+    export OPENSSL_LIB_DIR="${pkgs.openssl.out}/lib"
+    export OPENSSL_INCLUDE_DIR="${pkgs.openssl.dev}/include"
 
     ${pkgs.nushell}/bin/nu "${repoRoot}/nushell/scripts/setup/environment.nu" --skip-welcome
   '';
