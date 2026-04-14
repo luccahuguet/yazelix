@@ -84,13 +84,29 @@ impl State {
     }
 
     pub(crate) fn get_active_sidebar_yazi_state(&self, pipe_message: &PipeMessage) {
-        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
+        if !self.permissions_granted {
+            self.respond(pipe_message, RESULT_DENIED);
             return;
+        }
+
+        // Try active_tab_position first, then fall back to finding sidebar's tab
+        let tab_position = if let Some(pos) = self.active_tab_position {
+            pos
+        } else {
+            // Find the tab that has a sidebar pane when active_tab_position is None
+            // (can happen after plugin reload due to PaneUpdate)
+            match self.find_tab_with_sidebar() {
+                Some(pos) => pos,
+                None => {
+                    self.respond(pipe_message, RESULT_MISSING);
+                    return;
+                }
+            }
         };
 
         let Some(expected_pane_id) = self
             .managed_panes_by_tab
-            .get(&active_tab_position)
+            .get(&tab_position)
             .and_then(|managed_tab_panes| {
                 pane_id_to_string(managed_tab_panes.sidebar.map(|pane| pane.pane_id))
             })
@@ -99,7 +115,7 @@ impl State {
             return;
         };
 
-        let Some(sidebar_state) = self.sidebar_yazi_state_by_tab.get(&active_tab_position) else {
+        let Some(sidebar_state) = self.sidebar_yazi_state_by_tab.get(&tab_position) else {
             self.respond(pipe_message, RESULT_MISSING);
             return;
         };
@@ -113,6 +129,13 @@ impl State {
             Ok(serialized_state) => self.respond(pipe_message, &serialized_state),
             Err(_) => self.respond(pipe_message, RESULT_INVALID_PAYLOAD),
         }
+    }
+
+    fn find_tab_with_sidebar(&self) -> Option<usize> {
+        self.managed_panes_by_tab
+            .iter()
+            .find(|(_, managed_tab_panes)| managed_tab_panes.sidebar.is_some())
+            .map(|(&tab_position, _)| tab_position)
     }
 
     pub(crate) fn get_active_sidebar_yazi_state_snapshot(
