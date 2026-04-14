@@ -323,14 +323,14 @@ impl State {
         // Open a small, auto-closing refresh pane (50x20%, minimal visual impact)
         let _ = open_command_pane_floating(
             command_to_run,
-            Some(FloatingPaneCoordinates::new(
-                Some("25%"),
-                Some("25%"),
-                Some("50%"),
-                Some("20%"),
+            FloatingPaneCoordinates::new(
+                Some("25%".to_string()),
+                Some("25%".to_string()),
+                Some("50%".to_string()),
+                Some("20%".to_string()),
                 None,
                 None,
-            )),
+            ),
             BTreeMap::new(),
         );
         // Note: The refresh pane auto-exits immediately after refreshing sidebar
