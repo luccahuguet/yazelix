@@ -21,11 +21,11 @@ Yazelix now uses the managed `yazelix.toml` config surface, with the normal flak
 - A narrower workspace product instead of a package-and-environment manager glued onto one
 - One supported line again: `v15` is live, `v14` is historical and unsupported
 - First-party Ghostty on Linux and macOS, with WezTerm, Kitty, Alacritty, and Foot still supported when you provide them on `PATH`
-- Fast helperless popup and popup-menu panes with explicit managed identity
+- Fast popup and popup-menu panes with explicit managed identity
 - Three built-in sidebar-aware workspace shapes, managed sidebar/editor routing, and a fixed packaged runtime toolset
 - No runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`
 
-v15.0 is the trimmed non-Rust reboot: 15.5% fewer code lines than the historical peak, a much clearer product boundary, a slimmer runtime and command surface, notably faster helperless popup/menu panes, and room for selective Rust in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target
+v15.0 is the trimmed non-Rust reboot: 15.5% fewer code lines than the historical peak, a much clearer product boundary, a slimmer runtime and command surface, notably faster popup/menu panes, and room for selective Rust in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target
 
 ## Daily Workflow
 
@@ -44,7 +44,7 @@ v15.0 is the trimmed non-Rust reboot: 15.5% fewer code lines than the historical
 - Switch between the built-in sidebar-aware workspace shapes and other workspace layouts; see [Layouts](./docs/layouts.md)
 - When you open something from the sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics
 - `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed sidebar
-- `Alt+t` toggles the managed popup pane and `Alt+Shift+M` toggles the popup command menu, both on the same fast helperless floating-pane path
+- `Alt+t` toggles the managed popup pane and `Alt+Shift+M` toggles the popup command menu, both on the same fast floating-pane path
 
 ## Why Yazelix
 Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix, delivering a consistent, fast "superterminal" locally or over SSH with zero manual setup through smart pane/layout orchestration, sidebar reveal/open flows, a curated built-in toolset, sane defaults, Helix/Zellij conflict cleanup, auto-configured tools like starship, zoxide, and carapace, and useful bundled tools such as `lazygit`
@@ -67,13 +67,13 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 <!-- BEGIN GENERATED README LATEST SERIES -->
 ## Latest Tagged Release: v15
 
-The trimmed workspace release: one supported line, first-party Ghostty, and fast helperless popup/menu panes
+The trimmed workspace release: one supported line, first-party Ghostty, and fast popup/menu panes
 
 - v15 is the only supported Yazelix line now. v14 remains available only as the final historical Classic snapshot for users who specifically need the old broader product shape
 - Yazelix is now the narrower workspace product: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`
 - Ghostty is the first-party bundled terminal on Linux and macOS. WezTerm, Kitty, Alacritty, and Foot remain supported when you provide them on the host `PATH`
 - The front door is clearer: `yzx launch` opens a managed terminal window, `yzx enter` starts Yazelix in the current terminal, and `yzx env` remains the non-UI environment surface
-- The fast transient workspace tools now share the helperless floating-pane path: `yzx popup` toggles the configured popup program and `yzx menu --popup` toggles the command palette with the same identity and geometry seam
+- The fast transient workspace tools now share the floating-pane path: `yzx popup` toggles the configured popup program and `yzx menu --popup` toggles the command palette with the same identity and geometry seam
 - The core workspace surface remains layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
 - v15 is the trimmed non-Rust reboot. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target
 

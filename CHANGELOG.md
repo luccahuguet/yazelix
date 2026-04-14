@@ -22,7 +22,7 @@ Highlights:
 - Dropped the out-of-scope Classic runtime-manager surface: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`.
 - Ghostty is now the first-party bundled terminal on Linux and macOS, while WezTerm, Kitty, Alacritty, and Foot remain supported when you provide them on the host `PATH`.
 - Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface.
-- `yzx popup` and `yzx menu --popup` now share the fast helperless floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour.
+- `yzx popup` and `yzx menu --popup` now share the fast floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour.
 - Kept the workspace core around layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`.
 - Continued the delete-first trim by replacing string-built runtime wrapper commands with direct runtime scripts, making maintainer pins explicit again, and keeping the runtime lock on the declared unstable input.
 
