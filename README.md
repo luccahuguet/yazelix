@@ -32,7 +32,7 @@ v15.0 is the trimmed non-Rust reboot: 15.5% fewer code lines than the historical
 - `yzx launch`: Open Yazelix in a managed terminal window
 - `yzx enter`: Start Yazelix in the current terminal
 - `yzx env`: Enter the Yazelix tool environment without the UI
-- `yzx popup`: CLI entrypoint for the managed popup pane, usually `lazygit`; most users trigger the same toggle with `Alt+t`
+- `yzx popup`: CLI entrypoint for the managed popup pane, usually `lazygit`; most users trigger the same toggle with `Alt+t`, and closing it reruns the Yazi sidebar refresh path so git state stays current
 - `yzx menu --popup`: CLI entrypoint for the popup command palette; most users trigger the same toggle with `Alt+Shift+M`
 - `yzx update upstream`: Upgrade the Yazelix package that owns the current runtime in the default Nix profile
 - `yzx update home_manager`: Refresh the owning Home Manager flake input, then print the `home-manager switch` step
@@ -44,7 +44,7 @@ v15.0 is the trimmed non-Rust reboot: 15.5% fewer code lines than the historical
 - Switch between the built-in sidebar-aware workspace shapes and other workspace layouts; see [Layouts](./docs/layouts.md)
 - When you open something from the sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics
 - `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed sidebar
-- `Alt+t` toggles the managed popup pane and `Alt+Shift+M` toggles the popup command menu, both on the same fast floating-pane path
+- `Alt+t` toggles the managed popup pane and refreshes the Yazi sidebar git view when that popup closes, while `Alt+Shift+M` toggles the popup command menu on the same fast floating-pane path
 
 ## Why Yazelix
 Yazelix is a reproducible terminal IDE that integrates Yazi + Zellij + Helix, delivering a consistent, fast "superterminal" locally or over SSH with zero manual setup through smart pane/layout orchestration, sidebar reveal/open flows, a curated built-in toolset, sane defaults, Helix/Zellij conflict cleanup, auto-configured tools like starship, zoxide, and carapace, and useful bundled tools such as `lazygit`
@@ -302,6 +302,7 @@ Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Ca
 - `yzx update` - Show the supported update-owner paths
 - `yzx update upstream` - Upgrade the active default-profile Yazelix package
 - `yzx update home_manager` - Refresh the current Home Manager flake input, then print `home-manager switch`
+- `yzx popup` - Toggle the managed popup program, usually `lazygit`, and refresh the Yazi sidebar git state when it closes
 - `yzx config [--path]` - Show the active config or print its resolved path
 - `yzx edit config` - Open the main managed Yazelix config file in your editor
 - `yzx restart` - Restart Yazelix in a fresh window
@@ -349,7 +350,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | `Alt+r` | Smart reveal/focus key; forwards into the editor when appropriate |
 | `Alt+[` / `Alt+]` | Switch between layouts |
 | `Alt+m` | Open a new terminal in the current tab workspace root |
-| `Alt+t` | Toggle the configured managed popup program, usually `lazygit` |
+| `Alt+t` | Toggle the configured managed popup program, usually `lazygit`, and refresh the Yazi sidebar git state when it closes |
 | `Alt+Shift+M` | Open the `yzx` command palette popup |
 | `Alt+1..9` | Jump directly to tabs 1 through 9 |
 | `Alt+w` / `Alt+q` | Move to the next or previous tab |

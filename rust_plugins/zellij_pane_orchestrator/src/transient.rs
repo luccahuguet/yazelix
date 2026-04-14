@@ -220,13 +220,10 @@ impl State {
                 self.respond(pipe_message, RESULT_FOCUSED);
             }
             TransientTogglePlan::Close(pane_id) => {
-                // For popup panes (lazygit), refresh Yazi sidebar before closing
-                // to ensure git status is up-to-date when returning to the file manager
-                if self.should_refresh_before_close(pane_id) {
+                if kind == TransientPaneKind::Popup {
                     self.refresh_sidebar_yazi_for_transient_close();
                 }
                 close_pane_with_id(pane_id);
-                self.transient_pane_kinds.remove(&pane_id);
                 self.respond(pipe_message, RESULT_CLOSED);
             }
         }
@@ -280,26 +277,15 @@ impl State {
             BTreeMap::new(),
         );
 
-        if let Some(id) = pane_id {
-            // Track which program type is running in this pane for conditional cleanup
-            self.transient_pane_kinds.insert(id, request.kind);
+        if pane_id.is_some() {
             self.respond(pipe_message, RESULT_OPENED);
         } else {
             self.respond(pipe_message, RESULT_MISSING);
         }
     }
 
-    // Check if a transient pane should trigger sidebar refresh before closing.
-    // Only Popup panes (lazygit) need refresh; Menu panes do not.
-    fn should_refresh_before_close(&self, pane_id: PaneId) -> bool {
-        matches!(
-            self.transient_pane_kinds.get(&pane_id),
-            Some(TransientPaneKind::Popup)
-        )
-    }
-
-    // Trigger a lightweight sidebar refresh via a transient refresh-only pane.
-    // This runs before the popup pane closes to ensure Yazi shows updated git status.
+    // Trigger the same sidebar refresh contract the popup wrapper uses, but in
+    // the background so toggle-close does not depend on a visible helper pane.
     fn refresh_sidebar_yazi_for_transient_close(&self) {
         let Some(launcher_path) = self.transient_pane_config.launcher_path() else {
             return;
@@ -308,31 +294,15 @@ impl State {
         let runtime_dir = self.transient_pane_config.default_cwd(None);
         let refresh_wrapper_path = PathBuf::from(&runtime_dir)
             .join("nushell/scripts/zellij_wrappers/refresh_yazi_sidebar.nu");
+        let launcher = launcher_path.display().to_string();
+        let refresh_wrapper = refresh_wrapper_path.display().to_string();
+        let command = [launcher.as_str(), refresh_wrapper.as_str()];
 
-        if !refresh_wrapper_path.exists() {
-            // Fallback: refresh wrapper not available, skip silently
-            return;
-        }
-
-        let command_to_run = CommandToRun {
-            path: launcher_path,
-            args: vec![refresh_wrapper_path.display().to_string()],
-            cwd: Some(PathBuf::from(&runtime_dir)),
-        };
-
-        // Open a small, auto-closing refresh pane (50x20%, minimal visual impact)
-        let _ = open_command_pane_floating(
-            command_to_run,
-            FloatingPaneCoordinates::new(
-                Some("25%".to_string()),
-                Some("25%".to_string()),
-                Some("50%".to_string()),
-                Some("20%".to_string()),
-                None,
-                None,
-            ),
+        run_command_with_env_variables_and_cwd(
+            &command,
+            BTreeMap::new(),
+            PathBuf::from(runtime_dir),
             BTreeMap::new(),
         );
-        // Note: The refresh pane auto-exits immediately after refreshing sidebar
     }
 }

@@ -11,7 +11,6 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use panes::{FocusContext, ManagedTabPanes};
 use workspace::{bootstrap_workspace_root, WorkspaceState};
 use yazelix_pane_orchestrator::horizontal_focus_contract::HorizontalDirection;
-use yazelix_pane_orchestrator::transient_pane_contract::TransientPaneKind;
 use zellij_tile::prelude::*;
 
 pub(crate) const RESULT_OK: &str = "ok";
@@ -45,8 +44,6 @@ struct State {
     override_layout_config: layout::OverrideLayoutConfig,
     transient_pane_config: transient::TransientPaneConfig,
     permissions_granted: bool,
-    // Track which program type is running in each transient pane for conditional cleanup
-    transient_pane_kinds: HashMap<PaneId, TransientPaneKind>,
 }
 
 register_plugin!(State);
