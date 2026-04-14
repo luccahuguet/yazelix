@@ -120,7 +120,7 @@ nix run github:luccahuguet/yazelix#yazelix -- launch
 
 Prefer declarative installs? Use the top-level Home Manager module in [home_manager/README.md](home_manager/README.md)
 
-📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step setup instructions
+📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step installation instructions
 
 ## Updating
 
