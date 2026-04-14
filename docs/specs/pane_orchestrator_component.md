@@ -61,7 +61,7 @@ The plugin reads these configuration keys from Zellij plugin configuration:
 - `custom_text_segment`
 - `sidebar_width_percent`
 
-`runtime_dir` is required for runtime-launched transient panes unless a pipe payload supplies a nonempty runtime override. The geometry keys are percentages and default to the Rust-side transient-pane defaults when absent or outside the accepted runtime range.
+`runtime_dir` is session-local plugin state. The generated Zellij config must set it on the loaded pane-orchestrator plugin instance for that session, and direct `MessagePlugin` bindings or `zellij action pipe` calls must target that loaded instance by alias instead of re-supplying `runtime_dir` on each message. Transient-pane payloads may still carry an explicit runtime override when the caller intentionally wants the wrapper launch to use a different runtime root. The geometry keys are percentages and default to the Rust-side transient-pane defaults when absent or outside the accepted runtime range.
 
 ### Runtime And Wrapper Paths
 
@@ -71,7 +71,7 @@ The plugin does not probe the local filesystem for wrapper discovery. It derives
 - popup wrapper: `nushell/scripts/zellij_wrappers/yzx_popup_program.nu`
 - menu wrapper: `nushell/scripts/zellij_wrappers/yzx_menu_popup.nu`
 
-The Nushell transport layer passes `runtime_dir` through `zellij action pipe --plugin-configuration`. Generated Zellij keybinds also pass the same key so direct keybind messages and `yzx popup` / `yzx menu --popup` agree on runtime ownership.
+The session-loaded plugin instance is the runtime source of truth for direct keybind messages and Nushell transport calls. Those message paths must address the pane orchestrator by alias only so multiple Yazelix sessions can stay self-contained even when they were launched from different runtime roots.
 
 ### Pane Identity Invariants
 
@@ -109,7 +109,7 @@ The sync step updates the tracked wasm, the stable runtime wasm path, and the ge
 1. A maintainer can list the plugin pipe commands, plugin configuration keys, runtime wrapper assumptions, and pane identity invariants from this spec without searching across Rust, Nushell, and KDL files.
 2. Workspace mutation flows use `retarget_workspace` as the single live pipe command for tab workspace changes.
 3. Popup and menu transient panes use the same helperless pane-orchestrator launch/toggle model and the same geometry configuration.
-4. Sidebar/editor focus and layout-family commands remain keyed through generated Zellij `MessagePlugin` entries.
+4. Sidebar/editor focus, workspace-terminal opening, transient-pane toggles, and layout-family commands remain keyed through generated Zellij `MessagePlugin` entries that target the loaded plugin alias without re-supplying `runtime_dir`.
 5. Rust source changes are rebuilt and synced before runtime behavior is claimed fixed.
 
 ## Verification

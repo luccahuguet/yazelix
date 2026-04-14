@@ -1471,6 +1471,45 @@ def test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrato
     $result
 }
 
+# Regression: direct pane-orchestrator messages must stay session-local and must not resupply runtime_dir on Alt+m.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_generate_merged_zellij_config_keeps_alt_m_pane_orchestrator_message_session_local [] {
+    print "🧪 Testing merged Zellij config keeps Alt+m pane-orchestrator messages session-local..."
+
+    let tmpdir = (^mktemp -d /tmp/yazelix_zellij_alt_m_session_local_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_home = ($tmpdir | path join "home")
+        write_minimal_user_zellij_config $fake_home
+
+        let output = (run_merged_zellij_config_in_fake_home $tmpdir {})
+        let generated_config = ($output.config | str trim)
+        let runtime_dir_lines = (
+            $generated_config
+            | lines
+            | where {|line| $line | str contains 'runtime_dir "'}
+            | length
+        )
+
+        if (
+            ($generated_config | str contains "bind \"Alt m\" {\n            MessagePlugin \"yazelix_pane_orchestrator\" {\n                name \"open_workspace_terminal\"\n            }\n        }")
+            and ($runtime_dir_lines == 1)
+        ) {
+            print "  ✅ Alt+m now targets the session-loaded pane orchestrator without resupplying runtime ownership"
+            true
+        } else {
+            print $"  ❌ Generated Zellij config still leaks runtime ownership through the Alt+m pane-orchestrator message path: ($generated_config)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmpdir
+    $result
+}
+
 # Regression: popup and menu transient panes must route through the pane orchestrator and share one configured floating geometry contract.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_generate_merged_zellij_config_routes_popup_and_menu_through_shared_transient_pane_contract [] {
@@ -1493,6 +1532,12 @@ popup_height_percent = 76
         })
         let generated_config = ($output.config | str trim)
         let repo_root = (get_repo_config_dir)
+        let runtime_dir_lines = (
+            $generated_config
+            | lines
+            | where {|line| $line | str contains $"runtime_dir \"($repo_root)\""}
+            | length
+        )
 
         if (
             ($generated_config | str contains 'bind "Alt t" {')
@@ -1500,7 +1545,9 @@ popup_height_percent = 76
             and (($generated_config | str contains 'name "toggle_transient_pane"') and (($generated_config | lines | where {|line| $line | str contains 'name "toggle_transient_pane"'} | length) >= 2))
             and ($generated_config | str contains 'payload "popup"')
             and ($generated_config | str contains 'payload "menu"')
-            and (($generated_config | lines | where {|line| $line | str contains $"runtime_dir \"($repo_root)\""} | length) >= 3)
+            and ($generated_config | str contains "bind \"Alt t\" {\n            MessagePlugin \"yazelix_pane_orchestrator\" {\n                name \"toggle_transient_pane\"\n                payload \"popup\"\n            }\n        }")
+            and ($generated_config | str contains "bind \"Alt Shift M\" {\n            MessagePlugin \"yazelix_pane_orchestrator\" {\n                name \"toggle_transient_pane\"\n                payload \"menu\"\n            }\n        }")
+            and ($runtime_dir_lines == 1)
             and not ($generated_config | str contains "yazelix_popup_runner.wasm")
             and not ($generated_config | str contains 'configs/zellij/scripts/yzx_toggle_popup.nu')
             and not ($generated_config | str contains 'width "70%"')
@@ -1734,6 +1781,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
         (test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers)
         (test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrator_toggle)
+        (test_generate_merged_zellij_config_keeps_alt_m_pane_orchestrator_message_session_local)
         (test_generate_merged_zellij_config_routes_popup_and_menu_through_shared_transient_pane_contract)
         (test_generate_merged_zellij_config_sets_on_force_close_by_session_mode)
         (test_generate_merged_zellij_config_replaces_conflicting_ui_and_serialization_settings)

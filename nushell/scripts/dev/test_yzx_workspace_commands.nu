@@ -4,7 +4,7 @@
 # Defends: docs/workspace_session_contract.md
 
 use ./yzx_test_helpers.nu [CLEAN_ZELLIJ_ENV_PREFIX get_repo_config_dir get_repo_root repo_path setup_managed_config_fixture]
-use ../integrations/zellij.nu [retarget_workspace_for_path]
+use ../integrations/zellij.nu [retarget_workspace_for_path run_pane_orchestrator_command_raw]
 
 def run_nu_snippet [snippet: string, extra_env?: record] {
     if ($extra_env | is-empty) {
@@ -1421,6 +1421,73 @@ skip_welcome_screen = true
     $result
 }
 
+# Regression: pane-orchestrator transport must target the loaded session plugin by alias without resupplying runtime_dir.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_run_pane_orchestrator_command_raw_targets_session_plugin_without_plugin_configuration [] {
+    print "🧪 Testing pane-orchestrator transport targets the session plugin alias without per-message plugin configuration..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_session_plugin_transport"
+        '[core]
+skip_welcome_screen = true
+'
+    )
+
+    let result = (try {
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        let zellij_log = ($fixture.tmp_home | path join "zellij_pipe.log")
+        mkdir $fake_bin
+
+        write_probe_nu ($fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            ": > \"$TMP_ZELLIJ_LOG\""
+            "for arg in \"$@\"; do"
+            "  printf '%s\\n' \"$arg\" >> \"$TMP_ZELLIJ_LOG\""
+            "done"
+            "printf '%s\\n' 'ok'"
+            "exit 0"
+        ]
+
+        let response = (with-env {
+            HOME: $fixture.tmp_home
+            PATH: ($env.PATH | prepend $fake_bin)
+            ZELLIJ: "1"
+            TMP_ZELLIJ_LOG: $zellij_log
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        } {
+            run_pane_orchestrator_command_raw "open_workspace_terminal" "workspace"
+        })
+        let logged_args = (read_probe_lines $zellij_log)
+
+        if (
+            ($response == "ok")
+            and ($logged_args == [
+                "action"
+                "pipe"
+                "--plugin"
+                "yazelix_pane_orchestrator"
+                "--name"
+                "open_workspace_terminal"
+                "--"
+                "workspace"
+            ])
+        ) {
+            print "  ✅ Pane-orchestrator transport now targets the loaded session plugin alias without leaking runtime ownership into the message"
+            true
+        } else {
+            print $"  ❌ Unexpected pane-orchestrator transport call: response=($response) args=($logged_args | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 export def run_workspace_canonical_tests [] {
     [
         (test_yzx_cli_desktop_launch_ignores_hostile_shell_env)
@@ -1444,6 +1511,7 @@ export def run_workspace_canonical_tests [] {
         (test_startup_custom_layout_override_fails_clearly)
         (test_doctor_fix_repairs_missing_managed_generated_layout)
         (test_launch_requires_runtime_launch_script)
+        (test_run_pane_orchestrator_command_raw_targets_session_plugin_without_plugin_configuration)
         (test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status)
         (test_yzx_cwd_requires_zellij)
     ]

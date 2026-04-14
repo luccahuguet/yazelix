@@ -2,7 +2,6 @@
 # Zellij integration utilities for Yazelix
 
 use ../utils/logging.nu *
-use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../setup/zellij_plugin_paths.nu PANE_ORCHESTRATOR_PLUGIN_ALIAS
 use ./zellij_runtime_wrappers.nu [build_floating_wrapper_env_args get_new_editor_pane_launch_env]
 
@@ -10,16 +9,10 @@ def get_pane_orchestrator_plugin_target [] {
     $PANE_ORCHESTRATOR_PLUGIN_ALIAS
 }
 
-def get_pane_orchestrator_plugin_configuration [] {
-    let runtime_dir = (get_yazelix_runtime_dir | path expand)
-    $"runtime_dir=($runtime_dir)"
-}
-
 def run_pane_orchestrator_command [command_name: string, log_file: string, payload: string = ""] {
     let plugin_target = (get_pane_orchestrator_plugin_target)
-    let plugin_configuration = (get_pane_orchestrator_plugin_configuration)
     let pipe_result = (
-        ^zellij action pipe --plugin $plugin_target --plugin-configuration $plugin_configuration --name $command_name -- $payload
+        ^zellij action pipe --plugin $plugin_target --name $command_name -- $payload
         | complete
     )
 
