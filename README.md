@@ -174,7 +174,7 @@ end, { desc = 'Reveal in Yazi sidebar' })
 ## Version Check
 Check installed tool versions:
 ```bash
-nu nushell/scripts/utils/version_info.nu
+yzx status --versions
 ```
 
 ## Editor Pane Orchestration

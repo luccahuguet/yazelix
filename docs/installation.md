@@ -321,7 +321,7 @@ Yazelix includes optional Home Manager support for declarative configuration man
 ## Post-Installation
 
 ### Version Check
-Check installed tool versions: `nu nushell/scripts/utils/version_info.nu`
+Check installed tool versions: `yzx status --versions`
 
 ### Health Check
 Run diagnostics: `yzx doctor` - Automated health checks and fixes
