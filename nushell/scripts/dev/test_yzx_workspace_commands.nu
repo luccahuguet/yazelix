@@ -1228,35 +1228,43 @@ def test_startup_materializes_missing_managed_layout_before_handoff [] {
     $result
 }
 
-# Defends: low-level generated-layout preflight still reports a missing managed layout clearly.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_require_generated_layout_reports_missing_managed_layout [] {
-    print "🧪 Testing low-level generated-layout preflight reports missing managed layouts clearly..."
+# Defends: explicit custom layout overrides still fail clearly after inner startup regenerates managed runtime state.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_startup_custom_layout_override_fails_clearly [] {
+    print "🧪 Testing startup fails clearly for a missing explicit custom layout override..."
 
-    try {
-        let start_script = (repo_path "nushell" "scripts" "core" "start_yazelix.nu")
-        let snippet = ([
-            $"source \"($start_script)\""
-            'try {'
-            '    require_generated_layout "/tmp/yazelix_missing_layout.kdl" | ignore'
-            '} catch {|err|'
-            '    print $err.msg'
-            '}'
-        ] | str join "\n")
-        let output = (run_nu_snippet $snippet)
-        let stdout = ($output.stdout | str trim)
+    let fixture = (setup_launch_path_fixture "yazelix_startup_missing_custom_layout" false false)
 
-        if ($output.exit_code == 0) and ($stdout | str contains "Missing Yazelix generated Zellij layout") and ($stdout | str contains "yzx doctor") and ($stdout | str contains "Failure class: generated-state problem.") {
-            print "  ✅ Low-level generated-layout preflight still fails clearly when the managed layout is missing"
+    let result = (try {
+        let target_dir = ($fixture.tmp_home | path join "workspace")
+        let missing_layout = ($fixture.tmp_home | path join "missing_custom_layout.kdl")
+        mkdir $target_dir
+
+        let output = (with-env $fixture.env {
+            ^nu $fixture.start_inner $target_dir $missing_layout | complete
+        })
+        let stderr = ($output.stderr | str trim)
+
+        if (
+            ($output.exit_code != 0)
+            and ($stderr | str contains "Zellij layout not found:")
+            and ($stderr | str contains ($missing_layout | path basename))
+            and ($stderr | str contains "yzx doctor")
+            and ($stderr | str contains "Failure class: generated-state problem.")
+        ) {
+            print "  ✅ Inner startup still fails clearly when an explicit custom layout override is unresolved"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($output.stderr | str trim)"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=($stderr)"
             false
         }
-    } catch { |err|
+    } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
-    }
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
 }
 
 # Regression: doctor --fix repairs missing managed generated layouts instead of only reporting them.
@@ -1433,7 +1441,7 @@ export def run_workspace_canonical_tests [] {
         (test_yzx_launch_rejects_removed_here_flag)
         (test_launch_here_path_warns_when_existing_persistent_session_ignores_it)
         (test_launch_falls_through_after_immediate_terminal_failure)
-        (test_require_generated_layout_reports_missing_managed_layout)
+        (test_startup_custom_layout_override_fails_clearly)
         (test_doctor_fix_repairs_missing_managed_generated_layout)
         (test_launch_requires_runtime_launch_script)
         (test_retarget_workspace_for_path_returns_plugin_owned_sidebar_state_and_editor_status)
