@@ -9,12 +9,11 @@ use ../utils/transient_pane_contract.nu [
     rename_current_transient_pane
 ]
 
-def resolve_popup_program [popup_args: list<string>] {
+def resolve_popup_program [popup_args: list<string>, config: record] {
     if ($popup_args | is-not-empty) {
         return $popup_args
     }
 
-    let config = (parse_yazelix_config)
     $config.popup_program? | default ["lazygit"]
 }
 
@@ -41,7 +40,7 @@ def require_popup_command_available [command: string, runtime_env: record] {
     }
 }
 
-def resolve_popup_argv [popup_program: list<string>, config: record] {
+def resolve_popup_argv [popup_program: list<string>, runtime_env: record] {
     if ($popup_program | is-empty) {
         error make {msg: "No popup program was provided to the Yazelix popup runtime wrapper."}
     }
@@ -50,7 +49,6 @@ def resolve_popup_argv [popup_program: list<string>, config: record] {
     let args = ($popup_program | skip 1)
 
     if $command == "editor" {
-        let runtime_env = (get_runtime_env $config)
         let editor_command = ($runtime_env.EDITOR? | default "" | into string | str trim)
 
         if ($editor_command | is-empty) {
@@ -63,15 +61,25 @@ def resolve_popup_argv [popup_program: list<string>, config: record] {
     $popup_program
 }
 
-def run_popup_program [popup_program: list<string>] {
+def resolve_popup_launch_context [popup_args: list<string>] {
     let config = (parse_yazelix_config)
     let runtime_env = (get_runtime_env $config)
-    let resolved_argv = (resolve_popup_argv $popup_program $config)
-    let command = ($resolved_argv | first | default "")
+    let popup_program = (resolve_popup_program $popup_args $config)
+    let argv = (resolve_popup_argv $popup_program $runtime_env)
+    let command = ($argv | first | default "")
 
     require_popup_command_available $command $runtime_env
 
-    run_runtime_argv $resolved_argv --config $config
+    {
+        config: $config
+        runtime_env: $runtime_env
+        argv: $argv
+    }
+}
+
+def run_popup_program [popup_args: list<string>] {
+    let launch_context = (resolve_popup_launch_context $popup_args)
+    run_runtime_argv $launch_context.argv --config $launch_context.config
 }
 
 def --wrapped main [...popup_args: string] {
@@ -79,7 +87,7 @@ def --wrapped main [...popup_args: string] {
 
     let result = (try {
         with-env (get_transient_pane_mode_env "popup") {
-            run_popup_program (resolve_popup_program $popup_args)
+            run_popup_program $popup_args
         }
         {ok: true}
     } catch {|err|
