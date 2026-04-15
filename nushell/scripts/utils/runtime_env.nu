@@ -89,6 +89,7 @@ export def get_runtime_env [config?: record] {
         ZELLIJ_DEFAULT_LAYOUT: (if $enable_sidebar { "yzx_side" } else { "yzx_no_side" })
         YAZI_CONFIG_HOME: ($env.HOME | path join ".local" "share" "yazelix" "configs" "yazi")
         EDITOR: $editor_command
+        VISUAL: $editor_command
     }
 
     if $editor_kind == "helix" {

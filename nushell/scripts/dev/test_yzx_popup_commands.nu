@@ -574,6 +574,72 @@ def test_menu_popup_wrapper_marks_popup_mode_and_closes_transient_pane [] {
     $result
 }
 
+# Regression: popup wrappers must fail fast with an explicit PATH error when the popup program is missing.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_popup_program_wrapper_reports_missing_command_clearly [] {
+    print "🧪 Testing popup wrapper reports a missing popup command with an explicit PATH error..."
+
+    let fixture = (setup_runtime_wrapper_fixture "yazelix_popup_missing_command")
+
+    let result = (try {
+        write_executable_fixture_file ($fixture.fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            "if [ -f \"$YAZELIX_TEST_ZELLIJ_LOG\" ]; then"
+            "  printf '%s\\n' \"$*\" >> \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "else"
+            "  printf '%s\\n' \"$*\" > \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "fi"
+            "exit 0"
+        ]
+        [
+            "export def refresh_active_sidebar_yazi [] {"
+            "    'refresh' | save --force --raw $env.YAZELIX_TEST_REFRESH_LOG"
+            "    {status: 'ok'}"
+            "}"
+        ] | str join "\n" | save --force --raw ($fixture.integrations_dir | path join "yazi.nu")
+        cp ($env.PWD | path join "nushell" "scripts" "zellij_wrappers" "yzx_popup_program.nu") ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
+
+        let wrapper_script = ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
+        let output = (with-env {
+            PATH: ([$fixture.fake_bin] | append $env.PATH)
+            ZELLIJ: "1"
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_TEST_ZELLIJ_LOG: ($fixture.tmpdir | path join "zellij.log")
+            YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
+        } {
+            ^nu $wrapper_script missing-popup | complete
+        })
+
+        let zellij_log = ($fixture.tmpdir | path join "zellij.log")
+        let zellij_invocation = if ($zellij_log | path exists) {
+            open --raw $zellij_log | lines
+        } else {
+            []
+        }
+        let refresh_ran = ($fixture.refresh_log | path exists)
+        let missing_error = ($output.stderr | str contains "Popup program not found in PATH: missing-popup")
+
+        if (
+            ($output.exit_code != 0)
+            and $missing_error
+            and ($zellij_invocation == ["action rename-pane yzx_popup"])
+            and (not $refresh_ran)
+        ) {
+            print "  ✅ popup wrapper now fails fast with an explicit PATH error when the popup program is missing"
+            true
+        } else {
+            print $"  ❌ Unexpected popup missing-command behavior: exit=($output.exit_code) zellij=($zellij_invocation | to json -r) refresh_ran=($refresh_ran) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmpdir
+    $result
+}
+
 # Regression: popup wrappers should fall back to the runtime env contract when the current shell has no wrapper env to reuse.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_popup_wrapper_env_falls_back_to_runtime_env [] {
@@ -752,6 +818,150 @@ def test_popup_wrapper_falls_back_to_host_nu_without_runtime_owned_nu [] {
     $result
 }
 
+# Invariant: the canonical runtime env exports VISUAL equal to EDITOR so nested editors honor the configured editor.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_runtime_env_includes_visual_equal_to_editor [] {
+    print "🧪 Testing runtime env exports VISUAL equal to EDITOR..."
+
+    try {
+        let tmpdir = (^mktemp -d /tmp/yazelix_visual_env_XXXXXX | str trim)
+        mut success = false
+
+        try {
+            let runtime_dir = ($env.PWD | path expand)
+            let profile_bin = ($tmpdir | path join "profile" "bin")
+            let config_path = ($tmpdir | path join "yazelix.toml")
+            mkdir $profile_bin
+            "" | save --force --raw ($profile_bin | path join "nvim")
+            ^chmod +x ($profile_bin | path join "nvim")
+
+            [
+                "[editor]"
+                "command = \"nvim\""
+            ] | str join "\n" | save --force --raw $config_path
+
+            let resolved = (with-env {
+                YAZELIX_CONFIG_OVERRIDE: $config_path
+                YAZELIX_RUNTIME_DIR: $runtime_dir
+                PATH: $"($profile_bin):/usr/bin"
+                EDITOR: ""
+                VISUAL: ""
+                YAZELIX_MANAGED_HELIX_BINARY: ""
+                YAZELIX_NU_BIN: ""
+                YAZELIX_TERMINAL_CONFIG_MODE: ""
+            } {
+                get_floating_wrapper_env
+            })
+
+            let editor_val = ($resolved.EDITOR? | default "")
+            let visual_val = ($resolved.VISUAL? | default "")
+
+            if (
+                ($editor_val == "nvim")
+                and ($visual_val == "nvim")
+                and ($editor_val == $visual_val)
+            ) {
+                print "  ✅ runtime env now exports VISUAL equal to EDITOR for nested editor support"
+                $success = true
+            } else {
+                print $"  ❌ Unexpected env: EDITOR=($editor_val) VISUAL=($visual_val)"
+                $success = false
+            }
+        } finally {
+            rm -rf $tmpdir
+        }
+
+        $success
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    }
+}
+
+# Regression: popup programs receive the canonical runtime env including VISUAL and EDITOR through run_runtime_argv.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_popup_program_receives_canonical_env_with_visual [] {
+    print "🧪 Testing popup programs receive canonical runtime env including VISUAL..."
+
+    let fixture = (setup_runtime_wrapper_fixture "yazelix_popup_canonical_env")
+
+    let result = (try {
+        write_executable_fixture_file ($fixture.fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            "if [ -f \"$YAZELIX_TEST_ZELLIJ_LOG\" ]; then"
+            "  printf '%s\\n' \"$*\" >> \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "else"
+            "  printf '%s\\n' \"$*\" > \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "fi"
+            "exit 0"
+        ]
+        write_executable_fixture_file ($fixture.fake_bin | path join "fake-tool") [
+            "#!/bin/sh"
+            "printf 'EDITOR=%s\\n' \"${EDITOR-unset}\" > \"$YAZELIX_TEST_POPUP_LOG\""
+            "printf 'VISUAL=%s\\n' \"${VISUAL-unset}\" >> \"$YAZELIX_TEST_POPUP_LOG\""
+            "printf 'YAZELIX_RUNTIME_DIR=%s\\n' \"${YAZELIX_RUNTIME_DIR-unset}\" >> \"$YAZELIX_TEST_POPUP_LOG\""
+            "exit 0"
+        ]
+        [
+            "export def refresh_active_sidebar_yazi [] {"
+            "    'refresh' | save --force --raw $env.YAZELIX_TEST_REFRESH_LOG"
+            "    {status: 'ok'}"
+            "}"
+        ] | str join "\n" | save --force --raw ($fixture.integrations_dir | path join "yazi.nu")
+        cp ($env.PWD | path join "nushell" "scripts" "zellij_wrappers" "yzx_popup_program.nu") ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
+
+        let wrapper_script = ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
+        let output = (with-env {
+            PATH: ([$fixture.fake_bin] | append $env.PATH)
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            ZELLIJ: "1"
+            YAZELIX_TEST_POPUP_LOG: ($fixture.tmpdir | path join "popup_env.log")
+            YAZELIX_TEST_ZELLIJ_LOG: ($fixture.tmpdir | path join "zellij.log")
+            YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
+        } {
+            ^nu $wrapper_script fake-tool | complete
+        })
+
+        let popup_log = ($fixture.tmpdir | path join "popup_env.log")
+        let popup_env_lines = if ($popup_log | path exists) {
+            open --raw $popup_log | lines
+        } else {
+            []
+        }
+
+        let editor_line = ($popup_env_lines | where {|l| $l | str starts-with "EDITOR=" } | first | default "")
+        let visual_line = ($popup_env_lines | where {|l| $l | str starts-with "VISUAL=" } | first | default "")
+        let runtime_line = ($popup_env_lines | where {|l| $l | str starts-with "YAZELIX_RUNTIME_DIR=" } | first | default "")
+
+        let editor_ok = ($editor_line | str starts-with "EDITOR=/")
+        let visual_ok = ($visual_line | str starts-with "VISUAL=/")
+        let editor_equals_visual = (
+            ($editor_line | str replace "EDITOR=" "") == ($visual_line | str replace "VISUAL=" "")
+        )
+        let runtime_ok = ($runtime_line | str starts-with $"YAZELIX_RUNTIME_DIR=($fixture.runtime_dir)")
+
+        if (
+            ($output.exit_code == 0)
+            and $editor_ok
+            and $visual_ok
+            and $editor_equals_visual
+            and $runtime_ok
+        ) {
+            print "  ✅ popup programs now receive the canonical runtime env with VISUAL equal to EDITOR"
+            true
+        } else {
+            print $"  ❌ Unexpected popup env: exit=($output.exit_code) env=($popup_env_lines | to json -r) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmpdir
+    $result
+}
+
 export def run_popup_canonical_tests [] {
     [
         (test_popup_command_prefers_configured_default)
@@ -761,10 +971,13 @@ export def run_popup_canonical_tests [] {
         (test_popup_program_wrapper_runs_resolved_argv_directly)
         (test_popup_program_wrapper_falls_back_to_configured_default_when_args_are_missing)
         (test_popup_program_editor_token_uses_configured_managed_editor)
+        (test_popup_program_wrapper_reports_missing_command_clearly)
         (test_menu_popup_wrapper_marks_popup_mode_and_closes_transient_pane)
         (test_popup_wrapper_env_falls_back_to_runtime_env)
         (test_popup_wrapper_serializes_path_list_for_env_command)
         (test_popup_wrapper_falls_back_to_host_nu_without_runtime_owned_nu)
+        (test_runtime_env_includes_visual_equal_to_editor)
+        (test_popup_program_receives_canonical_env_with_visual)
     ]
 }
 

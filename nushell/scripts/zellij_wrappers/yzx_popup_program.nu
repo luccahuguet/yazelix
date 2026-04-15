@@ -18,7 +18,30 @@ def resolve_popup_program [popup_args: list<string>] {
     $config.popup_program? | default ["lazygit"]
 }
 
-def run_popup_program [popup_program: list<string>] {
+def require_popup_command_available [command: string, runtime_env: record] {
+    let normalized = ($command | into string | str trim)
+
+    if ($normalized | is-empty) {
+        error make {msg: "Popup program command cannot be empty."}
+    }
+
+    if ($normalized | str contains "/") {
+        if not (($normalized | path expand) | path exists) {
+            error make {msg: $"Popup program path does not exist: ($normalized)"}
+        }
+        return
+    }
+
+    let command_exists = (with-env $runtime_env {
+        not ((which $normalized) | is-empty)
+    })
+
+    if not $command_exists {
+        error make {msg: $"Popup program not found in PATH: ($normalized)"}
+    }
+}
+
+def resolve_popup_argv [popup_program: list<string>, config: record] {
     if ($popup_program | is-empty) {
         error make {msg: "No popup program was provided to the Yazelix popup runtime wrapper."}
     }
@@ -27,7 +50,6 @@ def run_popup_program [popup_program: list<string>] {
     let args = ($popup_program | skip 1)
 
     if $command == "editor" {
-        let config = (parse_yazelix_config)
         let runtime_env = (get_runtime_env $config)
         let editor_command = ($runtime_env.EDITOR? | default "" | into string | str trim)
 
@@ -35,15 +57,21 @@ def run_popup_program [popup_program: list<string>] {
             error make {msg: "The configured Yazelix editor could not be resolved for popup_program = [\"editor\"]."}
         }
 
-        run_runtime_argv ([$editor_command] | append $args) --config $config
-        return
+        return ([$editor_command] | append $args)
     }
 
-    if (which $command | is-empty) {
-        error make {msg: $"Popup program not found in PATH: ($command)"}
-    }
+    $popup_program
+}
 
-    run-external $command ...$args
+def run_popup_program [popup_program: list<string>] {
+    let config = (parse_yazelix_config)
+    let runtime_env = (get_runtime_env $config)
+    let resolved_argv = (resolve_popup_argv $popup_program $config)
+    let command = ($resolved_argv | first | default "")
+
+    require_popup_command_available $command $runtime_env
+
+    run_runtime_argv $resolved_argv --config $config
 }
 
 def --wrapped main [...popup_args: string] {
