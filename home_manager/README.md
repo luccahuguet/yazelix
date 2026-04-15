@@ -21,6 +21,9 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 
 ### 1. Add the Module to Your Home Manager Configuration
 
+If you want a copyable starting point, begin with [examples/minimal_flake](./examples/minimal_flake)
+That example uses a repo-local `path:../../..` Yazelix input so it stays buildable inside this repository; when copying it into your own setup, replace that line with `github:luccahuguet/yazelix`
+
 Add this to your `flake.nix` inputs:
 
 ```nix
@@ -49,7 +52,7 @@ It pins the Home Manager module from the top-level Yazelix flake instead of the 
 
 ### 2. Configure Yazelix in Your Home Manager Configuration
 
-See [examples/example.nix](./examples/example.nix) for all options. Minimal setup:
+If you already have your own Home Manager flake, the minimal setup is:
 
 ```nix
 # ~/.config/home-manager/home.nix (or wherever your HM config is)
@@ -114,7 +117,8 @@ Migration note for older setups:
 
 ## Example Configuration
 
-See [examples/example.nix](./examples/example.nix) for a comprehensive example showing all available options.
+- Use [examples/minimal_flake](./examples/minimal_flake) for a real minimal flake you can copy and adapt
+- Use [examples/example.nix](./examples/example.nix) for a comprehensive option surface example
 
 ## Migration Guide
 
