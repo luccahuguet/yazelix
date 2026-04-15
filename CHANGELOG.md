@@ -12,6 +12,7 @@ Highlights:
 - Packaged and one-off runtime entrypoints no longer rewrite host shell dotfiles; runtime setup now stays inside `~/.local/share/yazelix` and relies on the install owner to provide `yzx`
 - Dropped the obsolete shell-hook setup/status modules and narrowed `yzx status` back to runtime/config inspection
 - Updated current docs to describe generated initializer paths, install-owner-provided `yzx`, and the post-shell-hook runtime contract more honestly
+- Added an explicit `editor` token for `zellij.popup_program`, so popup panes can reuse the configured Yazelix editor contract instead of forcing raw PATH commands
 
 ## v15 - 2026-04-13
 
