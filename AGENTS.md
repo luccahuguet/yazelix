@@ -177,6 +177,16 @@ When creating new files or directories, always use underscores to maintain consi
 - What does the user explicitly want vs. what they implicitly expect?
 - How do similar tools handle this situation and why?
 
+### Delegation Fit
+
+After the contract, scope, and acceptance criteria are already clear, the following work is usually safe to delegate to less smart models as a first implementation pass:
+- packaging reshuffles
+- broad but well-specified path renames
+- fixture/test updates after the defended contract is already decided
+- repetitive file edits with clear acceptance targets
+
+Do not treat those models as the default owner of investigation, architecture, or subtle runtime-behavior changes. Use them for bounded execution after the smarter planning pass is already done.
+
 ### Delete-First Protocol
 
 Use this as the default refactor and audit method in Yazelix, especially before packaging, upstreaming, or broad architecture work:
