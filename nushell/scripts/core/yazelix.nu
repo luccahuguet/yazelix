@@ -59,6 +59,27 @@ def print_update_owner_warning [] {
     print "Do not use both update paths for the same installed Yazelix runtime."
 }
 
+def print_update_path_confirmation [owner: string] {
+    match $owner {
+        "upstream" => {
+            print "Using the default-profile update path for this install."
+            print ""
+            print "  If Home Manager owns this install instead, use `yzx update home_manager`."
+        }
+        "home_manager" => {
+            print "Using the Home Manager update path for this install."
+            print ""
+            print "  If a Nix profile package owns this install instead, use `yzx update upstream`."
+        }
+        _ => {
+            error make {msg: $"Unsupported update owner confirmation: ($owner)"}
+        }
+    }
+
+    print ""
+    print "Do not use both update paths for the same installed Yazelix runtime."
+}
+
 def load_default_profile_elements [] {
     let result = (^nix profile list --json | complete)
     if $result.exit_code != 0 {
@@ -481,7 +502,7 @@ export def "yzx update upstream" [] {
         exit 1
     }
 
-    print_update_owner_warning
+    print_update_path_confirmation "upstream"
     print ""
     let profile_entry = (resolve_active_yazelix_profile_entry)
     let command = $"nix profile upgrade --refresh ($profile_entry.name)"
@@ -506,7 +527,7 @@ export def "yzx update home_manager" [] {
 
     require_current_working_flake
 
-    print_update_owner_warning
+    print_update_path_confirmation "home_manager"
     print ""
     print "⚠️  `yzx update home_manager` updates the `yazelix` input in the current flake directory."
     print "   Run it only from the Home Manager flake that owns this install."

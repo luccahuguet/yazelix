@@ -625,7 +625,8 @@ def test_yzx_update_upstream_upgrades_matching_profile_entry [] {
 
         if (
             ($output.exit_code == 0)
-            and ($stdout | str contains "Choose one update owner for this Yazelix install.")
+            and ($stdout | str contains "Using the default-profile update path for this install.")
+            and ($stdout | str contains "If Home Manager owns this install instead, use `yzx update home_manager`.")
             and ($stdout | str contains "Running:")
             and ($stdout | str contains "nix profile upgrade --refresh yazelix")
             and ($log_text | str contains "nix:profile list --json")
@@ -712,7 +713,8 @@ def test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step [] 
 
         if (
             ($output.exit_code == 0)
-            and ($stdout | str contains "Choose one update owner for this Yazelix install.")
+            and ($stdout | str contains "Using the Home Manager update path for this install.")
+            and ($stdout | str contains "If a Nix profile package owns this install instead, use `yzx update upstream`.")
             and ($stdout | str contains "Running:")
             and ($stdout | str contains "nix flake update yazelix")
             and ($stdout | str contains "Next step:")
