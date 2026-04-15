@@ -185,6 +185,7 @@ Preview the animated welcome screen directly in the current terminal
 ### `yzx popup [COMMAND ...]`
 Open a transient floating-pane command inside Zellij
 - Default: runs `zellij.popup_program` from `yazelix.toml`
+- Special token: `editor` resolves to the current Yazelix `editor.command` with its managed runtime/env
 - `COMMAND ...`: override the configured popup command for one invocation
 - Uses the current tab workspace root as cwd when available; otherwise uses the current shell cwd
 - Errors if not in Zellij

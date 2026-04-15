@@ -12,6 +12,10 @@ def write_executable_fixture_file [path: string, lines: list<string>] {
     ^chmod +x $path
 }
 
+def write_runtime_wrapper_fixture_config_parser [fixture: record, lines: list<string>] {
+    $lines | str join "\n" | save --force --raw ($fixture.utils_dir | path join "config_parser.nu")
+}
+
 def setup_runtime_wrapper_fixture [label: string] {
     let tmpdir = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
     let runtime_dir = ($tmpdir | path join "runtime")
@@ -19,6 +23,7 @@ def setup_runtime_wrapper_fixture [label: string] {
     let utils_dir = ($runtime_dir | path join "nushell" "scripts" "utils")
     let yzx_dir = ($runtime_dir | path join "nushell" "scripts" "yzx")
     let wrapper_dir = ($runtime_dir | path join "nushell" "scripts" "zellij_wrappers")
+    let shells_posix_dir = ($runtime_dir | path join "shells" "posix")
     let fake_bin = ($tmpdir | path join "bin")
     let refresh_log = ($tmpdir | path join "refresh.log")
     let real_nu = (which nu | get -o 0.path)
@@ -27,16 +32,25 @@ def setup_runtime_wrapper_fixture [label: string] {
     mkdir $utils_dir
     mkdir $yzx_dir
     mkdir $wrapper_dir
+    mkdir $shells_posix_dir
     mkdir $fake_bin
     cp ($env.PWD | path join "yazelix_default.toml") ($runtime_dir | path join "yazelix_default.toml")
     cp ($env.PWD | path join ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
     ^ln -s ($env.PWD | path join "config_metadata") ($runtime_dir | path join "config_metadata")
     cp ($env.PWD | path join "nushell" "scripts" "utils" "transient_pane_contract.nu") ($utils_dir | path join "transient_pane_contract.nu")
+    cp ($env.PWD | path join "nushell" "scripts" "utils" "runtime_env.nu") ($utils_dir | path join "runtime_env.nu")
     [
+        "export def get_yazelix_runtime_dir [] {"
+        $"    $env.YAZELIX_RUNTIME_DIR? | default \"($runtime_dir)\""
+        "}"
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
+    write_runtime_wrapper_fixture_config_parser {
+        utils_dir: $utils_dir
+    } [
         "export def parse_yazelix_config [] {"
         "    { popup_program: [\"config-popup\"] }"
         "}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "config_parser.nu")
+    ]
 
     {
         tmpdir: $tmpdir
@@ -45,6 +59,7 @@ def setup_runtime_wrapper_fixture [label: string] {
         utils_dir: $utils_dir
         yzx_dir: $yzx_dir
         wrapper_dir: $wrapper_dir
+        shells_posix_dir: $shells_posix_dir
         fake_bin: $fake_bin
         refresh_log: $refresh_log
         real_nu: $real_nu
@@ -382,6 +397,114 @@ def test_popup_program_wrapper_falls_back_to_configured_default_when_args_are_mi
     $result
 }
 
+# Regression: popup_program = ["editor"] must resolve through Yazelix's configured editor contract instead of raw PATH lookup.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_popup_program_editor_token_uses_configured_managed_editor [] {
+    print "🧪 Testing popup_program = [\"editor\"] uses the configured managed editor instead of PATH lookup..."
+
+    let fixture = (setup_runtime_wrapper_fixture "yazelix_popup_editor_token")
+
+    let result = (try {
+        let custom_hx = ($fixture.tmpdir | path join "custom" "bin" "hx")
+        let custom_runtime = ($fixture.tmpdir | path join "custom" "runtime")
+        mkdir ($custom_hx | path dirname)
+        mkdir $custom_runtime
+
+        write_runtime_wrapper_fixture_config_parser $fixture [
+            "export def parse_yazelix_config [] {"
+            "    {"
+            "        popup_program: [\"editor\"]"
+            $"        editor_command: \"($custom_hx)\""
+            $"        helix_runtime_path: \"($custom_runtime)\""
+            "    }"
+            "}"
+        ]
+
+        write_executable_fixture_file ($fixture.fake_bin | path join "zellij") [
+            "#!/bin/sh"
+            "if [ -f \"$YAZELIX_TEST_ZELLIJ_LOG\" ]; then"
+            "  printf '%s\\n' \"$*\" >> \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "else"
+            "  printf '%s\\n' \"$*\" > \"$YAZELIX_TEST_ZELLIJ_LOG\""
+            "fi"
+            "exit 0"
+        ]
+        write_executable_fixture_file ($fixture.fake_bin | path join "hx") [
+            "#!/bin/sh"
+            "printf 'source=path\\nargs=%s\\n' \"$*\" > \"$YAZELIX_TEST_POPUP_LOG\""
+            "exit 0"
+        ]
+        write_executable_fixture_file $custom_hx [
+            "#!/bin/sh"
+            "printf 'source=custom\\nmanaged=%s\\nruntime=%s\\nargs=%s\\n' \"$YAZELIX_MANAGED_HELIX_BINARY\" \"${HELIX_RUNTIME-}\" \"$*\" > \"$YAZELIX_TEST_POPUP_LOG\""
+            "exit 0"
+        ]
+        write_executable_fixture_file ($fixture.shells_posix_dir | path join "yazelix_hx.sh") [
+            "#!/bin/sh"
+            "if [ -z \"${YAZELIX_MANAGED_HELIX_BINARY:-}\" ]; then"
+            "  printf 'source=wrapper-missing-managed\\n' > \"$YAZELIX_TEST_POPUP_LOG\""
+            "  exit 1"
+            "fi"
+            "exec \"$YAZELIX_MANAGED_HELIX_BINARY\" \"$@\""
+        ]
+        [
+            "export def refresh_active_sidebar_yazi [] {"
+            "    'refresh' | save --force --raw $env.YAZELIX_TEST_REFRESH_LOG"
+            "    {status: 'ok'}"
+            "}"
+        ] | str join "\n" | save --force --raw ($fixture.integrations_dir | path join "yazi.nu")
+        cp ($env.PWD | path join "nushell" "scripts" "zellij_wrappers" "yzx_popup_program.nu") ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
+
+        let wrapper_script = ($fixture.wrapper_dir | path join "yzx_popup_program.nu")
+        let output = (with-env {
+            PATH: ([$fixture.fake_bin] | append $env.PATH)
+            YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            ZELLIJ: "1"
+            YAZELIX_TEST_POPUP_LOG: ($fixture.tmpdir | path join "popup_program.log")
+            YAZELIX_TEST_ZELLIJ_LOG: ($fixture.tmpdir | path join "zellij.log")
+            YAZELIX_TEST_REFRESH_LOG: $fixture.refresh_log
+        } {
+            ^nu $wrapper_script | complete
+        })
+
+        let popup_log = ($fixture.tmpdir | path join "popup_program.log")
+        let zellij_log = ($fixture.tmpdir | path join "zellij.log")
+        let popup_invocation = if ($popup_log | path exists) {
+            open --raw $popup_log | lines
+        } else {
+            []
+        }
+        let zellij_invocation = if ($zellij_log | path exists) {
+            open --raw $zellij_log | lines
+        } else {
+            []
+        }
+
+        if (
+            ($output.exit_code == 0)
+            and ($popup_invocation == [
+                "source=custom"
+                $"managed=($custom_hx)"
+                $"runtime=($custom_runtime)"
+                "args="
+            ])
+            and ($zellij_invocation == ["action rename-pane yzx_popup" "action close-pane"])
+        ) {
+            print "  ✅ popup editor token now resolves through Yazelix's configured managed editor contract instead of raw PATH hx"
+            true
+        } else {
+            print $"  ❌ Unexpected popup editor-token behavior: exit=($output.exit_code) popup=($popup_invocation | to json -r) zellij=($zellij_invocation | to json -r) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmpdir
+    $result
+}
+
 # Regression: the runtime menu popup wrapper must mark popup mode, rename itself, and close its own transient pane after success.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_menu_popup_wrapper_marks_popup_mode_and_closes_transient_pane [] {
@@ -637,6 +760,7 @@ export def run_popup_canonical_tests [] {
         (test_popup_size_parser_accepts_valid_and_rejects_invalid_percentages)
         (test_popup_program_wrapper_runs_resolved_argv_directly)
         (test_popup_program_wrapper_falls_back_to_configured_default_when_args_are_missing)
+        (test_popup_program_editor_token_uses_configured_managed_editor)
         (test_menu_popup_wrapper_marks_popup_mode_and_closes_transient_pane)
         (test_popup_wrapper_env_falls_back_to_runtime_env)
         (test_popup_wrapper_serializes_path_list_for_env_command)

@@ -194,6 +194,7 @@ custom_text = ""
 # Use an argv-style list, not a shell string.
 # Examples:
 #   ["lazygit"]
+#   ["editor"]                  # Open the current Yazelix editor.command with its managed runtime/env
 #   ["claude-code", "--continue"]
 #   ["opencode"]
 popup_program = ["lazygit"]
