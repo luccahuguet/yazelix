@@ -300,7 +300,7 @@ in
       description = ''
         Default transient popup command for `yzx popup` and the default popup keybinding.
         Use an argv-style list, eg. [ "lazygit" ], [ "editor" ] to reuse `editor.command`,
-        or [ "claude-code" "--continue" ].
+        or [ "codex" ].
       '';
     };
 

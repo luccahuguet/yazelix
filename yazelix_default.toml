@@ -195,7 +195,7 @@ custom_text = ""
 # Examples:
 #   ["lazygit"]
 #   ["editor"]                  # Open the current Yazelix editor.command with its managed runtime/env
-#   ["claude-code", "--continue"]
+#   ["codex"]
 #   ["opencode"]
 popup_program = ["lazygit"]
 

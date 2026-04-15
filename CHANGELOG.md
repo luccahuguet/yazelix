@@ -13,6 +13,7 @@ Highlights:
 - Dropped the obsolete shell-hook setup/status modules and narrowed `yzx status` back to runtime/config inspection
 - Updated current docs to describe generated initializer paths, install-owner-provided `yzx`, and the post-shell-hook runtime contract more honestly
 - Added an explicit `editor` token for `zellij.popup_program`, so popup panes can reuse the configured Yazelix editor contract instead of forcing raw PATH commands
+- Replaced the remaining popup command examples that still referenced Claude with Codex examples
 
 ## v15 - 2026-04-13
 
