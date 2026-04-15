@@ -18,7 +18,7 @@ Yazelix follows the XDG Base Directory Specification and respects these variable
   - `~/.local/share/yazelix/initializers/` – generated init scripts (nushell, starship, zoxide, carapace)
   - `~/.local/share/yazelix/configs/yazi/` – Yazi config used by integrations (`YAZI_CONFIG_HOME`)
   - `~/.local/share/yazelix/configs/zellij/` – generated Zellij config and layouts
-  - `~/.local/share/yazelix/logs/` – shell hook logs and setup output
+  - `~/.local/share/yazelix/logs/` – runtime setup and welcome output
 
 - State (XDG_STATE_HOME)
   - `~/.local/share/yazelix/state/rebuild_hash` – generated-state freshness record used by the trimmed refresh path
@@ -39,4 +39,5 @@ Set by Yazelix entrypoints to wire integrations:
 Notes:
 - If you change `XDG_CONFIG_HOME`, Yazelix looks for config under the new `.../yazelix/user_configs/` path.
 - Generated files follow `XDG_DATA_HOME`.
-- The stable installed CLI shim lives at `~/.local/bin/yzx` and points directly at the packaged runtime.
+- The supported `yzx` command normally comes from the install owner, such as a Nix profile or Home Manager.
+- A stale legacy `~/.local/bin/yzx` wrapper may still exist on older machines, but it is no longer part of the supported install contract.

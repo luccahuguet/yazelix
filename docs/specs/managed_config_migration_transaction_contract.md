@@ -81,7 +81,7 @@ The following are explicitly not part of the migration transaction itself:
 
 - imported native upstream configs such as `~/.config/zellij/config.kdl`
 - generated runtime state under `~/.local/share/yazelix`
-- shell hooks
+- host shell dotfiles
 - desktop entries
 - arbitrary host-owned or external files
 

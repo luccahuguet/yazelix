@@ -75,7 +75,7 @@ This subsystem answers questions like:
 
 - What does the flake actually expose?
 - What belongs to the packaged runtime versus the host?
-- How should Home Manager, shell hooks, desktop entry installation, and terminal launchers adapt Yazelix without inventing new product semantics?
+- How should Home Manager, install-owner-provided `yzx`, desktop entry installation, and terminal launchers adapt Yazelix without inventing new product semantics?
 
 This layer should stay thin. If it starts owning behavior that belongs to runtime or workspace, that is architecture drift.
 

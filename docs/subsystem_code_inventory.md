@@ -62,7 +62,7 @@ This is a trim-oriented repartition of the same `12,582` runtime LOC. Each runti
 
 | Runtime trim group | Files | Code LOC | Share of runtime | What it captures |
 | --- | ---: | ---: | ---: | --- |
-| Startup and generated-state materialization | 23 | 3,715 | 29.5% | Launch/bootstrap entrypoints, generated config writes, shell hooks, Zellij and Yazi materialization, startup profile, and render-time state |
+| Startup and generated-state materialization | 23 | 3,715 | 29.5% | Launch/bootstrap entrypoints, generated config writes, generated initializers, Zellij and Yazi materialization, startup profile, and render-time state |
 | Config lifecycle stack | 14 | 2,758 | 21.9% | Config parsing, schema, diagnostics, migration engine, and the `yzx config` / `edit` / `import` surfaces |
 | Command surface and shared runtime glue | 23 | 2,389 | 19.0% | Direct command glue, shared runtime helpers, terminal launch transport, and the remaining shipped `yzx dev` entrypoint |
 | Front-door UX and transient workspace tools | 11 | 1,972 | 15.7% | Welcome animation, command palette, popup pane, tutorial/keys/screen flows, and release-note rendering |

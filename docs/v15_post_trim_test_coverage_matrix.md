@@ -85,11 +85,11 @@ The point is not to defend every old test file. The point is to make it obvious 
 - Classification:
   - `Replaced by stronger surviving coverage`
 - Why:
-  - The monolithic managed-config file was intentionally split so Helix, shell-hook, and runtime-resolution behavior each live with the subsystem they actually defend.
+  - The monolithic managed-config file was intentionally split so Helix, runtime-setup, and runtime-resolution behavior each live with the subsystem they actually defend.
   - The old Nix scenario files were lightweight environment probes rather than strong product-contract tests.
 - Current defenses:
-  - Shell-hook and runtime-resolution contracts are covered in [`nushell/scripts/dev/test_shell_managed_config_contracts.nu:14`](../nushell/scripts/dev/test_shell_managed_config_contracts.nu), [`nushell/scripts/dev/test_shell_managed_config_contracts.nu:66`](../nushell/scripts/dev/test_shell_managed_config_contracts.nu), [`nushell/scripts/dev/test_shell_managed_config_contracts.nu:123`](../nushell/scripts/dev/test_shell_managed_config_contracts.nu), [`nushell/scripts/dev/test_shell_managed_config_contracts.nu:216`](../nushell/scripts/dev/test_shell_managed_config_contracts.nu), [`nushell/scripts/dev/test_shell_managed_config_contracts.nu:260`](../nushell/scripts/dev/test_shell_managed_config_contracts.nu), and [`nushell/scripts/dev/test_shell_managed_config_contracts.nu:312`](../nushell/scripts/dev/test_shell_managed_config_contracts.nu).
-  - Helix-specific managed-config behavior is covered in [`nushell/scripts/dev/test_helix_managed_config_contracts.nu:11`](../nushell/scripts/dev/test_helix_managed_config_contracts.nu), [`nushell/scripts/dev/test_helix_managed_config_contracts.nu:72`](../nushell/scripts/dev/test_helix_managed_config_contracts.nu), and [`nushell/scripts/dev/test_helix_managed_config_contracts.nu:131`](../nushell/scripts/dev/test_helix_managed_config_contracts.nu).
+  - Runtime-setup and runtime-resolution contracts are covered in [`nushell/scripts/dev/test_shell_managed_config_contracts.nu`](../nushell/scripts/dev/test_shell_managed_config_contracts.nu).
+  - Helix-specific managed-config behavior is covered in [`nushell/scripts/dev/test_helix_managed_config_contracts.nu`](../nushell/scripts/dev/test_helix_managed_config_contracts.nu).
   - Real install/runtime/Nix-path coverage now comes from installed-runtime validators such as [`nushell/scripts/dev/validate_flake_install.nu`](../nushell/scripts/dev/validate_flake_install.nu) and [`nushell/scripts/dev/validate_installed_runtime_contract.nu`](../nushell/scripts/dev/validate_installed_runtime_contract.nu) rather than synthetic PATH-only scenario probes.
 - Remaining gap:
   - None. This is a real strengthening, not just a rename.

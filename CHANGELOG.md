@@ -9,7 +9,9 @@ Post-v15 work in progress
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v15 lands.
+- Packaged and one-off runtime entrypoints no longer rewrite host shell dotfiles; runtime setup now stays inside `~/.local/share/yazelix` and relies on the install owner to provide `yzx`
+- Dropped the obsolete shell-hook setup/status modules and narrowed `yzx status` back to runtime/config inspection
+- Updated current docs to describe generated initializer paths, install-owner-provided `yzx`, and the post-shell-hook runtime contract more honestly
 
 ## v15 - 2026-04-13
 
