@@ -145,6 +145,12 @@ readlink -f "$(which yzx)"
 
 If `type yzx` reports a shell function that points at an older `/nix/store/...-yazelix/bin/yzx`, your host shell is still sourcing a stale legacy Yazelix block and shadowing the current profile command.
 
+Until that stale shell block is removed, bypass the shadowing function with:
+
+```bash
+command yzx update upstream
+```
+
 If `which yzx` points at `~/.local/bin/yzx` while your real install is owned by Home Manager or a Nix profile:
 
 - For Home Manager migration, run `yzx home_manager prepare --apply`, then `home-manager switch`
