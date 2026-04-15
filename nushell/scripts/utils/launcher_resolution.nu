@@ -4,7 +4,15 @@ use install_ownership.nu [
     get_manual_yzx_wrapper_path
     has_home_manager_managed_install
 ]
-use shell_config_generation.nu get_yzx_cli_path
+
+def get_runtime_yzx_cli_path [runtime_dir: string] {
+    let packaged_yzx = ($runtime_dir | path join "bin" "yzx")
+    if ($packaged_yzx | path exists) {
+        $packaged_yzx
+    } else {
+        ($runtime_dir | path join "shells" "posix" "yzx_cli.sh")
+    }
+}
 
 export def get_home_manager_yzx_profile_paths [] {
     mut candidates = [
@@ -51,6 +59,6 @@ export def resolve_desktop_launcher_path [runtime_dir: string] {
     if $stable_wrapper != null {
         $stable_wrapper
     } else {
-        get_yzx_cli_path $runtime_dir
+        get_runtime_yzx_cli_path $runtime_dir
     }
 }

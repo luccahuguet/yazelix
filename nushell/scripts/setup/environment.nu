@@ -5,33 +5,9 @@
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/constants.nu DEFAULT_SHELL
-use ../utils/install_ownership.nu has_home_manager_managed_install
 use ../utils/nushell_externs.nu [sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [sync_generated_nushell_user_hook_bridge]
 use ../utils/startup_profile.nu [profile_startup_step]
-
-def detect_environment [] {
-    let config_dir = ($env.YAZELIX_CONFIG_DIR | str replace "~" $env.HOME)
-    let read_only_config = (try {
-        let test_file = ($config_dir | path join ".yazelix_write_test")
-        touch $test_file
-        rm $test_file
-        false
-    } catch {
-        true
-    })
-    let home_manager = (has_home_manager_managed_install)
-
-    {
-        read_only_config: $read_only_config
-        home_manager: $home_manager
-        environment_type: (
-            if $home_manager { "home-manager" }
-            else if $read_only_config { "read-only" }
-            else { "standard" }
-        )
-    }
-}
 
 def ensure_runtime_scripts_executable [yazelix_dir: string] {
     let runtime_root = ($yazelix_dir | path expand)
@@ -93,29 +69,6 @@ def main [--welcome-source: string = "", --skip-welcome] {
         )
     }
 
-    # Detect environment first
-    let env_info = (detect_environment)
-    let home_manager_managed = ($env_info.environment_type == "home-manager")
-    if $debug_mode {
-        print $"🔍 Environment detection: ($env_info)"
-    }
-
-    # Handle different environment types
-    match $env_info.environment_type {
-        "home-manager" => {
-            if $debug_mode {
-                print "🏠 Home-manager environment detected - using read-only config approach"
-            }
-        }
-        "read-only" => {
-            print "⚠️  WARNING: Read-only configuration directory detected!"
-            print "   This may indicate a managed environment or permission issue."
-            print "   If using home-manager, see docs/home_manager_integration.md"
-            print "   Some features may not work correctly."
-        }
-        "standard" => { }
-    }
-
     # Validate user config against schema
     use ../utils/config_schema.nu validate_config_against_default
 
@@ -168,34 +121,6 @@ def main [--welcome-source: string = "", --skip-welcome] {
     }
     profile_shellhook_step "sync_nushell_user_hook_bridge" {
         sync_generated_nushell_user_hook_bridge
-    }
-
-    # Home Manager owns the profile command directly, so first-use startup must
-    # not require or rewrite host shell dotfiles.
-    if not $home_manager_managed {
-        # Setup shell hooks for configured shells
-        use ./shell_hooks.nu setup_shell_hooks
-
-        # Bash and Nushell are REQUIRED - error if config missing
-        profile_shellhook_step "setup_bash_hooks" {
-            setup_shell_hooks "bash" $yazelix_dir $quiet_mode true
-        }
-        profile_shellhook_step "setup_nushell_hooks" {
-            setup_shell_hooks "nushell" $yazelix_dir $quiet_mode true
-        }
-
-        # Fish and Zsh are optional - skip silently if not configured
-        if ("fish" in $shells_to_configure) {
-            profile_shellhook_step "setup_fish_hooks" {
-                setup_shell_hooks "fish" $yazelix_dir $quiet_mode false
-            }
-        }
-
-        if ("zsh" in $shells_to_configure) {
-            profile_shellhook_step "setup_zsh_hooks" {
-                setup_shell_hooks "zsh" $yazelix_dir $quiet_mode false
-            }
-        }
     }
 
     # Editor setup is now handled in the shellHook

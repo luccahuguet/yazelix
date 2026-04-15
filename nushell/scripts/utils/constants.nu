@@ -12,15 +12,6 @@ export const PINNED_NIX_VERSION = "2.34.5"
 export const PINNED_NUSHELL_VERSION = "0.111.0"
 
 # ============================================================================
-# CONFIGURATION SECTION MARKERS (Shell Hook Management)
-# ============================================================================
-# These markers are used to manage the current yazelix section in user shell configs.
-export const YAZELIX_START_MARKER = "# YAZELIX START v4 - Yazelix managed configuration (do not modify this comment)"
-export const YAZELIX_END_MARKER = "# YAZELIX END v4 - Yazelix managed configuration (do not modify this comment)"
-
-export const YAZELIX_REGENERATE_COMMENT = "# delete this whole section to re-generate the config, if needed"
-
-# ============================================================================
 # CONFIGURATION DEFAULTS
 # ============================================================================
 
@@ -236,22 +227,6 @@ export const SHELL_INITIALIZER_DIRS = {
     zsh: "~/.local/share/yazelix/initializers/zsh"
 }
 
-# User shell configuration files
-export const SHELL_CONFIGS = {
-    bash: "~/.bashrc"
-    nushell: "~/.config/nushell/config.nu"
-    fish: "~/.config/fish/config.fish"
-    zsh: "~/.zshrc"
-}
-
-# Yazelix shell configuration files
-export const YAZELIX_CONFIG_FILES = {
-    bash: "shells/bash/yazelix_bash_config.sh"
-    nushell: "nushell/config/config.nu"
-    fish: "shells/fish/yazelix_fish_config.fish"
-    zsh: "shells/zsh/yazelix_zsh_config.zsh"
-}
-
 # ============================================================================
 # TEMPLATE STRINGS
 # ============================================================================
@@ -308,4 +283,3 @@ export const GHOSTTY_CONFIG_HEADER = "# This is the configuration file for Ghost
 # Helper functions have been moved to dedicated modules:
 # - cursor_trail_helpers.nu - Cursor trail management
 # - environment_detection.nu - Environment detection
-# - shell_config_generation.nu - Shell configuration generation

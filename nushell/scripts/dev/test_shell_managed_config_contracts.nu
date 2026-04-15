@@ -4,10 +4,13 @@
 
 use ./yzx_test_helpers.nu [get_repo_root repo_path]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
-use ../setup/shell_hooks.nu [setup_shell_hooks]
 use ../utils/nushell_externs.nu [get_generated_yzx_extern_path sync_generated_yzx_extern_bridge]
-use ../utils/shell_config_generation.nu get_yazelix_section_content
 use ../utils/shell_user_hooks.nu [get_yazelix_shell_user_hook_path sync_generated_nushell_user_hook_bridge]
+
+def path_is_symlink [target: string] {
+    let result = (^bash -lc $"test -L ($target | into string | to json -r)" | complete)
+    $result.exit_code == 0
+}
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Defends: merged Zellij config routes managed Nushell panes through the Yazelix wrapper.
@@ -173,41 +176,6 @@ def test_managed_nushell_config_loads_in_repo_shell_without_runtime_env [] {
     })
 
     rm -rf $tmp_home
-    $result
-}
-
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
-# Regression: generated Nushell shell hooks must not pin yzx to a runtime-store import after runtime updates.
-def test_generated_nushell_shell_hook_uses_managed_config_only [] {
-    print "🧪 Testing generated Nushell shell hooks source the managed config without importing a runtime-pinned yzx command..."
-
-    let repo_root = (get_repo_root)
-
-    let result = (try {
-        let section = (with-env {
-            HOME: "/tmp"
-            YAZELIX_RUNTIME_DIR: $repo_root
-        } {
-            get_yazelix_section_content "nushell" $repo_root
-        })
-
-        if (
-            ($section | str contains 'source "')
-            and ($section | str contains 'nushell/config/config.nu')
-            and not ($section | str contains 'scripts/core/yazelix.nu')
-            and not ($section | str contains 'use ')
-        ) {
-            print "  ✅ Generated Nushell shell hooks now rely on the managed config and extern bridge instead of importing a store-pinned yzx command"
-            true
-        } else {
-            print $"  ❌ Unexpected generated Nushell shell-hook section: ($section)"
-            false
-        }
-    } catch {|err|
-        print $"  ❌ Exception: ($err.msg)"
-        false
-    })
-
     $result
 }
 
@@ -392,77 +360,59 @@ def test_runtime_resolution_fails_fast_without_valid_runtime_root [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Regression: standard shellhook setup must not recreate the legacy ~/.local/bin/yzx wrapper.
-def test_standard_shellhook_setup_skips_legacy_yzx_wrapper [] {
-    print "🧪 Testing standard shellhook setup skips the legacy yzx wrapper and refreshes stale hooks with ambient Home Manager profiles..."
+# Regression: runtime setup must not rewrite existing host shell surfaces or recreate the legacy ~/.local/bin/yzx wrapper.
+def test_runtime_setup_leaves_existing_host_shell_surfaces_untouched [] {
+    print "🧪 Testing runtime setup leaves existing host shell surfaces untouched..."
 
-    let tmp_root = (^mktemp -d /tmp/yazelix_standard_shellhook_surfaces_XXXXXX | str trim)
+    let repo_root = (get_repo_root)
+    let tmp_root = (^mktemp -d /tmp/yazelix_runtime_shell_surface_guard_XXXXXX | str trim)
     let tmp_home = ($tmp_root | path join "home")
     let xdg_config_home = ($tmp_home | path join ".config")
     let config_dir = ($xdg_config_home | path join "yazelix")
     let user_config_dir = ($config_dir | path join "user_configs")
     let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
     let log_dir = ($state_dir | path join "logs")
-    let runtime_dir = ($tmp_root | path join "runtime")
-    let runtime_bin_dir = ($runtime_dir | path join "bin")
-    let hm_marker = ($tmp_home | path join ".nix-profile" "etc" "profile.d" "hm-session-vars.sh")
     let bashrc_path = ($tmp_home | path join ".bashrc")
     let nushell_host_config = ($xdg_config_home | path join "nushell" "config.nu")
+    let generated_nushell_init = ($state_dir | path join "initializers" "nushell" "yazelix_init.nu")
     let local_yzx = ($tmp_home | path join ".local" "bin" "yzx")
     let runtime_nu = (which nu | get -o 0.path | default "nu")
+    let bashrc_original = "# existing bashrc\nexport TEST_BASHRC=1\n"
+    let nushell_original = "# existing nushell config\n$env.TEST_NU_CONFIG = \"kept\"\n"
 
+    mkdir $tmp_home
     mkdir $xdg_config_home
     mkdir $user_config_dir
-    mkdir $state_dir
-    mkdir $log_dir
-    mkdir ($hm_marker | path dirname)
-    mkdir $runtime_dir
-    mkdir $runtime_bin_dir
-
-    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "nushell", "shells", "yazelix_default.toml"] {
-        ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
-    }
-    ^ln -s $runtime_nu ($runtime_bin_dir | path join "nu")
-    "" | save --force --raw $hm_marker
-    "" | save --force --raw $bashrc_path
     mkdir ($nushell_host_config | path dirname)
-    [
-        "# YAZELIX START v4 - Yazelix managed configuration (do not modify this comment)"
-        "# delete this whole section to re-generate the config, if needed"
-        "source \"/home/test/.local/share/yazelix/runtime/current/nushell/config/config.nu\""
-        "# YAZELIX END v4 - Yazelix managed configuration (do not modify this comment)"
-    ] | str join "\n" | save --force --raw $nushell_host_config
     cp (repo_path "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
+    $bashrc_original | save --force --raw $bashrc_path
+    $nushell_original | save --force --raw $nushell_host_config
 
     let result = (try {
         let output = (with-env {
             HOME: $tmp_home
             XDG_CONFIG_HOME: $xdg_config_home
-            YAZELIX_RUNTIME_DIR: $runtime_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_CONFIG_DIR: $config_dir
             YAZELIX_STATE_DIR: $state_dir
             YAZELIX_LOGS_DIR: $log_dir
         } {
-            ^$runtime_nu ($runtime_dir | path join "nushell" "scripts" "setup" "environment.nu") --skip-welcome | complete
+            ^$runtime_nu ($repo_root | path join "nushell" "scripts" "setup" "environment.nu") --skip-welcome | complete
         })
         let bashrc_contents = (open --raw $bashrc_path)
         let nushell_contents = (open --raw $nushell_host_config)
-        let expected_launcher = ($runtime_dir | path join "shells" "posix" "yzx_cli.sh")
-        let expected_nushell_source = ($runtime_dir | path join "nushell" "config" "config.nu")
 
         if (
             ($output.exit_code == 0)
-            and ($bashrc_path | path exists)
+            and ($bashrc_contents == $bashrc_original)
+            and ($nushell_contents == $nushell_original)
             and not ($local_yzx | path exists)
-            and ($bashrc_contents | str contains $expected_launcher)
-            and not ($bashrc_contents | str contains "/.local/bin/yzx")
-            and ($nushell_contents | str contains $"source \"($expected_nushell_source)\"")
-            and not ($nushell_contents | str contains "/runtime/current/")
+            and ($generated_nushell_init | path exists)
         ) {
-            print "  ✅ Standard shellhook setup now updates host shell hooks with the active runtime launcher, even when Home Manager exists on the host"
+            print "  ✅ Runtime setup now stays self-contained and leaves existing host shell files untouched"
             true
         } else {
-            print $"  ❌ Unexpected standard shellhook result: exit=($output.exit_code) bashrc_exists=(($bashrc_path | path exists)) local_yzx_exists=(($local_yzx | path exists)) bashrc=($bashrc_contents) nushell=($nushell_contents) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            print $"  ❌ Unexpected runtime-setup result: exit=($output.exit_code) bashrc=($bashrc_contents) nushell=($nushell_contents) local_yzx_exists=(($local_yzx | path exists)) init_exists=(($generated_nushell_init | path exists)) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -475,66 +425,69 @@ def test_standard_shellhook_setup_skips_legacy_yzx_wrapper [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Regression: Home Manager shellhook setup must not require host dotfiles or recreate the legacy ~/.local/bin/yzx wrapper.
-def test_home_manager_shellhook_setup_skips_host_shell_surfaces [] {
-    print "🧪 Testing Home Manager shellhook setup skips host dotfiles and the legacy yzx wrapper..."
+# Regression: runtime setup must ignore read-only Home-Manager-style host shell surfaces instead of trying to own them.
+def test_runtime_setup_ignores_read_only_host_shell_surfaces [] {
+    print "🧪 Testing runtime setup ignores read-only Home-Manager-style host shell surfaces..."
 
-    let tmp_root = (^mktemp -d /tmp/yazelix_hm_shellhook_surfaces_XXXXXX | str trim)
+    let repo_root = (get_repo_root)
+    let tmp_root = (^mktemp -d /tmp/yazelix_runtime_read_only_shell_surfaces_XXXXXX | str trim)
     let tmp_home = ($tmp_root | path join "home")
     let xdg_config_home = ($tmp_home | path join ".config")
     let config_dir = ($xdg_config_home | path join "yazelix")
     let user_config_dir = ($config_dir | path join "user_configs")
     let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
     let log_dir = ($state_dir | path join "logs")
-    let runtime_dir = ($tmp_root | path join "runtime")
-    let runtime_bin_dir = ($runtime_dir | path join "bin")
     let hm_files_root = ($tmp_root | path join "fake-home-manager-files")
-    let hm_main_config = ($hm_files_root | path join ".config" "yazelix" "user_configs" "yazelix.toml")
+    let hm_bashrc_target = ($hm_files_root | path join ".bashrc")
+    let hm_nushell_target = ($hm_files_root | path join ".config" "nushell" "config.nu")
     let bashrc_path = ($tmp_home | path join ".bashrc")
     let nushell_host_config = ($xdg_config_home | path join "nushell" "config.nu")
+    let generated_nushell_init = ($state_dir | path join "initializers" "nushell" "yazelix_init.nu")
     let local_yzx = ($tmp_home | path join ".local" "bin" "yzx")
     let runtime_nu = (which nu | get -o 0.path | default "nu")
+    let bashrc_original = "# read-only hm bashrc\nexport TEST_BASHRC=hm\n"
+    let nushell_original = "# read-only hm nushell config\n$env.TEST_NU_CONFIG = \"hm\"\n"
 
+    mkdir $tmp_home
     mkdir $xdg_config_home
     mkdir $user_config_dir
-    mkdir $state_dir
-    mkdir $log_dir
-    mkdir ($hm_main_config | path dirname)
-    mkdir $runtime_dir
-    mkdir $runtime_bin_dir
-
-    for entry in [".taplo.toml", "assets", "config_metadata", "configs", "nushell", "shells", "yazelix_default.toml"] {
-        ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
-    }
-    ^ln -s $runtime_nu ($runtime_bin_dir | path join "nu")
-    cp (repo_path "yazelix_default.toml") $hm_main_config
-    ^ln -s $hm_main_config ($user_config_dir | path join "yazelix.toml")
+    mkdir ($hm_bashrc_target | path dirname)
+    mkdir ($hm_nushell_target | path dirname)
+    cp (repo_path "yazelix_default.toml") ($user_config_dir | path join "yazelix.toml")
+    $bashrc_original | save --force --raw $hm_bashrc_target
+    $nushell_original | save --force --raw $hm_nushell_target
+    ^chmod 444 $hm_bashrc_target $hm_nushell_target
+    ^ln -s $hm_bashrc_target $bashrc_path
+    mkdir ($nushell_host_config | path dirname)
+    ^ln -s $hm_nushell_target $nushell_host_config
 
     let result = (try {
         let output = (with-env {
             HOME: $tmp_home
             XDG_CONFIG_HOME: $xdg_config_home
-            YAZELIX_RUNTIME_DIR: $runtime_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_CONFIG_DIR: $config_dir
             YAZELIX_STATE_DIR: $state_dir
             YAZELIX_LOGS_DIR: $log_dir
         } {
-            ^$runtime_nu ($runtime_dir | path join "nushell" "scripts" "setup" "environment.nu") --skip-welcome | complete
+            ^$runtime_nu ($repo_root | path join "nushell" "scripts" "setup" "environment.nu") --skip-welcome | complete
         })
-
-        let generated_nushell_init = ($state_dir | path join "initializers" "nushell" "yazelix_init.nu")
+        let bashrc_contents = (open --raw $bashrc_path)
+        let nushell_contents = (open --raw $nushell_host_config)
 
         if (
             ($output.exit_code == 0)
-            and not ($bashrc_path | path exists)
-            and not ($nushell_host_config | path exists)
+            and (path_is_symlink $bashrc_path)
+            and (path_is_symlink $nushell_host_config)
+            and ($bashrc_contents == $bashrc_original)
+            and ($nushell_contents == $nushell_original)
             and not ($local_yzx | path exists)
             and ($generated_nushell_init | path exists)
         ) {
-            print "  ✅ Home Manager shellhook setup now stays self-contained instead of requiring host dotfiles or recreating ~/.local/bin/yzx"
+            print "  ✅ Runtime setup now ignores read-only Home Manager shell surfaces and keeps host symlinks untouched"
             true
         } else {
-            print $"  ❌ Unexpected Home Manager shellhook result: exit=($output.exit_code) bashrc_exists=(($bashrc_path | path exists)) nushell_config_exists=(($nushell_host_config | path exists)) local_yzx_exists=(($local_yzx | path exists)) init_exists=(($generated_nushell_init | path exists)) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            print $"  ❌ Unexpected read-only runtime-setup result: exit=($output.exit_code) bashrc_symlink=((path_is_symlink $bashrc_path)) nushell_symlink=((path_is_symlink $nushell_host_config)) bashrc=($bashrc_contents) nushell=($nushell_contents) local_yzx_exists=(($local_yzx | path exists)) init_exists=(($generated_nushell_init | path exists)) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -544,73 +497,6 @@ def test_home_manager_shellhook_setup_skips_host_shell_surfaces [] {
 
     rm -rf $tmp_root
     $result
-}
-
-# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Regression: legacy pre-v4 shell hook blocks are rejected with one explicit manual recovery path instead of being duplicated or auto-migrated silently.
-def test_setup_shell_hooks_rejects_legacy_generations [] {
-    print "🧪 Testing shell hook setup rejects legacy pre-v4 managed sections with manual recovery guidance..."
-
-    let repo_root = (get_repo_root)
-    let legacy_cases = [
-        {generation: "v1", marker: "# YAZELIX START - Yazelix managed configuration (do not modify this comment)", end_marker: "# YAZELIX END - Yazelix managed configuration (do not modify this comment)"}
-        {generation: "v2", marker: "# YAZELIX START v2 - Yazelix managed configuration (do not modify this comment)", end_marker: "# YAZELIX END v2 - Yazelix managed configuration (do not modify this comment)"}
-        {generation: "v3", marker: "# YAZELIX START v3 - Yazelix managed configuration (do not modify this comment)", end_marker: "# YAZELIX END v3 - Yazelix managed configuration (do not modify this comment)"}
-    ]
-
-    let results = ($legacy_cases | each {|legacy|
-        let tmp_root = (^mktemp -d /tmp/yazelix_legacy_shell_hook_XXXXXX | str trim)
-        let tmp_home = ($tmp_root | path join "home")
-        let bashrc_path = ($tmp_home | path join ".bashrc")
-        let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
-
-        mkdir $tmp_home
-        mkdir ($tmp_home | path join ".local" "share")
-        mkdir $state_dir
-
-        [
-            $legacy.marker
-            "# old generated shell hook body"
-            $legacy.end_marker
-        ] | str join "\n" | save --force --raw $bashrc_path
-
-        let outcome = (with-env {
-            HOME: $tmp_home
-            YAZELIX_RUNTIME_DIR: $repo_root
-            YAZELIX_STATE_DIR: $state_dir
-        } {
-            try {
-                setup_shell_hooks "bash" $repo_root true true
-                {ok: false, message: "setup_shell_hooks succeeded unexpectedly"}
-            } catch {|err|
-                {ok: true, message: ($err.msg | default "")}
-            }
-        })
-
-        let bashrc_contents = (open --raw $bashrc_path)
-        let passed = (
-            $outcome.ok
-            and ($outcome.message | str contains $"no longer auto-migrates ($legacy.generation)")
-            and ($outcome.message | str contains "delete the old Yazelix-managed section")
-            and ($outcome.message | str contains "yzx launch")
-            and ($bashrc_contents | str contains $legacy.marker)
-            and not ($bashrc_contents | str contains "# YAZELIX START v4")
-        )
-
-        if not $passed {
-            print $"  ❌ Unexpected legacy shell-hook result for ($legacy.generation): message=($outcome.message) contents=($bashrc_contents)"
-        }
-
-        rm -rf $tmp_root
-        $passed
-    })
-
-    if ($results | all {|result| $result}) {
-        print "  ✅ Legacy pre-v4 shell hook generations now fail fast with one explicit cleanup path"
-        true
-    } else {
-        false
-    }
 }
 
 export def run_shell_managed_config_contract_tests [] {
@@ -618,14 +504,12 @@ export def run_shell_managed_config_contract_tests [] {
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
         (test_managed_nushell_config_sources_optional_user_hook)
         (test_managed_nushell_config_loads_in_repo_shell_without_runtime_env)
-        (test_generated_nushell_shell_hook_uses_managed_config_only)
         (test_managed_bash_config_sources_optional_user_hook)
         (test_managed_fish_config_does_not_export_helix_mode_env)
         (test_source_checkout_runtime_resolution_beats_installed_runtime)
         (test_runtime_resolution_fails_fast_without_valid_runtime_root)
-        (test_standard_shellhook_setup_skips_legacy_yzx_wrapper)
-        (test_home_manager_shellhook_setup_skips_host_shell_surfaces)
-        (test_setup_shell_hooks_rejects_legacy_generations)
+        (test_runtime_setup_leaves_existing_host_shell_surfaces_untouched)
+        (test_runtime_setup_ignores_read_only_host_shell_surfaces)
     ]
 }
 

@@ -10,7 +10,7 @@ The current code already distinguishes several kinds of checks, but the boundary
 
 - startup and launch fail fast on missing working directories, missing runtime scripts, missing generated layouts, and unavailable configured terminals
 - config validation runs before launch, but it is a config-contract concern rather than a runtime dependency concern
-- `yzx doctor` performs much heavier checks such as shell-hook freshness, desktop-entry freshness, install-artifact staleness, version drift, Helix runtime conflicts, and plugin health
+- `yzx doctor` performs much heavier checks such as desktop-entry freshness, install-artifact staleness, version drift, Helix runtime conflicts, and plugin health
 - install smoke validates even heavier installed-runtime invariants that are useful for packaging confidence but too expensive for normal launch
 
 Without a written contract:
@@ -54,7 +54,6 @@ Without a written contract:
   - host or externally resolved tools should only be treated as required when the current entrypoint truly needs them to proceed
 - Optional or doctor-only diagnostics:
   - version drift warnings
-  - shell-hook freshness
   - desktop-entry freshness
   - install-artifact staleness
   - Helix runtime conflicts and deeper health checks
@@ -72,7 +71,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 | Missing managed generated layout required for startup | Startup materialization plus bounded preflight | Startup should repair Yazelix-owned generated layouts before failing, while custom layout overrides still fail clearly if they remain unresolved. |
 | No suitable configured/requested terminal available for new-window launch | Launch preflight | Detached launch should fail clearly before attempting terminal startup. |
 | Unsupported config follow-up before entrypoint execution | Adjacent config-surface validation | This can block entrypoints, but it belongs to config-surface ownership rather than runtime dependency checking. |
-| Stale shell hooks or stale desktop entry | `yzx doctor` | Important health signal, but not a universal startup blocker for every entrypoint. |
+| Stale desktop entry or launcher-shadowing install artifact | `yzx doctor` | Important health signal, but not a universal startup blocker for every entrypoint. |
 | Installed runtime pointer correctness or stable launcher shim correctness | Install/package validation and `yzx doctor` | These defend packaging/install integrity and may be inspected by doctor, but are too heavy for routine launch. |
 | Minimal-PATH POSIX launcher viability and shell-enter contract | Install/package validation | Heavy install-smoke concerns, not routine preflight checks. |
 | Version drift, Helix runtime conflicts, plugin/session-local health | `yzx doctor` | Rich diagnostics that should not silently expand launch into a slow environment audit. |
@@ -89,7 +88,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
   - when launching a new terminal, at least one suitable configured/requested terminal candidate is available for the current terminal-management mode
 - Launch preflight should fail fast with explicit recovery guidance.
 - Launch preflight should not:
-  - perform deep freshness audits of shell hooks or desktop entries
+  - perform deep freshness audits of desktop entries or other install artifacts
   - perform full install integrity checks
   - perform slow environment-wide health analysis just because doctor can
 
@@ -98,7 +97,6 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 - `yzx doctor` should consume the same dependency story, but it may check more than launch preflight.
 - Doctor is the place for:
   - stale or broken install artifacts
-  - shell-hook freshness
   - desktop-entry freshness
   - version drift reporting
   - Helix runtime conflicts and deeper runtime health
@@ -131,7 +129,7 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 2. When startup or new-window launch depends on a missing runtime script, launch fails clearly as a runtime/generated-state problem instead of surfacing a generic downstream tool failure.
 3. When a new-terminal launch is requested and the configured terminal is unavailable for the current management mode, launch fails quickly with terminal-specific guidance instead of falling through into unrelated errors.
 4. When startup depends on a missing managed generated layout, startup materializes it before asking Zellij to use that path, and unresolved custom layout overrides still fail clearly.
-5. When shell hooks, desktop entries, or installed runtime links are stale, `yzx doctor` may report them, but normal launch preflight does not have to run the full install-audit surface first.
+5. When desktop entries or installed runtime links are stale, `yzx doctor` may report them, but normal launch preflight does not have to run the full install-audit surface first.
 6. When a later Core discussion asks which dependencies are true launch blockers versus richer diagnostics, the answer can be taken from this contract instead of inferred ad hoc from current implementation details.
 
 ## Verification

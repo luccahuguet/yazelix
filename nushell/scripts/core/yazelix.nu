@@ -8,7 +8,6 @@ use ../utils/common.nu get_yazelix_runtime_dir
 use ../utils/environment_bootstrap.nu [prepare_environment]
 use ../utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path
 use ../utils/version_info.nu [print_version_info]
-use ../setup/shell_hooks.nu [check_shell_hook_versions]
 use ../integrations/managed_editor.nu get_managed_editor_kind
 use ../integrations/yazi.nu [reveal_in_yazi sync_sidebar_yazi_state_to_directory]
 use ../integrations/zellij.nu [retarget_tab_cwd resolve_tab_cwd_target]
@@ -46,13 +45,6 @@ export use ../yzx/home_manager.nu *
 #   yzx run       - Run a command inside the Yazelix environment
 #   yzx status    - Show current Yazelix status
 #   yzx doctor    - Run health checks
-
-def format_shell_hook_summary [shell_status] {
-    let current = ($shell_status | where status == "current" | length)
-    let outdated = ($shell_status | where status == "outdated" | length)
-    let missing = ($shell_status | where status == "missing" | length)
-    $"($current) current, ($outdated) outdated, ($missing) missing"
-}
 
 def has_external_command [command_name: string] {
     (which $command_name | where type == "external" | is-not-empty)
@@ -143,7 +135,7 @@ def require_current_working_flake [] {
     }
 }
 
-def build_status_rows [config: record, config_state: record, yazelix_dir: string, shell_status: list<record>] {
+def build_status_rows [config: record, config_state: record, yazelix_dir: string] {
     let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL])
     let terminal_label = if ($terminals | is-empty) {
         "none"
@@ -164,7 +156,6 @@ def build_status_rows [config: record, config_state: record, yazelix_dir: string
         {field: "runtime_dir", value: $yazelix_dir}
         {field: "logs_dir", value: ($yazelix_dir | path join "logs")}
         {field: "generated_state_repair_needed", value: ($config_state.needs_refresh | into string)}
-        {field: "shell_hooks", value: (format_shell_hook_summary $shell_status)}
         {field: "default_shell", value: $config.default_shell}
         {field: "terminals", value: $terminal_label}
         {field: "helix_runtime", value: $helix_runtime_label}
@@ -295,22 +286,15 @@ export def "yzx reveal" [
 # Canonical inspection command
 export def "yzx status" [
     --versions(-V)  # Include tool version matrix
-    --verbose(-v)   # Include detailed shell hook status
 ] {
     let env_prep = prepare_environment
     let config = $env_prep.config
     let config_state = $env_prep.config_state
     let yazelix_dir = (get_yazelix_runtime_dir)
-    let shell_status = check_shell_hook_versions $yazelix_dir
-    let status_rows = (build_status_rows $config $config_state $yazelix_dir $shell_status)
+    let status_rows = (build_status_rows $config $config_state $yazelix_dir)
 
     print "Yazelix status"
     print ($status_rows | table)
-    if $verbose {
-        print ""
-        print "Shell hook details:"
-        print ($shell_status | table)
-    }
     if $versions {
         print ""
         print_version_info

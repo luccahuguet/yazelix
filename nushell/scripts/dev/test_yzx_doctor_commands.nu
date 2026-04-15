@@ -238,7 +238,7 @@ def test_yzx_doctor_accepts_manual_stable_wrapper_desktop_entry [] {
     $result
 }
 
-# Regression: Home Manager installs use the profile yzx command, profile desktop entries, and optional host shell hooks.
+# Regression: Home Manager installs use the profile yzx command and profile desktop entries without relying on user-local launcher artifacts.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_doctor_accepts_home_manager_install_artifacts [] {
     print "🧪 Testing yzx doctor accepts the Home Manager profile yzx command and desktop entry..."
@@ -258,7 +258,7 @@ def test_yzx_doctor_accepts_home_manager_install_artifacts [] {
         let stdout = ($output.stdout | str trim)
 
         if (($output.exit_code == 0) and (doctor_output_reports_current_home_manager_install $stdout)) {
-            print "  ✅ yzx doctor accepts the Home Manager profile yzx command, profile desktop entry, and optional host shell hooks"
+            print "  ✅ yzx doctor accepts the Home Manager profile yzx command and profile desktop entry without needing user-local launcher artifacts"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"

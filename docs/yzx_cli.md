@@ -110,11 +110,10 @@ Restart Yazelix (handles persistent sessions)
 - Profile installs relaunch through the default-profile `yzx`; Home Manager installs relaunch through the Home Manager-owned `yzx`
 - Already-open Yazelix windows keep running their current live runtime until they are explicitly relaunched or restarted
 
-### `yzx status [--versions] [--verbose]`
+### `yzx status [--versions]`
 Show current Yazelix status
-- Default: show the structured runtime/config summary table plus shell-hook summary
+- Default: show the structured runtime/config summary table
 - `--versions, -V`: include the full tool version matrix
-- `--verbose, -v`: include detailed shell hook status table
 
 ### `yzx sponsor`
 Open the Yazelix GitHub Sponsors page
@@ -274,7 +273,6 @@ yzx config reset --yes        # Replace the managed config with a fresh template
 yzx config reset --yes --no-backup  # Replace the managed config without writing backups
 yzx status                    # System information
 yzx status --versions         # Show all tool versions
-yzx status --verbose          # Show detailed shell hook status
 yzx sponsor                   # Open the Yazelix sponsor page
 
 # Updates

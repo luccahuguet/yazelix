@@ -185,7 +185,7 @@ Useful launch variants:
 - `yzx enter` starts Yazelix in the current terminal
 - `yzx help` shows the command surface
 
-**First run note**: the first launch can take a bit longer while Yazelix writes shell hooks and generates managed runtime state. Later launches are usually faster because that generated state already exists.
+**First run note**: the first launch can take a bit longer while Yazelix generates managed runtime state under `~/.local/share/yazelix`. Later launches are usually faster because that generated state already exists. Launch does not rewrite your host shell dotfiles.
 
 If you want to use Nushell as your normal host shell outside Yazelix, install it separately in the way you prefer. Yazelix no longer requires that extra host `nu` install just to bootstrap or launch the installed runtime.
 
