@@ -56,6 +56,25 @@ def get_shell_resolved_yzx_path [] {
     }
 }
 
+def get_stale_store_shadow_context [] {
+    let redirected_from = (
+        $env.YAZELIX_REDIRECTED_FROM_STALE_YZX_PATH?
+        | default ""
+        | into string
+        | str trim
+    )
+    let profile_wrapper = (get_existing_home_manager_yzx_profile_path)
+
+    if ($redirected_from | is-empty) or ($profile_wrapper == null) {
+        return null
+    }
+
+    {
+        redirected_from: ($redirected_from | path expand --no-symlink)
+        profile_wrapper: ($profile_wrapper | path expand --no-symlink)
+    }
+}
+
 def get_desktop_entry_exec [desktop_path: string] {
     if not ($desktop_path | path exists) {
         return null
@@ -206,6 +225,24 @@ export def check_desktop_entry_freshness [] {
 }
 
 export def check_shell_yzx_wrapper_shadowing [] {
+    let stale_store_shadow = (get_stale_store_shadow_context)
+    if $stale_store_shadow != null {
+        let details_lines = [
+            $"Stale host-shell invocation: ($stale_store_shadow.redirected_from)"
+            $"Current profile-owned yzx: ($stale_store_shadow.profile_wrapper)"
+            "Yazelix redirected this invocation to the current profile command so the requested action could still run"
+            "A stale host-shell function or alias is still shadowing `yzx` in at least one shell startup file"
+            "Open a fresh shell after removing the old Yazelix-managed shell block, or bypass host-shell functions with `command yzx` until cleanup is complete"
+        ]
+
+        return [{
+            status: "warning"
+            message: "A stale host-shell yzx function or alias is shadowing the current profile command"
+            details: ($details_lines | str join "\n")
+            fix_available: false
+        }]
+    }
+
     let manual_wrapper = (get_manual_yzx_wrapper_path)
     if not (is_legacy_manual_yzx_wrapper_path $manual_wrapper) {
         return []

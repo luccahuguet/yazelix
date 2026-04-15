@@ -138,16 +138,19 @@ If `yzx update upstream` still tries the removed `github:luccahuguet/yazelix#ins
 Check what your shell is using:
 
 ```bash
+type yzx
 which yzx
 readlink -f "$(which yzx)"
 ```
+
+If `type yzx` reports a shell function that points at an older `/nix/store/...-yazelix/bin/yzx`, your host shell is still sourcing a stale legacy Yazelix block and shadowing the current profile command.
 
 If `which yzx` points at `~/.local/bin/yzx` while your real install is owned by Home Manager or a Nix profile:
 
 - For Home Manager migration, run `yzx home_manager prepare --apply`, then `home-manager switch`
 - For a plain Nix profile install, remove the stale `~/.local/bin/yzx` wrapper and keep the profile-owned `yzx`
 
-After cleanup, open a fresh shell and verify `which yzx` resolves to the current owner path
+After cleanup, open a fresh shell and verify `type yzx` no longer reports a shell function and `which yzx` resolves to the current owner path
 
 ## Editor Issues
 

@@ -208,6 +208,37 @@ welcome_style = "random"
     }
 }
 
+def setup_profile_wrapper_redirect_fixture [label: string] {
+    let fixture = (setup_managed_config_fixture
+        $label
+        '[core]
+welcome_style = "random"
+'
+    )
+
+    let old_runtime = ($fixture.tmp_home | path join "old_runtime")
+    let profile_yzx = ($fixture.tmp_home | path join ".nix-profile" "bin" "yzx")
+    let redirect_log = ($fixture.tmp_home | path join "redirected_args.log")
+
+    mkdir $old_runtime
+    mkdir ($profile_yzx | path dirname)
+    "" | save --force --raw $redirect_log
+
+    ^ln -s (repo_path "shells") ($old_runtime | path join "shells")
+
+    write_test_executable $profile_yzx [
+        "#!/bin/sh"
+        'printf "%s\n" "$*" > "$YZX_REDIRECT_LOG"'
+    ]
+
+    {
+        fixture: $fixture
+        old_runtime: $old_runtime
+        profile_yzx: $profile_yzx
+        redirect_log: $redirect_log
+    }
+}
+
 def setup_run_passthrough_fixture [label: string] {
     let fixture = (setup_managed_config_fixture
         $label
@@ -737,6 +768,45 @@ def test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step [] 
     $result
 }
 
+# Regression: future profile updates must not stay trapped on an older store-pinned yzx invocation from a stale host-shell function.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_stale_store_pinned_yzx_invocation_redirects_to_profile_wrapper [] {
+    print "🧪 Testing stale store-pinned yzx invocation redirects to the current profile wrapper..."
+
+    let fixture = (setup_profile_wrapper_redirect_fixture "yazelix_store_pinned_yzx_redirect")
+    let stale_store_yzx = "/nix/store/old-yazelix/bin/yzx"
+    let old_cli = ($fixture.old_runtime | path join "shells" "posix" "yzx_cli.sh")
+
+    let result = (try {
+        let output = (with-env {
+            HOME: $fixture.fixture.tmp_home
+            USER: ($env.USER? | default "test-user")
+            YZX_REDIRECT_LOG: $fixture.redirect_log
+            YAZELIX_INVOKED_YZX_PATH: $stale_store_yzx
+        } {
+            ^sh $old_cli update upstream --yes | complete
+        })
+        let redirected_args = (open --raw $fixture.redirect_log | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($redirected_args == "update upstream --yes")
+        ) {
+            print "  ✅ Stale store-pinned yzx invocations now hand off to the current profile wrapper instead of staying on the old runtime"
+            true
+        } else {
+            print $"  ❌ Unexpected redirect result: exit=($output.exit_code) redirected_args=($redirected_args) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.fixture.tmp_home
+    $result
+}
+
 # Defends: yzx run must forward dash-prefixed child args without forcing quoting or wrapper-side parsing.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_run_passes_dash_prefixed_args_through_unchanged [] {
@@ -1098,6 +1168,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_update_upstream_upgrades_matching_profile_entry)
         (test_yzx_update_upstream_fails_without_matching_profile_entry)
         (test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step)
+        (test_stale_store_pinned_yzx_invocation_redirects_to_profile_wrapper)
         (test_yzx_run_passes_dash_prefixed_args_through_unchanged)
         (test_yzx_run_treats_child_verbose_flag_as_child_argv)
         (test_yzx_edit_targets_print_paths)

@@ -34,6 +34,17 @@ def write_test_legacy_yzx_wrapper [path: string] {
     ^chmod +x $path
 }
 
+def setup_fake_profile_yzx [fixture: record] {
+    let profile_yzx = ($fixture.tmp_home | path join ".nix-profile" "bin" "yzx")
+    mkdir ($profile_yzx | path dirname)
+    [
+        "#!/bin/sh"
+        "exit 0"
+    ] | str join "\n" | save --force --raw $profile_yzx
+    ^chmod +x $profile_yzx
+    $profile_yzx
+}
+
 def setup_fake_home_manager_install_artifacts [fixture: record] {
     let fake_runtime = ($fixture.tmp_home | path join "fake_home_manager_package")
     let fake_runtime_bin = ($fake_runtime | path join "bin")
@@ -88,6 +99,7 @@ def doctor_output_reports_current_home_manager_install [stdout: string] {
         and ($stdout | str contains "Home Manager owns the packaged Yazelix runtime path and update transition in this mode.")
         and ($stdout | str contains "Yazelix desktop entry uses the expected launcher path")
         and not ($stdout | str contains "A stale user-local yzx wrapper shadows the profile-owned Yazelix command")
+        and not ($stdout | str contains "A stale host-shell yzx function or alias is shadowing the current profile command")
         and not ($stdout | str contains "Installed Yazelix runtime link is missing")
         and not ($stdout | str contains "Installed yzx command is missing")
         and not ($stdout | str contains "Installed yzx command is stale")
@@ -369,6 +381,48 @@ def test_yzx_doctor_reports_shadowing_manual_yzx_wrapper_for_profile_owner [] {
     $result
 }
 
+# Regression: a stale store-pinned host-shell yzx function can shadow the current profile command after a profile update.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_reports_stale_store_pinned_shell_shadowing [] {
+    print "🧪 Testing yzx doctor reports stale store-pinned host-shell yzx shadowing..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_store_pinned_shell_shadowing"
+        ""
+    )
+
+    let result = (try {
+        let profile_yzx = (setup_fake_profile_yzx $fixture)
+        let stale_store_yzx = "/nix/store/old-yazelix/bin/yzx"
+
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
+            YAZELIX_INVOKED_YZX_PATH: $profile_yzx
+            YAZELIX_REDIRECTED_FROM_STALE_YZX_PATH: $stale_store_yzx
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "A stale host-shell yzx function or alias is shadowing the current profile command")
+            and ($stdout | str contains $stale_store_yzx)
+            and ($stdout | str contains $profile_yzx)
+            and ($stdout | str contains "command yzx")
+        ) {
+            print "  ✅ yzx doctor flags stale store-pinned host-shell shadowing instead of only checking user-local wrapper files"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 # Defends: doctor surfaces shared runtime preflight failures for missing runtime launch assets.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_doctor_reports_missing_runtime_launch_assets [] {
@@ -527,6 +581,7 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_accepts_home_manager_install_artifacts)
         (test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager)
         (test_yzx_doctor_reports_shadowing_manual_yzx_wrapper_for_profile_owner)
+        (test_yzx_doctor_reports_stale_store_pinned_shell_shadowing)
         (test_yzx_doctor_reports_missing_runtime_launch_assets)
         (test_yzx_doctor_respects_layout_override_for_shared_preflight)
         (test_yzx_doctor_omits_installer_artifact_checks_in_runtime_root_only_mode)
