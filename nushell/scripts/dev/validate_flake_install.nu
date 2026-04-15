@@ -185,7 +185,7 @@ def verify_installed_runtime [temp_home: string] {
     let wrapper_target = ($readlink_result.stdout | str trim)
     let runtime_root = ($wrapper_target | path dirname | path dirname)
     let runtime_bin = ($runtime_root | path join "bin")
-    let runtime_nu = ($runtime_bin | path join "nu")
+    let runtime_libexec = ($runtime_root | path join "libexec")
     let runtime_yzx_cli = ($runtime_root | path join "shells" "posix" "yzx_cli.sh")
     let runtime_ghostty_wrapper = ($runtime_root | path join "shells" "posix" "yazelix_ghostty.sh")
     let runtime_taplo_config = ($runtime_root | path join ".taplo.toml")
@@ -199,7 +199,8 @@ def verify_installed_runtime [temp_home: string] {
     let generated_ghostty_effect_dir = ($generated_ghostty_root | path join "shaders" "generated_effects")
     let runtime_terminal_configs_script = ($runtime_root | path join "nushell" "scripts" "utils" "terminal_configs.nu")
 
-    require_path_exists $runtime_nu "runtime-local Nushell binary"
+    require_path_exists $yzx_path "profile-installed yzx entrypoint"
+    require_path_exists ($runtime_libexec | path join "nu") "runtime-local Nushell binary"
     require_path_exists $runtime_yzx_cli "runtime-local POSIX yzx launcher"
     require_path_exists $runtime_ghostty_wrapper "runtime-local Ghostty env wrapper"
     require_path_exists $runtime_yazelix_default "runtime-local default config"
@@ -207,12 +208,12 @@ def verify_installed_runtime [temp_home: string] {
     require_path_exists $runtime_ghostty_trail_variant "runtime-local Ghostty trail shader variant"
     require_path_exists $runtime_ghostty_effect_template "runtime-local Ghostty cursor effect template"
 
-    for expected_bin in ["nu" "yzx" "zellij" "ghostty" "yazi" "hx" "nvim" "fish" "zsh" "bash" "nix" "jq" "fd" "rg"] {
-        require_path_exists ($runtime_bin | path join $expected_bin) $"runtime binary `($expected_bin)`"
+    for expected_tool in ["zellij" "ghostty" "yazi" "hx" "nvim" "fish" "zsh" "bash" "nix" "jq" "fd" "rg"] {
+        require_path_exists ($runtime_libexec | path join $expected_tool) $"runtime tool `($expected_tool)`"
     }
     if (($nu.os-info.name | str downcase) == "linux") {
-        require_path_exists ($runtime_bin | path join "nixGLMesa") "runtime binary `nixGLMesa`"
-        require_path_exists ($runtime_bin | path join "pgrep") "runtime binary `pgrep`"
+        require_path_exists ($runtime_libexec | path join "nixGLMesa") "runtime tool `nixGLMesa`"
+        require_path_exists ($runtime_libexec | path join "pgrep") "runtime tool `pgrep`"
     }
 
     let expected_wrapper_target = ($runtime_root | path join "bin" "yzx")
@@ -270,7 +271,7 @@ def verify_installed_runtime [temp_home: string] {
             "run"
             "nu"
             "-c"
-            'print ({shell: ($env.IN_YAZELIX_SHELL | default ""), runtime: ($env.YAZELIX_RUNTIME_DIR | default ""), path0: (($env.PATH | default []) | first | default ""), editor: ($env.EDITOR | default "")} | to json -r)'
+            'print ({shell: ($env.IN_YAZELIX_SHELL | default ""), runtime: ($env.YAZELIX_RUNTIME_DIR | default ""), path0: (($env.PATH | default []) | get -o 0 | default ""), path1: (($env.PATH | default []) | get -o 1 | default ""), yzx: ((which yzx | get -o 0.path | default "")), editor: ($env.EDITOR | default "")} | to json -r)'
     )
 
     if $runtime_probe.exit_code != 0 {
@@ -287,7 +288,9 @@ def verify_installed_runtime [temp_home: string] {
     if (
         ($probe.shell != "true")
         or ($probe.runtime != $runtime_root)
-        or ($probe.path0 != $runtime_bin)
+        or ($probe.path0 != $runtime_libexec)
+        or ($probe.path1 != $runtime_bin)
+        or ($probe.yzx != ($runtime_bin | path join "yzx"))
         or (not ($probe.editor | str contains "yazelix_hx.sh"))
     ) {
         error make {

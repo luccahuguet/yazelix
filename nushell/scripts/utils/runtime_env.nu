@@ -60,10 +60,15 @@ export def get_runtime_env [config?: record] {
         $config
     }
     let runtime_dir = (get_yazelix_runtime_dir)
+    let runtime_tools = ($runtime_dir | path join "libexec")
     let runtime_bin = ($runtime_dir | path join "bin")
     let current_path_entries = (normalize_path_entries ($env.PATH? | default []))
-    let path_entries = if ($runtime_bin | path exists) {
-        [$runtime_bin] | append $current_path_entries | uniq
+    let runtime_path_entries = (
+        [$runtime_tools, $runtime_bin]
+        | where {|entry| $entry | path exists }
+    )
+    let path_entries = if ($runtime_path_entries | is-not-empty) {
+        $runtime_path_entries | append $current_path_entries | uniq
     } else {
         $current_path_entries
     }

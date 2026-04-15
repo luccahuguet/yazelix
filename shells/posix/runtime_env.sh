@@ -14,9 +14,9 @@ xdg_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
 export YAZELIX_CONFIG_DIR="${YAZELIX_CONFIG_DIR:-$xdg_config_home/yazelix}"
 export YAZELIX_STATE_DIR="${YAZELIX_STATE_DIR:-$xdg_data_home/yazelix}"
 export YAZELIX_LOGS_DIR="${YAZELIX_LOGS_DIR:-$YAZELIX_STATE_DIR/logs}"
-export PATH="$runtime_dir/bin:$PATH"
+export PATH="$runtime_dir/libexec:$runtime_dir/bin:$PATH"
 
-runtime_nu="$runtime_dir/bin/nu"
+runtime_nu="$runtime_dir/libexec/nu"
 if [ -x "$runtime_nu" ]; then
   export YAZELIX_NU_BIN="$runtime_nu"
 elif command -v nu >/dev/null 2>&1; then

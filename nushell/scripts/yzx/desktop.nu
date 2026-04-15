@@ -234,7 +234,7 @@ export def "yzx desktop launch" [] {
     }
     let fast_launch_module = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
     let launch_env = (get_desktop_launch_env $runtime_dir)
-    let runtime_nu = ($runtime_dir | path join "bin" "nu")
+    let runtime_nu = ($runtime_dir | path join "libexec" "nu")
     let nu_bin = if ($runtime_nu | path exists) {
         $runtime_nu
     } else {

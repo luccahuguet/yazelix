@@ -53,7 +53,7 @@ The package should ship the immutable runtime assets Yazelix executes directly:
 - shipped templates such as:
   - `yazelix_default.toml`
 - `bin/yzx`
-- runtime-local `bin/nu`
+- runtime-local `libexec/nu`
 
 It must not own or embed user config/state paths.
 

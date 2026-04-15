@@ -21,7 +21,7 @@ let
     "zellij"
     "yazi"
   ];
-  runtimeNu = "${yazelixPackage}/bin/nu";
+  runtimeNu = "${yazelixPackage}/libexec/nu";
   stateRoot = "${config.xdg.dataHome}/yazelix";
   logsPath = "${stateRoot}/logs";
   managedConfigRoot = "${config.xdg.configHome}/yazelix";

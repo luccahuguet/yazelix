@@ -99,11 +99,11 @@ def setup_startup_bootstrap_probe_fixture [label: string] {
     let start_script = ($runtime_dir | path join "shells" "posix" "start_yazelix.sh")
     let runtime_env_script = ($runtime_dir | path join "shells" "posix" "runtime_env.sh")
     let startup_nu = ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix.nu")
-    let fake_nu = ($runtime_dir | path join "bin" "nu")
+    let fake_nu = ($runtime_dir | path join "libexec" "nu")
 
     mkdir ($runtime_dir | path join "shells" "posix")
     mkdir ($runtime_dir | path join "nushell" "scripts" "core")
-    mkdir ($runtime_dir | path join "bin")
+    mkdir ($runtime_dir | path join "libexec")
 
     ^ln -s (repo_path "shells" "posix" "start_yazelix.sh") $start_script
     ^ln -s (repo_path "shells" "posix" "runtime_env.sh") $runtime_env_script
@@ -469,7 +469,7 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
 
     let result = (try {
         let hostile_nu = ($fixture.fake_profile_bin | path join "nu")
-        let runtime_nu = ($fixture.runtime_dir | path join "bin" "nu")
+        let runtime_nu = ($fixture.runtime_dir | path join "libexec" "nu")
         mkdir ($runtime_nu | path dirname)
 
         write_probe_nu $hostile_nu [
@@ -560,7 +560,7 @@ def test_yzx_desktop_launch_propagates_fast_path_failures_without_fallback [] {
 
     let result = (try {
         let fast_launch_module = ($fixture.runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
-        let runtime_nu = ($fixture.runtime_dir | path join "bin" "nu")
+        let runtime_nu = ($fixture.runtime_dir | path join "libexec" "nu")
         mkdir ($runtime_nu | path dirname)
 
         write_probe_nu $runtime_nu [

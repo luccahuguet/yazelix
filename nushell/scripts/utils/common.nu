@@ -190,7 +190,7 @@ export def resolve_yazelix_nu_bin [] {
 
     let runtime_dir = (get_yazelix_runtime_dir)
     if $runtime_dir != null {
-        let runtime_nu = ($runtime_dir | path join "bin" "nu")
+        let runtime_nu = ($runtime_dir | path join "libexec" "nu")
         if ($runtime_nu | path exists) {
             return $runtime_nu
         }
@@ -206,7 +206,7 @@ export def resolve_yazelix_nu_bin [] {
         return $current_nu
     }
 
-    error make {msg: "Could not resolve a usable Nushell binary for Yazelix. Checked YAZELIX_NU_BIN, runtime-local bin/nu, PATH, and $nu.current-exe."}
+    error make {msg: "Could not resolve a usable Nushell binary for Yazelix. Checked YAZELIX_NU_BIN, runtime-local libexec/nu, PATH, and $nu.current-exe."}
 }
 
 export def resolve_zellij_default_shell [yazelix_dir: string, default_shell: string] {

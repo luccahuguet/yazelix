@@ -29,12 +29,12 @@ def get_runtime_platform_name []: nothing -> string {
 }
 
 def resolve_nixgl_launch_prefix [] {
-    let runtime_nixgl = ((get_yazelix_runtime_dir) | path join "bin" "nixGL")
+    let runtime_nixgl = ((get_yazelix_runtime_dir) | path join "libexec" "nixGL")
     if ($runtime_nixgl | path exists) {
         return $"($runtime_nixgl) "
     }
 
-    let runtime_nixgl_default = ((get_yazelix_runtime_dir) | path join "bin" "nixGLDefault")
+    let runtime_nixgl_default = ((get_yazelix_runtime_dir) | path join "libexec" "nixGLDefault")
     if ($runtime_nixgl_default | path exists) {
         return $"($runtime_nixgl_default) "
     }

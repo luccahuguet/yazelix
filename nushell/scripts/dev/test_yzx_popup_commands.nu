@@ -690,9 +690,9 @@ def test_popup_wrapper_env_falls_back_to_runtime_env [] {
                     $path_text | split row (char esep)
                 }
             }
-            let runtime_bin = ($runtime_dir | path join "bin")
-            let runtime_bin_ok = if ($runtime_bin | path exists) {
-                $path_entries | any {|entry| $entry == $runtime_bin }
+            let runtime_libexec = ($runtime_dir | path join "libexec")
+            let runtime_libexec_ok = if ($runtime_libexec | path exists) {
+                $path_entries | any {|entry| $entry == $runtime_libexec }
             } else {
                 true
             }
@@ -702,7 +702,7 @@ def test_popup_wrapper_env_falls_back_to_runtime_env [] {
                 and (($pane_env.EDITOR? | default "") == "nvim")
                 and (($pane_env.YAZI_ID? | default "") == "1234")
                 and ($path_entries | any {|entry| $entry == $profile_bin })
-                and $runtime_bin_ok
+                and $runtime_libexec_ok
                 and (not ($wrapper_env | columns | any {|column| $column == "YAZELIX_NU_BIN" }))
                 and (not ($wrapper_env | columns | any {|column| $column == "YAZELIX_TERMINAL_CONFIG_MODE" }))
             ) {
@@ -754,10 +754,10 @@ def test_popup_wrapper_serializes_path_list_for_env_command [] {
     }
 }
 
-# Regression: popup wrappers must fall back to a host-provided Nushell binary when the runtime root does not ship bin/nu.
+# Regression: popup wrappers must fall back to a host-provided Nushell binary when the runtime root does not ship a runtime-local libexec/nu.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_popup_wrapper_falls_back_to_host_nu_without_runtime_owned_nu [] {
-    print "🧪 Testing popup wrappers fall back to host-provided nu without a runtime-owned bin/nu..."
+    print "🧪 Testing popup wrappers fall back to host-provided nu without a runtime-owned libexec/nu..."
 
     let fixture = (setup_runtime_wrapper_fixture "yazelix_popup_host_nu")
     let zellij_log = ($fixture.tmpdir | path join "zellij_args.log")
@@ -801,7 +801,7 @@ def test_popup_wrapper_falls_back_to_host_nu_without_runtime_owned_nu [] {
         if (
             ($invocation | any {|arg| $arg in $host_nu_candidates })
             and ($invocation | any {|arg| $arg == $wrapper_path })
-            and not ($invocation | any {|arg| $arg == ($fixture.runtime_dir | path join "bin" "nu") })
+            and not ($invocation | any {|arg| $arg == ($fixture.runtime_dir | path join "libexec" "nu") })
         ) {
             print "  ✅ popup wrappers now fall back to host-provided nu when the runtime root does not ship one"
             true

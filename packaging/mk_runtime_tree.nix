@@ -20,15 +20,17 @@ pkgs.runCommand name { } ''
   ln -s ${src}/.taplo.toml "$out/.taplo.toml"
   ln -s ${src}/yazelix_default.toml "$out/yazelix_default.toml"
 
-  mkdir -p "$out/bin"
+  mkdir -p "$out/libexec"
   for bin_dir in ${escapedRuntimeBinDirs}; do
     if [ -d "$bin_dir" ]; then
       for entry in "$bin_dir"/*; do
         [ -e "$entry" ] || continue
-        ln -sfn "$entry" "$out/bin/$(basename "$entry")"
+        ln -sfn "$entry" "$out/libexec/$(basename "$entry")"
       done
     fi
   done
+
+  mkdir -p "$out/bin"
   cat > "$out/bin/yzx" <<EOF
 #!/bin/sh
 PATH="${pkgs.nushell}/bin:\$PATH"

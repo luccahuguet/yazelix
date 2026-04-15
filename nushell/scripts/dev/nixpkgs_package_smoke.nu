@@ -58,16 +58,19 @@ export def verify_yazelix_package [package_root: string] {
             "run"
             "nu"
             "-c"
-            'print ({shell: ($env.IN_YAZELIX_SHELL | default ""), runtime: ($env.YAZELIX_RUNTIME_DIR | default ""), path0: (($env.PATH | default []) | first | default "")} | to json -r)'
+            'print ({shell: ($env.IN_YAZELIX_SHELL | default ""), runtime: ($env.YAZELIX_RUNTIME_DIR | default ""), path0: (($env.PATH | default []) | get -o 0 | default ""), path1: (($env.PATH | default []) | get -o 1 | default ""), yzx: ((which yzx | get -o 0.path | default ""))} | to json -r)'
     )
     require_success $runtime_probe "Packaged yzx run probe failed"
 
     let probe = ($runtime_probe.stdout | str trim | from json)
-    let expected_path0 = ($package_root | path join "bin")
+    let expected_bin1 = ($package_root | path join "bin")
+    let expected_path0 = ($package_root | path join "libexec")
     if (
         ($probe.shell != "true")
         or ($probe.runtime != $package_root)
         or ($probe.path0 != $expected_path0)
+        or ($probe.path1 != $expected_bin1)
+        or ($probe.yzx != ($expected_bin1 | path join "yzx"))
     ) {
         error make { msg: $"Packaged Yazelix runtime probe saw the wrong env: ($probe | to json -r)" }
     }

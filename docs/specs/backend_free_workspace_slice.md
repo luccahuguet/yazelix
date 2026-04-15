@@ -31,7 +31,7 @@ The proof mode for this slice is `runtime_root_only`:
 
 - there is a real Yazelix runtime root
 - there is no installer-owned `runtime/current`
-- there is no requirement that the runtime root ship `bin/nu`
+- there is no requirement that the runtime root ship `libexec/nu`
 - host-provided `nu` is allowed and expected
 
 This is the honest closest current analogue to a future narrower workspace-oriented mode.
@@ -50,7 +50,7 @@ This is the honest closest current analogue to a future narrower workspace-orien
 ### `yzx popup`
 
 - The stable CLI leaf path can dispatch directly to the lightweight popup module without bootstrapping the full command suite.
-- Popup wrappers can fall back to host-provided `nu` when the runtime root does not ship `bin/nu`.
+- Popup wrappers can fall back to host-provided `nu` when the runtime root does not ship `libexec/nu`.
 - Popup cwd derives from workspace/session state, not backend provisioning.
 - Required local conditions:
   - inside Zellij

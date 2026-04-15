@@ -351,8 +351,8 @@ def test_ghostty_linux_launch_command_prefers_runtime_owned_nixgl_wrapper [] {
 
     let tmpdir = (^mktemp -d /tmp/yazelix_linux_nixgl_launch_XXXXXX | str trim)
     let fake_runtime = ($tmpdir | path join "runtime")
-    let fake_wrapper = ($fake_runtime | path join "bin" "nixGLMesa")
-    mkdir ($fake_runtime | path join "bin")
+    let fake_wrapper = ($fake_runtime | path join "libexec" "nixGLMesa")
+    mkdir ($fake_runtime | path join "libexec")
     '{}' | save --force --raw ($fake_runtime | path join "yazelix_default.toml")
 
     let result = (try {

@@ -126,6 +126,65 @@ def test_get_runtime_env_wraps_helix_with_managed_wrapper [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: the canonical Nu runtime env must stay self-contained and expose runtime-local yzx without relying on POSIX bootstrap state.
+def test_get_runtime_env_keeps_runtime_bin_for_runtime_local_yzx [] {
+    print "🧪 Testing canonical Nu runtime env keeps runtime-local yzx reachable from a cold context..."
+
+    let tmp_home = (^mktemp -d /tmp/yazelix_runtime_env_self_contained_XXXXXX | str trim)
+
+    let result = (try {
+        let fake_runtime = ($tmp_home | path join "runtime")
+        let fake_runtime_bin = ($fake_runtime | path join "bin")
+        let fake_runtime_libexec = ($fake_runtime | path join "libexec")
+        mkdir $fake_runtime
+        mkdir $fake_runtime_bin
+        mkdir $fake_runtime_libexec
+        "" | save --force --raw ($fake_runtime | path join "yazelix_default.toml")
+
+        [
+            "#!/bin/sh"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($fake_runtime_bin | path join "yzx")
+        ^chmod +x ($fake_runtime_bin | path join "yzx")
+
+        let runtime_env = (with-env {
+            HOME: $tmp_home
+            PATH: []
+            YAZELIX_RUNTIME_DIR: $fake_runtime
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+        } {
+            get_runtime_env {
+                editor_command: "hx"
+                enable_sidebar: true
+                helix_runtime_path: null
+            }
+        })
+
+        let resolved_yzx = (with-env $runtime_env {
+            which yzx | get -o 0.path | default ""
+        })
+
+        if (
+            (($runtime_env.PATH | get -o 0 | default "") == $fake_runtime_libexec)
+            and (($runtime_env.PATH | get -o 1 | default "") == $fake_runtime_bin)
+            and ($resolved_yzx == ($fake_runtime_bin | path join "yzx"))
+        ) {
+            print "  ✅ Canonical Nu runtime env keeps both libexec and bin on PATH so runtime-local yzx remains reachable"
+            true
+        } else {
+            print $"  ❌ Unexpected canonical runtime PATH contract: (($runtime_env | to json -r)) resolved_yzx=($resolved_yzx)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Regression: the managed Helix wrapper must ignore legacy YAZELIX_DIR and infer its runtime from the wrapper path.
 def test_yazelix_hx_ignores_legacy_runtime_alias_and_uses_wrapper_runtime_root [] {
@@ -278,6 +337,7 @@ export def run_helix_managed_config_contract_tests [] {
     [
         (test_generate_managed_helix_config_merges_user_config_and_enforces_reveal)
         (test_get_runtime_env_wraps_helix_with_managed_wrapper)
+        (test_get_runtime_env_keeps_runtime_bin_for_runtime_local_yzx)
         (test_yazelix_hx_ignores_legacy_runtime_alias_and_uses_wrapper_runtime_root)
         (test_yzx_import_helix_copies_personal_config_with_force_backups)
     ]

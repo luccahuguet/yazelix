@@ -16,7 +16,7 @@ def is_package_runtime_root [runtime_dir?: string] {
     (
         (($candidate | path join "yazelix_default.toml") | path exists)
         and (($candidate | path join "bin" "yzx") | path exists)
-        and (($candidate | path join "bin" "nu") | path exists)
+        and (($candidate | path join "libexec" "nu") | path exists)
     )
 }
 

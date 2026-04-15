@@ -23,7 +23,7 @@ if [ -z "$helix_binary" ]; then
   exit 1
 fi
 
-nu_bin="${YAZELIX_NU_BIN:-$runtime_dir/bin/nu}"
+nu_bin="${YAZELIX_NU_BIN:-$runtime_dir/libexec/nu}"
 if [ ! -x "$nu_bin" ]; then
   if command -v "$nu_bin" >/dev/null 2>&1; then
     nu_bin="$(command -v "$nu_bin")"

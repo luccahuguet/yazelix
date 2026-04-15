@@ -48,6 +48,7 @@ def setup_fake_profile_yzx [fixture: record] {
 def setup_fake_home_manager_install_artifacts [fixture: record] {
     let fake_runtime = ($fixture.tmp_home | path join "fake_home_manager_package")
     let fake_runtime_bin = ($fake_runtime | path join "bin")
+    let fake_runtime_libexec = ($fake_runtime | path join "libexec")
     let hm_store = ($fixture.tmp_home | path join "fake-home-manager-files")
     let hm_main = ($hm_store | path join ".config" "yazelix" "user_configs" "yazelix.toml")
     let profile_yzx = ($fixture.tmp_home | path join ".nix-profile" "bin" "yzx")
@@ -55,6 +56,7 @@ def setup_fake_home_manager_install_artifacts [fixture: record] {
 
     mkdir $fake_runtime
     mkdir $fake_runtime_bin
+    mkdir $fake_runtime_libexec
     mkdir ($hm_main | path dirname)
     mkdir ($profile_yzx | path dirname)
     mkdir ($profile_desktop_path | path dirname)
@@ -72,8 +74,8 @@ def setup_fake_home_manager_install_artifacts [fixture: record] {
     [
         "#!/bin/sh"
         "exit 0"
-    ] | str join "\n" | save --force --raw ($fake_runtime_bin | path join "nu")
-    ^chmod +x ($fake_runtime_bin | path join "nu")
+    ] | str join "\n" | save --force --raw ($fake_runtime_libexec | path join "nu")
+    ^chmod +x ($fake_runtime_libexec | path join "nu")
 
     ^ln -s ($fake_runtime | path join "bin" "yzx") $profile_yzx
     rm -f $fixture.config_path

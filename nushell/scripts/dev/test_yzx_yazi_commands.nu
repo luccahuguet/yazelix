@@ -110,7 +110,7 @@ skip_welcome_screen = true
             YAZELIX_CONFIG_DIR: $fixture.config_dir
             YAZELIX_RUNTIME_DIR: $repo_root
             EDITOR: ($repo_root | path join "shells" "posix" "yazelix_hx.sh")
-            YAZELIX_MANAGED_HELIX_BINARY: ($repo_root | path join "bin" "hx")
+            YAZELIX_MANAGED_HELIX_BINARY: ($repo_root | path join "libexec" "hx")
         } {
             get_managed_editor_kind
         })
