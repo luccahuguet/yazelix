@@ -35,7 +35,10 @@
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
       mkPkgs = system: nixpkgs.legacyPackages.${system};
-      homeManagerModule = import ./home_manager/module.nix;
+      homeManagerModule = { ... }: {
+        _module.args.nixgl = nixgl;
+        imports = [ ./home_manager/module.nix ];
+      };
       runtimePackage = pkgs: import ./yazelix_runtime_package.nix { inherit pkgs nixgl; };
       yazelixPackage = pkgs: import ./yazelix_package.nix { inherit pkgs nixgl; };
       maintainerShell =

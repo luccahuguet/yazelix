@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  nixgl ? null,
   pkgs,
   ...
 }:
@@ -9,7 +10,7 @@ with lib;
 
 let
   cfg = config.programs.yazelix;
-  yazelixPackage = import ../yazelix_package.nix { inherit pkgs; };
+  yazelixPackage = import ../yazelix_package.nix { inherit pkgs nixgl; };
   mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
   mainContractFields = mainConfigContract.fields;
   mainConfigSectionOrder = [
