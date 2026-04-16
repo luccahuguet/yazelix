@@ -20,6 +20,7 @@ use constants.nu DEFAULT_TERMINAL
 use generated_runtime_state.nu repair_generated_runtime_state
 use runtime_contract_checker.nu [
     check_generated_layout
+    check_linux_ghostty_desktop_graphics_support
     check_launch_terminal_support
     check_launch_working_dir
     check_runtime_script
@@ -172,6 +173,11 @@ def check_shared_runtime_preflight [] {
         (check_generated_layout $layout_path "doctor")
         $terminal_check
     ]
+
+    let ghostty_desktop_graphics_check = (check_linux_ghostty_desktop_graphics_support $terminals)
+    if $ghostty_desktop_graphics_check != null {
+        $checks = ($checks | append $ghostty_desktop_graphics_check)
+    }
 
     if $current_dir != null {
         $checks = ($checks | prepend (check_launch_working_dir $current_dir))

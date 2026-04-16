@@ -42,7 +42,12 @@ def archive_artifacts [artifacts: list<record>, backup_label: string] {
 
     $artifacts | each {|artifact|
         let backup_path = $"($artifact.path).($backup_label)-backup-($timestamp)"
-        mv $artifact.path $backup_path
+        if (($artifact.artifact_kind? | default "") == "shell_block") {
+            ($artifact.block_contents? | default "") | save --force --raw $backup_path
+            ($artifact.remaining_contents? | default "") | save --force --raw $artifact.path
+        } else {
+            mv $artifact.path $backup_path
+        }
         $artifact | upsert backup_path $backup_path
     }
 }

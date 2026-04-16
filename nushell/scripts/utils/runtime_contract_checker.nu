@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use failure_classes.nu [format_failure_classification]
-use terminal_launcher.nu detect_terminal_candidates
+use terminal_launcher.nu [detect_terminal_candidates resolve_nixgl_launch_context]
 use constants.nu [SUPPORTED_TERMINALS TERMINAL_METADATA]
 use common.nu [get_yazelix_state_dir]
 
@@ -75,6 +75,16 @@ def build_runtime_check_detail_lines [check: record] {
     }
 
     $detail_lines
+}
+
+def get_runtime_platform_name []: nothing -> string {
+    (
+        $env.YAZELIX_TEST_OS?
+        | default $nu.os-info.name
+        | into string
+        | str trim
+        | str downcase
+    )
 }
 
 export def resolve_expected_layout_path [config: record, layout_dir?: string] {
@@ -257,7 +267,7 @@ export def check_launch_terminal_support [requested_terminal: string, terminals:
             "ok"
             "info"
             "launch"
-            $"Terminal launch support is available for ($specified_terminal)"
+            $"Terminal command discovery is available for ($specified_terminal)"
             null
             null
             null
@@ -285,9 +295,56 @@ export def check_launch_terminal_support [requested_terminal: string, terminals:
         "ok"
         "info"
         "launch"
-        "Configured terminal launch support is available"
+        "A configured terminal command is available"
         null
         null
         null
         --candidates $candidates)
+}
+
+export def check_linux_ghostty_desktop_graphics_support [terminals: list<string>] {
+    if (get_runtime_platform_name) != "linux" {
+        return null
+    }
+
+    let candidates = (detect_terminal_candidates $terminals)
+    let active_candidate = ($candidates | get -o 0)
+    if $active_candidate == null {
+        return null
+    }
+
+    if $active_candidate.terminal != "ghostty" {
+        return null
+    }
+
+    let nixgl_context = (resolve_nixgl_launch_context)
+    if $nixgl_context.source == "runtime" {
+        return null
+    }
+
+    let details_lines = if $nixgl_context.source == "host_path" {
+        [
+            "First launch candidate: Ghostty"
+            $"Detected host PATH graphics wrapper: ($nixgl_context.command)"
+            "Linux Ghostty launches can appear healthy from an interactive shell while still failing from desktop-entry launches that inherit a smaller GUI PATH"
+            "Update or reinstall Yazelix so the active runtime ships its own Linux graphics wrapper, or choose a different first terminal if you intentionally do not want Ghostty here"
+        ]
+    } else {
+        [
+            "First launch candidate: Ghostty"
+            "No runtime-owned or PATH-provided nixGL wrapper was detected for Linux Ghostty launches"
+            "Ghostty can fail to acquire an OpenGL context from desktop-entry launches when this wrapper is missing"
+            "Update or reinstall Yazelix so the active runtime ships its Linux graphics wrapper, or choose a different first terminal"
+        ]
+    }
+
+    (build_runtime_check
+        "linux_ghostty_desktop_graphics_support"
+        "warning"
+        "warning"
+        "doctor"
+        "Linux Ghostty desktop-launch graphics support is not runtime-owned"
+        ($details_lines | str join "\n")
+        null
+        null)
 }

@@ -34,6 +34,22 @@ def write_test_legacy_yzx_wrapper [path: string] {
     ^chmod +x $path
 }
 
+def build_test_legacy_shell_block [stale_runtime_root: string] {
+    [
+        "# YAZELIX START v4 - Yazelix managed configuration (do not modify this comment)"
+        "# delete this whole section to re-generate the config, if needed"
+        'if [ -n "$IN_YAZELIX_SHELL" ]; then'
+        $"  source \"($stale_runtime_root)/shells/bash/yazelix_bash_config.sh\""
+        "fi"
+        "# yzx command - always available for launching/managing yazelix"
+        "yzx() {"
+        $"    \"($stale_runtime_root)/bin/yzx\" \"$@\""
+        "}"
+        "# YAZELIX END v4 - Yazelix managed configuration (do not modify this comment)"
+        ""
+    ] | str join "\n"
+}
+
 def setup_fake_profile_yzx [fixture: record] {
     let profile_yzx = ($fixture.tmp_home | path join ".nix-profile" "bin" "yzx")
     mkdir ($profile_yzx | path dirname)
@@ -92,6 +108,49 @@ def setup_fake_home_manager_install_artifacts [fixture: record] {
         runtime_root: $fake_runtime
         profile_yzx: $profile_yzx
         profile_desktop_path: $profile_desktop_path
+    }
+}
+
+def setup_fake_packaged_ghostty_runtime [fixture: record] {
+    let fake_runtime = ($fixture.tmp_home | path join "fake_packaged_runtime")
+    let fake_runtime_bin = ($fake_runtime | path join "bin")
+    let fake_runtime_libexec = ($fake_runtime | path join "libexec")
+    let fake_state_dir = ($fixture.tmp_home | path join ".local" "share" "yazelix")
+    let layouts_dir = ($fake_state_dir | path join "configs" "zellij" "layouts")
+
+    mkdir $fake_runtime
+    mkdir $fake_runtime_bin
+    mkdir $fake_runtime_libexec
+    mkdir $layouts_dir
+
+    cp ($fixture.repo_root | path join "yazelix_default.toml") ($fake_runtime | path join "yazelix_default.toml")
+    cp ($fixture.repo_root | path join ".taplo.toml") ($fake_runtime | path join ".taplo.toml")
+    ^ln -s ($fixture.repo_root | path join "config_metadata") ($fake_runtime | path join "config_metadata")
+    ^ln -s ($fixture.repo_root | path join "nushell") ($fake_runtime | path join "nushell")
+    ^ln -s ($fixture.repo_root | path join "shells") ($fake_runtime | path join "shells")
+
+    [
+        "#!/bin/sh"
+        "exit 0"
+    ] | str join "\n" | save --force --raw ($fake_runtime_bin | path join "yzx")
+    ^chmod +x ($fake_runtime_bin | path join "yzx")
+    [
+        "#!/bin/sh"
+        "exit 0"
+    ] | str join "\n" | save --force --raw ($fake_runtime_libexec | path join "nu")
+    ^chmod +x ($fake_runtime_libexec | path join "nu")
+    [
+        "#!/bin/sh"
+        "exit 0"
+    ] | str join "\n" | save --force --raw ($fake_runtime_libexec | path join "ghostty")
+    ^chmod +x ($fake_runtime_libexec | path join "ghostty")
+
+    "" | save --force --raw ($layouts_dir | path join "yzx_side.kdl")
+
+    {
+        runtime_root: $fake_runtime
+        runtime_libexec: $fake_runtime_libexec
+        state_dir: $fake_state_dir
     }
 }
 
@@ -425,6 +484,104 @@ def test_yzx_doctor_reports_stale_store_pinned_shell_shadowing [] {
     $result
 }
 
+# Regression: doctor must detect stale Yazelix-managed shell startup blocks even when an older shell function never set redirect metadata.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_reports_stale_shell_block_shadowing_without_redirect_context [] {
+    print "🧪 Testing yzx doctor reports stale Yazelix-managed shell blocks without redirect context..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_shell_block_shadowing"
+        ""
+    )
+
+    let result = (try {
+        let hm_install = (setup_fake_home_manager_install_artifacts $fixture)
+        let shell_block_path = ($fixture.tmp_home | path join ".bashrc")
+        let shell_block = (build_test_legacy_shell_block "/nix/store/old-yazelix")
+        $"# user bashrc\n\n($shell_block)" | save --force --raw $shell_block_path
+
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
+            YAZELIX_INVOKED_YZX_PATH: $hm_install.profile_yzx
+            YAZELIX_RUNTIME_DIR: $hm_install.runtime_root
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "A stale Yazelix-managed shell block can shadow the current profile command")
+            and ($stdout | str contains $shell_block_path)
+            and ($stdout | str contains "yzx home_manager prepare --apply")
+            and ($stdout | str contains "command yzx")
+            and not ($stdout | str contains "Stale host-shell invocation:")
+        ) {
+            print "  ✅ yzx doctor flags stale Yazelix-managed shell blocks even when the invoking shell never provided redirect metadata"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: doctor must distinguish Linux Ghostty binary discovery from the runtime-owned graphics wrapper desktop launch depends on.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_reports_linux_ghostty_graphics_support_that_depends_on_host_path [] {
+    print "🧪 Testing yzx doctor warns when Linux Ghostty desktop launches depend on host PATH graphics wrappers..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_ghostty_host_path_graphics"
+        '[terminal]
+terminals = ["ghostty"]
+'
+    )
+
+    let result = (try {
+        let fake_runtime = (setup_fake_packaged_ghostty_runtime $fixture)
+        let fake_host_bin = ($fixture.tmp_home | path join "host_bin")
+        mkdir $fake_host_bin
+        [
+            "#!/bin/sh"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($fake_host_bin | path join "nixGLMesa")
+        ^chmod +x ($fake_host_bin | path join "nixGLMesa")
+
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose" {
+            YAZELIX_RUNTIME_DIR: $fake_runtime.runtime_root
+            YAZELIX_STATE_DIR: $fake_runtime.state_dir
+            YAZELIX_TEST_OS: "linux"
+            PATH: ($env.PATH | append [$fake_runtime.runtime_libexec $fake_host_bin])
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "A configured terminal command is available")
+            and ($stdout | str contains "Linux Ghostty desktop-launch graphics support is not runtime-owned")
+            and ($stdout | str contains "Detected host PATH graphics wrapper: nixGLMesa")
+            and ($stdout | str contains "desktop-entry launches")
+            and not ($stdout | str contains "Configured terminal launch support is available")
+        ) {
+            print "  ✅ yzx doctor now distinguishes shell-visible terminal discovery from the runtime-owned Linux Ghostty graphics path desktop launch relies on"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 # Defends: doctor surfaces shared runtime preflight failures for missing runtime launch assets.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_doctor_reports_missing_runtime_launch_assets [] {
@@ -584,6 +741,8 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager)
         (test_yzx_doctor_reports_shadowing_manual_yzx_wrapper_for_profile_owner)
         (test_yzx_doctor_reports_stale_store_pinned_shell_shadowing)
+        (test_yzx_doctor_reports_stale_shell_block_shadowing_without_redirect_context)
+        (test_yzx_doctor_reports_linux_ghostty_graphics_support_that_depends_on_host_path)
         (test_yzx_doctor_reports_missing_runtime_launch_assets)
         (test_yzx_doctor_respects_layout_override_for_shared_preflight)
         (test_yzx_doctor_omits_installer_artifact_checks_in_runtime_root_only_mode)

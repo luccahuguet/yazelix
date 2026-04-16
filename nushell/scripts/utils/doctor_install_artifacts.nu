@@ -2,6 +2,7 @@
 
 use common.nu get_yazelix_runtime_dir
 use install_ownership.nu [
+    collect_legacy_yazelix_shell_block_artifacts
     get_manual_desktop_entry_path
     get_manual_yzx_wrapper_path
     has_home_manager_managed_install
@@ -225,13 +226,25 @@ export def check_desktop_entry_freshness [] {
 }
 
 export def check_shell_yzx_wrapper_shadowing [] {
+    let shell_block_artifacts = (collect_legacy_yazelix_shell_block_artifacts)
     let stale_store_shadow = (get_stale_store_shadow_context)
     if $stale_store_shadow != null {
+        let shell_block_lines = (
+            $shell_block_artifacts
+            | each {|artifact| $"  - ($artifact.path) \(lines ($artifact.start_line)-($artifact.end_line)\)"}
+        )
         let details_lines = [
             $"Stale host-shell invocation: ($stale_store_shadow.redirected_from)"
             $"Current profile-owned yzx: ($stale_store_shadow.profile_wrapper)"
             "Yazelix redirected this invocation to the current profile command so the requested action could still run"
             "A stale host-shell function or alias is still shadowing `yzx` in at least one shell startup file"
+        ] | append (
+            if ($shell_block_lines | is-empty) {
+                []
+            } else {
+                ["Detected stale Yazelix-managed shell blocks:"] | append $shell_block_lines
+            }
+        ) | append [
             "Open a fresh shell after removing the old Yazelix-managed shell block, or bypass host-shell functions with `command yzx` until cleanup is complete"
         ]
 
@@ -243,12 +256,36 @@ export def check_shell_yzx_wrapper_shadowing [] {
         }]
     }
 
+    let profile_wrapper = (get_existing_home_manager_yzx_profile_path)
+    if ($profile_wrapper != null) and not ($shell_block_artifacts | is-empty) {
+        let expanded_profile_wrapper = ($profile_wrapper | path expand --no-symlink)
+        let shell_block_lines = (
+            $shell_block_artifacts
+            | each {|artifact| $"  - ($artifact.path) \(lines ($artifact.start_line)-($artifact.end_line)\)"}
+        )
+        let details_lines = [
+            $"Profile-owned yzx: ($expanded_profile_wrapper)"
+            "A stale Yazelix-managed shell block still exists in a host startup file and can shadow `yzx` in fresh interactive shells"
+            "Detected stale Yazelix-managed shell blocks:"
+        ] | append $shell_block_lines | append [
+            "If you are migrating to Home Manager, run `yzx home_manager prepare --apply`, then rerun `home-manager switch`"
+            "If a Nix profile package owns this runtime instead, remove the old Yazelix-managed shell block and keep the profile-owned `yzx` command"
+            "Until cleanup, use `command yzx` to bypass host-shell functions in the current shell"
+        ]
+
+        return [{
+            status: "warning"
+            message: "A stale Yazelix-managed shell block can shadow the current profile command"
+            details: ($details_lines | str join "\n")
+            fix_available: false
+        }]
+    }
+
     let manual_wrapper = (get_manual_yzx_wrapper_path)
     if not (is_legacy_manual_yzx_wrapper_path $manual_wrapper) {
         return []
     }
 
-    let profile_wrapper = (get_existing_home_manager_yzx_profile_path)
     if $profile_wrapper == null {
         return []
     }

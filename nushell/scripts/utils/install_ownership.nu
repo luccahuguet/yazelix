@@ -5,6 +5,27 @@ use config_surfaces.nu get_main_user_config_path
 
 const HOME_MANAGER_FILES_MARKER = "-home-manager-files/"
 const MANUAL_DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
+const MANAGED_SHELL_BLOCK_START_PREFIX = "# YAZELIX START"
+const MANAGED_SHELL_BLOCK_END_PREFIX = "# YAZELIX END"
+const MISSING_SHELL_BLOCK_INDEX = 999999999
+
+def get_xdg_config_home [] {
+    let configured = (
+        $env.XDG_CONFIG_HOME?
+        | default ""
+        | into string
+        | str trim
+    )
+
+    if ($configured | is-not-empty) {
+        $configured | path expand
+    } else if (($env.HOME? | default "" | into string | str trim) | is-not-empty) {
+        $env.HOME | path join ".config"
+    } else {
+        "~/.config" | path expand
+    }
+}
+
 def get_xdg_data_home [] {
     let configured = (
         $env.XDG_DATA_HOME?
@@ -71,6 +92,45 @@ def get_manual_desktop_icon_path [size: string] {
 
 export def get_manual_main_config_path [] {
     get_main_user_config_path
+}
+
+def get_legacy_shell_block_surfaces [] {
+    let config_home = (get_xdg_config_home)
+    let home_dir = $env.HOME
+    let surfaces = [
+        {
+            id: "bashrc"
+            label: "legacy ~/.bashrc Yazelix shell block"
+            path: ($home_dir | path join ".bashrc")
+        }
+        {
+            id: "bash_profile"
+            label: "legacy ~/.bash_profile Yazelix shell block"
+            path: ($home_dir | path join ".bash_profile")
+        }
+        {
+            id: "profile"
+            label: "legacy ~/.profile Yazelix shell block"
+            path: ($home_dir | path join ".profile")
+        }
+        {
+            id: "zshrc"
+            label: "legacy ~/.zshrc Yazelix shell block"
+            path: ($home_dir | path join ".zshrc")
+        }
+        {
+            id: "nushell_config"
+            label: "legacy ~/.config/nushell/config.nu Yazelix shell block"
+            path: ($config_home | path join "nushell" "config.nu")
+        }
+        {
+            id: "fish_config"
+            label: "legacy ~/.config/fish/config.fish Yazelix shell block"
+            path: ($config_home | path join "fish" "config.fish")
+        }
+    ]
+
+    $surfaces
 }
 
 export def is_home_manager_owned_surface [path: string] {
@@ -191,6 +251,96 @@ def collect_manual_desktop_icon_artifacts [] {
     | compact
 }
 
+def join_lines_preserving_trailing_newline [lines: list<string>, had_trailing_newline: bool] {
+    if ($lines | is-empty) {
+        return ""
+    }
+
+    let joined = ($lines | str join "\n")
+    if $had_trailing_newline {
+        $"($joined)\n"
+    } else {
+        $joined
+    }
+}
+
+def get_managed_shell_block_record [path: string] {
+    if not ($path | path exists) {
+        return null
+    }
+
+    if (($path | path type) != "file") {
+        return null
+    }
+
+    let raw = try {
+        open --raw $path
+    } catch {
+        return null
+    }
+
+    let lines = ($raw | lines)
+    let had_trailing_newline = ($raw | str ends-with "\n")
+    let enumerated = ($lines | enumerate)
+    let start_index = (
+        $enumerated
+        | where {|entry| $entry.item | str starts-with $MANAGED_SHELL_BLOCK_START_PREFIX}
+        | get -o 0.index
+        | default $MISSING_SHELL_BLOCK_INDEX
+    )
+    if $start_index == $MISSING_SHELL_BLOCK_INDEX {
+        return null
+    }
+
+    let end_index = (
+        $enumerated
+        | where {|entry| ($entry.index > $start_index) and ($entry.item | str starts-with $MANAGED_SHELL_BLOCK_END_PREFIX) }
+        | get -o 0.index
+        | default $MISSING_SHELL_BLOCK_INDEX
+    )
+    if $end_index == $MISSING_SHELL_BLOCK_INDEX {
+        return null
+    }
+
+    let block_lines = ($lines | skip $start_index | take (($end_index - $start_index) + 1))
+    mut before_lines = ($lines | take $start_index)
+    let after_lines = ($lines | skip ($end_index + 1))
+    if (not ($before_lines | is-empty)) and (($before_lines | last) == "") {
+        $before_lines = ($before_lines | take (($before_lines | length) - 1))
+    }
+    let remaining_lines = ($before_lines | append $after_lines)
+
+    {
+        start_line: ($start_index + 1)
+        end_line: ($end_index + 1)
+        block_contents: (join_lines_preserving_trailing_newline $block_lines $had_trailing_newline)
+        remaining_contents: (join_lines_preserving_trailing_newline $remaining_lines $had_trailing_newline)
+    }
+}
+
+export def collect_legacy_yazelix_shell_block_artifacts [] {
+    get_legacy_shell_block_surfaces
+    | each {|surface|
+        let block = (get_managed_shell_block_record $surface.path)
+        if $block == null {
+            null
+        } else {
+            {
+                id: $"shell_block_($surface.id)"
+                class: "cleanup"
+                label: $surface.label
+                path: $surface.path
+                artifact_kind: "shell_block"
+                start_line: $block.start_line
+                end_line: $block.end_line
+                block_contents: $block.block_contents
+                remaining_contents: $block.remaining_contents
+            }
+        }
+    }
+    | compact
+}
+
 export def collect_home_manager_prepare_artifacts [] {
     mut artifacts = []
 
@@ -226,6 +376,10 @@ export def collect_home_manager_prepare_artifacts [] {
             label: "legacy ~/.local/bin/yzx wrapper"
             path: $manual_yzx_wrapper
         })
+    }
+
+    for shell_block_artifact in (collect_legacy_yazelix_shell_block_artifacts) {
+        $artifacts = ($artifacts | append $shell_block_artifact)
     }
 
     $artifacts

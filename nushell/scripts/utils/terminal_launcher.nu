@@ -28,44 +28,55 @@ def get_runtime_platform_name []: nothing -> string {
     )
 }
 
+def get_runtime_nixgl_wrapper_candidates [] {
+    let runtime_dir = (get_yazelix_runtime_dir)
+    if $runtime_dir == null {
+        return []
+    }
+
+    [
+        {command: "nixGL", path: ($runtime_dir | path join "libexec" "nixGL")}
+        {command: "nixGLDefault", path: ($runtime_dir | path join "libexec" "nixGLDefault")}
+        {command: "nixGLMesa", path: ($runtime_dir | path join "libexec" "nixGLMesa")}
+        {command: "nixGLIntel", path: ($runtime_dir | path join "libexec" "nixGLIntel")}
+        {command: "nixGLMesa", path: ($runtime_dir | path join "bin" "nixGLMesa")}
+        {command: "nixGLIntel", path: ($runtime_dir | path join "bin" "nixGLIntel")}
+    ]
+}
+
+export def resolve_nixgl_launch_context [] {
+    for candidate in (get_runtime_nixgl_wrapper_candidates) {
+        if ($candidate.path | path exists) {
+            return {
+                source: "runtime"
+                command: $candidate.command
+                path: $candidate.path
+                prefix: $"($candidate.path) "
+            }
+        }
+    }
+
+    for command_name in ["nixGL" "nixGLDefault" "nixGLMesa" "nixGLIntel"] {
+        if (which $command_name | is-not-empty) {
+            return {
+                source: "host_path"
+                command: $command_name
+                path: $command_name
+                prefix: $"($command_name) "
+            }
+        }
+    }
+
+    {
+        source: "none"
+        command: null
+        path: null
+        prefix: ""
+    }
+}
+
 def resolve_nixgl_launch_prefix [] {
-    let runtime_nixgl = ((get_yazelix_runtime_dir) | path join "libexec" "nixGL")
-    if ($runtime_nixgl | path exists) {
-        return $"($runtime_nixgl) "
-    }
-
-    let runtime_nixgl_default = ((get_yazelix_runtime_dir) | path join "libexec" "nixGLDefault")
-    if ($runtime_nixgl_default | path exists) {
-        return $"($runtime_nixgl_default) "
-    }
-
-    let runtime_nixgl_mesa = ((get_yazelix_runtime_dir) | path join "bin" "nixGLMesa")
-    if ($runtime_nixgl_mesa | path exists) {
-        return $"($runtime_nixgl_mesa) "
-    }
-
-    let runtime_nixgl_intel = ((get_yazelix_runtime_dir) | path join "bin" "nixGLIntel")
-    if ($runtime_nixgl_intel | path exists) {
-        return $"($runtime_nixgl_intel) "
-    }
-
-    if (which nixGL | is-not-empty) {
-        return "nixGL "
-    }
-
-    if (which nixGLDefault | is-not-empty) {
-        return "nixGLDefault "
-    }
-
-    if (which nixGLMesa | is-not-empty) {
-        return "nixGLMesa "
-    }
-
-    if (which nixGLIntel | is-not-empty) {
-        return "nixGLIntel "
-    }
-
-    ""
+    (resolve_nixgl_launch_context).prefix
 }
 
 # Resolve config path for a terminal based on mode
