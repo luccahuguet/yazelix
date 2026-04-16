@@ -127,17 +127,19 @@ def test_get_runtime_env_wraps_helix_with_managed_wrapper [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Regression: the canonical Nu runtime env must stay self-contained and expose runtime-local yzx without relying on POSIX bootstrap state.
-def test_get_runtime_env_keeps_runtime_bin_for_runtime_local_yzx [] {
-    print "🧪 Testing canonical Nu runtime env keeps runtime-local yzx reachable from a cold context..."
+# Regression: the canonical Nu runtime env must export the curated toolbin instead of leaking the full runtime helper closure.
+def test_get_runtime_env_exports_curated_toolbin_and_keeps_runtime_local_yzx [] {
+    print "🧪 Testing canonical Nu runtime env exports toolbin, keeps runtime-local yzx reachable, and hides runtime-only helpers..."
 
     let tmp_home = (^mktemp -d /tmp/yazelix_runtime_env_self_contained_XXXXXX | str trim)
 
     let result = (try {
         let fake_runtime = ($tmp_home | path join "runtime")
+        let fake_runtime_toolbin = ($fake_runtime | path join "toolbin")
         let fake_runtime_bin = ($fake_runtime | path join "bin")
         let fake_runtime_libexec = ($fake_runtime | path join "libexec")
         mkdir $fake_runtime
+        mkdir $fake_runtime_toolbin
         mkdir $fake_runtime_bin
         mkdir $fake_runtime_libexec
         "" | save --force --raw ($fake_runtime | path join "yazelix_default.toml")
@@ -147,6 +149,18 @@ def test_get_runtime_env_keeps_runtime_bin_for_runtime_local_yzx [] {
             "exit 0"
         ] | str join "\n" | save --force --raw ($fake_runtime_bin | path join "yzx")
         ^chmod +x ($fake_runtime_bin | path join "yzx")
+
+        [
+            "#!/bin/sh"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($fake_runtime_toolbin | path join "rg")
+        ^chmod +x ($fake_runtime_toolbin | path join "rg")
+
+        [
+            "#!/bin/sh"
+            "exit 0"
+        ] | str join "\n" | save --force --raw ($fake_runtime_libexec | path join "dirname")
+        ^chmod +x ($fake_runtime_libexec | path join "dirname")
 
         let runtime_env = (with-env {
             HOME: $tmp_home
@@ -164,16 +178,24 @@ def test_get_runtime_env_keeps_runtime_bin_for_runtime_local_yzx [] {
         let resolved_yzx = (with-env $runtime_env {
             which yzx | get -o 0.path | default ""
         })
+        let resolved_rg = (with-env $runtime_env {
+            which rg | get -o 0.path | default ""
+        })
+        let resolved_dirname = (with-env $runtime_env {
+            which dirname | get -o 0.path | default ""
+        })
 
         if (
-            (($runtime_env.PATH | get -o 0 | default "") == $fake_runtime_libexec)
+            (($runtime_env.PATH | get -o 0 | default "") == $fake_runtime_toolbin)
             and (($runtime_env.PATH | get -o 1 | default "") == $fake_runtime_bin)
             and ($resolved_yzx == ($fake_runtime_bin | path join "yzx"))
+            and ($resolved_rg == ($fake_runtime_toolbin | path join "rg"))
+            and ($resolved_dirname == "")
         ) {
-            print "  ✅ Canonical Nu runtime env keeps both libexec and bin on PATH so runtime-local yzx remains reachable"
+            print "  ✅ Canonical Nu runtime env exports toolbin and bin while keeping runtime-only helpers off PATH"
             true
         } else {
-            print $"  ❌ Unexpected canonical runtime PATH contract: (($runtime_env | to json -r)) resolved_yzx=($resolved_yzx)"
+            print $"  ❌ Unexpected canonical runtime PATH contract: (($runtime_env | to json -r)) resolved_yzx=($resolved_yzx) resolved_rg=($resolved_rg) resolved_dirname=($resolved_dirname)"
             false
         }
     } catch {|err|
@@ -337,7 +359,7 @@ export def run_helix_managed_config_contract_tests [] {
     [
         (test_generate_managed_helix_config_merges_user_config_and_enforces_reveal)
         (test_get_runtime_env_wraps_helix_with_managed_wrapper)
-        (test_get_runtime_env_keeps_runtime_bin_for_runtime_local_yzx)
+        (test_get_runtime_env_exports_curated_toolbin_and_keeps_runtime_local_yzx)
         (test_yazelix_hx_ignores_legacy_runtime_alias_and_uses_wrapper_runtime_root)
         (test_yzx_import_helix_copies_personal_config_with_force_backups)
     ]

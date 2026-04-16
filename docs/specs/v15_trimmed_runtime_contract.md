@@ -42,7 +42,7 @@ This file exists so current docs and current specs can point at one authoritativ
 ### Runtime Surface
 
 - The normal product runtime is the packaged `yazelix` runtime.
-- That runtime ships a fixed toolset rather than a user-managed package graph.
+- That runtime ships a fixed toolset rather than a user-managed package graph, but interactive shells only export the curated user-facing tool surface instead of the full helper closure.
 - Runtime tool versions come from the locked `nixpkgs` input. Maintainer update pins record the Nix helper version and the Nixpkgs-provided Nushell version, so upstream Nushell releases only become runtime bumps after they land in Nixpkgs or Yazelix deliberately changes that ownership model.
 - Ghostty is built into the Yazelix runtime on Linux and macOS as the first-party terminal path.
 - WezTerm, Kitty, Alacritty, and Foot remain supported alternatives when the user provides those binaries on `PATH`.

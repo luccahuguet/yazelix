@@ -19,6 +19,19 @@ def normalize_path_entries [value: any] {
     }
 }
 
+def runtime_owned_path_entries [runtime_dir: string] {
+    [
+        ($runtime_dir | path join "toolbin")
+        ($runtime_dir | path join "bin")
+        ($runtime_dir | path join "libexec")
+    ]
+}
+
+def strip_runtime_owned_path_entries [entries: list<string>, runtime_dir: string] {
+    let runtime_owned = (runtime_owned_path_entries $runtime_dir)
+    $entries | where {|entry| not ($runtime_owned | any {|owned| $entry == $owned }) }
+}
+
 def is_helix_editor_command [editor: string] {
     let normalized = ($editor | str trim)
     ($normalized | str ends-with "/hx") or ($normalized == "hx") or ($normalized | str ends-with "/helix") or ($normalized == "helix")
@@ -60,11 +73,12 @@ export def get_runtime_env [config?: record] {
         $config
     }
     let runtime_dir = (get_yazelix_runtime_dir)
-    let runtime_tools = ($runtime_dir | path join "libexec")
+    let runtime_toolbin = ($runtime_dir | path join "toolbin")
     let runtime_bin = ($runtime_dir | path join "bin")
-    let current_path_entries = (normalize_path_entries ($env.PATH? | default []))
+    let normalized_path_entries = (normalize_path_entries ($env.PATH? | default []))
+    let current_path_entries = (strip_runtime_owned_path_entries $normalized_path_entries $runtime_dir)
     let runtime_path_entries = (
-        [$runtime_tools, $runtime_bin]
+        [$runtime_toolbin, $runtime_bin]
         | where {|entry| $entry | path exists }
     )
     let path_entries = if ($runtime_path_entries | is-not-empty) {

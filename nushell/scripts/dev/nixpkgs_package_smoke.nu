@@ -14,6 +14,12 @@ export def require_success [result: record, failure_message: string] {
     }
 }
 
+export def require_path_exists [path: string, label: string] {
+    if not ($path | path exists) {
+        error make { msg: $"Missing ($label): ($path)" }
+    }
+}
+
 export def get_package_env [temp_home: string] {
     {
         HOME: $temp_home
@@ -58,20 +64,27 @@ export def verify_yazelix_package [package_root: string] {
             "run"
             "nu"
             "-c"
-            'print ({shell: ($env.IN_YAZELIX_SHELL | default ""), runtime: ($env.YAZELIX_RUNTIME_DIR | default ""), path0: (($env.PATH | default []) | get -o 0 | default ""), path1: (($env.PATH | default []) | get -o 1 | default ""), yzx: ((which yzx | get -o 0.path | default ""))} | to json -r)'
+            'let runtime_dir = ($env.YAZELIX_RUNTIME_DIR | default ""); let path_entries = ($env.PATH | default []); let runtime_libexec = (if ($runtime_dir | is-empty) { "" } else { $runtime_dir | path join "libexec" }); print ({shell: ($env.IN_YAZELIX_SHELL | default ""), runtime: $runtime_dir, path0: ($path_entries | get -o 0 | default ""), path1: ($path_entries | get -o 1 | default ""), libexec_on_path: (if ($runtime_libexec | is-empty) { false } else { $path_entries | any {|entry| $entry == $runtime_libexec } }), yzx: ((which yzx | get -o 0.path | default ""))} | to json -r)'
     )
     require_success $runtime_probe "Packaged yzx run probe failed"
 
     let probe = ($runtime_probe.stdout | str trim | from json)
     let expected_bin1 = ($package_root | path join "bin")
-    let expected_path0 = ($package_root | path join "libexec")
+    let expected_path0 = ($package_root | path join "toolbin")
     if (
         ($probe.shell != "true")
         or ($probe.runtime != $package_root)
         or ($probe.path0 != $expected_path0)
         or ($probe.path1 != $expected_bin1)
+        or ($probe.libexec_on_path)
         or ($probe.yzx != ($expected_bin1 | path join "yzx"))
     ) {
         error make { msg: $"Packaged Yazelix runtime probe saw the wrong env: ($probe | to json -r)" }
+    }
+
+    require_path_exists ($expected_path0 | path join "rg") "exported runtime tool `rg`"
+    let leaked_helper = ($expected_path0 | path join "dirname")
+    if ($leaked_helper | path exists) {
+        error make { msg: $"Packaged Yazelix toolbin leaked runtime-private helper `dirname`: ($leaked_helper)" }
     }
 }

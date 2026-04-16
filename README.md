@@ -237,7 +237,9 @@ To use Yazelix tools without starting the full interface (no sidebar, no Zellij)
 ```bash
 yzx env
 ```
-This loads all tools (helix, yazi, lazygit, etc.) into your current shell, with Yazelix env vars set and clean messaging, and automatically launches the shell configured in your `yazelix.toml`; if you prefer the legacy behavior, run `yzx env --no-shell` to stay in your current shell
+This loads the curated Yazelix tool surface into your current shell, with Yazelix env vars set and clean messaging, and automatically launches the shell configured in your `yazelix.toml`; if you prefer the legacy behavior, run `yzx env --no-shell` to stay in your current shell
+
+Internal runtime helpers stay private under `libexec/` instead of leaking into your interactive PATH, so host-distributed apps launched from that shell do not accidentally inherit Yazelix-owned core userland tools ahead of the system PATH
 
 If you want the Yazelix tool PATH without switching into your configured shell, use:
 ```bash

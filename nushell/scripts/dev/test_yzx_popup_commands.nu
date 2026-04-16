@@ -691,8 +691,8 @@ def test_popup_wrapper_env_falls_back_to_runtime_env [] {
                 }
             }
             let runtime_libexec = ($runtime_dir | path join "libexec")
-            let runtime_libexec_ok = if ($runtime_libexec | path exists) {
-                $path_entries | any {|entry| $entry == $runtime_libexec }
+            let runtime_libexec_missing = if ($runtime_libexec | path exists) {
+                not ($path_entries | any {|entry| $entry == $runtime_libexec })
             } else {
                 true
             }
@@ -702,11 +702,11 @@ def test_popup_wrapper_env_falls_back_to_runtime_env [] {
                 and (($pane_env.EDITOR? | default "") == "nvim")
                 and (($pane_env.YAZI_ID? | default "") == "1234")
                 and ($path_entries | any {|entry| $entry == $profile_bin })
-                and $runtime_libexec_ok
+                and $runtime_libexec_missing
                 and (not ($wrapper_env | columns | any {|column| $column == "YAZELIX_NU_BIN" }))
                 and (not ($wrapper_env | columns | any {|column| $column == "YAZELIX_TERMINAL_CONFIG_MODE" }))
             ) {
-                print "  ✅ popup wrappers now derive their fallback env from the trimmed runtime contract and still tag new editor panes with YAZI_ID"
+                print "  ✅ popup wrappers now derive their fallback env from the trimmed runtime contract without leaking libexec into popup PATH"
                 $success = true
             } else {
                 print $"  ❌ Unexpected popup wrapper env: wrapper=($wrapper_env | to json -r) pane=($pane_env | to json -r)"

@@ -122,7 +122,7 @@ Normal usage relies on the package-provided `yzx` entrypoint or the Home Manager
 
 Host prerequisite contract:
 - **Host prerequisite**: Nix with flakes enabled
-- **Package-provided**: the Yazelix runtime, including runtime-local `nu`, `zellij`, `yazi`, `helix`, shells, and the fixed helper toolset behind `bin/yzx`
+- **Package-provided**: the Yazelix runtime, including runtime-local `nu`, `zellij`, `yazi`, `helix`, shells, a curated interactive tool surface, and the internal helper closure behind the runtime root
 - **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or PATH-provided alternative terminals other than the built-in Ghostty path
 - **Nushell version ownership**: Yazelix uses the Nushell packaged by the locked `nixpkgs` input for the runtime and bootstrap path. The maintainer update workflow records that as `PINNED_NUSHELL_VERSION`; it does not chase a newer upstream Nushell release until Nixpkgs packages it.
 
@@ -140,6 +140,8 @@ The trimmed v15 packaged runtime ships a fixed toolset instead of configurable d
 - the core Yazelix stack: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
 - the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `mise`, `carapace`, `macchina`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
+
+When you enter `yzx env`, Yazelix exports that curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH.
 
 What it does not ship anymore:
 - a runtime-local `devenv` binary
@@ -285,7 +287,7 @@ Use Yazelix tools without starting the full interface (no sidebar, no Zellij):
 ```bash
 yzx env
 ```
-This loads all tools (helix, yazi, lazygit, etc.) into your configured shell with Yazelix environment variables set. Add `--no-shell` to keep using your current shell instead.
+This loads the curated Yazelix tool surface into your configured shell with Yazelix environment variables set. Add `--no-shell` to keep using your current shell instead.
 
 If you want the Yazelix tool PATH without switching into your configured shell:
 ```bash

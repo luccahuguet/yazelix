@@ -48,7 +48,7 @@ This contract keeps those boundaries explicit.
   - It may be:
     - a source checkout during maintainer work
     - an installed runtime tree from the package or compatibility installer
-  - Contents include shipped scripts, layouts, bundled plugins, templates, and the fixed runtime toolset.
+  - Contents include shipped scripts, layouts, bundled plugins, templates, a curated interactive tool surface, and the runtime-private helper closure under `libexec/`.
   - It is deterministic product code tied to the repo or packaged runtime revision, not mutable user config state.
 - The state root is the generated and cached Yazelix data surface.
   - Default location: `~/.local/share/yazelix`

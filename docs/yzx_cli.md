@@ -56,8 +56,9 @@ Start Yazelix in the current terminal
 
 ### `yzx env [--no-shell]`
 Load Yazelix environment without UI
-- Default: Drop into your configured shell with all Yazelix tools available
+- Default: Drop into your configured shell with the curated Yazelix tool surface available
 - `--no-shell`: Stay in current shell (doesn't switch shells)
+- Runtime-private helpers stay under the runtime root instead of being exported into your interactive PATH
 - This remains the supported non-UI shell-entry surface for editor and terminal integration
 
 ### `yzx run <command> [args...]`

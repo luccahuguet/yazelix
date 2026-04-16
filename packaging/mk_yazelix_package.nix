@@ -22,8 +22,7 @@ pkgs.symlinkJoin {
 
     rm -f "$out/bin/yzx"
     makeWrapper "$out/shells/posix/yzx_cli.sh" "$out/bin/yzx" \
-      --run 'export YAZELIX_INVOKED_YZX_PATH="$0"' \
-      --prefix PATH : "${runtime}/libexec"
+      --run 'export YAZELIX_INVOKED_YZX_PATH="$0"'
   '';
 
   meta = {

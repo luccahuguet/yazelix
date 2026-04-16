@@ -4,6 +4,41 @@ let
   runtimeDeps = import ./runtime_deps.nix { inherit pkgs nixgl; };
   runtimeBinDirs = map (pkg: "${pkg}/bin") runtimeDeps;
   escapedRuntimeBinDirs = pkgs.lib.escapeShellArgs runtimeBinDirs;
+  exportedRuntimeCommands = [
+    "nu"
+    "bash"
+    "fish"
+    "zsh"
+    "zellij"
+    "ghostty"
+    "hx"
+    "helix"
+    "nvim"
+    "neovim"
+    "yazi"
+    "ya"
+    "fzf"
+    "zoxide"
+    "starship"
+    "lazygit"
+    "lg"
+    "carapace"
+    "macchina"
+    "mise"
+    "taplo"
+    "git"
+    "jq"
+    "fd"
+    "rg"
+    "7z"
+    "7za"
+    "7zr"
+    "pdfinfo"
+    "pdftotext"
+    "pdftoppm"
+    "pdftocairo"
+  ];
+  escapedExportedRuntimeCommands = pkgs.lib.escapeShellArgs exportedRuntimeCommands;
 in
 pkgs.runCommand name { } ''
   mkdir -p "$out"
@@ -27,6 +62,13 @@ pkgs.runCommand name { } ''
         [ -e "$entry" ] || continue
         ln -sfn "$entry" "$out/libexec/$(basename "$entry")"
       done
+    fi
+  done
+
+  mkdir -p "$out/toolbin"
+  for command_name in ${escapedExportedRuntimeCommands}; do
+    if [ -e "$out/libexec/$command_name" ]; then
+      ln -sfn "$out/libexec/$command_name" "$out/toolbin/$command_name"
     fi
   done
 
