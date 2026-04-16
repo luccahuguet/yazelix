@@ -38,6 +38,9 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
           "$(go env GOPATH)/bin/bd" --version
 
+      - name: Initialize Beads database
+        run: bd init --from-jsonl --non-interactive --skip-agents --skip-hooks --quiet
+
       - name: Validate contract
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
