@@ -1,13 +1,13 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = "Post-v15 work in progress"
+headline = "v15.1 hardens install ownership, popup env, and Home Manager packaging"
 summary = [
-    "Packaged and one-off runtime entrypoints no longer rewrite host shell dotfiles; runtime setup now stays inside `~/.local/share/yazelix` and relies on the install owner to provide `yzx`.",
-    "Dropped the obsolete shell-hook setup/status modules and narrowed `yzx status` back to runtime/config inspection.",
-    "Updated current docs to describe generated initializer paths, install-owner-provided `yzx`, and the post-shell-hook runtime contract more honestly.",
-    "Added an explicit `editor` token for `zellij.popup_program`, so popup panes can reuse the configured Yazelix editor contract instead of forcing raw PATH commands.",
-    "Replaced the remaining popup command examples that still referenced Claude with Codex examples.",
+    "Stopped packaged and one-off runtime entrypoints from rewriting host shell dotfiles, kept runtime setup inside `~/.local/share/yazelix`, and narrowed `yzx status` back to runtime/config inspection with clearer stale-shell recovery guidance.",
+    "Added the explicit `editor` token for `zellij.popup_program`, propagated the canonical runtime env into popup flows, and set `VISUAL` alongside `EDITOR` so popup editors and TUI tools reuse the configured Yazelix editor contract.",
+    "Narrowed the packaged public `bin/` surface to `yzx`, moved bundled runtime tools under `libexec/`, and kept packaged and Home Manager installs away from binary-collision traps while still shipping the full runtime toolset.",
+    "Hardened Linux Home Manager and desktop-launch reliability by passing the runtime-owned `nixGL` wrapper through the module build, improving Ghostty launch diagnostics, and documenting a minimal flake example plus clearer update-owner recovery.",
+    "Replaced the remaining popup and workflow examples that still referenced Claude with Codex examples.",
 ]
 upgrade_impact = "no_user_action"
 acknowledged_guarded_changes = [
