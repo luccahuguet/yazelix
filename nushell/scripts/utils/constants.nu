@@ -6,7 +6,7 @@
 # VERSION INFORMATION
 # ============================================================================
 
-export const YAZELIX_VERSION = "v15"
+export const YAZELIX_VERSION = "v15.1"
 export const YAZELIX_DESCRIPTION = "Yazi + Zellij + Helix integrated terminal environment"
 export const PINNED_NIX_VERSION = "2.34.5"
 export const PINNED_NUSHELL_VERSION = "0.111.0"

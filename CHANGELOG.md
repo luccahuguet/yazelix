@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v15.1 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v15.1 lands.
+
+## v15.1 - 2026-04-15
+
 v15.1 hardens install ownership, popup env, and Home Manager packaging
 
 Upgrade impact: no user action required
@@ -14,6 +23,7 @@ Highlights:
 - Narrowed the packaged public `bin/` surface to `yzx`, moved bundled runtime tools under `libexec/`, and kept packaged and Home Manager installs away from binary-collision traps while still shipping the full runtime toolset
 - Hardened Linux Home Manager and desktop-launch reliability by passing the runtime-owned `nixGL` wrapper through the module build, improving Ghostty launch diagnostics, and documenting a minimal flake example plus clearer update-owner recovery
 - Replaced the remaining popup and workflow examples that still referenced Claude with Codex examples
+
 
 ## v15 - 2026-04-13
 

@@ -1,6 +1,16 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
+headline = "Post-v15.1 work in progress"
+summary = ["Reserved for post-release changes after v15.1 lands."]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v15.1"]
+version = "v15.1"
+date = "2026-04-15"
 headline = "v15.1 hardens install ownership, popup env, and Home Manager packaging"
 summary = [
     "Stopped packaged and one-off runtime entrypoints from rewriting host shell dotfiles, kept runtime setup inside `~/.local/share/yazelix`, and narrowed `yzx status` back to runtime/config inspection with clearer stale-shell recovery guidance.",
