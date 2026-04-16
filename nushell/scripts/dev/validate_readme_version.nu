@@ -30,4 +30,19 @@ export def main [] {
             msg: "README generated latest-series block drift detected. Regenerate the managed block from docs/upgrade_notes.toml."
         }
     }
+
+    let release_heading = (
+        $actual_block
+        | lines
+        | get -o 1
+        | default ""
+        | str trim
+    )
+    let expected_release_heading = $"## Latest Tagged Release: ($YAZELIX_VERSION)"
+
+    if $release_heading != $expected_release_heading {
+        error make {
+            msg: $"README latest tagged release drift detected. Expected '($expected_release_heading)' but found '($release_heading)'."
+        }
+    }
 }

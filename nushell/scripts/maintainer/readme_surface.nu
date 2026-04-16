@@ -2,7 +2,7 @@
 
 use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/constants.nu [YAZELIX_VERSION]
-use ../utils/upgrade_notes.nu [get_current_major_series_entry]
+use ../utils/upgrade_notes.nu [find_release_entry get_current_major_series_entry]
 
 export const README_LATEST_SERIES_BEGIN = "<!-- BEGIN GENERATED README LATEST SERIES -->"
 export const README_LATEST_SERIES_END = "<!-- END GENERATED README LATEST SERIES -->"
@@ -19,8 +19,17 @@ def as_string_list [value: any] {
     }
 }
 
+def resolve_readme_latest_release_entry [version: string] {
+    let exact_release = (find_release_entry $version)
+    if $exact_release != null {
+        return $exact_release
+    }
+
+    get_current_major_series_entry $version
+}
+
 export def render_readme_latest_series_section [version: string = $YAZELIX_VERSION] {
-    let entry = (get_current_major_series_entry $version)
+    let entry = (resolve_readme_latest_release_entry $version)
     let headline = ($entry.headline? | default "" | into string | str trim)
     let summary_items = (as_string_list ($entry.summary? | default []))
 

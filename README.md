@@ -65,17 +65,15 @@ Want the high-level product map? See [Architecture Map](./docs/architecture_map.
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages
 
 <!-- BEGIN GENERATED README LATEST SERIES -->
-## Latest Tagged Release: v15
+## Latest Tagged Release: v15.1
 
-The trimmed workspace release: one supported line, first-party Ghostty, and fast popup/menu panes
+v15.1 hardens install ownership, popup env, and Home Manager packaging
 
-- v15 is the only supported Yazelix line now. v14 remains available only as the final historical Classic snapshot for users who specifically need the old broader product shape
-- Yazelix is now the narrower workspace product: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`
-- Ghostty is the first-party bundled terminal on Linux and macOS. WezTerm, Kitty, Alacritty, and Foot remain supported when you provide them on the host `PATH`
-- The front door is clearer: `yzx launch` opens a managed terminal window, `yzx enter` starts Yazelix in the current terminal, and `yzx env` remains the non-UI environment surface
-- The fast transient workspace tools now share the floating-pane path: `yzx popup` toggles the configured popup program and `yzx menu --popup` toggles the command palette with the same identity and geometry seam
-- The core workspace surface remains layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
-- v15 is the trimmed non-Rust reboot. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target
+- Stopped packaged and one-off runtime entrypoints from rewriting host shell dotfiles, kept runtime setup inside `~/.local/share/yazelix`, and narrowed `yzx status` back to runtime/config inspection with clearer stale-shell recovery guidance.
+- Added the explicit `editor` token for `zellij.popup_program`, propagated the canonical runtime env into popup flows, and set `VISUAL` alongside `EDITOR` so popup editors and TUI tools reuse the configured Yazelix editor contract.
+- Narrowed the packaged public `bin/` surface to `yzx`, moved bundled runtime tools under `libexec/`, and kept packaged and Home Manager installs away from binary-collision traps while still shipping the full runtime toolset.
+- Hardened Linux Home Manager and desktop-launch reliability by passing the runtime-owned `nixGL` wrapper through the module build, improving Ghostty launch diagnostics, and documenting a minimal flake example plus clearer update-owner recovery.
+- Replaced the remaining popup and workflow examples that still referenced Claude with Codex examples.
 
 For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new` after installing that release
 For the longer project story, see [Version History](./docs/history.md)

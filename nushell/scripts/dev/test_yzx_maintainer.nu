@@ -62,6 +62,30 @@ def commit_dev_bump_fixture_change [fixture: record, message: string] {
     ^git -C $fixture.repo_root commit --quiet -m $message
 }
 
+def get_fixture_current_version [fixture: record] {
+    (
+        open --raw $fixture.constants_path
+        | parse --regex 'export const YAZELIX_VERSION = "(?<version>v[^"]+)"'
+        | get -o version.0
+        | default ""
+    )
+}
+
+def get_next_patch_version [current_version: string] {
+    let parsed = (
+        $current_version
+        | parse --regex '^(?<major>v\d+)(?:\.(?<patch>\d+))?$'
+        | get -o 0
+        | default null
+    )
+    if $parsed == null {
+        error make {msg: $"Could not derive next patch version from `($current_version)`"}
+    }
+
+    let next_patch = (($parsed.patch? | default "0") | into int) + 1
+    $"($parsed.major).($next_patch)"
+}
+
 def prepare_releasable_unreleased_fixture [fixture: record] {
     let updated_notes = (
         open $fixture.notes_path
@@ -1058,6 +1082,8 @@ def test_dev_bump_rotates_release_metadata_and_tags_the_repo [] {
     print "🧪 Testing yzx dev bump rotates release metadata and creates the matching tag..."
 
     let fixture = (setup_dev_bump_fixture)
+    let current_version = (get_fixture_current_version $fixture)
+    let target_version = (get_next_patch_version $current_version)
     prepare_releasable_unreleased_fixture $fixture
     commit_dev_bump_fixture_change $fixture "Prepare unreleased release notes"
 
@@ -1065,7 +1091,7 @@ def test_dev_bump_rotates_release_metadata_and_tags_the_repo [] {
         let snippet = (
             [
                 $"use \"($fixture.helper_module)\" [perform_version_bump]"
-                $"perform_version_bump \"($fixture.repo_root)\" \"v15.1\" | to json -r"
+                $"perform_version_bump \"($fixture.repo_root)\" \"($target_version)\" | to json -r"
             ] | str join "\n"
         )
         let output = (^nu -c $snippet | complete)
@@ -1085,18 +1111,20 @@ def test_dev_bump_rotates_release_metadata_and_tags_the_repo [] {
         if (
             ($output.exit_code == 0)
             and ($resolved != null)
-            and ($resolved.previous_version == "v15")
-            and ($resolved.target_version == "v15.1")
-            and ($constants | str contains 'export const YAZELIX_VERSION = "v15.1"')
-            and (($notes.releases | columns) | any {|column| $column == "v15.1" })
-            and ($notes.releases.unreleased.headline == "Post-v15.1 work in progress")
-            and ($notes.releases.unreleased.summary == ["Reserved for post-release changes after v15.1 lands."])
-            and ($changelog | str contains "## v15.1 - ")
+            and ($resolved.previous_version == $current_version)
+            and ($resolved.target_version == $target_version)
+            and ($constants | str contains $"export const YAZELIX_VERSION = \"($target_version)\"")
+            and (($notes.releases | columns) | any {|column| $column == $target_version })
+            and ($notes.releases.unreleased.headline == $"Post-($target_version) work in progress")
+            and ($notes.releases.unreleased.summary == [$"Reserved for post-release changes after ($target_version) lands."])
+            and ($changelog | str contains $"## ($target_version) - ")
             and ($changelog | str contains "## Unreleased")
             and ($changelog | str contains "Backend seam cleanup and release automation")
-            and ($readme | lines | first) == "# Yazelix v15.1"
-            and ($commit_subject == "Bump version to v15.1")
-            and ("v15.1" in $tags)
+            and ($readme | lines | first) == $"# Yazelix ($target_version)"
+            and ($readme | str contains $"## Latest Tagged Release: ($target_version)")
+            and ($readme | str contains "Backend seam cleanup and release automation")
+            and ($commit_subject == $"Bump version to ($target_version)")
+            and ($target_version in $tags)
         ) {
             print "  ✅ yzx dev bump now rotates release metadata, updates the version constant, commits, and tags deterministically"
             true
@@ -1119,6 +1147,7 @@ def test_dev_bump_rejects_dirty_worktrees [] {
     print "🧪 Testing yzx dev bump rejects dirty worktrees..."
 
     let fixture = (setup_dev_bump_fixture)
+    let target_version = (get_next_patch_version (get_fixture_current_version $fixture))
     "dirty\n" | save --append --raw $fixture.readme_path
 
     let result = (try {
@@ -1126,7 +1155,7 @@ def test_dev_bump_rejects_dirty_worktrees [] {
             [
                 $"use \"($fixture.helper_module)\" [perform_version_bump]"
                 "try {"
-                $"    perform_version_bump \"($fixture.repo_root)\" \"v15.1\" | ignore"
+                $"    perform_version_bump \"($fixture.repo_root)\" \"($target_version)\" | ignore"
                 "    print \"unexpected-success\""
                 "} catch {|err|"
                 "    print $err.msg"
@@ -1158,16 +1187,17 @@ def test_dev_bump_rejects_existing_target_tags [] {
     print "🧪 Testing yzx dev bump rejects existing target tags..."
 
     let fixture = (setup_dev_bump_fixture)
+    let target_version = (get_next_patch_version (get_fixture_current_version $fixture))
     prepare_releasable_unreleased_fixture $fixture
     commit_dev_bump_fixture_change $fixture "Prepare unreleased release notes"
-    ^git -C $fixture.repo_root tag -a v15.1 -m "Existing tag"
+    ^git -C $fixture.repo_root tag -a $target_version -m "Existing tag"
 
     let result = (try {
         let snippet = (
             [
                 $"use \"($fixture.helper_module)\" [perform_version_bump]"
                 "try {"
-                $"    perform_version_bump \"($fixture.repo_root)\" \"v15.1\" | ignore"
+                $"    perform_version_bump \"($fixture.repo_root)\" \"($target_version)\" | ignore"
                 "    print \"unexpected-success\""
                 "} catch {|err|"
                 "    print $err.msg"
@@ -1177,7 +1207,7 @@ def test_dev_bump_rejects_existing_target_tags [] {
         let output = (^nu -c $snippet | complete)
         let stdout = ($output.stdout | str trim)
 
-        if ($output.exit_code == 0) and ($stdout == "Tag already exists: v15.1") {
+        if ($output.exit_code == 0) and ($stdout == $"Tag already exists: ($target_version)") {
             print "  ✅ yzx dev bump now refuses to reuse an existing git tag"
             true
         } else {

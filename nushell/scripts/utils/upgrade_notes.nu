@@ -16,6 +16,26 @@ def load_upgrade_notes [] {
     open $notes_path
 }
 
+export def find_release_entry [version: string = $YAZELIX_VERSION] {
+    let release_key = ($version | into string | str trim)
+    let notes = (load_upgrade_notes)
+    let releases = ($notes.releases? | default {})
+    if not (($releases | describe) | str contains "record") {
+        error make {msg: "upgrade notes are missing the `releases` table"}
+    }
+
+    let entry = ($releases | get -o $release_key)
+    if $entry == null {
+        return null
+    }
+
+    if not (($entry | describe) | str contains "record") {
+        error make {msg: $"upgrade notes release entry `($release_key)` is not a record"}
+    }
+
+    ($entry | merge {key: $release_key, version: $release_key})
+}
+
 export def get_current_major_series_entry [version: string = $YAZELIX_VERSION] {
     let series_key = (
         $version
