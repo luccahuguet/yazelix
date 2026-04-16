@@ -94,6 +94,9 @@ export def get_manual_main_config_path [] {
     get_main_user_config_path
 }
 
+# Transitional compatibility for pre-profile/Home Manager Yazelix installs
+# that wrote managed shell blocks into host startup files. Remove with
+# yazelix-b5u1 once that upgrade path is intentionally dropped.
 def get_legacy_shell_block_surfaces [] {
     let config_home = (get_xdg_config_home)
     let home_dir = $env.HOME
