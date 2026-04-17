@@ -20,6 +20,23 @@ def write_generated_terminal_config [file_path: string, content: string] {
     write_text_atomic $file_path $content --raw | ignore
 }
 
+def ghostty_cursor_random_requested [config: record] {
+    [
+        ($config.ghostty_trail_color? | default "")
+        ($config.ghostty_trail_effect? | default "")
+        ($config.ghostty_mode_effect? | default "")
+    ] | any {|value| ($value | into string | str trim) == "random" }
+}
+
+def generate_ghostty_terminal_config_for_config [config: record, resolved_runtime_dir: string, ghostty_dir: string] {
+    let ghostty_cursor_state = (resolve_ghostty_cursor_render_state $config)
+    mkdir $ghostty_dir
+    write_generated_terminal_config ($ghostty_dir | path join "config") (generate_ghostty_config_for_state $config $ghostty_cursor_state)
+    let glow_level = ($config.ghostty_trail_glow? | default "medium")
+    sync_generated_ghostty_shader_assets $resolved_runtime_dir $ghostty_dir $glow_level $ghostty_cursor_state.effect_color_literal
+    $ghostty_cursor_state
+}
+
 export def generate_selected_terminal_configs [selected_terminals: list<string>, runtime_dir?: string] {
     let config = parse_yazelix_config
     let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
@@ -40,11 +57,7 @@ export def generate_selected_terminal_configs [selected_terminals: list<string>,
     # Ghostty (optional)
     if $should_generate_ghostty {
         let ghostty_dir = ($configs_dir | path join "ghostty")
-        let ghostty_cursor_state = (resolve_ghostty_cursor_render_state $config)
-        mkdir $ghostty_dir
-        write_generated_terminal_config ($ghostty_dir | path join "config") (generate_ghostty_config_for_state $config $ghostty_cursor_state)
-        let glow_level = ($config.ghostty_trail_glow? | default "medium")
-        sync_generated_ghostty_shader_assets $resolved_runtime_dir $ghostty_dir $glow_level $ghostty_cursor_state.effect_color_literal
+        generate_ghostty_terminal_config_for_config $config $resolved_runtime_dir $ghostty_dir | ignore
     }
 
     # Alacritty (conditional)
@@ -96,4 +109,30 @@ export def generate_all_terminal_configs [runtime_dir?: string] {
     }
 
     generate_selected_terminal_configs $terminals $runtime_dir
+}
+
+export def reroll_ghostty_random_cursor_config_for_launch [
+    config: record
+    runtime_dir?: string
+    --quiet
+] {
+    if not (ghostty_cursor_random_requested $config) {
+        return false
+    }
+
+    let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
+    let generated_dir = ($YAZELIX_GENERATED_CONFIGS_DIR | str replace "~" $env.HOME)
+    let ghostty_dir = ($generated_dir | path join "terminal_emulators" "ghostty")
+
+    if not $quiet {
+        print "🎲 Rerolling Ghostty random cursor settings for this Yazelix window..."
+    }
+
+    generate_ghostty_terminal_config_for_config $config $resolved_runtime_dir $ghostty_dir | ignore
+
+    if not $quiet {
+        print "✓ Rerolled Ghostty cursor settings"
+    }
+
+    true
 }

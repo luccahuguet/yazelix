@@ -3,7 +3,11 @@
 # Nushell version of the Yazelix launcher
 
 use ../utils/config_state.nu compute_config_state
-use ../utils/terminal_configs.nu [generate_all_terminal_configs generate_selected_terminal_configs]
+use ../utils/terminal_configs.nu [
+    generate_all_terminal_configs
+    generate_selected_terminal_configs
+    reroll_ghostty_random_cursor_config_for_launch
+]
 use ../utils/terminal_launcher.nu *
 use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADATA]
 use ../utils/common.nu [get_yazelix_runtime_dir]
@@ -45,6 +49,25 @@ def ensure_terminal_configs_available_for_candidates [terminal_candidates: list<
     if $needs_generation {
         generate_selected_terminal_configs $candidate_terminals $runtime_dir
     }
+}
+
+def reroll_ghostty_random_cursor_config_for_launch_candidates [
+    terminal_candidates: list<record>
+    terminal_config_mode: string
+    runtime_dir: string
+    config: record
+    verbose_mode: bool
+] {
+    if $terminal_config_mode != "yazelix" {
+        return false
+    }
+
+    let will_try_ghostty = ($terminal_candidates | any {|candidate| $candidate.terminal == "ghostty" })
+    if not $will_try_ghostty {
+        return false
+    }
+
+    reroll_ghostty_random_cursor_config_for_launch $config $runtime_dir --quiet=(not $verbose_mode)
 }
 
 def describe_terminal_invocation [terminal_info: record, terminal_config] {
@@ -231,6 +254,7 @@ def main [
     }
     if $desktop_fast_path {
         ensure_terminal_configs_available_for_candidates $terminal_candidates $terminal_config_mode $runtime_dir
+        reroll_ghostty_random_cursor_config_for_launch_candidates $terminal_candidates $terminal_config_mode $runtime_dir $config $verbose_mode | ignore
     } else {
         # Generate all terminal configurations for safety and consistency
         generate_all_terminal_configs

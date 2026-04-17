@@ -762,6 +762,93 @@ def test_desktop_fast_path_uses_direct_host_terminal_during_reload_instead_of_st
     $result
 }
 
+# Regression: desktop fast-path launches must reroll Ghostty random cursor settings per Yazelix window without touching fixed palettes.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_desktop_fast_path_rerolls_ghostty_random_cursor_config_per_window [] {
+    print "🧪 Testing desktop fast path rerolls Ghostty random cursor config per window..."
+
+    let random_fixture = (setup_managed_config_fixture
+        "yazelix_ghostty_random_window_reroll"
+        '[terminal]
+terminals = ["ghostty"]
+ghostty_trail_color = "random"
+ghostty_trail_effect = "tail"
+ghostty_mode_effect = "ripple"
+'
+    )
+    let fixed_fixture = (setup_managed_config_fixture
+        "yazelix_ghostty_fixed_window_no_reroll"
+        '[terminal]
+terminals = ["ghostty"]
+ghostty_trail_color = "reef"
+ghostty_trail_effect = "tail"
+ghostty_mode_effect = "ripple"
+'
+    )
+
+    let result = (try {
+        let launch_script = (repo_path "nushell" "scripts" "core" "launch_yazelix.nu")
+        let snippet = ([
+            $"source \"($launch_script)\""
+            "let config = (compute_config_state).config"
+            "let candidates = [{terminal: \"ghostty\" name: \"Ghostty\" command: \"ghostty\"}]"
+            "reroll_ghostty_random_cursor_config_for_launch_candidates $candidates \"yazelix\" $env.YAZELIX_RUNTIME_DIR $config false | ignore"
+        ] | str join "\n")
+
+        let random_ghostty_dir = ($random_fixture.tmp_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty")
+        mkdir $random_ghostty_dir
+        "stale ghostty config" | save --force --raw ($random_ghostty_dir | path join "config")
+
+        let random_output = (with-env {
+            HOME: $random_fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $random_fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $random_fixture.repo_root
+        } {
+            ^nu -c $snippet | complete
+        })
+        let random_config = (open --raw ($random_ghostty_dir | path join "config"))
+        let random_tail_shader = (open --raw ($random_ghostty_dir | path join "shaders" "generated_effects" "tail.glsl"))
+        let random_ripple_shader = (open --raw ($random_ghostty_dir | path join "shaders" "generated_effects" "ripple.glsl"))
+
+        let fixed_ghostty_dir = ($fixed_fixture.tmp_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty")
+        mkdir $fixed_ghostty_dir
+        "fixed sentinel config" | save --force --raw ($fixed_ghostty_dir | path join "config")
+
+        let fixed_output = (with-env {
+            HOME: $fixed_fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixed_fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixed_fixture.repo_root
+        } {
+            ^nu -c $snippet | complete
+        })
+        let fixed_config = (open --raw ($fixed_ghostty_dir | path join "config"))
+
+        if (
+            ($random_output.exit_code == 0)
+            and ($random_config | str contains "# Cursor color palette:")
+            and not ($random_config | str contains "stale ghostty config")
+            and not ($random_config | str contains "# Cursor color palette: random")
+            and not ($random_tail_shader | str contains "vec4 TRAIL_COLOR = iCurrentCursorColor;")
+            and not ($random_ripple_shader | str contains "vec4 COLOR = iCurrentCursorColor;")
+            and ($fixed_output.exit_code == 0)
+            and ($fixed_config == "fixed sentinel config")
+        ) {
+            print "  ✅ Desktop fast path now rerolls random Ghostty cursor state per window and leaves fixed palettes untouched"
+            true
+        } else {
+            print $"  ❌ Unexpected reroll behavior: random_exit=($random_output.exit_code) fixed_exit=($fixed_output.exit_code) random_config=($random_config) fixed_config=($fixed_config) random_stderr=(($random_output.stderr | str trim)) fixed_stderr=(($fixed_output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $random_fixture.tmp_home
+    rm -rf $fixed_fixture.tmp_home
+    $result
+}
+
 # Regression: yzx edit must ignore stale ambient Helix wrapper paths and derive the canonical managed editor command.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 def test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env [] {
@@ -1495,6 +1582,7 @@ export def run_workspace_canonical_tests [] {
         (test_yzx_desktop_launch_propagates_fast_path_failures_without_fallback)
         (test_desktop_fast_path_rejects_bootstrap_terminal_substitution_for_explicit_terminal)
         (test_desktop_fast_path_uses_direct_host_terminal_during_reload_instead_of_stale_wrapper)
+        (test_desktop_fast_path_rerolls_ghostty_random_cursor_config_per_window)
         (test_yzx_edit_resolves_managed_helix_wrapper_from_canonical_launch_env)
         (test_yzx_cli_reveal_uses_lightweight_reveal_helper)
         (test_yzx_cli_menu_uses_lightweight_menu_module)

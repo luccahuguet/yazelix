@@ -97,7 +97,7 @@ config_mode = "yazelix"
 # Mono-color: "blaze", "snow", "cosmic", "ocean", "forest", "sunset"
 # Duo-color: "neon", "eclipse", "dusk", "orchid", "reef"
 # Extreme: "party"
-# Special: "random" (chooses any Ghostty color palette except "party")
+# Special: "random" (rerolls a Ghostty color palette for each Yazelix Ghostty window, except "party")
 # Supported by Ghostty and Kitty: "snow"
 # In short: pick ghostty for cool cursor trails
 ghostty_trail_color = "random"
