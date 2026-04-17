@@ -1,10 +1,15 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = "Post-v15.1 work in progress"
-summary = ["Reserved for post-release changes after v15.1 lands."]
+headline = "Post-v15.1 Ghostty cursor polish in progress"
+summary = [
+    "Rerolled Ghostty random cursor palettes and effects for each Yazelix Ghostty window, including desktop fast-path launches, while keeping fixed palettes stable.",
+]
 upgrade_impact = "no_user_action"
-acknowledged_guarded_changes = []
+acknowledged_guarded_changes = [
+    "yazelix_default.toml",
+    "home_manager/module.nix",
+]
 migration_ids = []
 manual_actions = []
 

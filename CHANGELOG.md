@@ -4,12 +4,12 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v15.1 work in progress
+Post-v15.1 Ghostty cursor polish in progress
 
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v15.1 lands.
+- Rerolled Ghostty random cursor palettes and effects for each Yazelix Ghostty window, including desktop fast-path launches, while keeping fixed palettes stable
 
 ## v15.1 - 2026-04-15
 
