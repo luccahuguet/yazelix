@@ -7,7 +7,8 @@ use ./constants.nu *
 use ./common.nu get_yazelix_runtime_dir
 use ./terminal_ghostty_assets.nu sync_generated_ghostty_shader_assets
 use ./terminal_renderers.nu [
-    generate_ghostty_config
+    generate_ghostty_config_for_state
+    resolve_ghostty_cursor_render_state
     generate_wezterm_config
     generate_kitty_config
     generate_alacritty_base_config
@@ -39,10 +40,11 @@ export def generate_selected_terminal_configs [selected_terminals: list<string>,
     # Ghostty (optional)
     if $should_generate_ghostty {
         let ghostty_dir = ($configs_dir | path join "ghostty")
+        let ghostty_cursor_state = (resolve_ghostty_cursor_render_state $config)
         mkdir $ghostty_dir
-        write_generated_terminal_config ($ghostty_dir | path join "config") (generate_ghostty_config)
+        write_generated_terminal_config ($ghostty_dir | path join "config") (generate_ghostty_config_for_state $config $ghostty_cursor_state)
         let glow_level = ($config.ghostty_trail_glow? | default "medium")
-        sync_generated_ghostty_shader_assets $resolved_runtime_dir $ghostty_dir $glow_level
+        sync_generated_ghostty_shader_assets $resolved_runtime_dir $ghostty_dir $glow_level $ghostty_cursor_state.effect_color_literal
     }
 
     # Alacritty (conditional)

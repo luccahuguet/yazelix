@@ -160,6 +160,8 @@ ghostty_mode_effect = "ripple_rectangle"
         let ghostty_root = ($fake_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty")
         let tail_shader = ($ghostty_root | path join "shaders" "generated_effects" "tail.glsl")
         let ripple_shader = ($ghostty_root | path join "shaders" "generated_effects" "ripple_rectangle.glsl")
+        let tail_shader_text = (open --raw $tail_shader)
+        let ripple_shader_text = (open --raw $ripple_shader)
         let backup_find = (^find $generated_root -name '*.yazelix-backup' | complete)
         let temp_find = (^find $generated_root | complete)
         let backup_noise = if $backup_find.exit_code == 0 {
@@ -192,6 +194,8 @@ ghostty_mode_effect = "ripple_rectangle"
             and not ($foot_config | str contains "[colors]\n")
             and ($tail_shader | path exists)
             and ($ripple_shader | path exists)
+            and ($tail_shader_text | str contains "vec4 TRAIL_COLOR = vec4(0.0, 0.902, 1.0, 1.0);")
+            and ($ripple_shader_text | str contains "vec4 COLOR = vec4(0.0, 0.902, 1.0, 1.0);")
             and ($backup_noise | is-empty)
             and ($temp_noise | is-empty)
         ) {

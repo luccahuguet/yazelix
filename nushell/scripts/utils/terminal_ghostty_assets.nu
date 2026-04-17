@@ -6,6 +6,7 @@ export def sync_generated_ghostty_shader_assets [
     runtime_dir: string
     ghostty_dir: string
     glow_level: string
+    effect_color_literal: string = "iCurrentCursorColor"
 ] {
     let resolved_runtime_dir = ($runtime_dir | path expand)
     let shaders_src = ($resolved_runtime_dir | path join "configs" "terminal_emulators" "ghostty" "shaders")
@@ -37,6 +38,6 @@ export def sync_generated_ghostty_shader_assets [
 
     let build_script = ($shaders_src | path join "build_shaders.nu")
     if ($build_script | path exists) {
-        nu -c $"use '($build_script)' [build_cursor_trail_shaders build_ghostty_cursor_effect_shaders]; build_cursor_trail_shaders '($shaders_dest)' '($glow_level)'; build_ghostty_cursor_effect_shaders '($shaders_dest)' '($glow_level)'"
+        nu -c $"use '($build_script)' [build_cursor_trail_shaders build_ghostty_cursor_effect_shaders]; build_cursor_trail_shaders '($shaders_dest)' '($glow_level)'; build_ghostty_cursor_effect_shaders '($shaders_dest)' '($glow_level)' '($shaders_dest)' '($effect_color_literal)'"
     }
 }
