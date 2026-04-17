@@ -693,8 +693,9 @@ def test_yzx_update_upstream_upgrades_matching_profile_entry [] {
 
         if (
             ($output.exit_code == 0)
-            and ($stdout | str contains "Using the default-profile update path for this install.")
-            and ($stdout | str contains "If Home Manager owns this install instead, use `yzx update home_manager`.")
+            and ($stdout | str contains "Requested update path: default Nix profile.")
+            and ($stdout | str contains "Use this only when a Nix profile package owns the active Yazelix runtime.")
+            and not ($stdout | str contains "Using the default-profile update path for this install.")
             and ($stdout | str contains "Running:")
             and ($stdout | str contains "nix profile upgrade --refresh yazelix")
             and ($log_text | str contains "nix:profile list --json")
@@ -702,6 +703,52 @@ def test_yzx_update_upstream_upgrades_matching_profile_entry [] {
             and not ($log_text | str contains "home-manager:")
         ) {
             print "  ✅ yzx update upstream now upgrades the exact profile-owned Yazelix entry that matches the active runtime"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) log=($log_text) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: Home Manager-owned installs should not see upstream update wording that implies profile ownership.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_update_upstream_fails_early_for_home_manager_owned_install [] {
+    print "🧪 Testing yzx update upstream fails early and clearly for a Home Manager-owned install..."
+
+    let fixture = (setup_update_wrapper_fixture "yazelix_update_upstream_home_manager_owned")
+    let result = (try {
+        let hm_store_config = ($fixture.tmp_home | path join "hm-store" "abc-home-manager-files" "yazelix.toml")
+        mkdir ($hm_store_config | path dirname)
+        '[core]
+welcome_style = "random"
+' | save --force --raw $hm_store_config
+        rm $fixture.config_path
+        ^ln -s $hm_store_config $fixture.config_path
+
+        let output = (run_yzx_command_for_fixture $fixture "yzx update upstream" {
+            PATH: ($env.PATH | prepend $fixture.bin_dir)
+            YZX_TEST_LOG: $fixture.command_log
+        })
+        let stdout = ($output.stdout | str trim)
+        let log_text = (open --raw $fixture.command_log | str trim)
+
+        if (
+            ($output.exit_code != 0)
+            and ($stdout | str contains "this Yazelix runtime appears to be Home Manager-owned")
+            and ($stdout | str contains "Run `yzx update home_manager` from the Home Manager flake that owns this install")
+            and ($stdout | str contains "home-manager switch")
+            and not ($stdout | str contains "Using the default-profile update path for this install.")
+            and not ($stdout | str contains "Requested update path: default Nix profile.")
+            and ($log_text | is-empty)
+        ) {
+            print "  ✅ yzx update upstream now rejects Home Manager-owned runtimes before profile-update wording or profile probing"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) log=($log_text) stderr=(($output.stderr | str trim))"
@@ -781,8 +828,9 @@ def test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step [] 
 
         if (
             ($output.exit_code == 0)
-            and ($stdout | str contains "Using the Home Manager update path for this install.")
-            and ($stdout | str contains "If a Nix profile package owns this install instead, use `yzx update upstream`.")
+            and ($stdout | str contains "Requested update path: Home Manager flake input.")
+            and ($stdout | str contains "Use this only when Home Manager owns the active Yazelix runtime.")
+            and not ($stdout | str contains "Using the Home Manager update path for this install.")
             and ($stdout | str contains "Running:")
             and ($stdout | str contains "nix flake update yazelix")
             and ($stdout | str contains "Next step:")
@@ -1203,6 +1251,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)
         (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
         (test_yzx_update_upstream_upgrades_matching_profile_entry)
+        (test_yzx_update_upstream_fails_early_for_home_manager_owned_install)
         (test_yzx_update_upstream_fails_without_matching_profile_entry)
         (test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step)
         (test_stale_store_pinned_yzx_invocation_redirects_to_profile_wrapper)

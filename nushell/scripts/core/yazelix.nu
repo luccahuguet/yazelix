@@ -6,6 +6,7 @@ use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/constants.nu *
 use ../utils/common.nu get_yazelix_runtime_dir
 use ../utils/environment_bootstrap.nu [prepare_environment]
+use ../utils/install_ownership.nu has_home_manager_managed_install
 use ../utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path
 use ../utils/version_info.nu [print_version_info]
 use ../integrations/managed_editor.nu get_managed_editor_kind
@@ -62,14 +63,14 @@ def print_update_owner_warning [] {
 def print_update_path_confirmation [owner: string] {
     match $owner {
         "upstream" => {
-            print "Using the default-profile update path for this install."
+            print "Requested update path: default Nix profile."
             print ""
-            print "  If Home Manager owns this install instead, use `yzx update home_manager`."
+            print "  Use this only when a Nix profile package owns the active Yazelix runtime."
         }
         "home_manager" => {
-            print "Using the Home Manager update path for this install."
+            print "Requested update path: Home Manager flake input."
             print ""
-            print "  If a Nix profile package owns this install instead, use `yzx update upstream`."
+            print "  Use this only when Home Manager owns the active Yazelix runtime."
         }
         _ => {
             error make {msg: $"Unsupported update owner confirmation: ($owner)"}
@@ -78,6 +79,18 @@ def print_update_path_confirmation [owner: string] {
 
     print ""
     print "Do not use both update paths for the same installed Yazelix runtime."
+}
+
+def fail_if_home_manager_owned_upstream_update [] {
+    if not (has_home_manager_managed_install) {
+        return
+    }
+
+    print "❌ `yzx update upstream` is for default Nix profile installs, but this Yazelix runtime appears to be Home Manager-owned."
+    print "   Run `yzx update home_manager` from the Home Manager flake that owns this install."
+    print "   Then run `home-manager switch` to apply the updated input."
+    print "   Do not use both update paths for the same installed Yazelix runtime."
+    exit 1
 }
 
 def load_default_profile_elements [] {
@@ -502,6 +515,7 @@ export def "yzx update upstream" [] {
         exit 1
     }
 
+    fail_if_home_manager_owned_upstream_update
     print_update_path_confirmation "upstream"
     print ""
     let profile_entry = (resolve_active_yazelix_profile_entry)
