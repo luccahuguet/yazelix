@@ -116,6 +116,8 @@ When creating new files or directories, always use underscores to maintain consi
   - Open GitHub issues should not map to closed beads, and closed GitHub issues should not map to open beads.
   - Title/body evolution in Beads is allowed after import; `external_ref` and lifecycle sync are the hard contract.
   - The automated validator enforces this contract for issues created on or after `2026-03-22`. Older backlog issues are intentionally grandfathered until they are explicitly imported or touched by the local sync flow.
+- Do not mirror every bead to GitHub by default. Use GitHub issues for user-visible bugs, features, contract changes, or work that benefits from public discussion or contributor visibility. Keep decomposition slices, architecture sequencing, maintainer-only tooling, experiments, postmortems, and other planning-only beads internal unless there is a clear reason to publish them.
+- Keep the current publication boundary and reviewed internal-only backlog list in `docs/backlog_publication_policy.md`.
 - GitHub Actions must stay read-only with respect to Beads. Do not let CI mutate or commit `.beads/issues.jsonl`.
 - Sync GitHub issue state into Beads locally during normal maintainer work with `yzx dev sync_issues`; that command is also responsible for creating or repairing the canonical Beads comment on GitHub issues. Then commit the Beads changes on your branch.
 - Do not block on `yzx dev sync_issues` when it is slow or hanging. Prefer `bd` for Beads mutations whenever possible, continue the implementation work, and repair the GitHub/Beads contract afterward.
