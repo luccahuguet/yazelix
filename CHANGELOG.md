@@ -84,7 +84,7 @@ The `v14` tag remains available only as the final historical Classic snapshot fo
 
 The active branch direction is now v15 rather than two maintained products in parallel.
 
-v15.0 is the trimmed non-Rust reboot. The goal is a smaller, slimmer, faster, more opinionated Yazelix with a much clearer product boundary. In practice, that means dropping the old runtime-local `devenv` layer, stopping the project from also trying to be a broad package-and-environment manager, trimming the command and config surface, deleting the config-migration engine, and focusing on fast workspace entry.
+v15.0 is the trimmed reboot with a narrower Rust scope, not a Rust-free release. The goal is a smaller, slimmer, faster, more opinionated Yazelix with a much clearer product boundary. In practice, that means dropping the old runtime-local `devenv` layer, stopping the project from also trying to be a broad package-and-environment manager, trimming the command and config surface, deleting the config-migration engine, focusing on fast workspace entry, and keeping the Rust pane orchestrator where it still owns live workspace and session state.
 
 That is the main architectural lesson of v14: Yazelix had clearly become two products in one.
 

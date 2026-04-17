@@ -12,7 +12,7 @@ Current recommendation:
 - POSIX shell stays limited to installer/launcher glue.
 - Zellij CLI and KDL stay transport/static-shape layers, not state owners.
 
-The point is not to rewrite everything for v15.0. It is to stop letting one user-visible behavior depend equally on POSIX shell, Nushell, Rust, Lua, and Zellij CLI state at once. v15.0 stays a trimmed non-Rust reboot; selective Rust can land in later v15.x releases, while v16 is the Rust-forward target.
+The point is not to rewrite everything for v15.0. It is to stop letting one user-visible behavior depend equally on POSIX shell, Nushell, Rust, Lua, and Zellij CLI state at once. v15.0 stays a trimmed reboot with Rust still present in the pane orchestrator and workspace layer rather than a Rust-free release; selective Rust can land in later v15.x releases, while v16 is the Rust-forward target.
 
 ## Why
 

@@ -36,7 +36,7 @@ See the origin story in `docs/the_start.md`.
 - **Ghostty Became First-Party** – Yazelix now bundles Ghostty as the first-party terminal on Linux and macOS. Other terminals still work when you provide them on the host `PATH`, but the first-party launch story is finally honest and packaged.
 - **Popup And Menu Became Real Peers** – The popup pane and popup command menu now share the same floating-pane control model, explicit pane identity, and toggle-oriented behavior. That seam is smaller, faster, and closer to the actual product than the old helper-pane detour.
 - **The Workspace Core Stayed Intact** – Layout families, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners remain the backbone of the product. v15 is not a feature wipe; it is the point where the surviving workspace core became the product.
-- **Rust Is A Later Tool, Not The Identity Of The Release** – v15 is the trimmed non-Rust reboot. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target.
+- **Rust Scope Narrowed; It Did Not Disappear** – v15 is the trimmed reboot with narrower Rust scope, not a Rust-free release. The pane orchestrator still owns live workspace and session state. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target.
 
 ## v14: Boundary hardening, honest update ownership, and package-runtime cleanup
 

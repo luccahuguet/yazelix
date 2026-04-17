@@ -4,7 +4,7 @@
 
 This spec is the current branch-level contract for the trimmed v15 line.
 
-v15.0 is the slimmed-down non-Rust reboot. Selective Rust may land later in v15.x when it clearly pays for itself; v16 is the Rust-forward release target.
+v15.0 is the slimmed-down reboot with a narrower Rust scope, not a Rust-free release. The Rust pane orchestrator still owns live workspace and session state. Selective Rust may land later in v15.x when it clearly pays for itself; v16 is the Rust-forward release target.
 
 The product surface is now centered on:
 
@@ -94,7 +94,7 @@ This file exists so current docs and current specs can point at one authoritativ
 2. Current docs explain generated-state repair through startup and `yzx doctor` rather than through a public refresh command.
 3. Current docs explain update ownership through explicit owner commands rather than a generic runtime updater.
 4. Current docs distinguish the normal packaged runtime from maintainer-only `nix develop` workflows.
-5. Current roadmap docs describe v15.0 as the trimmed non-Rust reboot and v16 as the Rust-forward release.
+5. Current roadmap docs describe v15.0 as the trimmed reboot with narrower Rust scope rather than a Rust-free release, and describe v16 as the Rust-forward release.
 
 ## Verification
 

@@ -25,7 +25,7 @@ Yazelix now uses the managed `yazelix.toml` config surface, with the normal flak
 - Three built-in sidebar-aware workspace shapes, managed sidebar/editor routing, and a fixed packaged runtime toolset
 - No runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`
 
-v15.0 is the trimmed non-Rust reboot: 15.5% fewer code lines than the historical peak, a much clearer product boundary, a slimmer runtime and command surface, notably faster popup/menu panes, and room for selective Rust in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target
+v15.0 is the trimmed reboot with a narrower Rust scope: 15.5% fewer code lines than the historical peak, a much clearer product boundary, a slimmer runtime and command surface, notably faster popup/menu panes, the Rust pane orchestrator still owning live workspace state, and room for selective Rust in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target
 
 ## Daily Workflow
 
@@ -85,7 +85,7 @@ Yazelix v14 is the historical **Yazelix Classic** snapshot: the broad, heavily i
 
 Classic is not the active product line in this branch, and the `v14` tag remains available only as the final historical snapshot for users who specifically need that broader shape; it is not a supported line anymore
 
-v15.0 is the trimmed non-Rust reboot, not a broad package-and-environment manager: it drops the old runtime-local `devenv` layer, trims the command and config surface, and keeps a clearer core around fast workspace entry, layouts, managed workspace actions, explicit update ownership, and the popup/menu-centered workspace UX
+v15.0 is the trimmed reboot with a narrower Rust scope, not a broad package-and-environment manager: it drops the old runtime-local `devenv` layer, trims the command and config surface, keeps the Rust pane orchestrator where it still pays for itself, and keeps a clearer core around fast workspace entry, layouts, managed workspace actions, explicit update ownership, and the popup/menu-centered workspace UX
 
 On the current `v15` branch, the trimmed contract is already narrower: no `yazelix_packs.toml`, no runtime-local `devenv`, no launch-profile reuse semantics, no automatic config migrations, a fixed packaged runtime toolset, built-in Ghostty on Linux and macOS, and explicit update owners through `yzx update upstream` or `yzx update home_manager`
 

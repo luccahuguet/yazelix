@@ -23,31 +23,28 @@ If a bead becomes public, it must satisfy the GitHub/Beads shared-subset contrac
 
 ## Current Audit
 
-Reviewed on `2026-04-17` from the open backlog.
+Reviewed on `2026-04-17` from the open backlog after queue cleanup.
 
-- Open beads: `79`
-- Open beads with `external_ref`: `42`
-- Open beads without `external_ref`: `37`
+- Open beads: `73`
+- Open beads with `external_ref`: `41`
+- Open beads without `external_ref`: `32`
 
-The `37` open beads without a GitHub issue currently split into two buckets:
+The `32` open beads without a GitHub issue currently split into two buckets:
 
-- `12` public-worthy backlog candidates that could justify a GitHub issue when promoted into active public discussion or implementation
-- `25` intentionally internal beads that should remain local planning items for now
+- `9` public-worthy backlog candidates that could justify a GitHub issue when promoted into active public discussion or implementation
+- `23` intentionally internal beads that should remain local planning items for now
 
 ## Public-Worthy Open Beads Without GitHub Issues Yet
 
 These are reasonable candidates for future GitHub issues when they become active enough to justify public tracking:
 
 - `yazelix-1et` Improve Helix support for Ghostty cursor effects
-- `yazelix-4iej` Bump the Nushell version Yazelix uses
 - `yazelix-8h9y` Optimize Yazi config generation on warm startup
 - `yazelix-j498` Verifiable config migration: deterministic hashes and fail-proof auto-migration for `yazelix.toml` schema changes
-- `yazelix-u7o` Add Ghostty cursor effects for Zellij pane changes
 - `yazelix-yho` Evaluate Pretext-inspired text-first welcome screen
 - `yazelix-232l` Clarify and verify the zsh/fish managed-shell availability boundary
 - `yazelix-3jw` Adopt Nushell-style tutor flow for `yzx tutor`
 - `yazelix-c1kw` Surface desktop-entry rebuild progress after terminal switches
-- `yazelix-ejqg` Add `VISUAL` to POSIX bootstrap runtime env
 - `yazelix-kfs1` Make direct update subcommands describe owner scope neutrally
 - `yazelix-z5vf` Align `yazelix` package `meta.platforms` with documented macOS support
 
@@ -71,13 +68,11 @@ These are reasonable candidates for future GitHub issues when they become active
 - `yazelix-2ex.1.5` Docs experience pass
 - `yazelix-865w` Add local startup profile comparison and baseline tooling
 - `yazelix-b5u1` Retire legacy shell-block migration checks once the old installer path is dropped
-- `yazelix-dg1i` Clarify v15 "non-Rust reboot" wording in docs and specs
 
 ### Experiments, Evaluations, And Postmortems
 
 - `yazelix-2ex.1.2.2` Evaluate FlakeHub adoption for Yazelix
 - `yazelix-mqb` Evaluate Lenia welcome style later
-- `yazelix-qow` Experiment: evaluate a Pixi-backed Yazelix branch
 - `yazelix-f0w` Postmortem: session-global Yazi sidebar state caused cross-tab cwd leaks
 
 ### Rust Migration Sequencing

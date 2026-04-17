@@ -68,7 +68,7 @@ summary = [
     "Replaced the late-series runtime updater experiment with explicit owner commands: `yzx update upstream` refreshes upstream/manual installs, `yzx update home_manager` refreshes the current Home Manager flake input, desktop launch now targets the active runtime launcher directly, and the transitional `yzx update runtime` / `yzx update all` flow is gone again.",
     "Made `yzx run` a real argv passthrough for one-shot Yazelix-environment commands, so child args like `yzx run rg --files` pass through unchanged, and documented the package-runtime simplification path, config dependence matrix, subsystem code inventory, and the trim-first v15 roadmap that follows this transition release.",
     "v14 is now best read as Yazelix Classic: the broad `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including commands like `yzx packs`.",
-    "v15 has since become the only supported line rather than a parallel future experiment: a smaller non-Rust reboot with no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry.",
+    "v15 has since become the only supported line rather than a parallel future experiment: a smaller trimmed reboot with narrower Rust scope, no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry while the pane orchestrator still owns live workspace truth.",
     "That means much of the broader Classic machinery belongs to the historical v14 snapshot: explicit refresh semantics, launch-profile reuse, the first-class `yazelix packs` / `yzx packs` model, broad pack/package-graph ownership, and the older `devenv`-driven hot-path model around commands like `yzx refresh` and much of `yzx run`.",
     "Rust remains a later implementation path: selective Rust may land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.",
     "The `v14` tag remains available only as the final historical Classic snapshot for users who specifically need that broader product shape; it is no longer a supported line.",
@@ -475,7 +475,7 @@ summary = [
     "Workspace control also matured across the line with managed editor/sidebar routing, deterministic sidebar controls, and `yzx cwd` to retarget the current tab workspace root with editor/sidebar sync.",
     "A large delete-first cleanup pass trimmed broad helper surfaces and documented the trim-first path toward v15.",
     "v14 is now best read as Yazelix Classic: the broader `devenv`-era shape with `yazelix packs`, dynamic runtime management, shell and terminal breadth, and the wider `yzx` surface, including `yzx packs`.",
-    "v15 has since become the live trimmed line rather than a parallel future experiment: a smaller non-Rust reboot with no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry.",
+    "v15 has since become the live trimmed line rather than a parallel future experiment: a smaller trimmed reboot with narrower Rust scope, no runtime-local `devenv`, no `yazelix_packs.toml`, no config-migration engine, and a clearer focus on fast workspace entry while the pane orchestrator still owns live workspace truth.",
     "Rust remains a later implementation path: selective Rust may land in v15.x point releases when it clearly pays for itself, while v16 is the Rust-forward release target.",
     "The `v14` tag remains available only as the final historical Classic snapshot for users who specifically need that broader product shape; it is no longer a supported line.",
 ]
@@ -490,7 +490,7 @@ summary = [
     "The front door is clearer: `yzx launch` opens a managed terminal window, `yzx enter` starts Yazelix in the current terminal, and `yzx env` remains the non-UI environment surface",
     "The fast transient workspace tools now share the floating-pane path: `yzx popup` toggles the configured popup program and `yzx menu --popup` toggles the command palette with the same identity and geometry seam",
     "The core workspace surface remains layouts, managed editor/sidebar orchestration, `yzx cwd`, `yzx reveal`, `yzx doctor`, `yzx whats_new`, and explicit update owners through `yzx update upstream` or `yzx update home_manager`",
-    "v15 is the trimmed non-Rust reboot. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target",
+    "v15 is the trimmed reboot with narrower Rust scope, not a Rust-free release. The pane orchestrator still owns live workspace and session state. Selective Rust can still land in v15.x where it clearly pays for itself, while v16 remains the Rust-forward release target",
 ]
 
 [series.v13]
