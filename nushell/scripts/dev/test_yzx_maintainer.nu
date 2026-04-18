@@ -62,6 +62,60 @@ def commit_dev_bump_fixture_change [fixture: record, message: string] {
     ^git -C $fixture.repo_root commit --quiet -m $message
 }
 
+def setup_flake_interface_fixture [] {
+    let repo_root = (require_yazelix_repo_root)
+    let tmp_root = (^mktemp -d /tmp/yazelix_flake_interface_XXXXXX | str trim)
+    let fixture_root = ($tmp_root | path join "repo")
+    let nushell_dev_dir = ($fixture_root | path join "nushell" "scripts" "dev")
+    let packaging_dir = ($fixture_root | path join "packaging")
+
+    mkdir $fixture_root
+    mkdir ($fixture_root | path join "assets")
+    mkdir ($fixture_root | path join "config_metadata")
+    mkdir ($fixture_root | path join "configs")
+    mkdir ($fixture_root | path join "docs")
+    mkdir ($fixture_root | path join "home_manager")
+    mkdir $nushell_dev_dir
+    mkdir $packaging_dir
+    mkdir ($fixture_root | path join "rust_plugins")
+    mkdir ($fixture_root | path join "shells")
+
+    for file_name in [
+        ".taplo.toml"
+        "CHANGELOG.md"
+        "flake.lock"
+        "flake.nix"
+        "maintainer_shell.nix"
+        "yazelix_default.toml"
+        "yazelix_package.nix"
+        "yazelix_runtime_package.nix"
+    ] {
+        ^cp ($repo_root | path join $file_name) ($fixture_root | path join $file_name)
+    }
+
+    for file_name in [
+        "mk_runtime_tree.nix"
+        "mk_yazelix_package.nix"
+        "runtime_deps.nix"
+    ] {
+        ^cp ($repo_root | path join "packaging" $file_name) ($packaging_dir | path join $file_name)
+    }
+
+    ^cp ($repo_root | path join "nushell" "scripts" "dev" "validate_flake_interface.nu") ($nushell_dev_dir | path join "validate_flake_interface.nu")
+    "{ ... }: {}" | save --force --raw ($fixture_root | path join "home_manager" "module.nix")
+
+    {
+        fixture_root: $fixture_root
+        validator_path: ($nushell_dev_dir | path join "validate_flake_interface.nu")
+        package_path: ($fixture_root | path join "yazelix_package.nix")
+    }
+}
+
+def run_flake_interface_validator [fixture: record] {
+    cd $fixture.fixture_root
+    ^nu $fixture.validator_path | complete
+}
+
 def get_fixture_current_version [fixture: record] {
     (
         open --raw $fixture.constants_path
@@ -1513,6 +1567,67 @@ def test_dev_bump_rejects_existing_target_tags [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: validate_flake_interface must fail when the first-party flake package narrows meta.platforms below the systems exported by flake.nix.
+def test_validate_flake_interface_rejects_narrowed_first_party_platforms [] {
+    print "🧪 Testing validate_flake_interface rejects exported darwin systems that are missing from first-party meta.platforms..."
+
+    let fixture = (setup_flake_interface_fixture)
+    let result = (try {
+        let baseline = (run_flake_interface_validator $fixture)
+        let baseline_stdout = ($baseline.stdout | str trim)
+        let baseline_ok = (
+            ($baseline.exit_code == 0)
+            and ($baseline_stdout | str contains "First-party flake package is available on all exported systems")
+        )
+
+        let narrowed_package = (
+            open --raw $fixture.package_path
+            | str replace -r '(?ms)let\s+firstPartyPlatforms = \[\n.*?\n  \];' (
+                [
+                    "let"
+                    "  firstPartyPlatforms = ["
+                    '    "x86_64-linux"'
+                    '    "aarch64-linux"'
+                    "  ];"
+                ] | str join "\n"
+            )
+        )
+        $narrowed_package | save --force --raw $fixture.package_path
+
+        let broken = (run_flake_interface_validator $fixture)
+        let broken_output = (
+            [$broken.stdout $broken.stderr]
+            | str join "\n"
+            | str replace -r '(?m)\n\s*\|\s*' ""
+            | str trim
+        )
+        let broken_meta_mentions = (
+            ($broken_output | split row 'meta.platforms=["x86_64-linux","aarch64-linux"]' | length) - 1
+        )
+
+        if (
+            $baseline_ok
+            and ($broken.exit_code != 0)
+            and ($broken_output | str contains "reports as unavailable on exported systems")
+            and ($broken_output | str contains "aarch64-darwin")
+            and ($broken_meta_mentions == 2)
+        ) {
+            print "  ✅ validate_flake_interface now fails when exported darwin package systems fall out of first-party meta.platforms"
+            true
+        } else {
+            print $"  ❌ Unexpected result: baseline_exit=($baseline.exit_code) baseline_stdout=($baseline_stdout) broken_exit=($broken.exit_code) broken_output=($broken_output)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf ($fixture.fixture_root | path dirname)
+    $result
+}
+
 def main [] {
     print "=== Testing yzx Maintainer Commands ==="
     print ""
@@ -1534,6 +1649,7 @@ def main [] {
         (test_default_budget_profiler_does_not_wait_on_background_children)
         (test_vendored_yazi_plugin_refresh_applies_patch_and_refuses_dirty_targets)
         (test_nushell_initializer_restores_current_path_first)
+        (test_validate_flake_interface_rejects_narrowed_first_party_platforms)
         (test_startup_profile_report_schema_is_structured_and_summarizable)
         (test_dev_profile_desktop_uses_installed_runtime_outside_repo)
         (test_dev_profile_desktop_invokes_leaf_command_and_waits_for_handoff)

@@ -139,6 +139,15 @@ For macOS:
 
 If the package can build or partially work on Darwin without extra complexity, that is good. But the first nixpkgs submission should not be blocked on promising a fully-polished macOS package story.
 
+### Platform scope is separate for each package surface
+
+The first-party flake package and the nixpkgs submission draft have different platform claims:
+
+- The first-party flake package (`yazelix_package.nix`) claims the four systems exported in `flake.nix`: `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and `aarch64-darwin`. Its `meta.platforms` matches these exported systems so that `nix profile install` works on all of them.
+- The nixpkgs submission draft (`packaging/nixpkgs/yazelix_package.nix`) claims Linux only (`pkgs.lib.platforms.linux`). This narrower scope reflects the intended first-submission boundary and should not be broadened without an explicit product decision.
+
+Do not conflate these two surfaces. The shared package builder (`packaging/mk_yazelix_package.nix`) does not own platform policy; each wrapper sets its own `metaPlatforms`.
+
 ## Update Story
 
 For nixpkgs users, updates come from the package manager:
@@ -168,6 +177,8 @@ The package contract should not depend on any separate installer as the update m
 5. The package includes the runtime-local `nu` and the direct bootstrap/runtime dependencies needed to invoke Yazelix itself.
 6. Desktop integration remains explicit via `yzx desktop install` instead of becoming implicit package behavior.
 7. The remaining work to upstream the package is mostly translation and review, not product-boundary redesign.
+8. The first-party flake package claims all four exported flake systems in `meta.platforms`, not just Linux.
+9. The nixpkgs submission draft keeps its Linux-only `meta.platforms` scope independently of the first-party flake package.
 
 ## Verification
 

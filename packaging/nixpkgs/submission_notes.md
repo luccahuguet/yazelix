@@ -37,7 +37,7 @@ The package body is intentionally parameterized by `src` in this repo-local draf
    Users install a desktop entry later with `yzx desktop install`. The first nixpkgs submission deliberately avoids package-install desktop side effects.
 
 4. Linux is the supported scope for the first submission.
-   Darwin is intentionally not claimed in `meta.platforms` yet.
+    Darwin is intentionally not claimed in `meta.platforms` yet. This is narrower than the first-party flake package, which claims all four exported flake systems. The two surfaces are intentionally independent: the first-party flake package must not inherit the narrower submission scope, and the submission draft must not accidentally inherit the broader flake scope.
 
 ## Local Validation
 

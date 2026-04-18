@@ -1,4 +1,4 @@
-{ pkgs, src ? ../., nixgl ? null }:
+{ pkgs, src ? ../., nixgl ? null, metaPlatforms ? null }:
 
 let
   runtime = import ./mk_runtime_tree.nix {
@@ -30,6 +30,7 @@ pkgs.symlinkJoin {
     homepage = "https://github.com/luccahuguet/yazelix";
     license = pkgs.lib.licenses.mit;
     mainProgram = "yzx";
-    platforms = pkgs.lib.platforms.linux;
+  } // pkgs.lib.optionalAttrs (metaPlatforms != null) {
+    platforms = metaPlatforms;
   };
 }
