@@ -479,6 +479,83 @@ def write_profile_handoff_probe_nu [probe_path: string] {
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: profiling from outside the repo must fall back to the active installed runtime instead of requiring a writable checkout.
+def test_dev_profile_desktop_uses_installed_runtime_outside_repo [] {
+    print "🧪 Testing desktop startup profiling falls back to the installed runtime outside the repo..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_desktop_profile_runtime_fallback_XXXXXX | str trim)
+    let temp_home = ($tmp_root | path join "home")
+    let state_dir = ($tmp_root | path join "state")
+    let fake_bin = ($tmp_root | path join "bin")
+    let fake_nu = ($fake_bin | path join "nu")
+    let invocation_log = ($tmp_root | path join "nu_invocation.log")
+    let runtime_root = ($tmp_root | path join "runtime")
+    let desktop_module = ($runtime_root | path join "nushell" "scripts" "yzx" "desktop.nu")
+    let profile_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
+
+    mkdir $temp_home
+    mkdir $state_dir
+    mkdir $fake_bin
+    mkdir ($desktop_module | path dirname)
+    mkdir ($runtime_root | path join "nushell" "scripts" "core")
+    "" | save --force --raw ($runtime_root | path join "yazelix_default.toml")
+    "" | save --force --raw $desktop_module
+    "" | save --force --raw ($runtime_root | path join "nushell" "scripts" "core" "start_yazelix.nu")
+    write_profile_handoff_probe_nu $fake_nu
+
+    let result = (try {
+        let snippet = (
+            [
+                $"cd \"($temp_home)\""
+                $"source \"($profile_module)\""
+                "let summary = (run_desktop_profile_command)"
+                "{"
+                "    scenario: $summary.run.scenario"
+                "    source_kind: ($summary.run.metadata.source_kind? | default \"\")"
+                "    source_root: ($summary.run.metadata.source_root? | default \"\")"
+                "} | to json -r"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            HOME: $temp_home
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_RUNTIME_DIR: $runtime_root
+            YAZELIX_NU_BIN: $fake_nu
+            YZX_PROFILE_NU_LOG: $invocation_log
+            IN_YAZELIX_SHELL: ""
+        } {
+            do { ^nu -c $snippet } | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 { $stdout | lines | last | from json } else { null }
+        let invocation = if ($invocation_log | path exists) { open --raw $invocation_log | lines } else { [] }
+        let command = ($invocation | get -o 1 | default "")
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved.scenario == "desktop_launch")
+            and ($resolved.source_kind == "installed_runtime")
+            and ($resolved.source_root == $runtime_root)
+            and (($invocation | get -o 0 | default "") == "-c")
+            and ($command | str contains $"use \"($desktop_module)\" *; yzx desktop launch")
+        ) {
+            print "  ✅ Desktop profiling now works from outside the repo by using the installed runtime root"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim)) invocation=(($invocation | to json -r))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 # Regression: desktop profiling must invoke the exported leaf command and wait for the profiled startup handoff before summarizing.
 def test_dev_profile_desktop_invokes_leaf_command_and_waits_for_handoff [] {
     print "🧪 Testing desktop startup profiling invokes yzx desktop launch and waits for handoff..."
@@ -1458,6 +1535,7 @@ def main [] {
         (test_vendored_yazi_plugin_refresh_applies_patch_and_refuses_dirty_targets)
         (test_nushell_initializer_restores_current_path_first)
         (test_startup_profile_report_schema_is_structured_and_summarizable)
+        (test_dev_profile_desktop_uses_installed_runtime_outside_repo)
         (test_dev_profile_desktop_invokes_leaf_command_and_waits_for_handoff)
         (test_dev_profile_launch_invokes_leaf_command_with_flags)
         (test_startup_profile_records_detached_terminal_probe)

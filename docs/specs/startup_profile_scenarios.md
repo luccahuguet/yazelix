@@ -29,6 +29,7 @@ The Rust rewrite needs this baseline to preserve or improve startup behavior ins
 - `yzx dev profile --desktop` invokes the real `yzx desktop launch` leaf command.
 - `yzx dev profile --launch` invokes the real `yzx launch` leaf command.
 - `yzx dev profile --launch --terminal <name>` passes the terminal override to `yzx launch`.
+- Profiling must work from either a repo checkout or the active installed Yazelix runtime. A writable repo checkout is not required for profiling an installed runtime.
 - Desktop and managed-launch profiling must propagate the same startup-profile environment into the spawned terminal process.
 - Desktop and managed-launch profiling must wait for `inner.zellij_handoff_ready` before rendering the summary, so detached startup reports are not summarized early.
 - Terminal launch probing must be visible as a first-class `terminal_launcher.detached_launch_probe` step.
@@ -49,6 +50,7 @@ The Rust rewrite needs this baseline to preserve or improve startup behavior ins
 3. Detached desktop and launch reports are not summarized until `inner.zellij_handoff_ready` appears or a bounded timeout fails loudly.
 4. The detached terminal spawn/probe wait appears as `terminal_launcher.detached_launch_probe`.
 5. The current-terminal and cold profile paths continue to use the same report schema and summary renderer.
+6. Running `yzx dev profile` from outside the repo still works when the active installed runtime is valid.
 
 ## Verification
 

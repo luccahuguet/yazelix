@@ -170,6 +170,8 @@ When creating new files or directories, always use underscores to maintain consi
 - Tool selection: Which approach to use when multiple options exist
 - Architecture decisions: How to structure or integrate new features
 
+**MANUAL TEST GATE BEFORE PUSH** - For non-trivial changes, do not push to remote before the user has manually tested the behavior and explicitly approved the push. Only trivial changes may be pushed without manual user testing.
+
 **PREFER PLANNING SPACE FIRST** - It is usually much easier, faster, and safer to improve the plan than to correct code after implementation starts. Spend real effort refining the problem framing, scope, dependencies, user impact, migration story, and verification strategy before making code changes.
 
 **REASON FROM FIRST PRINCIPLES** - When faced with design decisions or trade-offs, analyze the fundamental requirements and constraints rather than following conventions blindly. Consider:
@@ -302,14 +304,14 @@ bd close <id>         # Complete work
 
 ## Session Completion
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+**When ending a work session**, complete the steps below that apply to the current change. For non-trivial changes, local implementation and validation can be complete before push, but remote push must wait until the user manually tests and approves it. Only trivial changes should follow the immediate push path by default.
 
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
+4. **PUSH TO REMOTE** - Required only after the user has manually tested non-trivial changes, or immediately for trivial changes / when the user explicitly asks to push:
    ```bash
    git pull --rebase
    bd dolt push
@@ -321,8 +323,8 @@ bd close <id>         # Complete work
 7. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+- Do not push non-trivial changes before user manual testing and explicit approval
+- Once a push is approved or otherwise required, finish it fully: `git pull --rebase`, `bd dolt push`, `git push`, then verify status
+- Do not claim remote completion for unpushed work
+- If an approved push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->

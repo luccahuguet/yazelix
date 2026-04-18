@@ -33,6 +33,7 @@ Profile launch sequence and identify performance bottlenecks
 - `--clear-cache`: Clear the runtime project cache plus recorded materialized/launch state first so the profiled run exercises the rebuild-heavy path
 - `--terminal`: Override terminal selection for `--launch` profiling
 - The summary breaks out real startup phases such as preflight, config-state checks, maintainer-shell entry, shellHook setup, and inner startup work
+- Profiling works from either a repo checkout or the active installed runtime
 
 ### `yzx dev bump VERSION`
 Automate the version bump, release commit, and matching git tag

@@ -3,6 +3,7 @@
 
 use ../utils/common.nu [
     get_yazelix_state_dir
+    get_yazelix_runtime_dir
     resolve_yazelix_nu_bin
 ]
 use ../maintainer/repo_checkout.nu [require_yazelix_repo_root]
@@ -72,11 +73,34 @@ def clear_startup_profile_caches [] {
     }
 }
 
-def build_profile_metadata [scenario: string, clear_cache: bool, repo_root: string] {
+def resolve_profile_source_root [] {
+    let repo_root = (try { require_yazelix_repo_root } catch { null })
+    if $repo_root != null {
+        return {
+            root: $repo_root
+            kind: "repo_checkout"
+        }
+    }
+
+    let runtime_root = (get_yazelix_runtime_dir)
+    if $runtime_root != null {
+        return {
+            root: $runtime_root
+            kind: "installed_runtime"
+        }
+    }
+
+    error make {
+        msg: "yzx dev profile requires either a Yazelix repo checkout or an installed Yazelix runtime."
+    }
+}
+
+def build_profile_metadata [scenario: string, clear_cache: bool, source_info: record] {
     {
         scenario: $scenario
         clear_cache: $clear_cache
-        repo_root: $repo_root
+        source_root: $source_info.root
+        source_kind: $source_info.kind
         cwd: (pwd)
         in_yazelix_shell: (($env.IN_YAZELIX_SHELL? | default "") == "true")
         host: (sys host)
@@ -138,10 +162,10 @@ def run_dev_profile_harness [
     --clear-cache
 ] {
     let clear_cache_enabled = $clear_cache
-    let repo_root = (require_yazelix_repo_root)
+    let source_info = (resolve_profile_source_root)
     let nu_bin = (resolve_yazelix_nu_bin)
-    let start_script = ($repo_root | path join "nushell" "scripts" "core" "start_yazelix.nu")
-    let profile_run = (create_startup_profile_run $scenario (build_profile_metadata $scenario $clear_cache_enabled $repo_root))
+    let start_script = ($source_info.root | path join "nushell" "scripts" "core" "start_yazelix.nu")
+    let profile_run = (create_startup_profile_run $scenario (build_profile_metadata $scenario $clear_cache_enabled $source_info))
 
     if $clear_cache_enabled {
         clear_startup_profile_caches
@@ -223,10 +247,10 @@ def run_desktop_profile_command [] {
     }
 
     print "🚀 Profiling desktop launch startup..."
-    let repo_root = (require_yazelix_repo_root)
+    let source_info = (resolve_profile_source_root)
     let nu_bin = (resolve_yazelix_nu_bin)
-    let desktop_module = ($repo_root | path join "nushell" "scripts" "yzx" "desktop.nu")
-    let profile_run = (create_startup_profile_run "desktop_launch" (build_profile_metadata "desktop_launch" false $repo_root))
+    let desktop_module = ($source_info.root | path join "nushell" "scripts" "yzx" "desktop.nu")
+    let profile_run = (create_startup_profile_run "desktop_launch" (build_profile_metadata "desktop_launch" false $source_info))
 
     let profile_env = (
         $profile_run.env
@@ -265,10 +289,10 @@ def run_launch_profile_command [
     }
 
     print "🚀 Profiling managed new-window launch..."
-    let repo_root = (require_yazelix_repo_root)
+    let source_info = (resolve_profile_source_root)
     let nu_bin = (resolve_yazelix_nu_bin)
-    let launch_module = ($repo_root | path join "nushell" "scripts" "yzx" "launch.nu")
-    let profile_run = (create_startup_profile_run "managed_launch" (build_profile_metadata "managed_launch" ($clear_cache | default false) $repo_root))
+    let launch_module = ($source_info.root | path join "nushell" "scripts" "yzx" "launch.nu")
+    let profile_run = (create_startup_profile_run "managed_launch" (build_profile_metadata "managed_launch" ($clear_cache | default false) $source_info))
 
     if $clear_cache {
         clear_startup_profile_caches
