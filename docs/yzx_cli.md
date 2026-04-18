@@ -24,11 +24,14 @@ Run Yazelix test suite
 - `--all`: Run the default suite plus non-visual sweep + visual sweep
 - `--delay`: Delay between visual terminal launches in seconds (default: 3)
 
-### `yzx dev profile [--cold] [--clear-cache]`
+### `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]`
 Profile launch sequence and identify performance bottlenecks
 - Default: Profile the current-terminal startup path and write a structured startup report under `~/.local/share/yazelix/profiles/startup/`
 - `--cold`: Profile cold startup from a vanilla terminal (outside Yazelix)
+- `--desktop`: Profile the desktop-entry fast path, including pre-terminal work and the profiled handoff inside the spawned terminal
+- `--launch`: Profile the managed new-window launch path, including wrapper preparation, terminal dispatch, and the profiled handoff inside the spawned terminal
 - `--clear-cache`: Clear the runtime project cache plus recorded materialized/launch state first so the profiled run exercises the rebuild-heavy path
+- `--terminal`: Override terminal selection for `--launch` profiling
 - The summary breaks out real startup phases such as preflight, config-state checks, maintainer-shell entry, shellHook setup, and inner startup work
 
 ### `yzx dev bump VERSION`
@@ -306,6 +309,8 @@ yzx dev test --all            # Run the default suite plus sweep + visual lanes
 yzx dev profile               # Profile the current-terminal startup path
 yzx dev profile --cold        # Profile cold start from a vanilla terminal
 yzx dev profile --cold --clear-cache  # Force a rebuild-heavy cold profile run
+yzx dev profile --desktop     # Profile the desktop-entry launch path
+yzx dev profile --launch --terminal ghostty  # Profile managed new-window launch with a terminal override
 
 # Performance scenarios explained:
 # 1. Warm start (~130ms): Already in Yazelix, launching tools/commands

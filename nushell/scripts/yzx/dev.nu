@@ -14,6 +14,7 @@ use ../utils/startup_profile.nu [
     create_startup_profile_run
     load_startup_profile_report
     render_startup_profile_summary
+    wait_for_startup_profile_step
 ]
 
 # Development and maintainer commands
@@ -90,6 +91,45 @@ def print_startup_profile_summary [summary: record] {
     print $"   total: ($summary.total_duration_ms)ms"
     print ""
     print (render_startup_profile_summary $summary)
+}
+
+def build_desktop_profile_command [desktop_module: string] {
+    let module_literal = ($desktop_module | to nuon)
+    $"use ($module_literal) *; yzx desktop launch"
+}
+
+def build_launch_profile_command [
+    launch_module: string
+    --terminal(-t): string = ""
+    --verbose
+] {
+    let module_literal = ($launch_module | to nuon)
+    mut command = $"use ($module_literal) *; yzx launch"
+    if ($terminal | is-not-empty) {
+        let terminal_literal = ($terminal | to nuon)
+        $command = $"($command) --terminal ($terminal_literal)"
+    }
+    if $verbose {
+        $command = $"($command) --verbose"
+    }
+
+    $command
+}
+
+def wait_for_profile_handoff [profile_run: record, scenario_label: string] {
+    let completed = (
+        wait_for_startup_profile_step
+            $profile_run.report_path
+            "inner"
+            "zellij_handoff_ready"
+            --timeout-ms=15000
+    )
+
+    if not $completed {
+        error make {
+            msg: $"($scenario_label) profiling timed out waiting for inner.zellij_handoff_ready. Report: ($profile_run.report_path)"
+        }
+    }
 }
 
 def run_dev_profile_harness [
@@ -174,12 +214,106 @@ export def "yzx dev test" [
     run_all_tests --verbose=$verbose --new-window=$new_window --lint-only=$lint_only --profile=$profile --sweep=$sweep --visual=$visual --all=$all --delay $delay
 }
 
+def run_desktop_profile_command [] {
+    if (($env.IN_YAZELIX_SHELL? | default "") == "true") {
+        print "❌ Error: Desktop launch profiling must be run from outside a Yazelix shell"
+        print ""
+        print "Open a new terminal outside Yazelix and run: yzx dev profile --desktop"
+        return
+    }
+
+    print "🚀 Profiling desktop launch startup..."
+    let repo_root = (require_yazelix_repo_root)
+    let nu_bin = (resolve_yazelix_nu_bin)
+    let desktop_module = ($repo_root | path join "nushell" "scripts" "yzx" "desktop.nu")
+    let profile_run = (create_startup_profile_run "desktop_launch" (build_profile_metadata "desktop_launch" false $repo_root))
+
+    let profile_env = (
+        $profile_run.env
+        | upsert YAZELIX_STARTUP_PROFILE_SKIP_WELCOME "true"
+        | upsert YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ "true"
+        | upsert YAZELIX_SHELLHOOK_SKIP_WELCOME "true"
+    )
+    let result = (with-env $profile_env {
+        do { ^$nu_bin -c (build_desktop_profile_command $desktop_module) } | complete
+    })
+
+    if $result.exit_code != 0 {
+        let error_output = ($result.stderr | default $result.stdout | default "desktop launch profiling exited unsuccessfully")
+        error make {
+            msg: $"Desktop launch profiling failed: ($error_output)"
+        }
+    }
+
+    wait_for_profile_handoff $profile_run "Desktop launch"
+
+    let summary = (load_startup_profile_report $profile_run.report_path)
+    print_startup_profile_summary $summary
+    $summary
+}
+
+def run_launch_profile_command [
+    --clear-cache
+    --terminal(-t): string = ""
+    --verbose
+] {
+    if (($env.IN_YAZELIX_SHELL? | default "") == "true") {
+        print "❌ Error: Managed launch profiling must be run from outside a Yazelix shell"
+        print ""
+        print "Open a new terminal outside Yazelix and run: yzx dev profile --launch"
+        return
+    }
+
+    print "🚀 Profiling managed new-window launch..."
+    let repo_root = (require_yazelix_repo_root)
+    let nu_bin = (resolve_yazelix_nu_bin)
+    let launch_module = ($repo_root | path join "nushell" "scripts" "yzx" "launch.nu")
+    let profile_run = (create_startup_profile_run "managed_launch" (build_profile_metadata "managed_launch" ($clear_cache | default false) $repo_root))
+
+    if $clear_cache {
+        clear_startup_profile_caches
+    }
+
+    let profile_env = (
+        $profile_run.env
+        | upsert YAZELIX_STARTUP_PROFILE_SKIP_WELCOME "true"
+        | upsert YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ "true"
+        | upsert YAZELIX_SHELLHOOK_SKIP_WELCOME "true"
+    )
+    let launch_command = (build_launch_profile_command $launch_module --terminal=$terminal --verbose=$verbose)
+
+    let result = (with-env $profile_env {
+        do { ^$nu_bin -c $launch_command } | complete
+    })
+
+    if $result.exit_code != 0 {
+        let error_output = ($result.stderr | default $result.stdout | default "managed launch profiling exited unsuccessfully")
+        error make {
+            msg: $"Managed launch profiling failed: ($error_output)"
+        }
+    }
+
+    wait_for_profile_handoff $profile_run "Managed launch"
+
+    let summary = (load_startup_profile_report $profile_run.report_path)
+    print_startup_profile_summary $summary
+    $summary
+}
+
 # Profile launch sequence and identify bottlenecks
 export def "yzx dev profile" [
     --cold(-c)        # Profile cold launch from vanilla terminal (emulates desktop entry or fresh terminal launch)
+    --desktop         # Profile desktop entry launch path
+    --launch          # Profile managed new-window launch path
     --clear-cache     # Clear recorded runtime/project cache state first so the profiled run exercises the rebuild-heavy path
+    --terminal(-t): string = ""  # Override terminal selection for launch profiling
+    --verbose         # Enable verbose logging for launch profiling
 ] {
-    if $cold {
+    if $desktop {
+        run_desktop_profile_command
+    } else if $launch {
+        run_launch_profile_command --clear-cache=$clear_cache --terminal=$terminal --verbose=$verbose
+    } else if $cold {
         run_cold_profile_command $clear_cache
     } else {
         run_default_profile_command

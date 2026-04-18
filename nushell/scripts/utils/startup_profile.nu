@@ -3,6 +3,15 @@
 use common.nu [get_yazelix_state_dir]
 
 export const STARTUP_PROFILE_SCHEMA_VERSION = 1
+export const STARTUP_PROFILE_PROPAGATED_ENV_KEYS = [
+    "YAZELIX_STARTUP_PROFILE"
+    "YAZELIX_STARTUP_PROFILE_RUN_ID"
+    "YAZELIX_STARTUP_PROFILE_REPORT"
+    "YAZELIX_STARTUP_PROFILE_SCENARIO"
+    "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME"
+    "YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ"
+    "YAZELIX_SHELLHOOK_SKIP_WELCOME"
+]
 
 def now_rfc3339 [] {
     date now | format date "%Y-%m-%dT%H:%M:%S%.3f%:z"
@@ -23,6 +32,18 @@ def append_profile_record [report_path: string, record: record] {
     }
 
     $"(($record | to json -r))\n" | save --append --raw $report_path
+}
+
+export def propagate_startup_profile_env [env_block: record] {
+    mut block = $env_block
+    for key in $STARTUP_PROFILE_PROPAGATED_ENV_KEYS {
+        let val = ($env | get -o $key)
+        if ($val | is-not-empty) {
+            $block = ($block | upsert $key $val)
+        }
+    }
+
+    $block
 }
 
 export def startup_profile_enabled [] {
@@ -129,6 +150,49 @@ export def profile_startup_step [
     let ended_ns = (now_ns)
     record_startup_profile_event $component $step $started_ns $ended_ns $metadata
     $result
+}
+
+def load_startup_profile_records_lenient [report_path: string] {
+    if not ($report_path | path exists) {
+        return []
+    }
+
+    try {
+        open --raw $report_path
+        | lines
+        | where {|line| not ($line | str trim | is-empty) }
+        | each {|line| try { $line | from json } catch { null } }
+        | where {|record| $record != null }
+    } catch {
+        []
+    }
+}
+
+export def wait_for_startup_profile_step [
+    report_path: string
+    component: string
+    step: string
+    --timeout-ms: int = 15000
+] {
+    let deadline_ns = (now_ns) + ($timeout_ms * 1000000)
+
+    loop {
+        let found = (
+            load_startup_profile_records_lenient $report_path
+            | any {|record|
+                (($record.type? | default "") == "step") and (($record.component? | default "") == $component) and (($record.step? | default "") == $step)
+            }
+        )
+        if $found {
+            return true
+        }
+
+        if (now_ns) >= $deadline_ns {
+            return false
+        }
+
+        sleep 100ms
+    }
 }
 
 export def load_startup_profile_report [report_path: string] {

@@ -3,6 +3,7 @@
 
 use constants.nu [SUPPORTED_TERMINALS, TERMINAL_CONFIG_PATHS, TERMINAL_METADATA, YAZELIX_WINDOW_CLASS, YAZELIX_X11_INSTANCE]
 use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
+use startup_profile.nu [profile_startup_step]
 
 # Check if a command is available
 export def command_exists [cmd: string]: nothing -> bool {
@@ -293,7 +294,11 @@ export def run_detached_terminal_launch [launch_cmd: string, terminal_name: stri
         'exit "$status"'
     ] | str join "\n"
 
-    let output = (^bash -lc $probe_script | complete)
+    let output = (profile_startup_step "terminal_launcher" "detached_launch_probe" {
+        ^bash -lc $probe_script | complete
+    } {
+        terminal: $terminal_name
+    })
     if $output.exit_code != 0 {
         let logged_path = ($output.stdout | lines | last | default "" | str trim)
         let log_tail = if ($logged_path | is-not-empty) and ($logged_path | path exists) {

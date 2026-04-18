@@ -463,6 +463,218 @@ def test_startup_profile_report_schema_is_structured_and_summarizable [] {
     $result
 }
 
+def write_profile_handoff_probe_nu [probe_path: string] {
+    [
+        "#!/bin/sh"
+        ": > \"$YZX_PROFILE_NU_LOG\""
+        "for arg in \"$@\"; do"
+        "  printf '%s\n' \"$arg\" >> \"$YZX_PROFILE_NU_LOG\""
+        "done"
+        "cat >> \"$YAZELIX_STARTUP_PROFILE_REPORT\" <<EOF"
+        "{\"type\":\"step\",\"schema_version\":1,\"run_id\":\"${YAZELIX_STARTUP_PROFILE_RUN_ID}\",\"scenario\":\"${YAZELIX_STARTUP_PROFILE_SCENARIO}\",\"component\":\"inner\",\"step\":\"zellij_handoff_ready\",\"started_ns\":1,\"ended_ns\":2,\"duration_ms\":0.0,\"recorded_at\":\"2026-04-18T00:00:00.000+00:00\",\"metadata\":{}}"
+        "EOF"
+        "exit 0"
+    ] | str join "\n" | save --force --raw $probe_path
+    ^chmod +x $probe_path
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: desktop profiling must invoke the exported leaf command and wait for the profiled startup handoff before summarizing.
+def test_dev_profile_desktop_invokes_leaf_command_and_waits_for_handoff [] {
+    print "🧪 Testing desktop startup profiling invokes yzx desktop launch and waits for handoff..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_desktop_profile_harness_XXXXXX | str trim)
+    let temp_home = ($tmp_root | path join "home")
+    let state_dir = ($tmp_root | path join "state")
+    let fake_bin = ($tmp_root | path join "bin")
+    let fake_nu = ($fake_bin | path join "nu")
+    let invocation_log = ($tmp_root | path join "nu_invocation.log")
+    let profile_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
+    let desktop_module = ($repo_root | path join "nushell" "scripts" "yzx" "desktop.nu")
+
+    mkdir $temp_home
+    mkdir $state_dir
+    mkdir $fake_bin
+    write_profile_handoff_probe_nu $fake_nu
+
+    let result = (try {
+        let snippet = (
+            [
+                $"source \"($profile_module)\""
+                "let summary = (run_desktop_profile_command)"
+                "{"
+                "    scenario: $summary.run.scenario"
+                "    steps: ($summary.steps | each {|step| {component: $step.component step: $step.step}})"
+                "} | to json -r"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            HOME: $temp_home
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_NU_BIN: $fake_nu
+            YZX_PROFILE_NU_LOG: $invocation_log
+            IN_YAZELIX_SHELL: ""
+        } {
+            do { ^nu -c $snippet } | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 { $stdout | lines | last | from json } else { null }
+        let invocation = if ($invocation_log | path exists) { open --raw $invocation_log | lines } else { [] }
+        let command = ($invocation | get -o 1 | default "")
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved.scenario == "desktop_launch")
+            and ($resolved.steps | any {|step| $step.component == "inner" and $step.step == "zellij_handoff_ready" })
+            and (($invocation | get -o 0 | default "") == "-c")
+            and ($command | str contains $"use \"($desktop_module)\" *; yzx desktop launch")
+            and not ($command | str contains "\"desktop launch\"")
+        ) {
+            print "  ✅ Desktop profiling uses the exported leaf command and waits for the handoff marker"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim)) invocation=(($invocation | to json -r))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: managed-launch profiling must invoke the exported leaf command with real flags and wait for profiled startup completion.
+def test_dev_profile_launch_invokes_leaf_command_with_flags [] {
+    print "🧪 Testing managed-launch startup profiling invokes yzx launch with flags..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_launch_profile_harness_XXXXXX | str trim)
+    let temp_home = ($tmp_root | path join "home")
+    let state_dir = ($tmp_root | path join "state")
+    let fake_bin = ($tmp_root | path join "bin")
+    let fake_nu = ($fake_bin | path join "nu")
+    let invocation_log = ($tmp_root | path join "nu_invocation.log")
+    let profile_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
+    let launch_module = ($repo_root | path join "nushell" "scripts" "yzx" "launch.nu")
+
+    mkdir $temp_home
+    mkdir $state_dir
+    mkdir $fake_bin
+    write_profile_handoff_probe_nu $fake_nu
+
+    let result = (try {
+        let snippet = (
+            [
+                $"source \"($profile_module)\""
+                "let summary = (run_launch_profile_command --terminal ghostty --verbose)"
+                "{"
+                "    scenario: $summary.run.scenario"
+                "    steps: ($summary.steps | each {|step| {component: $step.component step: $step.step}})"
+                "} | to json -r"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            HOME: $temp_home
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_NU_BIN: $fake_nu
+            YZX_PROFILE_NU_LOG: $invocation_log
+            IN_YAZELIX_SHELL: ""
+        } {
+            do { ^nu -c $snippet } | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 { $stdout | lines | last | from json } else { null }
+        let invocation = if ($invocation_log | path exists) { open --raw $invocation_log | lines } else { [] }
+        let command = ($invocation | get -o 1 | default "")
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved.scenario == "managed_launch")
+            and ($resolved.steps | any {|step| $step.component == "inner" and $step.step == "zellij_handoff_ready" })
+            and (($invocation | get -o 0 | default "") == "-c")
+            and ($command | str contains $"use \"($launch_module)\" *; yzx launch --terminal \"ghostty\" --verbose")
+        ) {
+            print "  ✅ Managed-launch profiling uses the exported leaf command, preserves flags, and waits for the handoff marker"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim)) invocation=(($invocation | to json -r))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+# Defends: detached terminal launch profiling records the spawn/probe wait as its own measurable phase.
+def test_startup_profile_records_detached_terminal_probe [] {
+    print "🧪 Testing startup profiling records detached terminal launch probe timing..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_terminal_probe_profile_XXXXXX | str trim)
+    let state_dir = ($tmp_root | path join "state")
+    let profile_module = ($repo_root | path join "nushell" "scripts" "utils" "startup_profile.nu")
+    let terminal_module = ($repo_root | path join "nushell" "scripts" "utils" "terminal_launcher.nu")
+
+    mkdir $state_dir
+
+    let result = (try {
+        let snippet = (
+            [
+                $"use \"($profile_module)\" [create_startup_profile_run load_startup_profile_report]"
+                $"use \"($terminal_module)\" [run_detached_terminal_launch]"
+                "let run = (create_startup_profile_run \"terminal_probe_unit\" {mode: \"maintainer\"})"
+                "with-env $run.env {"
+                "    run_detached_terminal_launch \"sleep 2\" \"Probe Terminal\""
+                "}"
+                "let summary = (load_startup_profile_report $run.report_path)"
+                "{"
+                "    steps: ($summary.steps | each {|step| {component: $step.component step: $step.step metadata: $step.metadata duration_ms: $step.duration_ms}})"
+                "} | to json -r"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            do { ^nu -c $snippet } | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 { $stdout | lines | last | from json } else { null }
+        let probe_step = if $resolved != null {
+            $resolved.steps | where {|step| $step.component == "terminal_launcher" and $step.step == "detached_launch_probe" } | get -o 0
+        } else {
+            null
+        }
+
+        if (
+            ($output.exit_code == 0)
+            and ($probe_step != null)
+            and (($probe_step.metadata.terminal? | default "") == "Probe Terminal")
+            and (($probe_step.duration_ms | into float) > 0.0)
+        ) {
+            print "  ✅ Detached terminal spawn/probe wait is now measured as a first-class startup profile step"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 # Strength: defect=2 behavior=2 resilience=2 cost=0 uniqueness=2 total=8/10
 # Defends: the profiling harness runs the real startup path and records owned startup boundaries into a structured report.
 def test_startup_profile_harness_records_real_startup_boundaries [] {
@@ -1246,6 +1458,9 @@ def main [] {
         (test_vendored_yazi_plugin_refresh_applies_patch_and_refuses_dirty_targets)
         (test_nushell_initializer_restores_current_path_first)
         (test_startup_profile_report_schema_is_structured_and_summarizable)
+        (test_dev_profile_desktop_invokes_leaf_command_and_waits_for_handoff)
+        (test_dev_profile_launch_invokes_leaf_command_with_flags)
+        (test_startup_profile_records_detached_terminal_probe)
         (test_startup_profile_harness_records_real_startup_boundaries)
     ]
 

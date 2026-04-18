@@ -274,6 +274,15 @@ def setup_enter_forwarding_fixture [label: string] {
     ] | str join "\n" | save --force --raw ($utils_dir | path join "runtime_env.nu")
 
     [
+        "export def profile_startup_step [component: string, step: string, code: closure, metadata?: record] {"
+        "    do $code"
+        "}"
+        "export def propagate_startup_profile_env [env_block: record] {"
+        "    $env_block"
+        "}"
+    ] | str join "\n" | save --force --raw ($utils_dir | path join "startup_profile.nu")
+
+    [
         "export def check_runtime_script [script_path: string, field: string, label: string, context: string] {"
         "    {path: $script_path}"
         "}"

@@ -16,6 +16,7 @@ use ../utils/runtime_contract_checker.nu [
     check_launch_working_dir
     require_runtime_check
 ]
+use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
 
 def validate_launch_working_dir [working_dir: string] {
     let check = (check_launch_working_dir $working_dir)
@@ -126,8 +127,7 @@ def launch_terminal_candidates [
         if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
             $propagated_env = ($propagated_env | upsert YAZELIX_LAYOUT_OVERRIDE $env.YAZELIX_LAYOUT_OVERRIDE)
         }
-
-        let env_block = $propagated_env
+        let env_block = (propagate_startup_profile_env $propagated_env)
 
         if $verbose_mode {
             print $"Launching command: ($launch_cmd)"
@@ -187,6 +187,8 @@ def main [
     --verbose               # Enable verbose logging
     --desktop-fast-path     # Launch the terminal immediately and let startup rebuild inside it
 ] {
+    let component = if $desktop_fast_path { "desktop_fast_path" } else { "launch" }
+
     # Resolve HOME using shell expansion
     let home = $env.HOME
     if ($home | is-empty) or (not ($home | path exists)) {
@@ -202,7 +204,9 @@ def main [
     }
 
     # Compute config state (auto-creates yazelix.toml if missing)
-    let config_state = compute_config_state
+    let config_state = (profile_startup_step $component "compute_config_state" {
+        compute_config_state
+    })
     let config = $config_state.config
     let active_config_file = $config_state.config_file
     let current_hash = $config_state.combined_hash
@@ -226,7 +230,9 @@ def main [
 
     # Use provided launch directory or fall back to current directory
     let requested_working_dir = if ($launch_cwd | is-empty) { pwd } else { $launch_cwd }
-    let working_dir = (validate_launch_working_dir $requested_working_dir)
+    let working_dir = (profile_startup_step $component "validate_working_dir" {
+        validate_launch_working_dir $requested_working_dir
+    })
     if $verbose_mode {
         print $"Launch directory: ($working_dir)"
     }
@@ -247,17 +253,27 @@ def main [
     }
 
     let runtime_dir = (get_yazelix_runtime_dir)
-    let terminal_candidates = if $desktop_fast_path {
-        resolve_desktop_fast_path_candidates $requested_terminal $terminals
-    } else {
-        resolve_terminal_candidates $requested_terminal $terminals
-    }
+    let terminal_candidates = (profile_startup_step $component "resolve_terminals" {
+        if $desktop_fast_path {
+            resolve_desktop_fast_path_candidates $requested_terminal $terminals
+        } else {
+            resolve_terminal_candidates $requested_terminal $terminals
+        }
+    })
     if $desktop_fast_path {
-        ensure_terminal_configs_available_for_candidates $terminal_candidates $terminal_config_mode $runtime_dir
-        reroll_ghostty_random_cursor_config_for_launch_candidates $terminal_candidates $terminal_config_mode $runtime_dir $config $verbose_mode | ignore
+        profile_startup_step $component "generate_terminal_configs" {
+            ensure_terminal_configs_available_for_candidates $terminal_candidates $terminal_config_mode $runtime_dir
+        } | ignore
+        profile_startup_step $component "reroll_ghostty_cursor" {
+            reroll_ghostty_random_cursor_config_for_launch_candidates $terminal_candidates $terminal_config_mode $runtime_dir $config $verbose_mode
+        } | ignore
     } else {
         # Generate all terminal configurations for safety and consistency
-        generate_all_terminal_configs
+        profile_startup_step $component "generate_all_terminal_configs" {
+            generate_all_terminal_configs
+        } | ignore
     }
-    launch_terminal_candidates $terminal_candidates $terminal_config_mode $working_dir $needs_reload $runtime_dir $verbose_mode $requested_terminal | ignore
+    profile_startup_step $component "launch_terminal" {
+        launch_terminal_candidates $terminal_candidates $terminal_config_mode $working_dir $needs_reload $runtime_dir $verbose_mode $requested_terminal
+    } | ignore
 }

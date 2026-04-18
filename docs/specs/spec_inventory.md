@@ -50,6 +50,7 @@ Status labels:
 | `runtime_root_contract.md` | Live | Current root ownership contract. |
 | `shell_opened_editors.md` | Live | Current managed-editor versus shell-opened editor boundary. |
 | `stale_config_diagnostics.md` | Live | Current unsupported-config diagnostic contract with no migration engine. |
+| `startup_profile_scenarios.md` | Live | Current structured startup profile scenario contract for enter, cold, desktop, and managed-window launch paths. |
 | `supply_chain_hardening.md` | Planning | Useful maintainer policy guidance for shipped/documented tools. |
 | `template.md` | Template | Spec scaffold, excluded from validation. |
 | `terminal_override_layers.md` | Live | Current terminal preference/override guidance, with Ghostty first-party in the runtime. |

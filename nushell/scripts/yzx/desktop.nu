@@ -4,6 +4,7 @@ use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/common.nu get_yazelix_runtime_dir
 use ../utils/install_ownership.nu has_home_manager_managed_install
 use ../utils/launcher_resolution.nu resolve_desktop_launcher_path
+use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
 
 const DESKTOP_LAUNCH_CLEARED_ENV_KEYS = [
     "IN_YAZELIX_SHELL"
@@ -158,10 +159,12 @@ def uninstall_desktop_icons [] {
 }
 
 def get_desktop_launch_env [runtime_dir: string] {
-    $DESKTOP_LAUNCH_CLEARED_ENV_KEYS
+    let clean_env = ($DESKTOP_LAUNCH_CLEARED_ENV_KEYS
     | reduce -f {YAZELIX_RUNTIME_DIR: $runtime_dir} {|key, env_record|
         $env_record | upsert $key null
-    }
+    })
+
+    propagate_startup_profile_env $clean_env
 }
 
 # Install the user-local Yazelix desktop entry and icons
@@ -243,13 +246,17 @@ def acknowledge_desktop_failure [error_text: string] {
 
 # Launch Yazelix from the desktop entry fast path
 export def "yzx desktop launch" [] {
-    let runtime_dir = (get_yazelix_runtime_dir)
+    let runtime_dir = (profile_startup_step "desktop" "resolve_runtime_dir" {
+        get_yazelix_runtime_dir
+    })
     if $runtime_dir == null {
         acknowledge_desktop_failure "Cannot resolve a Yazelix runtime root for desktop launch."
         error make {msg: "Cannot resolve a Yazelix runtime root for desktop launch."}
     }
     let fast_launch_module = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
-    let launch_env = (get_desktop_launch_env $runtime_dir)
+    let launch_env = (profile_startup_step "desktop" "build_launch_env" {
+        get_desktop_launch_env $runtime_dir
+    })
     let runtime_nu = ($runtime_dir | path join "libexec" "nu")
     let nu_bin = if ($runtime_nu | path exists) {
         $runtime_nu
@@ -264,8 +271,10 @@ export def "yzx desktop launch" [] {
 
     print_desktop_progress "Preparing session..."
 
-    let fast_launch = with-env $launch_env {
-        ^$nu_bin $fast_launch_module $env.HOME --desktop-fast-path | complete
+    let fast_launch = profile_startup_step "desktop" "fast_path_handoff" {
+        with-env $launch_env {
+            ^$nu_bin $fast_launch_module $env.HOME --desktop-fast-path | complete
+        }
     }
 
     if ($fast_launch.exit_code == 0) {
