@@ -125,6 +125,7 @@ welcome_style = "random"
         "[Desktop Entry]"
         "Type=Application"
         "Name=Yazelix"
+        "Terminal=true"
         "X-Yazelix-Managed=true"
         $"Exec=\"($launcher_path)\" desktop launch"
     ] | str join "\n" | save --force --raw $desktop_path
@@ -376,6 +377,7 @@ def test_yzx_desktop_install_writes_entry_and_icon_assets [] {
             and ($stdout | str contains $fixture.desktop_path)
             and ($desktop_entry | str contains 'Icon=yazelix')
             and ($desktop_entry | str contains 'X-Yazelix-Managed=true')
+            and ($desktop_entry | str contains 'Terminal=true')
             and ($desktop_entry | str contains $fixture.launcher_path)
             and $icons_ok
         ) {

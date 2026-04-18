@@ -30,6 +30,7 @@ Status labels:
 | `config_surface_and_launch_profile_contract.md` | Historical | Pre-trim launch-profile and `devenv` ownership contract. |
 | `config_surface_backend_dependence_matrix.md` | Historical | Pre-trim pack/backend dependence matrix. |
 | `cross_language_runtime_ownership.md` | Live | Current ownership map, with Rust treated as later v15.x/v16 work rather than v15.0 scope. |
+| `desktop_launch_visible_feedback.md` | Live | Current desktop-entry contract for visible pre-terminal launch progress and failure feedback. |
 | `first_run_upgrade_summary.md` | Live | Current `yzx whats_new` / first-run summary contract, now without live migration-registry probing. |
 | `flake_interface_contract.md` | Historical | Earlier installer/front-door phase; package-first v15 contract lives elsewhere. |
 | `floating_tui_panes.md` | Live | Current popup/menu transient-pane behavior family. |

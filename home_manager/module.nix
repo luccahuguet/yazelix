@@ -407,6 +407,7 @@ in
       icon = "yazelix";
       categories = [ "Development" ];
       type = "Application";
+      terminal = true;
       settings = {
         StartupWMClass = "com.yazelix.Yazelix";
       };

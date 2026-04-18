@@ -81,6 +81,54 @@ def load_home_manager_defaults [option_names: list<string>] {
     $result.stdout | from json
 }
 
+def build_home_manager_desktop_entry_expr [] {
+    let module_path = (escape_nix_string $MODULE_PATH)
+    [
+        "let"
+        "  pkgs = import <nixpkgs> {};"
+        "  lib = pkgs.lib;"
+        "  eval = lib.evalModules {"
+        "    specialArgs = { inherit pkgs; nixgl = null; };"
+        "    modules = ["
+        ("      (builtins.toPath \"" + $module_path + "\")")
+        "      ({ lib, ... }: {"
+        "        options.xdg.configHome = lib.mkOption { type = lib.types.str; default = \"/tmp/config\"; };"
+        "        options.xdg.dataHome = lib.mkOption { type = lib.types.str; default = \"/tmp/data\"; };"
+        "        options.xdg.dataFile = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };"
+        "        options.xdg.configFile = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };"
+        "        options.xdg.desktopEntries = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };"
+        "        options.home.packages = lib.mkOption { type = lib.types.listOf lib.types.package; default = []; };"
+        "        options.home.activation = lib.mkOption { type = lib.types.attrsOf lib.types.anything; default = {}; };"
+        "        options.home.profileDirectory = lib.mkOption { type = lib.types.str; default = \"/tmp/profile\"; };"
+        "        config.programs.yazelix.enable = true;"
+        "      })"
+        "    ];"
+        "  };"
+        "in {"
+        "  exec = eval.config.xdg.desktopEntries.yazelix.exec or \"\";"
+        "  terminal = eval.config.xdg.desktopEntries.yazelix.terminal or false;"
+        "}"
+    ] | str join "\n"
+}
+
+def load_home_manager_desktop_entry_contract [] {
+    let expr = (build_home_manager_desktop_entry_expr)
+    let result = (^nix eval --impure --json --expr $expr | complete)
+
+    if $result.exit_code != 0 {
+        error make {
+            msg: (
+                [
+                    "Failed to evaluate the Home Manager desktop-entry contract."
+                    ($result.stderr | str trim)
+                ] | str join "\n"
+            )
+        }
+    }
+
+    $result.stdout | from json
+}
+
 def validate_main_contract_parity [] {
     let contract = (load_repo_main_contract)
     let template = (open $MAIN_TEMPLATE_PATH)
@@ -134,6 +182,22 @@ def validate_main_contract_parity [] {
         if $template_value.value != $field.default {
             $errors = ($errors | append $"Default template mismatch for `($field_path)`: expected (format_value $field.default), got (format_value $template_value.value)")
         }
+    }
+
+    $errors
+}
+
+def validate_home_manager_desktop_entry_contract [] {
+    let entry = (load_home_manager_desktop_entry_contract)
+    let actual_exec = ($entry.exec? | default "")
+    mut errors = []
+
+    if not ($entry.terminal? | default false) {
+        $errors = ($errors | append "Home Manager desktop entry must set terminal = true so desktop-launch pre-terminal failures are visible")
+    }
+
+    if $actual_exec != "/tmp/profile/bin/yzx desktop launch" {
+        $errors = ($errors | append $"Home Manager desktop entry Exec mismatch: expected /tmp/profile/bin/yzx desktop launch, got ($actual_exec | to json -r)")
     }
 
     $errors
@@ -274,18 +338,19 @@ def validate_generated_state_contract [] {
 export def main [] {
     let errors = [
         (validate_main_contract_parity)
+        (validate_home_manager_desktop_entry_contract)
         (validate_generated_state_contract)
     ] | flatten
 
     if ($errors | is-empty) {
-        print "✅ Main config surface and generated-state contract is valid"
+        print "✅ Main config surface, Home Manager desktop entry, and generated-state contract is valid"
         return
     }
 
-    print "❌ Main config surface and generated-state contract validation failed"
+    print "❌ Main config surface, Home Manager desktop entry, and generated-state contract validation failed"
     for error_message in $errors {
         print $"  - ($error_message)"
     }
 
-    error make {msg: "main config surface and generated-state contract validation failed"}
+    error make {msg: "main config surface, Home Manager desktop entry, and generated-state contract validation failed"}
 }

@@ -4,12 +4,13 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v15.1 Ghostty cursor polish in progress
+Post-v15.1 Ghostty cursor and desktop-launch polish in progress
 
 Upgrade impact: no user action required
 
 Highlights:
 - Rerolled Ghostty random cursor palettes and effects for each Yazelix Ghostty window, including desktop fast-path launches, while keeping fixed palettes stable
+- Made managed desktop entries terminal-backed and surfaced desktop-launch pre-terminal progress and failures so desktop entry clicks no longer fail invisibly before terminal handoff
 
 ## v15.1 - 2026-04-15
 

@@ -101,6 +101,7 @@ def setup_fake_home_manager_install_artifacts [fixture: record] {
         "[Desktop Entry]"
         "Type=Application"
         "Name=Yazelix"
+        "Terminal=true"
         $"Exec=\"($fixture.tmp_home | path join '.nix-profile' 'bin' 'yzx')\" desktop launch"
     ] | str join "\n" | save --force --raw $profile_desktop_path
 
@@ -164,6 +165,7 @@ def doctor_output_reports_current_home_manager_install [stdout: string] {
         and not ($stdout | str contains "Installed Yazelix runtime link is missing")
         and not ($stdout | str contains "Installed yzx command is missing")
         and not ($stdout | str contains "Installed yzx command is stale")
+        and not ($stdout | str contains "Yazelix desktop entry is not terminal-backed")
     )
 }
 
@@ -233,6 +235,7 @@ def test_yzx_doctor_reports_stale_desktop_entry_exec [] {
             "[Desktop Entry]"
             "Type=Application"
             "Name=Yazelix"
+            "Terminal=true"
             'Exec="/nix/store/old-yazelix-runtime/bin/yzx" desktop launch'
         ] | str join "\n" | save --force --raw $desktop_path
 
@@ -285,6 +288,7 @@ def test_yzx_doctor_accepts_manual_stable_wrapper_desktop_entry [] {
             "[Desktop Entry]"
             "Type=Application"
             "Name=Yazelix"
+            "Terminal=true"
             $"Exec=\"($wrapper_path)\" desktop launch"
         ] | str join "\n" | save --force --raw $desktop_path
 
@@ -297,6 +301,60 @@ def test_yzx_doctor_accepts_manual_stable_wrapper_desktop_entry [] {
             and not ($stdout | str contains "Yazelix desktop entry does not use the expected launcher path")
         ) {
             print "  ✅ yzx doctor accepts manual desktop entries anchored to the stable wrapper"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: doctor reports stale desktop entries that still point at the right launcher but do not open a visible terminal surface.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_reports_non_terminal_desktop_entry [] {
+    print "🧪 Testing yzx doctor reports desktop entries missing Terminal=true..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_non_terminal_desktop_entry"
+        ""
+    )
+
+    let result = (try {
+        let wrapper_path = ($fixture.tmp_home | path join ".local" "bin" "yzx")
+        let applications_dir = ($fixture.tmp_home | path join ".local" "share" "applications")
+        let desktop_path = ($applications_dir | path join "com.yazelix.Yazelix.desktop")
+
+        mkdir ($wrapper_path | path dirname)
+        mkdir $applications_dir
+        [
+            "#!/bin/sh"
+            "exit 0"
+        ] | str join "\n" | save --force --raw $wrapper_path
+        ^chmod +x $wrapper_path
+        [
+            "[Desktop Entry]"
+            "Type=Application"
+            "Name=Yazelix"
+            $"Exec=\"($wrapper_path)\" desktop launch"
+        ] | str join "\n" | save --force --raw $desktop_path
+
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Yazelix desktop entry is not terminal-backed")
+            and ($stdout | str contains "Terminal: <missing>")
+            and ($stdout | str contains 'Repair with `yzx desktop install`.')
+            and not ($stdout | str contains "Yazelix desktop entry uses the expected launcher path")
+        ) {
+            print "  ✅ yzx doctor reports correct-launcher desktop entries that are missing Terminal=true"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
@@ -365,6 +423,7 @@ def test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager [] {
             "[Desktop Entry]"
             "Type=Application"
             "Name=Yazelix"
+            "Terminal=true"
             'Exec="/nix/store/old-yazelix-runtime/bin/yzx" desktop launch'
         ] | str join "\n" | save --force --raw $local_desktop_path
 
@@ -737,6 +796,7 @@ export def run_doctor_canonical_tests [] {
         (test_yzx_doctor_warns_on_stale_config_fields)
         (test_yzx_doctor_reports_stale_desktop_entry_exec)
         (test_yzx_doctor_accepts_manual_stable_wrapper_desktop_entry)
+        (test_yzx_doctor_reports_non_terminal_desktop_entry)
         (test_yzx_doctor_accepts_home_manager_install_artifacts)
         (test_yzx_doctor_reports_shadowing_manual_desktop_entry_for_home_manager)
         (test_yzx_doctor_reports_shadowing_manual_yzx_wrapper_for_profile_owner)

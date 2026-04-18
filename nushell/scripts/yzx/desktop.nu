@@ -80,6 +80,7 @@ def render_desktop_entry [launcher_path: string] {
         "Comment=Yazi + Zellij + Helix integrated terminal environment"
         "Icon=yazelix"
         "StartupWMClass=com.yazelix.Yazelix"
+        "Terminal=true"
         "X-Yazelix-Managed=true"
         $"Exec=(render_desktop_exec $launcher_path)"
         "Categories=Development;"
@@ -226,10 +227,25 @@ export def "yzx desktop uninstall" [
     }
 }
 
+def print_desktop_progress [message: string] {
+    print $"Yazelix: ($message)"
+}
+
+def acknowledge_desktop_failure [error_text: string] {
+    print $""
+    print $"Yazelix: Launch failed."
+    print $""
+    print $error_text
+    print $""
+    print "Press Enter to close this window."
+    try { input } catch { null }
+}
+
 # Launch Yazelix from the desktop entry fast path
 export def "yzx desktop launch" [] {
     let runtime_dir = (get_yazelix_runtime_dir)
     if $runtime_dir == null {
+        acknowledge_desktop_failure "Cannot resolve a Yazelix runtime root for desktop launch."
         error make {msg: "Cannot resolve a Yazelix runtime root for desktop launch."}
     }
     let fast_launch_module = ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
@@ -242,8 +258,11 @@ export def "yzx desktop launch" [] {
     }
 
     if not ($fast_launch_module | path exists) {
+        acknowledge_desktop_failure $"Missing Yazelix desktop launch module at ($fast_launch_module)"
         error make {msg: $"Missing Yazelix desktop launch module at ($fast_launch_module)"}
     }
+
+    print_desktop_progress "Preparing session..."
 
     let fast_launch = with-env $launch_env {
         ^$nu_bin $fast_launch_module $env.HOME --desktop-fast-path | complete
@@ -254,5 +273,7 @@ export def "yzx desktop launch" [] {
     }
 
     let stderr = ($fast_launch.stderr | str trim)
-    error make {msg: (if ($stderr | is-not-empty) { $stderr } else { $fast_launch.stdout | str trim })}
+    let error_text = (if ($stderr | is-not-empty) { $stderr } else { $fast_launch.stdout | str trim })
+    acknowledge_desktop_failure $error_text
+    error make {msg: $error_text}
 }

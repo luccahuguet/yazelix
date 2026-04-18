@@ -1,9 +1,10 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = "Post-v15.1 Ghostty cursor polish in progress"
+headline = "Post-v15.1 Ghostty cursor and desktop-launch polish in progress"
 summary = [
     "Rerolled Ghostty random cursor palettes and effects for each Yazelix Ghostty window, including desktop fast-path launches, while keeping fixed palettes stable.",
+    "Made managed desktop entries terminal-backed and surfaced desktop-launch pre-terminal progress and failures so desktop entry clicks no longer fail invisibly before terminal handoff.",
 ]
 upgrade_impact = "no_user_action"
 acknowledged_guarded_changes = [

@@ -992,6 +992,7 @@ def test_home_manager_profile_restart_uses_owner_wrapper_without_manual_surfaces
         "[Desktop Entry]"
         "Type=Application"
         "Name=Yazelix"
+        "Terminal=true"
         $"Exec=\"($profile_yzx)\" desktop launch"
     ] | str join "\n" | save --force --raw $profile_desktop
 

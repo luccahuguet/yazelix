@@ -551,7 +551,7 @@ def test_yzx_desktop_launch_uses_leaf_launch_module_with_clean_env [] {
     $result
 }
 
-# Regression: desktop launch should fail loudly from the fast path instead of silently falling back to a second launch path.
+# Regression: desktop launch should fail loudly from the fast path instead of silently falling back to a second launch path, and surface visible progress and error text before terminal close.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_desktop_launch_propagates_fast_path_failures_without_fallback [] {
     print "🧪 Testing yzx desktop launch reports fast-path failures instead of hiding them behind a fallback launch..."
@@ -585,11 +585,15 @@ def test_yzx_desktop_launch_propagates_fast_path_failures_without_fallback [] {
             ^nu -c $"use \"($desktop_script)\" *; yzx desktop launch" | complete
         })
         let stderr = ($output.stderr | str trim)
+        let stdout = ($output.stdout | str trim)
         let invocation = (read_probe_lines $fixture.nu_log)
 
         if (
             ($output.exit_code == 1)
             and ($stderr | str contains "Failure class: desktop-bootstrap-unavailable.")
+            and ($stdout | str contains "Yazelix: Preparing session...")
+            and ($stdout | str contains "Yazelix: Launch failed.")
+            and ($stdout | str contains "Failure class: desktop-bootstrap-unavailable.")
             and (($invocation | get -o 0 | default "") == $fast_launch_module)
             and (($invocation | get -o 1 | default "") == $fixture.fake_home)
             and (($invocation | get -o 2 | default "") == "--desktop-fast-path")
@@ -597,10 +601,10 @@ def test_yzx_desktop_launch_propagates_fast_path_failures_without_fallback [] {
             and (($invocation | get -o 4 | default "") == "IN_YAZELIX_SHELL=unset")
             and not ($invocation | any {|line| $line == "-c" })
         ) {
-            print "  ✅ yzx desktop launch now surfaces fast-path failures directly instead of hiding them behind a second launch attempt"
+            print "  ✅ yzx desktop launch now surfaces fast-path failures directly and prints visible prelaunch progress and error text"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr) invocation=(($invocation | to json -r))"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stderr=($stderr) stdout=($stdout) invocation=(($invocation | to json -r))"
             false
         }
     } catch {|err|

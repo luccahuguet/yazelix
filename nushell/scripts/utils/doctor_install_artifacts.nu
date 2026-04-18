@@ -100,6 +100,39 @@ def get_desktop_entry_exec [desktop_path: string] {
     }
 }
 
+def get_desktop_entry_terminal_value [desktop_path: string] {
+    if not ($desktop_path | path exists) {
+        return null
+    }
+
+    let entry = (open $desktop_path --raw)
+    let marker = (
+        $entry
+        | lines
+        | where {|line| $line | str starts-with "Terminal="}
+        | get -o 0
+    )
+
+    if $marker == null {
+        null
+    } else {
+        (
+            $marker
+            | str replace 'Terminal=' ""
+            | str trim
+        )
+    }
+}
+
+def desktop_entry_terminal_enabled [desktop_path: string] {
+    let terminal_value = (get_desktop_entry_terminal_value $desktop_path)
+    if $terminal_value == null {
+        false
+    } else {
+        ($terminal_value | str downcase) == "true"
+    }
+}
+
 def desktop_entry_exec_matches_expected [desktop_exec, expected_execs: list<string>] {
     if $desktop_exec == null {
         false
@@ -213,6 +246,16 @@ export def check_desktop_entry_freshness [] {
             status: "warning"
             message: "Yazelix desktop entry does not use the expected launcher path"
             details: $"Desktop entry Exec: ($desktop_exec)\nExpected one of: ($expected_execs | str join ', ')\n($repair_hint)"
+            fix_available: false
+        }
+    }
+
+    if not (desktop_entry_terminal_enabled $desktop_path) {
+        let terminal_value = ((get_desktop_entry_terminal_value $desktop_path) | default "<missing>")
+        return {
+            status: "warning"
+            message: "Yazelix desktop entry is not terminal-backed"
+            details: $"Desktop entry: ($desktop_path)\nTerminal: ($terminal_value)\nDesktop launch failures before terminal handoff can disappear without a visible terminal surface.\n($repair_hint)"
             fix_available: false
         }
     }
