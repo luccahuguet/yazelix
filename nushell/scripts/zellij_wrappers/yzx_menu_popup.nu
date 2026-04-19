@@ -17,13 +17,13 @@ def main [] {
         }
         {ok: true}
     } catch {|err|
-        {ok: false, msg: $err.msg}
+        {ok: false, msg: ($err.msg? | default $"menu popup failed: ($err)")}
     })
 
     if $result.ok {
-        close_current_transient_pane
+        try { close_current_transient_pane }
         return
     }
 
-    error make {msg: $result.msg}
+    error make {msg: ($result.msg? | default "menu popup failed with unknown error")}
 }
