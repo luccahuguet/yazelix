@@ -5,9 +5,119 @@ use config_contract.nu [load_main_config_contract]
 use config_diagnostics.nu [build_config_diagnostic_report_from_records render_startup_config_error]
 use failure_classes.nu [format_failure_classification]
 use config_surfaces.nu [load_active_config_surface load_config_surface_from_main]
+use common.nu [require_yazelix_runtime_dir]
+
+const YZX_CORE_HELPER_RELATIVE_PATH = ["libexec" "yzx_core"]
 
 def bool_to_string [value: bool] {
     if $value { "true" } else { "false" }
+}
+
+def runtime_allows_nushell_config_parser_fallback [runtime_dir: string] {
+    let has_git_dir = (($runtime_dir | path join ".git") | path exists)
+    let has_rust_workspace = (($runtime_dir | path join "rust_core" "Cargo.toml") | path exists)
+    $has_git_dir or $has_rust_workspace
+}
+
+def get_yzx_core_helper_path [runtime_dir: string] {
+    $YZX_CORE_HELPER_RELATIVE_PATH | prepend $runtime_dir | path join
+}
+
+def get_yzx_core_contract_path [runtime_dir: string] {
+    $runtime_dir | path join "config_metadata" "main_config_contract.toml"
+}
+
+def render_yzx_core_error [config_surface: record, stderr: string] {
+    let trimmed_stderr = ($stderr | default "" | str trim)
+    let envelope = (
+        try {
+            $trimmed_stderr | from json
+        } catch {
+            null
+        }
+    )
+
+    if $envelope == null {
+        return (
+            [
+                "Yazelix Rust config normalization failed before it could report a structured error."
+                $"Raw helper stderr: ($trimmed_stderr)"
+                ""
+                (format_failure_classification "host-dependency" "Reinstall Yazelix so the runtime includes a working yzx_core helper, then retry.")
+            ] | str join "\n"
+        )
+    }
+
+    let error = ($envelope.error? | default {})
+    let error_class = ($error.class? | default "runtime")
+    let code = ($error.code? | default "unknown")
+    let message = ($error.message? | default "Yazelix Rust config normalization failed.")
+    let remediation = ($error.remediation? | default "Fix the reported Yazelix config issue and retry.")
+    let details = ($error.details? | default {})
+
+    if ($error_class == "config") and ($code == "unsupported_config") and (($details | describe) | str contains "record") {
+        render_startup_config_error ($details | upsert config_path $config_surface.display_config_path)
+    } else {
+        let failure_class = if $error_class == "config" { "config" } else { "host-dependency" }
+        [
+            $message
+            $"Helper code: ($code)"
+            ""
+            (format_failure_classification $failure_class $remediation)
+        ] | str join "\n"
+    }
+}
+
+def parse_yazelix_config_with_rust [
+    config_surface: record
+    default_config_path: string
+    contract_path: string
+    helper_path: string
+] {
+    let config_path = $config_surface.config_file
+    let result = (
+        try {
+            do { ^$helper_path config.normalize --config $config_path --default-config $default_config_path --contract $contract_path } | complete
+        } catch {|err|
+            error make {
+                msg: (
+                    [
+                        $"Could not execute Yazelix Rust config helper at ($helper_path)."
+                        $err.msg
+                        ""
+                        (format_failure_classification "host-dependency" "Reinstall Yazelix so the runtime includes an executable yzx_core helper, then retry.")
+                    ] | str join "\n"
+                )
+            }
+        }
+    )
+
+    if $result.exit_code != 0 {
+        error make {msg: (render_yzx_core_error $config_surface $result.stderr)}
+    }
+
+    let envelope = (
+        try {
+            $result.stdout | from json
+        } catch {|err|
+            error make {
+                msg: (
+                    [
+                        "Yazelix Rust config helper returned invalid JSON."
+                        $err.msg
+                        ""
+                        (format_failure_classification "host-dependency" "Reinstall Yazelix so the runtime includes a compatible yzx_core helper, then retry.")
+                    ] | str join "\n"
+                )
+            }
+        }
+    )
+
+    if (($envelope.status? | default "") != "ok") {
+        error make {msg: (render_yzx_core_error $config_surface ($result.stdout | default ""))}
+    }
+
+    $envelope.data.normalized_config
 }
 
 def get_contract_field [contract: record, field_path: string] {
@@ -209,9 +319,7 @@ def parse_contract_field_value [contract: record, raw_config: record, field_path
     }
 }
 
-# Parse yazelix configuration file and extract settings
-export def parse_yazelix_config [] {
-    let config_surface = load_active_config_surface
+def parse_yazelix_config_with_nushell_fallback [config_surface: record] {
     let config_to_read = $config_surface.config_file
     let raw_config = $config_surface.merged_config
     let default_config_path = $config_surface.default_config_path
@@ -244,4 +352,30 @@ export def parse_yazelix_config [] {
     }
 
     $parsed | upsert config_file $config_to_read
+}
+
+# Parse yazelix configuration file and extract settings
+export def parse_yazelix_config [] {
+    let config_surface = load_active_config_surface
+    let runtime_dir = require_yazelix_runtime_dir
+    let helper_path = get_yzx_core_helper_path $runtime_dir
+    let contract_path = get_yzx_core_contract_path $runtime_dir
+
+    if ($helper_path | path exists) {
+        return (parse_yazelix_config_with_rust $config_surface $config_surface.default_config_path $contract_path $helper_path)
+    }
+
+    if (runtime_allows_nushell_config_parser_fallback $runtime_dir) {
+        return (parse_yazelix_config_with_nushell_fallback $config_surface)
+    }
+
+    error make {
+        msg: (
+            [
+                $"Yazelix runtime is missing the Rust config helper at ($helper_path)."
+                ""
+                (format_failure_classification "host-dependency" "Reinstall Yazelix so the packaged runtime includes libexec/yzx_core. Source checkouts may keep using the Nushell fallback.")
+            ] | str join "\n"
+        )
+    }
 }

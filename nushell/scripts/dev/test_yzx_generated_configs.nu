@@ -122,6 +122,34 @@ def setup_home_manager_symlinked_main_config_fixture [label: string] {
     }
 }
 
+def setup_fake_packaged_runtime_fixture [label: string] {
+    let repo_root = (get_repo_config_dir)
+    let tmpdir = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
+    let runtime_root = ($tmpdir | path join "runtime")
+    let metadata_dir = ($runtime_root | path join "config_metadata")
+    let libexec_dir = ($runtime_root | path join "libexec")
+
+    mkdir $metadata_dir
+    mkdir $libexec_dir
+    cp (repo_path "yazelix_default.toml") ($runtime_root | path join "yazelix_default.toml")
+    cp (repo_path ".taplo.toml") ($runtime_root | path join ".taplo.toml")
+    cp (repo_path "config_metadata" "main_config_contract.toml") ($metadata_dir | path join "main_config_contract.toml")
+
+    {
+        repo_root: $repo_root
+        tmpdir: $tmpdir
+        runtime_root: $runtime_root
+        helper_path: ($libexec_dir | path join "yzx_core")
+        args_log: ($tmpdir | path join "yzx_core_args.log")
+    }
+}
+
+def install_fake_yzx_core_helper [runtime_fixture: record, helper_script: string] {
+    $helper_script | save --force --raw $runtime_fixture.helper_path
+    ^chmod +x $runtime_fixture.helper_path
+    $runtime_fixture
+}
+
 # Defends: generated terminal configs do not silently take over user overrides or create backup churn in Yazelix-owned generated paths.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in [] {
@@ -673,6 +701,190 @@ def test_parse_yazelix_config_bootstraps_taplo_formatter_support [] {
     })
 
     rm -rf $tmp_home
+    $result
+}
+
+# Defends: installed runtimes use the packaged Rust config helper instead of the legacy Nushell normalizer.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_parse_yazelix_config_uses_runtime_yzx_core_helper_when_present [] {
+    print "🧪 Testing parse_yazelix_config uses runtime-local yzx_core when present..."
+
+    let fixture = (setup_managed_config_fixture "yazelix_rust_config_helper_success" "[shell]\ndefault_shell = \"fish\"\n")
+    let runtime_base = (setup_fake_packaged_runtime_fixture "yazelix_rust_config_helper_runtime")
+    let runtime = (install_fake_yzx_core_helper $runtime_base $'#!/bin/sh
+printf "%s\n" "$@" > "$YAZELIX_TEST_YZX_CORE_ARGS_LOG"
+cat <<JSON
+{"schema_version":1,"command":"config.normalize","status":"ok","data":{"normalized_config":{"default_shell":"from_rust_helper","config_file":"from-helper"},"config_file":"from-helper","diagnostic_report":{}},"warnings":[]}
+JSON
+')
+
+    let result = (try {
+        let parsed = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $runtime.runtime_root
+            YAZELIX_TEST_YZX_CORE_ARGS_LOG: $runtime.args_log
+        } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+        let helper_args = (open --raw $runtime.args_log)
+
+        if (
+            (($parsed.default_shell? | default "") == "from_rust_helper")
+            and (($parsed.config_file? | default "") == "from-helper")
+            and ($helper_args | str contains "config.normalize")
+            and ($helper_args | str contains "--config")
+            and ($helper_args | str contains $fixture.config_path)
+            and ($helper_args | str contains "--default-config")
+            and ($helper_args | str contains ($runtime.runtime_root | path join "yazelix_default.toml"))
+            and ($helper_args | str contains "--contract")
+            and ($helper_args | str contains ($runtime.runtime_root | path join "config_metadata" "main_config_contract.toml"))
+        ) {
+            print "  ✅ Installed runtime config parsing routes through the runtime-local Rust helper"
+            true
+        } else {
+            print $"  ❌ Unexpected helper routing result: parsed=($parsed | to json -r) args=($helper_args)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    rm -rf $runtime.tmpdir
+    $result
+}
+
+# Regression: packaged helper failures must be visible and must not silently fall back to Nushell parsing.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_parse_yazelix_config_surfaces_yzx_core_config_errors_without_fallback [] {
+    print "🧪 Testing yzx_core config errors stay visible without fallback..."
+
+    let fixture = (setup_managed_config_fixture "yazelix_rust_config_helper_error" "[shell]\ndefault_shell = \"fish\"\n")
+    let runtime_base = (setup_fake_packaged_runtime_fixture "yazelix_rust_config_helper_error_runtime")
+    let runtime = (install_fake_yzx_core_helper $runtime_base '#!/bin/sh
+cat >&2 <<JSON
+{"schema_version":1,"command":"config.normalize","status":"error","error":{"class":"config","code":"invalid_config_value","message":"helper rejected the config","remediation":"fix the config value","details":{"field":"shell.default_shell"}}}
+JSON
+exit 65
+')
+
+    let result = (try {
+        let message = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $runtime.runtime_root
+        } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            try {
+                parse_yazelix_config | ignore
+                ""
+            } catch {|err|
+                $err.msg
+            }
+        })
+
+        if (
+            ($message | str contains "helper rejected the config")
+            and ($message | str contains "Helper code: invalid_config_value")
+            and ($message | str contains "Failure class: config problem.")
+            and ($message | str contains "Recovery: fix the config value")
+        ) {
+            print "  ✅ Rust helper config failures are surfaced as config-class errors"
+            true
+        } else {
+            print $"  ❌ Unexpected helper error message: ($message)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    rm -rf $runtime.tmpdir
+    $result
+}
+
+# Defends: packaged runtimes must include yzx_core; missing helper is not masked by legacy parsing.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_parse_yazelix_config_rejects_packaged_runtime_missing_yzx_core [] {
+    print "🧪 Testing packaged runtimes missing yzx_core fail clearly..."
+
+    let fixture = (setup_managed_config_fixture "yazelix_rust_config_helper_missing" "[shell]\ndefault_shell = \"fish\"\n")
+    let runtime = (setup_fake_packaged_runtime_fixture "yazelix_rust_config_helper_missing_runtime")
+
+    let result = (try {
+        let message = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $runtime.runtime_root
+        } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            try {
+                parse_yazelix_config | ignore
+                ""
+            } catch {|err|
+                $err.msg
+            }
+        })
+
+        if (
+            ($message | str contains "runtime is missing the Rust config helper")
+            and ($message | str contains ($runtime.runtime_root | path join "libexec" "yzx_core"))
+            and ($message | str contains "Failure class: host-dependency problem.")
+        ) {
+            print "  ✅ Packaged runtime helper absence is explicit and does not fall back"
+            true
+        } else {
+            print $"  ❌ Unexpected missing-helper message: ($message)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    rm -rf $runtime.tmpdir
+    $result
+}
+
+# Defends: source checkouts keep a deliberate Nushell parser fallback when yzx_core is not built locally.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_parse_yazelix_config_keeps_source_checkout_nushell_fallback [] {
+    print "🧪 Testing source checkout config parsing keeps the explicit Nushell fallback..."
+
+    let fixture = (setup_managed_config_fixture "yazelix_source_config_fallback" "[zellij]\ncustom_text = \"  [hello]  world demo  \"\n")
+
+    let result = (try {
+        let parsed = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            parse_yazelix_config
+        })
+
+        if (
+            (($parsed.zellij_custom_text? | default "") == "hello wo")
+            and (($parsed.default_shell? | default "") == "nu")
+        ) {
+            print "  ✅ Source checkout fallback still normalizes config without requiring a built Rust helper"
+            true
+        } else {
+            print $"  ❌ Unexpected source fallback parse result: ($parsed | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
     $result
 }
 
@@ -1850,38 +2062,44 @@ def test_generate_merged_zellij_config_prefers_managed_user_config_when_native_c
 }
 
 export def run_generated_config_canonical_tests [] {
-    [
-        (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
-        (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
-        (test_managed_wrapper_launch_command_does_not_forward_config_mode_flag)
-        (test_ghostty_linux_launch_command_keeps_linux_specific_flags)
-        (test_ghostty_linux_launch_command_prefers_runtime_owned_nixgl_wrapper)
-        (test_ghostty_wayland_wrapper_falls_back_to_simple_im_without_active_daemon)
-        (test_ghostty_wayland_wrapper_preserves_active_ibus_env)
-        (test_ghostty_macos_launch_command_omits_linux_specific_flags)
-        (test_parse_yazelix_config_rejects_removed_surfaces_without_rewriting)
-        (test_parse_yazelix_config_bootstraps_main_default_surface)
-        (test_parse_yazelix_config_bootstraps_taplo_formatter_support)
-        (test_record_materialized_state_accepts_symlinked_managed_main_config)
-        (test_user_mode_requires_real_terminal_config)
-        (test_config_schema_rejects_removed_enum_values)
-        (test_generate_merged_yazi_config_rejects_legacy_user_overrides)
-        (test_generate_merged_yazi_config_syncs_starship_plugin_config)
-        (test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins)
-        (test_generate_merged_yazi_config_skips_unchanged_managed_file_rewrites)
-        (test_generated_runtime_configs_prefer_active_runtime_over_installed_reference)
-        (test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it)
-        (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
-        (test_generate_merged_zellij_config_reuses_unchanged_state_and_invalidates_on_input_change)
-        (test_remove_path_within_root_refuses_root_and_outside_targets)
-        (test_remove_path_within_root_relaxes_read_only_managed_directories_before_recursive_cleanup)
-        (test_remove_path_within_root_recursive_cleanup_removes_managed_symlinks_without_touching_targets)
-        (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
-        (test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers)
-        (test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrator_toggle)
-        (test_generate_merged_zellij_config_keeps_alt_m_pane_orchestrator_message_session_local)
-        (test_generate_merged_zellij_config_routes_popup_and_menu_through_shared_transient_pane_contract)
-        (test_generate_merged_zellij_config_sets_on_force_close_by_session_mode)
-        (test_generate_merged_zellij_config_replaces_conflicting_ui_and_serialization_settings)
-    ]
+    with-env { YAZELIX_RUNTIME_DIR: (get_repo_config_dir) } {
+        [
+            (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
+            (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
+            (test_managed_wrapper_launch_command_does_not_forward_config_mode_flag)
+            (test_ghostty_linux_launch_command_keeps_linux_specific_flags)
+            (test_ghostty_linux_launch_command_prefers_runtime_owned_nixgl_wrapper)
+            (test_ghostty_wayland_wrapper_falls_back_to_simple_im_without_active_daemon)
+            (test_ghostty_wayland_wrapper_preserves_active_ibus_env)
+            (test_ghostty_macos_launch_command_omits_linux_specific_flags)
+            (test_parse_yazelix_config_rejects_removed_surfaces_without_rewriting)
+            (test_parse_yazelix_config_bootstraps_main_default_surface)
+            (test_parse_yazelix_config_bootstraps_taplo_formatter_support)
+            (test_parse_yazelix_config_uses_runtime_yzx_core_helper_when_present)
+            (test_parse_yazelix_config_surfaces_yzx_core_config_errors_without_fallback)
+            (test_parse_yazelix_config_rejects_packaged_runtime_missing_yzx_core)
+            (test_parse_yazelix_config_keeps_source_checkout_nushell_fallback)
+            (test_record_materialized_state_accepts_symlinked_managed_main_config)
+            (test_user_mode_requires_real_terminal_config)
+            (test_config_schema_rejects_removed_enum_values)
+            (test_generate_merged_yazi_config_rejects_legacy_user_overrides)
+            (test_generate_merged_yazi_config_syncs_starship_plugin_config)
+            (test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins)
+            (test_generate_merged_yazi_config_skips_unchanged_managed_file_rewrites)
+            (test_generated_runtime_configs_prefer_active_runtime_over_installed_reference)
+            (test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it)
+            (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)
+            (test_generate_merged_zellij_config_reuses_unchanged_state_and_invalidates_on_input_change)
+            (test_remove_path_within_root_refuses_root_and_outside_targets)
+            (test_remove_path_within_root_relaxes_read_only_managed_directories_before_recursive_cleanup)
+            (test_remove_path_within_root_recursive_cleanup_removes_managed_symlinks_without_touching_targets)
+            (test_generate_merged_zellij_config_carries_sidebar_width_to_layouts_and_plugin_config)
+            (test_generate_merged_zellij_config_caps_zjstatus_tab_window_with_overflow_markers)
+            (test_generate_merged_zellij_config_binds_ctrl_y_directly_to_pane_orchestrator_toggle)
+            (test_generate_merged_zellij_config_keeps_alt_m_pane_orchestrator_message_session_local)
+            (test_generate_merged_zellij_config_routes_popup_and_menu_through_shared_transient_pane_contract)
+            (test_generate_merged_zellij_config_sets_on_force_close_by_session_mode)
+            (test_generate_merged_zellij_config_replaces_conflicting_ui_and_serialization_settings)
+        ]
+    }
 }
