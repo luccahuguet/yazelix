@@ -167,23 +167,26 @@ def should_pause_in_popup [cmd: string] {
     )
 }
 
-def select_with_fzf [labels: list<string>] {
+def select_with_fzf [items: list<record>] {
+    let lines = ($items | enumerate | each {|e| $"($e.index)\t($e.item.label)"} | str join "\n")
     let result = (
-        $labels
-        | str join "\n"
+        $lines
         | ^fzf --ansi --border rounded
             --header "  Yazelix Command Palette"
             --prompt "  yzx> "
             --pointer "▸"
             --layout reverse
             --cycle
+            --delimiter "\t"
+            --with-nth 2..
             --color "border:blue,header:bold:blue,prompt:bold:yellow,pointer:bold:cyan,hl:bold:magenta,hl+:bold:magenta,info:dim"
         | complete
     )
     if $result.exit_code != 0 {
         return null
     }
-    $result.stdout | str trim
+    let idx = ($result.stdout | str trim | split column "\t" | get 0.column1 | into int)
+    $items | get $idx
 }
 
 def popup_post_action_prompt [] {
@@ -256,12 +259,11 @@ export def "yzx menu" [
 
     if $in_popup {
         loop {
-            let selected = (select_with_fzf ($items | get label))
-            if ($selected | is-empty) or ($selected == null) {
+            let entry = (select_with_fzf $items)
+            if $entry == null {
                 return
             }
 
-            let entry = ($items | where label == $selected | first)
             run_menu_action $entry.id
 
             if (should_pause_in_popup $entry.id) {
@@ -273,11 +275,10 @@ export def "yzx menu" [
             return
         }
     } else {
-        let selected = (select_with_fzf ($items | get label))
-        if ($selected | is-empty) or ($selected == null) {
+        let entry = (select_with_fzf $items)
+        if $entry == null {
             return
         }
-        let entry = ($items | where label == $selected | first)
         run_menu_action $entry.id
     }
 }
