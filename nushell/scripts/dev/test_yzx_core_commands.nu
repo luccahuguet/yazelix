@@ -1237,7 +1237,7 @@ def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
         let output = (with-env {
             YAZELIX_RUNTIME_DIR: $fixture.runtime_root
         } {
-            ^nu -c $"source \"($menu_script)\"; { entries: \(get_palette_command_entries | select id category\), prompt: \(menu_prompt\), post_prompt: \(popup_post_action_prompt\), esc_decision: \(popup_post_action_key_decision esc\), enter_decision: \(popup_post_action_key_decision enter\), backspace_decision: \(popup_post_action_key_decision backspace\) } | to json -r" | complete
+            ^nu -c $"source \"($menu_script)\"; { entries: \(get_palette_command_entries | select id category\), post_prompt: \(popup_post_action_prompt\), esc_decision: \(popup_post_action_key_decision esc\), enter_decision: \(popup_post_action_key_decision enter\), backspace_decision: \(popup_post_action_key_decision backspace\) } | to json -r" | complete
         })
         let contract = ($output.stdout | from json)
         let entries = ($contract.entries | default [])
@@ -1259,7 +1259,6 @@ def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
             and (($entries | where id == "yzx screen" | get -o 0.category | default "") == "workspace")
             and (($entries | where id == "yzx status" | get -o 0.category | default "") == "system")
             and (($entries | where id == "yzx test_dynamic" | get -o 0.category | default "") == "system")
-            and ($contract.prompt == "yzx menu> ")
             and ($contract.post_prompt == "Backspace: return to menu | Enter: close")
             and ($contract.esc_decision == "continue")
             and ($contract.enter_decision == "close")

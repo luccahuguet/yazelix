@@ -167,8 +167,23 @@ def should_pause_in_popup [cmd: string] {
     )
 }
 
-def menu_prompt [] {
-    "yzx menu> "
+def select_with_fzf [labels: list<string>] {
+    let result = (
+        $labels
+        | str join "\n"
+        | ^fzf --ansi --border rounded
+            --header "  Yazelix Command Palette"
+            --prompt "  yzx> "
+            --pointer "▸"
+            --layout reverse
+            --cycle
+            --color "border:blue,header:bold:blue,prompt:bold:yellow,pointer:bold:cyan,hl:bold:magenta,hl+:bold:magenta,info:dim"
+        | complete
+    )
+    if $result.exit_code != 0 {
+        return null
+    }
+    $result.stdout | str trim
 }
 
 def popup_post_action_prompt [] {
@@ -241,8 +256,8 @@ export def "yzx menu" [
 
     if $in_popup {
         loop {
-            let selected = ($items | get label | input list --fuzzy (menu_prompt))
-            if ($selected | is-empty) {
+            let selected = (select_with_fzf ($items | get label))
+            if ($selected | is-empty) or ($selected == null) {
                 return
             }
 
@@ -258,8 +273,8 @@ export def "yzx menu" [
             return
         }
     } else {
-        let selected = ($items | get label | input list --fuzzy (menu_prompt))
-        if ($selected | is-empty) {
+        let selected = (select_with_fzf ($items | get label))
+        if ($selected | is-empty) or ($selected == null) {
             return
         }
         let entry = ($items | where label == $selected | first)
