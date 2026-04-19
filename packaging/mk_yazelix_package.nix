@@ -1,8 +1,11 @@
-{ pkgs, src ? ../., nixgl ? null, metaPlatforms ? null }:
+{ pkgs, src ? ../., nixgl ? null, metaPlatforms ? null, fenixPkgs ? null }:
 
 let
+  rustCoreHelper = import ./rust_core_helper.nix {
+    inherit pkgs src fenixPkgs;
+  };
   runtime = import ./mk_runtime_tree.nix {
-    inherit pkgs src nixgl;
+    inherit pkgs src nixgl rustCoreHelper;
     name = "yazelix-runtime";
   };
 in

@@ -35,12 +35,21 @@
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
       mkPkgs = system: nixpkgs.legacyPackages.${system};
-      homeManagerModule = { ... }: {
+      homeManagerModule = { pkgs, ... }: {
         _module.args.nixgl = nixgl;
+        _module.args.fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
         imports = [ ./home_manager/module.nix ];
       };
-      runtimePackage = pkgs: import ./yazelix_runtime_package.nix { inherit pkgs nixgl; };
-      yazelixPackage = pkgs: import ./yazelix_package.nix { inherit pkgs nixgl; };
+      runtimePackage = system: pkgs:
+        import ./yazelix_runtime_package.nix {
+          inherit pkgs nixgl;
+          fenixPkgs = fenix.packages.${system};
+        };
+      yazelixPackage = system: pkgs:
+        import ./yazelix_package.nix {
+          inherit pkgs nixgl;
+          fenixPkgs = fenix.packages.${system};
+        };
       maintainerShell =
         system: pkgs:
         import ./maintainer_shell.nix {
@@ -60,8 +69,8 @@
         system:
         let
           pkgs = mkPkgs system;
-          runtime = runtimePackage pkgs;
-          yazelix = yazelixPackage pkgs;
+          runtime = runtimePackage system pkgs;
+          yazelix = yazelixPackage system pkgs;
         in
         {
           default = yazelix;

@@ -1,4 +1,4 @@
-{ pkgs, src ? ./., nixgl ? null }:
+{ pkgs, src ? ./., nixgl ? null, fenixPkgs ? null }:
 
 let
   firstPartyPlatforms = [
@@ -9,6 +9,6 @@ let
   ];
 in
 import ./packaging/mk_yazelix_package.nix {
-  inherit pkgs src nixgl;
+  inherit pkgs src nixgl fenixPkgs;
   metaPlatforms = firstPartyPlatforms;
 }

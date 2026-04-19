@@ -1,4 +1,4 @@
-{ pkgs, src ? ../., nixgl ? null, name ? "yazelix-runtime" }:
+{ pkgs, src ? ../., nixgl ? null, name ? "yazelix-runtime", rustCoreHelper ? null }:
 
 let
   runtimeDeps = import ./runtime_deps.nix { inherit pkgs nixgl; };
@@ -64,6 +64,9 @@ pkgs.runCommand name { } ''
       done
     fi
   done
+  ${pkgs.lib.optionalString (rustCoreHelper != null) ''
+    ln -sfn "${rustCoreHelper}/bin/yzx_core" "$out/libexec/yzx_core"
+  ''}
 
   mkdir -p "$out/toolbin"
   for command_name in ${escapedExportedRuntimeCommands}; do

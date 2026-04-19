@@ -36,6 +36,7 @@ configs/zellij/personal/*
 
 # Rust plugin build artifacts
 rust_plugins/*/target/
+rust_core/target/
 
 # bv (beads viewer) local config and caches
 .bv/
