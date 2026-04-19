@@ -49,6 +49,7 @@ Status labels:
 | `runtime_distribution_capability_tiers.md` | Live | Current explicit update-owner and distribution-tier model. |
 | `runtime_ownership_reduction_matrix.md` | Historical | Pre-trim alternative analysis, not the current contract. |
 | `runtime_root_contract.md` | Live | Current root ownership contract. |
+| `rust_nushell_bridge_contract.md` | Live | Current bridge contract for incremental Rust helper insertion behind Nushell command surfaces. |
 | `shell_opened_editors.md` | Live | Current managed-editor versus shell-opened editor boundary. |
 | `stale_config_diagnostics.md` | Live | Current unsupported-config diagnostic contract with no migration engine. |
 | `startup_profile_scenarios.md` | Live | Current structured startup profile scenario contract for enter, cold, desktop, and managed-window launch paths. |
