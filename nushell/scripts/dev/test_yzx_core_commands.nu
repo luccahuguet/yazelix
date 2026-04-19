@@ -1225,6 +1225,51 @@ terminals = ["ghostty"]
     $result
 }
 
+# Regression: yzx status should expose the same runtime summary as machine-readable structured data.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_status_json_reports_typed_summary [] {
+    print "🧪 Testing yzx status --json reports a typed runtime summary..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_status_summary_json"
+        '[shell]
+default_shell = "nu"
+
+[terminal]
+terminals = ["ghostty"]
+'
+    )
+
+    let result = (try {
+        let output = (run_yzx_command_for_fixture $fixture "yzx status --json")
+        let report = ($output.stdout | from json)
+        let summary = ($report.summary? | default {})
+
+        if (
+            ($output.exit_code == 0)
+            and (($report.title? | default "") == "Yazelix status")
+            and (($summary.config_file? | default "") | str ends-with "yazelix.toml")
+            and (($summary.default_shell? | default "") == "nu")
+            and (($summary.terminals? | default []) == ["ghostty"])
+            and (($summary.generated_state_repair_needed? | default null) != null)
+            and (($summary.persistent_sessions? | default null) == false)
+            and (($summary.session_name? | default null) == null)
+        ) {
+            print "  ✅ yzx status --json now exposes the structured runtime summary behind the human table rendering"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 # Regression: yzx menu should derive its catalog from the live exported command tree instead of a handwritten list.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
@@ -1321,6 +1366,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_edit_targets_print_paths)
         (test_invalid_config_is_classified_as_config_problem)
         (test_yzx_status_reports_basic_runtime_summary)
+        (test_yzx_status_json_reports_typed_summary)
         (test_yzx_menu_catalog_tracks_live_exported_command_surface)
         (test_yzx_exported_commands_have_help_descriptions)
     ]

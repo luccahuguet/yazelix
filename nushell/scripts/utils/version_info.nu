@@ -119,8 +119,7 @@ def get_version [tool: string] {
     }
 }
 
-# Main function - markdown table output
-export def print_version_info [] {
+export def collect_version_info [] {
     let tools = [
         "yazi"
         "zellij"
@@ -139,15 +138,27 @@ export def print_version_info [] {
         "macchina"
     ]
 
-    # Collect tool information
     let tool_data = ($tools | each { |tool|
         let runtime = get_version $tool
         {tool: $tool, runtime: $runtime}
     })
 
-    print "Yazelix Tool Versions"
-    print $"Generated: (date now | format date '%Y-%m-%d %H:%M:%S')"
-    print ($tool_data | table)
+    {
+        title: "Yazelix Tool Versions"
+        generated_at: (date now | format date '%Y-%m-%d %H:%M:%S')
+        tools: $tool_data
+    }
+}
+
+export def render_version_info [version_report: record] {
+    print ($version_report.title? | default "Yazelix Tool Versions")
+    print $"Generated: ($version_report.generated_at? | default '')"
+    print (($version_report.tools? | default []) | table)
+}
+
+# Main function - markdown table output
+export def print_version_info [] {
+    render_version_info (collect_version_info)
 }
 
 export def main [] {

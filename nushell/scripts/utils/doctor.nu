@@ -37,6 +37,23 @@ def build_runtime_distribution_doctor_result [profile: record] {
     }
 }
 
+def build_doctor_summary [results: list<record>] {
+    let error_count = ($results | where status == "error" | length)
+    let warning_count = ($results | where status == "warning" | length)
+    let info_count = ($results | where status == "info" | length)
+    let ok_count = ($results | where status == "ok" | length)
+    let fixable_count = ($results | where {|result| $result.fix_available? | default false } | length)
+
+    {
+        error_count: $error_count
+        warning_count: $warning_count
+        info_count: $info_count
+        ok_count: $ok_count
+        fixable_count: $fixable_count
+        healthy: (($error_count == 0) and ($warning_count == 0))
+    }
+}
+
 def is_managed_generated_layout_path [layout_path?: string] {
     if $layout_path == null {
         return false
@@ -317,127 +334,142 @@ def fix_create_config [] {
     }
 }
 
+export def collect_doctor_report [] {
+    mut results = []
+    let runtime_distribution_profile = (get_runtime_distribution_capability_profile)
+
+    $results = ($results | append (build_runtime_distribution_doctor_result $runtime_distribution_profile))
+    $results = ($results | append (check_helix_runtime_conflicts))
+
+    if ($env.EDITOR? | default "" | str contains "hx") {
+        $results = ($results | append (check_helix_runtime_health))
+    }
+
+    $results = ($results | append (check_managed_helix_integration))
+    $results = ($results | append (check_configuration))
+    $results = ($results | append (check_shared_runtime_preflight))
+    $results = ($results | append (check_shell_yzx_wrapper_shadowing))
+    $results = ($results | append (check_desktop_entry_freshness))
+    $results = ($results | append (check_zellij_plugin_health))
+
+    {
+        title: "Yazelix Health Checks"
+        results: $results
+        summary: (build_doctor_summary $results)
+    }
+}
+
+def render_doctor_result [result: record, verbose: bool] {
+    match $result.status {
+        "ok" => { print $"✅ ($result.message)" }
+        "info" => { print $"ℹ️  ($result.message)" }
+        "warning" => { print $"⚠️  ($result.message)" }
+        "error" => { print $"❌ ($result.message)" }
+        _ => { print $"• ($result.message)" }
+    }
+
+    if $verbose and (($result.details? | default "") | is-not-empty) {
+        print $"   ($result.details)"
+    }
+}
+
+export def render_doctor_report [report: record, --verbose] {
+    print "🔍 Running Yazelix Health Checks...\n"
+
+    for result in ($report.results? | default []) {
+        render_doctor_result $result $verbose
+    }
+
+    print ""
+
+    let summary = ($report.summary? | default {})
+    let error_count = ($summary.error_count? | default 0)
+    let warning_count = ($summary.warning_count? | default 0)
+
+    if $error_count > 0 {
+        print $"❌ Found ($error_count) errors"
+    }
+
+    if $warning_count > 0 {
+        print $"⚠️  Found ($warning_count) warnings"
+    }
+
+    if ($summary.healthy? | default false) {
+        print "🎉 All checks passed! Yazelix is healthy."
+    }
+}
+
+def print_runtime_conflict_fix_commands [results: list<record>] {
+    let runtime_conflicts = ($results | where status == "error" and message =~ "runtime")
+    if ($runtime_conflicts | is-empty) {
+        return
+    }
+
+    for conflict in $runtime_conflicts {
+        if ($conflict.fix_commands? | is-not-empty) {
+            print "\n🔧 To fix runtime conflicts, run these commands:"
+            for cmd in $conflict.fix_commands {
+                print $"  ($cmd)"
+            }
+        }
+    }
+}
+
+def apply_doctor_fixes [results: list<record>, verbose: bool] {
+    print "\n🔧 Attempting to auto-fix issues...\n"
+
+    let runtime_conflicts = ($results | where status in ["error", "warning"] and message =~ "runtime")
+    for conflict in $runtime_conflicts {
+        if ($conflict.fix_available? | default false) and ($conflict.conflicts? | is-not-empty) {
+            fix_helix_runtime_conflicts $conflict.conflicts
+        }
+    }
+
+    let config_issues = ($results | where status == "info" and message =~ "default")
+    if not ($config_issues | is-empty) {
+        fix_create_config
+    }
+
+    let generated_state_issues = ($results | where {|result| ($result.fix_action? | default "") == "repair_generated_runtime_state" })
+    if not ($generated_state_issues | is-empty) {
+        try {
+            repair_generated_runtime_state --verbose=$verbose | ignore
+        } catch {|err|
+            print $"❌ Failed to repair generated runtime state: ($err.msg)"
+        }
+    }
+
+    let plugin_permission_issues = ($results | where {|result| ($result.fix_action? | default "") == "seed_zellij_plugin_permissions" })
+    if not ($plugin_permission_issues | is-empty) {
+        try {
+            let repair_result = (seed_yazelix_plugin_permissions)
+            print $"✅ Seeded Yazelix plugin permissions in: ($repair_result.permissions_cache_path)"
+        } catch {|err|
+            print $"❌ Failed to seed Yazelix plugin permissions: ($err.msg)"
+        }
+    }
+
+    print "\n✅ Auto-fix completed. Run 'yzx doctor' again to verify."
+}
+
 
 # Main doctor function
 export def run_doctor_checks [verbose: bool = false, fix: bool = false] {
-    print "🔍 Running Yazelix Health Checks...\n"
-    
-    # Collect all checks
-    mut all_results = []
-    let runtime_distribution_profile = (get_runtime_distribution_capability_profile)
+    let report = (collect_doctor_report)
+    let results = ($report.results? | default [])
+    let summary = ($report.summary? | default {})
 
-    $all_results = ($all_results | append (build_runtime_distribution_doctor_result $runtime_distribution_profile))
+    render_doctor_report $report --verbose=$verbose
 
-    # Runtime conflicts check
-    $all_results = ($all_results | append (check_helix_runtime_conflicts))
-
-    # Effective Helix runtime health only matters when EDITOR points at Helix.
-    if ($env.EDITOR? | default "" | str contains "hx") {
-        $all_results = ($all_results | append (check_helix_runtime_health))
-    }
-
-    # Managed Helix contract
-    $all_results = ($all_results | append (check_managed_helix_integration))
-
-    # Configuration
-    $all_results = ($all_results | append (check_configuration))
-
-    # Shared runtime preflight overlap with launch-facing checks
-    $all_results = ($all_results | append (check_shared_runtime_preflight))
-
-    # Desktop entry freshness
-    $all_results = ($all_results | append (check_shell_yzx_wrapper_shadowing))
-    $all_results = ($all_results | append (check_desktop_entry_freshness))
-
-    # Zellij session-local plugin health
-    $all_results = ($all_results | append (check_zellij_plugin_health))
-
-    # Display results
-    let errors = ($all_results | where status == "error")
-    let warnings = ($all_results | where status == "warning") 
-    
-    # Show results
-    for $result in $all_results {
-        match $result.status {
-            "ok" => { print $"✅ ($result.message)" }
-            "info" => { print $"ℹ️  ($result.message)" }
-            "warning" => { print $"⚠️  ($result.message)" }
-            "error" => { print $"❌ ($result.message)" }
-        }
-        
-        if $verbose and ($result.details | is-not-empty) {
-            print $"   ($result.details)"
-        }
-    }
-    
-    print ""
-    
-    # Summary
-    if not ($errors | is-empty) {
-        print $"❌ Found ($errors | length) errors"
-    }
-    
-    if not ($warnings | is-empty) {
-        print $"⚠️  Found ($warnings | length) warnings"
-    }
-    
-    if ($errors | is-empty) and ($warnings | is-empty) {
-        print "🎉 All checks passed! Yazelix is healthy."
+    if ($summary.healthy? | default false) {
         return
     }
-    
-    # Show manual fix commands for critical issues
-    let runtime_conflicts = ($all_results | where status == "error" and message =~ "runtime")
-    if not ($runtime_conflicts | is-empty) {
-        for $conflict in $runtime_conflicts {
-            if ($conflict.fix_commands? | is-not-empty) {
-                print "\n🔧 To fix runtime conflicts, run these commands:"
-                for $cmd in $conflict.fix_commands {
-                    print $"  ($cmd)"
-                }
-            }
-        }
-    }
-    
-    # Auto-fix if requested
+
+    print_runtime_conflict_fix_commands $results
+
     if $fix {
-        print "\n🔧 Attempting to auto-fix issues...\n"
-        
-        # Fix runtime conflicts (with backup)
-        let runtime_conflicts = ($all_results | where status in ["error", "warning"] and message =~ "runtime")
-        for $conflict in $runtime_conflicts {
-            if $conflict.fix_available and ($conflict.conflicts? | is-not-empty) {
-                fix_helix_runtime_conflicts $conflict.conflicts
-            }
-        }
-
-        # Fix missing config
-        let config_issues = ($all_results | where status == "info" and message =~ "default")
-        if not ($config_issues | is-empty) {
-            fix_create_config
-        }
-
-        let generated_state_issues = ($all_results | where {|result| ($result.fix_action? | default "") == "repair_generated_runtime_state" })
-        if not ($generated_state_issues | is-empty) {
-            try {
-                repair_generated_runtime_state --verbose=$verbose | ignore
-            } catch {|err|
-                print $"❌ Failed to repair generated runtime state: ($err.msg)"
-            }
-        }
-
-        let plugin_permission_issues = ($all_results | where {|result| ($result.fix_action? | default "") == "seed_zellij_plugin_permissions" })
-        if not ($plugin_permission_issues | is-empty) {
-            try {
-                let repair_result = (seed_yazelix_plugin_permissions)
-                print $"✅ Seeded Yazelix plugin permissions in: ($repair_result.permissions_cache_path)"
-            } catch {|err|
-                print $"❌ Failed to seed Yazelix plugin permissions: ($err.msg)"
-            }
-        }
-
-        print "\n✅ Auto-fix completed. Run 'yzx doctor' again to verify."
-    } else if (($all_results | where {|result| $result.fix_available } | is-not-empty)) {
+        apply_doctor_fixes $results $verbose
+    } else if (($summary.fixable_count? | default 0) > 0) {
         print "\n💡 Some issues can be auto-fixed. Run 'yzx doctor --fix' to resolve them."
     }
 }

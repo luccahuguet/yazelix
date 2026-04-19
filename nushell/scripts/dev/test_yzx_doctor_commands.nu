@@ -218,6 +218,90 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
     $result
 }
 
+# Regression: yzx doctor should expose the collected findings as machine-readable JSON without depending on the human renderer.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_json_reports_structured_findings [] {
+    print "🧪 Testing yzx doctor --json reports structured findings..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_json_stale_fields"
+        ""
+    )
+
+    let result = (try {
+        let stale_config = (
+            open ($fixture.repo_root | path join "yazelix_default.toml")
+            | upsert core.stale_field true
+        )
+        $stale_config | to toml | save --force $fixture.config_path
+
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --json")
+        let report = ($output.stdout | from json)
+        let summary = ($report.summary? | default {})
+        let stale_config_result = (
+            $report.results
+            | where {|result| ($result.message? | default "") =~ "Stale or unsupported yazelix.toml entries detected" }
+            | get -o 0
+        )
+
+        if (
+            ($output.exit_code == 0)
+            and (($report.title? | default "") == "Yazelix Health Checks")
+            and (($summary.warning_count? | default 0) >= 1)
+            and (($summary.fixable_count? | default 0) >= 0)
+            and ($stale_config_result != null)
+            and (($stale_config_result.config_diagnostic_report.issue_count? | default 0) >= 1)
+        ) {
+            print "  ✅ yzx doctor --json now exposes collected findings independently from the human doctor renderer"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: the machine-readable doctor mode must stay read-only and reject the side-effecting fix flow.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_json_rejects_fix_mode [] {
+    print "🧪 Testing yzx doctor rejects --json with --fix..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_json_fix_rejected"
+        ""
+    )
+
+    let result = (try {
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --json --fix")
+        let stdout = ($output.stdout | str trim)
+        let stderr = ($output.stderr | str trim)
+        let combined = if ($stdout | is-not-empty) { $"($stdout)\n($stderr)" } else { $stderr }
+
+        if (
+            ($output.exit_code != 0)
+            and ($combined | str contains "`yzx doctor --json` does not support `--fix` yet")
+        ) {
+            print "  ✅ yzx doctor keeps the JSON surface read-only instead of mixing it with the interactive fix flow"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=($stderr)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 # Defends: doctor reports stale desktop-entry launcher wiring as a diagnostic, not a launch blocker.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_yzx_doctor_reports_stale_desktop_entry_exec [] {
@@ -795,6 +879,8 @@ def test_yzx_doctor_omits_installer_artifact_checks_in_runtime_root_only_mode []
 export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
+        (test_yzx_doctor_json_reports_structured_findings)
+        (test_yzx_doctor_json_rejects_fix_mode)
         (test_yzx_doctor_reports_stale_desktop_entry_exec)
         (test_yzx_doctor_accepts_manual_stable_wrapper_desktop_entry)
         (test_yzx_doctor_reports_non_terminal_desktop_entry)

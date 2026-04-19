@@ -8,7 +8,7 @@ use ../utils/common.nu get_yazelix_runtime_dir
 use ../utils/environment_bootstrap.nu [prepare_environment]
 use ../utils/install_ownership.nu has_home_manager_managed_install
 use ../utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path
-use ../utils/version_info.nu [print_version_info]
+use ../utils/status_report.nu [collect_status_report render_status_report]
 use ../integrations/managed_editor.nu get_managed_editor_kind
 use ../integrations/yazi.nu [reveal_in_yazi sync_sidebar_yazi_state_to_directory]
 use ../integrations/zellij.nu [retarget_tab_cwd resolve_tab_cwd_target]
@@ -169,35 +169,6 @@ def require_current_working_flake [] {
     }
 }
 
-def build_status_rows [config: record, config_state: record, yazelix_dir: string] {
-    let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL])
-    let terminal_label = if ($terminals | is-empty) {
-        "none"
-    } else {
-        $terminals | str join ", "
-    }
-    let helix_runtime_label = ($config.helix_runtime_path? | default "runtime default")
-    let session_name = if ($config.persistent_sessions == "true") {
-        $config.session_name
-    } else {
-        "disabled"
-    }
-
-    [
-        {field: "version", value: $YAZELIX_VERSION}
-        {field: "description", value: $YAZELIX_DESCRIPTION}
-        {field: "config_file", value: $config_state.config_file}
-        {field: "runtime_dir", value: $yazelix_dir}
-        {field: "logs_dir", value: ($yazelix_dir | path join "logs")}
-        {field: "generated_state_repair_needed", value: ($config_state.needs_refresh | into string)}
-        {field: "default_shell", value: $config.default_shell}
-        {field: "terminals", value: $terminal_label}
-        {field: "helix_runtime", value: $helix_runtime_label}
-        {field: "persistent_sessions", value: ($config.persistent_sessions | into string)}
-        {field: "session_name", value: $session_name}
-    ]
-}
-
 # Show Yazelix help or version information
 export def yzx [
     --version (-V)  # Show Yazelix version
@@ -320,18 +291,18 @@ export def "yzx reveal" [
 # Canonical inspection command
 export def "yzx status" [
     --versions(-V)  # Include tool version matrix
+    --json          # Emit machine-readable status data
 ] {
     let env_prep = prepare_environment
     let config = $env_prep.config
     let config_state = $env_prep.config_state
     let yazelix_dir = (get_yazelix_runtime_dir)
-    let status_rows = (build_status_rows $config $config_state $yazelix_dir)
+    let report = (collect_status_report $config $config_state $yazelix_dir --include-versions=$versions)
 
-    print "Yazelix status"
-    print ($status_rows | table)
-    if $versions {
-        print ""
-        print_version_info
+    if $json {
+        print ($report | to json -r)
+    } else {
+        render_status_report $report
     }
 }
 
@@ -443,9 +414,16 @@ export def "yzx restart" [
 export def "yzx doctor" [
     --verbose(-v)  # Show detailed information
     --fix(-f)      # Attempt to auto-fix issues
+    --json         # Emit machine-readable doctor data
 ] {
-    use ../utils/doctor.nu run_doctor_checks
-    if $fix {
+    use ../utils/doctor.nu [collect_doctor_report run_doctor_checks]
+    if $json and $fix {
+        error make {msg: "`yzx doctor --json` does not support `--fix` yet. Run `yzx doctor --json` for machine-readable diagnostics or `yzx doctor --fix` for the current interactive repair flow."}
+    }
+
+    if $json {
+        print ((collect_doctor_report) | to json -r)
+    } else if $fix {
         with-env { YAZELIX_ACCEPT_USER_CONFIG_RELOCATION: "true" } {
             run_doctor_checks $verbose $fix
         }

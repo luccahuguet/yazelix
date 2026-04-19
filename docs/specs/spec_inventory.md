@@ -53,6 +53,7 @@ Status labels:
 | `rust_migration_matrix.md` | Planning | Rust keep/bridge/rewrite matrix and first-slice order for v15.x insertion toward v16. |
 | `rust_nushell_bridge_contract.md` | Live | Current bridge contract for incremental Rust helper insertion behind Nushell command surfaces. |
 | `shell_opened_editors.md` | Live | Current managed-editor versus shell-opened editor boundary. |
+| `status_doctor_machine_readable_reports.md` | Live | Current structured-report contract for `yzx status` and `yzx doctor`, with default human rendering and JSON inspection mode. |
 | `stale_config_diagnostics.md` | Live | Current unsupported-config diagnostic contract with no migration engine. |
 | `startup_profile_scenarios.md` | Live | Current structured startup profile scenario contract for enter, cold, desktop, and managed-window launch paths. |
 | `supply_chain_hardening.md` | Planning | Useful maintainer policy guidance for shipped/documented tools. |
