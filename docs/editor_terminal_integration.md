@@ -1,6 +1,9 @@
 # Zed, VS Code, and Cursor Integration
 
-Use Yazelix tools (Nushell, zoxide, starship, lazygit, etc.) directly from your editor's built-in terminal without making Yazelix your editor's default terminal.
+Use Yazelix tools (Nushell, zoxide, starship, lazygit, etc.) directly from your editor's built-in terminal. Two configurations are supported:
+
+- **Optional profile**: add a named Yazelix terminal without replacing your default
+- **Default terminal**: make Yazelix your editor's default integrated terminal
 
 ## Quick Method: One-Off Yazelix Terminal
 
@@ -18,7 +21,9 @@ yzx env --no-shell
 
 This is the lowest-friction option and leaves your editor's normal terminal behavior unchanged.
 
-## VS Code and Cursor: Add an Optional Terminal Profile
+## VS Code and Cursor
+
+### Optional: Named Yazelix Terminal Profile
 
 VS Code supports named integrated terminal profiles through `terminal.integrated.profiles.<platform>`. Cursor uses the same `settings.json` model in practice.
 
@@ -27,7 +32,7 @@ To add an optional Yazelix terminal without replacing your normal default termin
 - add a new named profile
 - do **not** set `terminal.integrated.defaultProfile.<platform>`
 
-### Linux
+#### Linux
 
 Add this to `settings.json`:
 
@@ -44,7 +49,7 @@ Add this to `settings.json`:
 }
 ```
 
-### macOS
+#### macOS
 
 Add this to `settings.json`:
 
@@ -61,7 +66,7 @@ Add this to `settings.json`:
 }
 ```
 
-### How to Open It
+#### How to Open It
 
 After adding the profile:
 
@@ -71,6 +76,44 @@ After adding the profile:
 
 That opens a Yazelix-powered terminal only when you explicitly pick it. Your existing default terminal stays unchanged.
 
+### Default: Make Yazelix the Default Terminal
+
+If you want every new integrated terminal to start in the Yazelix environment, set the Yazelix profile as the default.
+
+#### Linux
+
+```json
+{
+  "terminal.integrated.profiles.linux": {
+    "Yazelix Env": {
+      "path": "/usr/bin/bash",
+      "args": ["-ic", "yzx env"],
+      "icon": "terminal-bash",
+      "overrideName": true
+    }
+  },
+  "terminal.integrated.defaultProfile.linux": "Yazelix Env"
+}
+```
+
+#### macOS
+
+```json
+{
+  "terminal.integrated.profiles.osx": {
+    "Yazelix Env": {
+      "path": "/bin/bash",
+      "args": ["-ic", "yzx env"],
+      "icon": "terminal-bash",
+      "overrideName": true
+    }
+  },
+  "terminal.integrated.defaultProfile.osx": "Yazelix Env"
+}
+```
+
+Setting `defaultProfile` means every new VS Code or Cursor terminal opens directly into the Yazelix environment. You can still open a non-Yazelix terminal from the dropdown if needed.
+
 ### Notes
 
 - `bash -ic` starts an interactive Bash shell so your normal shell init can expose `yzx`.
@@ -78,7 +121,9 @@ That opens a Yazelix-powered terminal only when you explicitly pick it. Your exi
 - Prefer to stay in Bash/Zsh/Fish/Nushell instead of switching shells? Change the profile command to `yzx env --no-shell`.
 - If `yzx` is not available in your editor terminal yet, make sure your normal shell startup files expose `~/.local/bin` on `PATH`.
 
-## Zed: Add an Optional Yazelix Task Instead of Changing the Default Shell
+## Zed
+
+### Optional: Task-Based Yazelix Terminal
 
 Zed does support terminal shell configuration with:
 
@@ -104,7 +149,7 @@ So if your goal is:
 
 the better fit is a **task**, not `terminal.shell`.
 
-### Global Zed Task
+#### Global Zed Task
 
 Create or edit `~/.config/zed/tasks.json` and add:
 
@@ -122,7 +167,7 @@ Create or edit `~/.config/zed/tasks.json` and add:
 ]
 ```
 
-### Project-Local Zed Task
+#### Project-Local Zed Task
 
 If you want this only for one project, put the same task in:
 
@@ -130,7 +175,7 @@ If you want this only for one project, put the same task in:
 
 inside that project.
 
-### How to Open It
+#### How to Open It
 
 1. Open the command palette.
 2. Run `task: spawn`.
@@ -138,7 +183,26 @@ inside that project.
 
 Zed will launch that task in its integrated terminal, giving you an optional Yazelix terminal without changing the default shell used by normal Zed terminals.
 
-### Notes
+### Default: Make Yazelix the Zed Shell
+
+If you want every Zed terminal to start in the Yazelix environment, set the global shell configuration:
+
+```json
+{
+  "terminal": {
+    "shell": {
+      "with_arguments": {
+        "program": "/bin/bash",
+        "args": ["--login", "-ic", "yzx env"]
+      }
+    }
+  }
+}
+```
+
+This makes Yazelix the default for all Zed terminals. Use `yzx env --no-shell` instead if you prefer to keep your normal shell after loading the Yazelix environment.
+
+### Zed Notes
 
 - Zed tasks run in a login shell, so they typically see the same `PATH` setup as your normal shell startup files.
 - If you want to keep the current shell instead of switching into the shell configured by Yazelix, use:
@@ -147,6 +211,12 @@ Zed will launch that task in its integrated terminal, giving you an optional Yaz
 
 ## What You Get
 
-✅ **All Yazelix tools** available when you explicitly open the Yazelix terminal  
-✅ Your editor's normal default terminal remains unchanged  
-✅ A clean way to use `z`, `lg`, `mise`, `starship`, `nu`, and the rest of the Yazelix environment only when you want it
+**Optional profile mode:**
+- ✅ All Yazelix tools available when you explicitly open the Yazelix terminal
+- ✅ Your editor's normal default terminal remains unchanged
+- ✅ A clean way to use `z`, `lg`, `mise`, `starship`, `nu`, and the rest of the Yazelix environment only when you want it
+
+**Default terminal mode:**
+- ✅ Every new editor terminal starts in the Yazelix environment automatically
+- ✅ No need to manually select the Yazelix profile each time
+- ✅ You can still open a non-Yazelix terminal from the dropdown if needed
