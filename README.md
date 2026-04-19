@@ -64,6 +64,8 @@ Want the high-level product map? See [Architecture Map](./docs/architecture_map.
 ## Acknowledgments
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages
 
+If Yazelix is useful to you, you can support its development on [GitHub Sponsors](https://github.com/sponsors/luccahuguet)
+
 <!-- BEGIN GENERATED README LATEST SERIES -->
 ## Latest Tagged Release: v15.2
 
