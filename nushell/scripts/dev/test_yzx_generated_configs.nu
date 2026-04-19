@@ -1471,10 +1471,11 @@ def test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins [] 
             YAZELIX_LOGS_DIR: ($tmp_home | path join ".local" "share" "yazelix" "logs")
             YAZELIX_RUNTIME_DIR: $repo_root
         } {
-            let merged_dir = (generate_merged_yazi_config $repo_root --quiet)
+            let applied_state = (regenerate_runtime_configs $repo_root --quiet)
+            let merged_dir = ($tmp_home | path join ".local" "share" "yazelix" "configs" "yazi")
             let zoxide_plugin = ($merged_dir | path join "plugins" "zoxide-editor.yazi" "main.lua")
             let warm_sentinel = ($merged_dir | path join "plugins" "zoxide-editor.yazi" "warm_skip_sentinel")
-            record_current_materialized_state | ignore
+            record_current_materialized_state $applied_state | ignore
             "warm asset marker" | save --force --raw $warm_sentinel
             regenerate_runtime_configs $repo_root --quiet
             let sentinel_after_warm_skip = ($warm_sentinel | path exists)
