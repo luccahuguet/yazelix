@@ -62,6 +62,7 @@ Status labels:
 | `upgrade_notes_contract.md` | Live | Current structured upgrade notes contract without live migration-id registry enforcement. |
 | `v14_boundary_hardening_gate.md` | Historical | v14 release-gate design history. |
 | `v15_trimmed_runtime_contract.md` | Live | Primary branch-level v15 contract. Start here for runtime/config/update questions. |
+| `v16_rust_cli_rewrite_evaluation.md` | Planning | Go/no-go and deletion-budget document for any broader v16 Rust public-CLI path after the v15 helper-backed slices. |
 | `yazelix_core_boundary.md` | Planning | Future boundary decision; no separate Core product is supported now. |
 | `yzx_command_palette_categories.md` | Live | Current command-palette catalog/category contract. |
 | `yzx_command_surface_backend_coupling.md` | Live | Current command-surface coupling map. |
