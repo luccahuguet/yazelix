@@ -168,25 +168,24 @@ def should_pause_in_popup [cmd: string] {
 }
 
 def select_with_fzf [items: list<record>] {
-    let lines = ($items | enumerate | each {|e| $"($e.index)\t($e.item.label)"} | str join "\n")
     let result = (
-        $lines
+        $items
+        | get label
+        | str join "\n"
         | ^fzf --ansi --border rounded
             --header "  Yazelix Command Palette"
             --prompt "  yzx> "
             --pointer "▸"
             --layout reverse
             --cycle
-            --delimiter "\t"
-            --with-nth 2..
             --color "border:blue,header:bold:blue,prompt:bold:yellow,pointer:bold:cyan,hl:bold:magenta,hl+:bold:magenta,info:dim"
         | complete
     )
     if $result.exit_code != 0 {
         return null
     }
-    let idx = ($result.stdout | str trim | split column "\t" | get 0.column1 | into int)
-    $items | get $idx
+    let selected = ($result.stdout | ansi strip | str trim)
+    $items | where {|item| ($item.label | ansi strip) == $selected} | first
 }
 
 def popup_post_action_prompt [] {
