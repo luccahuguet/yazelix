@@ -140,22 +140,45 @@ def has_existing_spec_reference [relative_path: string] {
 }
 
 def load_canonical_test_names [relative_path: string] {
-    let content = (open --raw ($REPO_ROOT | path join $relative_path))
-    let matches = (
-        $content
-        | parse --regex '(?s)export def run_[A-Za-z0-9_]+canonical_tests \[\] \{\s*\[(.*?)\]\s*\}'
+    let lines = (open --raw ($REPO_ROOT | path join $relative_path) | lines)
+    let start_index = (
+        $lines
+        | enumerate
+        | where { |entry|
+            ($entry.item | str trim) =~ '^export def run_[A-Za-z0-9_]+canonical_tests \[\] \{$'
+        }
+        | get -o 0.index
     )
 
-    if ($matches | is-empty) {
-        error make { msg: $"Could not find canonical test list in: ($relative_path)" }
+    if $start_index == null {
+        error make { msg: $"Could not find canonical test runner in: ($relative_path)" }
     }
 
-    let capture = ($matches | get -o 0.capture0)
-    if $capture == null {
-        error make { msg: $"Could not extract canonical test list capture from: ($relative_path)" }
+    mut brace_depth = 1
+    mut body_lines = []
+    for entry in ($lines | enumerate | skip ($start_index + 1)) {
+        let line = $entry.item
+        let opens = ($line | split chars | where { |char| $char == "{" } | length)
+        let closes = ($line | split chars | where { |char| $char == "}" } | length)
+        let next_depth = ($brace_depth + $opens - $closes)
+
+        if $next_depth < 0 {
+            error make { msg: $"Canonical test runner braces became unbalanced in: ($relative_path)" }
+        }
+
+        if $next_depth == 0 {
+            break
+        }
+
+        $body_lines = ($body_lines | append $line)
+        $brace_depth = $next_depth
     }
 
-    $capture
+    if (($body_lines | is-empty) or ($brace_depth != 1 and $brace_depth != 0)) {
+        error make { msg: $"Could not extract canonical test runner body from: ($relative_path)" }
+    }
+
+    ($body_lines | str join "\n")
     | parse --regex '\((test_[A-Za-z0-9_]+)\)'
     | get capture0
 }
