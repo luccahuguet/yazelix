@@ -16,6 +16,10 @@ let
     fenixPkgs.stable.clippy
     fenixPkgs.targets.wasm32-wasip1.stable.rust-std
   ];
+  rustCoreHelper = import ./packaging/rust_core_helper.nix {
+    inherit pkgs fenixPkgs;
+    src = repoRoot;
+  };
   openssl = pkgs.openssl;
   maintainerDeps =
     [ pkgs.github-cli ]
@@ -40,6 +44,7 @@ pkgs.mkShell {
     export YAZELIX_LOGS_DIR="$YAZELIX_STATE_DIR/logs"
     export IN_YAZELIX_SHELL="true"
     export NIX_CONFIG='${yazelixNixConfig}'
+    export YAZELIX_YZX_CORE_BIN="${rustCoreHelper}/bin/yzx_core"
 
     runtime_env_json="$(${pkgs.nushell}/bin/nu -c 'use "${repoRoot}/nushell/scripts/utils/runtime_env.nu" [get_runtime_env]; get_runtime_env | to json -r')"
 

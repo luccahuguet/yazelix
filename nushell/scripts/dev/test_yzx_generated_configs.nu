@@ -13,11 +13,32 @@ use ../utils/terminal_configs.nu [
     generate_all_terminal_configs
 ]
 
+def resolve_test_yzx_core_bin [] {
+    let explicit = ($env.YAZELIX_YZX_CORE_BIN? | default "" | into string | str trim)
+    if ($explicit | is-not-empty) and (($explicit | path expand) | path exists) {
+        return ($explicit | path expand)
+    }
+
+    for candidate in [
+        (repo_path "rust_core" "target" "release" "yzx_core")
+        (repo_path "rust_core" "target" "debug" "yzx_core")
+    ] {
+        if ($candidate | path exists) {
+            return $candidate
+        }
+    }
+
+    error make {
+        msg: "Generated-config tests need a built yzx_core helper. Enter the maintainer shell or set YAZELIX_YZX_CORE_BIN to a built yzx_core binary."
+    }
+}
+
 def run_parse_yazelix_config_probe [fixture: record, extra_env: record = {}] {
     with-env ({
         HOME: $fixture.tmp_home
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     } | merge $extra_env) {
         ^nu -c $"use \"($fixture.repo_root | path join "nushell" "scripts" "utils" "config_parser.nu")\" [parse_yazelix_config]; parse_yazelix_config" | complete
     }
@@ -142,6 +163,13 @@ def setup_fake_packaged_runtime_fixture [label: string] {
         helper_path: ($libexec_dir | path join "yzx_core")
         args_log: ($tmpdir | path join "yzx_core_args.log")
     }
+}
+
+def setup_fake_source_checkout_runtime_fixture [label: string] {
+    let runtime = (setup_fake_packaged_runtime_fixture $label)
+    mkdir ($runtime.runtime_root | path join "rust_core")
+    "[workspace]\n" | save --force --raw ($runtime.runtime_root | path join "rust_core" "Cargo.toml")
+    $runtime
 }
 
 def install_fake_yzx_core_helper [runtime_fixture: record, helper_script: string] {
@@ -776,6 +804,7 @@ exit 65
             HOME: $fixture.tmp_home
             YAZELIX_CONFIG_DIR: $fixture.config_dir
             YAZELIX_RUNTIME_DIR: $runtime.runtime_root
+            YAZELIX_YZX_CORE_BIN: null
         } {
             use ../utils/config_parser.nu [parse_yazelix_config]
             try {
@@ -821,6 +850,7 @@ def test_parse_yazelix_config_rejects_packaged_runtime_missing_yzx_core [] {
             HOME: $fixture.tmp_home
             YAZELIX_CONFIG_DIR: $fixture.config_dir
             YAZELIX_RUNTIME_DIR: $runtime.runtime_root
+            YAZELIX_YZX_CORE_BIN: null
         } {
             use ../utils/config_parser.nu [parse_yazelix_config]
             try {
@@ -852,31 +882,33 @@ def test_parse_yazelix_config_rejects_packaged_runtime_missing_yzx_core [] {
     $result
 }
 
-# Defends: source checkouts keep a deliberate Nushell parser fallback when yzx_core is not built locally.
-# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
-def test_parse_yazelix_config_keeps_source_checkout_nushell_fallback [] {
-    print "🧪 Testing source checkout config parsing keeps the explicit Nushell fallback..."
+# Defends: source checkouts can use an explicit yzx_core helper without keeping the legacy Nushell parser.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_parse_yazelix_config_source_checkout_uses_explicit_yzx_core_helper [] {
+    print "🧪 Testing source checkout config parsing uses an explicit yzx_core helper..."
 
-    let fixture = (setup_managed_config_fixture "yazelix_source_config_fallback" "[zellij]\ncustom_text = \"  [hello]  world demo  \"\n")
+    let fixture = (setup_managed_config_fixture "yazelix_source_config_explicit_helper" "[shell]\ndefault_shell = \"fish\"\n")
+    let helper_path = (resolve_test_yzx_core_bin)
 
     let result = (try {
         let parsed = (with-env {
             HOME: $fixture.tmp_home
             YAZELIX_CONFIG_DIR: $fixture.config_dir
             YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZELIX_YZX_CORE_BIN: $helper_path
         } {
             use ../utils/config_parser.nu [parse_yazelix_config]
             parse_yazelix_config
         })
 
         if (
-            (($parsed.zellij_custom_text? | default "") == "hello wo")
-            and (($parsed.default_shell? | default "") == "nu")
+            (($parsed.default_shell? | default "") == "fish")
+            and (($parsed.config_file? | default "") == $fixture.config_path)
         ) {
-            print "  ✅ Source checkout fallback still normalizes config without requiring a built Rust helper"
+            print "  ✅ Source checkout parsing routes through the explicit Rust helper"
             true
         } else {
-            print $"  ❌ Unexpected source fallback parse result: ($parsed | to json -r)"
+            print $"  ❌ Unexpected source helper parse result: ($parsed | to json -r)"
             false
         }
     } catch {|err|
@@ -885,6 +917,52 @@ def test_parse_yazelix_config_keeps_source_checkout_nushell_fallback [] {
     })
 
     rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: source checkouts without yzx_core must fail clearly instead of silently reviving the deleted Nushell parser.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_parse_yazelix_config_source_checkout_missing_helper_does_not_fallback [] {
+    print "🧪 Testing source checkout config parsing fails clearly without yzx_core..."
+
+    let fixture = (setup_managed_config_fixture "yazelix_source_config_no_helper" "[zellij]\ncustom_text = \"  [hello]  world demo  \"\n")
+    let runtime = (setup_fake_source_checkout_runtime_fixture "yazelix_source_config_no_helper_runtime")
+
+    let result = (try {
+        let message = (with-env {
+            HOME: $fixture.tmp_home
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $runtime.runtime_root
+            YAZELIX_YZX_CORE_BIN: null
+        } {
+            use ../utils/config_parser.nu [parse_yazelix_config]
+            try {
+                parse_yazelix_config | ignore
+                ""
+            } catch {|err|
+                $err.msg
+            }
+        })
+
+        if (
+            ($message | str contains "runtime is missing the Rust config helper")
+            and ($message | str contains "YAZELIX_YZX_CORE_BIN")
+            and ($message | str contains "Failure class: host-dependency problem.")
+            and not ($message | str contains "hello wo")
+        ) {
+            print "  ✅ Source checkouts without yzx_core now fail explicitly instead of using the deleted Nushell parser"
+            true
+        } else {
+            print $"  ❌ Unexpected source missing-helper message: ($message)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    rm -rf $runtime.tmpdir
     $result
 }
 
@@ -2062,7 +2140,10 @@ def test_generate_merged_zellij_config_prefers_managed_user_config_when_native_c
 }
 
 export def run_generated_config_canonical_tests [] {
-    with-env { YAZELIX_RUNTIME_DIR: (get_repo_config_dir) } {
+    with-env {
+        YAZELIX_RUNTIME_DIR: (get_repo_config_dir)
+        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
+    } {
         [
             (test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in)
             (test_terminal_override_imports_ignore_yazelix_dir_runtime_root)
@@ -2078,7 +2159,8 @@ export def run_generated_config_canonical_tests [] {
             (test_parse_yazelix_config_uses_runtime_yzx_core_helper_when_present)
             (test_parse_yazelix_config_surfaces_yzx_core_config_errors_without_fallback)
             (test_parse_yazelix_config_rejects_packaged_runtime_missing_yzx_core)
-            (test_parse_yazelix_config_keeps_source_checkout_nushell_fallback)
+            (test_parse_yazelix_config_source_checkout_uses_explicit_yzx_core_helper)
+            (test_parse_yazelix_config_source_checkout_missing_helper_does_not_fallback)
             (test_record_materialized_state_accepts_symlinked_managed_main_config)
             (test_user_mode_requires_real_terminal_config)
             (test_config_schema_rejects_removed_enum_values)
