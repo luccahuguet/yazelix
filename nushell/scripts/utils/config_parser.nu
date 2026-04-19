@@ -125,30 +125,33 @@ export def render_yzx_core_error [config_surface: record, stderr: string] {
     }
 }
 
-def parse_yazelix_config_with_rust [
-    config_surface: record
-    default_config_path: string
-    contract_path: string
-    helper_path: string
-] {
-    let config_path = $config_surface.config_file
-    let result = (
-        try {
-            do { ^$helper_path config.normalize --config $config_path --default-config $default_config_path --contract $contract_path } | complete
-        } catch {|err|
-            error make {
-                msg: (
-                    [
-                        $"Could not execute Yazelix Rust config helper at ($helper_path)."
-                        $err.msg
-                        ""
-                        (format_failure_classification "host-dependency" "Reinstall Yazelix so the runtime includes an executable yzx_core helper, then retry.")
-                    ] | str join "\n"
-                )
-            }
-        }
-    )
+def execute_yzx_core_command [runtime_dir: string, helper_args] {
+    let helper_path = resolve_yzx_core_helper_path $runtime_dir
+    let command_name = ($helper_args | get -o 0 | default "unknown")
 
+    try {
+        do { ^$helper_path ...$helper_args } | complete
+    } catch {|err|
+        error make {
+            msg: (
+                [
+                    $"Could not execute Yazelix Rust helper command `($command_name)` at ($helper_path)."
+                    $err.msg
+                    ""
+                    (format_failure_classification "host-dependency" "Reinstall Yazelix so the runtime includes an executable yzx_core helper, then retry.")
+                ] | str join "\n"
+            )
+        }
+    }
+}
+
+export def run_yzx_core_json_command [
+    runtime_dir: string
+    config_surface: record
+    helper_args
+    invalid_json_message: string
+] {
+    let result = (execute_yzx_core_command $runtime_dir $helper_args)
     if $result.exit_code != 0 {
         error make {msg: (render_yzx_core_error $config_surface $result.stderr)}
     }
@@ -160,7 +163,7 @@ def parse_yazelix_config_with_rust [
             error make {
                 msg: (
                     [
-                        "Yazelix Rust config helper returned invalid JSON."
+                        $invalid_json_message
                         $err.msg
                         ""
                         (format_failure_classification "host-dependency" "Reinstall Yazelix so the runtime includes a compatible yzx_core helper, then retry.")
@@ -175,14 +178,42 @@ def parse_yazelix_config_with_rust [
         error make {msg: (render_yzx_core_error $config_surface ($result.stdout | default ""))}
     }
 
-    $envelope | get data | get normalized_config
+    $envelope | get data
+}
+
+export def run_yzx_core_command [
+    runtime_dir: string
+    config_surface: record
+    helper_args
+] {
+    let result = (execute_yzx_core_command $runtime_dir $helper_args)
+
+    if $result.exit_code != 0 {
+        error make {msg: (render_yzx_core_error $config_surface $result.stderr)}
+    }
+
+    $result
+}
+
+def parse_yazelix_config_with_rust [
+    runtime_dir: string
+    config_surface: record
+] {
+    run_yzx_core_json_command $runtime_dir $config_surface [
+        "config.normalize"
+        "--config"
+        $config_surface.config_file
+        "--default-config"
+        $config_surface.default_config_path
+        "--contract"
+        (get_yzx_core_contract_path $runtime_dir)
+    ] "Yazelix Rust config helper returned invalid JSON."
+    | get normalized_config
 }
 
 # Parse yazelix configuration file and extract settings
 export def parse_yazelix_config [] {
     let config_surface = load_active_config_surface
     let runtime_dir = require_yazelix_runtime_dir
-    let helper_path = resolve_yzx_core_helper_path $runtime_dir
-    let contract_path = get_yzx_core_contract_path $runtime_dir
-    parse_yazelix_config_with_rust $config_surface $config_surface.default_config_path $contract_path $helper_path
+    parse_yazelix_config_with_rust $runtime_dir $config_surface
 }

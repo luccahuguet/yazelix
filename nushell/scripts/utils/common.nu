@@ -182,6 +182,10 @@ export def get_yazelix_state_dir [] {
     }
 }
 
+export def get_materialized_state_path [] {
+    (get_yazelix_state_dir | path join "state" "rebuild_hash")
+}
+
 export def resolve_yazelix_nu_bin [] {
     let explicit_nu = (normalize_command_candidate ($env.YAZELIX_NU_BIN? | default null))
     if $explicit_nu != null {

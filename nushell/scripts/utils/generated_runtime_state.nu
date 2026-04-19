@@ -1,16 +1,24 @@
 #!/usr/bin/env nu
 
-use config_parser.nu [render_yzx_core_error resolve_yzx_core_helper_path]
+use config_parser.nu [run_yzx_core_command run_yzx_core_json_command]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface]
 use config_contract.nu MAIN_CONFIG_CONTRACT_RELATIVE_PATH
-use common.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
+use common.nu [get_materialized_state_path get_yazelix_state_dir require_yazelix_runtime_dir]
 use failure_classes.nu format_failure_classification
 use startup_profile.nu profile_startup_step
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
-def get_materialized_state_path [] {
-    (get_yazelix_state_dir | path join "state" "rebuild_hash")
+def get_runtime_materialization_paths [] {
+    let state_dir = (get_yazelix_state_dir)
+    let zellij_config_dir = ($state_dir | path join "configs" "zellij")
+
+    {
+        state_path: (get_materialized_state_path)
+        yazi_config_dir: ($state_dir | path join "configs" "yazi")
+        zellij_config_dir: $zellij_config_dir
+        zellij_layout_dir: ($zellij_config_dir | path join "layouts")
+    }
 }
 
 def get_runtime_materialization_layout_override [] {
@@ -23,12 +31,7 @@ def get_runtime_materialization_layout_override [] {
     }
 }
 
-def compute_runtime_materialization_plan [runtime_dir: string] {
-    let config_surface = (load_active_config_surface)
-    let helper_path = resolve_yzx_core_helper_path $runtime_dir
-    let state_dir = (get_yazelix_state_dir)
-    let state_path = (get_materialized_state_path)
-    let zellij_config_dir = ($state_dir | path join "configs" "zellij")
+def build_runtime_materialization_plan_args [runtime_dir: string, config_surface: record, paths: record] {
     let helper_args = [
         "runtime-materialization.plan"
         "--config"
@@ -40,53 +43,28 @@ def compute_runtime_materialization_plan [runtime_dir: string] {
         "--runtime-dir"
         $runtime_dir
         "--state-path"
-        $state_path
+        $paths.state_path
         "--yazi-config-dir"
-        ($state_dir | path join "configs" "yazi")
+        $paths.yazi_config_dir
         "--zellij-config-dir"
-        $zellij_config_dir
+        $paths.zellij_config_dir
         "--zellij-layout-dir"
-        ($zellij_config_dir | path join "layouts")
+        $paths.zellij_layout_dir
     ]
     let layout_override = (get_runtime_materialization_layout_override)
-    let result = (
-        do {
-            if ($layout_override | is-not-empty) {
-                ^$helper_path ...$helper_args --layout-override $layout_override
-            } else {
-                ^$helper_path ...$helper_args
-            }
-        } | complete
-    )
 
-    if $result.exit_code != 0 {
-        error make {msg: (render_yzx_core_error $config_surface $result.stderr)}
+    if ($layout_override | is-not-empty) {
+        $helper_args | append "--layout-override" | append $layout_override
+    } else {
+        $helper_args
     }
-
-    let envelope = (
-        try {
-            $result.stdout | from json
-        } catch {|err|
-            error make {msg: $"Yazelix Rust runtime-materialization helper returned invalid JSON.\n($err.msg)"}
-        }
-    )
-
-    let status = ($envelope | get -o status | default "")
-    if $status != "ok" {
-        error make {msg: (render_yzx_core_error $config_surface ($result.stdout | default ""))}
-    }
-
-    $envelope | get data
 }
 
-def apply_runtime_materialization [state: record] {
-    let config_file = ($state.config_file? | default "")
-    let runtime_dir = require_yazelix_runtime_dir
-    let helper_path = resolve_yzx_core_helper_path $runtime_dir
-    let helper_args = [
+def build_runtime_materialization_apply_args [state: record] {
+    [
         "runtime-materialization.apply"
         "--config-file"
-        $config_file
+        ($state.config_file? | default "")
         "--managed-config"
         (get_main_user_config_path)
         "--state-path"
@@ -98,15 +76,21 @@ def apply_runtime_materialization [state: record] {
         "--expected-artifacts-json"
         (($state.expected_artifacts? | default []) | to json -r)
     ]
-    let result = (
-        do {
-            ^$helper_path ...$helper_args
-        } | complete
-    )
+}
 
-    if $result.exit_code != 0 {
-        error make {msg: (render_yzx_core_error {display_config_path: $config_file} $result.stderr)}
-    }
+def compute_runtime_materialization_plan [runtime_dir: string] {
+    let config_surface = (load_active_config_surface)
+    let materialization_paths = (get_runtime_materialization_paths)
+    let helper_args = (build_runtime_materialization_plan_args $runtime_dir $config_surface $materialization_paths)
+
+    run_yzx_core_json_command $runtime_dir $config_surface $helper_args "Yazelix Rust runtime-materialization helper returned invalid JSON."
+}
+
+def apply_runtime_materialization [state: record] {
+    let config_file = ($state.config_file? | default "")
+    let runtime_dir = require_yazelix_runtime_dir
+    let helper_args = (build_runtime_materialization_apply_args $state)
+    run_yzx_core_command $runtime_dir {display_config_path: $config_file} $helper_args | ignore
 }
 
 export def regenerate_runtime_configs [runtime_dir: string, --quiet] {
