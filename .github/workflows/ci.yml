@@ -131,6 +131,9 @@ jobs:
       - name: Validate default-suite shape and traceability
         run: nu nushell/scripts/dev/validate_default_test_traceability.nu
 
+      - name: Validate Rust test traceability
+        run: nu nushell/scripts/dev/validate_rust_test_traceability.nu
+
       - name: Validate top-level flake interface
         run: nu nushell/scripts/dev/validate_flake_interface.nu
 

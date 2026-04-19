@@ -5,7 +5,7 @@ use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu [require_yazelix_runtime_dir resolve_yazelix_nu_bin]
 use ../utils/runtime_env.nu get_runtime_env
 use ../utils/runtime_contract_checker.nu [
-    check_runtime_script
+    check_startup_preflight
     check_startup_working_dir
     require_runtime_check
 ]
@@ -16,10 +16,24 @@ def validate_startup_working_dir [working_dir: string] {
     $check.path
 }
 
-def require_runtime_script [script_path: string, label: string] {
-    let check = (check_runtime_script $script_path "startup_runtime_script" $label "startup")
-    require_runtime_check $check | ignore
-    $check.path
+def run_startup_preflight [working_dir: string, script_path: string, label: string] {
+    let checks = (check_startup_preflight $working_dir $script_path $label)
+    let working_dir_check = ($checks | where id == "startup_working_dir" | get -o 0)
+    let runtime_script_check = ($checks | where id == "startup_runtime_script" | get -o 0)
+
+    if $working_dir_check == null {
+        error make {msg: "Missing startup_working_dir result from runtime preflight."}
+    }
+    if $runtime_script_check == null {
+        error make {msg: "Missing startup_runtime_script result from runtime preflight."}
+    }
+    require_runtime_check $working_dir_check | ignore
+    require_runtime_check $runtime_script_check | ignore
+
+    {
+        working_dir: $working_dir_check.path
+        script_path: $runtime_script_check.path
+    }
 }
 
 def run_runtime_setup [runtime_dir: string, nu_bin: string, --quiet] {
@@ -66,8 +80,9 @@ def _start_yazelix_impl [cwd_override?: string, --verbose, --setup-only] {
     } else {
         $original_dir
     }
-    let working_dir = (validate_startup_working_dir $requested_working_dir)
-    let inner_script = (require_runtime_script $"($yazelix_dir)/nushell/scripts/core/start_yazelix_inner.nu" "startup script")
+    let preflight = (run_startup_preflight $requested_working_dir $"($yazelix_dir)/nushell/scripts/core/start_yazelix_inner.nu" "startup script")
+    let working_dir = $preflight.working_dir
+    let inner_script = $preflight.script_path
     let base_args = ["-i", $inner_script, $working_dir]
     let inner_args = if $verbose_mode {
         $base_args | append "--verbose"

@@ -19,11 +19,7 @@ use runtime_distribution_capabilities.nu get_runtime_distribution_capability_pro
 use constants.nu DEFAULT_TERMINAL
 use generated_runtime_state.nu repair_generated_runtime_state
 use runtime_contract_checker.nu [
-    check_generated_layout
-    check_linux_ghostty_desktop_graphics_support
-    check_launch_terminal_support
-    check_launch_working_dir
-    check_runtime_script
+    check_doctor_shared_runtime_preflight
     resolve_expected_layout_path
     runtime_check_to_doctor_result
 ]
@@ -162,26 +158,23 @@ def check_shared_runtime_preflight [] {
 
     let config = $config_result.config
     let runtime_dir = (get_yazelix_runtime_dir)
-    let current_dir = (try { pwd } catch { null })
     let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL] | uniq)
     let layout_path = (resolve_expected_layout_path $config)
-    let terminal_check = (check_launch_terminal_support "" $terminals)
-
-    mut checks = [
-        (check_runtime_script ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix_inner.nu") "startup_runtime_script" "startup script" "doctor")
-        (check_runtime_script ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu") "launch_runtime_script" "launch script" "doctor")
-        (check_generated_layout $layout_path "doctor")
-        $terminal_check
+    let runtime_scripts = [
+        {
+            id: "startup_runtime_script"
+            label: "startup script"
+            owner_surface: "doctor"
+            path: ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix_inner.nu")
+        }
+        {
+            id: "launch_runtime_script"
+            label: "launch script"
+            owner_surface: "doctor"
+            path: ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+        }
     ]
-
-    let ghostty_desktop_graphics_check = (check_linux_ghostty_desktop_graphics_support $terminals)
-    if $ghostty_desktop_graphics_check != null {
-        $checks = ($checks | append $ghostty_desktop_graphics_check)
-    }
-
-    if $current_dir != null {
-        $checks = ($checks | prepend (check_launch_working_dir $current_dir))
-    }
+    let checks = (check_doctor_shared_runtime_preflight $layout_path $terminals $runtime_scripts)
 
     $checks | each {|check|
         let doctor_result = (runtime_check_to_doctor_result $check)

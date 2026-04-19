@@ -50,6 +50,7 @@ The current repo surface should be understood roughly as:
   - `validate_syntax.nu`
   - `validate_readme_version.nu`
   - `validate_config_surface_contract.nu`
+  - `validate_rust_test_traceability.nu`
   - `validate_specs.nu`
 - Default automated lane:
   - `test_yzx_commands.nu` as the spec-backed core bundle
@@ -114,6 +115,7 @@ A test is a strong demotion candidate when it is:
   - a default-suite test-count budget
   - a default-suite runtime budget
   - explicit `# Test lane:` declarations on all `test_*.nu` files
+  - explicit `// Test lane:` declarations on all first-party Rust files that contain `#[test]`
   - universal per-test justification and strength scoring across governed lanes
   - no new generic `_extended` overflow files
 
@@ -153,15 +155,32 @@ Every `test_*.nu` file must declare one supported lane with a top-level header:
 - `# Test lane: sweep`
 - `# Test lane: manual`
 
+Every first-party Rust file that contains `#[test]` must declare one supported lane with a nearby line comment:
+
+- `// Test lane: default`
+- `// Test lane: maintainer`
+- `// Test lane: sweep`
+- `// Test lane: manual`
+
 Every governed `def test_*` must carry one nearby justification marker:
 
 - `# Defends: ...`
 - `# Regression: ...`
 - `# Invariant: ...`
 
+Every governed Rust `#[test]` must carry one nearby justification marker:
+
+- `// Defends: ...`
+- `// Regression: ...`
+- `// Invariant: ...`
+
 Every governed `def test_*` must also carry:
 
 - `# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
+
+Every governed Rust `#[test]` must also carry:
+
+- `// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
 
 ### Governed test strength rubric
 
@@ -242,6 +261,7 @@ So the duplicate README-version assertion is removed from `nushell/scripts/dev/t
 - integration tests: `nu -c 'source nushell/scripts/yzx/dev.nu; yzx dev test'`
 - integration tests: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - CI checks: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
+- CI checks: `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
 - CI checks: `nu nushell/scripts/dev/validate_readme_version.nu`
 - CI checks: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
 - CI checks: `nu nushell/scripts/dev/validate_specs.nu`
@@ -252,6 +272,7 @@ So the duplicate README-version assertion is removed from `nushell/scripts/dev/t
 - Bead: `yazelix-leq`
 - Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
 - Defended by: `nu nushell/scripts/dev/validate_default_test_traceability.nu`
+- Defended by: `nu nushell/scripts/dev/validate_rust_test_traceability.nu`
 - Defended by: `nu nushell/scripts/dev/validate_readme_version.nu`
 - Defended by: `nu nushell/scripts/dev/validate_config_surface_contract.nu`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`

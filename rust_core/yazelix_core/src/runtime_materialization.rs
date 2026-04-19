@@ -230,6 +230,7 @@ fn is_missing_file(path: &Path) -> bool {
     }
 }
 
+// Test lane: maintainer
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -267,6 +268,8 @@ mod tests {
         }
     }
 
+    // Defends: runtime materialization stays on the repair-missing-artifacts path when hashes are current but files are absent.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn plan_marks_missing_artifacts_without_forcing_refresh_when_state_is_current() {
         let dir = tempdir().expect("tempdir");
@@ -312,6 +315,8 @@ mod tests {
         assert_eq!(plan.missing_artifacts.len(), 5);
     }
 
+    // Defends: runtime materialization apply refuses to record success when expected generated artifacts are still missing.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn apply_rejects_missing_expected_artifacts() {
         let dir = tempdir().expect("tempdir");

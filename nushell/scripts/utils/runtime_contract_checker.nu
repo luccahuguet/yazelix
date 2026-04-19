@@ -1,37 +1,77 @@
 #!/usr/bin/env nu
 
+use config_parser.nu [run_yzx_core_json_command_with_error_surface]
+use common.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
 use failure_classes.nu [format_failure_classification]
-use terminal_launcher.nu [detect_terminal_candidates resolve_nixgl_launch_context]
-use constants.nu [SUPPORTED_TERMINALS TERMINAL_METADATA]
-use common.nu [get_yazelix_state_dir]
 
-def build_runtime_check [
-    id: string
-    status: string
-    severity: string
-    owner_surface: string
-    message: string
-    details?
-    recovery?
-    failure_class?
-    --blocking
-    --path: string = ""
-    --candidates: any = null
-] {
-    let checked_path = if ($path | is-empty) { null } else { $path }
+const RUNTIME_CONTRACT_EVALUATE_COMMAND = "runtime-contract.evaluate"
+
+def runtime_contract_error_surface [] {
     {
-        id: $id
-        status: $status
-        severity: $severity
-        owner_surface: $owner_surface
-        message: $message
-        details: ($details | default null)
-        recovery: ($recovery | default null)
-        failure_class: ($failure_class | default null)
-        blocking: $blocking
-        path: $checked_path
-        candidates: $candidates
+        display_config_path: ""
+        config_file: ""
     }
+}
+
+def normalize_path_entries [value: any] {
+    let described = ($value | describe)
+
+    if ($described | str starts-with "list") {
+        $value | each {|entry| $entry | into string }
+    } else {
+        let text = ($value | into string | str trim)
+        if ($text | is-empty) {
+            []
+        } else {
+            $text | split row (char esep)
+        }
+    }
+}
+
+def get_command_search_paths [] {
+    normalize_path_entries ($env.PATH? | default [])
+}
+
+def evaluate_runtime_contract_checks [request: record] {
+    let runtime_dir = (require_yazelix_runtime_dir)
+    let helper_args = [
+        $RUNTIME_CONTRACT_EVALUATE_COMMAND
+        "--request-json"
+        ($request | to json -r)
+    ]
+    let data = (run_yzx_core_json_command_with_error_surface
+        $runtime_dir
+        (runtime_contract_error_surface)
+        $helper_args
+        "Yazelix Rust runtime-contract helper returned invalid JSON.")
+
+    $data.checks? | default []
+}
+
+def first_runtime_check [checks: list<record>, id: string] {
+    let check = ($checks | where {|candidate| ($candidate.id? | default "") == $id } | get -o 0)
+    if $check == null {
+        error make {msg: $"Missing runtime-contract check result for `($id)`."}
+    }
+    $check
+}
+
+def build_runtime_check_detail_lines [check: record] {
+    mut detail_lines = []
+
+    if (($check.details? | default "") | is-not-empty) {
+        $detail_lines = ($detail_lines | append $check.details)
+    }
+
+    let recovery = ($check.recovery? | default "" | into string | str trim)
+    let failure_class = ($check.failure_class? | default "" | into string | str trim)
+    if ($recovery | is-not-empty) and ($failure_class | is-not-empty) {
+        $detail_lines = ($detail_lines | append (format_failure_classification $failure_class $recovery))
+    } else if ($recovery | is-not-empty) {
+        $detail_lines = ($detail_lines | append $recovery)
+    }
+
+    $detail_lines
 }
 
 def runtime_check_to_error [check: record] {
@@ -59,24 +99,6 @@ export def runtime_check_to_doctor_result [check: record] {
     }
 }
 
-def build_runtime_check_detail_lines [check: record] {
-    mut detail_lines = []
-
-    if (($check.details? | default "") | is-not-empty) {
-        $detail_lines = ($detail_lines | append $check.details)
-    }
-
-    let recovery = ($check.recovery? | default "" | into string | str trim)
-    let failure_class = ($check.failure_class? | default "" | into string | str trim)
-    if ($recovery | is-not-empty) and ($failure_class | is-not-empty) {
-        $detail_lines = ($detail_lines | append (format_failure_classification $failure_class $recovery))
-    } else if ($recovery | is-not-empty) {
-        $detail_lines = ($detail_lines | append $recovery)
-    }
-
-    $detail_lines
-}
-
 def get_runtime_platform_name []: nothing -> string {
     (
         $env.YAZELIX_TEST_OS?
@@ -85,6 +107,25 @@ def get_runtime_platform_name []: nothing -> string {
         | str trim
         | str downcase
     )
+}
+
+def build_terminal_support_request [owner_surface: string, requested_terminal: string, terminals: list<string>] {
+    {
+        owner_surface: $owner_surface
+        requested_terminal: $requested_terminal
+        terminals: $terminals
+        command_search_paths: (get_command_search_paths)
+    }
+}
+
+def build_linux_ghostty_graphics_request [owner_surface: string, terminals: list<string>] {
+    {
+        owner_surface: $owner_surface
+        terminals: $terminals
+        runtime_dir: (require_yazelix_runtime_dir)
+        command_search_paths: (get_command_search_paths)
+        platform_name: (get_runtime_platform_name)
+    }
 }
 
 export def resolve_expected_layout_path [config: record, layout_dir?: string] {
@@ -109,242 +150,109 @@ export def resolve_expected_layout_path [config: record, layout_dir?: string] {
     }
 }
 
-def check_working_directory [
-    working_dir: string
-    id: string
-    owner_surface: string
-    missing_label: string
-    missing_guidance: string
-    invalid_label: string
-    invalid_guidance: string
-] {
-    let resolved = ($working_dir | path expand)
-
-    if not ($resolved | path exists) {
-        return (build_runtime_check
-            $id
-            "error"
-            "error"
-            $owner_surface
-            $"($missing_label): ($resolved)"
-            $missing_guidance
-            --blocking)
+export def check_startup_preflight [working_dir: string, script_path: string, label: string] {
+    evaluate_runtime_contract_checks {
+        working_dir: {
+            kind: "startup"
+            path: ($working_dir | path expand)
+        }
+        runtime_scripts: [
+            {
+                id: "startup_runtime_script"
+                label: $label
+                owner_surface: "startup"
+                path: ($script_path | path expand)
+            }
+        ]
     }
-
-    if (($resolved | path type) != "dir") {
-        return (build_runtime_check
-            $id
-            "error"
-            "error"
-            $owner_surface
-            $"($invalid_label): ($resolved)"
-            $invalid_guidance
-            --blocking)
-    }
-
-    build_runtime_check $id "ok" "info" $owner_surface $"Working directory is valid: ($resolved)" --path $resolved
 }
 
-def check_runtime_file [
-    file_path: string
-    id: string
-    owner_surface: string
-    missing_label: string
-    invalid_label: string
-    recovery: string
+export def check_launch_preflight [working_dir: string, requested_terminal: string, terminals: list<string>] {
+    evaluate_runtime_contract_checks {
+        working_dir: {
+            kind: "launch"
+            path: ($working_dir | path expand)
+        }
+        terminal_support: (build_terminal_support_request "launch" $requested_terminal $terminals)
+    }
+}
+
+export def check_doctor_shared_runtime_preflight [
+    layout_path: string
+    terminals: list<string>
+    runtime_scripts: list<record>
 ] {
-    let resolved = ($file_path | path expand)
+    let runtime_script_requests = (
+        $runtime_scripts
+        | each {|script|
+            {
+                id: $script.id
+                label: $script.label
+                owner_surface: ($script.owner_surface? | default "doctor")
+                path: ($script.path | path expand)
+            }
+        }
+    )
 
-    if not ($resolved | path exists) {
-        return (build_runtime_check
-            $id
-            "error"
-            "error"
-            $owner_surface
-            $"Missing Yazelix ($missing_label): ($resolved)"
-            null
-            $recovery
-            "generated-state"
-            --blocking
-            --path $resolved)
+    evaluate_runtime_contract_checks {
+        runtime_scripts: $runtime_script_requests
+        generated_layout: {
+            owner_surface: "doctor"
+            path: ($layout_path | path expand)
+        }
+        terminal_support: (build_terminal_support_request "launch" "" $terminals)
+        linux_ghostty_desktop_graphics_support: (build_linux_ghostty_graphics_request "doctor" $terminals)
     }
-
-    if (($resolved | path type) != "file") {
-        return (build_runtime_check
-            $id
-            "error"
-            "error"
-            $owner_surface
-            $"Yazelix ($invalid_label) is not a file: ($resolved)"
-            null
-            null
-            null
-            --blocking
-            --path $resolved)
-    }
-
-    build_runtime_check $id "ok" "info" $owner_surface $"Yazelix ($missing_label) is present" --path $resolved
 }
 
 export def check_startup_working_dir [working_dir: string] {
-    (check_working_directory
-        $working_dir
-        "startup_working_dir"
-        "startup"
-        "Startup directory does not exist"
-        "Use an existing directory, or run yzx launch --home."
-        "Startup path is not a directory"
-        "Pass a directory to yzx launch --path.")
+    first_runtime_check (evaluate_runtime_contract_checks {
+        working_dir: {
+            kind: "startup"
+            path: ($working_dir | path expand)
+        }
+    }) "startup_working_dir"
 }
 
 export def check_launch_working_dir [working_dir: string] {
-    (check_working_directory
-        $working_dir
-        "launch_working_dir"
-        "launch"
-        "Launch directory does not exist"
-        "Use an existing directory, or use --home to start from HOME."
-        "Launch path is not a directory"
-        "Pass a directory to yzx launch --path.")
+    first_runtime_check (evaluate_runtime_contract_checks {
+        working_dir: {
+            kind: "launch"
+            path: ($working_dir | path expand)
+        }
+    }) "launch_working_dir"
 }
 
 export def check_runtime_script [script_path: string, id: string, label: string, owner_surface: string] {
-    (check_runtime_file
-        $script_path
-        $id
-        $owner_surface
-        $label
-        $label
-        "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again.")
+    first_runtime_check (evaluate_runtime_contract_checks {
+        runtime_scripts: [
+            {
+                id: $id
+                label: $label
+                owner_surface: $owner_surface
+                path: ($script_path | path expand)
+            }
+        ]
+    }) $id
 }
 
 export def check_generated_layout [layout_path: string, owner_surface: string] {
-    (check_runtime_file
-        $layout_path
-        "generated_layout"
-        $owner_surface
-        "generated Zellij layout"
-        "generated Zellij layout"
-        "Run `yzx doctor` to inspect generated-state issues, or check the configured layout name.")
+    first_runtime_check (evaluate_runtime_contract_checks {
+        generated_layout: {
+            owner_surface: $owner_surface
+            path: ($layout_path | path expand)
+        }
+    }) "generated_layout"
 }
 
 export def check_launch_terminal_support [requested_terminal: string, terminals: list<string>] {
-    if ($requested_terminal | is-not-empty) {
-        let specified_terminal = $requested_terminal
-        let term_meta = ($TERMINAL_METADATA | get -o $specified_terminal)
-        if $term_meta == null {
-            return (build_runtime_check
-                "launch_terminal_support"
-                "error"
-                "error"
-                "launch"
-                $"Unsupported terminal '($specified_terminal)'"
-                $"Supported terminals: ($SUPPORTED_TERMINALS | str join ', ')"
-                null
-                null
-                --blocking)
-        }
-
-        let candidates = (detect_terminal_candidates [$specified_terminal])
-
-        if ($candidates | is-empty) {
-            let reason = $"Specified terminal '($specified_terminal)' is not available in the active Yazelix runtime or PATH."
-            let recovery = "Use a terminal shipped by the active Yazelix runtime, install it on PATH, or choose a different terminal for testing."
-            return (build_runtime_check
-                "launch_terminal_support"
-                "error"
-                "error"
-                "launch"
-                $reason
-                null
-                $recovery
-                "host-dependency"
-                --blocking)
-        }
-
-        return (build_runtime_check
-            "launch_terminal_support"
-            "ok"
-            "info"
-            "launch"
-            $"Terminal command discovery is available for ($specified_terminal)"
-            null
-            null
-            null
-            --candidates $candidates)
-    }
-
-    let candidates = (detect_terminal_candidates $terminals)
-    if ($candidates | is-empty) {
-        let reason = "None of the configured terminal binaries are available in the active Yazelix runtime or PATH."
-        let recovery = "Use Ghostty from the active Yazelix runtime, install one of the other configured terminals on PATH, or adjust [terminal].terminals to match what is available."
-        return (build_runtime_check
-            "launch_terminal_support"
-            "error"
-            "error"
-            "launch"
-            $reason
-            null
-            $recovery
-            "host-dependency"
-            --blocking)
-    }
-
-    (build_runtime_check
-        "launch_terminal_support"
-        "ok"
-        "info"
-        "launch"
-        "A configured terminal command is available"
-        null
-        null
-        null
-        --candidates $candidates)
+    first_runtime_check (evaluate_runtime_contract_checks {
+        terminal_support: (build_terminal_support_request "launch" $requested_terminal $terminals)
+    }) "launch_terminal_support"
 }
 
 export def check_linux_ghostty_desktop_graphics_support [terminals: list<string>] {
-    if (get_runtime_platform_name) != "linux" {
-        return null
-    }
-
-    let candidates = (detect_terminal_candidates $terminals)
-    let active_candidate = ($candidates | get -o 0)
-    if $active_candidate == null {
-        return null
-    }
-
-    if $active_candidate.terminal != "ghostty" {
-        return null
-    }
-
-    let nixgl_context = (resolve_nixgl_launch_context)
-    if $nixgl_context.source == "runtime" {
-        return null
-    }
-
-    let details_lines = if $nixgl_context.source == "host_path" {
-        [
-            "First launch candidate: Ghostty"
-            $"Detected host PATH graphics wrapper: ($nixgl_context.command)"
-            "Linux Ghostty launches can appear healthy from an interactive shell while still failing from desktop-entry launches that inherit a smaller GUI PATH"
-            "Update or reinstall Yazelix so the active runtime ships its own Linux graphics wrapper, or choose a different first terminal if you intentionally do not want Ghostty here"
-        ]
-    } else {
-        [
-            "First launch candidate: Ghostty"
-            "No runtime-owned or PATH-provided nixGL wrapper was detected for Linux Ghostty launches"
-            "Ghostty can fail to acquire an OpenGL context from desktop-entry launches when this wrapper is missing"
-            "Update or reinstall Yazelix so the active runtime ships its Linux graphics wrapper, or choose a different first terminal"
-        ]
-    }
-
-    (build_runtime_check
-        "linux_ghostty_desktop_graphics_support"
-        "warning"
-        "warning"
-        "doctor"
-        "Linux Ghostty desktop-launch graphics support is not runtime-owned"
-        ($details_lines | str join "\n")
-        null
-        null)
+    evaluate_runtime_contract_checks {
+        linux_ghostty_desktop_graphics_support: (build_linux_ghostty_graphics_request "doctor" $terminals)
+    } | where {|check| ($check.id? | default "") == "linux_ghostty_desktop_graphics_support" } | get -o 0
 }

@@ -126,11 +126,14 @@ impl TransientPaneConfig {
     }
 }
 
+// Test lane: maintainer
 #[cfg(test)]
 mod tests {
     use super::TransientPaneConfig;
     use yazelix_pane_orchestrator::transient_pane_contract::TransientPaneKind;
 
+    // Defends: transient launcher and wrapper paths derive strictly from the configured runtime root.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn transient_runtime_paths_do_not_depend_on_plugin_local_fs_probes() {
         let config = TransientPaneConfig {

@@ -76,6 +76,23 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 | Minimal-PATH POSIX launcher viability and shell-enter contract | Install/package validation | Heavy install-smoke concerns, not routine preflight checks. |
 | Version drift, Helix runtime conflicts, plugin/session-local health | `yzx doctor` | Rich diagnostics that should not silently expand launch into a slow environment audit. |
 
+### Shared Evaluation Boundary
+
+- The shared runtime-preflight reasoning should live behind one structured evaluation boundary instead of being recomputed independently in every Nushell surface.
+- In the current v15.x bridge, that boundary is the packaged/helper command `yzx_core runtime-contract.evaluate`.
+- Startup, new-window launch, and the shared doctor-preflight surface should submit one batch request per surface and receive a machine-readable list of findings.
+- Nushell still owns:
+  - surface-specific rendering and prose
+  - whether a finding is fatal for that entrypoint
+  - `yzx doctor --fix` actions and install-audit follow-ups
+- The first Rust-backed parity set is:
+  - working-directory validation
+  - required runtime-script existence
+  - generated-layout existence
+  - new-window terminal availability and candidate selection
+  - the Linux Ghostty desktop-launch graphics warning
+- Doctor-only install-artifact audits, Helix runtime diagnostics, distribution-tier reporting, and session-local/plugin-local health remain outside this helper until later beads.
+
 ### Launch Preflight Scope
 
 - Launch preflight should be fast and bounded.
@@ -150,12 +167,16 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
   - `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
   - `nu nushell/scripts/dev/test_yzx_doctor_commands.nu`
   - `nu nushell/scripts/dev/test_yzx_core_commands.nu`
+- helper tests:
+  - `cargo test --manifest-path rust_core/Cargo.toml`
 - CI/spec check: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Traceability
 
-- Bead: `yazelix-j4qv`
-- Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Bead: `yazelix-kt5.3`
+- Defended by:
+  - `nu nushell/scripts/dev/validate_specs.nu`
+  - `cargo test --manifest-path rust_core/Cargo.toml`
 
 ## Open Questions
 

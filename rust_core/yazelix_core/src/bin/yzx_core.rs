@@ -1,15 +1,18 @@
 use lexopt::prelude::*;
 use std::path::PathBuf;
 use yazelix_core::{
-    ComputeConfigStateRequest, CoreError, NormalizeConfigRequest, RecordConfigStateRequest,
-    RuntimeArtifact, RuntimeMaterializationApplyRequest, RuntimeMaterializationPlanRequest,
-    apply_runtime_materialization, compute_config_state, error_envelope, normalize_config,
-    plan_runtime_materialization, record_config_state, success_envelope,
+    ComputeConfigStateRequest, CoreError, ErrorClass, NormalizeConfigRequest,
+    RecordConfigStateRequest, RuntimeArtifact, RuntimeContractEvaluateRequest,
+    RuntimeMaterializationApplyRequest, RuntimeMaterializationPlanRequest,
+    apply_runtime_materialization, compute_config_state, error_envelope,
+    evaluate_runtime_contract, normalize_config, plan_runtime_materialization,
+    record_config_state, success_envelope,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
 const CONFIG_STATE_COMPUTE_COMMAND: &str = "config-state.compute";
 const CONFIG_STATE_RECORD_COMMAND: &str = "config-state.record";
+const RUNTIME_CONTRACT_EVALUATE_COMMAND: &str = "runtime-contract.evaluate";
 const RUNTIME_MATERIALIZATION_PLAN_COMMAND: &str = "runtime-materialization.plan";
 const RUNTIME_MATERIALIZATION_APPLY_COMMAND: &str = "runtime-materialization.apply";
 const UNKNOWN_COMMAND: &str = "unknown";
@@ -80,6 +83,11 @@ fn run() -> Result<(), Box<CommandError>> {
         CONFIG_STATE_RECORD_COMMAND => {
             let command_for_error = command.clone();
             run_config_state_record(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        RUNTIME_CONTRACT_EVALUATE_COMMAND => {
+            let command_for_error = command.clone();
+            run_runtime_contract_evaluate(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         RUNTIME_MATERIALIZATION_PLAN_COMMAND => {
@@ -191,6 +199,35 @@ fn run_config_state_record(mut parser: lexopt::Parser) -> Result<(), CoreError> 
     };
     let data = record_config_state(&request)?;
     write_success_envelope(CONFIG_STATE_RECORD_COMMAND, data)
+}
+
+fn run_runtime_contract_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let mut request_json: Option<String> = None;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("request-json") => request_json = Some(parser_string_value(&mut parser)?),
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    let request_json =
+        request_json.ok_or_else(|| CoreError::usage("Missing --request-json payload"))?;
+    let request: RuntimeContractEvaluateRequest =
+        serde_json::from_str(&request_json).map_err(|error| {
+            CoreError::classified(
+                ErrorClass::Usage,
+                "invalid_request_json",
+                format!("Invalid runtime-contract request JSON: {error}"),
+                "Pass one valid JSON payload via --request-json.",
+                serde_json::json!({}),
+            )
+        })?;
+    let data = evaluate_runtime_contract(&request)?;
+    write_success_envelope(RUNTIME_CONTRACT_EVALUATE_COMMAND, data)
 }
 
 fn run_runtime_materialization_plan(mut parser: lexopt::Parser) -> Result<(), CoreError> {

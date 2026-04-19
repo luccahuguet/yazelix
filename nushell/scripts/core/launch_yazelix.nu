@@ -13,6 +13,7 @@ use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADA
 use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/runtime_contract_checker.nu [
     check_launch_terminal_support
+    check_launch_preflight
     check_launch_working_dir
     require_runtime_check
 ]
@@ -24,11 +25,33 @@ def validate_launch_working_dir [working_dir: string] {
     $check.path
 }
 
+def run_launch_preflight [working_dir: string, requested_terminal: string, terminals: list<string>] {
+    let checks = (check_launch_preflight $working_dir $requested_terminal $terminals)
+    let working_dir_check = ($checks | where id == "launch_working_dir" | get -o 0)
+    let terminal_check = ($checks | where id == "launch_terminal_support" | get -o 0)
+
+    if $working_dir_check == null {
+        error make {msg: "Missing launch_working_dir result from runtime preflight."}
+    }
+    if $terminal_check == null {
+        error make {msg: "Missing launch_terminal_support result from runtime preflight."}
+    }
+
+    require_runtime_check $working_dir_check | ignore
+    require_runtime_check $terminal_check | ignore
+
+    {
+        working_dir: $working_dir_check.path
+        terminal_candidates: ($terminal_check.candidates? | default [])
+    }
+}
+
 def resolve_terminal_candidates [requested_terminal: string, terminals: list<string>] {
     let check = (check_launch_terminal_support $requested_terminal $terminals)
     require_runtime_check $check | ignore
-    ($check.candidates? | default [])
+    $check.candidates? | default []
 }
+
 def resolve_desktop_fast_path_candidates [requested_terminal: string, terminals: list<string>] {
     resolve_terminal_candidates $requested_terminal $terminals
 }
@@ -228,9 +251,10 @@ def main [
 
     # Use provided launch directory or fall back to current directory
     let requested_working_dir = if ($launch_cwd | is-empty) { pwd } else { $launch_cwd }
-    let working_dir = (profile_startup_step $component "validate_working_dir" {
-        validate_launch_working_dir $requested_working_dir
+    let launch_preflight = (profile_startup_step $component "validate_working_dir" {
+        run_launch_preflight $requested_working_dir $requested_terminal ($config.terminals? | default [$DEFAULT_TERMINAL] | uniq)
     })
+    let working_dir = $launch_preflight.working_dir
     if $verbose_mode {
         print $"Launch directory: ($working_dir)"
     }
@@ -252,11 +276,7 @@ def main [
 
     let runtime_dir = (get_yazelix_runtime_dir)
     let terminal_candidates = (profile_startup_step $component "resolve_terminals" {
-        if $desktop_fast_path {
-            resolve_desktop_fast_path_candidates $requested_terminal $terminals
-        } else {
-            resolve_terminal_candidates $requested_terminal $terminals
-        }
+        $launch_preflight.terminal_candidates
     })
     if $desktop_fast_path {
         profile_startup_step $component "generate_terminal_configs" {

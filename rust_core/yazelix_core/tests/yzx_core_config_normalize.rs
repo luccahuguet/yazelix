@@ -1,3 +1,5 @@
+// Test lane: maintainer
+
 use assert_cmd::Command;
 use pretty_assertions::assert_eq;
 use serde_json::Value;
@@ -12,6 +14,8 @@ fn repo_root() -> PathBuf {
         .expect("repo root")
 }
 
+// Defends: config.normalize emits a single machine-readable success envelope for valid config input.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn config_normalize_prints_one_success_json_envelope() {
     let repo = repo_root();
@@ -39,6 +43,8 @@ fn config_normalize_prints_one_success_json_envelope() {
     );
 }
 
+// Defends: config.normalize emits a single machine-readable config error envelope for invalid input.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn config_normalize_prints_one_error_json_envelope() {
     let repo = repo_root();
@@ -68,6 +74,8 @@ fn config_normalize_prints_one_error_json_envelope() {
     assert_eq!(envelope["error"]["code"], "unsupported_config");
 }
 
+// Defends: unknown helper commands report the requested command in the usage error envelope.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn unsupported_command_reports_requested_command_in_error_envelope() {
     let output = Command::cargo_bin("yzx_core")
@@ -84,6 +92,8 @@ fn unsupported_command_reports_requested_command_in_error_envelope() {
     assert_eq!(envelope["error"]["code"], "invalid_arguments");
 }
 
+// Defends: config-state.compute returns a machine-readable state envelope with stable hash fields.
+// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn config_state_compute_prints_machine_readable_state_envelope() {
     let repo = repo_root();
@@ -120,6 +130,8 @@ fn config_state_compute_prints_machine_readable_state_envelope() {
     assert_eq!(envelope["data"]["needs_refresh"], true);
 }
 
+// Defends: config-state.record persists state only for the managed main config surface.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn config_state_record_writes_only_managed_surface_state() {
     let tmp = tempdir().unwrap();
@@ -154,6 +166,8 @@ fn config_state_record_writes_only_managed_surface_state() {
     );
 }
 
+// Defends: runtime-materialization.plan reports missing artifacts without forcing refresh when hashes are current.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
     let repo = repo_root();
@@ -239,6 +253,8 @@ fn runtime_materialization_plan_reports_missing_artifacts_with_current_state() {
     );
 }
 
+// Defends: runtime-materialization.apply rejects missing expected artifacts with a runtime error envelope.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn runtime_materialization_apply_rejects_missing_artifacts() {
     let tmp = tempdir().unwrap();
@@ -275,4 +291,80 @@ fn runtime_materialization_apply_rejects_missing_artifacts() {
     assert_eq!(envelope["command"], "runtime-materialization.apply");
     assert_eq!(envelope["error"]["class"], "runtime");
     assert_eq!(envelope["error"]["code"], "missing_generated_artifacts");
+}
+
+// Defends: runtime-contract.evaluate emits one machine-readable checks envelope for batched preflight requests.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn runtime_contract_evaluate_prints_machine_readable_checks_envelope() {
+    let tmp = tempdir().unwrap();
+    let host_bin = tmp.path().join("host-bin");
+    fs::create_dir_all(&host_bin).unwrap();
+    fs::write(host_bin.join("ghostty"), "#!/bin/sh\nexit 0\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = fs::metadata(host_bin.join("ghostty"))
+            .unwrap()
+            .permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(host_bin.join("ghostty"), permissions).unwrap();
+    }
+
+    let request = serde_json::json!({
+        "working_dir": {
+            "kind": "launch",
+            "path": tmp.path().join("missing-dir").to_string_lossy().to_string()
+        },
+        "terminal_support": {
+            "owner_surface": "launch",
+            "requested_terminal": "",
+            "terminals": ["ghostty"],
+            "command_search_paths": [host_bin.to_string_lossy().to_string()]
+        }
+    });
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("runtime-contract.evaluate")
+        .arg("--request-json")
+        .arg(request.to_string())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "runtime-contract.evaluate");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(
+        envelope["data"]["checks"][0]["message"],
+        format!(
+            "Launch directory does not exist: {}",
+            tmp.path().join("missing-dir").to_string_lossy()
+        )
+    );
+    assert_eq!(
+        envelope["data"]["checks"][1]["message"],
+        "A configured terminal command is available"
+    );
+}
+
+// Defends: runtime-contract.evaluate rejects malformed request JSON as a usage-surface error.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn runtime_contract_evaluate_reports_invalid_request_json_as_usage_error() {
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("runtime-contract.evaluate")
+        .arg("--request-json")
+        .arg("{not-json")
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(64));
+    assert!(output.stdout.is_empty());
+    let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
+    assert_eq!(envelope["command"], "runtime-contract.evaluate");
+    assert_eq!(envelope["error"]["class"], "usage");
+    assert_eq!(envelope["error"]["code"], "invalid_request_json");
 }

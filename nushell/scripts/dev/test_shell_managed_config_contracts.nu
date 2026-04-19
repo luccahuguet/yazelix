@@ -282,10 +282,13 @@ def test_source_checkout_runtime_resolution_beats_installed_runtime [] {
 
     let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_runtime_resolution_XXXXXX | str trim)
+    let fake_installed_runtime = ($tmp_home | path join "installed_runtime")
     let fake_state_runtime = ($tmp_home | path join ".local" "share" "yazelix" "runtime" "current")
 
+    mkdir $fake_installed_runtime
     mkdir ($fake_state_runtime | path dirname)
-    ^ln -s $repo_root $fake_state_runtime
+    "" | save --force --raw ($fake_installed_runtime | path join "yazelix_default.toml")
+    ^ln -s $fake_installed_runtime $fake_state_runtime
 
     let result = (try {
         let output = (with-env {

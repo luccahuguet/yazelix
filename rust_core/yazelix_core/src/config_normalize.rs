@@ -743,6 +743,7 @@ fn json_number(value: f64) -> Result<JsonNumber, CoreError> {
     })
 }
 
+// Test lane: maintainer
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -773,6 +774,8 @@ mod tests {
         path
     }
 
+    // Defends: config normalization keeps the parser-owned default keys and value transforms stable.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn normalizes_default_config_with_parser_keys_and_transforms() {
         let repo = repo_root();
@@ -786,6 +789,8 @@ mod tests {
         assert_eq!(config.len(), 36);
     }
 
+    // Defends: compact badge text normalization trims and truncates user input consistently.
+    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10
     #[test]
     fn applies_compact_badge_text_behavior() {
         let path = write_user_config("[zellij]\ncustom_text = \"  [hello]  world demo  \"\n");
@@ -797,6 +802,8 @@ mod tests {
         );
     }
 
+    // Defends: removed config surfaces fail as unsupported config instead of being silently accepted.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn rejects_removed_unknown_config_surfaces_without_migration() {
         let path = write_user_config("[shell]\nenable_atuin = true\n");
@@ -811,6 +818,8 @@ mod tests {
         );
     }
 
+    // Defends: invalid enum values produce structured diagnostics instead of generic parse failures.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
     #[test]
     fn rejects_invalid_enum_values_with_structured_diagnostics() {
         let path = write_user_config("[shell]\ndefault_shell = \"powershell\"\n");

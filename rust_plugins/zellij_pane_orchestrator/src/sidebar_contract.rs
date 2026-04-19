@@ -54,6 +54,7 @@ pub fn resolve_sidebar_focus_toggle(
     }
 }
 
+// Test lane: maintainer
 #[cfg(test)]
 mod tests {
     use super::{
@@ -62,6 +63,8 @@ mod tests {
     };
     use crate::pane_contract::FocusContextPolicy;
 
+    // Defends: opening the sidebar preserves the current focus context instead of forcing a focus jump.
+    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10
     #[test]
     fn opening_sidebar_preserves_current_focus() {
         assert_eq!(
@@ -70,6 +73,8 @@ mod tests {
         );
     }
 
+    // Defends: closing a focused sidebar prefers the editor when that fallback exists.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn closing_focused_sidebar_prefers_editor_fallback() {
         assert_eq!(
@@ -78,6 +83,8 @@ mod tests {
         );
     }
 
+    // Defends: closing a focused sidebar falls back to a non-sidebar target when the editor is missing.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn closing_focused_sidebar_uses_non_sidebar_fallback_when_editor_missing() {
         assert_eq!(
@@ -86,6 +93,8 @@ mod tests {
         );
     }
 
+    // Defends: explicit sidebar focus toggles reopen a closed sidebar and focus it.
+    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10
     #[test]
     fn explicit_focus_toggle_reopens_closed_sidebar_and_focuses_it() {
         assert_eq!(
@@ -94,6 +103,8 @@ mod tests {
         );
     }
 
+    // Defends: explicit sidebar focus toggles return from sidebar focus back to the editor.
+    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10
     #[test]
     fn explicit_focus_toggle_returns_from_sidebar_to_editor() {
         assert_eq!(

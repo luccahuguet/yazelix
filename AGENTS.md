@@ -227,11 +227,15 @@ Use this as the default refactor and audit method in Yazelix, especially before 
 - **Do not add weak tests that mostly create noise**, such as tests that only verify a command exists in help output, that a subcommand name is listed, or that implementation trivia appears in generated text without protecting meaningful behavior.
 - **Every new test should defend a real contract, regression, or failure mode**: user-visible behavior, config/state invariants, integration boundaries, or a bug that has already happened.
 - **Every new `test_*.nu` file must declare `# Test lane: ...` using an allowed lane** (`default`, `maintainer`, `sweep`, or `manual`).
+- **Every first-party Rust file that contains `#[test]` must declare `// Test lane: ...` using an allowed lane** (`default`, `maintainer`, `sweep`, or `manual`).
 - **Treat test strength and lane placement as separate decisions.** Use the repo's per-test strength rubric to decide whether a test is worth keeping, and use lane-placement thinking only to decide where a surviving test belongs.
 - **Do not create generic `_extended` test files as overflow.** If a nondefault lane needs more coverage, use a file or lane name that reflects its actual ownership.
 - **Every new governed `def test_*` must carry a nearby `# Defends:`, `# Regression:`, or `# Invariant:` marker.**
+- **Every governed Rust `#[test]` must carry a nearby `// Defends:`, `// Regression:`, or `// Invariant:` marker.**
 - **Every new governed `def test_*` must also carry a nearby structured strength marker.** Use:
   - `# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
+- **Every governed Rust `#[test]` must also carry the same nearby structured strength marker.** Use:
+  - `// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10`
 - **Lane minimums are enforced mechanically.** Current minimums are:
   - `default`: `7/10`
   - `maintainer`: `6/10`

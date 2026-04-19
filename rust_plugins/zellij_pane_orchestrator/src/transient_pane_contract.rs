@@ -109,6 +109,7 @@ pub fn resolve_transient_toggle_plan<Id: Copy>(
     }
 }
 
+// Test lane: maintainer
 #[cfg(test)]
 mod tests {
     use super::{
@@ -134,6 +135,8 @@ mod tests {
         }
     }
 
+    // Defends: popup transient panes are discoverable by either pane title or wrapper marker.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn selects_popup_by_title_or_wrapper_marker() {
         let popup_by_title = [transient_pane(7, "yzx_popup", Some("nu"), false)];
@@ -160,6 +163,8 @@ mod tests {
         );
     }
 
+    // Defends: popup and menu transient panes expose an explicit identity contract for launcher code.
+    // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=1 total=7/10
     #[test]
     fn exposes_explicit_identity_contract_for_popup_and_menu() {
         assert_eq!(
@@ -181,6 +186,8 @@ mod tests {
         );
     }
 
+    // Defends: menu transient panes are discoverable by either pane title or wrapper marker.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn selects_menu_by_title_or_wrapper_marker() {
         let menu_by_title = [transient_pane(3, "yzx_menu", Some("nu"), false)];
@@ -207,6 +214,8 @@ mod tests {
         );
     }
 
+    // Defends: focused transient panes win over unfocused duplicates during transient lookup.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn prefers_focused_transient_pane_when_duplicates_exist() {
         let panes = [
@@ -223,6 +232,8 @@ mod tests {
         );
     }
 
+    // Defends: transient lookup ignores non-floating or unrelated panes instead of matching by stale titles alone.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn ignores_non_floating_or_irrelevant_panes() {
         let panes = [
@@ -244,6 +255,8 @@ mod tests {
         );
     }
 
+    // Defends: transient toggle planning distinguishes missing, present, and focused panes.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
     #[test]
     fn resolves_toggle_plan_for_missing_present_and_focused_panes() {
         let missing: [TransientPaneSnapshot<'_, i32>; 0] = [];

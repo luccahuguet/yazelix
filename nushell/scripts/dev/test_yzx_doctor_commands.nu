@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ../core/yazelix.nu *
-use ./yzx_test_helpers.nu [get_repo_config_dir setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [get_repo_config_dir resolve_test_yzx_core_bin setup_managed_config_fixture]
 
 def run_doctor_command_for_fixture [fixture: record, command: string, extra_env?: record] {
     let base_env = {
@@ -13,6 +13,7 @@ def run_doctor_command_for_fixture [fixture: record, command: string, extra_env?
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
         YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
+        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     }
     let merged_env = if ($extra_env | is-empty) {
         $base_env

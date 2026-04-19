@@ -145,15 +145,15 @@ def execute_yzx_core_command [runtime_dir: string, helper_args] {
     }
 }
 
-export def run_yzx_core_json_command [
+export def run_yzx_core_json_command_with_error_surface [
     runtime_dir: string
-    config_surface: record
+    error_surface: record
     helper_args
     invalid_json_message: string
 ] {
     let result = (execute_yzx_core_command $runtime_dir $helper_args)
     if $result.exit_code != 0 {
-        error make {msg: (render_yzx_core_error $config_surface $result.stderr)}
+        error make {msg: (render_yzx_core_error $error_surface $result.stderr)}
     }
 
     let envelope = (
@@ -175,10 +175,33 @@ export def run_yzx_core_json_command [
 
     let status = ($envelope | get -o status | default "")
     if $status != "ok" {
-        error make {msg: (render_yzx_core_error $config_surface ($result.stdout | default ""))}
+        error make {msg: (render_yzx_core_error $error_surface ($result.stdout | default ""))}
     }
 
     $envelope | get data
+}
+
+export def run_yzx_core_json_command [
+    runtime_dir: string
+    config_surface: record
+    helper_args
+    invalid_json_message: string
+] {
+    run_yzx_core_json_command_with_error_surface $runtime_dir $config_surface $helper_args $invalid_json_message
+}
+
+export def run_yzx_core_command_with_error_surface [
+    runtime_dir: string
+    error_surface: record
+    helper_args
+] {
+    let result = (execute_yzx_core_command $runtime_dir $helper_args)
+
+    if $result.exit_code != 0 {
+        error make {msg: (render_yzx_core_error $error_surface $result.stderr)}
+    }
+
+    $result
 }
 
 export def run_yzx_core_command [
@@ -186,13 +209,7 @@ export def run_yzx_core_command [
     config_surface: record
     helper_args
 ] {
-    let result = (execute_yzx_core_command $runtime_dir $helper_args)
-
-    if $result.exit_code != 0 {
-        error make {msg: (render_yzx_core_error $config_surface $result.stderr)}
-    }
-
-    $result
+    run_yzx_core_command_with_error_surface $runtime_dir $config_surface $helper_args
 }
 
 def parse_yazelix_config_with_rust [
