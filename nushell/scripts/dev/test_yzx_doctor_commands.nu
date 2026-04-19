@@ -187,14 +187,7 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
         )
         $stale_config | to toml | save --force $fixture.config_path
 
-        let output = with-env {
-            HOME: $fixture.tmp_home
-            XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
-            YAZELIX_CONFIG_DIR: $fixture.config_dir
-            YAZELIX_RUNTIME_DIR: $fixture.repo_root
-        } {
-            ^nu -c $"use \"($fixture.yzx_script)\" *; yzx doctor --verbose" | complete
-        }
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose")
         let stdout = ($output.stdout | str trim)
 
         if (
@@ -210,6 +203,43 @@ def test_yzx_doctor_warns_on_stale_config_fields [] {
             false
         }
     } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: doctor should surface Rust-owned config.normalize validation failures instead of only the old Nu schema subset.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_reports_rust_owned_range_validation [] {
+    print "🧪 Testing yzx doctor reports Rust-owned range validation findings..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_range_validation"
+        '[editor]
+sidebar_width_percent = 99
+'
+    )
+
+    let result = (try {
+        let output = (run_doctor_command_for_fixture $fixture "yzx doctor --verbose")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Stale or unsupported yazelix.toml entries detected")
+            and ($stdout | str contains "Invalid config value at editor.sidebar_width_percent")
+            and ($stdout | str contains "Expected an integer from 10 to 40")
+        ) {
+            print "  ✅ yzx doctor now reports Rust-owned config.normalize validation findings through the shared config report path"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
         print $"  ❌ Exception: ($err.msg)"
         false
     })
@@ -879,6 +909,7 @@ def test_yzx_doctor_omits_installer_artifact_checks_in_runtime_root_only_mode []
 export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
+        (test_yzx_doctor_reports_rust_owned_range_validation)
         (test_yzx_doctor_json_reports_structured_findings)
         (test_yzx_doctor_json_rejects_fix_mode)
         (test_yzx_doctor_reports_stale_desktop_entry_exec)

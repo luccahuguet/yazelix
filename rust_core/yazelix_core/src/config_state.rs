@@ -61,6 +61,7 @@ pub fn compute_config_state(
         config_path: request.config_path.clone(),
         default_config_path: request.default_config_path.clone(),
         contract_path: request.contract_path.clone(),
+        include_missing: false,
     })?;
     let raw_config = read_toml_table(&request.config_path, "read_config")?;
     let contract = read_toml_table(&request.contract_path, "read_config_contract")?;

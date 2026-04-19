@@ -3,7 +3,8 @@
 
 use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_state_dir require_yazelix_runtime_dir]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface reconcile_primary_config_surfaces]
-use config_diagnostics.nu [build_config_diagnostic_report render_doctor_config_details]
+use config_diagnostics.nu [build_config_diagnostic_report]
+use config_report_rendering.nu [render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
 use doctor_helix.nu [
     check_helix_runtime_conflicts

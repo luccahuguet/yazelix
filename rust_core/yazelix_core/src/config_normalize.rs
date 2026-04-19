@@ -13,6 +13,7 @@ pub struct NormalizeConfigRequest {
     pub config_path: PathBuf,
     pub default_config_path: PathBuf,
     pub contract_path: PathBuf,
+    pub include_missing: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -75,8 +76,13 @@ pub fn normalize_config(
     let fields = load_contract_fields(&contract)?;
     let config_file = request.config_path.to_string_lossy().to_string();
 
-    let diagnostic_report =
-        build_diagnostic_report(&config, &default_config, &fields, &request.config_path)?;
+    let diagnostic_report = build_diagnostic_report(
+        &config,
+        &default_config,
+        &fields,
+        &request.config_path,
+        request.include_missing,
+    )?;
     if diagnostic_report.has_blocking {
         return Err(CoreError::classified(
             ErrorClass::Config,
@@ -220,6 +226,7 @@ fn build_diagnostic_report(
     default_config: &toml::Table,
     fields: &BTreeMap<String, ContractField>,
     config_path: &Path,
+    include_missing: bool,
 ) -> Result<ConfigDiagnosticReport, CoreError> {
     let mut reference = TomlValue::Table(default_config.clone());
     for field in fields.values() {
@@ -240,7 +247,9 @@ fn build_diagnostic_report(
 
     let findings = if should_validate_like_startup {
         let mut findings = compare_configs(&reference, &TomlValue::Table(user_config.clone()), &[]);
-        findings.retain(|finding| finding.kind != "missing_field");
+        if !include_missing {
+            findings.retain(|finding| finding.kind != "missing_field");
+        }
         findings.extend(validate_enum_values(user_config, fields));
         findings
     } else {
@@ -764,6 +773,7 @@ mod tests {
             config_path,
             default_config_path: repo.join("yazelix_default.toml"),
             contract_path: repo.join("config_metadata/main_config_contract.toml"),
+            include_missing: false,
         }
     }
 
@@ -831,5 +841,26 @@ mod tests {
             details["blocking_diagnostics"][0]["headline"],
             "Unsupported config value at shell.default_shell"
         );
+    }
+
+    // Regression: doctor-style config reports can request missing fields explicitly without changing startup defaults.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn includes_missing_fields_when_requested() {
+        let path = write_user_config("[shell]\ndefault_shell = \"nu\"\n");
+        let mut request = request_for(path);
+        request.include_missing = true;
+
+        let data = normalize_config(&request).unwrap();
+        let report = data.diagnostic_report;
+        let missing_field = report
+            .schema_diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.status == "missing_field")
+            .expect("missing field diagnostic");
+
+        assert!(report.issue_count > 0);
+        assert_eq!(missing_field.status, "missing_field");
+        assert!(missing_field.headline.starts_with("Missing config field at "));
     }
 }

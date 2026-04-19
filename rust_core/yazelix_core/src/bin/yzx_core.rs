@@ -117,6 +117,7 @@ fn run_config_normalize(mut parser: lexopt::Parser) -> Result<(), CoreError> {
     let mut config_path: Option<PathBuf> = None;
     let mut default_config_path: Option<PathBuf> = None;
     let mut contract_path: Option<PathBuf> = None;
+    let mut include_missing = false;
 
     while let Some(arg) = parser
         .next()
@@ -126,6 +127,7 @@ fn run_config_normalize(mut parser: lexopt::Parser) -> Result<(), CoreError> {
             Long("config") => config_path = Some(parser_path_value(&mut parser)?),
             Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
             Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
+            Long("include-missing") => include_missing = true,
             _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
         }
     }
@@ -135,6 +137,7 @@ fn run_config_normalize(mut parser: lexopt::Parser) -> Result<(), CoreError> {
         default_config_path: default_config_path
             .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
         contract_path: contract_path.ok_or_else(|| CoreError::usage("Missing --contract path"))?,
+        include_missing,
     };
     let data = normalize_config(&request)?;
     write_success_envelope(CONFIG_NORMALIZE_COMMAND, data)
