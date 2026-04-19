@@ -2,7 +2,7 @@
 # Test lane: default
 # Defends: docs/specs/test_suite_governance.md
 
-use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_core_bin setup_managed_config_fixture]
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/config_state.nu [record_materialized_state]
@@ -12,26 +12,6 @@ use ../utils/terminal_launcher.nu [build_launch_command resolve_terminal_config]
 use ../utils/terminal_configs.nu [
     generate_all_terminal_configs
 ]
-
-def resolve_test_yzx_core_bin [] {
-    let explicit = ($env.YAZELIX_YZX_CORE_BIN? | default "" | into string | str trim)
-    if ($explicit | is-not-empty) and (($explicit | path expand) | path exists) {
-        return ($explicit | path expand)
-    }
-
-    for candidate in [
-        (repo_path "rust_core" "target" "release" "yzx_core")
-        (repo_path "rust_core" "target" "debug" "yzx_core")
-    ] {
-        if ($candidate | path exists) {
-            return $candidate
-        }
-    }
-
-    error make {
-        msg: "Generated-config tests need a built yzx_core helper. Enter the maintainer shell or set YAZELIX_YZX_CORE_BIN to a built yzx_core binary."
-    }
-}
 
 def run_parse_yazelix_config_probe [fixture: record, extra_env: record = {}] {
     with-env ({

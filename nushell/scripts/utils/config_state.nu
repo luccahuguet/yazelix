@@ -1,74 +1,13 @@
 #!/usr/bin/env nu
 # Config state tracking for Yazelix
 
-use ./config_parser.nu parse_yazelix_config
-use ./atomic_writes.nu write_text_atomic
-use ./config_contract.nu [get_main_config_rebuild_required_paths]
-use ./common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
-use ./config_surfaces.nu [load_active_config_surface get_main_user_config_path normalize_config_surface_path]
-
-# Extract a nested key from a record using dot notation (e.g., "shell.default_shell")
-def get_nested_key [record: record, key: string] {
-    let parts = ($key | split row ".")
-    mut value = $record
-    for part in $parts {
-        $value = ($value | get -o $part)
-        if ($value == null) {
-            return null
-        }
-    }
-    $value
-}
-
-# Set a nested key in a record using dot notation
-def set_nested_key [record: record, key: string, value: any] {
-    let parts = ($key | split row ".")
-    if ($parts | length) == 1 {
-        return ($record | upsert ($parts | first) $value)
-    }
-
-    let first = ($parts | first)
-    let rest = ($parts | skip 1 | str join ".")
-    let nested = ($record | get -o $first | default {})
-
-    $record | upsert $first (set_nested_key $nested $rest $value)
-}
-
-# Extract only rebuild-required keys from full config
-def extract_rebuild_config [config: record] {
-    mut rebuild_config = {}
-    let rebuild_required_keys = (get_main_config_rebuild_required_paths)
-
-    for key in $rebuild_required_keys {
-        let value = (get_nested_key $config $key)
-        if ($value != null) {
-            $rebuild_config = (set_nested_key $rebuild_config $key $value)
-        }
-    }
-
-    $rebuild_config
-}
+use ./config_parser.nu [render_yzx_core_error resolve_yzx_core_helper_path]
+use ./common.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
+use ./config_contract.nu MAIN_CONFIG_CONTRACT_RELATIVE_PATH
+use ./config_surfaces.nu [load_active_config_surface get_main_user_config_path]
 
 def get_materialized_state_path [] {
     (get_yazelix_state_dir | path join "state" "rebuild_hash")
-}
-
-def load_recorded_materialized_state [] {
-    let materialized_state_path = (get_materialized_state_path)
-    if not ($materialized_state_path | path exists) {
-        return null
-    }
-
-    let raw_state = (open --raw $materialized_state_path | str trim)
-    if ($raw_state | is-empty) {
-        return null
-    }
-
-    try {
-        $raw_state | from json
-    } catch {
-        $raw_state
-    }
 }
 
 # Compute active config hash and track whether generated runtime state needs repair.
@@ -76,136 +15,88 @@ def load_recorded_materialized_state [] {
 # Returns a record with:
 #   config: parsed Yazelix configuration
 #   config_file: path to the active config file
-#   needs_refresh: true when the hash changed since last launch
-#   current_hash: sha256 of rebuild-required config (empty string if missing)
+#   needs_refresh: true when the materialized generated state is stale
+#   config_hash: sha256 of rebuild-required config
+#   runtime_hash: sha256 of the active runtime identity
+#   combined_hash: sha256 of config_hash + runtime_hash
 #   cached_hash: previously stored hash (empty if none)
 export def compute_config_state [] {
     let config_surface = (load_active_config_surface)
-    let config = parse_yazelix_config
-    let config_file = $config.config_file
-
     let materialized_state_path = (get_materialized_state_path)
     let materialized_state_dir = ($materialized_state_path | path dirname)
     if not ($materialized_state_dir | path exists) {
         mkdir $materialized_state_dir
     }
-
-    let config_hash = if ($config_file | is-empty) or (not ($config_file | path exists)) {
-        ""
-    } else {
-        let rebuild_config = (extract_rebuild_config $config_surface.merged_config)
-        let normalized = ($rebuild_config | to toml)
-        $normalized | hash sha256
-    }
-
-    let yazelix_dir = get_yazelix_runtime_dir
-    let runtime_hash = (
-        $yazelix_dir
-        | path expand
-        | hash sha256
+    let runtime_dir = require_yazelix_runtime_dir
+    let helper_path = resolve_yzx_core_helper_path $runtime_dir
+    let config_path = $config_surface.config_file
+    let default_config_path = $config_surface.default_config_path
+    let contract_path = ($runtime_dir | path join $MAIN_CONFIG_CONTRACT_RELATIVE_PATH)
+    let helper_args = [
+        "config-state.compute"
+        "--config"
+        $config_path
+        "--default-config"
+        $default_config_path
+        "--contract"
+        $contract_path
+        "--runtime-dir"
+        $runtime_dir
+        "--state-path"
+        $materialized_state_path
+    ]
+    let result = (
+        do {
+            ^$helper_path ...$helper_args
+        } | complete
     )
 
-    let combined_hash = [$config_hash, $runtime_hash]
-        | str join ":"
-        | hash sha256
-
-    let cached_state = (load_recorded_materialized_state)
-
-    let cached_state_type = ($cached_state | describe)
-    let cached_hash = if $cached_state_type == "string" {
-        $cached_state
-    } else {
-        ""
+    if $result.exit_code != 0 {
+        error make {msg: (render_yzx_core_error $config_surface $result.stderr)}
     }
 
-    let has_structured_cache = ($cached_state_type | str starts-with "record")
-    let cached_config_hash = if $has_structured_cache {
-        $cached_state | get -o config_hash | default ""
-    } else {
-        ""
-    }
-    let cached_runtime_hash = if $has_structured_cache {
-        $cached_state | get -o runtime_hash | default ""
-    } else {
-        ""
-    }
-    let config_changed = if $has_structured_cache {
-        $config_hash != $cached_config_hash
-    } else {
-        false
-    }
-    let inputs_changed = if $has_structured_cache {
-        $runtime_hash != $cached_runtime_hash
-    } else {
-        false
+    let envelope = (
+        try {
+            $result.stdout | from json
+        } catch {|err|
+            error make {msg: $"Yazelix Rust config-state helper returned invalid JSON.\n($err.msg)"}
+        }
+    )
+
+    if (($envelope.status? | default "") != "ok") {
+        error make {msg: (render_yzx_core_error $config_surface ($result.stdout | default ""))}
     }
 
-    let inputs_require_refresh = if $has_structured_cache {
-        $config_changed or $inputs_changed
-    } else if ($cached_hash | is-not-empty) {
-        $combined_hash != $cached_hash
-    } else {
-        true
-    }
-    let needs_refresh = $inputs_require_refresh
-
-    let refresh_reason = if not $needs_refresh {
-        ""
-    } else if $inputs_require_refresh and (not $has_structured_cache) {
-        "config or runtime inputs changed since last generated-state repair"
-    } else if $inputs_require_refresh and $config_changed and $inputs_changed {
-        "config and runtime inputs changed since last generated-state repair"
-    } else if $inputs_require_refresh and $config_changed {
-        "config changed since last generated-state repair"
-    } else if $inputs_require_refresh and $inputs_changed {
-        "runtime inputs changed since last generated-state repair"
-    } else {
-        "config or runtime inputs changed since last generated-state repair"
-    }
-
-    {
-        config: $config
-        config_file: $config_file
-        needs_refresh: $needs_refresh
-        refresh_reason: $refresh_reason
-        config_changed: $config_changed
-        inputs_changed: $inputs_changed
-        inputs_require_refresh: $inputs_require_refresh
-        config_hash: $config_hash
-        runtime_hash: $runtime_hash
-        combined_hash: $combined_hash
-        cached_hash: $cached_hash
-    }
+    $envelope.data
 }
 
 # Record that the current config/runtime inputs have been materialized into the
 # canonical Yazelix build state for the default managed config surface.
 export def record_materialized_state [state: record] {
     let config_file = ($state.config_file? | default "")
-    let default_config = (normalize_config_surface_path (get_main_user_config_path))
-    let normalized_config_file = if ($config_file | is-not-empty) {
-        normalize_config_surface_path $config_file
-    } else {
-        ""
-    }
-    let default_config_dir = ($default_config | path dirname)
-    let default_config_name = ($default_config | path basename)
-    let is_default_managed_surface = (
-        ($normalized_config_file == $default_config)
-        or (
-            ($normalized_config_file | is-not-empty)
-            and (($normalized_config_file | path dirname) == $default_config_dir)
-            and (($normalized_config_file | path basename) == $default_config_name)
-        )
-    )
-    if ($config_file | is-not-empty) and (not $is_default_managed_surface) {
-        return
-    }
-
+    let runtime_dir = require_yazelix_runtime_dir
+    let helper_path = resolve_yzx_core_helper_path $runtime_dir
     let materialized_state_path = (get_materialized_state_path)
-    let cache_record = {
-        config_hash: ($state.config_hash? | default "")
-        runtime_hash: ($state.runtime_hash? | default "")
+    let helper_args = [
+        "config-state.record"
+        "--config-file"
+        $config_file
+        "--managed-config"
+        (get_main_user_config_path)
+        "--state-path"
+        $materialized_state_path
+        "--config-hash"
+        ($state.config_hash? | default "")
+        "--runtime-hash"
+        ($state.runtime_hash? | default "")
+    ]
+    let result = (
+        do {
+            ^$helper_path ...$helper_args
+        } | complete
+    )
+
+    if $result.exit_code != 0 {
+        error make {msg: (render_yzx_core_error {display_config_path: $config_file} $result.stderr)}
     }
-    write_text_atomic $materialized_state_path ($cache_record | to json) --raw | ignore
 }

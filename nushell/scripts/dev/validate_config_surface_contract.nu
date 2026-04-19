@@ -2,6 +2,7 @@
 
 use ../utils/config_contract.nu load_main_config_contract
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
+use ./yzx_test_helpers.nu resolve_test_yzx_core_bin
 
 const REPO_ROOT = (path self | path dirname | path dirname | path dirname | path dirname)
 const MAIN_TEMPLATE_PATH = ($REPO_ROOT | path join "yazelix_default.toml")
@@ -249,6 +250,7 @@ def compute_fixture_state [fixture: record, runtime_root: string] {
         YAZELIX_RUNTIME_DIR: $runtime_root
         YAZELIX_CONFIG_DIR: $fixture.config_root
         HOME: $fixture.home_root
+        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     } {
         compute_config_state
     }
@@ -259,6 +261,7 @@ def record_fixture_state [fixture: record, state: record, runtime_root: string] 
         YAZELIX_RUNTIME_DIR: $runtime_root
         YAZELIX_CONFIG_DIR: $fixture.config_root
         HOME: $fixture.home_root
+        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
     } {
         record_materialized_state $state
     }

@@ -57,7 +57,7 @@ def get_source_checkout_yzx_core_helper_path [runtime_dir: string] {
     null
 }
 
-def resolve_yzx_core_helper_path [runtime_dir: string] {
+export def resolve_yzx_core_helper_path [runtime_dir: string] {
     let runtime_helper_path = (get_runtime_yzx_core_helper_path $runtime_dir)
     if ($runtime_helper_path | path exists) {
         return $runtime_helper_path
@@ -84,7 +84,7 @@ def resolve_yzx_core_helper_path [runtime_dir: string] {
     }
 }
 
-def render_yzx_core_error [config_surface: record, stderr: string] {
+export def render_yzx_core_error [config_surface: record, stderr: string] {
     let trimmed_stderr = ($stderr | default "" | str trim)
     let envelope = (
         try {

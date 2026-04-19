@@ -1,10 +1,13 @@
 use lexopt::prelude::*;
 use std::path::PathBuf;
 use yazelix_core::{
-    CoreError, NormalizeConfigRequest, error_envelope, normalize_config, success_envelope,
+    ComputeConfigStateRequest, CoreError, NormalizeConfigRequest, RecordConfigStateRequest,
+    compute_config_state, error_envelope, normalize_config, record_config_state, success_envelope,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
+const CONFIG_STATE_COMPUTE_COMMAND: &str = "config-state.compute";
+const CONFIG_STATE_RECORD_COMMAND: &str = "config-state.record";
 const UNKNOWN_COMMAND: &str = "unknown";
 
 struct CommandError {
@@ -65,6 +68,16 @@ fn run() -> Result<(), Box<CommandError>> {
             run_config_normalize(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
+        CONFIG_STATE_COMPUTE_COMMAND => {
+            let command_for_error = command.clone();
+            run_config_state_compute(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        CONFIG_STATE_RECORD_COMMAND => {
+            let command_for_error = command.clone();
+            run_config_state_record(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
         _ => Err(CommandError::new(
             command.clone(),
             CoreError::usage(format!("Unsupported helper command: {command}")),
@@ -82,30 +95,9 @@ fn run_config_normalize(mut parser: lexopt::Parser) -> Result<(), CoreError> {
         .map_err(|error| CoreError::usage(error.to_string()))?
     {
         match arg {
-            Long("config") => {
-                config_path = Some(
-                    parser
-                        .value()
-                        .map_err(|error| CoreError::usage(error.to_string()))?
-                        .into(),
-                );
-            }
-            Long("default-config") => {
-                default_config_path = Some(
-                    parser
-                        .value()
-                        .map_err(|error| CoreError::usage(error.to_string()))?
-                        .into(),
-                );
-            }
-            Long("contract") => {
-                contract_path = Some(
-                    parser
-                        .value()
-                        .map_err(|error| CoreError::usage(error.to_string()))?
-                        .into(),
-                );
-            }
+            Long("config") => config_path = Some(parser_path_value(&mut parser)?),
+            Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
+            Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
             _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
         }
     }
@@ -117,7 +109,93 @@ fn run_config_normalize(mut parser: lexopt::Parser) -> Result<(), CoreError> {
         contract_path: contract_path.ok_or_else(|| CoreError::usage("Missing --contract path"))?,
     };
     let data = normalize_config(&request)?;
-    let envelope = success_envelope(CONFIG_NORMALIZE_COMMAND, data);
+    write_success_envelope(CONFIG_NORMALIZE_COMMAND, data)
+}
+
+fn run_config_state_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let mut config_path: Option<PathBuf> = None;
+    let mut default_config_path: Option<PathBuf> = None;
+    let mut contract_path: Option<PathBuf> = None;
+    let mut runtime_dir: Option<PathBuf> = None;
+    let mut state_path: Option<PathBuf> = None;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("config") => config_path = Some(parser_path_value(&mut parser)?),
+            Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
+            Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
+            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
+            Long("state-path") => state_path = Some(parser_path_value(&mut parser)?),
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    let request = ComputeConfigStateRequest {
+        config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
+        default_config_path: default_config_path
+            .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
+        contract_path: contract_path.ok_or_else(|| CoreError::usage("Missing --contract path"))?,
+        runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
+        state_path: state_path.ok_or_else(|| CoreError::usage("Missing --state-path path"))?,
+    };
+    let data = compute_config_state(&request)?;
+    write_success_envelope(CONFIG_STATE_COMPUTE_COMMAND, data)
+}
+
+fn run_config_state_record(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let mut config_file: Option<String> = None;
+    let mut managed_config_path: Option<PathBuf> = None;
+    let mut state_path: Option<PathBuf> = None;
+    let mut config_hash: Option<String> = None;
+    let mut runtime_hash: Option<String> = None;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("config-file") => config_file = Some(parser_string_value(&mut parser)?),
+            Long("managed-config") => managed_config_path = Some(parser_path_value(&mut parser)?),
+            Long("state-path") => state_path = Some(parser_path_value(&mut parser)?),
+            Long("config-hash") => config_hash = Some(parser_string_value(&mut parser)?),
+            Long("runtime-hash") => runtime_hash = Some(parser_string_value(&mut parser)?),
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    let request = RecordConfigStateRequest {
+        config_file: config_file.ok_or_else(|| CoreError::usage("Missing --config-file path"))?,
+        managed_config_path: managed_config_path
+            .ok_or_else(|| CoreError::usage("Missing --managed-config path"))?,
+        state_path: state_path.ok_or_else(|| CoreError::usage("Missing --state-path path"))?,
+        config_hash: config_hash.ok_or_else(|| CoreError::usage("Missing --config-hash value"))?,
+        runtime_hash: runtime_hash
+            .ok_or_else(|| CoreError::usage("Missing --runtime-hash value"))?,
+    };
+    let data = record_config_state(&request)?;
+    write_success_envelope(CONFIG_STATE_RECORD_COMMAND, data)
+}
+
+fn parser_path_value(parser: &mut lexopt::Parser) -> Result<PathBuf, CoreError> {
+    Ok(parser
+        .value()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+        .into())
+}
+
+fn parser_string_value(parser: &mut lexopt::Parser) -> Result<String, CoreError> {
+    parser
+        .value()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+        .into_string()
+        .map_err(|_| CoreError::usage("Argument value must be valid UTF-8"))
+}
+
+fn write_success_envelope<T: serde::Serialize>(command: &str, data: T) -> Result<(), CoreError> {
+    let envelope = success_envelope(command, data);
     serde_json::to_writer(std::io::stdout(), &envelope).map_err(|source| {
         CoreError::io(
             "write_stdout",

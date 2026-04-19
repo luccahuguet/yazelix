@@ -83,3 +83,73 @@ fn unsupported_command_reports_requested_command_in_error_envelope() {
     assert_eq!(envelope["error"]["class"], "usage");
     assert_eq!(envelope["error"]["code"], "invalid_arguments");
 }
+
+#[test]
+fn config_state_compute_prints_machine_readable_state_envelope() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let state_path = tmp.path().join("state/rebuild_hash");
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("config-state.compute")
+        .arg("--config")
+        .arg(repo.join("yazelix_default.toml"))
+        .arg("--default-config")
+        .arg(repo.join("yazelix_default.toml"))
+        .arg("--contract")
+        .arg(repo.join("config_metadata/main_config_contract.toml"))
+        .arg("--runtime-dir")
+        .arg(&repo)
+        .arg("--state-path")
+        .arg(&state_path)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["schema_version"], 1);
+    assert_eq!(envelope["command"], "config-state.compute");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(envelope["data"]["config"]["default_shell"], "nu");
+    assert_eq!(
+        envelope["data"]["config_hash"],
+        "2f7b0e3920d8a8862d243edcc6c39867042e88390a8b16546783d1482dcb6988"
+    );
+    assert_eq!(envelope["data"]["needs_refresh"], true);
+}
+
+#[test]
+fn config_state_record_writes_only_managed_surface_state() {
+    let tmp = tempdir().unwrap();
+    let managed_config = tmp.path().join("config/user_configs/yazelix.toml");
+    let state_path = tmp.path().join("state/rebuild_hash");
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("config-state.record")
+        .arg("--config-file")
+        .arg(&managed_config)
+        .arg("--managed-config")
+        .arg(&managed_config)
+        .arg("--state-path")
+        .arg(&state_path)
+        .arg("--config-hash")
+        .arg("cfg")
+        .arg("--runtime-hash")
+        .arg("runtime")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "config-state.record");
+    assert_eq!(envelope["data"]["recorded"], true);
+    let recorded: Value = serde_json::from_str(&fs::read_to_string(state_path).unwrap()).unwrap();
+    assert_eq!(
+        recorded,
+        serde_json::json!({"config_hash":"cfg","runtime_hash":"runtime"})
+    );
+}
