@@ -25,14 +25,8 @@ const static_fragment_specs = [
 ]
 
 export def render_widget_tray_segment [widget_tray: list<string>]: nothing -> string {
-    let allowed = ["editor", "shell", "term", "cpu", "ram"]
     mut parts = []
     for widget in $widget_tray {
-        if not ($widget in $allowed) {
-            let allowed_str = ($allowed | str join ", ")
-            print $"❌ Invalid zellij.widget_tray entry: ($widget) \(allowed: ($allowed_str)\)"
-            exit 1
-        }
         let part = match $widget {
             "editor" => "#[fg=#00ff88,bold][editor: {command_editor}]"
             "shell" => "#[fg=#00ff88,bold][shell: {command_shell}]"
@@ -98,30 +92,6 @@ def apply_static_fragments [
     $updated
 }
 
-def compute_sidebar_layout_percentages [sidebar_width_percent: int]: nothing -> record {
-    if ($sidebar_width_percent < 10) or ($sidebar_width_percent > 40) {
-        print $"❌ Invalid sidebar width percent: ($sidebar_width_percent) \(expected 10 to 40\)"
-        exit 1
-    }
-
-    let open_content_width_percent = (100 - $sidebar_width_percent)
-    let open_primary_width_percent = (($open_content_width_percent * 3) // 5)
-    let open_secondary_width_percent = ($open_content_width_percent - $open_primary_width_percent)
-    let closed_content_width_percent = 99
-    let closed_primary_width_percent = (($closed_content_width_percent * 3) // 5)
-    let closed_secondary_width_percent = ($closed_content_width_percent - $closed_primary_width_percent)
-
-    {
-        sidebar_width_percent: $"($sidebar_width_percent)%"
-        open_content_width_percent: $"($open_content_width_percent)%"
-        open_primary_width_percent: $"($open_primary_width_percent)%"
-        open_secondary_width_percent: $"($open_secondary_width_percent)%"
-        closed_content_width_percent: $"($closed_content_width_percent)%"
-        closed_primary_width_percent: $"($closed_primary_width_percent)%"
-        closed_secondary_width_percent: $"($closed_secondary_width_percent)%"
-    }
-}
-
 # Copy a layout file to the target directory
 # Parameters:
 #   source_layout: path to the template layout file
@@ -135,11 +105,10 @@ def generate_layout [
     pane_orchestrator_plugin_url: string
     zjstatus_plugin_url: string
     runtime_dir: string
-    sidebar_width_percent: int
+    layout_percentages: record
 ]: nothing -> nothing {
     let content = (open ($source_layout | path expand))
     mut updated = apply_static_fragments $content $static_fragments
-    let layout_percentages = (compute_sidebar_layout_percentages $sidebar_width_percent)
     let home_dir = (
         if (($env.HOME? | default "") | is-not-empty) {
             $env.HOME | path expand
@@ -205,7 +174,7 @@ export def generate_all_layouts [
     pane_orchestrator_plugin_url: string
     zjstatus_plugin_url: string
     runtime_dir: string
-    sidebar_width_percent: int
+    layout_percentages: record
 ]: nothing -> nothing {
     let source_root = ($layouts_source_dir | path expand)
     # Ensure target directory exists
@@ -238,7 +207,7 @@ export def generate_all_layouts [
         let target = ($layouts_target_dir | path join $file)
 
         if ($source | path exists) {
-            generate_layout $source $target $widget_tray $custom_text $static_fragments $pane_orchestrator_plugin_url $zjstatus_plugin_url $runtime_dir $sidebar_width_percent
+            generate_layout $source $target $widget_tray $custom_text $static_fragments $pane_orchestrator_plugin_url $zjstatus_plugin_url $runtime_dir $layout_percentages
             print $"Generated layout: ($target)"
         }
     }

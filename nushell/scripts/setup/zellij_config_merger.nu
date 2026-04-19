@@ -21,9 +21,9 @@ use ./zellij_generation_state.nu [
 use ./zellij_owned_settings.nu [
     build_yazelix_ui_block
     render_yazelix_top_level_settings_block
-    resolve_yazelix_owned_zellij_settings
     strip_yazelix_owned_top_level_settings
 ]
+use ../utils/zellij_render_plan.nu [compute_zellij_render_plan]
 use ./zellij_semantic_blocks.nu [
     build_merged_keybinds_block
     build_yazelix_load_plugins_block
@@ -56,14 +56,8 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     let merged_config_path = ($merged_config_dir | path join "config.kdl")
     let yazelix_layout_dir = $"($merged_config_dir)/layouts"
     let config = parse_yazelix_config
-    let widget_tray = ($config.zellij_widget_tray? | default ["editor", "shell", "term", "cpu", "ram"])
-    let custom_text = ($config.zellij_custom_text? | default "")
     let default_shell = ($config.default_shell? | default $DEFAULT_SHELL)
     let resolved_default_shell = (resolve_zellij_default_shell $yazelix_dir $default_shell)
-    let default_layout_name = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
-    let sidebar_width_percent = ($config.sidebar_width_percent? | default 20)
-    let popup_width_percent = ($config.popup_width_percent? | default 90)
-    let popup_height_percent = ($config.popup_height_percent? | default 90)
     let source_layouts_dir = $"($yazelix_dir)/($ZELLIJ_CONFIG_PATHS.layouts_dir)"
     let pane_orchestrator_plugin_url = $PANE_ORCHESTRATOR_PLUGIN_ALIAS
     let plugin_artifacts = (profile_startup_step "zellij_config" "resolve_plugin_artifacts" {
@@ -105,6 +99,16 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         return $merged_config_path
     }
 
+    let render_plan = (compute_zellij_render_plan $yazelix_dir $config $yazelix_layout_dir $resolved_default_shell)
+    let widget_tray = $render_plan.widget_tray
+    let custom_text = $render_plan.custom_text
+    let resolved_owned_settings = {
+        rounded_value: $render_plan.rounded_value
+        dynamic_top_level_settings: $render_plan.dynamic_top_level_settings
+        enforced_top_level_settings: $render_plan.enforced_top_level_settings
+        owned_top_level_setting_names: $render_plan.owned_top_level_setting_names
+    }
+
     describe_base_config_source $base_config_source
     print "🔄 Regenerating Zellij configuration..."
 
@@ -124,13 +128,6 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     })
     let widget_tray_segment = (render_widget_tray_segment $widget_tray)
     let custom_text_segment = (render_custom_text_segment $custom_text)
-    let resolved_owned_settings = (
-        resolve_yazelix_owned_zellij_settings
-            $config
-            $resolved_default_shell
-            $yazelix_layout_dir
-            $default_layout_name
-    )
 
     let target_layouts_dir = $"($merged_config_dir)/layouts"
     if ($source_layouts_dir | path exists) {
@@ -139,7 +136,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
             print $"ℹ️  zjstatus custom text badge: '($custom_text)'"
         }
         profile_startup_step "zellij_config" "generate_layouts" {
-            layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $custom_text $pane_orchestrator_plugin_url $zjstatus_plugin_url $yazelix_dir $sidebar_width_percent
+            layout_generator generate_all_layouts $source_layouts_dir $target_layouts_dir $widget_tray $custom_text $pane_orchestrator_plugin_url $zjstatus_plugin_url $yazelix_dir $render_plan.layout_percentages
         }
     }
 
@@ -151,11 +148,7 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
     # options, so Yazelix must strip and replace the settings it owns.
     let dynamic_top_level_settings = $resolved_owned_settings.dynamic_top_level_settings
     let enforced_top_level_settings = $resolved_owned_settings.enforced_top_level_settings
-    let owned_top_level_setting_names = (
-        $dynamic_top_level_settings
-        | append $enforced_top_level_settings
-        | get name
-    )
+    let owned_top_level_setting_names = $resolved_owned_settings.owned_top_level_setting_names
     let base_config = (
         strip_yazelix_owned_top_level_settings
             $extracted_blocks.config_without_semantic_blocks
@@ -185,10 +178,10 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
             $pane_orchestrator_wasm_path
             $widget_tray_segment
             $custom_text_segment
-            $sidebar_width_percent
+            $render_plan.sidebar_width_percent
             $yazelix_dir
-            $popup_width_percent
-            $popup_height_percent
+            $render_plan.popup_width_percent
+            $render_plan.popup_height_percent
         ),
         "",
         $merged_ui_block,
