@@ -159,6 +159,33 @@ Likely v16-or-later scope:
 
 This means `yazelix-kt5.4` is worth doing now only as a narrow helper-backed insertion plan. A full launch/bootstrap rewrite should remain deferred unless the smaller slices prove enough value to justify it.
 
+### 2026-04-19 Audit Outcome
+
+Follow-up audit `yazelix-fjty` reviewed the live launch/startup owners after `runtime-env.compute` landed:
+
+- `nushell/scripts/core/launch_yazelix.nu`
+- `nushell/scripts/utils/terminal_launcher.nu`
+- `nushell/scripts/core/start_yazelix.nu`
+- `nushell/scripts/core/start_yazelix_inner.nu`
+- `nushell/scripts/yzx/launch.nu`
+- `nushell/scripts/yzx/env.nu`
+- `nushell/scripts/yzx/run.nu`
+- `shells/posix/start_yazelix.sh`
+- `shells/posix/runtime_env.sh`
+
+Conclusion for v15.x:
+
+- working-directory and runtime-script validation is already owned by `runtime-contract.evaluate`
+- canonical runtime env planning is already owned by `runtime-env.compute`
+- the surviving launch/startup code is now mostly terminal config generation, host command detection, shell quoting, detached terminal execution, startup-profile wiring, generated-state refresh, and Zellij handoff
+
+Those remaining owners are too shell-bound and orchestration-heavy to justify another v15.x Rust helper. The default decision after this audit is to stop the launch/bootstrap Rust rewrite here for v15.x.
+
+Reopen this track only if a later bug or contract change exposes one more shared deterministic decision layer that is both:
+
+- clearly smaller than the surrounding execution path
+- able to delete real Nushell logic instead of adding another bridge around shell-string assembly or host process control
+
 ## Non-goals
 
 - reintroducing `devenv_backend`, `launch_state`, launch-profile reuse, or public `yzx refresh`
@@ -198,5 +225,5 @@ This means `yazelix-kt5.4` is worth doing now only as a narrow helper-backed ins
 ## Open Questions
 
 - Should `runtime-env.compute` accept one JSON request payload like `runtime-contract.evaluate`, or should it stay on explicit flags because the input record is still small
-- Should a later launch-request planning slice be worth doing in v15.x once the runtime-env seam is deleted, or should it stay entirely on the v16 side
+- Resolved 2026-04-19: no later launch-request planning slice is justified for v15.x with the current code shape; revisit only if a new deterministic shared seam appears
 - Should the first execution bead for this plan absorb the remaining work from `yazelix-0dra`, or should the bug and the Rust migration stay separate tracks that share tests
