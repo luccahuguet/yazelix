@@ -19,7 +19,6 @@ def get_materialized_state_path [] {
 #   config_hash: sha256 of rebuild-required config
 #   runtime_hash: sha256 of the active runtime identity
 #   combined_hash: sha256 of config_hash + runtime_hash
-#   cached_hash: previously stored hash (empty if none)
 export def compute_config_state [] {
     let config_surface = (load_active_config_surface)
     let materialized_state_path = (get_materialized_state_path)
@@ -63,11 +62,12 @@ export def compute_config_state [] {
         }
     )
 
-    if (($envelope.status? | default "") != "ok") {
+    let status = ($envelope | get -o status | default "")
+    if $status != "ok" {
         error make {msg: (render_yzx_core_error $config_surface ($result.stdout | default ""))}
     }
 
-    $envelope.data
+    $envelope | get data
 }
 
 # Record that the current config/runtime inputs have been materialized into the

@@ -210,7 +210,6 @@ def main [
     let config = $config_state.config
     let active_config_file = $config_state.config_file
     let current_hash = $config_state.combined_hash
-    let cached_hash = $config_state.cached_hash
     let needs_reload = $config_state.needs_refresh
     let legacy_nix_config = $"($home)/.config/yazelix/yazelix.nix"
     if ($legacy_nix_config | path exists) and ($legacy_nix_config != $active_config_file) {
@@ -224,7 +223,6 @@ def main [
     if $verbose_mode {
         print $"🔍 Config hash check:"
         print $"   Current:  ($current_hash)"
-        print $"   Cached:   ($cached_hash)"
         print $"   Reload:   ($needs_reload)"
     }
 

@@ -38,7 +38,6 @@ pub struct ConfigStateData {
     pub config_hash: String,
     pub runtime_hash: String,
     pub combined_hash: String,
-    pub cached_hash: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -49,7 +48,6 @@ pub struct RecordConfigStateData {
 #[derive(Debug, Clone)]
 enum CachedState {
     Missing,
-    LegacyString(String),
     Structured {
         config_hash: String,
         runtime_hash: String,
@@ -81,25 +79,20 @@ pub fn compute_config_state(
     let combined_hash = sha256_hex(&format!("{config_hash}:{runtime_hash}"));
     let cached_state = load_recorded_materialized_state(&request.state_path)?;
 
-    let cached_hash = match &cached_state {
-        CachedState::LegacyString(value) => value.clone(),
-        CachedState::Missing | CachedState::Structured { .. } => String::new(),
-    };
     let has_structured_cache = matches!(cached_state, CachedState::Structured { .. });
     let (cached_config_hash, cached_runtime_hash) = match &cached_state {
         CachedState::Structured {
             config_hash,
             runtime_hash,
         } => (config_hash.as_str(), runtime_hash.as_str()),
-        CachedState::Missing | CachedState::LegacyString(_) => ("", ""),
+        CachedState::Missing => ("", ""),
     };
 
     let config_changed = has_structured_cache && config_hash != cached_config_hash;
     let inputs_changed = has_structured_cache && runtime_hash != cached_runtime_hash;
     let inputs_require_refresh = match &cached_state {
         CachedState::Structured { .. } => config_changed || inputs_changed,
-        CachedState::LegacyString(value) if !value.is_empty() => combined_hash != *value,
-        CachedState::Missing | CachedState::LegacyString(_) => true,
+        CachedState::Missing => true,
     };
     let needs_refresh = inputs_require_refresh;
     let refresh_reason = refresh_reason(
@@ -121,7 +114,6 @@ pub fn compute_config_state(
         config_hash,
         runtime_hash,
         combined_hash,
-        cached_hash,
     })
 }
 
@@ -256,11 +248,10 @@ fn load_recorded_materialized_state(path: &Path) -> Result<CachedState, CoreErro
     }
 
     let Ok(value) = serde_json::from_str::<JsonValue>(trimmed) else {
-        return Ok(CachedState::LegacyString(trimmed.to_string()));
+        return Ok(CachedState::Missing);
     };
 
     match value {
-        JsonValue::String(value) => Ok(CachedState::LegacyString(value)),
         JsonValue::Object(record) => Ok(CachedState::Structured {
             config_hash: record
                 .get("config_hash")
@@ -273,7 +264,7 @@ fn load_recorded_materialized_state(path: &Path) -> Result<CachedState, CoreErro
                 .unwrap_or("")
                 .to_string(),
         }),
-        _ => Ok(CachedState::LegacyString(trimmed.to_string())),
+        _ => Ok(CachedState::Missing),
     }
 }
 
@@ -447,7 +438,7 @@ mod tests {
     }
 
     #[test]
-    fn computes_default_rebuild_hash_with_legacy_cache_compatibility() {
+    fn computes_default_rebuild_hash_without_recorded_state() {
         let dir = tempdir().expect("tempdir");
         let runtime_dir = repo_root();
         let state_path = dir.path().join("state/rebuild_hash");
@@ -464,18 +455,29 @@ mod tests {
             "2f7b0e3920d8a8862d243edcc6c39867042e88390a8b16546783d1482dcb6988"
         );
         assert!(state.needs_refresh);
+    }
+
+    #[test]
+    fn treats_malformed_state_cache_as_missing() {
+        let dir = tempdir().expect("tempdir");
+        let runtime_dir = repo_root();
+        let state_path = dir.path().join("state/rebuild_hash");
 
         fs::create_dir_all(state_path.parent().unwrap()).unwrap();
-        fs::write(&state_path, &state.combined_hash).unwrap();
-        let cached = compute_config_state(&request_for(
+        fs::write(&state_path, "legacy-raw-hash-or-garbage").unwrap();
+
+        let state = compute_config_state(&request_for(
             repo_root().join("yazelix_default.toml"),
             runtime_dir,
             state_path,
         ))
         .unwrap();
 
-        assert!(!cached.needs_refresh);
-        assert_eq!(cached.cached_hash, state.combined_hash);
+        assert!(state.needs_refresh);
+        assert_eq!(
+            state.refresh_reason,
+            "config or runtime inputs changed since last generated-state repair"
+        );
     }
 
     #[test]

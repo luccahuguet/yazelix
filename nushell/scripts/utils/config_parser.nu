@@ -170,11 +170,12 @@ def parse_yazelix_config_with_rust [
         }
     )
 
-    if (($envelope.status? | default "") != "ok") {
+    let status = ($envelope | get -o status | default "")
+    if $status != "ok" {
         error make {msg: (render_yzx_core_error $config_surface ($result.stdout | default ""))}
     }
 
-    $envelope.data.normalized_config
+    $envelope | get data | get normalized_config
 }
 
 # Parse yazelix configuration file and extract settings

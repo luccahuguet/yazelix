@@ -123,7 +123,7 @@ Rust should own:
 - cached materialized-state parsing
 - refresh/no-refresh classification and reason codes
 
-Parity should defend unchanged inputs, config-only changes, runtime-only changes, combined changes, ignored non-rebuild keys, missing cache, and legacy string cache handling if that compatibility still exists when the slice starts.
+Parity should defend unchanged inputs, config-only changes, runtime-only changes, combined changes, ignored non-rebuild keys, and missing or malformed cache state.
 
 ### 3. Materialization Planning And Managed Writes
 
