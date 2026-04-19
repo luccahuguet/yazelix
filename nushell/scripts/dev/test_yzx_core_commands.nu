@@ -3,6 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ../core/yazelix.nu *
+use ../utils/config_state.nu [compute_config_state record_materialized_state]
 use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
 
 const DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
@@ -12,6 +13,7 @@ def run_yzx_command_for_fixture [fixture: record, command: string, extra_env?: r
         HOME: $fixture.tmp_home
         XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
         XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
+        YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
     }
@@ -31,6 +33,7 @@ def run_yzx_command_for_fixture_in_dir [fixture: record, working_dir: string, co
         HOME: $fixture.tmp_home
         XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
         XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
+        YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
         YAZELIX_CONFIG_DIR: $fixture.config_dir
         YAZELIX_RUNTIME_DIR: $fixture.repo_root
     }
@@ -1252,6 +1255,8 @@ terminals = ["ghostty"]
             and (($summary.default_shell? | default "") == "nu")
             and (($summary.terminals? | default []) == ["ghostty"])
             and (($summary.generated_state_repair_needed? | default null) != null)
+            and (($summary.generated_state_materialization_status? | default "") | is-not-empty)
+            and (($summary.generated_state_materialization_reason? | default "") | describe) == "string"
             and (($summary.persistent_sessions? | default null) == false)
             and (($summary.session_name? | default null) == null)
         ) {
@@ -1259,6 +1264,60 @@ terminals = ["ghostty"]
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: yzx status must surface Rust-owned materialization classification, not only config-state.needs_refresh.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_status_json_reports_materialization_repair_when_artifacts_missing [] {
+    print "🧪 Testing yzx status --json reports Rust materialization repair when managed artifacts are missing..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_status_missing_managed_artifacts"
+        '[shell]
+default_shell = "nu"
+
+[terminal]
+terminals = ["ghostty"]
+'
+    )
+
+    let result = (try {
+        let base_env = {
+            HOME: $fixture.tmp_home
+            XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+            XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
+            YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        }
+        with-env $base_env {
+            let st = (compute_config_state)
+            record_materialized_state $st
+        }
+
+        let output = (run_yzx_command_for_fixture $fixture "yzx status --json")
+        let report = ($output.stdout | from json)
+        let summary = ($report.summary? | default {})
+
+        if (
+            ($output.exit_code == 0)
+            and ($summary.generated_state_repair_needed == true)
+            and (($summary.generated_state_materialization_status? | default "") == "repair_missing_artifacts")
+            and (($summary.generated_state_materialization_reason? | default "") | str contains "generated runtime artifacts missing")
+        ) {
+            print "  ✅ yzx status now reflects Rust runtime-materialization.plan when hashes are current but generated files are absent"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) summary=(($summary | to json -r)) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -1367,6 +1426,7 @@ export def run_core_canonical_tests [] {
         (test_invalid_config_is_classified_as_config_problem)
         (test_yzx_status_reports_basic_runtime_summary)
         (test_yzx_status_json_reports_typed_summary)
+        (test_yzx_status_json_reports_materialization_repair_when_artifacts_missing)
         (test_yzx_menu_catalog_tracks_live_exported_command_surface)
         (test_yzx_exported_commands_have_help_descriptions)
     ]

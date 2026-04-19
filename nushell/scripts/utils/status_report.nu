@@ -2,6 +2,8 @@
 
 use constants.nu *
 use version_info.nu [collect_version_info render_version_info]
+use common.nu require_yazelix_runtime_dir
+use generated_runtime_state.nu compute_runtime_materialization_plan
 
 def build_status_rows [summary: record] {
     let terminal_label = if (($summary.terminals? | default []) | is-empty) {
@@ -23,6 +25,8 @@ def build_status_rows [summary: record] {
         {field: "runtime_dir", value: ($summary.runtime_dir? | default "")}
         {field: "logs_dir", value: ($summary.logs_dir? | default "")}
         {field: "generated_state_repair_needed", value: (($summary.generated_state_repair_needed? | default false) | into string)}
+        {field: "generated_state_materialization_status", value: ($summary.generated_state_materialization_status? | default "")}
+        {field: "generated_state_materialization_reason", value: ($summary.generated_state_materialization_reason? | default "")}
         {field: "default_shell", value: ($summary.default_shell? | default "")}
         {field: "terminals", value: $terminal_label}
         {field: "helix_runtime", value: $helix_runtime_label}
@@ -34,17 +38,21 @@ def build_status_rows [summary: record] {
 export def collect_status_report [
     config: record
     config_state: record
-    yazelix_dir: string
+    _yazelix_runtime_dir_hint: string
     --include-versions
 ] {
     let persistent_sessions = (($config.persistent_sessions? | default "false") == "true")
+    let runtime_dir = (require_yazelix_runtime_dir)
+    let plan = (compute_runtime_materialization_plan $runtime_dir)
     let summary = {
         version: $YAZELIX_VERSION
         description: $YAZELIX_DESCRIPTION
         config_file: $config_state.config_file
-        runtime_dir: $yazelix_dir
-        logs_dir: ($yazelix_dir | path join "logs")
-        generated_state_repair_needed: ($config_state.needs_refresh? | default false)
+        runtime_dir: $runtime_dir
+        logs_dir: ($runtime_dir | path join "logs")
+        generated_state_repair_needed: ($plan.should_regenerate? | default false)
+        generated_state_materialization_status: ($plan.status? | default "")
+        generated_state_materialization_reason: ($plan.reason? | default "")
         default_shell: ($config.default_shell? | default "")
         terminals: ($config.terminals? | default [$DEFAULT_TERMINAL])
         helix_runtime: ($config.helix_runtime_path? | default null)
