@@ -13,7 +13,7 @@ def main [] {
 
     let result = (try {
         with-env (get_transient_pane_mode_env "menu") {
-            yzx menu
+            yzx menu | ignore
         }
         {ok: true}
     } catch {|err|
