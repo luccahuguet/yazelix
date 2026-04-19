@@ -230,25 +230,11 @@ nix run ~/src/yazelix#yazelix -- launch
 
 That is now the advanced/maintainer path, not the primary install story.
 
-##### macOS (Spotlight, Launchpad, Dock)
+##### macOS
 
-To integrate Yazelix with macOS launchers:
+Yazelix does not ship a macOS app-bundle launcher today. The supported macOS launch path is `yzx launch` from a terminal after installing the package via `nix profile add` or Home Manager.
 
-```bash
-# Copy the app bundle to Applications
-cp -r ~/src/yazelix/assets/macos/Yazelix.app /Applications/
-
-# Optional: Create high-quality icon
-nu ~/src/yazelix/assets/macos/create_icns.nu
-```
-
-After installation, you can:
-- Search for "Yazelix" in Spotlight (Cmd+Space)
-- Find it in Launchpad
-- Add it to your Dock
-- Set up global keyboard shortcuts in System Settings → Keyboard → Keyboard Shortcuts
-
-For detailed macOS setup and troubleshooting, see [assets/macos/README.md](../assets/macos/README.md).
+If Spotlight/Launchpad/Dock integration becomes a supported surface in the future, it will be documented here and in the [macOS support floor spec](../docs/specs/macos_support_floor.md).
 
 ### Step 8: Using Yazelix
 

@@ -98,7 +98,7 @@ For the current trimmed branch contract, see [docs/specs/v15_trimmed_runtime_con
 - **Nixless (System) Mode** – Experimental work lives on the `nixless-system-mode` branch and might never land in `main`
 
 ## Compatibility
-- **Platform**: Works on Linux and macOS
+- **Platform**: Linux and macOS — see the [macOS support floor spec](docs/specs/macos_support_floor.md) for the current guaranteed macOS surfaces
 - **Terminal**: Ghostty is built into Yazelix on Linux and macOS, while WezTerm, Kitty, and Alacritty remain supported PATH-provided alternatives and Foot remains a Linux-only PATH-provided alternative
 - **Editor**: Any editor works, with Helix and Neovim getting first-class support (reveal in sidebar, open buffer in a running instance, managed editor-pane targeting) and configuration through `[editor].command` in `yazelix.toml`
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer

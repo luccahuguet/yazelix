@@ -24,7 +24,6 @@ export def main [
         "nushell/scripts/dev"
         "nushell/scripts/dev/sweep"
         "nushell/config"
-        "assets/macos"  # includes create_icns.nu
     ]
 
     # Collect all .nu files
