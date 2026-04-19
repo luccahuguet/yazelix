@@ -10,6 +10,7 @@ use ../utils/ascii_art.nu [
     resolve_screen_style
     step_game_of_life_screen_state
 ]
+use ../utils/keypress_polling.nu poll_for_keypress_status
 
 def enter_screen_mode [] {
     print -n "\u{1b}[?1049h\u{1b}[?25l\u{1b}[2J\u{1b}[H"
@@ -27,16 +28,13 @@ def render_screen_frame [frame: list<string>] {
 }
 
 def poll_for_screen_keypress [timeout: duration] {
-    let timeout_seconds = (($timeout / 1sec) | into string)
-    let poll_script = 'read -rsn1 -t "$1" _key && printf key || printf timeout'
-    let result = (^bash -lc $poll_script bash $timeout_seconds | complete)
+    let result = (poll_for_keypress_status $timeout)
 
-    if $result.exit_code != 0 {
-        let stderr = ($result.stderr | str trim)
-        error make {msg: $"yzx screen requires an interactive terminal that supports timed keypress reads via bash: ($stderr)"}
+    if $result.status == "error" {
+        error make {msg: $"yzx screen requires an interactive terminal that supports timed keypress reads: ($result.message)"}
     }
 
-    (($result.stdout | str trim) == "key")
+    ($result.status == "key")
 }
 
 export def resolve_yzx_screen_style [requested_style?: string] {

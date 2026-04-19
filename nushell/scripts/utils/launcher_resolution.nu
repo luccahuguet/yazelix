@@ -27,8 +27,11 @@ export def get_home_manager_yzx_profile_paths [] {
 }
 
 def path_is_symlink [target: string] {
-    let result = (^bash -lc $"test -L ($target | into string | to json -r)" | complete)
-    $result.exit_code == 0
+    try {
+        ($target | path type) == "symlink"
+    } catch {
+        false
+    }
 }
 
 export def get_existing_home_manager_yzx_profile_path [] {

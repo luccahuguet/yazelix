@@ -5,29 +5,12 @@
 use ../utils/ascii_art.nu *
 use ../utils/constants.nu [DEFAULT_TERMINAL YAZELIX_VERSION]
 use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/keypress_polling.nu poll_for_keypress_status
 use ../utils/upgrade_notes.nu get_current_major_series_entry
 use ../utils/upgrade_summary.nu get_upgrade_note_entry
 
-# Show welcome art based on the configured style
-def has_interactive_welcome_tty [] {
-    let result = (^tty | complete)
-    $result.exit_code == 0
-}
-
 def poll_for_welcome_keypress [timeout: duration] {
-    if not (has_interactive_welcome_tty) {
-        return false
-    }
-
-    let timeout_seconds = (($timeout / 1sec) | into string)
-    let poll_script = ($env.YAZELIX_WELCOME_SKIP_POLL_COMMAND? | default 'read -rsn1 -t "$1" _key && printf key || printf timeout')
-    let result = (^bash -lc $poll_script bash $timeout_seconds | complete)
-
-    if $result.exit_code != 0 {
-        return false
-    }
-
-    (($result.stdout | str trim) == "key")
+    ((poll_for_keypress_status $timeout).status == "key")
 }
 
 def show_welcome_art [

@@ -197,6 +197,27 @@ welcome_style = "random"
     }
 }
 
+def setup_home_manager_broken_profile_wrapper_fixture [label: string] {
+    let fixture = (setup_manual_install_takeover_fixture $label)
+    let hm_store_config = ($fixture.tmp_home | path join "hm-store" "abc-home-manager-files" "yazelix.toml")
+    let hm_profile_yzx = ($fixture.tmp_home | path join ".nix-profile" "bin" "yzx")
+    let missing_wrapper_target = ($fixture.tmp_home | path join "missing_store" "bin" "yzx")
+
+    mkdir ($hm_store_config | path dirname)
+    mkdir ($hm_profile_yzx | path dirname)
+    '[core]
+welcome_style = "random"
+' | save --force --raw $hm_store_config
+    rm $fixture.config_path
+    ^ln -s $hm_store_config $fixture.config_path
+    ^ln -s $missing_wrapper_target $hm_profile_yzx
+
+    $fixture | merge {
+        hm_profile_yzx: $hm_profile_yzx
+        missing_wrapper_target: $missing_wrapper_target
+    }
+}
+
 def setup_update_wrapper_fixture [label: string] {
     let fixture = (setup_managed_config_fixture
         $label
@@ -453,6 +474,44 @@ def test_stable_yzx_wrapper_prefers_home_manager_profile_owner [] {
             true
         } else {
             print $"  ❌ Unexpected stable wrapper: exit=($output.exit_code) resolved=($resolved) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: Home Manager wrapper resolution must keep the profile-owned symlink path even when the current target is broken.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_stable_yzx_wrapper_keeps_home_manager_broken_profile_symlink [] {
+    print "🧪 Testing stable yzx wrapper resolution keeps a Home Manager profile symlink even when its target is broken..."
+
+    let fixture = (setup_home_manager_broken_profile_wrapper_fixture "yazelix_stable_wrapper_home_manager_broken_symlink")
+
+    let result = (try {
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+        } {
+            ^nu -c 'use nushell/scripts/utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path; resolve_stable_yzx_wrapper_path' | complete
+        })
+        let resolved = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved == $fixture.hm_profile_yzx)
+            and ($resolved != $fixture.manual_wrapper)
+            and not ($fixture.hm_profile_yzx | path exists)
+        ) {
+            print "  ✅ stable wrapper resolution now preserves the Home Manager-owned profile symlink path even when the current target is broken"
+            true
+        } else {
+            print $"  ❌ Unexpected stable wrapper for broken profile symlink: exit=($output.exit_code) resolved=($resolved) profile_exists=(($fixture.hm_profile_yzx | path exists)) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -1247,6 +1306,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_desktop_install_writes_entry_and_icon_assets)
         (test_yzx_desktop_install_prefers_installed_wrapper)
         (test_stable_yzx_wrapper_prefers_home_manager_profile_owner)
+        (test_stable_yzx_wrapper_keeps_home_manager_broken_profile_symlink)
         (test_yzx_desktop_install_refuses_home_manager_owned_install)
         (test_yzx_desktop_uninstall_preserves_home_manager_cleanup_path)
         (test_yzx_desktop_uninstall_removes_manual_entry_and_icons)
