@@ -4,7 +4,7 @@
 
 use ./yzx_test_helpers.nu [get_repo_root repo_path]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
-use ../utils/nushell_externs.nu [get_generated_yzx_extern_path sync_generated_yzx_extern_bridge]
+use ../utils/nushell_externs.nu [get_generated_yzx_extern_fingerprint_path get_generated_yzx_extern_path sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [get_yazelix_shell_user_hook_path sync_generated_nushell_user_hook_bridge]
 
 def path_is_symlink [target: string] {
@@ -168,6 +168,93 @@ def test_managed_nushell_config_loads_in_repo_shell_without_runtime_env [] {
             true
         } else {
             print $"  ❌ Unexpected repo-shell managed Nushell result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: yzx extern bridge sync must reuse a current generated bridge instead of reprobes on every shell startup.
+def test_yzx_extern_bridge_reuses_current_fingerprint [] {
+    print "🧪 Testing yzx extern bridge reuses a current fingerprinted bridge..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_yzx_extern_reuse_XXXXXX | str trim)
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+
+    let result = (try {
+        let extern_path = (get_generated_yzx_extern_path $state_dir)
+        let fingerprint_path = (get_generated_yzx_extern_fingerprint_path $state_dir)
+
+        sync_generated_yzx_extern_bridge $repo_root $state_dir | ignore
+        let first_content = (open --raw $extern_path)
+        let first_modified = (ls -D $extern_path | get 0.modified | into string)
+        let fingerprint_exists = ($fingerprint_path | path exists)
+
+        sleep 100ms
+        sync_generated_yzx_extern_bridge $repo_root $state_dir | ignore
+
+        let second_content = (open --raw $extern_path)
+        let second_modified = (ls -D $extern_path | get 0.modified | into string)
+
+        if (
+            $fingerprint_exists
+            and ($first_content == $second_content)
+            and ($first_modified == $second_modified)
+            and ($second_content | str contains 'export extern "yzx')
+        ) {
+            print "  ✅ Current yzx extern bridge is now reused without rewriting the generated file"
+            true
+        } else {
+            print $"  ❌ Unexpected extern bridge reuse result: fingerprint_exists=($fingerprint_exists) first_modified=($first_modified) second_modified=($second_modified)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: failed yzx extern bridge regeneration must not replace a previous valid bridge with the placeholder.
+def test_yzx_extern_bridge_keeps_previous_bridge_when_refresh_fails [] {
+    print "🧪 Testing yzx extern bridge keeps the previous bridge when refresh fails..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_yzx_extern_failure_XXXXXX | str trim)
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+    let missing_runtime = ($tmp_home | path join "missing_runtime")
+
+    let result = (try {
+        let extern_path = (get_generated_yzx_extern_path $state_dir)
+        let fingerprint_path = (get_generated_yzx_extern_fingerprint_path $state_dir)
+
+        sync_generated_yzx_extern_bridge $repo_root $state_dir | ignore
+        let generated_content = (open --raw $extern_path)
+        mkdir $missing_runtime
+        "stale fingerprint" | save --force --raw $fingerprint_path
+
+        sync_generated_yzx_extern_bridge $missing_runtime $state_dir | ignore
+        let after_failed_refresh = (open --raw $extern_path)
+
+        if (
+            ($generated_content == $after_failed_refresh)
+            and ($after_failed_refresh | str contains 'export extern "yzx')
+            and not ($after_failed_refresh | str contains "generated Nushell extern bridge (empty)")
+        ) {
+            print "  ✅ Failed yzx extern bridge refresh now keeps the previous valid generated bridge"
+            true
+        } else {
+            print $"  ❌ Failed refresh clobbered or changed the generated bridge: ($after_failed_refresh)"
             false
         }
     } catch {|err|
@@ -507,6 +594,8 @@ export def run_shell_managed_config_contract_tests [] {
         (test_generate_merged_zellij_config_wraps_nu_default_shell)
         (test_managed_nushell_config_sources_optional_user_hook)
         (test_managed_nushell_config_loads_in_repo_shell_without_runtime_env)
+        (test_yzx_extern_bridge_reuses_current_fingerprint)
+        (test_yzx_extern_bridge_keeps_previous_bridge_when_refresh_fails)
         (test_managed_bash_config_sources_optional_user_hook)
         (test_managed_fish_config_does_not_export_helix_mode_env)
         (test_source_checkout_runtime_resolution_beats_installed_runtime)

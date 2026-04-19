@@ -167,6 +167,16 @@ Existing profile step names and meanings should remain comparable before and aft
 
 Rust may return optional metrics inside the success `data`, but those metrics are additive and must not become a second startup profile format.
 
+### Extern Bridge Timing
+
+The generated Nushell `yzx` extern bridge is startup-owned glue, not command business logic. It remains inside the existing `shellhook` / `sync_yzx_extern_bridge` profile step so startup reports stay comparable while the bridge implementation changes.
+
+Warm startup must not pay the full command metadata probe when the generated extern bridge is already current. The sync path should perform only cheap generated-state checks, such as a command-surface fingerprint and generated-file hash, before reusing the existing bridge.
+
+When the command surface is missing or stale, the sync path may spawn Nushell to inspect the real `yzx` command tree and regenerate the extern file. Successful regeneration updates the generated bridge and its fingerprint atomically enough that a later warm startup can skip the probe.
+
+Refresh failure must be non-destructive. If a previous generated bridge exists, keep it instead of replacing it with an empty placeholder. If no bridge exists yet, create a minimal placeholder so managed Nushell config can still source the file and show the generation warning.
+
 ### Materialization And Writes
 
 Rust may plan generated-runtime materialization before it writes generated files. The first implementation should prefer a plan/apply split unless the target slice is small enough that the write contract is obvious.
@@ -204,6 +214,7 @@ Source-checkout development may invoke a locally built helper, but installed run
 4. Startup profile reports remain comparable because Nushell keeps the same report schema and high-level step names.
 5. Packaged runtimes can ship the helper privately under `libexec/` without exposing a second user command.
 6. Rust-generated writes stay limited to explicit Yazelix-managed generated-state paths.
+7. Warm shell startup reuses a current generated `yzx` extern bridge without rerunning command metadata introspection.
 
 ## Verification
 
@@ -217,7 +228,9 @@ Source-checkout development may invoke a locally built helper, but installed run
 ## Traceability
 
 - Bead: `yazelix-kt5.1.1`
+- Bead: `yazelix-4xp1.3`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`
+- Defended by: `nu nushell/scripts/dev/test_shell_managed_config_contracts.nu`
 
 ## Open Questions
 
