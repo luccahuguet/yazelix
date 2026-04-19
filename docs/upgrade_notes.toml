@@ -1,10 +1,12 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
-headline = "Post-v15.1 Ghostty cursor and desktop-launch polish in progress"
+headline = "v15.2 hardens startup, desktop launch, and Ghostty polish"
 summary = [
+    "Upgraded `yzx menu` to a prettier `fzf`-backed command palette and fixed the popup selection crash path.",
     "Rerolled Ghostty random cursor palettes and effects for each Yazelix Ghostty window, including desktop fast-path launches, while keeping fixed palettes stable.",
     "Made managed desktop entries terminal-backed and surfaced desktop-launch pre-terminal progress and failures so desktop entry clicks no longer fail invisibly before terminal handoff.",
+    "Moved config parsing and generated-state hashing onto the packaged Rust `yzx_core` helper, deleted the old Nushell fallback and legacy raw-string rebuild cache path, and kept malformed cache state on the safe one-time-refresh path.",
 ]
 upgrade_impact = "no_user_action"
 acknowledged_guarded_changes = [
