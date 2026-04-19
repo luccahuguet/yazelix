@@ -11,19 +11,9 @@ use ../utils/transient_pane_contract.nu [
 def main [] {
     rename_current_transient_pane "menu"
 
-    let result = (try {
-        with-env (get_transient_pane_mode_env "menu") {
-            yzx menu | ignore
-        }
-        {ok: true}
-    } catch {|err|
-        {ok: false, msg: ($err.msg? | default $"menu popup failed: ($err)")}
-    })
-
-    if $result.ok {
-        try { close_current_transient_pane }
-        return
+    with-env (get_transient_pane_mode_env "menu") {
+        yzx menu | ignore
     }
 
-    error make {msg: ($result.msg? | default "menu popup failed with unknown error")}
+    try { close_current_transient_pane }
 }
