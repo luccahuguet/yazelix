@@ -74,7 +74,7 @@ If the crate list changes mid-bead, update the bead or linked spec before contin
 | Config loading, defaults, schema-backed normalization | `config_parser.nu`, `config_contract.nu`, `config_schema.nu`, `config_diagnostics.nu`, `config_surfaces.nu`, `config_metadata/main_config_contract.toml`, `yazelix_default.toml` | High | High | Medium | Move behind the bridge first. Rust should output the normalized config record and structured diagnostics while Nushell keeps user-facing rendering. | First v15.x slice: `yazelix-kt5.2.1` |
 | Config-state hashing and invalidation | `config_state.nu`, `generated_runtime_state.nu`, `config_contract.nu` rebuild-required metadata | High | High | Low-medium | Move after normalized config output exists. Rust should own rebuild-key extraction, config/runtime hash composition, cached-state comparison, and refresh reasons. | First v15.x slice part 2: `yazelix-kt5.2.2` |
 | Generated runtime materialization planning and managed writes | `generated_runtime_state.nu`, `atomic_writes.nu`, generated-state callers in startup/doctor | Medium-high for planning and write ownership; lower for render text | High | Medium | Move the decision layer and managed-write orchestration behind Rust. Do not force Yazi/Zellij/terminal text renderers into Rust as part of the same step. | First v15.x slice part 3: `yazelix-kt5.2.3` |
-| Yazi, Zellij, terminal, initializer, and layout renderers | `yazi_config_merger.nu`, `zellij_config_merger.nu`, `terminal_configs.nu`, `terminal_renderers.nu`, `layout_generator.nu`, `initializers.nu` | Mixed | Medium | Medium-high | Keep straightforward template assembly in Nushell initially. Extract only structured subcores with clear defect or modeling payoff. | Decide later: `yazelix-kt5.5` |
+| Yazi, Zellij, terminal, initializer, and layout renderers | `yazi_config_merger.nu`, `zellij_config_merger.nu`, `terminal_configs.nu`, `terminal_renderers.nu`, `layout_generator.nu`, `initializers.nu` | Mixed | Medium | Medium-high | Keep renderer/template assembly in Nushell. Rust owns the upstream config/state/materialization decisions, but not generated text, plugin/layout copying, per-launch terminal randomness, or shell initializer rendering. Extract only a narrow structured subcore later if repeated defects justify it. | Locked by `yazelix-kt5.5` |
 | Runtime dependency checking and doctor/preflight reasoning | `runtime_contract_checker.nu`, `doctor.nu`, `doctor_install_artifacts.nu`, `doctor_helix.nu`, `runtime_distribution_capabilities.nu` | Medium-high | Medium-high | Medium | Move the classification engine later, not the prose-heavy doctor UX first. Rust can return structured findings consumed by launch, doctor, and install smoke. | Later v15.x candidate: `yazelix-kt5.3` |
 | Launch, enter, run, env, and environment bootstrap | `launch_yazelix.nu`, `start_yazelix.nu`, `start_yazelix_inner.nu`, `environment_bootstrap.nu`, `runtime_env.nu`, `terminal_launcher.nu`, `yzx/launch.nu`, `yzx/enter.nu`, `yzx/env.nu`, `yzx/run.nu` | Medium | Medium | High | Defer broad porting. Keep Nushell as the process, profile, terminal, and shell-boundary owner until the config/runtime-core bridge has proven itself. | Late v15.x only if seams are clean; otherwise v16: `yazelix-kt5.4` |
 | Public `yzx` CLI command surface | `core/yazelix.nu`, `yzx/*.nu` | Low for first slice | Low-medium | High | Keep Nushell as the public CLI owner. Do not start with clap. Revisit broad Rust/clap only after helper-backed slices prove value. | v16-or-later evaluation: `yazelix-2ex.1.11` |
@@ -85,6 +85,37 @@ If the crate list changes mid-bead, update the bead or linked spec before contin
 | Maintainer workflow, validators, release/update, issue sync | `nushell/scripts/dev/`, `nushell/scripts/maintainer/`, GitHub Actions | Low-mixed | Low | Medium | Keep as maintainer tooling unless a specific validator or parser becomes reusable product logic. Do not port tests just to port tests. | Not a product migration slice |
 | Config migration engine revival | Historical/deleted migration surfaces and `yazelix-j498` planning | Low by default | Low unless user pain returns | High product-risk | Do not revive broad automatic migration machinery. Consider only a tiny schema-versioned Rust adjunct if visible diagnostics still prove insufficient. | Backlog/conditional: `yazelix-j498` |
 | Shipped runtime data and contracts | `config_metadata/`, `configs/`, `user_configs/`, `yazelix_default.toml`, upgrade notes, assets | Data, not code-owner surface | High as input | Low | Keep as source-of-truth data. Rust should consume contracts and fixtures, not replace them with hardcoded defaults. | Used by `kt5.2.1` and later parity tests |
+
+## Renderer Ownership Decision
+
+`yazelix-kt5.5` locks the current renderer boundary: do not port Yazelix's generated text/template surfaces to Rust just to reduce Nushell LOC.
+
+Rust owns the structured decision layer that is already behind `yzx_core`: normalized config, rebuild-state hashing, refresh/no-refresh classification, expected artifact planning, and materialized-state recording. Nushell owns the renderer layer that turns those decisions into product files and host-facing glue.
+
+Current ownership:
+
+| Surface | Decision | Rust-owned inputs/outputs | Nushell-owned renderer/glue |
+| --- | --- | --- | --- |
+| Runtime materialization | Split ownership | `runtime-materialization.plan` and `runtime-materialization.apply` decide freshness, expected artifacts, and recorded state | `generated_runtime_state.nu` preserves profile labels and invokes the surviving renderers |
+| Yazi config generation | Keep Nushell | Normalized config values and materialization plan inputs | TOML merge policy, `init.lua` assembly, bundled plugin/flavor copying, runtime-root placeholder rendering, user override discovery |
+| Zellij config and layout generation | Keep Nushell | Normalized config values and materialization plan inputs | Base-source selection, semantic block extraction, owned setting rendering, plugin/load_plugins assembly, layout placeholder expansion, plugin wasm runtime sync |
+| Terminal config generation | Keep Nushell | Normalized terminal settings | Ghostty/Kitty/WezTerm/Alacritty/Foot text rendering, per-launch Ghostty random cursor rerolls, shader asset generation/sync |
+| Helix managed config generation | Keep Nushell | Normalized managed-editor policy if needed later | TOML merge, reveal binding enforcement, import notice state, generated Helix config write |
+| Shell initializers and extern bridge | Keep Nushell/POSIX | None for now beyond runtime/config paths | shell-specific init files, POSIX launch wrappers, Nushell `yzx` extern rendering and fingerprinted refresh |
+
+Revisit triggers:
+
+- A renderer accumulates repeated correctness defects that are hard to defend with focused Nushell tests.
+- A surface needs a real parser/AST model, such as a future Zellij KDL merge that cannot be made robust with the existing semantic-block owner split.
+- The same structured renderer logic is needed by both product runtime and tests/docs in a way that makes a Rust library cheaper than duplicate Nu helpers.
+- The public CLI becomes Rust-owned in a later v16-or-later decision, at which point completion/extern rendering may need a different source of truth.
+
+Non-triggers:
+
+- The file is long.
+- The code is mostly string assembly.
+- A Rust helper already exists nearby.
+- A port would add Rust LOC while leaving the same Nushell renderer and parity glue in place.
 
 ## First-Slice Implementation Order
 
@@ -127,7 +158,7 @@ Parity should defend unchanged inputs, config-only changes, runtime-only changes
 
 ### 3. Materialization Planning And Managed Writes
 
-Implement `runtime_materialization.plan` and only then decide how much `runtime_materialization.apply` should write directly.
+Implement `runtime_materialization.plan` and keep `runtime_materialization.apply` limited to materialized-state recording and expected-artifact verification unless a future renderer bead explicitly moves a specific generated file family to Rust.
 
 Rust should own:
 
@@ -137,7 +168,7 @@ Rust should own:
 - recording the applied materialized state
 - atomic-write coordination for Rust-owned managed files
 
-Nushell can initially keep Yazi, Zellij, terminal, and initializer text renderers. If Rust applies writes before those renderers move, the bridge should make the boundary explicit rather than interleaving two write owners for the same file.
+Nushell keeps Yazi, Zellij, terminal, Helix, shell initializer, layout, and extern text renderers for the current v15.x line. Rust must not become a second writer for those generated files without a narrower renderer-ownership bead.
 
 ### 4. Profile And Report Preservation
 
@@ -200,10 +231,11 @@ Likely v16-or-later work:
 ## Traceability
 
 - Bead: `yazelix-kt5.1`
+- Bead: `yazelix-kt5.5`
 - Defended by: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Open Questions
 
-- Should `runtime_materialization.apply` write any Yazi/Zellij files in the first implementation, or should it only own the plan and state recording until `kt5.5` decides renderer ownership?
+- Should a future Zellij KDL-specific parser/renderer subcore be worth extracting, or did the `yazelix-jheg` Nu-side owner split remove enough risk?
 - Should `config.normalize` and `config_state.compute` be separate helper commands from day one, or should the first implementation expose one combined command and split later?
 - Which parity fixtures should become stable cross-language golden files versus ordinary Rust unit fixtures?
