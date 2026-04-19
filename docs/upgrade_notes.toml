@@ -1,6 +1,16 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
+headline = "Post-v15.2 work in progress"
+summary = ["Reserved for post-release changes after v15.2 lands."]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v15.2"]
+version = "v15.2"
+date = "2026-04-19"
 headline = "v15.2 hardens startup, desktop launch, and Ghostty polish"
 summary = [
     "Upgraded `yzx menu` to a prettier `fzf`-backed command palette and fixed the popup selection crash path.",

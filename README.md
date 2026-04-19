@@ -1,4 +1,4 @@
-# Yazelix v15.1
+# Yazelix v15.2
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
@@ -65,15 +65,14 @@ Want the high-level product map? See [Architecture Map](./docs/architecture_map.
 See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages
 
 <!-- BEGIN GENERATED README LATEST SERIES -->
-## Latest Tagged Release: v15.1
+## Latest Tagged Release: v15.2
 
-v15.1 hardens install ownership, popup env, and Home Manager packaging
+v15.2 hardens startup, desktop launch, and Ghostty polish
 
-- Stopped packaged and one-off runtime entrypoints from rewriting host shell dotfiles, kept runtime setup inside `~/.local/share/yazelix`, and narrowed `yzx status` back to runtime/config inspection with clearer stale-shell recovery guidance.
-- Added the explicit `editor` token for `zellij.popup_program`, propagated the canonical runtime env into popup flows, and set `VISUAL` alongside `EDITOR` so popup editors and TUI tools reuse the configured Yazelix editor contract.
-- Narrowed the packaged public `bin/` surface to `yzx`, moved bundled runtime tools under `libexec/`, and kept packaged and Home Manager installs away from binary-collision traps while still shipping the full runtime toolset.
-- Hardened Linux Home Manager and desktop-launch reliability by passing the runtime-owned `nixGL` wrapper through the module build, improving Ghostty launch diagnostics, and documenting a minimal flake example plus clearer update-owner recovery.
-- Replaced the remaining popup and workflow examples that still referenced Claude with Codex examples.
+- Upgraded `yzx menu` to a prettier `fzf`-backed command palette and fixed the popup selection crash path.
+- Rerolled Ghostty random cursor palettes and effects for each Yazelix Ghostty window, including desktop fast-path launches, while keeping fixed palettes stable.
+- Made managed desktop entries terminal-backed and surfaced desktop-launch pre-terminal progress and failures so desktop entry clicks no longer fail invisibly before terminal handoff.
+- Moved config parsing and generated-state hashing onto the packaged Rust `yzx_core` helper, deleted the old Nushell fallback and legacy raw-string rebuild cache path, and kept malformed cache state on the safe one-time-refresh path.
 
 For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new` after installing that release
 For the longer project story, see [Version History](./docs/history.md)
