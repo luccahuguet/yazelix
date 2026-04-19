@@ -42,8 +42,6 @@ def require_existing_layout [layout_path: string] {
 
 def main [cwd_override?: string, layout_override?: string, --verbose] {
     let config = parse_yazelix_config
-    let sidebar_enabled = ($config.enable_sidebar? | default true)
-    let configured_layout = if $sidebar_enabled { "yzx_side" } else { "yzx_no_side" }
     let yazelix_dir = (require_existing_directory (require_yazelix_runtime_dir) "Yazelix runtime directory")
     let quiet_mode = ($env.YAZELIX_ENV_ONLY? == "true")
     let profile_exit_before_zellij = ($env.YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ? == "true")
@@ -97,18 +95,21 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     let resolved_layout_path = if ($layout_override | is-not-empty) {
         $layout_override
     } else {
-        let layout = if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
-            $env.YAZELIX_LAYOUT_OVERRIDE
-        } else if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) and ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
-            $env.ZELLIJ_DEFAULT_LAYOUT
-        } else {
-            $configured_layout
+        let from_plan = (
+            $applied_runtime_state.zellij_layout_path?
+            | default ""
+            | into string
+            | str trim
+        )
+        if ($from_plan | is-empty) {
+            error make {
+                msg: (
+                    "Yazelix materialization plan did not return a managed Zellij layout path. "
+                    + "Run `yzx doctor` to inspect the runtime and generated-state contract."
+                )
+            }
         }
-        if ($layout | str contains "/") or ($layout | str ends-with ".kdl") {
-            $layout
-        } else {
-            $"($merged_zellij_dir)/layouts/($layout).kdl"
-        }
+        $from_plan
     }
     let layout_path = (require_existing_layout $resolved_layout_path)
 

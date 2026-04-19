@@ -1,7 +1,12 @@
 #!/usr/bin/env nu
 # Yazelix Doctor - Health check utilities
 
-use common.nu [get_yazelix_config_dir get_yazelix_runtime_dir get_yazelix_state_dir require_yazelix_runtime_dir]
+use common.nu [
+    get_yazelix_config_dir
+    get_yazelix_runtime_dir
+    get_yazelix_state_dir
+    require_yazelix_runtime_dir
+]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface reconcile_primary_config_surfaces]
 use config_diagnostics.nu [build_config_diagnostic_report]
 use config_report_rendering.nu [render_doctor_config_details]
@@ -18,10 +23,9 @@ use doctor_install_artifacts.nu [
 ]
 use runtime_distribution_capabilities.nu get_runtime_distribution_capability_profile
 use constants.nu DEFAULT_TERMINAL
-use generated_runtime_state.nu repair_generated_runtime_state
+use generated_runtime_state.nu [compute_runtime_materialization_plan repair_generated_runtime_state]
 use runtime_contract_checker.nu [
     check_doctor_shared_runtime_preflight
-    resolve_expected_layout_path
     runtime_check_to_doctor_result
 ]
 use ../setup/zellij_plugin_paths.nu seed_yazelix_plugin_permissions
@@ -177,7 +181,27 @@ def check_shared_runtime_preflight [] {
     let config = $config_result.config
     let runtime_dir = (get_yazelix_runtime_dir)
     let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL] | uniq)
-    let layout_path = (resolve_expected_layout_path $config)
+    let layout_path = (try {
+        let plan_runtime = (require_yazelix_runtime_dir)
+        let plan = (compute_runtime_materialization_plan $plan_runtime)
+        let candidate = (
+            $plan.zellij_layout_path?
+            | default ""
+            | into string
+            | str trim
+        )
+        if ($candidate | is-empty) {
+            error make {msg: "Rust materialization plan omitted zellij_layout_path."}
+        }
+        $candidate
+    } catch {|err|
+        return [{
+            status: "error"
+            message: "Could not resolve the managed Zellij layout path from the Rust materialization plan"
+            details: $err.msg
+            fix_available: false
+        }]
+    })
     let runtime_scripts = [
         {
             id: "startup_runtime_script"

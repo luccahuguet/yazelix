@@ -78,7 +78,7 @@ def build_runtime_materialization_apply_args [state: record] {
     ]
 }
 
-def compute_runtime_materialization_plan [runtime_dir: string] {
+export def compute_runtime_materialization_plan [runtime_dir: string] {
     let config_surface = (load_active_config_surface)
     let materialization_paths = (get_runtime_materialization_paths)
     let helper_args = (build_runtime_materialization_plan_args $runtime_dir $config_surface $materialization_paths)

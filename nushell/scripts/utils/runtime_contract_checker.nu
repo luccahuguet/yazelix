@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use config_parser.nu [run_yzx_core_json_command_with_error_surface]
-use common.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
+use common.nu [require_yazelix_runtime_dir]
 use failure_classes.nu [format_failure_classification]
 
 const RUNTIME_CONTRACT_EVALUATE_COMMAND = "runtime-contract.evaluate"
@@ -125,28 +125,6 @@ def build_linux_ghostty_graphics_request [owner_surface: string, terminals: list
         runtime_dir: (require_yazelix_runtime_dir)
         command_search_paths: (get_command_search_paths)
         platform_name: (get_runtime_platform_name)
-    }
-}
-
-export def resolve_expected_layout_path [config: record, layout_dir?: string] {
-    let configured_layout = if ($config.enable_sidebar? | default true) { "yzx_side" } else { "yzx_no_side" }
-    let layout = if ($env.YAZELIX_LAYOUT_OVERRIDE? | is-not-empty) {
-        $env.YAZELIX_LAYOUT_OVERRIDE
-    } else if ($env.YAZELIX_SWEEP_TEST_ID? | is-not-empty) and ($env.ZELLIJ_DEFAULT_LAYOUT? | is-not-empty) {
-        $env.ZELLIJ_DEFAULT_LAYOUT
-    } else {
-        $configured_layout
-    }
-    let resolved_layout_dir = if ($layout_dir | is-not-empty) {
-        $layout_dir
-    } else {
-        (get_yazelix_state_dir | path join "configs" "zellij" "layouts")
-    }
-
-    if ($layout | str contains "/") or ($layout | str ends-with ".kdl") {
-        $layout
-    } else {
-        $resolved_layout_dir | path join $"($layout).kdl"
     }
 }
 
