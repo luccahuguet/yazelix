@@ -73,7 +73,7 @@ def print_yazi_keys [] {
         {
             step: "Open with"
             action: (accent_key "`O`")
-            notes: "Shows Yazi's built-in open menu for alternate handlers"
+            notes: "Shows Yazi's open menu — includes Reveal to open in system file manager"
         }
         {
             step: "Yazelix workspace"
