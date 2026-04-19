@@ -806,6 +806,131 @@ def test_startup_profile_records_detached_terminal_probe [] {
     $result
 }
 
+# Regression: detached launch probe exits fast on success, not after a full one-second sleep.
+# Defends: the bounded poll loop should confirm process liveness well under the old 1000ms budget.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_detached_launch_probe_success_path_is_fast [] {
+    print "🧪 Testing detached launch probe success path completes well under one second..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_launch_probe_fast_XXXXXX | str trim)
+    let state_dir = ($tmp_root | path join "state")
+    let profile_module = ($repo_root | path join "nushell" "scripts" "utils" "startup_profile.nu")
+    let terminal_module = ($repo_root | path join "nushell" "scripts" "utils" "terminal_launcher.nu")
+
+    mkdir $state_dir
+
+    let result = (try {
+        let snippet = (
+            [
+                $"use \"($profile_module)\" [create_startup_profile_run load_startup_profile_report]"
+                $"use \"($terminal_module)\" [run_detached_terminal_launch]"
+                "let run = (create_startup_profile_run \"launch_probe_fast\" {mode: \"maintainer\"})"
+                "let start = (date now | into int)"
+                "with-env $run.env {"
+                "    run_detached_terminal_launch \"sleep 5\" \"FastProbe\""
+                "}"
+                "let ended = (date now | into int)"
+                "let elapsed_ms = (($ended - $start) / 1000000)"
+                "let summary = (load_startup_profile_report $run.report_path)"
+                "{"
+                "    elapsed_ms: $elapsed_ms"
+                "    steps: ($summary.steps | where {|step| $step.component == \"terminal_launcher\" and $step.step == \"detached_launch_probe\" } | each {|step| {component: $step.component step: $step.step duration_ms: $step.duration_ms metadata: $step.metadata}})"
+                "} | to json -r"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            do { ^nu -c $snippet } | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 { $stdout | lines | last | from json } else { null }
+        let probe_step = if $resolved != null { $resolved.steps | get -o 0 } else { null }
+        let probe_duration = if $probe_step != null { $probe_step.duration_ms | into float } else { -1.0 }
+
+        if (
+            ($output.exit_code == 0)
+            and ($probe_step != null)
+            and ($probe_duration > 0.0)
+            and ($probe_duration < 800.0)
+        ) {
+            print $"  ✅ Detached launch probe success path completed in ($probe_duration | math round -p 1)ms \(well under the old 1000ms tax\)"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) probe_duration=($probe_duration) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
+# Regression: detached launch probe still surfaces early-death failure with actionable stderr.
+# Defends: the bounded poll loop must detect a process that exits immediately and report its stderr, not silently succeed.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_detached_launch_probe_early_failure_is_visible [] {
+    print "🧪 Testing detached launch probe surfaces early terminal death with actionable stderr..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_launch_probe_fail_XXXXXX | str trim)
+    let state_dir = ($tmp_root | path join "state")
+    let profile_module = ($repo_root | path join "nushell" "scripts" "utils" "startup_profile.nu")
+    let terminal_module = ($repo_root | path join "nushell" "scripts" "utils" "terminal_launcher.nu")
+
+    mkdir $state_dir
+
+        let result = (try {
+            let snippet = (
+                [
+                    $"use \"($profile_module)\" [create_startup_profile_run]"
+                    $"use \"($terminal_module)\" [run_detached_terminal_launch]"
+                    "let run = (create_startup_profile_run \"launch_probe_fail\" {mode: \"maintainer\"})"
+                    "let result = (try {"
+                    "    with-env $run.env {"
+                    "        run_detached_terminal_launch \"sleep 0.15; echo delayed-boom >&2; exit 1\" \"FailProbe\""
+                    "    }"
+                    "} catch {|err| $err })"
+                    "{"
+                    "    is_error: ($result.msg? | default \"\" | is-not-empty)"
+                    "    error_msg: ($result.msg? | default \"\")"
+                "} | to json -r"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            do { ^nu -c $snippet } | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 { $stdout | lines | last | from json } else { null }
+
+        if (
+            ($output.exit_code == 0)
+            and ($resolved != null)
+            and $resolved.is_error
+            and ($resolved.error_msg | str contains "Failed to launch")
+            and ($resolved.error_msg | str contains "delayed-boom")
+        ) {
+            print "  ✅ Detached launch probe correctly reported early terminal death with actionable error output"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) resolved=($resolved) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 # Strength: defect=2 behavior=2 resilience=2 cost=0 uniqueness=2 total=8/10
 # Defends: the profiling harness runs the real startup path and records owned startup boundaries into a structured report.
 def test_startup_profile_harness_records_real_startup_boundaries [] {
@@ -1655,6 +1780,8 @@ def main [] {
         (test_dev_profile_desktop_invokes_leaf_command_and_waits_for_handoff)
         (test_dev_profile_launch_invokes_leaf_command_with_flags)
         (test_startup_profile_records_detached_terminal_probe)
+        (test_detached_launch_probe_success_path_is_fast)
+        (test_detached_launch_probe_early_failure_is_visible)
         (test_startup_profile_harness_records_real_startup_boundaries)
     ]
 

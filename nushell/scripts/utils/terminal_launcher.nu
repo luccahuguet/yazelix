@@ -276,26 +276,30 @@ export def run_detached_terminal_launch [launch_cmd: string, terminal_name: stri
     }
 
     let launch_log = (get_launch_probe_log_path $terminal_name)
-    let quoted_launch_cmd = (quote_for_bash_single_string $launch_cmd)
-    let quoted_launch_log = (quote_for_bash_single_string $launch_log)
-    let probe_script = [
-        $"launch_log=($quoted_launch_log)"
-        ': > "$launch_log"'
-        $"nohup bash -lc ($quoted_launch_cmd) >\"$launch_log\" 2>&1 < /dev/null &"
-        'pid=$!'
-        'sleep 1'
-        'if kill -0 "$pid" 2>/dev/null; then'
-        '  rm -f "$launch_log"'
-        '  exit 0'
-        'fi'
-        'wait "$pid"'
-        'status=$?'
-        'echo "$launch_log"'
-        'exit "$status"'
-    ] | str join "\n"
+    let probe_script = '
+launch_log="$1"
+launch_cmd="$2"
+
+: > "$launch_log"
+nohup bash -lc "$launch_cmd" >"$launch_log" 2>&1 < /dev/null &
+pid=$!
+
+for i in 1 2 3 4 5 6; do
+  sleep 0.05
+  if ! kill -0 "$pid" 2>/dev/null; then
+    wait "$pid"
+    status=$?
+    echo "$launch_log"
+    exit "$status"
+  fi
+done
+
+rm -f "$launch_log"
+exit 0
+'
 
     let output = (profile_startup_step "terminal_launcher" "detached_launch_probe" {
-        ^bash -lc $probe_script | complete
+        ^bash -c $probe_script bash $launch_log $launch_cmd | complete
     } {
         terminal: $terminal_name
     })

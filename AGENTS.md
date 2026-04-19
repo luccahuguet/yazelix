@@ -137,6 +137,16 @@ When creating new files or directories, always use underscores to maintain consi
 - For agent-driven Yazelix invocations, always suppress the welcome/UI path by default. Prefer entrypoints that already do this, such as `yzx run ...`, or pass the equivalent `--skip-welcome` flow when calling Yazelix bootstrap/runtime scripts through `nix develop -c ...`. Do not launch the interactive welcome screen or its animations unless the task is explicitly about validating that UX.
 - Be careful with heavyweight Nix probes during investigation. Prefer cheap read-only commands such as `nix eval`, `nix flake show`, `nix path-info`, `rg`, or repo-local code inspection before running `nix build` on large external inputs. Do not casually launch expensive build jobs just to inspect metadata, and if a diagnostic build is truly needed, say so explicitly and clean it up if it is no longer needed.
 
+## Shell Boundary Rule
+
+- Do not add new inline quoted shell-script bodies assembled inside Nushell just to pass them to `bash -lc`, `sh -c`, or similar entrypoints.
+- In particular, avoid patterns like arrays of shell lines joined with `str join "\n"` or interpolated multi-line shell snippets whose dynamic values are baked directly into the script text.
+- Prefer one of these instead:
+  - a dedicated checked-in POSIX helper script under `shells/posix/` or another clearly owned runtime path
+  - structured argv execution without a shell when possible
+  - if a tiny shell trampoline is truly unavoidable, keep the script body fixed and pass dynamic values as positional arguments or environment variables instead of interpolating them into the shell program text
+- Treat existing inline quoted-script seams as refactor targets, not as patterns to copy.
+
 ## Command Surface Policy
 
 - When renaming or simplifying a user-facing command surface, do not keep legacy aliases by default.
