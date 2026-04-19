@@ -1014,6 +1014,80 @@ def test_startup_profile_harness_records_real_startup_boundaries [] {
     $result
 }
 
+# Strength: defect=2 behavior=2 resilience=2 cost=0 uniqueness=2 total=8/10
+# Defends: startup profiling breaks runtime materialization into generated-runtime substeps so warm bottlenecks stay attributable.
+def test_startup_profile_materialization_reports_generated_runtime_substeps [] {
+    print "🧪 Testing startup profiling reports generated runtime materialization substeps..."
+
+    let repo_root = ($env.PWD | path expand)
+    let tmp_root = (^mktemp -d /tmp/yazelix_startup_profile_materialization_XXXXXX | str trim)
+    let temp_home = ($tmp_root | path join "home")
+    let state_dir = ($tmp_root | path join "state")
+    let config_dir = ($temp_home | path join ".config" "yazelix")
+    let bashrc_path = ($temp_home | path join ".bashrc")
+    let nushell_config_dir = ($temp_home | path join ".config" "nushell")
+    let nushell_config_path = ($nushell_config_dir | path join "config.nu")
+    let generated_layout_dir = ($temp_home | path join ".local" "share" "yazelix" "configs" "zellij" "layouts")
+    let profile_module = ($repo_root | path join "nushell" "scripts" "yzx" "dev.nu")
+
+    mkdir $temp_home
+    mkdir $state_dir
+    mkdir ($config_dir | path dirname)
+    mkdir $nushell_config_dir
+    mkdir $generated_layout_dir
+    "" | save --force $bashrc_path
+    "" | save --force $nushell_config_path
+    "layout { pane }" | save --force ($generated_layout_dir | path join "yzx_side.kdl")
+
+    let result = (try {
+        let snippet = (
+            [
+                $"source \"($profile_module)\""
+                "let summary = (run_dev_profile_harness \"materialization_breakdown\" [])"
+                "{"
+                "    steps: ($summary.steps | each {|step| {component: $step.component step: $step.step}})"
+                "} | to json -r"
+            ] | str join "\n"
+        )
+        let output = (with-env {
+            HOME: $temp_home
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_CONFIG_DIR: $config_dir
+            IN_YAZELIX_SHELL: ""
+            YAZELIX_TERMINAL: ""
+            IN_NIX_SHELL: ""
+        } {
+            do { ^nu -c $snippet } | complete
+        })
+        let stdout = ($output.stdout | str trim)
+        let resolved = if $output.exit_code == 0 {
+            $stdout | lines | last | from json
+        } else {
+            null
+        }
+        let steps = if $resolved == null { [] } else { ($resolved.steps | default []) }
+
+        if (
+            ($output.exit_code == 0)
+            and ($steps | any {|step| $step.component == "generated_runtime_state" and $step.step == "compute_config_state" })
+            and ($steps | any {|step| $step.component == "generated_runtime_state" and $step.step == "generate_yazi_config" })
+            and ($steps | any {|step| $step.component == "generated_runtime_state" and $step.step == "generate_zellij_config" })
+        ) {
+            print "  ✅ Startup profiling now breaks runtime materialization into generated-runtime substeps"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch { |err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_root
+    $result
+}
+
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 # Defends: maintainer update requires an explicit activation target for real updates instead of silently falling through to a legacy default.
 def test_dev_update_requires_explicit_activation_for_real_updates [] {
@@ -1783,6 +1857,7 @@ def main [] {
         (test_detached_launch_probe_success_path_is_fast)
         (test_detached_launch_probe_early_failure_is_visible)
         (test_startup_profile_harness_records_real_startup_boundaries)
+        (test_startup_profile_materialization_reports_generated_runtime_substeps)
     ]
 
     let passed = ($results | where {|result| $result } | length)

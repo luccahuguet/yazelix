@@ -4,34 +4,49 @@ use config_state.nu [compute_config_state record_materialized_state]
 use environment_bootstrap.nu prepare_environment
 use common.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
 use runtime_contract_checker.nu resolve_expected_layout_path
+use startup_profile.nu profile_startup_step
 use ../setup/yazi_config_merger.nu generate_merged_yazi_config
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 
 export def regenerate_runtime_configs [runtime_dir: string, --quiet] {
     let quiet_mode = $quiet
-    let config_state = compute_config_state
+    let config_state = (profile_startup_step "generated_runtime_state" "compute_config_state" {
+        compute_config_state
+    })
 
     try {
-        if $quiet_mode {
-            generate_merged_yazi_config $runtime_dir --quiet --sync-static-assets=($config_state.needs_refresh? | default true) | ignore
-        } else {
-            print "🔧 Regenerating managed Yazi configuration..."
-            generate_merged_yazi_config $runtime_dir --sync-static-assets=($config_state.needs_refresh? | default true) | ignore
+        profile_startup_step "generated_runtime_state" "generate_yazi_config" {
+            if $quiet_mode {
+                generate_merged_yazi_config $runtime_dir --quiet --sync-static-assets=($config_state.needs_refresh? | default true) | ignore
+            } else {
+                print "🔧 Regenerating managed Yazi configuration..."
+                generate_merged_yazi_config $runtime_dir --sync-static-assets=($config_state.needs_refresh? | default true) | ignore
+            }
+        } {
+            inputs_require_refresh: ($config_state.inputs_require_refresh? | default false)
+            refresh_reason: ($config_state.refresh_reason? | default "")
         }
     } catch {|err|
         error make {msg: $"Failed to regenerate Yazi configuration: ($err.msg)"}
     }
 
     try {
-        let state_dir = (get_yazelix_state_dir)
-        let zellij_config_dir = ($state_dir | path join "configs" "zellij")
-        if not $quiet_mode {
-            print "🔧 Regenerating managed Zellij configuration..."
+        profile_startup_step "generated_runtime_state" "generate_zellij_config" {
+            let state_dir = (get_yazelix_state_dir)
+            let zellij_config_dir = ($state_dir | path join "configs" "zellij")
+            if not $quiet_mode {
+                print "🔧 Regenerating managed Zellij configuration..."
+            }
+            generate_merged_zellij_config $runtime_dir $zellij_config_dir | ignore
+        } {
+            inputs_require_refresh: ($config_state.inputs_require_refresh? | default false)
+            refresh_reason: ($config_state.refresh_reason? | default "")
         }
-        generate_merged_zellij_config $runtime_dir $zellij_config_dir | ignore
     } catch {|err|
         error make {msg: $"Failed to regenerate Zellij configuration: ($err.msg)"}
     }
+
+    $config_state
 }
 
 export def list_missing_runtime_config_artifacts [config: record] {
@@ -54,8 +69,12 @@ export def list_missing_runtime_config_artifacts [config: record] {
     }
 }
 
-export def record_current_materialized_state [] {
-    let applied_state = (compute_config_state)
+export def record_current_materialized_state [applied_state?: record] {
+    let applied_state = if $applied_state == null {
+        compute_config_state
+    } else {
+        $applied_state
+    }
     record_materialized_state $applied_state
     $applied_state
 }
@@ -78,8 +97,8 @@ export def repair_generated_runtime_state [
                 let missing_labels = ($missing_runtime_artifacts | get label | str join ", ")
                 print $"   Repairing missing artifacts: ($missing_labels)"
             }
-            regenerate_runtime_configs $runtime_dir --quiet=(not $show_progress)
-            let applied_state = (record_current_materialized_state)
+            let applied_state = (regenerate_runtime_configs $runtime_dir --quiet=(not $show_progress))
+            record_current_materialized_state $applied_state | ignore
             print "✅ Repaired the missing generated runtime artifacts."
             return {
                 status: "repaired_missing_artifacts"
@@ -105,8 +124,8 @@ export def repair_generated_runtime_state [
         print $"♻️  Repairing generated runtime state \(($repair_reason)\)..."
     }
 
-    regenerate_runtime_configs $runtime_dir --quiet=(not $show_progress)
-    let applied_state = (record_current_materialized_state)
+    let applied_state = (regenerate_runtime_configs $runtime_dir --quiet=(not $show_progress))
+    record_current_materialized_state $applied_state | ignore
 
     print "✅ Generated runtime state repaired."
     print "   Generated Yazi/Zellij state now matches the active runtime config."

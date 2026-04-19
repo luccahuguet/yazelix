@@ -34,6 +34,28 @@ export def write_text_atomic [target_path: string, content: string, --raw] {
     $target_path
 }
 
+export def write_text_atomic_if_changed [target_path: string, content: string, --raw] {
+    let existing_content = if ($target_path | path exists) {
+        open --raw $target_path
+    } else {
+        null
+    }
+
+    if ($existing_content != null) and ($existing_content == $content) {
+        return {
+            path: $target_path
+            changed: false
+        }
+    }
+
+    write_text_atomic $target_path $content --raw=$raw | ignore
+
+    {
+        path: $target_path
+        changed: true
+    }
+}
+
 export def copy_file_atomic [source_path: string, target_path: string] {
     let temp_path = (create_atomic_temp_path $target_path)
 

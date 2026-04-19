@@ -1236,6 +1236,99 @@ def test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins [] 
     $result
 }
 
+# Regression: warm Yazi generation should leave unchanged managed files untouched instead of rewriting them on every startup.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_generate_merged_yazi_config_skips_unchanged_managed_file_rewrites [] {
+    print "🧪 Testing merged Yazi config skips rewriting unchanged managed files on warm runs..."
+
+    let repo_root = (get_repo_config_dir)
+    let tmp_home = (^mktemp -d /tmp/yazelix_yazi_unchanged_reuse_XXXXXX | str trim)
+    let temp_config_dir = ($tmp_home | path join ".config" "yazelix")
+    let user_config_dir = ($temp_config_dir | path join "user_configs")
+    let user_config_path = ($user_config_dir | path join "yazelix.toml")
+    mkdir ($tmp_home | path join ".config")
+    mkdir $user_config_dir
+
+    let result = (try {
+        '[yazi]
+theme = "tokyo-night"
+plugins = ["git"]
+' | save --force --raw $user_config_path
+
+        let generated = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: ($tmp_home | path join ".config")
+            XDG_DATA_HOME: ($tmp_home | path join ".local" "share")
+            YAZELIX_CONFIG_DIR: $temp_config_dir
+            YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_LOGS_DIR: ($tmp_home | path join ".local" "share" "yazelix" "logs")
+            YAZELIX_RUNTIME_DIR: $repo_root
+        } {
+            let merged_dir = (generate_merged_yazi_config $repo_root --quiet)
+            let tracked_paths = [
+                ($merged_dir | path join "yazi.toml")
+                ($merged_dir | path join "theme.toml")
+                ($merged_dir | path join "keymap.toml")
+                ($merged_dir | path join "init.lua")
+            ]
+            let before = (
+                $tracked_paths
+                | each {|path_value|
+                    {
+                        path: $path_value
+                        modified: ((ls -D $path_value | get modified.0) | into datetime)
+                    }
+                }
+            )
+
+            sleep 50ms
+            generate_merged_yazi_config $repo_root --quiet | ignore
+
+            let after = (
+                $tracked_paths
+                | each {|path_value|
+                    {
+                        path: $path_value
+                        modified: ((ls -D $path_value | get modified.0) | into datetime)
+                    }
+                }
+            )
+
+            {
+                before: $before
+                after: $after
+            }
+        })
+
+        let changed_paths = (
+            $generated.before
+            | each {|before_entry|
+                let after_entry = ($generated.after | where path == $before_entry.path | get 0)
+                if $after_entry.modified != $before_entry.modified {
+                    $before_entry.path
+                } else {
+                    null
+                }
+            }
+            | where {|path_value| $path_value != null }
+        )
+
+        if ($changed_paths | is-empty) {
+            print "  ✅ Warm Yazi generation now leaves unchanged managed files untouched"
+            true
+        } else {
+            print $"  ❌ Warm Yazi generation still rewrote unchanged files: ($changed_paths | str join ', ')"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
 # Regression: source-checkout sessions must generate runtime-owned Yazi and Zellij artifacts against the active runtime, not a stale installed-runtime reference.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 def test_generated_runtime_configs_prefer_active_runtime_over_installed_reference [] {
@@ -1775,6 +1868,7 @@ export def run_generated_config_canonical_tests [] {
         (test_generate_merged_yazi_config_rejects_legacy_user_overrides)
         (test_generate_merged_yazi_config_syncs_starship_plugin_config)
         (test_generate_merged_yazi_config_renders_runtime_placeholders_in_plugins)
+        (test_generate_merged_yazi_config_skips_unchanged_managed_file_rewrites)
         (test_generated_runtime_configs_prefer_active_runtime_over_installed_reference)
         (test_generate_merged_zellij_config_uses_native_user_config_without_relocating_it)
         (test_generate_merged_zellij_config_prefers_managed_user_config_when_native_config_also_exists)

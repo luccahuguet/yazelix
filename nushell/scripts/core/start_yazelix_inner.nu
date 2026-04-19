@@ -73,7 +73,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         print ""
     }
 
-    try {
+    let applied_runtime_state = (try {
         profile_startup_step "inner" "materialize_runtime_configs" {
             if $verbose {
                 print "🔧 Preparing Yazelix generated runtime state..."
@@ -82,7 +82,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
         }
     } catch { |err|
             error make {msg: $"Failed to prepare Yazelix generated runtime state: ($err.msg)\nRun `yzx doctor` to inspect the runtime and generated-state contract, then restart Yazelix after fixing the reported problem."}
-    }
+    })
 
     let merged_zellij_dir = ($ZELLIJ_CONFIG_PATHS.merged_config_dir | str replace "~" $env.HOME)
     let working_dir = if ($cwd_override | is-not-empty) {
@@ -115,7 +115,7 @@ def main [cwd_override?: string, layout_override?: string, --verbose] {
     # Record that the current config/runtime state has been successfully applied
     # once generated config has been refreshed inside the prepared runtime.
     profile_startup_step "inner" "record_runtime_state" {
-        record_current_materialized_state
+        record_current_materialized_state $applied_runtime_state
     } | ignore
 
     cd $launch_process_cwd

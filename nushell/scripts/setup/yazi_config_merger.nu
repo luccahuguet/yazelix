@@ -2,7 +2,7 @@
 # Yazi Configuration Generator
 # Generates yazi configs from yazelix defaults + dynamic settings from yazelix.toml
 
-use ../utils/atomic_writes.nu write_text_atomic
+use ../utils/atomic_writes.nu write_text_atomic_if_changed
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu get_yazelix_state_dir
 use ./yazi_bundled_assets.nu [bundled_yazi_assets_missing render_runtime_root_placeholders sync_bundled_yazi_assets]
@@ -56,7 +56,6 @@ def generate_yazi_toml [source_dir: string, merged_dir: string, sort_by: string,
     })
 
     # Generate header
-    let timestamp = (date now | format date '%Y-%m-%d %H:%M:%S')
     let user_note = if $has_user_config {
         "#\n# User config merged from:\n#   ~/.config/yazelix/user_configs/yazi/yazi.toml\n"
     } else {
@@ -72,18 +71,21 @@ def generate_yazi_toml [source_dir: string, merged_dir: string, sort_by: string,
         "# Dynamic settings from ~/.config/yazelix/user_configs/yazelix.toml:"
         "#   [yazi] sort_by, plugins"
         "#"
-        $"# Generated: ($timestamp)"
         "# ========================================"
         ""
     ] | str join "\n"
 
     # Write final config
     let config_content = (render_runtime_root_placeholders ($final_config | to toml))
-    write_text_atomic $merged_path $"($header)($config_content)" --raw | ignore
+    let write_result = (write_text_atomic_if_changed $merged_path $"($header)($config_content)" --raw)
 
     if not $quiet {
         let user_msg = if $has_user_config { " \(+user yazi.toml\)" } else { "" }
-        print $"     ✅ yazi.toml generated with sort_by: ($sort_by)($user_msg)"
+        if $write_result.changed {
+            print $"     ✅ yazi.toml generated with sort_by: ($sort_by)($user_msg)"
+        } else {
+            print $"     ↺ yazi.toml unchanged with sort_by: ($sort_by)($user_msg)"
+        }
     }
 }
 
@@ -117,7 +119,6 @@ def generate_theme_toml [source_dir: string, merged_dir: string, theme: string, 
     let final_config = ($base_theme | merge $flavor_config)
 
     # Generate header
-    let timestamp = (date now | format date '%Y-%m-%d %H:%M:%S')
     let header = [
         "# ========================================"
         "# AUTO-GENERATED YAZI THEME CONFIG"
@@ -130,7 +131,6 @@ def generate_theme_toml [source_dir: string, merged_dir: string, theme: string, 
         "#   [yazi] theme = \"...\""
         "#"
         $"# Current theme: ($theme)"
-        $"# Generated: ($timestamp)"
         "# ========================================"
         ""
     ] | str join "\n"
@@ -141,10 +141,14 @@ def generate_theme_toml [source_dir: string, merged_dir: string, theme: string, 
     } else {
         $final_config | to toml
     }
-    write_text_atomic $merged_path $"($header)($config_content)" --raw | ignore
+    let write_result = (write_text_atomic_if_changed $merged_path $"($header)($config_content)" --raw)
 
     if not $quiet {
-        print $"     ✅ theme.toml generated with flavor: ($theme)"
+        if $write_result.changed {
+            print $"     ✅ theme.toml generated with flavor: ($theme)"
+        } else {
+            print $"     ↺ theme.toml unchanged with flavor: ($theme)"
+        }
     }
 }
 
@@ -171,7 +175,6 @@ def generate_keymap_toml [source_dir: string, merged_dir: string, --quiet] {
     }
 
     # Generate header
-    let timestamp = (date now | format date '%Y-%m-%d %H:%M:%S')
     let header = [
         "# ========================================"
         "# AUTO-GENERATED YAZI KEYMAP"
@@ -182,18 +185,21 @@ def generate_keymap_toml [source_dir: string, merged_dir: string, --quiet] {
         "# To add custom keybindings, create:"
         "#   ~/.config/yazelix/user_configs/yazi/keymap.toml"
         "#"
-        $"# Generated: ($timestamp)"
         "# ========================================"
         ""
     ] | str join "\n"
 
     # Write final keymap
     let keymap_content = (render_runtime_root_placeholders ($final_keymap | to toml))
-    write_text_atomic $merged_path $"($header)($keymap_content)" --raw | ignore
+    let write_result = (write_text_atomic_if_changed $merged_path $"($header)($keymap_content)" --raw)
 
     if not $quiet {
         let user_msg = if $has_user_keymap { " \(+user keymap\)" } else { "" }
-        print $"     ✅ keymap.toml generated($user_msg)"
+        if $write_result.changed {
+            print $"     ✅ keymap.toml generated($user_msg)"
+        } else {
+            print $"     ↺ keymap.toml unchanged($user_msg)"
+        }
     }
 }
 
@@ -240,7 +246,6 @@ def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
     } | str join "\n\n")
 
     # Generate final init.lua content
-    let timestamp = (date now | format date '%Y-%m-%d %H:%M:%S')
     let header = [
         "-- ========================================"
         "-- AUTO-GENERATED YAZI INIT.LUA"
@@ -255,7 +260,6 @@ def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
         "-- For custom Lua code, create:"
         "--   ~/.config/yazelix/user_configs/yazi/init.lua"
         "--"
-        $"-- Generated: ($timestamp)"
         "-- ========================================"
         ""
     ] | str join "\n"
@@ -283,11 +287,15 @@ def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
 
     # Write init.lua
     let init_path = $"($merged_dir)/init.lua"
-    write_text_atomic $init_path $final_content --raw | ignore
+    let write_result = (write_text_atomic_if_changed $init_path $final_content --raw)
 
     if not $quiet {
         let user_msg = if ($user_init_path | path exists) { " \(+user init.lua\)" } else { "" }
-        print $"   ✅ Generated init.lua with ($valid_plugins | length) plugins($user_msg)"
+        if $write_result.changed {
+            print $"   ✅ Generated init.lua with ($valid_plugins | length) plugins($user_msg)"
+        } else {
+            print $"   ↺ init.lua unchanged with ($valid_plugins | length) plugins($user_msg)"
+        }
     }
 }
 

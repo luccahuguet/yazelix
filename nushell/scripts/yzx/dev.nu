@@ -173,6 +173,7 @@ def run_dev_profile_harness [
 
     let profile_env = (
         $profile_run.env
+        | upsert YAZELIX_RUNTIME_DIR $source_info.root
         | upsert YAZELIX_STARTUP_PROFILE_SKIP_WELCOME "true"
         | upsert YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ "true"
         | upsert YAZELIX_SHELLHOOK_SKIP_WELCOME "true"
@@ -254,6 +255,7 @@ def run_desktop_profile_command [] {
 
     let profile_env = (
         $profile_run.env
+        | upsert YAZELIX_RUNTIME_DIR $source_info.root
         | upsert YAZELIX_STARTUP_PROFILE_SKIP_WELCOME "true"
         | upsert YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ "true"
         | upsert YAZELIX_SHELLHOOK_SKIP_WELCOME "true"
@@ -300,6 +302,7 @@ def run_launch_profile_command [
 
     let profile_env = (
         $profile_run.env
+        | upsert YAZELIX_RUNTIME_DIR $source_info.root
         | upsert YAZELIX_STARTUP_PROFILE_SKIP_WELCOME "true"
         | upsert YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ "true"
         | upsert YAZELIX_SHELLHOOK_SKIP_WELCOME "true"
