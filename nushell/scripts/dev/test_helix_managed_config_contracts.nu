@@ -2,7 +2,7 @@
 # Test lane: maintainer
 # Defends: docs/specs/test_suite_governance.md
 
-use ./yzx_test_helpers.nu [get_repo_root]
+use ./yzx_test_helpers.nu [get_repo_root resolve_test_yzx_core_bin]
 use ../setup/helix_config_merger.nu [generate_managed_helix_config]
 use ../utils/runtime_env.nu [get_runtime_env]
 
@@ -80,6 +80,7 @@ def test_get_runtime_env_wraps_helix_with_managed_wrapper [] {
             HOME: $tmp_home
             YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
         } {
             get_runtime_env {
                 editor_command: "hx"
@@ -167,6 +168,7 @@ def test_get_runtime_env_exports_curated_toolbin_and_keeps_runtime_local_yzx [] 
             PATH: []
             YAZELIX_RUNTIME_DIR: $fake_runtime
             YAZELIX_STATE_DIR: ($tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
         } {
             get_runtime_env {
                 editor_command: "hx"

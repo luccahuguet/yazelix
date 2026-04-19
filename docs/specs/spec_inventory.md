@@ -35,6 +35,7 @@ Status labels:
 | `flake_interface_contract.md` | Historical | Earlier installer/front-door phase; package-first v15 contract lives elsewhere. |
 | `floating_tui_panes.md` | Live | Current popup/menu transient-pane behavior family. |
 | `helix_managed_config_contract.md` | Planning | Useful future Helix config ownership contract; not the main v15 trim gate. |
+| `launch_bootstrap_rust_migration.md` | Planning | Current live seam map and staged Rust insertion plan for `yazelix-kt5.4`; do not revive historical launch-profile or `devenv` assumptions. |
 | `macos_support_floor.md` | Live | Current first-party macOS support floor for the top-level flake/package surface. |
 | `managed_config_migration_transaction_contract.md` | Historical | Superseded with the removed migration/legacy relocation engine. |
 | `nixpkgs_package_contract.md` | Live | Current package-shape target. |

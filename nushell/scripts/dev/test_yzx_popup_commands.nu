@@ -3,6 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 # Defends: docs/specs/floating_tui_panes.md
 
+use ./yzx_test_helpers.nu resolve_test_yzx_core_bin
 use ../yzx/popup.nu [resolve_yzx_popup_command resolve_yzx_popup_contract resolve_yzx_popup_cwd]
 use ../integrations/zellij_runtime_wrappers.nu [build_floating_wrapper_env_args get_floating_wrapper_env get_new_editor_pane_launch_env open_floating_runtime_script]
 use ../utils/config_parser.nu [parse_yazelix_config]
@@ -13,7 +14,19 @@ def write_executable_fixture_file [path: string, lines: list<string>] {
 }
 
 def write_runtime_wrapper_fixture_config_parser [fixture: record, lines: list<string>] {
-    $lines | str join "\n" | save --force --raw ($fixture.utils_dir | path join "config_parser.nu")
+    let parser_path = ($fixture.utils_dir | path join "config_parser.nu")
+    let parser_lines = ($lines | str join "\n")
+    let helper_lines = ([
+        "export def run_yzx_core_json_command [runtime_dir: string, config_surface: record, helper_args, invalid_json_message: string] {"
+        $"    let helper = \"($fixture.helper_bin)\""
+        "    let result = (do { ^$helper ...$helper_args } | complete)"
+        "    if $result.exit_code != 0 {"
+        "        error make {msg: ($result.stderr | str trim)}"
+        "    }"
+        "    $result.stdout | from json | get data"
+        "}"
+    ] | str join "\n")
+    [$parser_lines, $helper_lines] | str join "\n" | save --force --raw $parser_path
 }
 
 def setup_runtime_wrapper_fixture [label: string] {
@@ -27,6 +40,7 @@ def setup_runtime_wrapper_fixture [label: string] {
     let fake_bin = ($tmpdir | path join "bin")
     let refresh_log = ($tmpdir | path join "refresh.log")
     let real_nu = (which nu | get -o 0.path)
+    let helper_bin = (resolve_test_yzx_core_bin)
 
     mkdir $integrations_dir
     mkdir $utils_dir
@@ -46,6 +60,7 @@ def setup_runtime_wrapper_fixture [label: string] {
     ] | str join "\n" | save --force --raw ($utils_dir | path join "common.nu")
     write_runtime_wrapper_fixture_config_parser {
         utils_dir: $utils_dir
+        helper_bin: $helper_bin
     } [
         "export def parse_yazelix_config [] {"
         "    { popup_program: [\"config-popup\"] }"
@@ -63,6 +78,7 @@ def setup_runtime_wrapper_fixture [label: string] {
         fake_bin: $fake_bin
         refresh_log: $refresh_log
         real_nu: $real_nu
+        helper_bin: $helper_bin
     }
 }
 
@@ -665,6 +681,7 @@ def test_popup_wrapper_env_falls_back_to_runtime_env [] {
             let resolved = (with-env {
                 YAZELIX_CONFIG_OVERRIDE: $config_path
                 YAZELIX_RUNTIME_DIR: $runtime_dir
+                YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
                 PATH: $"($profile_bin):/usr/bin"
                 EDITOR: ""
                 YAZELIX_MANAGED_HELIX_BINARY: ""
@@ -791,6 +808,7 @@ def test_popup_wrapper_falls_back_to_host_nu_without_runtime_owned_nu [] {
         with-env {
             PATH: ([$fixture.fake_bin] | append $env.PATH)
             YAZELIX_RUNTIME_DIR: $fixture.runtime_dir
+            YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
             YAZELIX_TEST_ZELLIJ_LOG: $zellij_log
         } {
             open_floating_runtime_script "proof_popup" "nushell/scripts/zellij_wrappers/proof_popup.nu" "/tmp/workspace"
@@ -843,6 +861,7 @@ def test_runtime_env_includes_visual_equal_to_editor [] {
             let resolved = (with-env {
                 YAZELIX_CONFIG_OVERRIDE: $config_path
                 YAZELIX_RUNTIME_DIR: $runtime_dir
+                YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
                 PATH: $"($profile_bin):/usr/bin"
                 EDITOR: ""
                 VISUAL: ""
