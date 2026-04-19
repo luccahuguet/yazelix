@@ -115,6 +115,13 @@ jobs:
       - name: Validate upgrade contract
         run: nu nushell/scripts/dev/validate_upgrade_contract.nu --ci
 
+      - name: Build yzx_core helper for source-checkout validators
+        shell: bash
+        run: |
+          set -euo pipefail
+          nix shell nixpkgs#cargo nixpkgs#rustc -c cargo build --manifest-path rust_core/Cargo.toml --bin yzx_core
+          echo "YAZELIX_YZX_CORE_BIN=$GITHUB_WORKSPACE/rust_core/target/debug/yzx_core" >> "$GITHUB_ENV"
+
       - name: Validate config surface and launch-profile contract
         run: nu nushell/scripts/dev/validate_config_surface_contract.nu
 
