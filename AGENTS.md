@@ -166,6 +166,14 @@ When creating new files or directories, always use underscores to maintain consi
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the synced wasm plus a fresh Yazelix session.
 - After syncing a new plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
 
+## Rust Dependency Gate
+
+- Before starting any Rust implementation bead, record a crate-vs-in-house decision in the bead notes or linked spec.
+- The decision must list production crates, dev-only crates, logic to build in-house, rejected alternatives, and packaging impact.
+- Default to in-house/std for small domain logic. Add crates when they buy stable parsing, serialization, hashing, error modeling, or test coverage that would be wasteful or riskier to recreate.
+- Avoid broad frameworks or convenience crates by default, especially for private helpers. If a broad crate is chosen, explain why the narrower option is worse.
+- If the crate list changes during implementation, update the bead/spec before continuing so dependency drift is explicit.
+
 ## Zellij Keybinding Rule
 
 - In Yazelix Zellij config, do not `unbind` a key that Yazelix then intends to `bind` for its own action in the same merged config.

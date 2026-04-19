@@ -47,6 +47,26 @@ Keep Nushell, Nix, POSIX shell, or shipped data when a surface has most of these
 
 Delete or narrow before porting when a surface still carries old product assumptions, transitional compatibility, or duplicate ownership.
 
+## Rust Dependency Gate
+
+Every Rust implementation bead must start with a crate-vs-in-house decision before code is written.
+
+The decision should record:
+
+- production crates and why each one is worth the dependency cost
+- dev-only crates and which tests they unlock
+- logic that will be built in-house because it is small, domain-specific, or safer to own
+- rejected crates or frameworks when the obvious option is intentionally not used
+- Nix packaging impact, including whether the crate set changes the product closure or vendoring/hash work
+
+Default posture:
+
+- Use in-house/std for Yazelix-specific config normalization, state classification, runtime materialization decisions, and bridge envelope shaping.
+- Use crates for stable external formats or well-scoped infrastructure, such as TOML parsing, JSON serialization, SHA hashing, explicit error types, and focused test helpers.
+- Avoid broad frameworks for the private helper until a public CLI or async/process boundary genuinely needs them.
+
+If the crate list changes mid-bead, update the bead or linked spec before continuing.
+
 ## Migration Matrix
 
 | Surface | Current owners | Rust fitness | Payoff | Risk | Decision | Timing and beads |
