@@ -1,17 +1,13 @@
 #!/usr/bin/env nu
 
 use common.nu [get_yazelix_state_dir require_yazelix_runtime_dir]
-use config_parser.nu run_yzx_core_json_command_with_error_surface
+use config_parser.nu [
+    build_default_yzx_core_error_surface
+    run_yzx_core_request_json_command
+]
 use config_surfaces.nu get_main_user_config_path
 
 const INSTALL_OWNERSHIP_EVALUATE_COMMAND = "install-ownership.evaluate"
-
-def install_ownership_error_surface [] {
-    {
-        display_config_path: ""
-        config_file: ""
-    }
-}
 
 def get_xdg_config_home [] {
     let configured = (
@@ -89,11 +85,5 @@ export def evaluate_install_ownership_report [--runtime-dir: string] {
         shell_resolved_yzx_path: (get_shell_resolved_yzx_path_for_report)
     }
 
-    let helper_args = [
-        $INSTALL_OWNERSHIP_EVALUATE_COMMAND
-        "--request-json"
-        ($req | to json -r)
-    ]
-
-    run_yzx_core_json_command_with_error_surface $rd (install_ownership_error_surface) $helper_args "Yazelix Rust install-ownership helper returned invalid JSON."
+    run_yzx_core_request_json_command $rd (build_default_yzx_core_error_surface) $INSTALL_OWNERSHIP_EVALUATE_COMMAND $req "Yazelix Rust install-ownership helper returned invalid JSON."
 }

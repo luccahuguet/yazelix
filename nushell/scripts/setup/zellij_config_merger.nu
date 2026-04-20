@@ -4,7 +4,11 @@
 
 use ../utils/constants.nu [DEFAULT_SHELL ZELLIJ_CONFIG_PATHS]
 use ../utils/atomic_writes.nu write_text_atomic
-use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/config_parser.nu [
+    build_default_yzx_core_error_surface
+    parse_yazelix_config
+    run_yzx_core_request_json_command
+]
 use ../utils/common.nu resolve_zellij_default_shell
 use ../utils/layout_generator.nu [render_custom_text_segment render_widget_tray_segment]
 use ../utils/startup_profile.nu [profile_startup_step]
@@ -23,7 +27,6 @@ use ./zellij_owned_settings.nu [
     render_yazelix_top_level_settings_block
     strip_yazelix_owned_top_level_settings
 ]
-use ../utils/zellij_render_plan.nu [compute_zellij_render_plan]
 use ./zellij_semantic_blocks.nu [
     build_merged_keybinds_block
     build_yazelix_load_plugins_block
@@ -37,6 +40,8 @@ use ./zellij_plugin_paths.nu [
     sync_pane_orchestrator_runtime_wasm
     sync_zjstatus_runtime_wasm
 ]
+
+const ZELLIJ_RENDER_PLAN_COMMAND = "zellij-render-plan.compute"
 
 # Ensure directory exists
 def ensure_dir [path: string] {
@@ -99,7 +104,28 @@ export def generate_merged_zellij_config [yazelix_dir: string, merged_config_dir
         return $merged_config_path
     }
 
-    let render_plan = (compute_zellij_render_plan $yazelix_dir $config $yazelix_layout_dir $resolved_default_shell)
+    let render_plan = (run_yzx_core_request_json_command
+        $yazelix_dir
+        (build_default_yzx_core_error_surface)
+        $ZELLIJ_RENDER_PLAN_COMMAND
+        {
+            enable_sidebar: ($config.enable_sidebar? | default true)
+            sidebar_width_percent: ($config.sidebar_width_percent? | default 20)
+            popup_width_percent: ($config.popup_width_percent? | default 90)
+            popup_height_percent: ($config.popup_height_percent? | default 90)
+            zellij_widget_tray: ($config.zellij_widget_tray? | default null)
+            zellij_custom_text: ($config.zellij_custom_text? | default null)
+            zellij_theme: ($config.zellij_theme? | default "default")
+            zellij_pane_frames: ($config.zellij_pane_frames? | default "true")
+            zellij_rounded_corners: ($config.zellij_rounded_corners? | default "true")
+            disable_zellij_tips: ($config.disable_zellij_tips? | default "true")
+            persistent_sessions: ($config.persistent_sessions? | default "false")
+            support_kitty_keyboard_protocol: ($config.support_kitty_keyboard_protocol? | default "false")
+            zellij_default_mode: ($config.zellij_default_mode? | default "normal")
+            yazelix_layout_dir: $yazelix_layout_dir
+            resolved_default_shell: $resolved_default_shell
+        }
+        "Yazelix Rust zellij-render-plan helper returned invalid JSON.")
     let widget_tray = $render_plan.widget_tray
     let custom_text = $render_plan.custom_text
     let resolved_owned_settings = {

@@ -2,9 +2,11 @@
 # Runtime environment helpers for the trimmed Yazelix entry surface.
 
 use ./common.nu get_yazelix_runtime_dir
-use ./config_parser.nu [parse_yazelix_config run_yzx_core_json_command]
-
-const RUNTIME_ENV_COMPUTE_COMMAND = "runtime-env.compute"
+use ./config_parser.nu [
+    build_record_yzx_core_error_surface
+    parse_yazelix_config
+    run_yzx_core_request_json_command
+]
 
 def build_runtime_env_request [runtime_dir: string, config: record] {
     {
@@ -14,14 +16,6 @@ def build_runtime_env_request [runtime_dir: string, config: record] {
         enable_sidebar: ($config.enable_sidebar? | default true)
         editor_command: ($config.editor_command? | default null)
         helix_runtime_path: ($config.helix_runtime_path? | default null)
-    }
-}
-
-def runtime_env_error_surface [config: record] {
-    let config_file = ($config.config_file? | default "")
-    {
-        display_config_path: $config_file
-        config_file: $config_file
     }
 }
 
@@ -36,14 +30,11 @@ export def get_runtime_env [config?: record] {
         error make {msg: "Could not resolve the Yazelix runtime directory for the runtime env contract."}
     }
     let request = (build_runtime_env_request $runtime_dir $resolved_config)
-    let data = (run_yzx_core_json_command
+    let data = (run_yzx_core_request_json_command
         $runtime_dir
-        (runtime_env_error_surface $resolved_config)
-        [
-            $RUNTIME_ENV_COMPUTE_COMMAND
-            "--request-json"
-            ($request | to json -r)
-        ]
+        (build_record_yzx_core_error_surface $resolved_config)
+        "runtime-env.compute"
+        $request
         "Yazelix Rust runtime-env helper returned invalid JSON.")
     $data.runtime_env
 }

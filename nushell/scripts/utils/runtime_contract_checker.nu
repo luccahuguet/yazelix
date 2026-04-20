@@ -1,18 +1,14 @@
 #!/usr/bin/env nu
 
-use config_parser.nu [run_yzx_core_json_command_with_error_surface]
+use config_parser.nu [
+    build_default_yzx_core_error_surface
+    run_yzx_core_request_json_command
+]
 use common.nu [require_yazelix_runtime_dir]
 use failure_classes.nu [format_failure_classification]
 
 const RUNTIME_CONTRACT_EVALUATE_COMMAND = "runtime-contract.evaluate"
 const STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND = "startup-launch-preflight.evaluate"
-
-def runtime_contract_error_surface [] {
-    {
-        display_config_path: ""
-        config_file: ""
-    }
-}
 
 def normalize_path_entries [value: any] {
     let described = ($value | describe)
@@ -35,15 +31,11 @@ def get_command_search_paths [] {
 
 def evaluate_runtime_contract_checks [request: record] {
     let runtime_dir = (require_yazelix_runtime_dir)
-    let helper_args = [
-        $RUNTIME_CONTRACT_EVALUATE_COMMAND
-        "--request-json"
-        ($request | to json -r)
-    ]
-    let data = (run_yzx_core_json_command_with_error_surface
+    let data = (run_yzx_core_request_json_command
         $runtime_dir
-        (runtime_contract_error_surface)
-        $helper_args
+        (build_default_yzx_core_error_surface)
+        $RUNTIME_CONTRACT_EVALUATE_COMMAND
+        $request
         "Yazelix Rust runtime-contract helper returned invalid JSON.")
 
     $data.checks? | default []
@@ -51,15 +43,11 @@ def evaluate_runtime_contract_checks [request: record] {
 
 def evaluate_startup_launch_preflight_data [request: record] {
     let runtime_dir = (require_yazelix_runtime_dir)
-    let helper_args = [
-        $STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND
-        "--request-json"
-        ($request | to json -r)
-    ]
-    let data = (run_yzx_core_json_command_with_error_surface
+    let data = (run_yzx_core_request_json_command
         $runtime_dir
-        (runtime_contract_error_surface)
-        $helper_args
+        (build_default_yzx_core_error_surface)
+        $STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND
+        $request
         "Yazelix Rust startup-launch-preflight helper returned invalid JSON.")
 
     $data

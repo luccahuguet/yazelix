@@ -219,6 +219,21 @@ def build_single_error_config_diagnostic_report [config_surface: record, envelop
     }
 }
 
+export def build_default_yzx_core_error_surface [] {
+    {
+        display_config_path: ""
+        config_file: ""
+    }
+}
+
+export def build_record_yzx_core_error_surface [config: record] {
+    let config_file = ($config.config_file? | default "")
+    {
+        display_config_path: $config_file
+        config_file: $config_file
+    }
+}
+
 export def run_yzx_core_json_command_with_error_surface [
     runtime_dir: string
     error_surface: record
@@ -253,6 +268,20 @@ export def run_yzx_core_json_command_with_error_surface [
     }
 
     $envelope | get data
+}
+
+export def run_yzx_core_request_json_command [
+    runtime_dir: string
+    error_surface: record
+    command: string
+    request: any
+    invalid_json_message: string
+] {
+    run_yzx_core_json_command_with_error_surface $runtime_dir $error_surface [
+        $command
+        "--request-json"
+        ($request | to json -r)
+    ] $invalid_json_message
 }
 
 export def run_yzx_core_json_command [

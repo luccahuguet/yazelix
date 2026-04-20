@@ -1,18 +1,15 @@
 #!/usr/bin/env nu
 
 use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir require_yazelix_runtime_dir]
-use config_parser.nu [parse_yazelix_config run_yzx_core_json_command_with_error_surface]
+use config_parser.nu [
+    build_default_yzx_core_error_surface
+    parse_yazelix_config
+    run_yzx_core_request_json_command
+]
 use constants.nu DEFAULT_TERMINAL
 use generated_runtime_state.nu compute_runtime_materialization_plan
 
 const DOCTOR_RUNTIME_EVALUATE_COMMAND = "doctor-runtime.evaluate"
-
-def doctor_runtime_error_surface [] {
-    {
-        display_config_path: ""
-        config_file: ""
-    }
-}
 
 def normalize_path_entries [value: any] {
     let described = ($value | describe)
@@ -45,13 +42,7 @@ def get_runtime_doctor_platform_name [] {
 
 export def evaluate_doctor_runtime_report [req: record] {
     let rd = require_yazelix_runtime_dir
-    let helper_args = [
-        $DOCTOR_RUNTIME_EVALUATE_COMMAND
-        "--request-json"
-        ($req | to json -r)
-    ]
-
-    run_yzx_core_json_command_with_error_surface $rd (doctor_runtime_error_surface) $helper_args "Yazelix Rust doctor-runtime helper returned invalid JSON."
+    run_yzx_core_request_json_command $rd (build_default_yzx_core_error_surface) $DOCTOR_RUNTIME_EVALUATE_COMMAND $req "Yazelix Rust doctor-runtime helper returned invalid JSON."
 }
 
 export def collect_runtime_doctor_results [install_io: record] {

@@ -1,7 +1,11 @@
 #!/usr/bin/env nu
 
 use common.nu require_yazelix_runtime_dir
-use config_parser.nu [parse_yazelix_config run_yzx_core_json_command_with_error_surface]
+use config_parser.nu [
+    build_default_yzx_core_error_surface
+    parse_yazelix_config
+    run_yzx_core_request_json_command
+]
 use ../setup/helix_config_merger.nu [
     build_managed_helix_config
     get_generated_helix_config_path
@@ -11,13 +15,6 @@ use ../setup/helix_config_merger.nu [
 ]
 
 const DOCTOR_HELIX_EVALUATE_COMMAND = "doctor-helix.evaluate"
-
-def doctor_helix_error_surface [] {
-    {
-        display_config_path: ""
-        config_file: ""
-    }
-}
 
 def get_hx_exe_path_for_report [] {
     try {
@@ -82,13 +79,7 @@ export def evaluate_helix_doctor_report [] {
         reveal_binding_expected: (get_managed_reveal_command)
     }
 
-    let helper_args = [
-        $DOCTOR_HELIX_EVALUATE_COMMAND
-        "--request-json"
-        ($req | to json -r)
-    ]
-
-    run_yzx_core_json_command_with_error_surface $rd (doctor_helix_error_surface) $helper_args "Yazelix Rust doctor-helix helper returned invalid JSON."
+    run_yzx_core_request_json_command $rd (build_default_yzx_core_error_surface) $DOCTOR_HELIX_EVALUATE_COMMAND $req "Yazelix Rust doctor-helix helper returned invalid JSON."
 }
 
 export def collect_helix_doctor_results [] {

@@ -7,8 +7,11 @@ use common.nu [
     get_yazelix_state_dir
     require_yazelix_runtime_dir
 ]
+use config_parser.nu [
+    build_default_yzx_core_error_surface
+    run_yzx_core_request_json_command
+]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface]
-use doctor_config_report.nu collect_config_doctor_results
 use doctor_helix.nu fix_helix_runtime_conflicts
 use doctor_helix_report.nu collect_helix_doctor_results
 use doctor_runtime_report.nu collect_runtime_doctor_results
@@ -16,6 +19,8 @@ use install_ownership_report.nu evaluate_install_ownership_report
 use generated_runtime_state.nu repair_generated_runtime_state
 use ../setup/zellij_plugin_paths.nu seed_yazelix_plugin_permissions
 use ../integrations/zellij.nu get_active_tab_session_state
+
+const DOCTOR_CONFIG_EVALUATE_COMMAND = "doctor-config.evaluate"
 
 def build_doctor_summary [results: list<record>] {
     let error_count = ($results | where status == "error" | length)
@@ -186,6 +191,21 @@ def fix_create_config [] {
         print "❌ Failed to create yazelix.toml"
         return false
     }
+}
+
+def collect_config_doctor_results [] {
+    let rd = require_yazelix_runtime_dir
+    let data = (run_yzx_core_request_json_command
+        $rd
+        (build_default_yzx_core_error_surface)
+        $DOCTOR_CONFIG_EVALUATE_COMMAND
+        {
+            config_dir: (get_yazelix_config_dir)
+            runtime_dir: $rd
+        }
+        "Yazelix Rust doctor-config helper returned invalid JSON.")
+
+    $data.findings
 }
 
 export def collect_doctor_report [] {

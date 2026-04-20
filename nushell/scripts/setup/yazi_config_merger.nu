@@ -3,11 +3,16 @@
 # Generates yazi configs from yazelix defaults + dynamic settings from yazelix.toml
 
 use ../utils/atomic_writes.nu write_text_atomic_if_changed
-use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/config_parser.nu [
+    build_default_yzx_core_error_surface
+    parse_yazelix_config
+    run_yzx_core_request_json_command
+]
 use ../utils/common.nu get_yazelix_state_dir
-use ../utils/yazi_render_plan.nu compute_yazi_render_plan
 use ./yazi_bundled_assets.nu [bundled_yazi_assets_missing render_runtime_root_placeholders sync_bundled_yazi_assets]
 use ./yazi_user_overrides.nu [merge_yazi_keymap merge_yazi_toml_config resolve_yazi_user_file]
+
+const YAZI_RENDER_PLAN_COMMAND = "yazi-render-plan.compute"
 
 # Generate yazi.toml with dynamic settings from yazelix.toml
 def generate_yazi_toml [source_dir: string, merged_dir: string, render_plan: record, --quiet] {
@@ -306,7 +311,16 @@ export def generate_merged_yazi_config [
     --sync-static-assets = true
 ] {
     let config = parse_yazelix_config
-    let render_plan = (compute_yazi_render_plan $yazelix_dir $config)
+    let render_plan = (run_yzx_core_request_json_command
+        $yazelix_dir
+        (build_default_yzx_core_error_surface)
+        $YAZI_RENDER_PLAN_COMMAND
+        {
+            yazi_theme: ($config.yazi_theme? | default "default")
+            yazi_sort_by: ($config.yazi_sort_by? | default "alphabetical")
+            yazi_plugins: ($config.yazi_plugins? | default null)
+        }
+        "Yazelix Rust yazi-render-plan helper returned invalid JSON.")
 
     # Define paths
     let state_dir = (get_yazelix_state_dir)
