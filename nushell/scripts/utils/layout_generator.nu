@@ -33,7 +33,10 @@ export def render_widget_tray_segment [widget_tray: list<string>]: nothing -> st
             "term" => "#[fg=#00ff88,bold][term: {command_term}]"
             "cpu" => "{command_cpu}"
             "ram" => "{command_ram}"
-            _ => ""
+            _ => {
+                print $"❌ Invalid zellij.widget_tray token in layout renderer: ($widget)"
+                exit 1
+            }
         }
         $parts = ($parts | append $part)
     }

@@ -114,7 +114,7 @@ export def build_zellij_generation_fingerprint [
     let relevant_config = {
         zellij_widget_tray: ($config.zellij_widget_tray? | default ["editor", "shell", "term", "cpu", "ram"])
         zellij_custom_text: ($config.zellij_custom_text? | default "")
-        support_kitty_keyboard_protocol: ($config.support_kitty_keyboard_protocol? | default "true")
+        support_kitty_keyboard_protocol: ($config.support_kitty_keyboard_protocol? | default "false")
         default_shell: ($config.default_shell? | default $DEFAULT_SHELL)
         resolved_default_shell: $resolved_default_shell
         zellij_default_mode: ($config.zellij_default_mode? | default "normal")

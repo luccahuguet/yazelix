@@ -22,7 +22,7 @@ export def build_zellij_render_plan_request [
         zellij_rounded_corners: ($config.zellij_rounded_corners? | default "true")
         disable_zellij_tips: ($config.disable_zellij_tips? | default "true")
         persistent_sessions: ($config.persistent_sessions? | default "false")
-        support_kitty_keyboard_protocol: ($config.support_kitty_keyboard_protocol? | default "true")
+        support_kitty_keyboard_protocol: ($config.support_kitty_keyboard_protocol? | default "false")
         zellij_default_mode: ($config.zellij_default_mode? | default "normal")
         yazelix_layout_dir: $yazelix_layout_dir
         resolved_default_shell: $resolved_default_shell

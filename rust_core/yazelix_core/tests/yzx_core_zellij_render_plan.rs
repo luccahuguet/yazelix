@@ -1,8 +1,10 @@
-// Defends: zellij-render-plan.compute returns layout/plan data with one success envelope.
+// Test lane: maintainer
 
 use assert_cmd::Command;
 use serde_json::Value;
 
+// Defends: zellij-render-plan.compute returns one machine-readable success envelope for a typical normalized request.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
 fn zellij_render_plan_emits_ok_envelope() {
     let request = serde_json::json!({
@@ -15,7 +17,6 @@ fn zellij_render_plan_emits_ok_envelope() {
         "zellij_rounded_corners": "true",
         "disable_zellij_tips": "true",
         "persistent_sessions": "false",
-        "support_kitty_keyboard_protocol": "true",
         "zellij_default_mode": "normal",
         "yazelix_layout_dir": "/tmp/yazelix/layouts",
         "resolved_default_shell": "/usr/bin/nu"
@@ -44,8 +45,17 @@ fn zellij_render_plan_emits_ok_envelope() {
         envelope["data"]["layout_percentages"]["open_primary_width_percent"],
         "48%"
     );
+    let kitty = envelope["data"]["enforced_top_level_settings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["name"] == "support_kitty_keyboard_protocol")
+        .unwrap();
+    assert_eq!(kitty["value"], "false");
 }
 
+// Defends: zellij-render-plan.compute rejects out-of-range sidebar width with a single config-class error envelope.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
 fn zellij_render_plan_rejects_bad_sidebar_width() {
     let request = serde_json::json!({

@@ -71,6 +71,10 @@ fn default_string_false() -> String {
     "false".into()
 }
 
+fn default_support_kitty_keyboard_protocol() -> String {
+    "false".into()
+}
+
 fn default_zellij_default_mode() -> String {
     "normal".into()
 }
@@ -109,8 +113,8 @@ pub struct ZellijRenderPlanRequest {
     pub disable_zellij_tips: String,
     #[serde(default = "default_string_false")]
     pub persistent_sessions: String,
-    /// Matches legacy Nushell `zellij_owned_settings.nu` default when the field is absent.
-    #[serde(default = "default_string_true")]
+    /// Matches `config_metadata/main_config_contract.toml` (`zellij.support_kitty_keyboard_protocol` default false).
+    #[serde(default = "default_support_kitty_keyboard_protocol")]
     pub support_kitty_keyboard_protocol: String,
     #[serde(default = "default_zellij_default_mode")]
     pub zellij_default_mode: String,
@@ -366,6 +370,8 @@ pub fn compute_zellij_render_plan(
     })
 }
 
+// Test lane: maintainer
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -383,13 +389,15 @@ mod tests {
             zellij_rounded_corners: "true".into(),
             disable_zellij_tips: "true".into(),
             persistent_sessions: "false".into(),
-            support_kitty_keyboard_protocol: "true".into(),
+            support_kitty_keyboard_protocol: "false".into(),
             zellij_default_mode: "normal".into(),
             yazelix_layout_dir: "/tmp/yazelix/layouts".into(),
             resolved_default_shell: "/usr/bin/nu".into(),
         }
     }
 
+    // Defends: layout placeholder percents stay aligned with the historical Nushell geometry helper.
+    // Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=2 total=7/10
     #[test]
     fn layout_percentages_match_legacy_nushell() {
         let p = compute_layout_percentages(20);
@@ -402,6 +410,8 @@ mod tests {
         assert_eq!(p.closed_secondary_width_percent, "40%");
     }
 
+    // Defends: sidebar width contract bounds surface as structured config errors, not silent clamping.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
     #[test]
     fn rejects_sidebar_out_of_range() {
         let mut req = sample_request();
@@ -409,6 +419,8 @@ mod tests {
         assert!(compute_zellij_render_plan(&req).is_err());
     }
 
+    // Defends: widget tray entries are validated against the same allowed set as config.normalize.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
     #[test]
     fn rejects_invalid_tray_widget() {
         let mut req = sample_request();
@@ -416,6 +428,8 @@ mod tests {
         assert!(compute_zellij_render_plan(&req).is_err());
     }
 
+    // Defends: managed default layout name tracks the sidebar enable flag without Nushell re-deriving it.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
     #[test]
     fn default_layout_follows_sidebar_flag() {
         let mut req = sample_request();
@@ -424,6 +438,8 @@ mod tests {
         assert_eq!(plan.default_layout_name, "yzx_no_side");
     }
 
+    // Defends: enforced default_layout points at the computed managed layout file for the active sidebar mode.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
     #[test]
     fn enforced_default_layout_points_at_plan_layout() {
         let plan = compute_zellij_render_plan(&sample_request()).unwrap();
@@ -433,5 +449,24 @@ mod tests {
             .find(|s| s.name == "default_layout")
             .unwrap();
         assert!(def.value.contains("yzx_side.kdl"));
+    }
+
+    // Regression: omitted JSON fields use config-contract defaults so bridge callers cannot drift from main_config_contract.toml.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
+    #[test]
+    fn omitted_support_kitty_keyboard_protocol_defaults_to_contract_false() {
+        let json = serde_json::json!({
+            "yazelix_layout_dir": "/tmp/yazelix/layouts",
+            "resolved_default_shell": "/bin/sh",
+        });
+        let req: ZellijRenderPlanRequest = serde_json::from_value(json).unwrap();
+        assert_eq!(req.support_kitty_keyboard_protocol, "false");
+        let plan = compute_zellij_render_plan(&req).unwrap();
+        let kitty = plan
+            .enforced_top_level_settings
+            .iter()
+            .find(|s| s.name == "support_kitty_keyboard_protocol")
+            .unwrap();
+        assert_eq!(kitty.value, "false");
     }
 }
