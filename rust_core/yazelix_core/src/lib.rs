@@ -1,5 +1,6 @@
 pub mod active_config_surface;
 pub mod bridge;
+pub mod command_metadata;
 pub mod config_normalize;
 pub mod config_state;
 pub mod control_plane;
@@ -18,6 +19,11 @@ pub mod zellij_materialization;
 pub mod zellij_render_plan;
 
 pub use bridge::{CoreError, ErrorClass, error_envelope, success_envelope};
+pub use command_metadata::{
+    YzxCommandCategory, YzxCommandMetadata, YzxCommandMetadataData, YzxCommandParameter,
+    YzxParameterKind, render_yzx_externs, render_yzx_help, yzx_command_metadata,
+    yzx_command_metadata_data,
+};
 pub use config_normalize::{NormalizeConfigData, NormalizeConfigRequest, normalize_config};
 pub use config_state::{
     ComputeConfigStateRequest, ConfigStateData, RecordConfigStateData, RecordConfigStateRequest,

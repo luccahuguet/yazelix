@@ -2,9 +2,9 @@
 
 ## Summary
 
-Incremental Rust work in Yazelix should land behind a private helper binary that Nushell invokes with explicit inputs and machine-readable output.
+Incremental Rust work in Yazelix should land behind private helper binaries that receive explicit inputs and return machine-readable output.
 
-Nushell remains the public `yzx` command surface, startup/profile owner, root resolver, and user-facing error renderer. Rust owns deterministic typed core work for selected slices once Nushell has passed explicit runtime, config, state, and command inputs across the bridge.
+Nushell remains the startup/profile owner, root resolver, shell/process orchestrator, and user-facing renderer for surviving Nushell-owned command bodies. Rust owns deterministic typed core work for selected slices, public control-plane leaves that have fully moved, and the shared `yzx` command metadata used for help, palette inventory, and generated Nushell externs.
 
 ## Why
 
@@ -28,8 +28,8 @@ The bridge also limits new Nushell rewrite debt. Complex deterministic work can 
 
 Nushell owns:
 
-- the public `yzx` CLI and command naming
-- launch, desktop, Home Manager, update, doctor, and maintainer UX
+- surviving public `yzx` command bodies that still execute in Nushell
+- launch, desktop, Home Manager, doctor, and maintainer UX that has not moved to Rust
 - config root, runtime root, and state root resolution
 - startup profile schema, report files, and step names
 - user-facing prose, remediation text, and final `error make` rendering
@@ -37,13 +37,15 @@ Nushell owns:
 
 Rust owns:
 
+- shared public `yzx` command metadata for root help, palette inventory, and generated externs
+- public control-plane leaf parsing and execution for `yzx env`, `yzx run`, and `yzx update*`
 - typed parsing and normalization for selected config/runtime inputs
 - deterministic config-state hashes and invalidation decisions
 - generated-runtime materialization plans, and later managed writes when that slice is ready
 - machine-readable diagnostics that Nushell can translate without re-deriving the same logic
 - library-level unit tests for pure behavior and fixture parity
 
-The bridge must not turn Rust into a second public CLI owner. Rust helper commands are internal implementation details behind Nushell wrappers.
+The bridge must not turn Rust into a second public CLI owner for surfaces that are still Nushell-owned. When a surface moves, Rust must become the single owner for that public metadata or leaf parser instead of depending on the old Nushell command tree for discovery.
 
 ### Repo Layout
 
@@ -79,12 +81,29 @@ Calls should use structured argv execution. They must not assemble inline quoted
 
 ### Command Shape
 
-The first helper commands should track the planned Rust slices:
+Helper commands track the Rust-owned slices:
 
 - `config.normalize`
-- `config_state.compute`
-- `runtime_materialization.plan`
-- `runtime_materialization.apply`
+- `config-state.compute`
+- `config-state.record`
+- `runtime-contract.evaluate`
+- `startup-launch-preflight.evaluate`
+- `runtime-env.compute`
+- `runtime-materialization.plan`
+- `runtime-materialization.repair-evaluate`
+- `runtime-materialization.apply`
+- `status.compute`
+- `doctor-config.evaluate`
+- `doctor-helix.evaluate`
+- `doctor-runtime.evaluate`
+- `install-ownership.evaluate`
+- `zellij-render-plan.compute`
+- `yazi-render-plan.compute`
+- `yazi-materialization.generate`
+- `zellij-materialization.generate`
+- `yzx-command-metadata.list`
+- `yzx-command-metadata.externs`
+- `yzx-command-metadata.help`
 
 The exact user-facing `yzx` commands do not change when these helper commands land. Nushell maps the public command flow onto helper command ids internally.
 
@@ -171,9 +190,9 @@ Rust may return optional metrics inside the success `data`, but those metrics ar
 
 The generated Nushell `yzx` extern bridge is startup-owned glue, not command business logic. It remains inside the existing `shellhook` / `sync_yzx_extern_bridge` profile step so startup reports stay comparable while the bridge implementation changes.
 
-Warm startup must not pay the full command metadata probe when the generated extern bridge is already current. The sync path should perform only cheap generated-state checks, such as a command-surface fingerprint and generated-file hash, before reusing the existing bridge.
+Warm startup must not pay a command metadata probe when the generated extern bridge is already current. The sync path should perform only cheap generated-state checks, such as a Rust helper fingerprint and generated-file hash, before reusing the existing bridge.
 
-When the command surface is missing or stale, the sync path may spawn Nushell to inspect the real `yzx` command tree and regenerate the extern file. Successful regeneration updates the generated bridge and its fingerprint atomically enough that a later warm startup can skip the probe.
+When the command metadata is missing or stale, the sync path asks `yzx_core yzx-command-metadata.externs` for the generated extern content. It must not spawn Nushell to inspect `core/yazelix.nu` or reconstitute a second command registry. Successful regeneration updates the generated bridge and its fingerprint atomically enough that a later warm startup can skip the helper call.
 
 Refresh failure must be non-destructive. If a previous generated bridge exists, keep it instead of replacing it with an empty placeholder. If no bridge exists yet, create a minimal placeholder so managed Nushell config can still source the file and show the generation warning.
 
@@ -214,7 +233,7 @@ Source-checkout development may invoke a locally built helper, but installed run
 4. Startup profile reports remain comparable because Nushell keeps the same report schema and high-level step names.
 5. Packaged runtimes can ship the helper privately under `libexec/` without exposing a second user command.
 6. Rust-generated writes stay limited to explicit Yazelix-managed generated-state paths.
-7. Warm shell startup reuses a current generated `yzx` extern bridge without rerunning command metadata introspection.
+7. Warm shell startup reuses a current generated `yzx` extern bridge without rerunning Rust command metadata rendering.
 
 ## Verification
 

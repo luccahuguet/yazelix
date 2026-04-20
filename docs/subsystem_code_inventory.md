@@ -109,7 +109,7 @@ Nushell today because they are shell-bound, process-bound, or mostly human UX.
 
 | Surface family | Current owners | Why it is still a good Nushell fit today |
 | --- | --- | --- |
-| Public CLI UX and help for intentionally Nu-owned commands | `core/yazelix.nu`, `yzx/config.nu`, `yzx/edit.nu`, `yzx/import.nu`, `yzx/menu.nu`, `yzx/popup.nu`, `yzx/screen.nu`, `yzx/keys.nu`, `yzx/tutor.nu`, `yzx/whats_new.nu`, `yzx/desktop.nu`, `yzx/home_manager.nu` | These are text-heavy user-facing command surfaces. They should stay in Nu unless Rust becomes the single public owner for the whole relevant family |
+| Public CLI UX for intentionally Nu-owned commands | `core/yazelix.nu`, `yzx/config.nu`, `yzx/edit.nu`, `yzx/import.nu`, `yzx/menu.nu`, `yzx/popup.nu`, `yzx/screen.nu`, `yzx/keys.nu`, `yzx/tutor.nu`, `yzx/whats_new.nu`, `yzx/desktop.nu`, `yzx/home_manager.nu` | Root help, palette inventory, and extern metadata now come from Rust. The remaining Nu command bodies should stay in Nu unless Rust becomes the single public owner for a whole relevant family |
 | Launch and startup process orchestration | `core/launch_yazelix.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `utils/terminal_launcher.nu`, `shells/posix/*.sh` | This path is shell and process heavy. It is not a good Rust target unless a new deterministic subcore appears that deletes a real owner |
 | Human rendering and front-door UX | `utils/doctor.nu`, `utils/config_report_rendering.nu`, `utils/ascii_art.nu`, `utils/upgrade_summary.nu` | The hard part here is user-facing prose and presentation, not typed decision logic |
 | Runtime integration glue around live tools | `integrations/*.nu`, `zellij_wrappers/*.nu`, `utils/editor_launch_context.nu` | These files mostly adapt to Zellij, Yazi, and editor process behavior rather than model deterministic domain state |
@@ -123,8 +123,10 @@ bridge and materialization lanes.
 1. Remove stale transition docs and tiny plan bridges
 2. Collapse the `yzx_core` and `yzx_control` Nu bridge owners into one minimal transport layer
 3. Choose one real full-owner materialization lane and finish it end-to-end
-4. Revisit broader public command metadata ownership only after the bridge and materialization seams are much smaller
+4. Continue public command ownership only where the next cut deletes a real parser or command-body owner
 
-That last step matters. A future Rust-owned public command root is only worth
-doing if it deletes `core/yazelix.nu` as a public registry owner and deletes
-`nushell_externs.nu` as a command-metadata owner too. It is not the first cut.
+The first public metadata cut landed under `yazelix-ulb2.7`: root help, palette
+inventory, and generated externs no longer probe the Nushell command tree. The
+next cut only counts if it deletes or demotes another real public owner, such as
+`core/yazelix.nu` for a command family, or removes the remaining
+`nushell_externs.nu` compatibility wrapper entirely.

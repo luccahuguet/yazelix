@@ -1,10 +1,11 @@
 #!/usr/bin/env nu
 
 use atomic_writes.nu write_text_atomic
-use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir resolve_yazelix_nu_bin]
+use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
+use config_parser.nu resolve_yzx_core_helper_path
 
-const YZX_EXTERN_BRIDGE_STATE_SCHEMA_VERSION = 1
-const YZX_EXTERN_BRIDGE_RENDERER_VERSION = "v1"
+const YZX_EXTERN_BRIDGE_STATE_SCHEMA_VERSION = 2
+const YZX_EXTERN_BRIDGE_RENDERER_VERSION = "v2-rust-metadata"
 
 export def get_generated_yzx_extern_path [state_root?: string] {
     let state_dir = if $state_root == null {
@@ -18,24 +19,6 @@ export def get_generated_yzx_extern_path [state_root?: string] {
 export def get_generated_yzx_extern_fingerprint_path [state_root?: string] {
     let extern_path = (get_generated_yzx_extern_path $state_root)
     ($extern_path | path dirname | path join "yazelix_extern.fingerprint.json")
-}
-
-def get_yzx_command_surface_paths [runtime_dir: string] {
-    let expanded_runtime = ($runtime_dir | path expand)
-    let core_path = ($expanded_runtime | path join "nushell" "scripts" "core" "yazelix.nu")
-    let renderer_path = ($expanded_runtime | path join "nushell" "scripts" "utils" "nushell_externs.nu")
-    let yzx_dir = ($expanded_runtime | path join "nushell" "scripts" "yzx")
-    let yzx_files = if ($yzx_dir | path exists) {
-        glob ($yzx_dir | path join "*.nu") | sort
-    } else {
-        []
-    }
-
-    [$core_path, $renderer_path]
-    | append $yzx_files
-    | each {|path| $path | path expand }
-    | uniq
-    | sort
 }
 
 def fingerprint_file [target_path: string] {
@@ -63,16 +46,24 @@ def fingerprint_file [target_path: string] {
     }
 }
 
+def fingerprint_yzx_core_helper [runtime_dir: string] {
+    let helper_path = (try {
+        resolve_yzx_core_helper_path $runtime_dir
+    } catch {
+        $runtime_dir | path join "libexec" "yzx_core"
+    })
+    fingerprint_file $helper_path
+}
+
 def compute_yzx_extern_source_fingerprint [runtime_dir: string] {
     let expanded_runtime = ($runtime_dir | path expand)
+    let bridge_renderer_path = ($expanded_runtime | path join "nushell" "scripts" "utils" "nushell_externs.nu")
     {
         schema_version: $YZX_EXTERN_BRIDGE_STATE_SCHEMA_VERSION
         renderer_version: $YZX_EXTERN_BRIDGE_RENDERER_VERSION
         runtime_dir: $expanded_runtime
-        command_surface: (
-            get_yzx_command_surface_paths $expanded_runtime
-            | each {|path| fingerprint_file $path }
-        )
+        bridge_renderer: (fingerprint_file $bridge_renderer_path)
+        yzx_core: (fingerprint_yzx_core_helper $expanded_runtime)
     } | to json -r | hash sha256
 }
 
@@ -137,100 +128,33 @@ def write_yzx_extern_bridge_state [
     write_text_atomic $fingerprint_path (($state | to json -r) + "\n") --raw | ignore
 }
 
-def render_flag [parameter: record] {
-    let name = ($parameter.parameter_name? | default "")
-    let short_flag = ($parameter.short_flag? | default "")
-    if ($short_flag | is-empty) {
-        $"    --($name)"
-    } else {
-        ("    --" + $name + "(-" + $short_flag + ")")
-    }
-}
-
-def normalize_shape [syntax_shape?: string] {
-    let shape = ($syntax_shape | default "" | into string | str trim)
-    match $shape {
-        "" => "string"
-        "any" => "string"
-        "list<string>" => "string"
-        _ => $shape
-    }
-}
-
-def render_named [parameter: record] {
-    let name = ($parameter.parameter_name? | default "")
-    let short_flag = ($parameter.short_flag? | default "")
-    let shape = (normalize_shape ($parameter.syntax_shape? | default "string"))
-    if ($short_flag | is-empty) {
-        $"    --($name): ($shape)"
-    } else {
-        ("    --" + $name + "(-" + $short_flag + "): " + $shape)
-    }
-}
-
-def render_positional [parameter: record] {
-    let name = ($parameter.parameter_name? | default "arg")
-    let shape = (normalize_shape ($parameter.syntax_shape? | default "string"))
-    if ($parameter.is_optional? | default false) {
-        $"    ($name)?: ($shape)"
-    } else {
-        $"    ($name): ($shape)"
-    }
-}
-
-def render_rest [parameter: record] {
-    let name = ($parameter.parameter_name? | default "rest")
-    let shape = (normalize_shape ($parameter.syntax_shape? | default "string"))
-    $"    ...($name): ($shape)"
-}
-
-def render_parameter [parameter: record] {
-    let parameter_type = ($parameter.parameter_type? | default "")
-    match $parameter_type {
-        "switch" => (render_flag $parameter)
-        "named" => (render_named $parameter)
-        "positional" => (render_positional $parameter)
-        "rest" => (render_rest $parameter)
-        _ => null
-    }
-}
-
-def render_extern_block [command: record] {
-    let parameters = (
-        $command.signatures.any
-        | where {|parameter|
-            let parameter_type = ($parameter.parameter_type? | default "")
-            $parameter_type not-in ["input", "output"]
-        }
-        | each {|parameter| render_parameter $parameter }
-        | where {|line| $line != null }
-    )
-
-    if ($parameters | is-empty) {
-        $"export extern \"($command.name)\" []"
-    } else {
-        let body = ($parameters | str join "\n")
-        $"export extern \"($command.name)\" [\n($body)\n]"
-    }
-}
-
-def fetch_yzx_command_metadata [runtime_root: string] {
+def fetch_yzx_extern_content [runtime_root: string] {
     let runtime_dir = ($runtime_root | path expand)
-    let nu_bin = (resolve_yazelix_nu_bin)
-    let probe = (do {
-        cd $runtime_dir
-        # Ignore host Nushell startup files while probing the repo command tree.
-        # Otherwise an existing generated extern bridge can leak `yzx env` /
-        # `yzx run` back into the probe and get rendered a second time.
-        ^$nu_bin --config /dev/null --env-config /dev/null -c 'source nushell/scripts/core/yazelix.nu; scope commands | where name =~ "^yzx( |$)" | sort-by name | to json -r' | complete
+    let helper_path = (resolve_yzx_core_helper_path $runtime_dir)
+    let result = (^$helper_path yzx-command-metadata.externs | complete)
+
+    if $result.exit_code != 0 {
+        let stderr = ($result.stderr | default "" | str trim)
+        error make {msg: $"Failed to render yzx extern bridge from Rust command metadata: ($stderr)"}
+    }
+
+    let envelope = (try {
+        $result.stdout | from json
+    } catch {|err|
+        error make {msg: $"Rust yzx command metadata returned invalid JSON: ($err.msg)"}
     })
 
-    if $probe.exit_code != 0 {
-        let stderr = ($probe.stderr | default "" | str trim)
-        error make {msg: $"Failed to inspect yzx command metadata for Nushell extern generation: ($stderr)"}
+    if (($envelope.status? | default "") != "ok") {
+        error make {msg: $"Rust yzx command metadata returned a non-ok envelope: (($result.stdout | str trim))"}
     }
 
-    $probe.stdout | from json
+    let data = ($envelope.data? | default {})
+    let extern_content = ($data.extern_content? | default "")
+    if ($extern_content | is-empty) {
+        error make {msg: "Rust yzx command metadata returned an empty extern bridge"}
+    }
+
+    $extern_content
 }
 
 export def sync_generated_yzx_extern_bridge [runtime_root?: string, state_root?: string] {
@@ -255,29 +179,7 @@ export def sync_generated_yzx_extern_bridge [runtime_root?: string, state_root?:
     }
 
     try {
-        let commands = (
-            fetch_yzx_command_metadata $runtime_dir
-            | where name not-in ["yzx env", "yzx run"]
-        )
-        let header = [
-            "# Generated by Yazelix from the real yzx command tree."
-            "# Restores Nushell completion/signature knowledge for the external yzx CLI."
-            ""
-        ] | str join "\n"
-        let body = ($commands | each {|command| render_extern_block $command } | str join "\n\n")
-        let rust_control_externs = (
-            [
-                "# Rust-owned leaf commands (not in the Nushell scope tree; explicit extern parity)."
-                "export extern \"yzx env\" ["
-                "    --no-shell(-n)"
-                "]"
-                ""
-                "export extern \"yzx run\" ["
-                "    ...argv: string"
-                "]"
-            ] | str join "\n"
-        )
-        let extern_content = $"($header)($body)\n\n($rust_control_externs)\n"
+        let extern_content = (fetch_yzx_extern_content $runtime_dir)
         write_text_atomic $extern_path $extern_content --raw | ignore
         write_yzx_extern_bridge_state $fingerprint_path $source_fingerprint $extern_content
     } catch {|err|

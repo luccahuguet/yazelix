@@ -2,7 +2,7 @@
 
 ## Summary
 
-`yzx menu` should derive its catalog from the real exported `yzx` surface, not from a handwritten allowlist. It should classify the public `yzx` tree into practical palette categories and allow most user-facing commands by default.
+`yzx menu` should derive its catalog from Rust-owned public `yzx` command metadata, not from a handwritten allowlist or a Nushell `scope commands` probe. It should classify the public `yzx` tree into practical palette categories and allow most user-facing commands by default.
 
 The palette is a command-discovery and dispatch surface, not a second shell. So the right rule is:
 
@@ -37,15 +37,15 @@ Without a palette-specific contract, `menu.nu` will keep accreting one-off filte
 
 ## Source Of Truth
 
-The command inventory for this spec comes from the real exported surface:
+The command inventory for this spec comes from the Rust-owned metadata surface:
 
-- `nushell/scripts/core/yazelix.nu`
-- `nushell/scripts/yzx/*.nu`
+- `rust_core/yazelix_core/src/command_metadata.rs`
+- `yzx_core yzx-command-metadata.list`
 
 Sanity check:
 
 ```bash
-nu -c 'source nushell/scripts/core/yazelix.nu; scope commands | where name =~ "^yzx( |$)" | select name description | sort-by name'
+rust_core/target/debug/yzx_core yzx-command-metadata.list
 ```
 
 This spec intentionally excludes:
@@ -198,7 +198,7 @@ The two models should agree on inventory, but they intentionally optimize for di
 
 ## Acceptance Cases
 
-1. `yzx menu` can derive grouping and eligibility from the real exported command tree instead of maintaining a handwritten catalog.
+1. `yzx menu` can derive grouping and eligibility from Rust-owned command metadata instead of maintaining a handwritten catalog or probing the Nushell command tree.
 2. When a new public `yzx` command is added, maintainers can decide whether it belongs in the palette by checking these eligibility rules rather than guessing from precedent.
 3. When a user asks why `yzx env`, `yzx run`, or `yzx cwd` are not normal palette items, the answer is explicit and intentional.
 4. When the menu surface is thinned, it can still present most public commands without treating the palette as a second shell.
@@ -210,7 +210,7 @@ The two models should agree on inventory, but they intentionally optimize for di
   - [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md)
   - [architecture_map.md](../architecture_map.md)
 - command-surface sanity check:
-  - `nu -c 'source nushell/scripts/core/yazelix.nu; scope commands | where name =~ "^yzx( |$)" | select name description | sort-by name'`
+  - `rust_core/target/debug/yzx_core yzx-command-metadata.list`
 - spec validation:
   - `nu nushell/scripts/dev/validate_specs.nu`
 

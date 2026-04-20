@@ -93,6 +93,19 @@ export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$RUNTIME_DIR"
 unset YAZELIX_BOOTSTRAP_RUNTIME_DIR
 
 yzx_control_bin="${YAZELIX_YZX_CONTROL_BIN:-$RUNTIME_DIR/libexec/yzx_control}"
+yzx_core_bin="${YAZELIX_YZX_CORE_BIN:-$RUNTIME_DIR/libexec/yzx_core}"
+
+case "${1:-}" in
+  "" | help | -h | --help)
+    if [ ! -x "$yzx_core_bin" ]; then
+      echo "Error: Missing Yazelix core helper: $yzx_core_bin" >&2
+      echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
+      exit 1
+    fi
+    exec "$yzx_core_bin" yzx-command-metadata.help
+    ;;
+esac
+
 case "${1:-}" in
   env | run | update)
     if [ ! -x "$yzx_control_bin" ]; then

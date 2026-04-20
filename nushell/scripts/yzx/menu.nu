@@ -3,8 +3,8 @@
 
 use ../integrations/zellij.nu [get_current_tab_workspace_root_including_bootstrap]
 use ../integrations/zellij.nu [open_transient_pane_contract]
-use ../utils/common.nu [get_yazelix_runtime_dir resolve_yazelix_nu_bin]
-use ../utils/config_parser.nu parse_yazelix_config
+use ../utils/common.nu get_yazelix_runtime_dir
+use ../utils/config_parser.nu [parse_yazelix_config resolve_yzx_core_helper_path]
 use ../utils/transient_pane_contract.nu [
     build_transient_pane_open_contract
     is_transient_pane_mode_active
@@ -71,18 +71,20 @@ def is_palette_eligible_command [cmd: string] {
 
 def fetch_yzx_command_catalog [] {
     let runtime_dir = (get_yazelix_runtime_dir)
-    let runtime_nu = (resolve_yazelix_nu_bin)
-    let probe = (do {
-        cd $runtime_dir
-        ^$runtime_nu -c 'source nushell/scripts/core/yazelix.nu; scope commands | where {|command| ($command.name == "yzx") or ($command.name | str starts-with "yzx ")} | sort-by name | select name description extra_description | to json -r' | complete
-    })
+    let helper_path = (resolve_yzx_core_helper_path $runtime_dir)
+    let probe = (^$helper_path yzx-command-metadata.list | complete)
 
     if $probe.exit_code != 0 {
         let stderr = ($probe.stderr | default "" | str trim)
-        error make {msg: $"Failed to inspect the exported yzx command surface for the command palette: ($stderr)"}
+        error make {msg: $"Failed to inspect Rust-owned yzx command metadata for the command palette: ($stderr)"}
     }
 
-    $probe.stdout | from json
+    let envelope = ($probe.stdout | from json)
+    if (($envelope.status? | default "") != "ok") {
+        error make {msg: $"Rust-owned yzx command metadata returned a non-ok envelope: (($probe.stdout | str trim))"}
+    }
+
+    $envelope.data.commands
 }
 
 def palette_category_for_command [cmd: string] {
@@ -220,9 +222,9 @@ def popup_post_action_decision [] {
 }
 
 def run_menu_action [cmd: string] {
-    let yazelix_module = ((get_yazelix_runtime_dir) | path join "nushell" "scripts" "core" "yazelix.nu")
-    let runtime_nu = (resolve_yazelix_nu_bin)
-    ^$runtime_nu -c $"use ($yazelix_module) *; ($cmd)"
+    let yzx_cli = ((get_yazelix_runtime_dir) | path join "shells" "posix" "yzx_cli.sh")
+    let args = ($cmd | str trim | split row " " | skip 1)
+    ^sh $yzx_cli ...$args
 }
 
 def resolve_menu_popup_contract [

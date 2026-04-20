@@ -7,12 +7,13 @@ runtime owners as possible.
 
 Current recommendation:
 
-- Rust `yzx_core` owns typed config, state, preflight, runtime-env, and
-  structured report evaluation
+- Rust `yzx_core` owns typed config, state, preflight, runtime-env,
+  structured report evaluation, full-owner Yazi/Zellij materialization
+  generation, and shared public `yzx` command metadata
 - Rust `yzx_control` owns the public control-plane leaf parsing and execution
   for `yzx env`, `yzx run`, and `yzx update*`
-- Nushell owns the remaining public CLI UX, process orchestration, generated
-  file families that still live there, and final human rendering
+- Nushell owns the remaining public CLI command bodies, process orchestration,
+  generated file families that still live there, and final human rendering
 - Rust pane orchestrator code owns live workspace and session truth inside
   Zellij
 - Lua Yazi plugins stay thin in-Yazi adapters
@@ -50,9 +51,9 @@ wrapper runtime.
 | Layer | Should own | Should not own |
 | --- | --- | --- |
 | POSIX shell | stable launcher entrypoints, narrow host bootstrap, runtime-root discovery, shell-specific wrappers | config semantics, runtime classification, workspace truth, long-lived generated-state policy |
-| Rust `yzx_core` | typed config normalization, config-state hashing and recording, runtime-env computation, runtime preflight evaluation, materialization planning, structured status and doctor data, structured install ownership evaluation, structured render plans | public CLI UX, shell and process orchestration, final human prose, authoritative live workspace state |
-| Rust `yzx_control` | public control-plane leaf parsing and execution for `yzx env`, `yzx run`, and `yzx update*` | becoming a second general public command registry while Nushell still owns the rest of help and completion |
-| Nushell | remaining public `yzx` CLI UX, command help, startup profile schema, shell and terminal orchestration, generated file families that still live in Nu, final human rendering and integration glue | typed runtime truth already owned by `yzx_core`, authoritative live tab state already owned by the pane orchestrator |
+| Rust `yzx_core` | typed config normalization, config-state hashing and recording, runtime-env computation, runtime preflight evaluation, materialization planning and generation for moved families, structured status and doctor data, structured install ownership evaluation, structured render plans, public command metadata for help/palette/externs | shell and process orchestration, final human prose, authoritative live workspace state |
+| Rust `yzx_control` | public control-plane leaf parsing and execution for `yzx env`, `yzx run`, and `yzx update*` | becoming a second general public command parser for command bodies that still intentionally live in Nushell |
+| Nushell | remaining public `yzx` CLI command bodies, startup profile schema, shell and terminal orchestration, generated file families that still live in Nu, final human rendering and integration glue | typed runtime truth already owned by `yzx_core`, public command metadata already owned by `yzx_core`, authoritative live tab state already owned by the pane orchestrator |
 | Rust pane orchestrator | authoritative per-tab workspace root, managed pane identity, focus and layout state, tab-local sidebar state, tab-local mutations | high-level config semantics, runtime/update policy, install/distribution ownership |
 | Lua Yazi plugins | in-Yazi keymaps and status UI, small adapter events, local cache writes when needed | workspace source of truth, runtime policy, tab identity |
 | Zellij CLI and KDL | command transport and static layout or config shape | durable workspace truth, generated-runtime business logic, config ownership |
@@ -64,7 +65,8 @@ wrapper runtime.
 Current owner split:
 
 - Rust `yzx_core` owns typed config normalization, config-state computation,
-  runtime-env planning, runtime preflight, and structured runtime findings
+  runtime-env planning, runtime preflight, structured runtime findings, and
+  shared public command metadata
 - Rust `yzx_control` owns the already migrated `env`, `run`, and `update*`
   public control-plane leaves
 - Nushell and POSIX shell still own launch, startup, terminal dispatch, startup
@@ -78,11 +80,10 @@ owners.
 
 Primary current owner: mixed
 
-- Rust already owns materialization planning, repair evaluation, and Yazi or
-  Zellij render plans
-- Nushell still owns the main orchestration and writer families around
-  `generated_runtime_state.nu`, the Yazi generation family, the Zellij
-  generation family, and the terminal or Helix or initializer families
+- Rust already owns materialization planning, repair evaluation, Yazi/Zellij
+  render plans, and full-owner Yazi/Zellij generation
+- Nushell still owns the main orchestration around `generated_runtime_state.nu`
+  and the terminal or Helix or initializer generation families
 
 This is the highest-value remaining cross-language collapse because it still
 holds large real product ownership in Nushell.
@@ -128,8 +129,9 @@ The best remaining cross-language collapse is now:
 
 1. collapse the Nu bridge layer around `yzx_core` and `yzx_control`
 2. move one generated runtime materialization family to full Rust ownership
-3. defer any broad public-CLI rewrite until it deletes the public command
-   registry and extern ownership too
+3. continue public command ownership only where the next cut deletes a real
+   parser or command-body owner, now that metadata/help/extern ownership has
+   moved
 
 That means:
 
@@ -144,7 +146,7 @@ That means:
 
 Not everything should migrate:
 
-- remaining public CLI UX and help for intentionally Nu-owned command families
+- remaining public CLI command-body UX for intentionally Nu-owned command families
 - startup profile schema and process orchestration
 - shell and terminal host integration
 - final human-facing remediation text and interactive UX

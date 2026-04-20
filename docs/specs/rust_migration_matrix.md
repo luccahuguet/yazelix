@@ -29,7 +29,9 @@ Yazelix already moved a large amount of typed core logic into Rust:
   recording, runtime-contract evaluation, startup preflight evaluation,
   canonical runtime-env computation, materialization planning and repair
   evaluation, status and doctor report evaluation, install ownership
-  evaluation, and Yazi/Zellij render-plan computation
+  evaluation, Yazi/Zellij render-plan computation, Yazi/Zellij
+  materialization generation, and shared `yzx` command metadata for root help,
+  command-palette inventory, and generated Nushell externs
 - `yzx_control` now owns the public control-plane leaf parsing and execution for
   `yzx env`, `yzx run`, and `yzx update*`
 
@@ -84,6 +86,11 @@ Use these rules before starting any Rust lane:
 - `install-ownership.evaluate`
 - `zellij-render-plan.compute`
 - `yazi-render-plan.compute`
+- `yazi-materialization.generate`
+- `zellij-materialization.generate`
+- `yzx-command-metadata.list`
+- `yzx-command-metadata.externs`
+- `yzx-command-metadata.help`
 
 `yzx_control` is already the public leaf owner for:
 
@@ -107,7 +114,7 @@ wrappers.
 | Zellij materialization family | Rust owner: `zellij-materialization.generate`; surviving Nu wrapper: `setup/zellij_config_merger.nu` | The real Nu owner family is gone. Rust owns base-config selection, semantic KDL extraction, layout rendering, plugin wasm sync, permission migration, popup-runner cleanup, and generation-state reuse. | Keep the wrapper thin or delete it. Do not rebuild Zellij policy ownership in Nu. Dependency gate for the landed cut: in-house logic plus existing `serde`, `serde_json`, `toml`, `sha2`, `thiserror`, and `lexopt`; no new crates. | Landed under `yazelix-ulb2.3.2` |
 | Terminal, Helix, and initializer materialization | `utils/terminal_configs.nu`, `utils/terminal_renderers.nu`, `setup/helix_config_merger.nu`, `setup/initializers.nu`, `setup/environment.nu` | Meaningful deletion budget, but spread across several file families | Batch this with a real full-owner materialization move. Avoid isolated helper ports that leave the Nu writer layer intact. | Later `yazelix-ulb2.3` work |
 | Launch and startup process orchestration | `core/launch_yazelix.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `utils/terminal_launcher.nu`, `shells/posix/*.sh` | Shell-bound and process-heavy, not the best next Rust target | Keep Nu and POSIX in v15.x. Reopen only if a new deterministic subcore appears that deletes a real owner. | No active deletion lane; historical stop note in `launch_bootstrap_rust_migration.md` |
-| Public `yzx` root, help, and completion ownership | `core/yazelix.nu`, `yzx/*.nu`, `utils/nushell_externs.nu` | Only worth touching after the bridge and materialization owners are much smaller | Defer. A broader Rust root is only justified if it deletes the public registry owner and the extern metadata owner too. | Later planning only: `yazelix-2ex.1.11` |
+| Public `yzx` root, help, completion, and palette inventory | Rust metadata owner: `command_metadata.rs`; surviving Nu command bodies: `core/yazelix.nu`, `yzx/*.nu`; compatibility wrapper: `utils/nushell_externs.nu` | First metadata slice has landed: root help, generated externs, and menu catalog no longer probe the Nushell command tree | Keep shrinking only when the next cut deletes a real public parser or command-body owner. Do not rebuild a parallel Nu registry. | Current lane: `yazelix-ulb2.7`; broader rewrite still gated by `yazelix-2ex.1.11` |
 | Workspace and session state | `rust_plugins/zellij_pane_orchestrator/`, `integrations/*.nu`, `zellij_wrappers/*.nu` | Already Rust where live session truth matters | Keep this separate from `rust_core`. Do not fold the pane-orchestrator track into the control-plane migration by habit. | Separate pane-orchestrator beads |
 | Front-door UX and command-palette surfaces | `utils/ascii_art.nu`, `yzx/menu.nu`, `yzx/popup.nu`, `yzx/screen.nu`, `yzx/keys.nu`, `yzx/tutor.nu`, `utils/upgrade_summary.nu` | Mostly text-heavy or interactive UX | Keep Nushell unless a future port deletes an owner cleanly and improves the UX story at the same time. | Not a current Rust target |
 | Distribution and host integration | `home_manager/`, `packaging/`, `shells/`, `yzx/desktop.nu`, `yzx/home_manager.nu` | Nix, POSIX, and UX-heavy by nature | Keep outside the current Rust migration. Rust may be packaged here, but it should not become the new owner by default. | Not a current Rust target |
@@ -187,13 +194,16 @@ Why not terminal, Helix, and initializers first:
 
 ## Public CLI Rule
 
-A broader Rust public-CLI move is not the next deletion lane.
+A broader Rust public-CLI move is not the next deletion lane, even though the
+first command-metadata owner slice has landed.
 
 It becomes worth evaluating only after the bridge and materialization owners are
 already much smaller. If revisited later, the required deletion budget is:
 
-- delete `core/yazelix.nu` as a public command-registry owner
-- delete `nushell_externs.nu` as an authoritative command-metadata owner
+- delete or demote `core/yazelix.nu` as a public command-registry owner for at
+  least one more command family
+- delete `nushell_externs.nu` entirely or keep it as compatibility-only startup
+  glue with no command discovery authority
 - delete public Nushell wrapper parsing for at least one remaining command
   family beyond the already migrated `yzx_control` leaves
 

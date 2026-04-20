@@ -9,14 +9,15 @@ use yazelix_core::{
     RuntimeMaterializationApplyRequest, RuntimeMaterializationPlanRequest,
     RuntimeMaterializationRepairEvaluateRequest, StartupLaunchPreflightRequest,
     YaziMaterializationRequest, YaziRenderPlanRequest, ZellijMaterializationRequest,
-    ZellijRenderPlanRequest,
-    apply_runtime_materialization, compute_config_state, compute_runtime_env,
-    compute_status_report, compute_yazi_render_plan, compute_zellij_render_plan, error_envelope,
-    evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
+    ZellijRenderPlanRequest, apply_runtime_materialization, compute_config_state,
+    compute_runtime_env, compute_status_report, compute_yazi_render_plan,
+    compute_zellij_render_plan, error_envelope, evaluate_doctor_config_report,
+    evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
     evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_runtime_materialization_repair, evaluate_startup_launch_preflight,
     generate_yazi_materialization, generate_zellij_materialization, normalize_config,
-    plan_runtime_materialization, record_config_state, success_envelope,
+    plan_runtime_materialization, record_config_state, render_yzx_help, success_envelope,
+    yzx_command_metadata, yzx_command_metadata_data,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
@@ -38,6 +39,9 @@ const ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND: &str = "zellij-render-plan.compute";
 const YAZI_RENDER_PLAN_COMPUTE_COMMAND: &str = "yazi-render-plan.compute";
 const YAZI_MATERIALIZATION_GENERATE_COMMAND: &str = "yazi-materialization.generate";
 const ZELLIJ_MATERIALIZATION_GENERATE_COMMAND: &str = "zellij-materialization.generate";
+const YZX_COMMAND_METADATA_LIST_COMMAND: &str = "yzx-command-metadata.list";
+const YZX_COMMAND_METADATA_EXTERNS_COMMAND: &str = "yzx-command-metadata.externs";
+const YZX_COMMAND_METADATA_HELP_COMMAND: &str = "yzx-command-metadata.help";
 const UNKNOWN_COMMAND: &str = "unknown";
 
 struct CommandError {
@@ -182,11 +186,48 @@ fn run() -> Result<(), Box<CommandError>> {
             run_zellij_materialization_generate(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
+        YZX_COMMAND_METADATA_LIST_COMMAND => {
+            let command_for_error = command.clone();
+            run_yzx_command_metadata_list(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        YZX_COMMAND_METADATA_EXTERNS_COMMAND => {
+            let command_for_error = command.clone();
+            run_yzx_command_metadata_externs(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        YZX_COMMAND_METADATA_HELP_COMMAND => {
+            let command_for_error = command.clone();
+            run_yzx_command_metadata_help(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
         _ => Err(CommandError::new(
             command.clone(),
             CoreError::usage(format!("Unsupported helper command: {command}")),
         )),
     }
+}
+
+fn run_yzx_command_metadata_list(parser: lexopt::Parser) -> Result<(), CoreError> {
+    ensure_no_args(parser)?;
+    write_success_envelope(
+        YZX_COMMAND_METADATA_LIST_COMMAND,
+        yzx_command_metadata_data(),
+    )
+}
+
+fn run_yzx_command_metadata_externs(parser: lexopt::Parser) -> Result<(), CoreError> {
+    ensure_no_args(parser)?;
+    write_success_envelope(
+        YZX_COMMAND_METADATA_EXTERNS_COMMAND,
+        yzx_command_metadata_data(),
+    )
+}
+
+fn run_yzx_command_metadata_help(parser: lexopt::Parser) -> Result<(), CoreError> {
+    ensure_no_args(parser)?;
+    print!("{}", render_yzx_help(&yzx_command_metadata()));
+    Ok(())
 }
 
 fn run_config_normalize(mut parser: lexopt::Parser) -> Result<(), CoreError> {
@@ -735,6 +776,16 @@ fn deserialize_json_request<T: DeserializeOwned>(raw: &str, kind: &str) -> Resul
             serde_json::json!({}),
         )
     })
+}
+
+fn ensure_no_args(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    if let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        return Err(CoreError::usage(format!("Unexpected argument: {arg:?}")));
+    }
+    Ok(())
 }
 
 fn parser_path_value(parser: &mut lexopt::Parser) -> Result<PathBuf, CoreError> {

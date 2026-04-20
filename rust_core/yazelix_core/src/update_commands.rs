@@ -295,7 +295,7 @@ fn parse_nix_subcommand_flags(args: &[String]) -> Result<(bool, bool), CoreError
 
 /// `args` are tokens after `yzx_control update` (e.g. `["upstream"]`, `["nix", "--yes"]`).
 pub fn run_yzx_update(args: &[String]) -> Result<i32, CoreError> {
-    if args.is_empty() {
+    if args.is_empty() || matches!(args[0].as_str(), "--help" | "-h" | "help") {
         print_update_owner_warning();
         println!();
         println!("Available update commands:");

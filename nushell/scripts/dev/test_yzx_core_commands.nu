@@ -4,7 +4,7 @@
 
 use ../core/yazelix.nu *
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
-use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_control_bin setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
 
 const DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
 
@@ -352,36 +352,6 @@ def run_stubbed_yzx_run [fixture: record, command: string] {
         YZX_RUN_LOG: $fixture.command_log
     } {
         ^$fixture.zyx_control_bin run ...$argv | complete
-    }
-}
-
-def setup_palette_catalog_runtime_fixture [label: string] {
-    let tmp_root = (^mktemp -d $"/tmp/($label)_XXXXXX" | str trim)
-    let runtime_root = ($tmp_root | path join "runtime")
-    let core_dir = ($runtime_root | path join "nushell" "scripts" "core")
-    let core_script = ($core_dir | path join "yazelix.nu")
-
-    mkdir $core_dir
-    "" | save --force --raw ($runtime_root | path join "yazelix_default.toml")
-
-    [
-        "#!/usr/bin/env nu"
-        "export def yzx [] {}"
-        "export def \"yzx launch\" [] {}"
-        "export def \"yzx status\" [] {}"
-        "export def \"yzx screen\" [] {}"
-        "export def \"yzx why\" [] {}"
-        "export def \"yzx env\" [] {}"
-        "export def \"yzx run\" [...argv: string] { $argv | ignore }"
-        "export def \"yzx cwd\" [target?: string] { $target | ignore }"
-        "export def \"yzx dev sync_issues\" [] {}"
-        "export def \"yzx test_dynamic\" [] {}"
-    ] | str join "\n" | save --force --raw $core_script
-
-    {
-        tmp_root: $tmp_root
-        runtime_root: $runtime_root
-        core_script: $core_script
     }
 }
 
@@ -1355,19 +1325,20 @@ terminals = ["ghostty"]
     $result
 }
 
-# Regression: yzx menu should derive its catalog from the live exported command tree instead of a handwritten list.
+# Regression: yzx menu should derive its catalog from Rust-owned public command metadata instead of a handwritten list or Nushell scope probe.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
-    print "🧪 Testing yzx menu catalog tracks the live exported command surface..."
+    print "🧪 Testing yzx menu catalog tracks Rust-owned command metadata..."
 
-    let fixture = (setup_palette_catalog_runtime_fixture "yazelix_menu_catalog_runtime")
+    let repo_root = (repo_path)
     let menu_script = (repo_path "nushell" "scripts" "yzx" "menu.nu")
 
     let result = (try {
         let output = (with-env {
-            YAZELIX_RUNTIME_DIR: $fixture.runtime_root
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
         } {
-            ^nu -c $"source \"($menu_script)\"; { entries: \(get_palette_command_entries | select id category\), post_prompt: \(popup_post_action_prompt\), esc_decision: \(popup_post_action_key_decision esc\), enter_decision: \(popup_post_action_key_decision enter\), backspace_decision: \(popup_post_action_key_decision backspace\) } | to json -r" | complete
+            ^nu --config /dev/null --env-config /dev/null -c $"source \"($menu_script)\"; { entries: \(get_palette_command_entries | select id category\), post_prompt: \(popup_post_action_prompt\), esc_decision: \(popup_post_action_key_decision esc\), enter_decision: \(popup_post_action_key_decision enter\), backspace_decision: \(popup_post_action_key_decision backspace\) } | to json -r" | complete
         })
         let contract = ($output.stdout | from json)
         let entries = ($contract.entries | default [])
@@ -1379,7 +1350,10 @@ def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
             and ("yzx launch" in $ids)
             and ("yzx status" in $ids)
             and ("yzx screen" in $ids)
-            and ("yzx test_dynamic" in $ids)
+            and ("yzx update" in $ids)
+            and ("yzx update upstream" in $ids)
+            and ("yzx update home_manager" in $ids)
+            and ("yzx update nix" in $ids)
             and not ("yzx env" in $ids)
             and not ("yzx run" in $ids)
             and not ("yzx cwd" in $ids)
@@ -1388,13 +1362,13 @@ def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
             and (($entries | where id == "yzx launch" | get -o 0.category | default "") == "session")
             and (($entries | where id == "yzx screen" | get -o 0.category | default "") == "workspace")
             and (($entries | where id == "yzx status" | get -o 0.category | default "") == "system")
-            and (($entries | where id == "yzx test_dynamic" | get -o 0.category | default "") == "system")
+            and (($entries | where id == "yzx update" | get -o 0.category | default "") == "system")
             and ($contract.post_prompt == "Backspace: return to menu | Enter: close")
             and ($contract.esc_decision == "continue")
             and ($contract.enter_decision == "close")
             and ($contract.backspace_decision == "menu")
         ) {
-            print "  ✅ yzx menu now derives its catalog from the live exported command surface, applies explicit exclusions, and leaves Escape out of its own close path"
+            print "  ✅ yzx menu now derives its catalog from Rust-owned command metadata, applies explicit exclusions, and leaves Escape out of its own close path"
             true
         } else {
             print $"  ❌ Unexpected menu catalog or key contract result: exit=($output.exit_code) stdout=(($output.stdout | str trim)) stderr=(($output.stderr | str trim))"
@@ -1405,7 +1379,43 @@ def test_yzx_menu_catalog_tracks_live_exported_command_surface [] {
         false
     })
 
-    rm -rf $fixture.tmp_root
+    $result
+}
+
+# Regression: yzx menu actions must dispatch through the public launcher so Rust-owned leaves like `yzx update` stay executable.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_menu_dispatches_catalog_actions_through_launcher [] {
+    print "🧪 Testing yzx menu dispatches catalog actions through the public launcher..."
+
+    let repo_root = (repo_path)
+    let menu_script = (repo_path "nushell" "scripts" "yzx" "menu.nu")
+
+    let result = (try {
+        let output = (with-env {
+            YAZELIX_RUNTIME_DIR: $repo_root
+            YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
+            YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+        } {
+            ^nu --config /dev/null --env-config /dev/null -c $"source \"($menu_script)\"; run_menu_action \"yzx update\"" | complete
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Available update commands:")
+            and ($stdout | str contains "yzx update upstream")
+        ) {
+            print "  ✅ yzx menu now dispatches Rust-owned catalog actions through the public launcher"
+            true
+        } else {
+            print $"  ❌ Unexpected menu action dispatch result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
     $result
 }
 
@@ -1455,6 +1465,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_status_json_reports_typed_summary)
         (test_yzx_status_json_reports_materialization_repair_when_artifacts_missing)
         (test_yzx_menu_catalog_tracks_live_exported_command_surface)
+        (test_yzx_menu_dispatches_catalog_actions_through_launcher)
         (test_yzx_exported_commands_have_help_descriptions)
     ]
 }

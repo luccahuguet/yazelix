@@ -2,7 +2,7 @@
 # Test lane: maintainer
 # Defends: docs/specs/test_suite_governance.md
 
-use ./yzx_test_helpers.nu [get_repo_root repo_path]
+use ./yzx_test_helpers.nu [get_repo_root repo_path resolve_test_yzx_core_bin]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/nushell_externs.nu [get_generated_yzx_extern_fingerprint_path get_generated_yzx_extern_path sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [get_yazelix_shell_user_hook_path sync_generated_nushell_user_hook_bridge]
@@ -225,9 +225,9 @@ def test_yzx_extern_bridge_reuses_current_fingerprint [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
-# Regression: yzx extern bridge probing must ignore host Nushell config so Rust-owned leaf externs do not get rendered twice.
+# Regression: Rust-owned yzx extern rendering must ignore host Nushell config so Rust-owned leaf externs do not get rendered twice.
 def test_yzx_extern_bridge_probe_ignores_host_nushell_config [] {
-    print "🧪 Testing yzx extern bridge probing ignores host Nushell config..."
+    print "🧪 Testing Rust-owned yzx extern rendering ignores host Nushell config..."
 
     let repo_root = (get_repo_root)
     let tmp_home = (^mktemp -d /tmp/yazelix_yzx_extern_host_config_XXXXXX | str trim)
@@ -285,10 +285,10 @@ def test_yzx_extern_bridge_probe_ignores_host_nushell_config [] {
             and ($startup.exit_code == 0)
             and (($startup.stdout | str trim) == "ok")
         ) {
-            print "  ✅ yzx extern bridge now ignores host Nushell config and keeps Rust-owned leaf externs unique"
+            print "  ✅ Rust-owned yzx extern rendering now ignores host Nushell config and keeps Rust-owned leaf externs unique"
             true
         } else {
-            print $"  ❌ Unexpected extern bridge probe result: env_count=($env_count) run_count=($run_count) exit=($startup.exit_code) stdout=(($startup.stdout | str trim)) stderr=(($startup.stderr | str trim))"
+            print $"  ❌ Unexpected Rust-owned extern render result: env_count=($env_count) run_count=($run_count) exit=($startup.exit_code) stdout=(($startup.stdout | str trim)) stderr=(($startup.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -666,20 +666,24 @@ def test_runtime_setup_ignores_read_only_host_shell_surfaces [] {
 }
 
 export def run_shell_managed_config_contract_tests [] {
-    [
-        (test_generate_merged_zellij_config_wraps_nu_default_shell)
-        (test_managed_nushell_config_sources_optional_user_hook)
-        (test_managed_nushell_config_loads_in_repo_shell_without_runtime_env)
-        (test_yzx_extern_bridge_reuses_current_fingerprint)
-        (test_yzx_extern_bridge_probe_ignores_host_nushell_config)
-        (test_yzx_extern_bridge_keeps_previous_bridge_when_refresh_fails)
-        (test_managed_bash_config_sources_optional_user_hook)
-        (test_managed_fish_config_does_not_export_helix_mode_env)
-        (test_source_checkout_runtime_resolution_beats_installed_runtime)
-        (test_runtime_resolution_fails_fast_without_valid_runtime_root)
-        (test_runtime_setup_leaves_existing_host_shell_surfaces_untouched)
-        (test_runtime_setup_ignores_read_only_host_shell_surfaces)
-    ]
+    with-env {
+        YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
+    } {
+        [
+            (test_generate_merged_zellij_config_wraps_nu_default_shell)
+            (test_managed_nushell_config_sources_optional_user_hook)
+            (test_managed_nushell_config_loads_in_repo_shell_without_runtime_env)
+            (test_yzx_extern_bridge_reuses_current_fingerprint)
+            (test_yzx_extern_bridge_probe_ignores_host_nushell_config)
+            (test_yzx_extern_bridge_keeps_previous_bridge_when_refresh_fails)
+            (test_managed_bash_config_sources_optional_user_hook)
+            (test_managed_fish_config_does_not_export_helix_mode_env)
+            (test_source_checkout_runtime_resolution_beats_installed_runtime)
+            (test_runtime_resolution_fails_fast_without_valid_runtime_root)
+            (test_runtime_setup_leaves_existing_host_shell_surfaces_untouched)
+            (test_runtime_setup_ignores_read_only_host_shell_surfaces)
+        ]
+    }
 }
 
 export def main [] {

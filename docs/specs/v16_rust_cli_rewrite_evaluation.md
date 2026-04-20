@@ -15,13 +15,16 @@ This is not the next deletion lane. The current deletion lanes are:
 
 - collapsing the Nu bridge layer around `yzx_core` and `yzx_control`
 - deleting one full generator and materialization family end-to-end
+- continuing the newly landed Rust command-metadata lane only when the next cut
+  deletes another real public parser or command-body owner
 
 ## Why
 
 The current branch already proved the value of narrow Rust ownership:
 
 - `yzx_core` owns typed config, state, preflight, runtime-env, materialization,
-  and structured report evaluation
+  structured report evaluation, Yazi/Zellij materialization generation, and
+  shared public `yzx` command metadata
 - `yzx_control` owns `yzx env`, `yzx run`, and `yzx update*`
 - the launch and startup Rust follow-up was explicitly stopped for v15.x because
   the surviving path is mostly shell and process orchestration
@@ -86,8 +89,9 @@ first:
 - at least one real generator and materialization owner family has been deleted
   or materially reduced, so a broader Rust root would not sit above the same
   old Nu materialization core
-- Rust can own command metadata, help, and completion without shelling back into
-  the Nushell command tree for discovery
+- the landed Rust command-metadata slice proves Rust can own help, palette
+  inventory, and extern content without shelling back into the Nushell command
+  tree for discovery
 
 If those preconditions are not true, a broader public rewrite is still
 premature.
@@ -97,13 +101,14 @@ premature.
 A broader Rust CLI is only worth doing if it solves most of these problems at
 once:
 
-- one source of truth for public command metadata, parsing, help, and shell
-  completion
+- extend the current single source of truth for public command metadata into
+  parsing ownership for at least one more moved command family
 - one primary public owner for any command family whose inner typed logic is
   already Rust-owned
 - deletion of the public command-registry role currently carried by
   `core/yazelix.nu`
-- deletion of `nushell_externs.nu` as an authoritative command-metadata owner
+- deletion of `nushell_externs.nu` entirely, or keeping it only as startup
+  compatibility glue with no command discovery authority
 
 It is not worth doing just to:
 
@@ -116,7 +121,7 @@ It is not worth doing just to:
 
 | Family | Current owner | v16 recommendation |
 | --- | --- | --- |
-| Root, help, version, and completion surface | `core/yazelix.nu`, `utils/nushell_externs.nu` | Move only if Rust becomes the single public owner of command metadata for the moved surface |
+| Root, help, version, completion, and palette inventory | Rust metadata owner plus thin Nu wrappers | Metadata/help/extern/menu ownership has started. Keep moving only if the next cut deletes a real public parser or command-body owner. |
 | `yzx env`, `yzx run`, and `yzx update*` | `yzx_control` | Already migrated. Treat these as precedent, not as future scope justification by themselves |
 | `yzx launch`, `yzx enter`, `yzx restart` | Public Nu commands over Nu and POSIX orchestration | Possible later only if Rust would own request parsing and command-family metadata while Nu or POSIX still own the shell-heavy execution path |
 | `yzx status`, `yzx doctor` | Public Nu commands over Rust findings plus Nu rendering | Possible later only if the remaining public wrappers disappear and the family gains one clear owner instead of one more layer |
@@ -134,8 +139,10 @@ a cleaner single-owner model."
 A broader rewrite is not approved unless it deletes all of these public-owner
 seams:
 
-- the public command-registry role of `core/yazelix.nu`
-- `nushell_externs.nu` as an authoritative public command-metadata owner
+- the public command-registry role of `core/yazelix.nu` for at least one more
+  command family
+- `nushell_externs.nu` entirely, or its remaining non-authoritative startup
+  wrapper role if a later shell integration no longer needs it
 - public Nushell wrapper parsing for at least one remaining family beyond the
   already migrated `yzx_control` leaves
 
@@ -178,8 +185,8 @@ Go only if all of these are true:
 2. At least one remaining public command family has a narrow enough internal
    boundary that Rust can own the public contract without inheriting fuzzy
    shell-bound behavior
-3. `nushell_externs.nu` can be deleted or reduced to compatibility-only glue
-   instead of remaining part of steady-state command discovery
+3. `nushell_externs.nu` stays compatibility-only or can be deleted instead of
+   returning to steady-state command discovery
 4. A parity harness exists for help output, exit behavior, and the migrated
    command families
 5. The proposal names the exact Nu modules that stop being public owners

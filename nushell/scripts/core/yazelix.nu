@@ -5,6 +5,7 @@
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/constants.nu *
 use ../utils/common.nu get_yazelix_runtime_dir
+use ../utils/config_parser.nu resolve_yzx_core_helper_path
 use ../utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path
 use ../utils/status_report.nu [collect_status_report render_status_report]
 use ../integrations/managed_editor.nu get_managed_editor_kind
@@ -60,52 +61,13 @@ def print_completed_output [result: record] {
     }
 }
 
-# Hand `yzx update*` to the POSIX launcher so Nushell help, menu, and extern generation stay aligned
-# with `yzx_control` (same path as `yzx_cli.sh`).
-def dispatch_yzx_control_update [...rest: string] {
-    let rt = (get_yazelix_runtime_dir)
-    if $rt == null {
-        error make {
-            msg: "Could not resolve the Yazelix runtime directory. Export YAZELIX_RUNTIME_DIR or run from an installed Yazelix runtime."
-        }
+def print_rust_yzx_help [] {
+    let helper_path = (resolve_yzx_core_helper_path (get_yazelix_runtime_dir))
+    let result = (^$helper_path yzx-command-metadata.help | complete)
+    print_completed_output $result
+    if $result.exit_code != 0 {
+        exit $result.exit_code
     }
-    let cli = ($rt | path join "shells" "posix" "yzx_cli.sh")
-    if not ($cli | path exists) {
-        error make {
-            msg: $"Yazelix launcher is missing at ($cli). Your runtime tree looks incomplete."
-        }
-    }
-    ^sh $cli update ...$rest
-}
-
-# Show supported update owners (delegates to Rust); listed here for `help yzx` / palette / externs.
-export def "yzx update" [] {
-    dispatch_yzx_control_update
-}
-
-# Upgrade the active Yazelix package entry in the default Nix profile (Rust-owned).
-export def "yzx update upstream" [] {
-    dispatch_yzx_control_update upstream
-}
-
-# Refresh the `yazelix` flake input in the current directory (Rust-owned).
-export def "yzx update home_manager" [] {
-    dispatch_yzx_control_update home_manager
-}
-
-# Upgrade Determinate Nix via determinate-nixd (Rust-owned).
-export def "yzx update nix" [
-    --yes      # Skip confirmation prompt
-    --verbose  # Show the underlying command
-] {
-    mut args = ["nix"]
-    if $yes {
-        $args = ($args | append "--yes")
-    }
-    if $verbose {
-        $args = ($args | append "--verbose")
-    }
-    dispatch_yzx_control_update ...$args
 }
 
 # Show Yazelix help or version information
@@ -117,7 +79,7 @@ export def yzx [
         print $"Yazelix ($YAZELIX_VERSION)"
         return
     }
-    help yzx
+    print_rust_yzx_help
 }
 
 # Elevator pitch: Why Yazelix
