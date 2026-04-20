@@ -17,6 +17,17 @@ def write_runtime_wrapper_fixture_config_parser [fixture: record, lines: list<st
     let parser_path = ($fixture.utils_dir | path join "config_parser.nu")
     let parser_lines = ($lines | str join "\n")
     let helper_lines = ([
+        "export def build_record_yzx_core_error_surface [config: record] {"
+        "    { display_config_path: \"\", config_file: \"\" }"
+        "}"
+        "export def run_yzx_core_request_json_command [runtime_dir: string, error_surface: record, command: string, request: any, invalid_json_message: string] {"
+        $"    let helper = \"($fixture.helper_bin)\""
+        "    let result = (do { ^$helper $command '--request-json' ($request | to json -r) } | complete)"
+        "    if $result.exit_code != 0 {"
+        "        error make {msg: ($result.stderr | str trim)}"
+        "    }"
+        "    $result.stdout | from json | get data"
+        "}"
         "export def run_yzx_core_json_command [runtime_dir: string, config_surface: record, helper_args, invalid_json_message: string] {"
         $"    let helper = \"($fixture.helper_bin)\""
         "    let result = (do { ^$helper ...$helper_args } | complete)"

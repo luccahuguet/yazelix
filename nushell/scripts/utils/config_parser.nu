@@ -234,7 +234,7 @@ export def build_record_yzx_core_error_surface [config: record] {
     }
 }
 
-export def run_yzx_core_json_command_with_error_surface [
+export def run_yzx_core_json_command [
     runtime_dir: string
     error_surface: record
     helper_args
@@ -277,23 +277,14 @@ export def run_yzx_core_request_json_command [
     request: any
     invalid_json_message: string
 ] {
-    run_yzx_core_json_command_with_error_surface $runtime_dir $error_surface [
+    run_yzx_core_json_command $runtime_dir $error_surface [
         $command
         "--request-json"
         ($request | to json -r)
     ] $invalid_json_message
 }
 
-export def run_yzx_core_json_command [
-    runtime_dir: string
-    config_surface: record
-    helper_args
-    invalid_json_message: string
-] {
-    run_yzx_core_json_command_with_error_surface $runtime_dir $config_surface $helper_args $invalid_json_message
-}
-
-export def run_yzx_core_command_with_error_surface [
+export def run_yzx_core_command [
     runtime_dir: string
     error_surface: record
     helper_args
@@ -305,14 +296,6 @@ export def run_yzx_core_command_with_error_surface [
     }
 
     $result
-}
-
-export def run_yzx_core_command [
-    runtime_dir: string
-    config_surface: record
-    helper_args
-] {
-    run_yzx_core_command_with_error_surface $runtime_dir $config_surface $helper_args
 }
 
 export def collect_config_diagnostic_report [
