@@ -259,7 +259,19 @@ export def sync_generated_yzx_extern_bridge [runtime_root?: string, state_root?:
             ""
         ] | str join "\n"
         let body = ($commands | each {|command| render_extern_block $command } | str join "\n\n")
-        let extern_content = $"($header)($body)\n"
+        let rust_control_externs = (
+            [
+                "# Rust-owned leaf commands (not in the Nushell scope tree; explicit extern parity)."
+                "export extern \"yzx env\" ["
+                "    --no-shell(-n)"
+                "]"
+                ""
+                "export extern \"yzx run\" ["
+                "    ...argv: string"
+                "]"
+            ] | str join "\n"
+        )
+        let extern_content = $"($header)($body)\n\n($rust_control_externs)\n"
         write_text_atomic $extern_path $extern_content --raw | ignore
         write_yzx_extern_bridge_state $fingerprint_path $source_fingerprint $extern_content
     } catch {|err|

@@ -66,6 +66,7 @@ pkgs.runCommand name { } ''
   done
   ${pkgs.lib.optionalString (rustCoreHelper != null) ''
     ln -sfn "${rustCoreHelper}/bin/yzx_core" "$out/libexec/yzx_core"
+    ln -sfn "${rustCoreHelper}/bin/yzx_control" "$out/libexec/yzx_control"
   ''}
 
   mkdir -p "$out/toolbin"

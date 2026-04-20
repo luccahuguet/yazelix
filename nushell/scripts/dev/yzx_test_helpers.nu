@@ -14,6 +14,26 @@ export def repo_path [...parts: string] {
     $parts | reduce -f (get_repo_root) {|part, acc| $acc | path join $part }
 }
 
+export def resolve_test_yzx_control_bin [] {
+    let explicit = ($env.YAZELIX_YZX_CONTROL_BIN? | default "" | into string | str trim)
+    if ($explicit | is-not-empty) and (($explicit | path expand) | path exists) {
+        return ($explicit | path expand)
+    }
+
+    for candidate in [
+        (repo_path "rust_core" "target" "release" "yzx_control")
+        (repo_path "rust_core" "target" "debug" "yzx_control")
+    ] {
+        if ($candidate | path exists) {
+            return $candidate
+        }
+    }
+
+    error make {
+        msg: "Yazelix tests need a built yzx_control binary. Enter the maintainer shell or set YAZELIX_YZX_CONTROL_BIN."
+    }
+}
+
 export def resolve_test_yzx_core_bin [] {
     let explicit = ($env.YAZELIX_YZX_CORE_BIN? | default "" | into string | str trim)
     if ($explicit | is-not-empty) and (($explicit | path expand) | path exists) {

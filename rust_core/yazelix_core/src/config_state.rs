@@ -1,7 +1,7 @@
 use crate::bridge::{CoreError, ErrorClass};
-use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
+use crate::config_normalize::{normalize_config, NormalizeConfigRequest};
 use serde::Serialize;
-use serde_json::{Map as JsonMap, Value as JsonValue, json};
+use serde_json::{json, Map as JsonMap, Value as JsonValue};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Component, Path, PathBuf};

@@ -717,13 +717,11 @@ mod tests {
             data.checks[1].message,
             "Linux Ghostty desktop-launch graphics support is not runtime-owned"
         );
-        assert!(
-            data.checks[1]
-                .details
-                .as_deref()
-                .unwrap()
-                .contains("Detected host PATH graphics wrapper: nixGLMesa")
-        );
+        assert!(data.checks[1]
+            .details
+            .as_deref()
+            .unwrap()
+            .contains("Detected host PATH graphics wrapper: nixGLMesa"));
     }
 
     // Defends: shared runtime-contract evaluation rejects unsupported requested terminals before launch fallback logic runs.
@@ -747,12 +745,10 @@ mod tests {
         assert_eq!(data.checks.len(), 1);
         assert_eq!(data.checks[0].status, "error");
         assert_eq!(data.checks[0].message, "Unsupported terminal 'warpterm'");
-        assert!(
-            data.checks[0]
-                .details
-                .as_deref()
-                .unwrap_or_default()
-                .contains("Supported terminals: ghostty, wezterm, kitty, alacritty, foot")
-        );
+        assert!(data.checks[0]
+            .details
+            .as_deref()
+            .unwrap_or_default()
+            .contains("Supported terminals: ghostty, wezterm, kitty, alacritty, foot"));
     }
 }

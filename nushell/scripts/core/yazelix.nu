@@ -16,9 +16,7 @@ use ../integrations/zellij.nu [retarget_tab_cwd resolve_tab_cwd_target]
 # Import modularized commands (export use to properly re-export subcommands)
 export use ../yzx/launch.nu *
 export use ../yzx/enter.nu *
-export use ../yzx/env.nu *
 export use ../yzx/import.nu *
-export use ../yzx/run.nu *
 export use ../yzx/popup.nu *
 export use ../yzx/screen.nu *
 export use ../yzx/dev.nu *

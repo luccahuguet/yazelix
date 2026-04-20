@@ -1,10 +1,10 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_state::{
-    ComputeConfigStateRequest, ConfigStateData, RecordConfigStateRequest, compute_config_state,
-    record_config_state,
+    compute_config_state, record_config_state, ComputeConfigStateRequest, ConfigStateData,
+    RecordConfigStateRequest,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{Map as JsonMap, Value as JsonValue, json};
+use serde_json::{json, Map as JsonMap, Value as JsonValue};
 use std::fs;
 use std::path::{Path, PathBuf};
 

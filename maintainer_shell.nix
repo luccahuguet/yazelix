@@ -45,6 +45,7 @@ pkgs.mkShell {
     export IN_YAZELIX_SHELL="true"
     export NIX_CONFIG='${yazelixNixConfig}'
     export YAZELIX_YZX_CORE_BIN="${rustCoreHelper}/bin/yzx_core"
+    export YAZELIX_YZX_CONTROL_BIN="${rustCoreHelper}/bin/yzx_control"
 
     runtime_env_json="$(${pkgs.nushell}/bin/nu -c 'use "${repoRoot}/nushell/scripts/utils/runtime_env.nu" [get_runtime_env]; get_runtime_env | to json -r')"
 

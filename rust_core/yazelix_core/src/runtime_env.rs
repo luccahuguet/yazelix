@@ -158,7 +158,11 @@ fn normalize_path_entries(value: &RuntimePathInput) -> Vec<String> {
 }
 
 fn path_list_separator() -> char {
-    if cfg!(windows) { ';' } else { ':' }
+    if cfg!(windows) {
+        ';'
+    } else {
+        ':'
+    }
 }
 
 fn runtime_owned_path_entries(runtime_dir: &Path) -> Vec<String> {

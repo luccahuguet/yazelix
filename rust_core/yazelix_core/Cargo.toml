@@ -8,6 +8,10 @@ rust-version.workspace = true
 name = "yzx_core"
 path = "src/bin/yzx_core.rs"
 
+[[bin]]
+name = "yzx_control"
+path = "src/bin/yzx_control.rs"
+
 [dependencies]
 lexopt = "0.3"
 serde = { version = "1.0", features = ["derive"] }

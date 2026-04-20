@@ -1,6 +1,6 @@
 use crate::bridge::{CoreError, ErrorClass};
-use serde::Serialize;
-use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue, json};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Map as JsonMap, Number as JsonNumber, Value as JsonValue};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -23,7 +23,7 @@ pub struct NormalizeConfigData {
     pub diagnostic_report: ConfigDiagnosticReport,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigDiagnosticReport {
     pub config_path: String,
     pub schema_diagnostics: Vec<ConfigDiagnostic>,
@@ -36,7 +36,7 @@ pub struct ConfigDiagnosticReport {
     pub has_fixable_config_issues: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigDiagnostic {
     pub category: String,
     pub path: String,
@@ -861,6 +861,8 @@ mod tests {
 
         assert!(report.issue_count > 0);
         assert_eq!(missing_field.status, "missing_field");
-        assert!(missing_field.headline.starts_with("Missing config field at "));
+        assert!(missing_field
+            .headline
+            .starts_with("Missing config field at "));
     }
 }

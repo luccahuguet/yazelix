@@ -48,10 +48,6 @@ export def get_runtime_env [config?: record] {
     $data.runtime_env
 }
 
-export def --env activate_runtime_env [config?: record] {
-    load-env (get_runtime_env $config)
-}
-
 export def run_runtime_argv [
     argv: list<string>
     --cwd: string = ""

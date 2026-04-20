@@ -4,7 +4,7 @@
 
 use ../core/yazelix.nu *
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
-use ./yzx_test_helpers.nu [get_repo_config_dir repo_path setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_control_bin setup_managed_config_fixture]
 
 const DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
 
@@ -296,56 +296,34 @@ welcome_style = "random"
 '
     )
 
-    let stub_root = ($fixture.tmp_home | path join "run_passthrough_stub")
-    let yzx_dir = ($stub_root | path join "yzx")
-    let utils_dir = ($stub_root | path join "utils")
+    let bin_dir = ($fixture.tmp_home | path join "bin")
     let command_log = ($fixture.tmp_home | path join "run_passthrough.json")
-    let stub_run_script = ($yzx_dir | path join "run.nu")
-
-    mkdir $yzx_dir
-    mkdir $utils_dir
-    cp (repo_path "nushell" "scripts" "yzx" "run.nu") $stub_run_script
-
-    [
-        "#!/usr/bin/env nu"
-        "export def prepare_environment [--verbose] {"
-        "    {"
-        "        config: {}"
-        "        config_state: {}"
-        "        needs_refresh: false"
-        "    }"
-        "}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "environment_bootstrap.nu")
-
-    [
-        "#!/usr/bin/env nu"
-        "export def run_runtime_argv ["
-        "    argv: list<string>"
-        "    --cwd: string = \"\""
-        "    --config: record"
-        "] {"
-        "    let command = ($argv | first)"
-        "    let args = ($argv | skip 1)"
-        "    {"
-        "        command: $command"
-        "        args: $args"
-        "        cwd: $cwd"
-        "        config_present: (($config | describe) | str starts-with \"record\")"
-        "    } | to json -r | save --force --raw $env.YZX_RUN_LOG"
-        "}"
-    ] | str join "\n" | save --force --raw ($utils_dir | path join "runtime_env.nu")
+    mkdir $bin_dir
+    let log_argv = ($bin_dir | path join "yzx_test_log_argv")
+    ^cp (repo_path "nushell" "scripts" "dev" "fixtures" "yzx_run_argv_log.sh") $log_argv
+    ^chmod +x $log_argv
 
     $fixture | merge {
         command_log: $command_log
-        stub_run_script: $stub_run_script
+        passthrough_bin_dir: $bin_dir
+        zyx_control_bin: (resolve_test_yzx_control_bin)
     }
 }
 
 def run_stubbed_yzx_run [fixture: record, command: string] {
+    let tail = ($command | str trim | str replace -r '^yzx run ' '')
+    let tokens = ($tail | split row " " | where {|t| ($t | str length) > 0})
+    let log_bin = ($fixture.passthrough_bin_dir | path join "yzx_test_log_argv")
+    let argv = ([$log_bin] | append $tokens)
     with-env {
+        HOME: $fixture.tmp_home
+        XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+        XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
+        YAZELIX_CONFIG_DIR: $fixture.config_dir
+        YAZELIX_RUNTIME_DIR: $fixture.repo_root
         YZX_RUN_LOG: $fixture.command_log
     } {
-        ^nu -c $"use \"($fixture.stub_run_script)\" *; ($command)" | complete
+        ^$fixture.zyx_control_bin run ...$argv | complete
     }
 }
 
