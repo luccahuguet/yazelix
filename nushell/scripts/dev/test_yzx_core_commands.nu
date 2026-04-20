@@ -1159,10 +1159,10 @@ def test_invalid_config_is_classified_as_config_problem [] {
     $result
 }
 
-# Regression: yzx status must import and use the shared environment bootstrap successfully.
+# Regression: yzx status must reach the Rust status helper and render the live summary.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_status_reports_basic_runtime_summary [] {
-    print "🧪 Testing yzx status reports the basic runtime summary through the shared environment bootstrap..."
+    print "🧪 Testing yzx status reports the basic runtime summary from yzx_core..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_status_summary"
@@ -1191,7 +1191,7 @@ terminals = ["ghostty"]
             and ($stdout | str contains "terminals")
             and ($stdout | str contains "ghostty")
         ) {
-            print "  ✅ yzx status now reaches the shared environment bootstrap and reports the live config summary"
+            print "  ✅ yzx status now reports the live config summary via the Rust status helper"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"

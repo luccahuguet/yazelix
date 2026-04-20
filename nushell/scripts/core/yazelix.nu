@@ -5,7 +5,6 @@
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/constants.nu *
 use ../utils/common.nu get_yazelix_runtime_dir
-use ../utils/environment_bootstrap.nu [prepare_environment]
 use ../utils/install_ownership.nu has_home_manager_managed_install
 use ../utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path
 use ../utils/status_report.nu [collect_status_report render_status_report]
@@ -291,11 +290,8 @@ export def "yzx status" [
     --versions(-V)  # Include tool version matrix
     --json          # Emit machine-readable status data
 ] {
-    let env_prep = prepare_environment
-    let config = $env_prep.config
-    let config_state = $env_prep.config_state
     let yazelix_dir = (get_yazelix_runtime_dir)
-    let report = (collect_status_report $config $config_state $yazelix_dir --include-versions=$versions)
+    let report = (collect_status_report $yazelix_dir --include-versions=$versions)
 
     if $json {
         print ($report | to json -r)

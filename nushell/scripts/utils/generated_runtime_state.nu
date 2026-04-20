@@ -60,6 +60,12 @@ def build_runtime_materialization_plan_args [runtime_dir: string, config_surface
     }
 }
 
+export def build_runtime_materialization_plan_helper_argv [runtime_dir: string] {
+    let config_surface = (load_active_config_surface)
+    let materialization_paths = (get_runtime_materialization_paths)
+    build_runtime_materialization_plan_args $runtime_dir $config_surface $materialization_paths
+}
+
 def build_runtime_materialization_apply_args [state: record] {
     [
         "runtime-materialization.apply"
@@ -80,8 +86,7 @@ def build_runtime_materialization_apply_args [state: record] {
 
 export def compute_runtime_materialization_plan [runtime_dir: string] {
     let config_surface = (load_active_config_surface)
-    let materialization_paths = (get_runtime_materialization_paths)
-    let helper_args = (build_runtime_materialization_plan_args $runtime_dir $config_surface $materialization_paths)
+    let helper_args = (build_runtime_materialization_plan_helper_argv $runtime_dir)
 
     run_yzx_core_json_command $runtime_dir $config_surface $helper_args "Yazelix Rust runtime-materialization helper returned invalid JSON."
 }
