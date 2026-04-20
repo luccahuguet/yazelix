@@ -368,3 +368,46 @@ fn runtime_contract_evaluate_reports_invalid_request_json_as_usage_error() {
     assert_eq!(envelope["error"]["class"], "usage");
     assert_eq!(envelope["error"]["code"], "invalid_request_json");
 }
+
+// Defends: install-ownership.evaluate emits one machine-readable report envelope for explicit request paths.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn install_ownership_evaluate_prints_ok_envelope() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let xdg_data = home.join(".local/share");
+    let xdg_config = home.join(".config");
+    let state = xdg_data.join("yazelix");
+    let main = home.join(".config/yazelix/yazelix.toml");
+    fs::create_dir_all(main.parent().unwrap()).unwrap();
+    fs::write(&main, "[core]\n").unwrap();
+
+    let request = serde_json::json!({
+        "runtime_dir": repo.to_string_lossy(),
+        "home_dir": home.to_string_lossy(),
+        "user": null,
+        "xdg_config_home": xdg_config.to_string_lossy(),
+        "xdg_data_home": xdg_data.to_string_lossy(),
+        "yazelix_state_dir": state.to_string_lossy(),
+        "main_config_path": main.to_string_lossy(),
+        "invoked_yzx_path": null,
+        "redirected_from_stale_yzx_path": null,
+        "shell_resolved_yzx_path": null,
+    });
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("install-ownership.evaluate")
+        .arg("--request-json")
+        .arg(request.to_string())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "install-ownership.evaluate");
+    assert_eq!(envelope["status"], "ok");
+    assert!(envelope["data"]["install_owner"].is_string());
+    assert!(envelope["data"]["desktop_entry_freshness"]["message"].is_string());
+}

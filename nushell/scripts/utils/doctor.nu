@@ -17,10 +17,7 @@ use doctor_helix.nu [
     check_managed_helix_integration
     fix_helix_runtime_conflicts
 ]
-use doctor_install_artifacts.nu [
-    check_desktop_entry_freshness
-    check_shell_yzx_wrapper_shadowing
-]
+use install_ownership_report.nu evaluate_install_ownership_report
 use runtime_distribution_capabilities.nu get_runtime_distribution_capability_profile
 use constants.nu DEFAULT_TERMINAL
 use generated_runtime_state.nu [compute_runtime_materialization_plan repair_generated_runtime_state]
@@ -403,8 +400,11 @@ export def collect_doctor_report [] {
     $results = ($results | append (check_managed_helix_integration))
     $results = ($results | append (check_configuration))
     $results = ($results | append (check_shared_runtime_preflight))
-    $results = ($results | append (check_shell_yzx_wrapper_shadowing))
-    $results = ($results | append (check_desktop_entry_freshness))
+    let install_report = (evaluate_install_ownership_report)
+    for w in ($install_report.wrapper_shadowing? | default []) {
+        $results = ($results | append $w)
+    }
+    $results = ($results | append $install_report.desktop_entry_freshness)
     $results = ($results | append (check_zellij_plugin_health))
 
     {

@@ -3,6 +3,7 @@ pub mod bridge;
 pub mod config_normalize;
 pub mod config_state;
 pub mod control_plane;
+pub mod install_ownership_report;
 pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
@@ -15,6 +16,10 @@ pub use config_normalize::{normalize_config, NormalizeConfigData, NormalizeConfi
 pub use config_state::{
     compute_config_state, record_config_state, ComputeConfigStateRequest, ConfigStateData,
     RecordConfigStateData, RecordConfigStateRequest,
+};
+pub use install_ownership_report::{
+    evaluate_install_ownership_report, DoctorInstallResult, HomeManagerPrepareArtifact,
+    InstallOwnershipEvaluateData, InstallOwnershipEvaluateRequest,
 };
 pub use runtime_contract::{
     evaluate_runtime_contract, GeneratedLayoutCheckRequest, LinuxGhosttyDesktopGraphicsRequest,

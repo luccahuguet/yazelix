@@ -1,11 +1,7 @@
 #!/usr/bin/env nu
 
 use common.nu get_yazelix_runtime_dir
-use install_ownership.nu [
-    get_manual_runtime_reference_path
-    has_home_manager_managed_install
-    is_manual_runtime_reference_path
-]
+use install_ownership_report.nu evaluate_install_ownership_report
 
 def is_package_runtime_root [runtime_dir?: string] {
     if $runtime_dir == null {
@@ -40,9 +36,9 @@ def build_profile [
 
 export def get_runtime_distribution_capability_profile [] {
     let runtime_dir = (get_yazelix_runtime_dir)
-    let manual_runtime_reference = (get_manual_runtime_reference_path)
-    let home_manager_managed = (has_home_manager_managed_install)
-    let installer_managed = (is_manual_runtime_reference_path $manual_runtime_reference)
+    let io = (evaluate_install_ownership_report)
+    let home_manager_managed = $io.has_home_manager_managed_install
+    let installer_managed = $io.is_manual_runtime_reference_path
 
     if $home_manager_managed {
         return (build_profile

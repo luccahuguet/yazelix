@@ -29,7 +29,8 @@ def ensure_build_tools_available [] {
         | where { |tool| (which $tool | is-empty) }
     )
     if ($missing_tools | is-not-empty) {
-        print $"❌ Missing Rust tool(s): ($missing_tools | str join ", ")"
+        let comma_sep = ([(char comma) " "] | str join "")
+        print $"❌ Missing Rust tool(s): ($missing_tools | str join $comma_sep)"
         print_rust_wasi_enable_hint
         exit 1
     }

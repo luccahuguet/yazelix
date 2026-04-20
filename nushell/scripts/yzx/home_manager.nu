@@ -1,8 +1,6 @@
 #!/usr/bin/env nu
 
-use ../utils/install_ownership.nu [
-    collect_home_manager_prepare_artifacts
-]
+use ../utils/install_ownership_report.nu evaluate_install_ownership_report
 
 def format_prepare_artifact [artifact: record] {
     let tag = if (($artifact.class? | default "") == "blocker") {
@@ -42,12 +40,7 @@ def archive_artifacts [artifacts: list<record>, backup_label: string] {
 
     $artifacts | each {|artifact|
         let backup_path = $"($artifact.path).($backup_label)-backup-($timestamp)"
-        if (($artifact.artifact_kind? | default "") == "shell_block") {
-            ($artifact.block_contents? | default "") | save --force --raw $backup_path
-            ($artifact.remaining_contents? | default "") | save --force --raw $artifact.path
-        } else {
-            mv $artifact.path $backup_path
-        }
+        mv $artifact.path $backup_path
         $artifact | upsert backup_path $backup_path
     }
 }
@@ -64,7 +57,7 @@ export def "yzx home_manager prepare" [
     --apply  # Archive the detected manual-install takeover blockers and cleanup-only artifacts
     --yes    # Skip confirmation prompt when using --apply
 ] {
-    let artifacts = (collect_home_manager_prepare_artifacts)
+    let artifacts = ((evaluate_install_ownership_report).prepare_artifacts)
 
     if not $apply {
         if ($artifacts | is-empty) {
