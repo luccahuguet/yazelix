@@ -56,6 +56,7 @@ that no longer justify surviving as named owners.
 | `docs/specs/yzx_command_surface_backend_coupling.md` | doc only | Treats deleted `yzx env.nu`, `yzx run.nu`, and `yzx packs.nu` surfaces as live planning anchors | Delete it and stop using it as live architecture guidance |
 | `nushell/scripts/utils/yazi_render_plan.nu` | `30` raw lines | No durable policy owner; it only shapes a tiny request and forwards to Rust | Inline into the surviving materialization owner or call `yzx_core` directly |
 | `nushell/scripts/utils/zellij_render_plan.nu` | `51` raw lines | Same story for the Zellij render-plan path | Delete once the surviving Zellij materialization owner talks to Rust directly |
+| `nushell/scripts/setup/yazi_config_merger.nu` | thin wrapper only | The full Yazi owner family is gone; this surviving file is now just a compatibility wrapper around Rust-owned Yazi materialization | Delete it when the direct Rust-owned surface becomes the only useful entrypoint |
 
 Most remaining product-side Nushell is not "delete now" code. It either bridges
 to an existing Rust owner or still owns real behavior.
@@ -89,7 +90,6 @@ orchestrator in charge is not a real cut.
 | Target lane | Current owners | Why it matters | What "done" means |
 | --- | --- | --- | --- |
 | Runtime materialization owner | `generated_runtime_state.nu`, `config_state.nu`, `atomic_writes.nu` | This is the central refresh and apply seam for generated state | Rust owns freshness, expected artifacts, managed writes, and recorded-state updates instead of Nu coordinating the same lifecycle |
-| Yazi materialization | `setup/yazi_config_merger.nu`, `setup/yazi_bundled_assets.nu`, `setup/yazi_user_overrides.nu` | `yazi_config_merger.nu` alone is one of the larger remaining product-side Nu owners | Rust owns Yazi merge policy, plugin and theme selection, bundled asset decisions, and generated-file ownership end-to-end |
 | Zellij materialization | `setup/zellij_config_merger.nu`, `setup/zellij_semantic_blocks.nu`, `setup/zellij_base_config.nu`, `setup/zellij_owned_settings.nu`, `setup/zellij_plugin_paths.nu`, `setup/zellij_generation_state.nu`, `utils/layout_generator.nu` | This is one of the biggest remaining deletion budgets and still owns real runtime behavior | Rust owns Zellij config, layout, plugin, and generation-state materialization end-to-end instead of only returning a plan |
 | Terminal, Helix, and initializer materialization | `utils/terminal_configs.nu`, `utils/terminal_renderers.nu`, `setup/helix_config_merger.nu`, `setup/initializers.nu`, `setup/environment.nu` | Meaningful deletion budget remains here, but it is spread across several file families | Only port this as a real full-owner lane; micro-ports would strand the Nu writer layer and add more bridge code |
 
@@ -99,8 +99,8 @@ subroutine.
 
 Current audit outcome:
 
-- choose Yazi as the first full-owner generator migration
-- defer Zellij until after the first successful whole-owner deletion
+- Yazi is no longer a big-port target; `yazelix-ulb2.3.1` landed the full-owner Rust cut and deleted the real Nu owners
+- Zellij is now the next serious full-owner generator candidate
 - leave the fragmented terminal, Helix, and initializer family for later
 
 ## Likely Nushell Survivors

@@ -2,18 +2,20 @@ use lexopt::prelude::*;
 use serde::de::DeserializeOwned;
 use std::path::PathBuf;
 use yazelix_core::{
+    ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
+    DoctorRuntimeEvaluateRequest, ErrorClass, HelixDoctorEvaluateRequest,
+    InstallOwnershipEvaluateRequest, NormalizeConfigRequest, RecordConfigStateRequest,
+    RuntimeArtifact, RuntimeContractEvaluateRequest, RuntimeEnvComputeRequest,
+    RuntimeMaterializationApplyRequest, RuntimeMaterializationPlanRequest,
+    RuntimeMaterializationRepairEvaluateRequest, StartupLaunchPreflightRequest,
+    YaziMaterializationRequest, YaziRenderPlanRequest, ZellijRenderPlanRequest,
     apply_runtime_materialization, compute_config_state, compute_runtime_env,
     compute_status_report, compute_yazi_render_plan, compute_zellij_render_plan, error_envelope,
     evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
     evaluate_install_ownership_report, evaluate_runtime_contract,
-    evaluate_runtime_materialization_repair, evaluate_startup_launch_preflight, normalize_config,
-    plan_runtime_materialization, record_config_state, success_envelope, ComputeConfigStateRequest,
-    CoreError, DoctorConfigEvaluateRequest, DoctorRuntimeEvaluateRequest, ErrorClass,
-    HelixDoctorEvaluateRequest, InstallOwnershipEvaluateRequest, NormalizeConfigRequest,
-    RecordConfigStateRequest, RuntimeArtifact, RuntimeContractEvaluateRequest,
-    RuntimeEnvComputeRequest, RuntimeMaterializationApplyRequest,
-    RuntimeMaterializationPlanRequest, RuntimeMaterializationRepairEvaluateRequest,
-    StartupLaunchPreflightRequest, YaziRenderPlanRequest, ZellijRenderPlanRequest,
+    evaluate_runtime_materialization_repair, evaluate_startup_launch_preflight,
+    generate_yazi_materialization, normalize_config, plan_runtime_materialization,
+    record_config_state, success_envelope,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
@@ -33,6 +35,7 @@ const DOCTOR_HELIX_EVALUATE_COMMAND: &str = "doctor-helix.evaluate";
 const DOCTOR_RUNTIME_EVALUATE_COMMAND: &str = "doctor-runtime.evaluate";
 const ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND: &str = "zellij-render-plan.compute";
 const YAZI_RENDER_PLAN_COMPUTE_COMMAND: &str = "yazi-render-plan.compute";
+const YAZI_MATERIALIZATION_GENERATE_COMMAND: &str = "yazi-materialization.generate";
 const UNKNOWN_COMMAND: &str = "unknown";
 
 struct CommandError {
@@ -165,6 +168,11 @@ fn run() -> Result<(), Box<CommandError>> {
         YAZI_RENDER_PLAN_COMPUTE_COMMAND => {
             let command_for_error = command.clone();
             run_yazi_render_plan_compute(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        YAZI_MATERIALIZATION_GENERATE_COMMAND => {
+            let command_for_error = command.clone();
+            run_yazi_materialization_generate(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         _ => Err(CommandError::new(
@@ -375,6 +383,43 @@ fn run_yazi_render_plan_compute(mut parser: lexopt::Parser) -> Result<(), CoreEr
         deserialize_json_request(&request_json, "yazi-render-plan")?;
     let data = compute_yazi_render_plan(&request)?;
     write_success_envelope(YAZI_RENDER_PLAN_COMPUTE_COMMAND, data)
+}
+
+fn run_yazi_materialization_generate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let mut config_path: Option<PathBuf> = None;
+    let mut default_config_path: Option<PathBuf> = None;
+    let mut contract_path: Option<PathBuf> = None;
+    let mut runtime_dir: Option<PathBuf> = None;
+    let mut yazi_config_dir: Option<PathBuf> = None;
+    let mut sync_static_assets = false;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("config") => config_path = Some(parser_path_value(&mut parser)?),
+            Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
+            Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
+            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
+            Long("yazi-config-dir") => yazi_config_dir = Some(parser_path_value(&mut parser)?),
+            Long("sync-static-assets") => sync_static_assets = true,
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    let request = YaziMaterializationRequest {
+        config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
+        default_config_path: default_config_path
+            .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
+        contract_path: contract_path.ok_or_else(|| CoreError::usage("Missing --contract path"))?,
+        runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
+        yazi_config_dir: yazi_config_dir
+            .ok_or_else(|| CoreError::usage("Missing --yazi-config-dir path"))?,
+        sync_static_assets,
+    };
+    let data = generate_yazi_materialization(&request)?;
+    write_success_envelope(YAZI_MATERIALIZATION_GENERATE_COMMAND, data)
 }
 
 fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
