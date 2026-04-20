@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir require_yazelix_runtime_dir]
+use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir normalize_path_entries require_yazelix_runtime_dir get_runtime_platform_name]
 use config_parser.nu [
     build_default_yzx_core_error_surface
     parse_yazelix_config
@@ -11,33 +11,8 @@ use generated_runtime_state.nu compute_runtime_materialization_plan
 
 const DOCTOR_RUNTIME_EVALUATE_COMMAND = "doctor-runtime.evaluate"
 
-def normalize_path_entries [value: any] {
-    let described = ($value | describe)
-
-    if ($described | str starts-with "list") {
-        $value | each {|entry| $entry | into string }
-    } else {
-        let text = ($value | into string | str trim)
-        if ($text | is-empty) {
-            []
-        } else {
-            $text | split row (char esep)
-        }
-    }
-}
-
 def get_command_search_paths_for_runtime_doctor [] {
     normalize_path_entries ($env.PATH? | default []) | each {|p| $p | path expand }
-}
-
-def get_runtime_doctor_platform_name [] {
-    (
-        $env.YAZELIX_TEST_OS?
-        | default $nu.os-info.name
-        | into string
-        | str trim
-        | str downcase
-    )
 }
 
 export def evaluate_doctor_runtime_report [req: record] {
@@ -87,7 +62,7 @@ export def collect_runtime_doctor_results [install_io: record] {
                     startup_script_path: ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix_inner.nu")
                     launch_script_path: ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
                     command_search_paths: (get_command_search_paths_for_runtime_doctor)
-                    platform_name: (get_runtime_doctor_platform_name)
+                    platform_name: (get_runtime_platform_name)
                 }
             }
         } else {

@@ -114,6 +114,31 @@ def expand_user_path_string [value: string] {
     $expanded_home | path expand
 }
 
+export def normalize_path_entries [value: any] {
+    let described = ($value | describe)
+
+    if ($described | str starts-with "list") {
+        $value | each {|entry| $entry | into string }
+    } else {
+        let text = ($value | into string | str trim)
+        if ($text | is-empty) {
+            []
+        } else {
+            $text | split row (char esep)
+        }
+    }
+}
+
+export def get_runtime_platform_name []: nothing -> string {
+    (
+        $env.YAZELIX_TEST_OS?
+        | default $nu.os-info.name
+        | into string
+        | str trim
+        | str downcase
+    )
+}
+
 export def resolve_external_command_path [command_name: string] {
     let matches = (which $command_name | where type == "external")
     if ($matches | is-empty) {

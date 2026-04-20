@@ -4,26 +4,11 @@ use config_parser.nu [
     build_default_yzx_core_error_surface
     run_yzx_core_request_json_command
 ]
-use common.nu [require_yazelix_runtime_dir]
+use common.nu [normalize_path_entries require_yazelix_runtime_dir get_runtime_platform_name]
 use failure_classes.nu [format_failure_classification]
 
 const RUNTIME_CONTRACT_EVALUATE_COMMAND = "runtime-contract.evaluate"
 const STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND = "startup-launch-preflight.evaluate"
-
-def normalize_path_entries [value: any] {
-    let described = ($value | describe)
-
-    if ($described | str starts-with "list") {
-        $value | each {|entry| $entry | into string }
-    } else {
-        let text = ($value | into string | str trim)
-        if ($text | is-empty) {
-            []
-        } else {
-            $text | split row (char esep)
-        }
-    }
-}
 
 def get_command_search_paths [] {
     normalize_path_entries ($env.PATH? | default [])
@@ -102,16 +87,6 @@ export def runtime_check_to_doctor_result [check: record] {
         runtime_contract_check: $check.id
         owner_surface: $check.owner_surface
     }
-}
-
-def get_runtime_platform_name []: nothing -> string {
-    (
-        $env.YAZELIX_TEST_OS?
-        | default $nu.os-info.name
-        | into string
-        | str trim
-        | str downcase
-    )
 }
 
 def build_terminal_support_request [owner_surface: string, requested_terminal: string, terminals: list<string>] {

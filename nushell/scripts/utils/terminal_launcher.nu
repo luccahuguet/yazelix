@@ -2,7 +2,7 @@
 # Terminal launcher utilities for Yazelix
 
 use constants.nu [SUPPORTED_TERMINALS, TERMINAL_CONFIG_PATHS, TERMINAL_METADATA, YAZELIX_WINDOW_CLASS, YAZELIX_X11_INSTANCE]
-use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir]
+use common.nu [get_yazelix_runtime_dir get_yazelix_state_dir get_runtime_platform_name]
 use startup_profile.nu [profile_startup_step]
 
 # Check if a command is available
@@ -17,16 +17,6 @@ def get_startup_script_path []: nothing -> string {
 
 def get_terminal_title [terminal: string] {
     $"Yazelix - (($TERMINAL_METADATA | get -o $terminal | default {} | get -o name | default $terminal))"
-}
-
-def get_runtime_platform_name []: nothing -> string {
-    (
-        $env.YAZELIX_TEST_OS?
-        | default $nu.os-info.name
-        | into string
-        | str trim
-        | str downcase
-    )
 }
 
 def get_runtime_nixgl_wrapper_candidates [] {
