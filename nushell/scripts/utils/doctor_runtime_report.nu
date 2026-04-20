@@ -58,16 +58,15 @@ export def collect_runtime_doctor_results [install_io: record] {
     let rd = require_yazelix_runtime_dir
     let state_dir = (get_yazelix_state_dir)
 
-    mut extra_preflight = []
-    mut shared_input = null
-
     let parse_out = try {
         { ok: true, config: (parse_yazelix_config) }
     } catch {
         { ok: false, config: null }
     }
 
-    if $parse_out.ok {
+    let layout_bundle = if not $parse_out.ok {
+        { extra: [], shared: null }
+    } else {
         let config = $parse_out.config
         let runtime_dir = (get_yazelix_runtime_dir)
         let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL] | uniq)
@@ -89,21 +88,27 @@ export def collect_runtime_doctor_results [install_io: record] {
         }
 
         if $layout_result.ok {
-            $shared_input = {
-                zellij_layout_path: $layout_result.path
-                terminals: $terminals
-                startup_script_path: ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix_inner.nu")
-                launch_script_path: ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
-                command_search_paths: (get_command_search_paths_for_runtime_doctor)
-                platform_name: (get_runtime_doctor_platform_name)
+            {
+                extra: []
+                shared: {
+                    zellij_layout_path: $layout_result.path
+                    terminals: $terminals
+                    startup_script_path: ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix_inner.nu")
+                    launch_script_path: ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
+                    command_search_paths: (get_command_search_paths_for_runtime_doctor)
+                    platform_name: (get_runtime_doctor_platform_name)
+                }
             }
         } else {
-            $extra_preflight = [{
-                status: "error"
-                message: "Could not resolve the managed Zellij layout path from the Rust materialization plan"
-                details: $layout_result.msg
-                fix_available: false
-            }]
+            {
+                extra: [{
+                    status: "error"
+                    message: "Could not resolve the managed Zellij layout path from the Rust materialization plan"
+                    details: $layout_result.msg
+                    fix_available: false
+                }]
+                shared: null
+            }
         }
     }
 
@@ -112,7 +117,7 @@ export def collect_runtime_doctor_results [install_io: record] {
         yazelix_state_dir: $state_dir
         has_home_manager_managed_install: $install_io.has_home_manager_managed_install
         is_manual_runtime_reference_path: $install_io.is_manual_runtime_reference_path
-        shared_runtime: $shared_input
+        shared_runtime: $layout_bundle.shared
     }
 
     let data = (evaluate_doctor_runtime_report $req)
@@ -120,6 +125,6 @@ export def collect_runtime_doctor_results [install_io: record] {
 
     {
         distribution: $data.distribution
-        shared_runtime_preflight: ($extra_preflight | append $from_rust)
+        shared_runtime_preflight: ($layout_bundle.extra | append $from_rust)
     }
 }
