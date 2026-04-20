@@ -16,7 +16,7 @@ use doctor_helix.nu fix_helix_runtime_conflicts
 use doctor_helix_report.nu collect_helix_doctor_results
 use doctor_runtime_report.nu collect_runtime_doctor_results
 use install_ownership_report.nu evaluate_install_ownership_report
-use generated_runtime_state.nu repair_generated_runtime_state
+use ../core/materialization_orchestrator.nu repair_generated_runtime_state
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../integrations/zellij.nu get_active_tab_session_state
 

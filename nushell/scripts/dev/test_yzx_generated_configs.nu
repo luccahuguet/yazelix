@@ -6,7 +6,7 @@ use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_core_b
 use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/config_state.nu [record_materialized_state]
-use ../utils/generated_runtime_state.nu [record_current_materialized_state regenerate_runtime_configs]
+use ../core/materialization_orchestrator.nu [record_current_materialized_state regenerate_runtime_configs]
 use ../utils/safe_remove.nu remove_path_within_root
 use ../utils/terminal_launcher.nu [build_launch_command resolve_terminal_config]
 use ../utils/terminal_configs.nu [

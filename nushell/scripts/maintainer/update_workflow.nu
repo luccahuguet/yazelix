@@ -244,7 +244,7 @@ def trim_output_tail [text: string, max_lines: int] {
 }
 
 def run_update_canary [canary: record] {
-    let helper_script = ((require_yazelix_repo_root) | path join "nushell" "scripts" "utils" "generated_runtime_state.nu")
+    let helper_script = ((require_yazelix_repo_root) | path join "nushell" "scripts" "core" "materialization_orchestrator.nu")
     let repair_command = $"use \"($helper_script)\" [repair_generated_runtime_state]; repair_generated_runtime_state --force --verbose"
 
     let result = (do {
