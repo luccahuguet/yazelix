@@ -3,6 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ../core/yazelix.nu *
+source ../utils/doctor.nu
 use ./yzx_test_helpers.nu [get_repo_config_dir resolve_test_yzx_core_bin setup_managed_config_fixture]
 
 def run_doctor_command_for_fixture [fixture: record, command: string, extra_env?: record] {
@@ -221,6 +222,68 @@ sidebar_width_percent = 99
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: the Rust-owned default-template finding must stay fixable through the run_doctor_checks gating path and still create yazelix.toml.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_doctor_fix_creates_config_from_default_template [] {
+    print "🧪 Testing config doctor fixes still create yazelix.toml from the default template..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_doctor_fix_create_config"
+        ""
+    )
+
+    rm -f $fixture.config_path
+
+    let result = (try {
+        let output = (with-env {
+            HOME: $fixture.tmp_home
+            XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+            XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
+            YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
+        } {
+            let results = [[status message details fix_available]; [
+                "info"
+                "Using default configuration (yazelix_default.toml)"
+                "Consider copying to yazelix.toml for customization"
+                true
+            ]]
+            let summary = (build_doctor_summary $results)
+            if ($summary.healthy? | default true) {
+                error make {msg: "Fixable default-template report was incorrectly treated as healthy."}
+            }
+            apply_doctor_fixes $results false
+            {
+                exit_code: 0
+                stdout: ""
+                stderr: ""
+            }
+        })
+        let created = ($fixture.config_path | path exists)
+        let created_body = if $created { open --raw $fixture.config_path } else { "" }
+
+        if (
+            ($output.exit_code == 0)
+            and $created
+            and ($created_body | str contains "[shell]")
+        ) {
+            print "  ✅ The Rust-owned default-template finding is no longer treated as healthy-only noise and still drives fix_create_config"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) created=($created) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -849,6 +912,7 @@ export def run_doctor_canonical_tests [] {
     [
         (test_yzx_doctor_warns_on_stale_config_fields)
         (test_yzx_doctor_reports_rust_owned_range_validation)
+        (test_yzx_doctor_fix_creates_config_from_default_template)
         (test_yzx_doctor_json_reports_structured_findings)
         (test_yzx_doctor_json_rejects_fix_mode)
         (test_yzx_doctor_reports_stale_desktop_entry_exec)

@@ -12,6 +12,17 @@ pub struct ActiveConfigPaths {
     pub contract_path: PathBuf,
 }
 
+#[derive(Debug, Clone)]
+pub struct PrimaryConfigPaths {
+    pub user_config_dir: PathBuf,
+    pub user_config: PathBuf,
+    pub legacy_user_config: PathBuf,
+    pub default_config_path: PathBuf,
+    pub contract_path: PathBuf,
+    pub runtime_taplo: PathBuf,
+    pub managed_taplo: PathBuf,
+}
+
 fn io_err(path: &Path, source: io::Error) -> CoreError {
     CoreError::io(
         "control_config_io",
@@ -22,12 +33,7 @@ fn io_err(path: &Path, source: io::Error) -> CoreError {
     )
 }
 
-/// Match `nushell/scripts/utils/config_surfaces.nu` `resolve_active_config_paths` + reconciliation.
-pub fn resolve_active_config_paths(
-    runtime_dir: &Path,
-    config_dir: &Path,
-    config_override: Option<&str>,
-) -> Result<ActiveConfigPaths, CoreError> {
+pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryConfigPaths {
     let user_config_dir = config_dir.join("user_configs");
     let user_config = user_config_dir.join("yazelix.toml");
     let legacy_user_config = config_dir.join("yazelix.toml");
@@ -38,49 +44,75 @@ pub fn resolve_active_config_paths(
     let runtime_taplo = runtime_dir.join(".taplo.toml");
     let managed_taplo = config_dir.join(".taplo.toml");
 
-    if user_config.exists() && legacy_user_config.exists() {
+    PrimaryConfigPaths {
+        user_config_dir,
+        user_config,
+        legacy_user_config,
+        default_config_path,
+        contract_path,
+        runtime_taplo,
+        managed_taplo,
+    }
+}
+
+pub fn validate_primary_config_surface(paths: &PrimaryConfigPaths) -> Result<(), CoreError> {
+    if paths.user_config.exists() && paths.legacy_user_config.exists() {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "duplicate_config_surfaces",
             "Yazelix found duplicate config surfaces in both the repo root and user_configs.",
             "Keep only the user_configs copies. Move or delete the legacy root-level config files so Yazelix has one clear config owner.",
             json!({
-                "user_config": user_config.display().to_string(),
-                "legacy_user_config": legacy_user_config.display().to_string(),
+                "user_config": paths.user_config.display().to_string(),
+                "legacy_user_config": paths.legacy_user_config.display().to_string(),
             }),
         ));
     }
 
-    if legacy_user_config.exists() && !user_config.exists() {
+    if paths.legacy_user_config.exists() && !paths.user_config.exists() {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "legacy_root_config_surface",
             "Yazelix found an unsupported legacy root-level config surface.",
             "Move your current Yazelix config to user_configs/yazelix.toml manually, or run `yzx config reset` to create a fresh v15 config template.",
             json!({
-                "legacy_main": legacy_user_config.display().to_string(),
-                "current_main": user_config.display().to_string(),
+                "legacy_main": paths.legacy_user_config.display().to_string(),
+                "current_main": paths.user_config.display().to_string(),
             }),
         ));
     }
 
-    ensure_managed_taplo(&runtime_taplo, &managed_taplo)?;
+    Ok(())
+}
+
+/// Match `nushell/scripts/utils/config_surfaces.nu` `resolve_active_config_paths` + reconciliation.
+pub fn resolve_active_config_paths(
+    runtime_dir: &Path,
+    config_dir: &Path,
+    config_override: Option<&str>,
+) -> Result<ActiveConfigPaths, CoreError> {
+    let paths = primary_config_paths(runtime_dir, config_dir);
+
+    validate_primary_config_surface(&paths)?;
+    ensure_managed_taplo(&paths.runtime_taplo, &paths.managed_taplo)?;
 
     let config_file = match config_override {
         Some(raw) if !raw.trim().is_empty() => PathBuf::from(raw.trim()),
-        _ if user_config.exists() => user_config.clone(),
-        _ if default_config_path.exists() => {
+        _ if paths.user_config.exists() => paths.user_config.clone(),
+        _ if paths.default_config_path.exists() => {
             eprintln!("📝 Creating yazelix.toml from yazelix_default.toml...");
-            fs::create_dir_all(&user_config_dir).map_err(|e| io_err(&user_config_dir, e))?;
-            fs::copy(&default_config_path, &user_config).map_err(|e| io_err(&user_config, e))?;
+            fs::create_dir_all(&paths.user_config_dir)
+                .map_err(|e| io_err(&paths.user_config_dir, e))?;
+            fs::copy(&paths.default_config_path, &paths.user_config)
+                .map_err(|e| io_err(&paths.user_config, e))?;
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
                 let mode = fs::Permissions::from_mode(0o644);
-                let _ = fs::set_permissions(&user_config, mode);
+                let _ = fs::set_permissions(&paths.user_config, mode);
             }
             eprintln!("✅ yazelix.toml created\n");
-            user_config
+            paths.user_config.clone()
         }
         _ => {
             return Err(CoreError::classified(
@@ -93,27 +125,27 @@ pub fn resolve_active_config_paths(
         }
     };
 
-    if !contract_path.exists() {
+    if !paths.contract_path.exists() {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "missing_config_contract",
             format!(
                 "Yazelix runtime is missing the config contract at {}.",
-                contract_path.display()
+                paths.contract_path.display()
             ),
             "Reinstall Yazelix so the runtime includes config_metadata/main_config_contract.toml.",
-            json!({ "path": contract_path.display().to_string() }),
+            json!({ "path": paths.contract_path.display().to_string() }),
         ));
     }
 
     Ok(ActiveConfigPaths {
         config_file,
-        default_config_path,
-        contract_path,
+        default_config_path: paths.default_config_path,
+        contract_path: paths.contract_path,
     })
 }
 
-fn ensure_managed_taplo(runtime_src: &Path, managed: &Path) -> Result<(), CoreError> {
+pub fn ensure_managed_taplo(runtime_src: &Path, managed: &Path) -> Result<(), CoreError> {
     if !runtime_src.exists() {
         return Err(CoreError::classified(
             ErrorClass::Config,

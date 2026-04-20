@@ -14,6 +14,34 @@ fn repo_root() -> PathBuf {
         .expect("repo root")
 }
 
+fn doctor_config_request(config_dir: &std::path::Path, runtime_dir: &std::path::Path) -> String {
+    serde_json::json!({
+        "config_dir": config_dir.to_string_lossy(),
+        "runtime_dir": runtime_dir.to_string_lossy(),
+    })
+    .to_string()
+}
+
+fn prepare_doctor_config_runtime_fixture(
+    repo: &std::path::Path,
+    tmp: &tempfile::TempDir,
+) -> PathBuf {
+    let runtime_dir = tmp.path().join("runtime");
+    fs::create_dir_all(runtime_dir.join("config_metadata")).unwrap();
+    fs::write(runtime_dir.join(".taplo.toml"), "[format]\n").unwrap();
+    fs::copy(
+        repo.join("yazelix_default.toml"),
+        runtime_dir.join("yazelix_default.toml"),
+    )
+    .unwrap();
+    fs::copy(
+        repo.join("config_metadata/main_config_contract.toml"),
+        runtime_dir.join("config_metadata/main_config_contract.toml"),
+    )
+    .unwrap();
+    runtime_dir
+}
+
 // Defends: config.normalize emits a single machine-readable success envelope for valid config input.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=1 total=8/10
 #[test]
@@ -448,7 +476,12 @@ fn doctor_helix_evaluate_prints_ok_envelope() {
     assert_eq!(envelope["command"], "doctor-helix.evaluate");
     assert_eq!(envelope["status"], "ok");
     assert_eq!(envelope["data"]["runtime_conflicts"]["status"], "ok");
-    assert!(envelope["data"]["managed_integration"].as_array().unwrap().is_empty());
+    assert!(
+        envelope["data"]["managed_integration"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
 }
 
 // Defends: doctor-runtime.evaluate emits one machine-readable report envelope for a minimal request.
@@ -488,8 +521,159 @@ fn doctor_runtime_evaluate_prints_ok_envelope() {
         envelope["data"]["distribution"]["capability_mode"],
         "package_runtime"
     );
-    assert!(envelope["data"]["shared_runtime_preflight"]
-        .as_array()
+    assert!(
+        envelope["data"]["shared_runtime_preflight"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+}
+
+// Defends: doctor-config.evaluate reports duplicate root/user config ownership as a config-surface error finding.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn doctor_config_evaluate_reports_duplicate_config_surfaces() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
+    let config_dir = tmp.path().join("config");
+    let user_config_dir = config_dir.join("user_configs");
+    fs::create_dir_all(&user_config_dir).unwrap();
+    fs::write(user_config_dir.join("yazelix.toml"), "[shell]\n").unwrap();
+    fs::write(config_dir.join("yazelix.toml"), "[shell]\n").unwrap();
+
+    let output = Command::cargo_bin("yzx_core")
         .unwrap()
-        .is_empty());
+        .arg("doctor-config.evaluate")
+        .arg("--request-json")
+        .arg(doctor_config_request(&config_dir, &runtime_dir))
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "doctor-config.evaluate");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(
+        envelope["data"]["findings"][0]["message"],
+        "Could not reconcile Yazelix config surfaces"
+    );
+    assert_eq!(envelope["data"]["findings"][0]["status"], "error");
+    let details = envelope["data"]["findings"][0]["details"].as_str().unwrap();
+    assert!(details.contains("user_configs main:"));
+    assert!(details.contains("legacy main:"));
+}
+
+// Defends: doctor-config.evaluate preserves the stale-schema warning contract and includes the diagnostic report payload.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn doctor_config_evaluate_reports_stale_schema_warning() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
+    let config_dir = tmp.path().join("config");
+    let user_config_dir = config_dir.join("user_configs");
+    fs::create_dir_all(&user_config_dir).unwrap();
+    fs::write(
+        user_config_dir.join("yazelix.toml"),
+        "[editor]\nsidebar_width_percent = 99\n",
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("doctor-config.evaluate")
+        .arg("--request-json")
+        .arg(doctor_config_request(&config_dir, &runtime_dir))
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "doctor-config.evaluate");
+    assert_eq!(
+        envelope["data"]["findings"][0]["message"],
+        "Using custom yazelix.toml configuration"
+    );
+    assert_eq!(envelope["data"]["findings"][1]["status"], "warning");
+    assert_eq!(
+        envelope["data"]["findings"][1]["message"],
+        "Stale or unsupported yazelix.toml entries detected (1 issues)"
+    );
+    assert_eq!(
+        envelope["data"]["findings"][1]["config_diagnostic_report"]["issue_count"],
+        1
+    );
+    assert_eq!(
+        envelope["data"]["findings"][1]["config_diagnostic_report"]["doctor_diagnostics"][0]["headline"],
+        "Invalid config value at editor.sidebar_width_percent"
+    );
+    let details = envelope["data"]["findings"][1]["details"].as_str().unwrap();
+    assert!(details.contains("Config report for:"));
+    assert!(details.contains("Issues: 1"));
+    assert!(details.contains("Invalid config value at editor.sidebar_width_percent"));
+}
+
+// Regression: malformed TOML must stay on the validation-error path instead of being downgraded into the stale-schema warning row.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn doctor_config_evaluate_keeps_invalid_toml_as_error() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
+    let config_dir = tmp.path().join("config");
+    let user_config_dir = config_dir.join("user_configs");
+    fs::create_dir_all(&user_config_dir).unwrap();
+    fs::write(user_config_dir.join("yazelix.toml"), "[editor\n").unwrap();
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("doctor-config.evaluate")
+        .arg("--request-json")
+        .arg(doctor_config_request(&config_dir, &runtime_dir))
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        envelope["data"]["findings"][1]["message"],
+        "Could not validate yazelix.toml against the current schema"
+    );
+    assert_eq!(envelope["data"]["findings"][1]["status"], "error");
+    assert!(
+        envelope["data"]["findings"][1]["details"]
+            .as_str()
+            .unwrap()
+            .contains("Could not parse Yazelix TOML input")
+    );
+}
+
+// Defends: doctor-config.evaluate keeps the default-template doctor row fixable instead of bootstrapping config eagerly.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn doctor_config_evaluate_reports_default_template_as_fixable() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
+    let config_dir = tmp.path().join("config");
+    fs::create_dir_all(&config_dir).unwrap();
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("doctor-config.evaluate")
+        .arg("--request-json")
+        .arg(doctor_config_request(&config_dir, &runtime_dir))
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "doctor-config.evaluate");
+    assert_eq!(envelope["data"]["findings"][0]["status"], "info");
+    assert_eq!(
+        envelope["data"]["findings"][0]["message"],
+        "Using default configuration (yazelix_default.toml)"
+    );
+    assert_eq!(envelope["data"]["findings"][0]["fix_available"], true);
 }

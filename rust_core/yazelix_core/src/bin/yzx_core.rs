@@ -2,17 +2,17 @@ use lexopt::prelude::*;
 use serde::de::DeserializeOwned;
 use std::path::PathBuf;
 use yazelix_core::{
-    apply_runtime_materialization, compute_config_state, compute_runtime_env,
-    compute_status_report, compute_yazi_render_plan, compute_zellij_render_plan, error_envelope,
+    ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
+    DoctorRuntimeEvaluateRequest, ErrorClass, HelixDoctorEvaluateRequest,
+    InstallOwnershipEvaluateRequest, NormalizeConfigRequest, RecordConfigStateRequest,
+    RuntimeArtifact, RuntimeContractEvaluateRequest, RuntimeEnvComputeRequest,
+    RuntimeMaterializationApplyRequest, RuntimeMaterializationPlanRequest, YaziRenderPlanRequest,
+    ZellijRenderPlanRequest, apply_runtime_materialization, compute_config_state,
+    compute_runtime_env, compute_status_report, compute_yazi_render_plan,
+    compute_zellij_render_plan, error_envelope, evaluate_doctor_config_report,
     evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
     evaluate_install_ownership_report, evaluate_runtime_contract, normalize_config,
-    plan_runtime_materialization, record_config_state, success_envelope, ComputeConfigStateRequest,
-    CoreError, ErrorClass, DoctorRuntimeEvaluateRequest, HelixDoctorEvaluateRequest,
-    InstallOwnershipEvaluateRequest,
-    NormalizeConfigRequest,
-    RecordConfigStateRequest, RuntimeArtifact, RuntimeContractEvaluateRequest,
-    RuntimeEnvComputeRequest, RuntimeMaterializationApplyRequest,
-    RuntimeMaterializationPlanRequest, YaziRenderPlanRequest, ZellijRenderPlanRequest,
+    plan_runtime_materialization, record_config_state, success_envelope,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
@@ -24,6 +24,7 @@ const RUNTIME_MATERIALIZATION_PLAN_COMMAND: &str = "runtime-materialization.plan
 const RUNTIME_MATERIALIZATION_APPLY_COMMAND: &str = "runtime-materialization.apply";
 const STATUS_COMPUTE_COMMAND: &str = "status.compute";
 const INSTALL_OWNERSHIP_EVALUATE_COMMAND: &str = "install-ownership.evaluate";
+const DOCTOR_CONFIG_EVALUATE_COMMAND: &str = "doctor-config.evaluate";
 const DOCTOR_HELIX_EVALUATE_COMMAND: &str = "doctor-helix.evaluate";
 const DOCTOR_RUNTIME_EVALUATE_COMMAND: &str = "doctor-runtime.evaluate";
 const ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND: &str = "zellij-render-plan.compute";
@@ -115,12 +116,16 @@ fn run() -> Result<(), Box<CommandError>> {
         }
         STATUS_COMPUTE_COMMAND => {
             let command_for_error = command.clone();
-            run_status_compute(parser)
-                .map_err(|error| CommandError::new(command_for_error, error))
+            run_status_compute(parser).map_err(|error| CommandError::new(command_for_error, error))
         }
         INSTALL_OWNERSHIP_EVALUATE_COMMAND => {
             let command_for_error = command.clone();
             run_install_ownership_evaluate(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        DOCTOR_CONFIG_EVALUATE_COMMAND => {
+            let command_for_error = command.clone();
+            run_doctor_config_evaluate(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         DOCTOR_HELIX_EVALUATE_COMMAND => {
@@ -287,6 +292,14 @@ fn run_doctor_helix_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError
         deserialize_json_request(&request_json, "doctor-helix")?;
     let data = evaluate_helix_doctor_report(&request);
     write_success_envelope(DOCTOR_HELIX_EVALUATE_COMMAND, data)
+}
+
+fn run_doctor_config_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request_json = take_request_json(&mut parser)?;
+    let request: DoctorConfigEvaluateRequest =
+        deserialize_json_request(&request_json, "doctor-config")?;
+    let data = evaluate_doctor_config_report(&request);
+    write_success_envelope(DOCTOR_CONFIG_EVALUATE_COMMAND, data)
 }
 
 fn run_doctor_runtime_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {

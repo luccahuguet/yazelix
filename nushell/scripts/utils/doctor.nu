@@ -7,10 +7,8 @@ use common.nu [
     get_yazelix_state_dir
     require_yazelix_runtime_dir
 ]
-use config_surfaces.nu [get_main_user_config_path load_active_config_surface reconcile_primary_config_surfaces]
-use config_diagnostics.nu [build_config_diagnostic_report]
-use config_report_rendering.nu [render_doctor_config_details]
-use config_parser.nu parse_yazelix_config
+use config_surfaces.nu [get_main_user_config_path load_active_config_surface]
+use doctor_config_report.nu collect_config_doctor_results
 use doctor_helix.nu fix_helix_runtime_conflicts
 use doctor_helix_report.nu collect_helix_doctor_results
 use doctor_runtime_report.nu collect_runtime_doctor_results
@@ -32,102 +30,8 @@ def build_doctor_summary [results: list<record>] {
         info_count: $info_count
         ok_count: $ok_count
         fixable_count: $fixable_count
-        healthy: (($error_count == 0) and ($warning_count == 0))
+        healthy: (($error_count == 0) and ($warning_count == 0) and ($fixable_count == 0))
     }
-}
-
-# Check configuration files
-def check_configuration [] {
-    let config_dir = (get_yazelix_config_dir)
-    let runtime_dir = (require_yazelix_runtime_dir)
-    let yazelix_legacy = ($config_dir | path join "yazelix.nix")
-    let surface_paths = (try {
-        {
-            paths: (reconcile_primary_config_surfaces $config_dir $runtime_dir)
-            error: null
-        }
-    } catch {|err|
-        {
-            paths: null
-            error: $err.msg
-        }
-    })
-    
-    mut results = []
-
-    if ($surface_paths.error | is-not-empty) {
-        return [{
-            status: "error"
-            message: "Could not reconcile Yazelix config surfaces"
-            details: $surface_paths.error
-            fix_available: false
-        }]
-    }
-
-    let yazelix_config = $surface_paths.paths.user_config
-    let yazelix_default = $surface_paths.paths.default_config
-    
-    if ($yazelix_config | path expand | path exists) {
-        $results = ($results | append {
-            status: "ok"
-            message: "Using custom yazelix.toml configuration"
-            details: ($yazelix_config | path expand)
-            fix_available: false
-        })
-
-        let validation_result = (try {
-            {
-                report: (build_config_diagnostic_report $yazelix_config $yazelix_default)
-                error: null
-            }
-        } catch {|err|
-            {
-                report: null
-                error: $err.msg
-            }
-        })
-
-        if ($validation_result.error | is-not-empty) {
-            $results = ($results | append {
-                status: "error"
-                message: "Could not validate yazelix.toml against the current schema"
-                details: $validation_result.error
-                fix_available: false
-            })
-        } else if ($validation_result.report.issue_count > 0) {
-            let issue_count = $validation_result.report.issue_count
-            $results = ($results | append {
-                status: "warning"
-                message: $"Stale or unsupported yazelix.toml entries detected \(($issue_count) issues\)"
-                details: (render_doctor_config_details $validation_result.report)
-                fix_available: false
-                config_diagnostic_report: $validation_result.report
-            })
-        }
-    } else if ($yazelix_legacy | path expand | path exists) {
-        $results = ($results | append {
-            status: "warning"
-            message: "Legacy yazelix.nix configuration detected"
-            details: ($yazelix_legacy | path expand)
-            fix_available: false
-        })
-    } else if ($yazelix_default | path expand | path exists) {
-        $results = ($results | append {
-            status: "info"
-            message: "Using default configuration (yazelix_default.toml)"
-            details: "Consider copying to yazelix.toml for customization"
-            fix_available: true
-        })
-    } else {
-        $results = ($results | append {
-            status: "error"
-            message: "No configuration file found"
-            details: "Neither yazelix.toml nor yazelix_default.toml exists"
-            fix_available: false
-        })
-    }
-    
-    $results
 }
 
 def check_zellij_plugin_health [] {
@@ -299,7 +203,7 @@ export def collect_doctor_report [] {
     for finding in $helix_pack.managed_integration {
         $results = ($results | append $finding)
     }
-    $results = ($results | append (check_configuration))
+    $results = ($results | append (collect_config_doctor_results))
     for r in $runtime_pack.shared_runtime_preflight {
         $results = ($results | append $r)
     }
