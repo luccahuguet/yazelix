@@ -8,17 +8,17 @@ use yazelix_core::{
     evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_runtime_materialization_repair, evaluate_startup_launch_preflight,
     generate_ghostty_materialization, generate_helix_materialization,
-    generate_yazi_materialization, generate_zellij_materialization, normalize_config,
-    plan_runtime_materialization, record_config_state, render_yzx_help, success_envelope,
-    yzx_command_metadata, yzx_command_metadata_data, ComputeConfigStateRequest, CoreError,
-    DoctorConfigEvaluateRequest, DoctorRuntimeEvaluateRequest, ErrorClass,
-    GhosttyMaterializationRequest, HelixDoctorEvaluateRequest, HelixMaterializationRequest,
-    InstallOwnershipEvaluateRequest, NormalizeConfigRequest, RecordConfigStateRequest,
-    RuntimeArtifact, RuntimeContractEvaluateRequest, RuntimeEnvComputeRequest,
-    RuntimeMaterializationApplyRequest, RuntimeMaterializationPlanRequest,
-    RuntimeMaterializationRepairEvaluateRequest, StartupLaunchPreflightRequest,
-    YaziMaterializationRequest, YaziRenderPlanRequest, ZellijMaterializationRequest,
-    ZellijRenderPlanRequest,
+    generate_terminal_materialization, generate_yazi_materialization,
+    generate_zellij_materialization, normalize_config, plan_runtime_materialization,
+    record_config_state, render_yzx_help, success_envelope, yzx_command_metadata,
+    yzx_command_metadata_data, ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
+    DoctorRuntimeEvaluateRequest, ErrorClass, GhosttyMaterializationRequest,
+    HelixDoctorEvaluateRequest, HelixMaterializationRequest, InstallOwnershipEvaluateRequest,
+    NormalizeConfigRequest, RecordConfigStateRequest, RuntimeArtifact,
+    RuntimeContractEvaluateRequest, RuntimeEnvComputeRequest, RuntimeMaterializationApplyRequest,
+    RuntimeMaterializationPlanRequest, RuntimeMaterializationRepairEvaluateRequest,
+    StartupLaunchPreflightRequest, TerminalMaterializationRequest, YaziMaterializationRequest,
+    YaziRenderPlanRequest, ZellijMaterializationRequest, ZellijRenderPlanRequest,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
@@ -42,6 +42,7 @@ const YAZI_MATERIALIZATION_GENERATE_COMMAND: &str = "yazi-materialization.genera
 const ZELLIJ_MATERIALIZATION_GENERATE_COMMAND: &str = "zellij-materialization.generate";
 const HELIX_MATERIALIZATION_GENERATE_COMMAND: &str = "helix-materialization.generate";
 const GHOSTTY_MATERIALIZATION_GENERATE_COMMAND: &str = "ghostty-materialization.generate";
+const TERMINAL_MATERIALIZATION_GENERATE_COMMAND: &str = "terminal-materialization.generate";
 const YZX_COMMAND_METADATA_LIST_COMMAND: &str = "yzx-command-metadata.list";
 const YZX_COMMAND_METADATA_EXTERNS_COMMAND: &str = "yzx-command-metadata.externs";
 const YZX_COMMAND_METADATA_HELP_COMMAND: &str = "yzx-command-metadata.help";
@@ -197,6 +198,11 @@ fn run() -> Result<(), Box<CommandError>> {
         GHOSTTY_MATERIALIZATION_GENERATE_COMMAND => {
             let command_for_error = command.clone();
             run_ghostty_materialization_generate(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        TERMINAL_MATERIALIZATION_GENERATE_COMMAND => {
+            let command_for_error = command.clone();
+            run_terminal_materialization_generate(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         YZX_COMMAND_METADATA_LIST_COMMAND => {
@@ -593,6 +599,47 @@ fn run_ghostty_materialization_generate(mut parser: lexopt::Parser) -> Result<()
     };
     let data = generate_ghostty_materialization(&request)?;
     write_success_envelope(GHOSTTY_MATERIALIZATION_GENERATE_COMMAND, data)
+}
+
+fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let mut config_path: Option<PathBuf> = None;
+    let mut default_config_path: Option<PathBuf> = None;
+    let mut contract_path: Option<PathBuf> = None;
+    let mut runtime_dir: Option<PathBuf> = None;
+    let mut state_dir: Option<PathBuf> = None;
+    let mut terminals_json: Option<String> = None;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("config") => config_path = Some(parser_path_value(&mut parser)?),
+            Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
+            Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
+            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
+            Long("state-dir") => state_dir = Some(parser_path_value(&mut parser)?),
+            Long("terminals-json") => terminals_json = Some(parser_string_value(&mut parser)?),
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    let terminals: Vec<String> = serde_json::from_str(
+        &terminals_json.ok_or_else(|| CoreError::usage("Missing --terminals-json"))?,
+    )
+    .map_err(|error| CoreError::usage(format!("Invalid --terminals-json: {error}")))?;
+
+    let request = TerminalMaterializationRequest {
+        config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
+        default_config_path: default_config_path
+            .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
+        contract_path: contract_path.ok_or_else(|| CoreError::usage("Missing --contract path"))?,
+        runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
+        state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
+        terminals,
+    };
+    let data = generate_terminal_materialization(&request)?;
+    write_success_envelope(TERMINAL_MATERIALIZATION_GENERATE_COMMAND, data)
 }
 
 fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {

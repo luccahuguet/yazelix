@@ -14,6 +14,7 @@ pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
 pub mod status_report;
+pub mod terminal_materialization;
 pub mod update_commands;
 pub mod yazi_materialization;
 pub mod yazi_render_plan;
@@ -68,6 +69,10 @@ pub use runtime_materialization::{
     RuntimeMaterializationRepairEvaluateRequest, RuntimeRepairDirective,
 };
 pub use status_report::{compute_status_report, StatusReportData};
+pub use terminal_materialization::{
+    generate_terminal_materialization, TerminalGeneratedConfig, TerminalMaterializationData,
+    TerminalMaterializationRequest,
+};
 pub use yazi_materialization::{
     generate_yazi_materialization, YaziManagedFileStatus, YaziMaterializationData,
     YaziMaterializationRequest,
