@@ -13,27 +13,11 @@ use config_report_rendering.nu [render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
 use doctor_helix.nu fix_helix_runtime_conflicts
 use doctor_helix_report.nu collect_helix_doctor_results
+use doctor_runtime_report.nu collect_runtime_doctor_results
 use install_ownership_report.nu evaluate_install_ownership_report
-use runtime_distribution_capabilities.nu get_runtime_distribution_capability_profile
-use constants.nu DEFAULT_TERMINAL
-use generated_runtime_state.nu [compute_runtime_materialization_plan repair_generated_runtime_state]
-use runtime_contract_checker.nu [
-    check_doctor_shared_runtime_preflight
-    runtime_check_to_doctor_result
-]
+use generated_runtime_state.nu repair_generated_runtime_state
 use ../setup/zellij_plugin_paths.nu seed_yazelix_plugin_permissions
 use ../integrations/zellij.nu get_active_tab_session_state
-
-def build_runtime_distribution_doctor_result [profile: record] {
-    {
-        status: "info"
-        message: $profile.doctor_message
-        details: $profile.doctor_details
-        fix_available: false
-        capability_tier: $profile.tier
-        capability_mode: $profile.mode
-    }
-}
 
 def build_doctor_summary [results: list<record>] {
     let error_count = ($results | where status == "error" | length)
@@ -50,21 +34,6 @@ def build_doctor_summary [results: list<record>] {
         fixable_count: $fixable_count
         healthy: (($error_count == 0) and ($warning_count == 0))
     }
-}
-
-def is_managed_generated_layout_path [layout_path?: string] {
-    if $layout_path == null {
-        return false
-    }
-
-    let resolved_layout_path = ($layout_path | path expand)
-    let managed_layout_dir = (
-        get_yazelix_state_dir
-        | path join "configs" "zellij" "layouts"
-        | path expand
-    )
-
-    $resolved_layout_path | str starts-with $"($managed_layout_dir)/"
 }
 
 # Check configuration files
@@ -159,73 +128,6 @@ def check_configuration [] {
     }
     
     $results
-}
-
-def check_shared_runtime_preflight [] {
-    let config_result = (try {
-        {config: (parse_yazelix_config), error: null}
-    } catch {|err|
-        {config: null, error: $err.msg}
-    })
-    if ($config_result.error | is-not-empty) {
-        return []
-    }
-
-    let config = $config_result.config
-    let runtime_dir = (get_yazelix_runtime_dir)
-    let terminals = ($config.terminals? | default [$DEFAULT_TERMINAL] | uniq)
-    let layout_path = (try {
-        let plan_runtime = (require_yazelix_runtime_dir)
-        let plan = (compute_runtime_materialization_plan $plan_runtime)
-        let candidate = (
-            $plan.zellij_layout_path?
-            | default ""
-            | into string
-            | str trim
-        )
-        if ($candidate | is-empty) {
-            error make {msg: "Rust materialization plan omitted zellij_layout_path."}
-        }
-        $candidate
-    } catch {|err|
-        return [{
-            status: "error"
-            message: "Could not resolve the managed Zellij layout path from the Rust materialization plan"
-            details: $err.msg
-            fix_available: false
-        }]
-    })
-    let runtime_scripts = [
-        {
-            id: "startup_runtime_script"
-            label: "startup script"
-            owner_surface: "doctor"
-            path: ($runtime_dir | path join "nushell" "scripts" "core" "start_yazelix_inner.nu")
-        }
-        {
-            id: "launch_runtime_script"
-            label: "launch script"
-            owner_surface: "doctor"
-            path: ($runtime_dir | path join "nushell" "scripts" "core" "launch_yazelix.nu")
-        }
-    ]
-    let checks = (check_doctor_shared_runtime_preflight $layout_path $terminals $runtime_scripts)
-
-    $checks | each {|check|
-        let doctor_result = (runtime_check_to_doctor_result $check)
-        if (
-            ($check.id == "generated_layout")
-            and ($check.status != "ok")
-            and (($check.failure_class? | default "") == "generated-state")
-            and (is_managed_generated_layout_path ($check.path? | default null))
-        ) {
-            $doctor_result
-            | upsert fix_available true
-            | upsert fix_action "repair_generated_runtime_state"
-        } else {
-            $doctor_result
-        }
-    }
 }
 
 def check_zellij_plugin_health [] {
@@ -384,9 +286,10 @@ def fix_create_config [] {
 
 export def collect_doctor_report [] {
     mut results = []
-    let runtime_distribution_profile = (get_runtime_distribution_capability_profile)
+    let install_report = (evaluate_install_ownership_report)
+    let runtime_pack = (collect_runtime_doctor_results $install_report)
 
-    $results = ($results | append (build_runtime_distribution_doctor_result $runtime_distribution_profile))
+    $results = ($results | append $runtime_pack.distribution)
 
     let helix_pack = (collect_helix_doctor_results)
     $results = ($results | append $helix_pack.runtime_conflicts)
@@ -397,8 +300,9 @@ export def collect_doctor_report [] {
         $results = ($results | append $finding)
     }
     $results = ($results | append (check_configuration))
-    $results = ($results | append (check_shared_runtime_preflight))
-    let install_report = (evaluate_install_ownership_report)
+    for r in $runtime_pack.shared_runtime_preflight {
+        $results = ($results | append $r)
+    }
     for w in ($install_report.wrapper_shadowing? | default []) {
         $results = ($results | append $w)
     }

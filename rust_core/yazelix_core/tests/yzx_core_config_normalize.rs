@@ -450,3 +450,46 @@ fn doctor_helix_evaluate_prints_ok_envelope() {
     assert_eq!(envelope["data"]["runtime_conflicts"]["status"], "ok");
     assert!(envelope["data"]["managed_integration"].as_array().unwrap().is_empty());
 }
+
+// Defends: doctor-runtime.evaluate emits one machine-readable report envelope for a minimal request.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn doctor_runtime_evaluate_prints_ok_envelope() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let state = home.join(".local/share/yazelix");
+    let rt = tmp.path().join("runtime");
+    fs::create_dir_all(rt.join("bin")).unwrap();
+    fs::write(rt.join("yazelix_default.toml"), "").unwrap();
+    fs::write(rt.join("bin").join("yzx"), "").unwrap();
+    fs::create_dir_all(rt.join("libexec").join("nu")).unwrap();
+
+    let request = serde_json::json!({
+        "runtime_dir": rt.to_string_lossy(),
+        "yazelix_state_dir": state.to_string_lossy(),
+        "has_home_manager_managed_install": false,
+        "is_manual_runtime_reference_path": false,
+        "shared_runtime": null,
+    });
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("doctor-runtime.evaluate")
+        .arg("--request-json")
+        .arg(request.to_string())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "doctor-runtime.evaluate");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(
+        envelope["data"]["distribution"]["capability_mode"],
+        "package_runtime"
+    );
+    assert!(envelope["data"]["shared_runtime_preflight"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+}
