@@ -4,9 +4,11 @@ use std::path::PathBuf;
 use yazelix_core::{
     apply_runtime_materialization, compute_config_state, compute_runtime_env,
     compute_status_report, compute_yazi_render_plan, compute_zellij_render_plan, error_envelope,
-    evaluate_install_ownership_report, evaluate_runtime_contract, normalize_config,
+    evaluate_helix_doctor_report, evaluate_install_ownership_report, evaluate_runtime_contract,
+    normalize_config,
     plan_runtime_materialization, record_config_state, success_envelope, ComputeConfigStateRequest,
-    CoreError, ErrorClass, InstallOwnershipEvaluateRequest, NormalizeConfigRequest,
+    CoreError, ErrorClass, HelixDoctorEvaluateRequest, InstallOwnershipEvaluateRequest,
+    NormalizeConfigRequest,
     RecordConfigStateRequest, RuntimeArtifact, RuntimeContractEvaluateRequest,
     RuntimeEnvComputeRequest, RuntimeMaterializationApplyRequest,
     RuntimeMaterializationPlanRequest, YaziRenderPlanRequest, ZellijRenderPlanRequest,
@@ -21,6 +23,7 @@ const RUNTIME_MATERIALIZATION_PLAN_COMMAND: &str = "runtime-materialization.plan
 const RUNTIME_MATERIALIZATION_APPLY_COMMAND: &str = "runtime-materialization.apply";
 const STATUS_COMPUTE_COMMAND: &str = "status.compute";
 const INSTALL_OWNERSHIP_EVALUATE_COMMAND: &str = "install-ownership.evaluate";
+const DOCTOR_HELIX_EVALUATE_COMMAND: &str = "doctor-helix.evaluate";
 const ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND: &str = "zellij-render-plan.compute";
 const YAZI_RENDER_PLAN_COMPUTE_COMMAND: &str = "yazi-render-plan.compute";
 const UNKNOWN_COMMAND: &str = "unknown";
@@ -116,6 +119,11 @@ fn run() -> Result<(), Box<CommandError>> {
         INSTALL_OWNERSHIP_EVALUATE_COMMAND => {
             let command_for_error = command.clone();
             run_install_ownership_evaluate(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        DOCTOR_HELIX_EVALUATE_COMMAND => {
+            let command_for_error = command.clone();
+            run_doctor_helix_evaluate(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         RUNTIME_MATERIALIZATION_APPLY_COMMAND => {
@@ -264,6 +272,14 @@ fn run_runtime_contract_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreE
         })?;
     let data = evaluate_runtime_contract(&request)?;
     write_success_envelope(RUNTIME_CONTRACT_EVALUATE_COMMAND, data)
+}
+
+fn run_doctor_helix_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request_json = take_request_json(&mut parser)?;
+    let request: HelixDoctorEvaluateRequest =
+        deserialize_json_request(&request_json, "doctor-helix")?;
+    let data = evaluate_helix_doctor_report(&request);
+    write_success_envelope(DOCTOR_HELIX_EVALUATE_COMMAND, data)
 }
 
 fn run_install_ownership_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {

@@ -411,3 +411,42 @@ fn install_ownership_evaluate_prints_ok_envelope() {
     assert!(envelope["data"]["install_owner"].is_string());
     assert!(envelope["data"]["desktop_entry_freshness"]["message"].is_string());
 }
+
+// Defends: doctor-helix.evaluate emits one machine-readable report envelope for a minimal request.
+// Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+#[test]
+fn doctor_helix_evaluate_prints_ok_envelope() {
+    let tmp = tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let user_rt = home.join(".config/helix/runtime");
+    fs::create_dir_all(user_rt.parent().unwrap()).unwrap();
+
+    let request = serde_json::json!({
+        "home_dir": home.to_string_lossy(),
+        "user_config_helix_runtime_dir": user_rt.to_string_lossy(),
+        "hx_exe_path": null,
+        "include_runtime_health": false,
+        "editor_command": null,
+        "managed_helix_user_config_path": home.join("managed.toml").to_string_lossy(),
+        "native_helix_config_path": home.join("native.toml").to_string_lossy(),
+        "generated_helix_config_path": home.join("generated.toml").to_string_lossy(),
+        "expected_managed_config": null,
+        "build_managed_config_error": null,
+        "reveal_binding_expected": ":sh yzx reveal \"%{buffer_name}\"",
+    });
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("doctor-helix.evaluate")
+        .arg("--request-json")
+        .arg(request.to_string())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "doctor-helix.evaluate");
+    assert_eq!(envelope["status"], "ok");
+    assert_eq!(envelope["data"]["runtime_conflicts"]["status"], "ok");
+    assert!(envelope["data"]["managed_integration"].as_array().unwrap().is_empty());
+}

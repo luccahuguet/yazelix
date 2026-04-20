@@ -11,12 +11,8 @@ use config_surfaces.nu [get_main_user_config_path load_active_config_surface rec
 use config_diagnostics.nu [build_config_diagnostic_report]
 use config_report_rendering.nu [render_doctor_config_details]
 use config_parser.nu parse_yazelix_config
-use doctor_helix.nu [
-    check_helix_runtime_conflicts
-    check_helix_runtime_health
-    check_managed_helix_integration
-    fix_helix_runtime_conflicts
-]
+use doctor_helix.nu fix_helix_runtime_conflicts
+use doctor_helix_report.nu collect_helix_doctor_results
 use install_ownership_report.nu evaluate_install_ownership_report
 use runtime_distribution_capabilities.nu get_runtime_distribution_capability_profile
 use constants.nu DEFAULT_TERMINAL
@@ -391,13 +387,15 @@ export def collect_doctor_report [] {
     let runtime_distribution_profile = (get_runtime_distribution_capability_profile)
 
     $results = ($results | append (build_runtime_distribution_doctor_result $runtime_distribution_profile))
-    $results = ($results | append (check_helix_runtime_conflicts))
 
-    if ($env.EDITOR? | default "" | str contains "hx") {
-        $results = ($results | append (check_helix_runtime_health))
+    let helix_pack = (collect_helix_doctor_results)
+    $results = ($results | append $helix_pack.runtime_conflicts)
+    if $helix_pack.runtime_health != null {
+        $results = ($results | append $helix_pack.runtime_health)
     }
-
-    $results = ($results | append (check_managed_helix_integration))
+    for finding in $helix_pack.managed_integration {
+        $results = ($results | append $finding)
+    }
     $results = ($results | append (check_configuration))
     $results = ($results | append (check_shared_runtime_preflight))
     let install_report = (evaluate_install_ownership_report)
