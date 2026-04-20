@@ -16,8 +16,7 @@ fn usage() -> ! {
     std::process::exit(64);
 }
 
-const CONFIG_RECOVERY_HINT: &str =
-    "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback.";
+const CONFIG_RECOVERY_HINT: &str = "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback.";
 
 fn render_startup_config_error(report: &ConfigDiagnosticReport) -> String {
     let mut lines = vec![
@@ -151,17 +150,25 @@ fn run_env(args: &[String]) -> Result<i32, CoreError> {
             .and_then(|s| s.into_string().ok())
             .as_deref(),
     );
-    let shell_command = if parsed.no_shell {
-        let name = invoking.unwrap_or_else(|| configured_shell.clone());
-        shell_command(false, &name)
+    let logical_shell = if parsed.no_shell {
+        invoking.clone().unwrap_or_else(|| configured_shell.clone())
     } else {
-        shell_command(true, &configured_shell)
+        configured_shell.clone()
     };
-    let shell_exec = shell_command
-        .first()
-        .map(String::as_str)
-        .unwrap_or(&configured_shell)
-        .to_string();
+    let shell_command = if parsed.no_shell {
+        shell_command(&runtime_dir, false, &logical_shell)
+    } else {
+        shell_command(&runtime_dir, true, &configured_shell)
+    };
+    // Keep `SHELL=nu` when launching the managed wrapper (parity with historical `yzx env`).
+    let shell_exec = if logical_shell == "nu" {
+        "nu".to_string()
+    } else {
+        shell_command
+            .first()
+            .cloned()
+            .unwrap_or_else(|| logical_shell.clone())
+    };
 
     let req = runtime_env_request(runtime_dir.clone(), &normalized)?;
     let data = compute_runtime_env(&req)?;

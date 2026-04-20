@@ -2,7 +2,7 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::runtime_env::RuntimePathInput;
-use crate::{normalize_config, NormalizeConfigRequest, RuntimeEnvComputeRequest};
+use crate::{NormalizeConfigRequest, RuntimeEnvComputeRequest, normalize_config};
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -49,14 +49,24 @@ pub fn split_run_argv(argv: &[String]) -> Result<(&str, &[String]), CoreError> {
     Ok((cmd.as_str(), &argv[1..]))
 }
 
-pub fn shell_command(login: bool, shell_name: &str) -> Vec<String> {
+/// Build argv for launching a shell inside `yzx env`.
+///
+/// Login Nushell must use `shells/posix/yazelix_nu.sh` so the managed
+/// `config.nu` runs and generated initializers (including Starship) load.
+pub fn shell_command(runtime_dir: &Path, login: bool, shell_name: &str) -> Vec<String> {
     let normalized = shell_name.to_lowercase();
+    if normalized == "nu" && login {
+        let wrapper = runtime_dir
+            .join("shells")
+            .join("posix")
+            .join("yazelix_nu.sh");
+        return vec![wrapper.to_string_lossy().into_owned()];
+    }
     match (normalized.as_str(), login) {
-        ("nu", true) => vec!["nu".into(), "--login".into()],
+        ("nu", false) => vec!["nu".into()],
         ("bash", true) => vec!["bash".into(), "--login".into()],
         ("fish", true) => vec!["fish".into(), "-l".into()],
         ("zsh", true) => vec!["zsh".into(), "-l".into()],
-        ("nu", false) => vec!["nu".into()],
         ("bash", false) => vec!["bash".into()],
         ("fish", false) => vec!["fish".into()],
         ("zsh", false) => vec!["zsh".into()],
@@ -257,5 +267,29 @@ mod tests {
         assert!(b.no_shell);
         let c = parse_env_cli_args(&[]).unwrap();
         assert!(!c.no_shell);
+    }
+
+    // Test lane: default
+    // Defends: `yzx env` login Nushell uses the managed wrapper (Starship + managed config.nu).
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn shell_command_login_nu_uses_managed_wrapper() {
+        let rt = Path::new("/opt/yazelix");
+        let argv = shell_command(rt, true, "nu");
+        assert_eq!(argv.len(), 1);
+        assert_eq!(
+            argv[0],
+            "/opt/yazelix/shells/posix/yazelix_nu.sh".to_string()
+        );
+    }
+
+    // Test lane: default
+    // Defends: `yzx env --no-shell` still launches plain Nushell when the invoking shell family is `nu`.
+    // Strength: defect=1 behavior=2 resilience=1 cost=1 uniqueness=2 total=7/10
+    #[test]
+    fn shell_command_no_login_nu_stays_plain_nu() {
+        let rt = Path::new("/opt/yazelix");
+        let argv = shell_command(rt, false, "nu");
+        assert_eq!(argv, vec!["nu".to_string()]);
     }
 }
