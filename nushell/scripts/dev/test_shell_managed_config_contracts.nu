@@ -225,6 +225,82 @@ def test_yzx_extern_bridge_reuses_current_fingerprint [] {
 }
 
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+# Regression: yzx extern bridge probing must ignore host Nushell config so Rust-owned leaf externs do not get rendered twice.
+def test_yzx_extern_bridge_probe_ignores_host_nushell_config [] {
+    print "🧪 Testing yzx extern bridge probing ignores host Nushell config..."
+
+    let repo_root = (get_repo_root)
+    let tmp_home = (^mktemp -d /tmp/yazelix_yzx_extern_host_config_XXXXXX | str trim)
+    let xdg_config_home = ($tmp_home | path join ".config")
+    let nushell_config_dir = ($xdg_config_home | path join "nushell")
+    let state_dir = ($tmp_home | path join ".local" "share" "yazelix")
+    let initializers_dir = ($state_dir | path join "initializers" "nushell")
+
+    let result = (try {
+        mkdir $xdg_config_home
+        mkdir $nushell_config_dir
+        mkdir $initializers_dir
+
+        let extern_path = (get_generated_yzx_extern_path $state_dir)
+        let managed_config = ($repo_root | path join "nushell" "config" "config.nu")
+
+        [
+            "export extern \"yzx env\" ["
+            "    --no-shell(-n)"
+            "]"
+            ""
+            "export extern \"yzx run\" ["
+            "    ...argv: string"
+            "]"
+        ] | str join "\n" | save --force --raw $extern_path
+
+        "" | save --force --raw ($initializers_dir | path join "yazelix_init.nu")
+        "" | save --force --raw ($initializers_dir | path join "yazelix_user_hook.nu")
+        $"source \"($extern_path)\"\n" | save --force --raw ($nushell_config_dir | path join "config.nu")
+
+        with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_STATE_DIR: $state_dir
+        } {
+            sync_generated_yzx_extern_bridge $repo_root $state_dir | ignore
+        }
+
+        let generated = (open --raw $extern_path)
+        let env_count = ($generated | lines | where $it == 'export extern "yzx env" [' | length)
+        let run_count = ($generated | lines | where $it == 'export extern "yzx run" [' | length)
+        let startup = (with-env {
+            HOME: $tmp_home
+            XDG_CONFIG_HOME: $xdg_config_home
+            YAZELIX_STATE_DIR: $state_dir
+            YAZELIX_RUNTIME_DIR: $repo_root
+            IN_YAZELIX_SHELL: "true"
+        } {
+            ^nu --config $managed_config -c 'print ok' | complete
+        })
+
+        if (
+            ($env_count == 1)
+            and ($run_count == 1)
+            and ($startup.exit_code == 0)
+            and (($startup.stdout | str trim) == "ok")
+        ) {
+            print "  ✅ yzx extern bridge now ignores host Nushell config and keeps Rust-owned leaf externs unique"
+            true
+        } else {
+            print $"  ❌ Unexpected extern bridge probe result: env_count=($env_count) run_count=($run_count) exit=($startup.exit_code) stdout=(($startup.stdout | str trim)) stderr=(($startup.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $tmp_home
+    $result
+}
+
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 # Regression: failed yzx extern bridge regeneration must not replace a previous valid bridge with the placeholder.
 def test_yzx_extern_bridge_keeps_previous_bridge_when_refresh_fails [] {
     print "🧪 Testing yzx extern bridge keeps the previous bridge when refresh fails..."
@@ -595,6 +671,7 @@ export def run_shell_managed_config_contract_tests [] {
         (test_managed_nushell_config_sources_optional_user_hook)
         (test_managed_nushell_config_loads_in_repo_shell_without_runtime_env)
         (test_yzx_extern_bridge_reuses_current_fingerprint)
+        (test_yzx_extern_bridge_probe_ignores_host_nushell_config)
         (test_yzx_extern_bridge_keeps_previous_bridge_when_refresh_fails)
         (test_managed_bash_config_sources_optional_user_hook)
         (test_managed_fish_config_does_not_export_helix_mode_env)
