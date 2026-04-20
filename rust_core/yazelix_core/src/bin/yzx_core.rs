@@ -4,8 +4,9 @@ use yazelix_core::{
     ComputeConfigStateRequest, CoreError, ErrorClass, NormalizeConfigRequest,
     RecordConfigStateRequest, RuntimeArtifact, RuntimeContractEvaluateRequest,
     RuntimeEnvComputeRequest, RuntimeMaterializationApplyRequest,
-    RuntimeMaterializationPlanRequest, ZellijRenderPlanRequest, apply_runtime_materialization,
-    compute_config_state, compute_runtime_env, compute_zellij_render_plan, error_envelope,
+    RuntimeMaterializationPlanRequest, YaziRenderPlanRequest, ZellijRenderPlanRequest,
+    apply_runtime_materialization, compute_config_state, compute_runtime_env,
+    compute_yazi_render_plan, compute_zellij_render_plan, error_envelope,
     evaluate_runtime_contract, normalize_config, plan_runtime_materialization, record_config_state,
     success_envelope,
 };
@@ -18,6 +19,7 @@ const RUNTIME_ENV_COMPUTE_COMMAND: &str = "runtime-env.compute";
 const RUNTIME_MATERIALIZATION_PLAN_COMMAND: &str = "runtime-materialization.plan";
 const RUNTIME_MATERIALIZATION_APPLY_COMMAND: &str = "runtime-materialization.apply";
 const ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND: &str = "zellij-render-plan.compute";
+const YAZI_RENDER_PLAN_COMPUTE_COMMAND: &str = "yazi-render-plan.compute";
 const UNKNOWN_COMMAND: &str = "unknown";
 
 struct CommandError {
@@ -111,6 +113,11 @@ fn run() -> Result<(), Box<CommandError>> {
         ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND => {
             let command_for_error = command.clone();
             run_zellij_render_plan_compute(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        YAZI_RENDER_PLAN_COMPUTE_COMMAND => {
+            let command_for_error = command.clone();
+            run_yazi_render_plan_compute(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         _ => Err(CommandError::new(
@@ -273,6 +280,34 @@ fn run_zellij_render_plan_compute(mut parser: lexopt::Parser) -> Result<(), Core
         })?;
     let data = compute_zellij_render_plan(&request)?;
     write_success_envelope(ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND, data)
+}
+
+fn run_yazi_render_plan_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let mut request_json: Option<String> = None;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("request-json") => request_json = Some(parser_string_value(&mut parser)?),
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    let request_json =
+        request_json.ok_or_else(|| CoreError::usage("Missing --request-json payload"))?;
+    let request: YaziRenderPlanRequest = serde_json::from_str(&request_json).map_err(|error| {
+        CoreError::classified(
+            ErrorClass::Usage,
+            "invalid_request_json",
+            format!("Invalid yazi-render-plan request JSON: {error}"),
+            "Pass one valid JSON payload via --request-json.",
+            serde_json::json!({}),
+        )
+    })?;
+    let data = compute_yazi_render_plan(&request)?;
+    write_success_envelope(YAZI_RENDER_PLAN_COMPUTE_COMMAND, data)
 }
 
 fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {

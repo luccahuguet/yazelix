@@ -5,11 +5,12 @@
 use ../utils/atomic_writes.nu write_text_atomic_if_changed
 use ../utils/config_parser.nu parse_yazelix_config
 use ../utils/common.nu get_yazelix_state_dir
+use ../utils/yazi_render_plan.nu compute_yazi_render_plan
 use ./yazi_bundled_assets.nu [bundled_yazi_assets_missing render_runtime_root_placeholders sync_bundled_yazi_assets]
 use ./yazi_user_overrides.nu [merge_yazi_keymap merge_yazi_toml_config resolve_yazi_user_file]
 
 # Generate yazi.toml with dynamic settings from yazelix.toml
-def generate_yazi_toml [source_dir: string, merged_dir: string, sort_by: string, user_plugins: list, --quiet] {
+def generate_yazi_toml [source_dir: string, merged_dir: string, render_plan: record, --quiet] {
     let base_path = $"($source_dir)/yazelix_yazi.toml"
     let user_path = (resolve_yazi_user_file "yazi.toml")
     let merged_path = $"($merged_dir)/yazi.toml"
@@ -43,8 +44,10 @@ def generate_yazi_toml [source_dir: string, merged_dir: string, sort_by: string,
         $merged_config
     }
 
-    # Remove git fetchers if git plugin is not in the list
-    let config_without_git_fetchers = if ("git" not-in $user_plugins) {
+    let sort_by = $render_plan.sort_by
+
+    # Remove git fetchers if git plugin is not in the list (plan owned by yzx_core)
+    let config_without_git_fetchers = if not $render_plan.git_plugin_enabled {
         $config_with_opener | reject plugin?
     } else {
         $config_with_opener
@@ -90,7 +93,7 @@ def generate_yazi_toml [source_dir: string, merged_dir: string, sort_by: string,
 }
 
 # Generate theme.toml with flavor configuration from yazelix.toml
-def generate_theme_toml [source_dir: string, merged_dir: string, theme: string, --quiet] {
+def generate_theme_toml [source_dir: string, merged_dir: string, render_plan: record, --quiet] {
     let source_path = $"($source_dir)/yazelix_theme.toml"
     let merged_path = $"($merged_dir)/theme.toml"
 
@@ -105,14 +108,14 @@ def generate_theme_toml [source_dir: string, merged_dir: string, theme: string, 
         {}
     }
 
-    # Add flavor configuration
-    # Only set flavor if theme is not "default" (Yazi's built-in default)
-    let flavor_config = if $theme != "default" and $theme != "random" {
-        { flavor: { dark: $theme, light: $theme } }
-    } else if $theme == "default" {
-        {} # Don't set flavor for default theme
+    let theme = $render_plan.resolved_theme
+
+    # Flavor block is computed in Rust (ThemeFlavorPlan) to match historical merger semantics.
+    let flavor_config = if $render_plan.theme_flavor.kind == "uniform" {
+        let name = $render_plan.theme_flavor.flavor
+        { flavor: { dark: $name, light: $name } }
     } else {
-        {} # Random was already resolved to actual theme name
+        {}
     }
 
     # Merge base theme with flavor config (flavor takes precedence)
@@ -204,14 +207,11 @@ def generate_keymap_toml [source_dir: string, merged_dir: string, --quiet] {
 }
 
 # Generate init.lua dynamically based on plugin configuration
-def generate_init_lua [merged_dir: string, user_plugins: list, --quiet] {
+def generate_init_lua [merged_dir: string, render_plan: record, --quiet] {
     let plugins_dir = $"($merged_dir)/plugins"
 
-    # Core plugins - always loaded, cannot be disabled
-    let core_plugins = ["sidebar-status", "auto-layout", "sidebar-state"]
-
-    # Combine core + user plugins
-    let all_plugins = ($core_plugins | append $user_plugins | uniq)
+    let core_plugins = $render_plan.init_lua.core_plugins
+    let all_plugins = $render_plan.init_lua.load_order
 
     # Check for missing plugins and warn
     let missing = ($all_plugins | where {|p|
@@ -305,38 +305,8 @@ export def generate_merged_yazi_config [
     --quiet,
     --sync-static-assets = true
 ] {
-    # Parse yazelix config to get settings
     let config = parse_yazelix_config
-    let user_plugins = $config.yazi_plugins
-
-    # Yazi flavor themes (25 total: 1 default + 19 dark + 5 light)
-    # See: https://github.com/yazi-rs/flavors
-    let yazi_themes_dark = [
-        "catppuccin-mocha", "catppuccin-frappe", "catppuccin-macchiato",
-        "dracula", "gruvbox-dark", "tokyo-night",
-        "kanagawa", "kanagawa-dragon",
-        "rose-pine", "rose-pine-moon",
-        "flexoki-dark", "bluloco-dark",
-        "ayu-dark", "everforest-medium", "ashen", "neon", "nord", "synthwave84", "monokai"
-    ]
-
-    let yazi_themes_light = [
-        "catppuccin-latte",
-        "kanagawa-lotus",
-        "rose-pine-dawn",
-        "flexoki-light", "bluloco-light"
-    ]
-
-    let theme_config = $config.yazi_theme
-    let theme = if $theme_config == "random-dark" {
-        $yazi_themes_dark | shuffle | first
-    } else if $theme_config == "random-light" {
-        $yazi_themes_light | shuffle | first
-    } else {
-        $theme_config
-    }
-
-    let sort_by = $config.yazi_sort_by
+    let render_plan = (compute_yazi_render_plan $yazelix_dir $config)
 
     # Define paths
     let state_dir = (get_yazelix_state_dir)
@@ -352,10 +322,10 @@ export def generate_merged_yazi_config [
     }
 
     # Generate yazi.toml with dynamic settings from yazelix.toml
-    generate_yazi_toml $source_config_dir $merged_config_dir $sort_by $user_plugins --quiet=$quiet
+    generate_yazi_toml $source_config_dir $merged_config_dir $render_plan --quiet=$quiet
 
     # Generate theme.toml with flavor configuration from yazelix.toml
-    generate_theme_toml $source_config_dir $merged_config_dir $theme --quiet=$quiet
+    generate_theme_toml $source_config_dir $merged_config_dir $render_plan --quiet=$quiet
 
     # Generate keymap.toml with optional user keymap merging
     generate_keymap_toml $source_config_dir $merged_config_dir --quiet=$quiet
@@ -371,7 +341,7 @@ export def generate_merged_yazi_config [
     }
 
     # Generate init.lua dynamically based on plugin configuration
-    generate_init_lua $merged_config_dir $user_plugins --quiet=$quiet
+    generate_init_lua $merged_config_dir $render_plan --quiet=$quiet
 
     if not $quiet {
         print $"✅ Yazi configuration generated successfully!"

@@ -4,6 +4,7 @@ pub mod config_state;
 pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
+pub mod yazi_render_plan;
 pub mod zellij_render_plan;
 
 pub use bridge::{CoreError, ErrorClass, error_envelope, success_envelope};
@@ -23,6 +24,9 @@ pub use runtime_materialization::{
     RuntimeArtifact, RuntimeMaterializationApplyData, RuntimeMaterializationApplyRequest,
     RuntimeMaterializationPlanData, RuntimeMaterializationPlanRequest,
     apply_runtime_materialization, plan_runtime_materialization,
+};
+pub use yazi_render_plan::{
+    YaziRenderPlanData, YaziRenderPlanRequest, compute_yazi_render_plan,
 };
 pub use zellij_render_plan::{
     ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,
