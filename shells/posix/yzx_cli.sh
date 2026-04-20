@@ -94,7 +94,7 @@ unset YAZELIX_BOOTSTRAP_RUNTIME_DIR
 
 yzx_control_bin="${YAZELIX_YZX_CONTROL_BIN:-$RUNTIME_DIR/libexec/yzx_control}"
 case "${1:-}" in
-  env | run)
+  env | run | update)
     if [ ! -x "$yzx_control_bin" ]; then
       echo "Error: Missing Yazelix control-plane helper: $yzx_control_bin" >&2
       echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2

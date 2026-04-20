@@ -5,7 +5,6 @@
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/constants.nu *
 use ../utils/common.nu get_yazelix_runtime_dir
-use ../utils/install_ownership_report.nu evaluate_install_ownership_report
 use ../utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path
 use ../utils/status_report.nu [collect_status_report render_status_report]
 use ../integrations/managed_editor.nu get_managed_editor_kind
@@ -48,102 +47,6 @@ def has_external_command [command_name: string] {
     (which $command_name | where type == "external" | is-not-empty)
 }
 
-def print_update_owner_warning [] {
-    print "Choose one update owner for this Yazelix install."
-    print ""
-    print "  Use `yzx update upstream` if this install is owned by a Nix profile package."
-    print "  Use `yzx update home_manager` if Home Manager owns this install."
-    print ""
-    print "Do not use both update paths for the same installed Yazelix runtime."
-}
-
-def print_update_path_confirmation [owner: string] {
-    match $owner {
-        "upstream" => {
-            print "Requested update path: default Nix profile."
-            print ""
-            print "  Use this only when a Nix profile package owns the active Yazelix runtime."
-        }
-        "home_manager" => {
-            print "Requested update path: Home Manager flake input."
-            print ""
-            print "  Use this only when Home Manager owns the active Yazelix runtime."
-        }
-        _ => {
-            error make {msg: $"Unsupported update owner confirmation: ($owner)"}
-        }
-    }
-
-    print ""
-    print "Do not use both update paths for the same installed Yazelix runtime."
-}
-
-def fail_if_home_manager_owned_upstream_update [] {
-    let install_report = (evaluate_install_ownership_report)
-    if $install_report.install_owner != "home-manager" {
-        return
-    }
-
-    print "❌ `yzx update upstream` is for default Nix profile installs, but this Yazelix runtime appears to be Home Manager-owned."
-    print "   Run `yzx update home_manager` from the Home Manager flake that owns this install."
-    print "   Then run `home-manager switch` to apply the updated input."
-    print "   Do not use both update paths for the same installed Yazelix runtime."
-    exit 1
-}
-
-def load_default_profile_elements [] {
-    let result = (^nix profile list --json | complete)
-    if $result.exit_code != 0 {
-        print "❌ Failed to inspect the default Nix profile."
-        print_completed_output $result
-        exit 1
-    }
-
-    let profile_json = try {
-        $result.stdout | from json
-    } catch {|err|
-        print $"❌ Failed to parse `nix profile list --json`: ($err.msg)"
-        exit 1
-    }
-
-    $profile_json | get -o elements | default {}
-}
-
-def resolve_active_yazelix_profile_entry [] {
-    let runtime_root = (get_yazelix_runtime_dir | path expand)
-    let elements = (load_default_profile_elements)
-    let matches = (
-        $elements
-        | transpose name entry
-        | where {|row|
-            let store_paths = ($row.entry | get -o storePaths | default [])
-            $store_paths | any {|store_path| ($store_path | path expand) == $runtime_root }
-        }
-    )
-
-    if (($matches | length) == 1) {
-        return ($matches | first)
-    }
-
-    if (($matches | length) > 1) {
-        let names = ($matches | get name | str join ", ")
-        print $"❌ Multiple default-profile Yazelix entries point at the active runtime: ($names)"
-        print "   Keep one clear profile owner, then rerun `yzx update upstream`."
-        exit 1
-    }
-
-    print "❌ `yzx update upstream` could not find the active Yazelix runtime in the default Nix profile."
-    print $"   Current runtime: ($runtime_root)"
-    print "   This command now updates profile-installed Yazelix packages after the legacy flake installer was removed."
-    print "   Recovery: Reinstall with `nix profile add github:luccahuguet/yazelix#yazelix`, or use `yzx update home_manager` if Home Manager owns this install."
-    exit 1
-}
-
-def print_exact_command [command: string] {
-    print "Running:"
-    print $"  ($command)"
-}
-
 def print_completed_output [result: record] {
     let stdout_text = ($result.stdout | default "")
     let stderr_text = ($result.stderr | default "")
@@ -157,14 +60,52 @@ def print_completed_output [result: record] {
     }
 }
 
-def require_current_working_flake [] {
-    let flake_file = ((pwd) | path join "flake.nix")
-
-    if not ($flake_file | path exists) {
-        print "❌ yzx update home_manager must be run from the Home Manager flake directory that owns this install."
-        print $"   Missing flake.nix in the current directory: ($flake_file)"
-        exit 1
+# Hand `yzx update*` to the POSIX launcher so Nushell help, menu, and extern generation stay aligned
+# with `yzx_control` (same path as `yzx_cli.sh`).
+def dispatch_yzx_control_update [...rest: string] {
+    let rt = (get_yazelix_runtime_dir)
+    if $rt == null {
+        error make {
+            msg: "Could not resolve the Yazelix runtime directory. Export YAZELIX_RUNTIME_DIR or run from an installed Yazelix runtime."
+        }
     }
+    let cli = ($rt | path join "shells" "posix" "yzx_cli.sh")
+    if not ($cli | path exists) {
+        error make {
+            msg: $"Yazelix launcher is missing at ($cli). Your runtime tree looks incomplete."
+        }
+    }
+    ^sh $cli update ...$rest
+}
+
+# Show supported update owners (delegates to Rust); listed here for `help yzx` / palette / externs.
+export def "yzx update" [] {
+    dispatch_yzx_control_update
+}
+
+# Upgrade the active Yazelix package entry in the default Nix profile (Rust-owned).
+export def "yzx update upstream" [] {
+    dispatch_yzx_control_update upstream
+}
+
+# Refresh the `yazelix` flake input in the current directory (Rust-owned).
+export def "yzx update home_manager" [] {
+    dispatch_yzx_control_update home_manager
+}
+
+# Upgrade Determinate Nix via determinate-nixd (Rust-owned).
+export def "yzx update nix" [
+    --yes      # Skip confirmation prompt
+    --verbose  # Show the underlying command
+] {
+    mut args = ["nix"]
+    if $yes {
+        $args = ($args | append "--yes")
+    }
+    if $verbose {
+        $args = ($args | append "--verbose")
+    }
+    dispatch_yzx_control_update ...$args
 }
 
 # Show Yazelix help or version information
@@ -425,113 +366,4 @@ export def "yzx doctor" [
     } else {
         run_doctor_checks $verbose $fix
     }
-}
-
-# Update dependencies and inputs
-export def "yzx update" [] {
-    print_update_owner_warning
-    print ""
-    print "Available update commands:"
-    print "  yzx update upstream      Upgrade the active Yazelix package in the default Nix profile"
-    print "  yzx update home_manager  Refresh the current Home Manager flake input, then print `home-manager switch`"
-    print "  yzx update nix           Upgrade Determinate Nix \(if installed\)"
-}
-
-# Upgrade Determinate Nix through determinate-nixd
-export def "yzx update nix" [
-    --yes      # Skip confirmation prompt
-    --verbose  # Show the underlying command
-] {
-    if (which determinate-nixd | is-empty) {
-        print "❌ determinate-nixd not found in PATH."
-        print "   Install Determinate Nix or check your PATH, then try again."
-        exit 1
-    }
-
-    if not $yes {
-        print "⚠️  This upgrades Determinate Nix using determinate-nixd."
-        print "   If your Nix install is not based on Determinate Nix, this will not work."
-        print "   It requires sudo and may prompt for your password."
-        let confirm = try {
-            (input "Continue? [y/N]: " | str downcase)
-        } catch { "n" }
-        if $confirm not-in ["y", "yes"] {
-            print "Aborted."
-            return
-        }
-    }
-
-    if $verbose {
-        print "⚙️ Running: sudo determinate-nixd upgrade"
-    } else {
-        print "🔄 Upgrading Determinate Nix..."
-    }
-
-    try {
-        let result = (^sudo determinate-nixd upgrade | complete)
-        if $result.exit_code != 0 {
-            print $"❌ Determinate Nix upgrade failed: ($result.stderr | str trim)"
-            exit 1
-        }
-        print "✅ Determinate Nix upgraded."
-    } catch {|err|
-        print $"❌ Determinate Nix upgrade failed: ($err.msg)"
-        exit 1
-    }
-}
-
-# Refresh the active Yazelix package in the default Nix profile
-export def "yzx update upstream" [] {
-    if not (has_external_command "nix") {
-        print "❌ nix not found in PATH."
-        print "   Install Nix first, then try again."
-        exit 1
-    }
-
-    fail_if_home_manager_owned_upstream_update
-    print_update_path_confirmation "upstream"
-    print ""
-    let profile_entry = (resolve_active_yazelix_profile_entry)
-    let command = $"nix profile upgrade --refresh ($profile_entry.name)"
-    print_exact_command $command
-
-    let result = (^nix profile upgrade --refresh $profile_entry.name | complete)
-    print_completed_output $result
-
-    if $result.exit_code != 0 {
-        print "❌ Upstream Yazelix update failed."
-        exit 1
-    }
-}
-
-# Refresh the current Home Manager flake input for Yazelix
-export def "yzx update home_manager" [] {
-    if not (has_external_command "nix") {
-        print "❌ nix not found in PATH."
-        print "   Install Nix first, then try again."
-        exit 1
-    }
-
-    require_current_working_flake
-
-    print_update_path_confirmation "home_manager"
-    print ""
-    print "⚠️  `yzx update home_manager` updates the `yazelix` input in the current flake directory."
-    print "   Run it only from the Home Manager flake that owns this install."
-    print "   If your Yazelix input uses a different name, run `nix flake update <your-input-name>` yourself."
-    print ""
-    let command = "nix flake update yazelix"
-    print_exact_command $command
-
-    let result = (^nix flake update yazelix | complete)
-    print_completed_output $result
-
-    if $result.exit_code != 0 {
-        print "❌ Home Manager flake input update failed."
-        exit 1
-    }
-
-    print ""
-    print "Next step:"
-    print "  home-manager switch"
 }

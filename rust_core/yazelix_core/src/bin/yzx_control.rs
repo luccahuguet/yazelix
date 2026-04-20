@@ -1,18 +1,19 @@
-//! Internal control-plane binary for `yzx env` and `yzx run` (invoked from `yzx_cli.sh`).
+//! Internal control-plane binary for `yzx env`, `yzx run`, and `yzx update*` (invoked from `yzx_cli.sh`).
 
-use std::path::{Path, PathBuf};
 use yazelix_core::bridge::{CoreError, ErrorClass};
 use yazelix_core::compute_runtime_env;
 use yazelix_core::config_normalize::ConfigDiagnosticReport;
 use yazelix_core::control_plane::{
-    basename_shell, default_shell_from_config, load_normalized_config_for_control,
-    parse_env_cli_args, run_child_in_runtime_env, runtime_env_request, setpriv_or_sh_exec,
-    shell_command, split_run_argv,
+    basename_shell, config_dir_from_env, default_shell_from_config,
+    load_normalized_config_for_control, parse_env_cli_args, run_child_in_runtime_env,
+    runtime_dir_from_env, runtime_env_request, setpriv_or_sh_exec, shell_command, split_run_argv,
 };
+use yazelix_core::update_commands::run_yzx_update;
 
 fn usage() -> ! {
     eprintln!("Usage: yzx_control env [--no-shell|-n]");
     eprintln!("       yzx_control run <command> [args...]");
+    eprintln!("       yzx_control update [subcommand] [args...]");
     std::process::exit(64);
 }
 
@@ -53,80 +54,6 @@ fn print_control_error(err: &CoreError) {
     if !remediation.is_empty() {
         eprintln!("{remediation}");
     }
-}
-
-fn runtime_dir_from_env() -> Result<PathBuf, CoreError> {
-    let raw = std::env::var("YAZELIX_RUNTIME_DIR").map_err(|_| {
-        CoreError::classified(
-            yazelix_core::bridge::ErrorClass::Runtime,
-            "missing_runtime_dir",
-            "YAZELIX_RUNTIME_DIR is not set.",
-            "Run `yzx` through the packaged POSIX launcher so the runtime bootstraps correctly.",
-            serde_json::json!({}),
-        )
-    })?;
-    let trimmed = raw.trim();
-    if trimmed.is_empty() {
-        return Err(CoreError::classified(
-            yazelix_core::bridge::ErrorClass::Runtime,
-            "empty_runtime_dir",
-            "YAZELIX_RUNTIME_DIR is empty.",
-            "Run `yzx` through the packaged POSIX launcher so the runtime bootstraps correctly.",
-            serde_json::json!({}),
-        ));
-    }
-    Ok(PathBuf::from(trimmed))
-}
-
-fn expand_user_path(raw: &str, home: &Path) -> PathBuf {
-    if raw == "~" {
-        return home.to_path_buf();
-    }
-    if let Some(rest) = raw.strip_prefix("~/") {
-        return home.join(rest);
-    }
-    PathBuf::from(raw)
-}
-
-fn resolve_config_dir(
-    explicit: Option<&str>,
-    xdg_config_home: Option<&str>,
-    home: Option<&Path>,
-) -> Result<PathBuf, CoreError> {
-    if let Some(raw) = explicit.map(str::trim).filter(|raw| !raw.is_empty()) {
-        return Ok(match home {
-            Some(home_dir) => expand_user_path(raw, home_dir),
-            None => PathBuf::from(raw),
-        });
-    }
-
-    if let Some(raw) = xdg_config_home.map(str::trim).filter(|raw| !raw.is_empty()) {
-        let root = match home {
-            Some(home_dir) => expand_user_path(raw, home_dir),
-            None => PathBuf::from(raw),
-        };
-        return Ok(root.join("yazelix"));
-    }
-
-    let home = home.ok_or_else(|| {
-        CoreError::classified(
-            ErrorClass::Runtime,
-            "missing_home",
-            "HOME is not set; cannot resolve YAZELIX_CONFIG_DIR.",
-            "Export HOME, then retry.",
-            serde_json::json!({}),
-        )
-    })?;
-    Ok(home.join(".config").join("yazelix"))
-}
-
-fn config_dir_from_env() -> Result<PathBuf, CoreError> {
-    let home = std::env::var_os("HOME").map(PathBuf::from);
-    resolve_config_dir(
-        std::env::var("YAZELIX_CONFIG_DIR").ok().as_deref(),
-        std::env::var("XDG_CONFIG_HOME").ok().as_deref(),
-        home.as_deref(),
-    )
 }
 
 fn config_override_from_env() -> Option<String> {
@@ -233,6 +160,7 @@ fn main() {
     let code = match sub.as_str() {
         "env" => run_env(&argv),
         "run" => run_run(&argv),
+        "update" => run_yzx_update(&argv),
         _ => {
             eprintln!("Unknown yzx_control subcommand: {sub}");
             usage();
@@ -251,19 +179,22 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
     use yazelix_core::config_normalize::ConfigDiagnostic;
+    use yazelix_core::control_plane::resolve_yazelix_config_dir;
 
     #[test]
     fn resolve_config_dir_prefers_explicit_and_expands_home() {
         let home = Path::new("/tmp/home");
-        let path = resolve_config_dir(Some("~/cfg/yazelix"), Some("/ignored"), Some(home)).unwrap();
+        let path =
+            resolve_yazelix_config_dir(Some("~/cfg/yazelix"), Some("/ignored"), Some(home)).unwrap();
         assert_eq!(path, home.join("cfg").join("yazelix"));
     }
 
     #[test]
     fn resolve_config_dir_uses_xdg_before_home_default() {
         let home = Path::new("/tmp/home");
-        let path = resolve_config_dir(None, Some("~/xdg"), Some(home)).unwrap();
+        let path = resolve_yazelix_config_dir(None, Some("~/xdg"), Some(home)).unwrap();
         assert_eq!(path, home.join("xdg").join("yazelix"));
     }
 

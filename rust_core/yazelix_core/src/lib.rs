@@ -11,6 +11,7 @@ pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
 pub mod status_report;
+pub mod update_commands;
 pub mod yazi_render_plan;
 pub mod zellij_render_plan;
 

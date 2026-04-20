@@ -74,6 +74,9 @@ prepend_existing_path_dir() {
 # closure stays runtime-private so host apps do not inherit shadowing helpers
 # like coreutils ahead of the system PATH.
 cleaned_path="$(strip_runtime_path_entries "${PATH:-}")"
+if [ -n "${YAZELIX_TEST_PATH_PREPEND:-}" ] && [ -d "$YAZELIX_TEST_PATH_PREPEND" ]; then
+  cleaned_path="$(prepend_existing_path_dir "$YAZELIX_TEST_PATH_PREPEND" "$cleaned_path")"
+fi
 cleaned_path="$(prepend_existing_path_dir "$runtime_dir/bin" "$cleaned_path")"
 cleaned_path="$(prepend_existing_path_dir "$runtime_dir/toolbin" "$cleaned_path")"
 export PATH="$cleaned_path"

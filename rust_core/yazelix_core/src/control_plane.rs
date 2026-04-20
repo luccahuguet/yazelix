@@ -10,6 +10,96 @@ use std::process::Command;
 
 const DEFAULT_SHELL: &str = "nu";
 
+/// Expand `~` / `~/…` using `home` (POSIX-style).
+pub fn expand_user_path(raw: &str, home: &Path) -> PathBuf {
+    if raw == "~" {
+        return home.to_path_buf();
+    }
+    if let Some(rest) = raw.strip_prefix("~/") {
+        return home.join(rest);
+    }
+    PathBuf::from(raw)
+}
+
+/// Resolve the managed Yazelix config root (`YAZELIX_CONFIG_DIR` or XDG + `/yazelix`).
+pub fn resolve_yazelix_config_dir(
+    explicit: Option<&str>,
+    xdg_config_home: Option<&str>,
+    home: Option<&Path>,
+) -> Result<PathBuf, CoreError> {
+    if let Some(raw) = explicit.map(str::trim).filter(|raw| !raw.is_empty()) {
+        return Ok(match home {
+            Some(home_dir) => expand_user_path(raw, home_dir),
+            None => PathBuf::from(raw),
+        });
+    }
+
+    if let Some(raw) = xdg_config_home.map(str::trim).filter(|raw| !raw.is_empty()) {
+        let root = match home {
+            Some(home_dir) => expand_user_path(raw, home_dir),
+            None => PathBuf::from(raw),
+        };
+        return Ok(root.join("yazelix"));
+    }
+
+    let home = home.ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_home",
+            "HOME is not set; cannot resolve YAZELIX_CONFIG_DIR.",
+            "Export HOME, then retry.",
+            serde_json::json!({}),
+        )
+    })?;
+    Ok(home.join(".config").join("yazelix"))
+}
+
+pub fn config_dir_from_env() -> Result<PathBuf, CoreError> {
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    resolve_yazelix_config_dir(
+        std::env::var("YAZELIX_CONFIG_DIR").ok().as_deref(),
+        std::env::var("XDG_CONFIG_HOME").ok().as_deref(),
+        home.as_deref(),
+    )
+}
+
+pub fn runtime_dir_from_env() -> Result<PathBuf, CoreError> {
+    let raw = std::env::var("YAZELIX_RUNTIME_DIR").map_err(|_| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_runtime_dir",
+            "YAZELIX_RUNTIME_DIR is not set.",
+            "Run `yzx` through the packaged POSIX launcher so the runtime bootstraps correctly.",
+            serde_json::json!({}),
+        )
+    })?;
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "empty_runtime_dir",
+            "YAZELIX_RUNTIME_DIR is empty.",
+            "Run `yzx` through the packaged POSIX launcher so the runtime bootstraps correctly.",
+            serde_json::json!({}),
+        ));
+    }
+    Ok(PathBuf::from(trimmed))
+}
+
+pub fn home_dir_from_env() -> Result<PathBuf, CoreError> {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "missing_home",
+                "HOME is not set.",
+                "Export HOME, then retry.",
+                serde_json::json!({}),
+            )
+        })
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct EnvCliArgs {
     pub no_shell: bool,
@@ -98,7 +188,7 @@ pub fn runtime_env_request(
     runtime_dir: PathBuf,
     normalized: &JsonMap<String, JsonValue>,
 ) -> Result<RuntimeEnvComputeRequest, CoreError> {
-    let home_dir = std::env::var_os("HOME").map(PathBuf::from).ok_or_else(|| {
+    let home_dir = home_dir_from_env().map_err(|_| {
         CoreError::classified(
             ErrorClass::Runtime,
             "missing_home",
@@ -291,5 +381,20 @@ mod tests {
         let rt = Path::new("/opt/yazelix");
         let argv = shell_command(rt, false, "nu");
         assert_eq!(argv, vec!["nu".to_string()]);
+    }
+
+    #[test]
+    fn resolve_yazelix_config_dir_prefers_explicit_and_expands_home() {
+        let home = Path::new("/tmp/home");
+        let path =
+            resolve_yazelix_config_dir(Some("~/cfg/yazelix"), Some("/ignored"), Some(home)).unwrap();
+        assert_eq!(path, home.join("cfg").join("yazelix"));
+    }
+
+    #[test]
+    fn resolve_yazelix_config_dir_uses_xdg_before_home_default() {
+        let home = Path::new("/tmp/home");
+        let path = resolve_yazelix_config_dir(None, Some("~/xdg"), Some(home)).unwrap();
+        assert_eq!(path, home.join("xdg").join("yazelix"));
     }
 }

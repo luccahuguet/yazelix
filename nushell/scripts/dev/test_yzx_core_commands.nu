@@ -23,8 +23,26 @@ def run_yzx_command_for_fixture [fixture: record, command: string, extra_env?: r
         $base_env | merge $extra_env
     }
 
-    with-env $merged_env {
-        ^nu -c $"use \"($fixture.yzx_script)\" *; ($command)" | complete
+    let tokens = ($command | str trim | split row " " | where {|t| ($t | str length) > 0})
+    let is_yzx_update = (
+        ($tokens | length) >= 2
+            and ($tokens | get 0) == "yzx"
+            and ($tokens | get 1) == "update"
+    )
+
+    if $is_yzx_update {
+        let yzx_cli = ($fixture.repo_root | path join "shells" "posix" "yzx_cli.sh")
+        let cli_env = ($merged_env | merge {
+            YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+            YAZELIX_TEST_PATH_PREPEND: $fixture.bin_dir
+        })
+        with-env $cli_env {
+            ^sh $yzx_cli ...($tokens | skip 1) | complete
+        }
+    } else {
+        with-env $merged_env {
+            ^nu -c $"use \"($fixture.yzx_script)\" *; ($command)" | complete
+        }
     }
 }
 
@@ -43,10 +61,31 @@ def run_yzx_command_for_fixture_in_dir [fixture: record, working_dir: string, co
         $base_env | merge $extra_env
     }
 
-    with-env $merged_env {
-        do {
-            cd $working_dir
-            ^nu -c $"use \"($fixture.yzx_script)\" *; ($command)" | complete
+    let tokens = ($command | str trim | split row " " | where {|t| ($t | str length) > 0})
+    let is_yzx_update = (
+        ($tokens | length) >= 2
+            and ($tokens | get 0) == "yzx"
+            and ($tokens | get 1) == "update"
+    )
+
+    if $is_yzx_update {
+        let yzx_cli = ($fixture.repo_root | path join "shells" "posix" "yzx_cli.sh")
+        let cli_env = ($merged_env | merge {
+            YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+            YAZELIX_TEST_PATH_PREPEND: $fixture.bin_dir
+        })
+        with-env $cli_env {
+            do {
+                cd $working_dir
+                ^sh $yzx_cli ...($tokens | skip 1) | complete
+            }
+        }
+    } else {
+        with-env $merged_env {
+            do {
+                cd $working_dir
+                ^nu -c $"use \"($fixture.yzx_script)\" *; ($command)" | complete
+            }
         }
     }
 }
