@@ -4,7 +4,7 @@
 
 use ../core/yazelix.nu *
 use ../utils/config_state.nu [compute_config_state record_materialized_state]
-use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
+use ./yzx_test_helpers.nu [get_repo_config_dir repo_path resolve_test_yzx_bin resolve_test_yzx_control_bin resolve_test_yzx_core_bin setup_managed_config_fixture]
 
 const DESKTOP_ICON_SIZES = ["48x48", "64x64", "128x128", "256x256"]
 
@@ -33,6 +33,7 @@ def run_yzx_command_for_fixture [fixture: record, command: string, extra_env?: r
     if $is_yzx_update {
         let yzx_cli = ($fixture.repo_root | path join "shells" "posix" "yzx_cli.sh")
         let cli_env = ($merged_env | merge {
+            YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
             YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
             YAZELIX_TEST_PATH_PREPEND: $fixture.bin_dir
         })
@@ -71,6 +72,7 @@ def run_yzx_command_for_fixture_in_dir [fixture: record, working_dir: string, co
     if $is_yzx_update {
         let yzx_cli = ($fixture.repo_root | path join "shells" "posix" "yzx_cli.sh")
         let cli_env = ($merged_env | merge {
+            YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
             YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
             YAZELIX_TEST_PATH_PREPEND: $fixture.bin_dir
         })
@@ -87,6 +89,31 @@ def run_yzx_command_for_fixture_in_dir [fixture: record, working_dir: string, co
                 ^nu -c $"use \"($fixture.yzx_script)\" *; ($command)" | complete
             }
         }
+    }
+}
+
+def run_public_yzx_command_for_fixture [fixture: record, command: string, extra_env?: record] {
+    let base_env = {
+        HOME: $fixture.tmp_home
+        XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+        XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
+        YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
+        YAZELIX_CONFIG_DIR: $fixture.config_dir
+        YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
+        YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+    }
+    let merged_env = if ($extra_env | is-empty) {
+        $base_env
+    } else {
+        $base_env | merge $extra_env
+    }
+
+    let tokens = ($command | str trim | split row " " | where {|t| ($t | str length) > 0})
+    let yzx_cli = ($fixture.repo_root | path join "shells" "posix" "yzx_cli.sh")
+
+    with-env $merged_env {
+        ^sh $yzx_cli ...($tokens | skip 1) | complete
     }
 }
 
@@ -1016,6 +1043,59 @@ def test_yzx_run_treats_child_verbose_flag_as_child_argv [] {
     $result
 }
 
+# Regression: the public Rust yzx root must route env/run/update through Rust even when the internal Nu dispatcher is unavailable.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_public_yzx_root_routes_rust_control_family_without_internal_dispatcher [] {
+    print "🧪 Testing the public Rust yzx root keeps env/run/update off the old Nu root registry..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_public_root_control_family"
+        '[core]
+welcome_style = "random"
+'
+    )
+    let missing_dispatch = ($fixture.tmp_home | path join "missing_internal_dispatch.nu")
+
+    let result = (try {
+        let update_output = (run_public_yzx_command_for_fixture $fixture "yzx update" {
+            YAZELIX_YZX_INTERNAL_DISPATCH_SCRIPT: $missing_dispatch
+        })
+        let env_help = (run_public_yzx_command_for_fixture $fixture "yzx env --help" {
+            YAZELIX_YZX_INTERNAL_DISPATCH_SCRIPT: $missing_dispatch
+        })
+        let run_help = (run_public_yzx_command_for_fixture $fixture "yzx run --help" {
+            YAZELIX_YZX_INTERNAL_DISPATCH_SCRIPT: $missing_dispatch
+        })
+        let update_stdout = ($update_output.stdout | str trim)
+        let env_stdout = ($env_help.stdout | str trim)
+        let run_stdout = ($run_help.stdout | str trim)
+
+        if (
+            ($update_output.exit_code == 0)
+            and ($env_help.exit_code == 0)
+            and ($run_help.exit_code == 0)
+            and ($update_stdout | str contains "Available update commands:")
+            and ($update_stdout | str contains "yzx update upstream")
+            and ($env_stdout | str contains "Usage:")
+            and ($env_stdout | str contains "yzx env [--no-shell]")
+            and ($run_stdout | str contains "Usage:")
+            and ($run_stdout | str contains "yzx run <command> [args...]")
+        ) {
+            print "  ✅ the public Rust yzx root now owns env/run/update routing and help without depending on the old Nu root registry"
+            true
+        } else {
+            print $"  ❌ Unexpected public-root routing result: update_exit=($update_output.exit_code) env_exit=($env_help.exit_code) run_exit=($run_help.exit_code) update_stdout=($update_stdout) env_stdout=($env_stdout) run_stdout=($run_stdout) update_stderr=(($update_output.stderr | str trim)) env_stderr=(($env_help.stderr | str trim)) run_stderr=(($run_help.stderr | str trim))"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 # Defends: yzx edit fuzzy-style target queries resolve to canonical managed config surfaces and reject ambiguous noninteractive use.
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 def test_yzx_edit_targets_print_paths [] {
@@ -1394,6 +1474,7 @@ def test_yzx_menu_dispatches_catalog_actions_through_launcher [] {
         let output = (with-env {
             YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_YZX_CORE_BIN: (resolve_test_yzx_core_bin)
+            YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
             YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
         } {
             ^nu --config /dev/null --env-config /dev/null -c $"source \"($menu_script)\"; run_menu_action \"yzx update\"" | complete
@@ -1457,6 +1538,7 @@ export def run_core_canonical_tests [] {
         (test_yzx_update_upstream_fails_without_matching_profile_entry)
         (test_yzx_update_home_manager_updates_input_and_prints_manual_switch_step)
         (test_stale_store_pinned_yzx_invocation_redirects_to_profile_wrapper)
+        (test_public_yzx_root_routes_rust_control_family_without_internal_dispatcher)
         (test_yzx_run_passes_dash_prefixed_args_through_unchanged)
         (test_yzx_run_treats_child_verbose_flag_as_child_argv)
         (test_yzx_edit_targets_print_paths)

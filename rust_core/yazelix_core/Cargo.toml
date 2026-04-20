@@ -12,6 +12,10 @@ path = "src/bin/yzx_core.rs"
 name = "yzx_control"
 path = "src/bin/yzx_control.rs"
 
+[[bin]]
+name = "yzx"
+path = "src/bin/yzx.rs"
+
 [dependencies]
 lexopt = "0.3"
 serde = { version = "1.0", features = ["derive"] }

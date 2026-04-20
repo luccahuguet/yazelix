@@ -203,6 +203,7 @@ def verify_installed_runtime [temp_home: string] {
     require_path_exists $yzx_path "profile-installed yzx entrypoint"
     require_path_exists $runtime_toolbin "runtime toolbin"
     require_path_exists ($runtime_libexec | path join "nu") "runtime-local Nushell binary"
+    require_path_exists ($runtime_libexec | path join "yzx") "runtime-local Rust yzx root helper"
     require_path_exists ($runtime_libexec | path join "yzx_control") "runtime-local yzx_control helper"
     require_path_exists $runtime_yzx_cli "runtime-local POSIX yzx launcher"
     require_path_exists $runtime_ghostty_wrapper "runtime-local Ghostty env wrapper"

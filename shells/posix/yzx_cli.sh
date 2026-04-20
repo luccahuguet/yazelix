@@ -80,8 +80,6 @@ fi
 
 RUNTIME_DIR="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
 runtime_env_script="$RUNTIME_DIR/shells/posix/runtime_env.sh"
-core_script="$RUNTIME_DIR/nushell/scripts/core/yazelix.nu"
-reveal_script="$RUNTIME_DIR/nushell/scripts/integrations/reveal_in_yazi.nu"
 
 if [ ! -f "$runtime_env_script" ]; then
   echo "Error: Missing Yazelix runtime env helper: $runtime_env_script" >&2
@@ -92,108 +90,20 @@ export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$RUNTIME_DIR"
 . "$runtime_env_script" || exit 1
 unset YAZELIX_BOOTSTRAP_RUNTIME_DIR
 
-yzx_control_bin="${YAZELIX_YZX_CONTROL_BIN:-$RUNTIME_DIR/libexec/yzx_control}"
-yzx_core_bin="${YAZELIX_YZX_CORE_BIN:-$RUNTIME_DIR/libexec/yzx_core}"
-
-case "${1:-}" in
-  "" | help | -h | --help)
-    if [ ! -x "$yzx_core_bin" ]; then
-      echo "Error: Missing Yazelix core helper: $yzx_core_bin" >&2
-      echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
-      exit 1
+yzx_root_bin="${YAZELIX_YZX_BIN:-$RUNTIME_DIR/libexec/yzx}"
+if [ ! -x "$yzx_root_bin" ]; then
+  for candidate in "$RUNTIME_DIR/rust_core/target/release/yzx" "$RUNTIME_DIR/rust_core/target/debug/yzx"; do
+    if [ -x "$candidate" ]; then
+      yzx_root_bin="$candidate"
+      break
     fi
-    exec "$yzx_core_bin" yzx-command-metadata.help
-    ;;
-esac
-
-case "${1:-}" in
-  env | run | update)
-    if [ ! -x "$yzx_control_bin" ]; then
-      echo "Error: Missing Yazelix control-plane helper: $yzx_control_bin" >&2
-      echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
-      exit 1
-    fi
-    subcommand="$1"
-    shift
-    exec "$yzx_control_bin" "$subcommand" "$@"
-    ;;
-esac
-
-format_nu_token() {
-  case "$1" in
-    "")
-      printf "''"
-      ;;
-    *[!A-Za-z0-9_./:=+-]*)
-      printf "'%s'" "$(printf "%s" "$1" | sed "s/'/'\\\\''/g")"
-      ;;
-    *)
-      printf "%s" "$1"
-      ;;
-  esac
-}
-
-exec_leaf_module_command() {
-  module_path="$1"
-  command_prefix="$2"
-  shift 2
-
-  if [ ! -f "$module_path" ]; then
-    echo "Error: Missing Yazelix leaf command module: $module_path" >&2
-    echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
-    exit 1
-  fi
-
-  nu_command="use $(format_nu_token "$module_path") *; $command_prefix"
-  for arg in "$@"; do
-    nu_command="$nu_command $(format_nu_token "$arg")"
   done
+fi
 
-  exec "$YAZELIX_NU_BIN" -c "$nu_command"
-}
-
-dispatch_leaf_command() {
-  case "${1:-}" in
-    desktop)
-      shift
-      exec_leaf_module_command "$RUNTIME_DIR/nushell/scripts/yzx/desktop.nu" "yzx desktop" "$@"
-      ;;
-    enter)
-      shift
-      exec_leaf_module_command "$RUNTIME_DIR/nushell/scripts/yzx/enter.nu" "yzx enter" "$@"
-      ;;
-    reveal)
-      shift
-      if [ ! -f "$reveal_script" ]; then
-        echo "Error: Missing Yazelix reveal helper: $reveal_script" >&2
-        echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
-        exit 1
-      fi
-      exec "$YAZELIX_NU_BIN" "$reveal_script" "$@"
-      ;;
-    menu)
-      shift
-      exec_leaf_module_command "$RUNTIME_DIR/nushell/scripts/yzx/menu.nu" "yzx menu" "$@"
-      ;;
-    popup)
-      shift
-      exec_leaf_module_command "$RUNTIME_DIR/nushell/scripts/yzx/popup.nu" "yzx popup" "$@"
-      ;;
-  esac
-}
-
-dispatch_leaf_command "$@"
-
-if [ ! -f "$core_script" ]; then
-  echo "Error: Missing Yazelix CLI module: $core_script" >&2
+if [ ! -x "$yzx_root_bin" ]; then
+  echo "Error: Missing Yazelix Rust root helper: $yzx_root_bin" >&2
   echo "Your runtime looks incomplete. Reinstall/regenerate Yazelix and try again." >&2
   exit 1
 fi
 
-nu_command="use $(format_nu_token "$core_script") *; yzx"
-
-for arg in "$@"; do
-  nu_command="$nu_command $(format_nu_token "$arg")"
-done
-
-exec "$YAZELIX_NU_BIN" -c "$nu_command"
+exec "$yzx_root_bin" "$@"

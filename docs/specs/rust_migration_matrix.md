@@ -210,6 +210,33 @@ already much smaller. If revisited later, the required deletion budget is:
 If a proposal keeps those surfaces and only adds a Rust dispatcher above them,
 reject it.
 
+`yazelix-qsb5.3` narrowed the first serious root-transition family already:
+
+- start with the already migrated control-plane leaves:
+  `yzx env`, `yzx run`, and `yzx update*`
+- use `yazelix-qsb5.2` to make Rust the single public root/help/completion
+  owner for that surface
+- do not start by pulling `launch` / `enter` / `restart` or `status` /
+  `doctor` into Rust, because those families still have larger surviving Nu
+  owner clusters than the control-plane family does
+
+The point of the first root cut is to delete the public registry role of
+`core/yazelix.nu` for a surface that is already Rust-owned internally, not to
+port more shell orchestration or doctor rendering into Rust by habit.
+
+What `yazelix-qsb5.2` changed:
+
+- `shells/posix/yzx_cli.sh` is now only the stable bootstrap wrapper
+- the public root parser and dispatcher moved to `rust_core/yazelix_core/src/bin/yzx.rs`
+- `env` / `run` / `update*` no longer depend on the old Nu root path at all
+- remaining Nu-owned families moved behind one explicit internal entrypoint:
+  `nushell/scripts/core/yzx_internal_dispatch.nu`
+
+That deletes the old public root fallback `use ... core/yazelix.nu *; yzx ...`
+without pretending the remaining Nushell command bodies are gone. They still
+exist, but only as explicit internal helpers until later deletion lanes choose
+them one family at a time.
+
 ## Non-goals
 
 - treating helper insertion itself as success

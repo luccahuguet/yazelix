@@ -34,6 +34,26 @@ export def resolve_test_yzx_control_bin [] {
     }
 }
 
+export def resolve_test_yzx_bin [] {
+    let explicit = ($env.YAZELIX_YZX_BIN? | default "" | into string | str trim)
+    if ($explicit | is-not-empty) and (($explicit | path expand) | path exists) {
+        return ($explicit | path expand)
+    }
+
+    for candidate in [
+        (repo_path "rust_core" "target" "release" "yzx")
+        (repo_path "rust_core" "target" "debug" "yzx")
+    ] {
+        if ($candidate | path exists) {
+            return $candidate
+        }
+    }
+
+    error make {
+        msg: "Yazelix tests need a built Rust yzx root helper. Enter the maintainer shell or set YAZELIX_YZX_BIN."
+    }
+}
+
 export def resolve_test_yzx_core_bin [] {
     let explicit = ($env.YAZELIX_YZX_CORE_BIN? | default "" | into string | str trim)
     if ($explicit | is-not-empty) and (($explicit | path expand) | path exists) {

@@ -122,7 +122,7 @@ It is not worth doing just to:
 | Family | Current owner | v16 recommendation |
 | --- | --- | --- |
 | Root, help, version, completion, and palette inventory | Rust metadata owner plus thin Nu wrappers | Metadata/help/extern/menu ownership has started. Keep moving only if the next cut deletes a real public parser or command-body owner. |
-| `yzx env`, `yzx run`, and `yzx update*` | `yzx_control` | Already migrated. Treat these as precedent, not as future scope justification by themselves |
+| `yzx env`, `yzx run`, and `yzx update*` | `yzx_control` | Use these as the first root-transition family. They already have Rust-owned parsing and execution, so the next cut can delete more of the public Nu root without dragging shell-bound launch or report-rendering work into Rust. |
 | `yzx launch`, `yzx enter`, `yzx restart` | Public Nu commands over Nu and POSIX orchestration | Possible later only if Rust would own request parsing and command-family metadata while Nu or POSIX still own the shell-heavy execution path |
 | `yzx status`, `yzx doctor` | Public Nu commands over Rust findings plus Nu rendering | Possible later only if the remaining public wrappers disappear and the family gains one clear owner instead of one more layer |
 | `yzx config`, `yzx edit`, `yzx import` | Nushell | Keep Nushell-owned unless a later separate ownership argument appears |
@@ -133,6 +133,76 @@ It is not worth doing just to:
 The default v16 shape is therefore not "move every command." It is "move the
 public command metadata and selected control-plane families only if that becomes
 a cleaner single-owner model."
+
+### 2026-04-20 Mixed-Family Choice
+
+`yazelix-qsb5.3` chooses the already migrated control-plane family as the first
+mixed public family for a Rust-owned `yzx` root:
+
+- `yzx env`
+- `yzx run`
+- `yzx update*`
+
+Why this family wins:
+
+- `shells/posix/yzx_cli.sh` already dispatches `env`, `run`, and `update`
+  directly to `yzx_control`
+- `nushell/scripts/core/yazelix.nu` no longer exports `yzx update*`, so there
+  is already real public Nu-owner deletion instead of a plan to add more
+  wrappers
+- `command_metadata.rs` already owns the family's help, extern, and menu
+  catalog metadata
+- execution is already typed Rust, not shell-heavy orchestration or
+  renderer-heavy UX
+
+That means `yazelix-qsb5.2` should start by making Rust the single public
+root/help/completion owner for this migrated control-plane surface. The exact
+remaining public-owner deletion is:
+
+- delete the public command-registry role of `nushell/scripts/core/yazelix.nu`
+  for the `env` / `run` / `update*` surface
+- stop relying on the fallback `use ... core/yazelix.nu *; yzx ...` path for
+  those commands
+- keep remaining Nushell command families reachable only through explicit
+  internal helper entrypoints until they have their own deletion story
+
+`yazelix-qsb5.2` landed that first root cut with this owner shape:
+
+- `shells/posix/yzx_cli.sh` is now bootstrap-only and no longer acts as a
+  command-family router
+- `rust_core/yazelix_core/src/bin/yzx.rs` is the public root parser and
+  dispatcher
+- `yzx env`, `yzx run`, and `yzx update*` stay on the Rust-only path through
+  `yzx_control`
+- surviving Nushell-owned families now sit behind the explicit internal
+  entrypoint `nushell/scripts/core/yzx_internal_dispatch.nu`
+
+That means these old public-owner roles are gone:
+
+- the generic root fallback `use nushell/scripts/core/yazelix.nu *; yzx ...`
+- the command-routing role previously carried by the shell case tree in
+  `shells/posix/yzx_cli.sh`
+
+Surviving internal Nu helper owners after the cut:
+
+- `nushell/scripts/core/yazelix.nu` only for `why`, `sponsor`, `cwd`, `reveal`,
+  `status`, `restart`, and `doctor`
+- `nushell/scripts/yzx/launch.nu`, `enter.nu`, `desktop.nu`, `menu.nu`,
+  `popup.nu`, `config.nu`, `edit.nu`, `keys.nu`, `tutor.nu`, `screen.nu`,
+  `whats_new.nu`, `home_manager.nu`, `import.nu`, and `dev.nu` as explicit
+  internal helper modules, not as the public root registry
+
+Explicit no-go for the first mixed family:
+
+- `yzx launch`, `yzx enter`, and `yzx restart` still depend on
+  `yzx/launch.nu`, `yzx/enter.nu`, `core/yazelix.nu`, `core/launch_yazelix.nu`,
+  `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`,
+  `utils/runtime_env.nu`, `utils/startup_profile.nu`,
+  `utils/terminal_launcher.nu`, and `shells/posix/*.sh`
+- `yzx status` and `yzx doctor` still carry meaningful Nushell bridge,
+  rendering, and repair ownership in `utils/status_report.nu`,
+  `utils/doctor.nu`, `doctor_helix_report.nu`,
+  `doctor_runtime_report.nu`, and `install_ownership_report.nu`
 
 ### Required Deletion Budget
 

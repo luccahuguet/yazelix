@@ -17,6 +17,23 @@ fn usage() -> ! {
     std::process::exit(64);
 }
 
+fn print_env_help() {
+    println!("Load the Yazelix environment without UI");
+    println!();
+    println!("Usage:");
+    println!("  yzx env [--no-shell]");
+    println!();
+    println!("Flags:");
+    println!("  -n, --no-shell  Load the Yazelix environment into the current shell family");
+}
+
+fn print_run_help() {
+    println!("Run a command in the Yazelix environment and exit");
+    println!();
+    println!("Usage:");
+    println!("  yzx run <command> [args...]");
+}
+
 const CONFIG_RECOVERY_HINT: &str = "Update the reported config fields manually, then retry. Use `yzx config reset` only as a blunt fallback.";
 
 fn render_startup_config_error(report: &ConfigDiagnosticReport) -> String {
@@ -158,8 +175,22 @@ fn main() {
     }
     let sub = argv.remove(0);
     let code = match sub.as_str() {
-        "env" => run_env(&argv),
-        "run" => run_run(&argv),
+        "env" => {
+            if argv.len() == 1 && matches!(argv[0].as_str(), "--help" | "-h" | "help") {
+                print_env_help();
+                Ok(0)
+            } else {
+                run_env(&argv)
+            }
+        }
+        "run" => {
+            if argv.len() == 1 && matches!(argv[0].as_str(), "--help" | "-h" | "help") {
+                print_run_help();
+                Ok(0)
+            } else {
+                run_run(&argv)
+            }
+        }
         "update" => run_yzx_update(&argv),
         _ => {
             eprintln!("Unknown yzx_control subcommand: {sub}");
@@ -186,8 +217,8 @@ mod tests {
     #[test]
     fn resolve_config_dir_prefers_explicit_and_expands_home() {
         let home = Path::new("/tmp/home");
-        let path =
-            resolve_yazelix_config_dir(Some("~/cfg/yazelix"), Some("/ignored"), Some(home)).unwrap();
+        let path = resolve_yazelix_config_dir(Some("~/cfg/yazelix"), Some("/ignored"), Some(home))
+            .unwrap();
         assert_eq!(path, home.join("cfg").join("yazelix"));
     }
 
