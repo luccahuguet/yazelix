@@ -13,9 +13,9 @@ use ../utils/constants.nu [DEFAULT_TERMINAL SUPPORTED_TERMINALS, TERMINAL_METADA
 use ../utils/common.nu [get_yazelix_runtime_dir]
 use ../utils/runtime_contract_checker.nu [
     check_launch_terminal_support
-    check_launch_preflight
     check_launch_working_dir
     require_runtime_check
+    run_launch_preflight
 ]
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
 
@@ -23,27 +23,6 @@ def validate_launch_working_dir [working_dir: string] {
     let check = (check_launch_working_dir $working_dir)
     require_runtime_check $check | ignore
     $check.path
-}
-
-def run_launch_preflight [working_dir: string, requested_terminal: string, terminals: list<string>] {
-    let checks = (check_launch_preflight $working_dir $requested_terminal $terminals)
-    let working_dir_check = ($checks | where id == "launch_working_dir" | get -o 0)
-    let terminal_check = ($checks | where id == "launch_terminal_support" | get -o 0)
-
-    if $working_dir_check == null {
-        error make {msg: "Missing launch_working_dir result from runtime preflight."}
-    }
-    if $terminal_check == null {
-        error make {msg: "Missing launch_terminal_support result from runtime preflight."}
-    }
-
-    require_runtime_check $working_dir_check | ignore
-    require_runtime_check $terminal_check | ignore
-
-    {
-        working_dir: $working_dir_check.path
-        terminal_candidates: ($terminal_check.candidates? | default [])
-    }
 }
 
 def resolve_terminal_candidates [requested_terminal: string, terminals: list<string>] {

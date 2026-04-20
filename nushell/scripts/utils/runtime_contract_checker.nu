@@ -5,6 +5,7 @@ use common.nu [require_yazelix_runtime_dir]
 use failure_classes.nu [format_failure_classification]
 
 const RUNTIME_CONTRACT_EVALUATE_COMMAND = "runtime-contract.evaluate"
+const STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND = "startup-launch-preflight.evaluate"
 
 def runtime_contract_error_surface [] {
     {
@@ -46,6 +47,22 @@ def evaluate_runtime_contract_checks [request: record] {
         "Yazelix Rust runtime-contract helper returned invalid JSON.")
 
     $data.checks? | default []
+}
+
+def evaluate_startup_launch_preflight_data [request: record] {
+    let runtime_dir = (require_yazelix_runtime_dir)
+    let helper_args = [
+        $STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND
+        "--request-json"
+        ($request | to json -r)
+    ]
+    let data = (run_yzx_core_json_command_with_error_surface
+        $runtime_dir
+        (runtime_contract_error_surface)
+        $helper_args
+        "Yazelix Rust startup-launch-preflight helper returned invalid JSON.")
+
+    $data
 }
 
 def first_runtime_check [checks: list<record>, id: string] {
@@ -128,30 +145,44 @@ def build_linux_ghostty_graphics_request [owner_surface: string, terminals: list
     }
 }
 
-export def check_startup_preflight [working_dir: string, script_path: string, label: string] {
-    evaluate_runtime_contract_checks {
-        working_dir: {
-            kind: "startup"
-            path: ($working_dir | path expand)
-        }
-        runtime_scripts: [
-            {
+export def run_startup_preflight [working_dir: string, script_path: string, label: string] {
+    let data = (evaluate_startup_launch_preflight_data {
+        startup: {
+            working_dir: ($working_dir | path expand)
+            runtime_script: {
                 id: "startup_runtime_script"
                 label: $label
                 owner_surface: "startup"
                 path: ($script_path | path expand)
             }
-        ]
+        }
+    })
+    if ($data.kind? | default "") != "startup" {
+        error make {msg: "Unexpected startup-launch-preflight response \(expected startup\)."}
+    }
+
+    {
+        working_dir: $data.working_dir
+        script_path: ($data.script_path? | default "")
     }
 }
 
-export def check_launch_preflight [working_dir: string, requested_terminal: string, terminals: list<string>] {
-    evaluate_runtime_contract_checks {
-        working_dir: {
-            kind: "launch"
-            path: ($working_dir | path expand)
+export def run_launch_preflight [working_dir: string, requested_terminal: string, terminals: list<string>] {
+    let data = (evaluate_startup_launch_preflight_data {
+        launch: {
+            working_dir: ($working_dir | path expand)
+            requested_terminal: $requested_terminal
+            terminals: $terminals
+            command_search_paths: (get_command_search_paths)
         }
-        terminal_support: (build_terminal_support_request "launch" $requested_terminal $terminals)
+    })
+    if ($data.kind? | default "") != "launch" {
+        error make {msg: "Unexpected startup-launch-preflight response \(expected launch\)."}
+    }
+
+    {
+        working_dir: $data.working_dir
+        terminal_candidates: ($data.terminal_candidates? | default [])
     }
 }
 

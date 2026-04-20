@@ -6,20 +6,21 @@ use yazelix_core::{
     compute_status_report, compute_yazi_render_plan, compute_zellij_render_plan, error_envelope,
     evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
     evaluate_install_ownership_report, evaluate_runtime_contract,
-    evaluate_runtime_materialization_repair, normalize_config, plan_runtime_materialization,
-    record_config_state, success_envelope, ComputeConfigStateRequest, CoreError,
-    DoctorConfigEvaluateRequest, DoctorRuntimeEvaluateRequest, ErrorClass,
+    evaluate_runtime_materialization_repair, evaluate_startup_launch_preflight, normalize_config,
+    plan_runtime_materialization, record_config_state, success_envelope, ComputeConfigStateRequest,
+    CoreError, DoctorConfigEvaluateRequest, DoctorRuntimeEvaluateRequest, ErrorClass,
     HelixDoctorEvaluateRequest, InstallOwnershipEvaluateRequest, NormalizeConfigRequest,
     RecordConfigStateRequest, RuntimeArtifact, RuntimeContractEvaluateRequest,
     RuntimeEnvComputeRequest, RuntimeMaterializationApplyRequest,
     RuntimeMaterializationPlanRequest, RuntimeMaterializationRepairEvaluateRequest,
-    YaziRenderPlanRequest, ZellijRenderPlanRequest,
+    StartupLaunchPreflightRequest, YaziRenderPlanRequest, ZellijRenderPlanRequest,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
 const CONFIG_STATE_COMPUTE_COMMAND: &str = "config-state.compute";
 const CONFIG_STATE_RECORD_COMMAND: &str = "config-state.record";
 const RUNTIME_CONTRACT_EVALUATE_COMMAND: &str = "runtime-contract.evaluate";
+const STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND: &str = "startup-launch-preflight.evaluate";
 const RUNTIME_ENV_COMPUTE_COMMAND: &str = "runtime-env.compute";
 const RUNTIME_MATERIALIZATION_PLAN_COMMAND: &str = "runtime-materialization.plan";
 const RUNTIME_MATERIALIZATION_REPAIR_EVALUATE_COMMAND: &str =
@@ -105,6 +106,11 @@ fn run() -> Result<(), Box<CommandError>> {
         RUNTIME_CONTRACT_EVALUATE_COMMAND => {
             let command_for_error = command.clone();
             run_runtime_contract_evaluate(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND => {
+            let command_for_error = command.clone();
+            run_startup_launch_preflight_evaluate(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         RUNTIME_ENV_COMPUTE_COMMAND => {
@@ -292,6 +298,14 @@ fn run_runtime_contract_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreE
         })?;
     let data = evaluate_runtime_contract(&request)?;
     write_success_envelope(RUNTIME_CONTRACT_EVALUATE_COMMAND, data)
+}
+
+fn run_startup_launch_preflight_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request_json = take_request_json(&mut parser)?;
+    let request: StartupLaunchPreflightRequest =
+        deserialize_json_request(&request_json, "startup-launch-preflight")?;
+    let data = evaluate_startup_launch_preflight(&request)?;
+    write_success_envelope(STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND, data)
 }
 
 fn run_doctor_helix_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {

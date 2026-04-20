@@ -471,6 +471,50 @@ fn runtime_contract_evaluate_prints_machine_readable_checks_envelope() {
     );
 }
 
+// Defends: startup-launch-preflight.evaluate returns a single startup summary without Nu-side check selection.
+// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+#[test]
+fn startup_launch_preflight_evaluate_prints_startup_summary_envelope() {
+    let tmp = tempdir().unwrap();
+    let work = tmp.path().join("work");
+    fs::create_dir_all(&work).unwrap();
+    let script = tmp.path().join("inner.nu");
+    fs::write(&script, "").unwrap();
+
+    let request = serde_json::json!({
+        "startup": {
+            "working_dir": work.to_string_lossy().to_string(),
+            "runtime_script": {
+                "id": "startup_runtime_script",
+                "label": "startup script",
+                "owner_surface": "startup",
+                "path": script.to_string_lossy().to_string()
+            }
+        }
+    });
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("startup-launch-preflight.evaluate")
+        .arg("--request-json")
+        .arg(request.to_string())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "startup-launch-preflight.evaluate");
+    assert_eq!(envelope["data"]["kind"], "startup");
+    assert_eq!(
+        envelope["data"]["working_dir"].as_str().unwrap(),
+        work.to_string_lossy()
+    );
+    assert_eq!(
+        envelope["data"]["script_path"].as_str().unwrap(),
+        script.to_string_lossy()
+    );
+}
+
 // Defends: runtime-contract.evaluate rejects malformed request JSON as a usage-surface error.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]

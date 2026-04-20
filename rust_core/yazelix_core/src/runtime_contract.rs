@@ -1,5 +1,6 @@
-use crate::bridge::CoreError;
+use crate::bridge::{CoreError, ErrorClass};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,7 +16,7 @@ const NIXGL_WRAPPER_CANDIDATES: &[(&str, &[&str])] = &[
 ];
 const HOST_NIXGL_COMMANDS: &[&str] = &["nixGL", "nixGLDefault", "nixGLMesa", "nixGLIntel"];
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct RuntimeContractEvaluateRequest {
     #[serde(default)]
     pub working_dir: Option<WorkingDirCheckRequest>,
@@ -30,19 +31,59 @@ pub struct RuntimeContractEvaluateRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct StartupLaunchPreflightRequest {
+    pub startup: Option<StartupPreflightPayload>,
+    pub launch: Option<LaunchPreflightPayload>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StartupPreflightPayload {
+    pub working_dir: PathBuf,
+    pub runtime_script: RuntimeScriptCheckRequest,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LaunchPreflightPayload {
+    pub working_dir: PathBuf,
+    #[serde(default)]
+    pub requested_terminal: String,
+    #[serde(default)]
+    pub terminals: Vec<String>,
+    #[serde(default)]
+    pub command_search_paths: Vec<PathBuf>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PreflightKind {
+    Startup,
+    Launch,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct StartupLaunchPreflightData {
+    pub kind: PreflightKind,
+    pub working_dir: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub script_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub terminal_candidates: Option<Vec<TerminalCandidate>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct WorkingDirCheckRequest {
     pub kind: WorkingDirKind,
     pub path: PathBuf,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WorkingDirKind {
     Startup,
     Launch,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct RuntimeScriptCheckRequest {
     pub id: String,
     pub label: String,
@@ -134,6 +175,154 @@ pub fn evaluate_runtime_contract(
     }
 
     Ok(RuntimeContractEvaluateData { checks })
+}
+
+pub fn evaluate_startup_launch_preflight(
+    request: &StartupLaunchPreflightRequest,
+) -> Result<StartupLaunchPreflightData, CoreError> {
+    match (&request.startup, &request.launch) {
+        (Some(startup), None) => evaluate_startup_preflight_inner(startup),
+        (None, Some(launch)) => evaluate_launch_preflight_inner(launch),
+        (Some(_), Some(_)) => Err(CoreError::usage(
+            "Expected exactly one of `startup` or `launch` in the preflight request.",
+        )),
+        (None, None) => Err(CoreError::usage(
+            "Missing `startup` or `launch` preflight payload.",
+        )),
+    }
+}
+
+fn evaluate_startup_preflight_inner(
+    startup: &StartupPreflightPayload,
+) -> Result<StartupLaunchPreflightData, CoreError> {
+    let contract = evaluate_runtime_contract(&RuntimeContractEvaluateRequest {
+        working_dir: Some(WorkingDirCheckRequest {
+            kind: WorkingDirKind::Startup,
+            path: startup.working_dir.clone(),
+        }),
+        runtime_scripts: vec![startup.runtime_script.clone()],
+        ..Default::default()
+    })?;
+    let wd = find_runtime_check(&contract.checks, "startup_working_dir")?;
+    let script = find_runtime_check(&contract.checks, &startup.runtime_script.id)?;
+    require_runtime_contract_check_ok(wd)?;
+    require_runtime_contract_check_ok(script)?;
+    let working_dir = wd.path.clone().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "preflight_missing_path",
+            "Working directory check succeeded but omitted a resolved path.",
+            "Report this as a Yazelix internal error.",
+            json!({}),
+        )
+    })?;
+    let script_path = script.path.clone().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "preflight_missing_path",
+            "Runtime script check succeeded but omitted a resolved path.",
+            "Report this as a Yazelix internal error.",
+            json!({}),
+        )
+    })?;
+    Ok(StartupLaunchPreflightData {
+        kind: PreflightKind::Startup,
+        working_dir,
+        script_path: Some(script_path),
+        terminal_candidates: None,
+    })
+}
+
+fn evaluate_launch_preflight_inner(
+    launch: &LaunchPreflightPayload,
+) -> Result<StartupLaunchPreflightData, CoreError> {
+    let contract = evaluate_runtime_contract(&RuntimeContractEvaluateRequest {
+        working_dir: Some(WorkingDirCheckRequest {
+            kind: WorkingDirKind::Launch,
+            path: launch.working_dir.clone(),
+        }),
+        terminal_support: Some(TerminalSupportCheckRequest {
+            owner_surface: "launch".to_string(),
+            requested_terminal: launch.requested_terminal.clone(),
+            terminals: launch.terminals.clone(),
+            command_search_paths: launch.command_search_paths.clone(),
+        }),
+        ..Default::default()
+    })?;
+    let wd = find_runtime_check(&contract.checks, "launch_working_dir")?;
+    let term = find_runtime_check(&contract.checks, "launch_terminal_support")?;
+    require_runtime_contract_check_ok(wd)?;
+    require_runtime_contract_check_ok(term)?;
+    let working_dir = wd.path.clone().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "preflight_missing_path",
+            "Working directory check succeeded but omitted a resolved path.",
+            "Report this as a Yazelix internal error.",
+            json!({}),
+        )
+    })?;
+    Ok(StartupLaunchPreflightData {
+        kind: PreflightKind::Launch,
+        working_dir,
+        script_path: None,
+        terminal_candidates: Some(term.candidates.clone().unwrap_or_default()),
+    })
+}
+
+fn find_runtime_check<'a>(
+    checks: &'a [RuntimeCheckData],
+    id: &str,
+) -> Result<&'a RuntimeCheckData, CoreError> {
+    checks.iter().find(|check| check.id == id).ok_or_else(|| {
+        CoreError::usage(format!(
+            "Missing runtime-contract check result for `{id}` after preflight evaluation."
+        ))
+    })
+}
+
+fn format_runtime_check_user_message(check: &RuntimeCheckData) -> String {
+    let mut lines = vec![check.message.clone()];
+    if let Some(details) = &check.details {
+        if !details.is_empty() {
+            lines.push(details.clone());
+        }
+    }
+    let recovery = check.recovery.as_deref().unwrap_or("").trim();
+    let failure_class = check.failure_class.as_deref().unwrap_or("").trim();
+    if !recovery.is_empty() && !failure_class.is_empty() {
+        if let Some(label) = normalized_failure_class_label(failure_class) {
+            lines.push(format!("Failure class: {label}.\nRecovery: {recovery}"));
+        } else {
+            lines.push(recovery.to_string());
+        }
+    } else if !recovery.is_empty() {
+        lines.push(recovery.to_string());
+    }
+    lines.join("\n")
+}
+
+fn normalized_failure_class_label(class: &str) -> Option<&'static str> {
+    let normalized = class.trim().to_ascii_lowercase();
+    match normalized.as_str() {
+        "config" => Some("config problem"),
+        "generated-state" => Some("generated-state problem"),
+        "host-dependency" => Some("host-dependency problem"),
+        _ => None,
+    }
+}
+
+fn require_runtime_contract_check_ok(check: &RuntimeCheckData) -> Result<(), CoreError> {
+    if check.status == "ok" {
+        return Ok(());
+    }
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "runtime_preflight_check_failed",
+        format_runtime_check_user_message(check),
+        "Fix the reported preflight issue and retry.",
+        serde_json::to_value(check).unwrap_or_else(|_| json!({})),
+    ))
 }
 
 fn check_working_directory(request: &WorkingDirCheckRequest) -> RuntimeCheckData {
@@ -750,5 +939,94 @@ mod tests {
             .as_deref()
             .unwrap_or_default()
             .contains("Supported terminals: ghostty, wezterm, kitty, alacritty, foot"));
+    }
+
+    // Defends: startup-launch preflight bundles startup working-dir and runtime-script checks into one ok envelope.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn startup_preflight_reports_resolved_paths_when_checks_pass() {
+        let temp = tempdir().unwrap();
+        let work = temp.path().join("work");
+        fs::create_dir_all(&work).unwrap();
+        let script = temp.path().join("start_yazelix_inner.nu");
+        fs::write(&script, "").unwrap();
+
+        let data = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
+            startup: Some(StartupPreflightPayload {
+                working_dir: work.clone(),
+                runtime_script: RuntimeScriptCheckRequest {
+                    id: "startup_runtime_script".to_string(),
+                    label: "startup script".to_string(),
+                    owner_surface: "startup".to_string(),
+                    path: script.clone(),
+                },
+            }),
+            launch: None,
+        })
+        .unwrap();
+
+        assert_eq!(data.kind, PreflightKind::Startup);
+        assert_eq!(data.working_dir, super::path_to_string(&work));
+        assert_eq!(data.script_path, Some(super::path_to_string(&script)));
+        assert!(data.terminal_candidates.is_none());
+    }
+
+    // Defends: startup-launch preflight rejects malformed requests that specify both startup and launch.
+    // Strength: defect=2 behavior=1 resilience=1 cost=1 uniqueness=2 total=7/10
+    #[test]
+    fn startup_launch_preflight_rejects_ambiguous_request() {
+        let temp = tempdir().unwrap();
+        let err = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
+            startup: Some(StartupPreflightPayload {
+                working_dir: temp.path().to_path_buf(),
+                runtime_script: RuntimeScriptCheckRequest {
+                    id: "startup_runtime_script".to_string(),
+                    label: "s".to_string(),
+                    owner_surface: "startup".to_string(),
+                    path: temp.path().join("x.nu"),
+                },
+            }),
+            launch: Some(LaunchPreflightPayload {
+                working_dir: temp.path().to_path_buf(),
+                requested_terminal: String::new(),
+                terminals: vec![],
+                command_search_paths: vec![],
+            }),
+        })
+        .unwrap_err();
+
+        assert_eq!(err.class().as_str(), "usage");
+    }
+
+    // Defends: startup-launch preflight bundles launch working-dir and terminal support into one ok envelope.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn launch_preflight_returns_terminal_candidates_when_checks_pass() {
+        let temp = tempdir().unwrap();
+        let work = temp.path().join("work");
+        fs::create_dir_all(&work).unwrap();
+        let host_bin = temp.path().join("host-bin");
+        fs::create_dir_all(&host_bin).unwrap();
+        write_executable(&host_bin.join("ghostty"));
+
+        let data = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
+            startup: None,
+            launch: Some(LaunchPreflightPayload {
+                working_dir: work.clone(),
+                requested_terminal: String::new(),
+                terminals: vec!["ghostty".to_string()],
+                command_search_paths: vec![host_bin],
+            }),
+        })
+        .unwrap();
+
+        assert_eq!(data.kind, PreflightKind::Launch);
+        assert_eq!(data.working_dir, super::path_to_string(&work));
+        assert!(data.script_path.is_none());
+        let candidates = data.terminal_candidates.as_ref().unwrap();
+        assert_eq!(
+            candidates.first().map(|c| c.terminal.as_str()),
+            Some("ghostty")
+        );
     }
 }

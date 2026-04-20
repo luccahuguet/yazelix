@@ -34,10 +34,11 @@ pub use install_ownership_report::{
     InstallOwnershipEvaluateData, InstallOwnershipEvaluateRequest,
 };
 pub use runtime_contract::{
-    evaluate_runtime_contract, GeneratedLayoutCheckRequest, LinuxGhosttyDesktopGraphicsRequest,
-    RuntimeCheckData, RuntimeContractEvaluateData, RuntimeContractEvaluateRequest,
-    RuntimeScriptCheckRequest, TerminalCandidate, TerminalSupportCheckRequest,
-    WorkingDirCheckRequest, WorkingDirKind,
+    evaluate_runtime_contract, evaluate_startup_launch_preflight, GeneratedLayoutCheckRequest,
+    LaunchPreflightPayload, LinuxGhosttyDesktopGraphicsRequest, PreflightKind, RuntimeCheckData,
+    RuntimeContractEvaluateData, RuntimeContractEvaluateRequest, RuntimeScriptCheckRequest,
+    StartupLaunchPreflightData, StartupLaunchPreflightRequest, StartupPreflightPayload,
+    TerminalCandidate, TerminalSupportCheckRequest, WorkingDirCheckRequest, WorkingDirKind,
 };
 pub use runtime_env::{compute_runtime_env, RuntimeEnvComputeData, RuntimeEnvComputeRequest};
 pub use runtime_materialization::{
