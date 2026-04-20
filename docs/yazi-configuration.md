@@ -40,7 +40,7 @@ Use this only when Yazelix-managed Yazi launches and sidebar actions need a spec
 
 ```toml
 [yazi]
-# Core plugins (auto-layout, sidebar-status) are always loaded
+# Core plugins (sidebar-status, auto-layout, sidebar-state) are always loaded before this list
 # sidebar-status removes a space-hungry status item so Yazi fits cleanly as a sidebar
 # Add additional plugins here
 plugins = ["git"]
@@ -70,6 +70,8 @@ theme = "dracula"
 ```
 
 For available themes, see: https://yazi-rs.github.io/docs/flavors/overview
+
+The curated `random-dark` / `random-light` flavor names used by Yazelix live in `config_metadata/yazi_render_plan.toml` (defaults and `sort_by` validation stay in `config_metadata/main_config_contract.toml`).
 
 Leave the field unset, or set `theme = "default"`, to keep Yazi's upstream built-in theme.
 

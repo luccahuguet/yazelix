@@ -1,53 +1,37 @@
 //! Typed Yazi render-plan data for Nushell TOML/Lua renderers.
 //!
 //! **Rust dependency gate:** in-house only (std + existing workspace deps). No new crates.
+//!
+//! Machine lists and validation enums are loaded from `config_metadata/yazi_render_plan.toml`
+//! (embedded at compile time). Shared `sort_by` / default plugin defaults are parity-checked against
+//! `config_metadata/main_config_contract.toml` in integration tests.
 
 use crate::bridge::{CoreError, ErrorClass};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Dark flavor names bundled/expected by Yazelix (must stay aligned with `yazi_config_merger.nu`).
-const YAZI_THEMES_DARK: &[&str] = &[
-    "catppuccin-mocha",
-    "catppuccin-frappe",
-    "catppuccin-macchiato",
-    "dracula",
-    "gruvbox-dark",
-    "tokyo-night",
-    "kanagawa",
-    "kanagawa-dragon",
-    "rose-pine",
-    "rose-pine-moon",
-    "flexoki-dark",
-    "bluloco-dark",
-    "ayu-dark",
-    "everforest-medium",
-    "ashen",
-    "neon",
-    "nord",
-    "synthwave84",
-    "monokai",
-];
+#[derive(Debug, Deserialize)]
+struct YaziRenderPlanMetadata {
+    sort_by_allowed: Vec<String>,
+    default_plugins: Vec<String>,
+    themes_dark: Vec<String>,
+    themes_light: Vec<String>,
+    core_plugins: Vec<String>,
+}
 
-/// Light flavor names bundled/expected by Yazelix (must stay aligned with `yazi_config_merger.nu`).
-const YAZI_THEMES_LIGHT: &[&str] = &[
-    "catppuccin-latte",
-    "kanagawa-lotus",
-    "rose-pine-dawn",
-    "flexoki-light",
-    "bluloco-light",
-];
+static YAZI_RENDER_PLAN_METADATA: OnceLock<YaziRenderPlanMetadata> = OnceLock::new();
 
-const CORE_PLUGINS: &[&str] = &["sidebar-status", "auto-layout", "sidebar-state"];
-
-const SORT_BY_ALLOWED: &[&str] = &[
-    "alphabetical",
-    "natural",
-    "modified",
-    "created",
-    "size",
-];
+fn yazi_render_plan_metadata() -> &'static YaziRenderPlanMetadata {
+    YAZI_RENDER_PLAN_METADATA.get_or_init(|| {
+        const RAW: &str = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../config_metadata/yazi_render_plan.toml"
+        ));
+        toml::from_str(RAW).expect("embedded config_metadata/yazi_render_plan.toml must parse")
+    })
+}
 
 fn default_yazi_theme() -> String {
     "default".into()
@@ -58,7 +42,7 @@ fn default_yazi_sort_by() -> String {
 }
 
 fn default_yazi_plugins() -> Vec<String> {
-    vec!["git".into(), "starship".into()]
+    yazi_render_plan_metadata().default_plugins.clone()
 }
 
 fn pick_index(len: usize) -> usize {
@@ -72,27 +56,31 @@ fn pick_index(len: usize) -> usize {
 }
 
 fn resolve_yazi_theme(theme_config: &str) -> String {
+    let meta = yazi_render_plan_metadata();
     match theme_config {
-        "random-dark" => YAZI_THEMES_DARK
-            .get(pick_index(YAZI_THEMES_DARK.len()))
-            .map(|s| (*s).to_string())
+        "random-dark" => meta
+            .themes_dark
+            .get(pick_index(meta.themes_dark.len()))
+            .cloned()
             .unwrap_or_else(|| "default".into()),
-        "random-light" => YAZI_THEMES_LIGHT
-            .get(pick_index(YAZI_THEMES_LIGHT.len()))
-            .map(|s| (*s).to_string())
+        "random-light" => meta
+            .themes_light
+            .get(pick_index(meta.themes_light.len()))
+            .cloned()
             .unwrap_or_else(|| "default".into()),
         _ => theme_config.to_string(),
     }
 }
 
 fn validate_sort_by(sort_by: &str) -> Result<(), CoreError> {
-    if SORT_BY_ALLOWED.contains(&sort_by) {
+    let allowed = &yazi_render_plan_metadata().sort_by_allowed;
+    if allowed.iter().any(|v| v == sort_by) {
         Ok(())
     } else {
         Err(CoreError::classified(
             ErrorClass::Config,
             "invalid_yazi_sort_by",
-            format!("yazi_sort_by must be one of {:?} (got {sort_by:?})", SORT_BY_ALLOWED),
+            format!("yazi_sort_by must be one of {allowed:?} (got {sort_by:?})"),
             "Set [yazi].sort_by to a documented value.",
             serde_json::json!({ "field": "yazi.sort_by" }),
         ))
@@ -100,11 +88,13 @@ fn validate_sort_by(sort_by: &str) -> Result<(), CoreError> {
 }
 
 fn merged_plugin_load_order(user_plugins: &[String]) -> Vec<String> {
+    let meta = yazi_render_plan_metadata();
     let mut seen = HashSet::new();
     let mut out = Vec::new();
-    for p in CORE_PLUGINS
+    for p in meta
+        .core_plugins
         .iter()
-        .map(|s| (*s).to_string())
+        .cloned()
         .chain(user_plugins.iter().cloned())
     {
         if seen.insert(p.clone()) {
@@ -170,7 +160,7 @@ pub fn compute_yazi_render_plan(
     let resolved_theme = resolve_yazi_theme(&request.yazi_theme);
     let theme_flavor = theme_flavor_plan(&resolved_theme);
     let load_order = merged_plugin_load_order(&yazi_plugins);
-    let core_plugins: Vec<String> = CORE_PLUGINS.iter().map(|s| (*s).to_string()).collect();
+    let core_plugins = yazi_render_plan_metadata().core_plugins.clone();
 
     Ok(YaziRenderPlanData {
         resolved_theme,
@@ -246,24 +236,26 @@ mod tests {
         );
     }
 
-    // Defends: random-dark resolves to one of the maintained dark palette entries (same list as Nushell).
+    // Defends: random-dark resolves to one of the maintained dark palette entries in yazi_render_plan.toml.
     // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=2 total=8/10
     #[test]
     fn random_dark_resolves_into_dark_palette() {
         let mut req = sample_request();
         req.yazi_theme = "random-dark".into();
         let plan = compute_yazi_render_plan(&req).unwrap();
-        assert!(YAZI_THEMES_DARK.contains(&plan.resolved_theme.as_str()));
+        let meta = yazi_render_plan_metadata();
+        assert!(meta.themes_dark.contains(&plan.resolved_theme));
     }
 
-    // Defends: random-light resolves to one of the maintained light palette entries (same list as Nushell).
+    // Defends: random-light resolves to one of the maintained light palette entries in yazi_render_plan.toml.
     // Strength: defect=1 behavior=2 resilience=2 cost=1 uniqueness=2 total=8/10
     #[test]
     fn random_light_resolves_into_light_palette() {
         let mut req = sample_request();
         req.yazi_theme = "random-light".into();
         let plan = compute_yazi_render_plan(&req).unwrap();
-        assert!(YAZI_THEMES_LIGHT.contains(&plan.resolved_theme.as_str()));
+        let meta = yazi_render_plan_metadata();
+        assert!(meta.themes_light.contains(&plan.resolved_theme));
     }
 
     // Defends: init.lua load order prepends core plugins and dedupes user entries in first-wins order.
@@ -271,7 +263,11 @@ mod tests {
     #[test]
     fn init_load_order_merges_core_then_user_deduped() {
         let mut req = sample_request();
-        req.yazi_plugins = Some(vec!["git".into(), "sidebar-status".into(), "starship".into()]);
+        req.yazi_plugins = Some(vec![
+            "git".into(),
+            "sidebar-status".into(),
+            "starship".into(),
+        ]);
         let plan = compute_yazi_render_plan(&req).unwrap();
         assert_eq!(
             plan.init_lua.load_order,

@@ -253,15 +253,8 @@ plugins = [
 ]
 
 # Yazi theme (flavor) configuration
-# Special options: "random-dark" (picks from 19 dark themes), "random-light" (picks from 5 light themes)
-# Available flavors (25 total: 1 default + 19 dark + 5 light):
-#   Default: "default" (use Yazi's upstream built-in theme)
-#   Dark themes (19): "catppuccin-mocha", "catppuccin-frappe", "catppuccin-macchiato",
-#                     "dracula", "gruvbox-dark", "tokyo-night", "kanagawa", "kanagawa-dragon",
-#                     "rose-pine", "rose-pine-moon", "flexoki-dark", "bluloco-dark",
-#                     "ayu-dark", "everforest-medium", "ashen", "neon", "nord", "synthwave84", "monokai"
-#   Light themes (5): "catppuccin-latte", "kanagawa-lotus", "rose-pine-dawn",
-#                     "flexoki-light", "bluloco-light"
+# Special options: "random-dark" / "random-light" pick from curated palettes (counts + names) in
+# config_metadata/yazi_render_plan.toml — keep that file aligned when adding/removing bundled flavors.
 # Browse flavors: https://github.com/yazi-rs/flavors
 theme = "default"
 

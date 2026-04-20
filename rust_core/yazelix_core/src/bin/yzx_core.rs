@@ -1,14 +1,14 @@
 use lexopt::prelude::*;
+use serde::de::DeserializeOwned;
 use std::path::PathBuf;
 use yazelix_core::{
-    ComputeConfigStateRequest, CoreError, ErrorClass, NormalizeConfigRequest,
-    RecordConfigStateRequest, RuntimeArtifact, RuntimeContractEvaluateRequest,
-    RuntimeEnvComputeRequest, RuntimeMaterializationApplyRequest,
-    RuntimeMaterializationPlanRequest, YaziRenderPlanRequest, ZellijRenderPlanRequest,
     apply_runtime_materialization, compute_config_state, compute_runtime_env,
     compute_yazi_render_plan, compute_zellij_render_plan, error_envelope,
     evaluate_runtime_contract, normalize_config, plan_runtime_materialization, record_config_state,
-    success_envelope,
+    success_envelope, ComputeConfigStateRequest, CoreError, ErrorClass, NormalizeConfigRequest,
+    RecordConfigStateRequest, RuntimeArtifact, RuntimeContractEvaluateRequest,
+    RuntimeEnvComputeRequest, RuntimeMaterializationApplyRequest,
+    RuntimeMaterializationPlanRequest, YaziRenderPlanRequest, ZellijRenderPlanRequest,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
@@ -254,58 +254,17 @@ fn run_runtime_contract_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreE
 }
 
 fn run_zellij_render_plan_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut request_json: Option<String> = None;
-
-    while let Some(arg) = parser
-        .next()
-        .map_err(|error| CoreError::usage(error.to_string()))?
-    {
-        match arg {
-            Long("request-json") => request_json = Some(parser_string_value(&mut parser)?),
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
-        }
-    }
-
-    let request_json =
-        request_json.ok_or_else(|| CoreError::usage("Missing --request-json payload"))?;
+    let request_json = take_request_json(&mut parser)?;
     let request: ZellijRenderPlanRequest =
-        serde_json::from_str(&request_json).map_err(|error| {
-            CoreError::classified(
-                ErrorClass::Usage,
-                "invalid_request_json",
-                format!("Invalid zellij-render-plan request JSON: {error}"),
-                "Pass one valid JSON payload via --request-json.",
-                serde_json::json!({}),
-            )
-        })?;
+        deserialize_json_request(&request_json, "zellij-render-plan")?;
     let data = compute_zellij_render_plan(&request)?;
     write_success_envelope(ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND, data)
 }
 
 fn run_yazi_render_plan_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut request_json: Option<String> = None;
-
-    while let Some(arg) = parser
-        .next()
-        .map_err(|error| CoreError::usage(error.to_string()))?
-    {
-        match arg {
-            Long("request-json") => request_json = Some(parser_string_value(&mut parser)?),
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
-        }
-    }
-
-    let request_json =
-        request_json.ok_or_else(|| CoreError::usage("Missing --request-json payload"))?;
-    let request: YaziRenderPlanRequest = serde_json::from_str(&request_json).map_err(|error| {
-        CoreError::classified(
-            ErrorClass::Usage,
-            "invalid_request_json",
-            format!("Invalid yazi-render-plan request JSON: {error}"),
-            "Pass one valid JSON payload via --request-json.",
-            serde_json::json!({}),
-        )
-    })?;
+    let request_json = take_request_json(&mut parser)?;
+    let request: YaziRenderPlanRequest =
+        deserialize_json_request(&request_json, "yazi-render-plan")?;
     let data = compute_yazi_render_plan(&request)?;
     write_success_envelope(YAZI_RENDER_PLAN_COMPUTE_COMMAND, data)
 }
@@ -432,6 +391,34 @@ fn run_runtime_materialization_apply(mut parser: lexopt::Parser) -> Result<(), C
     };
     let data = apply_runtime_materialization(&request)?;
     write_success_envelope(RUNTIME_MATERIALIZATION_APPLY_COMMAND, data)
+}
+
+fn take_request_json(parser: &mut lexopt::Parser) -> Result<String, CoreError> {
+    let mut request_json: Option<String> = None;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("request-json") => request_json = Some(parser_string_value(parser)?),
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    request_json.ok_or_else(|| CoreError::usage("Missing --request-json payload"))
+}
+
+fn deserialize_json_request<T: DeserializeOwned>(raw: &str, kind: &str) -> Result<T, CoreError> {
+    serde_json::from_str(raw).map_err(|error| {
+        CoreError::classified(
+            ErrorClass::Usage,
+            "invalid_request_json",
+            format!("Invalid {kind} request JSON: {error}"),
+            "Pass one valid JSON payload via --request-json.",
+            serde_json::json!({}),
+        )
+    })
 }
 
 fn parser_path_value(parser: &mut lexopt::Parser) -> Result<PathBuf, CoreError> {

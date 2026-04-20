@@ -1,0 +1,58 @@
+# Machine-readable Yazi render-plan inputs consumed by `yzx_core` (`yazi-render-plan.compute`).
+#
+# Theme palettes support `random-dark` / `random-light` in yazelix.toml. Core plugins are always
+# prepended to the user plugin list for generated init.lua.
+#
+# Keep `sort_by_allowed` and `default_plugins` identical to:
+#   - `[fields."yazi.sort_by"].allowed_values` and `[fields."yazi.plugins"].default`
+#     in config_metadata/main_config_contract.toml
+# Rust integration tests enforce that parity.
+
+sort_by_allowed = [
+  "alphabetical",
+  "natural",
+  "modified",
+  "created",
+  "size",
+]
+
+default_plugins = [
+  "git",
+  "starship",
+]
+
+core_plugins = [
+  "sidebar-status",
+  "auto-layout",
+  "sidebar-state",
+]
+
+themes_dark = [
+  "catppuccin-mocha",
+  "catppuccin-frappe",
+  "catppuccin-macchiato",
+  "dracula",
+  "gruvbox-dark",
+  "tokyo-night",
+  "kanagawa",
+  "kanagawa-dragon",
+  "rose-pine",
+  "rose-pine-moon",
+  "flexoki-dark",
+  "bluloco-dark",
+  "ayu-dark",
+  "everforest-medium",
+  "ashen",
+  "neon",
+  "nord",
+  "synthwave84",
+  "monokai",
+]
+
+themes_light = [
+  "catppuccin-latte",
+  "kanagawa-lotus",
+  "rose-pine-dawn",
+  "flexoki-light",
+  "bluloco-light",
+]

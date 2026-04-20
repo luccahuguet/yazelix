@@ -331,6 +331,8 @@ home_manager_option = "yazi_plugins"
 parser_behavior = "direct"
 rebuild_required = false
 
+# Random theme palettes for yazi-render-plan live in config_metadata/yazi_render_plan.toml
+# (not repeated here). Defaults for [yazi].plugins and allowed [yazi].sort_by values are parity-checked against that file in Rust tests.
 [fields."yazi.theme"]
 kind = "string"
 default = "default"
