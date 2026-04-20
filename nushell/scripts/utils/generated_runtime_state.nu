@@ -31,9 +31,11 @@ def get_runtime_materialization_layout_override [] {
     }
 }
 
-def build_runtime_materialization_plan_args [runtime_dir: string, config_surface: record, paths: record] {
-    let helper_args = [
-        "runtime-materialization.plan"
+def build_runtime_materialization_helper_argv [command: string, runtime_dir: string] {
+    let config_surface = (load_active_config_surface)
+    let paths = (get_runtime_materialization_paths)
+    mut helper_args = [
+        $command
         "--config"
         $config_surface.config_file
         "--default-config"
@@ -61,9 +63,16 @@ def build_runtime_materialization_plan_args [runtime_dir: string, config_surface
 }
 
 export def build_runtime_materialization_plan_helper_argv [runtime_dir: string] {
-    let config_surface = (load_active_config_surface)
-    let materialization_paths = (get_runtime_materialization_paths)
-    build_runtime_materialization_plan_args $runtime_dir $config_surface $materialization_paths
+    build_runtime_materialization_helper_argv "runtime-materialization.plan" $runtime_dir
+}
+
+export def build_runtime_materialization_repair_evaluate_helper_argv [runtime_dir: string, --force] {
+    mut argv = (build_runtime_materialization_helper_argv "runtime-materialization.repair-evaluate" $runtime_dir)
+    if $force {
+        $argv = ($argv | append "--force")
+    }
+
+    $argv
 }
 
 def build_runtime_materialization_apply_args [state: record] {
@@ -91,6 +100,17 @@ export def compute_runtime_materialization_plan [runtime_dir: string] {
     run_yzx_core_json_command $runtime_dir $config_surface $helper_args "Yazelix Rust runtime-materialization helper returned invalid JSON."
 }
 
+export def evaluate_runtime_materialization_repair [runtime_dir: string, --force] {
+    let config_surface = (load_active_config_surface)
+    let helper_args = if $force {
+        (build_runtime_materialization_repair_evaluate_helper_argv $runtime_dir --force)
+    } else {
+        (build_runtime_materialization_repair_evaluate_helper_argv $runtime_dir)
+    }
+
+    run_yzx_core_json_command $runtime_dir $config_surface $helper_args "Yazelix Rust runtime-materialization repair-evaluate helper returned invalid JSON."
+}
+
 def apply_runtime_materialization [state: record] {
     let config_file = ($state.config_file? | default "")
     let runtime_dir = require_yazelix_runtime_dir
@@ -98,11 +118,15 @@ def apply_runtime_materialization [state: record] {
     run_yzx_core_command $runtime_dir {display_config_path: $config_file} $helper_args | ignore
 }
 
-export def regenerate_runtime_configs [runtime_dir: string, --quiet] {
+export def regenerate_runtime_configs [runtime_dir: string, --quiet, materialization_plan?: record] {
     let quiet_mode = $quiet
-    let plan = (profile_startup_step "generated_runtime_state" "compute_config_state" {
-        compute_runtime_materialization_plan $runtime_dir
-    })
+    let plan = if $materialization_plan == null {
+        profile_startup_step "generated_runtime_state" "compute_config_state" {
+            compute_runtime_materialization_plan $runtime_dir
+        }
+    } else {
+        $materialization_plan
+    }
     let config_state = $plan
 
     try {
@@ -155,32 +179,33 @@ export def repair_generated_runtime_state [
 ] {
     let runtime_dir = (require_yazelix_runtime_dir)
     let show_progress = $verbose
-    let plan = (compute_runtime_materialization_plan $runtime_dir)
+    let evaluation = if $force {
+        evaluate_runtime_materialization_repair $runtime_dir --force
+    } else {
+        evaluate_runtime_materialization_repair $runtime_dir
+    }
+    let plan = ($evaluation.plan)
+    let repair = ($evaluation.repair)
 
-    if (not $force) and (($plan.status? | default "") == "noop") {
-        print "✅ Yazelix generated state is already up to date."
-        print "   Nothing to repair."
+    if ($repair.action? | default "") == "noop" {
+        for line in ($repair.lines? | default []) {
+            print $line
+        }
         return {
             status: "noop"
             applied_state: $plan
         }
     }
 
-    let repair_reason = if $force {
-        "manual repair requested"
-    } else {
-        $plan.reason? | default "config or runtime inputs changed since last generated-state repair"
-    }
-
     if $show_progress {
-        print $"♻️  Repairing generated runtime state \(($repair_reason)\)..."
-        if (($plan.status? | default "") == "repair_missing_artifacts") {
-            let missing_labels = ($plan.missing_artifacts? | default [] | each {|artifact| $artifact.label } | str join ", ")
-            print $"   Repairing missing artifacts: ($missing_labels)"
+        print ($repair.progress_message? | default "")
+        let detail = ($repair.missing_artifacts_detail_line? | default "")
+        if ($detail | is-not-empty) {
+            print $detail
         }
     }
 
-    let applied_state = (regenerate_runtime_configs $runtime_dir --quiet=(not $show_progress))
+    let applied_state = (regenerate_runtime_configs $runtime_dir --quiet=(not $show_progress) $plan)
     try {
         record_current_materialized_state $applied_state | ignore
     } catch {|err|
@@ -188,19 +213,12 @@ export def repair_generated_runtime_state [
         error make {msg: $"Failed to finalize the generated runtime state repair: ($err.msg)\n($classification)"}
     }
 
-    if (($plan.status? | default "") == "repair_missing_artifacts") and (not $force) and (not ($plan.needs_refresh? | default false)) {
-        print "✅ Repaired the missing generated runtime artifacts."
-        return {
-            status: "repaired_missing_artifacts"
-            applied_state: $applied_state
-        }
+    for line in ($repair.success_lines? | default []) {
+        print $line
     }
 
-    print "✅ Generated runtime state repaired."
-    print "   Generated Yazi/Zellij state now matches the active runtime config."
-
     {
-        status: "repaired"
+        status: ($repair.result_status? | default "repaired")
         applied_state: $applied_state
     }
 }

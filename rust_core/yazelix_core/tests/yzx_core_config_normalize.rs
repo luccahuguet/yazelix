@@ -321,6 +321,100 @@ fn runtime_materialization_apply_rejects_missing_artifacts() {
     assert_eq!(envelope["error"]["code"], "missing_generated_artifacts");
 }
 
+// Defends: runtime-materialization.repair-evaluate nests the plan and a regenerate directive when artifacts are missing.
+// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+#[test]
+fn runtime_materialization_repair_evaluate_reports_regenerate_for_missing_artifacts() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let managed_config = tmp.path().join("config/user_configs/yazelix.toml");
+    let state_path = tmp.path().join("state/rebuild_hash");
+    let yazi_dir = tmp.path().join("configs/yazi");
+    let zellij_dir = tmp.path().join("configs/zellij");
+    let zellij_layout_dir = zellij_dir.join("layouts");
+
+    fs::create_dir_all(managed_config.parent().unwrap()).unwrap();
+    fs::create_dir_all(&zellij_layout_dir).unwrap();
+    fs::copy(repo.join("yazelix_default.toml"), &managed_config).unwrap();
+
+    let state_output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("config-state.compute")
+        .arg("--config")
+        .arg(&managed_config)
+        .arg("--default-config")
+        .arg(repo.join("yazelix_default.toml"))
+        .arg("--contract")
+        .arg(repo.join("config_metadata/main_config_contract.toml"))
+        .arg("--runtime-dir")
+        .arg(&repo)
+        .arg("--state-path")
+        .arg(&state_path)
+        .output()
+        .unwrap();
+    assert!(state_output.status.success());
+    let state_envelope: Value = serde_json::from_slice(&state_output.stdout).unwrap();
+
+    let record_output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("config-state.record")
+        .arg("--config-file")
+        .arg(&managed_config)
+        .arg("--managed-config")
+        .arg(&managed_config)
+        .arg("--state-path")
+        .arg(&state_path)
+        .arg("--config-hash")
+        .arg(state_envelope["data"]["config_hash"].as_str().unwrap())
+        .arg("--runtime-hash")
+        .arg(state_envelope["data"]["runtime_hash"].as_str().unwrap())
+        .output()
+        .unwrap();
+    assert!(record_output.status.success());
+
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("runtime-materialization.repair-evaluate")
+        .arg("--config")
+        .arg(&managed_config)
+        .arg("--default-config")
+        .arg(repo.join("yazelix_default.toml"))
+        .arg("--contract")
+        .arg(repo.join("config_metadata/main_config_contract.toml"))
+        .arg("--runtime-dir")
+        .arg(&repo)
+        .arg("--state-path")
+        .arg(&state_path)
+        .arg("--yazi-config-dir")
+        .arg(&yazi_dir)
+        .arg("--zellij-config-dir")
+        .arg(&zellij_dir)
+        .arg("--zellij-layout-dir")
+        .arg(&zellij_layout_dir)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        envelope["command"],
+        "runtime-materialization.repair-evaluate"
+    );
+    assert_eq!(
+        envelope["data"]["plan"]["status"],
+        "repair_missing_artifacts"
+    );
+    assert_eq!(envelope["data"]["repair"]["action"], "regenerate");
+    assert_eq!(
+        envelope["data"]["repair"]["result_status"],
+        "repaired_missing_artifacts"
+    );
+    assert!(envelope["data"]["repair"]["missing_artifacts_detail_line"]
+        .as_str()
+        .unwrap()
+        .contains("generated Yazi config"));
+}
+
 // Defends: runtime-contract.evaluate emits one machine-readable checks envelope for batched preflight requests.
 // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 #[test]
@@ -476,12 +570,10 @@ fn doctor_helix_evaluate_prints_ok_envelope() {
     assert_eq!(envelope["command"], "doctor-helix.evaluate");
     assert_eq!(envelope["status"], "ok");
     assert_eq!(envelope["data"]["runtime_conflicts"]["status"], "ok");
-    assert!(
-        envelope["data"]["managed_integration"]
-            .as_array()
-            .unwrap()
-            .is_empty()
-    );
+    assert!(envelope["data"]["managed_integration"]
+        .as_array()
+        .unwrap()
+        .is_empty());
 }
 
 // Defends: doctor-runtime.evaluate emits one machine-readable report envelope for a minimal request.
@@ -521,12 +613,10 @@ fn doctor_runtime_evaluate_prints_ok_envelope() {
         envelope["data"]["distribution"]["capability_mode"],
         "package_runtime"
     );
-    assert!(
-        envelope["data"]["shared_runtime_preflight"]
-            .as_array()
-            .unwrap()
-            .is_empty()
-    );
+    assert!(envelope["data"]["shared_runtime_preflight"]
+        .as_array()
+        .unwrap()
+        .is_empty());
 }
 
 // Defends: doctor-config.evaluate reports duplicate root/user config ownership as a config-surface error finding.
@@ -605,7 +695,8 @@ fn doctor_config_evaluate_reports_stale_schema_warning() {
         1
     );
     assert_eq!(
-        envelope["data"]["findings"][1]["config_diagnostic_report"]["doctor_diagnostics"][0]["headline"],
+        envelope["data"]["findings"][1]["config_diagnostic_report"]["doctor_diagnostics"][0]
+            ["headline"],
         "Invalid config value at editor.sidebar_width_percent"
     );
     let details = envelope["data"]["findings"][1]["details"].as_str().unwrap();
@@ -641,12 +732,10 @@ fn doctor_config_evaluate_keeps_invalid_toml_as_error() {
         "Could not validate yazelix.toml against the current schema"
     );
     assert_eq!(envelope["data"]["findings"][1]["status"], "error");
-    assert!(
-        envelope["data"]["findings"][1]["details"]
-            .as_str()
-            .unwrap()
-            .contains("Could not parse Yazelix TOML input")
-    );
+    assert!(envelope["data"]["findings"][1]["details"]
+        .as_str()
+        .unwrap()
+        .contains("Could not parse Yazelix TOML input"));
 }
 
 // Defends: doctor-config.evaluate keeps the default-template doctor row fixable instead of bootstrapping config eagerly.

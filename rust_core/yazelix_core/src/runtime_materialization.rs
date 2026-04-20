@@ -58,6 +58,41 @@ pub struct RuntimeMaterializationApplyData {
     pub checked_artifacts: usize,
 }
 
+#[derive(Debug, Clone)]
+pub struct RuntimeMaterializationRepairEvaluateRequest {
+    pub plan: RuntimeMaterializationPlanRequest,
+    pub force: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum RepairSuccessKind {
+    RepairedMissingArtifacts,
+    Repaired,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum RuntimeRepairDirective {
+    Noop {
+        lines: Vec<String>,
+    },
+    Regenerate {
+        reason: String,
+        progress_message: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        missing_artifacts_detail_line: Option<String>,
+        success_lines: Vec<String>,
+        /// `repaired_missing_artifacts` or `repaired` for Nushell return records.
+        result_status: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RuntimeMaterializationRepairEvaluateData {
+    pub plan: RuntimeMaterializationPlanData,
+    pub repair: RuntimeRepairDirective,
+}
+
 pub fn plan_runtime_materialization(
     request: &RuntimeMaterializationPlanRequest,
 ) -> Result<RuntimeMaterializationPlanData, CoreError> {
@@ -150,6 +185,76 @@ pub fn plan_runtime_materialization(
         should_regenerate: status != "noop",
         should_sync_static_assets: status == "refresh_required",
     })
+}
+
+pub fn evaluate_runtime_materialization_repair(
+    request: &RuntimeMaterializationRepairEvaluateRequest,
+) -> Result<RuntimeMaterializationRepairEvaluateData, CoreError> {
+    let plan = plan_runtime_materialization(&request.plan)?;
+    let repair = build_repair_directive(&plan, request.force);
+    Ok(RuntimeMaterializationRepairEvaluateData { plan, repair })
+}
+
+fn build_repair_directive(
+    plan: &RuntimeMaterializationPlanData,
+    force: bool,
+) -> RuntimeRepairDirective {
+    if !force && plan.status == "noop" {
+        return RuntimeRepairDirective::Noop {
+            lines: vec![
+                "✅ Yazelix generated state is already up to date.".to_string(),
+                "   Nothing to repair.".to_string(),
+            ],
+        };
+    }
+
+    let reason = if force {
+        "manual repair requested".to_string()
+    } else {
+        plan.reason.clone()
+    };
+    let progress_message = format!("♻️  Repairing generated runtime state ({reason})...");
+
+    let missing_artifacts_detail_line =
+        if plan.status == "repair_missing_artifacts" && !plan.missing_artifacts.is_empty() {
+            Some(format!(
+                "   Repairing missing artifacts: {}",
+                plan.missing_artifacts
+                    .iter()
+                    .map(|artifact| artifact.label.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
+        } else {
+            None
+        };
+
+    let success_kind = if !force && plan.status == "repair_missing_artifacts" {
+        RepairSuccessKind::RepairedMissingArtifacts
+    } else {
+        RepairSuccessKind::Repaired
+    };
+    let (result_status, success_lines) = match success_kind {
+        RepairSuccessKind::RepairedMissingArtifacts => (
+            "repaired_missing_artifacts".to_string(),
+            vec!["✅ Repaired the missing generated runtime artifacts.".to_string()],
+        ),
+        RepairSuccessKind::Repaired => (
+            "repaired".to_string(),
+            vec![
+                "✅ Generated runtime state repaired.".to_string(),
+                "   Generated Yazi/Zellij state now matches the active runtime config.".to_string(),
+            ],
+        ),
+    };
+
+    RuntimeRepairDirective::Regenerate {
+        reason,
+        progress_message,
+        missing_artifacts_detail_line,
+        success_lines,
+        result_status,
+    }
 }
 
 pub fn apply_runtime_materialization(
@@ -344,5 +449,161 @@ mod tests {
 
         assert_eq!(error.class().as_str(), "runtime");
         assert_eq!(error.code(), "missing_generated_artifacts");
+    }
+
+    fn touch_plan_artifacts(plan: &RuntimeMaterializationPlanData) {
+        for artifact in &plan.expected_artifacts {
+            let path = Path::new(&artifact.path);
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent).unwrap();
+            }
+            fs::write(path, "").unwrap();
+        }
+    }
+
+    // Defends: repair evaluation returns a noop directive when the plan is noop and force is false.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn repair_evaluate_is_noop_when_plan_is_noop_and_not_forced() {
+        let dir = tempdir().expect("tempdir");
+        let runtime_dir = repo_root();
+        let config_path = runtime_dir.join("yazelix_default.toml");
+        let state_path = dir.path().join("state/rebuild_hash");
+        let yazi_dir = dir.path().join("configs/yazi");
+        let zellij_dir = dir.path().join("configs/zellij");
+        let zellij_layout_dir = zellij_dir.join("layouts");
+
+        fs::create_dir_all(&zellij_layout_dir).unwrap();
+        let baseline = compute_config_state(&ComputeConfigStateRequest {
+            config_path: config_path.clone(),
+            default_config_path: runtime_dir.join("yazelix_default.toml"),
+            contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
+            runtime_dir: runtime_dir.clone(),
+            state_path: state_path.clone(),
+        })
+        .unwrap();
+        record_config_state(&RecordConfigStateRequest {
+            config_file: config_path.to_string_lossy().to_string(),
+            managed_config_path: config_path.clone(),
+            state_path: state_path.clone(),
+            config_hash: baseline.config_hash.clone(),
+            runtime_hash: baseline.runtime_hash.clone(),
+        })
+        .unwrap();
+
+        let plan = plan_runtime_materialization(&plan_request_for(
+            config_path.clone(),
+            runtime_dir.clone(),
+            state_path.clone(),
+            yazi_dir.clone(),
+            zellij_dir.clone(),
+            zellij_layout_dir.clone(),
+        ))
+        .unwrap();
+        touch_plan_artifacts(&plan);
+
+        let evaluated =
+            evaluate_runtime_materialization_repair(&RuntimeMaterializationRepairEvaluateRequest {
+                plan: plan_request_for(
+                    config_path,
+                    runtime_dir,
+                    state_path,
+                    yazi_dir,
+                    zellij_dir,
+                    zellij_layout_dir,
+                ),
+                force: false,
+            })
+            .unwrap();
+
+        assert_eq!(evaluated.plan.status, "noop");
+        match evaluated.repair {
+            RuntimeRepairDirective::Noop { lines } => {
+                assert_eq!(lines.len(), 2);
+            }
+            other => panic!("expected noop directive, got {other:?}"),
+        }
+    }
+
+    // Defends: repair evaluation forces regeneration when the user passes --force even if the plan is noop.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn repair_evaluate_regenerates_when_forced_even_if_plan_is_noop() {
+        let dir = tempdir().expect("tempdir");
+        let runtime_dir = repo_root();
+        let config_path = runtime_dir.join("yazelix_default.toml");
+        let state_path = dir.path().join("state/rebuild_hash");
+        let yazi_dir = dir.path().join("configs/yazi");
+        let zellij_dir = dir.path().join("configs/zellij");
+        let zellij_layout_dir = zellij_dir.join("layouts");
+
+        fs::create_dir_all(&zellij_layout_dir).unwrap();
+        let baseline = compute_config_state(&ComputeConfigStateRequest {
+            config_path: config_path.clone(),
+            default_config_path: runtime_dir.join("yazelix_default.toml"),
+            contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
+            runtime_dir: runtime_dir.clone(),
+            state_path: state_path.clone(),
+        })
+        .unwrap();
+        record_config_state(&RecordConfigStateRequest {
+            config_file: config_path.to_string_lossy().to_string(),
+            managed_config_path: config_path.clone(),
+            state_path: state_path.clone(),
+            config_hash: baseline.config_hash.clone(),
+            runtime_hash: baseline.runtime_hash.clone(),
+        })
+        .unwrap();
+
+        let plan_before = plan_runtime_materialization(&plan_request_for(
+            config_path.clone(),
+            runtime_dir.clone(),
+            state_path.clone(),
+            yazi_dir.clone(),
+            zellij_dir.clone(),
+            zellij_layout_dir.clone(),
+        ))
+        .unwrap();
+        touch_plan_artifacts(&plan_before);
+        let plan_after = plan_runtime_materialization(&plan_request_for(
+            config_path.clone(),
+            runtime_dir.clone(),
+            state_path.clone(),
+            yazi_dir.clone(),
+            zellij_dir.clone(),
+            zellij_layout_dir.clone(),
+        ))
+        .unwrap();
+        assert_eq!(plan_after.status, "noop");
+
+        let evaluated =
+            evaluate_runtime_materialization_repair(&RuntimeMaterializationRepairEvaluateRequest {
+                plan: plan_request_for(
+                    config_path,
+                    runtime_dir,
+                    state_path,
+                    yazi_dir,
+                    zellij_dir,
+                    zellij_layout_dir,
+                ),
+                force: true,
+            })
+            .unwrap();
+
+        match evaluated.repair {
+            RuntimeRepairDirective::Regenerate {
+                reason,
+                missing_artifacts_detail_line,
+                success_lines,
+                result_status,
+                ..
+            } => {
+                assert_eq!(reason, "manual repair requested");
+                assert!(missing_artifacts_detail_line.is_none());
+                assert_eq!(success_lines.len(), 2);
+                assert_eq!(result_status, "repaired");
+            }
+            other => panic!("expected regenerate directive, got {other:?}"),
+        }
     }
 }

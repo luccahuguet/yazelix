@@ -2,17 +2,18 @@ use lexopt::prelude::*;
 use serde::de::DeserializeOwned;
 use std::path::PathBuf;
 use yazelix_core::{
-    ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
-    DoctorRuntimeEvaluateRequest, ErrorClass, HelixDoctorEvaluateRequest,
-    InstallOwnershipEvaluateRequest, NormalizeConfigRequest, RecordConfigStateRequest,
-    RuntimeArtifact, RuntimeContractEvaluateRequest, RuntimeEnvComputeRequest,
-    RuntimeMaterializationApplyRequest, RuntimeMaterializationPlanRequest, YaziRenderPlanRequest,
-    ZellijRenderPlanRequest, apply_runtime_materialization, compute_config_state,
-    compute_runtime_env, compute_status_report, compute_yazi_render_plan,
-    compute_zellij_render_plan, error_envelope, evaluate_doctor_config_report,
-    evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
-    evaluate_install_ownership_report, evaluate_runtime_contract, normalize_config,
-    plan_runtime_materialization, record_config_state, success_envelope,
+    apply_runtime_materialization, compute_config_state, compute_runtime_env,
+    compute_status_report, compute_yazi_render_plan, compute_zellij_render_plan, error_envelope,
+    evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
+    evaluate_install_ownership_report, evaluate_runtime_contract,
+    evaluate_runtime_materialization_repair, normalize_config, plan_runtime_materialization,
+    record_config_state, success_envelope, ComputeConfigStateRequest, CoreError,
+    DoctorConfigEvaluateRequest, DoctorRuntimeEvaluateRequest, ErrorClass,
+    HelixDoctorEvaluateRequest, InstallOwnershipEvaluateRequest, NormalizeConfigRequest,
+    RecordConfigStateRequest, RuntimeArtifact, RuntimeContractEvaluateRequest,
+    RuntimeEnvComputeRequest, RuntimeMaterializationApplyRequest,
+    RuntimeMaterializationPlanRequest, RuntimeMaterializationRepairEvaluateRequest,
+    YaziRenderPlanRequest, ZellijRenderPlanRequest,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
@@ -21,6 +22,8 @@ const CONFIG_STATE_RECORD_COMMAND: &str = "config-state.record";
 const RUNTIME_CONTRACT_EVALUATE_COMMAND: &str = "runtime-contract.evaluate";
 const RUNTIME_ENV_COMPUTE_COMMAND: &str = "runtime-env.compute";
 const RUNTIME_MATERIALIZATION_PLAN_COMMAND: &str = "runtime-materialization.plan";
+const RUNTIME_MATERIALIZATION_REPAIR_EVALUATE_COMMAND: &str =
+    "runtime-materialization.repair-evaluate";
 const RUNTIME_MATERIALIZATION_APPLY_COMMAND: &str = "runtime-materialization.apply";
 const STATUS_COMPUTE_COMMAND: &str = "status.compute";
 const INSTALL_OWNERSHIP_EVALUATE_COMMAND: &str = "install-ownership.evaluate";
@@ -112,6 +115,11 @@ fn run() -> Result<(), Box<CommandError>> {
         RUNTIME_MATERIALIZATION_PLAN_COMMAND => {
             let command_for_error = command.clone();
             run_runtime_materialization_plan(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        RUNTIME_MATERIALIZATION_REPAIR_EVALUATE_COMMAND => {
+            let command_for_error = command.clone();
+            run_runtime_materialization_repair_evaluate(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         STATUS_COMPUTE_COMMAND => {
@@ -430,6 +438,63 @@ fn run_runtime_materialization_plan(mut parser: lexopt::Parser) -> Result<(), Co
     };
     let data = plan_runtime_materialization(&request)?;
     write_success_envelope(RUNTIME_MATERIALIZATION_PLAN_COMMAND, data)
+}
+
+fn run_runtime_materialization_repair_evaluate(
+    mut parser: lexopt::Parser,
+) -> Result<(), CoreError> {
+    let mut config_path: Option<PathBuf> = None;
+    let mut default_config_path: Option<PathBuf> = None;
+    let mut contract_path: Option<PathBuf> = None;
+    let mut runtime_dir: Option<PathBuf> = None;
+    let mut state_path: Option<PathBuf> = None;
+    let mut yazi_config_dir: Option<PathBuf> = None;
+    let mut zellij_config_dir: Option<PathBuf> = None;
+    let mut zellij_layout_dir: Option<PathBuf> = None;
+    let mut layout_override: Option<String> = None;
+    let mut force = false;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("config") => config_path = Some(parser_path_value(&mut parser)?),
+            Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
+            Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
+            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
+            Long("state-path") => state_path = Some(parser_path_value(&mut parser)?),
+            Long("yazi-config-dir") => yazi_config_dir = Some(parser_path_value(&mut parser)?),
+            Long("zellij-config-dir") => zellij_config_dir = Some(parser_path_value(&mut parser)?),
+            Long("zellij-layout-dir") => zellij_layout_dir = Some(parser_path_value(&mut parser)?),
+            Long("layout-override") => layout_override = Some(parser_string_value(&mut parser)?),
+            Long("force") => force = true,
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    let request = RuntimeMaterializationRepairEvaluateRequest {
+        plan: RuntimeMaterializationPlanRequest {
+            config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
+            default_config_path: default_config_path
+                .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
+            contract_path: contract_path
+                .ok_or_else(|| CoreError::usage("Missing --contract path"))?,
+            runtime_dir: runtime_dir
+                .ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
+            state_path: state_path.ok_or_else(|| CoreError::usage("Missing --state-path path"))?,
+            yazi_config_dir: yazi_config_dir
+                .ok_or_else(|| CoreError::usage("Missing --yazi-config-dir path"))?,
+            zellij_config_dir: zellij_config_dir
+                .ok_or_else(|| CoreError::usage("Missing --zellij-config-dir path"))?,
+            zellij_layout_dir: zellij_layout_dir
+                .ok_or_else(|| CoreError::usage("Missing --zellij-layout-dir path"))?,
+            layout_override,
+        },
+        force,
+    };
+    let data = evaluate_runtime_materialization_repair(&request)?;
+    write_success_envelope(RUNTIME_MATERIALIZATION_REPAIR_EVALUATE_COMMAND, data)
 }
 
 fn run_status_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
