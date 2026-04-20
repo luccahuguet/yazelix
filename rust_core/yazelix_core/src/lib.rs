@@ -7,6 +7,7 @@ pub mod control_plane;
 pub mod doctor_config_report;
 pub mod doctor_helix_report;
 pub mod doctor_runtime_report;
+pub mod helix_materialization;
 pub mod install_ownership_report;
 pub mod runtime_contract;
 pub mod runtime_env;
@@ -18,55 +19,58 @@ pub mod yazi_render_plan;
 pub mod zellij_materialization;
 pub mod zellij_render_plan;
 
-pub use bridge::{CoreError, ErrorClass, error_envelope, success_envelope};
+pub use bridge::{error_envelope, success_envelope, CoreError, ErrorClass};
 pub use command_metadata::{
+    render_yzx_externs, render_yzx_help, yzx_command_metadata, yzx_command_metadata_data,
     YzxCommandCategory, YzxCommandMetadata, YzxCommandMetadataData, YzxCommandParameter,
-    YzxParameterKind, render_yzx_externs, render_yzx_help, yzx_command_metadata,
-    yzx_command_metadata_data,
+    YzxParameterKind,
 };
-pub use config_normalize::{NormalizeConfigData, NormalizeConfigRequest, normalize_config};
+pub use config_normalize::{normalize_config, NormalizeConfigData, NormalizeConfigRequest};
 pub use config_state::{
-    ComputeConfigStateRequest, ConfigStateData, RecordConfigStateData, RecordConfigStateRequest,
-    compute_config_state, record_config_state,
+    compute_config_state, record_config_state, ComputeConfigStateRequest, ConfigStateData,
+    RecordConfigStateData, RecordConfigStateRequest,
 };
 pub use doctor_config_report::{
-    DoctorConfigEvaluateData, DoctorConfigEvaluateRequest, evaluate_doctor_config_report,
+    evaluate_doctor_config_report, DoctorConfigEvaluateData, DoctorConfigEvaluateRequest,
 };
 pub use doctor_helix_report::{
-    HelixDoctorEvaluateData, HelixDoctorEvaluateRequest, evaluate_helix_doctor_report,
+    evaluate_helix_doctor_report, HelixDoctorEvaluateData, HelixDoctorEvaluateRequest,
 };
 pub use doctor_runtime_report::{
-    DoctorRuntimeEvaluateData, DoctorRuntimeEvaluateRequest, evaluate_doctor_runtime_report,
+    evaluate_doctor_runtime_report, DoctorRuntimeEvaluateData, DoctorRuntimeEvaluateRequest,
+};
+pub use helix_materialization::{
+    generate_helix_materialization, HelixImportNotice, HelixMaterializationData,
+    HelixMaterializationRequest,
 };
 pub use install_ownership_report::{
-    DoctorInstallResult, HomeManagerPrepareArtifact, InstallOwnershipEvaluateData,
-    InstallOwnershipEvaluateRequest, evaluate_install_ownership_report,
+    evaluate_install_ownership_report, DoctorInstallResult, HomeManagerPrepareArtifact,
+    InstallOwnershipEvaluateData, InstallOwnershipEvaluateRequest,
 };
 pub use runtime_contract::{
-    GeneratedLayoutCheckRequest, LaunchPreflightPayload, LinuxGhosttyDesktopGraphicsRequest,
-    PreflightKind, RuntimeCheckData, RuntimeContractEvaluateData, RuntimeContractEvaluateRequest,
-    RuntimeScriptCheckRequest, StartupLaunchPreflightData, StartupLaunchPreflightRequest,
-    StartupPreflightPayload, TerminalCandidate, TerminalSupportCheckRequest,
-    WorkingDirCheckRequest, WorkingDirKind, evaluate_runtime_contract,
-    evaluate_startup_launch_preflight,
+    evaluate_runtime_contract, evaluate_startup_launch_preflight, GeneratedLayoutCheckRequest,
+    LaunchPreflightPayload, LinuxGhosttyDesktopGraphicsRequest, PreflightKind, RuntimeCheckData,
+    RuntimeContractEvaluateData, RuntimeContractEvaluateRequest, RuntimeScriptCheckRequest,
+    StartupLaunchPreflightData, StartupLaunchPreflightRequest, StartupPreflightPayload,
+    TerminalCandidate, TerminalSupportCheckRequest, WorkingDirCheckRequest, WorkingDirKind,
 };
-pub use runtime_env::{RuntimeEnvComputeData, RuntimeEnvComputeRequest, compute_runtime_env};
+pub use runtime_env::{compute_runtime_env, RuntimeEnvComputeData, RuntimeEnvComputeRequest};
 pub use runtime_materialization::{
-    RuntimeArtifact, RuntimeMaterializationApplyData, RuntimeMaterializationApplyRequest,
-    RuntimeMaterializationPlanData, RuntimeMaterializationPlanRequest,
-    RuntimeMaterializationRepairEvaluateData, RuntimeMaterializationRepairEvaluateRequest,
-    RuntimeRepairDirective, apply_runtime_materialization, evaluate_runtime_materialization_repair,
-    plan_runtime_materialization,
+    apply_runtime_materialization, evaluate_runtime_materialization_repair,
+    plan_runtime_materialization, RuntimeArtifact, RuntimeMaterializationApplyData,
+    RuntimeMaterializationApplyRequest, RuntimeMaterializationPlanData,
+    RuntimeMaterializationPlanRequest, RuntimeMaterializationRepairEvaluateData,
+    RuntimeMaterializationRepairEvaluateRequest, RuntimeRepairDirective,
 };
-pub use status_report::{StatusReportData, compute_status_report};
+pub use status_report::{compute_status_report, StatusReportData};
 pub use yazi_materialization::{
-    YaziManagedFileStatus, YaziMaterializationData, YaziMaterializationRequest,
-    generate_yazi_materialization,
+    generate_yazi_materialization, YaziManagedFileStatus, YaziMaterializationData,
+    YaziMaterializationRequest,
 };
-pub use yazi_render_plan::{YaziRenderPlanData, YaziRenderPlanRequest, compute_yazi_render_plan};
+pub use yazi_render_plan::{compute_yazi_render_plan, YaziRenderPlanData, YaziRenderPlanRequest};
 pub use zellij_materialization::{
-    ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
+    generate_zellij_materialization, ZellijMaterializationData, ZellijMaterializationRequest,
 };
 pub use zellij_render_plan::{
-    ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,
+    compute_zellij_render_plan, ZellijRenderPlanData, ZellijRenderPlanRequest,
 };
