@@ -23,13 +23,13 @@ def record_demo [demo_file: string, output_name: string, font_package?: string] 
         # Record the demo using nix shell with font support (if specified)
     let result = if ($font_pkg | is-empty) {
         # No font specified - use system default
-        (do { 
-            nix shell nixpkgs#vhs --command bash -c $"vhs '($demo_file)'"
+        (do {
+            nix shell nixpkgs#vhs --command vhs $demo_file
         } | complete)
     } else {
         # Use specified font
-        (do { 
-            nix shell $"nixpkgs#($font_pkg)" nixpkgs#vhs --command bash -c $"vhs '($demo_file)'"
+        (do {
+            nix shell $"nixpkgs#($font_pkg)" nixpkgs#vhs --command vhs $demo_file
         } | complete)
     }
 

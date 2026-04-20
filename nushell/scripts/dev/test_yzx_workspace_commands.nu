@@ -1376,7 +1376,7 @@ def test_doctor_fix_repairs_missing_managed_generated_layout [] {
 
     let result = (try {
         let output = (with-env $fixture.env {
-            ^bash -lc $"($CLEAN_ZELLIJ_ENV_PREFIX) nu -c 'cd \"($fixture.tmp_home)\"; use \"($fixture.yzx_script)\" *; yzx doctor --fix --verbose'" | complete
+            ^env -u ZELLIJ -u ZELLIJ_SESSION_NAME -u ZELLIJ_PANE_ID -u ZELLIJ_TAB_NAME -u ZELLIJ_TAB_POSITION nu -c $"cd \"($fixture.tmp_home)\"; use \"($fixture.yzx_script)\" *; yzx doctor --fix --verbose" | complete
         })
         let stdout = ($output.stdout | str trim)
         let repaired_message = (
@@ -1442,7 +1442,7 @@ def test_yzx_cwd_requires_zellij [] {
 
     try {
         let yzx_script = (repo_path "nushell" "scripts" "core" "yazelix.nu")
-        let output = (^bash -lc $"($CLEAN_ZELLIJ_ENV_PREFIX) nu -c 'use \"($yzx_script)\" *; yzx cwd .'" | complete)
+        let output = (^env -u ZELLIJ -u ZELLIJ_SESSION_NAME -u ZELLIJ_PANE_ID -u ZELLIJ_TAB_NAME -u ZELLIJ_TAB_POSITION nu -c $"use \"($yzx_script)\" *; yzx cwd ." | complete)
         let stdout = ($output.stdout | str trim)
 
         if ($output.exit_code == 1) and ($stdout | str contains "only works inside Zellij") {

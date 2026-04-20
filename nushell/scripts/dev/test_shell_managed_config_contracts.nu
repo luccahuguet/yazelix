@@ -8,7 +8,7 @@ use ../utils/nushell_externs.nu [get_generated_yzx_extern_fingerprint_path get_g
 use ../utils/shell_user_hooks.nu [get_yazelix_shell_user_hook_path sync_generated_nushell_user_hook_bridge]
 
 def path_is_symlink [target: string] {
-    let result = (^bash -lc $"test -L ($target | into string | to json -r)" | complete)
+    let result = (^test -L $target | complete)
     $result.exit_code == 0
 }
 

@@ -306,7 +306,7 @@ def test_default_budget_profiler_does_not_wait_on_background_children [] {
     try {
         let started = (date now)
         let profiled = (profile_suite_runner {
-            ^bash -lc 'sleep 3 &'
+            ^bash -c 'sleep 3 &'
             [true]
         })
         let wall_seconds = (((date now) - $started) / 1sec | into float)

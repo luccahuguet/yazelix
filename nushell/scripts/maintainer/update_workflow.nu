@@ -441,21 +441,11 @@ def activate_updated_profile_runtime [repo_root: string] {
         }
     }
 
-    let status_result = (^mktemp -t yazelix_profile_activation_status_XXXXXX | complete)
-    if $status_result.exit_code != 0 {
-        error make {msg: $"Failed to allocate profile activation status file: (($status_result.stderr | str trim))"}
-    }
-    let status_path = ($status_result.stdout | str trim)
     do {
         cd $repo_root
-        ^sh -c 'nix profile add --refresh -L .#yazelix; code=$?; printf "%s" "$code" > "$1"; exit "$code"' sh $status_path
+        ^nix profile add --refresh -L .#yazelix
     }
-    let exit_code = if ($status_path | path exists) {
-        open --raw $status_path | str trim | into int
-    } else {
-        1
-    }
-    rm -f $status_path
+    let exit_code = ($env.LAST_EXIT_CODE? | default 0)
 
     if $exit_code != 0 {
         print "❌ `nix profile add --refresh .#yazelix` failed."
