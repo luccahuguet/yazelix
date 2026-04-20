@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 use yazelix_pane_orchestrator::active_tab_session_state::{
-    ActiveTabSessionStateV1, SessionLayout, SessionManagedPanes, SessionSidebarYazi, SessionWorkspace,
+    build_active_tab_session_state_v1, ActiveTabReadState, ActiveTabSessionStateV1, SessionSidebarYazi,
+    SessionWorkspace,
 };
 use yazelix_pane_orchestrator::horizontal_focus_contract::{
     resolve_horizontal_focus, HorizontalDirection, HorizontalFocusPlan, HorizontalPaneSnapshot,
@@ -200,6 +201,86 @@ pub(crate) fn build_terminal_panes_by_tab(
 }
 
 impl State {
+    fn collect_active_tab_read_state(&self, active_tab_position: Option<usize>) -> ActiveTabReadState {
+        let active_swap_layout_name = active_tab_position
+            .and_then(|tab_position| self.active_swap_layout_name_by_tab.get(&tab_position))
+            .cloned()
+            .flatten();
+        let layout_variant = active_tab_position.and_then(|tab_position| self.get_active_layout_variant(tab_position));
+        let workspace_root = active_tab_position
+            .and_then(|tab_position| self.workspace_state_by_tab.get(&tab_position))
+            .map(|workspace_state| workspace_state.root.clone())
+            .or_else(|| self.initial_workspace_state.clone().map(|state| state.root));
+        let workspace_source = active_tab_position
+            .and_then(|tab_position| self.workspace_state_by_tab.get(&tab_position))
+            .map(|workspace_state| match workspace_state.source {
+                WorkspaceStateSource::Bootstrap => "bootstrap".to_string(),
+                WorkspaceStateSource::Explicit => "explicit".to_string(),
+            })
+            .or_else(|| {
+                self.initial_workspace_state.as_ref().map(|workspace_state| {
+                    match workspace_state.source {
+                        WorkspaceStateSource::Bootstrap => "bootstrap".to_string(),
+                        WorkspaceStateSource::Explicit => "explicit".to_string(),
+                    }
+                })
+            });
+        let explicit_workspace = match (active_tab_position, workspace_root.clone(), workspace_source.clone()) {
+            (Some(tab_position), Some(root), Some(source))
+                if matches!(
+                    self.workspace_state_by_tab.get(&tab_position).map(|workspace_state| workspace_state.source),
+                    Some(WorkspaceStateSource::Explicit)
+                ) =>
+            {
+                Some(SessionWorkspace { root, source })
+            }
+            _ => None,
+        };
+        let bootstrap_workspace = match (workspace_root, workspace_source) {
+            (Some(root), Some(source))
+                if source == "bootstrap" =>
+            {
+                Some(SessionWorkspace { root, source })
+            }
+            _ => None,
+        };
+        let editor_pane = active_tab_position
+            .and_then(|tab_position| self.managed_panes_by_tab.get(&tab_position))
+            .and_then(|managed_tab_panes| managed_tab_panes.editor);
+        let sidebar_pane = active_tab_position
+            .and_then(|tab_position| self.managed_panes_by_tab.get(&tab_position))
+            .and_then(|managed_tab_panes| managed_tab_panes.sidebar);
+        let sidebar_yazi_state =
+            active_tab_position.and_then(|tab_position| self.get_active_sidebar_yazi_state_snapshot(tab_position));
+        let focus_context = match active_tab_position
+            .and_then(|tab_position| self.focus_context_by_tab.get(&tab_position).copied())
+            .unwrap_or(FocusContext::Other)
+        {
+            FocusContext::Editor => "editor",
+            FocusContext::Sidebar => "sidebar",
+            FocusContext::Other => "other",
+        };
+
+        ActiveTabReadState {
+            active_swap_layout_name,
+            explicit_workspace,
+            bootstrap_workspace,
+            editor_pane_id: pane_id_to_string(editor_pane.map(|pane| pane.pane_id)),
+            sidebar_pane_id: pane_id_to_string(sidebar_pane.map(|pane| pane.pane_id)),
+            sidebar_yazi: sidebar_yazi_state.map(|state| SessionSidebarYazi {
+                yazi_id: state.yazi_id.clone(),
+                cwd: state.cwd.clone(),
+            }),
+            sidebar_collapsed: layout_variant.map(|variant| variant.is_sidebar_closed()),
+            focus_context: focus_context.to_string(),
+        }
+    }
+
+    fn active_tab_session_state_snapshot(&self, active_tab_position: usize) -> ActiveTabSessionStateV1 {
+        let read_state = self.collect_active_tab_read_state(Some(active_tab_position));
+        build_active_tab_session_state_v1(active_tab_position, read_state)
+    }
+
     pub(crate) fn smart_reveal(&self, pipe_message: &PipeMessage) {
         let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
             return;
@@ -361,51 +442,27 @@ impl State {
 
     pub(crate) fn debug_editor_state(&self, pipe_message: &PipeMessage) {
         let active_tab_position = self.active_tab_position;
-        let active_swap_layout_name = active_tab_position
-            .and_then(|tab_position| self.active_swap_layout_name_by_tab.get(&tab_position))
-            .cloned()
-            .flatten();
-        let layout_variant = active_tab_position
-            .and_then(|tab_position| self.get_active_layout_variant(tab_position));
-        let workspace_root = active_tab_position
-            .and_then(|tab_position| self.workspace_state_by_tab.get(&tab_position))
-            .map(|workspace_state| workspace_state.root.clone())
-            .or_else(|| self.initial_workspace_state.clone().map(|state| state.root));
-        let workspace_root_source = active_tab_position
-            .and_then(|tab_position| self.workspace_state_by_tab.get(&tab_position))
-            .map(|workspace_state| match workspace_state.source {
-                WorkspaceStateSource::Bootstrap => "bootstrap",
-                WorkspaceStateSource::Explicit => "explicit",
-            })
-            .or_else(|| {
-                self.initial_workspace_state
-                    .as_ref()
-                    .map(|workspace_state| match workspace_state.source {
-                        WorkspaceStateSource::Bootstrap => "bootstrap",
-                        WorkspaceStateSource::Explicit => "explicit",
-                    })
-            })
-            .map(str::to_string);
-        let editor_pane = active_tab_position
-            .and_then(|tab_position| self.managed_panes_by_tab.get(&tab_position))
-            .and_then(|managed_tab_panes| managed_tab_panes.editor);
-        let sidebar_pane = active_tab_position
-            .and_then(|tab_position| self.managed_panes_by_tab.get(&tab_position))
-            .and_then(|managed_tab_panes| managed_tab_panes.sidebar);
-        let sidebar_yazi_state = active_tab_position
-            .and_then(|tab_position| self.get_active_sidebar_yazi_state_snapshot(tab_position));
+        let read_state = self.collect_active_tab_read_state(active_tab_position);
 
         let state = DebugEditorState {
             permissions_granted: self.permissions_granted,
             active_tab_position,
-            active_swap_layout_name,
-            workspace_root,
-            workspace_root_source,
-            editor_pane_id: pane_id_to_string(editor_pane.map(|pane| pane.pane_id)),
-            sidebar_pane_id: pane_id_to_string(sidebar_pane.map(|pane| pane.pane_id)),
-            sidebar_yazi_id: sidebar_yazi_state.map(|state| state.yazi_id.clone()),
-            sidebar_yazi_cwd: sidebar_yazi_state.map(|state| state.cwd.clone()),
-            sidebar_is_collapsed: layout_variant.map(|variant| variant.is_sidebar_closed()),
+            active_swap_layout_name: read_state.active_swap_layout_name,
+            workspace_root: read_state
+                .explicit_workspace
+                .as_ref()
+                .or(read_state.bootstrap_workspace.as_ref())
+                .map(|workspace| workspace.root.clone()),
+            workspace_root_source: read_state
+                .explicit_workspace
+                .as_ref()
+                .or(read_state.bootstrap_workspace.as_ref())
+                .map(|workspace| workspace.source.clone()),
+            editor_pane_id: read_state.editor_pane_id,
+            sidebar_pane_id: read_state.sidebar_pane_id,
+            sidebar_yazi_id: read_state.sidebar_yazi.as_ref().map(|state| state.yazi_id.clone()),
+            sidebar_yazi_cwd: read_state.sidebar_yazi.as_ref().map(|state| state.cwd.clone()),
+            sidebar_is_collapsed: read_state.sidebar_collapsed,
         };
 
         match serde_json::to_string(&state) {
@@ -418,79 +475,7 @@ impl State {
         let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
             return;
         };
-
-        let active_swap_layout_name = self
-            .active_swap_layout_name_by_tab
-            .get(&active_tab_position)
-            .cloned()
-            .flatten();
-        let layout_variant = self.get_active_layout_variant(active_tab_position);
-        let workspace_root = self
-            .workspace_state_by_tab
-            .get(&active_tab_position)
-            .map(|workspace_state| workspace_state.root.clone())
-            .or_else(|| self.initial_workspace_state.clone().map(|state| state.root));
-        let workspace_source_str: Option<String> = self
-            .workspace_state_by_tab
-            .get(&active_tab_position)
-            .map(|workspace_state| match workspace_state.source {
-                WorkspaceStateSource::Bootstrap => "bootstrap".to_string(),
-                WorkspaceStateSource::Explicit => "explicit".to_string(),
-            })
-            .or_else(|| {
-                self.initial_workspace_state.as_ref().map(|workspace_state| {
-                    match workspace_state.source {
-                        WorkspaceStateSource::Bootstrap => "bootstrap".to_string(),
-                        WorkspaceStateSource::Explicit => "explicit".to_string(),
-                    }
-                })
-            });
-
-        let workspace = match (workspace_root, workspace_source_str) {
-            (Some(root), Some(source)) => Some(SessionWorkspace { root, source }),
-            _ => None,
-        };
-
-        let editor_pane = self
-            .managed_panes_by_tab
-            .get(&active_tab_position)
-            .and_then(|managed_tab_panes| managed_tab_panes.editor);
-        let sidebar_pane = self
-            .managed_panes_by_tab
-            .get(&active_tab_position)
-            .and_then(|managed_tab_panes| managed_tab_panes.sidebar);
-
-        let sidebar_yazi_state = self.get_active_sidebar_yazi_state_snapshot(active_tab_position);
-
-        let focus_context = match self
-            .focus_context_by_tab
-            .get(&active_tab_position)
-            .copied()
-            .unwrap_or(FocusContext::Other)
-        {
-            FocusContext::Editor => "editor",
-            FocusContext::Sidebar => "sidebar",
-            FocusContext::Other => "other",
-        };
-
-        let snapshot = ActiveTabSessionStateV1 {
-            schema_version: 1,
-            active_tab_position,
-            workspace,
-            managed_panes: SessionManagedPanes {
-                editor_pane_id: pane_id_to_string(editor_pane.map(|pane| pane.pane_id)),
-                sidebar_pane_id: pane_id_to_string(sidebar_pane.map(|pane| pane.pane_id)),
-            },
-            focus_context: focus_context.to_string(),
-            layout: SessionLayout {
-                active_swap_layout_name,
-                sidebar_collapsed: layout_variant.map(|variant| variant.is_sidebar_closed()),
-            },
-            sidebar_yazi: sidebar_yazi_state.map(|state| SessionSidebarYazi {
-                yazi_id: state.yazi_id.clone(),
-                cwd: state.cwd.clone(),
-            }),
-        };
+        let snapshot = self.active_tab_session_state_snapshot(active_tab_position);
 
         match serde_json::to_string(&snapshot) {
             Ok(serialized) => self.respond(pipe_message, &serialized),
@@ -556,6 +541,7 @@ impl TerminalPaneLayout {
         }
     }
 }
+
 
 fn select_managed_terminal_pane(
     panes: &[PaneInfo],

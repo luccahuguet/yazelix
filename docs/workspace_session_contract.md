@@ -97,7 +97,11 @@ Concretely, Nushell owns logic like:
 - layout-family and sidebar-open/closed operations
 - opening workspace terminals from the stored workspace root
 
-Concretely, the plugin owns state surfaced by `debug_editor_state`.
+Concretely, the plugin owns state surfaced by the stable
+`get_active_tab_session_state` seam.
+
+`debug_editor_state` remains a debug-oriented inspection payload, not the
+primary long-term contract for active-tab session truth.
 
 ### Yazi Cache Owns
 
@@ -250,16 +254,22 @@ These are honest gaps in the current design.
 The plugin currently seeds new tabs from its `initial_cwd` bootstrap state.
 That is coherent, but it is still a product decision, not just an implementation detail.
 
-### Stable Typed Read Surface Is Still Missing
+### Stable Typed Read Surface Now Exists
 
-Current active-tab reads still lean on `debug_editor_state`, which is a
-debug-oriented payload rather than a versioned session-truth contract.
+The pane orchestrator now exposes `get_active_tab_session_state` as the stable,
+versioned read seam for active-tab session truth.
 
-The plugin already tracks focus context and other tab-local truth internally,
-but not all of that state is exposed through one explicit stable read seam yet.
+That seam carries:
 
-`yazelix-0w1u.1` should promote one narrow typed active-tab snapshot so Nushell
-and sidebar/Yazi consumers can stop depending on debug payload shape.
+- active tab position
+- workspace root plus `bootstrap` vs `explicit` source
+- managed editor/sidebar pane identity
+- focus context
+- layout/sidebar-collapsed state
+- validated current-tab sidebar Yazi identity
+
+Nushell and later sidebar/Yazi consumers should prefer this seam over
+`debug_editor_state` when they need contract-level tab-local truth.
 
 ### Sidebar Cache Is Telemetry, Not Truth
 
