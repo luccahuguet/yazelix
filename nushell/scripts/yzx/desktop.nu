@@ -2,8 +2,7 @@
 
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/common.nu get_yazelix_runtime_dir
-use ../utils/install_ownership.nu has_home_manager_managed_install
-use ../utils/launcher_resolution.nu resolve_desktop_launcher_path
+use ../utils/install_ownership_report.nu evaluate_install_ownership_report
 use ../utils/startup_profile.nu [profile_startup_step propagate_startup_profile_env]
 
 const DESKTOP_LAUNCH_CLEARED_ENV_KEYS = [
@@ -171,15 +170,15 @@ def get_desktop_launch_env [runtime_dir: string] {
 export def "yzx desktop install" [
     --print-path(-p) # Print only the installed desktop-file path
 ] {
-    if (has_home_manager_managed_install) {
-        error make {msg: "Home Manager owns Yazelix desktop integration for this install. Reapply your Home Manager configuration for the profile desktop entry, or run `yzx desktop uninstall` only to remove a stale user-local entry."}
-    }
-
     let runtime_dir = (get_yazelix_runtime_dir)
     if $runtime_dir == null {
         error make {msg: "Cannot resolve a Yazelix runtime root for desktop integration."}
     }
-    let launcher_path = (resolve_desktop_launcher_path $runtime_dir)
+    let install_report = (evaluate_install_ownership_report --runtime-dir $runtime_dir)
+    if $install_report.install_owner == "home-manager" {
+        error make {msg: "Home Manager owns Yazelix desktop integration for this install. Reapply your Home Manager configuration for the profile desktop entry, or run `yzx desktop uninstall` only to remove a stale user-local entry."}
+    }
+    let launcher_path = $install_report.desktop_launcher_path
 
     if not ($runtime_dir | path exists) {
         error make {msg: $"Missing Yazelix runtime at ($runtime_dir)"}

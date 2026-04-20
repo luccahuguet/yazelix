@@ -63,20 +63,13 @@ pub fn evaluate_install_ownership_report(
     request: &InstallOwnershipEvaluateRequest,
 ) -> InstallOwnershipEvaluateData {
     let has_hm = has_home_manager_managed_install(&request.main_config_path);
-    let profile_candidates = home_manager_yzx_profile_paths(&request.home_dir, request.user.as_deref());
+    let profile_candidates =
+        home_manager_yzx_profile_paths(&request.home_dir, request.user.as_deref());
     let existing_profile = first_existing_profile_yzx(&profile_candidates);
-    let stable = resolve_stable_yzx_wrapper_path(
-        &request.home_dir,
-        has_hm,
-        &existing_profile,
-    );
+    let stable = resolve_stable_yzx_wrapper_path(&request.home_dir, has_hm, &existing_profile);
     let desktop_launcher = resolve_desktop_launcher_path(&request.runtime_dir, stable.as_deref());
     let desktop_launcher_str = path_to_string(&desktop_launcher);
-    let install_owner = detect_install_owner(
-        has_hm,
-        existing_profile.as_ref(),
-        &request.home_dir,
-    );
+    let install_owner = detect_install_owner(has_hm, existing_profile.as_ref(), &request.home_dir);
     let is_manual_runtime_ref = is_manual_runtime_reference_path(
         &request.yazelix_state_dir.join("runtime").join("current"),
     );
@@ -111,9 +104,6 @@ fn path_to_string(path: impl AsRef<Path>) -> String {
 }
 
 fn read_symlink_target(path: &Path) -> Option<PathBuf> {
-    if !path.exists() {
-        return None;
-    }
     fs::read_link(path).ok()
 }
 
@@ -126,9 +116,6 @@ fn is_home_manager_symlink_target(target: Option<&Path>) -> bool {
 }
 
 pub(crate) fn has_home_manager_managed_install(main_config: &Path) -> bool {
-    if !main_config.exists() {
-        return false;
-    }
     is_home_manager_symlink_target(read_symlink_target(main_config).as_deref())
 }
 
@@ -137,16 +124,15 @@ fn home_manager_yzx_profile_paths(home_dir: &Path, user: Option<&str>) -> Vec<Pa
     if let Some(u) = user {
         let u = u.trim();
         if !u.is_empty() {
-            out.push(
-                PathBuf::from("/etc/profiles/per-user")
-                    .join(u)
-                    .join("bin")
-                    .join("yzx"),
-            );
+            let per_user = PathBuf::from("/etc/profiles/per-user")
+                .join(u)
+                .join("bin")
+                .join("yzx");
+            if !out.contains(&per_user) {
+                out.push(per_user);
+            }
         }
     }
-    out.sort();
-    out.dedup();
     out
 }
 
@@ -475,8 +461,9 @@ fn check_desktop_entry_freshness(
     {
         return DoctorInstallResult {
             status: "warning".into(),
-            message: "A stale user-local Yazelix desktop entry shadows the Home Manager desktop entry"
-                .into(),
+            message:
+                "A stale user-local Yazelix desktop entry shadows the Home Manager desktop entry"
+                    .into(),
             details: Some(format!(
                 "Shadowing local entry: {}\nLocal Exec: {}\nHome Manager entry: {}\nProfile Exec: {}\nRemove the shadowing local entry with `yzx desktop uninstall`, then reapply your Home Manager configuration if the profile desktop entry is missing or stale.",
                 path_to_string(&local_path),
@@ -665,6 +652,75 @@ mod tests {
         assert!(has_home_manager_managed_install(&cfg));
     }
 
+    // Regression: dangling Home Manager symlinks must still classify the install as Home Manager-owned.
+    // Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+    #[test]
+    fn evaluate_install_ownership_keeps_home_manager_owner_for_dangling_main_config_symlink() {
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let xdg_data = home.join(".local/share");
+        let main_config = home.join(".config/yazelix/yazelix.toml");
+        let profile_yzx = home.join(".nix-profile/bin/yzx");
+
+        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
+        std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
+
+        #[cfg(unix)]
+        {
+            let dangling_target = tmp
+                .path()
+                .join("hm-marker")
+                .join("-home-manager-files")
+                .join("missing-yazelix.toml");
+            std::os::unix::fs::symlink(&dangling_target, &main_config).unwrap();
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = (&main_config, &xdg_data);
+            return;
+        }
+
+        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
+            runtime_dir: tmp.path().join("runtime"),
+            home_dir: home.clone(),
+            user: Some("test-user".into()),
+            xdg_config_home: home.join(".config"),
+            xdg_data_home: xdg_data.clone(),
+            yazelix_state_dir: xdg_data.join("yazelix"),
+            main_config_path: main_config,
+            invoked_yzx_path: None,
+            redirected_from_stale_yzx_path: None,
+            shell_resolved_yzx_path: None,
+        });
+
+        assert!(report.has_home_manager_managed_install);
+        assert_eq!(report.install_owner, "home-manager");
+        assert_eq!(
+            report.existing_home_manager_profile_yzx,
+            Some(path_to_string(&profile_yzx))
+        );
+        assert_eq!(
+            report.stable_yzx_wrapper,
+            Some(path_to_string(&profile_yzx))
+        );
+    }
+
+    // Regression: profile candidate ordering must keep ~/.nix-profile ahead of /etc/profiles/per-user.
+    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+    #[test]
+    fn home_manager_profile_candidates_preserve_home_profile_preference() {
+        let home = PathBuf::from("/tmp/home");
+        let candidates = home_manager_yzx_profile_paths(&home, Some("alice"));
+        assert_eq!(
+            candidates,
+            vec![
+                home.join(".nix-profile").join("bin").join("yzx"),
+                PathBuf::from("/etc/profiles/per-user/alice/bin/yzx"),
+            ]
+        );
+    }
+
     // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn desktop_freshness_warns_on_shadowing_local_desktop() {
@@ -672,8 +728,7 @@ mod tests {
         let home = tmp.path().join("h");
         let xdg = home.join(".local/share");
         std::fs::create_dir_all(xdg.join("applications")).unwrap();
-        let profile_apps = home
-            .join(".nix-profile/share/applications");
+        let profile_apps = home.join(".nix-profile/share/applications");
         std::fs::create_dir_all(&profile_apps).unwrap();
         let local_desktop = xdg.join("applications/com.yazelix.Yazelix.desktop");
         let profile_desktop = profile_apps.join("yazelix.desktop");
@@ -685,9 +740,7 @@ mod tests {
         let good_exec = format!("\"{}\" desktop launch", profile_yzx.display());
         std::fs::write(
             &profile_desktop,
-            format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={good_exec}\n"
-            ),
+            format!("[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={good_exec}\n"),
         )
         .unwrap();
         std::fs::write(
@@ -700,7 +753,11 @@ mod tests {
         std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
         #[cfg(unix)]
         {
-            let hm_cfg_target = tmp.path().join("hm-marker").join("-home-manager-files").join("yazelix.toml");
+            let hm_cfg_target = tmp
+                .path()
+                .join("hm-marker")
+                .join("-home-manager-files")
+                .join("yazelix.toml");
             std::fs::create_dir_all(hm_cfg_target.parent().unwrap()).unwrap();
             std::fs::write(&hm_cfg_target, "").unwrap();
             std::os::unix::fs::symlink(&hm_cfg_target, &main_config).unwrap();

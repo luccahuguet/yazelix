@@ -176,6 +176,19 @@ welcome_style = "random"
     }
 }
 
+def setup_home_manager_dangling_config_fixture [label: string] {
+    let fixture = (setup_manual_install_takeover_fixture $label)
+    let hm_store_config = ($fixture.tmp_home | path join "hm-store" "abc-home-manager-files" "missing-yazelix.toml")
+
+    mkdir ($hm_store_config | path dirname)
+    rm $fixture.config_path
+    ^ln -s $hm_store_config $fixture.config_path
+
+    $fixture | merge {
+        hm_store_config: $hm_store_config
+    }
+}
+
 def setup_home_manager_broken_profile_wrapper_fixture [label: string] {
     let fixture = (setup_manual_install_takeover_fixture $label)
     let hm_store_config = ($fixture.tmp_home | path join "hm-store" "abc-home-manager-files" "yazelix.toml")
@@ -502,6 +515,39 @@ def test_yzx_desktop_install_refuses_home_manager_owned_install [] {
             true
         } else {
             print $"  ❌ Unexpected Home Manager desktop install result: exit=($output.exit_code) stderr=($stderr) desktop_exists=($desktop_entry_still_exists)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: a dangling Home Manager config symlink still means desktop integration is Home Manager-owned.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_yzx_desktop_install_refuses_dangling_home_manager_config [] {
+    print "🧪 Testing yzx desktop install refuses a Home Manager-owned install even when the config symlink target is missing..."
+
+    let fixture = (setup_home_manager_dangling_config_fixture "yazelix_desktop_install_home_manager_dangling_config")
+
+    let result = (try {
+        let output = (run_yzx_command_for_fixture $fixture "yzx desktop install")
+        let stderr = ($output.stderr | str trim)
+        let desktop_entry_still_exists = ($fixture.desktop_path | path exists)
+
+        if (
+            ($output.exit_code != 0)
+            and ($stderr | str contains "Home Manager owns Yazelix desktop integration")
+            and ($stderr | str contains "yzx desktop uninstall")
+            and $desktop_entry_still_exists
+        ) {
+            print "  ✅ yzx desktop install still refuses Home Manager-owned desktop integration when the tracked config symlink is dangling"
+            true
+        } else {
+            print $"  ❌ Unexpected dangling Home Manager desktop install result: exit=($output.exit_code) stderr=($stderr) desktop_exists=($desktop_entry_still_exists)"
             false
         }
     } catch {|err|
@@ -1352,6 +1398,7 @@ export def run_core_canonical_tests [] {
         (test_stable_yzx_wrapper_prefers_home_manager_profile_owner)
         (test_stable_yzx_wrapper_keeps_home_manager_broken_profile_symlink)
         (test_yzx_desktop_install_refuses_home_manager_owned_install)
+        (test_yzx_desktop_install_refuses_dangling_home_manager_config)
         (test_yzx_desktop_uninstall_preserves_home_manager_cleanup_path)
         (test_yzx_desktop_uninstall_removes_manual_entry_and_icons)
         (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)

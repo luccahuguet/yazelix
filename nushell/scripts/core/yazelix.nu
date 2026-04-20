@@ -5,7 +5,7 @@
 use ../utils/atomic_writes.nu write_text_atomic
 use ../utils/constants.nu *
 use ../utils/common.nu get_yazelix_runtime_dir
-use ../utils/install_ownership.nu has_home_manager_managed_install
+use ../utils/install_ownership_report.nu evaluate_install_ownership_report
 use ../utils/launcher_resolution.nu resolve_stable_yzx_wrapper_path
 use ../utils/status_report.nu [collect_status_report render_status_report]
 use ../integrations/managed_editor.nu get_managed_editor_kind
@@ -79,7 +79,8 @@ def print_update_path_confirmation [owner: string] {
 }
 
 def fail_if_home_manager_owned_upstream_update [] {
-    if not (has_home_manager_managed_install) {
+    let install_report = (evaluate_install_ownership_report)
+    if $install_report.install_owner != "home-manager" {
         return
     }
 
