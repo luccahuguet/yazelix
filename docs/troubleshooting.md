@@ -21,6 +21,57 @@ yzx doctor --fix              # Auto-fix safe issues
 - Clean oversized log files
 - Create missing configuration files
 
+## Stale Flake Cache
+
+### Installed an Old Version
+
+If `yzx --version-short` reports an older version than expected after running `nix profile add`, Nix likely served a cached evaluation of the flake instead of fetching the latest commit.
+
+**Fix:** Add `--refresh` to force a fresh fetch:
+```bash
+nix profile add --refresh github:luccahuguet/yazelix#yazelix
+```
+
+The same applies to one-off use:
+```bash
+nix run --refresh github:luccahuguet/yazelix#yazelix -- launch
+```
+
+## Migrating from Old Repo-Based or Manual Installs
+
+If you previously installed Yazelix via `git clone`, an installer script, or manual wrapper setup, you likely have leftover artifacts that conflict with the current packaged runtime. Run `yzx doctor` first — it will flag most of these automatically.
+
+**Cleanup checklist:**
+
+1. **Remove the old `~/.local/bin/yzx` wrapper**
+   ```bash
+   rm -f ~/.local/bin/yzx
+   ```
+
+2. **Remove old shell blocks from your dotfiles**
+   Check these files for any lines that define a `yzx` function or alias pointing at an old path, and remove them:
+   - `~/.bashrc`
+   - `~/.zshrc`
+   - `~/.config/nushell/config.nu`
+   - `~/.config/fish/config.fish`
+
+3. **Remove old runtime symlink**
+   ```bash
+   rm -f ~/.local/share/yazelix/runtime/current
+   ```
+
+4. **Verify cleanup**
+   ```bash
+   type yzx
+   which yzx
+   ```
+   `type yzx` should not report a shell function. `which yzx` should resolve to `~/.nix-profile/bin/yzx` (or your Home Manager profile path), never `~/.local/bin/yzx`.
+
+5. **Run doctor to confirm**
+   ```bash
+   yzx doctor --verbose
+   ```
+
 ## Configuration File Migration
 
 **Yazelix now uses `yazelix.toml` and the packaged `yazelix` runtime instead of the old `yazelix.nix` flow.**

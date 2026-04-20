@@ -106,6 +106,11 @@ Install the Yazelix package exposed by the top-level flake:
 nix profile add github:luccahuguet/yazelix#yazelix
 ```
 
+> If you previously evaluated this flake (for example with `nix run` or `nix flake show`), Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
+> ```bash
+> nix profile add --refresh github:luccahuguet/yazelix#yazelix
+> ```
+
 After it finishes:
 
 ```bash

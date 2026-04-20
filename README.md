@@ -111,6 +111,11 @@ nix profile add github:luccahuguet/yazelix#yazelix
 yzx launch
 ```
 
+> If you previously evaluated this flake (for example with `nix run` or `nix flake show`), Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
+> ```bash
+> nix profile add --refresh github:luccahuguet/yazelix#yazelix
+> ```
+
 One-off use without installing also works:
 
 ```bash
