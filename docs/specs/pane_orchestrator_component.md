@@ -39,6 +39,7 @@ The orchestrator accepts these pipe command names:
 - `toggle_sidebar`
 - `register_sidebar_yazi_state`
 - `get_active_sidebar_yazi_state`
+- `get_active_tab_session_state`
 - `retarget_workspace`
 - `open_terminal_in_cwd`
 - `open_workspace_terminal`

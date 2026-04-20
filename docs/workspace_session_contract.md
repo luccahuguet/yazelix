@@ -119,7 +119,8 @@ It has two sources:
 
 Current behavior:
 
-- the plugin initializes new tabs from a bootstrap root, currently `HOME`
+- the plugin initializes new tabs from a bootstrap root, currently the plugin's
+  `initial_cwd`
 - explicit workspace commands replace that per-tab root
 - callers that care about the bootstrap-vs-explicit distinction should inspect the plugin state directly rather than rely on a filtered helper export
 
@@ -246,8 +247,19 @@ These are honest gaps in the current design.
 
 ### Bootstrap Policy Is Still Product Policy
 
-The plugin currently seeds new tabs from `HOME` bootstrap state.
+The plugin currently seeds new tabs from its `initial_cwd` bootstrap state.
 That is coherent, but it is still a product decision, not just an implementation detail.
+
+### Stable Typed Read Surface Is Still Missing
+
+Current active-tab reads still lean on `debug_editor_state`, which is a
+debug-oriented payload rather than a versioned session-truth contract.
+
+The plugin already tracks focus context and other tab-local truth internally,
+but not all of that state is exposed through one explicit stable read seam yet.
+
+`yazelix-0w1u.1` should promote one narrow typed active-tab snapshot so Nushell
+and sidebar/Yazi consumers can stop depending on debug payload shape.
 
 ### Sidebar Cache Is Telemetry, Not Truth
 

@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
 use serde::Serialize;
+use yazelix_pane_orchestrator::active_tab_session_state::{
+    ActiveTabSessionStateV1, SessionLayout, SessionManagedPanes, SessionSidebarYazi, SessionWorkspace,
+};
 use yazelix_pane_orchestrator::horizontal_focus_contract::{
     resolve_horizontal_focus, HorizontalDirection, HorizontalFocusPlan, HorizontalPaneSnapshot,
 };
@@ -407,6 +410,90 @@ impl State {
 
         match serde_json::to_string(&state) {
             Ok(serialized_state) => self.respond(pipe_message, &serialized_state),
+            Err(_) => self.respond(pipe_message, RESULT_INVALID_PAYLOAD),
+        }
+    }
+
+    pub(crate) fn get_active_tab_session_state(&self, pipe_message: &PipeMessage) {
+        let Some(active_tab_position) = self.ensure_action_ready(pipe_message) else {
+            return;
+        };
+
+        let active_swap_layout_name = self
+            .active_swap_layout_name_by_tab
+            .get(&active_tab_position)
+            .cloned()
+            .flatten();
+        let layout_variant = self.get_active_layout_variant(active_tab_position);
+        let workspace_root = self
+            .workspace_state_by_tab
+            .get(&active_tab_position)
+            .map(|workspace_state| workspace_state.root.clone())
+            .or_else(|| self.initial_workspace_state.clone().map(|state| state.root));
+        let workspace_source_str: Option<String> = self
+            .workspace_state_by_tab
+            .get(&active_tab_position)
+            .map(|workspace_state| match workspace_state.source {
+                WorkspaceStateSource::Bootstrap => "bootstrap".to_string(),
+                WorkspaceStateSource::Explicit => "explicit".to_string(),
+            })
+            .or_else(|| {
+                self.initial_workspace_state.as_ref().map(|workspace_state| {
+                    match workspace_state.source {
+                        WorkspaceStateSource::Bootstrap => "bootstrap".to_string(),
+                        WorkspaceStateSource::Explicit => "explicit".to_string(),
+                    }
+                })
+            });
+
+        let workspace = match (workspace_root, workspace_source_str) {
+            (Some(root), Some(source)) => Some(SessionWorkspace { root, source }),
+            _ => None,
+        };
+
+        let editor_pane = self
+            .managed_panes_by_tab
+            .get(&active_tab_position)
+            .and_then(|managed_tab_panes| managed_tab_panes.editor);
+        let sidebar_pane = self
+            .managed_panes_by_tab
+            .get(&active_tab_position)
+            .and_then(|managed_tab_panes| managed_tab_panes.sidebar);
+
+        let sidebar_yazi_state = self.get_active_sidebar_yazi_state_snapshot(active_tab_position);
+
+        let focus_context = match self
+            .focus_context_by_tab
+            .get(&active_tab_position)
+            .copied()
+            .unwrap_or(FocusContext::Other)
+        {
+            FocusContext::Editor => "editor",
+            FocusContext::Sidebar => "sidebar",
+            FocusContext::Other => "other",
+        };
+
+        let snapshot = ActiveTabSessionStateV1 {
+            schema_version: 1,
+            active_tab_position,
+            workspace,
+            managed_panes: SessionManagedPanes {
+                editor_pane_id: pane_id_to_string(editor_pane.map(|pane| pane.pane_id)),
+                sidebar_pane_id: pane_id_to_string(sidebar_pane.map(|pane| pane.pane_id)),
+            },
+            focus_context: focus_context.to_string(),
+            layout: SessionLayout {
+                active_swap_layout_name,
+                sidebar_collapsed: layout_variant.map(|variant| variant.is_sidebar_closed()),
+            },
+            sidebar_yazi: sidebar_yazi_state.map(|state| SessionSidebarYazi {
+                yazi_id: state.yazi_id.clone(),
+                cwd: state.cwd.clone(),
+            }),
+        };
+
+        match serde_json::to_string(&snapshot) {
+            Ok(serialized) => self.respond(pipe_message, &serialized),
             Err(_) => self.respond(pipe_message, RESULT_INVALID_PAYLOAD),
         }
     }

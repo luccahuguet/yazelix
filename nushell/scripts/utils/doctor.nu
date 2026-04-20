@@ -29,7 +29,7 @@ use runtime_contract_checker.nu [
     runtime_check_to_doctor_result
 ]
 use ../setup/zellij_plugin_paths.nu seed_yazelix_plugin_permissions
-use ../integrations/zellij.nu debug_editor_state
+use ../integrations/zellij.nu get_active_tab_session_state
 
 def build_runtime_distribution_doctor_result [profile: record] {
     {
@@ -252,8 +252,8 @@ def check_zellij_plugin_health [] {
         true
     })
 
-    let plugin_state = try {
-        debug_editor_state
+    let session = try {
+        get_active_tab_session_state
     } catch {|err|
         return [{
             status: "warning"
@@ -263,13 +263,43 @@ def check_zellij_plugin_health [] {
         }]
     }
 
-    if ($plugin_state.raw? | is-not-empty) {
+    if ($session.raw? | is-not-empty) {
+        let raw = ($session.raw | into string | str trim)
+        if $raw == "permissions_denied" {
+            return (build_zellij_plugin_health_results {
+                permissions_granted: false
+                active_tab_position: null
+                sidebar_pane_id: ""
+                editor_pane_id: ""
+                active_swap_layout_name: null
+            } $sidebar_enabled)
+        }
+        if $raw in ["not_ready", "missing"] {
+            return [{
+                status: "warning"
+                message: "Yazelix pane-orchestrator session state is not ready yet"
+                details: "The plugin responded before tab/workspace state was available. Wait a moment and rerun `yzx doctor` inside this Yazelix session."
+                fix_available: false
+            }]
+        }
         return [{
             status: "warning"
             message: "Yazelix pane-orchestrator returned an unexpected response"
-            details: $"Unexpected payload: ($plugin_state.raw)"
+            details: $"Unexpected payload: ($raw)"
             fix_available: false
         }]
+    }
+
+    let plugin_state = {
+        permissions_granted: true
+        active_tab_position: ($session | get -o active_tab_position | default null)
+        sidebar_pane_id: (
+            $session.managed_panes? | default {} | get -o sidebar_pane_id | default "" | into string
+        )
+        editor_pane_id: (
+            $session.managed_panes? | default {} | get -o editor_pane_id | default "" | into string
+        )
+        active_swap_layout_name: ($session.layout? | default {} | get -o active_swap_layout_name | default null)
     }
     build_zellij_plugin_health_results $plugin_state $sidebar_enabled
 }

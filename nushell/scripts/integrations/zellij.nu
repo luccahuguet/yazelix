@@ -309,6 +309,15 @@ export def debug_editor_state [] {
     }
 }
 
+export def get_active_tab_session_state [] {
+    let response = (run_pane_orchestrator_command_raw "get_active_tab_session_state")
+    try {
+        $response | from json
+    } catch {
+        {raw: $response}
+    }
+}
+
 export def get_active_sidebar_yazi_state_from_plugin [log_file: string = "zellij_plugin.log"] {
     try {
         let response = (run_pane_orchestrator_command "get_active_sidebar_yazi_state" $log_file)
@@ -325,20 +334,24 @@ export def get_active_sidebar_yazi_state_from_plugin [log_file: string = "zellij
 
 def read_current_tab_workspace_root [--include-bootstrap] {
     let state = try {
-        debug_editor_state
+        get_active_tab_session_state
     } catch {
         null
     }
 
-    if ($state | is-empty) {
+    if ($state | is-empty) or ($state.raw? | is-not-empty) {
         null
     } else {
-        let workspace_root_source = ($state.workspace_root_source? | default "" | into string | str trim)
+        let ws = ($state.workspace? | default null)
+        if $ws == null {
+            return null
+        }
+        let workspace_root_source = ($ws.source? | default "" | into string | str trim)
         if ((not $include_bootstrap) and ($workspace_root_source == "bootstrap")) {
             return null
         }
 
-        let workspace_root = ($state.workspace_root? | default "" | into string | str trim)
+        let workspace_root = ($ws.root? | default "" | into string | str trim)
         if ($workspace_root | is-empty) {
             null
         } else {
