@@ -2,90 +2,123 @@
 
 ## Summary
 
-This inventory separates current v15 contracts from historical planning notes so old Classic-era specs stop masquerading as live branch behavior.
+This inventory separates live contracts from active planning and from archived
+transition notes.
 
-## Why
+The current failure mode to avoid is treating already-landed migration docs as
+if they were still live planning. `yzx_control` already owns `yzx env` and
+`yzx run`. `runtime-env.compute` already landed. The current roadmap is no
+longer "move env/run off Nushell." The current roadmap is "delete the remaining
+Nu bridge owners and full-owner materialization families."
 
-Yazelix kept useful design history while the product shape changed quickly. After the v15 trim, several specs still mention removed surfaces such as runtime-local `devenv`, `yazelix_packs.toml`, cached launch-profile reuse, installer-primary flows, and automatic config migrations. Keeping those files is fine; treating all of them as current contracts is not.
+## Current Starting Points
+
+Start from these files first when planning current work:
+
+- `v15_trimmed_runtime_contract.md`
+  - the primary live runtime and command-surface contract
+- `rust_migration_matrix.md`
+  - the primary delete-first roadmap for remaining product-side Nushell removal
+- `rust_nushell_bridge_contract.md`
+  - the current bridge boundary between Nushell and `yzx_core`
+- `cross_language_runtime_ownership.md`
+  - the current owner map across Nushell, Rust core, Rust plugins, Lua, and
+    POSIX shell
 
 ## Scope
 
-This file classifies the specs under `docs/specs/`. It does not restate each contract. When a row says historical, the file can still be useful design history, but new implementation work should start from a live v15 contract first.
+This inventory classifies the files under `docs/specs/`.
+
+When a row says `Historical`, the file may still be useful design history, but
+new implementation work should not start there. When a row says `Planning`, it
+is still current enough to guide future work, but it is not a shipped-product
+guarantee by itself.
+
+## Removed From Active Planning
+
+The following stale transition specs were removed on `2026-04-20` because they
+described deleted public Nushell owners rather than the current repo:
+
+- `yzx_env_run_rust_owner_transition.md`
+- `yzx_command_surface_backend_coupling.md`
 
 ## Behavior
 
 Status labels:
 
-- `Live`: current v15 contract.
-- `Planning`: useful forward-looking guidance, but not a shipped-product guarantee by itself.
-- `Historical`: superseded Classic-era or pre-trim design history.
-- `Template`: scaffolding only.
+- `Live`: current maintained contract
+- `Planning`: useful forward-looking guidance, but not a shipped contract by
+  itself
+- `Historical`: superseded transition note or pre-trim design history
+- `Template`: scaffolding only
 
 | Spec | Status | Notes |
 | --- | --- | --- |
-| `backend_capability_contract.md` | Planning | Useful backend-boundary framing, but older cached-profile assumptions should not override `v15_trimmed_runtime_contract.md`. |
-| `backend_free_workspace_slice.md` | Planning | Useful proof slice for future narrowing; not a separately supported product edition. |
-| `config_metadata_centralization_plan.md` | Planning | Still useful for future config metadata consolidation. |
-| `config_migration_engine.md` | Historical | Superseded by v15 config-surface rebirth; automatic config migrations are gone. |
-| `config_surface_and_launch_profile_contract.md` | Historical | Pre-trim launch-profile and `devenv` ownership contract. |
-| `config_surface_backend_dependence_matrix.md` | Historical | Pre-trim pack/backend dependence matrix. |
-| `cross_language_runtime_ownership.md` | Live | Current ownership map, with Rust treated as later v15.x/v16 work rather than v15.0 scope. |
-| `desktop_launch_visible_feedback.md` | Live | Current desktop-entry contract for visible pre-terminal launch progress and failure feedback. |
-| `first_run_upgrade_summary.md` | Live | Current `yzx whats_new` / first-run summary contract, now without live migration-registry probing. |
-| `flake_interface_contract.md` | Historical | Earlier installer/front-door phase; package-first v15 contract lives elsewhere. |
-| `floating_tui_panes.md` | Live | Current popup/menu transient-pane behavior family. |
-| `helix_managed_config_contract.md` | Planning | Useful future Helix config ownership contract; not the main v15 trim gate. |
-| `launch_bootstrap_rust_migration.md` | Planning | Current live seam map and staged Rust insertion plan for `yazelix-kt5.4`; do not revive historical launch-profile or `devenv` assumptions. |
-| `macos_support_floor.md` | Live | Current first-party macOS support floor for the top-level flake/package surface. |
-| `managed_config_migration_transaction_contract.md` | Historical | Superseded with the removed migration/legacy relocation engine. |
-| `nixpkgs_package_contract.md` | Live | Current package-shape target. |
-| `nonpersistent_window_session_contract.md` | Live | Current default window/session behavior contract. |
-| `one_command_install_ux.md` | Historical | Earlier installer-first planning note. |
-| `open_window_update_transition_contract.md` | Historical | Older `yzx refresh` and runtime replacement transition model. |
-| `package_runtime_first_user_and_maintainer_ux.md` | Historical | Transition-space note before v15 dropped pack sidecars and runtime-local `devenv`. |
-| `pane_orchestrator_component.md` | Live | Current internal Zellij plugin component boundary for pipe commands, plugin config keys, runtime wrapper assumptions, and pane identity invariants. |
-| `persistent_window_session_contract.md` | Live | Current persistent-session behavior contract. |
-| `runtime_activation_state_contract.md` | Historical | Earlier activation model centered on recorded launch profiles and `devenv`. |
-| `runtime_dependency_preflight_contract.md` | Live | Current launch-preflight versus doctor/install-smoke boundary. |
-| `runtime_distribution_capability_tiers.md` | Live | Current explicit update-owner and distribution-tier model. |
-| `runtime_ownership_reduction_matrix.md` | Historical | Pre-trim alternative analysis, not the current contract. |
-| `runtime_root_contract.md` | Live | Current root ownership contract. |
-| `rust_migration_matrix.md` | Planning | Rust keep/bridge/rewrite matrix and first-slice order for v15.x insertion toward v16. |
-| `rust_nushell_bridge_contract.md` | Live | Current bridge contract for incremental Rust helper insertion behind Nushell command surfaces. |
-| `shell_opened_editors.md` | Live | Current managed-editor versus shell-opened editor boundary. |
-| `status_doctor_machine_readable_reports.md` | Live | Current structured-report contract for `yzx status` and `yzx doctor`, with default human rendering and JSON inspection mode. |
-| `stale_config_diagnostics.md` | Live | Current unsupported-config diagnostic contract with no migration engine. |
-| `startup_profile_scenarios.md` | Live | Current structured startup profile scenario contract for enter, cold, desktop, and managed-window launch paths. |
-| `supply_chain_hardening.md` | Planning | Useful maintainer policy guidance for shipped/documented tools. |
-| `template.md` | Template | Spec scaffold, excluded from validation. |
-| `terminal_override_layers.md` | Live | Current terminal preference/override guidance, with Ghostty first-party in the runtime. |
-| `test_suite_governance.md` | Live | Current test strength and lane policy. |
-| `upgrade_notes_contract.md` | Live | Current structured upgrade notes contract without live migration-id registry enforcement. |
-| `v14_boundary_hardening_gate.md` | Historical | v14 release-gate design history. |
-| `v15_trimmed_runtime_contract.md` | Live | Primary branch-level v15 contract. Start here for runtime/config/update questions. |
-| `v16_rust_cli_rewrite_evaluation.md` | Planning | Go/no-go and deletion-budget document for any broader v16 Rust public-CLI path after the v15 helper-backed slices. |
-| `yazelix_core_boundary.md` | Planning | Future boundary decision; no separate Core product is supported now. |
-| `yzx_env_run_rust_owner_transition.md` | Planning | Concrete transition contract for moving `yzx env` / `yzx run` onto an internal Rust-owned leaf path before any broader public CLI rewrite. |
-| `yzx_command_palette_categories.md` | Live | Current command-palette catalog/category contract. |
-| `yzx_command_surface_backend_coupling.md` | Live | Current command-surface coupling map. |
+| `backend_capability_contract.md` | Historical | Older backend-era framing kept only as design history; current delete-first work should start from the v15 runtime and Rust migration docs instead |
+| `backend_free_workspace_slice.md` | Planning | Still useful as a proof-mode boundary for backend-free workspace behavior; not a separately supported product edition |
+| `config_metadata_centralization_plan.md` | Planning | Still useful for deleting duplicated config metadata across default config, Home Manager, and parser consumers |
+| `config_migration_engine.md` | Historical | Superseded; the automatic config migration engine is gone |
+| `config_surface_and_launch_profile_contract.md` | Historical | Pre-trim launch-profile and backend-era contract |
+| `config_surface_backend_dependence_matrix.md` | Historical | Pre-trim pack and backend dependence analysis |
+| `cross_language_runtime_ownership.md` | Live | Current language/runtime owner map, including landed Rust core helpers and the remaining mixed seams |
+| `desktop_launch_visible_feedback.md` | Live | Current desktop-entry visible feedback contract |
+| `first_run_upgrade_summary.md` | Live | Current `yzx whats_new` and first-run summary contract |
+| `flake_interface_contract.md` | Historical | Earlier installer-first contract, superseded by the current package/runtime shape |
+| `floating_tui_panes.md` | Live | Current popup and transient-pane behavior family |
+| `helix_managed_config_contract.md` | Planning | Still useful future Helix ownership contract; not yet the main delete-first migration lane |
+| `launch_bootstrap_rust_migration.md` | Historical | Transition record for the landed `runtime-env.compute` slice and the explicit stop condition for further v15.x launch/bootstrap Rust work |
+| `macos_support_floor.md` | Live | Current first-party macOS support floor |
+| `managed_config_migration_transaction_contract.md` | Historical | Superseded with the removed migration and relocation engine |
+| `nixpkgs_package_contract.md` | Live | Current package-shape target |
+| `nonpersistent_window_session_contract.md` | Live | Current default window and session behavior contract |
+| `one_command_install_ux.md` | Historical | Earlier installer-first planning note |
+| `open_window_update_transition_contract.md` | Historical | Older transition note for open-window updates |
+| `package_runtime_first_user_and_maintainer_ux.md` | Historical | Transition-space note from before v15 dropped older runtime and pack sidecar assumptions |
+| `pane_orchestrator_component.md` | Live | Current internal pane-orchestrator component boundary |
+| `pane_orchestrator_tab_local_session_state_seam.md` | Planning | Current pane-orchestrator seam proposal; not a shipped contract yet |
+| `persistent_window_session_contract.md` | Live | Current persistent-session behavior contract |
+| `runtime_activation_state_contract.md` | Historical | Earlier activation model centered on recorded launch profiles and backend-era reuse |
+| `runtime_dependency_preflight_contract.md` | Live | Current launch-preflight versus doctor/install-smoke boundary |
+| `runtime_distribution_capability_tiers.md` | Live | Current distribution-tier and update-owner model |
+| `runtime_ownership_reduction_matrix.md` | Historical | Pre-trim alternative analysis, not the current branch contract |
+| `runtime_root_contract.md` | Live | Current runtime-root ownership contract |
+| `rust_migration_matrix.md` | Planning | Primary remaining roadmap for deleting product-side Nushell owners, especially the bridge layer and materialization families |
+| `rust_nushell_bridge_contract.md` | Live | Current bridge contract for `yzx_core` helper insertion behind Nushell-owned surfaces |
+| `shell_opened_editors.md` | Live | Current managed-editor versus shell-opened editor boundary |
+| `status_doctor_machine_readable_reports.md` | Live | Current structured-report contract for `yzx status` and `yzx doctor` |
+| `stale_config_diagnostics.md` | Live | Current unsupported-config diagnostic contract without a migration engine |
+| `startup_profile_scenarios.md` | Live | Current structured startup-profile scenario contract |
+| `supply_chain_hardening.md` | Planning | Current maintainer policy guidance for shipped and documented tools |
+| `template.md` | Template | Spec scaffold, excluded from validation |
+| `terminal_override_layers.md` | Live | Current terminal preference and override guidance |
+| `test_suite_governance.md` | Live | Current test-strength and lane policy |
+| `upgrade_notes_contract.md` | Live | Current structured upgrade-notes contract |
+| `v14_boundary_hardening_gate.md` | Historical | v14 release-gate history |
+| `v15_trimmed_runtime_contract.md` | Live | Primary branch-level contract; start here for runtime, config, and update questions |
+| `v16_rust_cli_rewrite_evaluation.md` | Planning | Secondary planning note for any broader Rust public-CLI move, only after bridge and materialization deletion already shrank the remaining Nu owners |
+| `yazelix_core_boundary.md` | Planning | Future product-boundary decision; there is no separate supported Core edition today |
+| `yzx_command_palette_categories.md` | Live | Current command-palette grouping and exclusion contract |
 
 ## Non-goals
 
-- Deleting useful history just because it is historical.
-- Treating planning specs as release promises.
-- Reintroducing removed migration, pack, launch-profile, or runtime-local `devenv` surfaces to make older specs true again.
+- deleting useful design history just because it is historical
+- treating planning specs as release promises
+- reviving deleted migration, launch-profile, or backend-era surfaces just to
+  make older docs true again
 
 ## Acceptance Cases
 
-1. A maintainer can tell which specs are live before implementing against them.
-2. Migration-era and launch-profile-era specs are explicitly historical.
-3. The current v15 contract points to `v15_trimmed_runtime_contract.md` first.
-4. Future Rust work is framed as later v15.x/v16 work, not a v15.0 prerequisite.
+1. A maintainer can tell which specs are live before implementing against them
+2. Already-landed transition docs no longer masquerade as live planning
+3. The current runtime contract points at `v15_trimmed_runtime_contract.md`
+   first
+4. The current Rust roadmap points at remaining owners rather than deleted
+   `yzx env.nu` and `yzx run.nu` wrappers
 
 ## Verification
 
 - `nu nushell/scripts/dev/validate_specs.nu`
-- Manual review of all files listed under `docs/specs/`
+- manual review of all files listed under `docs/specs/`
 
 ## Traceability
 
@@ -94,4 +127,5 @@ Status labels:
 
 ## Open Questions
 
-- The inventory should be revisited after the next large trim or after Rust becomes a live implementation surface.
+- Revisit this inventory after the next real owner deletion, not after every
+  helper insertion or bridge reshuffle

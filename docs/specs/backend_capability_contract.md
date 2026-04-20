@@ -1,5 +1,13 @@
 # Backend Capability Contract
 
+> Status: Historical transition note
+> This document captures older backend-era framing around cached launch-profile,
+> installer-runtime identity, and broader activation seams
+> Current delete-first planning should start from
+> [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md),
+> [rust_nushell_bridge_contract.md](./rust_nushell_bridge_contract.md), and
+> [rust_migration_matrix.md](./rust_migration_matrix.md)
+
 ## Summary
 
 Yazelix should define its backend contract in terms of concrete capabilities, not in terms of one specific implementation. A backend is the runtime/environment layer that makes the Yazelix workspace and control-plane entrypoints possible. The contract should be precise enough to evaluate both the older Classic line and a future Nix-only `Yazelix Core` candidate without moving the goalposts. Other later backend experiments should be able to reuse the same contract instead of shaping it.

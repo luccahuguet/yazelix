@@ -112,7 +112,7 @@ Those still depend on backend activation, rebuild, or runtime/distribution owner
   - `nu -c 'source nushell/scripts/dev/test_yzx_popup_commands.nu; run_popup_canonical_tests'`
 - manual review against:
   - [workspace_session_contract.md](../workspace_session_contract.md)
-  - [yzx_command_surface_backend_coupling.md](./yzx_command_surface_backend_coupling.md)
+  - [cross_language_runtime_ownership.md](./cross_language_runtime_ownership.md)
   - [runtime_distribution_capability_tiers.md](./runtime_distribution_capability_tiers.md)
 
 ## Traceability

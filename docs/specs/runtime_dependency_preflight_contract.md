@@ -30,10 +30,13 @@ Without a written contract:
 
 ## Behavior
 
-- The runtime dependency contract is about what must be present or resolvable for a supported user-facing Yazelix entrypoint to work honestly.
-- This contract is downstream of the backend capability contract:
-  - the backend contract defines what the runtime/environment layer must make possible
-  - this contract defines what should be verified quickly before launch and what should remain in richer diagnostics
+- The runtime dependency contract is about what must be present or resolvable
+  for a supported user-facing Yazelix entrypoint to work honestly.
+- This contract is downstream of the live runtime and bridge contracts:
+  - the runtime contracts define which entrypoints, managed artifacts, and
+    owned roots exist
+  - this contract defines what should be verified quickly before launch and what
+    should remain in richer diagnostics
 - Stale-config blocking is adjacent but separate:
   - entrypoint config validation should still run before launch
   - but config parsing and unsupported-field diagnostics are not themselves part of the runtime dependency checker scope
@@ -134,7 +137,8 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 
 ## Non-goals
 
-- redefining backend capabilities already covered by the backend capability contract
+- redefining the remaining delete-first control-plane ownership already covered
+  by the runtime and Rust migration docs
 - redefining config validation or stale-config rules
 - making `yzx doctor` and launch run the exact same set of checks
 - turning launch into a slow environment audit
@@ -152,7 +156,8 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
 ## Verification
 
 - manual review against:
-  - [backend_capability_contract.md](./backend_capability_contract.md)
+  - [runtime_root_contract.md](./runtime_root_contract.md)
+  - [rust_migration_matrix.md](./rust_migration_matrix.md)
   - [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md)
   - [stale_config_diagnostics.md](./stale_config_diagnostics.md)
 - manual review of the current runtime-check code paths:

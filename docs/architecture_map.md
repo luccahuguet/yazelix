@@ -7,7 +7,9 @@ This is a maintainer-facing map, not a marketing split. The point is to answer t
 1. Which part of the repo owns a behavior?
 2. Where should deletion-first simplification pay off first?
 
-See [Subsystem Code Inventory](./subsystem_code_inventory.md) for the current LOC snapshot, the detailed runtime and maintainer breakdowns, and the trim-oriented command view built on the same subsystem families.
+See [Subsystem Code Inventory](./subsystem_code_inventory.md) for the current
+delete-first inventory, the remaining Nushell deletion lanes, and the surfaces
+that are still honest Nushell fits.
 
 ## Subsystem Families
 
@@ -48,9 +50,9 @@ Related contracts:
 
 - [v15 Trimmed Runtime Contract](./specs/v15_trimmed_runtime_contract.md)
 - [Runtime Root Contract](./specs/runtime_root_contract.md)
-- [Backend Capability Contract](./specs/backend_capability_contract.md)
+- [Rust/Nushell Bridge Contract](./specs/rust_nushell_bridge_contract.md)
+- [Rust Migration Matrix](./specs/rust_migration_matrix.md)
 - [Runtime Dependency And Launch Preflight Contract](./specs/runtime_dependency_preflight_contract.md)
-- [yzx Command Surface Backend Coupling](./specs/yzx_command_surface_backend_coupling.md)
 
 ### Workspace Session Orchestration
 

@@ -87,14 +87,14 @@ If `Core` is ever revisited:
 ## Acceptance Cases
 
 1. There is a clear decision on whether `Yazelix Core` should exist now.
-2. The answer is grounded in the command-surface audit and backend/runtime contracts rather than intuition alone.
+2. The answer is grounded in the current delete-first runtime inventory and runtime contracts rather than intuition alone.
 3. The likely keep/drop boundary is explicit enough to guide later work if the idea returns.
 4. The current recommendation is specific enough to close the planning bead instead of leaving it vague.
 
 ## Verification
 
-- manual review against [backend_capability_contract.md](./backend_capability_contract.md)
-- manual review against [yzx_command_surface_backend_coupling.md](./yzx_command_surface_backend_coupling.md)
+- manual review against [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md)
+- manual review against [rust_migration_matrix.md](./rust_migration_matrix.md)
 - manual review against [cross_language_runtime_ownership.md](./cross_language_runtime_ownership.md)
 - spec validation: `nu nushell/scripts/dev/validate_specs.nu`
 

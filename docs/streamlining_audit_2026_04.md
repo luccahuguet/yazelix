@@ -1,5 +1,12 @@
 # Streamlining Audit (April 2026)
 
+> Status: Historical audit note
+> This document records an earlier delete-first pass and still references files
+> that have since been removed
+> Current planning should start from
+> [subsystem_code_inventory.md](./subsystem_code_inventory.md) and
+> [specs/rust_migration_matrix.md](./specs/rust_migration_matrix.md)
+
 ## Summary
 
 This pass used the repo's delete-first protocol:

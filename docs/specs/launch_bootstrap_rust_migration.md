@@ -1,5 +1,12 @@
 # Launch Bootstrap Rust Migration
 
+> Status: Historical transition note
+> `runtime-env.compute` already landed, and the remaining v15.x launch and
+> bootstrap Rust follow-up was explicitly stopped on `2026-04-19`
+> Keep this file as migration history only
+> Current delete-first planning should start from
+> [rust_migration_matrix.md](./rust_migration_matrix.md)
+
 ## Summary
 
 Current v15 Yazelix launch and bootstrap work should move toward Rust only through narrow typed helper slices behind Nushell, not through a broad CLI or terminal-orchestration rewrite.

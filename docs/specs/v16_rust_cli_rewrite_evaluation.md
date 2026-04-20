@@ -2,186 +2,217 @@
 
 ## Summary
 
-A broader Rust `yzx` rewrite is only justified in v16-or-later if Rust becomes the single public owner of the command tree for the control-plane families that still matter, deletes real Nushell public-owner seams, and removes the generated extern bridge as a source of truth for command discovery.
+A broader Rust `yzx` rewrite is only justified in v16-or-later if it deletes
+the remaining public Nushell owner seams after the helper and control-plane work
+already landed.
 
-This is not a license to rewrite Yazelix just because Nushell remains large. The current v15 helper-backed Rust path already moved the high-value deterministic core behind `yzx_core`. A broader rewrite is worth doing only if it deletes the public command-registry and bridge layers that would otherwise remain permanent duplication.
+That means a broader rewrite must do more than add a Rust dispatcher. It must
+become the single public owner of command metadata, help, and parsing for the
+families it moves, while deleting the Nu registry and extern seams that would
+otherwise remain permanent duplication.
+
+This is not the next deletion lane. The current deletion lanes are:
+
+- collapsing the Nu bridge layer around `yzx_core` and `yzx_control`
+- deleting one full generator and materialization family end-to-end
 
 ## Why
 
-The v15 Rust slices proved that narrow typed helpers buy real value:
+The current branch already proved the value of narrow Rust ownership:
 
-- config normalization, config-state hashing, materialization planning, runtime dependency checks, and canonical runtime-env planning now live behind the Rust/Nushell bridge
-- the launch/startup audit concluded that the remaining v15 launch path is mostly shell-bound orchestration and should stay out of the helper rewrite
-- renderer/template ownership is explicitly locked to Nushell for v15.x
+- `yzx_core` owns typed config, state, preflight, runtime-env, materialization,
+  and structured report evaluation
+- `yzx_control` owns `yzx env`, `yzx run`, and `yzx update*`
+- the launch and startup Rust follow-up was explicitly stopped for v15.x because
+  the surviving path is mostly shell and process orchestration
 
-That leaves one larger future question: should Rust eventually own the public `yzx` CLI itself.
+That leaves one later question: should Rust eventually own more of the public
+`yzx` surface.
 
-That question should only be answered with a concrete deletion budget and explicit ownership boundaries. Otherwise a broad rewrite would just add clap on top of the same Nushell tree and leave the same product split alive underneath.
+That question is only worth answering with a concrete deletion budget. Otherwise
+the result is just a Rust root above the same Nu ownership tree.
 
 ## Scope
 
-- define when a broader Rust public-CLI rewrite is worth doing
-- define which command families are reasonable v16 Rust candidates and which should stay Nushell-owned
+- define when a broader Rust public-CLI move is worth doing
+- define which command families are realistic candidates and which should stay
+  Nushell-owned
 - define the minimum deletion budget that justifies the rewrite cost
-- define the go/no-go gates for a v16 prototype
-- record the crate-vs-in-house decision for this possible path
+- define the go and no-go gates for a later prototype
+- record the crate-vs-in-house posture for this possible path
 
 ## Rust Dependency Gate
 
 This section is the dependency gate for `yazelix-2ex.1.11`.
 
-Production crates that are acceptable only if Rust becomes the public `yzx` owner:
+Production crates that are acceptable only if Rust becomes the single public
+owner for the moved command families:
 
-- `clap`, but only if Rust replaces Nushell as the command parser, help owner, and completion source of truth
-- the existing focused helper crates already used in `rust_core/` for serialization, parsing, hashing, and error modeling
+- `clap`, but only if Rust replaces Nushell as the public parser, help owner,
+  and completion source of truth for those families
+- the existing focused helper crates already used in `rust_core/` for parsing,
+  serialization, hashing, and error modeling
 
 Dev-only crates that are acceptable:
 
-- existing command/fixture test crates such as `assert_cmd`
-- an optional snapshot-style crate for help/completion parity only if plain assertions become too noisy to maintain
-
-Logic to keep in-house:
-
-- command-family ownership and dispatch policy
-- update-owner and distribution policy
-- launch/request planning records
-- status/doctor summary models that are specific to Yazelix contracts
+- existing command and fixture test crates such as `assert_cmd`
+- an optional snapshot-style help test crate only if plain assertions become too
+  noisy
 
 Rejected by default:
 
-- `tokio`, async runtime frameworks, or process-control convenience frameworks
+- async runtime frameworks
+- process-control convenience frameworks
 - shell-discovery convenience crates
-- TUI/prompt frameworks such as `dialoguer`
-- broad terminal abstraction crates
+- TUI or prompt frameworks
 
 Packaging impact:
 
-- a broader rewrite would move `yzx` from a Nushell-owned public command to a shipped Rust binary under `bin/`
-- that cost is justified only if it deletes the public Nushell command registry, public Nushell wrapper parsing for migrated families, and the generated extern bridge timing/ownership seam
+- a broader rewrite would move more of `yzx` from a Nushell-owned public command
+  surface to a shipped Rust binary under `bin/`
+- that cost is only justified if it deletes the remaining public Nu registry and
+  extern ownership too
 
 ## Behavior
 
 ### Preconditions
 
-A broader v16 Rust CLI path is worth evaluating only because the narrower v15.x helper work already landed first:
+A broader v16 Rust CLI path is worth evaluating only if all of these are true
+first:
 
-- `config.normalize`, `config_state.compute`, `runtime_materialization.plan`, `runtime_materialization.apply`, `runtime-contract.evaluate`, and `runtime-env.compute` already deleted real deterministic Nushell owners
-- launch/startup Rust follow-up work already has a recorded stop condition in `launch_bootstrap_rust_migration.md`
-- renderer/template ownership already stays Nushell-owned under `rust_migration_matrix.md`
+- the Nu bridge layer around `config_parser.nu`, `runtime_contract_checker.nu`,
+  `generated_runtime_state.nu`, and the per-command report bridges is already
+  much thinner or partly gone
+- at least one real generator and materialization owner family has been deleted
+  or materially reduced, so a broader Rust root would not sit above the same
+  old Nu materialization core
+- Rust can own command metadata, help, and completion without shelling back into
+  the Nushell command tree for discovery
 
-If those preconditions were not true, a broader public rewrite would still be premature.
+If those preconditions are not true, a broader public rewrite is still
+premature.
 
 ### Problems The Rewrite Must Solve
 
-A broader Rust CLI is only worth doing if it solves most of these problems at once:
+A broader Rust CLI is only worth doing if it solves most of these problems at
+once:
 
-- one static source of truth for public command parsing, help, and shell completions
-- one primary owner for backend-required and mixed control-plane command families
-- less public-owner duplication between `core/yazelix.nu`, `yzx/*.nu`, and generated extern surfaces
-- tighter shell-independent usage errors and machine-readable exit behavior for noninteractive command paths
+- one source of truth for public command metadata, parsing, help, and shell
+  completion
+- one primary public owner for any command family whose inner typed logic is
+  already Rust-owned
+- deletion of the public command-registry role currently carried by
+  `core/yazelix.nu`
+- deletion of `nushell_externs.nu` as an authoritative command-metadata owner
 
 It is not worth doing just to:
 
-- reduce Nushell LOC
+- reduce Nushell LOC in the abstract
 - move shell quoting or detached process execution into Rust
-- re-port text-heavy user-facing command prose
-- chase tiny startup microbenchmarks without deleting command-owner seams
+- re-port text-heavy user-facing prose
+- wrap the same Nu command tree in a faster front door
 
 ### Command-Family Recommendation
 
-The command-family split for a future v16 public rewrite should follow the current public surface audit in `yzx_command_surface_backend_coupling.md`.
-
 | Family | Current owner | v16 recommendation |
 | --- | --- | --- |
-| Root/help/version/completion surface | `core/yazelix.nu`, generated extern bridge | Move to Rust only if Rust becomes the single public `yzx` owner |
-| Backend control plane: `yzx env`, `yzx run` | Nushell wrappers over the runtime/core bridge | First public-family candidate for Rust ownership |
-| Mixed startup/control plane: `yzx launch`, `yzx enter`, `yzx restart` | Nushell wrappers plus startup/launch helpers | Move only after the family stays scoped to request/dispatch ownership and does not drag detached terminal execution into Rust |
-| Mixed inspection: `yzx status`, `yzx doctor` | `core/yazelix.nu`, `doctor.nu`, runtime-contract helpers | Move only after machine-readable status/findings and prose rendering are split cleanly |
-| Config/edit/import UX | `yzx/config.nu`, `yzx/edit.nu`, `yzx/import.nu` | Keep Nushell-owned in v16 unless a separate later reason appears |
-| Popup/menu/screen/training/info UX | `yzx/popup.nu`, `yzx/menu.nu`, `yzx/screen.nu`, `yzx/keys.nu`, `yzx/tutor.nu`, `yzx/whats_new.nu`, `core/yazelix.nu` info commands | Keep Nushell-owned |
-| Distribution/desktop/Home Manager/maintainer surfaces | `yzx/desktop.nu`, `yzx/home_manager.nu`, `yzx/dev.nu`, update commands in `core/yazelix.nu` | Keep Nushell/Nix-owned unless a separate distribution-policy rewrite justifies moving them |
-| Live workspace/session state | Rust pane orchestrator | Keep separate from the public CLI rewrite; do not fold plugin/session truth into `rust_core` |
+| Root, help, version, and completion surface | `core/yazelix.nu`, `utils/nushell_externs.nu` | Move only if Rust becomes the single public owner of command metadata for the moved surface |
+| `yzx env`, `yzx run`, and `yzx update*` | `yzx_control` | Already migrated. Treat these as precedent, not as future scope justification by themselves |
+| `yzx launch`, `yzx enter`, `yzx restart` | Public Nu commands over Nu and POSIX orchestration | Possible later only if Rust would own request parsing and command-family metadata while Nu or POSIX still own the shell-heavy execution path |
+| `yzx status`, `yzx doctor` | Public Nu commands over Rust findings plus Nu rendering | Possible later only if the remaining public wrappers disappear and the family gains one clear owner instead of one more layer |
+| `yzx config`, `yzx edit`, `yzx import` | Nushell | Keep Nushell-owned unless a later separate ownership argument appears |
+| `yzx menu`, `yzx popup`, `yzx screen`, `yzx keys`, `yzx tutor`, `yzx whats_new`, info commands | Nushell | Keep Nushell-owned |
+| `yzx desktop`, `yzx home_manager`, maintainer surfaces, package and distribution commands | Nushell, Nix, POSIX | Keep Nushell, Nix, and POSIX-owned unless a separate distribution-policy rewrite justifies moving them |
+| Live workspace and session state | Rust pane orchestrator | Keep separate from the public CLI rewrite; do not fold plugin and session truth into `rust_core` by default |
 
-The default v16 shape is therefore not "move every command." It is "move the public command root and the control-plane families only if that becomes a cleaner single-owner model."
+The default v16 shape is therefore not "move every command." It is "move the
+public command metadata and selected control-plane families only if that becomes
+a cleaner single-owner model."
 
 ### Required Deletion Budget
 
-A broader rewrite is not approved unless it deletes all of these public-owner seams:
+A broader rewrite is not approved unless it deletes all of these public-owner
+seams:
 
-- the `export use ../yzx/*.nu *` public command registry in `nushell/scripts/core/yazelix.nu`
-- generated extern bridge regeneration as the authoritative source of public command discovery
-- public Nushell wrapper parsing for the migrated command families
-- public help/completion introspection that depends on loading the Nushell command tree
+- the public command-registry role of `core/yazelix.nu`
+- `nushell_externs.nu` as an authoritative public command-metadata owner
+- public Nushell wrapper parsing for at least one remaining family beyond the
+  already migrated `yzx_control` leaves
 
-It must also delete at least one of these family-level owners:
+It should also delete or materially shrink at least one of these still-real
+owner clusters:
 
-- `nushell/scripts/yzx/env.nu` and `nushell/scripts/yzx/run.nu` as public command wrappers
-- the public `launch` / `enter` / `restart` wrappers once their remaining ownership is narrow enough
-- the public `status` / `doctor` command owner path once their responsibilities are split clearly enough
+- the public `launch` / `enter` / `restart` family
+- the public `status` / `doctor` family
+- the surviving bridge and report owner cluster around `config_parser.nu` and
+  the report shims
 
-If a proposal keeps those surfaces and merely adds a Rust root dispatcher above them, the rewrite should be rejected.
+If a proposal keeps those surfaces and merely adds a Rust root dispatcher above
+them, reject it.
 
 ### Allowed Transition Shape
 
-If Rust becomes the public `yzx` owner in v16, surviving Nushell implementations may still exist for intentionally kept surfaces, but only as internal helpers.
+If Rust becomes the public `yzx` owner later, surviving Nushell implementations
+may still exist for intentionally kept surfaces, but only as internal helpers.
 
 Allowed:
 
-- a Rust `yzx` binary dispatching to dedicated internal Nushell entrypoints for commands that are intentionally still Nushell-owned
-- Rust-owned help/completion metadata and argument parsing for the whole public command surface
+- a Rust `yzx` binary dispatching to dedicated internal Nushell entrypoints for
+  families that are intentionally still Nushell-owned
+- Rust-owned help and completion metadata for the public command surface that it
+  owns
 
 Not allowed:
 
 - Rust shelling back into `use nushell/scripts/core/yazelix.nu *; yzx ...`
-- keeping the existing Nushell command tree as a parallel public parser/help/completion owner
-- using clap only as a thin argv shim over the unchanged public Nushell tree
+- keeping the existing Nushell command tree as a parallel public parser or help
+  owner
+- using `clap` only as a thin argv shim over the unchanged public Nushell tree
 
 ### Go / No-Go Gates
 
-Go only if all of the following are true:
+Go only if all of these are true:
 
-1. `yzx env` and `yzx run` are ready to become first-class public Rust commands without changing their contract
-2. at least one mixed family has a narrow enough internal boundary that Rust can own the public contract without inheriting fuzzy product semantics
-3. the generated extern bridge can be deleted or reduced to a compatibility surface instead of remaining part of steady-state command discovery
-4. a parity harness exists for help output, exit behavior, and the migrated command families
-5. the proposal names the exact Nushell modules that disappear or stop being public owners
+1. The already migrated `yzx_control` leaves fit cleanly into the new public
+   Rust root instead of becoming a second parallel control-plane surface
+2. At least one remaining public command family has a narrow enough internal
+   boundary that Rust can own the public contract without inheriting fuzzy
+   shell-bound behavior
+3. `nushell_externs.nu` can be deleted or reduced to compatibility-only glue
+   instead of remaining part of steady-state command discovery
+4. A parity harness exists for help output, exit behavior, and the migrated
+   command families
+5. The proposal names the exact Nu modules that stop being public owners
 
 No-go signals:
 
-- most user-facing commands would still immediately hand off to the old public Nushell tree unchanged
-- detached terminal execution or shell-boundary logic becomes the main reason to move the command
-- the proposal cannot name at least one real family-level deletion
-- the case for the rewrite depends mostly on "Rust is faster" without a command-owner simplification story
-
-### Benchmark And Maintainability Bar
-
-The justification should be measured primarily by deletion and maintainability, with performance as supporting evidence.
-
-Reasonable supporting wins:
-
-- cold `yzx --help` and shell completion discovery avoid loading the Nushell command tree
-- noninteractive control-plane commands have a tighter startup path
-- one command-metadata source replaces the current help/extern duplication
-
-Insufficient justification by itself:
-
-- trying to beat interactive startup or terminal launch latency, which is still dominated by Nushell, generated-state work, terminal startup, and Zellij handoff
+- most moved commands still immediately hand off to the old public Nu tree
+- the main reason to move a family is shell or detached-process execution
+- the proposal cannot name a real family-level deletion
+- the case for the rewrite is mostly "Rust is faster" without an owner
+  simplification story
 
 ## Non-goals
 
 - forcing all user-facing commands into Rust in one pass
-- moving renderer/template ownership out of Nushell
-- moving detached terminal execution or shell quoting into Rust just because the public CLI moved
+- moving renderer and template ownership out of Nushell by default
+- moving detached terminal execution or shell quoting into Rust just because the
+  public CLI moved
 - folding the Rust pane orchestrator into `rust_core`
-- porting maintainer-only tooling or Nix/package ownership into Rust as part of the same decision
+- porting maintainer tooling or Nix and package ownership into Rust as part of
+  the same decision
 
 ## Acceptance Cases
 
-1. A maintainer can tell when a broader Rust public-CLI rewrite is actually justified instead of guessing from Nushell size
-2. The proposal names which command families are valid v16 Rust candidates and which should remain Nushell-owned
-3. The minimum deletion budget is explicit, including the public command registry and extern-bridge seams
-4. The document states concrete go/no-go gates and rejects clap-as-thin-shim proposals
-5. The current v15 helper-backed Rust path remains the default until those gates are met
+1. A maintainer can tell when a broader Rust public-CLI rewrite is actually
+   justified instead of guessing from Nushell size
+2. The proposal names which command families are valid candidates and which
+   should remain Nushell-owned
+3. The minimum deletion budget is explicit, including the public registry and
+   extern seams
+4. The document rejects Rust-root-above-Nu-tree proposals clearly
+5. The current bridge-collapse and materialization-delete lanes remain the
+   default until those gates are met
 
 ## Verification
 
@@ -189,8 +220,6 @@ Insufficient justification by itself:
 - manual review against:
   - `docs/specs/rust_migration_matrix.md`
   - `docs/specs/rust_nushell_bridge_contract.md`
-  - `docs/specs/launch_bootstrap_rust_migration.md`
-  - `docs/specs/yzx_command_surface_backend_coupling.md`
   - `docs/specs/cross_language_runtime_ownership.md`
   - `docs/specs/v15_trimmed_runtime_contract.md`
 

@@ -9,7 +9,8 @@ The palette is a command-discovery and dispatch surface, not a second shell. So 
 - broadly include user-facing `yzx` commands that make sense as direct actions
 - explicitly exclude commands whose semantics are pane-scoped, tab-scoped, argument-driven, or maintainer-only
 
-This spec complements backend-coupling analysis. It does not replace it.
+This spec complements the runtime and delete-first command ownership docs. It
+does not replace them.
 
 ## Why
 
@@ -31,7 +32,7 @@ Without a palette-specific contract, `menu.nu` will keep accreting one-off filte
 - define practical palette categories for public `yzx` commands
 - define default palette eligibility rules
 - define explicit exclusions
-- explain how palette categories relate to backend-coupling buckets
+- explain how palette categories relate to broader runtime ownership buckets
 - provide a source-of-truth grouping that `yzx menu` can consume directly
 
 ## Source Of Truth
@@ -177,15 +178,15 @@ These commands are outside the normal palette contract:
 - `yzx cwd`
   - tab-scoped workspace mutation, not a normal palette item
 
-### Relation To Backend-Coupling Buckets
+### Relation To Runtime Ownership Buckets
 
 This spec is about palette UX, not backend architecture.
 
-`yzx_command_surface_backend_coupling.md` answers:
+`rust_migration_matrix.md` and `v15_trimmed_runtime_contract.md` answer:
 
-- which command families are backend-bound
-- which are runtime-owned
-- which are mixed seams
+- which remaining command families are delete-first Rust targets
+- which surfaces still carry real runtime ownership
+- which surfaces are likely to remain Nushell-owned
 
 This spec answers:
 
@@ -205,7 +206,8 @@ The two models should agree on inventory, but they intentionally optimize for di
 ## Verification
 
 - manual review against:
-  - [yzx_command_surface_backend_coupling.md](./yzx_command_surface_backend_coupling.md)
+  - [rust_migration_matrix.md](./rust_migration_matrix.md)
+  - [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md)
   - [architecture_map.md](../architecture_map.md)
 - command-surface sanity check:
   - `nu -c 'source nushell/scripts/core/yazelix.nu; scope commands | where name =~ "^yzx( |$)" | select name description | sort-by name'`

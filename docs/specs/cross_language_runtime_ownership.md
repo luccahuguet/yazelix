@@ -2,148 +2,182 @@
 
 ## Summary
 
-Yazelix should keep hot-path correctness concentrated in as few language/runtime owners as possible.
+Yazelix should keep hot-path correctness concentrated in as few language and
+runtime owners as possible.
 
 Current recommendation:
 
-- Nushell owns CLI UX, config semantics, runtime activation, and generated-config orchestration.
-- Rust Zellij plugins own live workspace/session state.
-- Lua Yazi plugins stay thin in-Yazi adapters.
-- POSIX shell stays limited to installer/launcher glue.
-- Zellij CLI and KDL stay transport/static-shape layers, not state owners.
+- Rust `yzx_core` owns typed config, state, preflight, runtime-env, and
+  structured report evaluation
+- Rust `yzx_control` owns the public control-plane leaf parsing and execution
+  for `yzx env`, `yzx run`, and `yzx update*`
+- Nushell owns the remaining public CLI UX, process orchestration, generated
+  file families that still live there, and final human rendering
+- Rust pane orchestrator code owns live workspace and session truth inside
+  Zellij
+- Lua Yazi plugins stay thin in-Yazi adapters
+- POSIX shell stays limited to stable launcher and host bootstrap glue
 
-The point is not to rewrite everything for v15.0. It is to stop letting one user-visible behavior depend equally on POSIX shell, Nushell, Rust, Lua, and Zellij CLI state at once. v15.0 stays a trimmed reboot with Rust still present in the pane orchestrator and workspace layer rather than a Rust-free release; selective Rust can land in later v15.x releases, while v16 is the Rust-forward target.
+The next delete-first move is not a broad CLI rewrite. The next delete-first
+move is to collapse the remaining Nu bridge owners and then delete one real
+generator and materialization owner family end-to-end.
 
 ## Why
 
-Yazelix is hardest to debug when correctness crosses too many runtimes:
+Yazelix is hardest to debug when one user-visible behavior depends equally on
+POSIX shell, Nushell, Rust core, Rust plugin state, Lua, and Zellij transport.
 
-- a workspace bug spans Nushell, the pane orchestrator, and the Yazi cache
-- a launch/runtime bug spans install glue, backend activation, and recorded profile state
-- a focus or tab-root bug crosses static KDL, runtime plugin state, and post-hoc shell sync
+The current branch is better than the old Classic-era stack, but mixed ownership
+still exists in two important places:
 
-That stack can work, but it is expensive. The right delete-first move is to decide which layer should own the truth and keep the others thin.
+- bridge-layer Nu files still surround Rust helper owners
+- generated runtime materialization is still split between Rust planning and Nu
+  orchestration or writing
+
+The delete-first answer is to make those boundaries smaller, not to add one more
+wrapper runtime.
 
 ## Scope
 
-- define language/runtime owners for the main hot paths
-- identify which layers are durable owners versus adapters
-- identify at least one high-value seam that should collapse further
-- support later Rust migration planning without forcing it into v15.0
+- define the current language and runtime owners for the main hot paths
+- distinguish durable owners from adapters
+- identify the highest-value remaining cross-language collapse
+- support later delete-first Rust planning without forcing a broad public-CLI
+  rewrite first
 
 ## Ownership Map
 
 | Layer | Should own | Should not own |
 | --- | --- | --- |
-| POSIX shell | installer entrypoints, stable launcher glue, narrow host integration scripts | workspace state, config semantics, old launch-profile freshness, tab/workspace routing |
-| Nushell | `yzx` CLI UX, config parsing and validation, runtime activation semantics, generated config orchestration, explicit integration glue | authoritative live tab state, long-lived pane identity, in-Yazi UI state, automatic config migrations |
-| Rust pane orchestrator | authoritative per-tab workspace root, managed pane identity, focus/layout/sidebar state, tab-local workspace mutations | high-level config semantics, import flows, backend refresh policy |
-| Lua Yazi plugins | in-Yazi keymaps/status UI, small adapter events, local cache writes when needed | workspace source of truth, tab identity, launch/runtime policy |
-| Zellij CLI/KDL | command transport and static layout/config shape | durable workspace truth, business logic, config ownership |
+| POSIX shell | stable launcher entrypoints, narrow host bootstrap, runtime-root discovery, shell-specific wrappers | config semantics, runtime classification, workspace truth, long-lived generated-state policy |
+| Rust `yzx_core` | typed config normalization, config-state hashing and recording, runtime-env computation, runtime preflight evaluation, materialization planning, structured status and doctor data, structured install ownership evaluation, structured render plans | public CLI UX, shell and process orchestration, final human prose, authoritative live workspace state |
+| Rust `yzx_control` | public control-plane leaf parsing and execution for `yzx env`, `yzx run`, and `yzx update*` | becoming a second general public command registry while Nushell still owns the rest of help and completion |
+| Nushell | remaining public `yzx` CLI UX, command help, startup profile schema, shell and terminal orchestration, generated file families that still live in Nu, final human rendering and integration glue | typed runtime truth already owned by `yzx_core`, authoritative live tab state already owned by the pane orchestrator |
+| Rust pane orchestrator | authoritative per-tab workspace root, managed pane identity, focus and layout state, tab-local sidebar state, tab-local mutations | high-level config semantics, runtime/update policy, install/distribution ownership |
+| Lua Yazi plugins | in-Yazi keymaps and status UI, small adapter events, local cache writes when needed | workspace source of truth, runtime policy, tab identity |
+| Zellij CLI and KDL | command transport and static layout or config shape | durable workspace truth, generated-runtime business logic, config ownership |
 
 ## Hot-Path Classification
 
 ### Runtime Activation And Refresh
 
-Primary owner: Nushell
+Current owner split:
 
-- `config_state.nu`
-- `yzx env`
-- `yzx run`
-- `yzx launch`
-- `start_yazelix`
+- Rust `yzx_core` owns typed config normalization, config-state computation,
+  runtime-env planning, runtime preflight, and structured runtime findings
+- Rust `yzx_control` owns the already migrated `env`, `run`, and `update*`
+  public control-plane leaves
+- Nushell and POSIX shell still own launch, startup, terminal dispatch, startup
+  profiles, and the remaining generated-state orchestration
 
-Reason:
+This path is no longer "Nushell owns runtime activation." It is a mixed owner
+path with a clear next delete target: the surviving Nu bridge and materialization
+owners.
 
-- these paths are about config intent, generated-state freshness, fixed runtime activation, and process activation
-- they are not plugin-state problems
+### Generated Runtime Materialization
+
+Primary current owner: mixed
+
+- Rust already owns materialization planning, repair evaluation, and Yazi or
+  Zellij render plans
+- Nushell still owns the main orchestration and writer families around
+  `generated_runtime_state.nu`, the Yazi generation family, the Zellij
+  generation family, and the terminal or Helix or initializer families
+
+This is the highest-value remaining cross-language collapse because it still
+holds large real product ownership in Nushell.
 
 ### Live Workspace And Session State
 
 Primary owner: Rust pane orchestrator
 
 - current tab workspace root
-- managed editor/sidebar identity
+- managed editor and sidebar identity
 - focus context
-- layout/sidebar open or collapsed state
-- tab-local mutations such as editor/sidebar focus toggle
+- layout and sidebar-collapsed state
+- tab-local workspace mutations
 
-Reason:
-
-- this is session-local truth inside Zellij
-- Nushell can request mutations, but it should not be the durable owner
+Nushell can request mutations or consume state, but it should not re-derive that
+truth once the plugin already owns it.
 
 ### In-Yazi Behavior
 
 Primary owner: Lua, but only as an adapter
 
 - Yazi keymap behavior
-- Yazi plugin setup/init flows
-- small local status/sidebar UI behavior
+- Yazi plugin setup and init flows
+- small local status and sidebar UI behavior
 
-Reason:
-
-- this logic belongs inside Yazi when it is purely in-Yazi UX
-- once the behavior becomes tab/workspace truth, it should move back out to the plugin or Nushell owner
+Once behavior becomes tab or workspace truth, it should move back out to the
+plugin or runtime owner instead of becoming a second Lua state model.
 
 ### Static Layout And Launch Transport
 
-Primary owner: Zellij KDL/CLI plus thin Nushell generators
+Primary owner: Zellij KDL and CLI plus thin surviving generators
 
 - generated layouts
-- `zellij run` / `zellij action`
+- `zellij run` and `zellij action`
 - declared plugin wiring
 
-Reason:
-
-- these are transport and declarative shape surfaces
-- they should not grow into state owners
+These are transport and declarative-shape surfaces. They should not grow into
+durable business-logic owners.
 
 ## High-Value Collapse To Keep Pursuing
 
-The best remaining cross-language collapse is:
+The best remaining cross-language collapse is now:
 
-- keep authoritative workspace/session truth in the Rust pane orchestrator
-- keep Yazi Lua as an adapter
-- keep Nushell out of re-deriving pane identity or focus truth when the plugin already knows it
+1. collapse the Nu bridge layer around `yzx_core` and `yzx_control`
+2. move one generated runtime materialization family to full Rust ownership
+3. defer any broad public-CLI rewrite until it deletes the public command
+   registry and extern ownership too
 
 That means:
 
-- workspace root and pane identity should keep moving toward plugin-owned truth
-- sidebar cache files should stay integration cache, not become a second workspace model
-- future Rust migration should prioritize session-state slices rather than generic CLI rewrites
+- `config_parser.nu` and the per-command bridge files should stop surviving as a
+  second ownership layer
+- `generated_runtime_state.nu` should either stay as an honest Nu owner or lose
+  ownership end-to-end
+- the Yazi, Zellij, and terminal generation families should be judged by
+  deletion budget, not by helper count
 
 ## What Should Stay In Nushell
 
 Not everything should migrate:
 
-- config semantics
-- config validation and diagnostics
-- runtime activation policy
-- explicit user-facing command UX
-- install/update/distribution glue
+- remaining public CLI UX and help for intentionally Nu-owned command families
+- startup profile schema and process orchestration
+- shell and terminal host integration
+- final human-facing remediation text and interactive UX
+- explicit integration glue around external tools when the hard part is host
+  behavior rather than typed domain modeling
 
-Those are product/control-plane concerns, and Nushell is already the right owner for them in main.
+Those are still better Nushell fits than the current bridge and materialization
+owners.
 
 ## Non-goals
 
 - rewriting all glue into Rust now
 - removing Lua or Zellij CLI usage entirely
-- forcing a second backend implementation
 - using ownership mapping as an excuse to duplicate config or runtime semantics
+- treating a broad Rust CLI rewrite as the default next step
 
 ## Acceptance Cases
 
-1. There is an explicit language/runtime map for CLI UX, backend activation, live workspace/session state, in-Yazi behavior, and static layout/transport.
-2. The map identifies the pane orchestrator as the long-lived owner for workspace/session truth.
-3. The map identifies Lua Yazi code as an adapter layer, not a workspace truth owner.
-4. Later v15.x or v16 Rust migration planning can use this map instead of guessing where the first high-value slices are.
+1. There is an explicit owner map for Rust core, Rust control-plane leaves,
+   remaining Nushell UX and orchestration, live session state, Lua adapters, and
+   POSIX glue
+2. The map reflects the Rust helper slices that already landed instead of
+   describing them as future work
+3. The map identifies bridge collapse and full-owner materialization migration
+   as the next high-value cuts
+4. Later Rust planning can use this map instead of reopening the owner question
+   from scratch
 
 ## Verification
 
 - manual review against [architecture_map.md](../architecture_map.md)
 - manual review against [workspace_session_contract.md](../workspace_session_contract.md)
-- manual review against [yzx_command_surface_backend_coupling.md](./yzx_command_surface_backend_coupling.md)
+- manual review against [rust_migration_matrix.md](./rust_migration_matrix.md)
 - spec validation: `nu nushell/scripts/dev/validate_specs.nu`
 
 ## Traceability
