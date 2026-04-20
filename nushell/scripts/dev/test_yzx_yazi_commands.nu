@@ -3,9 +3,8 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ./yzx_test_helpers.nu [setup_managed_config_fixture]
-use ../integrations/managed_editor.nu [get_managed_editor_kind]
-use ../integrations/yazi.nu [get_ya_command, get_yazi_command, refresh_active_sidebar_yazi]
-use ../integrations/yazi_sidebar_state.nu get_active_sidebar_state
+use ../integrations/managed_editor.nu [get_managed_editor_kind, sync_post_retarget_workspace_state]
+use ../integrations/yazi.nu [get_active_sidebar_state, get_ya_command, get_yazi_command, refresh_active_sidebar_yazi]
 use ../integrations/zellij.nu toggle_editor_sidebar_focus
 
 def write_executable_fixture_file [path: string, lines: list<string>] {
@@ -131,10 +130,10 @@ skip_welcome_screen = true
     $result
 }
 
-# Regression: sidebar refresh must use the pane-orchestrator-owned sidebar Yazi identity instead of the cache.
+# Regression: sidebar refresh must use the pane-orchestrator session snapshot instead of a separate raw sidebar-state seam or cache.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_refresh_active_sidebar_yazi_emits_refresh_to_plugin_sidebar_instance [] {
-    print "🧪 Testing active sidebar Yazi refresh uses the plugin-owned sidebar instance and ignores stale cache state..."
+    print "🧪 Testing active sidebar Yazi refresh uses the session snapshot sidebar instance and ignores stale cache state..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_yazi_sidebar_refresh"
@@ -158,8 +157,8 @@ ya_command = "ya"
         write_executable_fixture_file ($fake_bin | path join "zellij") [
             "#!/bin/sh"
             "for arg in \"$@\"; do"
-            "  if [ \"$arg\" = \"get_active_sidebar_yazi_state\" ]; then"
-            "    printf '%s\\n' '{\"pane_id\":\"terminal:5\",\"yazi_id\":\"plugin-sidebar-yazi-123\",\"cwd\":\"/home/test/workspace\"}'"
+            "  if [ \"$arg\" = \"get_active_tab_session_state\" ]; then"
+            "    printf '%s\\n' '{\"schema_version\":1,\"active_tab_position\":0,\"focus_context\":\"sidebar\",\"managed_panes\":{\"editor_pane_id\":null,\"sidebar_pane_id\":\"terminal:5\"},\"layout\":{\"active_swap_layout_name\":null,\"sidebar_collapsed\":false},\"sidebar_yazi\":{\"yazi_id\":\"plugin-sidebar-yazi-123\",\"cwd\":\"/home/test/workspace\"}}'"
             "    exit 0"
             "  fi"
             "done"
@@ -194,7 +193,7 @@ ya_command = "ya"
                 "emit-to plugin-sidebar-yazi-123 plugin starship /home/test/workspace",
             ])
         ) {
-            print "  ✅ active sidebar Yazi refresh now uses the plugin-owned sidebar identity and ignores stale cache entries"
+            print "  ✅ active sidebar Yazi refresh now uses the session snapshot sidebar identity and ignores stale cache entries"
             true
         } else {
             print $"  ❌ Unexpected sidebar refresh result: result=($refresh_result | to json -r) ya_args=($ya_args | to json -r)"
@@ -209,10 +208,10 @@ ya_command = "ya"
     $result
 }
 
-# Regression: active sidebar state lookup must use the pane-orchestrator-owned sidebar identity instead of filesystem cache selection.
+# Regression: active sidebar state lookup must use the pane-orchestrator session snapshot instead of a separate raw sidebar-state seam or filesystem cache selection.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_get_active_sidebar_state_uses_plugin_owned_sidebar_identity_instead_of_cache [] {
-    print "🧪 Testing active sidebar Yazi lookup uses the plugin-owned sidebar identity instead of stale cache files..."
+    print "🧪 Testing active sidebar Yazi lookup uses the session snapshot sidebar identity instead of stale cache files..."
 
     let fixture = (setup_managed_config_fixture
         "yazelix_yazi_sidebar_state_plugin_owned"
@@ -230,8 +229,8 @@ ya_command = "ya"
         write_executable_fixture_file ($fake_bin | path join "zellij") [
             "#!/bin/sh"
             "for arg in \"$@\"; do"
-            "  if [ \"$arg\" = \"get_active_sidebar_yazi_state\" ]; then"
-            "    printf '%s\\n' '{\"pane_id\":\"terminal:0\",\"yazi_id\":\"plugin-yazi-id\",\"cwd\":\"/home/plugin\"}'"
+            "  if [ \"$arg\" = \"get_active_tab_session_state\" ]; then"
+            "    printf '%s\\n' '{\"schema_version\":1,\"active_tab_position\":0,\"focus_context\":\"sidebar\",\"managed_panes\":{\"editor_pane_id\":null,\"sidebar_pane_id\":\"terminal:0\"},\"layout\":{\"active_swap_layout_name\":null,\"sidebar_collapsed\":false},\"sidebar_yazi\":{\"yazi_id\":\"plugin-yazi-id\",\"cwd\":\"/home/plugin\"}}'"
             "    exit 0"
             "  fi"
             "done"
@@ -264,10 +263,149 @@ ya_command = "ya"
             (($resolved.yazi_id? | default null) == "plugin-yazi-id")
             and (($resolved.cwd? | default null) == "/home/plugin")
         ) {
-            print "  ✅ active sidebar lookup now uses the plugin-owned sidebar identity instead of cache selection"
+            print "  ✅ active sidebar lookup now uses the session snapshot sidebar identity instead of cache selection"
             true
         } else {
             print $"  ❌ Unexpected active sidebar state: ($resolved | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: shared post-retarget sync must run the missing-editor follow-up and then sync the plugin-owned sidebar state once.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_sync_post_retarget_workspace_state_handles_missing_editor_and_sidebar_sync [] {
+    print "🧪 Testing shared post-retarget sync handles missing-editor follow-up and sidebar sync..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_post_retarget_sidebar_sync"
+        '[yazi]
+ya_command = "ya"
+'
+    )
+
+    let result = (try {
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        let target_dir = ($fixture.tmp_home | path join "workspace")
+        let ya_log = ($fixture.tmp_home | path join "ya.log")
+        let callback_log = ($fixture.tmp_home | path join "callback.log")
+        mkdir $fake_bin
+        mkdir $target_dir
+        "" | save --force --raw $callback_log
+
+        write_executable_fixture_file ($fake_bin | path join "ya") [
+            "#!/bin/sh"
+            "printf '%s\\n' \"$*\" >> \"$YAZI_TEST_LOG\""
+            "exit 0"
+        ]
+
+        let sync_result = (with-env {
+            HOME: $fixture.tmp_home
+            PATH: ($env.PATH | prepend $fake_bin)
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZI_TEST_LOG: $ya_log
+        } {
+            sync_post_retarget_workspace_state {
+                status: "ok"
+                workspace_root: $target_dir
+                editor_status: "missing"
+                sidebar_state: {
+                    yazi_id: "plugin-sidebar-yazi-123"
+                    cwd: "/home/sidebar"
+                }
+            } $target_dir "post_retarget.log" "helix" "" {
+                "opened\n" | save --append --raw $callback_log
+            }
+        })
+        let callback_lines = (open --raw $callback_log | lines | where {|line| $line | is-not-empty })
+        let ya_args = if ($ya_log | path exists) {
+            open --raw $ya_log | lines
+        } else {
+            []
+        }
+
+        if (
+            ($sync_result.status == "ok")
+            and ($callback_lines == ["opened"])
+            and ($ya_args == [$"emit-to plugin-sidebar-yazi-123 cd ($target_dir)"])
+            and (($sync_result.sidebar_sync_result.status? | default "") == "ok")
+        ) {
+            print "  ✅ shared post-retarget sync now runs missing-editor follow-up and plugin-owned sidebar sync in one path"
+            true
+        } else {
+            print $"  ❌ Unexpected shared post-retarget sync result: result=($sync_result | to json -r) callback_lines=($callback_lines | to json -r) ya_args=($ya_args | to json -r)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Regression: shared post-retarget sync must keep no-sidebar open flows on the current Yazi instance without requiring sidebar state.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_sync_post_retarget_workspace_state_keeps_current_yazi_in_no_sidebar_mode [] {
+    print "🧪 Testing shared post-retarget sync keeps current Yazi in sync when sidebar mode is disabled..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_post_retarget_no_sidebar"
+        '[editor]
+enable_sidebar = false
+[yazi]
+ya_command = "ya"
+'
+    )
+
+    let result = (try {
+        let fake_bin = ($fixture.tmp_home | path join "bin")
+        let target_dir = ($fixture.tmp_home | path join "workspace")
+        let ya_log = ($fixture.tmp_home | path join "ya.log")
+        mkdir $fake_bin
+        mkdir $target_dir
+
+        write_executable_fixture_file ($fake_bin | path join "ya") [
+            "#!/bin/sh"
+            "printf '%s\\n' \"$*\" >> \"$YAZI_TEST_LOG\""
+            "exit 0"
+        ]
+
+        let sync_result = (with-env {
+            HOME: $fixture.tmp_home
+            PATH: ($env.PATH | prepend $fake_bin)
+            YAZELIX_CONFIG_DIR: $fixture.config_dir
+            YAZELIX_RUNTIME_DIR: $fixture.repo_root
+            YAZI_TEST_LOG: $ya_log
+        } {
+            sync_post_retarget_workspace_state {
+                status: "ok"
+                workspace_root: $target_dir
+            } $target_dir "post_retarget_no_sidebar.log" "" "current-yazi-456"
+        })
+        let ya_args = if ($ya_log | path exists) {
+            open --raw $ya_log | lines
+        } else {
+            []
+        }
+
+        if (
+            ($sync_result.status == "ok")
+            and (($sync_result.sidebar_sync_result.reason? | default "") == "sidebar_disabled")
+            and ($ya_args == [$"emit-to current-yazi-456 cd ($target_dir)"])
+        ) {
+            print "  ✅ shared post-retarget sync now keeps current Yazi in sync for no-sidebar open flows"
+            true
+        } else {
+            print $"  ❌ Unexpected no-sidebar post-retarget sync result: result=($sync_result | to json -r) ya_args=($ya_args | to json -r)"
             false
         }
     } catch {|err|
@@ -348,6 +486,8 @@ export def run_yazi_canonical_tests [] {
         (test_get_managed_editor_kind_accepts_managed_helix_wrapper_env)
         (test_refresh_active_sidebar_yazi_emits_refresh_to_plugin_sidebar_instance)
         (test_get_active_sidebar_state_uses_plugin_owned_sidebar_identity_instead_of_cache)
+        (test_sync_post_retarget_workspace_state_handles_missing_editor_and_sidebar_sync)
+        (test_sync_post_retarget_workspace_state_keeps_current_yazi_in_no_sidebar_mode)
         (test_toggle_editor_sidebar_focus_reports_sidebar_target_from_plugin_response)
     ]
 }

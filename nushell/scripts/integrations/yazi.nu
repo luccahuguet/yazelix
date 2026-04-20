@@ -3,8 +3,7 @@
 
 use ../utils/logging.nu log_to_file
 use ../utils/config_parser.nu parse_yazelix_config
-use ./yazi_sidebar_state.nu get_active_sidebar_state
-use zellij.nu focus_managed_pane
+use zellij.nu [focus_managed_pane get_active_tab_session_state]
 
 def resolve_optional_command [configured: any, fallback: string] {
     let raw = ($configured | default "" | into string | str trim)
@@ -114,6 +113,38 @@ def resolve_reveal_target_path [buffer_name: string] {
     }
 
     $full_path
+}
+
+export def get_active_sidebar_state [] {
+    if ($env.ZELLIJ? | is-empty) {
+        return null
+    }
+
+    let state = (try {
+        get_active_tab_session_state
+    } catch {
+        null
+    })
+
+    if ($state | is-empty) or ($state.raw? | is-not-empty) {
+        return null
+    }
+
+    let sidebar_state = ($state.sidebar_yazi? | default null)
+    if $sidebar_state == null {
+        return null
+    }
+
+    let sidebar_yazi_id = ($sidebar_state.yazi_id? | default "" | into string | str trim)
+    let sidebar_cwd = ($sidebar_state.cwd? | default "" | into string | str trim)
+    if ($sidebar_yazi_id | is-empty) or ($sidebar_cwd | is-empty) {
+        return null
+    }
+
+    {
+        yazi_id: $sidebar_yazi_id
+        cwd: $sidebar_cwd
+    }
 }
 
 def get_active_sidebar_yazi_action_context [] {

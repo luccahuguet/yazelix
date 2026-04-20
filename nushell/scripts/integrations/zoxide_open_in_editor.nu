@@ -4,8 +4,7 @@
 
 use ../utils/logging.nu log_to_file
 use ./zellij.nu [retarget_workspace_for_path, open_new_managed_editor_in_cwd]
-use ./managed_editor.nu get_managed_editor_kind
-use ./yazi.nu [is_sidebar_enabled, sync_sidebar_yazi_state_to_directory]
+use ./managed_editor.nu [get_managed_editor_kind, sync_post_retarget_workspace_state]
 
 const LOG = "zoxide_open_in_editor.log"
 
@@ -26,42 +25,15 @@ export def main [target_dir: string] {
     let retarget_result = (retarget_workspace_for_path $target_dir $editor_kind $LOG)
     match ($retarget_result.status? | default "error") {
         "ok" => {
-            match ($retarget_result.editor_status? | default "skipped") {
-                "ok" => {
-                    log_to_file $LOG $"Set ($editor_kind) cwd to ($target_dir)"
-                }
-                "missing" => {
-                    let yazi_id = ($env.YAZI_ID? | default "" | into string | str trim)
-                    log_to_file $LOG "Managed editor pane missing, opening a new managed editor pane"
-                    open_new_managed_editor_in_cwd $editor_kind $target_dir $yazi_id $LOG
-                }
-                "unsupported_editor" => {
-                    log_to_file $LOG $"ERROR: Unsupported managed editor kind for workspace retarget: ($editor_kind)"
-                    error make {msg: $"Unsupported managed editor kind for workspace retarget: ($editor_kind)"}
-                }
-                _ => { }
-            }
+            let yazi_id = ($env.YAZI_ID? | default "" | into string | str trim)
+            sync_post_retarget_workspace_state $retarget_result $target_dir $LOG $editor_kind "" {
+                log_to_file $LOG "Managed editor pane missing, opening a new managed editor pane"
+                open_new_managed_editor_in_cwd $editor_kind $target_dir $yazi_id $LOG
+            } | ignore
         }
         _ => {
             log_to_file $LOG $"ERROR: Failed to retarget workspace/editor state: ($retarget_result)"
             error make {msg: $"Failed to retarget workspace/editor state: ($retarget_result)"}
-        }
-    }
-
-    if ($retarget_result.status == "ok") {
-        log_to_file $LOG $"Updated workspace root to: ($retarget_result.workspace_root)"
-    }
-
-    if (is_sidebar_enabled) {
-        let sync_result = if ($retarget_result.sidebar_state? | is-not-empty) {
-            sync_sidebar_yazi_state_to_directory $retarget_result.sidebar_state $target_dir $LOG
-        } else {
-            {status: "skipped", reason: "sidebar_yazi_missing"}
-        }
-        if $sync_result.status == "ok" {
-            log_to_file $LOG $"Synced sidebar Yazi to: ($sync_result.target_dir)"
-        } else {
-            log_to_file $LOG $"WARNING: Sidebar sync skipped \(status=($sync_result.status)\)"
         }
     }
 }

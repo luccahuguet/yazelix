@@ -184,10 +184,6 @@ impl ZellijPlugin for State {
                 self.register_sidebar_yazi_state(&pipe_message);
                 false
             }
-            "get_active_sidebar_yazi_state" => {
-                self.get_active_sidebar_yazi_state(&pipe_message);
-                false
-            }
             "get_active_tab_session_state" => {
                 self.get_active_tab_session_state(&pipe_message);
                 false
