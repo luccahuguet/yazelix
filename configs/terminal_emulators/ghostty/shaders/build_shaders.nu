@@ -243,12 +243,21 @@ export def build_ghostty_cursor_effect_shaders [
 
 # Main entry point when run directly.
 # Default output is the generated runtime Ghostty shader directory, not the source tree.
-def main [glow_level: string = "medium", output_dir?: path, effect_color_literal?: string] {
-    let shader_source_dir = ($env.PWD | path expand)
+def main [
+    glow_level: string = "medium"
+    output_dir?: path
+    effect_color_literal?: string
+    --source-dir: path = ""  # Shader source directory (defaults to PWD)
+] {
+    let shader_source_dir = if ($source_dir | is-empty) {
+        ($env.PWD | path expand)
+    } else {
+        ($source_dir | path expand)
+    }
     let state_dir = ($env.YAZELIX_STATE_DIR? | default "~/.local/share/yazelix" | path expand)
     let default_output_dir = ($state_dir | path join "configs" "terminal_emulators" "ghostty" "shaders")
     let shader_output_dir = (($output_dir | default $default_output_dir) | path expand)
-    print $"Building cursor trail shaders..."
+    print "Building cursor trail shaders..."
     print $"Shader source directory: ($shader_source_dir)"
     print $"Shader output directory: ($shader_output_dir)"
     print $"Glow level: ($glow_level)"

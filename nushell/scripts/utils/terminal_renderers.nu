@@ -3,12 +3,6 @@
 use config_parser.nu parse_yazelix_config
 use ./constants.nu *
 use ./common.nu get_yazelix_user_config_dir
-use ./cursor_trail_helpers.nu [
-    get_cursor_trail_random_pool
-    select_random_ghostty_trail_effect
-    select_random_ghostty_mode_effect
-    ghostty_effect_requires_always_animation
-]
 
 def get_opacity_value [transparency: string] {
     $TRANSPARENCY_VALUES | get -o $transparency | default "1.0"
@@ -16,70 +10,6 @@ def get_opacity_value [transparency: string] {
 
 def get_terminal_title [terminal: string] {
     $"Yazelix - (($TERMINAL_METADATA | get -o $terminal | default {} | get -o name | default $terminal))"
-}
-
-def get_cursor_trail_shader [color: string] {
-    $CURSOR_TRAIL_SHADERS | get -o $color | default $CURSOR_TRAIL_SHADERS.blaze
-}
-
-def select_random_ghostty_trail_color [] {
-    let pool = (get_cursor_trail_random_pool)
-    if ($pool | is-empty) {
-        null
-    } else {
-        let max_index = (($pool | length) - 1)
-        let index = (random int 0..$max_index)
-        $pool | get -o $index
-    }
-}
-
-def resolve_ghostty_trail_color [color] {
-    if ($color | is-empty) {
-        null
-    } else {
-        match $color {
-            "random" => (select_random_ghostty_trail_color),
-            _ => $color
-        }
-    }
-}
-
-def get_ghostty_cursor_color_hex [selected_color: string] {
-    $CURSOR_TRAIL_COLOR_HEX | get -o $selected_color | default $CURSOR_TRAIL_COLOR_HEX.blaze
-}
-
-def get_ghostty_cursor_effect_color_literal [selected_color] {
-    if ($selected_color == null) or ($selected_color == "none") {
-        "iCurrentCursorColor"
-    } else {
-        $CURSOR_TRAIL_COLOR_LITERALS | get -o $selected_color | default "iCurrentCursorColor"
-    }
-}
-
-def resolve_ghostty_trail_effect [effect] {
-    if ($effect | is-empty) {
-        null
-    } else {
-        match $effect {
-            "random" => (select_random_ghostty_trail_effect),
-            _ => $effect
-        }
-    }
-}
-
-def resolve_ghostty_mode_effect [effect] {
-    if ($effect | is-empty) {
-        null
-    } else {
-        match $effect {
-            "random" => (select_random_ghostty_mode_effect),
-            _ => $effect
-        }
-    }
-}
-
-def get_ghostty_cursor_effect_shader_path [effect: string] {
-    $"./shaders/generated_effects/($effect).glsl"
 }
 
 def get_terminal_override_dir [] {
@@ -126,103 +56,6 @@ def build_transparency [transparency: string, format: string, key: string] {
     }
 }
 
-def build_ghostty_transparency [transparency: string] {
-    let opacity_line = (build_transparency $transparency "ini" "background-opacity")
-    if $transparency == "none" {
-        $opacity_line
-    } else {
-        $"($opacity_line)
-background-opacity-cells = true"
-    }
-}
-
-def build_ghostty_cursor_palette [selected_color: string] {
-    if $selected_color == null {
-        "# cursor-color = #ffb929"
-    } else if $selected_color == "none" {
-        "# Cursor color palette: none \(disable Yazelix color trail palette\)"
-    } else {
-        let cursor_hex = (get_ghostty_cursor_color_hex $selected_color)
-        [
-            $"# Cursor color palette: ($selected_color)"
-            $"cursor-color = ($cursor_hex)"
-            $"custom-shader = (get_cursor_trail_shader $selected_color)"
-        ] | str join "\n"
-    }
-}
-
-def build_ghostty_cursor_effects [trail_effect, mode_effect] {
-    let selected_effects = (
-        [$trail_effect, $mode_effect]
-        | where {|effect| $effect != null and ($effect | str trim | is-not-empty)}
-    )
-    if ($selected_effects | is-empty) {
-        "# custom-shader = ./shaders/generated_effects/tail.glsl"
-    } else {
-        let header_lines = [
-            $"# Cursor effects: (($selected_effects | str join ', '))"
-        ]
-        let animation_lines = if ($mode_effect != null) and (ghostty_effect_requires_always_animation $mode_effect) {
-            ["custom-shader-animation = always"]
-        } else {
-            []
-        }
-        let shader_lines = ($selected_effects | each {|effect|
-            $"custom-shader = (get_ghostty_cursor_effect_shader_path $effect)"
-        })
-        ($header_lines | append $animation_lines | append $shader_lines | str join "\n")
-    }
-}
-
-export def resolve_ghostty_cursor_render_state [config: record] {
-    let selected_color = (resolve_ghostty_trail_color $config.ghostty_trail_color)
-
-    {
-        selected_color: $selected_color
-        selected_trail_effect: (resolve_ghostty_trail_effect $config.ghostty_trail_effect)
-        selected_mode_effect: (resolve_ghostty_mode_effect $config.ghostty_mode_effect)
-        effect_color_literal: (get_ghostty_cursor_effect_color_literal $selected_color)
-    }
-}
-
-export def generate_ghostty_config_for_state [config: record, cursor_state: record] {
-    let override_path = (get_terminal_override_path "ghostty")
-    $"($GHOSTTY_CONFIG_HEADER)
-
-# Yazelix branding for desktop environment recognition
-(build_branding "ghostty" "ini")
-
-# Theme and styling
-theme = \"($YAZELIX_THEME)\"
-window-decoration = \"none\"
-window-padding-y = 10,0
-
-# Transparency \(configurable via yazelix.toml\)
-(build_ghostty_transparency $config.transparency)
-
-# Ghostty cursor color + effects \(configurable via yazelix.toml\)
-(build_ghostty_cursor_palette $cursor_state.selected_color)
-(build_ghostty_cursor_effects $cursor_state.selected_trail_effect $cursor_state.selected_mode_effect)
-
-# Personal Yazelix Ghostty overrides \(optional, user-owned\)
-config-file = ?\"($override_path)\"
-"
-}
-
-def build_kitty_cursor [ghostty_trail_color] {
-    match $ghostty_trail_color {
-        "snow" | "random" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
-        "none" => "# cursor_trail 0  # ghostty_trail_color = none disables the fallback trail",
-        null => "# cursor_trail 0",
-        _ => "# cursor_trail 0  # Custom effects \(blaze/ocean/forest/sunset/neon/cosmic\) not supported"
-    }
-}
-
-export def generate_ghostty_config [] {
-    let config = parse_yazelix_config
-    generate_ghostty_config_for_state $config (resolve_ghostty_cursor_render_state $config)
-}
-
 export def generate_wezterm_config [] {
     let config = parse_yazelix_config
     $"-- WezTerm configuration for Yazelix
@@ -233,10 +66,10 @@ config.window_decorations = \"NONE\"
 config.window_padding = { left = 0, right = 0, top = 10, bottom = 0 }
 config.color_scheme = '($YAZELIX_THEME)'
 
--- Hide tab bar \(Zellij handles tabs\)
+-- Hide tab bar (Zellij handles tabs)
 config.enable_tab_bar = false
 
--- Transparency \(configurable via yazelix.toml\)
+-- Transparency (configurable via yazelix.toml)
 (build_transparency $config.transparency "lua" "")
 
 -- Cursor trails: Not supported in WezTerm
@@ -250,7 +83,7 @@ export def generate_kitty_config [] {
     let override_section = if ($override_path | path exists) {
         $"# Personal Yazelix Kitty overrides\ninclude ($override_path)"
     } else {
-        $"# Personal Yazelix Kitty overrides \(optional, user-owned\)\n# Create ($override_path) if you want terminal-native Kitty tweaks."
+        $"# Personal Yazelix Kitty overrides (optional, user-owned)\n# Create ($override_path) if you want terminal-native Kitty tweaks."
     }
     $"# Kitty configuration for Yazelix
 
@@ -259,7 +92,7 @@ window_padding_width 2
 include ($YAZELIX_THEME).conf
 window_title (get_terminal_title "kitty")
 
-# Transparency \(configurable via yazelix.toml\)
+# Transparency (configurable via yazelix.toml)
 (build_transparency $config.transparency "ini-space" "background_opacity")
 
 # Font settings
@@ -273,11 +106,20 @@ repaint_delay 10
 input_delay 3
 sync_to_monitor yes
 
-# Cursor trail effect \(configurable via yazelix.toml\)
+# Cursor trail effect (configurable via yazelix.toml)
 (build_kitty_cursor $config.ghostty_trail_color)
 
 # Personal Yazelix Kitty overrides
 ($override_section)"
+}
+
+def build_kitty_cursor [ghostty_trail_color] {
+    match $ghostty_trail_color {
+        "snow" | "random" => "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4",
+        "none" => "# cursor_trail 0  # ghostty_trail_color = none disables the fallback trail",
+        null => "# cursor_trail 0",
+        _ => "# cursor_trail 0  # Custom effects (blaze/ocean/forest/sunset/neon/cosmic) not supported"
+    }
 }
 
 export def generate_alacritty_base_config [] {
@@ -292,7 +134,7 @@ decorations = \"None\"
 padding = { x = 0, y = 10 }
 (build_branding "alacritty" "toml")
 
-# Transparency \(configurable via yazelix.toml\)
+# Transparency (configurable via yazelix.toml)
 (build_transparency $config.transparency "toml" "")
 
 # Cursor trails: Not supported in Alacritty
@@ -324,7 +166,7 @@ export def generate_alacritty_config [] {
 [general]
 import = [($import_rendered)]
 
-# Personal Yazelix Alacritty overrides \(optional, user-owned\)
+# Personal Yazelix Alacritty overrides (optional, user-owned)
 # Create ($override_path) if you want terminal-native Alacritty tweaks.
 "
 }
@@ -334,7 +176,7 @@ export def generate_foot_config [] {
     $"# Foot configuration for Yazelix
 
 [colors-dark]
-# Transparency \(configurable via yazelix.toml)
+# Transparency (configurable via yazelix.toml)
 (build_transparency $config.transparency "ini" "alpha")
 
 [main]

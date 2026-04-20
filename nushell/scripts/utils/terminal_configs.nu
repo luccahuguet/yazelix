@@ -1,14 +1,11 @@
 #!/usr/bin/env nu
 # Modular terminal configuration generator for yazelix
 
-use config_parser.nu parse_yazelix_config
+use config_parser.nu [parse_yazelix_config run_yzx_core_json_command]
 use ./atomic_writes.nu write_text_atomic
 use ./constants.nu *
-use ./common.nu get_yazelix_runtime_dir
-use ./terminal_ghostty_assets.nu sync_generated_ghostty_shader_assets
+use ./common.nu [get_yazelix_config_dir get_yazelix_runtime_dir]
 use ./terminal_renderers.nu [
-    generate_ghostty_config_for_state
-    resolve_ghostty_cursor_render_state
     generate_wezterm_config
     generate_kitty_config
     generate_alacritty_base_config
@@ -28,18 +25,31 @@ def ghostty_cursor_random_requested [config: record] {
     ] | any {|value| ($value | into string | str trim) == "random" }
 }
 
-def generate_ghostty_terminal_config_for_config [config: record, resolved_runtime_dir: string, ghostty_dir: string] {
-    let ghostty_cursor_state = (resolve_ghostty_cursor_render_state $config)
-    mkdir $ghostty_dir
-    write_generated_terminal_config ($ghostty_dir | path join "config") (generate_ghostty_config_for_state $config $ghostty_cursor_state)
-    let glow_level = ($config.ghostty_trail_glow? | default "medium")
-    sync_generated_ghostty_shader_assets $resolved_runtime_dir $ghostty_dir $glow_level $ghostty_cursor_state.effect_color_literal
-    $ghostty_cursor_state
+def generate_ghostty_terminal_config_via_rust [
+    runtime_dir: string
+    config_dir: string
+    state_dir: string
+    config: record
+] {
+    let glow = ($config.ghostty_trail_glow? | default "medium")
+    run_yzx_core_json_command $runtime_dir {display_config_path: "" config_file: ""} [
+        "ghostty-materialization.generate"
+        "--runtime-dir" $runtime_dir
+        "--config-dir" $config_dir
+        "--state-dir" $state_dir
+        "--transparency" ($config.transparency? | default "none")
+        "--ghostty-trail-glow" $glow
+        "--ghostty-trail-color" ($config.ghostty_trail_color? | default "")
+        "--ghostty-trail-effect" ($config.ghostty_trail_effect? | default "")
+        "--ghostty-mode-effect" ($config.ghostty_mode_effect? | default "")
+    ] "Yazelix Rust ghostty-materialization helper returned invalid JSON."
 }
 
 export def generate_selected_terminal_configs [selected_terminals: list<string>, runtime_dir?: string] {
     let config = parse_yazelix_config
     let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
+    let config_dir = (get_yazelix_config_dir)
+    let state_dir = ($YAZELIX_STATE_DIR | str replace "~" $env.HOME | path expand)
     let terminals = ($selected_terminals | where {|terminal| $terminal in $SUPPORTED_TERMINALS} | uniq)
     if ($terminals | is-empty) {
         return
@@ -54,10 +64,9 @@ export def generate_selected_terminal_configs [selected_terminals: list<string>,
 
     print "Generating bundled terminal configurations..."
 
-    # Ghostty (optional)
+    # Ghostty (via Rust)
     if $should_generate_ghostty {
-        let ghostty_dir = ($configs_dir | path join "ghostty")
-        generate_ghostty_terminal_config_for_config $config $resolved_runtime_dir $ghostty_dir | ignore
+        generate_ghostty_terminal_config_via_rust $resolved_runtime_dir $config_dir $state_dir $config | ignore
     }
 
     # Alacritty (conditional)
@@ -121,14 +130,14 @@ export def reroll_ghostty_random_cursor_config_for_launch [
     }
 
     let resolved_runtime_dir = (($runtime_dir | default (get_yazelix_runtime_dir)) | path expand)
-    let generated_dir = ($YAZELIX_GENERATED_CONFIGS_DIR | str replace "~" $env.HOME)
-    let ghostty_dir = ($generated_dir | path join "terminal_emulators" "ghostty")
+    let config_dir = (get_yazelix_config_dir)
+    let state_dir = ($YAZELIX_STATE_DIR | str replace "~" $env.HOME | path expand)
 
     if not $quiet {
         print "🎲 Rerolling Ghostty random cursor settings for this Yazelix window..."
     }
 
-    generate_ghostty_terminal_config_for_config $config $resolved_runtime_dir $ghostty_dir | ignore
+    generate_ghostty_terminal_config_via_rust $resolved_runtime_dir $config_dir $state_dir $config | ignore
 
     if not $quiet {
         print "✓ Rerolled Ghostty cursor settings"

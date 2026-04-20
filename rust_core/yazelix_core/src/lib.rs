@@ -7,6 +7,7 @@ pub mod control_plane;
 pub mod doctor_config_report;
 pub mod doctor_helix_report;
 pub mod doctor_runtime_report;
+pub mod ghostty_materialization;
 pub mod helix_materialization;
 pub mod install_ownership_report;
 pub mod runtime_contract;
@@ -38,6 +39,10 @@ pub use doctor_helix_report::{
 };
 pub use doctor_runtime_report::{
     evaluate_doctor_runtime_report, DoctorRuntimeEvaluateData, DoctorRuntimeEvaluateRequest,
+};
+pub use ghostty_materialization::{
+    generate_ghostty_materialization, GhosttyCursorState, GhosttyMaterializationData,
+    GhosttyMaterializationRequest,
 };
 pub use helix_materialization::{
     generate_helix_materialization, HelixImportNotice, HelixMaterializationData,
