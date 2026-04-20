@@ -150,7 +150,7 @@ export def regenerate_runtime_configs [runtime_dir: string, --quiet, materializa
             if not $quiet_mode {
                 print "🔧 Regenerating managed Zellij configuration..."
             }
-            generate_merged_zellij_config $runtime_dir ($plan.zellij_config_dir? | default "") | ignore
+            generate_merged_zellij_config $runtime_dir ($plan.zellij_config_dir? | default "") --quiet | ignore
         } {
             inputs_require_refresh: ($config_state.inputs_require_refresh? | default false)
             refresh_reason: ($config_state.refresh_reason? | default "")

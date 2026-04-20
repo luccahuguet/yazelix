@@ -14,6 +14,7 @@ pub mod status_report;
 pub mod update_commands;
 pub mod yazi_materialization;
 pub mod yazi_render_plan;
+pub mod zellij_materialization;
 pub mod zellij_render_plan;
 
 pub use bridge::{CoreError, ErrorClass, error_envelope, success_envelope};
@@ -57,6 +58,9 @@ pub use yazi_materialization::{
     generate_yazi_materialization,
 };
 pub use yazi_render_plan::{YaziRenderPlanData, YaziRenderPlanRequest, compute_yazi_render_plan};
+pub use zellij_materialization::{
+    ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
+};
 pub use zellij_render_plan::{
     ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,
 };

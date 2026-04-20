@@ -104,7 +104,7 @@ wrappers.
 | Status, doctor, and install report bridges | `status_report.nu`, `doctor.nu`'s inline config-doctor bridge, `doctor_helix_report.nu`, `doctor_runtime_report.nu`, `install_ownership_report.nu` | Still too many Nu owners for already structured Rust outputs | Keep collapsing these toward one shared report transport seam. Keep human rendering in Nu only where it still adds product value. | Reduced under `yazelix-ulb2.5.3`; keep shrinking the surviving owners |
 | Runtime materialization orchestrator | `generated_runtime_state.nu`, `config_state.nu`, `atomic_writes.nu` | Biggest remaining mixed control-plane owner | Only port if Rust becomes the full owner of freshness, expected artifacts, managed writes, and recorded state. A plan-only port is not enough now. | Main deletion lane: `yazelix-ulb2.3` |
 | Yazi materialization family | Rust owner: `yazi-materialization.generate`; surviving Nu wrapper: `setup/yazi_config_merger.nu` | The real Nu owner family is gone. Only a thin compatibility wrapper remains. | Keep the wrapper thin or delete it. Do not rebuild Yazi policy ownership in Nu. Dependency gate for the landed cut: in-house logic plus existing `serde` and `toml`; no new crates. | Landed under `yazelix-ulb2.3.1` |
-| Zellij materialization family | `setup/zellij_config_merger.nu`, `setup/zellij_semantic_blocks.nu`, `setup/zellij_base_config.nu`, `setup/zellij_owned_settings.nu`, `setup/zellij_plugin_paths.nu`, `setup/zellij_generation_state.nu`, `utils/layout_generator.nu` | Probably the single largest remaining product-side Nushell deletion budget, but it is more entangled than Yazi | Defer until after the first full-owner generator cut. Rust should only take this if it owns layout, config, plugin, and generation-state materialization end-to-end. | Later `yazelix-ulb2.3` work |
+| Zellij materialization family | Rust owner: `zellij-materialization.generate`; surviving Nu wrapper: `setup/zellij_config_merger.nu` | The real Nu owner family is gone. Rust owns base-config selection, semantic KDL extraction, layout rendering, plugin wasm sync, permission migration, popup-runner cleanup, and generation-state reuse. | Keep the wrapper thin or delete it. Do not rebuild Zellij policy ownership in Nu. Dependency gate for the landed cut: in-house logic plus existing `serde`, `serde_json`, `toml`, `sha2`, `thiserror`, and `lexopt`; no new crates. | Landed under `yazelix-ulb2.3.2` |
 | Terminal, Helix, and initializer materialization | `utils/terminal_configs.nu`, `utils/terminal_renderers.nu`, `setup/helix_config_merger.nu`, `setup/initializers.nu`, `setup/environment.nu` | Meaningful deletion budget, but spread across several file families | Batch this with a real full-owner materialization move. Avoid isolated helper ports that leave the Nu writer layer intact. | Later `yazelix-ulb2.3` work |
 | Launch and startup process orchestration | `core/launch_yazelix.nu`, `core/start_yazelix.nu`, `core/start_yazelix_inner.nu`, `utils/terminal_launcher.nu`, `shells/posix/*.sh` | Shell-bound and process-heavy, not the best next Rust target | Keep Nu and POSIX in v15.x. Reopen only if a new deterministic subcore appears that deletes a real owner. | No active deletion lane; historical stop note in `launch_bootstrap_rust_migration.md` |
 | Public `yzx` root, help, and completion ownership | `core/yazelix.nu`, `yzx/*.nu`, `utils/nushell_externs.nu` | Only worth touching after the bridge and materialization owners are much smaller | Defer. A broader Rust root is only justified if it deletes the public registry owner and the extern metadata owner too. | Later planning only: `yazelix-2ex.1.11` |
@@ -132,10 +132,10 @@ architecture.
 ## 2026-04-20 Generator Audit Outcome
 
 `yazelix-ulb2.3` chose the next generator and materialization deletion lane,
-and `yazelix-ulb2.3.1` completed that first full-owner cut:
+and the first two full-owner cuts have landed:
 
 - choose Yazi first, then land the full-owner Rust cut
-- defer Zellij until after the first successful full-owner cut
+- move Zellij second once the Yazi cut proves the full-owner pattern
 - do not start with the fragmented terminal, Helix, and initializer family
 
 Why Yazi first:
@@ -150,14 +150,14 @@ Why Yazi first:
 - it does not carry Zellij's extra KDL semantic-block merge, plugin wasm sync,
   generation fingerprinting, layout generation, or session-local command wiring
 
-Why not Zellij first:
+Why Zellij second:
 
-- the deletion budget is bigger, but so is the surface area and product risk
-- the current owner family spans config source selection, semantic KDL blocks,
-  owned top-level settings, plugin artifact sync, layout generation, and reuse
-  fingerprints
-- that is a good second full-owner candidate, not the first proof that the repo
-  can actually delete a generator family cleanly
+- the deletion budget was bigger, but so was the surface area and product risk
+- after the Yazi proof, Rust could take the whole owner family at once: config
+  source selection, semantic KDL blocks, owned top-level settings, plugin
+  artifact sync, layout generation, permission migration, popup-runner cleanup,
+  and reuse fingerprints
+- `zellij_config_merger.nu` is now a thin wrapper over `zellij-materialization.generate`
 
 What landed in `yazelix-ulb2.3.1`:
 
@@ -165,6 +165,17 @@ What landed in `yazelix-ulb2.3.1`:
   writes, bundled asset sync, placeholder rendering, and warm self-heal logic
 - `yazi_bundled_assets.nu` and `yazi_user_overrides.nu` are deleted
 - `yazi_config_merger.nu` is demoted to a thin compatibility wrapper over the
+  Rust owner instead of a product-side policy owner
+
+What landed in `yazelix-ulb2.3.2`:
+
+- Rust now owns Zellij base-config selection, semantic block extraction,
+  top-level setting replacement, layout rendering, stable plugin wasm sync,
+  permission-cache migration, popup-runner cleanup, and generation-state reuse
+- `zellij_semantic_blocks.nu`, `zellij_base_config.nu`,
+  `zellij_owned_settings.nu`, `zellij_plugin_paths.nu`,
+  `zellij_generation_state.nu`, and `layout_generator.nu` are deleted
+- `zellij_config_merger.nu` is demoted to a thin compatibility wrapper over the
   Rust owner instead of a product-side policy owner
 
 Why not terminal, Helix, and initializers first:
@@ -227,5 +238,6 @@ reject it.
 - After the bridge layer collapse, does `config_parser.nu` still deserve to
   survive as a named owner, or should helper transport become a smaller shared
   utility inside the remaining Nu owners
-- After a first full-owner Yazi cut lands, is the next better deletion lane the
-  Zellij family or the runtime materialization orchestrator itself
+- After the Yazi and Zellij full-owner cuts, is the next better deletion lane
+  the runtime materialization orchestrator itself or the fragmented
+  terminal/Helix/initializer family

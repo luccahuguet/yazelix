@@ -4,12 +4,22 @@
 
 use ./yzx_test_helpers.nu get_repo_root
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
-use ../setup/zellij_plugin_paths.nu [
-    get_tracked_pane_orchestrator_wasm_path
-    get_tracked_zjstatus_wasm_path
-    get_zjstatus_wasm_path
-    sync_pane_orchestrator_runtime_wasm
-]
+
+def get_tracked_pane_orchestrator_wasm_path [repo_root: string] {
+    $repo_root | path join "configs" "zellij" "plugins" "yazelix_pane_orchestrator.wasm"
+}
+
+def get_tracked_zjstatus_wasm_path [repo_root: string] {
+    $repo_root | path join "configs" "zellij" "plugins" "zjstatus.wasm"
+}
+
+def get_runtime_zjstatus_wasm_path [state_dir: string] {
+    $state_dir | path join "configs" "zellij" "plugins" "zjstatus.wasm"
+}
+
+def get_runtime_pane_orchestrator_wasm_path [state_dir: string] {
+    $state_dir | path join "configs" "zellij" "plugins" "yazelix_pane_orchestrator.wasm"
+}
 
 # Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=1 total=7/10
 # Defends: generated Zellij layouts load zjstatus from a stable Yazelix plugin path instead of a store path.
@@ -92,7 +102,8 @@ def test_zjstatus_permission_cache_migrates_to_tracked_and_stable_paths [] {
             YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_STATE_DIR: $state_dir
         } {
-            let stable_path = (get_zjstatus_wasm_path $repo_root)
+            generate_merged_zellij_config $repo_root ($tmp_home | path join "out") | ignore
+            let stable_path = (get_runtime_zjstatus_wasm_path $state_dir)
             let tracked_path = (get_tracked_zjstatus_wasm_path $repo_root)
             {
                 stable_path: $stable_path
@@ -153,7 +164,8 @@ def test_pane_orchestrator_permission_cache_migrates_run_commands_to_tracked_and
             YAZELIX_RUNTIME_DIR: $repo_root
             YAZELIX_STATE_DIR: $state_dir
         } {
-            let stable_path = (sync_pane_orchestrator_runtime_wasm $repo_root)
+            generate_merged_zellij_config $repo_root ($tmp_home | path join "out") | ignore
+            let stable_path = (get_runtime_pane_orchestrator_wasm_path $state_dir)
             let tracked_path = (get_tracked_pane_orchestrator_wasm_path $repo_root)
             {
                 stable_path: $stable_path

@@ -8,14 +8,15 @@ use yazelix_core::{
     RuntimeArtifact, RuntimeContractEvaluateRequest, RuntimeEnvComputeRequest,
     RuntimeMaterializationApplyRequest, RuntimeMaterializationPlanRequest,
     RuntimeMaterializationRepairEvaluateRequest, StartupLaunchPreflightRequest,
-    YaziMaterializationRequest, YaziRenderPlanRequest, ZellijRenderPlanRequest,
+    YaziMaterializationRequest, YaziRenderPlanRequest, ZellijMaterializationRequest,
+    ZellijRenderPlanRequest,
     apply_runtime_materialization, compute_config_state, compute_runtime_env,
     compute_status_report, compute_yazi_render_plan, compute_zellij_render_plan, error_envelope,
     evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
     evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_runtime_materialization_repair, evaluate_startup_launch_preflight,
-    generate_yazi_materialization, normalize_config, plan_runtime_materialization,
-    record_config_state, success_envelope,
+    generate_yazi_materialization, generate_zellij_materialization, normalize_config,
+    plan_runtime_materialization, record_config_state, success_envelope,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
@@ -36,6 +37,7 @@ const DOCTOR_RUNTIME_EVALUATE_COMMAND: &str = "doctor-runtime.evaluate";
 const ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND: &str = "zellij-render-plan.compute";
 const YAZI_RENDER_PLAN_COMPUTE_COMMAND: &str = "yazi-render-plan.compute";
 const YAZI_MATERIALIZATION_GENERATE_COMMAND: &str = "yazi-materialization.generate";
+const ZELLIJ_MATERIALIZATION_GENERATE_COMMAND: &str = "zellij-materialization.generate";
 const UNKNOWN_COMMAND: &str = "unknown";
 
 struct CommandError {
@@ -173,6 +175,11 @@ fn run() -> Result<(), Box<CommandError>> {
         YAZI_MATERIALIZATION_GENERATE_COMMAND => {
             let command_for_error = command.clone();
             run_yazi_materialization_generate(parser)
+                .map_err(|error| CommandError::new(command_for_error, error))
+        }
+        ZELLIJ_MATERIALIZATION_GENERATE_COMMAND => {
+            let command_for_error = command.clone();
+            run_zellij_materialization_generate(parser)
                 .map_err(|error| CommandError::new(command_for_error, error))
         }
         _ => Err(CommandError::new(
@@ -420,6 +427,43 @@ fn run_yazi_materialization_generate(mut parser: lexopt::Parser) -> Result<(), C
     };
     let data = generate_yazi_materialization(&request)?;
     write_success_envelope(YAZI_MATERIALIZATION_GENERATE_COMMAND, data)
+}
+
+fn run_zellij_materialization_generate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let mut config_path: Option<PathBuf> = None;
+    let mut default_config_path: Option<PathBuf> = None;
+    let mut contract_path: Option<PathBuf> = None;
+    let mut runtime_dir: Option<PathBuf> = None;
+    let mut zellij_config_dir: Option<PathBuf> = None;
+    let mut seed_plugin_permissions = false;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("config") => config_path = Some(parser_path_value(&mut parser)?),
+            Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
+            Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
+            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
+            Long("zellij-config-dir") => zellij_config_dir = Some(parser_path_value(&mut parser)?),
+            Long("seed-plugin-permissions") => seed_plugin_permissions = true,
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    let request = ZellijMaterializationRequest {
+        config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
+        default_config_path: default_config_path
+            .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
+        contract_path: contract_path.ok_or_else(|| CoreError::usage("Missing --contract path"))?,
+        runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
+        zellij_config_dir: zellij_config_dir
+            .ok_or_else(|| CoreError::usage("Missing --zellij-config-dir path"))?,
+        seed_plugin_permissions,
+    };
+    let data = generate_zellij_materialization(&request)?;
+    write_success_envelope(ZELLIJ_MATERIALIZATION_GENERATE_COMMAND, data)
 }
 
 fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {

@@ -15,7 +15,7 @@ This spec defines the component boundary without extracting it to a separate rep
 - Rust source under `rust_plugins/zellij_pane_orchestrator/`
 - Tracked runtime artifact at `configs/zellij/plugins/yazelix_pane_orchestrator.wasm`
 - Nushell client transport in `nushell/scripts/integrations/zellij.nu`
-- Runtime wasm sync and permission-cache ownership in `nushell/scripts/setup/zellij_plugin_paths.nu`
+- Runtime wasm sync and permission-cache ownership in Rust `zellij-materialization.generate`
 - Generated Zellij keybind/config wiring in `configs/zellij/yazelix_overrides.kdl`
 - Transient-pane wrapper scripts under `nushell/scripts/zellij_wrappers/`
 - Focused tests in `nushell/scripts/dev/test_zellij_plugin_contracts.nu`, `nushell/scripts/dev/test_yzx_generated_configs.nu`, `nushell/scripts/dev/test_yzx_workspace_commands.nu`, `nushell/scripts/dev/test_yzx_popup_commands.nu`, and Rust unit tests in the orchestrator crate

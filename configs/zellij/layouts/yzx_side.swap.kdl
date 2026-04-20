@@ -1,4 +1,4 @@
-// Sidebar pane blocks are injected by nushell/scripts/utils/layout_generator.nu
+// Sidebar pane blocks are injected by the Rust Zellij materializer
 // from configs/zellij/layouts/fragments/swap_sidebar_*.kdl.
 //
 // Layout order matters:

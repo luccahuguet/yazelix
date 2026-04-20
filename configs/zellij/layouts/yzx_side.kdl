@@ -1,4 +1,4 @@
-// Shared keybinds are injected by nushell/scripts/utils/layout_generator.nu
+// Shared keybinds are injected by the Rust Zellij materializer
 // from configs/zellij/layouts/fragments/keybinds_common.kdl.
 layout {
     tab_template name="ui" {

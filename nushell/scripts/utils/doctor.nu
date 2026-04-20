@@ -17,10 +17,19 @@ use doctor_helix_report.nu collect_helix_doctor_results
 use doctor_runtime_report.nu collect_runtime_doctor_results
 use install_ownership_report.nu evaluate_install_ownership_report
 use generated_runtime_state.nu repair_generated_runtime_state
-use ../setup/zellij_plugin_paths.nu seed_yazelix_plugin_permissions
+use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../integrations/zellij.nu get_active_tab_session_state
 
 const DOCTOR_CONFIG_EVALUATE_COMMAND = "doctor-config.evaluate"
+
+def seed_yazelix_plugin_permissions [] {
+    let runtime_dir = (require_yazelix_runtime_dir)
+    let zellij_config_dir = (get_yazelix_state_dir | path join "configs" "zellij")
+    generate_merged_zellij_config $runtime_dir $zellij_config_dir --quiet --seed-plugin-permissions | ignore
+    {
+        permissions_cache_path: ($env.HOME | path join ".cache" "zellij" "permissions.kdl")
+    }
+}
 
 def build_doctor_summary [results: list<record>] {
     let error_count = ($results | where status == "error" | length)

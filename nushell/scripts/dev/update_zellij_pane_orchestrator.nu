@@ -1,15 +1,21 @@
 #!/usr/bin/env nu
 # Sync the locally built pane orchestrator wasm into the tracked repo path
-# and the stable runtime plugin path used by active Yazelix sessions.
+# and regenerate the Rust-owned Zellij materialization outputs.
 
-use ../setup/zellij_plugin_paths.nu [
-  get_tracked_pane_orchestrator_wasm_path
-  sync_pane_orchestrator_runtime_wasm
-]
 use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../maintainer/repo_checkout.nu require_yazelix_repo_root
+use ../utils/common.nu get_yazelix_state_dir
 
 const built_plugin_relative_path = "rust_plugins/zellij_pane_orchestrator/target/wasm32-wasip1/release/yazelix_pane_orchestrator.wasm"
+const pane_orchestrator_wasm_name = "yazelix_pane_orchestrator.wasm"
+
+def get_tracked_pane_orchestrator_wasm_path [yazelix_dir: string] {
+  $yazelix_dir | path join "configs" "zellij" "plugins" $pane_orchestrator_wasm_name
+}
+
+def get_runtime_pane_orchestrator_wasm_path [] {
+  get_yazelix_state_dir | path join "configs" "zellij" "plugins" $pane_orchestrator_wasm_name
+}
 
 export def main [] {
   let yazelix_dir = (require_yazelix_repo_root)
@@ -30,8 +36,8 @@ export def main [] {
   }
 
   cp --force $source_path $repo_target_path
-  let runtime_target_path = (sync_pane_orchestrator_runtime_wasm $yazelix_dir)
   let merged_config_path = (generate_merged_zellij_config $yazelix_dir)
+  let runtime_target_path = (get_runtime_pane_orchestrator_wasm_path)
 
   print $"Updated pane orchestrator repo wasm: ($repo_target_path)"
   print $"Updated pane orchestrator runtime wasm: ($runtime_target_path)"

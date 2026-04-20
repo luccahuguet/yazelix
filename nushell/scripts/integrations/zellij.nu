@@ -2,8 +2,9 @@
 # Zellij integration utilities for Yazelix
 
 use ../utils/logging.nu *
-use ../setup/zellij_plugin_paths.nu PANE_ORCHESTRATOR_PLUGIN_ALIAS
 use ./zellij_runtime_wrappers.nu [build_floating_wrapper_env_args get_new_editor_pane_launch_env]
+
+const PANE_ORCHESTRATOR_PLUGIN_ALIAS = "yazelix_pane_orchestrator"
 
 def get_pane_orchestrator_plugin_target [] {
     $PANE_ORCHESTRATOR_PLUGIN_ALIAS
