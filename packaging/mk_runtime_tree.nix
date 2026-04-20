@@ -37,6 +37,7 @@ let
     "pdftotext"
     "pdftoppm"
     "pdftocairo"
+    "resvg"
   ];
   escapedExportedRuntimeCommands = pkgs.lib.escapeShellArgs exportedRuntimeCommands;
 in

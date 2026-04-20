@@ -44,6 +44,7 @@ with pkgs;
   ripgrep
   p7zip
   poppler
+  resvg
   nixVersions.latest
   coreutils
   findutils
@@ -55,4 +56,6 @@ with pkgs;
 ]
 ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
   procps
+  xclip
+  wl-clipboard
 ]
