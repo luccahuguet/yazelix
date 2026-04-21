@@ -102,7 +102,8 @@ ui {
 ## Troubleshooting
 
 **Config not updating?**
-- Run: `nu nushell/scripts/setup/zellij_config_merger.nu .`
+- Restart Yazelix or open a fresh Yazelix window so the managed Zellij config is regenerated
+- If the managed runtime config or plugin permissions still look stale after an update, run `yzx doctor --fix` and restart Yazelix
 
 **Settings not working as expected?**
 - Check `~/.local/share/yazelix/configs/zellij/config.kdl` for duplicate sections

@@ -54,8 +54,6 @@ that no longer justify surviving as named owners.
 | --- | ---: | --- | --- |
 | `docs/specs/yzx_env_run_rust_owner_transition.md` | doc only | Assumes public Nushell `yzx env` and `yzx run` owners still exist even though `yzx_control` already owns them | Delete it and point future planning at the current Rust control-plane owners |
 | `docs/specs/yzx_command_surface_backend_coupling.md` | doc only | Treats deleted `yzx env.nu`, `yzx run.nu`, and `yzx packs.nu` surfaces as live planning anchors | Delete it and stop using it as live architecture guidance |
-| `nushell/scripts/setup/yazi_config_merger.nu` | thin wrapper only | The full Yazi owner family is gone; this surviving file is now just a compatibility wrapper around Rust-owned Yazi materialization | Delete it when the direct Rust-owned surface becomes the only useful entrypoint |
-| `nushell/scripts/setup/zellij_config_merger.nu` | thin wrapper only | The full Zellij owner family is gone; this surviving file is now just a compatibility wrapper around Rust-owned Zellij materialization | Delete it when the direct Rust-owned surface becomes the only useful entrypoint |
 
 Most remaining product-side Nushell is not "delete now" code. It either bridges
 to an existing Rust owner or still owns real behavior.
@@ -92,9 +90,8 @@ full-owner Rust migration lane.
 Current audit outcome:
 
 - Runtime materialization is no longer a big-port target; `yazelix-ulb2.9` landed the full-owner Rust cut, deleted `generated_runtime_state.nu`, and demoted `core/materialization_orchestrator.nu` to a thin bridge
-- Yazi is no longer a big-port target; `yazelix-ulb2.3.1` landed the full-owner Rust cut and deleted the real Nu owners
-- Zellij is no longer a big-port target; `yazelix-ulb2.3.2` landed the full-owner Rust cut and deleted the semantic/base/settings/plugin/generation/layout Nu owners
-- `setup/zellij_config_merger.nu` remains only as the command-surface wrapper around `zellij-materialization.generate`
+- Yazi is no longer a big-port target; `yazelix-ulb2.3.1` landed the full-owner Rust cut, and `yazelix-vf0u.1` deleted the surviving setup wrapper
+- Zellij is no longer a big-port target; `yazelix-ulb2.3.2` landed the full-owner Rust cut, and `yazelix-vf0u.2` deleted the surviving setup wrapper after the semantic/base/settings/plugin/generation/layout Nu owners were already gone
 - terminal is no longer a big-port target; `terminal_renderers.nu` and `terminal_configs.nu` are gone, generated terminal writes already live in Rust, and the only surviving Nu seam is narrow launch-time compatibility logic inside `launch_yazelix.nu`
 - Helix is no longer a big-port target; generated merge/write/import-notice ownership already lives in Rust, `helix_config_merger.nu` is gone, and the surviving seam is just shared path truth plus launch/editor/import orchestration around the Rust owner
 - if a proposal cannot delete one of those surviving wrappers end-to-end, it is not a meaningful migration bead

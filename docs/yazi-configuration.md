@@ -216,10 +216,11 @@ plugins = ["git", "your-new-plugin"]
 
 **Config not updating?**
 ```bash
-# Manually regenerate configs
-cd ~/.config/yazelix
-nu nushell/scripts/setup/yazi_config_merger.nu .
+# Restart Yazelix or open a fresh Yazelix window so the managed Yazi config is regenerated
+yzx restart
 ```
+
+- If the managed Yazi files still look stale, run `yzx doctor --fix` and restart Yazelix once more
 
 **Plugin not loading?**
 - Check plugin name in `yazelix.toml` matches installed plugin (without `.yazi` extension)

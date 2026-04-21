@@ -7,22 +7,38 @@ use common.nu [
     get_yazelix_state_dir
     require_yazelix_runtime_dir
 ]
-use ./yzx_core_bridge.nu [build_default_yzx_core_error_surface run_yzx_core_request_json_command]
+use ./yzx_core_bridge.nu [build_default_yzx_core_error_surface build_record_yzx_core_error_surface run_yzx_core_request_json_command run_yzx_core_json_command]
 use config_surfaces.nu [get_main_user_config_path load_active_config_surface]
 use doctor_helix.nu fix_helix_runtime_conflicts
 use doctor_helix_report.nu collect_helix_doctor_results
 use doctor_runtime_report.nu collect_runtime_doctor_results
 use install_ownership_report.nu evaluate_install_ownership_report
 use ../core/materialization_orchestrator.nu repair_generated_runtime_state
-use ../setup/zellij_config_merger.nu generate_merged_zellij_config
 use ../integrations/zellij.nu get_active_tab_session_state
 
 const DOCTOR_CONFIG_EVALUATE_COMMAND = "doctor-config.evaluate"
+const ZELLIJ_MATERIALIZATION_COMMAND = "zellij-materialization.generate"
 
 def seed_yazelix_plugin_permissions [] {
     let runtime_dir = (require_yazelix_runtime_dir)
+    let config_surface = (load_active_config_surface)
     let zellij_config_dir = (get_yazelix_state_dir | path join "configs" "zellij")
-    generate_merged_zellij_config $runtime_dir $zellij_config_dir --quiet --seed-plugin-permissions | ignore
+    run_yzx_core_json_command $runtime_dir (
+        build_record_yzx_core_error_surface {config_file: $config_surface.config_file}
+    ) [
+        $ZELLIJ_MATERIALIZATION_COMMAND
+        "--config"
+        $config_surface.config_file
+        "--default-config"
+        $config_surface.default_config_path
+        "--contract"
+        ($runtime_dir | path join "config_metadata" "main_config_contract.toml")
+        "--runtime-dir"
+        $runtime_dir
+        "--zellij-config-dir"
+        $zellij_config_dir
+        "--seed-plugin-permissions"
+    ] "Yazelix Rust zellij-materialization helper returned invalid JSON." | ignore
     {
         permissions_cache_path: ($env.HOME | path join ".cache" "zellij" "permissions.kdl")
     }

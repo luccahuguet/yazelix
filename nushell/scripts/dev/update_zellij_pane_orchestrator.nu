@@ -2,7 +2,7 @@
 # Sync the locally built pane orchestrator wasm into the tracked repo path
 # and regenerate the Rust-owned Zellij materialization outputs.
 
-use ../setup/zellij_config_merger.nu generate_merged_zellij_config
+use ./materialization_dev_helpers.nu generate_merged_zellij_config
 use ../maintainer/repo_checkout.nu require_yazelix_repo_root
 use ../utils/common.nu get_yazelix_state_dir
 

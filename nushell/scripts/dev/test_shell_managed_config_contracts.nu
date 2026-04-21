@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ./yzx_test_helpers.nu [get_repo_root repo_path resolve_test_yzx_core_bin]
-use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
+use ./materialization_dev_helpers.nu [generate_merged_zellij_config]
 use ../utils/nushell_externs.nu [get_generated_yzx_extern_fingerprint_path get_generated_yzx_extern_path sync_generated_yzx_extern_bridge]
 use ../utils/shell_user_hooks.nu [get_yazelix_shell_user_hook_path sync_generated_nushell_user_hook_bridge]
 

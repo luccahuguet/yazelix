@@ -110,8 +110,8 @@ wrappers.
 | Config, state, env, and preflight shims | `config_parser.nu`, `config_state.nu`, `runtime_env.nu`, `runtime_contract_checker.nu` | Rust already owns the typed computation. `config_parser.nu` is now config-normalize specific, while the shared transport moved into `yzx_core_bridge.nu`. | Keep shrinking request shaping and machine classification where Rust can become the single typed owner. Leave only execution and final user rendering in Nu. | Current lane: `yazelix-057w` |
 | Doctor and install report bridges | `doctor.nu`'s inline config-doctor bridge, `doctor_helix_report.nu`, `doctor_runtime_report.nu`, `install_ownership_report.nu` | Still too many Nu owners for already structured Rust outputs; `yzx status` has already moved to the Rust public owner and `status_report.nu` is gone | Keep collapsing these toward one shared report transport seam. Keep human rendering in Nu only where it still adds product value. | Current lane: `yazelix-osco` |
 | Runtime materialization lifecycle | Rust owners: `runtime-materialization.plan`, `runtime-materialization.materialize`, `runtime-materialization.repair`; surviving Nu bridge: `core/materialization_orchestrator.nu` | Landed full-owner cut; the remaining Nu file is startup and doctor glue, not the lifecycle owner | Keep the bridge thin or delete it later. Do not recreate a second Nu lifecycle owner. | Landed under `yazelix-ulb2.9` |
-| Yazi materialization family | Rust owner: `yazi-materialization.generate`; surviving Nu wrapper: `setup/yazi_config_merger.nu` | The real Nu owner family is gone. Only a thin compatibility wrapper remains. | Keep the wrapper thin or delete it. Do not rebuild Yazi policy ownership in Nu. Dependency gate for the landed cut: in-house logic plus existing `serde` and `toml`; no new crates. | Landed under `yazelix-ulb2.3.1`; wrapper-deletion follow-up: `yazelix-vf0u.1` |
-| Zellij materialization family | Rust owner: `zellij-materialization.generate`; surviving Nu wrapper: `setup/zellij_config_merger.nu` | The real Nu owner family is gone. Rust owns base-config selection, semantic KDL extraction, layout rendering, plugin wasm sync, permission migration, popup-runner cleanup, and generation-state reuse. | Keep the wrapper thin or delete it. Do not rebuild Zellij policy ownership in Nu. Dependency gate for the landed cut: in-house logic plus existing `serde`, `serde_json`, `toml`, `sha2`, `thiserror`, and `lexopt`; no new crates. | Landed under `yazelix-ulb2.3.2`; wrapper-deletion follow-up: `yazelix-vf0u.2` |
+| Yazi materialization family | Rust owner: `yazi-materialization.generate`; remaining Nu use is dev-only direct invocation | The real Nu owner family is gone, and the surviving setup wrapper is deleted. | Keep Rust as the single Yazi materialization owner. Do not recreate a public or product-side compatibility wrapper. Dependency gate for the landed cut: in-house logic plus existing `serde` and `toml`; no new crates. | Landed under `yazelix-ulb2.3.1`; wrapper deletion landed under `yazelix-vf0u.1` |
+| Zellij materialization family | Rust owner: `zellij-materialization.generate`; remaining Nu use is direct product or dev invocation | The real Nu owner family is gone, the setup wrapper is deleted, and Rust still owns base-config selection, semantic KDL extraction, layout rendering, plugin wasm sync, permission migration, popup-runner cleanup, and generation-state reuse. | Keep Rust as the single Zellij materialization owner. Do not recreate a public or product-side compatibility wrapper. Dependency gate for the landed cut: in-house logic plus existing `serde`, `serde_json`, `toml`, `sha2`, `thiserror`, and `lexopt`; no new crates. | Landed under `yazelix-ulb2.3.2`; wrapper deletion landed under `yazelix-vf0u.2` |
 | Terminal launch-time compatibility seam | Standalone wrapper deleted; surviving Nu helpers live in `core/launch_yazelix.nu` | Rust already owns generated terminal writes in `terminal_materialization.rs` plus Ghostty config/shader generation in `ghostty_materialization.rs`. The surviving Nu seam is launch-time supported-terminal filtering, user-facing summary text, and the Ghostty reroll bridge. | Treat this as a landed delete-wrapper lane, not a fresh full-owner port. Keep only irreducible launch-time compatibility logic in `launch_yazelix.nu` and do not recreate a separate terminal materialization owner. Dependency gate: no new crates; keep using the existing Rust owners and in-house helper logic. | Landed under `yazelix-ulb2.10.3` |
 | Helix shared path and launch compatibility seam | Standalone wrapper deleted; shared Helix path truth now lives in `utils/common.nu`; adjacent consumers are `doctor_helix_report.nu`, `yzx/edit.nu`, `yzx/import.nu`, and `shells/posix/yazelix_hx.sh` | Rust already owns Helix template merge policy, reveal-binding enforcement, generated-file writes, import-notice state, and now the doctor-side expected contract build in `helix_materialization.rs`. The surviving Nu/POSIX seam is path truth and launch/editor/import orchestration, not a second generator owner. | Treat this as a landed wrapper-deletion lane. Keep Helix path truth shared and non-owning, and keep the POSIX launcher talking to the Rust helper directly. Dependency gate: no new crates; keep using existing `serde` and `toml` plus in-house helper extraction where needed. | Landed under `yazelix-ulb2.10.2` |
 | Shell initializer generation and shellhook environment setup | `setup/initializers.nu`, `setup/environment.nu` | The deterministic runtime-env subcore already moved to Rust. What remains is external-tool init generation, shell-specific text normalization, bridge sync, startup profiling, log cleanup, executable-bit repair, and welcome-shellhook orchestration. | Keep Nushell-owned in v15.x. Reopen only if a future port can delete the surviving shellhook owner end-to-end instead of inserting one more text or bridge helper. | Decision locked by `yazelix-iwzn` |
@@ -137,7 +137,7 @@ wrappers.
 - defer to other lanes:
   - doctor/install report family collapse belongs to `yazelix-osco`
   - compatibility-wrapper deletion for `setup/yazi_config_merger.nu` and
-    `setup/zellij_config_merger.nu` belongs to `yazelix-vf0u`
+    `setup/zellij_config_merger.nu` landed under `yazelix-vf0u`
   - launch/startup orchestration and materialization-orchestrator cleanup are
     separate lanes, not success criteria for `057w`
 | Front-door UX and command-palette surfaces | `utils/ascii_art.nu`, `yzx/menu.nu`, `yzx/popup.nu`, `yzx/screen.nu`, `yzx/keys.nu`, `yzx/tutor.nu`, `utils/upgrade_summary.nu` | Mostly text-heavy or interactive UX | Keep Nushell unless a future port deletes an owner cleanly and improves the UX story at the same time. | Not a current Rust target |
@@ -249,15 +249,16 @@ Why Zellij second:
   source selection, semantic KDL blocks, owned top-level settings, plugin
   artifact sync, layout generation, permission migration, popup-runner cleanup,
   and reuse fingerprints
-- `zellij_config_merger.nu` is now a thin wrapper over `zellij-materialization.generate`
+- `zellij_config_merger.nu` was an intermediate thin wrapper over
+  `zellij-materialization.generate` and is now deleted
 
 What landed in `yazelix-ulb2.3.1`:
 
 - Rust now owns Yazi merge policy, legacy-override rejection, managed-file
   writes, bundled asset sync, placeholder rendering, and warm self-heal logic
 - `yazi_bundled_assets.nu` and `yazi_user_overrides.nu` are deleted
-- `yazi_config_merger.nu` is demoted to a thin compatibility wrapper over the
-  Rust owner instead of a product-side policy owner
+- the former `yazi_config_merger.nu` compatibility wrapper is now deleted too,
+  so Rust is the only remaining product-side Yazi materialization owner
 
 What landed in `yazelix-ulb2.3.2`:
 
@@ -267,8 +268,8 @@ What landed in `yazelix-ulb2.3.2`:
 - `zellij_semantic_blocks.nu`, `zellij_base_config.nu`,
   `zellij_owned_settings.nu`, `zellij_plugin_paths.nu`,
   `zellij_generation_state.nu`, and `layout_generator.nu` are deleted
-- `zellij_config_merger.nu` is demoted to a thin compatibility wrapper over the
-  Rust owner instead of a product-side policy owner
+- the former `zellij_config_merger.nu` compatibility wrapper is now deleted
+  too, so Rust is the only remaining product-side Zellij materialization owner
 
 Why not terminal and Helix first:
 

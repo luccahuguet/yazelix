@@ -3,7 +3,7 @@
 # Defends: docs/specs/test_suite_governance.md
 
 use ./yzx_test_helpers.nu get_repo_root
-use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
+use ./materialization_dev_helpers.nu [generate_merged_zellij_config]
 
 def get_tracked_pane_orchestrator_wasm_path [repo_root: string] {
     $repo_root | path join "configs" "zellij" "plugins" "yazelix_pane_orchestrator.wasm"
