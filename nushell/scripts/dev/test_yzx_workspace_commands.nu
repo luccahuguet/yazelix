@@ -814,7 +814,9 @@ ghostty_mode_effect = "ripple"
 
         let random_output = (with-env {
             HOME: $random_fixture.tmp_home
+            XDG_DATA_HOME: ($random_fixture.tmp_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: $random_fixture.config_dir
+            YAZELIX_STATE_DIR: ($random_fixture.tmp_home | path join ".local" "share" "yazelix")
             YAZELIX_RUNTIME_DIR: $random_fixture.repo_root
         } {
             ^nu -c $snippet | complete
@@ -829,7 +831,9 @@ ghostty_mode_effect = "ripple"
 
         let fixed_output = (with-env {
             HOME: $fixed_fixture.tmp_home
+            XDG_DATA_HOME: ($fixed_fixture.tmp_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: $fixed_fixture.config_dir
+            YAZELIX_STATE_DIR: ($fixed_fixture.tmp_home | path join ".local" "share" "yazelix")
             YAZELIX_RUNTIME_DIR: $fixed_fixture.repo_root
         } {
             ^nu -c $snippet | complete

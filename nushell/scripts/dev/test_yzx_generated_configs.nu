@@ -7,11 +7,9 @@ use ../setup/yazi_config_merger.nu [generate_merged_yazi_config]
 use ../setup/zellij_config_merger.nu [generate_merged_zellij_config]
 use ../utils/config_state.nu [record_materialized_state]
 use ../core/materialization_orchestrator.nu [regenerate_runtime_configs]
+use ../core/launch_yazelix.nu [generate_all_terminal_configs]
 use ../utils/safe_remove.nu remove_path_within_root
 use ../utils/terminal_launcher.nu [build_launch_command resolve_terminal_config]
-use ../utils/terminal_configs.nu [
-    generate_all_terminal_configs
-]
 
 def run_parse_yazelix_config_probe [fixture: record, extra_env: record = {}] {
     with-env ({
@@ -179,7 +177,10 @@ ghostty_mode_effect = "ripple_rectangle"
 
         with-env {
             HOME: $fake_home
+            XDG_CONFIG_HOME: ($fake_home | path join ".config")
+            XDG_DATA_HOME: ($fake_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: ($fake_home | path join ".config" "yazelix")
+            YAZELIX_STATE_DIR: ($fake_home | path join ".local" "share" "yazelix")
             YAZELIX_CONFIG_OVERRIDE: $config_path
         } {
             generate_all_terminal_configs $runtime_root
@@ -261,7 +262,7 @@ def test_terminal_override_imports_ignore_yazelix_dir_runtime_root [] {
     let fake_config_dir = ($fake_home | path join ".config" "yazelix")
     let config_path = ($tmpdir | path join "yazelix.toml")
     let runtime_root = (pwd)
-    let terminal_configs_script = ($runtime_root | path join "nushell" "scripts" "utils" "terminal_configs.nu")
+    let terminal_materialization_script = ($runtime_root | path join "nushell" "scripts" "core" "launch_yazelix.nu")
     mkdir $fake_home
     mkdir $fake_runtime_root
     mkdir ($fake_config_dir | path join "user_configs" "terminal")
@@ -281,12 +282,14 @@ terminals = ["ghostty", "kitty", "alacritty"]
         let command_output = (with-env {
             HOME: $fake_home
             XDG_CONFIG_HOME: ($fake_home | path join ".config")
+            XDG_DATA_HOME: ($fake_home | path join ".local" "share")
             YAZELIX_CONFIG_DIR: $fake_config_dir
+            YAZELIX_STATE_DIR: ($fake_home | path join ".local" "share" "yazelix")
             YAZELIX_DIR: $fake_runtime_root
             YAZELIX_RUNTIME_DIR: $runtime_root
             YAZELIX_CONFIG_OVERRIDE: $config_path
         } {
-            ^nu -c $"use \"($terminal_configs_script)\" [generate_all_terminal_configs]; generate_all_terminal_configs \"($runtime_root)\"" | complete
+            ^nu -c $"use \"($terminal_materialization_script)\" [generate_all_terminal_configs]; generate_all_terminal_configs \"($runtime_root)\"" | complete
         })
 
         let expected_override_root = ($fake_home | path join ".config" "yazelix" "user_configs" "terminal")

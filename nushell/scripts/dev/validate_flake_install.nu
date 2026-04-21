@@ -198,7 +198,7 @@ def verify_installed_runtime [temp_home: string] {
     let generated_ghostty_root = ($temp_home | path join ".local" "share" "yazelix" "configs" "terminal_emulators" "ghostty")
     let generated_ghostty_config = ($generated_ghostty_root | path join "config")
     let generated_ghostty_effect_dir = ($generated_ghostty_root | path join "shaders" "generated_effects")
-    let runtime_terminal_configs_script = ($runtime_root | path join "nushell" "scripts" "utils" "terminal_configs.nu")
+    let runtime_terminal_materialization_script = ($runtime_root | path join "nushell" "scripts" "core" "launch_yazelix.nu")
 
     require_path_exists $yzx_path "profile-installed yzx entrypoint"
     require_path_exists $runtime_toolbin "runtime toolbin"
@@ -313,7 +313,7 @@ def verify_installed_runtime [temp_home: string] {
             "run"
             "nu"
             "-c"
-            $"use \"($runtime_terminal_configs_script)\" [generate_all_terminal_configs]; generate_all_terminal_configs \"($runtime_root)\""
+            $"use \"($runtime_terminal_materialization_script)\" [generate_all_terminal_configs]; generate_all_terminal_configs \"($runtime_root)\""
     )
 
     if $ghostty_config_probe.exit_code != 0 {
