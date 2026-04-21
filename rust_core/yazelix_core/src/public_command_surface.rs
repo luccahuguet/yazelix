@@ -4,7 +4,6 @@ use serde_json::json;
 
 const CORE_DOCTOR_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_doctor.nu"];
 const CORE_SESSION_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_session.nu"];
-const CORE_SUPPORT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_support.nu"];
 const CORE_WORKSPACE_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "core", "yzx_workspace.nu"];
 const YZX_DESKTOP_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "desktop.nu"];
 const YZX_DEV_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "dev.nu"];
@@ -296,13 +295,33 @@ const HOME_MANAGER_PREPARE_COMMAND: YzxCommandMetadata = metadata(
 );
 const HOME_MANAGER_FAMILY_COMMANDS: &[YzxCommandMetadata] =
     &[HOME_MANAGER_ROOT_COMMAND, HOME_MANAGER_PREPARE_COMMAND];
+const SPONSOR_COMMAND: YzxCommandMetadata = metadata(
+    "yzx sponsor",
+    "Open the Yazelix sponsor page or print its URL",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    Some("Show the sponsorship links and support message."),
+);
+const SPONSOR_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[SPONSOR_COMMAND];
+const WHY_COMMAND: YzxCommandMetadata = metadata(
+    "yzx why",
+    "Elevator pitch: Why Yazelix",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
+const WHY_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[WHY_COMMAND];
 const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("config", CONFIG_FAMILY_COMMANDS),
     rust_control_family("env", ENV_FAMILY_COMMANDS),
     rust_control_family("run", RUN_FAMILY_COMMANDS),
     rust_control_family("status", STATUS_FAMILY_COMMANDS),
     rust_control_family("home_manager", HOME_MANAGER_FAMILY_COMMANDS),
+    rust_control_family("sponsor", SPONSOR_FAMILY_COMMANDS),
     rust_control_family("update", UPDATE_FAMILY_COMMANDS),
+    rust_control_family("why", WHY_FAMILY_COMMANDS),
 ];
 
 const CWD_COMMAND: YzxCommandLeaf = leaf(
@@ -756,20 +775,6 @@ const SCREEN_COMMAND: YzxCommandLeaf = leaf(
 );
 const SCREEN_COMMANDS: &[YzxCommandLeaf] = &[SCREEN_COMMAND];
 
-const SPONSOR_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx sponsor",
-        "Open the Yazelix sponsor page or print its URL",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        Some("Show the sponsorship links and support message."),
-    ),
-    &[],
-    CORE_SUPPORT_RELATIVE_PATH,
-);
-const SPONSOR_COMMANDS: &[YzxCommandLeaf] = &[SPONSOR_COMMAND];
-
 const TUTOR_ROOT_COMMAND: YzxCommandLeaf = leaf(
     metadata(
         "yzx tutor",
@@ -851,20 +856,6 @@ const WHATS_NEW_COMMAND: YzxCommandLeaf = leaf(
     YZX_WHATS_NEW_RELATIVE_PATH,
 );
 const WHATS_NEW_COMMANDS: &[YzxCommandLeaf] = &[WHATS_NEW_COMMAND];
-
-const WHY_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx why",
-        "Elevator pitch: Why Yazelix",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
-    &[],
-    CORE_SUPPORT_RELATIVE_PATH,
-);
-const WHY_COMMANDS: &[YzxCommandLeaf] = &[WHY_COMMAND];
 
 const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
     internal_family(
@@ -994,15 +985,6 @@ const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
         &[],
     ),
     internal_family(
-        "sponsor",
-        SPONSOR_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
-        &[],
-    ),
-    internal_family(
         "tutor",
         TUTOR_COMMANDS,
         Some(0),
@@ -1014,15 +996,6 @@ const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
     internal_family(
         "whats_new",
         WHATS_NEW_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
-        &[],
-    ),
-    internal_family(
-        "why",
-        WHY_COMMANDS,
         Some(0),
         false,
         false,
@@ -1335,6 +1308,14 @@ mod tests {
         );
         assert_eq!(
             classify_yzx_root_route(&["home_manager".into(), "prepare".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
+            classify_yzx_root_route(&["sponsor".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
+            classify_yzx_root_route(&["why".into()]).unwrap(),
             YzxPublicRootRoute::RustControl
         );
     }

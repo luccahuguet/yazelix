@@ -117,6 +117,31 @@ def run_public_yzx_command_for_fixture [fixture: record, command: string, extra_
     }
 }
 
+def run_direct_public_yzx_command_for_fixture [fixture: record, command: string, extra_env?: record] {
+    let base_env = {
+        HOME: $fixture.tmp_home
+        XDG_CONFIG_HOME: ($fixture.tmp_home | path join ".config")
+        XDG_DATA_HOME: ($fixture.tmp_home | path join ".local" "share")
+        YAZELIX_STATE_DIR: ($fixture.tmp_home | path join ".local" "share" "yazelix")
+        YAZELIX_CONFIG_DIR: $fixture.config_dir
+        YAZELIX_RUNTIME_DIR: $fixture.repo_root
+        YAZELIX_YZX_BIN: (resolve_test_yzx_bin)
+        YAZELIX_YZX_CONTROL_BIN: (resolve_test_yzx_control_bin)
+    }
+    let merged_env = if ($extra_env | is-empty) {
+        $base_env
+    } else {
+        $base_env | merge $extra_env
+    }
+
+    let tokens = ($command | str trim | split row " " | where {|t| ($t | str length) > 0})
+    let yzx_bin = (resolve_test_yzx_bin)
+
+    with-env $merged_env {
+        ^$yzx_bin ...($tokens | skip 1) | complete
+    }
+}
+
 def manual_desktop_icon_records [tmp_home: string, source_root: string] {
     $DESKTOP_ICON_SIZES
     | each {|size|
@@ -690,6 +715,84 @@ welcome_style = "random"
             true
         } else {
             print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: the public Rust-owned `yzx why` route must keep the existing elevator-pitch copy after deleting the Nushell support owner.
+# Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+def test_public_yzx_why_prints_elevator_pitch [] {
+    print "🧪 Testing public yzx why still prints the Yazelix elevator pitch..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_why_pitch"
+        '[core]
+welcome_style = "random"
+'
+    )
+
+    let result = (try {
+        let output = (run_direct_public_yzx_command_for_fixture $fixture "yzx why")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Yazelix is a reproducible terminal IDE")
+            and ($stdout | str contains "Zero")
+            and ($stdout | str contains "Install once, get the same environment everywhere.")
+        ) {
+            print "  ✅ public yzx why keeps the existing pitch copy through the Rust owner"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: the public Rust-owned `yzx sponsor` route must still fall back to printing the sponsor URL when no opener is available.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_public_yzx_sponsor_falls_back_to_printed_url_without_openers [] {
+    print "🧪 Testing public yzx sponsor falls back to printing the URL when no opener is available..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_sponsor_fallback"
+        '[core]
+welcome_style = "random"
+'
+    )
+    let bin_dir = ($fixture.tmp_home | path join "bin")
+    mkdir $bin_dir
+
+    let result = (try {
+        let output = (run_direct_public_yzx_command_for_fixture $fixture "yzx sponsor" {
+            PATH: $bin_dir
+        })
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Support Yazelix:")
+            and ($stdout | str contains "https://github.com/sponsors/luccahuguet")
+            and not ($stdout | str contains "Opened sponsor page.")
+        ) {
+            print "  ✅ public yzx sponsor still prints the sponsor URL when no opener is available"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout) stderr=(($output.stderr | str trim))"
             false
         }
     } catch {|err|
@@ -1829,6 +1932,8 @@ export def run_core_canonical_tests [] {
         (test_yzx_desktop_uninstall_preserves_home_manager_cleanup_path)
         (test_yzx_desktop_uninstall_removes_manual_entry_and_icons)
         (test_public_yzx_home_manager_lists_takeover_helpers)
+        (test_public_yzx_why_prints_elevator_pitch)
+        (test_public_yzx_sponsor_falls_back_to_printed_url_without_openers)
         (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)
         (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
         (test_public_yzx_config_prints_resolved_path)

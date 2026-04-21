@@ -99,7 +99,6 @@ def validate_rust_routed_nu_modules [runtime_root: string, label: string] {
     for relative_path in [
         ["core" "yzx_doctor.nu"]
         ["core" "yzx_session.nu"]
-        ["core" "yzx_support.nu"]
         ["core" "yzx_workspace.nu"]
         ["yzx" "desktop.nu"]
         ["yzx" "dev.nu"]

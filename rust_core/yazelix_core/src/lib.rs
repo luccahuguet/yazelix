@@ -18,6 +18,7 @@ pub mod runtime_contract;
 pub mod runtime_env;
 pub mod runtime_materialization;
 pub mod status_report;
+pub mod support_commands;
 pub mod terminal_materialization;
 pub mod update_commands;
 pub mod yazi_materialization;
@@ -80,6 +81,7 @@ pub use runtime_materialization::{
     materialize_runtime_state, plan_runtime_materialization, repair_runtime_materialization,
 };
 pub use status_report::{StatusReportData, compute_status_report};
+pub use support_commands::{run_yzx_sponsor, run_yzx_why};
 pub use terminal_materialization::{
     TerminalGeneratedConfig, TerminalMaterializationData, TerminalMaterializationRequest,
     generate_terminal_materialization,
