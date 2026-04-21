@@ -105,7 +105,6 @@ def validate_rust_routed_nu_modules [runtime_root: string, label: string] {
         ["yzx" "edit.nu"]
         ["yzx" "enter.nu"]
         ["yzx" "import.nu"]
-        ["yzx" "keys.nu"]
         ["yzx" "launch.nu"]
         ["yzx" "menu.nu"]
         ["yzx" "popup.nu"]

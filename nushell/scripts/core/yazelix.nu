@@ -15,7 +15,6 @@ export use ../yzx/dev.nu *
 export use ../yzx/desktop.nu *
 export use ../yzx/menu.nu *
 export use ../yzx/edit.nu *
-export use ../yzx/keys.nu *
 export use ../yzx/tutor.nu *
 export use ../yzx/whats_new.nu *
 export use ./yzx_doctor.nu *

@@ -804,6 +804,137 @@ welcome_style = "random"
     $result
 }
 
+# Defends: the public Rust-owned `yzx keys` root keeps the sectioned keybinding discoverability surface instead of collapsing into a flat text dump.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_public_yzx_keys_root_preserves_discoverability_sections [] {
+    print "🧪 Testing public yzx keys keeps the sectioned discoverability surface..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_keys_root"
+        '[core]
+welcome_style = "random"
+'
+    )
+
+    let result = (try {
+        let output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys")
+        let stdout = ($output.stdout | str trim)
+
+        if (
+            ($output.exit_code == 0)
+            and ($stdout | str contains "Yazelix keybindings")
+            and ($stdout | str contains "Workspace actions")
+            and ($stdout | str contains "Command access")
+            and ($stdout | str contains "Tab and pane movement")
+            and ($stdout | str contains "Alt+Shift+M")
+            and ($stdout | str contains "yzx keys yazi")
+            and ($stdout | str contains "yzx keys hx")
+            and ($stdout | str contains "yzx keys nu")
+        ) {
+            print "  ✅ public yzx keys keeps the sectioned keybinding discoverability surface through the Rust owner"
+            true
+        } else {
+            print $"  ❌ Unexpected result: exit=($output.exit_code) stdout=($stdout)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: the Rust keys owner cut must preserve the public alias family exactly so users can keep using yzx/yazi/hx/helix/nu/nushell views.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_public_yzx_keys_aliases_preserve_views [] {
+    print "🧪 Testing public yzx keys aliases preserve the expected view outputs..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_keys_aliases"
+        '[core]
+welcome_style = "random"
+'
+    )
+
+    let result = (try {
+        let root_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys")
+        let yzx_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys yzx")
+        let hx_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys hx")
+        let helix_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys helix")
+        let nu_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys nu")
+        let nushell_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys nushell")
+
+        if (
+            ($root_output.exit_code == 0)
+            and ($yzx_output.exit_code == 0)
+            and ($hx_output.exit_code == 0)
+            and ($helix_output.exit_code == 0)
+            and ($nu_output.exit_code == 0)
+            and ($nushell_output.exit_code == 0)
+            and ($root_output.stdout == $yzx_output.stdout)
+            and ($hx_output.stdout == $helix_output.stdout)
+            and ($nu_output.stdout == $nushell_output.stdout)
+        ) {
+            print "  ✅ public yzx keys aliases still resolve to the same keybinding views after the Rust owner cut"
+            true
+        } else {
+            print $"  ❌ Unexpected alias result: root_exit=($root_output.exit_code) yzx_exit=($yzx_output.exit_code) hx_exit=($hx_output.exit_code) helix_exit=($helix_output.exit_code) nu_exit=($nu_output.exit_code) nushell_exit=($nushell_output.exit_code)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
+# Defends: the Rust-owned yzx keys leaf views must still carry the tool-specific guidance instead of regressing to the root summary for every subcommand.
+# Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
+def test_public_yzx_keys_tool_specific_views_keep_guidance [] {
+    print "🧪 Testing public yzx keys tool-specific views keep their tool guidance..."
+
+    let fixture = (setup_managed_config_fixture
+        "yazelix_keys_leaf_views"
+        '[core]
+welcome_style = "random"
+'
+    )
+
+    let result = (try {
+        let yazi_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys yazi")
+        let helix_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys hx")
+        let nu_output = (run_direct_public_yzx_command_for_fixture $fixture "yzx keys nu")
+
+        if (
+            ($yazi_output.exit_code == 0)
+            and ($helix_output.exit_code == 0)
+            and ($nu_output.exit_code == 0)
+            and (($yazi_output.stdout | str contains "Yazi keybindings"))
+            and (($yazi_output.stdout | str contains "Focus the Yazi pane and press `~`"))
+            and (($helix_output.stdout | str contains "Helix keybindings"))
+            and (($helix_output.stdout | str contains "https://docs.helix-editor.com/master/keymap.html"))
+            and (($nu_output.stdout | str contains "Nushell keybindings"))
+            and (($nu_output.stdout | str contains "https://www.nushell.sh/book/line_editor.html"))
+        ) {
+            print "  ✅ public yzx keys leaf views keep their tool-specific discoverability guidance through the Rust owner"
+            true
+        } else {
+            print $"  ❌ Unexpected result: yazi_exit=($yazi_output.exit_code) helix_exit=($helix_output.exit_code) nu_exit=($nu_output.exit_code)"
+            false
+        }
+    } catch {|err|
+        print $"  ❌ Exception: ($err.msg)"
+        false
+    })
+
+    rm -rf $fixture.tmp_home
+    $result
+}
+
 # Defends: Home Manager takeover preview surfaces both blocking and cleanup-only manual artifacts through the public yzx route.
 # Strength: defect=2 behavior=2 resilience=2 cost=1 uniqueness=2 total=9/10
 def test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts [] {
@@ -1934,6 +2065,9 @@ export def run_core_canonical_tests [] {
         (test_public_yzx_home_manager_lists_takeover_helpers)
         (test_public_yzx_why_prints_elevator_pitch)
         (test_public_yzx_sponsor_falls_back_to_printed_url_without_openers)
+        (test_public_yzx_keys_root_preserves_discoverability_sections)
+        (test_public_yzx_keys_aliases_preserve_views)
+        (test_public_yzx_keys_tool_specific_views_keep_guidance)
         (test_yzx_home_manager_prepare_preview_reports_manual_takeover_artifacts)
         (test_yzx_home_manager_prepare_apply_archives_manual_takeover_artifacts)
         (test_public_yzx_config_prints_resolved_path)

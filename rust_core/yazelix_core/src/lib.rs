@@ -13,6 +13,7 @@ pub mod helix_materialization;
 pub mod home_manager_commands;
 pub mod install_ownership_env;
 pub mod install_ownership_report;
+pub mod keys_commands;
 pub mod public_command_surface;
 pub mod runtime_contract;
 pub mod runtime_env;
@@ -60,6 +61,7 @@ pub use install_ownership_report::{
     DoctorInstallResult, HomeManagerPrepareArtifact, InstallOwnershipEvaluateData,
     InstallOwnershipEvaluateRequest, evaluate_install_ownership_report,
 };
+pub use keys_commands::run_yzx_keys;
 pub use public_command_surface::{
     YzxCommandCategory, YzxCommandMetadata, YzxCommandParameter, YzxInternalNuRoutePlan,
     YzxMenuCategory, YzxParameterKind, YzxPublicRootRoute, classify_yzx_root_route,

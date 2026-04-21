@@ -10,7 +10,6 @@ const YZX_DEV_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "dev.nu"];
 const YZX_EDIT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "edit.nu"];
 const YZX_ENTER_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "enter.nu"];
 const YZX_IMPORT_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "import.nu"];
-const YZX_KEYS_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "keys.nu"];
 const YZX_LAUNCH_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "launch.nu"];
 const YZX_MENU_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "menu.nu"];
 const YZX_POPUP_RELATIVE_PATH: &[&str] = &["nushell", "scripts", "yzx", "popup.nu"];
@@ -319,6 +318,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
     rust_control_family("run", RUN_FAMILY_COMMANDS),
     rust_control_family("status", STATUS_FAMILY_COMMANDS),
     rust_control_family("home_manager", HOME_MANAGER_FAMILY_COMMANDS),
+    rust_control_family("keys", KEYS_FAMILY_COMMANDS),
     rust_control_family("sponsor", SPONSOR_FAMILY_COMMANDS),
     rust_control_family("update", UPDATE_FAMILY_COMMANDS),
     rust_control_family("why", WHY_FAMILY_COMMANDS),
@@ -596,92 +596,63 @@ const IMPORT_COMMANDS: &[YzxCommandLeaf] = &[
     IMPORT_YAZI_COMMAND,
     IMPORT_ZELLIJ_COMMAND,
 ];
-
-const KEYS_ROOT_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx keys",
-        "Show Yazelix-owned keybindings and remaps",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
+const KEYS_ROOT_COMMAND: YzxCommandMetadata = metadata(
+    "yzx keys",
+    "Show Yazelix-owned keybindings and remaps",
+    YzxCommandCategory::Help,
     &[],
-    YZX_KEYS_RELATIVE_PATH,
+    Some(YzxMenuCategory::Help),
+    None,
 );
-const KEYS_HELIX_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx keys helix",
-        "Alias for yzx keys hx",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
-    &["helix"],
-    YZX_KEYS_RELATIVE_PATH,
+const KEYS_HELIX_COMMAND: YzxCommandMetadata = metadata(
+    "yzx keys helix",
+    "Alias for yzx keys hx",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
 );
-const KEYS_HX_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx keys hx",
-        "Explain how to discover Helix keybindings and commands",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
-    &["hx"],
-    YZX_KEYS_RELATIVE_PATH,
+const KEYS_HX_COMMAND: YzxCommandMetadata = metadata(
+    "yzx keys hx",
+    "Explain how to discover Helix keybindings and commands",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
 );
-const KEYS_NU_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx keys nu",
-        "Show a small curated subset of useful Nushell keybindings",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
-    &["nu"],
-    YZX_KEYS_RELATIVE_PATH,
+const KEYS_NU_COMMAND: YzxCommandMetadata = metadata(
+    "yzx keys nu",
+    "Show a small curated subset of useful Nushell keybindings",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
 );
-const KEYS_NUSHELL_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx keys nushell",
-        "Alias for yzx keys nu",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
-    &["nushell"],
-    YZX_KEYS_RELATIVE_PATH,
+const KEYS_NUSHELL_COMMAND: YzxCommandMetadata = metadata(
+    "yzx keys nushell",
+    "Alias for yzx keys nu",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
 );
-const KEYS_YAZI_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx keys yazi",
-        "Explain how to view Yazi's built-in keybindings",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
-    &["yazi"],
-    YZX_KEYS_RELATIVE_PATH,
+const KEYS_YAZI_COMMAND: YzxCommandMetadata = metadata(
+    "yzx keys yazi",
+    "Explain how to view Yazi's built-in keybindings",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
 );
-const KEYS_YZX_COMMAND: YzxCommandLeaf = leaf(
-    metadata(
-        "yzx keys yzx",
-        "Alias for the default Yazelix keybinding view",
-        YzxCommandCategory::Help,
-        &[],
-        Some(YzxMenuCategory::Help),
-        None,
-    ),
-    &["yzx"],
-    YZX_KEYS_RELATIVE_PATH,
+const KEYS_YZX_COMMAND: YzxCommandMetadata = metadata(
+    "yzx keys yzx",
+    "Alias for the default Yazelix keybinding view",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
 );
-const KEYS_COMMANDS: &[YzxCommandLeaf] = &[
+const KEYS_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
     KEYS_ROOT_COMMAND,
     KEYS_HELIX_COMMAND,
     KEYS_HX_COMMAND,
@@ -919,15 +890,6 @@ const INTERNAL_NU_FAMILIES: &[YzxInternalNuFamily] = &[
         true,
         true,
         YzxUnknownSubcommandBehavior::Error,
-        &[],
-    ),
-    internal_family(
-        "keys",
-        KEYS_COMMANDS,
-        Some(0),
-        false,
-        false,
-        YzxUnknownSubcommandBehavior::RouteRoot,
         &[],
     ),
     internal_family(
@@ -1311,6 +1273,14 @@ mod tests {
             YzxPublicRootRoute::RustControl
         );
         assert_eq!(
+            classify_yzx_root_route(&["keys".into(), "helix".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
+            classify_yzx_root_route(&["keys".into(), "yazi".into()]).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+        assert_eq!(
             classify_yzx_root_route(&["sponsor".into()]).unwrap(),
             YzxPublicRootRoute::RustControl
         );
@@ -1407,13 +1377,6 @@ mod tests {
             panic!("expected internal Nu route");
         };
         assert_eq!(plan.command_name, "yzx edit config");
-
-        let argv = [String::from("keys"), String::from("helix")];
-        let route = classify_yzx_root_route(&argv).unwrap();
-        let YzxPublicRootRoute::InternalNu(plan) = route else {
-            panic!("expected internal Nu route");
-        };
-        assert_eq!(plan.command_name, "yzx keys helix");
 
         let tutor_argv = [String::from("tutor"), String::from("nushell")];
         let route = classify_yzx_root_route(&tutor_argv).unwrap();
