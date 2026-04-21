@@ -148,7 +148,7 @@ def setup_launch_path_fixture [label: string, persistent_sessions: bool, existin
     mkdir $state_dir
     mkdir $fake_bin
 
-    for entry in [".taplo.toml", "nushell", "shells", "configs", "config_metadata", "yazelix_default.toml", "docs", "CHANGELOG.md", "assets"] {
+    for entry in [".taplo.toml", "nushell", "shells", "configs", "config_metadata", "rust_core", "yazelix_default.toml", "docs", "CHANGELOG.md", "assets"] {
         ^ln -s (repo_path $entry) ($runtime_dir | path join $entry)
     }
 
@@ -718,6 +718,7 @@ def test_desktop_fast_path_uses_direct_host_terminal_during_reload_instead_of_st
         mkdir $profile_bin
 
         ^ln -s (repo_path ".taplo.toml") ($runtime_dir | path join ".taplo.toml")
+        ^ln -s (repo_path "rust_core") ($runtime_dir | path join "rust_core")
         "" | save --force --raw ($runtime_dir | path join "yazelix_default.toml")
         "" | save --force --raw ($runtime_dir | path join "CHANGELOG.md")
         {
@@ -1310,6 +1311,7 @@ def test_launch_falls_through_after_immediate_terminal_failure [] {
         mkdir ($fake_terminal_configs | path join "wezterm")
         mkdir ($fake_terminal_configs | path join "alacritty")
         ^ln -s (repo_path ".taplo.toml") ($fake_runtime | path join ".taplo.toml")
+        ^ln -s (repo_path "rust_core") ($fake_runtime | path join "rust_core")
         "" | save --force --raw ($fake_runtime | path join "yazelix_default.toml")
         "" | save --force --raw ($fake_terminal_configs | path join "wezterm" ".wezterm.lua")
         "" | save --force --raw ($fake_terminal_configs | path join "alacritty" "alacritty.toml")

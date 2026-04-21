@@ -92,12 +92,19 @@ unset YAZELIX_BOOTSTRAP_RUNTIME_DIR
 
 yzx_root_bin="${YAZELIX_YZX_BIN:-$RUNTIME_DIR/libexec/yzx}"
 if [ ! -x "$yzx_root_bin" ]; then
-  for candidate in "$RUNTIME_DIR/rust_core/target/release/yzx" "$RUNTIME_DIR/rust_core/target/debug/yzx"; do
-    if [ -x "$candidate" ]; then
-      yzx_root_bin="$candidate"
-      break
+  release_candidate="$RUNTIME_DIR/rust_core/target/release/yzx"
+  debug_candidate="$RUNTIME_DIR/rust_core/target/debug/yzx"
+  if [ -x "$release_candidate" ] && [ -x "$debug_candidate" ]; then
+    if [ "$debug_candidate" -nt "$release_candidate" ]; then
+      yzx_root_bin="$debug_candidate"
+    else
+      yzx_root_bin="$release_candidate"
     fi
-  done
+  elif [ -x "$release_candidate" ]; then
+    yzx_root_bin="$release_candidate"
+  elif [ -x "$debug_candidate" ]; then
+    yzx_root_bin="$debug_candidate"
+  fi
 fi
 
 if [ ! -x "$yzx_root_bin" ]; then

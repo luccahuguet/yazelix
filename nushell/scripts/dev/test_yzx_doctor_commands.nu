@@ -258,17 +258,21 @@ def test_yzx_doctor_fix_creates_config_from_default_template [] {
         let created = ($fixture.config_path | path exists)
         let created_body = if $created { open --raw $fixture.config_path } else { "" }
         let stdout = ($output.stdout | str trim)
+        let stderr = ($output.stderr | str trim)
 
         if (
             ($output.exit_code == 0)
             and $created
             and ($created_body | str contains "[shell]")
-            and ($stdout | str contains "Created yazelix.toml from template")
+            and (
+                ($stdout | str contains "Created yazelix.toml from template")
+                or ($stderr | str contains "yazelix.toml created")
+            )
         ) {
             print "  ✅ The Rust-owned public doctor route still drives config creation from the shipped default template"
             true
         } else {
-            print $"  ❌ Unexpected result: exit=($output.exit_code) created=($created) stdout=($output.stdout | str trim) stderr=(($output.stderr | str trim))"
+            print $"  ❌ Unexpected result: exit=($output.exit_code) created=($created) stdout=($stdout) stderr=($stderr)"
             false
         }
     } catch {|err|
