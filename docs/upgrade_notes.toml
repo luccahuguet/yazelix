@@ -1,6 +1,16 @@
 [releases.unreleased]
 version = "unreleased"
 date = ""
+headline = "Post-v15.3 work in progress"
+summary = ["Reserved for post-release changes after v15.3 lands."]
+upgrade_impact = "no_user_action"
+acknowledged_guarded_changes = []
+migration_ids = []
+manual_actions = []
+
+[releases."v15.3"]
+version = "v15.3"
+date = "2026-04-21"
 headline = "v15.3 Rust-owns more of the core and starts much faster"
 summary = [
     "Moved more of the typed core into Rust: `yzx` root metadata, `yzx env`, `yzx run`, `yzx update*`, `yzx status`, doctor findings, startup preflight, runtime-env planning, and runtime-materialization planning now route through `yzx_core` or `yzx_control`.",

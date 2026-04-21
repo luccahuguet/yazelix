@@ -86,14 +86,14 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 If Yazelix is useful to you, you can support its development on [GitHub Sponsors](https://github.com/sponsors/luccahuguet)
 
 <!-- BEGIN GENERATED README LATEST SERIES -->
-## Latest Tagged Release: v15.2
+## Latest Tagged Release: v15.3
 
-v15.2 hardens startup, desktop launch, and Ghostty polish
+v15.3 Rust-owns more of the core and starts much faster
 
-- Upgraded `yzx menu` to a prettier `fzf`-backed command palette and fixed the popup selection crash path.
-- Rerolled Ghostty random cursor palettes and effects for each Yazelix Ghostty window, including desktop fast-path launches, while keeping fixed palettes stable.
-- Made managed desktop entries terminal-backed and surfaced desktop-launch pre-terminal progress and failures so desktop entry clicks no longer fail invisibly before terminal handoff.
-- Moved config parsing and generated-state hashing onto the packaged Rust `yzx_core` helper, deleted the old Nushell fallback and legacy raw-string rebuild cache path, and kept malformed cache state on the safe one-time-refresh path.
+- Moved more of the typed core into Rust: `yzx` root metadata, `yzx env`, `yzx run`, `yzx update*`, `yzx status`, doctor findings, startup preflight, runtime-env planning, and runtime-materialization planning now route through `yzx_core` or `yzx_control`.
+- Rust now owns Yazi, Zellij, terminal, Helix, and runtime-materialization generation or write lifecycles, while the old Nushell wrapper owners were deleted or collapsed.
+- Startup got much faster on the same maintainer machine: 75.6% faster warm current-terminal, 95.6% faster cold clear-cache, 55.6% faster desktop launch, and 59.0% faster managed new-window launch.
+- Rewrote the Rust migration inventory around the real remaining Nushell seams, so follow-up work now targets bridge collapse and honest shell-bound survivors instead of stale transition docs.
 
 For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new` after installing that release
 For the longer project story, see [Version History](./docs/history.md)
